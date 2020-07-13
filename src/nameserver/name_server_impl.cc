@@ -44,6 +44,7 @@ DECLARE_uint32(name_server_op_execute_timeout);
 DECLARE_uint32(get_replica_status_interval);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
+DECLARE_bool(use_name);
 
 using ::rtidb::base::ReturnCode;
 using ::rtidb::base::BLOB_PREFIX;
@@ -1421,6 +1422,11 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         Tablets::iterator tit = tablets_.find(*it);
         // register a new tablet
         if (tit == tablets_.end()) {
+            /**
+             * if (FLAGS_use_name) {
+             *    1.从zk获取node的value，继而解析出real_endpoint 
+             * }
+             */
             std::shared_ptr<TabletInfo> tablet = std::make_shared<TabletInfo>();
             tablet->state_ = ::rtidb::api::TabletState::kTabletHealthy;
             tablet->client_ =
@@ -1437,6 +1443,12 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             if (tit->second->state_ !=
                 ::rtidb::api::TabletState::kTabletHealthy) {
                 tit->second->state_ = ::rtidb::api::TabletState::kTabletHealthy;
+            /**
+             * if (FLAGS_use_name) {
+             *    1.在table_info_中partition_meta中加入real_endpoint信息。
+             *    2.更新tablet->client_
+             * }  
+             */
                 tit->second->ctime_ =
                     ::baidu::common::timer::get_micros() / 1000;
                 PDLOG(INFO, "tablet is online. endpoint[%s]",
@@ -1707,17 +1719,22 @@ void NameServerImpl::ShowTablet(RpcController* controller,
     response->set_msg("ok");
 }
 
-bool NameServerImpl::Init() {
+bool NameServerImpl::Init(const std::string& real_endpoint) {
     if (FLAGS_zk_cluster.empty()) {
         PDLOG(WARNING, "zk cluster disabled");
         return false;
     }
-    zk_client_ = new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
-                              FLAGS_endpoint, FLAGS_zk_root_path);
+    zk_client_ = new ZkClient(FLAGS_zk_cluster, real_endpoint,
+            FLAGS_zk_session_timeout, FLAGS_endpoint, FLAGS_zk_root_path);
     if (!zk_client_->Init()) {
         PDLOG(WARNING, "fail to init zookeeper with cluster[%s]",
               FLAGS_zk_cluster.c_str());
         return false;
+    }
+    if (FLAGS_use_name) {
+        if (!zk_client_->RegisterName()) {
+            PDLOG(WARNING, "fail to RegisterName");
+        }
     }
     task_vec_.resize(FLAGS_name_server_task_max_concurrency +
                      FLAGS_name_server_task_concurrency_for_replica_cluster);
@@ -9656,6 +9673,9 @@ void NameServerImpl::ChangeLeader(
     for (const auto& e : change_leader_data.remote_follower()) {
         endpoint_tid.push_back(e);
     }
+    /**
+     * TODO convert follower_endpoint and endpoint_tid  to real endpoint
+     */
     if (!tablet_ptr->client_->ChangeRole(
             change_leader_data.tid(), change_leader_data.pid(), true,
             follower_endpoint, cur_term, &endpoint_tid)) {

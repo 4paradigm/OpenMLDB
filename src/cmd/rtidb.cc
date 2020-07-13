@@ -96,11 +96,36 @@ void SetupLog() {
     }
 }
 
+void GetRealEndpoint(std::string *real_endpoint) {
+    if (FLAGS_endpoint.empty() && FLAGS_port > 0) {
+        std::string ip;
+        if (::rtidb::base::GetLocalIp(&ip)) {
+            PDLOG(INFO, "local ip is: %s", ip.c_str());
+        } else {
+            PDLOG(WARNING, "fail to get local ip: %s", ip.c_str());
+            exit(1);
+        }
+        *real_endpoint = ip + std::to_string(FLAGS_port);
+        if (FLAGS_use_name) {
+            std::string server_name;
+            if (!::rtidb::base::GetNameFromTxt(&server_name)) {
+                PDLOG(WARNING, "GetNameFromTxt failed");
+                exit(1);
+            }
+            FLAGS_endpoint = server_name;
+        } else {
+            FLAGS_endpoint = *real_endpoint;
+        }
+    }
+}
+
 void StartNameServer() {
     SetupLog();
+    std::string real_endpoint;
+    GetRealEndpoint(&real_endpoint);
     ::rtidb::nameserver::NameServerImpl* name_server =
         new ::rtidb::nameserver::NameServerImpl();
-    if (!name_server->Init()) {
+    if (!name_server->Init(real_endpoint)) {
         PDLOG(WARNING, "Fail to init");
         exit(1);
     }
@@ -111,23 +136,16 @@ void StartNameServer() {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    if (FLAGS_port > 0) {
-        if (server.Start(FLAGS_port, &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start nameserver on endpoint %d with version %d.%d.%d.%d",
-              FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
-    } else {
-        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start nameserver on endpoint %s with version %d.%d.%d.%d",
-              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    if (real_endpoint.empty()) {
+        real_endpoint = FLAGS_endpoint;
     }
+    if (server.Start(real_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    PDLOG(INFO, "start nameserver on endpoint %s with version %d.%d.%d.%d",
+            real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     std::ostringstream oss;
     oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
         << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
@@ -205,28 +223,9 @@ void StartTablet() {
     }
     SetupLog();
     std::string real_endpoint;
-    if (FLAGS_endpoint.empty() && FLAGS_port > 0) {
-        std::string ip;
-        if (::rtidb::base::GetLocalIp(&ip)) {
-            PDLOG(INFO, "local ip is: %s", ip.c_str());
-        } else {
-            PDLOG(WARNING, "fail to get local ip: %s", ip.c_str());
-            exit(1);
-        }
-        real_endpoint = ip + std::to_string(FLAGS_port);
-        if (FLAGS_use_name) {
-            std::string server_name;
-            if (!::rtidb::base::GetNameFromTxt(&server_name)) {
-                PDLOG(WARNING, "GetNameFromTxt failed");
-                exit(1);
-            }
-            FLAGS_endpoint = server_name;
-        } else {
-            FLAGS_endpoint = real_endpoint;
-        }
-    }
+    GetRealEndpoint(&real_endpoint);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    bool ok = tablet->Init();
+    bool ok = tablet->Init(real_endpoint);
     if (!ok) {
         PDLOG(WARNING, "fail to init tablet");
         exit(1);
@@ -242,23 +241,16 @@ void StartTablet() {
     server.MaxConcurrencyOf(tablet, "Put") = FLAGS_put_concurrency_limit;
     tablet->SetServer(&server);
     server.MaxConcurrencyOf(tablet, "Get") = FLAGS_get_concurrency_limit;
-    if (FLAGS_endpoint.empty() && FLAGS_port > 0) {
-        if (server.Start(real_endpoint.c_str(), &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
-                real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-                RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
-    } else {
-        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
-                FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-                RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    if (real_endpoint.empty()) {
+        real_endpoint = FLAGS_endpoint;
     }
+    if (server.Start(real_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
+            real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     if (!tablet->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
@@ -272,8 +264,11 @@ void StartTablet() {
 
 void StartBlobProxy() {
     SetupLog();
+    std::string real_endpoint;
+    GetRealEndpoint(&real_endpoint);
     ::rtidb::blobproxy::BlobProxyImpl* proxy =
         new ::rtidb::blobproxy::BlobProxyImpl();
+    // TODO(wangbao) BaseClient init
     bool ok = proxy->Init();
     if (!ok) {
         PDLOG(WARNING, "fail to init blobproxy server");
@@ -288,23 +283,16 @@ void StartBlobProxy() {
         exit(1);
     }
     server.MaxConcurrencyOf(proxy, "Get") = FLAGS_get_concurrency_limit;
-    if (FLAGS_port > 0) {
-        if (server.Start(FLAGS_port, &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start tablet on port %d with version %d.%d.%d.%d",
-              FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
-    } else {
-        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start blobproxy on endpoint %s with version %d.%d.%d.%d",
-              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    if (real_endpoint.empty()) {
+        real_endpoint = FLAGS_endpoint;
     }
+    if (server.Start(real_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    PDLOG(INFO, "start blobproxy on endpoint %s with version %d.%d.%d.%d",
+            real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     std::ostringstream oss;
     oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
         << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
@@ -314,9 +302,11 @@ void StartBlobProxy() {
 
 void StartBlob() {
     SetupLog();
+    std::string real_endpoint;
+    GetRealEndpoint(&real_endpoint);
     ::rtidb::blobserver::BlobServerImpl* server_impl =
         new ::rtidb::blobserver::BlobServerImpl();
-    bool ok = server_impl->Init();
+    bool ok = server_impl->Init(real_endpoint);
     if (!ok) {
         PDLOG(WARNING, "fail to init tablet");
         exit(1);
@@ -331,23 +321,16 @@ void StartBlob() {
     server.MaxConcurrencyOf(server_impl, "Put") = FLAGS_put_concurrency_limit;
     server_impl->SetServer(&server);
     server.MaxConcurrencyOf(server_impl, "Get") = FLAGS_get_concurrency_limit;
-    if (FLAGS_port > 0) {
-        if (server.Start(FLAGS_port, &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start blob on port %d with version %d.%d.%d.%d",
-              FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
-    } else {
-        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start blob on endpoint %s with version %d.%d.%d.%d",
-              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    if (real_endpoint.empty()) {
+        real_endpoint = FLAGS_endpoint;
     }
+    if (server.Start(real_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    PDLOG(INFO, "start blob on endpoint %s with version %d.%d.%d.%d",
+            real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     if (!server_impl->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
@@ -6209,6 +6192,8 @@ void StartClient() {
 }
 
 void StartNsClient() {
+    std::string real_endpoint;
+    GetRealEndpoint(&real_endpoint);
     std::string endpoint;
     if (FLAGS_interactive) {
         std::cout << "Welcome to rtidb with version " << RTIDB_VERSION_MAJOR
@@ -6217,8 +6202,8 @@ void StartNsClient() {
     }
     std::shared_ptr<ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
-        zk_client = std::make_shared<ZkClient>(FLAGS_zk_cluster, 1000, "",
-                                               FLAGS_zk_root_path);
+        zk_client = std::make_shared<ZkClient>("", FLAGS_zk_cluster, 1000, "",
+                FLAGS_zk_root_path);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
             return;

@@ -13,7 +13,7 @@
 #include "boost/bind.hpp"
 #include "base/glog_wapper.h" // NOLINT
 
-
+DECLARE_bool(use_name);
 
 namespace rtidb {
 namespace zk {
@@ -58,14 +58,17 @@ void ItemWatcher(zhandle_t* zh, int type, int state, const char* path,
 }
 
 
-ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout,
-                   const std::string& endpoint, const std::string& zk_root_path)
+ZkClient::ZkClient(const std::string& hosts, const std::string& real_endpoint,
+        int32_t session_timeout,
+        const std::string& endpoint, const std::string& zk_root_path)
     : hosts_(hosts),
       session_timeout_(session_timeout),
       endpoint_(endpoint),
       zk_root_path_(zk_root_path),
+      real_endpoint_(real_endpoint),
       nodes_root_path_(zk_root_path_ + "/nodes"),
       nodes_watch_callbacks_(),
+      names_root_path_(zk_root_path_ + "/map/names"),
       mu_(),
       cv_(),
       zk_(NULL),
@@ -166,11 +169,37 @@ bool ZkClient::Register(bool startup_flag) {
                          &ZOO_OPEN_ACL_UNSAFE, ZOO_EPHEMERAL, NULL, 0);
     if (ret == ZOK) {
         PDLOG(INFO, "register self with endpoint %s ok", endpoint_.c_str());
+        if (FLAGS_use_name) {
+            if (!RegisterName()) {
+                return false;
+            }
+        }
         registed_.store(true, std::memory_order_relaxed);
         return true;
     }
     PDLOG(WARNING, "fail to register self with endpoint %s, err from zk %d",
           endpoint_.c_str(), ret);
+    return false;
+}
+
+bool ZkClient::RegisterName() {
+    std::string name = names_root_path_ + "/" + endpoint_;
+    bool ok = Mkdir(names_root_path_);
+    if (!ok) {
+        return false;
+    }
+    if (zk_ == NULL || !connected_) {
+        return false;
+    }
+    std::string value = real_endpoint_.c_str();
+    int ret = zoo_create(zk_, name.c_str(), value.c_str(), value.size(),
+                         &ZOO_OPEN_ACL_UNSAFE, 0, NULL, 0);
+    if (ret == ZOK) {
+        PDLOG(INFO, "register with name %s value %s ok",
+                endpoint_.c_str(), value.c_str());
+    }
+    PDLOG(WARNING, "fail to register with name %s value %s, err from zk %d",
+            endpoint_.c_str(), value.c_str(), ret);
     return false;
 }
 

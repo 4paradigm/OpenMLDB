@@ -111,8 +111,8 @@ bool BatchQueryResult::Next() {
 }
 
 bool BaseClient::Init(std::string* msg) {
-    zk_client_ = new rtidb::zk::ZkClient(zk_cluster_, zk_session_timeout_,
-                                         endpoint_, zk_root_path_);
+    zk_client_ = new rtidb::zk::ZkClient(zk_cluster_, "", zk_session_timeout_,
+            endpoint_, zk_root_path_);
     if (!zk_client_->Init()) {
         if (!zk_client_->Init()) {
             *msg = "zk client init failed";

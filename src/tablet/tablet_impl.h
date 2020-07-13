@@ -67,7 +67,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     ~TabletImpl();
 
-    bool Init();
+    bool Init(const std::string& real_endpoint);
 
     bool RegisterZK();
 

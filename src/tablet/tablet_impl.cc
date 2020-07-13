@@ -114,7 +114,7 @@ TabletImpl::~TabletImpl() {
     snapshot_pool_.Stop(true);
 }
 
-bool TabletImpl::Init() {
+bool TabletImpl::Init(const std::string& real_endpoint) {
     std::lock_guard<std::mutex> lock(mu_);
     ::rtidb::base::SplitString(FLAGS_db_root_path, ",",
                                mode_root_paths_[::rtidb::common::kMemory]);
@@ -132,8 +132,9 @@ bool TabletImpl::Init() {
                                mode_recycle_root_paths_[::rtidb::common::kHDD]);
 
     if (!FLAGS_zk_cluster.empty()) {
-        zk_client_ = new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
-                                  FLAGS_endpoint, FLAGS_zk_root_path);
+        zk_client_ = new ZkClient(FLAGS_zk_cluster, real_endpoint,
+                FLAGS_zk_session_timeout,
+                FLAGS_endpoint, FLAGS_zk_root_path);
         bool ok = zk_client_->Init();
         if (!ok) {
             PDLOG(WARNING, "fail to init zookeeper with cluster %s",

@@ -49,7 +49,7 @@ BlobServerImpl::~BlobServerImpl() {
     }
 }
 
-bool BlobServerImpl::Init() {
+bool BlobServerImpl::Init(const std::string& real_endpoint) {
     std::lock_guard<SpinMutex> lock(spin_mutex_);
     if (FLAGS_hdd_root_path.empty()) {
         PDLOG(WARNING, "hdd root path did not set");
@@ -57,8 +57,9 @@ bool BlobServerImpl::Init() {
     }
     if (!FLAGS_zk_cluster.empty()) {
         zk_client_ =
-            new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
-                         BLOB_PREFIX + FLAGS_endpoint, FLAGS_zk_root_path);
+            new ZkClient(FLAGS_zk_cluster, real_endpoint,
+                    FLAGS_zk_session_timeout,
+                    BLOB_PREFIX + FLAGS_endpoint, FLAGS_zk_root_path);
         bool ok = zk_client_->Init();
         if (!ok) {
             PDLOG(WARNING, "fail to init zookeeper with cluster %s",

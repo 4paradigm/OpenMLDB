@@ -141,7 +141,7 @@ class NameServerImpl : public NameServer {
 
     ~NameServerImpl();
 
-    bool Init();
+    bool Init(const std::string& real_endpoint);
 
     NameServerImpl(const NameServerImpl&) = delete;
 
