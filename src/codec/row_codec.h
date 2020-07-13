@@ -150,6 +150,45 @@ class RowCodec {
     }
 
     static ::rtidb::base::ResultMsg EncodeRow(
+        const std::map<std::string, std::string>& str_map, const Schema& schema,
+        int32_t added_schema_size, std::string& row) {  // NOLINT
+        if (str_map.empty() || str_map.size() != (uint64_t)schema.size()) {
+            return ::rtidb::base::ResultMsg(-1, "input error");
+        }
+        int32_t str_len = CalStrLength(str_map, schema);
+        if (str_len < 0) {
+            return ::rtidb::base::ResultMsg(-1, "cal str len error");
+        }
+        ::rtidb::codec::RowBuilder builder(schema, added_schema_size);
+        uint32_t size = builder.CalTotalLength(str_len);
+        row.resize(size);
+        builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+        for (int i = 0; i < schema.size(); i++) {
+            const ::rtidb::common::ColumnDesc& col = schema.Get(i);
+            auto iter = str_map.find(col.name());
+            if (iter == str_map.end()) {
+                return ::rtidb::base::ResultMsg(-1,
+                                                col.name() + " not in str_map");
+            }
+            if (!col.not_null() &&
+                (iter->second == "null" || iter->second == NONETOKEN)) {
+                builder.AppendNULL();
+                continue;
+            } else if (iter->second == "null" || iter->second == NONETOKEN) {
+                return ::rtidb::base::ResultMsg(
+                    -1, col.name() + " should not be null");
+            }
+            if (!builder.AppendValue(iter->second)) {
+                std::string msg =
+                    "append " + ::rtidb::type::DataType_Name(col.data_type()) +
+                    " error";
+                return ::rtidb::base::ResultMsg(-1, msg);
+            }
+        }
+        return ::rtidb::base::ResultMsg(0, "ok");
+    }
+
+    static ::rtidb::base::ResultMsg EncodeRow(
         const std::vector<std::string>& input_value,
         const std::vector<::rtidb::codec::ColumnDesc>& columns,
         int modify_times, std::string* row) {
@@ -258,6 +297,22 @@ class RowCodec {
         rtidb::codec::RowView rv(
             schema, reinterpret_cast<int8_t*>(const_cast<char*>(value.data())),
             value.size());
+        return DecodeRow(schema, rv, replace_empty_str, start, length,
+                         &value_vec);
+    }
+
+    static bool DecodeRow(const Schema& schema, uint32_t added_schema_size, // NOLINT
+                          const ::rtidb::base::Slice& value,
+                          bool replace_empty_str, int start, int length,
+                          std::vector<std::string>& value_vec) {  // NOLINT
+        const int8_t* row_data = reinterpret_cast<int8_t*>(const_cast<char*>(value.data()));
+        rtidb::codec::RowView rv( schema, added_schema_size, row_data, value.size());
+        int64_t actual_size = schema.size() - added_schema_size + rv.GetSchemaVersion(row_data) - 1;
+        int64_t access_size = start + length - 1;
+        if (access_size > actual_size) {
+            LOG(WARNING) << "max id " << access_size << " large than " << actual_size;
+            return false;
+        }
         return DecodeRow(schema, rv, replace_empty_str, start, length,
                          &value_vec);
     }

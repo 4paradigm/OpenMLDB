@@ -58,6 +58,10 @@ struct TabletInfo {
     std::shared_ptr<TabletClient> client_;
     // the date create
     uint64_t ctime_;
+
+    bool Health() {
+        return state_ == ::rtidb::api::TabletState::kTabletHealthy;
+    }
 };
 // oss info
 struct BlobServerInfo {
@@ -881,9 +885,7 @@ class NameServerImpl : public NameServer {
         const std::shared_ptr<::rtidb::nameserver::TableInfo>&
             table_info);  // NOLINT
 
-    bool UpdateZkTableNodeWithoutNotify(
-        const std::shared_ptr<::rtidb::nameserver::TableInfo>&
-            table_info);  // NOLINT
+    bool UpdateZkTableNodeWithoutNotify( const TableInfo* table_info);
 
     void ShowDbTable(
         const std::map<std::string, std::shared_ptr<TableInfo>>& table_infos,

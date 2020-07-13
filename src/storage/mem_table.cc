@@ -743,8 +743,7 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
                   column_key.index_name().c_str(), id_, pid_);
             return false;
         }
-        table_meta_.mutable_column_key(index_def->GetId())
-            ->CopyFrom(column_key);
+        table_meta_.mutable_column_key(index_def->GetId())->CopyFrom(column_key);
     } else {
         ::rtidb::common::ColumnKey* added_column_key =
             table_meta_.add_column_key();

@@ -1137,28 +1137,32 @@ bool MemTableSnapshot::PackNewIndexEntry(
     }
     std::vector<std::string> row;
     const ::rtidb::api::TableMeta& table_meta = table->GetTableMeta();
+    bool ret = false;
     if (table->GetCompressType() == ::rtidb::api::kSnappy) {
         std::string buff;
         ::snappy::Uncompress(entry->value().c_str(), entry->value().size(),
                              &buff);
         if (table_meta.format_version() == 0) {
-            ::rtidb::codec::RowCodec::DecodeRow(
+            ret = ::rtidb::codec::RowCodec::DecodeRow(
                 columns.size(), max_idx + 1, ::rtidb::base::Slice(buff), &row);
         } else {
-            ::rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(),
+            ret = ::rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(),
                                                 ::rtidb::base::Slice(buff),
                                                 true, 0, max_idx + 1, row);
         }
     } else {
         if (table_meta.format_version() == 0) {
-            ::rtidb::codec::RowCodec::DecodeRow(
+            ret = ::rtidb::codec::RowCodec::DecodeRow(
                 columns.size(), max_idx + 1,
                 ::rtidb::base::Slice(entry->value()), &row);
         } else {
-            ::rtidb::codec::RowCodec::DecodeRow(
-                table_meta.column_desc(), ::rtidb::base::Slice(entry->value()),
+            ret = ::rtidb::codec::RowCodec::DecodeRow(
+                table_meta.column_desc(), table_meta.added_column_desc_size(), ::rtidb::base::Slice(entry->value()),
                 true, 0, max_idx + 1, row);
         }
+    }
+    if (!ret) {
+        return false;
     }
     std::string key;
     std::set<uint32_t> pid_set;

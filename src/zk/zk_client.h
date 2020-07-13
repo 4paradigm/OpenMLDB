@@ -99,7 +99,7 @@ class ZkClient {
     void HandleItemChanged(const std::string& path, int type, int state);
 
     bool WatchItem(const std::string& path, ItemChangedCallback callback);
-    bool CancelWatchItem(const std::string& path);
+    void CancelWatchItem(const std::string& path);
 
     int IsExistNode(const std::string& node);
 

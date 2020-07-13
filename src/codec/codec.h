@@ -65,6 +65,8 @@ class RowBuilder {
  public:
     explicit RowBuilder(const Schema& schema);
 
+    explicit RowBuilder(const Schema& schema, int32_t added_schema_size);
+
     uint32_t CalTotalLength(uint32_t string_length);
     bool SetBuffer(int8_t* buf, uint32_t size);
     bool SetBuffer(int8_t* buf, uint32_t size, bool need_clear);
@@ -119,6 +121,7 @@ class RowBuilder {
 class RowView {
  public:
     RowView(const Schema& schema, const int8_t* row, uint32_t size);
+    RowView(const Schema& schema, int32_t added_schema_size, const int8_t* row, uint32_t size);
     explicit RowView(const Schema& schema);
     ~RowView() = default;
     bool Reset(const int8_t* row, uint32_t size);
@@ -176,6 +179,8 @@ class RowView {
     const int8_t* row_;
     const Schema& schema_;
     std::vector<uint32_t> offset_vec_;
+    uint8_t added_schema_size_;
+    uint8_t schema_version_;
 };
 
 namespace v1 {

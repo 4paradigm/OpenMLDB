@@ -5265,8 +5265,7 @@ void TabletImpl::DumpIndexDataInternal(
                               std::to_string(pid) + "/binlog/";
     std::vector<::rtidb::log::WriteHandle*> whs;
     for (uint32_t i = 0; i < partition_num; i++) {
-        std::string index_file_name =
-            std::to_string(pid) + "_" + std::to_string(i) + "_index.data";
+        std::string index_file_name = std::to_string(pid) + "_" + std::to_string(i) + "_index.data";
         std::string index_data_path = index_path + index_file_name;
         FILE* fd = fopen(index_data_path.c_str(), "wb+");
         if (fd == NULL) {
@@ -5279,8 +5278,7 @@ void TabletImpl::DumpIndexDataInternal(
             }
             return;
         }
-        ::rtidb::log::WriteHandle* wh =
-            new ::rtidb::log::WriteHandle(index_file_name, fd);
+        ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd);
         whs.push_back(wh);
     }
     if (memtable_snapshot->DumpIndexData(table, column_key, idx, whs)) {

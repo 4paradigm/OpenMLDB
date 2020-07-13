@@ -39,8 +39,7 @@ struct PartitionInfo {
 
 struct TableHandler {
     std::shared_ptr<rtidb::nameserver::TableInfo> table_info;
-    std::shared_ptr<google::protobuf::RepeatedPtrField<
-        rtidb::common::ColumnDesc>> columns;
+    std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>> columns;
     std::vector<PartitionInfo> partition;
     std::vector<PartitionInfo> blob_partition;
     std::string auto_gen_pk_;
@@ -48,6 +47,7 @@ struct TableHandler {
     std::vector<std::string> blobFieldNames;
     std::string auto_gen_pk;
     std::map<std::string, ::rtidb::type::DataType> name_type_map;
+    int32_t added_schema_size;
 };
 
 struct GeneralResult {

@@ -371,7 +371,7 @@ void ZkClient::HandleItemChanged(const std::string& path, int type, int state) {
     WatchItem(path, callback);
 }
 
-bool ZkClient::CancelWatchItem(const std::string& path) {
+void ZkClient::CancelWatchItem(const std::string& path) {
     std::lock_guard<std::mutex> lock(mu_);
     item_callbacks_.erase(path);
 }

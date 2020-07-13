@@ -90,8 +90,40 @@ RowBuilder::RowBuilder(const Schema& schema)
     }
 }
 
+RowBuilder::RowBuilder(const Schema& schema, int32_t added_schema_size)
+    : schema_(schema),
+      buf_(NULL),
+      cnt_(0),
+      size_(0),
+      str_field_cnt_(0),
+      str_addr_length_(0),
+      str_field_start_offset_(0),
+      str_offset_(0),
+      schema_version_(1 + added_schema_size) {
+    str_field_start_offset_ = HEADER_LENGTH + BitMapSize(schema.size());
+    for (int idx = 0; idx < schema.size(); idx++) {
+        const ::rtidb::common::ColumnDesc& column = schema.Get(idx);
+        rtidb::type::DataType cur_type = column.data_type();
+        if (cur_type == ::rtidb::type::kVarchar ||
+            cur_type == ::rtidb::type::kString) {
+            offset_vec_.push_back(str_field_cnt_);
+            str_field_cnt_++;
+        } else {
+            if (cur_type < TYPE_SIZE_ARRAY.size() && cur_type > 0) {
+                offset_vec_.push_back(str_field_start_offset_);
+                str_field_start_offset_ += TYPE_SIZE_ARRAY[cur_type];
+            } else if (cur_type == rtidb::type::kBlob) {
+                offset_vec_.push_back(str_field_start_offset_);
+                str_field_start_offset_ += sizeof(int64_t);
+            } else {
+                PDLOG(WARNING, "type is not supported");
+            }
+        }
+    }
+}
+
 void RowBuilder::SetSchemaVersion(uint8_t version) {
-    schema_version_ = version;
+    schema_version_ = version + 1;
 }
 
 bool RowBuilder::SetBuffer(int8_t* buf, uint32_t size) {
@@ -437,8 +469,9 @@ RowView::RowView(const Schema& schema)
       size_(0),
       row_(NULL),
       schema_(schema),
-      offset_vec_() {
-    Init();
+      offset_vec_(),
+      added_schema_size_(0) {
+        Init();
 }
 
 RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size)
@@ -449,7 +482,8 @@ RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size)
       size_(size),
       row_(row),
       schema_(schema),
-      offset_vec_() {
+      offset_vec_(),
+      added_schema_size_(0) {
     if (schema_.size() == 0) {
         is_valid_ = false;
         return;
@@ -459,9 +493,33 @@ RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size)
     }
 }
 
+RowView::RowView(const Schema& schema, int32_t added_schema_size, const int8_t* row, uint32_t size)
+    : str_addr_length_(0),
+      is_valid_(true),
+      string_field_cnt_(0),
+      str_field_start_offset_(0),
+      size_(size),
+      row_(row),
+      schema_(schema),
+      offset_vec_(),
+      added_schema_size_(added_schema_size) {
+    if (schema_.size() == 0) {
+        is_valid_ = false;
+        return;
+    }
+    schema_version_ = *(reinterpret_cast<const uint8_t*>(row + 1));
+    if (Init()) {
+        Reset(row, size);
+    }
+}
+
 bool RowView::Init() {
     uint32_t offset = HEADER_LENGTH + BitMapSize(schema_.size());
-    for (int idx = 0; idx < schema_.size(); idx++) {
+    int32_t end_idx = schema_.size();
+    if (added_schema_size_ > 0 && schema_version_ > 0) {
+        end_idx -= (schema_.size() - added_schema_size_ + schema_version_ - 1);
+    }
+    for (int idx = 0; idx < end_idx; idx++) {
         const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
         rtidb::type::DataType cur_type = column.data_type();
         if (cur_type == ::rtidb::type::kVarchar ||

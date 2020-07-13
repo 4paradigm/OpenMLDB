@@ -31,6 +31,15 @@ public class RowBuilder {
     private List<Integer> strIdx = new ArrayList<>();
 
     public RowBuilder(List<ColumnDesc> schema) {
+        calcSchemaOffset(schema);
+    }
+
+    public RowBuilder(List<ColumnDesc> schema, int add_schema_size) {
+        this.schemaVersion = add_schema_size + 1;
+        calcSchemaOffset(schema);
+    }
+
+    private void calcSchemaOffset(List<ColumnDesc> schema) {
         strFieldStartOffset = RowCodecCommon.HEADER_LENGTH + RowCodecCommon.getBitMapSize(schema.size());
         this.schema = schema;
         for (int idx = 0; idx < schema.size(); idx++) {
@@ -51,7 +60,7 @@ public class RowBuilder {
     }
 
     public void SetSchemaVersion(int version) {
-        schemaVersion = version;
+        schemaVersion = version + 1;
     }
 
     public int calTotalLength(List<Object> row) throws TabletException {
