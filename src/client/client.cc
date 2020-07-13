@@ -330,7 +330,7 @@ void BaseClient::RefreshTable() {
         handler->name_type_map = std::move(map);
         handler->table_info = table_info;
         handler->columns = columns;
-        handler->added_schame_size = table_info->added_column_desc_size();
+        handler->added_schema_size = table_info->added_column_desc_size();
         new_tables.insert(std::make_pair(table_name, handler));
     }
     std::lock_guard<std::mutex> mx(mu_);
@@ -609,9 +609,11 @@ PutResult RtidbClient::Put(
     std::string buffer;
     rtidb::base::ResultMsg rm;
     if (!th->auto_gen_pk.empty()) {
-        rm = ::rtidb::codec::RowCodec::EncodeRow(val, *(th->columns), th->added_schema_size, buffer);
+        rm = ::rtidb::codec::RowCodec::EncodeRow(val, *(th->columns),
+                                                 th->added_schema_size, buffer);
     } else {
-        rm = ::rtidb::codec::RowCodec::EncodeRow(value, *(th->columns), th->added_schema_size;, buffer);
+        rm = ::rtidb::codec::RowCodec::EncodeRow(value, *(th->columns),
+                                                 th->added_schema_size, buffer);
     }
     if (rm.code != 0) {
         result.SetError(rm.code, "encode error, msg: " + rm.msg);

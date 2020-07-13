@@ -1157,8 +1157,8 @@ bool MemTableSnapshot::PackNewIndexEntry(
                 ::rtidb::base::Slice(entry->value()), &row);
         } else {
             ret = ::rtidb::codec::RowCodec::DecodeRow(
-                table_meta.column_desc(), table_meta.added_column_desc_size(), ::rtidb::base::Slice(entry->value()),
-                true, 0, max_idx + 1, row);
+                table_meta.column_desc(), table_meta.added_column_desc_size(),
+                ::rtidb::base::Slice(entry->value()), true, 0, max_idx + 1, row);
         }
     }
     if (!ret) {

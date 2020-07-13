@@ -4097,7 +4097,7 @@ void NameServerImpl::AddTableField(RpcController* controller,
             LOG(WARNING) << "endpoint[" << endpoint << "] is offline";
             return;
         }
-        tablet_client_map.insert( std::make_pair(endpoint, tablet->client_));
+        tablet_client_map.insert(std::make_pair(endpoint, tablet->client_));
     }
 
     // update tableMeta.schema
@@ -11103,7 +11103,7 @@ void NameServerImpl::AddIndex(RpcController* controller,
     }
     if ((uint32_t)table_info->table_partition_size() > FLAGS_name_server_task_max_concurrency) {
         response->set_code(ReturnCode::kTooManyPartition);
-        response->set_msg( "partition num is greater than name_server_task_max_concurrency");
+        response->set_msg("partition num is greater than name_server_task_max_concurrency");
         LOG(WARNING) << "parition num[" << table_info->table_partition_size()
                      << "] is greater than name_server_task_max_concurrency["
                      << FLAGS_name_server_task_max_concurrency << "] table " << name;

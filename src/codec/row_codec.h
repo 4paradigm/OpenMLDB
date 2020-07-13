@@ -306,7 +306,7 @@ class RowCodec {
                           bool replace_empty_str, int start, int length,
                           std::vector<std::string>& value_vec) {  // NOLINT
         const int8_t* row_data = reinterpret_cast<int8_t*>(const_cast<char*>(value.data()));
-        rtidb::codec::RowView rv( schema, added_schema_size, row_data, value.size());
+        rtidb::codec::RowView rv(schema, added_schema_size, row_data, value.size());
         int64_t actual_size = schema.size() - added_schema_size + rv.GetSchemaVersion(row_data) - 1;
         int64_t access_size = start + length - 1;
         if (access_size > actual_size) {

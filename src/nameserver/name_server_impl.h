@@ -885,7 +885,7 @@ class NameServerImpl : public NameServer {
         const std::shared_ptr<::rtidb::nameserver::TableInfo>&
             table_info);  // NOLINT
 
-    bool UpdateZkTableNodeWithoutNotify( const TableInfo* table_info);
+    bool UpdateZkTableNodeWithoutNotify(const TableInfo* table_info);
 
     void ShowDbTable(
         const std::map<std::string, std::shared_ptr<TableInfo>>& table_infos,
