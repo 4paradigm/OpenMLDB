@@ -103,7 +103,7 @@ class SQLCase {
                                         std::string* create_sql);
     static bool BuildInsertSQLFromMultipleRows(const type::TableDef& table,
                                         const std::string& row_str,
-                                        std::string* create_sql);                                      
+                                        std::string* create_sql);
     static bool ExtractRow(const vm::Schema& schema, const std::string& row_str,
                            int8_t** out_ptr, int32_t* out_size);
     static bool ExtractRow(const vm::Schema& schema,
