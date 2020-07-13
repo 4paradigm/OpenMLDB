@@ -135,7 +135,7 @@ TEST_F(SQLRouterTest, smoketest) {
     ASSERT_EQ(pk, rs->GetStringUnsafe(0));
 }
 
-TEST_F(SQLRouterTest, test_sql_insert) {
+TEST_F(SQLRouterTest, test_sql_insert_placeholder) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_.GetZkCluster();
     sql_opt.zk_path = mc_.GetZkPath();
@@ -262,6 +262,120 @@ TEST_F(SQLRouterTest, test_sql_insert) {
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ("word", rs->GetStringUnsafe(0));
     ASSERT_EQ(1592, rs->GetInt64Unsafe(1));
+    ASSERT_FALSE(rs->Next());
+}
+
+TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_.GetZkCluster();
+    sql_opt.zk_path = mc_.GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) ASSERT_TRUE(false);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl =
+        "create table " + name +
+        "("
+        "col1 string NOT NULL, col2 bigint NOT NULL, col3 date NOT NULL, col4 "
+        "int, col5 smallint, col6 float, col7 double,"
+        "index(key=col1, ts=col2));";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    // test null
+    std::string insert1 =
+        "insert into " + name + " values(?, ?, ?, ?, ?, ?, ?);";
+    std::shared_ptr<SQLInsertRow> r1 =
+        router->GetInsertRow(db, insert1, &status);
+    ASSERT_TRUE(r1->Init(5));
+    ASSERT_TRUE(r1->AppendString("hello"));
+    ASSERT_TRUE(r1->AppendInt64(1000));
+    ASSERT_FALSE(r1->AppendNULL());
+    ASSERT_TRUE(r1->AppendDate(2020, 7, 13));
+    ASSERT_TRUE(r1->AppendNULL());
+    // appendnull automatically
+    ok = router->ExecuteInsert(db, insert1, r1, &status);
+    ASSERT_TRUE(ok);
+
+    // test int convert and float convert
+    std::string insert2 =
+        "insert into " + name +
+        " value('hello', ?, '2020-02-29', NULL, 123, 2.33, NULL);";
+    std::shared_ptr<SQLInsertRow> r2 =
+        router->GetInsertRow(db, insert2, &status);
+    ASSERT_EQ(status.code, 0);
+    ASSERT_TRUE(r2->Init(0));
+    ASSERT_TRUE(r2->AppendInt64(1001));
+    ok = router->ExecuteInsert(db, insert2, r2, &status);
+    ASSERT_TRUE(ok);
+
+    // test int to float
+    std::string insert3 =
+        "insert into " + name +
+        " value('hello', ?, '2020-12-31', NULL, NULL, 123, 123);";
+    std::shared_ptr<SQLInsertRow> r3 =
+        router->GetInsertRow(db, insert3, &status);
+    ASSERT_EQ(status.code, 0);
+    ASSERT_TRUE(r3->Init(0));
+    ASSERT_TRUE(r3->AppendInt64(1002));
+    ok = router->ExecuteInsert(db, insert3, r3, &status);
+    ASSERT_TRUE(ok);
+
+    // test float to int
+    std::string insert4 =
+        "insert into " + name +
+        " value('hello', ?, '2020-02-29', 2.33, 2.33, 123, 123);";
+    std::shared_ptr<SQLInsertRow> r4 =
+        router->GetInsertRow(db, insert4, &status);
+    ASSERT_EQ(status.code, 1);
+
+    int32_t year;
+    int32_t month;
+    int32_t day;
+    std::string select = "select * from " + name + ";";
+    auto rs = router->ExecuteSQL(db, select, &status);
+    ASSERT_EQ(3, rs->Size());
+
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("hello", rs->GetStringUnsafe(0));
+    ASSERT_EQ(rs->GetInt64Unsafe(1), 1002);
+    ASSERT_TRUE(rs->GetDate(2, &year, &month, &day));
+    ASSERT_EQ(year, 2020);
+    ASSERT_EQ(month, 12);
+    ASSERT_EQ(day, 31);
+    ASSERT_TRUE(rs->IsNULL(3));
+    ASSERT_TRUE(rs->IsNULL(4));
+    ASSERT_FLOAT_EQ(rs->GetFloatUnsafe(5), 123.0);
+    ASSERT_DOUBLE_EQ(rs->GetDoubleUnsafe(6), 123.0);
+
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("hello", rs->GetStringUnsafe(0));
+    ASSERT_EQ(rs->GetInt64Unsafe(1), 1001);
+    ASSERT_TRUE(rs->GetDate(2, &year, &month, &day));
+    ASSERT_EQ(year, 2020);
+    ASSERT_EQ(month, 2);
+    ASSERT_EQ(day, 29);
+    ASSERT_TRUE(rs->IsNULL(3));
+    ASSERT_EQ(rs->GetInt16Unsafe(4), 123);
+    ASSERT_FLOAT_EQ(rs->GetFloatUnsafe(5), 2.33);
+    ASSERT_TRUE(rs->IsNULL(6));
+
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ("hello", rs->GetStringUnsafe(0));
+    ASSERT_EQ(rs->GetInt64Unsafe(1), 1000);
+    ASSERT_TRUE(rs->GetDate(2, &year, &month, &day));
+    ASSERT_EQ(year, 2020);
+    ASSERT_EQ(month, 7);
+    ASSERT_EQ(day, 13);
+    ASSERT_TRUE(rs->IsNULL(3));
+    ASSERT_TRUE(rs->IsNULL(4));
+    ASSERT_TRUE(rs->IsNULL(5));
+    ASSERT_TRUE(rs->IsNULL(6));
+
     ASSERT_FALSE(rs->Next());
 }
 

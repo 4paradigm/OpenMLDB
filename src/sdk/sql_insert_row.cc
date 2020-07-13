@@ -101,33 +101,21 @@ bool SQLInsertRow::MakeDefault() {
         }
         switch (table_info_->column_desc_v1(rb_.GetAppendPos()).data_type()) {
             case rtidb::type::kBool:
-                if (it->second->GetAsInt32()) {
-                    return AppendBool(true);
-                } else {
-                    return AppendBool(false);
-                }
+                return AppendBool(it->second->GetInt());
             case rtidb::type::kSmallInt:
                 return AppendInt16(it->second->GetSmallInt());
             case rtidb::type::kInt:
                 return AppendInt32(it->second->GetInt());
             case rtidb::type::kBigInt:
-                return AppendInt64(it->second->GetAsInt64());
+                return AppendInt64(it->second->GetLong());
             case rtidb::type::kFloat:
-                return AppendFloat(static_cast<float>(it->second->GetDouble()));
+                return AppendFloat(it->second->GetFloat());
             case rtidb::type::kDouble:
                 return AppendDouble(it->second->GetDouble());
-            case rtidb::type::kDate: {
-                int32_t year;
-                int32_t month;
-                int32_t day;
-                if (!it->second->GetAsDate(&year, &month, &day)) {
-                    return false;
-                } else {
-                    return AppendDate(year, month, day);
-                }
-            }
+            case rtidb::type::kDate:
+                return AppendDate(it->second->GetInt());
             case rtidb::type::kTimestamp:
-                return AppendInt64(it->second->GetAsInt64());
+                return AppendInt64(it->second->GetLong());
             case rtidb::type::kVarchar:
             case rtidb::type::kString:
                 return AppendString(it->second->GetStr());
@@ -212,6 +200,13 @@ bool SQLInsertRow::AppendString(const char* val, uint32_t length) {
 
 bool SQLInsertRow::AppendDate(uint32_t year, uint32_t month, uint32_t day) {
     if (rb_.AppendDate(year, month, day)) {
+        return MakeDefault();
+    }
+    return false;
+}
+
+bool SQLInsertRow::AppendDate(uint32_t date) {
+    if (rb_.AppendDate(date)) {
         return MakeDefault();
     }
     return false;

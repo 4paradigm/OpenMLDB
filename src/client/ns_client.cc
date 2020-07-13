@@ -236,11 +236,19 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
         case fesql::node::kCmdStmt: {
             fesql::node::CmdNode* cmd =
                 dynamic_cast<fesql::node::CmdNode*>(node);
-            return HandleSQLCmd(cmd, db, &sql_status);
+            bool ok = HandleSQLCmd(cmd, db, &sql_status);
+            if (!ok) {
+                msg = sql_status.msg;
+            }
+            return ok;
         }
         case fesql::node::kCreateStmt: {
-            return HandleSQLCreateTable(parser_trees, db, &node_manager,
-                                        &sql_status);
+            bool ok = HandleSQLCreateTable(parser_trees, db, &node_manager,
+                                           &sql_status);
+            if (!ok) {
+                msg = sql_status.msg;
+            }
+            return ok;
         }
         default: {
             msg = "fail to execute script with unSuppurt type";
@@ -1058,6 +1066,11 @@ bool NsClient::TransformToTableDef(
                         column_desc->set_data_type(
                             rtidb::type::DataType::kBool);
                         column_desc->set_type("bool");
+                        break;
+                    case fesql::node::kInt16:
+                        column_desc->set_data_type(
+                            rtidb::type::DataType::kSmallInt);
+                        column_desc->set_type("int16");
                         break;
                     case fesql::node::kInt32:
                         column_desc->set_data_type(rtidb::type::DataType::kInt);
