@@ -1356,7 +1356,18 @@ void NameServerImpl::UpdateBlobServers(
             std::shared_ptr<BlobServerInfo> blob =
                 std::make_shared<BlobServerInfo>();
             blob->state_ = TabletState::kTabletHealthy;
-            blob->client_ = std::make_shared<BsClient>(*it, true);
+            if (FLAGS_use_name) {
+                std::string real_ep;
+                if (!zk_client_->GetNodeValue(
+                          FLAGS_zk_root_path + "/map/names/" + *it, real_ep)) {
+                    PDLOG(WARNING, "get blobserver names value failed");
+                    continue;
+                }
+                blob->client_ = std::make_shared<BsClient>(real_ep, true);
+                real_ep_map_.insert(std::make_pair(*it, real_ep));
+            } else {
+                blob->client_ = std::make_shared<BsClient>(*it, true);
+            }
             if (blob->client_->Init() != 0) {
                 PDLOG(WARNING, "blob client init error. endpoint[%s]",
                       it->c_str());
@@ -1367,6 +1378,16 @@ void NameServerImpl::UpdateBlobServers(
             PDLOG(INFO, "add blob client. endpoint[%s]", it->c_str());
         } else {
             if (tit->second->state_ != TabletState::kTabletHealthy) {
+                if (FLAGS_use_name) {
+                    auto r_it = real_ep_map_.find(tit->first);
+                    if (r_it == real_ep_map_.end()) {
+                        PDLOG(WARNING, "%s not in real_ep_map",
+                                tit->first.c_str());
+                        continue;
+                    }
+                    tit->second->client_ =
+                        std::make_shared<BsClient>(r_it->second, true);
+                }
                 tit->second->state_ = TabletState::kTabletHealthy;
                 tit->second->ctime_ =
                     ::baidu::common::timer::get_micros() / 1000;
@@ -1422,15 +1443,22 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         Tablets::iterator tit = tablets_.find(*it);
         // register a new tablet
         if (tit == tablets_.end()) {
-            /**
-             * if (FLAGS_use_name) {
-             *    1.从zk获取node的value，继而解析出real_endpoint 
-             * }
-             */
             std::shared_ptr<TabletInfo> tablet = std::make_shared<TabletInfo>();
             tablet->state_ = ::rtidb::api::TabletState::kTabletHealthy;
-            tablet->client_ =
-                std::make_shared<::rtidb::client::TabletClient>(*it, true);
+            if (FLAGS_use_name) {
+                std::string real_ep;
+                if (!zk_client_->GetNodeValue(
+                          FLAGS_zk_root_path + "/map/names/" + *it, real_ep)) {
+                    PDLOG(WARNING, "get tablet names value failed");
+                    continue;
+                }
+                tablet->client_ = std::make_shared<
+                    ::rtidb::client::TabletClient>(real_ep, true);
+                real_ep_map_.insert(std::make_pair(*it, real_ep));
+            } else {
+                tablet->client_ =
+                    std::make_shared<::rtidb::client::TabletClient>(*it, true);
+            }
             if (tablet->client_->Init() != 0) {
                 PDLOG(WARNING, "tablet client init error. endpoint[%s]",
                       it->c_str());
@@ -1442,13 +1470,17 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         } else {
             if (tit->second->state_ !=
                 ::rtidb::api::TabletState::kTabletHealthy) {
+                if (FLAGS_use_name) {
+                    auto r_it = real_ep_map_.find(tit->first);
+                    if (r_it == real_ep_map_.end()) {
+                        PDLOG(WARNING, "%s not in real_ep_map",
+                                tit->first.c_str());
+                        continue;
+                    }
+                    tit->second->client_ = std::make_shared<
+                        ::rtidb::client::TabletClient>(r_it->second, true);
+                }
                 tit->second->state_ = ::rtidb::api::TabletState::kTabletHealthy;
-            /**
-             * if (FLAGS_use_name) {
-             *    1.在table_info_中partition_meta中加入real_endpoint信息。
-             *    2.更新tablet->client_
-             * }  
-             */
                 tit->second->ctime_ =
                     ::baidu::common::timer::get_micros() / 1000;
                 PDLOG(INFO, "tablet is online. endpoint[%s]",

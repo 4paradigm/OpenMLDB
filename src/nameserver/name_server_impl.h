@@ -887,6 +887,7 @@ class NameServerImpl : public NameServer {
     std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>>
         task_map_;
     std::set<std::string> databases_;
+    std::map<std::string, std::string> real_ep_map_;
 };
 
 }  // namespace nameserver
