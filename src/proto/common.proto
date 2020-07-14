@@ -15,6 +15,11 @@ message KvList {
     repeated KvPair pairs = 2;
 }
 
+message VersionPair {
+    optional uint32 id = 1;
+    optional uint32 idx = 2;
+}
+
 message ColumnDesc {
     required string name = 1;
     optional string type = 2;

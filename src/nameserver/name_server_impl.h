@@ -827,6 +827,11 @@ class NameServerImpl : public NameServer {
 
     // get tablet info
     std::shared_ptr<TabletInfo> GetTabletInfo(const std::string& endpoint);
+
+    std::shared_ptr<TabletInfo> GetTabletInfoWithoutLock(const std::string& endpoint);
+
+    std::shared_ptr<TabletInfo> GetHealthTabletInfo(const std::string& endpoint);
+
     std::shared_ptr<OPData> FindRunningOP(uint64_t op_id);
 
     // update ttl for partition

@@ -63,7 +63,8 @@ class TabletClient {
 
     bool UpdateTableMetaForAddField(
         uint32_t tid, const ::rtidb::common::ColumnDesc& column_desc,
-        const std::string& schema, std::string& msg);  // NOLINT
+        const rtidb::common::VersionPair& pair, const std::string& schema,
+        std::string& msg);  // NOLINT
 
     bool Query(const std::string& db, const std::string& sql,
                brpc::Controller* cntl, ::rtidb::api::QueryResponse* response);

@@ -4127,11 +4127,19 @@ void NameServerImpl::AddTableField(RpcController* controller,
               request->name().c_str());
         return;
     }
+    rtidb::common::VersionPair new_pair;
+    uint32_t version_id = 0;
+    for (const auto& pair : table_info->schema_versions()) {
+        version_id = pair.id();
+    }
+    version_id++;
+    new_pair.set_id(version_id);
+    new_pair.set_idx(schema.size());
 
     uint32_t tid = table_info->tid();
     std::string msg;
     for (auto it = tablet_client_map.begin(); it != tablet_client_map.end(); it++) {
-        if (!it->second->UpdateTableMetaForAddField(tid, request->column_desc(),
+        if (!it->second->UpdateTableMetaForAddField(tid, request->column_desc(), new_pair,
                                                     schema, msg)) {
             response->set_code(ReturnCode::kFailToUpdateTablemetaForAddingField);
             response->set_msg("fail to update tableMeta for adding field: " + msg);
@@ -4147,6 +4155,8 @@ void NameServerImpl::AddTableField(RpcController* controller,
     table_info_zk->CopyFrom(*table_info);
     ::rtidb::common::ColumnDesc* added_column_desc_zk = table_info_zk->add_added_column_desc();
     added_column_desc_zk->CopyFrom(request->column_desc());
+    rtidb::common::VersionPair* add_pair = table_info_zk->add_schema_versions();
+    add_pair->CopyFrom(new_pair);
     if (!UpdateZkTableNodeWithoutNotify(table_info_zk.get())) {
         response->set_code(ReturnCode::kSetZkFailed);
         response->set_msg("set zk failed!");
@@ -4158,6 +4168,8 @@ void NameServerImpl::AddTableField(RpcController* controller,
         std::lock_guard<std::mutex> lock(mu_);
         ::rtidb::common::ColumnDesc* added_column_desc = table_info->add_added_column_desc();
         added_column_desc->CopyFrom(request->column_desc());
+        rtidb::common::VersionPair* added_version_pair = table_info->add_schema_versions();
+        added_version_pair->CopyFrom(new_pair);
         NotifyTableChanged();
     }
     response->set_code(ReturnCode::kOk);
@@ -9939,17 +9951,27 @@ bool NameServerImpl::GetTableInfoUnlock(
     return true;
 }
 
-std::shared_ptr<TabletInfo> NameServerImpl::GetTabletInfo(
-    const std::string& endpoint) {
+std::shared_ptr<TabletInfo> NameServerImpl::GetTabletInfo(const std::string& endpoint) {
     std::lock_guard<std::mutex> lock(mu_);
+    return GetTabletInfoWithoutLock(endpoint);
+}
+
+std::shared_ptr<TabletInfo> NameServerImpl::GetTabletInfoWithoutLock(const std::string& endpoint) {
     std::shared_ptr<TabletInfo> tablet;
-    std::map<std::string, std::shared_ptr<TabletInfo>>::iterator it =
-        tablets_.find(endpoint);
+    auto it = tablets_.find(endpoint);
     if (it == tablets_.end()) {
         return tablet;
     }
     tablet = it->second;
     return tablet;
+}
+
+std::shared_ptr<TabletInfo> NameServerImpl::GetHealthTabletInfo(const std::string& endpoint) {
+    auto it = tablets_.find(endpoint);
+    if (it == tablets_.end() || !it->second->Health()) {
+        return std::shared_ptr<TabletInfo>();
+    }
+    return it->second;
 }
 
 bool NameServerImpl::UpdateTTLOnTablet(const std::string& endpoint, int32_t tid,
@@ -11066,6 +11088,14 @@ void NameServerImpl::AddIndex(RpcController* controller,
             break;
         }
     }
+    if ((uint32_t)table_info->table_partition_size() > FLAGS_name_server_task_max_concurrency) {
+        response->set_code(ReturnCode::kTooManyPartition);
+        response->set_msg("partition num is greater than name_server_task_max_concurrency");
+        LOG(WARNING) << "parition num[" << table_info->table_partition_size()
+                     << "] is greater than name_server_task_max_concurrency["
+                     << FLAGS_name_server_task_max_concurrency << "] table " << name;
+        return;
+    }
     std::map<std::string, ::rtidb::common::ColumnDesc> col_map;
     std::map<std::string, ::rtidb::common::ColumnDesc> ts_map;
     for (const auto& column_desc : table_info->column_desc_v1()) {
@@ -11074,6 +11104,9 @@ void NameServerImpl::AddIndex(RpcController* controller,
         } else {
             col_map.insert(std::make_pair(column_desc.name(), column_desc));
         }
+    }
+    for (const auto& col : table_info->added_column_desc()) {
+        col_map.insert(std::make_pair(col.name(), col));
     }
     for (const auto& col_name : request->column_key().col_name()) {
         auto it = col_map.find(col_name);
@@ -11101,15 +11134,8 @@ void NameServerImpl::AddIndex(RpcController* controller,
         LOG(WARNING) << "column key " << index_name << " should contain ts_col, table " << name;
         return;
     }
-    if ((uint32_t)table_info->table_partition_size() > FLAGS_name_server_task_max_concurrency) {
-        response->set_code(ReturnCode::kTooManyPartition);
-        response->set_msg("partition num is greater than name_server_task_max_concurrency");
-        LOG(WARNING) << "parition num[" << table_info->table_partition_size()
-                     << "] is greater than name_server_task_max_concurrency["
-                     << FLAGS_name_server_task_max_concurrency << "] table " << name;
-        return;
-    }
     for (uint32_t pid = 0; pid < (uint32_t)table_info->table_partition_size(); pid++) {
+        std::lock_guard<std::mutex> lock(mu_);
         if (CreateAddIndexOP(name, db, pid, request->column_key(), index_pos) < 0) {
             LOG(WARNING) << "create AddIndexOP failed, table " << name << " pid " << pid;
             break;
@@ -11402,8 +11428,8 @@ std::shared_ptr<Task> NameServerImpl::CreateSendIndexDataTask(
     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
     const std::string& endpoint,
     const std::map<uint32_t, std::string>& pid_endpoint_map) {
-    auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || !it->second->Health()) {
+    std::shared_ptr<TabletInfo> tablet = GetHealthTabletInfo(endpoint);
+    if (!tablet) {
         return std::shared_ptr<Task>();
     }
     std::shared_ptr<Task> task = std::make_shared<Task>(
@@ -11414,19 +11440,17 @@ std::shared_ptr<Task> NameServerImpl::CreateSendIndexDataTask(
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(endpoint);
     boost::function<bool()> fun =
-        boost::bind(&TabletClient::SendIndexData, it->second->client_, tid, pid,
+        boost::bind(&TabletClient::SendIndexData, tablet->client_, tid, pid,
                     pid_endpoint_map, task->task_info_);
-    task->fun_ =
-        boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateLoadIndexDataTask(
     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
     const std::string& endpoint, uint32_t partition_num) {
-    auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() ||
-        it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+    std::shared_ptr<TabletInfo> tablet = GetHealthTabletInfo(endpoint);
+    if (!tablet) {
         return std::shared_ptr<Task>();
     }
     std::shared_ptr<Task> task = std::make_shared<Task>(
@@ -11437,10 +11461,9 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadIndexDataTask(
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(endpoint);
     boost::function<bool()> fun =
-        boost::bind(&TabletClient::LoadIndexData, it->second->client_, tid, pid,
+        boost::bind(&TabletClient::LoadIndexData, tablet->client_, tid, pid,
                     partition_num, task->task_info_);
-    task->fun_ =
-        boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
+    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
 
@@ -11451,9 +11474,8 @@ std::shared_ptr<Task> NameServerImpl::CreateExtractIndexDataTask(
     std::shared_ptr<Task> task =
         std::make_shared<Task>("", std::make_shared<::rtidb::api::TaskInfo>());
     for (const auto& endpoint : endpoints) {
-        auto it = tablets_.find(endpoint);
-        if (it == tablets_.end() ||
-            it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        std::shared_ptr<TabletInfo> tablet = GetHealthTabletInfo(endpoint);
+        if (!tablet) {
             return std::shared_ptr<Task>();
         }
         std::shared_ptr<Task> sub_task = std::make_shared<Task>(
@@ -11465,7 +11487,7 @@ std::shared_ptr<Task> NameServerImpl::CreateExtractIndexDataTask(
         sub_task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
         sub_task->task_info_->set_endpoint(endpoint);
         boost::function<bool()> fun = boost::bind(
-            &TabletClient::ExtractIndexData, it->second->client_, tid, pid,
+            &TabletClient::ExtractIndexData, tablet->client_, tid, pid,
             partition_num, column_key, idx, sub_task->task_info_);
         sub_task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun,
                                      sub_task->task_info_);
@@ -11497,9 +11519,8 @@ std::shared_ptr<Task> NameServerImpl::CreateAddIndexToTabletTask(
     std::shared_ptr<Task> task =
         std::make_shared<Task>("", std::make_shared<::rtidb::api::TaskInfo>());
     for (const auto& endpoint : endpoints) {
-        auto it = tablets_.find(endpoint);
-        if (it == tablets_.end() ||
-            it->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+        std::shared_ptr<TabletInfo> tablet = GetHealthTabletInfo(endpoint);
+        if (!tablet) {
             return std::shared_ptr<Task>();
         }
         std::shared_ptr<Task> sub_task = std::make_shared<Task>(
@@ -11510,7 +11531,7 @@ std::shared_ptr<Task> NameServerImpl::CreateAddIndexToTabletTask(
             ::rtidb::api::TaskType::kAddIndexToTablet);
         sub_task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
         boost::function<bool()> fun =
-            boost::bind(&TabletClient::AddIndex, it->second->client_, tid, pid,
+            boost::bind(&TabletClient::AddIndex, tablet->client_, tid, pid,
                         column_key, sub_task->task_info_);
         sub_task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun,
                                      sub_task->task_info_);

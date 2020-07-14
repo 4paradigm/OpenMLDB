@@ -355,8 +355,7 @@ class RowCodec {
     static bool DecodeRow(uint32_t base_schema_size, uint32_t get_row_num,
                           const ::rtidb::base::Slice& value,
                           std::vector<std::string>* vrow) {
-        rtidb::codec::FlatArrayIterator fit(value.data(), value.size(),
-                                            base_schema_size);
+        rtidb::codec::FlatArrayIterator fit(value.data(), value.size(), base_schema_size);
         while (get_row_num > 0) {
             std::string col;
             if (!fit.Valid()) {

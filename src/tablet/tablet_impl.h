@@ -345,6 +345,8 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                               uint32_t pid, uint32_t remote_tid,
                               std::shared_ptr<::rtidb::api::TaskInfo> task);
 
+    bool CheckFieldExist(const std::string& name, std::shared_ptr<Table> table);
+
     void DumpIndexDataInternal(
         std::shared_ptr<::rtidb::storage::Table> table,
         std::shared_ptr<::rtidb::storage::MemTableSnapshot> memtable_snapshot,

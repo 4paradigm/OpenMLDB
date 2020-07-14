@@ -213,7 +213,7 @@ bool TabletClient::CreateTable(const ::rtidb::api::TableMeta& table_meta) {
 
 bool TabletClient::UpdateTableMetaForAddField(
     uint32_t tid, const ::rtidb::common::ColumnDesc& column_desc,
-    const std::string& schema, std::string& msg) {
+    const rtidb::common::VersionPair& pair, const std::string& schema, std::string& msg) {
     ::rtidb::api::UpdateTableMetaForAddFieldRequest request;
     ::rtidb::api::GeneralResponse response;
     request.set_tid(tid);

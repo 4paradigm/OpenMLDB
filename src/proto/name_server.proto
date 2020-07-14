@@ -110,6 +110,7 @@ message TableInfo {
     optional BlobInfo blob_info = 19;
     optional string db = 20 [default = ""];
     repeated string partition_key = 21;
+    repeated common.VersionPair schema_versions = 22;
 }
 
 message CreateTableRequest {
