@@ -81,12 +81,9 @@ class SQLInsertRow {
     bool AppendDate(uint32_t date);
     bool AppendNULL();
     bool IsComplete();
-    inline const std::string& GetRow() { return val_; }
-    inline const std::vector<std::pair<std::string, uint32_t>>&
-    GetDimensions() {
-        return dimensions_;
-    }
+    const std::vector<std::pair<std::string, uint32_t>>& GetDimensions();
     inline const std::vector<uint64_t>& GetTs() { return ts_; }
+    inline const std::string& GetRow() { return val_; }
     inline const std::shared_ptr<::rtidb::nameserver::TableInfo>
     GetTableInfo() {
         return table_info_;
@@ -95,20 +92,20 @@ class SQLInsertRow {
  private:
     bool AppendString(const char* val, uint32_t length);
     bool MakeDefault();
-    bool GetIndex(const std::string& val);
-    bool GetTs(uint64_t ts);
+    bool PackDimension(const std::string& val);
+    bool PackTs(uint64_t ts);
 
  private:
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info_;
     DefaultValueMap default_map_;
     uint32_t default_string_length_;
-    std::set<uint32_t> index_set_;
+    std::map<uint32_t, std::vector<uint32_t>> index_map_;
     std::set<uint32_t> ts_set_;
+    std::map<uint32_t, std::string> raw_dimensions_;
     std::vector<std::pair<std::string, uint32_t>> dimensions_;
     std::vector<uint64_t> ts_;
     ::rtidb::codec::RowBuilder rb_;
     std::string val_;
-    int8_t* buf_;
 };
 
 class SQLInsertRows {
