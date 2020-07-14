@@ -1,6 +1,8 @@
 package com._4paradigm.fesql.batch;
 
 import java.util.Map;
+
+import com._4paradigm.fesql.vm.PhysicalOpNode;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.*;
 import org.apache.flink.table.types.logical.LogicalType;
