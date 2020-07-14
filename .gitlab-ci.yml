@@ -5,6 +5,7 @@ variables:
     GIT_SUBMODULE_STRATEGY: recursive
 stages:
     - build
+    - daily
     - test
     - ts_integration_test
     - ns_integration_test
@@ -22,7 +23,7 @@ build:
         paths:
             - build/bin/rtidb
             - build/src/sdk/libsql_jsdk.so
-            - build/sql_pysdk/dist/
+            - build/sql_pysdk/dist/*.whl
 
 mac_build:
   variables:
@@ -38,7 +39,7 @@ mac_build:
       paths:
           - build/bin/rtidb_mac
           - build/src/sdk/libsql_jsdk.dylib
-          - build/sql_pysdk/dist/
+          - build/sql_pysdk/dist/*.whl
 
 style_check:
     stage: build
@@ -50,6 +51,10 @@ style_check:
                 - ./reports/style.xml
 java_ut:
   stage: test
+  except:
+      variables:
+          - $ENV_BUILD == "daily"
+
   before_script:
       - mkdir /rambuild
   script:
@@ -99,8 +104,12 @@ fesql_auto_test:
               - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
               - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
 
+
 auto_test:
   stage: test
+  except:
+      variables:
+          - $ENV_BUILD == "daily"
   before_script:
       - mkdir /rambuild
       - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -136,6 +145,10 @@ c++_ut:
       reports:
           junit:
               - reports/*.xml
+  except:
+      variables:
+          - $ENV_BUILD == "daily"
+
 
 py3_ut:
   stage: test
@@ -150,6 +163,11 @@ py3_ut:
     reports:
       junit:
         - ./python/test/*xml
+  except:
+      variables:
+          - $ENV_BUILD == "daily"
+
+
 
 
 deploy-package:
@@ -191,6 +209,11 @@ tablet_one_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+    except:
+        variables:
+            - $ENV_BUILD == "daily"
+
+
 
 tablet_multi_demension:
     stage: ts_integration_test
@@ -207,6 +230,9 @@ tablet_multi_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+    except:
+        variables:
+            - $ENV_BUILD == "daily"
 
 ns_one_demension:
     stage: ns_integration_test
@@ -223,6 +249,10 @@ ns_one_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+    except:
+        variables:
+            - $ENV_BUILD == "daily"
+
 
 ns_multi_demension:
     stage: ns_integration_test
@@ -239,6 +269,10 @@ ns_multi_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+    except:
+        variables:
+            - $ENV_BUILD == "daily"
+
 
 disk_table:
     stage: ns_integration_test
@@ -255,6 +289,19 @@ disk_table:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+    except:
+        variables:
+            - $ENV_BUILD == "daily"
+
+deploy-fedb:
+    stage: daily
+    script:
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
+        - source /root/.bashrc && bash steps/deploy_package_fedb.sh
+    only:
+        variables:
+            - $ENV_BUILD == "daily"
 
 deploy-package:
     stage: deploy
