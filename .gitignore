@@ -42,6 +42,7 @@ src/proto/*.cc
 src/proto/*.h
 # ignore some build directory
 build
+build_mac
 thirdparty
 thirdsrc
 onebox/*.log

@@ -25,6 +25,7 @@
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"  // NOLINT
+#include "boost/algorithm/string.hpp"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
 #include "gflags/gflags.h"
@@ -70,79 +71,95 @@ class SQLSDKTest : public rtidb::test::SQLCaseTest {
 INSTANTIATE_TEST_CASE_P(SQLSDKTestSelectSample, SQLSDKTest,
                         testing::ValuesIn(rtidb::test::InitCases(
                             "/cases/integration/v1/test_select_sample.yaml")));
+INSTANTIATE_TEST_CASE_P(SQLSDKTestCreate, SQLSDKTest,
+                        testing::ValuesIn(rtidb::test::InitCases(
+                            "/cases/integration/v1/test_create.yaml")));
 TEST_P(SQLSDKTest, sql_integration_query_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_.GetZkCluster();
     sql_opt.zk_path = mc_.GetZkPath();
+    sql_opt.enbale_debug = true;
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
     fesql::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(sql_case.db(), &status));
-
-    // Load create sql string list
-    std::vector<std::string> create_sqls;
-    for ( size_t i = 0 ; i < sql_case.inputs().size(); i++) {
-        std::string create = "";
-        fesql::type::TableDef table_def;
-        sql_case.ExtractInputTableDef(table_def, i);
-        sql_case.BuildCreateSQLFromSchema(table_def, &create);
-        create_sqls.push_back(create);
-    }
-    create_sqls.push_back(sql_case.create_str());
-
-    // Load insert sql string list
-    std::vector<std::string> insert_sqls;
-    for ( size_t i = 0 ; i < sql_case.inputs().size(); i++) {
-        std::string create = "";
-        fesql::type::TableDef table_def;
-        sql_case.ExtractInputTableDef(table_def, i);
-
-        if (!sql_case.inputs()[i].data_.empty()) {
-            std::vector<std::string> row_vec;
-            boost::split(row_vec, sql_case.inputs()[i].data_.empty(), boost::is_any_of("\n"),
-                         boost::token_compress_on);
-            sql_case.BuildInsertSQLFromRow(table_def, , &create);
+    // create and insert inputs
+    for (auto i = 0; i < sql_case.inputs().size(); i++) {
+        if (sql_case.inputs()[i].name_.empty()) {
+            sql_case.set_input_name(fesql::sqlcase::SQLCase::GenRand("auto_t"),
+                                    i);
         }
-        create_sqls.push_back(create);
+        std::string create;
+        ASSERT_TRUE(sql_case.BuildCreateSQLFromInput(i, &create));
+        std::string placeholder = "{" + std::to_string(i) + "}";
+        boost::replace_all(create, placeholder, sql_case.inputs()[i].name_);
+        LOG(INFO) << create;
+        if (!create.empty()) {
+            ASSERT_TRUE(router->ExecuteDDL(sql_case.db(), create, &status));
+        }
+
+        ASSERT_TRUE(router->RefreshCatalog());
+        std::string insert;
+        ASSERT_TRUE(sql_case.BuildInsertSQLFromInput(i, &insert));
+        boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
+        LOG(INFO) << insert;
+        if (!insert.empty()) {
+            ASSERT_TRUE(router->ExecuteInsert(sql_case.db(), insert, &status));
+            ASSERT_TRUE(router->RefreshCatalog());
+        }
+        ASSERT_TRUE(router->RefreshCatalog());
     }
-    insert_sqls.push_back(sql_case.insert_str());
-    ASSERT_TRUE(router->ExecuteDDL(sql_case.db(), create, &status));
-    //    std::string name = "test" + GenRand();
-    //    std::string db = "db" + GenRand();
-    //    bool ok = router->CreateDB(db, &status);
-    //    ASSERT_TRUE(ok);
-    //    std::string ddl = "create table " + name +
-    //                      "("
-    //                      "col1 string, col2 timestamp, col3 date,"
-    //                      "index(key=col1, ts=col2));";
-    //    ok = router->ExecuteDDL(db, ddl, &status);
-    //    ASSERT_TRUE(ok);
-    //
-    //    ASSERT_TRUE(router->RefreshCatalog());
-    //    std::string insert = "insert into " + name +
-    //                         " values('hello', 1591174600000l,
-    //                         '2020-06-03');";
-    //    ok = router->ExecuteInsert(db, insert, &status);
-    //    ASSERT_TRUE(ok);
-    //    ASSERT_TRUE(router->RefreshCatalog());
-    //    std::string sql_select = "select * from " + name + " ;";
-    //    auto rs = router->ExecuteSQL(db, sql_select, &status);
-    //    if (!rs) ASSERT_TRUE(false);
-    //    ASSERT_EQ(1, rs->Size());
-    //    ASSERT_EQ(3, rs->GetSchema()->GetColumnCnt());
-    //    ASSERT_TRUE(rs->Next());
-    //    ASSERT_EQ("hello", rs->GetStringUnsafe(0));
-    //    ASSERT_EQ(1591174600000l, rs->GetTimeUnsafe(1));
-    //    int32_t year = 0;
-    //    int32_t month = 0;
-    //    int32_t day = 0;
-    //    ASSERT_TRUE(rs->GetDate(2, &year, &month, &day));
-    //    ASSERT_EQ(2020, year);
-    //    ASSERT_EQ(6, month);
-    //    ASSERT_EQ(3, day);
-    //    ASSERT_FALSE(rs->Next());
+
+    std::string sql = sql_case.sql_str();
+    for (auto i = 0; i < sql_case.inputs().size(); i++) {
+        std::string placeholder = "{" + std::to_string(i) + "}";
+        boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+    }
+    boost::replace_all(sql, "{auto}",
+                       fesql::sqlcase::SQLCase::GenRand("auto_t"));
+    LOG(INFO) << sql;
+
+    if (boost::algorithm::starts_with(sql, "select")) {
+        auto rs = router->ExecuteSQL(sql_case.db(), sql, &status);
+        if (!sql_case.expect().success_) {
+            if ((rs)) {
+                FAIL() << "sql case expect success == false";
+            }
+            return;
+        }
+
+        if (!rs) FAIL() << "sql case expect success == true";
+        std::vector<fesql::codec::Row> rows;
+        fesql::type::TableDef output_table;
+        if (!sql_case.expect().schema_.empty() ||
+            !sql_case.expect().columns_.empty()) {
+            ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
+            rtidb::test::CheckSchema(output_table.columns(),
+                                     *(rs->GetSchema()));
+        }
+
+        if (!sql_case.expect().data_.empty() ||
+            !sql_case.expect().rows_.empty()) {
+            ASSERT_TRUE(sql_case.ExtractOutputData(rows));
+            rtidb::test::CheckRows(output_table.columns(),
+                                   sql_case.expect().order_, rows, rs);
+        }
+
+        if (!sql_case.expect().count_ > 0) {
+            ASSERT_EQ(sql_case.expect().count_,
+                      static_cast<int64_t>(rs->Size()));
+        }
+    } else if (boost::algorithm::starts_with(sql, "create")) {
+        ASSERT_EQ(sql_case.expect().success_,
+                  router->ExecuteDDL(sql_case.db(), sql, &status));
+        router->RefreshCatalog();
+    } else if (boost::algorithm::starts_with(sql, "insert")) {
+        ASSERT_EQ(sql_case.expect().success_,
+                  router->ExecuteInsert(sql_case.db(), sql, &status));
+        router->RefreshCatalog();
+    }
 }
 
 }  // namespace sdk

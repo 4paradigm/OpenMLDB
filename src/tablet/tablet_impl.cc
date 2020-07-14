@@ -1848,6 +1848,9 @@ void TabletImpl::Query(RpcController* ctrl,
                 return;
             }
         }
+        if (request->is_debug()) {
+            session.EnableDebug();
+        }
         auto table = session.Run();
         if (!table) {
             DLOG(WARNING) << "fail to run sql " << request->sql();
@@ -1902,6 +1905,9 @@ void TabletImpl::Query(RpcController* ctrl,
         std::stringstream ss;
         session.GetPhysicalPlan()->Print(ss, "\t");
         DLOG(INFO) << "sql plan \n" << ss.str();
+        if (request->is_debug()) {
+            session.EnableDebug();
+        }
         ::fesql::codec::Row row(request->input_row());
         ::fesql::codec::Row output;
         int32_t ret = session.Run(row, &output);

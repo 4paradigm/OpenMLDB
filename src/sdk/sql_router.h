@@ -31,6 +31,7 @@ namespace sdk {
 struct SQLRouterOptions {
     std::string zk_cluster;
     std::string zk_path;
+    bool enbale_debug = false;
     uint32_t session_timeout = 2000;
 };
 

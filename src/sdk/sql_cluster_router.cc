@@ -247,7 +247,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     }
     uint32_t idx = rand_.Uniform(tablets.size());
     ok =
-        tablets[idx]->Query(db, sql, row->GetRow(), cntl.get(), response.get());
+        tablets[idx]->Query(db, sql, row->GetRow(), cntl.get(), response.get(), options_.enbale_debug);
     if (!ok) {
         status->msg = "request server error";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
@@ -270,7 +270,7 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     DLOG(INFO) << " send query to tablet " << tablets[0]->GetEndpoint();
-    ok = tablets[0]->Query(db, sql, cntl.get(), response.get());
+    ok = tablets[0]->Query(db, sql, cntl.get(), response.get(), options_.enbale_debug);
     if (!ok) {
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
@@ -358,6 +358,7 @@ bool SQLClusterRouter::EncodeFullColumns(
         LOG(WARNING) << "schema mismatch";
         return false;
     }
+    bool replace_empty_str = true;
     uint32_t str_size = 0;
     for (uint32_t idx = 0; idx < row->children_.size(); idx++) {
         const ::rtidb::common::ColumnDesc& column = schema.Get(idx);
@@ -454,10 +455,12 @@ bool SQLClusterRouter::EncodeFullColumns(
                            << std::string(primary->GetStr(),
                                           strlen(primary->GetStr()));
                 if (column.add_ts_idx()) {
-                    dimensions->push_back(
-                        std::make_pair(std::string(primary->GetStr(),
-                                                   strlen(primary->GetStr())),
-                                       idx_cnt));
+                    std::string key = std::string(primary->GetStr(),
+                                                  strlen(primary->GetStr()));
+                    if (replace_empty_str && key.empty()) {
+                        key = rtidb::codec::EMPTY_STRING;
+                    }
+                    dimensions->push_back(std::make_pair(key, idx_cnt));
                     idx_cnt++;
                 }
                 break;
@@ -477,6 +480,12 @@ bool SQLClusterRouter::EncodeFullColumns(
                     ok = false;
                 } else {
                     ok = rb.AppendDate(year, month, day);
+                }
+                fesql::codec::Date date(year, month, day);
+                if (column.add_ts_idx()) {
+                    dimensions->push_back(
+                        std::make_pair(std::to_string(date.date_), idx_cnt));
+                    idx_cnt++;
                 }
                 break;
             }
