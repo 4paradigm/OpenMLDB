@@ -147,9 +147,15 @@ bool SQLCase::ExtractIndex(const std::vector<std::string>& indexs,
             index_def->add_first_keys(key);
         }
 
-        if (3 == name_keys_order.size()) {
+        if (3 <= name_keys_order.size()) {
             boost::trim(name_keys_order[2]);
             index_def->set_second_key(name_keys_order[2]);
+        }
+
+        if (4 <= name_keys_order.size()) {
+            boost::trim(name_keys_order[3]);
+            index_def->add_ttl(
+                boost::lexical_cast<int64_t>(name_keys_order[3]));
         }
     }
     return true;
@@ -251,7 +257,11 @@ bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
             }
         }
 
-        sql.append(")\n");
+        if (i < (table.indexes_size() - 1)) {
+            sql.append("),\n");
+        } else {
+            sql.append(")\n");
+        }
         // end each index
     }
     sql.append(");");
@@ -289,21 +299,23 @@ bool SQLCase::ExtractInputData(std::vector<Row>& rows, int32_t input_idx) {
 
 bool SQLCase::ExtractOutputData(std::vector<Row>& rows) {
     if (expect_.data_.empty() && expect_.rows_.empty()) {
-        LOG(WARNING) << "Empty Data";
+        LOG(WARNING) << "ExtractOutputData Fail: Empty Data";
         return false;
     }
     type::TableDef table;
     if (!ExtractOutputSchema(table)) {
-        LOG(WARNING) << "Invalid Schema";
+        LOG(WARNING) << "ExtractOutputData Fail: Invalid Schema";
         return false;
     }
 
     if (!expect_.data_.empty()) {
         if (!ExtractRows(table.columns(), expect_.data_, rows)) {
+            LOG(WARNING) << "ExtractOutputData Fail";
             return false;
         }
     } else if (!expect_.rows_.empty()) {
         if (!ExtractRows(table.columns(), expect_.rows_, rows)) {
+            LOG(WARNING) << "ExtractOutputData Fail";
             return false;
         }
     }
@@ -420,7 +432,8 @@ bool SQLCase::ExtractRow(const vm::Schema& schema,
                          const std::vector<std::string>& row, int8_t** out_ptr,
                          int32_t* out_size) {
     if (row.size() != static_cast<size_t>(schema.size())) {
-        LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
+        LOG(WARNING) << "Invalid Row: Row doesn't match with schema: exp size "
+                     << schema.size() << " but real size " << row.size();
         return false;
     }
     auto item_vec = row;

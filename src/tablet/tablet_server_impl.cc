@@ -169,6 +169,10 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             }
         }
 
+        if (request->is_debug()) {
+            session.EnableDebug();
+        } 
+
         auto table = session.Run();
 
         if (!table) {
@@ -210,6 +214,9 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
                 return;
             }
         }
+        if (request->is_debug()) {
+            session.EnableDebug();
+        } 
         codec::Row row(request->row());
         codec::Row output;
         int32_t ret = session.Run(row, &output);

@@ -33,7 +33,8 @@ cases:
     sql: select * from {0};
     expect:
       columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
-      rows: ["aa", 1, 1590738990000, 1590738990000]
+      rows: 
+        - ["aa", 1, 1590738990000, 1590738989000]
   -
     id: 3
     desc: 创建两个不同时间列的索引的表
@@ -46,39 +47,51 @@ cases:
     sql: select * from {0};
     expect:
       columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+      rows:
+        - [aa,1,1590738990000,1590738989000]
   -
     id: 4
     desc: 创建一个联合索引的表
     inputs:
       -
         columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
-        indexs: ["index1:c1,c2:c4"]
+        indexs: ["index1:c1|c2:c4"]
         rows:
           - [aa,1,1590738990000,1590738989000]
     sql: select * from {0};
     expect:
       columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+      rows:
+        - [aa,1,1590738990000,1590738989000]
   -
     id: 5
     desc: NotNull的列为index
     inputs:
       -
         columns : ["c1 string NOT NULL","c2 int","c3 timestamp","c4 timestamp"]
-        indexs: ["index1:c1:c4"]
-        rows:
-          - [aa,1,1590738990000,1590738989000]
+        create: |
+          create table {0} (
+          c1 string NOT NULL,
+          c2 int,
+          c3 timestamp,
+          c4 timestamp,
+          index(key=(c1),ts=c4));
+        insert: |
+          insert into {0} values ("aa", 1, 1590738990000, 1590738989000);
     sql: select * from {0};
     expect:
       columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+      rows:
+        - [aa,1,1590738990000,1590738989000]
   -
     id: 6
     desc: 指定ttl
+    tags: ["@zhaowei: 如何验证ttl设置配置成功了"]
     inputs:
       -
-        columns : ["c1 string NOT NULL","c2 int","c3 timestamp","c4 timestamp"]
-        indexs: ["index1:c1:c4:3650d"]
-        rows:
-          - [aa,1,1590738990000,1590738989000]
+        create: create table {0} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=3650d));
+        insert: |
+          insert into {0} values ("aa", 1, 1590738990000, 1590738989000);
     sql: select * from {0};
     expect:
       columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
@@ -87,10 +100,8 @@ cases:
     desc: ttl=0
     inputs:
       -
-        columns : ["c1 string NOT NULL","c2 int","c3 timestamp","c4 timestamp"]
-        indexs: ["index1:c1:c4:0"]
-        rows:
-          - [aa,1,1590738990000,1590738989000]
+        create: create table {0} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=0));
+        insert: insert into {0} values ("aa", 1, 1590738990000, 1590738989000);
     sql: select * from {0};
     expect:
       columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
@@ -99,17 +110,15 @@ cases:
     desc: ttl=-1
     inputs:
       -
-        columns : ["c1 string NOT NULL","c2 int","c3 timestamp","c4 timestamp"]
-        indexs: ["index1:c1:c4:-1"]
-        rows:
-          - [aa,1,1590738990000,1590738989000]
+        create: create table {0} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=-1));
+        insert: insert into {0} values ("aa", 1, 1590738990000, 1590738989000);
     sql: select * from {0};
     expect:
       columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
   -
     id: 9
     desc: ttl为字符
-    sql: create table auto_kJKytImk(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=aa));
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=aa));
     expect:
       success: false
   -
@@ -117,10 +126,8 @@ cases:
     desc: 指定ttl_type=absolute
     inputs:
       -
-        columns : ["c1 string NOT NULL","c2 int","c3 timestamp","c4 timestamp"]
-        indexs: ["index1:c1:c4:0:absolute"]
-        rows:
-          - [aa,1,1590738990000,1590738989000]
+        create: create table {0} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=0, ttl_type=absolute));
+        insert: insert into {0} values ("aa", 1, 1590738990000, 1590738989000);
     sql: select * from {0};
     expect:
       columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
@@ -129,17 +136,15 @@ cases:
     desc: 指定ttl_type=latest
     inputs:
       -
-        columns : ["c1 string NOT NULL","c2 int","c3 timestamp","c4 timestamp"]
-        indexs: ["index1:c1:c4:0:latest"]
-        rows:
-          - [aa,1,1590738990000,1590738989000]
+        create: create table {0} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=0, ttl_type=latest));
+        insert: insert into {0} values ("aa", 1, 1590738990000, 1590738989000);
     sql: select * from {0};
     expect:
       columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
   -
     id: 12
     desc: 指定ttl_type为其他字符
-    sql: create table auto_kJKytImk(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0,ttl_type=aaa));
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0,ttl_type=aaa));
     expect:
       success: false
   -
@@ -157,55 +162,55 @@ cases:
   -
     id: 15
     desc: 列名以数字开头
-    sql: create table auto_kJKytImk(1c string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0));
+    sql: create table {auto}(1c string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0));
     expect:
       success: false
   -
     id: 16
     desc: 列名为保留关键字
-    sql: create table auto_kJKytImk(use string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0));
+    sql: create table {auto}(use string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0));
     expect:
       success: false
   -
     id: 17
     desc: 语句缺少分号
-    sql: create table auto_kJKytImk(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0))
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0))
     expect:
       success: false
   -
     id: 18
     desc: 列的类型不存在
-    sql: create table auto_kJKytImk(c1 varchar2 NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0))
+    sql: create table {auto}(c1 varchar2 NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0))
     expect:
       success: false
   -
     id: 19
     desc: index指定的col不存在
-    sql: create table auto_kJKytImk(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c5),ts=c4,ttl=0));
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c5),ts=c4,ttl=0));
     expect:
       success: false
   -
     id: 20
     desc: index指定的ts不存在
-    sql: create table auto_kJKytImk(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c5,ttl=0));
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c5,ttl=0));
     expect:
       success: false
   -
     id: 21
     desc: 创建的index不指定ts
-    sql: create table auto_kJKytImk(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1)));
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1)));
     expect:
       success: false
   -
     id: 22
     desc: 创建index不指定col
-    sql: create table auto_kJKytImk(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(ts=c4,ttl=0));
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(ts=c4,ttl=0));
     expect:
       success: false
   -
     id: 23
     desc: 指定的ts为其他类型
-    sql: create table auto_kJKytImk(c1 string NOT NULL,c2 string,c3 timestamp,c4 timestamp,index(key=(c1),ts=c2,ttl=0));
+    sql: create table {auto}(c1 string NOT NULL,c2 string,c3 timestamp,c4 timestamp,index(key=(c1),ts=c2,ttl=0));
     expect:
       success: false
   -
@@ -217,7 +222,7 @@ cases:
   -
     id: 25
     desc: 列名使用特殊字符
-    sql: create table auto_kJKytImk(c1$# string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0));
+    sql: create table {auto}(c1$# string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0));
     expect:
       success: false
   -
@@ -225,7 +230,7 @@ cases:
     desc: 指定的ts为bigint
     inputs:
       -
-        columns : ["c1 string NOT NULL","c2 bigint","c3 timestamp","c4 timestamp"]
+        columns : ["c1 string","c2 bigint","c3 timestamp","c4 timestamp"]
         indexs: ["index1:c1:c2"]
         rows:
           - [aa,1,1590738990000,1590738989000]
@@ -237,10 +242,8 @@ cases:
     desc: 指定的ts为bigint+ttl
     inputs:
       -
-        columns : ["c1 string NOT NULL","c2 bigint","c3 timestamp","c4 timestamp"]
-        indexs: ["index1:c1:c2:0"]
-        rows:
-          - [aa,1,1590738990000,1590738989000]
+        create: create table {0} (c1 string NOT NULL,c2 bigint,c3 timestamp, c4 timestamp,index(key=(c1),ts=c2,ttl=0));
+        insert: insert into {0} values ("aa", 1, 1590738990000, 1590738989000);
     sql: select * from {0};
     expect:
       columns: ["c1 string","c2 bigint","c3 timestamp","c4 timestamp"]
@@ -249,7 +252,7 @@ cases:
     desc: 创建已经存在的表
     inputs:
       -
-        columns : ["c1 string NOT NULL","c2 bigint","c3 timestamp","c4 timestamp"]
+        columns : ["c1 string","c2 bigint","c3 timestamp","c4 timestamp"]
         indexs: ["index1:c1:c4"]
     sql: create table {0}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0));
     expect:
@@ -257,12 +260,10 @@ cases:
   -
     id: 29
     desc: 指定的ts为int
+    tags: ["TODO", "@denglong: rtidb not support int16, int32: ttl column type must be int64, uint64, timestamp"]
     inputs:
       -
-        columns : ["c1 string NOT NULL","c2 int","c3 timestamp","c4 timestamp"]
-        indexs: ["index1:c1:c2:0"]
-        rows:
-          - [aa,1,1590738990000,1590738989000]
+        create: create table {0} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c2,ttl=0));
     sql: select * from {0};
     expect:
       columns: ["c1 string","c2 bigint","c3 timestamp","c4 timestamp"]
@@ -311,52 +312,37 @@ cases:
   -
     id: 33
     desc: date为索引列
-    inputs:
-      -
-        columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c8:c7"]
-        rows:
-          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
-    sql: select * from {0};
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 
+      index(key=(c8),ts=c7));
     expect:
-      columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-      rows:
-         - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+      success: false
   -
     id: 34
     desc: float为索引列
-    inputs:
-      -
-        columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c5:c7"]
-        rows:
-          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
-    sql: select * from {0};
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 
+      index(key=(c5),ts=c7));
     expect:
       success: false
   -
     id: 35
     desc: double为索引列
-    inputs:
-      -
-        columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c6:c7"]
-        rows:
-          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
-    sql: select * from {0};
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 
+      index(key=(c6),ts=c7));
     expect:
       success: false
   -
     id: 36
     desc: key和ts为同一列
-    inputs:
-      -
-        columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c7:c7"]
-        rows:
-          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
-    sql: select * from {0};
+    tags: ["@denglong: key和ts是否可以为同一列"]
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 
+      index(key=(c4),ts=c4));
     expect:
-      columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-      rows:
-         - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+      success: false
