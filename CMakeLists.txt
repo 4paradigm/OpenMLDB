@@ -22,7 +22,6 @@ endif ()
 project(rtidb)
 
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
-set(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(RTIDB_VERSION_MAJOR 2)
 set(RTIDB_VERSION_MEDIUM 0)
 set(RTIDB_VERSION_MINOR 0)
