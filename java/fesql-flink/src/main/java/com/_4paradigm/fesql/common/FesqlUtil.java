@@ -1,7 +1,9 @@
-package com._4paradigm.fesql.batch;
+package com._4paradigm.fesql.common;
 
+import java.util.List;
 import java.util.Map;
 
+import com._4paradigm.fesql.batch.FeSQLException;
 import com._4paradigm.fesql.vm.PhysicalOpNode;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.*;
@@ -10,6 +12,7 @@ import org.apache.flink.table.api.TableColumn;
 import org.apache.flink.table.api.TableSchema;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.type.TypeOuterClass.Type;
+import org.apache.flink.types.Row;
 
 public class FesqlUtil {
 
@@ -72,5 +75,6 @@ public class FesqlUtil {
 
         return builder.build();
     }
+
 
 }

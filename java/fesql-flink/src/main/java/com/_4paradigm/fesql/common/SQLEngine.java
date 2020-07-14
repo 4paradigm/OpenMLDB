@@ -1,4 +1,4 @@
-package com._4paradigm.fesql.batch;
+package com._4paradigm.fesql.common;
 
 import com._4paradigm.fesql.base.BaseStatus;
 import com._4paradigm.fesql.type.TypeOuterClass;
@@ -39,11 +39,11 @@ public class SQLEngine implements AutoCloseable {
         plan = session.GetPhysicalPlan();
     }
 
-    PhysicalOpNode getPlan() {
+    public PhysicalOpNode getPlan() {
         return plan;
     }
 
-    ByteBuffer getIRBuffer() {
+    public ByteBuffer getIRBuffer() {
         long size = compileInfo.get_ir_size();
         ByteBuffer buffer = ByteBuffer.allocateDirect(Long.valueOf(size).intValue());
         compileInfo.get_ir_buffer(buffer);

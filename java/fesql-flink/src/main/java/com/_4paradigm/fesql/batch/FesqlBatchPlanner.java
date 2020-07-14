@@ -1,6 +1,8 @@
 package com._4paradigm.fesql.batch;
 
 import com._4paradigm.fesql.FeSqlLibrary;
+import com._4paradigm.fesql.common.FesqlUtil;
+import com._4paradigm.fesql.common.SQLEngine;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.*;
 import org.apache.flink.table.api.Table;
@@ -9,7 +11,6 @@ import org.apache.flink.table.api.bridge.java.BatchTableEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -37,13 +38,13 @@ public class FesqlBatchPlanner {
 
         TypeOuterClass.Database fesqlDatabase = FesqlUtil.buildDatabase("flink_db", this.tableSchemaMap);
         SQLEngine engine = new SQLEngine(sqlQuery, fesqlDatabase);
-        PlanContext planContext = new PlanContext(sqlQuery, batchTableEnvironment, this, engine.getIRBuffer());
+        BatchPlanContext batchPlanContext = new BatchPlanContext(sqlQuery, batchTableEnvironment, this, engine.getIRBuffer());
 
         PhysicalOpNode rootNode = engine.getPlan();
         logger.info("Print the FESQL logical plan");
         rootNode.Print();
 
-        Table table = visitPhysicalNode(planContext, rootNode);
+        Table table = visitPhysicalNode(batchPlanContext, rootNode);
 
         try {
             engine.close();
@@ -55,11 +56,11 @@ public class FesqlBatchPlanner {
 
     }
 
-    public Table visitPhysicalNode(PlanContext planContext, PhysicalOpNode node) throws FeSQLException {
+    public Table visitPhysicalNode(BatchPlanContext batchPlanContext, PhysicalOpNode node) throws FeSQLException {
 
         List<Table> children = new ArrayList<Table>();
         for (int i=0; i < node.GetProducerCnt(); ++i) {
-            children.add(visitPhysicalNode(planContext, node.GetProducer(i)));
+            children.add(visitPhysicalNode(batchPlanContext, node.GetProducer(i)));
         }
 
         Table outputTable = null;
@@ -68,7 +69,7 @@ public class FesqlBatchPlanner {
         if (opType.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
             // Use "select *" to get Table from Flink source
             PhysicalDataProviderNode dataProviderNode = PhysicalDataProviderNode.CastFrom(node);
-            outputTable = DataProviderPlan.gen(planContext, dataProviderNode);
+            outputTable = DataProviderPlan.gen(batchPlanContext, dataProviderNode);
 
         } else if (opType.swigValue() == PhysicalOpType.kPhysicalOpProject.swigValue()) {
             // Use FESQL CoreAPI to generate new Table
@@ -77,7 +78,7 @@ public class FesqlBatchPlanner {
 
             if (projectType.swigValue() == ProjectType.kTableProject.swigValue()) {
                 PhysicalTableProjectNode physicalTableProjectNode = PhysicalTableProjectNode.CastFrom(projectNode);
-                outputTable = TableProjectPlan.gen(planContext, physicalTableProjectNode, children.get(0));
+                outputTable = TableProjectPlan.gen(batchPlanContext, physicalTableProjectNode, children.get(0));
             } else {
                 throw new FeSQLException(String.format("Planner does not support project type %s", projectType));
             }

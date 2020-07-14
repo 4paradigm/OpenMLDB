@@ -1,27 +1,54 @@
 package com._4paradigm.fesql.batch;
 
+import com._4paradigm.fesql.common.FesqlFlinkCodec;
+import com._4paradigm.fesql.common.JITManager;
+import com._4paradigm.fesql.vm.CoreAPI;
+import com._4paradigm.fesql.vm.FeSQLJITWrapper;
 import com._4paradigm.fesql.vm.PhysicalTableProjectNode;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.table.api.Table;
+import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.types.Row;
+import java.nio.ByteBuffer;
+import java.util.List;
 
 public class TableProjectPlan {
 
-    public static Table gen(PlanContext planContext, PhysicalTableProjectNode node, Table childTable) {
+    public static Table gen(BatchPlanContext batchPlanContext, PhysicalTableProjectNode node, Table childTable) {
 
-        DataSet<Row> inputDataset = planContext.getBatchTableEnvironment().toDataSet(childTable, Row.class);
+        DataSet<Row> inputDataset = batchPlanContext.getBatchTableEnvironment().toDataSet(childTable, Row.class);
+
+        // Take out the serializable objects
+        String functionName = node.project().fn_name();
+        String moduleTag = batchPlanContext.getTag();
+        SerializableByteBuffer moduleBuffer = batchPlanContext.getModuleBuffer();
 
         DataSet<Row> outputDataset = inputDataset.map(new MapFunction<Row, Row>() {
             @Override
             public Row map(Row row) throws Exception {
-                return row;
-            }
-        });//.returns(new RowTypeInfo(Types.DOUBLE, Types.DOUBLE, Types.DOUBLE, Types.DOUBLE));;
 
-        return planContext.getBatchTableEnvironment().fromDataSet(outputDataset);
+                ByteBuffer moduleBroadcast = moduleBuffer.getBuffer();
+                JITManager.initJITModule(moduleTag, moduleBroadcast);
+                FeSQLJITWrapper jit = JITManager.getJIT(moduleTag);
+
+                long functionPointer = jit.FindFunction(functionName);
+
+                /*
+                com._4paradigm.fesql.codec.Row inputFesqlRow = null;
+                com._4paradigm.fesql.codec.Row outputNativeRow = CoreAPI.RowProject(functionPointer, inputFesqlRow, false);
+                Row flinkRow = null;
+                */
+
+                Row flinkRow = row;
+
+                return flinkRow;
+            }
+        }).returns(new RowTypeInfo(Types.INT, Types.INT, Types.INT));;
+
+        return batchPlanContext.getBatchTableEnvironment().fromDataSet(outputDataset);
 
     }
 

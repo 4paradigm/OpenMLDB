@@ -5,10 +5,10 @@ import org.apache.flink.table.api.Table;
 
 public class DataProviderPlan {
 
-    public static Table gen(PlanContext planContext, PhysicalDataProviderNode dataProviderNode) {
+    public static Table gen(BatchPlanContext batchPlanContext, PhysicalDataProviderNode dataProviderNode) {
         String tableName = dataProviderNode.GetName();
         String sqlText = "select * from " + tableName;
-        return planContext.getBatchTableEnvironment().sqlQuery(sqlText);
+        return batchPlanContext.getBatchTableEnvironment().sqlQuery(sqlText);
     }
 
 }

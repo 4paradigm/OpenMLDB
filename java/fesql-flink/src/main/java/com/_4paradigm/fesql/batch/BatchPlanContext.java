@@ -5,14 +5,14 @@ import org.apache.flink.table.api.bridge.java.BatchTableEnvironment;
 import java.nio.ByteBuffer;
 
 
-public class PlanContext {
+public class BatchPlanContext {
 
     private String tag;
     private BatchTableEnvironment batchTableEnvironment;
     private FesqlBatchPlanner fesqlBatchPlanner;
     private SerializableByteBuffer moduleBuffer;
 
-    public PlanContext(String tag, BatchTableEnvironment batchTableEnvironment, FesqlBatchPlanner fesqlBatchPlanner, ByteBuffer moduleBuffer) {
+    public BatchPlanContext(String tag, BatchTableEnvironment batchTableEnvironment, FesqlBatchPlanner fesqlBatchPlanner, ByteBuffer moduleBuffer) {
         this.tag = tag;
         this.batchTableEnvironment = batchTableEnvironment;
         this.fesqlBatchPlanner = fesqlBatchPlanner;
