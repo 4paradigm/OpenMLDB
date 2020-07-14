@@ -77,17 +77,15 @@ std::vector<SQLCase> InitCases(std::string yaml_path) {
   return cases;
 }
 
-int callback(void *s, int argc, char **argv, char **azColName) {
-  std::string &sqliteStr = *(static_cast<std::string*>(s));
+int generate_sqlite_test_string_callback(void *s, int argc,
+                            char **argv, char **azColName) {
+  std::string &sqliteStr = *static_cast<std::string*>(s);
   int i;
   for (i = 0; i < argc; i++) {
     sqliteStr += NULL == argv[i] ? "NULL" : argv[i];
     sqliteStr += ", ";
-    std::cout << sqliteStr << std::endl;
   }
-
-  sqliteStr.pop_back();
-  sqliteStr.pop_back();
+  sqliteStr = sqliteStr.substr(0, sqliteStr.length() - 2);
   sqliteStr += "\n";
   return 0;
 }
@@ -463,7 +461,7 @@ void BatchModeCheck(SQLCase &sql_case) { // NOLINT
   /* Compare with SQLite*/
 
   // Determine whether to compare with SQLite
-  if (sql_case.standard_sql()) {
+  if (sql_case.standard_sql() && sql_case.standard_sql_compatible()) {
     // Use SQLite to get output
     sqlite3 *db;
     char *zErrMsg = 0;
@@ -472,10 +470,10 @@ void BatchModeCheck(SQLCase &sql_case) { // NOLINT
     // Create database in the memory
     rc = sqlite3_open(":memory:", &db);
     if (rc) {
-      fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+      LOG(ERROR) << "Can't open database: %s\n" << sqlite3_errmsg(db);
       exit(0);
     } else {
-      fprintf(stderr, "Database Create successfully\n");
+      LOG(INFO) << "Database Create successfully\n";
     }
 
     // Create SQL statement to create a table schema
@@ -483,17 +481,16 @@ void BatchModeCheck(SQLCase &sql_case) { // NOLINT
     sql_case.ExtractInputTableDef(output_table);
     std::string create_table_sql;
     SQLCase::BuildCreateSQLFromSchema(output_table, &create_table_sql, false);
-    // LOG(INFO) << create_table_sql;
+    LOG(INFO) << create_table_sql;
 
     // Create a table schema
     const char *create_table_sql_ch = create_table_sql.c_str();
-    std::string sqliteStr = "";
-    rc = sqlite3_exec(db, create_table_sql_ch, callback, static_cast<void*>(&sqliteStr), &zErrMsg);
+    rc = sqlite3_exec(db, create_table_sql_ch, 0, 0, &zErrMsg);
     if (rc != SQLITE_OK) {
-      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+      LOG(ERROR) << "SQL error: %s\n" << zErrMsg;
       sqlite3_free(zErrMsg);
     } else {
-      fprintf(stdout, "Table schema created successfully\n");
+      LOG(INFO) << "Table schema created successfully\n";
     }
 
     // Create SQL statements to insert data to the table (One insert)
@@ -504,30 +501,28 @@ void BatchModeCheck(SQLCase &sql_case) { // NOLINT
 
     // Insert data into the table
     const char *create_insert_sql_ch = create_insert_sql.c_str();
-
     std::cout << create_insert_sql_ch << std::endl;
-    rc = sqlite3_exec(db, create_insert_sql_ch, callback, 0, &zErrMsg);
+    rc = sqlite3_exec(db, create_insert_sql_ch, 0, 0, &zErrMsg);
     if (rc != SQLITE_OK) {
-      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+      LOG(ERROR) << "SQL error: %s\n" << zErrMsg;
       sqlite3_free(zErrMsg);
     } else {
-      fprintf(stdout, "Records created successfully\n");
+      LOG(INFO) << "Records created successfully\n";
     }
 
     // Execute SQL statement
     const char *create_execute_sql_ch = sql_case.sql_str().c_str();
-
-    sqliteStr = "";
-
-    rc = sqlite3_exec(db, create_execute_sql_ch, callback, 0, &zErrMsg);
+    std::string sqliteStr = "";
+    rc = sqlite3_exec(db, create_execute_sql_ch,
+                      generate_sqlite_test_string_callback,
+                      static_cast<void*>(&sqliteStr), &zErrMsg);
     if (rc != SQLITE_OK) {
-      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+      LOG(ERROR) << "SQL error: %s\n" << zErrMsg;
       sqlite3_free(zErrMsg);
     } else {
-      fprintf(stdout, "Operation done successfully\n");
+      LOG(INFO) << "Operation done successfully\n";
     }
     sqlite3_close(db);
-
     sqliteStr.pop_back();
 
     // Transfer Sqlite outcome to Fesql row

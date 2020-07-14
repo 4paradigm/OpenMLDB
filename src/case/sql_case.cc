@@ -200,7 +200,7 @@ bool SQLCase::ExtractSchema(const std::vector<std::string> &columns,
 }
 
 bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef &table,
-                                       std::string *create_sql, bool index) {
+                   std::string *create_sql, bool isGenerateIndex) {
   std::string sql = "CREATE TABLE " + table.name() + "(\n";
   for (int i = 0; i < table.columns_size(); i++) {
     auto column = table.columns(i);
@@ -212,7 +212,7 @@ bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef &table,
     sql.append(",\n");
   }
 
-  if (index) {
+  if (isGenerateIndex) {
     for (int i = 0; i < table.indexes_size(); i++) {
       auto index = table.indexes(i);
       sql.append("index(");
@@ -252,7 +252,7 @@ bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef &table,
       // end each index
     }
   } else {
-    sql = sql.substr(0, sql.length() - 2);
+    sql = sql.substr(0, sql.length() - 2);  // delete ", "
   }
 
   sql.append(");");
@@ -314,7 +314,7 @@ bool SQLCase::BuildInsertSQLFromRow(const type::TableDef &table,
                                     const std::string &row_str,
                                     std::string *insert_sql) {
   std::string sql = "";
-  sql.append("Insert into ").append(table.name()).append("values(");
+  sql.append("Insert into ").append(table.name()).append(" values(");
   auto schema = table.columns();
   std::vector<std::string> item_vec;
   boost::split(item_vec, row_str, boost::is_any_of(","),
@@ -466,11 +466,10 @@ bool SQLCase::ExtractRow(const vm::Schema &schema,
   uint32_t row_size = rb.CalTotalLength(str_size);
   int8_t *ptr = static_cast<int8_t *>(malloc(row_size));
   rb.SetBuffer(ptr, row_size);
-  auto it = schema.begin();
   uint32_t index = 0;
 
   int i = 0;
-  for (; it != schema.end(); ++it) {
+  for (auto it = schema.begin(); it != schema.end(); ++it) {
     i++;
     if (index >= item_vec.size()) {
       LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
@@ -947,6 +946,13 @@ SQLCase::CreateSQLCasesFromYaml(const std::string &cases_dir,
       sql_case.standard_sql_ = sql_case_node["standard_sql"].as<bool>();
     } else {
       sql_case.standard_sql_ = false;
+    }
+
+    if (sql_case_node["standard_sql_compatible"]) {
+      sql_case.standard_sql_compatible_ =
+               sql_case_node["standard_sql_compatible"].as<bool>();
+    } else {
+      sql_case.standard_sql_compatible_ = true;
     }
 
     if (sql_case_node["inputs"]) {

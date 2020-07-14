@@ -50,6 +50,9 @@ class SQLCase {
     const std::string& batch_plan() const { return batch_plan_; }
     const std::string& sql_str() const { return sql_str_; }
     const bool standard_sql() const { return standard_sql_; }
+    const bool standard_sql_compatible() const {
+        return standard_sql_compatible_;
+    }
     const std::string& create_str() const { return create_str_; }
     const std::string& insert_str() const { return insert_str_; }
     const std::string& db() const { return db_; }
@@ -80,7 +83,7 @@ class SQLCase {
                               type::TableDef& table);  // NOLINT
     static bool BuildCreateSQLFromSchema(const type::TableDef& table,
                                          std::string* create_sql,
-                                         bool index = true);  // NOLINT
+                                         bool isGenerateIndex = true);  // NOLINT
     static bool ExtractIndex(const std::string& index_str,
                              type::TableDef& table);  // NOLINT
     static bool ExtractIndex(const std::vector<std::string>& indexs,
@@ -148,6 +151,7 @@ class SQLCase {
     std::string sql_str_;
     std::vector<std::string> sql_strs_;
     bool standard_sql_;
+    bool standard_sql_compatible_;
     std::string batch_plan_;
     std::string request_plan_;
     std::vector<TableInfo> inputs_;
