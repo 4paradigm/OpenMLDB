@@ -13,6 +13,7 @@ public class SQLCase {
     String sql;
     List<String> sqls;
     boolean standard_sql;
+    boolean standard_sql_compatible;
     String create;
     String insert;
     List<String> tags;
