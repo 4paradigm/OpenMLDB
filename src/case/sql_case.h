@@ -47,6 +47,7 @@ class SQLCase {
 
     const std::string id() const { return id_; }
     const std::string& desc() const { return desc_; }
+    const std::string case_name() const;
     const std::string& mode() const { return mode_; }
     const std::string& request_plan() const { return request_plan_; }
     const std::string& batch_plan() const { return batch_plan_; }
@@ -68,6 +69,8 @@ class SQLCase {
                               int32_t input_idx = 0);
     bool BuildCreateSQLFromInput(int32_t input_idx, std::string* sql);
     bool BuildInsertSQLFromInput(int32_t input_idx, std::string* sql);
+    bool BuildInsertSQLListFromInput(int32_t input_idx,
+                                     std::vector<std::string>* sql_list);
     bool ExtractOutputSchema(type::TableDef& table);             // NOLINT
     bool ExtractInputData(std::vector<fesql::codec::Row>& rows,  // NOLINT
                           int32_t input_idx = 0);

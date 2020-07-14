@@ -593,6 +593,11 @@ bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
     }
     return true;
 }
+const std::string SQLCase::case_name() const {
+    std::string name = id_ + "_" + desc_;
+    boost::replace_all(name, " ", "_");
+    return name;
+}
 bool SQLCase::ExtractInputTableDef(type::TableDef& table, int32_t input_idx) {
     if (!inputs_[input_idx].schema_.empty()) {
         if (!ExtractTableDef(inputs_[input_idx].schema_,
@@ -631,6 +636,52 @@ bool SQLCase::BuildCreateSQLFromInput(int32_t input_idx, std::string* sql) {
     return true;
 }
 
+bool SQLCase::BuildInsertSQLListFromInput(int32_t input_idx,
+                                          std::vector<std::string>* sql_list) {
+    if (!inputs_[input_idx].insert_.empty()) {
+        sql_list->push_back(inputs_[input_idx].insert_);
+        return true;
+    }
+    type::TableDef table;
+    if (!ExtractInputTableDef(table, input_idx)) {
+        LOG(WARNING) << "Fail to extract table schema";
+        return false;
+    }
+
+    if (!inputs_[input_idx].data_.empty()) {
+        auto data = inputs_[input_idx].data_;
+        boost::trim(data);
+        std::vector<std::string> row_vec;
+        boost::split(row_vec, data, boost::is_any_of("\n"),
+                     boost::token_compress_on);
+        for (auto row_str : row_vec) {
+            std::vector<std::vector<std::string>> rows;
+            std::vector<std::string> item_vec;
+            boost::split(item_vec, row_str, boost::is_any_of(","),
+                         boost::token_compress_on);
+            rows.push_back(item_vec);
+            std::string insert_sql;
+            if (!BuildInsertSQLFromRows(table, rows, &insert_sql)) {
+                LOG(WARNING) << "Fail to build insert sql from rows";
+                return false;
+            }
+            sql_list->push_back(insert_sql);
+        }
+
+    } else if (!inputs_[input_idx].rows_.empty()) {
+        for (auto row : inputs_[input_idx].rows_) {
+            std::vector<std::vector<std::string>> rows;
+            rows.push_back(row);
+            std::string insert_sql;
+            if (!BuildInsertSQLFromRows(table, rows, &insert_sql)) {
+                LOG(WARNING) << "Fail to build insert sql from rows";
+                return false;
+            }
+            sql_list->push_back(insert_sql);
+        }
+    }
+    return true;
+}
 bool SQLCase::BuildInsertSQLFromInput(int32_t input_idx, std::string* sql) {
     if (!inputs_[input_idx].insert_.empty()) {
         *sql = inputs_[input_idx].insert_;

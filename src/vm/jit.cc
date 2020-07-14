@@ -53,7 +53,7 @@ FeSQLJIT::~FeSQLJIT() {}
                                     ::llvm::orc::VModuleKey key) {
     if (auto err = applyDataLayout(*tsm.getModule())) return err;
     DLOG(INFO) << "add a module with key " << key << " with ins cnt "
-              << tsm.getModule()->getInstructionCount();
+               << tsm.getModule()->getInstructionCount();
     ::llvm::legacy::FunctionPassManager fpm(tsm.getModule());
     // Add some optimizations.
     fpm.add(::llvm::createInstructionCombiningPass());
@@ -68,7 +68,7 @@ FeSQLJIT::~FeSQLJIT() {}
         fpm.run(*it);
     }
     DLOG(INFO) << "after opt with ins cnt "
-              << tsm.getModule()->getInstructionCount();
+               << tsm.getModule()->getInstructionCount();
     return CompileLayer->add(jd, std::move(tsm), key);
 }
 

@@ -269,7 +269,6 @@ TEST_F(SQLCaseTest, ExtractInsertSqlTest) {
             "1587647804000);",
             create_sql);
     }
-
     {
         std::vector<std::vector<std::string>> rows;
         rows.push_back(std::vector<std::string>{"0", "1", "5", "1.1", "11.1",
@@ -557,6 +556,27 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
                 "aaaa",
                 row_view.GetStringUnsafe(6));
         }
+    }
+
+    // Check Insert SQL List
+    {
+        std::string create_sql;
+        std::vector<std::string> sql_list;
+        sql_case.BuildInsertSQLListFromInput(0, &sql_list);
+        ASSERT_EQ(5u, sql_list.size());
+        ASSERT_EQ("Insert into  values\n('0', 1, 5, 1.1, 11.1, 1, '1');",
+                  sql_list[0]);
+        ASSERT_EQ("Insert into  values\n('0', 2, 5, 2.2, 22.2, 2, '22');",
+                  sql_list[1]);
+        ASSERT_EQ("Insert into  values\n('0', 3, 55, 3.3, 33.3, 1, '333');",
+                  sql_list[2]);
+        ASSERT_EQ("Insert into  values\n('0', 4, 55, 4.4, 44.4, 2, '4444');",
+                  sql_list[3]);
+        ASSERT_EQ(
+            "Insert into  values\n('0', 5, 55, 5.5, 55.5, 3, "
+            "'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "a');",
+            sql_list[4]);
     }
 
     // Check Data Schema
