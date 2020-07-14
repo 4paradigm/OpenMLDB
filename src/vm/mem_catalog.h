@@ -486,7 +486,8 @@ void RowIterNext(int8_t* iter);
 int8_t* RowIterGetCurSlice(int8_t* iter, size_t idx);
 size_t RowIterGetCurSliceSize(int8_t* iter, size_t idx);
 void RowIterDelete(int8_t* iter);
-
+int8_t* RowGetSlice(int8_t* row_ptr, size_t idx);
+size_t RowGetSliceSize(int8_t* row_ptr, size_t idx);
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_MEM_CATALOG_H_

@@ -101,7 +101,11 @@ bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
             return false;
         }
         case node::kOpaque: {
-            *llvm_type = (::llvm::Type::getInt8PtrTy(m->getContext()));
+            *llvm_type = ::llvm::Type::getInt8PtrTy(m->getContext());
+            return true;
+        }
+        case node::kRow: {
+            *llvm_type = ::llvm::Type::getInt8PtrTy(m->getContext());
             return true;
         }
         default: {

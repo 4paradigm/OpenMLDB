@@ -28,16 +28,6 @@
 namespace fesql {
 namespace codegen {
 
-struct StringRef {
-    int32_t size;
-    char* data;
-};
-
-struct String {
-    int32_t size;
-    char* data;
-};
-
 class TypeIRBuilder {
  public:
     TypeIRBuilder() {}

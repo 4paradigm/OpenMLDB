@@ -142,12 +142,18 @@ class NodeManager {
     TypeNode *MakeTypeNode(fesql::node::DataType base, fesql::node::DataType v1,
                            fesql::node::DataType v2);
     OpaqueTypeNode *MakeOpaqueType(size_t bytes);
+    RowTypeNode *MakeRowType(const vm::SchemaSourceList &schema_source);
+    RowTypeNode *MakeRowType(const std::string &name, codec::Schema *schema);
 
     ExprNode *MakeColumnRefNode(const std::string &column_name,
                                 const std::string &relation_name,
                                 const std::string &db_name);
     ExprNode *MakeColumnRefNode(const std::string &column_name,
                                 const std::string &relation_name);
+    GetFieldExpr *MakeGetFieldExpr(ExprNode *input,
+                                   const std::string &column_name,
+                                   const std::string &relation_name);
+
     ExprNode *MakeBetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right);
     ExprNode *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
                                  FnOperator op);

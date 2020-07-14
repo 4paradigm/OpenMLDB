@@ -64,5 +64,29 @@ Status CastExprNode::InferAttr(ExprAnalysisContext* ctx) {
     return Status::OK();
 }
 
+Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
+    auto row_type = dynamic_cast<const RowTypeNode*>(row()->GetOutputType());
+    CHECK_TRUE(row_type != nullptr, "Get field's input is not row");
+    vm::SchemasContext schemas_context(row_type->schema_source());
+
+    const vm::RowSchemaInfo* schema_info = nullptr;
+    bool ok = schemas_context.ColumnRefResolved(relation_name_, column_name_,
+                                                &schema_info);
+    CHECK_TRUE(ok, "Fail to resolve column ", GetExprString());
+
+    codec::RowDecoder decoder(*schema_info->schema_);
+    codec::ColInfo col_info;
+    CHECK_TRUE(decoder.ResolveColumn(column_name_, &col_info),
+               "Fail to resolve column ", GetExprString());
+
+    node::DataType dtype;
+    CHECK_TRUE(vm::SchemaType2DataType(col_info.type, &dtype),
+               "Fail to convert type: ", col_info.type);
+
+    auto nm = ctx->node_manager();
+    SetOutputType(nm->MakeTypeNode(dtype));
+    return Status::OK();
+}
+
 }  // namespace node
 }  // namespace fesql

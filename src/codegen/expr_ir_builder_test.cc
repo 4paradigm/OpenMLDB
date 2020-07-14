@@ -18,7 +18,9 @@
 #include "codegen/expr_ir_builder.h"
 #include <memory>
 #include <utility>
+#include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/ir_base_builder_test.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -33,11 +35,14 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
-
 #include "node/node_manager.h"
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
 
+using fesql::codec::Date;
+using fesql::codec::StringRef;
+using fesql::codec::Timestamp;
+using fesql::node::ExprNode;
 ExitOnError ExitOnErr;
 
 namespace fesql {
@@ -49,16 +54,92 @@ class ExprIRBuilderTest : public ::testing::Test {
     ~ExprIRBuilderTest() { delete manager_; }
 
  protected:
-    node::NodeManager *manager_;
+    node::NodeManager* manager_;
 };
 
-void GenAddExpr(node::NodeManager *manager, ::fesql::node::ExprNode **expr) {
+template <typename Ret, typename... Args>
+void ExprCheck(
+    const std::function<node::ExprNode*(
+        node::NodeManager*,
+        typename std::pair<Args, node::ExprNode*>::second_type...)>& expr_func,
+    Ret expect, Args... args) {
+    auto compiled_func =
+        ModuleFunctionBuilder().returns<Ret>().template args<Args...>().build(
+            [&](CodeGenContext* ctx) {
+                node::NodeManager nm;
+                size_t idx = 0;
+                std::vector<::llvm::Type*> llvm_arg_types;
+                std::vector<node::TypeNode*> arg_types;
+                auto make_arg = [&](node::TypeNode* dtype) {
+                    auto arg =
+                        nm.MakeExprIdNode("arg_" + std::to_string(idx++));
+                    arg->SetOutputType(dtype);
+                    arg_types.push_back(dtype);
+
+                    ::llvm::Type* llvm_ty = nullptr;
+                    codegen::GetLLVMType(ctx->GetModule(), dtype, &llvm_ty);
+                    llvm_arg_types.push_back(llvm_ty);
+                    return arg;
+                };
+                node::ExprNode* body = expr_func(
+                    &nm,
+                    {make_arg(udf::DataTypeTrait<Args>::to_type_node(&nm))...});
+
+                vm::SchemaSourceList empty;
+                vm::SchemasContext empty_context(empty);
+                ScopeVar sv;
+                sv.Enter("entry");
+
+                ::llvm::IRBuilder<> builder(ctx->GetCurrentBlock());
+
+                auto llvm_func = ctx->GetCurrentFunction();
+                for (size_t i = 0; i < llvm_arg_types.size(); ++i) {
+                    auto name = "arg_" + std::to_string(i);
+                    ::llvm::Value* llvm_arg = llvm_func->arg_begin() + i;
+                    if (codegen::TypeIRBuilder::IsStructPtr(
+                            llvm_arg_types[i])) {
+                        auto alloca = builder.CreateAlloca(llvm_arg_types[i]);
+                        builder.CreateStore(llvm_arg, alloca);
+                        llvm_arg = alloca;
+                    }
+                    sv.AddVar(name, NativeValue::Create(llvm_arg));
+                }
+
+                ExprIRBuilder expr_builder(ctx->GetCurrentBlock(), &sv,
+                                           &empty_context, false,
+                                           ctx->GetModule());
+                NativeValue out;
+                base::Status status;
+                CHECK_TRUE(expr_builder.Build(body, &out, status), status.msg);
+
+                auto ret_type = udf::DataTypeTrait<Ret>::to_type_node(&nm);
+                auto ret_value = out.GetValue(&builder);
+                if (codegen::TypeIRBuilder::IsStructPtr(ret_value->getType())) {
+                    ret_value = builder.CreateLoad(ret_value);
+                }
+                if (ret_type->base_ == node::kVarchar) {
+                    // strange problem to return StringRef
+                    ::llvm::Value* addr =
+                        llvm_func->arg_begin() + llvm_arg_types.size();
+                    builder.CreateStore(ret_value, addr);
+                    builder.CreateRetVoid();
+                } else {
+                    builder.CreateRet(ret_value);
+                }
+                return Status::OK();
+            });
+
+    Ret result = compiled_func(args...);
+    ASSERT_EQ(expect, result);
+}
+
+void GenAddExpr(node::NodeManager* manager, ::fesql::node::ExprNode** expr) {
     // TODO(wangtaize) free
     new ::fesql::node::BinaryExpr(::fesql::node::kFnOpAdd);
 
-    ::fesql::node::ExprNode *i32_node = (manager->MakeConstNode(1));
-    ::fesql::node::ExprNode *id_node = (manager->MakeExprIdNode("a"));
-    ::fesql::node::ExprNode *bexpr =
+    ::fesql::node::ExprNode* i32_node = (manager->MakeConstNode(1));
+    ::fesql::node::ExprNode* id_node = (manager->MakeExprIdNode("a"));
+    ::fesql::node::ExprNode* bexpr =
         (manager->MakeBinaryExprNode(i32_node, id_node, fesql::node::kFnOpAdd));
     *expr = bexpr;
 }
@@ -69,18 +150,18 @@ TEST_F(ExprIRBuilderTest, test_add_int32) {
     auto m = make_unique<Module>("int32_add", *ctx);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    Function *load_fn =
+    Function* load_fn =
         Function::Create(FunctionType::get(Type::getInt32Ty(*ctx),
                                            {Type::getInt32Ty(*ctx)}, false),
                          Function::ExternalLinkage, "load_fn", m.get());
-    BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
+    BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
     IRBuilder<> builder(entry_block);
-    Argument *arg0 = &*load_fn->arg_begin();
+    Argument* arg0 = &*load_fn->arg_begin();
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
     scope_var.AddVar("a", NativeValue::Create(arg0));
     ExprIRBuilder expr_builder(entry_block, &scope_var);
-    ::fesql::node::ExprNode *node = NULL;
+    ::fesql::node::ExprNode* node = NULL;
     GenAddExpr(manager_, &node);
     NativeValue output;
     base::Status status;
@@ -102,16 +183,16 @@ void BinaryExprCheck(::fesql::node::DataType left_type,
                      ::fesql::node::DataType dist_type, V1 v1, V2 v2, R r,
                      ::fesql::node::FnOperator op) {
     node::NodeManager manager;
-    ::fesql::node::ExprNode *expr_node = manager.MakeBinaryExprNode(
+    ::fesql::node::ExprNode* expr_node = manager.MakeBinaryExprNode(
         manager.MakeConstNode(v1), manager.MakeConstNode(v2), op);
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("binary_expr_fn", *ctx);
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
-    llvm::Type *left_llvm_type = NULL;
-    llvm::Type *right_llvm_type = NULL;
-    llvm::Type *dist_llvm_type = NULL;
+    llvm::Type* left_llvm_type = NULL;
+    llvm::Type* right_llvm_type = NULL;
+    llvm::Type* dist_llvm_type = NULL;
     ASSERT_TRUE(
         ::fesql::codegen::GetLLVMType(m.get(), left_type, &left_llvm_type));
     ASSERT_TRUE(
@@ -120,11 +201,11 @@ void BinaryExprCheck(::fesql::node::DataType left_type,
 
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "D" and take an argument of "S".
-    Function *load_fn = Function::Create(
+    Function* load_fn = Function::Create(
         FunctionType::get(dist_llvm_type, {left_llvm_type, right_llvm_type},
                           false),
         Function::ExternalLinkage, "load_fn", m.get());
-    BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
+    BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
     IRBuilder<> builder(entry_block);
     ScopeVar scope_var;
     scope_var.Enter("fn_base");
@@ -902,10 +983,76 @@ TEST_F(ExprIRBuilderTest, test_or_expr_false) {
         false, false, ::fesql::node::kFnOpOr);
 }
 
+TEST_F(ExprIRBuilderTest, test_get_field) {
+    auto schema = udf::MakeLiteralSchema<int16_t, int32_t, int64_t, float,
+                                         double, codec::Timestamp, codec::Date,
+                                         codec::StringRef>();
+    vm::SchemaSourceList schema_sources;
+    schema_sources.AddSchemaSource("t", &schema);
+    codec::RowBuilder row_builder(schema);
+    size_t row_size = row_builder.CalTotalLength(5);
+    int8_t* buf = reinterpret_cast<int8_t*>(malloc(row_size));
+    row_builder.SetBuffer(buf, row_size);
+    row_builder.AppendInt16(16);
+    row_builder.AppendInt32(32);
+    row_builder.AppendInt64(64);
+    row_builder.AppendFloat(3.14f);
+    row_builder.AppendDouble(1.0);
+    row_builder.AppendTimestamp(1590115420000L);
+    row_builder.AppendDate(2009, 7, 1);
+    row_builder.AppendString("hello", 5);
+    codec::Row* row =
+        new codec::Row(base::RefCountedSlice::Create(buf, row_size));
+    udf::LiteralTypedRow<int16_t, int32_t, int64_t, float, double,
+                         codec::Timestamp, codec::Date, codec::StringRef>
+    typed_row(reinterpret_cast<int8_t*>(row));
+
+    ExprCheck(
+        [](node::NodeManager* nm, ExprNode* input) {
+            return nm->MakeGetFieldExpr(input, "col_0", "t");
+        },
+        (int16_t)16, typed_row);
+    ExprCheck(
+        [](node::NodeManager* nm, ExprNode* input) {
+            return nm->MakeGetFieldExpr(input, "col_1", "t");
+        },
+        32, typed_row);
+    ExprCheck(
+        [](node::NodeManager* nm, ExprNode* input) {
+            return nm->MakeGetFieldExpr(input, "col_2", "t");
+        },
+        (int64_t)64L, typed_row);
+    ExprCheck(
+        [](node::NodeManager* nm, ExprNode* input) {
+            return nm->MakeGetFieldExpr(input, "col_3", "t");
+        },
+        3.14f, typed_row);
+    ExprCheck(
+        [](node::NodeManager* nm, ExprNode* input) {
+            return nm->MakeGetFieldExpr(input, "col_4", "t");
+        },
+        1.0, typed_row);
+    ExprCheck(
+        [](node::NodeManager* nm, ExprNode* input) {
+            return nm->MakeGetFieldExpr(input, "col_5", "t");
+        },
+        codec::Timestamp(1590115420000L), typed_row);
+    ExprCheck(
+        [](node::NodeManager* nm, ExprNode* input) {
+            return nm->MakeGetFieldExpr(input, "col_6", "t");
+        },
+        codec::Date(2009, 7, 1), typed_row);
+    ExprCheck(
+        [](node::NodeManager* nm, ExprNode* input) {
+            return nm->MakeGetFieldExpr(input, "col_7", "t");
+        },
+        codec::StringRef(5, "hello"), typed_row);
+}
+
 }  // namespace codegen
 }  // namespace fesql
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
