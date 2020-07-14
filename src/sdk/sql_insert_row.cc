@@ -55,7 +55,6 @@ SQLInsertRow::SQLInsertRow(
       val_(),
       buf_(NULL) {
     for (int idx = 0; idx < table_info_->column_desc_v1_size(); idx++) {
-        auto type = ConvertType(table_info_->column_desc_v1(idx).data_type());
         if (table_info_->column_desc_v1(idx).is_ts_col()) {
             ts_set_.insert(idx);
         } else if (table_info_->column_desc_v1(idx).add_ts_idx()) {

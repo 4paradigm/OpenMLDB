@@ -11698,7 +11698,6 @@ void NameServerImpl::DropDatabase(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>> tables;
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (databases_.find(request->db()) == databases_.end()) {
@@ -11706,7 +11705,8 @@ void NameServerImpl::DropDatabase(RpcController* controller,
             response->set_msg("database not found");
             return;
         }
-        if (db_table_info_.find(request->db())->second.size() != 0) {
+        auto db_it = db_table_info_.find(request->db());
+        if (db_it != db_table_info_.end() && db_it->second.size() != 0) {
             response->set_code(::rtidb::base::ReturnCode::kDatabaseNotEmpty);
             response->set_msg("database not empty");
             return;

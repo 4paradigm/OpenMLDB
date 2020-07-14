@@ -95,7 +95,7 @@ class RowBuilder {
     bool SetDate(uint32_t index, int32_t date);
 
     void SetSchemaVersion(uint8_t version);
-    inline bool IsComplete() { return cnt_ == schema_.size(); }
+    inline bool IsComplete() { return cnt_ == (uint32_t)schema_.size(); }
     inline uint32_t GetAppendPos() { return cnt_; }
 
  private:
