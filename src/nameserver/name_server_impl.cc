@@ -96,8 +96,29 @@ void ClusterInfo::UpdateNSClient(const std::vector<std::string>& children) {
         PDLOG(WARNING, "get replica cluster leader ns failed");
         return;
     }
-    std::shared_ptr<::rtidb::client::NsClient> tmp_ptr =
-        std::make_shared<::rtidb::client::NsClient>(endpoint);
+    std::shared_ptr<::rtidb::client::NsClient> tmp_ptr;
+    if (FLAGS_use_name) {
+        std::vector<std::string> vec;
+        if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/map/names",
+                    vec) || vec.empty()) {
+            PDLOG(WARNING, "get zk failed, get remote children");
+            return;
+        }
+        auto n_iter = std::find(vec.begin(), vec.end(), endpoint);
+        if (n_iter == vec.end()) {
+            PDLOG(WARNING, "name not in names_vec");
+            return;
+        }
+        std::string value;
+        if (!zk_client_->GetNodeValue(
+                    cluster_add_.zk_path() + "/map/names/" + *n_iter, value)) {
+            PDLOG(WARNING, "get zk failed, get rep cluster names map failed");
+            return;
+        }
+        tmp_ptr = std::make_shared<::rtidb::client::NsClient>(value);
+    } else {
+        tmp_ptr = std::make_shared<::rtidb::client::NsClient>(endpoint);
+    }
     if (tmp_ptr->Init() < 0) {
         PDLOG(WARNING, "replica cluster ns client init failed");
         return;
@@ -141,7 +162,31 @@ int ClusterInfo::Init(std::string& msg) {
         PDLOG(WARNING, "get zk failed, get replica cluster leader ns failed");
         return 451;
     }
-    client_ = std::make_shared<::rtidb::client::NsClient>(endpoint);
+    if (FLAGS_use_name) {
+        std::vector<std::string> vec;
+        if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/map/names",
+                    vec) || vec.empty()) {
+            msg = "get zk failed";
+            PDLOG(WARNING, "get zk failed, get remote children");
+            return 451;
+        }
+        auto n_iter = std::find(vec.begin(), vec.end(), endpoint);
+        if (n_iter == vec.end()) {
+            msg = "name not in names_vec";
+            PDLOG(WARNING, "name not in names_vec");
+            return 451;
+        }
+        std::string value;
+        if (!zk_client_->GetNodeValue(
+                    cluster_add_.zk_path() + "/map/names/" + *n_iter, value)) {
+            msg = "get zk failed";
+            PDLOG(WARNING, "get zk failed, get rep cluster names map failed");
+            return 451;
+        }
+        client_ = std::make_shared<::rtidb::client::NsClient>(value);
+    } else {
+        client_ = std::make_shared<::rtidb::client::NsClient>(endpoint);
+    }
     if (client_->Init() < 0) {
         msg = "connect ns failed";
         PDLOG(WARNING, "connect ns failed, replica cluster ns");
@@ -1767,6 +1812,7 @@ bool NameServerImpl::Init(const std::string& real_endpoint) {
         if (!zk_client_->RegisterName()) {
             PDLOG(WARNING, "fail to RegisterName");
         }
+        real_ep_map_.insert(std::make_pair(FLAGS_endpoint, real_endpoint));
     }
     task_vec_.resize(FLAGS_name_server_task_max_concurrency +
                      FLAGS_name_server_task_concurrency_for_replica_cluster);
@@ -9705,9 +9751,36 @@ void NameServerImpl::ChangeLeader(
     for (const auto& e : change_leader_data.remote_follower()) {
         endpoint_tid.push_back(e);
     }
-    /**
-     * TODO convert follower_endpoint and endpoint_tid  to real endpoint
-     */
+    if (FLAGS_use_name) {
+        follower_endpoint.clear();
+        for (int idx = 0; idx < change_leader_data.follower_size(); idx++) {
+            const std::string& tmp_ep = change_leader_data.follower(idx);
+            auto r_iter = real_ep_map_.find(tmp_ep);
+            if (r_iter == real_ep_map_.end()) {
+                PDLOG(WARNING, "name[%s] not in real_ep_map", tmp_ep.c_str());
+                return;
+            }
+            follower_endpoint.push_back(r_iter->second);
+        }
+        /**
+         * TODO convert endpoint_tid to real endpoint
+         *
+        endpoint_tid.clear();
+        for (const auto& e : change_leader_data.remote_follower()) {
+            endpoint_tid.clear();
+            ::rtidb::common::EndpointAndTid tmp_ept;
+            tmp_ept.set_tid(e.tid());
+            std::string& tmp_ep = e.endpoint();
+            auto r_iter = real_ep_map_.find(tmp_ep);
+            if (r_iter == real_ep_map_.end()) {
+                PDLOG(WARNING, "name[%s] not in real_ep_map", tmp_ep.c_str());
+                return;
+            }
+            tmp_ept.set_endpoint(r_iter.second);
+            endpoint_tid.push_back(tmp_ept);
+        }
+        */
+    }
     if (!tablet_ptr->client_->ChangeRole(
             change_leader_data.tid(), change_leader_data.pid(), true,
             follower_endpoint, cur_term, &endpoint_tid)) {
