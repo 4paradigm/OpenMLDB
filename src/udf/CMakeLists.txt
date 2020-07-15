@@ -15,4 +15,9 @@ target_link_libraries(udf_registry_test gtest fesql_udf fesql_case ${yaml_libs} 
 add_test(udf_registry_test udf_registry_test --gtest_output=xml:${CMAKE_BINARY_DIR}/udf_registry_test.xml)
 list(APPEND test_list udf_registry_test)
 
+add_executable(udf_library_test udf_library_test.cc)
+target_link_libraries(udf_library_test gtest fesql_udf fesql_case ${yaml_libs} boost_filesystem ${VM_LIBS} fesql_vm ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
+add_test(udf_library_test udf_library_test --gtest_output=xml:${CMAKE_BINARY_DIR}/udf_library_test.xml)
+list(APPEND test_list udf_library_test)
+
 endif()
