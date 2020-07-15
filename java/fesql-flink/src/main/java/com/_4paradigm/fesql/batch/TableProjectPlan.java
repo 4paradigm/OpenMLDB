@@ -1,8 +1,6 @@
 package com._4paradigm.fesql.batch;
 
-import com._4paradigm.fesql.common.FesqlFlinkCodec;
-import com._4paradigm.fesql.common.FesqlUtil;
-import com._4paradigm.fesql.common.JITManager;
+import com._4paradigm.fesql.common.*;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.CoreAPI;
 import com._4paradigm.fesql.vm.FeSQLJITWrapper;
@@ -37,7 +35,7 @@ public class TableProjectPlan {
         RowTypeInfo finalOutputTypeInfo = null;
         try {
             finalOutputTypeInfo = FesqlUtil.generateRowTypeInfo(finalOutputSchema);
-        } catch (FeSQLException e) {
+        } catch (FesqlException e) {
             e.printStackTrace();
             logger.error("Fail to generate Flink row type info, error message: " + e.getMessage());
         }

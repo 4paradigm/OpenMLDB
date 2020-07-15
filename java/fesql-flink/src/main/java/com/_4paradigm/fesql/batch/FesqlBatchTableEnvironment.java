@@ -1,9 +1,8 @@
 package com._4paradigm.fesql.batch;
 
+import com._4paradigm.fesql.common.FesqlException;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.DataSet;
-import org.apache.flink.formats.parquet.ParquetTableSource;
-import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.bridge.java.BatchTableEnvironment;
 import org.apache.flink.table.expressions.Expression;
@@ -28,15 +27,15 @@ public class FesqlBatchTableEnvironment {
         this.batchTableEnvironment = batchTableEnvironment;
     }
 
-    BatchTableEnvironment getBatchTableEnvironment() {
+    public BatchTableEnvironment getBatchTableEnvironment() {
         return this.batchTableEnvironment;
     }
 
-    Map<String, TableSchema> getRegisteredTableSchemaMap() {
+    public Map<String, TableSchema> getRegisteredTableSchemaMap() {
         return this.registeredTableSchemaMap;
     }
 
-    void registerTableSource(String name, TableSource<?> tableSource) {
+    public void registerTableSource(String name, TableSource<?> tableSource) {
         this.batchTableEnvironment.registerTableSource(name, tableSource);
 
         // Register table name and schema
@@ -47,15 +46,15 @@ public class FesqlBatchTableEnvironment {
         }
     }
 
-    void registerTableSink(String name, String[] fieldNames, TypeInformation<?>[] fieldTypes, TableSink<?> tableSink) {
+    public void registerTableSink(String name, String[] fieldNames, TypeInformation<?>[] fieldTypes, TableSink<?> tableSink) {
         this.batchTableEnvironment.registerTableSink(name, fieldNames, fieldTypes, tableSink);
     }
 
-    void registerTableSink(String name, TableSink<?> configuredSink) {
+    public void registerTableSink(String name, TableSink<?> configuredSink) {
         this.batchTableEnvironment.registerTableSink(name, configuredSink);
     }
 
-    FesqlTable sqlQuery(String query) {
+    public FesqlTable sqlQuery(String query) {
         String isDisableFesql = System.getenv("DISABLE_FESQL");
         if (isDisableFesql != null && isDisableFesql.trim().toLowerCase().equals("true")) {
             return flinksqlQuery(query);
@@ -64,7 +63,7 @@ public class FesqlBatchTableEnvironment {
         }
     }
 
-    FesqlTable fesqlQuery(String query) {
+    public FesqlTable fesqlQuery(String query) {
         // Normalize SQL format
         if (!query.trim().endsWith(";")) {
             query = query.trim() + ";";
@@ -74,7 +73,7 @@ public class FesqlBatchTableEnvironment {
 
         try {
             return new FesqlTable(planner.plan(query));
-        } catch (FeSQLException e) {
+        } catch (FesqlException e) {
             e.printStackTrace();
             logger.error(String.format("Fail to run FESQL planner, error message: %s", e.getMessage()));
             return null;
@@ -82,27 +81,27 @@ public class FesqlBatchTableEnvironment {
 
     }
 
-    FesqlTable flinksqlQuery(String query) {
+    public FesqlTable flinksqlQuery(String query) {
         return new FesqlTable(this.batchTableEnvironment.sqlQuery(query));
     }
 
-    FesqlTable fromDataSet(DataSet<Row> dataSet) {
+    public FesqlTable fromDataSet(DataSet<Row> dataSet) {
         return new FesqlTable(this.batchTableEnvironment.fromDataSet(dataSet));
     }
 
-    FesqlTable fromDataSet(DataSet<Row> dataSet, String fields) {
+    public FesqlTable fromDataSet(DataSet<Row> dataSet, String fields) {
         return new FesqlTable(this.batchTableEnvironment.fromDataSet(dataSet, fields));
     }
 
-    FesqlTable fromDataSet(DataSet<Row> dataSet, Expression... fields) {
+    public FesqlTable fromDataSet(DataSet<Row> dataSet, Expression... fields) {
         return new FesqlTable(this.batchTableEnvironment.fromDataSet(dataSet, fields));
     }
 
-    <T> DataSet<T> toDataSet(FesqlTable table, Class<T> clazz) {
+    public <T> DataSet<T> toDataSet(FesqlTable table, Class<T> clazz) {
         return this.batchTableEnvironment.toDataSet(table.getTable(), clazz);
     }
 
-    <T> DataSet<T> toDataSet(FesqlTable table, TypeInformation<T> typeInfo) {
+    public <T> DataSet<T> toDataSet(FesqlTable table, TypeInformation<T> typeInfo) {
         return this.batchTableEnvironment.toDataSet(table.getTable(), typeInfo);
     }
 

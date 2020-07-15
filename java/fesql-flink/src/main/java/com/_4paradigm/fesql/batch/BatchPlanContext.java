@@ -1,5 +1,6 @@
 package com._4paradigm.fesql.batch;
 
+import com._4paradigm.fesql.common.SerializableByteBuffer;
 import org.apache.flink.table.api.bridge.java.BatchTableEnvironment;
 
 import java.nio.ByteBuffer;

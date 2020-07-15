@@ -1,6 +1,7 @@
 package com._4paradigm.fesql.batch;
 
 import com._4paradigm.fesql.FeSqlLibrary;
+import com._4paradigm.fesql.common.FesqlException;
 import com._4paradigm.fesql.common.FesqlUtil;
 import com._4paradigm.fesql.common.SQLEngine;
 import com._4paradigm.fesql.type.TypeOuterClass;
@@ -34,7 +35,7 @@ public class FesqlBatchPlanner {
         this.tableSchemaMap = env.getRegisteredTableSchemaMap();
     }
 
-    public Table plan(String sqlQuery) throws FeSQLException {
+    public Table plan(String sqlQuery) throws FesqlException {
 
         TypeOuterClass.Database fesqlDatabase = FesqlUtil.buildDatabase("flink_db", this.tableSchemaMap);
         SQLEngine engine = new SQLEngine(sqlQuery, fesqlDatabase);
@@ -49,14 +50,14 @@ public class FesqlBatchPlanner {
         try {
             engine.close();
         } catch (Exception e) {
-            throw new FeSQLException(String.format("Fail to close engine, error message: %s", e.getMessage()));
+            throw new FesqlException(String.format("Fail to close engine, error message: %s", e.getMessage()));
         }
 
         return table;
 
     }
 
-    public Table visitPhysicalNode(BatchPlanContext batchPlanContext, PhysicalOpNode node) throws FeSQLException {
+    public Table visitPhysicalNode(BatchPlanContext batchPlanContext, PhysicalOpNode node) throws FesqlException {
 
         List<Table> children = new ArrayList<Table>();
         for (int i=0; i < node.GetProducerCnt(); ++i) {
@@ -80,10 +81,10 @@ public class FesqlBatchPlanner {
                 PhysicalTableProjectNode physicalTableProjectNode = PhysicalTableProjectNode.CastFrom(projectNode);
                 outputTable = TableProjectPlan.gen(batchPlanContext, physicalTableProjectNode, children.get(0));
             } else {
-                throw new FeSQLException(String.format("Planner does not support project type %s", projectType));
+                throw new FesqlException(String.format("Planner does not support project type %s", projectType));
             }
         } else {
-            throw new FeSQLException(String.format("Planner does not support physical op %s", node));
+            throw new FesqlException(String.format("Planner does not support physical op %s", node));
         }
 
         return outputTable;

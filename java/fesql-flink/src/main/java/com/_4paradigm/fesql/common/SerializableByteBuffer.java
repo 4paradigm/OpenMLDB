@@ -1,4 +1,4 @@
-package com._4paradigm.fesql.batch;
+package com._4paradigm.fesql.common;
 
 import java.io.DataInputStream;
 import java.io.IOException;

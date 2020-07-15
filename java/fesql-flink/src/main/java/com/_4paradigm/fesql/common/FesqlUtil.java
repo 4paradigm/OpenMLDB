@@ -1,11 +1,9 @@
 package com._4paradigm.fesql.common;
 
-import java.sql.Date;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import com._4paradigm.fesql.batch.FeSQLException;
+import com._4paradigm.fesql.common.FesqlException;
 import com._4paradigm.fesql.vm.PhysicalOpNode;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -25,7 +23,7 @@ public class FesqlUtil {
     /**
      * Build FESQL datatype with Flink datatype.
      */
-    public static Type getFesqlType(DataType flinkDataType) throws FeSQLException {
+    public static Type getFesqlType(DataType flinkDataType) throws FesqlException {
         LogicalType logicalType = flinkDataType.getLogicalType();
         if (logicalType instanceof IntType) {
             // Notice that no short or long in flink logical type
@@ -41,14 +39,14 @@ public class FesqlUtil {
         } else if (logicalType instanceof TimestampType) {
             return Type.kTimestamp;
         } else {
-            throw new FeSQLException(String.format("Do not support Flink datatype %s", flinkDataType));
+            throw new FesqlException(String.format("Do not support Flink datatype %s", flinkDataType));
         }
     }
 
     /**
      * Build FESQL table def with Flink table schema.
      */
-    public static TypeOuterClass.TableDef buildTableDef(String tableName, TableSchema tableSchema) throws FeSQLException {
+    public static TypeOuterClass.TableDef buildTableDef(String tableName, TableSchema tableSchema) throws FesqlException {
 
         TypeOuterClass.TableDef.Builder tableBuilder = TypeOuterClass.TableDef.newBuilder();
         tableBuilder.setName(tableName);
@@ -68,7 +66,7 @@ public class FesqlUtil {
     /**
      * Build FESQL database with map of table name and schema.
      */
-    public static TypeOuterClass.Database buildDatabase(String dbName, Map<String, TableSchema> tableSchemaMap) throws FeSQLException {
+    public static TypeOuterClass.Database buildDatabase(String dbName, Map<String, TableSchema> tableSchemaMap) throws FesqlException {
 
         TypeOuterClass.Database.Builder builder = TypeOuterClass.Database.newBuilder();
         builder.setName(dbName);
@@ -111,7 +109,7 @@ public class FesqlUtil {
     }
 
 
-    public static RowTypeInfo generateRowTypeInfo(List<TypeOuterClass.ColumnDef> columnDefs) throws FeSQLException {
+    public static RowTypeInfo generateRowTypeInfo(List<TypeOuterClass.ColumnDef> columnDefs) throws FesqlException {
         int fieldNum = columnDefs.size();
         TypeInformation<?>[] fieldTypes = new TypeInformation<?>[fieldNum];
 
@@ -138,7 +136,7 @@ public class FesqlUtil {
             } else if (columnType == kDate) {
                 fieldTypes[i] = Types.SQL_DATE;
             } else {
-                throw new FeSQLException(String.format("Fail to convert row type info with %s", columnType));
+                throw new FesqlException(String.format("Fail to convert row type info with %s", columnType));
             }
 
         }
