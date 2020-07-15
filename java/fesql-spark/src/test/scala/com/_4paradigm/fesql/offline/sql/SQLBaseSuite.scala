@@ -105,10 +105,10 @@ class SQLBaseSuite extends SparkTestSuite {
   }
 
   def checkOutput(data: DataFrame, expect: ExpectDesc): Unit = {
-    val expectSchema = if (expect.getSchema != null) parseSchema(expect.getSchema) else parseSchema(expect.getColumns)
+    val expectSchema = parseSchema(expect.getColumns())
     assert(data.schema == expectSchema)
 
-    val expectData = (if (expect.getData != null) parseData(expect.getData, expectSchema) else parseData(expect.getRows, expectSchema))
+    val expectData = parseData(expect.getRows, expectSchema)
       .zipWithIndex.sortBy(_._1.mkString(","))
 
     val actualData = data.collect().map(_.toSeq.toArray)
@@ -178,8 +178,8 @@ class SQLBaseSuite extends SparkTestSuite {
       val (_, df) = loadTable(inputDesc.getResource)
       name -> df
     } else {
-      val schema = if (inputDesc.getSchema != null) parseSchema(inputDesc.getSchema) else parseSchema(inputDesc.getColumns)
-      val data = (if (inputDesc.getData != null) parseData(inputDesc.getData, schema) else parseData(inputDesc.getRows, schema))
+      val schema = parseSchema(inputDesc.getColumns)
+      val data = parseData(inputDesc.getRows, schema)
         .map(arr => Row.fromSeq(arr)).toList.asJava
       val df = sess.createDataFrame(data, schema)
       name -> df
@@ -190,18 +190,12 @@ class SQLBaseSuite extends SparkTestSuite {
     val absPath = if (path.startsWith("/")) path else rootDir.getAbsolutePath + "/" + path
     val caseFile = loadYaml[TableFile](absPath)
     val tbl = caseFile.getTable
-    val schema = if (tbl.getSchema != null) parseSchema(tbl.getSchema) else parseSchema(tbl.getColumns)
-    val data = parseData(tbl.getData, schema)
+    val schema = parseSchema(tbl.getColumns)
+    val data = parseData(tbl.getRows, schema)
       .map(arr => Row.fromSeq(arr)).toList.asJava
     val df = getSparkSession.createDataFrame(data, schema)
     tbl.getName -> df
   }
-
-  def parseSchema(schema: String): StructType = {
-    val parts = schema.split(",").map(_.trim).filter(_ != "").map(_.split(":"))
-    parseSchema(parts);
-  }
-
   def parseSchema(columns: java.util.List[String]): StructType = {
 
     val parts = columns.toArray.map(_.toString()).map(_.trim).filter(_ != "").map(_.reverse.replaceFirst(" ", ":").reverse.split(":"))
@@ -235,12 +229,6 @@ class SQLBaseSuite extends SparkTestSuite {
     })
     StructType(fields)
   }
-
-  def parseData(data: String, schema: StructType): Array[Array[Any]] = {
-    val rows = data.split("\n").map(_.trim).filter(_ != "").map(_.split(",").map(_.trim))
-    parseData(rows, schema)
-  }
-
   def parseData(rows: java.util.List[java.util.List[String]], schema: StructType): Array[Array[Any]] = {
 
     val data = rows.asScala.map(_.asInstanceOf[java.util.List[Object]].asScala.map(x => if (null == x) "null" else x.toString()).toArray).toArray

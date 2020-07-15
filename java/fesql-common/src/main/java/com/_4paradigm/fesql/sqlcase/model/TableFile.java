@@ -8,6 +8,5 @@ import lombok.ToString;
 @Setter
 @ToString
 public class TableFile {
-
     Table table;
 }

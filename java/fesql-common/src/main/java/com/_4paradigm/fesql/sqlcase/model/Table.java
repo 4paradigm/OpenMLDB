@@ -12,7 +12,7 @@ import java.util.List;
 
 @Data
 public class Table {
-    String name = "auto_" + RandomStringUtils.randomAlphabetic(8);
+    String name = genAutoName();
     String index;
     String schema;
     String data;
@@ -21,6 +21,10 @@ public class Table {
     List<List<String>> rows;
     String create;
     String insert;
+
+    public static String genAutoName() {
+        return "auto_" + RandomStringUtils.randomAlphabetic(8);
+    }
 
     public String getCreate() {
         if (!StringUtils.isEmpty(create)) {
@@ -46,17 +50,19 @@ public class Table {
             return Collections.emptyList();
         }
 
-        List<String> parserd_indexs= new ArrayList<>();
+        List<String> parserd_indexs = new ArrayList<>();
 
         for (String index : index.trim().split(",|\n")) {
             parserd_indexs.add(index.trim());
         }
         return parserd_indexs;
     }
+
     /**
      * Return columns list.
      * if columns is empty,  convert schema to columns:
      * <code>col_name:col_type to columns</code>
+     *
      * @return ["col_name col_type", ...]
      */
     public List<String> getColumns() {
@@ -81,10 +87,10 @@ public class Table {
      * convert data string to rows if rows is empty
      *
      * @return [
-     *  [value, value, ...],
-     *  [value, value, ...],
-     *  [value, value, ...],
-     *  ...]
+     * [value, value, ...],
+     * [value, value, ...],
+     * [value, value, ...],
+     * ...]
      */
     public List<List<String>> getRows() {
         if (!CollectionUtils.isEmpty(rows)) {
@@ -171,6 +177,7 @@ public class Table {
         }
         return splits[0];
     }
+
     public List<String> getIndexKeys(String index) {
         String[] splits = index.trim().split(":");
         if (splits.length < 2) {
@@ -178,6 +185,7 @@ public class Table {
         }
         return Lists.newArrayList(splits[1].trim().split("|"));
     }
+
     public String getIndexTsCol(String index) {
         String[] splits = index.trim().split(":");
         if (splits.length < 3) {
@@ -185,10 +193,12 @@ public class Table {
         }
         return splits[2];
     }
+
     public String getColumnName(String column) {
         int pos = column.trim().lastIndexOf(' ');
         return column.trim().substring(0, pos);
     }
+
     public String getColumnType(String column) {
         int pos = column.trim().lastIndexOf(' ');
         return column.trim().substring(pos);
