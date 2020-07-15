@@ -35,8 +35,45 @@ if(SQL_PYSDK_ENABLE)
                SUFFIX ".so")
       set_property(TARGET sql_pysdk APPEND PROPERTY
         LINK_FLAGS "-flat_namespace -undefined suppress")
-    endif()
-	add_custom_command(OUTPUT
+        add_custom_command(OUTPUT
+		setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "from setuptools import find_packages, setup" > setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.dist import Distribution" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "class BinaryDistribution(Distribution):" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  def is_pure(self):" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "    return False" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  def has_ext_modules(self):" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "    return True" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.command.install import install" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "class InstallPlatlib(install):" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "    def finalize_options(self):" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "        install.finalize_options(self)" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "        self.install_lib=self.install_platlib" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "setup(" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  name='fedb'," >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  version='${RTIDB_VERSION_MAJOR}.${RTIDB_VERSION_MEDIUM}.${RTIDB_VERSION_MINOR}.${RTIDB_VERSION_BUG}'," >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  author='4pd'," >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  url='4paradigm.com'," >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  distclass=BinaryDistribution," >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  cmdclass={'install': InstallPlatlib}," >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  packages=find_packages()," >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  package_data={" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  'fedb':['$<TARGET_FILE_NAME:sql_pysdk>']," >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  }," >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
+        COMMAND ${CMAKE_COMMAND} -E echo "  'Operating System :: MacOS'," >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  'Programming Language :: Python'" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  ]," >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo ")" >> setup.py
+		COMMENT "Generate setup.py at build time (to use generator expression)"
+		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
+		VERBATIM)
+    else()
+        add_custom_command(OUTPUT
 		setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "from setuptools import find_packages, setup" > setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "from setuptools.dist import Distribution" >> setup.py
@@ -67,15 +104,14 @@ if(SQL_PYSDK_ENABLE)
 		COMMAND ${CMAKE_COMMAND} -E echo "  include_package_data=True," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  classifiers=[" >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  'Operating System :: POSIX :: Linux'," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  'Operating System :: MacOS :: MacOS X'," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  'Programming Language :: Python'," >> setup.py
-		COMMAND ${CMAKE_COMMAND} -E echo "  'Programming Language :: C++'" >> setup.py
+		COMMAND ${CMAKE_COMMAND} -E echo "  'Programming Language :: Python'" >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo "  ]," >> setup.py
 		COMMAND ${CMAKE_COMMAND} -E echo ")" >> setup.py
 		COMMENT "Generate setup.py at build time (to use generator expression)"
 		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
 		VERBATIM)
-
+    endif()
+	
 	# Find if python module MODULE_NAME is available,
 	# if not install it to the Python user install directory.
 	function(search_python_module MODULE_NAME)
