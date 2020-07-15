@@ -54,11 +54,12 @@ SQLInsertRow::SQLInsertRow(
       rb_(table_info->column_desc_v1()),
       val_() {
     std::map<std::string, uint32_t> column_name_map;
+    uint32_t index_cnt = 0;
     for (int idx = 0; idx < table_info_->column_desc_v1_size(); idx++) {
         if (table_info_->column_desc_v1(idx).is_ts_col()) {
             ts_set_.insert(idx);
         } else if (table_info_->column_desc_v1(idx).add_ts_idx()) {
-            index_map_[idx].push_back(idx);
+            index_map_[index_cnt++].push_back(idx);
         }
         column_name_map.insert(
             std::make_pair(table_info_->column_desc_v1(idx).name(), idx));
@@ -67,7 +68,7 @@ SQLInsertRow::SQLInsertRow(
         index_map_.clear();
         for (int idx = 0; idx < table_info_->column_key_size(); ++idx) {
             for (const auto& column : table_info_->column_key(idx).col_name()) {
-                index_map_[column_name_map[column]].push_back(idx);
+                index_map_[idx].push_back(column_name_map[column]);
             }
         }
     }
@@ -143,7 +144,7 @@ bool SQLInsertRow::MakeDefault() {
             case rtidb::type::kDate:
                 return AppendDate(it->second->GetInt());
             case rtidb::type::kTimestamp:
-                return AppendInt64(it->second->GetLong());
+                return AppendTimestamp(it->second->GetLong());
             case rtidb::type::kVarchar:
             case rtidb::type::kString:
                 return AppendString(it->second->GetStr());

@@ -124,17 +124,6 @@ class SQLClusterRouter : public SQLRouter {
     void SetCache(const std::string& db, const std::string& sql,
                   std::shared_ptr<RouterCache> router_cache);
 
-    bool EncodeFormat(const catalog::RtiDBSchema& schema,
-                      const ::fesql::node::InsertPlanNode* plan,
-                      std::string* value,
-                      std::vector<std::pair<std::string, uint32_t>>* dimensions,
-                      std::vector<uint64_t>* ts_dimensions);
-    bool EncodeFullColumns(
-        const catalog::RtiDBSchema& schema,
-        const ::fesql::node::InsertPlanNode* plan, std::string* value,
-        std::vector<std::pair<std::string, uint32_t>>* dimensions,
-        std::vector<uint64_t>* ts_dimensions);
-
     bool GetSQLPlan(const std::string& sql, ::fesql::node::NodeManager* nm,
                     ::fesql::node::PlanNodeList* plan);
 
