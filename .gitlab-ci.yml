@@ -80,7 +80,7 @@ java_ut:
               - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
 
 fesql_auto_test:
-  stage: test
+  stage: test-todo
   before_script:
       - mkdir /rambuild
   script:
