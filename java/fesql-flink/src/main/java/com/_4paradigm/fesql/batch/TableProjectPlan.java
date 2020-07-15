@@ -20,7 +20,7 @@ public class TableProjectPlan {
 
     private static final Logger logger = LoggerFactory.getLogger(TableProjectPlan.class);
 
-    public static Table gen(BatchPlanContext batchPlanContext, PhysicalTableProjectNode node, Table childTable) {
+    public static Table gen(BatchPlanContext batchPlanContext, PhysicalTableProjectNode node, Table childTable) throws FesqlException {
 
         DataSet<Row> inputDataset = batchPlanContext.getBatchTableEnvironment().toDataSet(childTable, Row.class);
 
@@ -32,20 +32,14 @@ public class TableProjectPlan {
         List<List<TypeOuterClass.ColumnDef>> inputSchemaLists = FesqlUtil.getNodeOutputColumnLists(node.GetProducer(0));
         List<List<TypeOuterClass.ColumnDef>> outputSchemaLists = FesqlUtil.getNodeOutputColumnLists(node);
         List<TypeOuterClass.ColumnDef> finalOutputSchema = FesqlUtil.getMergedNodeOutputColumnList(node);
-        RowTypeInfo finalOutputTypeInfo = null;
-        try {
-            finalOutputTypeInfo = FesqlUtil.generateRowTypeInfo(finalOutputSchema);
-        } catch (FesqlException e) {
-            e.printStackTrace();
-            logger.error("Fail to generate Flink row type info, error message: " + e.getMessage());
-        }
+        RowTypeInfo finalOutputTypeInfo = FesqlUtil.generateRowTypeInfo(finalOutputSchema);
 
         DataSet<Row> outputDataset = inputDataset.map(new MapFunction<Row, Row>() {
             @Override
             public Row map(Row row) throws Exception {
                 // Init in executors with serializable objects
-                ByteBuffer moduleBroadcast = moduleBuffer.getBuffer();
-                JITManager.initJITModule(moduleTag, moduleBroadcast);
+                ByteBuffer moduleByteBuffer = moduleBuffer.getBuffer();
+                JITManager.initJITModule(moduleTag, moduleByteBuffer);
                 FeSQLJITWrapper jit = JITManager.getJIT(moduleTag);
                 long functionPointer = jit.FindFunction(functionName);
                 FesqlFlinkCodec inputCodec = new FesqlFlinkCodec(inputSchemaLists);

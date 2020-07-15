@@ -69,6 +69,8 @@ public class FesqlBatchTableEnvironment {
                     // Fallback to FlinkSQL
                     logger.warn("Fail to execute with FESQL, fallback to FlinkSQL");
                     return flinksqlQuery(query);
+                } else {
+                    logger.error("Fail to execute with FESQL, error message: " + e.getMessage());
                 }
             }
         }
@@ -80,7 +82,8 @@ public class FesqlBatchTableEnvironment {
             return runFesqlQuery(query);
         } catch (Exception e) {
             logger.warn("Fail to execute with FESQL, error message: " + e.getMessage());
-            return flinksqlQuery(query);
+            e.printStackTrace();
+            return null;
         }
     }
 
