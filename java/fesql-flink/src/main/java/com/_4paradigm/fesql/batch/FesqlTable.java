@@ -11,6 +11,10 @@ public class FesqlTable {
         this.table = table;
     }
 
+    public Table getTable() {
+        return this.table;
+    }
+
     public TableSchema getSchema() {
         return this.table.getSchema();
     }

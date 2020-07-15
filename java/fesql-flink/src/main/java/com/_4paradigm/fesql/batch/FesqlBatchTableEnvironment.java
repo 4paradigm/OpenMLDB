@@ -91,4 +91,12 @@ public class FesqlBatchTableEnvironment {
         return new FesqlTable(this.batchTableEnvironment.fromDataSet(dataSet, fields));
     }
 
+    <T> DataSet<T> toDataSet(FesqlTable table, Class<T> clazz) {
+        return this.batchTableEnvironment.toDataSet(table.getTable(), clazz);
+    }
+
+    <T> DataSet<T> toDataSet(FesqlTable table, TypeInformation<T> typeInfo) {
+        return this.batchTableEnvironment.toDataSet(table.getTable(), typeInfo);
+    }
+
 }
