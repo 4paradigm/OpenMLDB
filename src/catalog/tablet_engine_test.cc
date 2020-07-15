@@ -586,9 +586,9 @@ void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
               case_output_data);
 }
 
-INSTANTIATE_TEST_CASE_P(
-    EngineBugQuery, TabletEngineTest,
-    testing::ValuesIn(InitCases("/cases/query/bug_query.yaml")));
+//INSTANTIATE_TEST_CASE_P(
+//    EngineBugQuery, TabletEngineTest,
+//    testing::ValuesIn(InitCases("/cases/query/bug_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineSimpleQuery, TabletEngineTest,
     testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
