@@ -17,7 +17,7 @@ import java.util.Map;
 
 public class FesqlBatchTableEnvironment {
 
-    private Logger logger = LoggerFactory.getLogger(FesqlBatchTableEnvironment.class);
+    private static final Logger logger = LoggerFactory.getLogger(FesqlBatchTableEnvironment.class);
 
     private BatchTableEnvironment batchTableEnvironment;
 

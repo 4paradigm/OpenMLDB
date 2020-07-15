@@ -18,7 +18,7 @@ import java.util.List;
 
 public class TableProjectPlan {
 
-    private static Logger logger = LoggerFactory.getLogger(TableProjectPlan.class);
+    private static final Logger logger = LoggerFactory.getLogger(TableProjectPlan.class);
 
     public static Table gen(BatchPlanContext batchPlanContext, PhysicalTableProjectNode node, Table childTable) {
 

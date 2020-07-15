@@ -18,7 +18,7 @@ import java.util.Map;
 
 public class FesqlBatchPlanner {
 
-    private Logger logger = LoggerFactory.getLogger(FesqlBatchPlanner.class);
+    private static final Logger logger = LoggerFactory.getLogger(FesqlBatchPlanner.class);
 
     {
         // Ensure native initialized
