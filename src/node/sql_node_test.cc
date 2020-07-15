@@ -69,7 +69,7 @@ TEST_F(SqlNodeTest, MakeGetFieldExprTest) {
     ASSERT_EQ(kExprGetField, node->GetExprType());
     ASSERT_EQ("t", node->GetRelationName());
     ASSERT_EQ("col", node->GetColumnName());
-    ASSERT_EQ(kExprId, node->row()->GetExprType());
+    ASSERT_EQ(kExprId, node->GetRow()->GetExprType());
 }
 
 TEST_F(SqlNodeTest, MakeConstNodeStringTest) {

@@ -923,7 +923,7 @@ Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
     auto int32_ty = llvm::Type::getInt32Ty(llvm_ctx);
 
     auto row_type =
-        dynamic_cast<const node::RowTypeNode*>(node->row()->GetOutputType());
+        dynamic_cast<const node::RowTypeNode*>(node->GetRow()->GetOutputType());
     CHECK_TRUE(row_type != nullptr, "Get field's input is not row");
     vm::SchemasContext schemas_context(row_type->schema_source());
 
@@ -935,7 +935,7 @@ Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
     ::llvm::IRBuilder<> builder(block_);
     Status status;
     NativeValue input_row;
-    CHECK_TRUE(this->Build(node->row(), &input_row, status), status.msg);
+    CHECK_TRUE(this->Build(node->GetRow(), &input_row, status), status.msg);
     auto row_ptr = input_row.GetValue(&builder);
 
     auto slice_idx = builder.getInt64(schema_info->idx_);

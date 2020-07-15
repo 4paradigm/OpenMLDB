@@ -1313,7 +1313,7 @@ class GetFieldExpr : public ExprNode {
 
     std::string GetRelationName() const { return relation_name_; }
     std::string GetColumnName() const { return column_name_; }
-    ExprNode *row() const { return GetChild(0); }
+    ExprNode *GetRow() const { return GetChild(0); }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;

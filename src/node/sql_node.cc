@@ -385,7 +385,7 @@ bool GetFieldExpr::Equals(const ExprNode *node) const {
         return false;
     }
     auto that = dynamic_cast<const GetFieldExpr *>(node);
-    return this->row()->Equals(that->row()) &&
+    return this->GetRow()->Equals(that->GetRow()) &&
            this->relation_name_ == that->relation_name_ &&
            this->column_name_ == that->column_name_ && ExprNode::Equals(node);
 }

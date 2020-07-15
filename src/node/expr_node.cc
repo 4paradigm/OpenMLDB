@@ -65,7 +65,7 @@ Status CastExprNode::InferAttr(ExprAnalysisContext* ctx) {
 }
 
 Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
-    auto row_type = dynamic_cast<const RowTypeNode*>(row()->GetOutputType());
+    auto row_type = dynamic_cast<const RowTypeNode*>(GetRow()->GetOutputType());
     CHECK_TRUE(row_type != nullptr, "Get field's input is not row");
     vm::SchemasContext schemas_context(row_type->schema_source());
 
