@@ -251,6 +251,15 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             return BuildStructExpr((fesql::node::StructExpr*)node, output,
                                    status);
         }
+        case ::fesql::node::kExprGetField: {
+            status = BuildGetFieldExpr(
+                dynamic_cast<const ::fesql::node::GetFieldExpr*>(node), output);
+            if (!status.isOK()) {
+                LOG(WARNING) << "Build get field failed: " << status.msg;
+                return false;
+            }
+            return true;
+        }
         default: {
             LOG(WARNING) << "Expression Type "
                          << node::ExprTypeName(node->GetExprType())
@@ -905,6 +914,49 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
     *output = NativeValue::Create(raw);
     return true;
 }
+
+Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
+                                        NativeValue* output) {
+    auto& llvm_ctx = module_->getContext();
+    auto ptr_ty = llvm::Type::getInt8Ty(llvm_ctx)->getPointerTo();
+    auto int64_ty = llvm::Type::getInt64Ty(llvm_ctx);
+    auto int32_ty = llvm::Type::getInt32Ty(llvm_ctx);
+
+    auto row_type =
+        dynamic_cast<const node::RowTypeNode*>(node->GetRow()->GetOutputType());
+    CHECK_TRUE(row_type != nullptr, "Get field's input is not row");
+    vm::SchemasContext schemas_context(row_type->schema_source());
+
+    const vm::RowSchemaInfo* schema_info = nullptr;
+    bool ok = schemas_context.ColumnRefResolved(
+        node->GetRelationName(), node->GetColumnName(), &schema_info);
+    CHECK_TRUE(ok, "Fail to resolve column ", node->GetExprString(), row_type);
+
+    ::llvm::IRBuilder<> builder(block_);
+    Status status;
+    NativeValue input_row;
+    CHECK_TRUE(this->Build(node->GetRow(), &input_row, status), status.msg);
+    auto row_ptr = input_row.GetValue(&builder);
+
+    auto slice_idx = builder.getInt64(schema_info->idx_);
+    auto get_slice_func = module_->getOrInsertFunction(
+        "fesql_storage_get_row_slice",
+        ::llvm::FunctionType::get(ptr_ty, {ptr_ty, int64_ty}, false));
+    auto get_slice_size_func = module_->getOrInsertFunction(
+        "fesql_storage_get_row_slice_size",
+        ::llvm::FunctionType::get(int64_ty, {ptr_ty, int64_ty}, false));
+    ::llvm::Value* slice_ptr =
+        builder.CreateCall(get_slice_func, {row_ptr, slice_idx});
+    ::llvm::Value* slice_size = builder.CreateIntCast(
+        builder.CreateCall(get_slice_size_func, {row_ptr, slice_idx}), int32_ty,
+        false);
+
+    BufNativeIRBuilder buf_builder(*schema_info->schema_, block_, sv_);
+    CHECK_TRUE(buf_builder.BuildGetField(node->GetColumnName(), slice_ptr,
+                                         slice_size, output));
+    return Status::OK();
+}
+
 bool ExprIRBuilder::IsUADF(std::string function_name) {
     if (module_->getFunctionList().empty()) {
         return false;

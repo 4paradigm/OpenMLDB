@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "base/fe_status.h"
+#include "codec/fe_row_codec.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 
@@ -269,6 +270,41 @@ const std::string LiteralToArgTypesSignature() {
     }
     return ss.str();
 }
+
+template <typename... LiteralArgTypes>
+codec::Schema MakeLiteralSchema() {
+    codec::Schema schema;
+    std::vector<int32_t> types = {
+        DataTypeTrait<LiteralArgTypes>::codec_type_enum()...};
+    for (size_t i = 0; i < types.size(); ++i) {
+        ::fesql::type::ColumnDef* col = schema.Add();
+        col->set_name("col_" + std::to_string(i));
+        col->set_type(static_cast<::fesql::type::Type>(types[i]));
+    }
+    return schema;
+}
+
+template <typename... LiteralArgTypes>
+struct LiteralTypedRow {
+    int8_t* row_ptr;
+    explicit LiteralTypedRow(int8_t* row_ptr) : row_ptr(row_ptr) {}
+    explicit LiteralTypedRow(const codec::Row& row)
+        : row_ptr(reinterpret_cast<int8_t*>(const_cast<codec::Row*>(&row))) {}
+};
+
+template <typename... LiteralArgTypes>
+struct DataTypeTrait<LiteralTypedRow<LiteralArgTypes...>> {
+    static std::string to_string() { return "row"; }
+    static codec::Schema schema;
+    static node::DataType to_type_enum() { return node::kRow; }
+    static node::TypeNode* to_type_node(node::NodeManager* nm) {
+        return nm->MakeRowType("t", &schema);
+    }
+};
+
+template <typename... LiteralArgTypes>
+codec::Schema DataTypeTrait<LiteralTypedRow<LiteralArgTypes...>>::schema =
+    MakeLiteralSchema<LiteralArgTypes...>();
 
 }  // namespace udf
 }  // namespace fesql

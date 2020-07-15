@@ -345,6 +345,12 @@ ExprNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
     return RegisterNode(node_ptr);
 }
 
+GetFieldExpr *NodeManager::MakeGetFieldExpr(ExprNode *input,
+                                            const std::string &column_name,
+                                            const std::string &relation_name) {
+    return RegisterNode(new GetFieldExpr(input, column_name, relation_name));
+}
+
 ExprNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
                                          const std::string &relation_name) {
     return MakeColumnRefNode(column_name, relation_name, "");
@@ -869,6 +875,16 @@ TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
 }
 OpaqueTypeNode *NodeManager::MakeOpaqueType(size_t bytes) {
     return RegisterNode(new OpaqueTypeNode(bytes));
+}
+RowTypeNode *NodeManager::MakeRowType(
+    const vm::SchemaSourceList &schema_source) {
+    return RegisterNode(new RowTypeNode(schema_source));
+}
+RowTypeNode *NodeManager::MakeRowType(const std::string &name,
+                                      codec::Schema *schema) {
+    vm::SchemaSourceList list;
+    list.AddSchemaSource(name, schema);
+    return RegisterNode(new RowTypeNode(list));
 }
 
 FnNode *NodeManager::MakeForInStmtNode(const std::string &var_name,

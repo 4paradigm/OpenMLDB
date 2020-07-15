@@ -29,7 +29,8 @@ namespace codec {
 
 struct StringRef {
     StringRef() : size_(0), data_(nullptr) {}
-    StringRef(uint32_t size, char* data) : size_(size), data_(strdup(data)) {}
+    StringRef(uint32_t size, const char* data)
+        : size_(size), data_(strdup(data)) {}
     ~StringRef() {}
     const bool IsNull() const { return nullptr == data_; }
     const std::string ToString() const {
