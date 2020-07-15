@@ -30,6 +30,8 @@ class SQLCase {
         std::vector<std::string> indexs_;
         std::vector<std::string> columns_;
         std::vector<std::vector<std::string>> rows_;
+        std::string create_;
+        std::string insert_;
     };
     struct ExpectInfo {
         int64_t count_ = -1;
@@ -45,13 +47,12 @@ class SQLCase {
 
     const std::string id() const { return id_; }
     const std::string& desc() const { return desc_; }
+    const std::string case_name() const;
     const std::string& mode() const { return mode_; }
     const std::string& request_plan() const { return request_plan_; }
     const std::string& batch_plan() const { return batch_plan_; }
     const std::string& sql_str() const { return sql_str_; }
     const bool standard_sql() const { return standard_sql_; }
-    const std::vector<std::string>& create_strs() const { return create_strs_; }
-    const std::vector<std::string>& insert_strs() const { return insert_strs_; }
     const std::string& db() const { return db_; }
     const std::vector<TableInfo>& inputs() const { return inputs_; }
     const ExpectInfo& expect() const { return expect_; }
@@ -68,6 +69,8 @@ class SQLCase {
                               int32_t input_idx = 0);
     bool BuildCreateSQLFromInput(int32_t input_idx, std::string* sql);
     bool BuildInsertSQLFromInput(int32_t input_idx, std::string* sql);
+    bool BuildInsertSQLListFromInput(int32_t input_idx,
+                                     std::vector<std::string>* sql_list);
     bool ExtractOutputSchema(type::TableDef& table);             // NOLINT
     bool ExtractInputData(std::vector<fesql::codec::Row>& rows,  // NOLINT
                           int32_t input_idx = 0);
@@ -139,6 +142,9 @@ class SQLCase {
     static bool CreateRowsFromYamlNode(
         const YAML::Node& node,
         std::vector<std::vector<std::string>>& rows);  // NOLINT
+    static std::string GenRand(const std::string& prefix) {
+        return prefix + std::to_string(rand() % 10000000 + 1);  // NOLINT
+    }
     friend SQLCaseBuilder;
     friend std::ostream& operator<<(std::ostream& output, const SQLCase& thiz);
 
@@ -148,8 +154,6 @@ class SQLCase {
     std::string desc_;
     std::vector<std::string> tags_;
     std::string db_;
-    std::vector<std::string> create_strs_;
-    std::vector<std::string> insert_strs_;
     std::string sql_str_;
     std::vector<std::string> sql_strs_;
     bool standard_sql_;

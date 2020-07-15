@@ -52,8 +52,8 @@ FeSQLJIT::~FeSQLJIT() {}
                                     ::llvm::orc::ThreadSafeModule tsm,
                                     ::llvm::orc::VModuleKey key) {
     if (auto err = applyDataLayout(*tsm.getModule())) return err;
-    LOG(INFO) << "add a module with key " << key << " with ins cnt "
-              << tsm.getModule()->getInstructionCount();
+    DLOG(INFO) << "add a module with key " << key << " with ins cnt "
+               << tsm.getModule()->getInstructionCount();
     ::llvm::legacy::FunctionPassManager fpm(tsm.getModule());
     // Add some optimizations.
     fpm.add(::llvm::createInstructionCombiningPass());
@@ -67,8 +67,8 @@ FeSQLJIT::~FeSQLJIT() {}
     for (it = tsm.getModule()->begin(); it != end; ++it) {
         fpm.run(*it);
     }
-    LOG(INFO) << "after opt with ins cnt "
-              << tsm.getModule()->getInstructionCount();
+    DLOG(INFO) << "after opt with ins cnt "
+               << tsm.getModule()->getInstructionCount();
     return CompileLayer->add(jd, std::move(tsm), key);
 }
 
@@ -76,7 +76,7 @@ bool FeSQLJIT::OptModule(::llvm::Module* m) {
     if (auto err = applyDataLayout(*m)) {
         return false;
     }
-    LOG(INFO) << "before opt with ins cnt " << m->getInstructionCount();
+    DLOG(INFO) << "before opt with ins cnt " << m->getInstructionCount();
     ::llvm::legacy::FunctionPassManager fpm(m);
     fpm.add(::llvm::createPromoteMemoryToRegisterPass());
     // Add some optimizations.
@@ -91,7 +91,7 @@ bool FeSQLJIT::OptModule(::llvm::Module* m) {
     for (it = m->begin(); it != end; ++it) {
         fpm.run(*it);
     }
-    LOG(INFO) << "after opt with ins cnt " << m->getInstructionCount();
+    DLOG(INFO) << "after opt with ins cnt " << m->getInstructionCount();
     return true;
 }
 

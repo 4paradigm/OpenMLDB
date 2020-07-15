@@ -147,9 +147,15 @@ bool SQLCase::ExtractIndex(const std::vector<std::string>& indexs,
             index_def->add_first_keys(key);
         }
 
-        if (3 == name_keys_order.size()) {
+        if (3 <= name_keys_order.size()) {
             boost::trim(name_keys_order[2]);
             index_def->set_second_key(name_keys_order[2]);
+        }
+
+        if (4 <= name_keys_order.size()) {
+            boost::trim(name_keys_order[3]);
+            index_def->add_ttl(
+                boost::lexical_cast<int64_t>(name_keys_order[3]));
         }
     }
     return true;
@@ -201,7 +207,6 @@ bool SQLCase::ExtractSchema(const std::vector<std::string>& columns,
     }
     return true;
 }
-
 bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
                                        std::string* create_sql) {
     std::string sql = "CREATE TABLE " + table.name() + "(\n";
@@ -252,7 +257,11 @@ bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
             }
         }
 
-        sql.append(")\n");
+        if (i < (table.indexes_size() - 1)) {
+            sql.append("),\n");
+        } else {
+            sql.append(")\n");
+        }
         // end each index
     }
     sql.append(");");
@@ -290,21 +299,23 @@ bool SQLCase::ExtractInputData(std::vector<Row>& rows, int32_t input_idx) {
 
 bool SQLCase::ExtractOutputData(std::vector<Row>& rows) {
     if (expect_.data_.empty() && expect_.rows_.empty()) {
-        LOG(WARNING) << "Empty Data";
+        LOG(WARNING) << "ExtractOutputData Fail: Empty Data";
         return false;
     }
     type::TableDef table;
     if (!ExtractOutputSchema(table)) {
-        LOG(WARNING) << "Invalid Schema";
+        LOG(WARNING) << "ExtractOutputData Fail: Invalid Schema";
         return false;
     }
 
     if (!expect_.data_.empty()) {
         if (!ExtractRows(table.columns(), expect_.data_, rows)) {
+            LOG(WARNING) << "ExtractOutputData Fail";
             return false;
         }
     } else if (!expect_.rows_.empty()) {
         if (!ExtractRows(table.columns(), expect_.rows_, rows)) {
+            LOG(WARNING) << "ExtractOutputData Fail";
             return false;
         }
     }
@@ -315,51 +326,47 @@ bool SQLCase::BuildInsertSQLFromRows(
     const std::vector<std::vector<std::string>>& rows,
     std::string* insert_sql) {
     std::string sql = "";
-    sql.append("Insert into ").append(table.name()).append(" values(");
+    sql.append("Insert into ").append(table.name()).append(" values");
 
+    int32_t i = 0;
     for (auto item_vec : rows) {
         std::string values = "";
         if (!BuildInsertValueStringFromRow(table, item_vec, &values)) {
             return false;
         }
         sql.append("\n").append(values);
+        i++;
+        if (i < rows.size()) {
+            sql.append(",");
+        } else {
+            sql.append(";");
+        }
     }
-    sql.append(");");
     *insert_sql = sql;
     return true;
 }
 bool SQLCase::BuildInsertSQLFromData(const type::TableDef& table,
                                      std::string data,
                                      std::string* insert_sql) {
-    std::string sql = "";
-    sql.append("Insert into ").append(table.name()).append(" values(");
-
-    std::vector<std::string> row_vec;
-
     boost::trim(data);
+    std::vector<std::string> row_vec;
     boost::split(row_vec, data, boost::is_any_of("\n"),
                  boost::token_compress_on);
-
+    std::vector<std::vector<std::string>> rows;
     for (auto row_str : row_vec) {
-        std::string values = "";
         std::vector<std::string> item_vec;
         boost::split(item_vec, row_str, boost::is_any_of(","),
                      boost::token_compress_on);
-        if (!BuildInsertValueStringFromRow(table, item_vec, &values)) {
-            LOG(WARNING) << "Fail to build insert sql from row: " << row_str;
-            return false;
-        }
-        sql.append("\n").append(values);
+        rows.push_back(item_vec);
     }
-    sql.append(");");
-    *insert_sql = sql;
+    BuildInsertSQLFromRows(table, rows, insert_sql);
     return true;
 }
 
 bool SQLCase::BuildInsertValueStringFromRow(
     const type::TableDef& table, const std::vector<std::string>& item_vec,
     std::string* values) {
-    std::string sql = "";
+    std::string sql = "(";
     auto schema = table.columns();
     if (item_vec.size() != static_cast<size_t>(schema.size())) {
         LOG(WARNING) << "Invalid Row: Row doesn't match with schema : exp "
@@ -378,6 +385,11 @@ bool SQLCase::BuildInsertValueStringFromRow(
         }
         auto item = item_vec[index];
         boost::trim(item);
+        if (item == "null" || item == "NULL") {
+            sql.append("null");
+            index++;
+            continue;
+        }
         switch (it->type()) {
             case type::kInt16:
             case type::kInt32:
@@ -388,17 +400,20 @@ bool SQLCase::BuildInsertValueStringFromRow(
                 sql.append(item);
                 break;
             }
+            case type::kDate:
             case type::kVarchar: {
                 sql.append("'").append(item).append("'");
                 break;
             }
             default: {
-                LOG(WARNING) << "Invalid Column Type";
+                LOG(WARNING)
+                    << "Invalid Column Type " << TypeString(it->type());
                 return false;
             }
         }
         index++;
     }
+    sql.append(")");
     *values = sql;
     return true;
 }
@@ -417,7 +432,8 @@ bool SQLCase::ExtractRow(const vm::Schema& schema,
                          const std::vector<std::string>& row, int8_t** out_ptr,
                          int32_t* out_size) {
     if (row.size() != static_cast<size_t>(schema.size())) {
-        LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
+        LOG(WARNING) << "Invalid Row: Row doesn't match with schema: exp size "
+                     << schema.size() << " but real size " << row.size();
         return false;
     }
     auto item_vec = row;
@@ -577,6 +593,11 @@ bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
     }
     return true;
 }
+const std::string SQLCase::case_name() const {
+    std::string name = id_ + "_" + desc_;
+    boost::replace_all(name, " ", "_");
+    return name;
+}
 bool SQLCase::ExtractInputTableDef(type::TableDef& table, int32_t input_idx) {
     if (!inputs_[input_idx].schema_.empty()) {
         if (!ExtractTableDef(inputs_[input_idx].schema_,
@@ -599,6 +620,10 @@ bool SQLCase::ExtractInputTableDef(type::TableDef& table, int32_t input_idx) {
 // schema + index --> create sql
 // columns + indexs --> create sql
 bool SQLCase::BuildCreateSQLFromInput(int32_t input_idx, std::string* sql) {
+    if (!inputs_[input_idx].create_.empty()) {
+        *sql = inputs_[input_idx].create_;
+        return true;
+    }
     type::TableDef table;
     if (!ExtractInputTableDef(table, input_idx)) {
         LOG(WARNING) << "Fail to extract table schema";
@@ -611,7 +636,57 @@ bool SQLCase::BuildCreateSQLFromInput(int32_t input_idx, std::string* sql) {
     return true;
 }
 
+bool SQLCase::BuildInsertSQLListFromInput(int32_t input_idx,
+                                          std::vector<std::string>* sql_list) {
+    if (!inputs_[input_idx].insert_.empty()) {
+        sql_list->push_back(inputs_[input_idx].insert_);
+        return true;
+    }
+    type::TableDef table;
+    if (!ExtractInputTableDef(table, input_idx)) {
+        LOG(WARNING) << "Fail to extract table schema";
+        return false;
+    }
+
+    if (!inputs_[input_idx].data_.empty()) {
+        auto data = inputs_[input_idx].data_;
+        boost::trim(data);
+        std::vector<std::string> row_vec;
+        boost::split(row_vec, data, boost::is_any_of("\n"),
+                     boost::token_compress_on);
+        for (auto row_str : row_vec) {
+            std::vector<std::vector<std::string>> rows;
+            std::vector<std::string> item_vec;
+            boost::split(item_vec, row_str, boost::is_any_of(","),
+                         boost::token_compress_on);
+            rows.push_back(item_vec);
+            std::string insert_sql;
+            if (!BuildInsertSQLFromRows(table, rows, &insert_sql)) {
+                LOG(WARNING) << "Fail to build insert sql from rows";
+                return false;
+            }
+            sql_list->push_back(insert_sql);
+        }
+
+    } else if (!inputs_[input_idx].rows_.empty()) {
+        for (auto row : inputs_[input_idx].rows_) {
+            std::vector<std::vector<std::string>> rows;
+            rows.push_back(row);
+            std::string insert_sql;
+            if (!BuildInsertSQLFromRows(table, rows, &insert_sql)) {
+                LOG(WARNING) << "Fail to build insert sql from rows";
+                return false;
+            }
+            sql_list->push_back(insert_sql);
+        }
+    }
+    return true;
+}
 bool SQLCase::BuildInsertSQLFromInput(int32_t input_idx, std::string* sql) {
+    if (!inputs_[input_idx].insert_.empty()) {
+        *sql = inputs_[input_idx].insert_;
+        return true;
+    }
     type::TableDef table;
     if (!ExtractInputTableDef(table, input_idx)) {
         LOG(WARNING) << "Fail to extract table schema";
@@ -716,6 +791,16 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
             LOG(WARNING) << "Fail to parse columns";
             return false;
         }
+    }
+
+    if (schema_data["create"]) {
+        table->create_ = schema_data["create"].as<std::string>();
+        boost::trim(table->create_);
+    }
+
+    if (schema_data["insert"]) {
+        table->insert_ = schema_data["insert"].as<std::string>();
+        boost::trim(table->insert_);
     }
     return true;
 }
@@ -933,20 +1018,6 @@ bool SQLCase::CreateSQLCasesFromYaml(
             sql_case.db_ = sql_case_node["db"].as<std::string>();
         } else {
             sql_case.db_ = global_db;
-        }
-
-        if (sql_case_node["creates"]) {
-            if (!CreateStringListFromYamlNode(sql_case_node["creates"],
-                                              sql_case.create_strs_)) {
-                return false;
-            }
-        }
-
-        if (sql_case_node["inserts"]) {
-            if (!CreateStringListFromYamlNode(sql_case_node["inserts"],
-                                              sql_case.insert_strs_)) {
-                return false;
-            }
         }
 
         if (sql_case_node["sql"]) {

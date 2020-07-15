@@ -264,12 +264,11 @@ TEST_F(SQLCaseTest, ExtractInsertSqlTest) {
         ASSERT_TRUE(SQLCase::BuildInsertSQLFromData(output_table, row_str,
                                                     &create_sql));
         ASSERT_EQ(
-            "Insert into  values(\n'0', 1, 5, 1.1, 11.1, 1, '1', "
-            "1587647803000\n'1', 10, 50, 10.1, 110.1, 11, '111', "
+            "Insert into  values\n('0', 1, 5, 1.1, 11.1, 1, '1', "
+            "1587647803000),\n('1', 10, 50, 10.1, 110.1, 11, '111', "
             "1587647804000);",
             create_sql);
     }
-
     {
         std::vector<std::vector<std::string>> rows;
         rows.push_back(std::vector<std::string>{"0", "1", "5", "1.1", "11.1",
@@ -280,8 +279,8 @@ TEST_F(SQLCaseTest, ExtractInsertSqlTest) {
         ASSERT_TRUE(
             SQLCase::BuildInsertSQLFromRows(output_table, rows, &create_sql));
         ASSERT_EQ(
-            "Insert into  values(\n'0', 1, 5, 1.1, 11.1, 1, '1', "
-            "1587647803000\n'1', 10, 50, 10.1, 110.1, 11, '111', "
+            "Insert into  values\n('0', 1, 5, 1.1, 11.1, 1, '1', "
+            "1587647803000),\n('1', 10, 50, 10.1, 110.1, 11, '111', "
             "1587647804000);",
             create_sql);
     }
@@ -559,6 +558,27 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
         }
     }
 
+    // Check Insert SQL List
+    {
+        std::string create_sql;
+        std::vector<std::string> sql_list;
+        sql_case.BuildInsertSQLListFromInput(0, &sql_list);
+        ASSERT_EQ(5u, sql_list.size());
+        ASSERT_EQ("Insert into  values\n('0', 1, 5, 1.1, 11.1, 1, '1');",
+                  sql_list[0]);
+        ASSERT_EQ("Insert into  values\n('0', 2, 5, 2.2, 22.2, 2, '22');",
+                  sql_list[1]);
+        ASSERT_EQ("Insert into  values\n('0', 3, 55, 3.3, 33.3, 1, '333');",
+                  sql_list[2]);
+        ASSERT_EQ("Insert into  values\n('0', 4, 55, 4.4, 44.4, 2, '4444');",
+                  sql_list[3]);
+        ASSERT_EQ(
+            "Insert into  values\n('0', 5, 55, 5.5, 55.5, 3, "
+            "'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "a');",
+            sql_list[4]);
+    }
+
     // Check Data Schema
     {
         type::TableDef output_table;
@@ -747,8 +767,8 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
         ASSERT_EQ(sql_case.id(), "4");
         ASSERT_EQ("简单INSERT", sql_case.desc());
         ASSERT_EQ(sql_case.db(), "test");
-        ASSERT_EQ(2, sql_case.create_strs().size());
-        ASSERT_EQ(sql_case.create_strs()[0],
+        ASSERT_EQ(2, sql_case.inputs().size());
+        ASSERT_EQ(sql_case.inputs()[0].create_,
                   "create table t1 (\n"
                   "col0 string not null,\n"
                   "col1 int not null,\n"
@@ -758,19 +778,21 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
                   "col5 bigint not null,\n"
                   "col6 string not null,\n"
                   "index(name=index1, key=(col2), ts=col5)\n"
-                  ");\n");
-        ASSERT_EQ(sql_case.create_strs()[1],
+                  ");");
+        ASSERT_EQ(sql_case.inputs()[1].create_,
                   "create table t2 (\n"
                   "c1 string not null,\n"
                   "c2 bigint not null,\n"
                   "index(name=index2, key=(c1), ts=c2)\n"
-                  ");\n");
-        ASSERT_EQ(2u, sql_case.insert_strs().size());
-        ASSERT_EQ(sql_case.insert_strs()[0],
-                  "insert into t1 values(\"hello\", 1, 2, 3.3f, 4.4, 5L, "
+                  ");");
+        ASSERT_EQ(sql_case.inputs()[0].insert_,
+                  "insert into t1 values\n(\"hello\", 1, 2, 3.3f, 4.4, 5L, "
                   "\"world\");");
-        ASSERT_EQ(sql_case.insert_strs()[1],
-                  "insert into t2 values(\"hello\", 1);");
+
+        ASSERT_EQ(sql_case.inputs()[1].insert_,
+                  "insert into t2 values"
+                  "\n(\"hello\", 1),"
+                  "\n(\"world\", 2);");
         ASSERT_EQ(sql_case.expect().schema_,
                   "col0:string, col1:int32, col2:int16, col3:float, "
                   "col4:double, col5:int64, col6:string");
