@@ -312,6 +312,8 @@ class TabletClient {
 
     bool CancelOP(const uint64_t op_id);
 
+    bool UpdateRealEndpointMap(const std::map<std::string, std::string>& map);
+
  private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> client_;

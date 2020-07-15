@@ -269,6 +269,10 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                   const rtidb::api::CancelOPRequest* request,
                   rtidb::api::GeneralResponse* response, Closure* done);
 
+    void UpdateRealEndpointMap(RpcController* controller,
+            const rtidb::api::UpdateRealEndpointMapRequest* request,
+            rtidb::api::GeneralResponse* response, Closure* done);
+
     inline void SetServer(brpc::Server* server) { server_ = server; }
 
     // get on value from specified ttl type index
@@ -471,6 +475,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::map<::rtidb::common::StorageMode, std::vector<std::string>>
         mode_recycle_root_paths_;
     std::atomic<bool> follower_;
+    std::map<std::string, std::string> real_ep_map_;
 };
 
 }  // namespace tablet

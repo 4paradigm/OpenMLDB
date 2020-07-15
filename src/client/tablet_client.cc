@@ -1529,5 +1529,26 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid,
     return false;
 }
 
+bool TabletClient::UpdateRealEndpointMap(
+        const std::map<std::string, std::string>& map) {
+    ::rtidb::api::UpdateRealEndpointMapRequest request;
+    ::rtidb::api::GeneralResponse response;
+    for (std::map<std::string, std::string>::const_iterator it = map.begin();
+            it != map.end(); ++it) {
+        ::rtidb::api::RealEndpointPair* pair =
+            request.add_real_endpoint_map();
+        pair->set_name(it->first);
+        pair->set_real_endpoint(it->second);
+    }
+    bool ok = client_.SendRequest(
+            &::rtidb::api::TabletServer_Stub::UpdateRealEndpointMap,
+            &request, &response, FLAGS_request_timeout_ms,
+            FLAGS_request_max_retry);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
 }  // namespace client
 }  // namespace rtidb

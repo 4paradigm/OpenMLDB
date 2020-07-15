@@ -1563,6 +1563,8 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
     UpdateBlobServers(blobs);
     thread_pool_.AddTask(
         boost::bind(&NameServerImpl::DistributeTabletMode, this));
+    thread_pool_.AddTask(
+        boost::bind(&NameServerImpl::UpdateRealEndpointMap, this));
 }
 
 void NameServerImpl::OnBlobOnline(const std::string& endpoint) { return; }
@@ -11841,6 +11843,34 @@ void NameServerImpl::DropDatabase(RpcController* controller,
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
+}
+
+void NameServerImpl::UpdateRealEndpointMap() {
+    if (!running_.load(std::memory_order_acquire)) {
+        return;
+    }
+    decltype(tablets_) tmp_tablets;
+    decltype(real_ep_map_) tmp_map;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (real_ep_map_.empty()) {
+            return;
+        }
+        for (const auto& tablet : tablets_) {
+            if (tablet.second->state_ !=
+                ::rtidb::api::TabletState::kTabletHealthy) {
+                continue;
+            }
+            tmp_tablets.insert(std::make_pair(tablet.first, tablet.second));
+        }
+        tmp_map = real_ep_map_;
+    }
+    for (const auto& tablet : tmp_tablets) {
+        if (!tablet.second->client_->UpdateRealEndpointMap(tmp_map)) {
+            PDLOG(WARNING, "UpdateRealEndpointMap for tablet %s failed!",
+                    tablet.first.c_str());
+        }
+    }
 }
 
 }  // namespace nameserver

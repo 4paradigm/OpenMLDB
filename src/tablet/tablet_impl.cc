@@ -5528,5 +5528,28 @@ void TabletImpl::CancelOP(RpcController* controller,
     response->set_msg("ok");
 }
 
+void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
+        const rtidb::api::UpdateRealEndpointMapRequest* request,
+        rtidb::api::GeneralResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!FLAGS_use_name) {
+        response->set_code(::rtidb::base::ReturnCode::kUseNameIsFalse);
+        return;
+    }
+    decltype(real_ep_map_) tmp_real_ep_map;
+    for (int i = 0; i < request->real_endpoint_map_size(); i++) {
+        auto& pair = request->real_endpoint_map(i);
+        tmp_real_ep_map.insert(
+                std::make_pair(pair.name(), pair.real_endpoint()));
+    }
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        real_ep_map_.clear();
+        real_ep_map_ = tmp_real_ep_map;
+    }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
 }  // namespace tablet
 }  // namespace rtidb

@@ -841,6 +841,8 @@ class NameServerImpl : public NameServer {
         const std::unordered_map<std::string, ::rtidb::api::TableStatus>&
             pos_response);
 
+    void UpdateRealEndpointMap();
+
  private:
     std::mutex mu_;
     Tablets tablets_;
