@@ -43,7 +43,8 @@ class LogReplicator {
     LogReplicator(const std::string& path,
                   const std::vector<std::string>& endpoints,
                   const ReplicatorRole& role, std::shared_ptr<Table> table,
-                  std::atomic<bool>* follower);
+                  std::atomic<bool>* follower,
+                  const std::vector<std::string>& real_endpoints);
 
     ~LogReplicator();
 
@@ -68,10 +69,12 @@ class LogReplicator {
     void DeleteBinlog();
 
     // add replication
-    int AddReplicateNode(const std::vector<std::string>& endpoint_vec);
+    int AddReplicateNode(const std::vector<std::string>& endpoint_vec,
+            const std::vector<std::string>& real_endpoint_vec);
     // add replication with tid
     int AddReplicateNode(const std::vector<std::string>& endpoint_vec,
-                         uint32_t tid);
+            const std::vector<std::string>& real_endpoint_vec,
+            uint32_t tid);
 
     int DelReplicateNode(const std::string& endpoint);
 
@@ -135,6 +138,7 @@ class LogReplicator {
 
     std::mutex wmu_;
     std::atomic<bool>* follower_;
+    std::vector<std::string> real_endpoints_;
 };
 
 }  // namespace replica

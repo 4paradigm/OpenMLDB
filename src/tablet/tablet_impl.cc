@@ -65,6 +65,7 @@ DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(get_table_diskused_interval);
 DECLARE_uint32(task_check_interval);
 DECLARE_uint32(load_index_max_wait_time);
+DECLARE_bool(use_name);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -1882,6 +1883,10 @@ void TabletImpl::ChangeRole(RpcController* controller,
     for (int idx = 0; idx < request->replicas_size(); idx++) {
         vec.push_back(request->replicas(idx).c_str());
     }
+    std::vector<std::string> r_vec;
+    for (int idx = 0; idx < request->real_endpoints_size(); idx++) {
+        r_vec.push_back(request->real_endpoints(idx));
+    }
     if (is_leader) {
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
@@ -1899,12 +1904,14 @@ void TabletImpl::ChangeRole(RpcController* controller,
                 replicator->SetLeaderTerm(request->term());
             }
         }
-        if (replicator->AddReplicateNode(vec) < 0) {
+        if (replicator->AddReplicateNode(vec, r_vec) < 0) {
             PDLOG(WARNING, "add replicator failed. tid[%u] pid[%u]", tid, pid);
         }
         for (auto& e : request->endpoint_tid()) {
+            // TODO(wangbao) remote cluster real_endpoint
+            std::vector<std::string> remote_r_vec;
             std::vector<std::string> endpoints{e.endpoint()};
-            replicator->AddReplicateNode(endpoints, e.tid());
+            replicator->AddReplicateNode(endpoints, remote_r_vec, e.tid());
         }
     } else {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
@@ -1965,11 +1972,25 @@ void TabletImpl::AddReplica(RpcController* controller,
         }
         std::vector<std::string> vec;
         vec.push_back(request->endpoint());
+        std::vector<std::string> real_vec;
+        if (FLAGS_use_name) {
+            std::string value;
+            if (!zk_client_->GetNodeValue( FLAGS_zk_root_path + "/map/names/" +
+                        request->endpoint(), value)) {
+                response->set_code(
+                        ::rtidb::base::ReturnCode::kGetZkFailed);
+                response->set_msg("get zk failed");
+                PDLOG(WARNING, "get zk failed, get names map failed");
+                break;
+            }
+            real_vec.push_back(value);
+        }
         int ret = -1;
         if (request->has_remote_tid()) {
-            ret = replicator->AddReplicateNode(vec, request->remote_tid());
+            ret = replicator->AddReplicateNode(vec, real_vec,
+                    request->remote_tid());
         } else {
-            ret = replicator->AddReplicateNode(vec);
+            ret = replicator->AddReplicateNode(vec, real_vec);
         }
         if (ret == 0) {
             response->set_code(::rtidb::base::ReturnCode::kOk);
@@ -4030,6 +4051,10 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
     for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
         endpoints.push_back(table_meta->replicas(i));
     }
+    std::vector<std::string> real_endpoints;
+    for (int32_t i = 0; i < table_meta->real_endpoints_size(); i++) {
+        real_endpoints.push_back(table_meta->replicas(i));
+    }
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
@@ -4060,11 +4085,11 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
     if (table->IsLeader()) {
         replicator = std::make_shared<LogReplicator>(
             table_db_path, endpoints, ReplicatorRole::kLeaderNode, table,
-            &follower_);
+            &follower_, real_endpoints);
     } else {
         replicator = std::make_shared<LogReplicator>(
             table_db_path, std::vector<std::string>(),
-            ReplicatorRole::kFollowerNode, table, &follower_);
+            ReplicatorRole::kFollowerNode, table, &follower_, real_endpoints);
     }
     if (!replicator) {
         PDLOG(WARNING, "fail to create replicator for table tid %u, pid %u",
@@ -4122,6 +4147,10 @@ int TabletImpl::CreateDiskTableInternal(
     for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
         endpoints.push_back(table_meta->replicas(i));
     }
+    std::vector<std::string> real_endpoints;
+    for (int32_t i = 0; i < table_meta->real_endpoints_size(); i++) {
+        real_endpoints.push_back(table_meta->replicas(i));
+    }
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
     std::string db_root_path;
@@ -4169,11 +4198,11 @@ int TabletImpl::CreateDiskTableInternal(
     if (table->IsLeader()) {
         replicator = std::make_shared<LogReplicator>(
             table_db_path, endpoints, ReplicatorRole::kLeaderNode, table,
-            &follower_);
+            &follower_, real_endpoints);
     } else {
         replicator = std::make_shared<LogReplicator>(
             table_db_path, std::vector<std::string>(),
-            ReplicatorRole::kFollowerNode, table, &follower_);
+            ReplicatorRole::kFollowerNode, table, &follower_, real_endpoints);
     }
     if (!replicator) {
         PDLOG(WARNING, "fail to create replicator for table tid %u, pid %u",

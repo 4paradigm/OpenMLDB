@@ -528,12 +528,14 @@ bool TabletClient::LoadTable(uint32_t tid, uint32_t pid,
 bool TabletClient::ChangeRole(uint32_t tid, uint32_t pid, bool leader,
                               uint64_t term) {
     std::vector<std::string> endpoints;
-    return ChangeRole(tid, pid, leader, endpoints, term);
+    std::vector<std::string> real_endpoints;
+    return ChangeRole(tid, pid, leader, endpoints, real_endpoints, term);
 }
 
 bool TabletClient::ChangeRole(
     uint32_t tid, uint32_t pid, bool leader,
-    const std::vector<std::string>& endpoints, uint64_t term,
+    const std::vector<std::string>& endpoints,
+    const std::vector<std::string>& real_endpoints, uint64_t term,
     const std::vector<::rtidb::common::EndpointAndTid>* endpoint_tid) {
     ::rtidb::api::ChangeRoleRequest request;
     request.set_tid(tid);
@@ -551,6 +553,10 @@ bool TabletClient::ChangeRole(
     }
     for (auto iter = endpoints.begin(); iter != endpoints.end(); iter++) {
         request.add_replicas(*iter);
+    }
+    for (auto iter = real_endpoints.begin(); iter != real_endpoints.end();
+            iter++) {
+        request.add_real_endpoints(*iter);
     }
     ::rtidb::api::ChangeRoleResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::ChangeRole,

@@ -3136,7 +3136,16 @@ int NameServerImpl::CreateTableOnTablet(
                 table_meta.set_mode(::rtidb::api::TableMode::kTableLeader);
                 table_meta.set_term(term);
                 for (const auto& endpoint : endpoint_map[pid]) {
-                    table_meta.add_replicas(endpoint);
+                    if (FLAGS_use_name) {
+                        auto r_it = real_ep_map_.find(endpoint);
+                        if (r_it == real_ep_map_.end()) {
+                            PDLOG(WARNING, "%s not in real_ep_map",
+                                    endpoint.c_str());
+                            return -1;
+                        }
+                        table_meta.add_real_endpoints(r_it->second);
+                        table_meta.add_replicas(endpoint);
+                    }
                 }
             } else {
                 if (endpoint_map.find(pid) == endpoint_map.end()) {
@@ -9751,8 +9760,8 @@ void NameServerImpl::ChangeLeader(
     for (const auto& e : change_leader_data.remote_follower()) {
         endpoint_tid.push_back(e);
     }
+    std::vector<std::string> follower_real_eps;
     if (FLAGS_use_name) {
-        follower_endpoint.clear();
         for (int idx = 0; idx < change_leader_data.follower_size(); idx++) {
             const std::string& tmp_ep = change_leader_data.follower(idx);
             auto r_iter = real_ep_map_.find(tmp_ep);
@@ -9760,7 +9769,7 @@ void NameServerImpl::ChangeLeader(
                 PDLOG(WARNING, "name[%s] not in real_ep_map", tmp_ep.c_str());
                 return;
             }
-            follower_endpoint.push_back(r_iter->second);
+            follower_real_eps.push_back(r_iter->second);
         }
         /**
          * TODO convert endpoint_tid to real endpoint
@@ -9782,8 +9791,9 @@ void NameServerImpl::ChangeLeader(
         */
     }
     if (!tablet_ptr->client_->ChangeRole(
-            change_leader_data.tid(), change_leader_data.pid(), true,
-            follower_endpoint, cur_term, &endpoint_tid)) {
+                change_leader_data.tid(), change_leader_data.pid(), true,
+                follower_endpoint, follower_real_eps,
+                cur_term, &endpoint_tid)) {
         PDLOG(WARNING,
               "change leader failed. name[%s] tid[%u] pid[%u] endpoint[%s] "
               "op_id[%lu]",

@@ -43,7 +43,8 @@ ReplicateNode::ReplicateNode(const std::string& point, LogParts* logs,
                              std::atomic<uint64_t>* leader_log_offset,
                              bthread::Mutex* mu, bthread::ConditionVariable* cv,
                              bool rep_follower,
-                             std::atomic<uint64_t>* follower_offset)
+                             std::atomic<uint64_t>* follower_offset,
+                             const std::string& real_point)
     : log_reader_(logs, log_path),
       cache_(),
       endpoint_(point),
@@ -60,7 +61,13 @@ ReplicateNode::ReplicateNode(const std::string& point, LogParts* logs,
       cv_(cv),
       go_back_cnt_(0),
       rep_node_(rep_follower),
-      follower_offset_(follower_offset) {}
+      follower_offset_(follower_offset),
+      real_endpoint_(real_point) {
+          if (!real_point.empty()) {
+              rpc_client_ =
+                  rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(real_point);
+          }
+      }
 
 int ReplicateNode::Init() {
     int ok = rpc_client_.Init();
