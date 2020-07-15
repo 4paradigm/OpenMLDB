@@ -1,5 +1,6 @@
 package com._4paradigm.fesql.common;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -74,6 +75,34 @@ public class FesqlUtil {
         }
 
         return builder.build();
+    }
+
+    /**
+     * Get the node output schema as list of slice and the slice is list of column def.
+     */
+    public static List<List<TypeOuterClass.ColumnDef>> getNodeOutputColumnLists(PhysicalOpNode node) {
+        List<List<TypeOuterClass.ColumnDef>> outputLists = new ArrayList<List<TypeOuterClass.ColumnDef>>();
+
+        for (int i=0; i < node.GetOutputSchemaListSize(); ++i) {
+            List<TypeOuterClass.ColumnDef> columnDefs = node.GetOutputSchemaSlice(i);
+            outputLists.add(columnDefs);
+        }
+
+        return outputLists;
+    }
+
+    /**
+     * Get the merged node output schema as list of column def.
+     */
+    public static List<TypeOuterClass.ColumnDef> getMergedNodeOutputColumnList(PhysicalOpNode node) {
+        List<TypeOuterClass.ColumnDef> outputList = new ArrayList<TypeOuterClass.ColumnDef>();
+
+        for (int i=0; i < node.GetOutputSchemaListSize(); ++i) {
+            List<TypeOuterClass.ColumnDef> columnDefs = node.GetOutputSchemaSlice(i);
+            outputList.addAll(columnDefs);
+        }
+
+        return outputList;
     }
 
 
