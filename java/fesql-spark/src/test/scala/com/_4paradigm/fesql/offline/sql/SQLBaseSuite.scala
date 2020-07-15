@@ -104,7 +104,7 @@ class SQLBaseSuite extends SparkTestSuite {
     assert(df1.except(df2).count() == df2.except(df1).count())
   }
 
-  def checkOutput(data: DataFrame, expect: OutputDesc): Unit = {
+  def checkOutput(data: DataFrame, expect: ExpectDesc): Unit = {
     val expectSchema = if (expect.getSchema != null) parseSchema(expect.getSchema) else parseSchema(expect.getColumns)
     assert(data.schema == expectSchema)
 
