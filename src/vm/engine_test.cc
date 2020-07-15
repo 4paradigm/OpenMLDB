@@ -59,9 +59,9 @@ enum EngineRunMode { RUNBATCH, RUNONE };
 
 const bool IS_DEBUG = true;
 std::vector<SQLCase> InitCases(std::string yaml_path);
-void InitCases(std::string yaml_path, std::vector<SQLCase> &cases);  // NOLINT
+void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
-void InitCases(std::string yaml_path, std::vector<SQLCase> &cases) {  // NOLINT
+void InitCases(std::string yaml_path, std::vector<SQLCase>& cases) {  // NOLINT
     if (!SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
                                          yaml_path, cases)) {
         FAIL();
@@ -73,9 +73,9 @@ std::vector<SQLCase> InitCases(std::string yaml_path) {
     return cases;
 }
 
-int generate_sqlite_test_string_callback(void *s, int argc, char **argv,
-                                         char **azColName) {
-    std::string &sqliteStr = *static_cast<std::string *>(s);
+int generate_sqlite_test_string_callback(void* s, int argc, char** argv,
+                                         char** azColName) {
+    std::string& sqliteStr = *static_cast<std::string*>(s);
     int i;
     for (i = 0; i < argc; i++) {
         sqliteStr += NULL == argv[i] ? "NULL" : argv[i];
@@ -86,19 +86,19 @@ int generate_sqlite_test_string_callback(void *s, int argc, char **argv,
     return 0;
 }
 
-void CheckSchema(const vm::Schema &schema, const vm::Schema &exp_schema);
-void CheckRows(const vm::Schema &schema, const std::vector<Row> &rows,
-               const std::vector<Row> &exp_rows);
-void PrintRows(const vm::Schema &schema, const std::vector<Row> &rows);
-void StoreData(::fesql::storage::Table *table, const std::vector<Row> &rows);
+void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema);
+void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
+               const std::vector<Row>& exp_rows);
+void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows);
+void StoreData(::fesql::storage::Table* table, const std::vector<Row>& rows);
 
-void CheckSchema(const vm::Schema &schema, const vm::Schema &exp_schema) {
+void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema) {
     ASSERT_EQ(schema.size(), exp_schema.size());
     for (int i = 0; i < schema.size(); i++) {
         ASSERT_EQ(schema.Get(i).DebugString(), exp_schema.Get(i).DebugString());
     }
 }
-void PrintRows(const vm::Schema &schema, const std::vector<Row> &rows) {
+void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
     std::ostringstream oss;
     RowView row_view(schema);
     ::fesql::base::TextTable t('-', '|', '+');
@@ -136,9 +136,9 @@ void PrintRows(const vm::Schema &schema, const std::vector<Row> &rows) {
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
 
-const std::vector<Row> SortRows(const vm::Schema &schema,
-                                const std::vector<Row> &rows,
-                                const std::string &order_col) {
+const std::vector<Row> SortRows(const vm::Schema& schema,
+                                const std::vector<Row>& rows,
+                                const std::string& order_col) {
     DLOG(INFO) << "sort rows start";
     RowView row_view(schema);
     int idx = -1;
@@ -161,7 +161,7 @@ const std::vector<Row> SortRows(const vm::Schema &schema,
         }
         std::sort(
             sort_rows.begin(), sort_rows.end(),
-            [](std::pair<std::string, Row> &a, std::pair<std::string, Row> &b) {
+            [](std::pair<std::string, Row>& a, std::pair<std::string, Row>& b) {
                 return a.first < b.first;
             });
         std::vector<Row> output_rows;
@@ -179,7 +179,7 @@ const std::vector<Row> SortRows(const vm::Schema &schema,
                 boost::lexical_cast<int64_t>(row_view.GetAsString(idx)), row));
         }
         std::sort(sort_rows.begin(), sort_rows.end(),
-                  [](std::pair<int64_t, Row> &a, std::pair<int64_t, Row> &b) {
+                  [](std::pair<int64_t, Row>& a, std::pair<int64_t, Row>& b) {
                       return a.first < b.first;
                   });
         std::vector<Row> output_rows;
@@ -190,8 +190,8 @@ const std::vector<Row> SortRows(const vm::Schema &schema,
         return output_rows;
     }
 }
-void CheckRows(const vm::Schema &schema, const std::vector<Row> &rows,
-               const std::vector<Row> &exp_rows) {
+void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
+               const std::vector<Row>& exp_rows) {
     LOG(INFO) << "expect result:\n";
     PrintRows(schema, exp_rows);
     LOG(INFO) << "real result:\n";
@@ -270,11 +270,10 @@ void CheckRows(const vm::Schema &schema, const std::vector<Row> &rows,
         }
     }
 }
-void StoreData(::fesql::storage::Table *table, const std::vector<Row> &rows) {
+void StoreData(::fesql::storage::Table* table, const std::vector<Row>& rows) {
     ASSERT_TRUE(table->Init());
     for (auto row : rows) {
-        ASSERT_TRUE(
-            table->Put(reinterpret_cast<char *>(row.buf()), row.size()));
+        ASSERT_TRUE(table->Put(reinterpret_cast<char*>(row.buf()), row.size()));
     }
 }
 
@@ -284,13 +283,13 @@ class EngineTest : public ::testing::TestWithParam<SQLCase> {
     virtual ~EngineTest() {}
 };
 
-const std::vector<Row> SortRows(const vm::Schema &schema,
-                                const std::vector<Row> &rows,
-                                const std::string &order_col);
+const std::vector<Row> SortRows(const vm::Schema& schema,
+                                const std::vector<Row>& rows,
+                                const std::string& order_col);
 const std::string GenerateTableName(int32_t id) {
     return "auto_t" + std::to_string(id);
 }
-void RequestModeCheck(SQLCase &sql_case) {  // NOLINT
+void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     int32_t input_cnt = sql_case.CountInputs();
     // Init catalog
     std::map<std::string, std::shared_ptr< ::fesql::storage::Table> >
@@ -329,7 +328,7 @@ void RequestModeCheck(SQLCase &sql_case) {  // NOLINT
         return;
     }
 
-    const std::string &request_name = session.GetRequestName();
+    const std::string& request_name = session.GetRequestName();
     std::vector<Row> request_data;
     for (int32_t i = 0; i < input_cnt; i++) {
         auto input = sql_case.inputs()[i];
@@ -378,7 +377,7 @@ void RequestModeCheck(SQLCase &sql_case) {  // NOLINT
         ret = session.Run(in_row, &out_row);
         ASSERT_EQ(0, ret);
         ASSERT_TRUE(request_table->Put(
-            reinterpret_cast<const char *>(in_row.buf()), in_row.size()));
+            reinterpret_cast<const char*>(in_row.buf()), in_row.size()));
         output.push_back(out_row);
     }
 
@@ -386,7 +385,7 @@ void RequestModeCheck(SQLCase &sql_case) {  // NOLINT
               case_output_data);
 }
 
-void BatchModeCheck(SQLCase &sql_case) {  // NOLINT
+void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     int32_t input_cnt = sql_case.CountInputs();
 
     // Init catalog
@@ -469,8 +468,8 @@ void BatchModeCheck(SQLCase &sql_case) {  // NOLINT
     // Determine whether to compare with SQLite
     if (sql_case.standard_sql() && sql_case.standard_sql_compatible()) {
         // Use SQLite to get output
-        sqlite3 *db;
-        char *zErrMsg = 0;
+        sqlite3* db;
+        char* zErrMsg = 0;
         int rc;
 
         // Create database in the memory
@@ -491,7 +490,7 @@ void BatchModeCheck(SQLCase &sql_case) {  // NOLINT
         LOG(INFO) << create_table_sql;
 
         // Create a table schema
-        const char *create_table_sql_ch = create_table_sql.c_str();
+        const char* create_table_sql_ch = create_table_sql.c_str();
         rc = sqlite3_exec(db, create_table_sql_ch, 0, 0, &zErrMsg);
         if (rc != SQLITE_OK) {
             LOG(ERROR) << "SQL error: %s\n" << zErrMsg;
@@ -507,7 +506,7 @@ void BatchModeCheck(SQLCase &sql_case) {  // NOLINT
             output_table, sql_case.inputs()[0].data_, &create_insert_sql);
 
         // Insert data into the table
-        const char *create_insert_sql_ch = create_insert_sql.c_str();
+        const char* create_insert_sql_ch = create_insert_sql.c_str();
         std::cout << create_insert_sql_ch << std::endl;
         rc = sqlite3_exec(db, create_insert_sql_ch, 0, 0, &zErrMsg);
         if (rc != SQLITE_OK) {
@@ -518,11 +517,11 @@ void BatchModeCheck(SQLCase &sql_case) {  // NOLINT
         }
 
         // Execute SQL statement
-        const char *create_execute_sql_ch = sql_case.sql_str().c_str();
+        const char* create_execute_sql_ch = sql_case.sql_str().c_str();
         std::string sqliteStr = "";
         rc = sqlite3_exec(db, create_execute_sql_ch,
                           generate_sqlite_test_string_callback,
-                          static_cast<void *>(&sqliteStr), &zErrMsg);
+                          static_cast<void*>(&sqliteStr), &zErrMsg);
         if (rc != SQLITE_OK) {
             LOG(ERROR) << "SQL error: %s\n" << zErrMsg;
             sqlite3_free(zErrMsg);
@@ -648,7 +647,7 @@ TEST_F(EngineTest, EngineCacheTest) {
         new ::fesql::storage::Table(1, 1, table_def));
     std::shared_ptr< ::fesql::storage::Table> table2(
         new ::fesql::storage::Table(2, 1, table_def2));
-    ::fesql::type::IndexDef *index = table_def.add_indexes();
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
@@ -734,7 +733,7 @@ TEST_F(EngineTest, EngineCompileOnlyTest) {
         new ::fesql::storage::Table(1, 1, table_def));
     std::shared_ptr< ::fesql::storage::Table> table2(
         new ::fesql::storage::Table(2, 1, table_def2));
-    ::fesql::type::IndexDef *index = table_def.add_indexes();
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
     index->add_first_keys("col1");
     index->add_first_keys("col2");
@@ -792,7 +791,7 @@ TEST_F(EngineTest, EngineCompileOnlyTest) {
 }  // namespace vm
 }  // namespace fesql
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();

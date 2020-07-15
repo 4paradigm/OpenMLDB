@@ -20,7 +20,7 @@
 namespace fesql {
 namespace sqlcase {
 using fesql::codec::Row;
-bool SQLCase::TypeParse(const std::string &type_str, fesql::type::Type *type) {
+bool SQLCase::TypeParse(const std::string& type_str, fesql::type::Type* type) {
     if (nullptr == type) {
         LOG(WARNING) << "Null Type Output";
         return false;
@@ -76,9 +76,9 @@ const std::string SQLCase::TypeString(fesql::type::Type type) {
         }
     }
 }
-bool SQLCase::ExtractTableDef(const std::vector<std::string> &columns,
-                              const std::vector<std::string> &indexs,
-                              type::TableDef &table) {
+bool SQLCase::ExtractTableDef(const std::vector<std::string>& columns,
+                              const std::vector<std::string>& indexs,
+                              type::TableDef& table) {
     if (!ExtractSchema(columns, table)) {
         return false;
     }
@@ -87,9 +87,9 @@ bool SQLCase::ExtractTableDef(const std::vector<std::string> &columns,
     }
     return ExtractIndex(indexs, table);
 }
-bool SQLCase::ExtractTableDef(const std::string &schema_str,
-                              const std::string &index_str,
-                              type::TableDef &table) {
+bool SQLCase::ExtractTableDef(const std::string& schema_str,
+                              const std::string& index_str,
+                              type::TableDef& table) {
     if (!ExtractSchema(schema_str, table)) {
         return false;
     }
@@ -98,8 +98,8 @@ bool SQLCase::ExtractTableDef(const std::string &schema_str,
     }
     return ExtractIndex(index_str, table);
 }
-bool SQLCase::ExtractIndex(const std::string &index_str,
-                           type::TableDef &table) {  // NOLINT
+bool SQLCase::ExtractIndex(const std::string& index_str,
+                           type::TableDef& table) {  // NOLINT
     if (index_str.empty()) {
         LOG(WARNING) << "Empty Index String";
         return false;
@@ -113,8 +113,8 @@ bool SQLCase::ExtractIndex(const std::string &index_str,
     }
     return true;
 }
-bool SQLCase::ExtractIndex(const std::vector<std::string> &indexs,
-                           type::TableDef &table) {  // NOLINT
+bool SQLCase::ExtractIndex(const std::vector<std::string>& indexs,
+                           type::TableDef& table) {  // NOLINT
     if (indexs.empty()) {
         LOG(WARNING) << "Invalid Schema Format";
         return false;
@@ -133,7 +133,7 @@ bool SQLCase::ExtractIndex(const std::vector<std::string> &indexs,
             LOG(WARNING) << "Invalid Index Format:" << index;
             return false;
         }
-        ::fesql::type::IndexDef *index_def = table.add_indexes();
+        ::fesql::type::IndexDef* index_def = table.add_indexes();
         boost::trim(name_keys_order[0]);
         index_def->set_name(name_keys_order[0]);
 
@@ -155,8 +155,8 @@ bool SQLCase::ExtractIndex(const std::vector<std::string> &indexs,
     return true;
 }
 
-bool SQLCase::ExtractSchema(const std::string &schema_str,
-                            type::TableDef &table) {  // NOLINT
+bool SQLCase::ExtractSchema(const std::string& schema_str,
+                            type::TableDef& table) {  // NOLINT
     if (schema_str.empty()) {
         LOG(WARNING) << "Empty Schema String";
         return false;
@@ -170,8 +170,8 @@ bool SQLCase::ExtractSchema(const std::string &schema_str,
     }
     return true;
 }
-bool SQLCase::ExtractSchema(const std::vector<std::string> &columns,
-                            type::TableDef &table) {  // NOLINT
+bool SQLCase::ExtractSchema(const std::vector<std::string>& columns,
+                            type::TableDef& table) {  // NOLINT
     if (columns.empty()) {
         LOG(WARNING) << "Invalid Schema Format";
         return false;
@@ -187,7 +187,7 @@ bool SQLCase::ExtractSchema(const std::vector<std::string> &columns,
                          << " Invalid Column " << col;
             return false;
         }
-        ::fesql::type::ColumnDef *column = table.add_columns();
+        ::fesql::type::ColumnDef* column = table.add_columns();
         boost::trim(name_type_vec[0]);
         boost::trim(name_type_vec[1]);
 
@@ -202,8 +202,8 @@ bool SQLCase::ExtractSchema(const std::vector<std::string> &columns,
     return true;
 }
 
-bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef &table,
-                                       std::string *create_sql,
+bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
+                                       std::string* create_sql,
                                        bool isGenerateIndex) {
     std::string sql = "CREATE TABLE " + table.name() + "(\n";
     for (int i = 0; i < table.columns_size(); i++) {
@@ -265,11 +265,11 @@ bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef &table,
     *create_sql = sql;
     return true;
 }
-bool SQLCase::AddInput(const TableInfo &table_data) {
+bool SQLCase::AddInput(const TableInfo& table_data) {
     inputs_.push_back(table_data);
     return true;
 }
-bool SQLCase::ExtractInputData(std::vector<Row> &rows, int32_t input_idx) {
+bool SQLCase::ExtractInputData(std::vector<Row>& rows, int32_t input_idx) {
     if (inputs_[input_idx].data_.empty() && inputs_[input_idx].rows_.empty()) {
         LOG(WARNING) << "Empty Data String";
         return false;
@@ -294,7 +294,7 @@ bool SQLCase::ExtractInputData(std::vector<Row> &rows, int32_t input_idx) {
     return true;
 }
 
-bool SQLCase::ExtractOutputData(std::vector<Row> &rows) {
+bool SQLCase::ExtractOutputData(std::vector<Row>& rows) {
     if (expect_.data_.empty() && expect_.rows_.empty()) {
         LOG(WARNING) << "Empty Data";
         return false;
@@ -316,9 +316,9 @@ bool SQLCase::ExtractOutputData(std::vector<Row> &rows) {
     }
     return true;
 }
-bool SQLCase::BuildInsertSQLFromRow(const type::TableDef &table,
-                                    const std::string &row_str,
-                                    std::string *insert_sql) {
+bool SQLCase::BuildInsertSQLFromRow(const type::TableDef& table,
+                                    const std::string& row_str,
+                                    std::string* insert_sql) {
     std::string sql = "";
     sql.append("Insert into ").append(table.name()).append(" values(");
     auto schema = table.columns();
@@ -372,9 +372,9 @@ bool SQLCase::BuildInsertSQLFromRow(const type::TableDef &table,
 
 // INSERT INTO table_name VALUES
 // (value1,value2,value3,...)，(value1,value2,value3,...);
-bool SQLCase::BuildInsertSQLFromMultipleRows(const type::TableDef &table,
-                                             const std::string &rows_str,
-                                             std::string *insert_sql) {
+bool SQLCase::BuildInsertSQLFromMultipleRows(const type::TableDef& table,
+                                             const std::string& rows_str,
+                                             std::string* insert_sql) {
     std::vector<std::string> data_line;
     boost::split(data_line, rows_str, boost::is_any_of("\n"),
                  boost::token_compress_on);
@@ -438,8 +438,8 @@ bool SQLCase::BuildInsertSQLFromMultipleRows(const type::TableDef &table,
     *insert_sql = sql;
     return true;
 }
-bool SQLCase::ExtractRow(const vm::Schema &schema, const std::string &row_str,
-                         int8_t **out_ptr, int32_t *out_size) {
+bool SQLCase::ExtractRow(const vm::Schema& schema, const std::string& row_str,
+                         int8_t** out_ptr, int32_t* out_size) {
     std::vector<std::string> item_vec;
     boost::split(item_vec, row_str, boost::is_any_of(","),
                  boost::token_compress_on);
@@ -449,9 +449,9 @@ bool SQLCase::ExtractRow(const vm::Schema &schema, const std::string &row_str,
     }
     return true;
 }
-bool SQLCase::ExtractRow(const vm::Schema &schema,
-                         const std::vector<std::string> &row, int8_t **out_ptr,
-                         int32_t *out_size) {
+bool SQLCase::ExtractRow(const vm::Schema& schema,
+                         const std::vector<std::string>& row, int8_t** out_ptr,
+                         int32_t* out_size) {
     if (row.size() != static_cast<size_t>(schema.size())) {
         LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
         return false;
@@ -471,7 +471,7 @@ bool SQLCase::ExtractRow(const vm::Schema &schema,
 
     codec::RowBuilder rb(schema);
     uint32_t row_size = rb.CalTotalLength(str_size);
-    int8_t *ptr = static_cast<int8_t *>(malloc(row_size));
+    int8_t* ptr = static_cast<int8_t*>(malloc(row_size));
     rb.SetBuffer(ptr, row_size);
     uint32_t index = 0;
 
@@ -578,16 +578,16 @@ bool SQLCase::ExtractRow(const vm::Schema &schema,
     *out_size = row_size;
     return true;
 }
-bool SQLCase::ExtractRows(const vm::Schema &schema,
-                          const std::vector<std::vector<std::string> > &row_vec,
-                          std::vector<fesql::codec::Row> &rows) {
+bool SQLCase::ExtractRows(const vm::Schema& schema,
+                          const std::vector<std::vector<std::string> >& row_vec,
+                          std::vector<fesql::codec::Row>& rows) {
     if (row_vec.empty()) {
         LOG(WARNING) << "Invalid Data Format";
         return false;
     }
 
     for (auto row_item_vec : row_vec) {
-        int8_t *row_ptr = nullptr;
+        int8_t* row_ptr = nullptr;
         int32_t row_size = 0;
         if (!ExtractRow(schema, row_item_vec, &row_ptr, &row_size)) {
             return false;
@@ -596,8 +596,8 @@ bool SQLCase::ExtractRows(const vm::Schema &schema,
     }
     return true;
 }
-bool SQLCase::ExtractRows(const vm::Schema &schema, const std::string &data_str,
-                          std::vector<fesql::codec::Row> &rows) {
+bool SQLCase::ExtractRows(const vm::Schema& schema, const std::string& data_str,
+                          std::vector<fesql::codec::Row>& rows) {
     std::vector<std::string> row_vec;
     boost::split(row_vec, data_str, boost::is_any_of("\n"),
                  boost::token_compress_on);
@@ -607,7 +607,7 @@ bool SQLCase::ExtractRows(const vm::Schema &schema, const std::string &data_str,
     }
 
     for (auto row_str : row_vec) {
-        int8_t *row_ptr = nullptr;
+        int8_t* row_ptr = nullptr;
         int32_t row_size = 0;
         if (!ExtractRow(schema, row_str, &row_ptr, &row_size)) {
             return false;
@@ -616,7 +616,7 @@ bool SQLCase::ExtractRows(const vm::Schema &schema, const std::string &data_str,
     }
     return true;
 }
-bool SQLCase::ExtractInputTableDef(type::TableDef &table, int32_t input_idx) {
+bool SQLCase::ExtractInputTableDef(type::TableDef& table, int32_t input_idx) {
     if (!inputs_[input_idx].schema_.empty()) {
         if (!ExtractTableDef(inputs_[input_idx].schema_,
                              inputs_[input_idx].index_, table)) {
@@ -633,7 +633,7 @@ bool SQLCase::ExtractInputTableDef(type::TableDef &table, int32_t input_idx) {
     table.set_name(inputs_[input_idx].name_);
     return true;
 }
-bool SQLCase::ExtractOutputSchema(type::TableDef &table) {
+bool SQLCase::ExtractOutputSchema(type::TableDef& table) {
     if (!expect_.schema_.empty()) {
         return ExtractSchema(expect_.schema_, table);
     } else if (!expect_.columns_.empty()) {
@@ -644,12 +644,12 @@ bool SQLCase::ExtractOutputSchema(type::TableDef &table) {
         return false;
     }
 }
-std::ostream &operator<<(std::ostream &output, const SQLCase &thiz) {
+std::ostream& operator<<(std::ostream& output, const SQLCase& thiz) {
     output << "Case ID: " << thiz.id() << ", Desc:" << thiz.desc();
     return output;
 }
-bool SQLCase::CreateStringListFromYamlNode(const YAML::Node &node,
-                                           std::vector<std::string> &rows) {
+bool SQLCase::CreateStringListFromYamlNode(const YAML::Node& node,
+                                           std::vector<std::string>& rows) {
     for (int i = 0; i < node.size(); i++) {
         if (node[i].IsNull()) {
             rows.push_back("null");
@@ -660,7 +660,7 @@ bool SQLCase::CreateStringListFromYamlNode(const YAML::Node &node,
     return true;
 }
 bool SQLCase::CreateRowsFromYamlNode(
-    const YAML::Node &node, std::vector<std::vector<std::string> > &rows) {
+    const YAML::Node& node, std::vector<std::vector<std::string> >& rows) {
     for (int i = 0; i < node.size(); ++i) {
         std::vector<std::string> row;
         if (!CreateStringListFromYamlNode(node[i], row)) {
@@ -671,8 +671,8 @@ bool SQLCase::CreateRowsFromYamlNode(
     }
     return true;
 }
-bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node &schema_data,
-                                          SQLCase::TableInfo *table) {
+bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
+                                          SQLCase::TableInfo* table) {
     if (schema_data["name"]) {
         table->name_ = schema_data["name"].as<std::string>();
         boost::trim(table->name_);
@@ -721,8 +721,8 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node &schema_data,
     }
     return true;
 }
-bool SQLCase::CreateExpectFromYamlNode(const YAML::Node &schema_data,
-                                       SQLCase::ExpectInfo *expect) {
+bool SQLCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
+                                       SQLCase::ExpectInfo* expect) {
     if (schema_data["schema"]) {
         expect->schema_ = schema_data["schema"].as<std::string>();
         boost::trim(expect->schema_);
@@ -770,9 +770,9 @@ bool SQLCase::CreateExpectFromYamlNode(const YAML::Node &schema_data,
     }
     return true;
 }
-bool SQLCase::CreateSQLCasesFromYaml(const std::string &cases_dir,
-                                     const std::string &yaml_path,
-                                     std::vector<SQLCase> &sql_cases,
+bool SQLCase::CreateSQLCasesFromYaml(const std::string& cases_dir,
+                                     const std::string& yaml_path,
+                                     std::vector<SQLCase>& sql_cases,
                                      const std::string filter_mode) {
     std::vector<std::string> filter_modes;
     if (filter_mode.empty()) {
@@ -785,9 +785,9 @@ bool SQLCase::CreateSQLCasesFromYaml(const std::string &cases_dir,
     }
 }
 
-bool SQLCase::CreateTableInfoFromYaml(const std::string &cases_dir,
-                                      const std::string &yaml_path,
-                                      TableInfo *table_info) {
+bool SQLCase::CreateTableInfoFromYaml(const std::string& cases_dir,
+                                      const std::string& yaml_path,
+                                      TableInfo* table_info) {
     auto resouces_path = cases_dir + "/" + yaml_path;
     LOG(INFO) << "Resource path: " << resouces_path;
     if (!boost::filesystem::is_regular_file(resouces_path)) {
@@ -806,10 +806,10 @@ bool SQLCase::CreateTableInfoFromYaml(const std::string &cases_dir,
     return true;
 }
 
-bool SQLCase::LoadSchemaAndRowsFromYaml(const std::string &cases_dir,
-                                        const std::string &resource_path,
-                                        type::TableDef &table,
-                                        std::vector<fesql::codec::Row> &rows) {
+bool SQLCase::LoadSchemaAndRowsFromYaml(const std::string& cases_dir,
+                                        const std::string& resource_path,
+                                        type::TableDef& table,
+                                        std::vector<fesql::codec::Row>& rows) {
     TableInfo table_info;
     if (!CreateTableInfoFromYaml(cases_dir, resource_path, &table_info)) {
         return false;
@@ -825,9 +825,9 @@ bool SQLCase::LoadSchemaAndRowsFromYaml(const std::string &cases_dir,
     return true;
 }
 bool SQLCase::CreateSQLCasesFromYaml(
-    const std::string &cases_dir, const std::string &yaml_path,
-    std::vector<SQLCase> &sql_cases,
-    const std::vector<std::string> &filter_modes) {
+    const std::string& cases_dir, const std::string& yaml_path,
+    std::vector<SQLCase>& sql_cases,
+    const std::vector<std::string>& filter_modes) {
     auto sql_case_path = cases_dir + "/" + yaml_path;
     LOG(INFO) << "SQL Cases Path: " << sql_case_path;
     if (!boost::filesystem::is_regular_file(sql_case_path)) {
