@@ -79,6 +79,7 @@ public class FesqlFlinkCodec {
                 long outputBufPointer = CoreAPI.GetRowBuf(fesqlRow, 0);
                 encodeSingleFlinkRow(flinkRow, outputBufPointer, sliceSize, i);
             } else {
+                // Append the slice data for the row
                 long outputBufPointer = CoreAPI.AppendRow(fesqlRow, sliceSize);
                 encodeSingleFlinkRow(flinkRow, outputBufPointer, sliceSize, i);
             }
