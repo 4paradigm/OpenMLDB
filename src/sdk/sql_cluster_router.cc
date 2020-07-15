@@ -568,6 +568,11 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         LOG(WARNING) << status->msg;
         return false;
     }
+    if (!row->IsComplete()) {
+        status->msg = "insert value isn't complete";
+        LOG(WARNING) << status->msg;
+        return false;
+    }
     std::shared_ptr<::rtidb::client::TabletClient> tablet =
         cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
     if (!tablet) {

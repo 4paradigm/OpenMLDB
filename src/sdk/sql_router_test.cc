@@ -331,6 +331,11 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key) {
     ok = router->ExecuteInsert(db, insert5, &status);
     ASSERT_TRUE(ok);
 
+    std::string insert6 =
+        "insert into " + name + " values('hello', 1004, '2020-07-31', ?);";
+    ok = router->ExecuteInsert(db, insert6, &status);
+    ASSERT_FALSE(ok);
+
     int32_t year;
     int32_t month;
     int32_t day;
