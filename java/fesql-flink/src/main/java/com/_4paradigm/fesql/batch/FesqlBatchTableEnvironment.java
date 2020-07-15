@@ -45,8 +45,6 @@ public class FesqlBatchTableEnvironment {
         } else {
             this.registeredTableSchemaMap.put(name, tableSource.getTableSchema());
         }
-
-
     }
 
     void registerTableSink(String name, String[] fieldNames, TypeInformation<?>[] fieldTypes, TableSink<?> tableSink) {
@@ -58,6 +56,15 @@ public class FesqlBatchTableEnvironment {
     }
 
     FesqlTable sqlQuery(String query) {
+        String isDisableFesql = System.getenv("DISABLE_FESQL");
+        if (isDisableFesql != null && isDisableFesql.trim().toLowerCase().equals("true")) {
+            return flinksqlQuery(query);
+        } else {
+            return fesqlQuery(query);
+        }
+    }
+
+    FesqlTable fesqlQuery(String query) {
         // Normalize SQL format
         if (!query.trim().endsWith(";")) {
             query = query.trim() + ";";
