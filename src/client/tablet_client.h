@@ -218,8 +218,7 @@ class TabletClient {
 
     bool ChangeRole(
         uint32_t tid, uint32_t pid, bool leader,
-        const std::vector<std::string>& endpoints,
-        const std::vector<std::string>& real_endpoints, uint64_t term,
+        const std::vector<std::string>& endpoints, uint64_t term,
         const std::vector<::rtidb::common::EndpointAndTid>* et = nullptr);
 
     bool UpdateTTL(uint32_t tid, uint32_t pid,

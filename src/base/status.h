@@ -182,6 +182,7 @@ enum ReturnCode {
     kEncodeError = 152,
     kAddTypeToColumnDescFailed = 153,
     kUseNameIsFalse = 154,
+    kServerNameNotFound = 155,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,

@@ -1884,8 +1884,20 @@ void TabletImpl::ChangeRole(RpcController* controller,
         vec.push_back(request->replicas(idx).c_str());
     }
     std::vector<std::string> r_vec;
-    for (int idx = 0; idx < request->real_endpoints_size(); idx++) {
-        r_vec.push_back(request->real_endpoints(idx));
+    if (FLAGS_use_name) {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto& ep: vec) {
+            auto iter = real_ep_map_.find(ep);
+            if (iter == real_ep_map_.end()) {
+                PDLOG(WARNING, "name not found in real_ep_map."
+                        "tid[%u] pid[%u]", tid, pid);
+                response->set_code(
+                        ::rtidb::base::ReturnCode::kServerNameNotFound);
+                response->set_msg("name not found in real_ep_map");
+                return;
+            }
+            r_vec.push_back(iter->second);
+        }
     }
     if (is_leader) {
         {
@@ -1974,16 +1986,19 @@ void TabletImpl::AddReplica(RpcController* controller,
         vec.push_back(request->endpoint());
         std::vector<std::string> real_vec;
         if (FLAGS_use_name) {
-            std::string value;
-            if (!zk_client_->GetNodeValue( FLAGS_zk_root_path + "/map/names/" +
-                        request->endpoint(), value)) {
-                response->set_code(
-                        ::rtidb::base::ReturnCode::kGetZkFailed);
-                response->set_msg("get zk failed");
-                PDLOG(WARNING, "get zk failed, get names map failed");
-                break;
+            std::lock_guard<std::mutex> lock(mu_);
+            for (const auto& ep: vec) {
+                auto iter = real_ep_map_.find(ep);
+                if (iter == real_ep_map_.end()) {
+                    PDLOG(WARNING, "name not found in real_ep_map."
+                            "tid[%u] pid[%u]", request->tid(), request->pid());
+                    response->set_code(
+                            ::rtidb::base::ReturnCode::kServerNameNotFound);
+                    response->set_msg("name not found in real_ep_map");
+                    break;
+                }
+                real_vec.push_back(iter->second);
             }
-            real_vec.push_back(value);
         }
         int ret = -1;
         if (request->has_remote_tid()) {
@@ -4051,12 +4066,22 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
     for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
         endpoints.push_back(table_meta->replicas(i));
     }
-    std::vector<std::string> real_endpoints;
-    for (int32_t i = 0; i < table_meta->real_endpoints_size(); i++) {
-        real_endpoints.push_back(table_meta->replicas(i));
-    }
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
+    std::vector<std::string> real_endpoints;
+    if (FLAGS_use_name) {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (const auto& ep: endpoints) {
+            auto iter = real_ep_map_.find(ep);
+            if (iter == real_ep_map_.end()) {
+                PDLOG(WARNING, "name not found in real_ep_map."
+                        "tid[%u] pid[%u]", tid, pid);
+                msg.assign("name not found in real_ep_map");
+                return -1;
+            }
+            real_endpoints.push_back(iter->second);
+        }
+    }
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
     if (table) {
@@ -4147,12 +4172,22 @@ int TabletImpl::CreateDiskTableInternal(
     for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
         endpoints.push_back(table_meta->replicas(i));
     }
-    std::vector<std::string> real_endpoints;
-    for (int32_t i = 0; i < table_meta->real_endpoints_size(); i++) {
-        real_endpoints.push_back(table_meta->replicas(i));
-    }
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
+    std::vector<std::string> real_endpoints;
+    if (FLAGS_use_name) {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto& ep: endpoints) {
+            auto iter = real_ep_map_.find(ep);
+            if (iter == real_ep_map_.end()) {
+                PDLOG(WARNING, "name not found in real_ep_map."
+                        "tid[%u] pid[%u]", tid, pid);
+                msg.assign("name not found in real_ep_map");
+                return -1;
+            }
+            real_endpoints.push_back(iter->second);
+        }
+    }
     std::string db_root_path;
     bool ok = ChooseDBRootPath(table_meta->tid(), table_meta->pid(),
                                table_meta->storage_mode(), db_root_path);

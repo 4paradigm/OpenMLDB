@@ -352,7 +352,6 @@ message TableMeta {
     // format_version 0 , the legacy format 1 ,the new one
     optional uint32 format_version = 21 [default = 0];
     optional string db = 22;
-    repeated string real_endpoints = 23;
 }
 
 message CreateTableRequest {
@@ -469,7 +468,6 @@ message ChangeRoleRequest {
     optional TableMode mode = 4;
     repeated string replicas = 5;
     repeated rtidb.common.EndpointAndTid endpoint_tid = 6;
-    repeated string real_endpoints = 7;
 }
 
 message SendSnapshotRequest {
