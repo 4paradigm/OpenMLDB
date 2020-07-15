@@ -1886,7 +1886,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
     std::vector<std::string> r_vec;
     if (FLAGS_use_name) {
         std::lock_guard<std::mutex> lock(mu_);
-        for (auto& ep: vec) {
+        for (auto& ep : vec) {
             auto iter = real_ep_map_.find(ep);
             if (iter == real_ep_map_.end()) {
                 PDLOG(WARNING, "name not found in real_ep_map."
@@ -1987,7 +1987,7 @@ void TabletImpl::AddReplica(RpcController* controller,
         std::vector<std::string> real_vec;
         if (FLAGS_use_name) {
             std::lock_guard<std::mutex> lock(mu_);
-            for (const auto& ep: vec) {
+            for (const auto& ep : vec) {
                 auto iter = real_ep_map_.find(ep);
                 if (iter == real_ep_map_.end()) {
                     PDLOG(WARNING, "name not found in real_ep_map."
@@ -4071,7 +4071,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
     std::vector<std::string> real_endpoints;
     if (FLAGS_use_name) {
         std::lock_guard<std::mutex> lock(mu_);
-        for (const auto& ep: endpoints) {
+        for (const auto& ep : endpoints) {
             auto iter = real_ep_map_.find(ep);
             if (iter == real_ep_map_.end()) {
                 PDLOG(WARNING, "name not found in real_ep_map."
@@ -4177,7 +4177,7 @@ int TabletImpl::CreateDiskTableInternal(
     std::vector<std::string> real_endpoints;
     if (FLAGS_use_name) {
         std::lock_guard<std::mutex> lock(mu_);
-        for (auto& ep: endpoints) {
+        for (auto& ep : endpoints) {
             auto iter = real_ep_map_.find(ep);
             if (iter == real_ep_map_.end()) {
                 PDLOG(WARNING, "name not found in real_ep_map."
