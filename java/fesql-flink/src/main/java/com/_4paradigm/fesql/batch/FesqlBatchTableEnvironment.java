@@ -57,28 +57,41 @@ public class FesqlBatchTableEnvironment {
     public FesqlTable sqlQuery(String query) {
         String isDisableFesql = System.getenv("DISABLE_FESQL");
         if (isDisableFesql != null && isDisableFesql.trim().toLowerCase().equals("true")) {
+            // Force to run FlinkSQL
             return flinksqlQuery(query);
         } else {
-            return fesqlQuery(query);
+            try {
+                // Try to run FESQL
+                return runFesqlQuery(query);
+            } catch (Exception e) {
+                String isEnableFesqlFallback = System.getenv("ENABLE_FESQL_FALLBACK");
+                if (isEnableFesqlFallback != null && isEnableFesqlFallback.trim().toLowerCase().equals("true")) {
+                    // Fallback to FlinkSQL
+                    logger.warn("Fail to execute with FESQL, fallback to FlinkSQL");
+                    return flinksqlQuery(query);
+                }
+            }
         }
+        return null;
     }
 
     public FesqlTable fesqlQuery(String query) {
+        try {
+            return runFesqlQuery(query);
+        } catch (Exception e) {
+            logger.warn("Fail to execute with FESQL, error message: " + e.getMessage());
+            return flinksqlQuery(query);
+        }
+    }
+
+    public FesqlTable runFesqlQuery(String query) throws Exception {
         // Normalize SQL format
         if (!query.trim().endsWith(";")) {
             query = query.trim() + ";";
         }
 
         FesqlBatchPlanner planner = new FesqlBatchPlanner(this);
-
-        try {
-            return new FesqlTable(planner.plan(query));
-        } catch (FesqlException e) {
-            e.printStackTrace();
-            logger.error(String.format("Fail to run FESQL planner, error message: %s", e.getMessage()));
-            return null;
-        }
-
+        return new FesqlTable(planner.plan(query));
     }
 
     public FesqlTable flinksqlQuery(String query) {
