@@ -4019,6 +4019,80 @@ void NameServerImpl::DropTableInternel(
     }
 }
 
+bool NameServerImpl::AddFieldToTablet(const std::vector<rtidb::common::ColumnDesc> cols,
+                                      std::shared_ptr<TableInfo> table_info,
+                                      rtidb::common::VersionPair* new_pair) {
+    std::set<std::string> endpoint_set;
+    for (const auto& part : table_info->table_partition()) {
+        for (const auto& meta : part.partition_meta()) {
+            endpoint_set.insert(meta.endpoint());
+        }
+    }
+    std::map<std::string, std::shared_ptr<TabletClient>> tablet_client_map;
+    for (const auto& endpoint : endpoint_set) {
+        std::shared_ptr<TabletInfo> tablet = GetTabletInfo(endpoint);
+        if (!tablet) {
+            continue;
+        }
+        if (!tablet->Health()) {
+            LOG(WARNING) << "endpoint[" << endpoint << "] is offline";
+            return false;
+        }
+        tablet_client_map.insert(std::make_pair(endpoint, tablet->client_));
+    }
+    const std::string& name = table_info->name();
+    // update tableMeta.schema
+    std::vector<::rtidb::codec::ColumnDesc> columns;
+    if (table_info->added_column_desc_size() > 0) {
+        if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(
+            *table_info, columns, table_info->added_column_desc_size()) < 0) {
+            LOG(WARNING) << "convert table " << name << "column desc failed";
+            return false;
+        }
+    } else {
+        if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
+            LOG(WARNING) << "convert table " << name << "column desc failed";
+            return false;
+        }
+    }
+    for (const auto& col : cols) {
+        ::rtidb::codec::ColumnDesc column;
+        column.name = col.name();
+        column.type = rtidb::codec::SchemaCodec::ConvertType(col.type());
+        column.add_ts_idx = false;
+        column.is_ts_col = false;
+        columns.push_back(column);
+    }
+    std::string schema;
+    ::rtidb::codec::SchemaCodec codec;
+    if (!codec.Encode(columns, schema)) {
+        LOG(WARNING) << "Fail to encode schema form columns in table " << name;
+        return false;
+    }
+    uint32_t version_id = 0;
+    for (const auto& pair : table_info->schema_versions()) {
+        version_id = pair.id();
+    }
+    version_id++;
+    new_pair->set_id(version_id);
+    new_pair->set_idx(columns.size());
+
+    uint32_t tid = table_info->tid();
+    std::string msg;
+    std::vector<rtidb::common::ColumnDesc> new_cols;
+    for (auto it = tablet_client_map.begin(); it != tablet_client_map.end(); it++) {
+        if (!it->second->UpdateTableMetaForAddField(tid, cols, *new_pair,
+                                                    schema, msg)) {
+            LOG(WARNING) << "update table_meta on endpoint[" << it->first
+                         << "for add table field failed! err: " << msg;
+            return false;
+        }
+        LOG(INFO) << "update table_meta on endpoint[" << it->first
+                  << "] for add table field success!";
+    }
+    return true;
+}
+
 void NameServerImpl::AddTableField(RpcController* controller,
                                    const AddTableFieldRequest* request,
                                    GeneralResponse* response, Closure* done) {
@@ -4080,75 +4154,15 @@ void NameServerImpl::AddTableField(RpcController* controller,
             }
         }
         // 1.update tablet tableMeta
-        for (const auto& part : table_info->table_partition()) {
-            for (const auto& meta : part.partition_meta()) {
-                endpoint_set.insert(meta.endpoint());
-            }
-        }
-    }
-    for (const auto& endpoint : endpoint_set) {
-        std::shared_ptr<TabletInfo> tablet = GetTabletInfo(endpoint);
-        if (!tablet) {
-            continue;
-        }
-        if (!tablet->Health()) {
-            response->set_code(ReturnCode::kTabletIsNotHealthy);
-            response->set_msg("tablet is not healthy!");
-            LOG(WARNING) << "endpoint[" << endpoint << "] is offline";
-            return;
-        }
-        tablet_client_map.insert(std::make_pair(endpoint, tablet->client_));
-    }
-
-    // update tableMeta.schema
-    std::vector<::rtidb::codec::ColumnDesc> columns;
-    if (table_info->added_column_desc_size() > 0) {
-        if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(
-                *table_info, columns, table_info->added_column_desc_size()) <
-            0) {
-            LOG(WARNING) << "convert table " << name << "column desc failed";
-            return;
-        }
-    } else {
-        if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
-            LOG(WARNING) << "convert table " << name << "column desc failed";
-            return;
-        }
-    }
-    ::rtidb::codec::ColumnDesc column;
-    column.name = request->column_desc().name();
-    column.type = rtidb::codec::SchemaCodec::ConvertType(request->column_desc().type());
-    column.add_ts_idx = false;
-    column.is_ts_col = false;
-    columns.push_back(column);
-    ::rtidb::codec::SchemaCodec codec;
-    if (!codec.Encode(columns, schema)) {
-        PDLOG(WARNING, "Fail to encode schema from columns in table %s!",
-              request->name().c_str());
-        return;
     }
     rtidb::common::VersionPair new_pair;
-    uint32_t version_id = 0;
-    for (const auto& pair : table_info->schema_versions()) {
-        version_id = pair.id();
-    }
-    version_id++;
-    new_pair.set_id(version_id);
-    new_pair.set_idx(schema.size());
-
-    uint32_t tid = table_info->tid();
-    std::string msg;
-    for (auto it = tablet_client_map.begin(); it != tablet_client_map.end(); it++) {
-        if (!it->second->UpdateTableMetaForAddField(tid, request->column_desc(), new_pair,
-                                                    schema, msg)) {
-            response->set_code(ReturnCode::kFailToUpdateTablemetaForAddingField);
-            response->set_msg("fail to update tableMeta for adding field: " + msg);
-            LOG(WARNING) << "update table_meta on endpoint[" << it->first
-                         << "for add table field failed!";
-            return;
-        }
-        LOG(INFO) << "update table_meta on endpoint[" << it->first
-                  << "] for add table field success!";
+    std::vector<rtidb::common::ColumnDesc> cols{request->column_desc()};
+    bool ok = AddFieldToTablet(cols, table_info, &new_pair);
+    if (!ok) {
+        response->set_code(ReturnCode::kFailToUpdateTablemetaForAddingField);
+        response->set_msg("fail to update tableMeta for adding field");
+        LOG(WARNING) << "update tablemeta fail";
+        return;
     }
     // update zk node
     std::shared_ptr<TableInfo> table_info_zk(table_info->New());
@@ -11108,17 +11122,6 @@ void NameServerImpl::AddIndex(RpcController* controller,
     for (const auto& col : table_info->added_column_desc()) {
         col_map.insert(std::make_pair(col.name(), col));
     }
-    for (const auto& col_name : request->column_key().col_name()) {
-        auto it = col_map.find(col_name);
-        if (it == col_map.end() ||
-            (it->second.type() == "float") || (it->second.type() == "double")) {
-            response->set_code(ReturnCode::kWrongColumnKey);
-            response->set_msg("wrong column key!");
-            LOG(WARNING) << "column_desc " << col_name
-                         << " has wrong type or not exist, table " << name;
-            return;
-        }
-    }
     for (const auto& ts_name : request->column_key().ts_name()) {
         auto it = ts_map.find(ts_name);
         if (it == ts_map.end()) {
@@ -11134,9 +11137,75 @@ void NameServerImpl::AddIndex(RpcController* controller,
         LOG(WARNING) << "column key " << index_name << " should contain ts_col, table " << name;
         return;
     }
+    std::set<std::string> request_cols;
+    for (const auto& col : request->cols()) {
+        if (col.type() == "float" || col.type() == "double") {
+            response->set_code(ReturnCode::kWrongColumnKey);
+            response->set_msg("index col type cannot float or double");
+            LOG(WARNING) << col.name() << " type is " << col.type()
+                         << " it is not allow be index col";
+            return;
+        }
+        request_cols.insert(col.name());
+    }
+    std::set<std::string> need_create_cols;
+    for (const auto& col_name : request->column_key().col_name()) {
+        auto it = col_map.find(col_name);
+        if (it == col_map.end()) {
+            auto tit = request_cols.find(col_name);
+            if (tit == request_cols.end()) {
+                response->set_code(ReturnCode::kWrongColumnKey);
+                response->set_msg("wrong column key");
+                LOG(WARNING) << "miss column desc in the request";
+                return;
+            } else {
+                need_create_cols.insert(col_name);
+            }
+        } else if (it->second.type() == "float" || it->second.type() == "double") {
+            response->set_code(ReturnCode::kWrongColumnKey);
+            response->set_msg("wrong column key!");
+            LOG(WARNING) << "column_desc " << col_name
+                         << " has wrong type or not exist, table " << name;
+            return;
+        }
+    }
+    std::vector<::rtidb::codec::ColumnDesc> columns;
+    if (table_info->added_column_desc_size() > 0) {
+        if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(
+            *table_info, columns, table_info->added_column_desc_size()) <
+            0) {
+            LOG(WARNING) << "convert table " << name << "column desc failed";
+            return;
+        }
+    } else {
+        if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
+            LOG(WARNING) << "convert table " << name << "column desc failed";
+            return;
+        }
+    }
+    std::vector<rtidb::common::ColumnDesc> add_cols;
+    for (const auto& col : request->cols()) {
+        if (need_create_cols.find(col.name()) != need_create_cols.end()) {
+            add_cols.push_back(col);
+            rtidb::codec::ColumnDesc new_col;
+            new_col.name = col.name();
+            new_col.type = rtidb::codec::SchemaCodec::ConvertType(col.type());
+            new_col.add_ts_idx = false;
+            new_col.is_ts_col = false;
+            columns.push_back(new_col);
+        }
+    }
+    rtidb::common::VersionPair new_pair;
+    bool ok = AddFieldToTablet(add_cols, table_info, &new_pair);
+    if (!ok) {
+        response->set_code(ReturnCode::kFailToUpdateTablemetaForAddingField);
+        response->set_msg("fail to update tableMeta for adding field");
+        LOG(WARNING) << "update tablemeta fail";
+        return;
+    }
     for (uint32_t pid = 0; pid < (uint32_t)table_info->table_partition_size(); pid++) {
         std::lock_guard<std::mutex> lock(mu_);
-        if (CreateAddIndexOP(name, db, pid, request->column_key(), index_pos) < 0) {
+        if (CreateAddIndexOP(name, db, pid, request->column_key(), add_cols, index_pos) < 0) {
             LOG(WARNING) << "create AddIndexOP failed, table " << name << " pid " << pid;
             break;
         }
@@ -11172,7 +11241,8 @@ bool NameServerImpl::AddIndexToTableInfo(
 
 int NameServerImpl::CreateAddIndexOP(
     const std::string& name, const std::string& db, uint32_t pid,
-    const ::rtidb::common::ColumnKey& column_key, uint32_t idx) {
+    const ::rtidb::common::ColumnKey& column_key,
+    const std::vector<rtidb::common::ColumnDesc>& new_cols, uint32_t idx) {
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     if (!GetTableInfo(name, db, &table_info)) {
         PDLOG(WARNING, "table[%s] is not exist!", name.c_str());

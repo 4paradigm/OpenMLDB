@@ -788,6 +788,7 @@ class NameServerImpl : public NameServer {
     int CreateAddIndexOP(const std::string& name, const std::string& db,
                          uint32_t pid,
                          const ::rtidb::common::ColumnKey& column_key,
+                         const std::vector<rtidb::common::ColumnDesc>& new_cols,
                          uint32_t idx);
 
     int CreateAddIndexOPTask(std::shared_ptr<OPData> op_data);
@@ -902,6 +903,10 @@ class NameServerImpl : public NameServer {
             table_infos,
         const std::vector<uint32_t>& table_tid_vec,
         std::vector<::rtidb::nameserver::TableInfo>* local_table_info_vec);
+
+    bool AddFieldToTablet(const std::vector<rtidb::common::ColumnDesc> cols,
+                          std::shared_ptr<TableInfo> table_info,
+                          rtidb::common::VersionPair* new_pair);
 
  private:
     std::mutex mu_;

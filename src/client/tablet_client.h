@@ -62,7 +62,7 @@ class TabletClient {
     bool CreateTable(const ::rtidb::api::TableMeta& table_meta);
 
     bool UpdateTableMetaForAddField(
-        uint32_t tid, const ::rtidb::common::ColumnDesc& column_desc,
+        uint32_t tid, const std::vector<rtidb::common::ColumnDesc>& cols,
         const rtidb::common::VersionPair& pair, const std::string& schema,
         std::string& msg);  // NOLINT
 

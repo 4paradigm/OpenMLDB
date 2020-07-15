@@ -428,6 +428,7 @@ message AddIndexRequest {
     optional string name = 1;
     optional rtidb.common.ColumnKey column_key = 2;
     optional string db = 3 [default = ""];
+    repeated rtidb.common.ColumnDesc cols = 4;
 }
 
 message DeleteIndexRequest {
