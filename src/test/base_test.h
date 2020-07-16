@@ -41,9 +41,6 @@ void CheckSchema(const fesql::vm::Schema &schema,
                  const fesql::vm::Schema &exp_schema);
 void CheckSchema(const fesql::vm::Schema &schema,
                  const fesql::sdk::Schema &exp_schema);
-void CheckRows(const fesql::vm::Schema &schema,
-               const std::vector<fesql::codec::Row> &rows,
-               const std::vector<fesql::codec::Row> &exp_rows);
 void PrintRows(const fesql::vm::Schema &schema,
                const std::vector<fesql::codec::Row> &rows);
 void PrintSchema(const fesql::vm::Schema &schema);
@@ -51,10 +48,21 @@ const std::vector<fesql::codec::Row> SortRows(
     const fesql::vm::Schema &schema, const std::vector<fesql::codec::Row> &rows,
     const std::string &order_col);
 inline std::string GenRand(const std::string &prefix);
+void CheckRow(fesql::codec::RowView &row_view,  // NOLINT
+              std::shared_ptr<fesql::sdk::ResultSet> rs);
 void CheckRows(const fesql::vm::Schema &schema, const std::string &order_col,
                const std::vector<fesql::codec::Row> &rows,
                std::shared_ptr<fesql::sdk::ResultSet> rs);
+
+void CheckRows(const fesql::vm::Schema &schema, const std::string &order_col,
+               const std::vector<fesql::codec::Row> &rows,
+               std::vector<std::shared_ptr<fesql::sdk::ResultSet>> results);
+void CheckRows(const fesql::vm::Schema &schema,
+               const std::vector<fesql::codec::Row> &rows,
+               const std::vector<fesql::codec::Row> &exp_rows);
 void PrintResultSet(std::shared_ptr<fesql::sdk::ResultSet> rs);
+void PrintResultSet(
+    std::vector<std::shared_ptr<fesql::sdk::ResultSet>> results);
 void PrintSdkSchema(const fesql::sdk::Schema &schema);
 void PrintSdkSchema(const fesql::sdk::Schema &schema) {
     std::ostringstream oss;
@@ -68,6 +76,50 @@ void PrintSdkSchema(const fesql::sdk::Schema &schema) {
         }
     }
     t.endOfRow();
+}
+void PrintResultSet(
+    std::vector<std::shared_ptr<fesql::sdk::ResultSet>> results) {
+    if (results.empty()) {
+        LOG(WARNING) << "Fail to PrintResultSet: ResultSet List is Empty";
+        return;
+    }
+    std::ostringstream oss;
+    ::fesql::base::TextTable t('-', '|', '+');
+    auto rs = results[0];
+    auto schema = rs->GetSchema();
+    // Add Header
+    for (int i = 0; i < schema->GetColumnCnt(); i++) {
+        t.add(schema->GetColumnName(i));
+        if (t.current_columns_size() >= 20) {
+            t.add("...");
+            break;
+        }
+    }
+    t.endOfRow();
+    if (0 == rs->Size()) {
+        t.add("Empty set");
+        t.endOfRow();
+        return;
+    }
+
+    for (auto rs : results) {
+        while (rs->Next()) {
+            for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
+                std::string str = rs->GetAsString(idx);
+                t.add(str);
+                if (t.current_columns_size() >= 20) {
+                    t.add("...");
+                    break;
+                }
+            }
+            t.endOfRow();
+            if (t.rows().size() > 10) {
+                break;
+            }
+        }
+    }
+    oss << t << std::endl;
+    LOG(INFO) << "\n" << oss.str() << "\n";
 }
 void PrintResultSet(std::shared_ptr<fesql::sdk::ResultSet> rs) {
     std::ostringstream oss;
@@ -158,6 +210,109 @@ void CheckSchema(const fesql::vm::Schema &exp_schema,
         }
     }
 }
+void CheckRow(fesql::codec::RowView &row_view,  // NOLINT
+              std::shared_ptr<fesql::sdk::ResultSet> rs) {
+    for (int i = 0; i < row_view.GetSchema()->size(); i++) {
+        LOG(INFO) << "Check Column Idx: " << i;
+        if (row_view.IsNULL(i)) {
+            ASSERT_TRUE(rs->IsNULL(i)) << " At " << i;
+            continue;
+        }
+        switch (row_view.GetSchema()->Get(i).type()) {
+            case fesql::type::kInt32: {
+                ASSERT_EQ(row_view.GetInt32Unsafe(i), rs->GetInt32Unsafe(i))
+                    << " At " << i;
+                break;
+            }
+            case fesql::type::kInt64: {
+                ASSERT_EQ(row_view.GetInt64Unsafe(i), rs->GetInt64Unsafe(i))
+                    << " At " << i;
+                break;
+            }
+            case fesql::type::kInt16: {
+                ASSERT_EQ(row_view.GetInt16Unsafe(i), rs->GetInt16Unsafe(i))
+                    << " At " << i;
+                break;
+            }
+            case fesql::type::kFloat: {
+                ASSERT_FLOAT_EQ(row_view.GetFloatUnsafe(i),
+                                rs->GetFloatUnsafe(i))
+                    << " At " << i;
+                break;
+            }
+            case fesql::type::kDouble: {
+                ASSERT_DOUBLE_EQ(row_view.GetDoubleUnsafe(i),
+                                 rs->GetDoubleUnsafe(i))
+                    << " At " << i;
+                break;
+            }
+            case fesql::type::kVarchar: {
+                ASSERT_EQ(row_view.GetStringUnsafe(i), rs->GetStringUnsafe(i))
+                    << " At " << i;
+                break;
+            }
+            case fesql::type::kTimestamp: {
+                ASSERT_EQ(row_view.GetTimestampUnsafe(i), rs->GetTimeUnsafe(i))
+                    << " At " << i;
+                break;
+            }
+            case fesql::type::kDate: {
+                ASSERT_EQ(row_view.GetDateUnsafe(i), rs->GetDateUnsafe(i))
+                    << " At " << i;
+                break;
+            }
+            case fesql::type::kBool: {
+                ASSERT_EQ(row_view.GetBoolUnsafe(i), rs->GetBoolUnsafe(i))
+                    << " At " << i;
+                break;
+            }
+            default: {
+                FAIL() << "Invalid Column Type";
+                break;
+            }
+        }
+    }
+}
+void CheckRows(const fesql::vm::Schema &schema, const std::string &order_col,
+               const std::vector<fesql::codec::Row> &rows,
+               std::vector<std::shared_ptr<fesql::sdk::ResultSet>> results) {
+    ASSERT_EQ(rows.size(), results.size());
+    LOG(INFO) << "Expected Rows: \n";
+    PrintRows(schema, rows);
+    LOG(INFO) << "ResultSet Rows: \n";
+    PrintResultSet(results);
+    fesql::codec::RowView row_view(schema);
+    int order_idx = -1;
+    for (int i = 0; i < schema.size(); i++) {
+        if (schema.Get(i).name() == order_col) {
+            order_idx = i;
+            break;
+        }
+    }
+    std::map<std::string, fesql::codec::Row> rows_map;
+    if (order_idx >= 0) {
+        int32_t row_id = 0;
+        for (auto row : rows) {
+            LOG(INFO) << "Get Order String: " << row_id++;
+            row_view.Reset(row.buf());
+            std::string key = row_view.GetAsString(order_idx);
+            rows_map.insert(std::make_pair(key, row));
+        }
+    }
+    int32_t index = 0;
+    for (auto rs : results) {
+        rs->Reset();
+        while (rs->Next()) {
+            if (order_idx > 0) {
+                std::string key = rs->GetAsString(order_idx);
+                row_view.Reset(rows_map[key].buf());
+            } else {
+                row_view.Reset(rows[index++].buf());
+            }
+            CheckRow(row_view, rs);
+        }
+    }
+}
 void CheckRows(const fesql::vm::Schema &schema, const std::string &order_col,
                const std::vector<fesql::codec::Row> &rows,
                std::shared_ptr<fesql::sdk::ResultSet> rs) {
@@ -194,68 +349,7 @@ void CheckRows(const fesql::vm::Schema &schema, const std::string &order_col,
         } else {
             row_view.Reset(rows[index++].buf());
         }
-        for (int i = 0; i < schema.size(); i++) {
-            LOG(INFO) << "Check Column Idx: " << i;
-            if (row_view.IsNULL(i)) {
-                ASSERT_TRUE(rs->IsNULL(i)) << " At " << i;
-                continue;
-            }
-            switch (schema.Get(i).type()) {
-                case fesql::type::kInt32: {
-                    ASSERT_EQ(row_view.GetInt32Unsafe(i), rs->GetInt32Unsafe(i))
-                        << " At " << i;
-                    break;
-                }
-                case fesql::type::kInt64: {
-                    ASSERT_EQ(row_view.GetInt64Unsafe(i), rs->GetInt64Unsafe(i))
-                        << " At " << i;
-                    break;
-                }
-                case fesql::type::kInt16: {
-                    ASSERT_EQ(row_view.GetInt16Unsafe(i), rs->GetInt16Unsafe(i))
-                        << " At " << i;
-                    break;
-                }
-                case fesql::type::kFloat: {
-                    ASSERT_FLOAT_EQ(row_view.GetFloatUnsafe(i),
-                                    rs->GetFloatUnsafe(i))
-                        << " At " << i;
-                    break;
-                }
-                case fesql::type::kDouble: {
-                    ASSERT_DOUBLE_EQ(row_view.GetDoubleUnsafe(i),
-                                     rs->GetDoubleUnsafe(i))
-                        << " At " << i;
-                    break;
-                }
-                case fesql::type::kVarchar: {
-                    ASSERT_EQ(row_view.GetStringUnsafe(i),
-                              rs->GetStringUnsafe(i))
-                        << " At " << i;
-                    break;
-                }
-                case fesql::type::kTimestamp: {
-                    ASSERT_EQ(row_view.GetTimestampUnsafe(i),
-                              rs->GetTimeUnsafe(i))
-                        << " At " << i;
-                    break;
-                }
-                case fesql::type::kDate: {
-                    ASSERT_EQ(row_view.GetDateUnsafe(i), rs->GetDateUnsafe(i))
-                        << " At " << i;
-                    break;
-                }
-                case fesql::type::kBool: {
-                    ASSERT_EQ(row_view.GetBoolUnsafe(i), rs->GetBoolUnsafe(i))
-                        << " At " << i;
-                    break;
-                }
-                default: {
-                    FAIL() << "Invalid Column Type";
-                    break;
-                }
-            }
-        }
+        CheckRow(row_view, rs);
     }
 }
 inline std::string GenRand(const std::string &prefix) {
@@ -311,7 +405,8 @@ void PrintSchema(const fesql::vm::Schema &schema) {
     ::fesql::base::TextTable t('-', '|', '+');
     // Add ColumnName
     for (int i = 0; i < schema.size(); i++) {
-        t.add(schema.Get(i).name());
+        t.add(schema.Get(i).name() + ":" +
+              fesql::type::Type_Name(schema.Get(i).type()));
         if (t.current_columns_size() >= MAX_DEBUG_COLUMN_CNT) {
             t.add("...");
             break;

@@ -169,7 +169,21 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
     }
     return true;
 }
-
+bool SQLClusterRouter::ShowDB(std::vector<std::string>* dbs,
+                              fesql::sdk::Status* status) {
+    auto ns_ptr = cluster_sdk_->GetNsClient();
+    if (!ns_ptr) {
+        LOG(WARNING) << "no nameserver exist";
+        return false;
+    }
+    std::string err;
+    bool ok = ns_ptr->ShowDatabase(dbs, err);
+    if (!ok) {
+        LOG(WARNING) << "fail to show databases: " << err;
+        return false;
+    }
+    return true;
+}
 bool SQLClusterRouter::CreateDB(const std::string& db,
                                 fesql::sdk::Status* status) {
     auto ns_ptr = cluster_sdk_->GetNsClient();

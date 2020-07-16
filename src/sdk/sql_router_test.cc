@@ -135,6 +135,22 @@ TEST_F(SQLRouterTest, smoketest) {
     ASSERT_EQ(pk, rs->GetStringUnsafe(0));
 }
 
+TEST_F(SQLRouterTest, db_api_test) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_.GetZkCluster();
+    sql_opt.zk_path = mc_.GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) ASSERT_TRUE(false);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::vector<std::string> dbs;
+    ASSERT_TRUE(router->ShowDB(&dbs, &status));
+    ASSERT_EQ(1u, dbs.size());
+    ASSERT_EQ(db, dbs[0]);
+}
 TEST_F(SQLRouterTest, smoketest_on_sql) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_.GetZkCluster();

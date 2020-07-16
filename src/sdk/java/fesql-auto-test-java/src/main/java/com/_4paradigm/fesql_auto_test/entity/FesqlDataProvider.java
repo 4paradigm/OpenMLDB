@@ -52,32 +52,5 @@ public class FesqlDataProvider extends CaseFile {
         return testDateProvider;
     }
 
-    public List<SQLCase> getCases() {
-        List<SQLCase> testCaseList = new ArrayList<>();
-        List<String> debugs = getDebugs();
-        for (SQLCase tmpCase : getCases()) {
-            if (null == tmpCase.getDb()) {
-                tmpCase.setDb(getDb());
-            }
-            if (!CollectionUtils.isEmpty(debugs)) {
-                if (debugs.contains(tmpCase.getDesc().trim())) {
-                    testCaseList.add(tmpCase);
-                }
-                continue;
-            }
-            if (!isCaseInBlackList(tmpCase)) {
-                testCaseList.add(tmpCase);
-            }
-        }
-        return testCaseList;
-    }
 
-    public boolean isCaseInBlackList(SQLCase tmpCase) {
-        if (tmpCase == null) return false;
-        List<String> tags = tmpCase.getTags();
-        if (tags != null && (tags.contains("TODO") || tags.contains("todo"))) {
-            return true;
-        }
-        return false;
-    }
 }

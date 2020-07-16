@@ -51,6 +51,8 @@ class SQLRouter {
     SQLRouter() {}
     virtual ~SQLRouter() {}
 
+    virtual bool ShowDB(std::vector<std::string>* dbs,
+                        fesql::sdk::Status* status) = 0;
     virtual bool CreateDB(const std::string& db,
                           fesql::sdk::Status* status) = 0;
 

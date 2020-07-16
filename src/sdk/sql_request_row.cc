@@ -137,7 +137,9 @@ bool SQLRequestRow::Check(fesql::sdk::DataType type) {
     }
     auto expected_type = schema_->GetColumnType(cnt_);
     if (expected_type != type) {
-        LOG(WARNING) << "type mismatch required";
+        LOG(WARNING) << "type mismatch required type "
+                     << fesql::sdk::DataTypeName(expected_type)
+                     << " but real type " << fesql::sdk::DataTypeName(type);
         return false;
     }
     if (type != ::fesql::sdk::kTypeString) {
@@ -190,7 +192,39 @@ bool SQLRequestRow::AppendTimestamp(int64_t val) {
     cnt_++;
     return true;
 }
-
+bool SQLRequestRow::AppendDate(int32_t val) {
+    if (!Check(::fesql::sdk::kTypeDate)) return false;
+    int8_t* ptr = buf_ + offset_vec_[cnt_];
+    *(reinterpret_cast<int32_t*>(ptr)) = val;
+    cnt_++;
+    return true;
+}
+bool SQLRequestRow::AppendDate(int32_t year, int32_t month, int32_t day) {
+    if (!Check(::fesql::sdk::kTypeDate)) return false;
+    int8_t* ptr = buf_ + offset_vec_[cnt_];
+    int32_t date = 0;
+    if (year < 1900 || year > 9999) {
+        *(reinterpret_cast<int32_t*>(ptr)) = 0;
+        cnt_++;
+        return true;
+    }
+    if (month < 1 || month > 12) {
+        *(reinterpret_cast<int32_t*>(ptr)) = 0;
+        cnt_++;
+        return true;
+    }
+    if (day < 1 || day > 31) {
+        *(reinterpret_cast<int32_t*>(ptr)) = 0;
+        cnt_++;
+        return true;
+    }
+    date = (year - 1900) << 16;
+    date = date | ((month - 1) << 8);
+    date = date | day;
+    *(reinterpret_cast<int32_t*>(ptr)) = date;
+    cnt_++;
+    return true;
+}
 bool SQLRequestRow::AppendFloat(float val) {
     if (!Check(::fesql::sdk::kTypeFloat)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
