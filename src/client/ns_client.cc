@@ -1115,7 +1115,8 @@ bool NsClient::TransformToTableDef(
                             }
                             default: {
                                 status->msg = "CREATE common: TS Type " +
-                                              rtidb::type::DataType_Name(it->second->data_type()) +
+                                              rtidb::type::DataType_Name(
+                                                  it->second->data_type()) +
                                               " not support";
                                 status->code = fesql::common::kSQLError;
                                 return false;

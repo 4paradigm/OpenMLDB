@@ -107,9 +107,9 @@ bool TabletClient::CreateTable(
 }
 
 bool TabletClient::Query(const std::string& db, const std::string& sql,
-        const std::string& row,
-        brpc::Controller* cntl,
-        rtidb::api::QueryResponse* response, const bool is_debug) {
+                         const std::string& row, brpc::Controller* cntl,
+                         rtidb::api::QueryResponse* response,
+                         const bool is_debug) {
     if (cntl == NULL || response == NULL) return false;
     ::rtidb::api::QueryRequest request;
     request.set_sql(sql);
@@ -127,10 +127,10 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
     return true;
 }
 
-
 bool TabletClient::Query(const std::string& db, const std::string& sql,
                          brpc::Controller* cntl,
-                         ::rtidb::api::QueryResponse* response, const bool is_debug) {
+                         ::rtidb::api::QueryResponse* response,
+                         const bool is_debug) {
     if (cntl == NULL || response == NULL) return false;
     ::rtidb::api::QueryRequest request;
     request.set_sql(sql);
@@ -233,13 +233,12 @@ bool TabletClient::UpdateTableMetaForAddField(
     return false;
 }
 
-
-bool TabletClient::Update(uint32_t tid, uint32_t pid,
-        const ::google::protobuf::RepeatedPtrField<
-        ::rtidb::api::Columns>& cd_columns,
-        const Schema& new_value_schema,
-        const std::string& value, uint32_t* count,
-        std::string* msg) {
+bool TabletClient::Update(
+    uint32_t tid, uint32_t pid,
+    const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>&
+        cd_columns,
+    const Schema& new_value_schema, const std::string& value, uint32_t* count,
+    std::string* msg) {
     ::rtidb::api::UpdateRequest request;
     ::rtidb::api::UpdateResponse response;
     request.set_tid(tid);
@@ -265,8 +264,9 @@ bool TabletClient::Update(uint32_t tid, uint32_t pid,
 }
 
 bool TabletClient::Put(uint32_t tid, uint32_t pid, const std::string& value,
-        const ::rtidb::api::WriteOption& wo, int64_t* auto_gen_pk,
-        std::vector<int64_t>* blob_keys, std::string* msg) {
+                       const ::rtidb::api::WriteOption& wo,
+                       int64_t* auto_gen_pk, std::vector<int64_t>* blob_keys,
+                       std::string* msg) {
     ::rtidb::api::PutRequest request;
     request.set_tid(tid);
     request.set_pid(pid);
@@ -539,7 +539,8 @@ bool TabletClient::LoadTable(const ::rtidb::api::TableMeta& table_meta,
 }
 
 bool TabletClient::LoadTable(uint32_t tid, uint32_t pid,
-        ::rtidb::common::StorageMode storage_mode, std::string* msg) {
+                             ::rtidb::common::StorageMode storage_mode,
+                             std::string* msg) {
     ::rtidb::api::LoadTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_table_type(::rtidb::type::kRelational);
@@ -1217,7 +1218,6 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk,
     }
     return true;
 }
-
 
 bool TabletClient::Delete(uint32_t tid, uint32_t pid,
                           const Cond_Column& cd_columns, uint32_t* count,

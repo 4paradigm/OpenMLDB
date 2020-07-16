@@ -50,8 +50,8 @@ void CheckRows(const fesql::vm::Schema &schema, const std::string &order_col,
                const std::vector<fesql::codec::Row> &rows,
                std::shared_ptr<fesql::sdk::ResultSet> rs);
 void PrintResultSet(std::shared_ptr<fesql::sdk::ResultSet> rs);
-void PrintSdkSchema(const fesql::sdk::Schema& schema);
-void PrintSdkSchema(const fesql::sdk::Schema& schema) {
+void PrintSdkSchema(const fesql::sdk::Schema &schema);
+void PrintSdkSchema(const fesql::sdk::Schema &schema) {
     std::ostringstream oss;
     ::fesql::base::TextTable t('-', '|', '+');
     // Add Header
@@ -101,7 +101,7 @@ void PrintResultSet(std::shared_ptr<fesql::sdk::ResultSet> rs) {
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
 void CheckSchema(const fesql::vm::Schema &exp_schema,
-               const fesql::sdk::Schema &schema) {
+                 const fesql::sdk::Schema &schema) {
     LOG(INFO) << "expect schema:\n";
     PrintSchema(exp_schema);
     LOG(INFO) << "real schema:\n";
