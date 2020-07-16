@@ -1,3 +1,5 @@
+db: test_zw
+debugs:
 cases:
   -
     id: 1

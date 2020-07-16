@@ -5,6 +5,6 @@ import lombok.Data;
 @Data
 public class ExpectDesc extends Table {
     String order;
-    String count;
+    int count = -1;
     Boolean success = true;
 }

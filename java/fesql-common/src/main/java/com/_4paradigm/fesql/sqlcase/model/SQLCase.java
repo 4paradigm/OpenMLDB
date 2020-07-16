@@ -1,5 +1,8 @@
 package com._4paradigm.fesql.sqlcase.model;
+
 import lombok.Data;
+import org.apache.commons.collections.CollectionUtils;
+
 import java.util.List;
 
 @Data
@@ -18,14 +21,21 @@ public class SQLCase {
     ExpectDesc expect;
 
     public static String formatSql(String sql, int idx, String name) {
-        return sql.replace("{" + idx + "}", name);
+        return sql.replaceAll("\\{" + idx + "\\}", name);
+    }
+
+    public static String formatSql(String sql, String name) {
+        return sql.replaceAll("\\{auto\\}", name);
     }
 
     public String getSql() {
-        for (int idx = 0; idx < inputs.size(); idx++) {
-            sql = sql.replace("{" + idx + "}", inputs.get(idx).getName());
+        sql = formatSql(sql, Table.genAutoName());
+        if (CollectionUtils.isEmpty(inputs)) {
+            return sql;
         }
-        sql = sql.replace("{auto}", Table.genAutoName());
+        for (int idx = 0; idx < inputs.size(); idx++) {
+            sql = formatSql(sql, idx, inputs.get(idx).getName());
+        }
         return sql;
     }
 }

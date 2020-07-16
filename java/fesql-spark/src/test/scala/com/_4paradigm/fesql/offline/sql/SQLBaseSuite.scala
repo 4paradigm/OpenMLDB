@@ -73,7 +73,7 @@ class SQLBaseSuite extends SparkTestSuite {
         table_id += 1
       })
 
-      val sql = createSQLString(sqlCase.getSql, inputNames)
+      val sql = sqlCase.getSql
       if (sqlCase.getExpect != null && !sqlCase.getExpect.getSuccess) {
         assertThrows[java.lang.RuntimeException] {
           spark.sql(sql).sparkDf
@@ -173,16 +173,15 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def loadInputData(inputDesc: InputDesc, table_id: Int): (String, DataFrame) = {
     val sess = getSparkSession
-    val name = if (inputDesc.getName == null) "auto_t" + table_id else inputDesc.getName
     if (inputDesc.getResource != null) {
-      val (_, df) = loadTable(inputDesc.getResource)
+      val (name, df) = loadTable(inputDesc.getResource)
       name -> df
     } else {
       val schema = parseSchema(inputDesc.getColumns)
       val data = parseData(inputDesc.getRows, schema)
         .map(arr => Row.fromSeq(arr)).toList.asJava
       val df = sess.createDataFrame(data, schema)
-      name -> df
+      inputDesc.getName -> df
     }
   }
 
@@ -229,7 +228,7 @@ class SQLBaseSuite extends SparkTestSuite {
     })
     StructType(fields)
   }
-  def parseData(rows: java.util.List[java.util.List[String]], schema: StructType): Array[Array[Any]] = {
+  def parseData(rows: java.util.List[java.util.List[Object]], schema: StructType): Array[Array[Any]] = {
 
     val data = rows.asScala.map(_.asInstanceOf[java.util.List[Object]].asScala.map(x => if (null == x) "null" else x.toString()).toArray).toArray
     parseData(data, schema)

@@ -1,5 +1,6 @@
 package com._4paradigm.fesql.sqlcase.model;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import lombok.Data;
 import org.apache.commons.collections.CollectionUtils;
@@ -18,7 +19,7 @@ public class Table {
     String data;
     List<String> indexs;
     List<String> columns;
-    List<List<String>> rows;
+    List<List<Object>> rows;
     String create;
     String insert;
 
@@ -92,7 +93,7 @@ public class Table {
      * [value, value, ...],
      * ...]
      */
-    public List<List<String>> getRows() {
+    public List<List<Object>> getRows() {
         if (!CollectionUtils.isEmpty(rows)) {
             return rows;
         }
@@ -101,10 +102,10 @@ public class Table {
             return Collections.emptyList();
         }
 
-        List<List<String>> parserd_rows = new ArrayList<>();
+        List<List<Object>> parserd_rows = new ArrayList<>();
 
         for (String row : data.trim().split("\n")) {
-            List<String> each_row = new ArrayList<String>();
+            List<Object> each_row = new ArrayList<Object>();
             for (String item : row.trim().split(",")) {
                 each_row.add(item.trim());
             }
@@ -113,7 +114,10 @@ public class Table {
         return parserd_rows;
     }
 
-    private String buildInsertSQLFromRows(String name, List<String> columns, List<List<String>> datas) {
+    private String buildInsertSQLFromRows(String name, List<String> columns, List<List<Object>> datas) {
+        if (CollectionUtils.isEmpty(columns) || CollectionUtils.isEmpty(datas)) {
+            return "";
+        }
         // insert rows
         StringBuilder builder = new StringBuilder("insert into ").append(name).append(" values");
         for (int row_id = 0; row_id < datas.size(); row_id++) {
@@ -122,15 +126,13 @@ public class Table {
             for (int i = 0; i < list.size(); i++) {
                 String columnType = getColumnType(columns.get(i));
                 Object data = list.get(i);
-                String dataStr = data + "";
-                if (columnType.equals("string") || columnType.equals("date")) {
-                    dataStr = "'" + data + "'";
-                } else if (columnType.equals("timestamp")) {
-                    dataStr = data + "L";
+                String dataStr = null == data ? "null" : data.toString();
+                if (null != data && (columnType.equals("string") || columnType.equals("date"))) {
+                    dataStr = "'" + data.toString() + "'";
                 }
-
+                builder.append(dataStr);
                 if (i < list.size() - 1) {
-                    builder.append(dataStr + ",");
+                    builder.append(",");
                 }
             }
             if (row_id < datas.size() - 1) {
@@ -143,23 +145,25 @@ public class Table {
     }
 
     private String buildCreateSQLFromColumnsIndexs(String name, List<String> columns, List<String> indexs) {
+        if (CollectionUtils.isEmpty(indexs) || CollectionUtils.isEmpty(columns)) {
+            return "";
+        }
         String sql;
-        StringBuilder builder = new StringBuilder("create table " + name + "(");
-//            for(String column:columns){
-//                String[] ss = column.split(":");
-//                builder.append(ss[0]+" "+ss[1]+" NOT NULL,");
-//            }
-        for (String column : columns) {
-            builder.append(column + ",");
+        StringBuilder builder = new StringBuilder("create table " + name + "(\n");
+        for (int i = 0; i < columns.size(); i++) {
+            if (0 < i) {
+                builder.append("\n");
+            }
+            builder.append(columns.get(i) + ",");
         }
         for (String index : indexs) {
             String[] ss = index.split(":");
             if (ss.length == 3) {
-                builder.append(String.format("index(key=(%s),ts=%s),", ss[1], ss[2]));
+                builder.append(String.format("\nindex(key=(%s),ts=%s),", ss[1], ss[2]));
             } else if (ss.length == 4) {
-                builder.append(String.format("index(key=(%s),ts=%s,ttl=%s),", ss[1], ss[2], ss[3]));
+                builder.append(String.format("\nindex(key=(%s),ts=%s,ttl=%s),", ss[1], ss[2], ss[3]));
             } else if (ss.length == 5) {
-                builder.append(String.format("index(key=(%s),ts=%s,ttl=%s,ttl_type=%s),", ss[1], ss[2], ss[3], ss[4]));
+                builder.append(String.format("\nindex(key=(%s),ts=%s,ttl=%s,ttl_type=%s),", ss[1], ss[2], ss[3], ss[4]));
             }
         }
         sql = builder.toString();
@@ -170,37 +174,50 @@ public class Table {
         return sql;
     }
 
-    public String getIndexName(String index) {
+    public static String getIndexName(String index) {
         String[] splits = index.trim().split(":");
         if (splits.length < 1) {
             return "";
         }
-        return splits[0];
+        return splits[0].trim();
     }
 
-    public List<String> getIndexKeys(String index) {
+    public static List<String> getIndexKeys(String index) {
         String[] splits = index.trim().split(":");
         if (splits.length < 2) {
             return Collections.emptyList();
         }
-        return Lists.newArrayList(splits[1].trim().split("|"));
+        List<String> keys = Lists.newArrayList();
+        for (String split : splits) {
+            keys.add(split.trim());
+        }
+        return keys;
     }
 
-    public String getIndexTsCol(String index) {
+    public static String getIndexTsCol(String index) {
         String[] splits = index.trim().split(":");
         if (splits.length < 3) {
             return "";
         }
-        return splits[2];
+        return splits[2].trim();
     }
 
-    public String getColumnName(String column) {
+    public static String getColumnName(String column) {
         int pos = column.trim().lastIndexOf(' ');
-        return column.trim().substring(0, pos);
+        return column.trim().substring(0, pos).trim();
     }
 
-    public String getColumnType(String column) {
+    public static String getColumnType(String column) {
         int pos = column.trim().lastIndexOf(' ');
-        return column.trim().substring(pos);
+        return column.trim().substring(pos).trim();
+    }
+
+    public static String getTableString(List<String> columns, List<List<Object>> rows) {
+        StringBuffer sb = new StringBuffer();
+        sb.append(Joiner.on(",").useForNull("null(obj)").join(columns)).append("\n");
+        for (List<Object> row : rows) {
+            sb.append(Joiner.on(",").useForNull("null(obj)").join(row)).append("\n");
+        }
+        return sb.toString();
     }
 }
