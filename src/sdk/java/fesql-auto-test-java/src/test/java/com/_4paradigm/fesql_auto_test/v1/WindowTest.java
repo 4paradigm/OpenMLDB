@@ -21,7 +21,7 @@ public class WindowTest extends FesqlTest {
     public Object[] testRowRangeData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
                 .dataProviderGenerator("/integration/v1/test_window_row_range.yaml");
-        return dp.getCases();
+        return dp.getCases().toArray();
     }
 
     @Test(enabled = false, dataProvider = "testRowRangeData")
@@ -33,7 +33,7 @@ public class WindowTest extends FesqlTest {
     public Object[] testRowData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
                 .dataProviderGenerator("/integration/v1/test_window_row.yaml");
-        return dp.getCases();
+        return dp.getCases().toArray();
     }
 
     @Test(enabled = false, dataProvider = "testRowData")
@@ -45,7 +45,7 @@ public class WindowTest extends FesqlTest {
     public Object[] testWindowUnionData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
                 .dataProviderGenerator("/integration/v1/test_window_union.yaml");
-        return dp.getCases();
+        return dp.getCases().toArray();
     }
 
     @Test(enabled = false, dataProvider = "testWindowUnionData")

@@ -1,20 +1,12 @@
 package com._4paradigm.fesql_auto_test.executor;
 
-import com._4paradigm.fesql.sqlcase.model.InputDesc;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
-import com._4paradigm.sql.DataType;
-import com._4paradigm.sql.ResultSet;
-import com._4paradigm.sql.Schema;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * @author zhaowei

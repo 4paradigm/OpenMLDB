@@ -1,6 +1,5 @@
 package com._4paradigm.fesql_auto_test.entity;
 
-import com._4paradigm.fesql.sqlcase.model.ExpectDesc;
 import com._4paradigm.fesql.sqlcase.model.InputDesc;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.checker.ResultChecker;
@@ -12,19 +11,14 @@ import java.text.ParseException;
 import java.util.List;
 
 public class FesqlDataProviderTest {
-    @Test
-    public void getRtidbDirTest() {
-        Assert.assertNotNull(FesqlDataProvider.rtidbDir());
-        Assert.assertEquals("rtidb", FesqlDataProvider.rtidbDir().getName());
-    }
 
     @Test
     public void getDataProviderTest() throws FileNotFoundException {
         FesqlDataProvider provider = FesqlDataProvider.dataProviderGenerator("/yaml/rtidb_demo.yaml");
         Assert.assertNotNull(provider);
-        Assert.assertEquals(3, provider.getCases().length);
+        Assert.assertEquals(3, provider.getCases().size());
 
-        SQLCase sqlCase = provider.getCases()[0];
+        SQLCase sqlCase = provider.getCases().get(0);
         Assert.assertEquals(2, sqlCase.getInputs().size());
     }
 
@@ -32,8 +26,8 @@ public class FesqlDataProviderTest {
     public void getInsertTest() throws FileNotFoundException {
         FesqlDataProvider provider = FesqlDataProvider.dataProviderGenerator("/yaml/rtidb_demo2.yaml");
         Assert.assertNotNull(provider);
-        Assert.assertEquals(1, provider.getCases().length);
-        SQLCase sqlCase = provider.getCases()[0];
+        Assert.assertEquals(1, provider.getCases().size());
+        SQLCase sqlCase = provider.getCases().get(0);
         Assert.assertEquals(2, sqlCase.getInputs().size());
 
         InputDesc input = sqlCase.getInputs().get(0);
@@ -46,8 +40,8 @@ public class FesqlDataProviderTest {
     public void getCreateTest() throws FileNotFoundException {
         FesqlDataProvider provider = FesqlDataProvider.dataProviderGenerator("/yaml/rtidb_demo2.yaml");
         Assert.assertNotNull(provider);
-        Assert.assertEquals(1, provider.getCases().length);
-        SQLCase sqlCase = provider.getCases()[0];
+        Assert.assertEquals(1, provider.getCases().size());
+        SQLCase sqlCase = provider.getCases().get(0);
         Assert.assertEquals(2, sqlCase.getInputs().size());
 
         InputDesc input = sqlCase.getInputs().get(0);
@@ -64,8 +58,8 @@ public class FesqlDataProviderTest {
     public void converRowsTest() throws ParseException, FileNotFoundException {
         FesqlDataProvider provider = FesqlDataProvider.dataProviderGenerator("/yaml/rtidb_demo.yaml");
         Assert.assertNotNull(provider);
-        Assert.assertEquals(3, provider.getCases().length);
-        SQLCase sqlCase = provider.getCases()[0];
+        Assert.assertEquals(3, provider.getCases().size());
+        SQLCase sqlCase = provider.getCases().get(0);
         Assert.assertEquals(2, sqlCase.getInputs().size());
         List<List<Object>> expect = ResultChecker.convertRows(sqlCase.getExpect().getRows(),
                 sqlCase.getExpect().getColumns());

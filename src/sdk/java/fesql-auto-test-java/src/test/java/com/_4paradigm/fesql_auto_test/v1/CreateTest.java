@@ -21,7 +21,7 @@ public class CreateTest extends FesqlTest {
     public Object[] getCreateData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
                 .dataProviderGenerator("/integration/v1/test_create.yaml");
-        return dp.getCases();
+        return dp.getCases().toArray();
     }
 
     @Test(dataProvider = "getCreateData")

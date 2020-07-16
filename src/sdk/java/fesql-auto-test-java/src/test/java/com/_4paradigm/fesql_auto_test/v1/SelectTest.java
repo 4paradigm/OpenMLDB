@@ -21,7 +21,7 @@ public class SelectTest extends FesqlTest {
     public Object[] testSampleSelectData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
                 .dataProviderGenerator("/integration/v1/test_select_sample.yaml");
-        return dp.getCases();
+        return dp.getCases().toArray();
     }
 
     @Test(dataProvider = "testSampleSelectData")
@@ -32,7 +32,7 @@ public class SelectTest extends FesqlTest {
     public Object[] testExpressionData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
                 .dataProviderGenerator("/integration/v1/test_expression.yaml");
-        return dp.getCases();
+        return dp.getCases().toArray();
     }
 
     @Test(enabled = false, dataProvider = "testExpressionData")
@@ -43,7 +43,7 @@ public class SelectTest extends FesqlTest {
     public Object[] testUDAFFunctionData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
                 .dataProviderGenerator("/integration/v1/test_udaf_function.yaml");
-        return dp.getCases();
+        return dp.getCases().toArray();
     }
 
     @Test(enabled = false, dataProvider = "testUDAFFunctionData")
@@ -54,7 +54,7 @@ public class SelectTest extends FesqlTest {
     public Object[] testSubSelectData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
                 .dataProviderGenerator("/integration/v1/test_sub_select.yaml");
-        return dp.getCases();
+        return dp.getCases().toArray();
     }
 
     @Test(enabled = false, dataProvider = "testSubSelectData")

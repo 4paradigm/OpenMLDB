@@ -21,7 +21,7 @@ public class LastJoinTest extends FesqlTest {
     public Object[] testLastJoinData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
                 .dataProviderGenerator("/integration/v1/test_last_join.yaml");
-        return dp.getCases();
+        return dp.getCases().toArray();
     }
 
     @Test(enabled = false, dataProvider = "testLastJoinData")

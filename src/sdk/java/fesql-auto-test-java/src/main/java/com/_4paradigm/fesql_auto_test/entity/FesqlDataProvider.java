@@ -1,9 +1,9 @@
 package com._4paradigm.fesql_auto_test.entity;
 
+import com._4paradigm.fesql.sqlcase.model.CaseFile;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import lombok.Data;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -20,13 +20,9 @@ import java.util.List;
  * @date 2020/6/11 3:19 PM
  */
 @Data
-public class FesqlDataProvider {
+public class FesqlDataProvider extends CaseFile {
     private static Logger logger = LoggerFactory.getLogger(FesqlDataProvider.class);
-    private String db;
-    private SQLCase[] cases;
-    private List<String> debugs;
-
-    public static File rtidbDir() {
+    private static File rtidbDir() {
         File directory = new File(".");
         directory = directory.getAbsoluteFile();
         while (null != directory) {
@@ -56,11 +52,12 @@ public class FesqlDataProvider {
         return testDateProvider;
     }
 
-    public SQLCase[] getCases() {
+    public List<SQLCase> getCases() {
         List<SQLCase> testCaseList = new ArrayList<>();
-        for (SQLCase tmpCase : cases) {
+        List<String> debugs = getDebugs();
+        for (SQLCase tmpCase : getCases()) {
             if (null == tmpCase.getDb()) {
-                tmpCase.setDb(this.db);
+                tmpCase.setDb(getDb());
             }
             if (!CollectionUtils.isEmpty(debugs)) {
                 if (debugs.contains(tmpCase.getDesc().trim())) {
@@ -72,9 +69,8 @@ public class FesqlDataProvider {
                 testCaseList.add(tmpCase);
             }
         }
-        return testCaseList.toArray(new SQLCase[testCaseList.size()]);
+        return testCaseList;
     }
-
 
     public boolean isCaseInBlackList(SQLCase tmpCase) {
         if (tmpCase == null) return false;

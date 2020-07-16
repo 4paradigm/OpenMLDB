@@ -32,8 +32,7 @@ public abstract class BaseExecutor {
         }
         try {
             prepare();
-            FesqlResult fesqlResult = null;
-            fesqlResult = execute();
+            FesqlResult fesqlResult = execute();
             check(fesqlResult);
             tearDown();
         } catch (Exception e) {
