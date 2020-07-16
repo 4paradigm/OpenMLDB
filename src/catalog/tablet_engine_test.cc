@@ -74,7 +74,7 @@ void StoreData(std::shared_ptr<TestArgs> args,
                     ? std::to_string(row_view.GetDateUnsafe(i))
                     : row_view.GetAsString(i);
             if (key_str == "") {
-                key_str = rtidb::codec::EMPTY_STRING;
+                key_str = fesql::codec::EMPTY_STRING;
             }
             raw_data.push_back(key_str);
         }

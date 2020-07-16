@@ -24,12 +24,12 @@
 #include "gperftools/malloc_extension.h"
 #endif
 #include "base/file_util.h"
-#include "brpc/controller.h"
-#include "butil/iobuf.h"
 #include "base/glog_wapper.h"
 #include "base/hash.h"
 #include "base/status.h"
 #include "base/strings.h"
+#include "brpc/controller.h"
+#include "butil/iobuf.h"
 #include "codec/codec.h"
 #include "glog/logging.h"
 #include "rapidjson/stringbuffer.h"
@@ -396,9 +396,8 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
         enable_project = true;
     }
     if (st > 0 && st < et) {
-        DEBUGLOG(
-              "invalid args for st %lu less than et %lu or expire time %lu", st,
-              et, expire_time);
+        DEBUGLOG("invalid args for st %lu less than et %lu or expire time %lu",
+                 st, et, expire_time);
         return -1;
     }
     if (it->Valid()) {
@@ -626,8 +625,8 @@ void TabletImpl::Update(RpcController* controller,
             response->set_code(::rtidb::base::ReturnCode::kUpdateFailed);
             response->set_msg("update failed: " + msg);
         }
-        PDLOG(WARNING, "update failed, msg: %s. tid %u, pid %u",
-                msg.c_str(), request->tid(), request->pid());
+        PDLOG(WARNING, "update failed, msg: %s. tid %u, pid %u", msg.c_str(),
+              request->tid(), request->pid());
         return;
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
@@ -781,17 +780,17 @@ void TabletImpl::Put(RpcController* controller,
         }
     } else {
         int64_t auto_gen_pk = 0;
-        ::google::protobuf::RepeatedField<::google::protobuf::int64>* blob_keys
-            = response->mutable_blob_keys();
+        ::google::protobuf::RepeatedField<::google::protobuf::int64>*
+            blob_keys = response->mutable_blob_keys();
         bool ok = false;
         std::string msg;
         if (request->has_wo()) {
-            ok = r_table->Put(request->value(), request->wo(),
-                    &auto_gen_pk, blob_keys, &msg);
+            ok = r_table->Put(request->value(), request->wo(), &auto_gen_pk,
+                              blob_keys, &msg);
         } else {
             ::rtidb::api::WriteOption wo;
             ok = r_table->Put(request->value(), wo, &auto_gen_pk, blob_keys,
-                    &msg);
+                              &msg);
         }
         if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);
@@ -1647,8 +1646,7 @@ void TabletImpl::Traverse(RpcController* controller,
             std::string combine_pk;
             if (!r_table->GetCombinePk(request->read_option().index(),
                                        &combine_pk)) {
-                response->set_code(
-                        ::rtidb::base::ReturnCode::kIdxNameNotFound);
+                response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
                 response->set_msg("pk index col name not found");
                 delete it;
                 return;
@@ -1865,7 +1863,7 @@ void TabletImpl::Query(RpcController* ctrl,
         while (iter->Valid()) {
             const ::fesql::codec::Row& row = iter->GetValue();
             if (byte_size > FLAGS_scan_max_bytes_size) {
-                LOG(WARNING) <<  "reach the max byte size truncate result";
+                LOG(WARNING) << "reach the max byte size truncate result";
                 response->set_schema(session.GetEncodedSchema());
                 response->set_byte_size(byte_size);
                 response->set_count(count);
@@ -3487,6 +3485,7 @@ int32_t TabletImpl::DeleteTableInternal(
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            engine_.ClearCacheLocked(table->GetTableMeta().db());
             tables_[tid].erase(pid);
             replicators_[tid].erase(pid);
             snapshots_[tid].erase(pid);
@@ -3500,7 +3499,11 @@ int32_t TabletImpl::DeleteTableInternal(
                 snapshots_.erase(tid);
             }
         }
-
+        if (!catalog_->DeleteTable(table->GetTableMeta().db(),
+                                   table->GetName())) {
+            LOG(WARNING) << "delete " << table->GetTableMeta().db() << " "
+                         << table->GetName() << " in catalog failed";
+        }
         if (replicator) {
             replicator->DelAllReplicateNode();
             PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
@@ -3726,6 +3729,7 @@ void TabletImpl::CreateTable(RpcController* controller,
             bool ok = handler->Init();
             if (ok) {
                 ok = catalog_->AddTable(handler);
+                engine_.ClearCacheLocked(table_meta->db());
                 if (ok) {
                     LOG(INFO) << "add table " << table_meta->name()
                               << " to catalog with db " << table_meta->db();

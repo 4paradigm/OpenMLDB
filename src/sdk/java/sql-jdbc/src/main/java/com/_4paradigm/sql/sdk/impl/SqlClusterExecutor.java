@@ -49,6 +49,20 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
+    public boolean executeInsert(String db, String sql, SQLInsertRow row) {
+        Status status = new Status();
+        boolean ok = sqlRouter.ExecuteInsert(db, sql, row, status);
+        return ok;
+    }
+
+    @Override
+    public boolean executeInsert(String db, String sql, SQLInsertRows rows) {
+        Status status = new Status();
+        boolean ok = sqlRouter.ExecuteInsert(db, sql, rows, status);
+        return ok;
+    }
+
+    @Override
     public ResultSet executeSQL(String db, String sql) {
         Status status = new Status();
         ResultSet rs = sqlRouter.ExecuteSQL(db, sql, status);
@@ -62,6 +76,18 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
+    public SQLInsertRow getInsertRow(String db, String sql) {
+        Status status = new Status();
+        return sqlRouter.GetInsertRow(db, sql, status);
+    }
+
+    @Override
+    public SQLInsertRows getInsertRows(String db, String sql) {
+        Status status = new Status();
+        return sqlRouter.GetInsertRows(db, sql, status);
+    }
+
+    @Override
     public ResultSet executeSQL(String db, String sql, SQLRequestRow row) {
         //TODO(wangtaize) add execption
         Status status = new Status();
@@ -72,5 +98,11 @@ public class SqlClusterExecutor implements SqlExecutor {
     public boolean createDB(String db) {
         Status status = new Status();
         return sqlRouter.CreateDB(db, status);
+    }
+
+    @Override
+    public boolean dropDB(String db) {
+        Status status = new Status();
+        return sqlRouter.DropDB(db, status);
     }
 }
