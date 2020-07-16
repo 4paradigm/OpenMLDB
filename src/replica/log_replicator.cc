@@ -508,7 +508,7 @@ int LogReplicator::DelReplicateNode(const std::string& endpoint) {
                                            local_endpoints_.end(), endpoint),
                                local_endpoints_.end());
         if (!real_endpoints_.empty()) {
-            if (it - nodes_.begin() < real_endpoints_.size()) {
+            if ((uint32_t)(it - nodes_.begin()) < real_endpoints_.size()) {
                 real_endpoints_.erase(
                         real_endpoints_.begin() + (it - nodes_.begin()));
             }

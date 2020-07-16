@@ -5081,8 +5081,19 @@ void TabletImpl::SendIndexDataInternal(
                       index_file_name.c_str(), tid, pid);
             }
         } else {
+            std::string real_endpoint = kv.second;
+            if (FLAGS_use_name) {
+                std::lock_guard<std::mutex> lock(mu_);
+                auto iter = real_ep_map_.find(kv.second);
+                if (iter == real_ep_map_.end()) {
+                    PDLOG(WARNING, "name not found in real_ep_map."
+                            "tid[%u] pid[%u]", tid, pid);
+                    break;
+                }
+                real_endpoint = iter->second;
+            }
             FileSender sender(tid, kv.first, table->GetStorageMode(),
-                              kv.second);
+                              real_endpoint);
             if (!sender.Init()) {
                 PDLOG(WARNING,
                       "Init FileSender failed. tid[%u] pid[%u] des_pid[%u] "
