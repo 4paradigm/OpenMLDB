@@ -2863,7 +2863,19 @@ void TabletImpl::SendSnapshotInternal(
                   tid, pid);
             break;
         }
-        FileSender sender(remote_tid, pid, table->GetStorageMode(), endpoint);
+        std::string real_endpoint = endpoint;
+        if (FLAGS_use_name) {
+            std::lock_guard<std::mutex> lock(mu_);
+            auto iter = real_ep_map_.find(endpoint);
+            if (iter == real_ep_map_.end()) {
+                PDLOG(WARNING, "name not found in real_ep_map."
+                        "tid[%u] pid[%u]", tid, pid);
+                break;
+            }
+            real_endpoint = iter->second;
+        }
+        FileSender sender(
+                remote_tid, pid, table->GetStorageMode(), real_endpoint);
         if (!sender.Init()) {
             PDLOG(WARNING,
                   "Init FileSender failed. tid[%u] pid[%u] endpoint[%s]", tid,
@@ -5567,6 +5579,12 @@ void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
         const rtidb::api::UpdateRealEndpointMapRequest* request,
         rtidb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    if (FLAGS_zk_cluster.empty()) {
+        response->set_code(-1);
+        response->set_msg("tablet is not run in cluster mode");
+        PDLOG(WARNING, "tablet is not run in cluster mode");
+        return;
+    }
     if (!FLAGS_use_name) {
         response->set_code(::rtidb::base::ReturnCode::kUseNameIsFalse);
         return;

@@ -508,8 +508,10 @@ int LogReplicator::DelReplicateNode(const std::string& endpoint) {
                                            local_endpoints_.end(), endpoint),
                                local_endpoints_.end());
         if (!real_endpoints_.empty()) {
-            real_endpoints_.erase(
-                    real_endpoints_.begin() + (it - nodes_.begin()));
+            if (it - nodes_.begin() < real_endpoints_.size()) {
+                real_endpoints_.erase(
+                        real_endpoints_.begin() + (it - nodes_.begin()));
+            }
         }
         PDLOG(INFO, "delete replica. endpoint[%s] tid[%u] pid[%u]",
               endpoint.c_str(), table_->GetId(), table_->GetPid());
