@@ -579,7 +579,7 @@ bool SQLCase::ExtractRow(const vm::Schema& schema,
     return true;
 }
 bool SQLCase::ExtractRows(const vm::Schema& schema,
-                          const std::vector<std::vector<std::string> >& row_vec,
+                          const std::vector<std::vector<std::string>>& row_vec,
                           std::vector<fesql::codec::Row>& rows) {
     if (row_vec.empty()) {
         LOG(WARNING) << "Invalid Data Format";
@@ -660,7 +660,7 @@ bool SQLCase::CreateStringListFromYamlNode(const YAML::Node& node,
     return true;
 }
 bool SQLCase::CreateRowsFromYamlNode(
-    const YAML::Node& node, std::vector<std::vector<std::string> >& rows) {
+    const YAML::Node& node, std::vector<std::vector<std::string>>& rows) {
     for (int i = 0; i < node.size(); ++i) {
         std::vector<std::string> row;
         if (!CreateStringListFromYamlNode(node[i], row)) {

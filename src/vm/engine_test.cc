@@ -73,7 +73,7 @@ std::vector<SQLCase> InitCases(std::string yaml_path) {
     return cases;
 }
 
-int generate_sqlite_test_string_callback(void* s, int argc, char** argv,
+int GenerateSqliteTestStringCallback(void* s, int argc, char** argv,
                                          char** azColName) {
     std::string& sqliteStr = *static_cast<std::string*>(s);
     int i;
@@ -153,7 +153,7 @@ const std::vector<Row> SortRows(const vm::Schema& schema,
     }
 
     if (schema.Get(idx).type() == fesql::type::kVarchar) {
-        std::vector<std::pair<std::string, Row> > sort_rows;
+        std::vector<std::pair<std::string, Row>> sort_rows;
         for (auto row : rows) {
             row_view.Reset(row.buf());
             row_view.GetAsString(idx);
@@ -171,7 +171,7 @@ const std::vector<Row> SortRows(const vm::Schema& schema,
         DLOG(INFO) << "sort rows done!";
         return output_rows;
     } else {
-        std::vector<std::pair<int64_t, Row> > sort_rows;
+        std::vector<std::pair<int64_t, Row>> sort_rows;
         for (auto row : rows) {
             row_view.Reset(row.buf());
             row_view.GetAsString(idx);
@@ -292,7 +292,7 @@ const std::string GenerateTableName(int32_t id) {
 void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     int32_t input_cnt = sql_case.CountInputs();
     // Init catalog
-    std::map<std::string, std::shared_ptr< ::fesql::storage::Table> >
+    std::map<std::string, std::shared_ptr< ::fesql::storage::Table>>
         name_table_map;
     auto catalog = BuildCommonCatalog();
     for (int32_t i = 0; i < input_cnt; i++) {
@@ -389,7 +389,7 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     int32_t input_cnt = sql_case.CountInputs();
 
     // Init catalog
-    std::map<std::string, std::shared_ptr< ::fesql::storage::Table> >
+    std::map<std::string, std::shared_ptr< ::fesql::storage::Table>>
         name_table_map;
     auto catalog = BuildCommonCatalog();
     for (int32_t i = 0; i < input_cnt; i++) {
@@ -520,7 +520,7 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
         const char* create_execute_sql_ch = sql_case.sql_str().c_str();
         std::string sqliteStr = "";
         rc = sqlite3_exec(db, create_execute_sql_ch,
-                          generate_sqlite_test_string_callback,
+                          GenerateSqliteTestStringCallback,
                           static_cast<void*>(&sqliteStr), &zErrMsg);
         if (rc != SQLITE_OK) {
             LOG(ERROR) << "SQL error: %s\n" << zErrMsg;
