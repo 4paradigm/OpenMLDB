@@ -77,8 +77,8 @@ SQLInsertRow::SQLInsertRow(
 bool SQLInsertRow::Init(int str_length) {
     uint32_t row_size = rb_.CalTotalLength(str_length + default_string_length_);
     val_.resize(row_size);
-    int8_t* buf_ = reinterpret_cast<int8_t*>(&(val_[0]));
-    bool ok = rb_.SetBuffer(reinterpret_cast<int8_t*>(buf_), row_size);
+    int8_t* buf = reinterpret_cast<int8_t*>(&(val_[0]));
+    bool ok = rb_.SetBuffer(reinterpret_cast<int8_t*>(buf), row_size);
     if (!ok) {
         return false;
     }
