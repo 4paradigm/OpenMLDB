@@ -292,7 +292,7 @@ const std::string GenerateTableName(int32_t id) {
 void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     int32_t input_cnt = sql_case.CountInputs();
     // Init catalog
-    std::map<std::string, std::shared_ptr< ::fesql::storage::Table>>
+    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
         name_table_map;
     auto catalog = BuildCommonCatalog();
     for (int32_t i = 0; i < input_cnt; i++) {
@@ -301,7 +301,7 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
         }
         type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
-        std::shared_ptr< ::fesql::storage::Table> table(
+        std::shared_ptr<::fesql::storage::Table> table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
         name_table_map[table_def.name()] = table;
         ASSERT_TRUE(AddTable(catalog, table_def, table));
@@ -389,7 +389,7 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     int32_t input_cnt = sql_case.CountInputs();
 
     // Init catalog
-    std::map<std::string, std::shared_ptr< ::fesql::storage::Table>>
+    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
         name_table_map;
     auto catalog = BuildCommonCatalog();
     for (int32_t i = 0; i < input_cnt; i++) {
@@ -398,7 +398,7 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
         }
         type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
-        std::shared_ptr< ::fesql::storage::Table> table(
+        std::shared_ptr<::fesql::storage::Table> table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
         name_table_map[table_def.name()] = table;
         ASSERT_TRUE(AddTable(catalog, table_def, table));
@@ -643,9 +643,9 @@ TEST_F(EngineTest, EngineCacheTest) {
     BuildTableDef(table_def2);
     table_def.set_name("t1");
     table_def2.set_name("t2");
-    std::shared_ptr< ::fesql::storage::Table> table(
+    std::shared_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table(1, 1, table_def));
-    std::shared_ptr< ::fesql::storage::Table> table2(
+    std::shared_ptr<::fesql::storage::Table> table2(
         new ::fesql::storage::Table(2, 1, table_def2));
     ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");
@@ -729,9 +729,9 @@ TEST_F(EngineTest, EngineCompileOnlyTest) {
     BuildTableDef(table_def2);
     table_def.set_name("t1");
     table_def2.set_name("t2");
-    std::shared_ptr< ::fesql::storage::Table> table(
+    std::shared_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table(1, 1, table_def));
-    std::shared_ptr< ::fesql::storage::Table> table2(
+    std::shared_ptr<::fesql::storage::Table> table2(
         new ::fesql::storage::Table(2, 1, table_def2));
     ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index12");

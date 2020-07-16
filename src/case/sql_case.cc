@@ -335,7 +335,7 @@ bool SQLCase::BuildInsertSQLFromRow(const type::TableDef& table,
     auto it = schema.begin();
     uint32_t index = 0;
     for (; it != schema.end(); ++it) {
-        if (0 >= item_vec.size()) {
+        if (index >= item_vec.size()) {
             LOG(WARNING) << "Invalid Row: Row doesn't match with schema";
             return false;
         }
