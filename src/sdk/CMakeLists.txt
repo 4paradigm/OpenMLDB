@@ -1,5 +1,5 @@
 
-add_library(rtidb_sdk STATIC cluster_sdk.cc sql_cluster_router.cc sql_router.cc result_set_sql.cc sql_request_row.cc)
+add_library(rtidb_sdk STATIC cluster_sdk.cc sql_cluster_router.cc sql_router.cc result_set_sql.cc sql_request_row.cc sql_insert_row.cc)
 
 add_executable(cluster_sdk_test cluster_sdk_test.cc)
 target_link_libraries(cluster_sdk_test gtest ${BIN_LIBS})
