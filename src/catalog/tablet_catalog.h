@@ -238,6 +238,10 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
         return "TabletTableHandler";
     }
 
+    inline int32_t GetTid() {
+        return meta_.tid();
+    }
+
  private:
     inline int32_t GetColumnIndex(const std::string &column) {
         auto it = types_.find(column);
@@ -280,7 +284,12 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     std::shared_ptr<::fesql::vm::TableHandler> GetTable(
         const std::string &db, const std::string &table_name);
+
     bool IndexSupport() override;
+
+    bool DeleteTable(const std::string &db, const std::string &table_name);
+
+    bool DeleteDB(const std::string &db);
 
  private:
     ::rtidb::base::SpinMutex mu_;

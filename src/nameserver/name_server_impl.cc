@@ -11698,7 +11698,6 @@ void NameServerImpl::DropDatabase(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>> tables;
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (databases_.find(request->db()) == databases_.end()) {
@@ -11706,25 +11705,12 @@ void NameServerImpl::DropDatabase(RpcController* controller,
             response->set_msg("database not found");
             return;
         }
-        for (const auto& table_info : table_info_) {
-            if (table_info.second->db() == request->db()) {
-                tables.push_back(table_info.second);
-            }
+        auto db_it = db_table_info_.find(request->db());
+        if (db_it != db_table_info_.end() && db_it->second.size() != 0) {
+            response->set_code(::rtidb::base::ReturnCode::kDatabaseNotEmpty);
+            response->set_msg("database not empty");
+            return;
         }
-    }
-    ::rtidb::nameserver::DropTableRequest drequest;
-    ::rtidb::nameserver::GeneralResponse dresponse;
-    for (auto table : tables) {
-        drequest.set_name(table->name());
-        drequest.set_db(request->db());
-        DropTableFun(&drequest, &dresponse, table);
-        if (dresponse.code() != 0) {
-            response->set_code(::rtidb::base::ReturnCode::kDropTableError);
-            response->set_msg("drop table in database fail");
-        }
-    }
-    {
-        std::lock_guard<std::mutex> lock(mu_);
         databases_.erase(request->db());
     }
     if (!zk_client_->DeleteNode(zk_db_path_ + "/" + request->db())) {

@@ -235,6 +235,13 @@ class NsClient {
         const fesql::node::NodePointVector& column_desc_list,
         ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status);
 
+    bool HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
+                      const std::string& db, fesql::base::Status* sql_status);
+    bool HandleSQLCreateTable(const fesql::node::NodePointVector& parser_trees,
+                              const std::string& db,
+                              fesql::node::NodeManager* node_manager,
+                              fesql::base::Status* sql_status);
+
  private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> client_;

@@ -89,7 +89,7 @@ void InitCases(std::string yaml_path,
 void InitCases(std::string yaml_path,
                std::vector<fesql::sqlcase::SQLCase> &cases) {  // NOLINT
     if (!fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(
-            FindRtidbDirPath("rtidb") + "/fesql/", yaml_path, cases)) {
+            FindRtidbDirPath("rtidb") + "/fesql", yaml_path, cases)) {
         FAIL();
     }
 }
@@ -586,45 +586,42 @@ void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
               case_output_data);
 }
 
-// INSTANTIATE_TEST_CASE_P(
-//    EngineBugQuery, TabletEngineTest,
-//    testing::ValuesIn(InitCases("/cases/query/bug_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineSimpleQuery, TabletEngineTest,
-    testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
+    testing::ValuesIn(InitCases("cases/query/simple_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineUdfQuery, TabletEngineTest,
-    testing::ValuesIn(InitCases("/cases/query/udf_query.yaml")));
+    testing::ValuesIn(InitCases("cases/query/udf_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineUdafQuery, TabletEngineTest,
-    testing::ValuesIn(InitCases("/cases/query/udaf_query.yaml")));
+    testing::ValuesIn(InitCases("cases/query/udaf_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineExtreamQuery, TabletEngineTest,
-    testing::ValuesIn(InitCases("/cases/query/extream_query.yaml")));
+    testing::ValuesIn(InitCases("cases/query/extream_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineLastJoinQuery, TabletEngineTest,
-    testing::ValuesIn(InitCases("/cases/query/last_join_query.yaml")));
+    testing::ValuesIn(InitCases("cases/query/last_join_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineLastJoinWindowQuery, TabletEngineTest,
-    testing::ValuesIn(InitCases("/cases/query/last_join_window_query.yaml")));
+    testing::ValuesIn(InitCases("cases/query/last_join_window_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineRequestLastJoinWindowQuery, TabletEngineTest,
-    testing::ValuesIn(InitCases("/cases/query/last_join_window_query.yaml")));
+    testing::ValuesIn(InitCases("cases/query/last_join_window_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineWindowQuery, TabletEngineTest,
-    testing::ValuesIn(InitCases("/cases/query/window_query.yaml")));
+    testing::ValuesIn(InitCases("cases/query/window_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineWindowWithUnionQuery, TabletEngineTest,
-    testing::ValuesIn(InitCases("/cases/query/window_with_union_query.yaml")));
+    testing::ValuesIn(InitCases("cases/query/window_with_union_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineBatchGroupQuery, TabletEngineTest,
-    testing::ValuesIn(InitCases("/cases/query/group_query.yaml")));
+    testing::ValuesIn(InitCases("cases/query/group_query.yaml")));
 
 TEST_P(TabletEngineTest, batch_query_test) {
     ParamType sql_case = GetParam();
