@@ -16,8 +16,14 @@ DECLARE_int32(request_timeout_ms);
 namespace rtidb {
 namespace client {
 
-NsClient::NsClient(const std::string& endpoint)
-    : endpoint_(endpoint), client_(endpoint) {}
+NsClient::NsClient(const std::string& endpoint,
+    const std::string& real_endpoint)
+    : endpoint_(endpoint), client_(endpoint) {
+        if (!real_endpoint.empty()) {
+            client_ = ::rtidb::RpcClient<
+                ::rtidb::nameserver::NameServer_Stub>(real_endpoint);
+        }
+    }
 
 int NsClient::Init() { return client_.Init(); }
 

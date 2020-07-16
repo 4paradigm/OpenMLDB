@@ -96,7 +96,7 @@ void ClusterInfo::UpdateNSClient(const std::vector<std::string>& children) {
         PDLOG(WARNING, "get replica cluster leader ns failed");
         return;
     }
-    std::shared_ptr<::rtidb::client::NsClient> tmp_ptr;
+    std::string real_endpoint;
     if (FLAGS_use_name) {
         std::vector<std::string> vec;
         if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/map/names",
@@ -109,16 +109,14 @@ void ClusterInfo::UpdateNSClient(const std::vector<std::string>& children) {
             PDLOG(WARNING, "name not in names_vec");
             return;
         }
-        std::string value;
-        if (!zk_client_->GetNodeValue(
-                    cluster_add_.zk_path() + "/map/names/" + *n_iter, value)) {
+        if (!zk_client_->GetNodeValue(cluster_add_.zk_path() +
+                    "/map/names/" + *n_iter, real_endpoint)) {
             PDLOG(WARNING, "get zk failed, get rep cluster names map failed");
             return;
         }
-        tmp_ptr = std::make_shared<::rtidb::client::NsClient>(value);
-    } else {
-        tmp_ptr = std::make_shared<::rtidb::client::NsClient>(endpoint);
     }
+    std::shared_ptr<::rtidb::client::NsClient> tmp_ptr =
+        std::make_shared<::rtidb::client::NsClient>(endpoint, real_endpoint);
     if (tmp_ptr->Init() < 0) {
         PDLOG(WARNING, "replica cluster ns client init failed");
         return;
@@ -162,6 +160,7 @@ int ClusterInfo::Init(std::string& msg) {
         PDLOG(WARNING, "get zk failed, get replica cluster leader ns failed");
         return 451;
     }
+    std::string real_endpoint;
     if (FLAGS_use_name) {
         std::vector<std::string> vec;
         if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/map/names",
@@ -176,17 +175,15 @@ int ClusterInfo::Init(std::string& msg) {
             PDLOG(WARNING, "name not in names_vec");
             return 451;
         }
-        std::string value;
-        if (!zk_client_->GetNodeValue(
-                    cluster_add_.zk_path() + "/map/names/" + *n_iter, value)) {
+        if (!zk_client_->GetNodeValue(cluster_add_.zk_path() +
+                    "/map/names/" + *n_iter, real_endpoint)) {
             msg = "get zk failed";
             PDLOG(WARNING, "get zk failed, get rep cluster names map failed");
             return 451;
         }
-        client_ = std::make_shared<::rtidb::client::NsClient>(value);
-    } else {
-        client_ = std::make_shared<::rtidb::client::NsClient>(endpoint);
     }
+    std::shared_ptr<::rtidb::client::NsClient> tmp_ptr =
+        std::make_shared<::rtidb::client::NsClient>(endpoint, real_endpoint);
     if (client_->Init() < 0) {
         msg = "connect ns failed";
         PDLOG(WARNING, "connect ns failed, replica cluster ns");

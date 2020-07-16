@@ -39,7 +39,8 @@ struct TabletInfo {
 
 class NsClient {
  public:
-    explicit NsClient(const std::string& endpoint);
+     explicit NsClient(const std::string& endpoint,
+             const std::string& real_endpoint);
 
     int Init();
 

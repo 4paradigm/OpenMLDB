@@ -6192,9 +6192,8 @@ void StartClient() {
 }
 
 void StartNsClient() {
-    std::string real_endpoint;
-    GetRealEndpoint(&real_endpoint);
     std::string endpoint;
+    std::string real_endpoint;
     if (FLAGS_interactive) {
         std::cout << "Welcome to rtidb with version " << RTIDB_VERSION_MAJOR
                   << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR
@@ -6220,6 +6219,13 @@ void StartNsClient() {
             return;
         }
         std::cout << "ns leader: " << endpoint << std::endl;
+        if (FLAGS_use_name) {
+            if (!zk_client->GetNodeValue(FLAGS_zk_root_path +
+                        "/map/names/" + endpoint, real_endpoint)) {
+                std::cout << "get real_endpoint failed" << std::endl;
+                return;
+            }
+        }
     } else if (!FLAGS_endpoint.empty()) {
         endpoint = FLAGS_endpoint;
     } else {
@@ -6227,7 +6233,7 @@ void StartNsClient() {
                   << std::endl;
         return;
     }
-    ::rtidb::client::NsClient client(endpoint);
+    ::rtidb::client::NsClient client(endpoint, real_endpoint);
 
     if (client.Init() < 0) {
         std::cout << "client init failed" << std::endl;
