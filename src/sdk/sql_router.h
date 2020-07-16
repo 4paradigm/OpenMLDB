@@ -20,6 +20,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "sdk/base.h"
 #include "sdk/result_set.h"
