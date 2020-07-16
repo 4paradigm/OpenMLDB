@@ -27,21 +27,39 @@ public class Table {
         return "auto_" + RandomStringUtils.randomAlphabetic(8);
     }
 
+    /**
+     * 从输入构造Create SQL：
+     * 如果create非空，直接返回create，否则需要根据columns/schema来构造Create SQL语句
+     *
+     * @return
+     */
     public String getCreate() {
         if (!StringUtils.isEmpty(create)) {
             return create;
         }
-        return buildCreateSQLFromColumnsIndexs(name, columns, indexs);
+        return buildCreateSQLFromColumnsIndexs(name, getColumns(), getIndexs());
     }
 
+    /**
+     * 从输入构造Insert SQL：
+     * 如果insert非空，直接返回insert，否则需要根据columns和rows来构造Insert SQL语句
+     *
+     * @return
+     */
     public String getInsert() {
         if (!StringUtils.isEmpty(insert)) {
             return insert;
         }
-        return buildInsertSQLFromRows(name, columns, rows);
+        return buildInsertSQLFromRows(name, getColumns(), getRows());
     }
 
 
+    /**
+     * 获取Indexs
+     * 如果indexs非空，直接返回indexs，否则需要从index解析出indexs
+     *
+     * @return
+     */
     public List<String> getIndexs() {
         if (!CollectionUtils.isEmpty(indexs)) {
             return indexs;
@@ -84,14 +102,10 @@ public class Table {
     }
 
     /**
-     * Return rows,
-     * convert data string to rows if rows is empty
+     * 获取Rows
+     * 如果 rows 非空，直接返回 rows, 否则需要从 data 解析出 rows
      *
-     * @return [
-     * [value, value, ...],
-     * [value, value, ...],
-     * [value, value, ...],
-     * ...]
+     * @return
      */
     public List<List<Object>> getRows() {
         if (!CollectionUtils.isEmpty(rows)) {
@@ -113,6 +127,91 @@ public class Table {
         }
         return parserd_rows;
     }
+
+    /**
+     * extract indexName from index content
+     *
+     * @param index
+     * @return
+     */
+    public static String getIndexName(String index) {
+        String[] splits = index.trim().split(":");
+        if (splits.length < 1) {
+            return "";
+        }
+        return splits[0].trim();
+    }
+
+    /**
+     * extract indexKeys from index content
+     *
+     * @param index
+     * @return
+     */
+    public static List<String> getIndexKeys(String index) {
+        String[] splits = index.trim().split(":");
+        if (splits.length < 2) {
+            return Collections.emptyList();
+        }
+        List<String> keys = Lists.newArrayList();
+        for (String split : splits) {
+            keys.add(split.trim());
+        }
+        return keys;
+    }
+
+    /**
+     * extract index tsCol from index content
+     *
+     * @param index
+     * @return
+     */
+    public static String getIndexTsCol(String index) {
+        String[] splits = index.trim().split(":");
+        if (splits.length < 3) {
+            return "";
+        }
+        return splits[2].trim();
+    }
+
+    /**
+     * extract columnName from column content
+     *
+     * @param column
+     * @return
+     */
+    public static String getColumnName(String column) {
+        int pos = column.trim().lastIndexOf(' ');
+        return column.trim().substring(0, pos).trim();
+    }
+
+    /**
+     * extract columnType string from column content
+     *
+     * @param column
+     * @return
+     */
+    public static String getColumnType(String column) {
+        int pos = column.trim().lastIndexOf(' ');
+        return column.trim().substring(pos).trim();
+    }
+
+    /**
+     * format columns and rows
+     *
+     * @param columns
+     * @param rows
+     * @return
+     */
+    public static String getTableString(List<String> columns, List<List<Object>> rows) {
+        StringBuffer sb = new StringBuffer();
+        sb.append(Joiner.on(",").useForNull("null(obj)").join(columns)).append("\n");
+        for (List<Object> row : rows) {
+            sb.append(Joiner.on(",").useForNull("null(obj)").join(row)).append("\n");
+        }
+        return sb.toString();
+    }
+
 
     private String buildInsertSQLFromRows(String name, List<String> columns, List<List<Object>> datas) {
         if (CollectionUtils.isEmpty(columns) || CollectionUtils.isEmpty(datas)) {
@@ -174,50 +273,4 @@ public class Table {
         return sql;
     }
 
-    public static String getIndexName(String index) {
-        String[] splits = index.trim().split(":");
-        if (splits.length < 1) {
-            return "";
-        }
-        return splits[0].trim();
-    }
-
-    public static List<String> getIndexKeys(String index) {
-        String[] splits = index.trim().split(":");
-        if (splits.length < 2) {
-            return Collections.emptyList();
-        }
-        List<String> keys = Lists.newArrayList();
-        for (String split : splits) {
-            keys.add(split.trim());
-        }
-        return keys;
-    }
-
-    public static String getIndexTsCol(String index) {
-        String[] splits = index.trim().split(":");
-        if (splits.length < 3) {
-            return "";
-        }
-        return splits[2].trim();
-    }
-
-    public static String getColumnName(String column) {
-        int pos = column.trim().lastIndexOf(' ');
-        return column.trim().substring(0, pos).trim();
-    }
-
-    public static String getColumnType(String column) {
-        int pos = column.trim().lastIndexOf(' ');
-        return column.trim().substring(pos).trim();
-    }
-
-    public static String getTableString(List<String> columns, List<List<Object>> rows) {
-        StringBuffer sb = new StringBuffer();
-        sb.append(Joiner.on(",").useForNull("null(obj)").join(columns)).append("\n");
-        for (List<Object> row : rows) {
-            sb.append(Joiner.on(",").useForNull("null(obj)").join(row)).append("\n");
-        }
-        return sb.toString();
-    }
 }
