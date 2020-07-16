@@ -10,6 +10,11 @@
 #ifndef SRC_TEST_BASE_TEST_H_
 #define SRC_TEST_BASE_TEST_H_
 #include <vector>
+#include <utility>
+#include <algorithm>
+#include <string>
+#include <map>
+#include <memory>
 
 #include "base/texttable.h"
 #include "case/sql_case.h"
