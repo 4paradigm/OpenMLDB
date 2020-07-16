@@ -119,9 +119,28 @@ class SQLSDKQueryTest : public SQLSDKTest {
                                   std::shared_ptr<SQLRouter> router);
     static void RunRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                   std::shared_ptr<SQLRouter> router);
+    // Per-test-suite set-up.
+    // Called before the first test in this test suite.
+    // Can be omitted if not needed.
+    static void SetUpTestCase() {
+        LOG(INFO) << "SetUpTestCase cluster init >>";
+        query_mc_ = new MiniCluster(6181);
+        query_mc_->SetUp();
+    }
+
+    // Per-test-suite tear-down.
+    // Called after the last test in this test suite.
+    // Can be omitted if not needed.
+    static void TearDownTestCase() {
+        query_mc_->Close();
+        delete query_mc_;
+        LOG(INFO) << "TearDownTestCase cluster close>>";
+    }
+
+ public:
+    static MiniCluster* query_mc_;
 };
-
-
+MiniCluster* SQLSDKQueryTest::query_mc_ = nullptr;
 
 void SQLSDKTest::CreateDB(const fesql::sqlcase::SQLCase& sql_case,
                           std::shared_ptr<SQLRouter> router) {
@@ -297,9 +316,8 @@ void SQLSDKTest::BatchExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
     }
 }
 
-void SQLSDKTest::RunBatchModeSDK(
-    fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-    std::shared_ptr<SQLRouter> router) {
+void SQLSDKTest::RunBatchModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
+                                 std::shared_ptr<SQLRouter> router) {
     fesql::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router);
@@ -307,8 +325,9 @@ void SQLSDKTest::RunBatchModeSDK(
     BatchExecuteSQL(sql_case, router);
 }
 
-void SQLSDKQueryTest::RequestExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                   std::shared_ptr<SQLRouter> router) {
+void SQLSDKQueryTest::RequestExecuteSQL(
+    fesql::sqlcase::SQLCase& sql_case,  // NOLINT
+    std::shared_ptr<SQLRouter> router) {
     fesql::sdk::Status status;
     // execute SQL
     std::string sql = sql_case.sql_str();
@@ -340,8 +359,7 @@ void SQLSDKQueryTest::RequestExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // N
         std::vector<fesql::codec::Row> insert_rows;
         ASSERT_TRUE(sql_case.ExtractInputData(insert_rows, 0));
 
-        CheckSchema(insert_table.columns(),
-                                 *(request_row->GetSchema().get()));
+        CheckSchema(insert_table.columns(), *(request_row->GetSchema().get()));
 
         LOG(INFO) << "Request Row:\n";
         PrintRows(insert_table.columns(), insert_rows);
@@ -368,15 +386,14 @@ void SQLSDKQueryTest::RequestExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // N
         if (!sql_case.expect().schema_.empty() ||
             !sql_case.expect().columns_.empty()) {
             ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
-            CheckSchema(output_table.columns(),
-                                     *(results[0]->GetSchema()));
+            CheckSchema(output_table.columns(), *(results[0]->GetSchema()));
         }
 
         if (!sql_case.expect().data_.empty() ||
             !sql_case.expect().rows_.empty()) {
             ASSERT_TRUE(sql_case.ExtractOutputData(rows));
-            CheckRows(output_table.columns(),
-                                   sql_case.expect().order_, rows, results);
+            CheckRows(output_table.columns(), sql_case.expect().order_, rows,
+                      results);
         }
 
         if (!sql_case.expect().count_ > 0) {
@@ -389,7 +406,6 @@ void SQLSDKQueryTest::RequestExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // N
         FAIL() << "insert sql not support in request mode";
     }
 }
-
 
 void SQLSDKQueryTest::RunRequestModeSDK(
     fesql::sqlcase::SQLCase& sql_case,  // NOLINT
@@ -408,8 +424,8 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_->GetZkCluster();
-    sql_opt.zk_path = mc_->GetZkPath();
+    sql_opt.zk_cluster = query_mc_->GetZkCluster();
+    sql_opt.zk_path = query_mc_->GetZkPath();
     sql_opt.enbale_debug = true;
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
@@ -419,8 +435,8 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_->GetZkCluster();
-    sql_opt.zk_path = mc_->GetZkPath();
+    sql_opt.zk_cluster = query_mc_->GetZkCluster();
+    sql_opt.zk_path = query_mc_->GetZkPath();
     sql_opt.enbale_debug = true;
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);

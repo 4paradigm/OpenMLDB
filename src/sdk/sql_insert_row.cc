@@ -88,12 +88,19 @@ bool SQLInsertRow::Init(int str_length) {
 }
 
 bool SQLInsertRow::PackDimension(const std::string& val) {
-    auto index_it = index_map_.find(rb_.GetAppendPos());
-    if (index_it != index_map_.end()) {
-        raw_dimensions_.insert(std::make_pair(rb_.GetAppendPos(), val));
-        return true;
+    bool is_key = false;
+    for (const auto& kv : index_map_) {
+        for (const auto& v : kv.second) {
+            if (v == rb_.GetAppendPos()) {
+                is_key = true;
+                break;
+            }
+        }
     }
-    return false;
+    if (is_key) {
+        raw_dimensions_.insert(std::make_pair(rb_.GetAppendPos(), val));
+    }
+    return is_key;
 }
 
 bool SQLInsertRow::PackTs(uint64_t ts) {
@@ -225,7 +232,11 @@ bool SQLInsertRow::AppendString(const std::string& val) {
 }
 
 bool SQLInsertRow::AppendString(const char* val, uint32_t length) {
-    PackDimension(std::string(val, length));
+    if (0 == length) {
+        PackDimension(fesql::codec::EMPTY_STRING);
+    } else {
+        PackDimension(std::string(val, length));
+    }
     if (rb_.AppendString(val, length)) {
         return MakeDefault();
     }
@@ -247,6 +258,7 @@ bool SQLInsertRow::AppendDate(uint32_t date) {
 }
 
 bool SQLInsertRow::AppendNULL() {
+    PackDimension(fesql::codec::NONETOKEN);
     // todo: deal with null
     if (rb_.AppendNULL()) {
         return MakeDefault();
