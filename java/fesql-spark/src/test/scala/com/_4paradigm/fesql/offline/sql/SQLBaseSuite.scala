@@ -34,19 +34,11 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def testCases(yamlPath: String) {
     val caseFile = loadYaml[CaseFile](yamlPath)
-    val debugs = caseFile.getDebugs
-    caseFile.getCases.asScala.filter(c => needFilter(c)).filter(c => needDebug(c, debugs)).foreach(c => testCase(c))
+    caseFile.getCases.asScala.filter(c => needFilter(c)).foreach(c => testCase(c))
   }
 
-  def needDebug(sqlCase: SQLCase, debugs: java.util.List[String]): Boolean = {
-    if (debugs == null || debugs.isEmpty)
-      true
-    else
-      debugs.contains(sqlCase.getDesc)
-  }
   def needFilter(sqlCase: SQLCase): Boolean = {
-    sqlCase.getMode != ("offline-unsupport")&&
-      (sqlCase.getTags == null || ((!sqlCase.getTags.asScala.contains("TODO")) && (!sqlCase.getTags.asScala.contains("todo"))))
+    sqlCase.getMode != ("offline-unsupport")
   }
 
   def createSQLString(sql: String, inputNames: ListBuffer[(Int, String)]): String = {
@@ -195,6 +187,7 @@ class SQLBaseSuite extends SparkTestSuite {
     val df = getSparkSession.createDataFrame(data, schema)
     tbl.getName -> df
   }
+
   def parseSchema(columns: java.util.List[String]): StructType = {
 
     val parts = columns.toArray.map(_.toString()).map(_.trim).filter(_ != "").map(_.reverse.replaceFirst(" ", ":").reverse.split(":"))
@@ -228,6 +221,7 @@ class SQLBaseSuite extends SparkTestSuite {
     })
     StructType(fields)
   }
+
   def parseData(rows: java.util.List[java.util.List[Object]], schema: StructType): Array[Array[Any]] = {
 
     val data = rows.asScala.map(_.asInstanceOf[java.util.List[Object]].asScala.map(x => if (null == x) "null" else x.toString()).toArray).toArray
