@@ -1,6 +1,6 @@
 
 add_library(rtidb_sdk STATIC cluster_sdk.cc sql_cluster_router.cc sql_router.cc result_set_sql.cc sql_request_row.cc sql_insert_row.cc)
-set(FESQL_CASE_LIBS fesql_case yaml-cpp boost_filesystem)
+set(FESQL_CASE_LIBS base_test fesql_case yaml-cpp boost_filesystem)
 
 add_executable(cluster_sdk_test cluster_sdk_test.cc)
 target_link_libraries(cluster_sdk_test gtest ${BIN_LIBS})
@@ -115,7 +115,7 @@ if(SQL_PYSDK_ENABLE)
 		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
 		VERBATIM)
     endif()
-	
+
 	# Find if python module MODULE_NAME is available,
 	# if not install it to the Python user install directory.
 	function(search_python_module MODULE_NAME)
@@ -190,7 +190,7 @@ if(SQL_JAVASDK_ENABLE)
 	  DEPENDS
         sql_jsdk
         cp_sql_resource
-		COMMAND ${MAVEN_EXECUTABLE} install -DskipTests=true -Dscalatest.skip=true
+		COMMAND ${MAVEN_EXECUTABLE} package -DskipTests=true -Dscalatest.skip=true
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src/sdk/java
 	)
 endif()
