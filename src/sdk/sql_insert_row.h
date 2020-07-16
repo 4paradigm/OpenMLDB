@@ -27,6 +27,7 @@
 
 #include "boost/lexical_cast.hpp"
 #include "codec/codec.h"
+#include "codec/fe_row_codec.h"
 #include "node/sql_node.h"
 #include "proto/name_server.pb.h"
 #include "sdk/base.h"
@@ -92,8 +93,12 @@ class SQLInsertRow {
  private:
     bool AppendString(const char* val, uint32_t length);
     bool MakeDefault();
-    bool PackDimension(const std::string& val);
     bool PackTs(uint64_t ts);
+    void PackDimension(const std::string& val);
+    inline bool IsDimension() {
+        return raw_dimensions_.find(rb_.GetAppendPos()) !=
+               raw_dimensions_.end();
+    }
 
  private:
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info_;
