@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 #include "base/fe_status.h"
@@ -65,6 +66,9 @@ class UDFLibrary {
 
     std::shared_ptr<UDFTransformRegistry> Find(const std::string& name) const;
 
+    bool IsUDAF(const std::string& name, size_t args);
+    void SetIsUDAF(const std::string& name, size_t args);
+
     // register interfaces
     ExprUDFRegistryHelper RegisterExprUDF(const std::string& name);
     LLVMUDFRegistryHelper RegisterCodeGenUDF(const std::string& name);
@@ -110,6 +114,7 @@ class UDFLibrary {
 
     void InsertRegistry(std::shared_ptr<UDFTransformRegistry> reg_item);
 
+    std::unordered_map<std::string, std::unordered_set<size_t>> udaf_tags_;
     std::unordered_map<std::string, std::shared_ptr<CompositeRegistry>> table_;
     std::unordered_map<std::string, void*> external_symbols_;
 

@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 #include "node/sql_node.h"
+#include "vm/catalog.h"
 
 namespace fesql {
 namespace node {
@@ -75,6 +76,17 @@ class OpaqueTypeNode : public TypeNode {
 
  private:
     size_t bytes_;
+};
+
+class RowTypeNode : public TypeNode {
+ public:
+    explicit RowTypeNode(const vm::SchemaSourceList &schema_source)
+        : TypeNode(node::kRow), schema_source_(schema_source) {}
+
+    const vm::SchemaSourceList &schema_source() const { return schema_source_; }
+
+ private:
+    const vm::SchemaSourceList schema_source_;
 };
 
 }  // namespace node
