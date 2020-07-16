@@ -119,6 +119,125 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     mc.Close();
 }
 
+static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
+    ::rtidb::sdk::MiniCluster mc(6181);
+    mc.SetUp();
+    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc.GetZkCluster();
+    sql_opt.zk_path = mc.GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    router->CreateDB(db, &status);
+    std::string create = "create table " + name +
+                         "(col1 string, col2 bigint, col3 int, col4 float, "
+                         "col5 double, index(key=col1, ts=col2));";
+    router->ExecuteDDL(db, create, &status);
+    router->RefreshCatalog();
+    uint64_t time = 1589780888000l;
+    for (auto _ : state) {
+        for (int i = 0; i < state.range(0); ++i) {
+            std::string insert =
+                "insert into " + name + " values('hello'," +
+                std::to_string(time + i) + "," + std::to_string(i) + "," +
+                std::to_string(2.7 + i) + "," + std::to_string(3.14 + i) + ");";
+            benchmark::DoNotOptimize(
+                router->ExecuteInsert(db, insert, &status));
+        }
+    }
+    mc.Close();
+}
+
+static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
+    ::rtidb::sdk::MiniCluster mc(6181);
+    mc.SetUp();
+    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc.GetZkCluster();
+    sql_opt.zk_path = mc.GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    router->CreateDB(db, &status);
+    std::string create = "create table " + name +
+                         "(col1 string, col2 bigint, col3 int, col4 float, "
+                         "col5 double, index(key=col1, ts=col2));";
+    router->ExecuteDDL(db, create, &status);
+    router->RefreshCatalog();
+    uint64_t time = 1589780888000l;
+    for (auto _ : state) {
+        std::string insert = "insert into " + name + " values(?, ?, ?, ?, ?);";
+        for (int i = 0; i < state.range(0); ++i) {
+            std::shared_ptr<::rtidb::sdk::SQLInsertRow> row =
+                router->GetInsertRow(db, insert, &status);
+            row->Init(5);
+            row->AppendString("hello");
+            row->AppendInt64(i + time);
+            row->AppendInt32(i);
+            row->AppendFloat(3.14 + i);
+            row->AppendDouble(2.7 + i);
+            benchmark::DoNotOptimize(
+                router->ExecuteInsert(db, insert, row, &status));
+        }
+    }
+    mc.Close();
+}
+
+static void BM_InsertPlaceHolderBatchFunction(benchmark::State& state) {  // NOLINT
+    ::rtidb::sdk::MiniCluster mc(6181);
+    mc.SetUp();
+    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc.GetZkCluster();
+    sql_opt.zk_path = mc.GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    router->CreateDB(db, &status);
+    std::string create = "create table " + name +
+                         "(col1 string, col2 bigint, col3 int, col4 float, "
+                         "col5 double, index(key=col1, ts=col2));";
+    router->ExecuteDDL(db, create, &status);
+    router->RefreshCatalog();
+    uint64_t time = 1589780888000l;
+    for (auto _ : state) {
+        std::string insert = "insert into " + name + " values(?, ?, ?, ?, ?);";
+        std::shared_ptr<::rtidb::sdk::SQLInsertRows> rows =
+            router->GetInsertRows(db, insert, &status);
+        for (int i = 0; i < state.range(0); ++i) {
+            std::shared_ptr<::rtidb::sdk::SQLInsertRow> row = rows->NewRow();
+            row->Init(5);
+            row->AppendString("hello");
+            row->AppendInt64(i + time);
+            row->AppendInt32(i);
+            row->AppendFloat(3.14 + i);
+            row->AppendDouble(2.7 + i);
+        }
+        benchmark::DoNotOptimize(
+            router->ExecuteInsert(db, insert, rows, &status));
+    }
+    mc.Close();
+}
+
 BENCHMARK(BM_SimpleQueryFunction);
+
+BENCHMARK(BM_SimpleInsertFunction)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
+
+BENCHMARK(BM_InsertPlaceHolderFunction)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
+
+BENCHMARK(BM_InsertPlaceHolderBatchFunction)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
 
 BENCHMARK_MAIN();
