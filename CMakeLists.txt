@@ -54,7 +54,7 @@ option(SQL_JAVASDK_ENABLE "Enable sql javasdk" ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
-    set(BRPC_LIBS brpc protobuf glog gflags unwind ssl crypto leveldb z snappy dl pthread ${OS_LIB})
+    set(BRPC_LIBS brpc protobuf glog gflags unwind lzma ssl crypto leveldb z snappy dl pthread ${OS_LIB})
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB 
             ${CMAKE_THREAD_LIBS_INIT}
