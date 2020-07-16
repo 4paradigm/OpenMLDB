@@ -4,6 +4,7 @@ public class SdkOption {
     private String zkCluster;
     private String zkPath;
     private long sessionTimeout;
+    private Boolean enableDebug = false;
 
     public String getZkCluster() {
         return zkCluster;
@@ -27,5 +28,13 @@ public class SdkOption {
 
     public void setSessionTimeout(long sessionTimeout) {
         this.sessionTimeout = sessionTimeout;
+    }
+
+    public Boolean getEnableDebug() {
+        return enableDebug;
+    }
+
+    public void setEnableDebug(Boolean enableDebug) {
+        this.enableDebug = enableDebug;
     }
 }

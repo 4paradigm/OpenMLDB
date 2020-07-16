@@ -1,13 +1,21 @@
 package com._4paradigm.fesql_auto_test.checker;
 
-import com._4paradigm.fesql_auto_test.entity.FesqlCase;
+import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.fesql.sqlcase.model.Table;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import com._4paradigm.sql.Schema;
+import com.google.common.base.Joiner;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 
 
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -20,102 +28,97 @@ import java.util.List;
 @Slf4j
 public class ResultChecker extends BaseChecker {
 
-    public ResultChecker(FesqlCase fesqlCase, FesqlResult fesqlResult){
-        super(fesqlCase,fesqlResult);
+    private static final Logger logger = LoggerFactory.getLogger(ResultChecker.class);
+
+    public ResultChecker(SQLCase fesqlCase, FesqlResult fesqlResult) {
+        super(fesqlCase, fesqlResult);
     }
 
     @Override
-    public void check() throws Exception {
+    public void check() throws ParseException {
         log.info("result check");
-        List<List> expect =  (List<List>)fesqlCase.getExpect().get("rows");
+        if (fesqlCase.getExpect().getColumns().isEmpty()) {
+            throw new RuntimeException("fail check result: columns are empty");
+        }
+        List<List<Object>> expect = convertRows(fesqlCase.getExpect().getRows(),
+                fesqlCase.getExpect().getColumns());
         List<List> actual = fesqlResult.getResult();
-        log.info("expect:{}",expect);
-        log.info("actual:{}",actual);
-        Assert.assertEquals(actual.size(),expect.size());
-        List<String> columns =  (List<String>)fesqlCase.getExpect().get("columns");
-        if(columns!=null&&columns.size()>0){
-            expect = convertRows(expect,columns);
-        }
-        String orderName = (String)fesqlCase.getExpect().get("order");
-        if(orderName!=null&&orderName.length()>0){
+
+        String orderName = fesqlCase.getExpect().getOrder();
+        if (orderName != null && orderName.length() > 0) {
             Schema schema = fesqlResult.getResultSchema();
-            int index = FesqlUtil.getIndexByColumnName(schema,orderName);
-            Collections.sort(expect,new RowsSort(index));
-            Collections.sort(actual,new RowsSort(index));
-            log.info("order expect:{}",expect);
-            log.info("order actual:{}",actual);
+            int index = FesqlUtil.getIndexByColumnName(schema, orderName);
+            Collections.sort(expect, new RowsSort(index));
+            Collections.sort(actual, new RowsSort(index));
         }
-        if(columns!=null&&columns.size()>0) {
-//            for(int i=0;i<actual.size();i++){
-//                List actualList = actual.get(i);
-//                List expectList = expect.get(i);
-//                checkListAsString(actualList,expectList);
-//            }
-            Assert.assertEquals(actual, expect);
-        }else{
-            for(int i=0;i<actual.size();i++){
-                List actualList = actual.get(i);
-                List expectList = expect.get(i);
-                checkListAsString(actualList,expectList);
-            }
-        }
+
+        log.info("expect:{}", expect);
+        log.info("actual:{}", actual);
+        Assert.assertEquals(actual.size(), expect.size(),
+                String.format("ResultChecker fail: expect size %d, real size %d", expect.size(), actual.size()));
+        Assert.assertEquals(actual, expect,
+                String.format("ResultChecker fail: expect\n%s\nreal\n%s", Table.getTableString(fesqlCase.getExpect().getColumns(), expect), fesqlResult.toString()));
     }
-    private void checkListAsString(List actual,List expect){
-        Assert.assertEquals(actual.size(),expect.size());
-        for(int i=0;i<actual.size();i++){
-            Object actualObj = actual.get(i);
-//            System.out.println(actualObj);
-//            System.out.println("》》："+(actualObj instanceof String));
-//            System.out.println(actualObj.getClass());
-            Object expectObj = expect.get(i);
-            Assert.assertEquals(actualObj+"",expectObj+"");
-        }
-    }
-    public class RowsSort implements Comparator<List>{
+
+    public class RowsSort implements Comparator<List> {
         private int index;
-        public RowsSort(int index){
+
+        public RowsSort(int index) {
             this.index = index;
         }
+
         @Override
         public int compare(List o1, List o2) {
             Object obj1 = o1.get(index);
             Object obj2 = o2.get(index);
-            if(obj1 instanceof Comparable && obj2 instanceof Comparable){
+            if (obj1 instanceof Comparable && obj2 instanceof Comparable) {
                 return ((Comparable) obj1).compareTo(obj2);
-            }else{
-                return obj1.hashCode()-obj2.hashCode();
+            } else {
+                return obj1.hashCode() - obj2.hashCode();
             }
         }
     }
-    private List<List> convertRows(List<List> rows,List<String> columns){
-        List<List> list = new ArrayList<>();
-        for(List row:rows){
-            list.add(convertList(row,columns));
+
+    public static List<List<Object>> convertRows(List<List<Object>> rows, List<String> columns) throws ParseException {
+        List<List<Object>> list = new ArrayList<>();
+        for (List row : rows) {
+            list.add(convertList(row, columns));
         }
         return list;
     }
-    private List convertList(List datas,List<String> columns){
-        List list = new ArrayList();
-        for(int i=0;i<datas.size();i++){
-            Object obj = datas.get(i);
-            if(obj==null){
+
+    public static List<Object> convertList(List<Object> datas, List<String> columns) throws ParseException {
+        List<Object> list = new ArrayList();
+        for (int i = 0; i < datas.size(); i++) {
+            if (datas.get(i) == null) {
                 list.add(null);
-            }else {
-                String data = obj+"";
+            } else {
+                String obj = datas.get(i).toString();
                 String column = columns.get(i);
-                list.add(convertData(data, column));
+                list.add(convertData(obj, column));
             }
         }
         return list;
     }
-    private Object convertData(String data,String column){
+
+    public static Object convertData(String data, String column) throws ParseException {
         String[] ss = column.split("\\s+");
-        String type = ss[ss.length-1];
+        String type = ss[ss.length - 1];
         Object obj = null;
-        switch (type){
+        if ("null".equalsIgnoreCase(data)) {
+            return null;
+        }
+        switch (type) {
+            case "smallint":
+            case "int16":
+                obj = Short.parseShort(data);
+                break;
+            case "int32":
+            case "i32":
             case "int":
                 obj = Integer.parseInt(data);
                 break;
+            case "int64":
             case "bigint":
                 obj = Long.parseLong(data);
                 break;
@@ -132,10 +135,15 @@ public class ResultChecker extends BaseChecker {
                 obj = data;
                 break;
             case "timestamp":
-                obj = Long.parseLong(data);
+                obj = new Timestamp(Long.parseLong(data));
                 break;
             case "date":
-                obj = data;
+                try {
+                    obj = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(data.trim() + " 00:00:00").getTime());
+                } catch (ParseException e) {
+                    logger.error("Fail convert {} to date", data.trim());
+                    throw e;
+                }
                 break;
             default:
                 obj = data;

@@ -50,6 +50,7 @@ onebox/*binlogs*
 onebox/*bin*
 test-output
 reports
+rtidb-auto-test-java
 test-common/integrationtest/ns*
 test-common/integrationtest/tablet*
 test-common/integrationtest/logs*

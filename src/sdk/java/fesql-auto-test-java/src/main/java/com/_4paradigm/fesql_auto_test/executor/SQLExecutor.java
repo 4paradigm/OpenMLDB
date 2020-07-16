@@ -1,7 +1,7 @@
 package com._4paradigm.fesql_auto_test.executor;
 
-import com._4paradigm.fesql_auto_test.entity.FesqlCase;
-import com._4paradigm.fesql_auto_test.entity.FesqlCaseInput;
+import com._4paradigm.fesql.sqlcase.model.InputDesc;
+import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import com._4paradigm.sql.DataType;
@@ -25,26 +25,24 @@ public class SQLExecutor extends BaseExecutor {
 
     private String dbName;
     private List<String> tableNames;
-    public SQLExecutor(SqlExecutor executor,FesqlCase fesqlCase){
-        super(executor,fesqlCase);
+
+    public SQLExecutor(SqlExecutor executor, SQLCase fesqlCase) {
+        super(executor, fesqlCase);
         dbName = fesqlCase.getDb();
     }
 
     @Override
     protected void prepare() throws Exception {
-        if(fesqlCase.isCreateDB()){
-            boolean dbOk = executor.createDB(dbName);
-            log.info("create db:{},{}",dbName,dbOk);
-        }
-        List<FesqlCaseInput> inputs = fesqlCase.getInputs();
-        tableNames = FesqlUtil.createAndInsert(executor,dbName,inputs);
+        boolean dbOk = executor.createDB(dbName);
+        log.info("create db:{},{}", dbName, dbOk);
+        tableNames = FesqlUtil.createAndInsert(executor, dbName, fesqlCase.getInputs());
     }
 
     @Override
     protected FesqlResult execute() throws Exception {
         FesqlResult fesqlResult = null;
         List<String> sqls = fesqlCase.getSqls();
-        if(sqls!=null&&sqls.size()>0) {
+        if (sqls != null && sqls.size() > 0) {
             for (String sql : sqls) {
                 log.info("sql:{}", sql);
                 sql = FesqlUtil.formatSql(sql, tableNames);
@@ -52,22 +50,12 @@ public class SQLExecutor extends BaseExecutor {
             }
         }
         String sql = fesqlCase.getSql();
-        if(sql!=null&&sql.length()>0) {
+        if (sql != null && sql.length() > 0) {
             log.info("sql:{}", sql);
             sql = FesqlUtil.formatSql(sql, tableNames);
             fesqlResult = FesqlUtil.sql(executor, dbName, sql);
         }
         return fesqlResult;
     }
-
-    @Override
-    protected FesqlResult after() {
-        String sql = fesqlCase.getCheck_sql();
-        log.info("check sql:{}",sql);
-        sql = FesqlUtil.formatSql(sql,tableNames);
-        FesqlResult fesqlResult = FesqlUtil.sql(executor,dbName,sql);
-        return fesqlResult;
-    }
-
 
 }

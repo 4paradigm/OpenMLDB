@@ -1,11 +1,9 @@
 package com._4paradigm.fesql_auto_test.v1;
 
+import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.common.FesqlTest;
-import com._4paradigm.fesql_auto_test.entity.FesqlCase;
 import com._4paradigm.fesql_auto_test.entity.FesqlDataProvider;
 import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
-import com._4paradigm.sql.ResultSet;
-import com._4paradigm.sql.Schema;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -22,12 +20,12 @@ public class InsertTest extends FesqlTest {
     @DataProvider
     public Object[] testInsertData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
-                .dataProviderGenerator("/v1/testInsert.yaml");
+                .dataProviderGenerator("/integration/v1/test_insert.yaml");
         return dp.getCases();
     }
 
     @Test(dataProvider = "testInsertData")
-    public void testInsert(FesqlCase testCase) throws Exception {
+    public void testInsert(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor,testCase).run();
     }
 }

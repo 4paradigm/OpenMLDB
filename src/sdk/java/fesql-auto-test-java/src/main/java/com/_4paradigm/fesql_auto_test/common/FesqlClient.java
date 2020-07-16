@@ -21,6 +21,7 @@ public class FesqlClient {
         SdkOption option = new SdkOption();
         option.setZkCluster(zkCluster);
         option.setZkPath(zkPath);
+        option.setEnableDebug(true);
         option.setSessionTimeout(1000000);
         try {
             executor = new SqlClusterExecutor(option);

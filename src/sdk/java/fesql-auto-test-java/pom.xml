@@ -12,7 +12,8 @@
     <artifactId>fesql-auto-test-java</artifactId>
 
     <properties>
-        <fesql.version>2.0.0.0-SNAPSHOT</fesql.version>
+        <sql.version>2.0.0.0-SNAPSHOT</sql.version>
+        <fesql.version>0.0.1-SNAPSHOT</fesql.version>
         <suiteXmlFile>test_suite/test_v1.xml</suiteXmlFile>
         <aspectj.version>1.8.9</aspectj.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -86,6 +87,11 @@
         <dependency>
             <groupId>com._4paradigm.sql</groupId>
             <artifactId>sql-jdbc</artifactId>
+            <version>${sql.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com._4paradigm.fesql</groupId>
+            <artifactId>fesql-common</artifactId>
             <version>${fesql.version}</version>
         </dependency>
         <dependency>
@@ -127,7 +133,11 @@
             <version>2.12.1</version>
             <scope>test</scope>
         </dependency>
-
+        <dependency>
+            <groupId>commons-collections</groupId>
+            <artifactId>commons-collections</artifactId>
+            <version>3.2.2</version>
+        </dependency>
         <dependency>
             <groupId>ru.yandex.qatools.allure</groupId>
             <artifactId>allure-testng-adaptor</artifactId>

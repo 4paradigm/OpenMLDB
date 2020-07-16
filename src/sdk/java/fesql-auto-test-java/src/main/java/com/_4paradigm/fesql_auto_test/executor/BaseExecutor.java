@@ -1,11 +1,12 @@
 package com._4paradigm.fesql_auto_test.executor;
 
+import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.checker.Checker;
 import com._4paradigm.fesql_auto_test.checker.CheckerStrategy;
-import com._4paradigm.fesql_auto_test.entity.FesqlCase;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
+import org.testng.Assert;
 
 import java.util.List;
 
@@ -15,38 +16,47 @@ import java.util.List;
  */
 @Slf4j
 public abstract class BaseExecutor {
-    protected FesqlCase fesqlCase;
+    protected SQLCase fesqlCase;
     protected SqlExecutor executor;
 
-    public BaseExecutor(SqlExecutor executor,FesqlCase fesqlCase) {
+    public BaseExecutor(SqlExecutor executor, SQLCase fesqlCase) {
         this.executor = executor;
         this.fesqlCase = fesqlCase;
     }
 
-    public void run() throws Exception {
+    public void run() {
         log.info(fesqlCase.getDesc() + " Begin!");
         if (null == fesqlCase) {
+            Assert.fail("executor run with null case");
             return;
         }
-        prepare();
-        FesqlResult fesqlResult = execute();
-        if(fesqlCase.getCheck_sql()!=null) {
-            fesqlResult = after();
+        try {
+            prepare();
+            FesqlResult fesqlResult = null;
+            fesqlResult = execute();
+            check(fesqlResult);
+            tearDown();
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail("executor run with exception");
         }
-        check(fesqlResult);
-        tearDown();
-
     }
+
     protected abstract void prepare() throws Exception;
+
     protected abstract FesqlResult execute() throws Exception;
-    protected FesqlResult after(){
+
+    protected FesqlResult after() {
         return null;
     }
+
     protected void check(FesqlResult fesqlResult) throws Exception {
         List<Checker> strategyList = CheckerStrategy.build(fesqlCase, fesqlResult);
         for (Checker checker : strategyList) {
             checker.check();
         }
     }
-    protected void tearDown(){}
+
+    protected void tearDown() {
+    }
 }

@@ -12,7 +12,7 @@ sleep 5
 echo "ROOT_DIR:${ROOT_DIR}"
 sh steps/gen_code.sh
 sh tools/install_fesql.sh
-mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. && make sql_javasdk_package
+mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. && make -j8 sql_javasdk_package
 case_xml=test_v1.xml
 cd ${ROOT_DIR}/src/sdk/java/
 mvn clean test -DsuiteXmlFile=test_suite/${case_xml}
