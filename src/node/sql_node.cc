@@ -1004,9 +1004,11 @@ void ExprIdNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, name_, "var", true);
+    PrintValue(output, tab, GetExprString(), "var", true);
 }
-const std::string ExprIdNode::GetExprString() const { return name_; }
+const std::string ExprIdNode::GetExprString() const {
+    return "%" + std::to_string(id_) + "(" + name_ + ")";
+}
 bool ExprIdNode::Equals(const ExprNode *node) const {
     if (this == node) {
         return true;
@@ -1015,7 +1017,7 @@ bool ExprIdNode::Equals(const ExprNode *node) const {
         return false;
     }
     const ExprIdNode *that = dynamic_cast<const ExprIdNode *>(node);
-    return this->name_ == that->name_;
+    return this->name_ == that->name_ && this->id_ == that->id_;
 }
 
 void ExprNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -1082,7 +1084,7 @@ void FnParaNode::Print(std::ostream &output, const std::string &org_tab) const {
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
 
-    PrintSQLNode(output, tab, para_type_, name_, true);
+    PrintSQLNode(output, tab, GetParaType(), GetName(), true);
 }
 void FnNodeFnHeander::Print(std::ostream &output,
                             const std::string &org_tab) const {
@@ -1143,7 +1145,7 @@ void FnAssignNode::Print(std::ostream &output,
     PrintValue(output, tab, is_ssa_ ? "true" : "false", "ssa", false);
     output << "\n";
     PrintSQLNode(output, tab, reinterpret_cast<const SQLNode *>(expression_),
-                 name_, true);
+                 GetName(), true);
 }
 void FnReturnStmt::Print(std::ostream &output,
                          const std::string &org_tab) const {
@@ -1174,7 +1176,7 @@ void FnForInNode::Print(std::ostream &output,
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintValue(output, tab, var_name_, "var", false);
+    PrintValue(output, tab, var_->GetName(), "var", false);
     output << "\n";
     PrintSQLNode(output, tab, in_expression_, "in", true);
 }
@@ -1461,6 +1463,50 @@ void UDFDefNode::Print(std::ostream &output, const std::string &tab) const {
 bool UDFDefNode::Equals(const SQLNode *node) const {
     auto other = dynamic_cast<const UDFDefNode *>(node);
     return other != nullptr && def_->Equals(other->def_);
+}
+
+void LambdaNode::Print(std::ostream &output, const std::string &tab) const {
+    output << tab << "LambdaNode(";
+    for (size_t i = 0; i < GetArgSize(); ++i) {
+        output << GetArg(i)->GetExprString();
+        if (i < GetArgSize() - 1) {
+            output << ", ";
+        }
+    }
+    output << ") {\n";
+    body()->Print(output, tab + INDENT);
+    output << tab << "\n}";
+}
+
+bool LambdaNode::Equals(const SQLNode *node) const {
+    auto other = dynamic_cast<const LambdaNode *>(node);
+    if (other == nullptr) {
+        return false;
+    }
+    if (this->GetArgSize() != other->GetArgSize()) {
+        return false;
+    }
+    for (size_t i = 0; i < GetArgSize(); ++i) {
+        if (ExprEquals(GetArg(i), other->GetArg(i))) {
+            return false;
+        }
+    }
+    return ExprEquals(this->body(), other->body());
+}
+
+bool LambdaNode::Validate(
+    const std::vector<const TypeNode *> &actual_types) const {
+    if (actual_types.size() != GetArgSize()) {
+        return false;
+    }
+    for (size_t i = 0; i < GetArgSize(); ++i) {
+        if (GetArgType(i) == nullptr) {
+            return false;
+        } else if (!GetArgType(i)->Equals(actual_types[i])) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool UDAFDefNode::Equals(const SQLNode *node) const {

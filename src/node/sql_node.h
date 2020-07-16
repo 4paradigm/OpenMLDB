@@ -1239,17 +1239,30 @@ class UnaryExpr : public ExprNode {
 class ExprIdNode : public ExprNode {
  public:
     ExprIdNode() : ExprNode(kExprId) {}
-    explicit ExprIdNode(const std::string &name)
-        : ExprNode(kExprId), name_(name) {}
-    const std::string GetName() const { return name_; }
+    explicit ExprIdNode(const std::string &name, size_t id)
+        : ExprNode(kExprId), name_(name), id_(id) {}
+    const std::string &GetName() const { return name_; }
+    int64_t GetId() const { return id_; }
+    void SetId(int64_t id) { id_ = id; }
     void Print(std::ostream &output, const std::string &org_tab) const override;
     const std::string GetExprString() const override;
     bool Equals(const ExprNode *node) const override;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 
+    // Since lambda argument should be unique identified,
+    // a static count value is maintained here. Currently
+    // we can not put it in node_manager because there is
+    // no ensurement of unique node_manager instance.
+    // TODO(xxx): are all exprs unique identified neccesary?
+    static int64_t expr_id_cnt_;
+    static int64_t GetNewId() { return expr_id_cnt_++; }
+
+    bool IsResolved() const { return id_ >= 0; }
+
  private:
     std::string name_;
+    int64_t id_;
 };
 
 class ColumnRefNode : public ExprNode {
@@ -1634,16 +1647,18 @@ class ExplainNode : public SQLNode {
 
 class FnParaNode : public FnNode {
  public:
-    FnParaNode(const std::string &name, const TypeNode *para_type)
-        : FnNode(kFnPara), name_(name), para_type_(para_type) {}
-    const std::string &GetName() const { return name_; }
+    explicit FnParaNode(ExprIdNode *para_id)
+        : FnNode(kFnPara), para_id_(para_id) {}
+    const std::string &GetName() const { return para_id_->GetName(); }
 
-    const TypeNode *GetParaType() const { return para_type_; }
+    const TypeNode *GetParaType() const { return para_id_->GetOutputType(); }
+
+    ExprIdNode *GetExprId() const { return para_id_; }
+
     void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
-    std::string name_;
-    const TypeNode *para_type_;
+    ExprIdNode *para_id_;
 };
 class FnNodeFnHeander : public FnNode {
  public:
@@ -1662,27 +1677,27 @@ class FnNodeFnHeander : public FnNode {
 };
 class FnNodeFnDef : public FnNode {
  public:
-    FnNodeFnDef(const FnNodeFnHeander *header, const FnNodeList *block)
+    FnNodeFnDef(const FnNodeFnHeander *header, FnNodeList *block)
         : FnNode(kFnDef), header_(header), block_(block) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     const FnNodeFnHeander *header_;
-    const FnNodeList *block_;
+    FnNodeList *block_;
 };
 
 class FnAssignNode : public FnNode {
  public:
-    explicit FnAssignNode(const std::string &name, ExprNode *expression)
+    explicit FnAssignNode(ExprIdNode *var, ExprNode *expression)
         : FnNode(kFnAssignStmt),
-          name_(name),
+          var_(var),
           expression_(expression),
           is_ssa_(false) {}
-    std::string GetName() const { return name_; }
+    std::string GetName() const { return var_->GetName(); }
     const bool IsSSA() const { return is_ssa_; }
     void EnableSSA() { is_ssa_ = true; }
     void DisableSSA() { is_ssa_ = false; }
     void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string name_;
-    const ExprNode *expression_;
+    node::ExprIdNode *var_;
+    ExprNode *expression_;
 
  private:
     bool is_ssa_;
@@ -1690,17 +1705,17 @@ class FnAssignNode : public FnNode {
 
 class FnIfNode : public FnNode {
  public:
-    explicit FnIfNode(const ExprNode *expression)
+    explicit FnIfNode(ExprNode *expression)
         : FnNode(kFnIfStmt), expression_(expression) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    const ExprNode *expression_;
+    ExprNode *expression_;
 };
 class FnElifNode : public FnNode {
  public:
     explicit FnElifNode(ExprNode *expression)
         : FnNode(kFnElifStmt), expression_(expression) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    const ExprNode *expression_;
+    ExprNode *expression_;
 };
 class FnElseNode : public FnNode {
  public:
@@ -1710,66 +1725,64 @@ class FnElseNode : public FnNode {
 
 class FnForInNode : public FnNode {
  public:
-    FnForInNode(const std::string &var_name, const ExprNode *in_expression)
-        : FnNode(kFnForInStmt),
-          var_name_(var_name),
-          in_expression_(in_expression) {}
+    FnForInNode(ExprIdNode *var, ExprNode *in_expression)
+        : FnNode(kFnForInStmt), var_(var), in_expression_(in_expression) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string var_name_;
-    const ExprNode *in_expression_;
+    ExprIdNode *var_;
+    ExprNode *in_expression_;
 };
 
 class FnIfBlock : public FnNode {
  public:
-    FnIfBlock(const FnIfNode *node, const FnNodeList *block)
+    FnIfBlock(FnIfNode *node, FnNodeList *block)
         : FnNode(kFnIfBlock), if_node(node), block_(block) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    const FnIfNode *if_node;
-    const FnNodeList *block_;
+    FnIfNode *if_node;
+    FnNodeList *block_;
 };
 
 class FnElifBlock : public FnNode {
  public:
-    FnElifBlock(const FnElifNode *node, const FnNodeList *block)
+    FnElifBlock(FnElifNode *node, FnNodeList *block)
         : FnNode(kFnElifBlock), elif_node_(node), block_(block) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    const FnElifNode *elif_node_;
-    const FnNodeList *block_;
+    FnElifNode *elif_node_;
+    FnNodeList *block_;
 };
 class FnElseBlock : public FnNode {
  public:
-    explicit FnElseBlock(const FnNodeList *block)
+    explicit FnElseBlock(FnNodeList *block)
         : FnNode(kFnElseBlock), block_(block) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    const FnNodeList *block_;
+    FnNodeList *block_;
 };
 class FnIfElseBlock : public FnNode {
  public:
-    FnIfElseBlock(const FnIfBlock *if_block, const FnElseBlock *else_block)
+    FnIfElseBlock(FnIfBlock *if_block, FnElseBlock *else_block)
         : FnNode(kFnIfElseBlock),
           if_block_(if_block),
           else_block_(else_block) {}
     void Print(std::ostream &output, const std::string &org_tab) const;
-    const FnIfBlock *if_block_;
+    FnIfBlock *if_block_;
     std::vector<FnNode *> elif_blocks_;
-    const FnElseBlock *else_block_;
+    FnElseBlock *else_block_;
 };
 
 class FnForInBlock : public FnNode {
  public:
-    FnForInBlock(const FnForInNode *for_in_node, const FnNodeList *block)
+    FnForInBlock(FnForInNode *for_in_node, FnNodeList *block)
         : FnNode(kFnForInBlock), for_in_node_(for_in_node), block_(block) {}
 
     void Print(std::ostream &output, const std::string &org_tab) const;
-    const FnForInNode *for_in_node_;
-    const FnNodeList *block_;
+    FnForInNode *for_in_node_;
+    FnNodeList *block_;
 };
 class FnReturnStmt : public FnNode {
  public:
     explicit FnReturnStmt(ExprNode *return_expr)
         : FnNode(kFnReturnStmt), return_expr_(return_expr) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
-    const ExprNode *return_expr_;
+    ExprNode *return_expr_;
 };
 class StructExpr : public ExprNode {
  public:
@@ -1849,9 +1862,8 @@ class ExternalFnDefNode : public FnDefNode {
 
 class UDFDefNode : public FnDefNode {
  public:
-    explicit UDFDefNode(const FnNodeFnDef *def)
-        : FnDefNode(kUDFDef), def_(def) {}
-    const FnNodeFnDef *def() const { return def_; }
+    explicit UDFDefNode(FnNodeFnDef *def) : FnDefNode(kUDFDef), def_(def) {}
+    FnNodeFnDef *def() const { return def_; }
 
     const std::string GetSimpleName() const override { return "UDF"; }
 
@@ -1875,7 +1887,7 @@ class UDFDefNode : public FnDefNode {
     }
 
  private:
-    const FnNodeFnDef *def_;
+    FnNodeFnDef *def_;
 };
 
 class UDFByCodeGenDefNode : public FnDefNode {
@@ -1909,6 +1921,36 @@ class UDFByCodeGenDefNode : public FnDefNode {
     std::shared_ptr<udf::LLVMUDFGenBase> gen_impl_;
     std::vector<const node::TypeNode *> arg_types_;
     const node::TypeNode *ret_type_;
+};
+
+class LambdaNode : public FnDefNode {
+ public:
+    LambdaNode(const std::vector<node::ExprIdNode *> &args,
+               node::ExprNode *body)
+        : FnDefNode(kLambdaDef), args_(args), body_(body) {}
+
+    const std::string GetSimpleName() const override { return "Lambda"; }
+
+    const TypeNode *GetReturnType() const override {
+        return body_->GetOutputType();
+    }
+    size_t GetArgSize() const override { return args_.size(); }
+    const TypeNode *GetArgType(size_t i) const override {
+        return args_[i]->GetOutputType();
+    }
+
+    node::ExprIdNode *GetArg(size_t i) const { return args_[i]; }
+    node::ExprNode *body() const { return body_; }
+
+    void Print(std::ostream &output, const std::string &tab) const override;
+    bool Equals(const SQLNode *node) const override;
+
+    bool Validate(
+        const std::vector<const TypeNode *> &arg_types) const override;
+
+ private:
+    std::vector<node::ExprIdNode *> args_;
+    node::ExprNode *body_;
 };
 
 class UDAFDefNode : public FnDefNode {

@@ -33,15 +33,12 @@ class FnIRBuilder {
     // TODO(wangtaize) provide a module manager
     explicit FnIRBuilder(::llvm::Module* module);
     ~FnIRBuilder();
-    bool Build(const ::fesql::node::FnNodeFnDef* node,
-               ::llvm::Function** result,
+    bool Build(::fesql::node::FnNodeFnDef* node, ::llvm::Function** result,
                base::Status& status);  // NOLINT
 
     bool CreateFunction(const ::fesql::node::FnNodeFnHeander* fn_def,
-                        ::llvm::Function** fn, base::Status& status);  // NOLINT
-    bool BuildFnHeadWithRetStruct(const ::fesql::node::FnNodeFnHeander* fn_def,
-                                  ScopeVar* sv, ::llvm::Function** fn,
-                                  base::Status& status);  // NOLINT
+                        bool return_by_arg, ::llvm::Function** fn,
+                        base::Status& status);  // NOLINT
     bool BuildFnHead(const ::fesql::node::FnNodeFnHeander* fn_def, ScopeVar* sv,
                      ::llvm::Function** fn, base::Status& status);  // NOLINT
 
@@ -51,7 +48,7 @@ class FnIRBuilder {
                     base::Status& status);              // NOLINT
 
     bool FillArgs(const ::fesql::node::FnNodeList* node, ScopeVar* sv,
-                  ::llvm::Function* fn,
+                  bool return_by_arg, ::llvm::Function* fn,
                   base::Status& status);  // NOLINT
     ::llvm::Module* module_;
 };

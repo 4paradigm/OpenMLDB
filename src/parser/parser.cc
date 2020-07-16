@@ -271,13 +271,14 @@ bool FeSQLParser::SSAOptimized(
             case node::kFnAssignStmt: {
                 node::FnAssignNode *assgin_node =
                     dynamic_cast<node::FnAssignNode *>(node);
+                std::string var_name = assgin_node->var_->GetName();
                 std::map<std::string, node::FnNode *>::iterator it =
-                    assign_var_map.find(assgin_node->name_);
+                    assign_var_map.find(var_name);
                 if (it == assign_var_map.end()) {
                     assgin_node->EnableSSA();
                     assign_var_map.insert(
-                        std::pair<std::string, node::FnNode *>(
-                            assgin_node->name_, assgin_node));
+                        std::pair<std::string, node::FnNode *>(var_name,
+                                                               assgin_node));
                 } else {
                     dynamic_cast<node::FnAssignNode *>(it->second)
                         ->DisableSSA();

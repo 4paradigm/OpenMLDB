@@ -710,7 +710,7 @@ primary_time:
 		$$ = node_manager->MakeConstNode(-1*$2);
 	};
 var: FUN_IDENTIFIER {
-        $$ = node_manager->MakeExprIdNode($1);
+        $$ = node_manager->MakeUnresolvedExprId($1);
      };
 
 sql_stmt: stmt ';' {
@@ -1233,12 +1233,12 @@ sql_expr_list:
 sql_id_list:
 	SQL_IDENTIFIER
 	{
-		$$ = node_manager->MakeExprList(node_manager->MakeExprIdNode($1));
+		$$ = node_manager->MakeExprList(node_manager->MakeUnresolvedExprId($1));
 	}
 	| sql_id_list ',' SQL_IDENTIFIER
 	{
 		$$ = $1;
-		$$->AddChild(node_manager->MakeExprIdNode($3));
+		$$->AddChild(node_manager->MakeUnresolvedExprId($3));
 	}
 	;
 

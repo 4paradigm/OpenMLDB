@@ -33,11 +33,11 @@ class SqlNodeTest : public ::testing::Test {
 TEST_F(SqlNodeTest, StructExprNodeTest) {
     StructExpr struct_expr("window");
     TypeNode type_int32(DataType::kInt32);
-    FnParaNode filed1("idx", &type_int32);
-    FnParaNode filed2("rows_ptr", &type_int32);
+    FnParaNode *filed1 = node_manager_->MakeFnParaNode("idx", &type_int32);
+    FnParaNode *filed2 = node_manager_->MakeFnParaNode("rows_ptr", &type_int32);
     FnNodeList fileds;
-    fileds.AddChild(&filed1);
-    fileds.AddChild(&filed2);
+    fileds.AddChild(filed1);
+    fileds.AddChild(filed2);
     struct_expr.SetFileds(&fileds);
 
     FnNodeList parameters;
@@ -63,7 +63,7 @@ TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
 }
 
 TEST_F(SqlNodeTest, MakeGetFieldExprTest) {
-    auto row = node_manager_->MakeExprIdNode("row");
+    auto row = node_manager_->MakeExprIdNode("row", 0);
     auto node = node_manager_->MakeGetFieldExpr(row, "col", "t");
     std::cout << *node << std::endl;
     ASSERT_EQ(kExprGetField, node->GetExprType());

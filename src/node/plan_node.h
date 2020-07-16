@@ -399,11 +399,11 @@ class InsertPlanNode : public LeafPlanNode {
 
 class FuncDefPlanNode : public LeafPlanNode {
  public:
-    explicit FuncDefPlanNode(const FnNodeFnDef *fn_def)
+    explicit FuncDefPlanNode(FnNodeFnDef *fn_def)
         : LeafPlanNode(kPlanTypeFuncDef), fn_def_(fn_def) {}
     ~FuncDefPlanNode() {}
     void Print(std::ostream &output, const std::string &orgTab) const;
-    const FnNodeFnDef *fn_def_;
+    FnNodeFnDef *fn_def_;
 };
 
 bool PlanEquals(const PlanNode *left, const PlanNode *right);

@@ -1382,7 +1382,7 @@ class SimpleUDAFRegistryHelperImpl {
         auto arg_list = nm_->MakeExprList();
         for (size_t i = 0; i < arg_types.size(); ++i) {
             std::string arg_name = "arg_" + std::to_string(i);
-            node::ExprNode* arg = nm_->MakeExprIdNode(arg_name);
+            node::ExprNode* arg = nm_->MakeExprIdNode(arg_name, -1);
             arg->SetOutputType(arg_types[i]);
             arg_list->AddChild(arg);
         }

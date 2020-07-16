@@ -221,12 +221,18 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         case ::fesql::node::kExprId: {
             ::fesql::node::ExprIdNode* id_node =
                 (::fesql::node::ExprIdNode*)node;
-            DLOG(INFO) << "id node name " << id_node->GetName();
+            DLOG(INFO) << "id node spec " << id_node->GetExprString();
+            if (!id_node->IsResolved()) {
+                status.msg = "Detect unresolved expr id: " + id_node->GetName();
+                status.code = common::kCodegenError;
+                LOG(WARNING) << status.msg;
+                return false;
+            }
             NativeValue val;
-            if (!variable_ir_builder_.LoadValue(id_node->GetName(), &val,
+            if (!variable_ir_builder_.LoadValue(id_node->GetExprString(), &val,
                                                 status) ||
                 val.GetRaw() == nullptr) {
-                status.msg = "fail to find var " + id_node->GetName();
+                status.msg = "fail to find var " + id_node->GetExprString();
                 status.code = common::kCodegenError;
                 LOG(WARNING) << status.msg;
                 return false;

@@ -161,7 +161,9 @@ class NodeManager {
     ExprNode *MakeExprFrom(const ExprNode *node,
                            const std::string relation_name,
                            const std::string db_name);
-    ExprNode *MakeExprIdNode(const std::string &name);
+    ExprIdNode *MakeExprIdNode(const std::string &name, int64_t id);
+    ExprIdNode *MakeUnresolvedExprId(const std::string &name);
+
     // Make Fn Node
     ExprNode *MakeConstNode(int16_t value);
     ExprNode *MakeConstNode(int value);
@@ -191,26 +193,25 @@ class NodeManager {
 
     FnNode *MakeFnNode(const SQLNodeType &type);
     FnNodeList *MakeFnListNode();
-    FnNode *MakeFnDefNode(const FnNode *header, const FnNodeList *block);
+    FnNode *MakeFnDefNode(const FnNode *header, FnNodeList *block);
     FnNode *MakeFnHeaderNode(const std::string &name, FnNodeList *plist,
                              const TypeNode *return_type);
 
-    FnNode *MakeFnParaNode(const std::string &name, const TypeNode *para_type);
+    FnParaNode *MakeFnParaNode(const std::string &name,
+                               const TypeNode *para_type);
     FnNode *MakeAssignNode(const std::string &name, ExprNode *expression);
     FnNode *MakeAssignNode(const std::string &name, ExprNode *expression,
                            const FnOperator op);
     FnNode *MakeReturnStmtNode(ExprNode *value);
-    FnIfBlock *MakeFnIfBlock(const FnIfNode *if_node, const FnNodeList *block);
-    FnElifBlock *MakeFnElifBlock(const FnElifNode *elif_node,
-                                 const FnNodeList *block);
-    FnIfElseBlock *MakeFnIfElseBlock(const FnIfBlock *if_block,
-                                     const FnElseBlock *else_block);
-    FnElseBlock *MakeFnElseBlock(const FnNodeList *block);
-    FnNode *MakeIfStmtNode(const ExprNode *value);
+    FnIfBlock *MakeFnIfBlock(FnIfNode *if_node, FnNodeList *block);
+    FnElifBlock *MakeFnElifBlock(FnElifNode *elif_node, FnNodeList *block);
+    FnIfElseBlock *MakeFnIfElseBlock(FnIfBlock *if_block,
+                                     FnElseBlock *else_block);
+    FnElseBlock *MakeFnElseBlock(FnNodeList *block);
+    FnNode *MakeIfStmtNode(ExprNode *value);
     FnNode *MakeElifStmtNode(ExprNode *value);
     FnNode *MakeElseStmtNode();
-    FnNode *MakeForInStmtNode(const std::string &var_name,
-                              const ExprNode *value);
+    FnNode *MakeForInStmtNode(const std::string &var_name, ExprNode *value);
 
     SQLNode *MakeCmdNode(node::CmdType cmd_type);
     SQLNode *MakeCmdNode(node::CmdType cmd_type, const std::string &arg);
@@ -251,7 +252,7 @@ class NodeManager {
 
     InsertPlanNode *MakeInsertPlanNode(const InsertStmt *node);
 
-    FuncDefPlanNode *MakeFuncPlanNode(const FnNodeFnDef *node);
+    FuncDefPlanNode *MakeFuncPlanNode(FnNodeFnDef *node);
 
     PlanNode *MakeRenamePlanNode(PlanNode *node, const std::string alias_name);
 
@@ -283,7 +284,7 @@ class NodeManager {
 
     SQLNode *MakeUnresolvedFnDefNode(const std::string &function_name);
 
-    SQLNode *MakeUDFDefNode(const FnNodeFnDef *def);
+    SQLNode *MakeUDFDefNode(FnNodeFnDef *def);
 
     SQLNode *MakeUDFByCodeGenDefNode(
         const std::vector<const node::TypeNode *> &arg_types,
@@ -294,6 +295,8 @@ class NodeManager {
                              const FnDefNode *update_func,
                              const FnDefNode *merge_func,
                              const FnDefNode *output_func);
+    LambdaNode *MakeLambdaNode(const std::vector<ExprIdNode *> &args,
+                               ExprNode *body);
 
     template <typename T>
     T *RegisterNode(T *node_ptr) {

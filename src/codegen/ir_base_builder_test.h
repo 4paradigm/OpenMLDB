@@ -48,7 +48,7 @@ class ModuleTestFunction {
  public:
     Ret operator()(Args... args) {
         if (return_by_arg) {
-            auto fn = reinterpret_cast<void (*)(Args..., Ret*)>(fn_ptr);
+            auto fn = reinterpret_cast<void (*)(Args..., Ret *)>(fn_ptr);
             Ret res;
             fn(args..., &res);
             return res;
@@ -60,7 +60,7 @@ class ModuleTestFunction {
 
     bool valid() const { return jit != nullptr && fn_ptr != nullptr; }
 
-    ModuleTestFunction(ModuleTestFunction&& inst)
+    ModuleTestFunction(ModuleTestFunction &&inst)
         : jit(std::move(inst.jit)), fn_ptr(inst.fn_ptr) {}
 
  private:
@@ -68,15 +68,15 @@ class ModuleTestFunction {
 
     ModuleTestFunction() {}
 
-    ModuleTestFunction(const std::string& fn_name, bool return_by_arg,
-                       udf::UDFLibrary* library,
+    ModuleTestFunction(const std::string &fn_name, bool return_by_arg,
+                       udf::UDFLibrary *library,
                        std::unique_ptr<::llvm::Module> module,
                        std::unique_ptr<::llvm::LLVMContext> llvm_ctx) {
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
         ::llvm::ExitOnError ExitOnErr;
         jit = std::move(ExitOnErr(vm::FeSQLJITBuilder().create()));
-        auto& jd = jit->getMainJITDylib();
+        auto &jd = jit->getMainJITDylib();
         ::llvm::orc::MangleAndInterner mi(jit->getExecutionSession(),
                                           jit->getDataLayout());
         library->InitJITSymbols(jit.get());
@@ -92,18 +92,18 @@ class ModuleTestFunction {
         ExitOnErr(jit->addIRModule(::llvm::orc::ThreadSafeModule(
             std::move(module), std::move(llvm_ctx))));
         auto load_fn = ExitOnErr(jit->lookup(fn_name));
-        this->fn_ptr = reinterpret_cast<void*>(load_fn.getAddress());
+        this->fn_ptr = reinterpret_cast<void *>(load_fn.getAddress());
         this->return_by_arg = return_by_arg;
     }
 
     std::unique_ptr<vm::FeSQLJIT> jit = nullptr;
-    void* fn_ptr = nullptr;
+    void *fn_ptr = nullptr;
     bool return_by_arg;
 };
 
 struct ModuleFunctionBuilderState {
-    std::vector<node::TypeNode*> arg_types;
-    node::TypeNode* ret_type;
+    std::vector<node::TypeNode *> arg_types;
+    node::TypeNode *ret_type;
     node::NodeManager nm;
     udf::DefaultUDFLibrary library;
 };
@@ -113,11 +113,11 @@ typedef std::unique_ptr<ModuleFunctionBuilderState> BuilderStatePtr;
 template <typename Ret, typename... Args>
 class ModuleFunctionBuilderWithFullInfo {
  public:
-    explicit ModuleFunctionBuilderWithFullInfo(BuilderStatePtr&& state)
+    explicit ModuleFunctionBuilderWithFullInfo(BuilderStatePtr &&state)
         : state(std::move(state)) {}
 
     ModuleTestFunction<Ret, Args...> build(
-        const std::function<base::Status(CodeGenContext*)>&);
+        const std::function<base::Status(CodeGenContext *)> &);
 
  private:
     BuilderStatePtr state;
@@ -126,7 +126,7 @@ class ModuleFunctionBuilderWithFullInfo {
 template <typename... Args>
 class ModuleFunctionBuilderWithArgs {
  public:
-    explicit ModuleFunctionBuilderWithArgs(BuilderStatePtr&& state)
+    explicit ModuleFunctionBuilderWithArgs(BuilderStatePtr &&state)
         : state(std::move(state)) {}
 
     template <typename Ret>
@@ -143,7 +143,7 @@ class ModuleFunctionBuilderWithArgs {
 template <typename Ret>
 class ModuleFunctionBuilderWithRet {
  public:
-    explicit ModuleFunctionBuilderWithRet(BuilderStatePtr&& state)
+    explicit ModuleFunctionBuilderWithRet(BuilderStatePtr &&state)
         : state(std::move(state)) {}
 
     template <typename... Args>
@@ -180,7 +180,7 @@ class ModuleFunctionBuilder {
 template <typename Ret, typename... Args>
 ModuleTestFunction<Ret, Args...>
 ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
-    const std::function<base::Status(CodeGenContext*)>& build_module) {
+    const std::function<base::Status(CodeGenContext *)> &build_module) {
     ModuleTestFunction<Ret, Args...> nil;
     auto llvm_ctx =
         std::unique_ptr<::llvm::LLVMContext>(new llvm::LLVMContext());
@@ -191,29 +191,29 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
     CodeGenContext context(module.get());
 
     node::NodeManager nm;
-    std::vector<node::TypeNode*> arg_types = {
+    std::vector<node::TypeNode *> arg_types = {
         DataTypeTrait<Args>::to_type_node(&nm)...};
-    std::vector<::llvm::Type*> llvm_arg_types;
+    std::vector<::llvm::Type *> llvm_arg_types;
     for (auto type_node : arg_types) {
-        ::llvm::Type* llvm_ty = nullptr;
+        ::llvm::Type *llvm_ty = nullptr;
         if (!codegen::GetLLVMType(module.get(), type_node, &llvm_ty)) {
             LOG(WARNING) << "Fail for arg type " << type_node->GetName();
             return nil;
         }
         if (codegen::TypeIRBuilder::IsStructPtr(llvm_ty)) {
-            llvm_ty = reinterpret_cast<::llvm::PointerType*>(llvm_ty)
+            llvm_ty = reinterpret_cast<::llvm::PointerType *>(llvm_ty)
                           ->getElementType();
         }
         llvm_arg_types.push_back(llvm_ty);
     }
 
-    ::llvm::Type* llvm_ret_ty = nullptr;
+    ::llvm::Type *llvm_ret_ty = nullptr;
     auto ret_type = DataTypeTrait<Ret>::to_type_node(&nm);
     if (!codegen::GetLLVMType(module.get(), ret_type, &llvm_ret_ty)) {
         return nil;
     }
     if (codegen::TypeIRBuilder::IsStructPtr(llvm_ret_ty)) {
-        llvm_ret_ty = reinterpret_cast<::llvm::PointerType*>(llvm_ret_ty)
+        llvm_ret_ty = reinterpret_cast<::llvm::PointerType *>(llvm_ret_ty)
                           ->getElementType();
     }
     bool ret_by_arg = false;
@@ -246,6 +246,84 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
     udf::DefaultUDFLibrary lib;
     return ModuleTestFunction<Ret, Args...>(
         fn_name, ret_by_arg, &lib, std::move(module), std::move(llvm_ctx));
+}
+
+
+/**
+  * Build a callable function object from expr build function.
+  */
+template <typename Ret, typename... Args>
+ModuleTestFunction<Ret, Args...> BuildExprFunction(
+    const std::function<node::ExprNode *(
+        node::NodeManager *,
+        typename std::pair<Args, node::ExprNode *>::second_type...)>
+        &expr_func) {
+    return ModuleFunctionBuilder()
+        .returns<Ret>()
+        .template args<Args...>()
+        .build([&](CodeGenContext *ctx) {
+            node::NodeManager nm;
+            size_t idx = 0;
+            std::vector<::llvm::Type *> llvm_arg_types;
+            std::vector<node::ExprIdNode *> arg_exprs;
+
+            auto make_arg = [&](node::TypeNode *dtype) {
+                auto arg = nm.MakeExprIdNode("arg_" + std::to_string(idx++),
+                                             node::ExprIdNode::GetNewId());
+                arg->SetOutputType(dtype);
+                arg_exprs.push_back(arg);
+
+                ::llvm::Type *llvm_ty = nullptr;
+                codegen::GetLLVMType(ctx->GetModule(), dtype, &llvm_ty);
+                llvm_arg_types.push_back(llvm_ty);
+                return arg;
+            };
+            node::ExprNode *body = expr_func(
+                &nm, make_arg(udf::DataTypeTrait<Args>::to_type_node(&nm))...);
+            CHECK_TRUE(body != nullptr, "Build output expr failed");
+
+            vm::SchemaSourceList empty;
+            vm::SchemasContext empty_context(empty);
+            ScopeVar sv;
+            sv.Enter("entry");
+
+            ::llvm::IRBuilder<> builder(ctx->GetCurrentBlock());
+
+            auto llvm_func = ctx->GetCurrentFunction();
+            for (size_t i = 0; i < llvm_arg_types.size(); ++i) {
+                ::llvm::Value *llvm_arg = llvm_func->arg_begin() + i;
+                if (codegen::TypeIRBuilder::IsStructPtr(llvm_arg_types[i])) {
+                    auto alloca = builder.CreateAlloca(llvm_arg->getType());
+                    builder.CreateStore(llvm_arg, alloca);
+                    llvm_arg = alloca;
+                }
+                node::ExprIdNode *arg_expr_id = arg_exprs[i];
+                sv.AddVar(arg_expr_id->GetExprString(),
+                          NativeValue::Create(llvm_arg));
+            }
+
+            ExprIRBuilder expr_builder(ctx->GetCurrentBlock(), &sv,
+                                       &empty_context, false, ctx->GetModule());
+            NativeValue out;
+            base::Status status;
+            CHECK_TRUE(expr_builder.Build(body, &out, status), status.msg);
+
+            auto ret_type = udf::DataTypeTrait<Ret>::to_type_node(&nm);
+            auto ret_value = out.GetValue(&builder);
+            if (codegen::TypeIRBuilder::IsStructPtr(ret_value->getType())) {
+                ret_value = builder.CreateLoad(ret_value);
+            }
+            if (ret_type->base_ == node::kVarchar) {
+                // strange problem to return StringRef
+                ::llvm::Value *addr =
+                    llvm_func->arg_begin() + llvm_arg_types.size();
+                builder.CreateStore(ret_value, addr);
+                builder.CreateRetVoid();
+            } else {
+                builder.CreateRet(ret_value);
+            }
+            return Status::OK();
+        });
 }
 
 }  // namespace codegen

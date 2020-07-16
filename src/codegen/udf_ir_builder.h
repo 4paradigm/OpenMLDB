@@ -41,6 +41,11 @@ class UDFIRBuilder {
                         const std::vector<NativeValue>& args,
                         NativeValue* output);
 
+    Status BuildLambdaCall(const node::LambdaNode* fn,
+                           const std::vector<const node::TypeNode*>& arg_types,
+                           const std::vector<NativeValue>& args,
+                           NativeValue* output);
+
     Status BuildExternCall(const node::ExternalFnDefNode* fn,
                            const std::vector<const node::TypeNode*>& arg_types,
                            const std::vector<NativeValue>& args,

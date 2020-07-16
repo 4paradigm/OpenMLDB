@@ -187,7 +187,7 @@ bool RegisterMethod(::llvm::Module *module, const std::string &fn_name,
 
     codegen::FnIRBuilder fn_ir_builder(module);
     ::llvm::Function *fn;
-    if (!fn_ir_builder.CreateFunction(header, &fn, status)) {
+    if (!fn_ir_builder.CreateFunction(header, false, &fn, status)) {
         LOG(WARNING) << "Fail to register native udf: "
                      << header->GeIRFunctionName();
         return false;
