@@ -673,7 +673,7 @@ INSTANTIATE_TEST_CASE_P(
 
 TEST_P(DBMSSdkTest, ExecuteQueryTest) {
     auto sql_case = GetParam();
-    usleep(500 * 1000);
+    usleep(1000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
     std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
         ::fesql::sdk::CreateDBMSSdk(endpoint);

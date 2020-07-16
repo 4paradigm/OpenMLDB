@@ -351,6 +351,45 @@ bool ColumnRefNode::Equals(const ExprNode *node) const {
            this->column_name_ == that->column_name_ && ExprNode::Equals(node);
 }
 
+void GetFieldExpr::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, GetChild(0)->GetExprString(), "input", true);
+    output << "\n";
+    PrintValue(output, tab, relation_name_, "relation_name", true);
+    output << "\n";
+    PrintValue(output, tab, column_name_, "column_name", true);
+}
+
+const std::string GetFieldExpr::GenerateExpressionName() const {
+    std::string str = GetChild(0)->GenerateExpressionName();
+    str.append(".");
+    str.append(column_name_);
+    return str;
+}
+const std::string GetFieldExpr::GetExprString() const {
+    std::string str = "";
+    if (!relation_name_.empty()) {
+        str.append(relation_name_).append(".");
+    }
+    str.append(column_name_);
+    return str;
+}
+bool GetFieldExpr::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    auto that = dynamic_cast<const GetFieldExpr *>(node);
+    return this->GetRow()->Equals(that->GetRow()) &&
+           this->relation_name_ == that->relation_name_ &&
+           this->column_name_ == that->column_name_ && ExprNode::Equals(node);
+}
+
 void OrderByNode::Print(std::ostream &output,
                         const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);

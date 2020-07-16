@@ -1353,6 +1353,7 @@ class SimpleUDAFRegistryHelperImpl {
         auto udaf = dynamic_cast<node::UDAFDefNode*>(nm_->MakeUDAFDefNode(
             registry_->name(), input_type, init_, update_, merge_, output_));
         registry_->Register(input_ty_->GetName(), udaf);
+        library_->SetIsUDAF(registry_->name(), 1);
     }
 
  private:

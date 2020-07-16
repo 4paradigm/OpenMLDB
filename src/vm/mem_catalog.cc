@@ -340,6 +340,13 @@ void RowIterDelete(int8_t* iter_ptr) {
         *reinterpret_cast<std::unique_ptr<RowIterator>*>(iter_ptr);
     local_iter = nullptr;
 }
-
+int8_t* RowGetSlice(int8_t* row_ptr, size_t idx) {
+    auto row = reinterpret_cast<Row*>(row_ptr);
+    return row->buf(idx);
+}
+size_t RowGetSliceSize(int8_t* row_ptr, size_t idx) {
+    auto row = reinterpret_cast<Row*>(row_ptr);
+    return row->size(idx);
+}
 }  // namespace vm
 }  // namespace fesql

@@ -1301,6 +1301,32 @@ class ColumnRefNode : public ExprNode {
     std::string db_name_;
 };
 
+class GetFieldExpr : public ExprNode {
+ public:
+    GetFieldExpr(ExprNode *input, const std::string &column_name,
+                 const std::string &relation_name)
+        : ExprNode(kExprGetField),
+          column_name_(column_name),
+          relation_name_(relation_name) {
+        this->AddChild(input);
+    }
+
+    std::string GetRelationName() const { return relation_name_; }
+    std::string GetColumnName() const { return column_name_; }
+    ExprNode *GetRow() const { return GetChild(0); }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    const std::string GenerateExpressionName() const;
+    virtual bool Equals(const ExprNode *node) const;
+
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+
+ private:
+    std::string column_name_;
+    std::string relation_name_;
+};
+
 class BetweenExpr : public ExprNode {
  public:
     BetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right)

@@ -45,6 +45,19 @@ void UDFLibrary::InsertRegistry(
     composite_registry->Add(reg_item);
 }
 
+bool UDFLibrary::IsUDAF(const std::string& name, size_t args) {
+    auto iter = udaf_tags_.find(name);
+    if (iter == udaf_tags_.end()) {
+        return false;
+    }
+    auto& arg_num_set = iter->second;
+    return arg_num_set.find(args) != arg_num_set.end();
+}
+
+void UDFLibrary::SetIsUDAF(const std::string& name, size_t args) {
+    udaf_tags_[name].insert(args);
+}
+
 ExprUDFRegistryHelper UDFLibrary::RegisterExprUDF(const std::string& name) {
     return DoStartRegister<ExprUDFRegistryHelper, ExprUDFRegistry>(name);
 }

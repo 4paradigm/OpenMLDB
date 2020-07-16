@@ -208,7 +208,8 @@ bool SQLCase::ExtractSchema(const std::vector<std::string>& columns,
     return true;
 }
 bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
-                                       std::string* create_sql) {
+                                       std::string* create_sql,
+                                       bool isGenerateIndex) {
     std::string sql = "CREATE TABLE " + table.name() + "(\n";
     for (int i = 0; i < table.columns_size(); i++) {
         auto column = table.columns(i);
@@ -217,9 +218,17 @@ bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
         if (column.is_not_null()) {
             sql.append(" NOT NULL");
         }
-        sql.append(",\n");
+        if (isGenerateIndex
+            || i < table.columns_size()-1) {
+            sql.append(",\n");
+        }
     }
 
+    if (!isGenerateIndex) {
+        sql.append(");");
+        *create_sql = sql;
+        return true;
+    }
     for (int i = 0; i < table.indexes_size(); i++) {
         auto index = table.indexes(i);
         sql.append("index(");
@@ -1037,6 +1046,13 @@ bool SQLCase::CreateSQLCasesFromYaml(
             sql_case.standard_sql_ = sql_case_node["standard_sql"].as<bool>();
         } else {
             sql_case.standard_sql_ = false;
+        }
+
+        if (sql_case_node["standard_sql_compatible"]) {
+            sql_case.standard_sql_compatible_ =
+                sql_case_node["standard_sql_compatible"].as<bool>();
+        } else {
+            sql_case.standard_sql_compatible_ = true;
         }
 
         if (sql_case_node["inputs"]) {

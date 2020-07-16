@@ -563,6 +563,7 @@ cases:
       FROM t1
       WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     standard_sql: true
+    standard_sql_compatible: false
     inputs:
       - name: t1
         schema: id:int, pk1:string, col1:int32, std_ts:timestamp
