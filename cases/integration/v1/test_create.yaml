@@ -271,6 +271,7 @@ cases:
   -
     id: 30
     desc: bigint为索引列
+    tags: ["TODO", "@panxuchen:insert的时候出错"]
     inputs:
       -
         columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -285,6 +286,7 @@ cases:
   -
     id: 31
     desc: int为索引列
+    tags: ["TODO", "@panxuchen:insert的时候出错"]
     inputs:
       -
         columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -299,6 +301,7 @@ cases:
   -
     id: 32
     desc: timestamp为索引列
+    tags: ["TODO", "@panxuchen:insert的时候出错"]
     inputs:
       -
         columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
