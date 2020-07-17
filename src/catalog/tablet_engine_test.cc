@@ -29,8 +29,8 @@ class TabletEngineTest : public rtidb::test::SQLCaseTest {
  public:
     TabletEngineTest() {}
     virtual ~TabletEngineTest() {}
-    static void BatchModeCheck(fesql::sqlcase::SQLCase &sql_case);
-    static void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case);
+    static void BatchModeCheck(fesql::sqlcase::SQLCase &sql_case);    // NOLINT
+    static void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case);  // NOLINT
 };
 struct TestArgs {
     std::shared_ptr<::rtidb::storage::Table> table;

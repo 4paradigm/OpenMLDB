@@ -15,11 +15,10 @@
 #include <string>
 #include <utility>
 #include <vector>
-//
+
 #include "base/texttable.h"
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
-//#include "gtest/internal/gtest-param-util.h"
 #include "sdk/base.h"
 #include "sdk/result_set.h"
 
