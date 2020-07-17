@@ -619,7 +619,6 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     if (cache) {
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
             cache->table_info;
-        DefaultValueMap default_map = cache->default_map;
         std::shared_ptr<::rtidb::client::TabletClient> tablet =
             cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
         if (!tablet) {
@@ -660,7 +659,6 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     if (cache) {
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
             cache->table_info;
-        DefaultValueMap default_map = cache->default_map;
         std::shared_ptr<::rtidb::client::TabletClient> tablet =
             cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
         if (!tablet) {
