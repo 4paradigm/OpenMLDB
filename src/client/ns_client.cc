@@ -43,6 +43,9 @@ bool NsClient::Use(std::string db, std::string& msg) {
 }
 
 bool NsClient::CreateDatabase(const std::string& db, std::string& msg) {
+    if (db.empty()) {
+        return false;
+    }
     ::rtidb::nameserver::CreateDatabaseRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_db(db);

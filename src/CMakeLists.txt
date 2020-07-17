@@ -19,7 +19,8 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
                        log/log_writer.cc
                        log/log_reader.cc
                        log/writable_file.cc flags.cc)
-    set(BIN_LIBS client nameserver tablet rtidb_sdk client blobserver blob_proxy rtidb_catalog zk_client replica  base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal boost_filesystem
+
+    set(BIN_LIBS client nameserver tablet rtidb_sdk client blobserver blob_proxy rtidb_catalog zk_client replica  base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})

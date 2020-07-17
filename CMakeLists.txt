@@ -22,7 +22,6 @@ endif ()
 project(rtidb)
 
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
-#set(CMAKE_BUILD_TYPE DEBUG)
 set(RTIDB_VERSION_MAJOR 2)
 set(RTIDB_VERSION_MEDIUM 0)
 set(RTIDB_VERSION_MINOR 0)
@@ -69,8 +68,8 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_ProfilerStop")
     set(BRPC_LIBS brpc protobuf glog gflags ssl crypto leveldb z snappy dl pthread ${OS_LIB})
 endif ()
-set(VM_LIBS fesql_vm fesql_sdk boost_filesystem fesql_udf fesql_parser fesql_planner fesql_codegen fesql_storage fesql_codec fesql_proto
-    fesql_node fesql_base)
+set(VM_LIBS fesql_node fesql_vm fesql_sdk boost_filesystem fesql_udf fesql_parser fesql_planner fesql_codegen fesql_storage fesql_node fesql_codec fesql_proto
+    fesql_base)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")

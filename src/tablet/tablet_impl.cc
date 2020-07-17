@@ -1900,9 +1900,6 @@ void TabletImpl::Query(RpcController* ctrl,
                 return;
             }
         }
-        std::stringstream ss;
-        session.GetPhysicalPlan()->Print(ss, "\t");
-        DLOG(INFO) << "sql plan \n" << ss.str();
         if (request->is_debug()) {
             session.EnableDebug();
         }
