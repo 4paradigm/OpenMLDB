@@ -378,9 +378,8 @@ int PutData(
             return -1;
         }
         if (clients.find(endpoint) == clients.end()) {
-            clients.insert(std::make_pair(
-                endpoint,
-                std::make_shared<::rtidb::client::TabletClient>(endpoint)));
+            clients.insert(std::make_pair(endpoint,
+                std::make_shared<::rtidb::client::TabletClient>(endpoint, "")));
             if (clients[endpoint]->Init() < 0) {
                 printf("tablet client init failed, endpoint is %s\n",
                        endpoint.c_str());
@@ -538,7 +537,7 @@ std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
         return std::shared_ptr<::rtidb::client::TabletClient>();
     }
     std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
-        std::make_shared<::rtidb::client::TabletClient>(endpoint);
+        std::make_shared<::rtidb::client::TabletClient>(endpoint, "");
     if (tablet_client->Init() < 0) {
         msg = "tablet client init failed, endpoint is " + endpoint;
         tablet_client.reset();
@@ -6081,7 +6080,7 @@ void StartClient() {
                   << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR
                   << "." << RTIDB_VERSION_BUG << std::endl;
     }
-    ::rtidb::client::TabletClient client(FLAGS_endpoint);
+    ::rtidb::client::TabletClient client(FLAGS_endpoint, "");
     client.Init();
     std::string display_prefix = FLAGS_endpoint + "> ";
     while (true) {
@@ -6412,7 +6411,7 @@ void StartBsClient() {
                   << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR
                   << "." << RTIDB_VERSION_BUG << std::endl;
     }
-    ::rtidb::client::BsClient client(FLAGS_endpoint);
+    ::rtidb::client::BsClient client(FLAGS_endpoint, "");
     client.Init();
     std::string display_prefix = FLAGS_endpoint + "> ";
     while (true) {

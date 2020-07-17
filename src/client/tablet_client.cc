@@ -21,11 +21,23 @@ DECLARE_bool(enable_show_tp);
 namespace rtidb {
 namespace client {
 
-TabletClient::TabletClient(const std::string& endpoint)
-    : endpoint_(endpoint), client_(endpoint) {}
+TabletClient::TabletClient(const std::string& endpoint,
+        const std::string& real_endpoint)
+    : endpoint_(endpoint), client_(endpoint) {
+        if (!real_endpoint.empty()) {
+            client_ = ::rtidb::RpcClient<
+                ::rtidb::api::TabletServer_Stub>(real_endpoint);
+        }
+    }
 
-TabletClient::TabletClient(const std::string& endpoint, bool use_sleep_policy)
-    : endpoint_(endpoint), client_(endpoint, use_sleep_policy) {}
+TabletClient::TabletClient(const std::string& endpoint,
+        const std::string& real_endpoint, bool use_sleep_policy)
+    : endpoint_(endpoint), client_(endpoint, use_sleep_policy) {
+        if (!real_endpoint.empty()) {
+            client_ = ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(
+                    real_endpoint, use_sleep_policy);
+        }
+    }
 
 TabletClient::~TabletClient() {}
 

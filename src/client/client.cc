@@ -186,7 +186,7 @@ void BaseClient::UpdateEndpoint(const std::set<std::string>& alive_endpoints) {
         auto iter = old_tablets.find(endpoint);
         if (iter == old_tablets.end()) {
             std::shared_ptr<rtidb::client::TabletClient> tablet =
-                std::make_shared<rtidb::client::TabletClient>(endpoint);
+                std::make_shared<rtidb::client::TabletClient>(endpoint, "");
             if (tablet->Init() != 0) {
                 std::cerr << endpoint << " initial failed!" << std::endl;
                 continue;
@@ -213,7 +213,7 @@ void BaseClient::UpdateBlobEndpoint(
         auto iter = old_blobs.find(endpoint);
         if (iter == old_blobs.end()) {
             std::shared_ptr<rtidb::client::BsClient> blob =
-                std::make_shared<rtidb::client::BsClient>(endpoint);
+                std::make_shared<rtidb::client::BsClient>(endpoint, "");
             if (blob->Init() != 0) {
                 std::cerr << endpoint << " initial failed!" << std::endl;
                 continue;
@@ -372,7 +372,7 @@ std::shared_ptr<rtidb::client::TabletClient> BaseClient::GetTabletClient(
         }
     }
     std::shared_ptr<rtidb::client::TabletClient> tablet =
-        std::make_shared<rtidb::client::TabletClient>(endpoint);
+        std::make_shared<rtidb::client::TabletClient>(endpoint, "");
     int code = tablet->Init();
     if (code < 0) {
         *msg = "failed init table client";
@@ -395,7 +395,7 @@ std::shared_ptr<rtidb::client::BsClient> BaseClient::GetBlobClient(
         }
     }
     std::shared_ptr<rtidb::client::BsClient> blob =
-        std::make_shared<rtidb::client::BsClient>(endpoint);
+        std::make_shared<rtidb::client::BsClient>(endpoint, "");
     int code = blob->Init();
     if (code < 0) {
         *msg = "failed init blob client";

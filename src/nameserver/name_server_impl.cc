@@ -1405,10 +1405,10 @@ void NameServerImpl::UpdateBlobServers(
                     PDLOG(WARNING, "get blobserver names value failed");
                     continue;
                 }
-                blob->client_ = std::make_shared<BsClient>(real_ep, true);
+                blob->client_ = std::make_shared<BsClient>(*it, real_ep, true);
                 real_ep_map_.insert(std::make_pair(*it, real_ep));
             } else {
-                blob->client_ = std::make_shared<BsClient>(*it, true);
+                blob->client_ = std::make_shared<BsClient>(*it, "", true);
             }
             if (blob->client_->Init() != 0) {
                 PDLOG(WARNING, "blob client init error. endpoint[%s]",
@@ -1428,7 +1428,8 @@ void NameServerImpl::UpdateBlobServers(
                         continue;
                     }
                     tit->second->client_ =
-                        std::make_shared<BsClient>(r_it->second, true);
+                        std::make_shared<BsClient>(tit->first,
+                                r_it->second, true);
                 }
                 tit->second->state_ = TabletState::kTabletHealthy;
                 tit->second->ctime_ =
@@ -1462,6 +1463,8 @@ void NameServerImpl::UpdateBlobServers(
             }
         }
     }
+    thread_pool_.AddTask(
+        boost::bind(&NameServerImpl::UpdateRealEndpointMap, this));
 }
 
 void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
@@ -1495,11 +1498,11 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                     continue;
                 }
                 tablet->client_ = std::make_shared<
-                    ::rtidb::client::TabletClient>(real_ep, true);
+                    ::rtidb::client::TabletClient>(*it, real_ep, true);
                 real_ep_map_.insert(std::make_pair(*it, real_ep));
             } else {
-                tablet->client_ =
-                    std::make_shared<::rtidb::client::TabletClient>(*it, true);
+                tablet->client_ = std::make_shared<
+                    ::rtidb::client::TabletClient>(*it, "", true);
             }
             if (tablet->client_->Init() != 0) {
                 PDLOG(WARNING, "tablet client init error. endpoint[%s]",
@@ -1520,7 +1523,8 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                         continue;
                     }
                     tit->second->client_ = std::make_shared<
-                        ::rtidb::client::TabletClient>(r_it->second, true);
+                        ::rtidb::client::TabletClient>(tit->first,
+                                r_it->second, true);
                 }
                 tit->second->state_ = ::rtidb::api::TabletState::kTabletHealthy;
                 tit->second->ctime_ =

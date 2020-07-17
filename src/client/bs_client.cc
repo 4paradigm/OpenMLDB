@@ -14,11 +14,22 @@ using rtidb::blobserver::BlobServer_Stub;
 namespace rtidb {
 namespace client {
 
-BsClient::BsClient(const std::string &endpoint)
-    : endpoint_(endpoint), client_(endpoint) {}
+BsClient::BsClient(const std::string &endpoint,
+        const std::string& real_endpoint)
+    : endpoint_(endpoint), client_(endpoint) {
+        if (!real_endpoint.empty()) {
+            client_ = ::rtidb::RpcClient<BlobServer_Stub>(real_endpoint);
+        }
+    }
 
-BsClient::BsClient(const std::string &endpoint, bool use_sleep_policy)
-    : endpoint_(endpoint), client_(endpoint, use_sleep_policy) {}
+BsClient::BsClient(const std::string &endpoint,
+        const std::string& real_endpoint, bool use_sleep_policy)
+    : endpoint_(endpoint), client_(endpoint, use_sleep_policy) {
+        if (!real_endpoint.empty()) {
+            client_ = ::rtidb::RpcClient<BlobServer_Stub>(
+                    real_endpoint, use_sleep_policy);
+        }
+    }
 
 int BsClient::Init() { return client_.Init(); }
 
