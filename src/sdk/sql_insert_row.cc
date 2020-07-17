@@ -221,7 +221,11 @@ bool SQLInsertRow::AppendDouble(double val) {
 
 bool SQLInsertRow::AppendString(const std::string& val) {
     if (IsDimension()) {
-        PackDimension(val);
+        if (val.empty()) {
+            PackDimension(fesql::codec::EMPTY_STRING);
+        } else {
+            PackDimension(val);
+        }
     }
     if (rb_.AppendString(val.c_str(), val.size())) {
         return MakeDefault();
