@@ -172,7 +172,7 @@ if(SQL_JAVASDK_ENABLE)
 			SOURCES sql_router_sdk.i)
 	target_include_directories(sql_jsdk PRIVATE ${JNI_INCLUDE_DIRS})
 	target_compile_options(sql_jsdk PRIVATE -w)
-    target_link_libraries(sql_jsdk PRIVATE ${SDK_LIBS})
+    target_link_libraries(sql_jsdk PRIVATE ${SDK_LIBS} boost_filesystem)
 
 	if(APPLE)
 	  set_target_properties(sql_jsdk PROPERTIES
