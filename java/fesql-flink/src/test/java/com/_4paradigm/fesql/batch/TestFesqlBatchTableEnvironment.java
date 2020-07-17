@@ -29,7 +29,7 @@ public class TestFesqlBatchTableEnvironment {
         tEnv.registerTableSource("t1", parquetSrc);
 
         // Run sql
-        String sqlText = "select * from t1";
+        String sqlText = "select vendor_id + 1000, passenger_count * 10, trip_duration - 10 from t1";
         FesqlTable table = tEnv.sqlQuery(sqlText);
 
         // Check result
