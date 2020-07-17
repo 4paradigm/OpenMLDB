@@ -119,6 +119,18 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     mc.Close();
 }
 
+static void GenerateInsertSQLSample(uint32_t size, std::string name,
+                                    std::vector<std::string>* sample) {
+    uint64_t time = 1589780888000l;
+    for (int i = 0; i < size; ++i) {
+        std::string insert_sql =
+            "insert into " + name + " values('hello'," +
+            std::to_string(time + i) + "," + std::to_string(i) + "," +
+            std::to_string(2.7 + i) + "," + std::to_string(3.14 + i) + ");";
+        sample->push_back(insert_sql);
+    }
+}
+
 static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
     ::rtidb::sdk::MiniCluster mc(6181);
     mc.SetUp();
@@ -135,15 +147,12 @@ static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
                          "col5 double, index(key=col1, ts=col2));";
     router->ExecuteDDL(db, create, &status);
     router->RefreshCatalog();
-    uint64_t time = 1589780888000l;
+    std::vector<std::string> sample;
+    GenerateInsertSQLSample(state.range(0), name, &sample);
     for (auto _ : state) {
-        for (int i = 0; i < state.range(0); ++i) {
-            std::string insert =
-                "insert into " + name + " values('hello'," +
-                std::to_string(time + i) + "," + std::to_string(i) + "," +
-                std::to_string(2.7 + i) + "," + std::to_string(3.14 + i) + ");";
+        for (int i = 0; i < sample.size(); ++i) {
             benchmark::DoNotOptimize(
-                router->ExecuteInsert(db, insert, &status));
+                router->ExecuteInsert(db, sample[i], &status));
         }
     }
     mc.Close();
@@ -184,7 +193,8 @@ static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
     mc.Close();
 }
 
-static void BM_InsertPlaceHolderBatchFunction(benchmark::State& state) {  // NOLINT
+static void BM_InsertPlaceHolderBatchFunction(
+    benchmark::State& state) {  // NOLINT
     ::rtidb::sdk::MiniCluster mc(6181);
     mc.SetUp();
     ::rtidb::sdk::SQLRouterOptions sql_opt;
