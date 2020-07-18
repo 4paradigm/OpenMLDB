@@ -1897,9 +1897,6 @@ void TabletImpl::Query(RpcController* ctrl,
                 return;
             }
         }
-        std::stringstream ss;
-        session.GetPhysicalPlan()->Print(ss, "\t");
-        DLOG(INFO) << "sql plan \n" << ss.str();
         ::fesql::codec::Row row(request->input_row());
         ::fesql::codec::Row output;
         int32_t ret = session.Run(row, &output);

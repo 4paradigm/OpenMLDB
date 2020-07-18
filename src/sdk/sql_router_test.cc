@@ -59,6 +59,16 @@ class SQLRouterTest : public ::testing::Test {
     MiniCluster mc_;
 };
 
+TEST_F(SQLRouterTest, empty_db_test) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_.GetZkCluster();
+    sql_opt.zk_path = mc_.GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) ASSERT_TRUE(false);
+    ::fesql::sdk::Status status;
+    ASSERT_FALSE(router->CreateDB("", &status));
+}
+
 TEST_F(SQLRouterTest, smoketest) {
     ::rtidb::nameserver::TableInfo table_info;
     table_info.set_format_version(1);
@@ -707,6 +717,7 @@ TEST_F(SQLRouterTest, smoke_explain_on_sql) {
     }
     std::cout << explain->GetPhysicalPlan() << std::endl;
 }
+
 TEST_F(SQLRouterTest, smoke_not_null) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_.GetZkCluster();
