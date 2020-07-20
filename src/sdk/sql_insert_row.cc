@@ -281,7 +281,8 @@ bool SQLInsertRow::AppendDate(uint32_t date) {
     return false;
 }
 
-bool SQLInsertRow::DateToString(uint32_t year, uint32_t month, uint32_t day, std::string* date) {
+bool SQLInsertRow::DateToString(uint32_t year, uint32_t month, uint32_t day,
+                                std::string* date) {
     if (date == nullptr) {
         return false;
     }
