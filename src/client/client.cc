@@ -183,16 +183,26 @@ void BaseClient::UpdateEndpoint(const std::set<std::string>& alive_endpoints) {
         old_tablets = tablets_;
     }
     for (const auto& endpoint : alive_endpoints) {
+        std::string real_endpoint;
+        std::string sname = zk_root_path_ + "/map/names/" + endpoint;
+        if (!zk_client_->GetNodeValue(sname, real_endpoint)) {
+            std::cout << "get failed! sname: " << sname << std::endl;
+        }
         auto iter = old_tablets.find(endpoint);
         if (iter == old_tablets.end()) {
             std::shared_ptr<rtidb::client::TabletClient> tablet =
-                std::make_shared<rtidb::client::TabletClient>(endpoint, "");
+                std::make_shared<rtidb::client::TabletClient>(
+                        endpoint, real_endpoint);
             if (tablet->Init() != 0) {
                 std::cerr << endpoint << " initial failed!" << std::endl;
                 continue;
             }
             new_tablets.insert(std::make_pair(endpoint, tablet));
         } else {
+            if (!real_endpoint.empty()) {
+                iter->second = std::make_shared<rtidb::client::TabletClient>(
+                        endpoint, real_endpoint);
+            }
             new_tablets.insert(std::make_pair(endpoint, iter->second));
         }
     }
@@ -210,16 +220,26 @@ void BaseClient::UpdateBlobEndpoint(
         old_blobs = blobs_;
     }
     for (const auto& endpoint : alive_endpoints) {
+        std::string real_endpoint;
+        std::string sname = zk_root_path_ + "/map/names/" + endpoint;
+        if (!zk_client_->GetNodeValue(sname, real_endpoint)) {
+            std::cout << "get failed! sname: " << sname << std::endl;
+        }
         auto iter = old_blobs.find(endpoint);
         if (iter == old_blobs.end()) {
             std::shared_ptr<rtidb::client::BsClient> blob =
-                std::make_shared<rtidb::client::BsClient>(endpoint, "");
+                std::make_shared<rtidb::client::BsClient>(
+                        endpoint, real_endpoint);
             if (blob->Init() != 0) {
                 std::cerr << endpoint << " initial failed!" << std::endl;
                 continue;
             }
             new_blobs.insert(std::make_pair(endpoint, blob));
         } else {
+            if (!real_endpoint.empty()) {
+                iter->second = std::make_shared<rtidb::client::BsClient>(
+                        endpoint, real_endpoint);
+            }
             new_blobs.insert(std::make_pair(endpoint, iter->second));
         }
     }
@@ -371,8 +391,13 @@ std::shared_ptr<rtidb::client::TabletClient> BaseClient::GetTabletClient(
             return iter->second;
         }
     }
+    std::string real_endpoint;
+    std::string sname = zk_root_path_ + "/map/names/" + endpoint;
+    if (!zk_client_->GetNodeValue(sname, real_endpoint)) {
+        std::cout << "get failed! sname: " << sname << std::endl;
+    }
     std::shared_ptr<rtidb::client::TabletClient> tablet =
-        std::make_shared<rtidb::client::TabletClient>(endpoint, "");
+        std::make_shared<rtidb::client::TabletClient>(endpoint, real_endpoint);
     int code = tablet->Init();
     if (code < 0) {
         *msg = "failed init table client";
@@ -394,8 +419,13 @@ std::shared_ptr<rtidb::client::BsClient> BaseClient::GetBlobClient(
             return iter->second;
         }
     }
+    std::string real_endpoint;
+    std::string sname = zk_root_path_ + "/map/names/" + endpoint;
+    if (!zk_client_->GetNodeValue(sname, real_endpoint)) {
+        std::cout << "get failed! sname: " << sname << std::endl;
+    }
     std::shared_ptr<rtidb::client::BsClient> blob =
-        std::make_shared<rtidb::client::BsClient>(endpoint, "");
+        std::make_shared<rtidb::client::BsClient>(endpoint, real_endpoint);
     int code = blob->Init();
     if (code < 0) {
         *msg = "failed init blob client";
