@@ -1846,11 +1846,13 @@ void NameServerImpl::ShowTablet(RpcController* controller,
     for (; it != tablets_.end(); ++it) {
         TabletStatus* status = response->add_tablets();
         status->set_endpoint(it->first);
-        auto n_it = real_ep_map_.find(it->first);
-        if (n_it == real_ep_map_.end()) {
-            status->set_real_endpoint("-");
-        } else {
-            status->set_real_endpoint(n_it->second);
+        if (FLAGS_use_name) {
+            auto n_it = real_ep_map_.find(it->first);
+            if (n_it == real_ep_map_.end()) {
+                status->set_real_endpoint("-");
+            } else {
+                status->set_real_endpoint(n_it->second);
+            }
         }
         status->set_state(::rtidb::api::TabletState_Name(it->second->state_));
         status->set_age(::baidu::common::timer::get_micros() / 1000 -

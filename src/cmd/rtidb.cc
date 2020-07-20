@@ -691,7 +691,9 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
                         ::rtidb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("endpoint");
-    row.push_back("real_endpoint");
+    if (FLAGS_use_name) {
+        row.push_back("real_endpoint");
+    }
     row.push_back("state");
     row.push_back("age");
     ::baidu::common::TPrinter tp(row.size());
@@ -706,7 +708,9 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
     for (size_t i = 0; i < tablets.size(); i++) {
         std::vector<std::string> row;
         row.push_back(tablets[i].endpoint);
-        row.push_back(tablets[i].real_endpoint);
+        if (FLAGS_use_name) {
+            row.push_back(tablets[i].real_endpoint);
+        }
         row.push_back(tablets[i].state);
         row.push_back(::rtidb::base::HumanReadableTime(tablets[i].age));
         tp.AddRow(row);
