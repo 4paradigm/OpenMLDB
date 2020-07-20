@@ -134,10 +134,15 @@ static void GenerateInsertSQLSample(uint32_t size, std::string name,
 static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
     ::rtidb::sdk::MiniCluster mc(6181);
     mc.SetUp();
+    sleep(5);
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc.GetZkCluster();
     sql_opt.zk_path = mc.GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
+    if (router == nullptr) {
+        std::cout << "fail to init sql cluster router" << std::endl;
+        return;
+    }
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
@@ -146,6 +151,11 @@ static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
                          "(col1 string, col2 bigint, col3 int, col4 float, "
                          "col5 double, index(key=col1, ts=col2));";
     router->ExecuteDDL(db, create, &status);
+    if (status.msg != "ok") {
+        std::cout << "fail to create table" << std::endl;
+        return;
+    }
+    sleep(2);
     router->RefreshCatalog();
     std::vector<std::string> sample;
     GenerateInsertSQLSample(state.range(0), name, &sample);
@@ -161,10 +171,15 @@ static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
 static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
     ::rtidb::sdk::MiniCluster mc(6181);
     mc.SetUp();
+    sleep(5);
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc.GetZkCluster();
     sql_opt.zk_path = mc.GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
+    if (router == nullptr) {
+        std::cout << "fail to init sql cluster router" << std::endl;
+        return;
+    }
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
@@ -173,6 +188,11 @@ static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
                          "(col1 string, col2 bigint, col3 int, col4 float, "
                          "col5 double, index(key=col1, ts=col2));";
     router->ExecuteDDL(db, create, &status);
+    if (status.msg != "ok") {
+        std::cout << "fail to create table" << std::endl;
+        return;
+    }
+    sleep(2);
     router->RefreshCatalog();
     uint64_t time = 1589780888000l;
     for (auto _ : state) {
@@ -180,14 +200,18 @@ static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
         for (int i = 0; i < state.range(0); ++i) {
             std::shared_ptr<::rtidb::sdk::SQLInsertRow> row =
                 router->GetInsertRow(db, insert, &status);
-            row->Init(5);
-            row->AppendString("hello");
-            row->AppendInt64(i + time);
-            row->AppendInt32(i);
-            row->AppendFloat(3.14 + i);
-            row->AppendDouble(2.7 + i);
-            benchmark::DoNotOptimize(
-                router->ExecuteInsert(db, insert, row, &status));
+            if (row != nullptr) {
+                row->Init(5);
+                row->AppendString("hello");
+                row->AppendInt64(i + time);
+                row->AppendInt32(i);
+                row->AppendFloat(3.14 + i);
+                row->AppendDouble(2.7 + i);
+                benchmark::DoNotOptimize(
+                    router->ExecuteInsert(db, insert, row, &status));
+            } else {
+                std::cout << "get insert row failed" << std::endl;
+            }
         }
     }
     mc.Close();
@@ -197,10 +221,15 @@ static void BM_InsertPlaceHolderBatchFunction(
     benchmark::State& state) {  // NOLINT
     ::rtidb::sdk::MiniCluster mc(6181);
     mc.SetUp();
+    sleep(5);
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc.GetZkCluster();
     sql_opt.zk_path = mc.GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
+    if (router == nullptr) {
+        std::cout << "fail to init sql cluster router" << std::endl;
+        return;
+    }
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
@@ -209,23 +238,33 @@ static void BM_InsertPlaceHolderBatchFunction(
                          "(col1 string, col2 bigint, col3 int, col4 float, "
                          "col5 double, index(key=col1, ts=col2));";
     router->ExecuteDDL(db, create, &status);
+    if (status.msg != "ok") {
+        std::cout << "fail to create table" << std::endl;
+        return;
+    }
+    sleep(2);
     router->RefreshCatalog();
     uint64_t time = 1589780888000l;
     for (auto _ : state) {
         std::string insert = "insert into " + name + " values(?, ?, ?, ?, ?);";
         std::shared_ptr<::rtidb::sdk::SQLInsertRows> rows =
             router->GetInsertRows(db, insert, &status);
-        for (int i = 0; i < state.range(0); ++i) {
-            std::shared_ptr<::rtidb::sdk::SQLInsertRow> row = rows->NewRow();
-            row->Init(5);
-            row->AppendString("hello");
-            row->AppendInt64(i + time);
-            row->AppendInt32(i);
-            row->AppendFloat(3.14 + i);
-            row->AppendDouble(2.7 + i);
+        if (rows != nullptr) {
+            for (int i = 0; i < state.range(0); ++i) {
+                std::shared_ptr<::rtidb::sdk::SQLInsertRow> row =
+                    rows->NewRow();
+                row->Init(5);
+                row->AppendString("hello");
+                row->AppendInt64(i + time);
+                row->AppendInt32(i);
+                row->AppendFloat(3.14 + i);
+                row->AppendDouble(2.7 + i);
+            }
+            benchmark::DoNotOptimize(
+                router->ExecuteInsert(db, insert, rows, &status));
+        } else {
+            std::cout << "get insert row failed" << std::endl;
         }
-        benchmark::DoNotOptimize(
-            router->ExecuteInsert(db, insert, rows, &status));
     }
     mc.Close();
 }
