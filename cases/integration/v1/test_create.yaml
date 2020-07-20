@@ -350,3 +350,12 @@ cases:
       index(key=(c4),ts=c4));
     expect:
       success: false
+  - id: 37
+    desc: create col with __prefix
+    tags: ["TODO", "@chenjing create with __prefix"]
+    sql: |
+      create table {auto} (
+      __c1 string, __c3 int, __ts bigint,
+      index(key=__c1, ts=__ts));
+    expect:
+      columns: ["__c1 string","__c3 int", "__ts bigint"]
