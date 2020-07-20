@@ -196,8 +196,31 @@ bool SQLClusterRouter::GetInsertInfo(
         LOG(WARNING) << status->msg;
         return false;
     }
+    std::map<uint32_t, uint32_t> column_map;
+    for (int j = 0; j < insert_stmt->columns_.size(); ++j) {
+        const std::string& col_name = insert_stmt->columns_[j];
+        bool find_flag = false;
+        for (int i = 0; i < (*table_info)->column_desc_v1_size(); ++i) {
+            if (col_name == (*table_info)->column_desc_v1(i).name()) {
+                if (column_map.count(i)) {
+                    status->msg = "duplicate column of " + col_name;
+                    LOG(WARNING) << status->msg;
+                    return false;
+                }
+                column_map.insert(std::make_pair(i, j));
+                find_flag = true;
+                break;
+            }
+        }
+        if (!find_flag) {
+            status->msg = "can't find column " + col_name + " in table " +
+                          (*table_info)->name();
+            LOG(WARNING) << status->msg;
+            return false;
+        }
+    }
     *default_map = GetDefaultMap(
-        *table_info,
+        *table_info, column_map,
         dynamic_cast<::fesql::node::ExprListNode*>(insert_stmt->values_[0]),
         str_length);
     if (!(*default_map)) {
@@ -305,6 +328,7 @@ std::shared_ptr<fesql::node::ConstNode> SQLClusterRouter::GetDefaultMapValue(
 
 DefaultValueMap SQLClusterRouter::GetDefaultMap(
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+    const std::map<uint32_t, uint32_t>& column_map,
     ::fesql::node::ExprListNode* row, uint32_t* str_length) {
     if (row == NULL || str_length == NULL) {
         LOG(WARNING) << "row or str length is NULL";
@@ -312,14 +336,32 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
     }
     DefaultValueMap default_map(
         new std::map<uint32_t, std::shared_ptr<::fesql::node::ConstNode>>());
-    if (row->children_.size() < table_info->column_desc_v1_size()) {
+    if ((column_map.empty() &&
+         row->children_.size() < table_info->column_desc_v1_size()) ||
+        (!column_map.empty() && row->children_.size() < column_map.size())) {
         LOG(WARNING) << "insert value number less than column number";
         return DefaultValueMap();
     }
     for (int32_t idx = 0; idx < table_info->column_desc_v1_size(); idx++) {
+        if (!column_map.empty() && !column_map.count(idx)) {
+            if (table_info->column_desc_v1(idx).not_null()) {
+                LOG(WARNING)
+                    << "column " << table_info->column_desc_v1(idx).name()
+                    << " can't be null";
+                return DefaultValueMap();
+            }
+            default_map->insert(std::make_pair(
+                idx, std::make_shared<::fesql::node::ConstNode>()));
+            continue;
+        }
+
         auto column = table_info->column_desc_v1(idx);
+        uint32_t i = idx;
+        if (!column_map.empty()) {
+            i = column_map.at(idx);
+        }
         ::fesql::node::ConstNode* primary =
-            dynamic_cast<::fesql::node::ConstNode*>(row->children_.at(idx));
+            dynamic_cast<::fesql::node::ConstNode*>(row->children_.at(i));
         if (!primary->IsPlaceholder()) {
             std::shared_ptr<::fesql::node::ConstNode> val;
             if (primary->IsNull()) {

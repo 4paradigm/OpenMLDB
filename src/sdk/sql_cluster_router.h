@@ -139,6 +139,7 @@ class SQLClusterRouter : public SQLRouter {
 
     DefaultValueMap GetDefaultMap(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+        const std::map<uint32_t, uint32_t>& column_map,
         ::fesql::node::ExprListNode* row, uint32_t* str_length);
 
  private:

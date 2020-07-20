@@ -291,6 +291,80 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder) {
     ASSERT_FALSE(rs->Next());
 }
 
+TEST_F(SQLRouterTest, test_sql_insert_with_column_list) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_.GetZkCluster();
+    sql_opt.zk_path = mc_.GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) ASSERT_TRUE(false);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 int, col2 int, col3 string NOT NULL, col4 "
+                      "bigint NOT NULL, index(key=col3, ts=col4));";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    // normal insert
+    std::string insert1 =
+        "insert into " + name + "(col3, col4) values('hello', 1000);";
+    ok = router->ExecuteInsert(db, insert1, &status);
+    ASSERT_TRUE(ok);
+
+    // col3 shouldn't be null
+    std::string insert2 = "insert into " + name + "(col4) values(1000);";
+    ok = router->ExecuteInsert(db, insert2, &status);
+    ASSERT_FALSE(ok);
+
+    // col5 not exist
+    std::string insert3 = "insert into " + name + "(col5) values(1000);";
+    ok = router->ExecuteInsert(db, insert3, &status);
+    ASSERT_FALSE(ok);
+
+    // duplicate col4
+    std::string insert4 =
+        "insert into " + name + "(col4, col4) values(1000, 1000);";
+    ok = router->ExecuteInsert(db, insert4, &status);
+    ASSERT_FALSE(ok);
+
+    // normal placeholder insert
+    std::string insert5 =
+        "insert into " + name + "(col2, col3, col4) values(?, 'hello', ?);";
+    std::shared_ptr<SQLInsertRow> r5 =
+        router->GetInsertRow(db, insert5, &status);
+    ASSERT_TRUE(r5->Init(0));
+    ASSERT_TRUE(r5->AppendInt32(123));
+    ASSERT_TRUE(r5->AppendInt64(1001));
+    ok = router->ExecuteInsert(db, insert5, r5, &status);
+    ASSERT_TRUE(ok);
+
+    // todo: if placeholders are out of order. eg: insert into [table] (col4,
+    // col3, col2) value (?, 'hello', ?);
+
+    std::string select = "select * from " + name + ";";
+    auto rs = router->ExecuteSQL(db, select, &status);
+    ASSERT_EQ(2, rs->Size());
+
+    ASSERT_TRUE(rs->Next());
+    ASSERT_TRUE(rs->IsNULL(0));
+    ASSERT_EQ(123, rs->GetInt32Unsafe(1));
+    ASSERT_EQ("hello", rs->GetStringUnsafe(2));
+    ASSERT_EQ(1001, rs->GetInt64Unsafe(3));
+
+    ASSERT_TRUE(rs->Next());
+    ASSERT_TRUE(rs->IsNULL(0));
+    ASSERT_TRUE(rs->IsNULL(1));
+    ASSERT_EQ("hello", rs->GetStringUnsafe(2));
+    ASSERT_EQ(1000, rs->GetInt64Unsafe(3));
+
+    ASSERT_FALSE(rs->Next());
+}
+
 TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_date_column_key) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_.GetZkCluster();
