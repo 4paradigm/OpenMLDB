@@ -100,6 +100,7 @@ bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg) {
             info.endpoint = status.endpoint();
             info.state = status.state();
             info.age = status.age();
+            info.real_endpoint = status.real_endpoint();
             tablets.push_back(info);
         }
         return true;

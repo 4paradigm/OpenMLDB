@@ -35,6 +35,7 @@ struct TabletInfo {
     std::string endpoint;
     std::string state;
     uint64_t age;
+    std::string real_endpoint;
 };
 
 class NsClient {
