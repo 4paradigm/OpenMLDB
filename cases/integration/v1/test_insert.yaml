@@ -32,7 +32,6 @@ cases:
   -
     id: 3
     desc: 插入部分列数据
-    tags: ["TODO", "@panxuchen"]
     inputs:
       -
         create: |
@@ -97,7 +96,6 @@ cases:
   -
     id: 8
     desc: 列名不存在
-    tags: ["TODO", "@panxuchen"]
     inputs:
       -
         create: |
