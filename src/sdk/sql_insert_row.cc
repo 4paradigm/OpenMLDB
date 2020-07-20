@@ -249,6 +249,14 @@ bool SQLInsertRow::AppendString(const char* val, uint32_t length) {
 }
 
 bool SQLInsertRow::AppendDate(uint32_t year, uint32_t month, uint32_t day) {
+    if (IsDimension()) {
+        std::string date;
+        if (DateToString(year, month, day, &date)) {
+            PackDimension(date);
+        } else {
+            return false;
+        }
+    }
     if (rb_.AppendDate(year, month, day)) {
         return MakeDefault();
     }
@@ -256,10 +264,46 @@ bool SQLInsertRow::AppendDate(uint32_t year, uint32_t month, uint32_t day) {
 }
 
 bool SQLInsertRow::AppendDate(uint32_t date) {
+    if (IsDimension()) {
+        int32_t year = (date >> 16) + 1900;
+        int32_t month = ((date & 0x00001100) >> 8) + 1;
+        int32_t day = date & 0x00000011;
+        std::string date_str;
+        if (DateToString(year, month, day, &date_str)) {
+            PackDimension(date_str);
+        } else {
+            return false;
+        }
+    }
     if (rb_.AppendDate(date)) {
         return MakeDefault();
     }
     return false;
+}
+
+bool SQLInsertRow::DateToString(uint32_t year, uint32_t month, uint32_t day, std::string* date) {
+    if (date == nullptr) {
+        return false;
+    }
+    if (year < 1900 || year > 9999) {
+        return false;
+    }
+    *date += std::to_string(year) + "-";
+    if (month < 10 && month > 0) {
+        *date += "0" + std::to_string(month) + "-";
+    } else if (month >= 10) {
+        *date += std::to_string(month) + "-";
+    } else {
+        return false;
+    }
+    if (day < 10 && day > 0) {
+        *date += "0" + std::to_string(day);
+    } else if (day >= 10 && day <= 31) {
+        *date += std::to_string(day);
+    } else {
+        return false;
+    }
+    return true;
 }
 
 bool SQLInsertRow::AppendNULL() {
