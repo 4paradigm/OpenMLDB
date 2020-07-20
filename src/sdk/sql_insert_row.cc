@@ -71,7 +71,8 @@ SQLInsertRow::SQLInsertRow(
         for (int idx = 0; idx < table_info_->column_key_size(); ++idx) {
             for (const auto& column : table_info_->column_key(idx).col_name()) {
                 index_map_[idx].push_back(column_name_map[column]);
-                raw_dimensions_[column_name_map[column]] = fesql::codec::NONETOKEN;
+                raw_dimensions_[column_name_map[column]] =
+                    fesql::codec::NONETOKEN;
             }
         }
     }
