@@ -5,11 +5,12 @@
 
     <groupId>com._4paradigm.sql</groupId>
     <artifactId>sql-sdk</artifactId>
-    <version>2.0.0.0-beta2</version>
+    <version>2.0.0.0-SNAPSHOT</version>
     <modules>
            <module>sql-jdbc</module>
            <module>sql-native</module>
            <module>sql-jmh</module>
+           <module>fesql-auto-test-java</module>
     </modules>
     <packaging>pom</packaging>
     <name>sdk</name>
@@ -63,12 +64,14 @@
 
     <distributionManagement>
         <repository>
-            <id>nexus-releases</id>
-            <url>http://nexus.4paradigm.com:80/nexus/content/repositories/releases/</url>
+            <id>4pd-nexus</id>
+            <uniqueVersion>true</uniqueVersion>
+            <url>https://nexus.4pd.io/repository/maven-releases/</url>
         </repository>
         <snapshotRepository>
-            <id>nexus-snapshots</id>
-            <url>http://nexus.4paradigm.com:80/nexus/content/repositories/snapshots/</url>
+            <id>4pd-nexus</id>
+            <uniqueVersion>true</uniqueVersion>
+            <url>https://nexus.4pd.io/repository/maven-snapshots/</url>
         </snapshotRepository>
     </distributionManagement>
 </project>

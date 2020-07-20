@@ -66,21 +66,23 @@ class TabletClient {
         const std::string& schema, std::string& msg);  // NOLINT
 
     bool Query(const std::string& db, const std::string& sql,
-               brpc::Controller* cntl, ::rtidb::api::QueryResponse* response);
+               brpc::Controller* cntl, ::rtidb::api::QueryResponse* response,
+               const bool is_debug = false);
 
     bool Query(const std::string& db, const std::string& sql,
-               const std::string& row,
-               brpc::Controller* cntl,
-               ::rtidb::api::QueryResponse* response);
-    bool Update(uint32_t tid, uint32_t pid,
-            const ::google::protobuf::RepeatedPtrField<
-            ::rtidb::api::Columns>& cd_columns,
-            const Schema& new_value_schema,
-            const std::string& value, uint32_t* count, std::string* msg);
+               const std::string& row, brpc::Controller* cntl,
+               ::rtidb::api::QueryResponse* response,
+               const bool is_debug = false);
+    bool Update(
+        uint32_t tid, uint32_t pid,
+        const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>&
+            cd_columns,
+        const Schema& new_value_schema, const std::string& value,
+        uint32_t* count, std::string* msg);
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& value,
-            const ::rtidb::api::WriteOption& wo, int64_t* auto_gen_pk,
-            std::vector<int64_t>* blob_keys, std::string* msg);
+             const ::rtidb::api::WriteOption& wo, int64_t* auto_gen_pk,
+             std::vector<int64_t>* blob_keys, std::string* msg);
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
              const std::string& value, uint32_t format_version = 0);
@@ -122,13 +124,10 @@ class TabletClient {
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk,
                 const std::string& idx_name, std::string& msg);  // NOLINT
 
-
-    bool Delete(uint32_t tid, uint32_t pid,
-                const Cond_Column& cd_columns,
+    bool Delete(uint32_t tid, uint32_t pid, const Cond_Column& cd_columns,
                 uint32_t* count, std::string* msg);
 
-    bool Delete(uint32_t tid, uint32_t pid,
-                const Cond_Column& cd_columns,
+    bool Delete(uint32_t tid, uint32_t pid, const Cond_Column& cd_columns,
                 uint32_t* count, std::string* msg,
                 std::vector<int64_t>* additions);
 
@@ -219,7 +218,7 @@ class TabletClient {
                    std::shared_ptr<TaskInfo> task_info);
 
     bool LoadTable(uint32_t tid, uint32_t pid,
-            ::rtidb::common::StorageMode storage_mode, std::string* msg);
+                   ::rtidb::common::StorageMode storage_mode, std::string* msg);
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, uint64_t term);
 
     bool ChangeRole(

@@ -6,6 +6,7 @@ add_library(rtidb_catalog STATIC catalog/tablet_catalog.cc catalog/sdk_catalog.c
 add_library(client STATIC client/tablet_client.cc client/ns_client.cc client/bs_client.cc)
 add_library(rtidb_flags flags.cc)
 add_library(base STATIC base/status.cc base/ringqueue.h)
+add_library(base_test STATIC test/base_test.cc)
 add_library(zk_client STATIC zk/zk_client.cc zk/dist_lock.cc)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_library(tablet STATIC tablet/tablet_impl.cc flags.cc tablet/file_receiver.cc tablet/file_sender.cc tablet/combine_iterator.cc)
@@ -13,17 +14,17 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_library(beans storage/beans/bitcask.c storage/beans/clock_gettime_stub.c storage/beans/codec.c storage/beans/common.c storage/beans/crc32.c storage/beans/diskmgr.c storage/beans/hint.c storage/beans/hstore.c storage/beans/htree.c storage/beans/mfile.c storage/beans/quicklz.c storage/beans/record.c)
     add_library(blobserver STATIC storage/object_store.cc proto/type.pb.cc blobserver/blobserver_impl.cc flags.cc)
     add_library(storage STATIC storage/object_store.cc storage/mem_table.cc storage/disk_table.cc storage/relational_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc storage/table.cc storage/binlog.cc storage/schema.cc)
-    add_library(log STATIC log/crc32c.cc 
-                           log/sequential_file.cc 
-                       log/log_writer.cc 
+    add_library(log STATIC log/crc32c.cc
+                           log/sequential_file.cc
+                       log/log_writer.cc
                        log/log_reader.cc
                        log/writable_file.cc flags.cc)
 
-    set(BIN_LIBS client nameserver tablet rtidb_sdk client blobserver blob_proxy rtidb_catalog zk_client replica  base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal 
+    set(BIN_LIBS client nameserver tablet rtidb_sdk client blobserver blob_proxy rtidb_catalog zk_client replica  base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})
-    set(FESQL_CASE_LIBS fesql_case yaml-cpp boost_filesystem)
+    set(FESQL_CASE_LIBS base_test fesql_case yaml-cpp boost_filesystem)
     add_executable(blobserver_impl_test blobserver/blobserver_impl_test.cc proto/common.pb.cc proto/tablet.pb.cc flags.cc)
     target_link_libraries(blobserver_impl_test gtest ${BIN_LIBS})
     add_library(replica STATIC replica/replicate_node.cc

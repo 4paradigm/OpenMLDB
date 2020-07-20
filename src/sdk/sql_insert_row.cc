@@ -60,15 +60,18 @@ SQLInsertRow::SQLInsertRow(
             ts_set_.insert(idx);
         } else if (table_info_->column_desc_v1(idx).add_ts_idx()) {
             index_map_[index_cnt++].push_back(idx);
+            raw_dimensions_[idx] = "";
         }
         column_name_map.insert(
             std::make_pair(table_info_->column_desc_v1(idx).name(), idx));
     }
     if (table_info_->column_key_size() > 0) {
         index_map_.clear();
+        raw_dimensions_.clear();
         for (int idx = 0; idx < table_info_->column_key_size(); ++idx) {
             for (const auto& column : table_info_->column_key(idx).col_name()) {
                 index_map_[idx].push_back(column_name_map[column]);
+                raw_dimensions_[column_name_map[column]] = "";
             }
         }
     }
@@ -77,8 +80,8 @@ SQLInsertRow::SQLInsertRow(
 bool SQLInsertRow::Init(int str_length) {
     uint32_t row_size = rb_.CalTotalLength(str_length + default_string_length_);
     val_.resize(row_size);
-    int8_t* buf_ = reinterpret_cast<int8_t*>(&(val_[0]));
-    bool ok = rb_.SetBuffer(reinterpret_cast<int8_t*>(buf_), row_size);
+    int8_t* buf = reinterpret_cast<int8_t*>(&(val_[0]));
+    bool ok = rb_.SetBuffer(reinterpret_cast<int8_t*>(buf), row_size);
     if (!ok) {
         return false;
     }
@@ -86,13 +89,8 @@ bool SQLInsertRow::Init(int str_length) {
     return true;
 }
 
-bool SQLInsertRow::PackDimension(const std::string& val) {
-    auto index_it = index_map_.find(rb_.GetAppendPos());
-    if (index_it != index_map_.end()) {
-        raw_dimensions_.insert(std::make_pair(rb_.GetAppendPos(), val));
-        return true;
-    }
-    return false;
+void SQLInsertRow::PackDimension(const std::string& val) {
+    raw_dimensions_[rb_.GetAppendPos()] = val;
 }
 
 bool SQLInsertRow::PackTs(uint64_t ts) {
@@ -156,7 +154,9 @@ bool SQLInsertRow::MakeDefault() {
 }
 
 bool SQLInsertRow::AppendBool(bool val) {
-    PackDimension(val ? "true" : "false");
+    if (IsDimension()) {
+        PackDimension(val ? "true" : "false");
+    }
     if (rb_.AppendBool(val)) {
         return MakeDefault();
     }
@@ -164,7 +164,9 @@ bool SQLInsertRow::AppendBool(bool val) {
 }
 
 bool SQLInsertRow::AppendInt16(int16_t val) {
-    PackDimension(std::to_string(val));
+    if (IsDimension()) {
+        PackDimension(std::to_string(val));
+    }
     if (rb_.AppendInt16(val)) {
         return MakeDefault();
     }
@@ -172,7 +174,9 @@ bool SQLInsertRow::AppendInt16(int16_t val) {
 }
 
 bool SQLInsertRow::AppendInt32(int32_t val) {
-    PackDimension(std::to_string(val));
+    if (IsDimension()) {
+        PackDimension(std::to_string(val));
+    }
     if (rb_.AppendInt32(val)) {
         return MakeDefault();
     }
@@ -180,7 +184,9 @@ bool SQLInsertRow::AppendInt32(int32_t val) {
 }
 
 bool SQLInsertRow::AppendInt64(int64_t val) {
-    PackDimension(std::to_string(val));
+    if (IsDimension()) {
+        PackDimension(std::to_string(val));
+    }
     PackTs(val);
     if (rb_.AppendInt64(val)) {
         return MakeDefault();
@@ -189,7 +195,9 @@ bool SQLInsertRow::AppendInt64(int64_t val) {
 }
 
 bool SQLInsertRow::AppendTimestamp(int64_t val) {
-    PackDimension(std::to_string(val));
+    if (IsDimension()) {
+        PackDimension(std::to_string(val));
+    }
     PackTs(val);
     if (rb_.AppendTimestamp(val)) {
         return MakeDefault();
@@ -212,7 +220,13 @@ bool SQLInsertRow::AppendDouble(double val) {
 }
 
 bool SQLInsertRow::AppendString(const std::string& val) {
-    PackDimension(val);
+    if (IsDimension()) {
+        if (val.empty()) {
+            PackDimension(fesql::codec::EMPTY_STRING);
+        } else {
+            PackDimension(val);
+        }
+    }
     if (rb_.AppendString(val.c_str(), val.size())) {
         return MakeDefault();
     }
@@ -220,7 +234,13 @@ bool SQLInsertRow::AppendString(const std::string& val) {
 }
 
 bool SQLInsertRow::AppendString(const char* val, uint32_t length) {
-    PackDimension(std::string(val, length));
+    if (IsDimension()) {
+        if (0 == length) {
+            PackDimension(fesql::codec::EMPTY_STRING);
+        } else {
+            PackDimension(std::string(val, length));
+        }
+    }
     if (rb_.AppendString(val, length)) {
         return MakeDefault();
     }
@@ -242,7 +262,9 @@ bool SQLInsertRow::AppendDate(uint32_t date) {
 }
 
 bool SQLInsertRow::AppendNULL() {
-    // todo: deal with null
+    if (IsDimension()) {
+        PackDimension(fesql::codec::NONETOKEN);
+    }
     if (rb_.AppendNULL()) {
         return MakeDefault();
     }
