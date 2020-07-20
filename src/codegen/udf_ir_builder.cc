@@ -207,8 +207,8 @@ Status UDFIRBuilder::BuildUDAFCall(
     builder.SetInsertPoint(head_block);
     ListIRBuilder iter_head_builder(head_block, nullptr);
     ::llvm::Value* iter = nullptr;
-    CHECK_TRUE(iter_head_builder.BuildIterator(list_ptr, &iter, status),
-               status.msg);
+    CHECK_STATUS(iter_head_builder.BuildIterator(list_ptr, elem_type, &iter),
+                 status.msg);
 
     // build init state
     NativeValue init_value;
@@ -220,8 +220,8 @@ Status UDFIRBuilder::BuildUDAFCall(
                    " failed: ", status.msg);
     } else {
         ::llvm::Value* has_first = nullptr;
-        CHECK_TRUE(
-            iter_head_builder.BuildIteratorHasNext(iter, &has_first, status),
+        CHECK_STATUS(
+            iter_head_builder.BuildIteratorHasNext(iter, elem_type, &has_first),
             status.msg);
 
         ::llvm::BasicBlock* iter_first =
@@ -237,11 +237,9 @@ Status UDFIRBuilder::BuildUDAFCall(
         // iter first
         builder.SetInsertPoint(iter_first);
         ListIRBuilder iter_first_builder(iter_first, nullptr);
-        ::llvm::Value* first_value = nullptr;
-        CHECK_TRUE(
-            iter_first_builder.BuildIteratorNext(iter, &first_value, status),
+        CHECK_STATUS(
+            iter_first_builder.BuildIteratorNext(iter, elem_type, &init_value),
             status.msg);
-        init_value = NativeValue::Create(first_value);
     }
     ::llvm::Value* local_state;
     if (is_struct_ptr_state) {
@@ -256,16 +254,18 @@ Status UDFIRBuilder::BuildUDAFCall(
     builder.SetInsertPoint(enter_block);
     ListIRBuilder iter_enter_builder(enter_block, nullptr);
     ::llvm::Value* has_next = nullptr;
-    CHECK_TRUE(iter_enter_builder.BuildIteratorHasNext(iter, &has_next, status),
-               status.msg);
+    CHECK_STATUS(
+        iter_enter_builder.BuildIteratorHasNext(iter, elem_type, &has_next),
+        status.msg);
     builder.CreateCondBr(has_next, body_block, exit_block);
 
     // iter body
     builder.SetInsertPoint(body_block);
     ListIRBuilder iter_next_builder(body_block, nullptr);
-    ::llvm::Value* next_value = nullptr;
-    CHECK_TRUE(iter_next_builder.BuildIteratorNext(iter, &next_value, status),
-               status.msg);
+    NativeValue next_value;
+    CHECK_STATUS(
+        iter_next_builder.BuildIteratorNext(iter, elem_type, &next_value),
+        status.msg);
 
     // call update in iter body
     UDFIRBuilder sub_udf_builder(body_block, sv_, schemas_context_, module_);
@@ -278,8 +278,7 @@ Status UDFIRBuilder::BuildUDAFCall(
     NativeValue update_value;
     CHECK_STATUS(sub_udf_builder.BuildCall(
         udaf->update_func(), {state_type, elem_type},
-        {NativeValue::Create(cur_state_value), NativeValue::Create(next_value)},
-        &update_value));
+        {NativeValue::Create(cur_state_value), next_value}, &update_value));
     ::llvm::Value* raw_update = update_value.GetValue(&builder);
     if (is_struct_ptr_state) {
         raw_update = builder.CreateLoad(raw_update);
@@ -307,6 +306,11 @@ Status UDFIRBuilder::BuildUDAFCall(
     } else {
         builder.CreateStore(raw_output, output_ptr);
     }
+    ListIRBuilder iter_delete_builder(exit_block, nullptr);
+    ::llvm::Value* delete_iter_res;
+    CHECK_STATUS(iter_delete_builder.BuildIteratorDelete(iter, elem_type,
+                                                         &delete_iter_res),
+                 status.msg);
     builder.CreateRet(::llvm::ConstantInt::getFalse(llvm_ctx));
 
     // call udaf under root function

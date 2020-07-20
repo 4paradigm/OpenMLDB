@@ -125,7 +125,18 @@ bool FeSQLJIT::AddSymbol(const std::string& name, void* fn_ptr) {
     return AddSymbol(jd, name, fn_ptr);
 }
 
-void FeSQLJIT::Init() {}
+void FeSQLJIT::Init() {
+    auto& jd = getMainJITDylib();
+    auto gen = llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
+        getDataLayout().getGlobalPrefix());
+    auto err = gen.takeError();
+    if (err) {
+        LOG(WARNING) << "Create process sym failed";
+        ::llvm::errs() << err;
+        return;
+    }
+    jd.setGenerator(gen.get());
+}
 
 bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd,
                          ::llvm::orc::MangleAndInterner& mi,

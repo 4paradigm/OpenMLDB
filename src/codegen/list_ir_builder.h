@@ -12,11 +12,15 @@
 
 #include <string>
 #include "base/fe_status.h"
+#include "codegen/native_value.h"
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
+#include "node/sql_node.h"
 #include "proto/fe_type.pb.h"
 namespace fesql {
 namespace codegen {
+
+using base::Status;
 
 class ListIRBuilder {
  public:
@@ -25,19 +29,22 @@ class ListIRBuilder {
 
     bool BuildAt(::llvm::Value* list, ::llvm::Value* pos,
                  ::llvm::Value** output, base::Status& status);  // NOLINT
-    bool BuildIterator(::llvm::Value* list, ::llvm::Value** output,
-                       base::Status& status);  // NOLINT
-    bool BuildIteratorHasNext(::llvm::Value* iterator, ::llvm::Value** output,
-                              base::Status& status);  // NOLINT
-    bool BuildIteratorNext(::llvm::Value* iterator, ::llvm::Value** output,
-                           base::Status& status);  // NOLINT
-    bool BuildIteratorDelete(::llvm::Value* iterator, ::llvm::Value** output,
-                             base::Status& status);  // NOLINT
+    Status BuildIterator(::llvm::Value* list, const node::TypeNode* elem_type,
+                         ::llvm::Value** output);
+    Status BuildIteratorHasNext(::llvm::Value* iterator,
+                                const node::TypeNode* elem_type,
+                                ::llvm::Value** output);
+    Status BuildIteratorNext(::llvm::Value* iterator,
+                             const node::TypeNode* elem_type,
+                             NativeValue* output);
+    Status BuildIteratorDelete(::llvm::Value* iterator,
+                               const node::TypeNode* elem_type,
+                               ::llvm::Value** output);
 
  private:
-    bool BuildStructTypeIteratorNext(::llvm::Value* iterator,
-                                     ::llvm::Value** output,
-                                     base::Status& status);  // NOLINT
+    Status BuildStructTypeIteratorNext(::llvm::Value* iterator,
+                                       const node::TypeNode* elem_type,
+                                       NativeValue* output);
     bool BuilStructTypedAt(::llvm::Value* list, ::llvm::Value* pos,
                            ::llvm::Value** output,
                            base::Status& status);  // NOLINT

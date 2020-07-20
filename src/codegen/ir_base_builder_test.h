@@ -29,6 +29,7 @@
 
 #include "base/fe_status.h"
 #include "codegen/context.h"
+#include "codegen/expr_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "udf/default_udf_library.h"
 #include "udf/literal_traits.h"
@@ -76,6 +77,7 @@ class ModuleTestFunction {
         llvm::InitializeNativeTargetAsmPrinter();
         ::llvm::ExitOnError ExitOnErr;
         jit = std::move(ExitOnErr(vm::FeSQLJITBuilder().create()));
+        jit->Init();
         auto &jd = jit->getMainJITDylib();
         ::llvm::orc::MangleAndInterner mi(jit->getExecutionSession(),
                                           jit->getDataLayout());
@@ -248,10 +250,9 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
         fn_name, ret_by_arg, &lib, std::move(module), std::move(llvm_ctx));
 }
 
-
 /**
-  * Build a callable function object from expr build function.
-  */
+ * Build a callable function object from expr build function.
+ */
 template <typename Ret, typename... Args>
 ModuleTestFunction<Ret, Args...> BuildExprFunction(
     const std::function<node::ExprNode *(
