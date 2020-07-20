@@ -19,5 +19,7 @@ mvn clean install
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. && make -j16
 
 case_xml=test_v1.xml
+cd ${ROOT_DIR}/src/sdk/java/
+mvn install -Dmaven.test.skip=true
 cd ${ROOT_DIR}/src/sdk/java/fesql-auto-test-java
-mvn clean test -DsuiteXmlFile=test_suite/${case_xml}
+mvn test -DsuiteXmlFile=test_suite/${case_xml}
