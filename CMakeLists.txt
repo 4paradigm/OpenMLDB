@@ -29,9 +29,12 @@ set(FESQL_VERSION_MEDIUM 1)
 set(FESQL_VERSION_MINOR 0)
 set(FESQL_VERSION_BUG 0)
 
-set(CMAKE_BUILD_TYPE RelWithDebInfo)
+if (CMAKE_BUILD_TYPE STREQUAL "")
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif ()
+message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-#set(CMAKE_BUILD_TYPE DEBUG)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -39,8 +42,6 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
 
 find_package(Threads)
-set(VM_LIBS fesql_vm fesql_udf fesql_parser fesql_planner fesql_flags fesql_codegen fesql_storage fesql_codec fesql_proto
-        fesql_node fesql_base fesql_case)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
@@ -157,7 +158,8 @@ if (COVERAGE_ENABLE)
 endif ()
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/release)
-install(TARGETS fesql_sdk ${VM_LIBS}
+
+install(TARGETS fesql_core fesql_sdk
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

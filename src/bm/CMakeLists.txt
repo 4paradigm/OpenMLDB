@@ -2,76 +2,61 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
+# split bm test and bm
+set(BM_LIB_FILE_LIST)
+set(BM_EXEC_FILE_LIST)
+set(BM_TEST_FILE_LIST)
+file(GLOB_RECURSE BM_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cc)
+foreach(SRC_FILE ${BM_FILES})
+    if (SRC_FILE MATCHES ".*_test.cc")
+        list(APPEND BM_TEST_FILE_LIST ${SRC_FILE})
+    elseif (SRC_FILE MATCHES ".*_bm.cc")
+        list(APPEND BM_EXEC_FILE_LIST ${SRC_FILE})
+    else()
+        list(APPEND BM_LIB_FILE_LIST ${SRC_FILE})
+    endif()
+endforeach()
+
+# bm lib
+set(BM_LIBS ${ABSL_LIBS} ${yaml_libs} ${g_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} tcmalloc ${OS_LIB} benchmark gtest)
+add_library(fesql_bm_lib STATIC ${BM_LIB_FILE_LIST})
+target_link_libraries(fesql_bm_lib fesql_sdk fesql_flags ${BM_LIIBS})
+
+# bm executables
+set(BM_TARGET_LIST)
+foreach(BM_SCRIPT ${BM_EXEC_FILE_LIST}) 
+    file(RELATIVE_PATH RELATIVE_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR} ${BM_SCRIPT})
+        get_filename_component(BM_TARGET_DIR ${RELATIVE_SRC_PATH} DIRECTORY)
+        get_filename_component(BM_TARGET_NAME ${RELATIVE_SRC_PATH} NAME_WE)
+        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${BM_TARGET_DIR})
+        add_executable(${BM_TARGET_NAME} ${BM_SCRIPT})
+         
+        target_link_libraries(${BM_TARGET_NAME} 
+            fesql_sdk fesql_flags fesql_bm_lib ${BM_LIBS} benchmark)
+        list(APPEND BM_TARGET_LIST ${BM_TARGET_NAME})
+endforeach()
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+add_custom_target(fesql_bm DEPENDS ${BM_TARGET_LIST})
+
+# bm unittests
 if (TESTING_ENABLE)
-    set(BM_LIBS fesql_sdk fesql_dbms fesql_tablet fesql_case ${ABSL_LIBS} ${yaml_libs} boost_filesystem ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS}  tcmalloc ${OS_LIB})
-    add_executable(base_bm_test base_bm_test.cc)
+    set(TEST_CPP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+    foreach(TEST_SCRIPT ${BM_TEST_FILE_LIST}) 
+        file(RELATIVE_PATH RELATIVE_TEST_PATH ${TEST_CPP_SOURCE_DIR} ${TEST_SCRIPT})
+        get_filename_component(TEST_TARGET_DIR ${RELATIVE_TEST_PATH} DIRECTORY)
+        get_filename_component(TEST_TARGET_NAME ${RELATIVE_TEST_PATH} NAME_WE)
+        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR})
+        add_executable(${TEST_TARGET_NAME} ${TEST_SCRIPT})
 
+        add_test(${TEST_TARGET_NAME}
+            ${TEST_TARGET_NAME}
+            --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
+         
+        target_link_libraries(${TEST_TARGET_NAME}
+            fesql_bm_lib fesql_sdk fesql_flags 
+            gtest benchmark ${yaml_libs} ${BRPC_LIBS} ${OS_LIBS} ${g_libs})
+        list(APPEND test_list ${TEST_TARGET_NAME})
+    endforeach()
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+endif()
 
-    target_link_libraries(base_bm_test gtest fesql_dbms fesql_tablet  ${BM_LIBS})
-    add_test(base_bm_test base_bm_test --gtest_output=xml:${CMAKE_BINARY_DIR}/base_bm_test.xml)
-    list(APPEND test_list base_bm_test)
-
-    add_library(storage_bm_case STATIC storage_bm_case.cc)
-    add_executable(storage_bm_case_test storage_bm_case_test.cc)
-    target_link_libraries(storage_bm_case_test storage_bm_case 
-        benchmark gtest ${BM_LIBS})
-    add_test(storage_bm_case_test storage_bm_case_test --gtest_output=xml:${CMAKE_BINARY_DIR}/storage_bm_case_test.xml)
-    list(APPEND test_list storage_bm_case_test)
-    add_executable(storage_bm storage_bm.cc)
-    target_link_libraries(storage_bm storage_bm_case
-        benchmark gtest ${BM_LIBS})
-
-    add_library(udf_bm_case STATIC udf_bm_case.cc)
-    add_executable(udf_bm_case_test udf_bm_case_test.cc)
-    target_link_libraries(udf_bm_case_test udf_bm_case 
-        benchmark gtest  fesql_udf ${BM_LIBS})
-    add_test(udf_bm_case_test udf_bm_case_test --gtest_output=xml:${CMAKE_BINARY_DIR}/udf_bm_case_test.xml)
-    list(APPEND test_list udf_bm_case_test)
-
-    add_executable(udf_bm udf_bm.cc)
-    target_link_libraries(udf_bm udf_bm_case 
-        benchmark gtest fesql_udf ${BM_LIBS})
-
-    add_library(runner_bm_case STATIC runner_bm_case.cc)
-    add_executable(runner_bm_case_test runner_bm_case_test.cc)
-    target_link_libraries(runner_bm_case_test runner_bm_case
-        benchmark gtest ${BM_LIBS})
-
-    add_test(runner_bm_case_test runner_bm_case_test --gtest_output=xml:${CMAKE_BINARY_DIR}/runner_bm_case_test.xml)
-    list(APPEND test_list runner_bm_case_test)
-    add_executable(runner_bm runner_bm.cc)
-    target_link_libraries(runner_bm runner_bm_case
-        benchmark  gtest ${BM_LIBS})
-
-
-
-    add_library(engine_bm_case STATIC engine_bm_case.cc)
-    add_executable(engine_bm_case_test engine_bm_case_test.cc)
-    target_link_libraries(engine_bm_case_test engine_bm_case  fesql_dbms fesql_tablet
-        benchmark gtest ${BM_LIBS})
-
-    add_test(engine_bm_case_test engine_bm_case_test --gtest_output=xml:${CMAKE_BINARY_DIR}/engine_bm_case_test.xml)
-    list(APPEND test_list engine_bm_case_test)
-
-    add_executable(engine_bm engine_bm.cc)
-    target_link_libraries(engine_bm engine_bm_case 
-        benchmark gtest ${BM_LIBS})
-
-        #add_executable(memsql_client_bm memsql_client_bm.cc)
-        #target_link_libraries(memsql_client_bm ${vm_deps_libs} benchmark mysqlclient ${llvm_libs} ${COMMON_LIBS} brpc protobuf ssl crypto gtest ${OS_LIB})
-
-
-    add_library(fesql_client_bm_case STATIC fesql_client_bm_case.cc)
-
-    add_executable(fesql_client_bm_case_test fesql_client_bm_case_test.cc)
-    target_link_libraries(fesql_client_bm_case_test fesql_client_bm_case
-        gtest benchmark ${BM_LIBS})
-
-    add_test(fesql_client_bm_case_test fesql_client_bm_case_test --gtest_output=xml:${CMAKE_BINARY_DIR}/fesql_client_bm_case_test.xml)
-    list(APPEND test_list fesql_client_bm_case_test)
-
-    add_executable(fesql_client_batch_run_bm fesql_client_batch_run_bm.cc)
-    target_link_libraries(fesql_client_batch_run_bm fesql_client_bm_case
-        gtest  benchmark ${BM_LIBS})
-
-endif ()

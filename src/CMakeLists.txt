@@ -1,26 +1,85 @@
-add_subdirectory(proto)
-add_subdirectory(base)
-add_subdirectory(udf)
-add_subdirectory(node)
-add_subdirectory(parser)
-add_subdirectory(plan)
-add_subdirectory(codegen)
-add_subdirectory(storage)
-add_subdirectory(dbms)
-add_subdirectory(sdk)
-add_subdirectory(vm)
-add_subdirectory(tablet)
-add_subdirectory(bm)
-add_subdirectory(batch)
-add_subdirectory(codec)
-add_subdirectory(case)
+
+set_property(GLOBAL PROPERTY PROP_SRC_FILE_LIST)
+set_property(GLOBAL PROPERTY PROP_TEST_SRC_FILE_LIST)
+
+function(fesql_add_src_and_tests DIR)
+	message(STATUS "Add src and testcases from ${DIR}")
+	get_property(TMP_SRC_LIST GLOBAL PROPERTY PROP_SRC_FILE_LIST)
+	get_property(TMP_TEST_SRC_LIST GLOBAL PROPERTY PROP_TEST_SRC_FILE_LIST)
+	file(GLOB_RECURSE SRC_FILES ${DIR}/*.cc)
+	foreach(SRC_FILE ${SRC_FILES})
+	    if (SRC_FILE MATCHES ".*_test.cc")
+	    	set(TMP_TEST_SRC_LIST "${TMP_TEST_SRC_LIST} ${SRC_FILE}")
+	    else()
+	    	set(TMP_SRC_LIST "${TMP_SRC_LIST} ${SRC_FILE}")
+	    endif()
+	endforeach()
+	set_property(GLOBAL PROPERTY PROP_SRC_FILE_LIST "${TMP_SRC_LIST}")
+	set_property(GLOBAL PROPERTY PROP_TEST_SRC_FILE_LIST "${TMP_TEST_SRC_LIST}")
+endfunction(fesql_add_src_and_tests)
 
 include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
+# sub-directory with specific modules
+add_subdirectory(proto)
+add_subdirectory(parser)
+
+# general sub-directories
+fesql_add_src_and_tests(base)
+fesql_add_src_and_tests(udf)
+fesql_add_src_and_tests(node)
+fesql_add_src_and_tests(plan)
+fesql_add_src_and_tests(codegen)
+fesql_add_src_and_tests(storage)
+fesql_add_src_and_tests(dbms)
+fesql_add_src_and_tests(vm)
+fesql_add_src_and_tests(tablet)
+fesql_add_src_and_tests(batch)
+fesql_add_src_and_tests(codec)
+fesql_add_src_and_tests(case)
+fesql_add_src_and_tests(parser)
+
+get_property(SRC_FILE_LIST_STR GLOBAL PROPERTY PROP_SRC_FILE_LIST)
+string(REPLACE " " ";" SRC_FILE_LIST ${SRC_FILE_LIST_STR})
+
+# fesql core library
+add_library(fesql_core STATIC ${SRC_FILE_LIST} $<TARGET_OBJECTS:fesql_proto> $<TARGET_OBJECTS:fesql_parser>)
+target_link_libraries(fesql_core
+    ${yaml_libs} ${LLVM_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs})
+
+# fesql core unittests
+if (TESTING_ENABLE)
+	get_property(TEST_FILE_LIST_STR GLOBAL PROPERTY PROP_TEST_SRC_FILE_LIST)
+	string(REPLACE " " ";" TEST_FILE_LIST ${TEST_FILE_LIST_STR})
+	set(TEST_CPP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+	foreach(TEST_SCRIPT ${TEST_FILE_LIST}) 
+	    file(RELATIVE_PATH RELATIVE_TEST_PATH ${TEST_CPP_SOURCE_DIR} ${TEST_SCRIPT})
+	    get_filename_component(TEST_TARGET_DIR ${RELATIVE_TEST_PATH} DIRECTORY)
+	    get_filename_component(TEST_TARGET_NAME ${RELATIVE_TEST_PATH} NAME_WE)
+	    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR})
+		add_executable(${TEST_TARGET_NAME} ${TEST_SCRIPT})
+
+		add_test(${TEST_TARGET_NAME}
+			${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
+			--gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
+
+	    target_link_libraries(${TEST_TARGET_NAME} gtest fesql_core fesql_flags
+	    	${yaml_libs} ${ARROW_LIBS} ${BRPC_LIBS})
+    	list(APPEND test_list ${TEST_TARGET_NAME})
+	endforeach()
+	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+endif()
+
+# fesql bin
 add_library(fesql_flags STATIC flags.cc)
 add_executable(fesql cmd/fesql.cc)
-target_link_libraries(fesql fesql_dbms fesql_tablet fesql_sdk 
-    fesql_flags 
-    ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} tcmalloc ${OS_LIB})
+target_link_libraries(fesql fesql_core fesql_flags fesql_sdk
+    tcmalloc)
+
+# fesql sdk
+add_subdirectory(sdk)
+
+# fesql bm
+add_subdirectory(bm)
