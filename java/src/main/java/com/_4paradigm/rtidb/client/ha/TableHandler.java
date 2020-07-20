@@ -28,6 +28,10 @@ public class TableHandler {
     private boolean isObjectStore = false;
     private BlobServer blobServer = null;
     private List<Integer> blobIdxList = new ArrayList<Integer>();
+    private Map<Integer, Integer> versions = new HashMap<>();
+    private Map<Integer, Integer> schemaToVer = new HashMap<>();
+    private int originSchemaSize;
+    private int currentSchemaVersion = 1;
 
     public int getFormatVersion() {
         return formatVersion;
@@ -123,7 +127,6 @@ public class TableHandler {
                     }
                 }
             }
-
         } else {
             schemaSize = tableInfo.getColumnDescCount();
             for (int i = 0; i < schemaSize; i++) {
@@ -142,6 +145,7 @@ public class TableHandler {
                 }
             }
         }
+        this.originSchemaSize = schemaSize;
         for (ColumnDesc cd : schema) {
             nameTypeMap.put(cd.getName(), cd.getDataType());
         }
@@ -163,6 +167,14 @@ public class TableHandler {
                 nameTypeMap.put(ncd.getName(), ncd.getDataType());
             }
         }
+        for(Common.VersionPair ver : tableInfo.getSchemaVersionsList()) {
+            versions.put(ver.getId(), ver.getIdx());
+            schemaToVer.put(ver.getId(), ver.getIdx());
+            if (ver.getId() > this.currentSchemaVersion) {
+                this.currentSchemaVersion = ver.getId();
+            }
+        }
+
         if (tableInfo.hasTableType()) {
             if (tableInfo.getTableType() == Type.TableType.kRelational) {
                 for (int i = 0; i < tableInfo.getColumnKeyList().size(); i++) {
@@ -193,7 +205,7 @@ public class TableHandler {
         this.readStrategy = readStrategy;
     }
 
-    public TableHandler(List<ColumnDesc> schema) {
+    public TableHandler(List<ColumnDesc> schema, List<Common.VersionPair> idxVersions, int originSchemaSize) {
         int index = 0;
         int col_num = 0;
         for (ColumnDesc col : schema) {
@@ -206,6 +218,14 @@ public class TableHandler {
             col_num++;
         }
         this.schema = schema;
+        for(Common.VersionPair ver : idxVersions) {
+            versions.put(ver.getId(), ver.getIdx());
+            schemaToVer.put(ver.getId(), ver.getIdx());
+            if (ver.getId() > this.currentSchemaVersion) {
+                this.currentSchemaVersion = ver.getId();
+            }
+        }
+        this.originSchemaSize = originSchemaSize;
     }
     
     public TableHandler() {}
@@ -297,5 +317,17 @@ public class TableHandler {
 
     public Map<String, DataType> getNameTypeMap() {
         return nameTypeMap;
+    }
+
+    public Map<Integer, Integer> getVersions() {
+        return versions;
+    }
+
+    public Map<Integer, Integer> getSchemaToVer() {
+        return schemaToVer;
+    }
+
+    public int getCurrentSchemaVer() {
+        return this.currentSchemaVersion;
     }
 }

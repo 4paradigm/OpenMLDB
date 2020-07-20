@@ -155,6 +155,16 @@ public class GetFuture implements Future<ByteString>{
 	private void decode(ByteString raw, Object[] row, int start, int length) throws TabletException {
 	    switch (th.getTableInfo().getFormatVersion()) {
 			case 1:
+				int schemaVersion = RowView.getSchemaVersion(raw.asReadOnlyByteBuffer());
+				if (schemaVersion != 1) {
+				    Integer maxIdx = th.getVersions().get(schemaVersion);
+				    if (maxIdx == null) {
+				    	throw new TabletException(String.format("unknown schema version %d", maxIdx));
+					}
+				    if (length > maxIdx) {
+				    	throw new TabletException(String.format("%d great than current schema end idx", length, maxIdx));
+					}
+				}
 				rv.read(raw.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), row, start, length);
 				break;
 			default:

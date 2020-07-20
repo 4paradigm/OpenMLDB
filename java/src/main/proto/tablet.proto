@@ -353,7 +353,8 @@ message TableMeta {
     // format_version 0 , the legacy format 1 ,the new one
     optional uint32 format_version = 21 [default = 0];
     optional string db = 22 [default = ""];
-    repeated common.VersionPair schema_versions = 23;
+    optional uint32 current_schema_version = 23;
+    repeated common.VersionPair schema_versions = 24;
 }
 
 message CreateTableRequest {

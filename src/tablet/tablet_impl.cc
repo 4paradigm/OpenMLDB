@@ -2317,6 +2317,7 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         if (request->has_version_pair()) {
             rtidb::common::VersionPair* pair = table_meta.add_schema_versions();
             pair->CopyFrom(request->version_pair());
+            table_meta.set_current_schema_version(pair->id());
         }
         table_meta.set_schema(schema);
         table->SetTableMeta(table_meta);

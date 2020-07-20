@@ -114,7 +114,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (row.length == tableHandler.getSchema().size()) {
             switch (tableHandler.getFormatVersion()) {
                 case 1:
-                    buffer = RowBuilder.encode(row, tableHandler.getSchema());
+                    buffer = RowBuilder.encode(row, tableHandler.getSchema(), tableHandler.getCurrentSchemaVer());
                     break;
                 default:
                     buffer = RowCodec.encode(row, tableHandler.getSchema());
@@ -124,11 +124,22 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             if (columnDescs == null) {
                 throw new TabletException("no schema for column count " + row.length);
             }
-            int modifyTimes = row.length - tableHandler.getSchema().size();
-            if (row.length > tableHandler.getSchema().size() + tableHandler.getSchemaMap().size()) {
-                modifyTimes = tableHandler.getSchemaMap().size();
+            switch (tableHandler.getFormatVersion()) {
+                case 1:
+                    Map<Integer, Integer> schemaToVer = tableHandler.getSchemaToVer();
+                    Integer ver = schemaToVer.get(row.length);
+                    if (ver == null) {
+                        throw new TabletException("no version for column count " + row.length);
+                    }
+                    buffer = RowBuilder.encode(row, columnDescs, ver);
+                    break;
+                default:
+                    int modifyTimes = row.length - tableHandler.getSchema().size();
+                    if (row.length > tableHandler.getSchema().size() + tableHandler.getSchemaMap().size()) {
+                        modifyTimes = tableHandler.getSchemaMap().size();
+                    }
+                    buffer = RowCodec.encode(row, columnDescs, modifyTimes);
             }
-            buffer = RowCodec.encode(row, columnDescs, modifyTimes);
         }
         return put(tid, pid, null, time, dimList, buffer, tableHandler);
     }
@@ -183,9 +194,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         Map<Integer, List<Tablet.Dimension>> mapping = TableClientCommon.fillPartitionTabletDimension(row, th, client.getConfig().isHandleNull());
         ByteBuffer buffer = null;
         if (row.length == th.getSchema().size()) {
-            switch (th.getTableInfo().getFormatVersion()) {
+            switch (th.getFormatVersion()) {
                 case 1:
-                    buffer = RowBuilder.encode(row, th.getSchema());
+                    buffer = RowBuilder.encode(row, th.getSchema(), th.getCurrentSchemaVer());
                     break;
                 default:
                     buffer = RowCodec.encode(row, th.getSchema());
@@ -195,11 +206,22 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             if (columnDescs == null) {
                 throw new TabletException("no schema for column count " + row.length);
             }
-            int modifyTimes = row.length - th.getSchema().size();
-            if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
-                modifyTimes = th.getSchemaMap().size();
+            switch (th.getFormatVersion()) {
+                case 1:
+                    Map<Integer, Integer> schemaToVer = th.getSchemaToVer();
+                    Integer ver = schemaToVer.get(row.length);
+                    if (ver == null) {
+                        throw new TabletException("no version for column count " + row.length);
+                    }
+                    buffer = RowBuilder.encode(row, columnDescs, ver);
+                    break;
+                default:
+                    int modifyTimes = row.length - th.getSchema().size();
+                    if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
+                        modifyTimes = th.getSchemaMap().size();
+                    }
+                    buffer = RowCodec.encode(row, columnDescs, modifyTimes);
             }
-            buffer = RowCodec.encode(row, columnDescs, modifyTimes);
         }
         List<Future<PutResponse>> pl = new ArrayList<Future<PutResponse>>();
         Iterator<Map.Entry<Integer, List<Tablet.Dimension>>> it = mapping.entrySet().iterator();
