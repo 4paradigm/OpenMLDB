@@ -1,5 +1,6 @@
 java/fesql-spark/src/main/scala/com/_4paradigm/fesql/offline/nodes/LastJoinPlan.scala
 build
+build_mac
 thirdparty
 thirdsrc
 

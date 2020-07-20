@@ -1,5 +1,5 @@
 db: test_zw
-debugs: []
+debugs:
 cases:
   -
     id: 1
@@ -12,29 +12,34 @@ cases:
           - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
     sql: select * from {0};
     expect:
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
       rows:
-        - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
   -
     id: 2
     desc: 插入所有列的数据
     inputs:
       -
-        columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
-    sql: insert into {0} values('aa',2,3,1.1,2.1,1590738989000L,'2020-05-01');
-    check_sql: select * from {0};
+        create: |
+          create table {0} (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 
+          index(key=(c1), ts=c7));
+        insert: insert into {0} values('aa',2,3,1.1,2.1,1590738989000L,'2020-05-01');
+    sql: select * from {0};
     expect:
+      columns : ["c1 string", "c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
       rows:
         - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
   -
     id: 3
     desc: 插入部分列数据
+    tags: ["TODO", "@panxuchen"]
     inputs:
       -
-        columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
-    sql: insert into {0} (c1,c4,c7) values('aa',2,1590738989000L);
-    check_sql: select * from {0};
+        create: |
+          create table {0} (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 
+          index(key=(c1), ts=c7));
+        insert: insert into {0} (c1,c4,c7) values('aa',2,1590738989000L);
+    sql: select * from {0};
     expect:
       columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
       rows:
@@ -44,10 +49,11 @@ cases:
     desc: 没有指定NotNull的列插入null
     inputs:
       -
-        columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
-    sql: insert into {0} (c1,c3,c4,c5,c6,c7,c8) values('aa',2,NULL,NULL,NULL,1590738989000L,NULL);
-    check_sql: select * from {0};
+        create: |
+          create table {0} (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 
+          index(key=(c1), ts=c7));
+        insert: insert into {0} (c1,c3,c4,c5,c6,c7,c8) values('aa',2,NULL,NULL,NULL,1590738989000L,NULL);
+    sql: select * from {0};
     expect:
       columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
       rows:
@@ -57,8 +63,9 @@ cases:
     desc: NotNull的列插入null
     inputs:
       -
-        columns : ["c1 string NOT NULL","c2 timestamp"]
-        indexs: ["index1:c1:c2"]
+        create: |
+          create table {0} ( c1 string NOT NULL, c2 timestamp,
+          index(key=(c1), ts=c2));
     sql: insert into {0} (c1,c2,c3) values(NULL,1590738989000L);
     expect:
       success: false
@@ -67,10 +74,11 @@ cases:
     desc: 字符串类型插入空串
     inputs:
       -
-        columns : ["c1 string NOT NULL","c2 timestamp"]
-        indexs: ["index1:c1:c2"]
-    sql: insert into {0} (c1,c2) values('',1590738989000L);
-    check_sql: select * from {0};
+        create: |
+          create table {0} ( c1 string NOT NULL, c2 timestamp,
+          index(key=(c1), ts=c2));
+        insert: insert into {0} (c1,c2) values('',1590738989000L);
+    sql: select * from {0};
     expect:
       columns : ["c1 string","c2 timestamp"]
       rows:
@@ -80,18 +88,21 @@ cases:
     desc: 表名不存在
     inputs:
       -
-        columns : ["c1 string NOT NULL","c2 timestamp"]
-        indexs: ["index1:c1:c2"]
+        create: |
+          create table {0} ( c1 string NOT NULL, c2 timestamp,
+          index(key=(c1), ts=c2));
     sql: insert into {0}1 (c1,c2) values('aa',1590738989000L);
     expect:
       success: false
   -
     id: 8
     desc: 列名不存在
+    tags: ["TODO", "@panxuchen"]
     inputs:
       -
-        columns : ["c1 string NOT NULL","c2 timestamp"]
-        indexs: ["index1:c1:c2"]
+        create: |
+          create table {0} ( c1 string NOT NULL, c2 timestamp,
+          index(key=(c1), ts=c2));
     sql: insert into {0} (c1,c3) values('aa',1590738989000L);
     expect:
       success: false
@@ -100,8 +111,9 @@ cases:
     desc: 没有指定NotNull的列
     inputs:
       -
-        columns : ["c1 string","c2 timestamp","c3 string NOT NULL"]
-        indexs: ["index1:c1:c2"]
+        create: |
+          create table {0} ( c1 string, c2 timestamp, c3 string NOT NULL, 
+          index(key=(c1), ts=c2));
     sql: insert into {0} (c1,c2) values('aa',1590738989000L);
     expect:
       success: false
@@ -110,8 +122,9 @@ cases:
     desc: 插入的字符串没有引号
     inputs:
       -
-        columns : ["c1 string","c2 timestamp"]
-        indexs: ["index1:c1:c2"]
+        create: |
+          create table {0} ( c1 string, c2 timestamp,
+          index(key=(c1), ts=c2));
     sql: insert into {0} (c1,c2) values(aa,1590738989000L);
     expect:
       success: false

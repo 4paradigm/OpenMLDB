@@ -55,10 +55,10 @@ target_link_libraries(logical_graph_test gtest ${vm_deps_libs})
 add_test(logical_graph_test logical_graph_test --gtest_output=xml:${CMAKE_BINARY_DIR}/logical_graph_test.xml)
 list(APPEND logical_graph_test logical_graph_test)
 
-#add_executable(csv_catalog_test csv_catalog_test.cc)
-#target_link_libraries(csv_catalog_test  fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)
-#add_test(csv_catalog_test csv_catalog_test --gtest_output=xml:${CMAKE_BINARY_DIR}/csv_catalog_test.xml)
-#list(APPEND test_list csv_catalog_test)
+# add_executable(csv_catalog_test csv_catalog_test.cc)
+# target_link_libraries(csv_catalog_test  fesql_csv_catalog ${vm_deps_libs} ${llvm_libs} ${g_libs} ${arrow_libs} ${COMMON_LIBS} protobuf gtest pthread)
+# add_test(csv_catalog_test csv_catalog_test --gtest_output=xml:${CMAKE_BINARY_DIR}/csv_catalog_test.xml)
+# list(APPEND test_list csv_catalog_test)
 
 
 add_executable(jit_test jit_test.cc)
@@ -85,7 +85,7 @@ list(APPEND test_list sql_compiler_test)
 
 
 add_executable(engine_test engine_test.cc)
-target_link_libraries(engine_test gtest ${vm_deps_libs})
+target_link_libraries(engine_test gtest ${vm_deps_libs} sqlite3)
 add_test(engine_test engine_test
         --gtest_output=xml:${CMAKE_BINARY_DIR}/engine_test.xml)
 list(APPEND test_list engine_test)

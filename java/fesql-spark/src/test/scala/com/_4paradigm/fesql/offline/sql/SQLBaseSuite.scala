@@ -34,19 +34,11 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def testCases(yamlPath: String) {
     val caseFile = loadYaml[CaseFile](yamlPath)
-    val debugs = caseFile.getDebugs
-    caseFile.getCases.asScala.filter(c => needFilter(c)).filter(c => needDebug(c, debugs)).foreach(c => testCase(c))
+    caseFile.getCases.asScala.filter(c => needFilter(c)).foreach(c => testCase(c))
   }
 
-  def needDebug(sqlCase: SQLCase, debugs: java.util.List[String]): Boolean = {
-    if (debugs == null || debugs.isEmpty)
-      true
-    else
-      debugs.contains(sqlCase.getDesc)
-  }
   def needFilter(sqlCase: SQLCase): Boolean = {
-    sqlCase.getMode != ("offline-unsupport")&&
-      (sqlCase.getTags == null || ((!sqlCase.getTags.asScala.contains("TODO")) && (!sqlCase.getTags.asScala.contains("todo"))))
+    sqlCase.getMode != ("offline-unsupport")
   }
 
   def createSQLString(sql: String, inputNames: ListBuffer[(Int, String)]): String = {
@@ -73,7 +65,7 @@ class SQLBaseSuite extends SparkTestSuite {
         table_id += 1
       })
 
-      val sql = createSQLString(sqlCase.getSql, inputNames)
+      val sql = sqlCase.getSql
       if (sqlCase.getExpect != null && !sqlCase.getExpect.getSuccess) {
         assertThrows[java.lang.RuntimeException] {
           spark.sql(sql).sparkDf
@@ -104,11 +96,11 @@ class SQLBaseSuite extends SparkTestSuite {
     assert(df1.except(df2).count() == df2.except(df1).count())
   }
 
-  def checkOutput(data: DataFrame, expect: OutputDesc): Unit = {
-    val expectSchema = if (expect.getSchema != null) parseSchema(expect.getSchema) else parseSchema(expect.getColumns)
+  def checkOutput(data: DataFrame, expect: ExpectDesc): Unit = {
+    val expectSchema = parseSchema(expect.getColumns())
     assert(data.schema == expectSchema)
 
-    val expectData = (if (expect.getData != null) parseData(expect.getData, expectSchema) else parseData(expect.getRows, expectSchema))
+    val expectData = parseData(expect.getRows, expectSchema)
       .zipWithIndex.sortBy(_._1.mkString(","))
 
     val actualData = data.collect().map(_.toSeq.toArray)
@@ -173,16 +165,15 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def loadInputData(inputDesc: InputDesc, table_id: Int): (String, DataFrame) = {
     val sess = getSparkSession
-    val name = if (inputDesc.getName == null) "auto_t" + table_id else inputDesc.getName
     if (inputDesc.getResource != null) {
-      val (_, df) = loadTable(inputDesc.getResource)
+      val (name, df) = loadTable(inputDesc.getResource)
       name -> df
     } else {
-      val schema = if (inputDesc.getSchema != null) parseSchema(inputDesc.getSchema) else parseSchema(inputDesc.getColumns)
-      val data = (if (inputDesc.getData != null) parseData(inputDesc.getData, schema) else parseData(inputDesc.getRows, schema))
+      val schema = parseSchema(inputDesc.getColumns)
+      val data = parseData(inputDesc.getRows, schema)
         .map(arr => Row.fromSeq(arr)).toList.asJava
       val df = sess.createDataFrame(data, schema)
-      name -> df
+      inputDesc.getName -> df
     }
   }
 
@@ -190,16 +181,11 @@ class SQLBaseSuite extends SparkTestSuite {
     val absPath = if (path.startsWith("/")) path else rootDir.getAbsolutePath + "/" + path
     val caseFile = loadYaml[TableFile](absPath)
     val tbl = caseFile.getTable
-    val schema = if (tbl.getSchema != null) parseSchema(tbl.getSchema) else parseSchema(tbl.getColumns)
-    val data = parseData(tbl.getData, schema)
+    val schema = parseSchema(tbl.getColumns)
+    val data = parseData(tbl.getRows, schema)
       .map(arr => Row.fromSeq(arr)).toList.asJava
     val df = getSparkSession.createDataFrame(data, schema)
     tbl.getName -> df
-  }
-
-  def parseSchema(schema: String): StructType = {
-    val parts = schema.split(",").map(_.trim).filter(_ != "").map(_.split(":"))
-    parseSchema(parts);
   }
 
   def parseSchema(columns: java.util.List[String]): StructType = {
@@ -236,12 +222,7 @@ class SQLBaseSuite extends SparkTestSuite {
     StructType(fields)
   }
 
-  def parseData(data: String, schema: StructType): Array[Array[Any]] = {
-    val rows = data.split("\n").map(_.trim).filter(_ != "").map(_.split(",").map(_.trim))
-    parseData(rows, schema)
-  }
-
-  def parseData(rows: java.util.List[java.util.List[String]], schema: StructType): Array[Array[Any]] = {
+  def parseData(rows: java.util.List[java.util.List[Object]], schema: StructType): Array[Array[Any]] = {
 
     val data = rows.asScala.map(_.asInstanceOf[java.util.List[Object]].asScala.map(x => if (null == x) "null" else x.toString()).toArray).toArray
     parseData(data, schema)

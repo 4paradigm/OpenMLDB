@@ -673,36 +673,50 @@ INSTANTIATE_TEST_CASE_P(
 
 TEST_P(DBMSSdkTest, ExecuteQueryTest) {
     auto sql_case = GetParam();
-    usleep(500 * 1000);
+    usleep(1000 * 1000);
     const std::string endpoint = "127.0.0.1:" + std::to_string(dbms_port);
     std::shared_ptr<::fesql::sdk::DBMSSdk> dbms_sdk =
         ::fesql::sdk::CreateDBMSSdk(endpoint);
-    {
-        Status status;
-        std::string name = sql_case.db();
-        dbms_sdk->CreateDatabase(name, &status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
-    }
 
+    std::string db = sql_case.db();
     {
-        // create table db1
-        std::string name = sql_case.db();
         Status status;
-        dbms_sdk->ExecuteQuery(name, sql_case.create_str(), &status);
+        dbms_sdk->CreateDatabase(db, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
     }
+    {
+        // create and insert inputs
+        for (auto i = 0; i < sql_case.inputs().size(); i++) {
+            if (sql_case.inputs()[i].name_.empty()) {
+                sql_case.set_input_name(SQLCase::GenRand("auto_t"), i);
+            }
+            Status status;
+            std::string create;
+            ASSERT_TRUE(sql_case.BuildCreateSQLFromInput(i, &create));
+            std::string placeholder = "{" + std::to_string(i) + "}";
+            boost::replace_all(create, placeholder, sql_case.inputs()[i].name_);
+            LOG(INFO) << create;
+            dbms_sdk->ExecuteQuery(db, create, &status);
+            ASSERT_EQ(0, static_cast<int>(status.code));
 
-    {
-        std::string name = sql_case.db();
-        Status status;
-        dbms_sdk->ExecuteQuery(name, sql_case.insert_str(), &status);
-        ASSERT_EQ(0, static_cast<int>(status.code));
+            std::string insert;
+            ASSERT_TRUE(sql_case.BuildInsertSQLFromInput(i, &insert));
+            boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
+            LOG(INFO) << insert;
+            dbms_sdk->ExecuteQuery(db, insert, &status);
+            ASSERT_EQ(0, static_cast<int>(status.code));
+        }
     }
     {
-        std::string name = sql_case.db();
         Status status;
+        std::string sql = sql_case.sql_str();
+        for (auto i = 0; i < sql_case.inputs().size(); i++) {
+            std::string placeholder = "{" + std::to_string(i) + "}";
+            boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+        }
+        LOG(INFO) << sql;
         std::shared_ptr<ResultSet> rs =
-            dbms_sdk->ExecuteQuery(name, sql_case.sql_str(), &status);
+            dbms_sdk->ExecuteQuery(db, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
         std::vector<codec::Row> rows;
         sql_case.ExtractOutputData(rows);
