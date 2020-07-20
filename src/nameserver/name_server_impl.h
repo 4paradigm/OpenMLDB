@@ -94,11 +94,14 @@ class ClusterInfo {
                                   const uint64_t term, int& code,  // NOLINT
                                   std::string& msg);               // NOLINT
 
+    bool UpdateRemoteRealEpMap();
+
     std::shared_ptr<::rtidb::client::NsClient> client_;
     std::map<std::string, std::vector<TablePartition>> last_status;
     ::rtidb::nameserver::ClusterAddress cluster_add_;
     uint64_t ctime_;
     std::atomic<ClusterStatus> state_;
+    std::map<std::string, std::string> remote_real_ep_map_;
 
  private:
     std::shared_ptr<ZkClient> zk_client_;
@@ -841,7 +844,9 @@ class NameServerImpl : public NameServer {
         const std::unordered_map<std::string, ::rtidb::api::TableStatus>&
             pos_response);
 
-    void UpdateRealEndpointMap();
+    void UpdateRealEpMapToTablet();
+
+    void UpdateRemoteRealEpMap();
 
  private:
     std::mutex mu_;
@@ -890,6 +895,7 @@ class NameServerImpl : public NameServer {
         task_map_;
     std::set<std::string> databases_;
     std::map<std::string, std::string> real_ep_map_;
+    std::map<std::string, std::string> remote_real_ep_map_;
 };
 
 }  // namespace nameserver

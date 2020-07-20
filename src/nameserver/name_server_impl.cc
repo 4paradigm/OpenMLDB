@@ -111,7 +111,7 @@ void ClusterInfo::UpdateNSClient(const std::vector<std::string>& children) {
         }
         if (!zk_client_->GetNodeValue(cluster_add_.zk_path() +
                     "/map/names/" + *n_iter, real_endpoint)) {
-            PDLOG(WARNING, "get zk failed, get rep cluster names map failed");
+            PDLOG(WARNING, "get zk failed, get real_endpoint failed");
             return;
         }
     }
@@ -173,12 +173,12 @@ int ClusterInfo::Init(std::string& msg) {
         if (n_iter == vec.end()) {
             msg = "name not in names_vec";
             PDLOG(WARNING, "name not in names_vec");
-            return 451;
+            return -1;
         }
         if (!zk_client_->GetNodeValue(cluster_add_.zk_path() +
                     "/map/names/" + *n_iter, real_endpoint)) {
             msg = "get zk failed";
-            PDLOG(WARNING, "get zk failed, get rep cluster names map failed");
+            PDLOG(WARNING, "get zk failed, get real_endpoint failed");
             return 451;
         }
     }
@@ -191,6 +191,16 @@ int ClusterInfo::Init(std::string& msg) {
     }
     zk_client_->WatchNodes(boost::bind(&ClusterInfo::UpdateNSClient, this, _1));
     zk_client_->WatchNodes();
+    if (FLAGS_use_name) {
+        bool ok = zk_client_->WatchItem(cluster_add_.zk_path() + "/nodes",
+                boost::bind(&ClusterInfo::UpdateRemoteRealEpMap, this));
+        if (!ok) {
+            zk_client_->CloseZK();
+            msg = "zk watch nodes failed";
+            PDLOG(WARNING, "zk watch nodes failed");
+            return -1;
+        }
+    }
     return 0;
 }
 
@@ -218,6 +228,30 @@ bool ClusterInfo::CreateTableRemote(
               msg.c_str());
         return false;
     }
+    return true;
+}
+
+bool ClusterInfo::UpdateRemoteRealEpMap() {
+    decltype(remote_real_ep_map_) tmp_map;
+    if (FLAGS_use_name) {
+        std::vector<std::string> vec;
+        if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/map/names",
+                    vec) || vec.empty()) {
+            PDLOG(WARNING, "get zk failed, get remote children");
+            return false;
+        }
+        for (auto& ep : vec) {
+            std::string real_endpoint;
+            if (!zk_client_->GetNodeValue(cluster_add_.zk_path() +
+                        "/map/names/" + ep, real_endpoint)) {
+                PDLOG(WARNING, "get zk failed, get real_endpoint failed");
+                continue;
+            }
+            tmp_map.insert(std::make_pair(ep, real_endpoint));
+        }
+    }
+    remote_real_ep_map_.clear();
+    remote_real_ep_map_ = tmp_map;
     return true;
 }
 
@@ -874,6 +908,9 @@ bool NameServerImpl::Recover() {
         }
         RecoverOfflineTablet();
     }
+    if (FLAGS_use_name) {
+        UpdateRemoteRealEpMap();
+    }
     UpdateTaskStatus(true);
     return true;
 }
@@ -1406,7 +1443,16 @@ void NameServerImpl::UpdateBlobServers(
                     continue;
                 }
                 blob->client_ = std::make_shared<BsClient>(*it, real_ep, true);
-                real_ep_map_.insert(std::make_pair(*it, real_ep));
+                if (real_ep_map_.empty()) {
+                    real_ep_map_.insert(std::make_pair(*it, real_ep));
+                } else {
+                    auto n_it = real_ep_map_.find(*it);
+                    if (n_it == real_ep_map_.end()) {
+                        real_ep_map_.insert(std::make_pair(*it, real_ep));
+                    } else {
+                        n_it->second = real_ep;
+                    }
+                }
             } else {
                 blob->client_ = std::make_shared<BsClient>(*it, "", true);
             }
@@ -1464,7 +1510,7 @@ void NameServerImpl::UpdateBlobServers(
         }
     }
     thread_pool_.AddTask(
-        boost::bind(&NameServerImpl::UpdateRealEndpointMap, this));
+        boost::bind(&NameServerImpl::UpdateRealEpMapToTablet, this));
 }
 
 void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
@@ -1499,7 +1545,16 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                 }
                 tablet->client_ = std::make_shared<
                     ::rtidb::client::TabletClient>(*it, real_ep, true);
-                real_ep_map_.insert(std::make_pair(*it, real_ep));
+                if (real_ep_map_.empty()) {
+                    real_ep_map_.insert(std::make_pair(*it, real_ep));
+                } else {
+                    auto n_it = real_ep_map_.find(*it);
+                    if (n_it == real_ep_map_.end()) {
+                        real_ep_map_.insert(std::make_pair(*it, real_ep));
+                    } else {
+                        n_it->second = real_ep;
+                    }
+                }
             } else {
                 tablet->client_ = std::make_shared<
                     ::rtidb::client::TabletClient>(*it, "", true);
@@ -1565,7 +1620,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
     thread_pool_.AddTask(
         boost::bind(&NameServerImpl::DistributeTabletMode, this));
     thread_pool_.AddTask(
-        boost::bind(&NameServerImpl::UpdateRealEndpointMap, this));
+        boost::bind(&NameServerImpl::UpdateRealEpMapToTablet, this));
 }
 
 void NameServerImpl::OnBlobOnline(const std::string& endpoint) { return; }
@@ -11806,7 +11861,7 @@ void NameServerImpl::DropDatabase(RpcController* controller,
     response->set_msg("ok");
 }
 
-void NameServerImpl::UpdateRealEndpointMap() {
+void NameServerImpl::UpdateRealEpMapToTablet() {
     if (!running_.load(std::memory_order_acquire)) {
         return;
     }
@@ -11825,6 +11880,18 @@ void NameServerImpl::UpdateRealEndpointMap() {
             tmp_tablets.insert(std::make_pair(tablet.first, tablet.second));
         }
         tmp_map = real_ep_map_;
+        for (auto& pair : remote_real_ep_map_) {
+            if (tmp_map.empty()) {
+                tmp_map.insert(std::make_pair(pair.first, pair.second));
+                continue;
+            }
+            auto it = tmp_map.find(pair.first);
+            if (it == tmp_map.end()) {
+                tmp_map.insert(std::make_pair(pair.first, pair.second));
+            } else {
+                it->second = pair.second;
+            }
+        }
     }
     for (const auto& tablet : tmp_tablets) {
         if (!tablet.second->client_->UpdateRealEndpointMap(tmp_map)) {
@@ -11832,6 +11899,52 @@ void NameServerImpl::UpdateRealEndpointMap() {
                     tablet.first.c_str());
         }
     }
+}
+
+void NameServerImpl::UpdateRemoteRealEpMap() {
+    do {
+        if (!running_.load(std::memory_order_acquire)) {
+            break;
+        }
+        if (!FLAGS_use_name) {
+            break;
+        }
+        decltype(nsc_) tmp_nsc;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            if (nsc_.empty()) {
+                break;
+            }
+            for (auto& i : nsc_) {
+                if (i.second->state_.load(std::memory_order_relaxed) ==
+                        kClusterHealthy) {
+                    tmp_nsc.insert(std::make_pair(i.first, i.second));
+                }
+            }
+        }
+        decltype(remote_real_ep_map_) tmp_map;
+        for (auto& i : tmp_nsc) {
+            for (auto& pair : i.second->remote_real_ep_map_) {
+                if (tmp_map.empty()) {
+                    tmp_map.insert(std::make_pair(pair.first, pair.second));
+                    continue;
+                }
+                auto it = tmp_map.find(pair.first);
+                if (it == tmp_map.end()) {
+                    tmp_map.insert(std::make_pair(pair.first, pair.second));
+                } else {
+                    it->second = pair.second;
+                }
+            }
+        }
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            remote_real_ep_map_.clear();
+            remote_real_ep_map_ = tmp_map;
+        }
+    } while (false);
+    task_thread_pool_.DelayTask(FLAGS_get_replica_status_interval,
+            boost::bind(&NameServerImpl::UpdateRemoteRealEpMap, this));
 }
 
 }  // namespace nameserver
