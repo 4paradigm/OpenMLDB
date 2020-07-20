@@ -60,7 +60,7 @@ SQLInsertRow::SQLInsertRow(
             ts_set_.insert(idx);
         } else if (table_info_->column_desc_v1(idx).add_ts_idx()) {
             index_map_[index_cnt++].push_back(idx);
-            raw_dimensions_[idx] = "";
+            raw_dimensions_[idx] = fesql::codec::NONETOKEN;
         }
         column_name_map.insert(
             std::make_pair(table_info_->column_desc_v1(idx).name(), idx));
