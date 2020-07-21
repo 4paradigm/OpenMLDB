@@ -6,8 +6,11 @@ import com._4paradigm.fesql.vm.CoreAPI;
 import com._4paradigm.fesql.vm.FeSQLJITWrapper;
 import com._4paradigm.fesql.vm.PhysicalTableProjectNode;
 import org.apache.flink.api.common.functions.MapPartitionFunction;
+import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Collector;
@@ -34,25 +37,28 @@ public class TableProjectPlan {
         List<TypeOuterClass.ColumnDef> finalOutputSchema = FesqlUtil.getMergedNodeOutputColumnList(node);
         RowTypeInfo finalOutputTypeInfo = FesqlUtil.generateRowTypeInfo(finalOutputSchema);
 
-        DataSet<Row> outputDataset = inputDataset.mapPartition(new MapPartitionFunction<Row, Row>() {
+        DataSet<Row> outputDataset = inputDataset.map(new RichMapFunction<Row, Row>() {
+
+            long functionPointer;
+            FesqlFlinkCodec inputCodec;
+            FesqlFlinkCodec outputCodec;
 
             @Override
-            public void mapPartition(Iterable<Row> iterable, Collector<Row> collector) throws Exception {
-                // Init in executors with serializable objects
+            public void open(Configuration parameters) throws Exception {
+                super.open(parameters);
                 ByteBuffer moduleByteBuffer = moduleBuffer.getBuffer();
                 JITManager.initJITModule(moduleTag, moduleByteBuffer);
                 FeSQLJITWrapper jit = JITManager.getJIT(moduleTag);
-                long functionPointer = jit.FindFunction(functionName);
+                functionPointer = jit.FindFunction(functionName);
+                inputCodec = new FesqlFlinkCodec(inputSchemaLists);
+                outputCodec = new FesqlFlinkCodec(outputSchemaLists);
+            }
 
-                FesqlFlinkCodec inputCodec = new FesqlFlinkCodec(inputSchemaLists);
-                FesqlFlinkCodec outputCodec = new FesqlFlinkCodec(outputSchemaLists);
-
-                for (Row inputRow: iterable) {
-                    com._4paradigm.fesql.codec.Row inputFesqlRow = inputCodec.encodeFlinkRow(inputRow);
-                    com._4paradigm.fesql.codec.Row outputNativeRow = CoreAPI.RowProject(functionPointer, inputFesqlRow, false);
-                    Row flinkRow = outputCodec.decodeFesqlRow(outputNativeRow);
-                    collector.collect(flinkRow);
-                }
+            @Override
+            public Row map(Row inputRow) throws Exception {
+                com._4paradigm.fesql.codec.Row inputFesqlRow = inputCodec.encodeFlinkRow(inputRow);
+                com._4paradigm.fesql.codec.Row outputNativeRow = CoreAPI.RowProject(functionPointer, inputFesqlRow, false);
+                return outputCodec.decodeFesqlRow(outputNativeRow);
             }
         }).returns(finalOutputTypeInfo);
 
