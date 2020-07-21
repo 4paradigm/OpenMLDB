@@ -111,7 +111,7 @@ class RowCodec {
     }
 
     static ::rtidb::base::ResultMsg EncodeRow(
-        const std::map<std::string, std::string>& str_map, const Schema& schema,
+        const std::map<std::string, std::string>& str_map, const Schema& schema, uint32_t version,
         std::string& row) {  // NOLINT
         if (str_map.empty() || str_map.size() != (uint64_t)schema.size()) {
             return ::rtidb::base::ResultMsg(-1, "input error");
@@ -121,6 +121,7 @@ class RowCodec {
             return ::rtidb::base::ResultMsg(-1, "cal str len error");
         }
         ::rtidb::codec::RowBuilder builder(schema);
+        builder.SetSchemaVersion(version);
         uint32_t size = builder.CalTotalLength(str_len);
         row.resize(size);
         builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
@@ -150,8 +151,7 @@ class RowCodec {
     }
 
     static ::rtidb::base::ResultMsg EncodeRow(
-        const std::map<std::string, std::string>& str_map, const Schema& schema,
-        int32_t added_schema_size, std::string& row) {  // NOLINT
+        const std::map<std::string, std::string>& str_map, const Schema& schema, std::string& row) {  // NOLINT
         if (str_map.empty() || str_map.size() != (uint64_t)schema.size()) {
             return ::rtidb::base::ResultMsg(-1, "input error");
         }
@@ -159,7 +159,7 @@ class RowCodec {
         if (str_len < 0) {
             return ::rtidb::base::ResultMsg(-1, "cal str len error");
         }
-        ::rtidb::codec::RowBuilder builder(schema, added_schema_size);
+        ::rtidb::codec::RowBuilder builder(schema);
         uint32_t size = builder.CalTotalLength(str_len);
         row.resize(size);
         builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
@@ -291,30 +291,24 @@ class RowCodec {
     }
 
     static bool DecodeRow(const Schema& schema,  // NOLINT
-                          const ::rtidb::base::Slice& value,
+                          const ::rtidb::base::Slice& value, const std::map<int32_t, int32_t> versions,
                           bool replace_empty_str, int start, int length,
                           std::vector<std::string>& value_vec) {  // NOLINT
-        rtidb::codec::RowView rv(
-            schema, reinterpret_cast<int8_t*>(const_cast<char*>(value.data())),
-            value.size());
-        return DecodeRow(schema, rv, replace_empty_str, start, length,
-                         &value_vec);
-    }
-
-    static bool DecodeRow(const Schema& schema, uint32_t added_schema_size, // NOLINT
-                          const ::rtidb::base::Slice& value,
-                          bool replace_empty_str, int start, int length,
-                          std::vector<std::string>& value_vec) {  // NOLINT
-        const int8_t* row_data = reinterpret_cast<int8_t*>(const_cast<char*>(value.data()));
-        rtidb::codec::RowView rv(schema, added_schema_size, row_data, value.size());
-        int64_t actual_size = schema.size() - added_schema_size + rv.GetSchemaVersion(row_data) - 1;
-        int64_t access_size = start + length - 1;
-        if (access_size > actual_size) {
-            LOG(WARNING) << "max id " << access_size << " large than " << actual_size;
-            return false;
+        const int8_t* data = reinterpret_cast<const int8_t*>(value.data(), value.size());
+        uint8_t version = rtidb::codec::RowView::GetSchemaVersion(data);
+        if (version != 1) {
+            auto it = versions.find(version);
+            if (it == versions.end()) {
+                LOG(WARNING) << "unkown version " << version;
+                return false;
+            }
+            if (start + length > it->second) {
+                LOG(WARNING) << (start + length) << " great than "  << it->second << " idx of version " << version;
+                return false;
+            }
         }
-        return DecodeRow(schema, rv, replace_empty_str, start, length,
-                         &value_vec);
+        rtidb::codec::RowView rv(schema, data, value.size());
+        return DecodeRow(schema, rv, replace_empty_str, start, length, &value_vec);
     }
 
     static bool DecodeRow(const Schema& schema,                   // NOLINT
@@ -325,8 +319,7 @@ class RowCodec {
 
     static bool DecodeRow(const Schema& schema,
                           rtidb::codec::RowView& rv,  // NOLINT
-                          bool replace_empty_str, int start, int length,
-                          std::vector<std::string>* value_vec) {
+                          bool replace_empty_str, int start, int length, std::vector<std::string>* value_vec) {
         int end = start + length;
         if (length <= 0 || end > schema.size()) {
             return false;

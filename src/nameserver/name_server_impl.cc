@@ -4069,7 +4069,7 @@ bool NameServerImpl::AddFieldToTablet(const std::vector<rtidb::common::ColumnDes
         LOG(WARNING) << "Fail to encode schema form columns in table " << name;
         return false;
     }
-    uint32_t version_id = 0;
+    int32_t version_id = 0;
     for (const auto& pair : table_info->schema_versions()) {
         version_id = pair.id();
     }
@@ -4171,7 +4171,6 @@ void NameServerImpl::AddTableField(RpcController* controller,
     added_column_desc_zk->CopyFrom(request->column_desc());
     rtidb::common::VersionPair* add_pair = table_info_zk->add_schema_versions();
     add_pair->CopyFrom(new_pair);
-    table_info_zk->set_current_schema_version(new_pair.id());
     if (!UpdateZkTableNodeWithoutNotify(table_info_zk.get())) {
         response->set_code(ReturnCode::kSetZkFailed);
         response->set_msg("set zk failed!");

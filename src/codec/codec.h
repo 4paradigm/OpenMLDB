@@ -52,6 +52,8 @@ class RowProject {
     bool Project(const int8_t* row_ptr, uint32_t row_size, int8_t** out_ptr,
                  uint32_t* out_size);
 
+    uint32_t GetMaxIdx() { return max_idx_; }
+
  private:
     const Schema& schema_;
     const ProjectList& plist_;
@@ -59,13 +61,12 @@ class RowProject {
     // TODO(wangtaize) share the init overhead
     RowBuilder* row_builder_;
     RowView* row_view_;
+    uint32_t max_idx_;
 };
 
 class RowBuilder {
  public:
     explicit RowBuilder(const Schema& schema);
-
-    explicit RowBuilder(const Schema& schema, int32_t added_schema_size);
 
     uint32_t CalTotalLength(uint32_t string_length);
     bool SetBuffer(int8_t* buf, uint32_t size);
@@ -121,7 +122,6 @@ class RowBuilder {
 class RowView {
  public:
     RowView(const Schema& schema, const int8_t* row, uint32_t size);
-    RowView(const Schema& schema, int32_t added_schema_size, const int8_t* row, uint32_t size);
     explicit RowView(const Schema& schema);
     ~RowView() = default;
     bool Reset(const int8_t* row, uint32_t size);

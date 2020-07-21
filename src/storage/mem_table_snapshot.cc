@@ -32,6 +32,9 @@
 #include "thread_pool.h"  // NOLINT
 #include "timer.h"        // NOLINT
 
+using google::protobuf::RepeatedPtrField;
+using ::rtidb::codec::SchemaCodec;
+
 DECLARE_uint64(gc_on_table_recover_count);
 DECLARE_int32(binlog_name_length);
 DECLARE_uint32(make_snapshot_max_deleted_keys);
@@ -1137,28 +1140,29 @@ bool MemTableSnapshot::PackNewIndexEntry(
     }
     std::vector<std::string> row;
     const ::rtidb::api::TableMeta& table_meta = table->GetTableMeta();
+    table->GetSchema();
     bool ret = false;
+    std::string buff;
+    rtidb::base::Slice data;
     if (table->GetCompressType() == ::rtidb::api::kSnappy) {
-        std::string buff;
-        ::snappy::Uncompress(entry->value().c_str(), entry->value().size(),
-                             &buff);
-        if (table_meta.format_version() == 0) {
-            ret = ::rtidb::codec::RowCodec::DecodeRow(
-                columns.size(), max_idx + 1, ::rtidb::base::Slice(buff), &row);
-        } else {
-            ret = ::rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(),
-                                                ::rtidb::base::Slice(buff),
-                                                true, 0, max_idx + 1, row);
-        }
+        ::snappy::Uncompress(entry->value().c_str(), entry->value().size(), &buff);
+        data.reset(buff.data(), buff.size());
     } else {
-        if (table_meta.format_version() == 0) {
-            ret = ::rtidb::codec::RowCodec::DecodeRow(
-                columns.size(), max_idx + 1,
-                ::rtidb::base::Slice(entry->value()), &row);
+        data.reset(entry->value().data(), entry->value().size());
+    }
+    if (table_meta.format_version() == 0) {
+        ret = ::rtidb::codec::RowCodec::DecodeRow(columns.size(), max_idx + 1, data, &row);
+    } else {
+        if (table_meta.added_column_desc_size() == 0) {
+            ret = ::rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(), data, table->GetVersion(), true, 0, max_idx + 1, row);
         } else {
-            ret = ::rtidb::codec::RowCodec::DecodeRow(
-                table_meta.column_desc(), table_meta.added_column_desc_size(),
-                ::rtidb::base::Slice(entry->value()), true, 0, max_idx + 1, row);
+            RepeatedPtrField<rtidb::common::ColumnDesc> cols;
+            int code = SchemaCodec::ConvertColumnDesc(table_meta.column_desc(), cols, table_meta.added_column_desc());
+            if (code != 0) {
+                LOG(WARNING) << "convert column desc fail " << code;
+                return false;
+            }
+            ret = ::rtidb::codec::RowCodec::DecodeRow(cols, data, table->GetVersion(), true, 0, max_idx + 1, row);
         }
     }
     if (!ret) {

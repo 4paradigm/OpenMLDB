@@ -42,6 +42,7 @@ using google::protobuf::RepeatedPtrField;
 using ::rtidb::storage::DataBlock;
 using ::rtidb::storage::Table;
 using ::rtidb::base::ReturnCode;
+using ::rtidb::codec::SchemaCodec;
 
 DECLARE_int32(gc_interval);
 DECLARE_int32(disk_gc_interval);
@@ -383,8 +384,17 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
         real_et_type = ::rtidb::api::GetType::kSubKeyGe;
     }
     bool enable_project = false;
-    ::rtidb::codec::RowProject row_project(meta.column_desc(),
-                                           request->projection());
+    RepeatedPtrField<rtidb::common::ColumnDesc> columns;
+    int code = SchemaCodec::ConvertColumnDesc(meta.column_desc(), columns, meta.added_column_desc());
+    if (code != 0) {
+        LOG(WARNING) << "convert column desc failed";
+        return -1;
+    }
+    std::map<uint32_t, uint32_t> version_idx;
+    for (const auto& pair : meta.schema_versions()) {
+        version_idx.insert(std::make_pair(pair.id(), pair.idx()));
+    }
+    rtidb::codec::RowProject row_project(meta.column_desc(), request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
             return -1;
@@ -409,15 +419,27 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
             return 1;
         }
         bool jump_out = false;
+        bool skip_copy = false;
         if (st_type == ::rtidb::api::GetType::kSubKeyGe ||
             st_type == ::rtidb::api::GetType::kSubKeyGt) {
             ::rtidb::base::Slice it_value = it->GetValue();
             if (enable_project) {
                 int8_t* ptr = nullptr;
                 uint32_t size = 0;
-                bool ok = row_project.Project(
-                    reinterpret_cast<const int8_t*>(it->GetValue().data()),
-                    it->GetValue().size(), &ptr, &size);
+                const int8_t* row_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
+                uint8_t version = rtidb::codec::RowView::GetSchemaVersion(row_ptr);
+                if (version != 1) {
+                    auto version_it = version_idx.find(version);
+                    if (version_it == version_idx.end()) {
+                        LOG(WARNING) << "not found version " << version << " in version map";
+                        return -1;
+                    }
+                    if (row_project.GetMaxIdx() >= version_it->second) {
+                        LOG(WARNING) << "projection idx is valid " << row_project.GetMaxIdx();
+                        return -1;
+                    }
+                }
+                bool ok = row_project.Project(row_ptr, it->GetValue().size(), &ptr, &size);
                 if (!ok) {
                     PDLOG(WARNING, "fail to make a projection");
                     return -4;
@@ -428,6 +450,7 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
                 value->assign(it_value.data(), it_value.size());
                 return 0;
             }
+            skip_copy = true;
         }
         switch (real_et_type) {
             case ::rtidb::api::GetType::kSubKeyEq:
@@ -456,7 +479,7 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
         if (jump_out) {
             return 1;
         }
-        if (enable_project) {
+        if (enable_project && !skip_copy) {
             int8_t* ptr = nullptr;
             uint32_t size = 0;
             bool ok = row_project.Project(
@@ -1010,10 +1033,15 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
     // TODO(wangtaize) support extend columns
     ::rtidb::codec::RowProject row_project(meta.column_desc(),
                                            request->projection());
+    RepeatedPtrField<rtidb::common::ColumnDesc> columns;
+    int code = SchemaCodec::ConvertColumnDesc(meta.column_desc(), columns, meta.added_column_desc());
+    if (code != 0) {
+        LOG(WARNING) << "convert column desc failed";
+        return -1;
+    }
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
-            PDLOG(WARNING,
-                  "project on compress row data do not being supported");
+            LOG(WARNING) << "project on compress row data do not eing supported";
             return -1;
         }
         bool ok = row_project.Init();
@@ -1023,9 +1051,12 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
         }
         enable_project = true;
     }
-    bool remove_duplicated_record =
-        request->has_enable_remove_duplicated_record() &&
-        request->enable_remove_duplicated_record();
+    bool remove_duplicated_record = request->has_enable_remove_duplicated_record() &&
+                                    request->enable_remove_duplicated_record();
+    std::map<uint32_t, uint32_t> version_idx;
+    for (const auto& pair : meta.schema_versions()) {
+        version_idx.insert(std::make_pair(pair.id(), pair.idx()));
+    }
     uint64_t last_time = 0;
     boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>> tmp;
     uint32_t total_block_size = 0;
@@ -1069,15 +1100,25 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
         if (enable_project) {
             int8_t* ptr = nullptr;
             uint32_t size = 0;
-            bool ok = row_project.Project(
-                reinterpret_cast<const int8_t*>(combine_it->GetValue().data()),
-                combine_it->GetValue().size(), &ptr, &size);
+            const int8_t* row_ptr = reinterpret_cast<const int8_t*>(combine_it->GetValue().data());
+            uint8_t version = rtidb::codec::RowView::GetSchemaVersion(row_ptr);
+            if (version != 1) {
+                auto version_it = version_idx.find(version);
+                if (version_it == version_idx.end()) {
+                    LOG(WARNING) << "no found version " << version << " in version map";
+                    return -1;
+                }
+                if (row_project.GetMaxIdx() >= version_it->second) {
+                    LOG(WARNING) << "projection idx is valid " << row_project.GetMaxIdx();
+                    return -1;
+                }
+            }
+            bool ok = row_project.Project(row_ptr, combine_it->GetValue().size(), &ptr, &size);
             if (!ok) {
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
             }
-            tmp.emplace_back(ts,
-                             Slice(reinterpret_cast<char*>(ptr), size, true));
+            tmp.emplace_back(ts, Slice(reinterpret_cast<char*>(ptr), size, true));
             total_block_size += size;
         } else {
             total_block_size += combine_it->GetValue().size();
@@ -2317,7 +2358,6 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         if (request->has_version_pair()) {
             rtidb::common::VersionPair* pair = table_meta.add_schema_versions();
             pair->CopyFrom(request->version_pair());
-            table_meta.set_current_schema_version(pair->id());
         }
         table_meta.set_schema(schema);
         table->SetTableMeta(table_meta);

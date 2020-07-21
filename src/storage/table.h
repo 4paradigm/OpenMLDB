@@ -143,7 +143,13 @@ class Table {
 
     inline void SetTableMeta(::rtidb::api::TableMeta& table_meta) {  // NOLINT
         table_meta_.CopyFrom(table_meta);
+        version_schema_.clear();
+        for (const auto& ver : table_meta.schema_versions()) {
+            version_schema_.insert(std::make_pair(ver.id(), ver.idx()));
+        }
     }
+
+    const std::map<int32_t, int32_t>& GetVersion() const { return version_schema_; }
 
     std::vector<std::shared_ptr<IndexDef>> GetAllIndex() {
         return table_index_.GetAllIndex();
@@ -243,6 +249,7 @@ class Table {
     ::rtidb::api::CompressType compress_type_;
     ::rtidb::api::TableMeta table_meta_;
     int64_t last_make_snapshot_time_;
+    std::map<int32_t, int32_t> version_schema_;
 };
 
 }  // namespace storage
