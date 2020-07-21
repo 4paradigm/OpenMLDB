@@ -3,6 +3,7 @@ package com._4paradigm.fesql.batch;
 import java.util.List;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.formats.parquet.ParquetTableSource;
+import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.BatchTableEnvironment;
 import org.apache.flink.types.Row;
 import org.apache.parquet.schema.MessageType;
@@ -30,7 +31,7 @@ public class TestFesqlBatchTableEnvironment {
 
         // Run sql
         String sqlText = "select vendor_id + 1000, passenger_count * 10, trip_duration - 10 from t1";
-        FesqlTable table = tEnv.sqlQuery(sqlText);
+        Table table = tEnv.sqlQuery(sqlText);
 
         // Check result
         List<Row> fesqlResult = tEnv.toDataSet(table, Row.class).collect();

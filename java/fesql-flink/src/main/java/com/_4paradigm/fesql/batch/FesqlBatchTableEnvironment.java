@@ -3,6 +3,7 @@ package com._4paradigm.fesql.batch;
 import com._4paradigm.fesql.common.FesqlException;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.DataSet;
+import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.bridge.java.BatchTableEnvironment;
 import org.apache.flink.table.expressions.Expression;
@@ -54,7 +55,7 @@ public class FesqlBatchTableEnvironment {
         this.batchTableEnvironment.registerTableSink(name, configuredSink);
     }
 
-    public FesqlTable sqlQuery(String query) {
+    public Table sqlQuery(String query) {
         String isDisableFesql = System.getenv("DISABLE_FESQL");
         if (isDisableFesql != null && isDisableFesql.trim().toLowerCase().equals("true")) {
             // Force to run FlinkSQL
@@ -77,7 +78,7 @@ public class FesqlBatchTableEnvironment {
         return null;
     }
 
-    public FesqlTable fesqlQuery(String query) {
+    public Table fesqlQuery(String query) {
         try {
             return runFesqlQuery(query);
         } catch (Exception e) {
@@ -87,38 +88,38 @@ public class FesqlBatchTableEnvironment {
         }
     }
 
-    public FesqlTable runFesqlQuery(String query) throws Exception {
+    public Table runFesqlQuery(String query) throws Exception {
         // Normalize SQL format
         if (!query.trim().endsWith(";")) {
             query = query.trim() + ";";
         }
 
         FesqlBatchPlanner planner = new FesqlBatchPlanner(this);
-        return new FesqlTable(planner.plan(query));
+        return planner.plan(query);
     }
 
-    public FesqlTable flinksqlQuery(String query) {
-        return new FesqlTable(this.batchTableEnvironment.sqlQuery(query));
+    public Table flinksqlQuery(String query) {
+        return this.batchTableEnvironment.sqlQuery(query);
     }
 
-    public FesqlTable fromDataSet(DataSet<Row> dataSet) {
-        return new FesqlTable(this.batchTableEnvironment.fromDataSet(dataSet));
+    public Table fromDataSet(DataSet<Row> dataSet) {
+        return this.batchTableEnvironment.fromDataSet(dataSet);
     }
 
-    public FesqlTable fromDataSet(DataSet<Row> dataSet, String fields) {
-        return new FesqlTable(this.batchTableEnvironment.fromDataSet(dataSet, fields));
+    public Table fromDataSet(DataSet<Row> dataSet, String fields) {
+        return this.batchTableEnvironment.fromDataSet(dataSet, fields);
     }
 
-    public FesqlTable fromDataSet(DataSet<Row> dataSet, Expression... fields) {
-        return new FesqlTable(this.batchTableEnvironment.fromDataSet(dataSet, fields));
+    public Table fromDataSet(DataSet<Row> dataSet, Expression... fields) {
+        return this.batchTableEnvironment.fromDataSet(dataSet, fields);
     }
 
-    public <T> DataSet<T> toDataSet(FesqlTable table, Class<T> clazz) {
-        return this.batchTableEnvironment.toDataSet(table.getTable(), clazz);
+    public <T> DataSet<T> toDataSet(Table table, Class<T> clazz) {
+        return this.batchTableEnvironment.toDataSet(table, clazz);
     }
 
-    public <T> DataSet<T> toDataSet(FesqlTable table, TypeInformation<T> typeInfo) {
-        return this.batchTableEnvironment.toDataSet(table.getTable(), typeInfo);
+    public <T> DataSet<T> toDataSet(Table table, TypeInformation<T> typeInfo) {
+        return this.batchTableEnvironment.toDataSet(table, typeInfo);
     }
 
 }
