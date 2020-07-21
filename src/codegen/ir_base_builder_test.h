@@ -248,10 +248,9 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
         fn_name, ret_by_arg, &lib, std::move(module), std::move(llvm_ctx));
 }
 
-
 /**
-  * Build a callable function object from expr build function.
-  */
+ * Build a callable function object from expr build function.
+ */
 template <typename Ret, typename... Args>
 ModuleTestFunction<Ret, Args...> BuildExprFunction(
     const std::function<node::ExprNode *(

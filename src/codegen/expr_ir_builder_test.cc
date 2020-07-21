@@ -723,6 +723,20 @@ TEST_F(ExprIRBuilderTest, test_get_field) {
         codec::StringRef(5, "hello"), typed_row);
 }
 
+TEST_F(ExprIRBuilderTest, test_build_lambda) {
+    ExprCheck(
+        [](node::NodeManager *nm, ExprNode *x, ExprNode *y) {
+            auto arg1 = nm->MakeExprIdNode("x", 1001);
+            auto arg2 = nm->MakeExprIdNode("y", 1002);
+            arg1->SetOutputType(nm->MakeTypeNode(node::kInt32));
+            arg2->SetOutputType(nm->MakeTypeNode(node::kInt32));
+            auto body = nm->MakeBinaryExprNode(arg1, arg2, node::kFnOpAdd);
+            auto lambda = nm->MakeLambdaNode({arg1, arg2}, body);
+            return nm->MakeFuncNode(lambda, {x, y}, nullptr);
+        },
+        11, 1, 10);
+}
+
 }  // namespace codegen
 }  // namespace fesql
 

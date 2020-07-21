@@ -86,6 +86,9 @@ class NodeManager {
     ExprNode *MakeFuncNode(const std::string &name,
                            const std::vector<ExprNode *> &args,
                            const SQLNode *over);
+    ExprNode *MakeFuncNode(const FnDefNode *fn,
+                           const std::vector<ExprNode *> &args,
+                           const SQLNode *over);
 
     ExprNode *MakeQueryExprNode(const QueryNode *query);
     SQLNode *MakeWindowDefNode(const std::string &name);

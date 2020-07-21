@@ -1250,12 +1250,6 @@ class ExprIdNode : public ExprNode {
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 
-    // Since lambda argument should be unique identified,
-    // a static count value is maintained here. Currently
-    // we can not put it in node_manager because there is
-    // no ensurement of unique node_manager instance.
-    // TODO(xxx): are all exprs unique identified neccesary?
-    static int64_t expr_id_cnt_;
     static int64_t GetNewId() { return expr_id_cnt_++; }
 
     bool IsResolved() const { return id_ >= 0; }
@@ -1263,6 +1257,13 @@ class ExprIdNode : public ExprNode {
  private:
     std::string name_;
     int64_t id_;
+
+    // Since lambda argument should be unique identified,
+    // a static count value is maintained here. Currently
+    // we can not put it in node_manager because there is
+    // no ensurement of unique node_manager instance.
+    // TODO(xxx): are all exprs unique identified neccesary?
+    static std::atomic<int64_t> expr_id_cnt_;
 };
 
 class ColumnRefNode : public ExprNode {
