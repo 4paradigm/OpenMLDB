@@ -37,8 +37,7 @@ LogReplicator::LogReplicator(const std::string& path,
                              const std::vector<std::string>& endpoints,
                              const ReplicatorRole& role,
                              std::shared_ptr<Table> table,
-                             std::atomic<bool>* follower,
-                             const std::vector<std::string>& real_endpoints)
+                             std::atomic<bool>* follower)
     : path_(path),
       log_path_(),
       log_offset_(0),
@@ -52,8 +51,7 @@ LogReplicator::LogReplicator(const std::string& path,
       mu_(),
       cv_(),
       wmu_(),
-      follower_(follower),
-      real_endpoints_(real_endpoints) {
+      follower_(follower) {
     table_ = table;
     binlog_index_ = 0;
     snapshot_log_part_index_.store(-1, std::memory_order_relaxed);
@@ -91,7 +89,7 @@ void LogReplicator::SyncToDisk() {
     }
 }
 
-bool LogReplicator::Init() {
+bool LogReplicator::Init(const std::vector<std::string>& real_endpoints) {
     logs_ = new LogParts(12, 4, scmp);
     log_path_ = path_ + "/binlog/";
     if (!::rtidb::base::MkdirRecur(log_path_)) {
@@ -99,19 +97,19 @@ bool LogReplicator::Init() {
         return false;
     }
     if (role_ == kLeaderNode) {
-        if (!real_endpoints_.empty() &&
-                real_endpoints_.size() != endpoints_.size()) {
-            PDLOG(WARNING, "real_endpoints_ size %d and "
+        if (!real_endpoints.empty() &&
+                real_endpoints.size() != endpoints_.size()) {
+            PDLOG(WARNING, "real_endpoints size %d and "
                     "endpoints_ size %s not equal",
-                    real_endpoints_.size(), endpoints_.size());
+                    real_endpoints.size(), endpoints_.size());
             return false;
         }
         uint32_t idx = 0;
         std::vector<std::string>::iterator it = endpoints_.begin();
         for (; it != endpoints_.end(); ++it) {
             std::string real_ep;
-            if (!real_endpoints_.empty()) {
-                real_ep = real_endpoints_.at(idx);
+            if (!real_endpoints.empty()) {
+                real_ep = real_endpoints.at(idx);
             }
             std::shared_ptr<ReplicateNode> replicate_node =
                 std::make_shared<ReplicateNode>(*it, logs_, log_path_,
@@ -123,9 +121,6 @@ bool LogReplicator::Init() {
             }
             nodes_.push_back(replicate_node);
             local_endpoints_.push_back(*it);
-            if (!real_endpoints_.empty()) {
-                real_endpoints_.push_back(real_ep);
-            }
             PDLOG(INFO, "add replica node with endpoint %s", it->c_str());
             idx++;
         }
@@ -473,9 +468,6 @@ int LogReplicator::AddReplicateNode(
         if (tid == UINT32_MAX) {
             local_endpoints_.push_back(endpoint);
         }
-        if (!real_endpoint_vec.empty()) {
-            real_endpoints_.push_back(real_endpoint_vec.at(i));
-        }
         PDLOG(INFO, "add ReplicateNode with endpoint %s ok. tid[%u] pid[%u]",
               endpoint.c_str(), table_->GetId(), table_->GetPid());
     }
@@ -510,12 +502,6 @@ int LogReplicator::DelReplicateNode(const std::string& endpoint) {
         local_endpoints_.erase(std::remove(local_endpoints_.begin(),
                                            local_endpoints_.end(), endpoint),
                                local_endpoints_.end());
-        if (!real_endpoints_.empty()) {
-            if ((uint32_t)(it - nodes_.begin()) < real_endpoints_.size()) {
-                real_endpoints_.erase(
-                        real_endpoints_.begin() + (it - nodes_.begin()));
-            }
-        }
         PDLOG(INFO, "delete replica. endpoint[%s] tid[%u] pid[%u]",
               endpoint.c_str(), table_->GetId(), table_->GetPid());
     }
@@ -553,7 +539,6 @@ bool LogReplicator::DelAllReplicateNode() {
         nodes_.clear();
         endpoints_.clear();
         local_endpoints_.clear();
-        real_endpoints_.clear();
     }
     std::vector<std::shared_ptr<ReplicateNode>>::iterator it =
         copied_nodes.begin();

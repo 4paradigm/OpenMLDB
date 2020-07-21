@@ -4136,11 +4136,11 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
     if (table->IsLeader()) {
         replicator = std::make_shared<LogReplicator>(
             table_db_path, endpoints, ReplicatorRole::kLeaderNode, table,
-            &follower_, real_endpoints);
+            &follower_);
     } else {
         replicator = std::make_shared<LogReplicator>(
             table_db_path, std::vector<std::string>(),
-            ReplicatorRole::kFollowerNode, table, &follower_, real_endpoints);
+            ReplicatorRole::kFollowerNode, table, &follower_);
     }
     if (!replicator) {
         PDLOG(WARNING, "fail to create replicator for table tid %u, pid %u",
@@ -4148,7 +4148,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
         msg.assign("fail create replicator for table");
         return -1;
     }
-    ok = replicator->Init();
+    ok = replicator->Init(real_endpoints);
     if (!ok) {
         PDLOG(WARNING, "fail to init replicator for table tid %u, pid %u",
               table_meta->tid(), table_meta->pid());
@@ -4259,11 +4259,11 @@ int TabletImpl::CreateDiskTableInternal(
     if (table->IsLeader()) {
         replicator = std::make_shared<LogReplicator>(
             table_db_path, endpoints, ReplicatorRole::kLeaderNode, table,
-            &follower_, real_endpoints);
+            &follower_);
     } else {
         replicator = std::make_shared<LogReplicator>(
             table_db_path, std::vector<std::string>(),
-            ReplicatorRole::kFollowerNode, table, &follower_, real_endpoints);
+            ReplicatorRole::kFollowerNode, table, &follower_);
     }
     if (!replicator) {
         PDLOG(WARNING, "fail to create replicator for table tid %u, pid %u",
@@ -4271,7 +4271,7 @@ int TabletImpl::CreateDiskTableInternal(
         msg.assign("fail create replicator for table");
         return -1;
     }
-    ok = replicator->Init();
+    ok = replicator->Init(real_endpoints);
     if (!ok) {
         PDLOG(WARNING, "fail to init replicator for table tid %u, pid %u",
               table_meta->tid(), table_meta->pid());

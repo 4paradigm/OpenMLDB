@@ -43,12 +43,11 @@ class LogReplicator {
     LogReplicator(const std::string& path,
                   const std::vector<std::string>& endpoints,
                   const ReplicatorRole& role, std::shared_ptr<Table> table,
-                  std::atomic<bool>* follower,
-                  const std::vector<std::string>& real_endpoints);
+                  std::atomic<bool>* follower);
 
     ~LogReplicator();
 
-    bool Init();
+    bool Init(const std::vector<std::string>& real_endpoints);
 
     bool StartSyncing();
 
@@ -138,7 +137,6 @@ class LogReplicator {
 
     std::mutex wmu_;
     std::atomic<bool>* follower_;
-    std::vector<std::string> real_endpoints_;
 };
 
 }  // namespace replica
