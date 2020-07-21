@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "proto/tablet.pb.h"
 #include "storage/iterator.h"
