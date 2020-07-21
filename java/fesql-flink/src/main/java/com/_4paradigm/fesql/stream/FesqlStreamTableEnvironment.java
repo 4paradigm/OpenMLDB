@@ -1,5 +1,6 @@
 package com._4paradigm.fesql.stream;
 
+import com._4paradigm.fesql.common.FesqlPlanner;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -117,6 +118,13 @@ public class FesqlStreamTableEnvironment {
 
     public void registerTableSource(String name, TableSource<?> tableSource) {
         this.streamTableEnvironment.registerTableSource(name, tableSource);
+
+        // Register table name and schema
+        if (this.registeredTableSchemaMap.containsKey(name)) {
+            logger.warn(String.format("The table %s has been registered, ignore registeration", name));
+        } else {
+            this.registeredTableSchemaMap.put(name, tableSource.getTableSchema());
+        }
     }
 
     public void registerTableSink(String name, String[] fieldNames, TypeInformation<?>[] fieldTypes, TableSink<?> tableSink) {
@@ -167,18 +175,16 @@ public class FesqlStreamTableEnvironment {
             query = query.trim() + ";";
         }
 
-        //FesqlBatchPlanner planner = new FesqlBatchPlanner(this);
-        //return planner.plan(query);
-        System.out.println("-------------------------------------");
-        return null;
+        FesqlPlanner planner = new FesqlPlanner(this);
+        return planner.plan(query);
     }
 
     public Table flinksqlQuery(String query) {
         return this.streamTableEnvironment.sqlQuery(query);
     }
 
-
     public TableResult executeSql(String statement) {
+        // TODO: Use the Flink implementation by default
         return this.streamTableEnvironment.executeSql(statement);
     }
 

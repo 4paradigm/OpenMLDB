@@ -4,11 +4,15 @@ import com._4paradigm.fesql.FeSqlLibrary;
 import com._4paradigm.fesql.batch.DataProviderPlan;
 import com._4paradigm.fesql.batch.FesqlBatchTableEnvironment;
 import com._4paradigm.fesql.batch.TableProjectPlan;
+import com._4paradigm.fesql.stream.FesqlStreamTableEnvironment;
+import com._4paradigm.fesql.stream.StreamDataProviderPlan;
+import com._4paradigm.fesql.stream.StreamTableProjectPlan;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.*;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.bridge.java.BatchTableEnvironment;
+import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,12 +30,21 @@ public class FesqlPlanner {
         Engine.InitializeGlobalLLVM();
     }
 
+    private boolean isBatch;
     private BatchTableEnvironment batchTableEnvironment;
+    private StreamTableEnvironment streamTableEnvironment;
 
     private Map<String, TableSchema> tableSchemaMap;
 
     public FesqlPlanner(FesqlBatchTableEnvironment env) {
+        this.isBatch = true;
         this.batchTableEnvironment = env.getBatchTableEnvironment();
+        this.tableSchemaMap = env.getRegisteredTableSchemaMap();
+    }
+
+    public FesqlPlanner(FesqlStreamTableEnvironment env) {
+        this.isBatch = false;
+        this.streamTableEnvironment = env.getStreamTableEnvironment();
         this.tableSchemaMap = env.getRegisteredTableSchemaMap();
     }
 
@@ -39,13 +52,19 @@ public class FesqlPlanner {
 
         TypeOuterClass.Database fesqlDatabase = FesqlUtil.buildDatabase("flink_db", this.tableSchemaMap);
         SQLEngine engine = new SQLEngine(sqlQuery, fesqlDatabase);
-        FesqlPlanContext batchPlanContext = new FesqlPlanContext(sqlQuery, batchTableEnvironment, this, engine.getIRBuffer());
+
+        FesqlPlanContext planContext = null;
+        if (this.isBatch) {
+            planContext = new FesqlPlanContext(sqlQuery, this.batchTableEnvironment, this, engine.getIRBuffer());
+        } else {
+            planContext = new FesqlPlanContext(sqlQuery, this.streamTableEnvironment, this, engine.getIRBuffer());
+        }
 
         PhysicalOpNode rootNode = engine.getPlan();
         logger.info("Print the FESQL logical plan");
         rootNode.Print();
 
-        Table table = visitPhysicalNode(batchPlanContext, rootNode);
+        Table table = visitPhysicalNode(planContext, rootNode);
 
         try {
             engine.close();
@@ -57,11 +76,11 @@ public class FesqlPlanner {
 
     }
 
-    public Table visitPhysicalNode(FesqlPlanContext batchPlanContext, PhysicalOpNode node) throws FesqlException {
+    public Table visitPhysicalNode(FesqlPlanContext planContext, PhysicalOpNode node) throws FesqlException {
 
         List<Table> children = new ArrayList<Table>();
         for (int i=0; i < node.GetProducerCnt(); ++i) {
-            children.add(visitPhysicalNode(batchPlanContext, node.GetProducer(i)));
+            children.add(visitPhysicalNode(planContext, node.GetProducer(i)));
         }
 
         Table outputTable = null;
@@ -75,7 +94,12 @@ public class FesqlPlanner {
         if (opType.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
             // Use "select *" to get Table from Flink source
             PhysicalDataProviderNode dataProviderNode = PhysicalDataProviderNode.CastFrom(node);
-            outputTable = DataProviderPlan.gen(batchPlanContext, dataProviderNode);
+
+            if (isBatch) {
+                outputTable = DataProviderPlan.gen(planContext, dataProviderNode);
+            } else {
+                outputTable = StreamDataProviderPlan.gen(planContext, dataProviderNode);
+            }
 
         } else if (opType.swigValue() == PhysicalOpType.kPhysicalOpProject.swigValue()) {
             // Use FESQL CoreAPI to generate new Table
@@ -84,7 +108,13 @@ public class FesqlPlanner {
 
             if (projectType.swigValue() == ProjectType.kTableProject.swigValue()) {
                 PhysicalTableProjectNode physicalTableProjectNode = PhysicalTableProjectNode.CastFrom(projectNode);
-                outputTable = TableProjectPlan.gen(batchPlanContext, physicalTableProjectNode, children.get(0));
+
+                if (isBatch) {
+                    outputTable = TableProjectPlan.gen(planContext, physicalTableProjectNode, children.get(0));
+                } else {
+                    outputTable = StreamTableProjectPlan.gen(planContext, physicalTableProjectNode, children.get(0));
+                }
+
             } else {
                 throw new FesqlException(String.format("Planner does not support project type %s", projectType));
             }
