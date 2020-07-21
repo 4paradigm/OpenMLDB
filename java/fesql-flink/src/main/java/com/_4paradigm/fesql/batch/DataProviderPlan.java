@@ -1,5 +1,6 @@
 package com._4paradigm.fesql.batch;
 
+import com._4paradigm.fesql.common.BatchPlanContext;
 import com._4paradigm.fesql.vm.PhysicalDataProviderNode;
 import org.apache.flink.table.api.Table;
 

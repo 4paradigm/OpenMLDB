@@ -1,6 +1,7 @@
 package com._4paradigm.fesql.batch;
 
 import com._4paradigm.fesql.FeSqlLibrary;
+import com._4paradigm.fesql.common.BatchPlanContext;
 import com._4paradigm.fesql.common.FesqlException;
 import com._4paradigm.fesql.common.FesqlUtil;
 import com._4paradigm.fesql.common.SQLEngine;
@@ -66,6 +67,11 @@ public class FesqlBatchPlanner {
 
         Table outputTable = null;
         PhysicalOpType opType = node.getType_();
+
+        /* TODO: support simple project node
+            import static org.apache.flink.table.api.Expressions.$;
+            table.select($("vendor_sum_pl"), $("vendor_sum_pl"));
+        */
 
         if (opType.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
             // Use "select *" to get Table from Flink source
