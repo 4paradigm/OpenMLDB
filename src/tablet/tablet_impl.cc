@@ -1920,9 +1920,23 @@ void TabletImpl::ChangeRole(RpcController* controller,
             PDLOG(WARNING, "add replicator failed. tid[%u] pid[%u]", tid, pid);
         }
         for (auto& e : request->endpoint_tid()) {
-            // TODO(wangbao) remote cluster real_endpoint
-            std::vector<std::string> remote_r_vec;
             std::vector<std::string> endpoints{e.endpoint()};
+            std::vector<std::string> remote_r_vec;
+            if (FLAGS_use_name) {
+                std::lock_guard<std::mutex> lock(mu_);
+                for (auto& ep : endpoints) {
+                    auto iter = real_ep_map_.find(ep);
+                    if (iter == real_ep_map_.end()) {
+                        PDLOG(WARNING, "name not found in real_ep_map."
+                                "tid[%u] pid[%u]", tid, pid);
+                        response->set_code(
+                                ::rtidb::base::ReturnCode::kServerNameNotFound);
+                        response->set_msg("name not found in real_ep_map");
+                        return;
+                    }
+                    remote_r_vec.push_back(iter->second);
+                }
+            }
             replicator->AddReplicateNode(endpoints, remote_r_vec, e.tid());
         }
     } else {
