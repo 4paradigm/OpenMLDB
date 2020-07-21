@@ -691,6 +691,9 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
                         ::rtidb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("endpoint");
+    if (FLAGS_use_name) {
+        row.push_back("real_endpoint");
+    }
     row.push_back("state");
     row.push_back("age");
     ::baidu::common::TPrinter tp(row.size());
@@ -705,6 +708,9 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
     for (size_t i = 0; i < tablets.size(); i++) {
         std::vector<std::string> row;
         row.push_back(tablets[i].endpoint);
+        if (FLAGS_use_name) {
+            row.push_back(tablets[i].real_endpoint);
+        }
         row.push_back(tablets[i].state);
         row.push_back(::rtidb::base::HumanReadableTime(tablets[i].age));
         tp.AddRow(row);
@@ -791,12 +797,25 @@ void HandleNSShowNameServer(const std::vector<std::string>& parts,
     }
     std::vector<std::string> row;
     row.push_back("endpoint");
+    if (FLAGS_use_name) {
+        row.push_back("real_endpoint");
+    }
     row.push_back("role");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     for (size_t i = 0; i < endpoint_vec.size(); i++) {
         std::vector<std::string> row;
         row.push_back(endpoint_vec[i]);
+        if (FLAGS_use_name) {
+            std::string real_endpoint;
+            std::string name = "/map/names/" + endpoint_vec[i];
+            if (!zk_client->GetNodeValue(FLAGS_zk_root_path + name,
+                        real_endpoint)) {
+                std::cout << "get real_endpoint failed" << std::endl;
+                return;
+            }
+            row.push_back(real_endpoint);
+        }
         if (i == 0) {
             row.push_back("leader");
         } else {
