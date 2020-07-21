@@ -97,6 +97,9 @@ void SetupLog() {
 }
 
 void GetRealEndpoint(std::string *real_endpoint) {
+    if (real_endpoint == nullptr) {
+        return;
+    }
     if (FLAGS_endpoint.empty() && FLAGS_port > 0) {
         std::string ip;
         if (::rtidb::base::GetLocalIp(&ip)) {
@@ -105,7 +108,9 @@ void GetRealEndpoint(std::string *real_endpoint) {
             PDLOG(WARNING, "fail to get local ip: %s", ip.c_str());
             exit(1);
         }
-        *real_endpoint = ip + std::to_string(FLAGS_port);
+        std::ostringstream oss;
+        oss << ip << ":" << std::to_string(FLAGS_port);
+        *real_endpoint = oss.str();
         if (FLAGS_use_name) {
             std::string server_name;
             if (!::rtidb::base::GetNameFromTxt(&server_name)) {
@@ -268,7 +273,6 @@ void StartBlobProxy() {
     GetRealEndpoint(&real_endpoint);
     ::rtidb::blobproxy::BlobProxyImpl* proxy =
         new ::rtidb::blobproxy::BlobProxyImpl();
-    // TODO(wangbao) BaseClient init
     bool ok = proxy->Init();
     if (!ok) {
         PDLOG(WARNING, "fail to init blobproxy server");
@@ -6219,7 +6223,7 @@ void StartNsClient() {
     }
     std::shared_ptr<ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
-        zk_client = std::make_shared<ZkClient>("", FLAGS_zk_cluster, 1000, "",
+        zk_client = std::make_shared<ZkClient>(FLAGS_zk_cluster, "", 1000, "",
                 FLAGS_zk_root_path);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
