@@ -86,7 +86,6 @@ class ReplicateNode {
     std::atomic<bool> rep_node_;
     std::atomic<uint64_t>*
         follower_offset_;  // max local cluster follower offset
-    std::string real_endpoint_;
 };
 
 }  // namespace replica

@@ -61,8 +61,7 @@ ReplicateNode::ReplicateNode(const std::string& point, LogParts* logs,
       cv_(cv),
       go_back_cnt_(0),
       rep_node_(rep_follower),
-      follower_offset_(follower_offset),
-      real_endpoint_(real_point) {
+      follower_offset_(follower_offset) {
           if (!real_point.empty()) {
               rpc_client_ =
                   rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(real_point);

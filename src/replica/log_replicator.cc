@@ -123,6 +123,9 @@ bool LogReplicator::Init() {
             }
             nodes_.push_back(replicate_node);
             local_endpoints_.push_back(*it);
+            if (!real_endpoints_.empty()) {
+                real_endpoints_.push_back(real_ep);
+            }
             PDLOG(INFO, "add replica node with endpoint %s", it->c_str());
             idx++;
         }
