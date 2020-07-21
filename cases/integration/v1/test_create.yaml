@@ -55,7 +55,7 @@ cases:
     inputs:
       -
         columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
-        indexs: ["index1:c1,c2:c4"]
+        indexs: ["index1:c1|c2:c4"]
         rows:
           - [aa,1,1590738990000,1590738989000]
     sql: select * from {0};
