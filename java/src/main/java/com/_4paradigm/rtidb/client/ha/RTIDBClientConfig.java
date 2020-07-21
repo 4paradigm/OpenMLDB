@@ -30,6 +30,7 @@ public class RTIDBClientConfig {
 	private String zkTableRootPath = "";
 	private String zkTableNotifyPath = "";
 	private String zkNodeRootPath = "";
+    private String zkServerNamePath = "";
 	private int zkSesstionTimeout = 10000;
 	private int ioThreadNum = 2;
 	private int writeTimeout = 10000;
@@ -126,6 +127,7 @@ public class RTIDBClientConfig {
         this.zkNodeRootPath = zkRootPath + "/nodes";
         this.zkTableRootPath = zkRootPath + "/table/table_data";
         this.zkTableNotifyPath = zkRootPath + "/table/notify";
+        this.zkServerNamePath = zkRootPath + "/map/names";
     }
 
     public String getZkRootPath() {
@@ -218,5 +220,13 @@ public class RTIDBClientConfig {
 
     public ReadStrategy getGlobalReadStrategies() {
         return this.globalReadStrategy;
+    }
+
+    public String getZkServerNamePath() {
+        return zkServerNamePath;
+    }
+
+    public void setZkServerNamePath(String zkServerNamePath) {
+        this.zkServerNamePath = zkServerNamePath;
     }
 }

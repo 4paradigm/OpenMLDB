@@ -21,6 +21,7 @@ import rtidb.blobserver.BlobServer;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -250,7 +251,8 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                             } else {
                                 ph.getFollowers().add(tabletServerWapper);
                             }
-                            if (localIpAddr.contains(endpoint.getIp().toLowerCase())) {
+                            if (localIpAddr.contains(endpoint.getIp().toLowerCase()) ||
+                                    localIpAddr.contains(bcg.getIp().toLowerCase())) {
                                 ph.setFastTablet(tabletServerWapper);
                             }
                         }
@@ -328,7 +330,21 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                     logger.error("fail to add endpoint", e);
                 }
             }
-            nodeManager.update(endpoinSet);
+            // get real endpoint
+            HashMap<String, String> realEpMap = new HashMap<>();
+            List<String> serverNames = zookeeper.getChildren(config.getZkServerNamePath(), false);
+            for (String path : serverNames) {
+                if (path.isEmpty()) {
+                    continue;
+                }
+                logger.debug("alive server name {}", path);
+                byte[] data = zookeeper.getData(config.getZkServerNamePath() + "/" + path, false, null);
+                if (data != null) {
+                    realEpMap.put(path, new String(data, Charset.forName("UTF-8")));
+                }
+            }
+
+            nodeManager.update(endpoinSet, realEpMap);
             return true;
         } catch (Exception e) {
             logger.error("fail to refresh node manger", e);

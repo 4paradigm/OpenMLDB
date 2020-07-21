@@ -14,6 +14,7 @@ import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS.*;
 import com._4paradigm.rtidb.type.Type;
 import io.brpc.client.*;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
@@ -22,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import rtidb.nameserver.NameServer;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -33,6 +35,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private final static Logger logger = LoggerFactory.getLogger(NameServerClientImpl.class);
     private String zkEndpoints;
     private String leaderPath;
+    private String severNamesPath;
     private volatile ZooKeeper zookeeper;
     private SingleEndpointRpcClient rpcClient;
     private volatile NameServer ns;
@@ -64,6 +67,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     public NameServerClientImpl(RTIDBClientConfig config) {
         this.zkEndpoints = config.getZkEndpoints();
         this.leaderPath = config.getZkRootPath() + "/leader";
+        this.severNamesPath = config.getZkRootPath() + "/map/names";
         this.config = config;
     }
 
@@ -78,8 +82,24 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         EndPoint addr = new EndPoint(endpoint);
         bs = new RpcBaseClient();
         rpcClient = new SingleEndpointRpcClient(bs);
-        BrpcChannelGroup bcg = new BrpcChannelGroup(addr.getIp(), addr.getPort(),
-                bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
+        // get real endpoint
+        BrpcChannelGroup bcg;
+        byte[] data = null;
+        try {
+            data = zookeeper.getData(this.severNamesPath + "/" + endpoint, false, null);
+        } catch (KeeperException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        if (data != null) {
+            String realEp = new String(data, Charset.forName("UTF-8"));
+            bcg = new BrpcChannelGroup(realEp, addr.getPort(),
+                    bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
+        } else {
+            bcg = new BrpcChannelGroup(addr.getIp(), addr.getPort(),
+                    bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
+        }
         rpcClient.updateEndpoint(addr, bcg);
         ns = (NameServer) RpcProxy.getProxy(rpcClient, NameServer.class);
     }
@@ -175,8 +195,17 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             rpcClient.stop();
         }
         rpcClient = new SingleEndpointRpcClient(bs);
-        BrpcChannelGroup bcg = new BrpcChannelGroup(endpoint.getIp(), endpoint.getPort(),
-                bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
+        // get real endpoint
+        BrpcChannelGroup bcg;
+        byte[] data = zookeeper.getData(this.severNamesPath + "/" + endpoint, false, null);
+        if (data != null) {
+            String realEp = new String(data, Charset.forName("UTF-8"));
+            bcg = new BrpcChannelGroup(realEp, endpoint.getPort(),
+                    bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
+        } else {
+            bcg = new BrpcChannelGroup(endpoint.getIp(), endpoint.getPort(),
+                    bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
+        }
         rpcClient.updateEndpoint(endpoint, bcg);
         ns = (NameServer) RpcProxy.getProxy(rpcClient, NameServer.class);
         logger.info("connect leader path {} endpoint {} ok", children.get(0), endpoint);
