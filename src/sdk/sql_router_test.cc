@@ -291,6 +291,56 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder) {
     ASSERT_FALSE(rs->Next());
 }
 
+TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_date_column_key) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_.GetZkCluster();
+    sql_opt.zk_path = mc_.GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) ASSERT_TRUE(false);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 int, col2 date NOT NULL, col3 "
+                      "bigint NOT NULL, index(key=col2, ts=col3));";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    std::string insert1 = "insert into " + name + " values(?, ?, ?);";
+    std::shared_ptr<SQLInsertRow> r1 =
+        router->GetInsertRow(db, insert1, &status);
+    ASSERT_TRUE(r1->Init(0));
+    ASSERT_TRUE(r1->AppendInt32(123));
+    ASSERT_TRUE(r1->AppendDate(2020, 7, 22));
+    ASSERT_TRUE(r1->AppendInt64(1000));
+    ok = router->ExecuteInsert(db, insert1, r1, &status);
+    ASSERT_TRUE(ok);
+    auto dim = r1->GetDimensions();
+    for (auto d : dim) {
+        ASSERT_EQ(d.first, "2020-07-22");
+    }
+    std::string select = "select * from " + name + ";";
+    auto rs = router->ExecuteSQL(db, select, &status);
+    ASSERT_EQ(1, rs->Size());
+    int32_t year;
+    int32_t month;
+    int32_t day;
+
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ(123, rs->GetInt32Unsafe(0));
+    ASSERT_TRUE(rs->GetDate(1, &year, &month, &day));
+    ASSERT_EQ(2020, year);
+    ASSERT_EQ(7, month);
+    ASSERT_EQ(22, day);
+    ASSERT_EQ(1000, rs->GetInt64Unsafe(2));
+
+    ASSERT_FALSE(rs->Next());
+}
+
 TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_1) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_.GetZkCluster();
