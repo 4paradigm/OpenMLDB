@@ -298,9 +298,9 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
                          << status.msg;
             return false;
         }
-        if (!var_ir_builder.StoreValue(node->for_in_node_->var_name_,
-                                       NativeValue::Create(next), false,
-                                       status)) {
+        auto var_key = node->for_in_node_->var_->GetExprString();
+        if (!var_ir_builder.StoreValue(var_key, NativeValue::Create(next),
+                                       false, status)) {
             return false;
         }
         // loop body
@@ -372,7 +372,8 @@ bool BlockIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
         LOG(WARNING) << "fail to codegen expr" << status.msg;
         return false;
     }
-    return variable_ir_builder.StoreValue(node->name_, value, false, status);
+    auto var_key = node->var_->GetExprString();
+    return variable_ir_builder.StoreValue(var_key, value, false, status);
 }
 
 bool BlockIRBuilder::ClearScopeValue(llvm::BasicBlock *block,

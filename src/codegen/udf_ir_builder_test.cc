@@ -76,6 +76,7 @@ void CheckUDF(const std::string &name, T expect, Args... args) {
                         .args<Args...>()
                         .template returns<T>()
                         .build();
+    ASSERT_TRUE(function.valid());
     auto result = function(args...);
     ASSERT_EQ(expect, result);
 }
@@ -241,8 +242,8 @@ TEST_F(UDFIRBuilderTest, distinct_count_udf_test) {
     codec::ListRef<int32_t> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
 
-    CheckUDF<int32_t, codec::ListRef<int32_t>>("count", 9, list_ref);
-    CheckUDF<int32_t, codec::ListRef<int32_t>>("distinct_count", 5, list_ref);
+    CheckUDF<int64_t, codec::ListRef<int32_t>>("count", 9, list_ref);
+    CheckUDF<int64_t, codec::ListRef<int32_t>>("distinct_count", 5, list_ref);
 }
 TEST_F(UDFIRBuilderTest, sum_udf_test) {
     std::vector<int32_t> vec = {1, 3, 5, 7, 9};

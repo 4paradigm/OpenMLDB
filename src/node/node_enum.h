@@ -70,6 +70,7 @@ enum SQLNodeType {
     kUDFDef,
     kUDFByCodeGenDef,
     kUDAFDef,
+    kLambdaDef,
     kUnknow
 };
 

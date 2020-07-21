@@ -62,20 +62,20 @@ Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
     // def fn(arg0, arg1, ...argN):
     //     return gen_impl(arg0, arg1, ...argN)
     auto nm = ctx->node_manager();
-    auto func_header_param_list = nm->MakeFnListNode();
-    std::vector<node::ExprNode*> func_params;
+    std::vector<node::ExprIdNode*> func_params;
+    std::vector<node::ExprNode*> func_params_to_gen;
     for (size_t i = 0; i < ctx->arg_size(); ++i) {
         std::string arg_name = "arg_" + std::to_string(i);
         auto arg_type = ctx->arg(i)->GetOutputType();
 
-        func_header_param_list->AddChild(
-            nm->MakeFnParaNode(arg_name, arg_type));
-
-        auto arg_expr = nm->MakeExprIdNode(arg_name);
+        auto arg_expr =
+            nm->MakeExprIdNode(arg_name, node::ExprIdNode::GetNewId());
         func_params.emplace_back(arg_expr);
+        func_params_to_gen.emplace_back(arg_expr);
         arg_expr->SetOutputType(arg_type);
     }
-    auto ret_expr = gen_ptr->gen(ctx, func_params);
+
+    auto ret_expr = gen_ptr->gen(ctx, func_params_to_gen);
     CHECK_TRUE(ret_expr != nullptr && !ctx->HasError(),
                "Fail to create expr udf: ", ctx->GetError());
 
@@ -83,20 +83,9 @@ Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
     vm::SchemasContext empty_schema(empty);
     vm::ResolveFnAndAttrs resolver(false, &empty_schema, nm, ctx->library());
     node::ExprNode* new_ret_expr = nullptr;
-    auto status = resolver.Visit(ret_expr, &new_ret_expr);
-    if (!status.isOK()) {
-        LOG(WARNING) << status.msg;
-    }
+    CHECK_STATUS(resolver.Visit(ret_expr, &new_ret_expr));
 
-    auto ret_stmt = nm->MakeReturnStmtNode(new_ret_expr);
-    auto body = nm->MakeFnListNode();
-    body->AddChild(ret_stmt);
-    auto header = nm->MakeFnHeaderNode(name(), func_header_param_list,
-                                       new_ret_expr->GetOutputType());
-    auto fn_def = nm->MakeFnDefNode(header, body);
-
-    *result = reinterpret_cast<node::FnDefNode*>(
-        nm->MakeUDFDefNode(reinterpret_cast<node::FnNodeFnDef*>(fn_def)));
+    *result = nm->MakeLambdaNode(func_params, new_ret_expr);
     return Status::OK();
 }
 
