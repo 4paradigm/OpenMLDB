@@ -6,6 +6,8 @@ import lombok.Data;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,6 +24,8 @@ public class Table {
     List<List<Object>> rows;
     String create;
     String insert;
+
+    private static final Logger logger = LoggerFactory.getLogger(Table.class);
 
     public static String genAutoName() {
         return "auto_" + RandomStringUtils.randomAlphabetic(8);
@@ -142,6 +146,31 @@ public class Table {
         return splits[0].trim();
     }
 
+    public static boolean validateIndex(String index) {
+        int length = index.trim().split(":").length;
+
+        if (length < 1) {
+            logger.info("Index is invalid: empty index");
+            return false;
+        }
+
+        if (length < 2) {
+            logger.info("Index is invalid: missing keys and ts, {}", index);
+            return false;
+        }
+
+        if (length < 3) {
+            logger.info("Index is invalid: missing ts, {}", index);
+            return false;
+        }
+
+        if (length > 5) {
+            logger.info("Index is invalid: index items > 5", index);
+            return false;
+        }
+        return true;
+    }
+
     /**
      * extract indexKeys from index content
      *
@@ -154,7 +183,7 @@ public class Table {
             return Collections.emptyList();
         }
         List<String> keys = Lists.newArrayList();
-        for (String split : splits) {
+        for (String split : splits[1].trim().split("\\|")) {
             keys.add(split.trim());
         }
         return keys;
@@ -172,6 +201,34 @@ public class Table {
             return "";
         }
         return splits[2].trim();
+    }
+
+    /**
+     * extract index tsCol from index content
+     *
+     * @param index
+     * @return
+     */
+    public static String getIndexTTL(String index) {
+        String[] splits = index.trim().split(":");
+        if (splits.length < 4) {
+            return "";
+        }
+        return splits[3].trim();
+    }
+
+    /**
+     * extract index tsCol from index content
+     *
+     * @param index
+     * @return
+     */
+    public static String getIndexTTLType(String index) {
+        String[] splits = index.trim().split(":");
+        if (splits.length < 5) {
+            return "";
+        }
+        return splits[4].trim();
     }
 
     /**
@@ -213,7 +270,7 @@ public class Table {
     }
 
 
-    private String buildInsertSQLFromRows(String name, List<String> columns, List<List<Object>> datas) {
+    public static String buildInsertSQLFromRows(String name, List<String> columns, List<List<Object>> datas) {
         if (CollectionUtils.isEmpty(columns) || CollectionUtils.isEmpty(datas)) {
             return "";
         }
@@ -243,7 +300,7 @@ public class Table {
         return builder.toString();
     }
 
-    private String buildCreateSQLFromColumnsIndexs(String name, List<String> columns, List<String> indexs) {
+    public static String buildCreateSQLFromColumnsIndexs(String name, List<String> columns, List<String> indexs) {
         if (CollectionUtils.isEmpty(indexs) || CollectionUtils.isEmpty(columns)) {
             return "";
         }
@@ -255,15 +312,26 @@ public class Table {
             }
             builder.append(columns.get(i) + ",");
         }
+
         for (String index : indexs) {
-            String[] ss = index.split(":");
-            if (ss.length == 3) {
-                builder.append(String.format("\nindex(key=(%s),ts=%s),", ss[1], ss[2]));
-            } else if (ss.length == 4) {
-                builder.append(String.format("\nindex(key=(%s),ts=%s,ttl=%s),", ss[1], ss[2], ss[3]));
-            } else if (ss.length == 5) {
-                builder.append(String.format("\nindex(key=(%s),ts=%s,ttl=%s,ttl_type=%s),", ss[1], ss[2], ss[3], ss[4]));
+            builder.append("\nindex(");
+            if (!validateIndex(index)) {
+                return "";
             }
+
+            builder.append("key=(").append(Joiner.on(",").join(getIndexKeys(index))).append(")");
+            builder.append(",ts=").append(getIndexTsCol(index));
+
+            String ttl = getIndexTTL(index);
+            if (!ttl.isEmpty()) {
+                builder.append(",ttl=").append(ttl);
+            }
+
+            String ttlType = getIndexTTLType(index);
+            if (!ttlType.isEmpty()) {
+                builder.append(",ttl_type=").append(ttlType);
+            }
+            builder.append("),");
         }
         sql = builder.toString();
         if (sql.endsWith(",")) {
@@ -272,5 +340,6 @@ public class Table {
         sql += ");";
         return sql;
     }
+
 
 }
