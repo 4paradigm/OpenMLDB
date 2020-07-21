@@ -358,6 +358,15 @@ int PutData(
     uint32_t format_version) {
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>
         clients;
+    std::shared_ptr<ZkClient> zk_client;
+    if (FLAGS_use_name) {
+        zk_client = std::make_shared<ZkClient>(
+                FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
+        if (!zk_client->Init()) {
+            printf("zk client init failed \n");
+            return -1;
+        }
+    }
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
         uint32_t pid = iter->first;
         std::string endpoint;
@@ -382,8 +391,16 @@ int PutData(
             return -1;
         }
         if (clients.find(endpoint) == clients.end()) {
-            clients.insert(std::make_pair(endpoint,
-                std::make_shared<::rtidb::client::TabletClient>(endpoint, "")));
+            std::string real_endpoint;
+            if (FLAGS_use_name) {
+                if (!zk_client->GetNodeValue(FLAGS_zk_root_path +
+                            "/map/names/" + endpoint, real_endpoint)) {
+                    printf("get real_endpoint failed \n");
+                    return -1;
+                }
+            }
+            clients.insert(std::make_pair(endpoint, std::make_shared<
+                    ::rtidb::client::TabletClient>(endpoint, real_endpoint)));
             if (clients[endpoint]->Init() < 0) {
                 printf("tablet client init failed, endpoint is %s\n",
                        endpoint.c_str());
@@ -540,8 +557,23 @@ std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
         msg = "cannot find healthy endpoint. pid is " + std::to_string(pid);
         return std::shared_ptr<::rtidb::client::TabletClient>();
     }
+    std::string real_endpoint;
+    if (FLAGS_use_name) {
+        std::shared_ptr<ZkClient> zk_client = std::make_shared<ZkClient>(
+                FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
+        if (!zk_client->Init()) {
+            msg = "zk client init failed";
+            return std::shared_ptr<::rtidb::client::TabletClient>();
+        }
+        if (!zk_client->GetNodeValue(FLAGS_zk_root_path +
+                    "/map/names/" + endpoint, real_endpoint)) {
+            msg = "get real_endpoint failed";
+            return std::shared_ptr<::rtidb::client::TabletClient>();
+        }
+    }
     std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
-        std::make_shared<::rtidb::client::TabletClient>(endpoint, "");
+        std::make_shared<::rtidb::client::TabletClient>(
+        endpoint, real_endpoint);
     if (tablet_client->Init() < 0) {
         msg = "tablet client init failed, endpoint is " + endpoint;
         tablet_client.reset();
