@@ -116,6 +116,17 @@ public class FesqlStreamTableEnvironment {
         return this.streamTableEnvironment.execute(jobName);
     }
 
+    public void registerTable(String name, Table table) {
+        this.streamTableEnvironment.registerTable(name, table);
+
+        // Register table name and schema
+        if (this.registeredTableSchemaMap.containsKey(name)) {
+            logger.warn(String.format("The table %s has been registered, ignore registeration", name));
+        } else {
+            this.registeredTableSchemaMap.put(name, table.getSchema());
+        }
+    }
+
     public void registerTableSource(String name, TableSource<?> tableSource) {
         this.streamTableEnvironment.registerTableSource(name, tableSource);
 

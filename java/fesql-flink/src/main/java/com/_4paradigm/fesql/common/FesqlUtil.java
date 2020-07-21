@@ -28,6 +28,8 @@ public class FesqlUtil {
         if (logicalType instanceof IntType) {
             // Notice that no short or long in flink logical type
             return Type.kInt32;
+        } else if (logicalType instanceof BigIntType) {
+            return Type.kInt64;
         } else if (logicalType instanceof FloatType) {
             return Type.kFloat;
         } else if (logicalType instanceof DoubleType) {
@@ -121,7 +123,7 @@ public class FesqlUtil {
             } else if (columnType == kInt32) {
                 fieldTypes[i] = Types.INT;
             } else if (columnType == kInt64) {
-                fieldTypes[i] = Types.LONG;
+                fieldTypes[i] = Types.BIG_INT;
             } else if (columnType== kFloat) {
                 fieldTypes[i] = Types.FLOAT;
             } else if (columnType == kDouble) {

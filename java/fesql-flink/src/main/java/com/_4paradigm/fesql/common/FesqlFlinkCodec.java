@@ -9,6 +9,9 @@ import org.apache.flink.types.Row;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 import static com._4paradigm.fesql.type.TypeOuterClass.Type.*;
@@ -130,7 +133,7 @@ public class FesqlFlinkCodec {
                     } else if (columnType == kVarchar) {
                         flinkRow.setField(totalFieldIndex, rowView.GetStringUnsafe(j));
                     } else if (columnType == kTimestamp) {
-                        // TODO: Check timestamp data object in Flink row
+                        // Need to convert to Timestamp object
                         Timestamp value = new Timestamp(rowView.GetTimestampUnsafe(j));
                         flinkRow.setField(totalFieldIndex, value);
                     } else if (columnType == kDate) {
@@ -207,9 +210,10 @@ public class FesqlFlinkCodec {
                     String stringValue = String.valueOf(value);
                     rowBuilder.AppendString(stringValue, stringValue.length());
                 } else if (columnType == kTimestamp) {
-                    // TODO: Check timestamp data object in Flink row
-                    Timestamp timestampValue = (Timestamp) value;
-                    rowBuilder.AppendTimestamp(timestampValue.getTime());
+                    // TODO: Set time zone if needed
+                    // Get the object of LocalDateTime
+                    LocalDateTime localDateTime = (LocalDateTime) value;
+                    rowBuilder.AppendTimestamp(localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
                 } else if (columnType == kDate) {
                     // TODO: Check date data object in Flink row
                     Date dateValue = (Date) value;
