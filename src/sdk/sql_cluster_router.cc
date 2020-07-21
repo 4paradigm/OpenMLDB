@@ -413,7 +413,21 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
     }
     return true;
 }
-
+bool SQLClusterRouter::ShowDB(std::vector<std::string>* dbs,
+                              fesql::sdk::Status* status) {
+    auto ns_ptr = cluster_sdk_->GetNsClient();
+    if (!ns_ptr) {
+        LOG(WARNING) << "no nameserver exist";
+        return false;
+    }
+    std::string err;
+    bool ok = ns_ptr->ShowDatabase(dbs, err);
+    if (!ok) {
+        LOG(WARNING) << "fail to show databases: " << err;
+        return false;
+    }
+    return true;
+}
 bool SQLClusterRouter::CreateDB(const std::string& db,
                                 fesql::sdk::Status* status) {
     if (status == NULL) {
@@ -520,8 +534,8 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     uint32_t idx = rand_.Uniform(tablets.size());
-    ok =
-        tablets[idx]->Query(db, sql, row->GetRow(), cntl.get(), response.get());
+    ok = tablets[idx]->Query(db, sql, row->GetRow(), cntl.get(), response.get(),
+                             options_.enbale_debug);
     if (!ok) {
         status->msg = "request server error";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
@@ -544,7 +558,8 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     DLOG(INFO) << " send query to tablet " << tablets[0]->GetEndpoint();
-    ok = tablets[0]->Query(db, sql, cntl.get(), response.get());
+    ok = tablets[0]->Query(db, sql, cntl.get(), response.get(),
+                           options_.enbale_debug);
     if (!ok) {
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
@@ -618,7 +633,6 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     if (cache) {
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
             cache->table_info;
-        DefaultValueMap default_map = cache->default_map;
         std::shared_ptr<::rtidb::client::TabletClient> tablet =
             cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
         if (!tablet) {
@@ -659,7 +673,6 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     if (cache) {
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
             cache->table_info;
-        DefaultValueMap default_map = cache->default_map;
         std::shared_ptr<::rtidb::client::TabletClient> tablet =
             cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
         if (!tablet) {

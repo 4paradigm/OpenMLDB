@@ -330,6 +330,9 @@ bool NsClient::HandleSQLCreateTable(
                 &::rtidb::nameserver::NameServer_Stub::CreateTable, &request,
                 &response, FLAGS_request_timeout_ms, 1);
             sql_status->msg = response.msg();
+            if (0 != response.code()) {
+                return false;
+            }
             break;
         }
         default: {
@@ -1140,6 +1143,12 @@ bool NsClient::TransformToTableDef(
                 index_names.insert(column_index->GetName());
                 ::rtidb::common::ColumnKey* index = table->add_column_key();
                 index->set_index_name(column_index->GetName());
+
+                if (column_index->GetKey().empty()) {
+                    status->msg = "CREATE common: INDEX KEY empty";
+                    status->code = fesql::common::kSQLError;
+                    return false;
+                }
                 for (auto key : column_index->GetKey()) {
                     auto cit = column_names.find(key);
                     if (cit == column_names.end()) {
@@ -1159,11 +1168,28 @@ bool NsClient::TransformToTableDef(
                         status->code = fesql::common::kSQLError;
                         return false;
                     } else {
-                        it->second->set_is_ts_col(true);
+                        switch (it->second->data_type()) {
+                            case rtidb::type::DataType::kInt:
+                            case rtidb::type::DataType::kSmallInt:
+                            case rtidb::type::DataType::kBigInt:
+                            case rtidb::type::DataType::kTimestamp: {
+                                it->second->set_is_ts_col(true);
+                                break;
+                            }
+                            default: {
+                                status->msg = "CREATE common: TS Type " +
+                                              rtidb::type::DataType_Name(
+                                                  it->second->data_type()) +
+                                              " not support";
+                                status->code = fesql::common::kSQLError;
+                                return false;
+                            }
+                        }
                         if (!column_index->ttl_type().empty()) {
                             if (column_index->ttl_type() == "absolute") {
                                 table->mutable_ttl_desc()->set_ttl_type(
                                     rtidb::api::kAbsoluteTime);
+
                             } else if (column_index->ttl_type() == "latest") {
                                 table->mutable_ttl_desc()->set_ttl_type(
                                     rtidb::api::kLatestTime);
@@ -1186,6 +1212,10 @@ bool NsClient::TransformToTableDef(
                             }
                         }
                     }
+                } else {
+                    status->msg = "CREATE common: ts col not exist";
+                    status->code = fesql::common::kSQLError;
+                    return false;
                 }
                 break;
             }
@@ -1202,6 +1232,5 @@ bool NsClient::TransformToTableDef(
     }
     return true;
 }
-
 }  // namespace client
 }  // namespace rtidb

@@ -38,6 +38,8 @@ class SQLRequestRow {
     bool AppendInt16(int16_t val);
     bool AppendInt64(int64_t val);
     bool AppendTimestamp(int64_t val);
+    bool AppendDate(int32_t val);
+    bool AppendDate(int32_t year, int32_t month, int32_t day);
     bool AppendFloat(float val);
     bool AppendDouble(double val);
     bool AppendString(const std::string& val);

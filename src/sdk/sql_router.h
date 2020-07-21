@@ -20,6 +20,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "sdk/base.h"
 #include "sdk/result_set.h"
@@ -32,6 +33,7 @@ namespace sdk {
 struct SQLRouterOptions {
     std::string zk_cluster;
     std::string zk_path;
+    bool enbale_debug = false;
     uint32_t session_timeout = 2000;
 };
 
@@ -51,6 +53,8 @@ class SQLRouter {
     SQLRouter() {}
     virtual ~SQLRouter() {}
 
+    virtual bool ShowDB(std::vector<std::string>* dbs,
+                        fesql::sdk::Status* status) = 0;
     virtual bool CreateDB(const std::string& db,
                           fesql::sdk::Status* status) = 0;
 

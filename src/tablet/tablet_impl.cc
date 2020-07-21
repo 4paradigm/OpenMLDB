@@ -1846,6 +1846,9 @@ void TabletImpl::Query(RpcController* ctrl,
                 return;
             }
         }
+        if (request->is_debug()) {
+            session.EnableDebug();
+        }
         auto table = session.Run();
         if (!table) {
             DLOG(WARNING) << "fail to run sql " << request->sql();
@@ -1896,6 +1899,9 @@ void TabletImpl::Query(RpcController* ctrl,
                 DLOG(WARNING) << "fail to run sql " << request->sql();
                 return;
             }
+        }
+        if (request->is_debug()) {
+            session.EnableDebug();
         }
         ::fesql::codec::Row row(request->input_row());
         ::fesql::codec::Row output;
