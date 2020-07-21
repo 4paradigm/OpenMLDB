@@ -1,10 +1,9 @@
-package com._4paradigm.fesql.batch;
+package com._4paradigm.fesql.common;
 
 import com._4paradigm.fesql.FeSqlLibrary;
-import com._4paradigm.fesql.common.BatchPlanContext;
-import com._4paradigm.fesql.common.FesqlException;
-import com._4paradigm.fesql.common.FesqlUtil;
-import com._4paradigm.fesql.common.SQLEngine;
+import com._4paradigm.fesql.batch.DataProviderPlan;
+import com._4paradigm.fesql.batch.FesqlBatchTableEnvironment;
+import com._4paradigm.fesql.batch.TableProjectPlan;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.*;
 import org.apache.flink.table.api.Table;
@@ -17,9 +16,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class FesqlBatchPlanner {
+public class FesqlPlanner {
 
-    private static final Logger logger = LoggerFactory.getLogger(FesqlBatchPlanner.class);
+    private static final Logger logger = LoggerFactory.getLogger(FesqlPlanner.class);
 
     {
         // Ensure native initialized
@@ -31,7 +30,7 @@ public class FesqlBatchPlanner {
 
     private Map<String, TableSchema> tableSchemaMap;
 
-    public FesqlBatchPlanner(FesqlBatchTableEnvironment env) {
+    public FesqlPlanner(FesqlBatchTableEnvironment env) {
         this.batchTableEnvironment = env.getBatchTableEnvironment();
         this.tableSchemaMap = env.getRegisteredTableSchemaMap();
     }
@@ -40,7 +39,7 @@ public class FesqlBatchPlanner {
 
         TypeOuterClass.Database fesqlDatabase = FesqlUtil.buildDatabase("flink_db", this.tableSchemaMap);
         SQLEngine engine = new SQLEngine(sqlQuery, fesqlDatabase);
-        BatchPlanContext batchPlanContext = new BatchPlanContext(sqlQuery, batchTableEnvironment, this, engine.getIRBuffer());
+        FesqlPlanContext batchPlanContext = new FesqlPlanContext(sqlQuery, batchTableEnvironment, this, engine.getIRBuffer());
 
         PhysicalOpNode rootNode = engine.getPlan();
         logger.info("Print the FESQL logical plan");
@@ -58,7 +57,7 @@ public class FesqlBatchPlanner {
 
     }
 
-    public Table visitPhysicalNode(BatchPlanContext batchPlanContext, PhysicalOpNode node) throws FesqlException {
+    public Table visitPhysicalNode(FesqlPlanContext batchPlanContext, PhysicalOpNode node) throws FesqlException {
 
         List<Table> children = new ArrayList<Table>();
         for (int i=0; i < node.GetProducerCnt(); ++i) {

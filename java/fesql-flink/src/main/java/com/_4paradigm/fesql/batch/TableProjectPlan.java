@@ -20,7 +20,7 @@ public class TableProjectPlan {
 
     private static final Logger logger = LoggerFactory.getLogger(TableProjectPlan.class);
 
-    public static Table gen(BatchPlanContext batchPlanContext, PhysicalTableProjectNode node, Table childTable) throws FesqlException {
+    public static Table gen(FesqlPlanContext batchPlanContext, PhysicalTableProjectNode node, Table childTable) throws FesqlException {
 
         DataSet<Row> inputDataset = batchPlanContext.getBatchTableEnvironment().toDataSet(childTable, Row.class);
 

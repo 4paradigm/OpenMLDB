@@ -5,6 +5,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.table.api.Table;
+import org.apache.flink.table.api.TableResult;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.table.descriptors.ConnectorDescriptor;
@@ -13,6 +14,8 @@ import org.apache.flink.table.expressions.Expression;
 import org.apache.flink.table.functions.AggregateFunction;
 import org.apache.flink.table.functions.TableAggregateFunction;
 import org.apache.flink.table.functions.TableFunction;
+import org.apache.flink.table.sinks.TableSink;
+import org.apache.flink.table.sources.TableSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.HashMap;
@@ -110,6 +113,73 @@ public class FesqlStreamTableEnvironment {
 
     public JobExecutionResult execute(String jobName) throws Exception {
         return this.streamTableEnvironment.execute(jobName);
+    }
+
+    public void registerTableSource(String name, TableSource<?> tableSource) {
+        this.streamTableEnvironment.registerTableSource(name, tableSource);
+    }
+
+    public void registerTableSink(String name, String[] fieldNames, TypeInformation<?>[] fieldTypes, TableSink<?> tableSink) {
+        this.streamTableEnvironment.registerTableSink(name, fieldNames, fieldTypes, tableSink);
+    }
+
+    public void registerTableSink(String name, TableSink<?> configuredSink) {
+        this.registerTableSink(name, configuredSink);
+    }
+
+
+    public Table sqlQuery(String query) {
+        String isDisableFesql = System.getenv("DISABLE_FESQL");
+        if (isDisableFesql != null && isDisableFesql.trim().toLowerCase().equals("true")) {
+            // Force to run FlinkSQL
+            return flinksqlQuery(query);
+        } else {
+            try {
+                // Try to run FESQL
+                return runFesqlQuery(query);
+            } catch (Exception e) {
+                String isEnableFesqlFallback = System.getenv("ENABLE_FESQL_FALLBACK");
+                if (isEnableFesqlFallback != null && isEnableFesqlFallback.trim().toLowerCase().equals("true")) {
+                    // Fallback to FlinkSQL
+                    logger.warn("Fail to execute with FESQL, fallback to FlinkSQL");
+                    return flinksqlQuery(query);
+                } else {
+                    logger.error("Fail to execute with FESQL, error message: " + e.getMessage());
+                }
+            }
+        }
+        return null;
+    }
+
+    public Table fesqlQuery(String query) {
+        try {
+            return runFesqlQuery(query);
+        } catch (Exception e) {
+            logger.warn("Fail to execute with FESQL, error message: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public Table runFesqlQuery(String query) throws Exception {
+        // Normalize SQL format
+        if (!query.trim().endsWith(";")) {
+            query = query.trim() + ";";
+        }
+
+        //FesqlBatchPlanner planner = new FesqlBatchPlanner(this);
+        //return planner.plan(query);
+        System.out.println("-------------------------------------");
+        return null;
+    }
+
+    public Table flinksqlQuery(String query) {
+        return this.streamTableEnvironment.sqlQuery(query);
+    }
+
+
+    public TableResult executeSql(String statement) {
+        return this.streamTableEnvironment.executeSql(statement);
     }
 
 }
