@@ -31,14 +31,14 @@ inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
 
+::rtidb::sdk::MiniCluster* mc;
+
 static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
-    ::rtidb::sdk::MiniCluster mc(6181);
-    mc.SetUp();
     ::rtidb::nameserver::TableInfo table_info;
     table_info.set_format_version(1);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    auto ns_client = mc.GetNsClient();
+    auto ns_client = mc->GetNsClient();
     std::string error;
     bool ok = ns_client->CreateDatabase(db, error);
     table_info.set_name(name);
@@ -93,8 +93,8 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     rb.AppendInt64(ts);
     rb.AppendInt64(ts);
     ::rtidb::sdk::ClusterOptions option;
-    option.zk_cluster = mc.GetZkCluster();
-    option.zk_path = mc.GetZkPath();
+    option.zk_cluster = mc->GetZkCluster();
+    option.zk_path = mc->GetZkPath();
     ::rtidb::sdk::ClusterSDK sdk(option);
     sdk.Init();
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablet;
@@ -109,14 +109,13 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
         "select col1, col2 + 1, col3, col4, col5 from " + name + " ;";
     ::fesql::sdk::Status status;
     ::rtidb::sdk::SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc.GetZkCluster();
-    sql_opt.zk_path = mc.GetZkPath();
+    sql_opt.zk_cluster = mc->GetZkCluster();
+    sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) return;
     for (auto _ : state) {
         benchmark::DoNotOptimize(router->ExecuteSQL(db, sql, &status));
     }
-    mc.Close();
 }
 
 static void GenerateInsertSQLSample(uint32_t size, std::string name,
@@ -132,12 +131,9 @@ static void GenerateInsertSQLSample(uint32_t size, std::string name,
 }
 
 static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
-    ::rtidb::sdk::MiniCluster mc(6181);
-    mc.SetUp();
-    sleep(5);
     ::rtidb::sdk::SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc.GetZkCluster();
-    sql_opt.zk_path = mc.GetZkPath();
+    sql_opt.zk_cluster = mc->GetZkCluster();
+    sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (router == nullptr) {
         std::cout << "fail to init sql cluster router" << std::endl;
@@ -165,16 +161,12 @@ static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
                 router->ExecuteInsert(db, sample[i], &status));
         }
     }
-    mc.Close();
 }
 
 static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
-    ::rtidb::sdk::MiniCluster mc(6181);
-    mc.SetUp();
-    sleep(5);
     ::rtidb::sdk::SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc.GetZkCluster();
-    sql_opt.zk_path = mc.GetZkPath();
+    sql_opt.zk_cluster = mc->GetZkCluster();
+    sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (router == nullptr) {
         std::cout << "fail to init sql cluster router" << std::endl;
@@ -214,17 +206,13 @@ static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
             }
         }
     }
-    mc.Close();
 }
 
 static void BM_InsertPlaceHolderBatchFunction(
     benchmark::State& state) {  // NOLINT
-    ::rtidb::sdk::MiniCluster mc(6181);
-    mc.SetUp();
-    sleep(5);
     ::rtidb::sdk::SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc.GetZkCluster();
-    sql_opt.zk_path = mc.GetZkPath();
+    sql_opt.zk_cluster = mc->GetZkCluster();
+    sql_opt.zk_path = mc->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (router == nullptr) {
         std::cout << "fail to init sql cluster router" << std::endl;
@@ -266,7 +254,6 @@ static void BM_InsertPlaceHolderBatchFunction(
             std::cout << "get insert row failed" << std::endl;
         }
     }
-    mc.Close();
 }
 
 BENCHMARK(BM_SimpleQueryFunction);
@@ -289,4 +276,13 @@ BENCHMARK(BM_InsertPlaceHolderBatchFunction)
     ->Args({1000})
     ->Args({10000});
 
-BENCHMARK_MAIN();
+int main(int argc, char** argv) {
+    ::benchmark::Initialize(&argc, argv);
+    if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
+    ::rtidb::sdk::MiniCluster mini_cluster(6181);
+    mc = &mini_cluster;
+    mini_cluster.SetUp();
+    sleep(2);
+    ::benchmark::RunSpecifiedBenchmarks();
+    mini_cluster.Close();
+}
