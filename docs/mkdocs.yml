@@ -1,0 +1,7 @@
+site_name: fedb
+theme:
+  name: material
+nav:
+    - Home: README.md
+docs_dir: docs
+
