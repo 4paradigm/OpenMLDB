@@ -393,10 +393,6 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_date_column_key) {
     ASSERT_TRUE(r1->AppendInt64(1000));
     ok = router->ExecuteInsert(db, insert1, r1, &status);
     ASSERT_TRUE(ok);
-    auto dim = r1->GetDimensions();
-    for (auto d : dim) {
-        ASSERT_EQ(d.first, "2020-07-22");
-    }
     std::string select = "select * from " + name + ";";
     auto rs = router->ExecuteSQL(db, select, &status);
     ASSERT_EQ(1, rs->Size());

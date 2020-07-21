@@ -79,7 +79,7 @@ class SQLInsertRow {
     bool AppendDouble(double val);
     bool AppendString(const std::string& val);
     bool AppendDate(uint32_t year, uint32_t month, uint32_t day);
-    bool AppendDate(uint32_t date);
+    bool AppendDate(int32_t date);
     bool AppendNULL();
     bool IsComplete();
     const std::vector<std::pair<std::string, uint32_t>>& GetDimensions();
