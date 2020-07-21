@@ -32,7 +32,6 @@ cases:
   -
     id: 3
     desc: 插入部分列数据
-    tags: ["TODO", "@panxuchen"]
     inputs:
       -
         create: |
@@ -43,7 +42,7 @@ cases:
     expect:
       columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
       rows:
-        - ["aa",null,3,null,null,1590738989000,null]
+        - ["aa",null,2,null,null,1590738989000,null]
   -
     id: 4
     desc: 没有指定NotNull的列插入null
@@ -97,7 +96,6 @@ cases:
   -
     id: 8
     desc: 列名不存在
-    tags: ["TODO", "@panxuchen"]
     inputs:
       -
         create: |
