@@ -52,66 +52,79 @@ class SqlParserTest : public ::testing::TestWithParam<SQLCase> {
         delete manager_;
     }
 
+    struct PrintToStringParamName {
+        template <class ParamType>
+        std::string operator()(
+            const testing::TestParamInfo<ParamType> &info) const {
+            auto sql_case = static_cast<SQLCase>(info.param);
+            return sql_case.id();
+        }
+    };
+
  protected:
     NodeManager *manager_;
     FeSQLParser *parser_;
 };
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlSimpleQueryParse, SqlParserTest,
-    testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")));
+    testing::ValuesIn(InitCases("cases/plan/simple_query.yaml")),
+    SqlParserTest::PrintToStringParamName());
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlRenameQueryParse, SqlParserTest,
-    testing::ValuesIn(InitCases("cases/plan/rename_query.yaml")));
+    testing::ValuesIn(InitCases("cases/plan/rename_query.yaml")),
+    SqlParserTest::PrintToStringParamName());
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlWindowQueryParse, SqlParserTest,
     testing::ValuesIn(InitCases("cases/plan/window_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlDistinctParse, SqlParserTest,
     testing::ValuesIn(InitCases("cases/plan/distinct_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlWhereParse, SqlParserTest,
     testing::ValuesIn(InitCases("cases/plan/where_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlGroupParse, SqlParserTest,
     testing::ValuesIn(InitCases("cases/plan/group_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlHavingParse, SqlParserTest,
     testing::ValuesIn(InitCases("cases/plan/having_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlOrderParse, SqlParserTest,
     testing::ValuesIn(InitCases("cases/plan/order_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlJoinParse, SqlParserTest,
     testing::ValuesIn(InitCases("cases/plan/join_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlUnionParse, SqlParserTest,
     testing::ValuesIn(InitCases("cases/plan/union_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SqlSubQueryParse, SqlParserTest,
     testing::ValuesIn(InitCases("cases/plan/sub_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(UDFParse, SqlParserTest,
-                        testing::ValuesIn(InitCases("cases/plan/udf.yaml")));
+INSTANTIATE_TEST_SUITE_P(UDFParse, SqlParserTest,
+                         testing::ValuesIn(InitCases("cases/plan/udf.yaml")));
 
-INSTANTIATE_TEST_CASE_P(SQLCreate, SqlParserTest,
-                        testing::ValuesIn(InitCases("cases/plan/create.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLCreate, SqlParserTest,
+    testing::ValuesIn(InitCases("cases/plan/create.yaml")));
 
-INSTANTIATE_TEST_CASE_P(SQLInsert, SqlParserTest,
-                        testing::ValuesIn(InitCases("cases/plan/insert.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLInsert, SqlParserTest,
+    testing::ValuesIn(InitCases("cases/plan/insert.yaml")));
 
-INSTANTIATE_TEST_CASE_P(SQLCmdParserTest, SqlParserTest,
-                        testing::ValuesIn(InitCases("cases/plan/cmd.yaml")));
+INSTANTIATE_TEST_SUITE_P(SQLCmdParserTest, SqlParserTest,
+                         testing::ValuesIn(InitCases("cases/plan/cmd.yaml")));
 
 TEST_P(SqlParserTest, Parser_Select_Expr_List) {
     auto sql_case = GetParam();
@@ -569,12 +582,12 @@ TEST_P(SqlParserErrorTest, ParserErrorStatusTest) {
     std::cout << status.msg << std::endl;
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SQLErrorParse, SqlParserErrorTest,
     testing::Values(std::make_pair(common::kSQLError, "SELECT SUM(*) FROM t1;"),
                     std::make_pair(common::kSQLError, "SELECT t1;")));
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     UDFErrorParse, SqlParserErrorTest,
     testing::Values(
         std::make_pair(common::kSQLError,

@@ -52,6 +52,10 @@ Status UDFIRBuilder::BuildCall(
             auto node = dynamic_cast<const node::UDAFDefNode*>(fn);
             return BuildUDAFCall(node, arg_types, args, output);
         }
+        case node::kLambdaDef: {
+            auto node = dynamic_cast<const node::LambdaNode*>(fn);
+            return BuildLambdaCall(node, arg_types, args, output);
+        }
         default:
             return Status(common::kCodegenError, "Unknown function def type");
     }
@@ -75,6 +79,30 @@ Status UDFIRBuilder::BuildUDFCall(
     CHECK_STATUS(BuildCallWithLLVMCallee(fn, callee, raw_args, return_by_arg,
                                          &raw_output));
     *output = NativeValue::Create(raw_output);
+    return Status::OK();
+}
+
+Status UDFIRBuilder::BuildLambdaCall(
+    const node::LambdaNode* fn,
+    const std::vector<const node::TypeNode*>& arg_types,
+    const std::vector<NativeValue>& args, NativeValue* output) {
+    // sanity checks
+    CHECK_TRUE(fn->Validate(arg_types));
+
+    // bind args
+    // sv_->Enter("Lambda"); name redef
+    for (size_t i = 0; i < fn->GetArgSize(); ++i) {
+        auto expr_id = fn->GetArg(i);
+        sv_->AddVar(expr_id->GetExprString(), args[i]);
+    }
+
+    base::Status status;
+    ExprIRBuilder expr_builder(block_, sv_, schemas_context_, true, module_);
+    bool ok = expr_builder.Build(fn->body(), output, status);
+    // sv_->Exit();
+    CHECK_TRUE(ok && status.isOK(),
+               "Error during build lambda body: ", status.msg, "\n",
+               fn->body()->GetExprString());
     return Status::OK();
 }
 
@@ -240,7 +268,7 @@ Status UDFIRBuilder::BuildUDAFCall(
                status.msg);
 
     // call update in iter body
-    UDFIRBuilder sub_udf_builder(body_block, nullptr, nullptr, module_);
+    UDFIRBuilder sub_udf_builder(body_block, sv_, schemas_context_, module_);
     ::llvm::Value* cur_state_value;
     if (is_struct_ptr_state) {
         cur_state_value = local_state;

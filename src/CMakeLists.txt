@@ -40,6 +40,7 @@ fesql_add_src_and_tests(batch)
 fesql_add_src_and_tests(codec)
 fesql_add_src_and_tests(case)
 fesql_add_src_and_tests(parser)
+fesql_add_src_and_tests(passes)
 
 get_property(SRC_FILE_LIST_STR GLOBAL PROPERTY PROP_SRC_FILE_LIST)
 string(REPLACE " " ";" SRC_FILE_LIST ${SRC_FILE_LIST_STR})
@@ -65,8 +66,9 @@ if (TESTING_ENABLE)
 			${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
 			--gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
 
+            target_link_options(${TEST_TARGET_NAME} PRIVATE -rdynamic)
 	    target_link_libraries(${TEST_TARGET_NAME} gtest fesql_core fesql_flags
-	    	${yaml_libs} ${ARROW_LIBS} ${BRPC_LIBS})
+                ${yaml_libs} ${ARROW_LIBS} ${BRPC_LIBS} sqlite3)
     	list(APPEND test_list ${TEST_TARGET_NAME})
 	endforeach()
 	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

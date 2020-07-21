@@ -26,6 +26,7 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/IRBuilder.h"
+#include "passes/resolve_udf_def.h"
 
 namespace fesql {
 namespace codegen {
@@ -34,7 +35,7 @@ FnIRBuilder::FnIRBuilder(::llvm::Module *module) : module_(module) {}
 
 FnIRBuilder::~FnIRBuilder() {}
 
-bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
+bool FnIRBuilder::Build(::fesql::node::FnNodeFnDef *root,
                         ::llvm::Function **result,
                         base::Status &status) {  // NOLINT
     if (root == NULL || root->GetType() != ::fesql::node::kFnDef) {
@@ -43,6 +44,14 @@ bool FnIRBuilder::Build(const ::fesql::node::FnNodeFnDef *root,
         LOG(WARNING) << status.msg;
         return false;
     }
+
+    passes::ResolveUdfDef resolver;
+    status = resolver.Visit(root);
+    if (!status.isOK()) {
+        LOG(WARNING) << "Fail to resolve udf function: " << status.msg;
+        return false;
+    }
+
     ::llvm::Function *fn = NULL;
     ::llvm::BasicBlock *block = NULL;
     std::stack<int32_t> indent_stack;
@@ -79,17 +88,15 @@ bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *header,
         return false;
     }
 
-    if (TypeIRBuilder::IsStructPtr(ret_type)) {
-        return BuildFnHeadWithRetStruct(header, sv, fn, status);
-    }
+    bool return_by_arg = TypeIRBuilder::IsStructPtr(ret_type);
 
-    if (!CreateFunction(header, fn, status)) {
+    if (!CreateFunction(header, return_by_arg, fn, status)) {
         LOG(WARNING) << "Fail Build Function Header: " << status.msg;
         return false;
     }
     auto fn_name = sv->Enter((*fn)->getName().str());
     if (header->parameters_) {
-        bool ok = FillArgs(header->parameters_, sv, *fn, status);
+        bool ok = FillArgs(header->parameters_, sv, return_by_arg, *fn, status);
         if (!ok) {
             return false;
         }
@@ -97,28 +104,9 @@ bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *header,
     DLOG(INFO) << "build fn " << fn_name << " header done";
     return true;
 }
-bool FnIRBuilder::BuildFnHeadWithRetStruct(
-    const ::fesql::node::FnNodeFnHeander *fn_def, ScopeVar *sv,
-    ::llvm::Function **fn,
-    base::Status &status) {  // NOLINE
-    if (fn_def == NULL || fn == NULL) {
-        status.code = common::kCodegenError;
-        status.msg = "input is null";
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    node::FnNodeList new_parameters;
-    for_each(fn_def->parameters_->children.cbegin(),
-             fn_def->parameters_->children.cend(),
-             [&](node::FnNode *node) { new_parameters.AddChild(node); });
-    node::FnParaNode ret_arg("@ret_struct", fn_def->ret_type_);
-    new_parameters.AddChild(&ret_arg);
-    node::TypeNode ret(node::kBool);
-    node::FnNodeFnHeander header(fn_def->name_, &new_parameters, &ret);
-    return BuildFnHead(&header, sv, fn, status);
-}
+
 bool FnIRBuilder::CreateFunction(const ::fesql::node::FnNodeFnHeander *fn_def,
-                                 ::llvm::Function **fn,
+                                 bool return_by_arg, ::llvm::Function **fn,
                                  base::Status &status) {  // NOLINE
     if (fn_def == NULL || fn == NULL) {
         status.code = common::kCodegenError;
@@ -141,6 +129,10 @@ bool FnIRBuilder::CreateFunction(const ::fesql::node::FnNodeFnHeander *fn_def,
             return false;
         }
     }
+    if (return_by_arg) {
+        paras.push_back(ret_type);
+        ret_type = ::llvm::Type::getInt1Ty(module_->getContext());
+    }
 
     std::string fn_name = fn_def->GeIRFunctionName();
     ::llvm::ArrayRef<::llvm::Type *> array_ref(paras);
@@ -152,7 +144,7 @@ bool FnIRBuilder::CreateFunction(const ::fesql::node::FnNodeFnHeander *fn_def,
 }
 
 bool FnIRBuilder::FillArgs(const ::fesql::node::FnNodeList *node, ScopeVar *sv,
-                           ::llvm::Function *fn,
+                           bool return_by_arg, ::llvm::Function *fn,
                            base::Status &status) {  // NOLINE
     if (node == NULL) {
         status.code = common::kCodegenError;
@@ -168,7 +160,8 @@ bool FnIRBuilder::FillArgs(const ::fesql::node::FnNodeList *node, ScopeVar *sv,
             (::fesql::node::FnParaNode *)node->children[index];
         ::llvm::Argument *argu = &*it;
 
-        bool ok = sv->AddVar(pnode->GetName(), NativeValue::Create(argu));
+        bool ok = sv->AddVar(pnode->GetExprId()->GetExprString(),
+                             NativeValue::Create(argu));
         if (!ok) {
             status.code = common::kCodegenError;
             status.msg = "fail to define var " + pnode->GetName();
@@ -176,6 +169,16 @@ bool FnIRBuilder::FillArgs(const ::fesql::node::FnNodeList *node, ScopeVar *sv,
             return false;
         }
         index++;
+    }
+    if (return_by_arg) {
+        // last llvm func arg is ret addr
+        bool ok = sv->AddVar("@ret_struct", NativeValue::Create(&*it));
+        if (!ok) {
+            status.code = common::kCodegenError;
+            status.msg = "fail to define @ret_struct";
+            LOG(WARNING) << status.msg;
+            return false;
+        }
     }
     return true;
 }

@@ -12,6 +12,7 @@
            <module>fesql-native</module>
            <module>fesql-proto</module>
            <module>fesql-spark</module>
+           <module>fesql-flink</module>
     </modules>
     <packaging>pom</packaging>
     <name>sdk</name>

@@ -1,6 +1,7 @@
 package com._4paradigm.fesql.sqlcase.model;
 
 import lombok.Data;
+import org.apache.commons.collections.CollectionUtils;
 
 import java.util.List;
 
@@ -13,11 +14,29 @@ public class SQLCase {
     String sql;
     List<String> sqls;
     boolean standard_sql;
-    String create;
-    String insert;
+    boolean standard_sql_compatible;
     List<String> tags;
     String batch_plan;
     String request_plan;
     List<InputDesc> inputs;
-    OutputDesc expect;
+    ExpectDesc expect;
+
+    public static String formatSql(String sql, int idx, String name) {
+        return sql.replaceAll("\\{" + idx + "\\}", name);
+    }
+
+    public static String formatSql(String sql, String name) {
+        return sql.replaceAll("\\{auto\\}", name);
+    }
+
+    public String getSql() {
+        sql = formatSql(sql, Table.genAutoName());
+        if (CollectionUtils.isEmpty(inputs)) {
+            return sql;
+        }
+        for (int idx = 0; idx < inputs.size(); idx++) {
+            sql = formatSql(sql, idx, inputs.get(idx).getName());
+        }
+        return sql;
+    }
 }

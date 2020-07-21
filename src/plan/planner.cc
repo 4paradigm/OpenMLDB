@@ -597,7 +597,7 @@ bool Planner::CreateFuncDefPlan(
         return false;
     }
     *output = node_manager_->MakeFuncPlanNode(
-        dynamic_cast<const node::FnNodeFnDef *>(root));
+        dynamic_cast<node::FnNodeFnDef *>(const_cast<SQLNode *>(root)));
     return true;
 }
 
