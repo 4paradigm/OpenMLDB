@@ -59,6 +59,15 @@ class SQLRouterTest : public ::testing::Test {
     MiniCluster mc_;
 };
 
+TEST_F(SQLRouterTest, bad_zk) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = "127.0.0.1:1111";
+    sql_opt.zk_path = "/path";
+    sql_opt.session_timeout = 10;
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (router) ASSERT_TRUE(false);
+}
+
 TEST_F(SQLRouterTest, empty_db_test) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_.GetZkCluster();
