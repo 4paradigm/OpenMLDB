@@ -3,7 +3,9 @@ package com._4paradigm.fesql.batch;
 import com._4paradigm.fesql.common.FesqlException;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.table.api.Table;
+import org.apache.flink.table.api.TableConfig;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.bridge.java.BatchTableEnvironment;
 import org.apache.flink.table.expressions.Expression;
@@ -26,6 +28,10 @@ public class FesqlBatchTableEnvironment {
 
     public FesqlBatchTableEnvironment(BatchTableEnvironment batchTableEnvironment) {
         this.batchTableEnvironment = batchTableEnvironment;
+    }
+
+    public static FesqlBatchTableEnvironment create(BatchTableEnvironment batchTableEnvironment) {
+        return new FesqlBatchTableEnvironment(batchTableEnvironment);
     }
 
     public BatchTableEnvironment getBatchTableEnvironment() {
