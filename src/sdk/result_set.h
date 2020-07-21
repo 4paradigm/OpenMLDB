@@ -24,7 +24,11 @@
 
 namespace fesql {
 namespace sdk {
-
+struct Date {
+    int32_t year;
+    int32_t month;
+    int32_t day;
+};
 class ResultSet {
  public:
     ResultSet() {}
@@ -186,6 +190,13 @@ class ResultSet {
 
     virtual bool GetDate(uint32_t index, int32_t* days) = 0;
 
+    virtual Date GetStructDateUnsafe(int32_t index) {
+        Date date;
+        if (!GetDate(index, &date.year, &date.month, &date.day)) {
+            return Date();
+        }
+        return date;
+    }
     virtual int32_t GetDateUnsafe(uint32_t index) {
         if (IsNULL(index)) return 0;
         int32_t val = 0;

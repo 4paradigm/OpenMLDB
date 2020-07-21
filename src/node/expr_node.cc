@@ -17,7 +17,7 @@
 namespace fesql {
 namespace node {
 
-int64_t ExprIdNode::expr_id_cnt_ = 0;
+std::atomic<int64_t> ExprIdNode::expr_id_cnt_(0);
 
 Status ColumnRefNode::InferAttr(ExprAnalysisContext* ctx) {
     auto schemas_context = ctx->schemas_context();

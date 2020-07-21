@@ -406,6 +406,18 @@ ExprNode *NodeManager::MakeFuncNode(const FnDefNode *fn, ExprListNode *list_ptr,
     return RegisterNode(node_ptr);
 }
 
+ExprNode *NodeManager::MakeFuncNode(const FnDefNode *fn,
+                                    const std::vector<ExprNode *> &args,
+                                    const SQLNode *over) {
+    ExprListNode args_node;
+    for (auto child : args) {
+        args_node.AddChild(child);
+    }
+    CallExprNode *node_ptr = new CallExprNode(
+        fn, &args_node, dynamic_cast<const WindowDefNode *>(over));
+    return RegisterNode(node_ptr);
+}
+
 ExprNode *NodeManager::MakeConstNode(int16_t value) {
     ExprNode *node_ptr = new ConstNode(value);
     return RegisterNode(node_ptr);

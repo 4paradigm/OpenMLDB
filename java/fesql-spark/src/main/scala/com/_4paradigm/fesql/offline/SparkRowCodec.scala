@@ -31,9 +31,8 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
 
   def encode(row: Row): NativeRow = {
     var result: NativeRow = null
-    var offset = 0
-
     val sliceSizes = getNativeRowSliceSizes(row)
+
     for (i <- 0 until sliceNum) {
       val sliceSize = sliceSizes(i)
       if (i == 0) {
@@ -44,7 +43,6 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
         val buf = CoreAPI.AppendRow(result, sliceSize)
         encodeSingle(row, buf, sliceSize, i)
       }
-      offset += sliceSizes(i)
     }
     result
   }
@@ -113,7 +111,7 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
     for (i <- 0 until fieldNum) {
       val field = schema(i)
       if (rowView.IsNULL(i)) {
-        output(i) = null
+        output(fieldOffset) = null
       } else {
         field.dataType match {
           case ShortType =>

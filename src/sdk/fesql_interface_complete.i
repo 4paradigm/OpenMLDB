@@ -7,6 +7,7 @@
 %shared_ptr(fesql::sdk::Table);
 %shared_ptr(fesql::sdk::TableSet);
 %shared_ptr(fesql::sdk::ResultSet);
+%shared_ptr(fesql::sdk::Date);
 %shared_ptr(fesql::sdk::RequestRow);
 
 %{
