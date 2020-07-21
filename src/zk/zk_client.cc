@@ -183,7 +183,6 @@ bool ZkClient::Register(bool startup_flag) {
 }
 
 bool ZkClient::RegisterName() {
-    std::string name = names_root_path_ + "/" + endpoint_;
     bool ok = Mkdir(names_root_path_);
     if (!ok) {
         return false;
@@ -191,15 +190,27 @@ bool ZkClient::RegisterName() {
     if (zk_ == NULL || !connected_) {
         return false;
     }
+    std::string name = names_root_path_ + "/" + endpoint_;
     std::string value = real_endpoint_.c_str();
-    int ret = zoo_create(zk_, name.c_str(), value.c_str(), value.size(),
-                         &ZOO_OPEN_ACL_UNSAFE, 0, NULL, 0);
-    if (ret == ZOK) {
-        PDLOG(INFO, "register with name %s value %s ok",
+    if (IsExistNode(name) == 0) {
+        if (SetNodeValue(name, value)) {
+            PDLOG(INFO, "set node with name %s value %s ok",
+                    endpoint_.c_str(), value.c_str());
+            return true;
+        }
+        PDLOG(INFO, "set node with name %s value %s failed",
                 endpoint_.c_str(), value.c_str());
+    } else {
+        int ret = zoo_create(zk_, name.c_str(), value.c_str(), value.size(),
+                &ZOO_OPEN_ACL_UNSAFE, 0, NULL, 0);
+        if (ret == ZOK) {
+            PDLOG(INFO, "register with name %s value %s ok",
+                    endpoint_.c_str(), value.c_str());
+            return true;
+        }
+        PDLOG(WARNING, "fail to register with name %s value %s, err from zk %d",
+                endpoint_.c_str(), value.c_str(), ret);
     }
-    PDLOG(WARNING, "fail to register with name %s value %s, err from zk %d",
-            endpoint_.c_str(), value.c_str(), ret);
     return false;
 }
 
