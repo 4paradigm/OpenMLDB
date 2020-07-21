@@ -250,6 +250,7 @@ bool ClusterInfo::UpdateRemoteRealEpMap() {
             tmp_map.insert(std::make_pair(ep, real_endpoint));
         }
     }
+    std::lock_guard<std::mutex> lock(mu_);
     remote_real_ep_map_.clear();
     remote_real_ep_map_ = tmp_map;
     return true;
@@ -1878,7 +1879,17 @@ bool NameServerImpl::Init(const std::string& real_endpoint) {
         if (!zk_client_->RegisterName()) {
             PDLOG(WARNING, "fail to RegisterName");
         }
-        real_ep_map_.insert(std::make_pair(FLAGS_endpoint, real_endpoint));
+        if (real_ep_map_.empty()) {
+            real_ep_map_.insert(std::make_pair(FLAGS_endpoint, real_endpoint));
+        } else {
+            auto n_it = real_ep_map_.find(FLAGS_endpoint);
+            if (n_it == real_ep_map_.end()) {
+                real_ep_map_.insert(std::make_pair(
+                            FLAGS_endpoint, real_endpoint));
+            } else {
+                n_it->second = real_endpoint;
+            }
+        }
     }
     task_vec_.resize(FLAGS_name_server_task_max_concurrency +
                      FLAGS_name_server_task_concurrency_for_replica_cluster);
@@ -11918,6 +11929,7 @@ void NameServerImpl::UpdateRemoteRealEpMap() {
             break;
         }
         decltype(nsc_) tmp_nsc;
+        decltype(remote_real_ep_map_) old_map;
         {
             std::lock_guard<std::mutex> lock(mu_);
             if (nsc_.empty()) {
@@ -11929,6 +11941,7 @@ void NameServerImpl::UpdateRemoteRealEpMap() {
                     tmp_nsc.insert(std::make_pair(i.first, i.second));
                 }
             }
+            old_map = remote_real_ep_map_;
         }
         decltype(remote_real_ep_map_) tmp_map;
         for (auto& i : tmp_nsc) {
@@ -11949,6 +11962,10 @@ void NameServerImpl::UpdateRemoteRealEpMap() {
             std::lock_guard<std::mutex> lock(mu_);
             remote_real_ep_map_.clear();
             remote_real_ep_map_ = tmp_map;
+        }
+        if (old_map != tmp_map) {
+            thread_pool_.AddTask(boost::bind(
+                        &NameServerImpl::UpdateRealEpMapToTablet, this));
         }
     } while (false);
     task_thread_pool_.DelayTask(FLAGS_get_replica_status_interval,

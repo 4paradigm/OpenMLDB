@@ -104,6 +104,7 @@ class ClusterInfo {
     std::map<std::string, std::string> remote_real_ep_map_;
 
  private:
+    std::mutex mu_;
     std::shared_ptr<ZkClient> zk_client_;
     uint64_t session_term_;
     // todo :: add statsus variable show replicas status
