@@ -5,16 +5,12 @@ import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.CoreAPI;
 import com._4paradigm.fesql.vm.FeSQLJITWrapper;
 import com._4paradigm.fesql.vm.PhysicalTableProjectNode;
-import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.common.functions.MapPartitionFunction;
 import org.apache.flink.api.common.functions.RichMapFunction;
-import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.types.Row;
-import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +58,14 @@ public class StreamTableProjectPlan {
                 com._4paradigm.fesql.codec.Row outputNativeRow = CoreAPI.RowProject(functionPointer, inputFesqlRow, false);
                 return outputCodec.decodeFesqlRow(outputNativeRow);
             }
+
+            @Override
+            public void close() throws Exception {
+                super.close();
+                inputCodec.delete();
+                outputCodec.delete();
+            }
+
         }).returns(finalOutputTypeInfo);
 
         // Convert DataStream<Row> to Table

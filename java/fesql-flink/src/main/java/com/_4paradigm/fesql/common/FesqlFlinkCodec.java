@@ -227,4 +227,16 @@ public class FesqlFlinkCodec {
         }
     }
 
+    public void delete() {
+        for (RowView rowView: this.rowViews) {
+            rowView.delete();
+        }
+        this.rowViews = null;
+
+        for (RowBuilder rowBuilder: this.rowBuilders) {
+            rowBuilder.delete();
+        }
+        this.rowBuilders = null;
+    }
+
 }

@@ -60,6 +60,14 @@ public class TableProjectPlan {
                 com._4paradigm.fesql.codec.Row outputNativeRow = CoreAPI.RowProject(functionPointer, inputFesqlRow, false);
                 return outputCodec.decodeFesqlRow(outputNativeRow);
             }
+
+            @Override
+            public void close() throws Exception {
+                super.close();
+                inputCodec.delete();
+                outputCodec.delete();
+            }
+
         }).returns(finalOutputTypeInfo);
 
         // Convert DataSet<Row> to Table
