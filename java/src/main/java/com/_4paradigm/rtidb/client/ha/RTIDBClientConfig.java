@@ -30,7 +30,7 @@ public class RTIDBClientConfig {
 	private String zkTableRootPath = "";
 	private String zkTableNotifyPath = "";
 	private String zkNodeRootPath = "";
-    private String zkServerNamePath = "";
+	private String zkServerNamePath = "";
 	private int zkSesstionTimeout = 10000;
 	private int ioThreadNum = 2;
 	private int writeTimeout = 10000;
