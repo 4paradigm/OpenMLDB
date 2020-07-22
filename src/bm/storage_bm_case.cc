@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "base/mem_pool.h"
 #include "bm/base_bm.h"
 #include "codec/fe_row_codec.h"
 #include "codegen/ir_base_builder.h"
@@ -56,7 +57,52 @@ void ArrayListIterate(benchmark::State* state, MODE mode, int64_t data_size) {
         }
     }
 }
-
+int32_t RunByteMemPoolAlloc1000(size_t request_size) {
+    fesql::base::ByteMemoryPool pool;
+    for (int i = 0; i < 1000; i++) {
+        pool.Alloc(request_size);
+    }
+    return 1;
+}
+int32_t RunNewFree1000(size_t request_size) {
+    fesql::base::ByteMemoryPool pool;
+    std::vector<char*> chucks;
+    for (int i = 0; i < 1000; i++) {
+        chucks.push_back(new char[request_size]);
+    }
+    for (auto chuck : chucks) {
+        delete[] chuck;
+    }
+    return 1;
+}
+void NewFree1000(benchmark::State* state, MODE mode,
+                          size_t request_size) {
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(RunNewFree1000(request_size));
+            }
+            break;
+        }
+        case TEST: {
+            RunByteMemPoolAlloc1000(request_size);
+        }
+    }
+}
+void ByteMemPoolAlloc1000(benchmark::State* state, MODE mode,
+                          size_t request_size) {
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(RunByteMemPoolAlloc1000(request_size));
+            }
+            break;
+        }
+        case TEST: {
+            RunByteMemPoolAlloc1000(request_size);
+        }
+    }
+}
 int64_t RunIterateTest(storage::BaseList<uint64_t, int64_t>* list) {
     int64_t cnt = 0;
     auto iter = list->NewIterator();
