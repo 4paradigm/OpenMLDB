@@ -82,7 +82,7 @@ auto_test:
   script:
       - ln -sf /depends/thirdparty thirdparty
       - ln -sf /depends/thirdsrc thirdsrc
-      - source /root/.bashrc && bash steps/auto_test.sh
+      - source /root/.bashrc && HOME=/rambuild bash steps/auto_test.sh
   after_script:
       - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
       - bash steps/upload-nexus.sh $CI_COMMIT_SHA
