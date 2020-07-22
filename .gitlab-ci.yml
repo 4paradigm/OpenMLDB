@@ -73,6 +73,8 @@ java_ut:
               - rtidb-auto-test/target/surefire-reports/TEST-*.xml
               - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
               - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+  dependencies:
+    - build
 
 auto_test:
   stage: test
@@ -99,6 +101,9 @@ auto_test:
               - rtidb-auto-test/target/surefire-reports/TEST-*.xml
               - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
               - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+  dependencies:
+    - build
+
 c++_ut:
   stage: test
   script:
@@ -111,6 +116,8 @@ c++_ut:
       reports:
           junit:
               - reports/*.xml
+  dependencies:
+    - build
 
 py3_ut:
   stage: test
@@ -125,6 +132,8 @@ py3_ut:
     reports:
       junit:
         - ./python/test/*xml
+  dependencies:
+    - build
 
 
 tablet_one_demension:
@@ -142,6 +151,8 @@ tablet_one_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+  dependencies:
+    - build
 
 tablet_multi_demension:
     stage: ts_integration_test
@@ -158,6 +169,8 @@ tablet_multi_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+  dependencies:
+    - build
 
 ns_one_demension:
     stage: ns_integration_test
@@ -174,6 +187,8 @@ ns_one_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+  dependencies:
+    - build
 
 ns_multi_demension:
     stage: ns_integration_test
@@ -190,6 +205,8 @@ ns_multi_demension:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+  dependencies:
+    - build
 
 disk_table:
     stage: ns_integration_test
@@ -206,6 +223,8 @@ disk_table:
         reports:
             junit:
                 - ./test-output/integrationtest/test-reports/*.xml
+  dependencies:
+    - build
 
 deploy-package:
     stage: deploy
@@ -215,6 +234,7 @@ deploy-package:
         - source /root/.bashrc && bash steps/deploy_package.sh
     only:
         - tags
+  dependencies: []
 
 docker-image:
     stage: deploy
@@ -231,3 +251,4 @@ docker-image:
         - develop
         - release/*
         - feat/push-nexus-meta
+  dependencies: []
