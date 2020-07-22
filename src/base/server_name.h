@@ -22,6 +22,9 @@ namespace base {
 
 bool WriteTxt(const std::string& full_path,
         std::string* name) {
+    if (name == nullptr) {
+        return false;
+    }
     std::ofstream my_cout(full_path);
     if (my_cout.fail()) {
         PDLOG(WARNING, "init ofstream failed, path %s",
@@ -38,6 +41,9 @@ bool WriteTxt(const std::string& full_path,
 
 bool ReadTxt(const std::string& full_path,
         std::string* name) {
+    if (name == nullptr) {
+        return false;
+    }
     std::ifstream infile(full_path);
     if (infile.fail()) {
         PDLOG(WARNING, "init ifstream failed, path %s",
@@ -50,6 +56,9 @@ bool ReadTxt(const std::string& full_path,
 }
 
 bool GetNameFromTxt(std::string* name) {
+    if (name == nullptr) {
+        return false;
+    }
     if (!IsExists(FLAGS_data_dir)) {
         if (!MkdirRecur(FLAGS_data_dir)) {
             PDLOG(WARNING, "make dir failed, path %s",

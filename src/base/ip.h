@@ -15,6 +15,9 @@ namespace rtidb {
 namespace base {
 
 bool GetLocalIp(std::string* ip) {
+    if (ip == nullptr) {
+        return false;
+    }
     char name[256];
     gethostname(name, sizeof(name));
     struct hostent* host = gethostbyname(name);
