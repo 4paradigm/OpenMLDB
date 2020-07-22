@@ -12,6 +12,7 @@
 #include <tuple>
 #include <unordered_set>
 #include "codegen/date_ir_builder.h"
+#include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
@@ -164,6 +165,40 @@ struct DistinctCountDef {
     }
 };
 
+void DefaultUDFLibrary::InitStringUDF() {
+    RegisterExternal("substring")
+        .args<StringRef, int32_t>(reinterpret_cast<void*>(
+            static_cast<void (*)(codec::StringRef*, int32_t,
+                                 codec::StringRef*)>(udf::v1::sub_string)))
+        .return_by_arg(true);
+
+    RegisterExternal("substring")
+        .args<StringRef, int32_t, int32_t>(
+            static_cast<void (*)(codec::StringRef*, int32_t, int32_t,
+                                 codec::StringRef*)>(udf::v1::sub_string))
+        .return_by_arg(true);
+    //    RegisterExprUDF("substring")
+    //        .args<StringRef, AnyArg, AnyArg>([](UDFResolveContext* ctx,
+    //                                             ExprNode* str, ExprNode* pos,
+    //                                             ExprNode* len) -> ExprNode* {
+    //            if (!pos->GetOutputType()->IsInteger()) {
+    //                ctx->SetError("substring do not support pos type " +
+    //                              pos->GetOutputType()->GetName());
+    //                return nullptr;
+    //            }
+    //            if (!len->GetOutputType()->IsInteger()) {
+    //                ctx->SetError("substring do not support len type " +
+    //                              pos->GetOutputType()->GetName());
+    //                return nullptr;
+    //            }
+    //            auto nm = ctx->node_manager();
+    //            return nm->MakeFuncNode("substring",
+    //                                    {str, nm->MakeCastNode(node::kInt32,
+    //                                    pos),
+    //                                     nm->MakeCastNode(node::kInt32, len)},
+    //                                    nullptr);
+    //        });
+}
 void DefaultUDFLibrary::IniMathUDF() {
     RegisterExternal("log")
         .args<float>(static_cast<float (*)(float)>(log))
@@ -303,6 +338,8 @@ void DefaultUDFLibrary::Init() {
         .return_by_arg(true)
         .args_in<Timestamp, Date, StringRef>();
 
+    //
+
     RegisterAlias("lead", "at");
 
     RegisterCodeGenUDF("identity")
@@ -354,6 +391,7 @@ void DefaultUDFLibrary::Init() {
                  StringRef>();
 
     IniMathUDF();
+    InitStringUDF();
 }
 
 }  // namespace udf

@@ -150,6 +150,11 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_row_iter_get_cur_slice_size",
         reinterpret_cast<void*>(&fesql::vm::RowIterGetCurSliceSize));
+
+    fesql::vm::FeSQLJIT::AddSymbol(
+        jd, mi, "fesql_memery_pool_alloc",
+        reinterpret_cast<void*>(&fesql::codec::v1::MemoeryPoolAlloc));
+
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_row_iter_delete",
         reinterpret_cast<void*>(&fesql::vm::RowIterDelete));

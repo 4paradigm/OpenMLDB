@@ -23,7 +23,7 @@ add_library(fesql_codegen STATIC
         list_ir_builder.cc
         predicate_expr_ir_builder.cc
         native_value.cc
-        context.cc)
+        context.cc memery_ir_builder.h memory_ir_builder.cc)
 if (TESTING_ENABLE)
 set(vm_deps_libs
         fesql_case boost_filesystem ${yaml_libs} ${VM_LIBS} fesql_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})
@@ -86,7 +86,7 @@ list(APPEND test_list block_ir_builder_test)
 
 add_executable(udf_ir_builder_test udf_ir_builder_test.cc codegen_base_test)
 target_link_libraries(udf_ir_builder_test gtest
-        ${vm_deps_libs} )
+        ${vm_deps_libs})
 add_test(udf_ir_builder_test udf_ir_builder_test --gtest_output=xml:${CMAKE_BINARY_DIR}/udf_ir_builder_test.xml)
 list(APPEND test_list udf_ir_builder_test)
 

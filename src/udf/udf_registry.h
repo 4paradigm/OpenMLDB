@@ -833,6 +833,23 @@ struct TypeAnnotatedFuncPtr {
                       to_type_node(nm)};
           }) {}
 
+    template <typename T1, typename T2, typename T3, typename T4>
+    TypeAnnotatedFuncPtr(void (*fn)(T1*, T2, T3, T4*))  // NOLINT
+        : ptr(reinterpret_cast<void*>(fn)),
+          return_by_arg(true),
+          get_type_func([](node::NodeManager* nm, node::TypeNode** ret,
+                           std::vector<node::TypeNode*>* args) {
+            *ret =
+                DataTypeTrait<typename CCallDataTypeTrait<T4*>::LiteralTag>::
+                to_type_node(nm);
+            *args = {
+                DataTypeTrait<typename CCallDataTypeTrait<T1*>::LiteralTag>::
+                to_type_node(nm),
+                DataTypeTrait<typename CCallDataTypeTrait<T2>::LiteralTag>::
+                to_type_node(nm),
+                DataTypeTrait<typename CCallDataTypeTrait<T3>::LiteralTag>::
+                to_type_node(nm)};
+          }) {}
     void* ptr;
     bool return_by_arg;
     GetTypeF get_type_func;

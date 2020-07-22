@@ -80,6 +80,8 @@ bool StringIRBuilder::GetSize(::llvm::BasicBlock* block, ::llvm::Value* str,
                               ::llvm::Value** output) {
     return Get(block, str, 0, output);
 }
+
+// 浅拷贝
 bool StringIRBuilder::CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
                                ::llvm::Value* dist) {
     if (nullptr == src || nullptr == dist) {
@@ -121,6 +123,23 @@ bool StringIRBuilder::GetData(::llvm::BasicBlock* block, ::llvm::Value* str,
 bool StringIRBuilder::SetData(::llvm::BasicBlock* block, ::llvm::Value* str,
                               ::llvm::Value* data) {
     return Set(block, str, 1, data);
+}
+bool StringIRBuilder::Concat(::llvm::BasicBlock* block, ::llvm::Value* mem_pool,
+                             ::llvm::Value* str1, ::llvm::Value* str2,
+                             ::llvm::Value* output) {
+    if (nullptr == mem_pool) {
+        LOG(WARNING) << "Fail to concat string: mem_pool or output is null";
+        return false;
+    }
+}
+base::Status StringIRBuilder::SubString(::llvm::BasicBlock* block,
+                                        const NativeValue& str,
+                                        const NativeValue& pos,
+                                        const NativeValue& len,
+                                        NativeValue* output) {
+    CHECK_TRUE(nullptr != str.GetRaw() && nullptr != pos.GetRaw(),
+               "fail codegen sub string op: str or pos is null");
+
 }
 }  // namespace codegen
 }  // namespace fesql

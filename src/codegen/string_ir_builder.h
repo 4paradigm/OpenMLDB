@@ -40,6 +40,12 @@ class StringIRBuilder : public StructTypeIRBuilder {
                  ::llvm::Value** output);
     bool SetData(::llvm::BasicBlock* block, ::llvm::Value* str,
                  ::llvm::Value* data);
+    bool Concat(::llvm::BasicBlock* block, ::llvm::Value* mem_pool,
+                ::llvm::Value* str1, ::llvm::Value* str2,
+                ::llvm::Value* output);
+    base::Status SubString(::llvm::BasicBlock* block, const NativeValue& str,
+                           const NativeValue& pos, const NativeValue& len,
+                           NativeValue* output);
 };
 }  // namespace codegen
 }  // namespace fesql

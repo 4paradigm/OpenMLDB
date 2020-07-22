@@ -304,6 +304,16 @@ TEST_F(UDFIRBuilderTest, log_udf_test) {
     CheckUDF<double, double>("log10", log10(2.0), 2.0);
 }
 
+TEST_F(UDFIRBuilderTest, substring_udf_test) {
+    std::string res = "12345";
+    std::string str = "1234567890";
+    CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
+        "substring", codec::StringRef(res.size(), res.data()),
+        codec::StringRef(str.size(),
+                         str.data()),
+        1, 5);
+}
+
 }  // namespace codegen
 }  // namespace fesql
 

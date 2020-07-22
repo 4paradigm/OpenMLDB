@@ -92,6 +92,50 @@ int32_t weekofyear(codec::Date *date) {
     return d.week_number();
 }
 
+void sub_string(fesql::codec::StringRef *str, int32_t from,
+                fesql::codec::StringRef *output) {
+    if (str->IsNull()) {
+        output->data_ = nullptr;
+        output->size_ = 0;
+        return;
+    }
+    return sub_string(str, from, str->size_, output);
+}
+// set output as empty string if from == 0
+void sub_string(fesql::codec::StringRef *str, int32_t from, int32_t len,
+                fesql::codec::StringRef *output) {
+    if (str->IsNull()) {
+        output->data_ = nullptr;
+        output->size_ = 0;
+        return;
+    }
+
+    if (0 == from || len < 1) {
+        output->data_ = str->data_;
+        output->size_ = 0;
+        return;
+    }
+
+    int32_t str_size = static_cast<int32_t>(str->size_);
+
+    // `from` is out of string range
+    if (from > str_size || from < -1 * str_size) {
+        output->data_ = str->data_;
+        output->size_ = 0;
+        return;
+    }
+
+    if (from < 0) {
+        from = str_size + from;
+    } else {
+        from = from - 1;
+    }
+
+    len = str_size - from < len ? str_size - from : len;
+    output->data_ = str->data_ + from;
+    output->size_ = static_cast<uint32_t>(len);
+    return;
+}
 template <class V>
 bool iterator_list(int8_t *input, int8_t *output) {
     if (nullptr == input || nullptr == output) {

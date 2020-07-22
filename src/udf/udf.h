@@ -38,6 +38,7 @@ struct AtStructList {
     }
 };
 
+
 template <class V>
 struct Minimum {
     V operator()(V l, V r) { return l < r ? l : r; }
@@ -95,6 +96,10 @@ int32_t weekofyear(int64_t ts);
 int32_t weekofyear(fesql::codec::Timestamp *ts);
 int32_t weekofyear(fesql::codec::Date *ts);
 
+void sub_string(fesql::codec::StringRef *str, int32_t pos,
+                fesql::codec::StringRef *output);
+void sub_string(fesql::codec::StringRef *str, int32_t pos, int32_t len,
+                   fesql::codec::StringRef *output);
 }  // namespace v1
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);                // NOLINT
 void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
