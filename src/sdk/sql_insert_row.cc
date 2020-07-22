@@ -60,7 +60,7 @@ SQLInsertRow::SQLInsertRow(
             ts_set_.insert(idx);
         } else if (table_info_->column_desc_v1(idx).add_ts_idx()) {
             index_map_[index_cnt++].push_back(idx);
-            raw_dimensions_[idx] = "";
+            raw_dimensions_[idx] = fesql::codec::NONETOKEN;
         }
         column_name_map.insert(
             std::make_pair(table_info_->column_desc_v1(idx).name(), idx));
@@ -71,7 +71,8 @@ SQLInsertRow::SQLInsertRow(
         for (int idx = 0; idx < table_info_->column_key_size(); ++idx) {
             for (const auto& column : table_info_->column_key(idx).col_name()) {
                 index_map_[idx].push_back(column_name_map[column]);
-                raw_dimensions_[column_name_map[column]] = "";
+                raw_dimensions_[column_name_map[column]] =
+                    fesql::codec::NONETOKEN;
             }
         }
     }
@@ -248,13 +249,25 @@ bool SQLInsertRow::AppendString(const char* val, uint32_t length) {
 }
 
 bool SQLInsertRow::AppendDate(uint32_t year, uint32_t month, uint32_t day) {
+    if (IsDimension()) {
+        if (year < 1900 || year > 9999) return false;
+        if (month < 1 || month > 12) return false;
+        if (day < 1 || day > 31) return false;
+        int32_t date = (year - 1900) << 16;
+        date = date | ((month - 1) << 8);
+        date = date | day;
+        PackDimension(std::to_string(date));
+    }
     if (rb_.AppendDate(year, month, day)) {
         return MakeDefault();
     }
     return false;
 }
 
-bool SQLInsertRow::AppendDate(uint32_t date) {
+bool SQLInsertRow::AppendDate(int32_t date) {
+    if (IsDimension()) {
+        PackDimension(std::to_string(date));
+    }
     if (rb_.AppendDate(date)) {
         return MakeDefault();
     }
