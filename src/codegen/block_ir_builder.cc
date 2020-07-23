@@ -259,9 +259,21 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
     }
     llvm::Value *container_value = container_value_wrapper.GetValue(&builder);
 
-    llvm::Value *iterator = nullptr;
+    fesql::node::TypeNode container_type_node;
     if (false ==
-        list_ir_builder.BuildIterator(container_value, &iterator, status)) {
+            GetFullType(container_value->getType(), &container_type_node) ||
+        fesql::node::kList != container_type_node.base_) {
+        status.msg = "fail to codegen list[pos]: invalid list type";
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    fesql::node::TypeNode *elem_type_node = container_type_node.generics_[0];
+
+    llvm::Value *iterator = nullptr;
+    status = list_ir_builder.BuildIterator(container_value, elem_type_node,
+                                           &iterator);
+    if (!status.isOK()) {
         LOG(WARNING) << "fail to build iterator expression: " << status.msg;
         return false;
     }
@@ -276,8 +288,9 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
         ListIRBuilder list_ir_builder(builder.GetInsertBlock(), sv_);
         // loop condition
         llvm::Value *condition;
-        if (!list_ir_builder.BuildIteratorHasNext(iterator, &condition,
-                                                  status)) {
+        status = list_ir_builder.BuildIteratorHasNext(iterator, elem_type_node,
+                                                      &condition);
+        if (!status.isOK()) {
             LOG(WARNING) << "fail to build iterator has next expression: "
                          << status.msg;
             return false;
@@ -291,16 +304,16 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
         ListIRBuilder list_ir_builder(builder.GetInsertBlock(), sv_);
         VariableIRBuilder var_ir_builder(builder.GetInsertBlock(), sv_);
         // loop step
-        llvm::Value *next;
-        if (false ==
-            list_ir_builder.BuildIteratorNext(iterator, &next, status)) {
+        NativeValue next;
+        status =
+            list_ir_builder.BuildIteratorNext(iterator, elem_type_node, &next);
+        if (!status.isOK()) {
             LOG(WARNING) << "fail to build iterator next expression: "
                          << status.msg;
             return false;
         }
         auto var_key = node->for_in_node_->var_->GetExprString();
-        if (!var_ir_builder.StoreValue(var_key, NativeValue::Create(next),
-                                       false, status)) {
+        if (!var_ir_builder.StoreValue(var_key, next, false, status)) {
             return false;
         }
         // loop body
@@ -384,8 +397,19 @@ bool BlockIRBuilder::ClearScopeValue(llvm::BasicBlock *block,
     if (nullptr != delete_values) {
         for (auto iter = delete_values->cbegin(); iter != delete_values->cend();
              iter++) {
-            if (!list_ir_builder_delete.BuildIteratorDelete(*iter, &ret_delete,
-                                                            status)) {
+            fesql::node::TypeNode iter_type_node;
+            if (false == GetFullType((*iter)->getType(), &iter_type_node) ||
+                fesql::node::kIterator != iter_type_node.base_) {
+                status.msg =
+                    "fail to codegen iterator.delete(): invalid iterator type";
+                status.code = common::kCodegenError;
+                LOG(WARNING) << status.msg;
+                return false;
+            }
+            fesql::node::TypeNode *elem_type_node = iter_type_node.generics_[0];
+            status = list_ir_builder_delete.BuildIteratorDelete(
+                *iter, elem_type_node, &ret_delete);
+            if (!status.isOK()) {
                 LOG(WARNING) << "fail to build iterator delete expression: "
                              << status.msg;
                 return false;
@@ -404,8 +428,21 @@ bool BlockIRBuilder::ClearAllScopeValues(llvm::BasicBlock *block,
         if (nullptr != delete_values) {
             for (auto iter = delete_values->cbegin();
                  iter != delete_values->cend(); iter++) {
-                if (!list_ir_builder_delete.BuildIteratorDelete(
-                        *iter, &ret_delete, status)) {
+                fesql::node::TypeNode iter_type_node;
+                if (false == GetFullType((*iter)->getType(), &iter_type_node) ||
+                    fesql::node::kIterator != iter_type_node.base_) {
+                    status.msg =
+                        "fail to codegen iterator.delete(): invalid iterator "
+                        "type";
+                    status.code = common::kCodegenError;
+                    LOG(WARNING) << status.msg;
+                    return false;
+                }
+                fesql::node::TypeNode *elem_type_node =
+                    iter_type_node.generics_[0];
+                status = list_ir_builder_delete.BuildIteratorDelete(
+                    *iter, elem_type_node, &ret_delete);
+                if (!status.isOK()) {
                     LOG(WARNING) << "fail to build iterator delete expression: "
                                  << status.msg;
                     return false;
