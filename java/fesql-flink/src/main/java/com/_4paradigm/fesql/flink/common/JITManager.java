@@ -1,4 +1,4 @@
-package com._4paradigm.fesql.common;
+package com._4paradigm.fesql.flink.common;
 
 import com._4paradigm.fesql.FeSqlLibrary;
 import com._4paradigm.fesql.vm.Engine;

@@ -1,7 +1,7 @@
-package com._4paradigm.fesql.common.planner;
+package com._4paradigm.fesql.flink.common.planner;
 
-import com._4paradigm.fesql.common.FesqlException;
-import com._4paradigm.fesql.common.FesqlUtil;
+import com._4paradigm.fesql.flink.common.FesqlException;
+import com._4paradigm.fesql.flink.common.FesqlUtil;
 import com._4paradigm.fesql.node.ConstNode;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.ColumnSource;

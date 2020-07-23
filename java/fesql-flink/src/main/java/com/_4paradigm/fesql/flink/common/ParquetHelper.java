@@ -1,4 +1,4 @@
-package com._4paradigm.fesql.common;
+package com._4paradigm.fesql.flink.common;
 
 import org.apache.flink.formats.parquet.ParquetRowInputFormat;
 import org.apache.flink.streaming.api.datastream.DataStream;

@@ -1,6 +1,6 @@
-package com._4paradigm.fesql.batch;
+package com._4paradigm.fesql.flink.batch;
 
-import com._4paradigm.fesql.common.planner.FesqlFlinkPlanner;
+import com._4paradigm.fesql.flink.common.planner.FesqlFlinkPlanner;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.DataSet;

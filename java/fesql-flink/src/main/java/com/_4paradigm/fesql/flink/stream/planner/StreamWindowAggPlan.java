@@ -1,7 +1,7 @@
-package com._4paradigm.fesql.stream.planner;
+package com._4paradigm.fesql.flink.stream.planner;
 
-import com._4paradigm.fesql.common.*;
-import com._4paradigm.fesql.common.planner.GeneralPlanContext;
+import com._4paradigm.fesql.flink.common.*;
+import com._4paradigm.fesql.flink.common.planner.GeneralPlanContext;
 import com._4paradigm.fesql.node.ExprListNode;
 import com._4paradigm.fesql.node.ExprNode;
 import com._4paradigm.fesql.node.OrderByNode;

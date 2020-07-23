@@ -1,6 +1,6 @@
-package com._4paradigm.fesql.common.planner;
+package com._4paradigm.fesql.flink.common.planner;
 
-import com._4paradigm.fesql.common.SerializableByteBuffer;
+import com._4paradigm.fesql.flink.common.SerializableByteBuffer;
 import org.apache.flink.table.api.bridge.java.BatchTableEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import java.nio.ByteBuffer;

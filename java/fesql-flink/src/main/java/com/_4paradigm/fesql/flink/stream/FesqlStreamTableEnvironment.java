@@ -1,6 +1,6 @@
-package com._4paradigm.fesql.stream;
+package com._4paradigm.fesql.flink.stream;
 
-import com._4paradigm.fesql.common.planner.FesqlFlinkPlanner;
+import com._4paradigm.fesql.flink.common.planner.FesqlFlinkPlanner;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;

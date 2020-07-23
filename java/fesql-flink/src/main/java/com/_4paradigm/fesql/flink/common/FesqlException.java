@@ -1,4 +1,4 @@
-package com._4paradigm.fesql.common;
+package com._4paradigm.fesql.flink.common;
 
 public class FesqlException extends Exception {
 
