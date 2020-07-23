@@ -159,7 +159,6 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_row_slice_size",
         reinterpret_cast<void*>(&fesql::vm::RowGetSliceSize));
-
 }
 
 void InitCodecSymbol(vm::FeSQLJIT* jit_ptr) {

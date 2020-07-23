@@ -9,13 +9,13 @@
 #include "codegen/memery_ir_builder.h"
 namespace fesql {
 namespace codegen {
-MemoryIRBuilder::MemoryIRBuilder(::llvm::BasicBlock* block)
-    : block_(block) {}
+MemoryIRBuilder::MemoryIRBuilder(::llvm::BasicBlock* block) : block_(block) {}
 MemoryIRBuilder::~MemoryIRBuilder() {}
 
 base::Status MemoryIRBuilder::Alloc(::llvm::Value* request_size,
                                     ::llvm::Value** output) {
-    CHECK_TRUE(nullptr != request_size, "fail to alloc memory, request size value is null");
+    CHECK_TRUE(nullptr != request_size,
+               "fail to alloc memory, request size value is null");
 
     ::llvm::IRBuilder<> builder(block_);
     auto ptr_ty = builder.getInt8PtrTy();

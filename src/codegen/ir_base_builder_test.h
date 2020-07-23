@@ -90,13 +90,13 @@ class ModuleTestFunction {
  public:
     Ret operator()(Args... args) {
         if (return_by_arg) {
-            auto fn = reinterpret_cast<void (*)(
+            auto fn = reinterpret_cast<void (*)(  // NOLINT
                 typename ToLLVMArgTrait<Args>::ArgT..., Ret *)>(fn_ptr);
             Ret res;
             fn(ToLLVMArgTrait<Args>::to_llvm_arg(args)..., &res);
             return res;
         } else {
-            auto fn = reinterpret_cast<Ret (*)(
+            auto fn = reinterpret_cast<Ret (*)(  // NOLINT
                 typename ToLLVMArgTrait<Args>::ArgT...)>(fn_ptr);
             return fn(ToLLVMArgTrait<Args>::to_llvm_arg(args)...);
         }
@@ -325,7 +325,7 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
                 ::llvm::Type *llvm_ty = nullptr;
                 codegen::GetLLVMType(ctx->GetModule(), dtype, &llvm_ty);
                 llvm_arg_types.push_back(llvm_ty);
-            };
+            }
             node::ExprNode *body = ApplyExprFuncHelper(
                 &nm, arg_exprs, std::index_sequence_for<Args...>(), expr_func);
             CHECK_TRUE(body != nullptr, "Build output expr failed");

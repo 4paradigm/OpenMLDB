@@ -139,7 +139,6 @@ base::Status StringIRBuilder::SubString(::llvm::BasicBlock* block,
                                         NativeValue* output) {
     CHECK_TRUE(nullptr != str.GetRaw() && nullptr != pos.GetRaw(),
                "fail codegen sub string op: str or pos is null");
-
 }
 }  // namespace codegen
 }  // namespace fesql

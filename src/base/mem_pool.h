@@ -44,7 +44,7 @@ class MemoryChuck {
 };
 class ByteMemoryPool {
  public:
-    ByteMemoryPool(size_t init_size = MemoryChuck::DEFAULT_CHUCK_SIZE)
+    explicit ByteMemoryPool(size_t init_size = MemoryChuck::DEFAULT_CHUCK_SIZE)
         : chucks_(nullptr) {
         ExpandStorage(init_size);
     }

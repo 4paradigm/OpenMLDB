@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include <string>
 #include "base/mem_pool.h"
+#include <string>
 #include "gtest/gtest.h"
 
 namespace fesql {
 namespace base {
 
-class MemPoolTest: public ::testing::Test {
+class MemPoolTest : public ::testing::Test {
  public:
     MemPoolTest() {}
     ~MemPoolTest() {}
@@ -32,7 +32,7 @@ TEST_F(MemPoolTest, ByteMemoryPoolTest) {
         ByteMemoryPool mem_pool;
         char* s1 = mem_pool.Alloc(10);
         memcpy(s1, "helloworld", 10);
-        ASSERT_EQ("helloworld", std::string(s1,10));
+        ASSERT_EQ("helloworld", std::string(s1, 10));
     }
 
     {
@@ -45,12 +45,11 @@ TEST_F(MemPoolTest, ByteMemoryPoolTest) {
 
         char* s3 = mem_pool.Alloc(15);
         memcpy(s3, s1, 10);
-        memcpy(s3+10, s2, 5);
+        memcpy(s3 + 10, s2, 5);
         ASSERT_EQ("helloworld", std::string(s1, 10));
-        ASSERT_EQ("fesql", std::string(s2,5));
-        ASSERT_EQ("helloworldfesql", std::string(s3,15));
+        ASSERT_EQ("fesql", std::string(s2, 5));
+        ASSERT_EQ("helloworldfesql", std::string(s3, 15));
     }
-
 }
 }  // namespace base
 }  // namespace fesql

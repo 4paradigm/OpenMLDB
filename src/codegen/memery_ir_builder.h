@@ -18,7 +18,7 @@ namespace codegen {
 
 class MemoryIRBuilder {
  public:
-    MemoryIRBuilder(::llvm::BasicBlock* block);
+    explicit MemoryIRBuilder(::llvm::BasicBlock* block);
     ~MemoryIRBuilder();
 
     base::Status Alloc(::llvm::Value* request_size,

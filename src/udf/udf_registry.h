@@ -896,7 +896,7 @@ class ExternalFuncRegistryHelper
         node::TypeNode* ret_type = nullptr;
         fn_ptr.get_type_func(node_manager(), &ret_type, &arg_types);
         args<LiteralArgTypes...>(name, fn_ptr.ptr);
-        // TODO :  validate cur_def_.arg_types_ vs arg_types
+        // TODO(baoxinqi): validate cur_def_.arg_types_ vs arg_types
         cur_def_->SetRetType(ret_type);
         return *this;
     }
