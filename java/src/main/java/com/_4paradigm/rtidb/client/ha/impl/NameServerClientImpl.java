@@ -36,6 +36,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private String zkEndpoints;
     private String leaderPath;
     private String severNamesPath;
+    private String sdkEndpointPath;
     private volatile ZooKeeper zookeeper;
     private SingleEndpointRpcClient rpcClient;
     private volatile NameServer ns;
@@ -70,6 +71,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         this.zkEndpoints = config.getZkEndpoints();
         this.leaderPath = config.getZkRootPath() + "/leader";
         this.severNamesPath = config.getZkRootPath() + "/map/names";
+        this.sdkEndpointPath = config.getZkRootPath() + "/map/sdkendpoints";
         this.config = config;
     }
 
@@ -83,16 +85,22 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     public NameServerClientImpl(String endpoint) {
         // get real endpoint
         String realEp = endpoint;
-        byte[] data = null;
+        // get sdkendpoint
         try {
-            data = zookeeper.getData(this.severNamesPath + "/" + realEp, false, null);
+            byte[] data1 = zookeeper.getData(this.sdkEndpointPath + "/" + realEp, false, null);
+            if (data1 != null) {
+                realEp = new String(data1, Charset.forName("UTF-8"));
+            } else {
+                byte[] data2 = null;
+                data2 = zookeeper.getData(this.severNamesPath + "/" + realEp, false, null);
+                if (data2 != null) {
+                    realEp = new String(data2, Charset.forName("UTF-8"));
+                }
+            }
         } catch (KeeperException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
             e.printStackTrace();
-        }
-        if (data != null) {
-            realEp = new String(data, Charset.forName("UTF-8"));
         }
         EndPoint addr = new EndPoint(realEp);
         bs = new RpcBaseClient();
@@ -190,10 +198,16 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         Collections.sort(children);
         byte[] bytes = zookeeper.getData(leaderPath + "/" + children.get(0), false, null);
         String realEp = new String(bytes, Charset.forName("UTF-8"));
-        // get real endpoint
-        byte[] data = zookeeper.getData(this.severNamesPath + "/" + realEp, false, null);
-        if (data != null) {
-            realEp = new String(data, Charset.forName("UTF-8"));
+        // get sdkendpoint
+        byte[] data1 = zookeeper.getData(this.sdkEndpointPath + "/" + realEp, false, null);
+        if (data1 != null) {
+            realEp = new String(data1, Charset.forName("UTF-8"));
+        } else {
+            // get real endpoint
+            byte[] data2 = zookeeper.getData(this.severNamesPath + "/" + realEp, false, null);
+            if (data2 != null) {
+                realEp = new String(data2, Charset.forName("UTF-8"));
+            }
         }
 
         EndPoint endpoint = new EndPoint(realEp);
