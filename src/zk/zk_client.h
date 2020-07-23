@@ -71,11 +71,13 @@ class ZkClient {
     // log all event from zookeeper
     void LogEvent(int type, int state, const char* path);
 
+    bool MkdirNoLock(const std::string& path);
     bool Mkdir(const std::string& path);
 
     bool GetNodeValue(const std::string& node, std::string& value); // NOLINT
     bool GetNodeValueLocked(const std::string& node, std::string& value); // NOLINT
 
+    bool SetNodeValueNoLock(const std::string& node, const std::string& value);
     bool SetNodeValue(const std::string& node, const std::string& value);
 
     bool SetNodeWatcher(const std::string& node, watcher_fn watcher,
@@ -101,6 +103,7 @@ class ZkClient {
 
     bool WatchItem(const std::string& path, ItemChangedCallback callback);
 
+    int IsExistNodeNoLock(const std::string& node);
     int IsExistNode(const std::string& node);
 
     inline bool IsConnected() {
