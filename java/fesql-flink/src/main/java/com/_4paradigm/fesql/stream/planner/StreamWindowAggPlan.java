@@ -1,6 +1,7 @@
-package com._4paradigm.fesql.stream;
+package com._4paradigm.fesql.stream.planner;
 
 import com._4paradigm.fesql.common.*;
+import com._4paradigm.fesql.common.planner.GeneralPlanContext;
 import com._4paradigm.fesql.node.ExprListNode;
 import com._4paradigm.fesql.node.ExprNode;
 import com._4paradigm.fesql.node.OrderByNode;
@@ -26,7 +27,7 @@ public class StreamWindowAggPlan {
 
     private static final Logger logger = LoggerFactory.getLogger(StreamWindowAggPlan.class);
 
-    public static Table gen(FesqlPlanContext planContext, PhysicalWindowAggrerationNode node, Table childTable) throws FesqlException {
+    public static Table gen(GeneralPlanContext planContext, PhysicalWindowAggrerationNode node, Table childTable) throws FesqlException {
 
         DataStream<Row> inputDatastream = planContext.getStreamTableEnvironment().toAppendStream(childTable, Row.class);
 

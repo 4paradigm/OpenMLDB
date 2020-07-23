@@ -1,19 +1,20 @@
-package com._4paradigm.fesql.common;
+package com._4paradigm.fesql.common.planner;
 
+import com._4paradigm.fesql.common.SerializableByteBuffer;
 import org.apache.flink.table.api.bridge.java.BatchTableEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import java.nio.ByteBuffer;
 
 
-public class FesqlPlanContext {
+public class GeneralPlanContext {
 
     private String tag;
     private BatchTableEnvironment batchTableEnvironment;
     private StreamTableEnvironment streamTableEnvironment;
-    private FesqlPlanner fesqlBatchPlanner;
+    private FesqlFlinkPlanner fesqlBatchPlanner;
     private SerializableByteBuffer moduleBuffer;
 
-    public FesqlPlanContext(String tag, BatchTableEnvironment batchTableEnvironment, FesqlPlanner fesqlBatchPlanner, ByteBuffer moduleBuffer) {
+    public GeneralPlanContext(String tag, BatchTableEnvironment batchTableEnvironment, FesqlFlinkPlanner fesqlBatchPlanner, ByteBuffer moduleBuffer) {
         this.tag = tag;
         this.batchTableEnvironment = batchTableEnvironment;
         this.streamTableEnvironment = null;
@@ -21,7 +22,7 @@ public class FesqlPlanContext {
         this.moduleBuffer = new SerializableByteBuffer(moduleBuffer);
     }
 
-    public FesqlPlanContext(String tag, StreamTableEnvironment streamTableEnvironment, FesqlPlanner fesqlBatchPlanner, ByteBuffer moduleBuffer) {
+    public GeneralPlanContext(String tag, StreamTableEnvironment streamTableEnvironment, FesqlFlinkPlanner fesqlBatchPlanner, ByteBuffer moduleBuffer) {
         this.tag = tag;
         this.batchTableEnvironment = null;
         this.streamTableEnvironment = streamTableEnvironment;
@@ -41,7 +42,7 @@ public class FesqlPlanContext {
         return this.streamTableEnvironment;
     }
 
-    public FesqlPlanner getFesqlBatchPlanner() {
+    public FesqlFlinkPlanner getFesqlBatchPlanner() {
         return fesqlBatchPlanner;
     }
 

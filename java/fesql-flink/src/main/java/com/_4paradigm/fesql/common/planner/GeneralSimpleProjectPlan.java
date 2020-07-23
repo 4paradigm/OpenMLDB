@@ -1,7 +1,6 @@
 package com._4paradigm.fesql.common.planner;
 
 import com._4paradigm.fesql.common.FesqlException;
-import com._4paradigm.fesql.common.FesqlPlanContext;
 import com._4paradigm.fesql.common.FesqlUtil;
 import com._4paradigm.fesql.node.ConstNode;
 import com._4paradigm.fesql.type.TypeOuterClass;
@@ -13,8 +12,6 @@ import org.apache.flink.table.api.ApiExpression;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Table;
 
-import java.sql.Date;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +22,7 @@ import static org.apache.flink.table.api.Expressions.lit;
 
 public class GeneralSimpleProjectPlan {
 
-    public static Table gen(FesqlPlanContext planContext, PhysicalSimpleProjectNode node, Table childTable) throws FesqlException {
+    public static Table gen(GeneralPlanContext planContext, PhysicalSimpleProjectNode node, Table childTable) throws FesqlException {
 
         ColumnSourceList columnSourceList = node.getProject_().getColumn_sources_();
 

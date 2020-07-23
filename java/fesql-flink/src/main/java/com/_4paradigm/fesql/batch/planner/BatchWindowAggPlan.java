@@ -1,6 +1,7 @@
-package com._4paradigm.fesql.batch;
+package com._4paradigm.fesql.batch.planner;
 
 import com._4paradigm.fesql.common.*;
+import com._4paradigm.fesql.common.planner.GeneralPlanContext;
 import com._4paradigm.fesql.node.ExprListNode;
 import com._4paradigm.fesql.node.ExprNode;
 import com._4paradigm.fesql.node.OrderByNode;
@@ -17,8 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,7 +25,7 @@ public class BatchWindowAggPlan {
 
     private static final Logger logger = LoggerFactory.getLogger(BatchWindowAggPlan.class);
 
-    public static Table gen(FesqlPlanContext planContext, PhysicalWindowAggrerationNode node, Table childTable) throws FesqlException {
+    public static Table gen(GeneralPlanContext planContext, PhysicalWindowAggrerationNode node, Table childTable) throws FesqlException {
 
         DataSet<Row> inputDataset = planContext.getBatchTableEnvironment().toDataSet(childTable, Row.class);
 

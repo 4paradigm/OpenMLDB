@@ -1,6 +1,6 @@
 package com._4paradigm.fesql.batch;
 
-import com._4paradigm.fesql.common.FesqlPlanner;
+import com._4paradigm.fesql.common.planner.FesqlFlinkPlanner;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.DataSet;
@@ -99,7 +99,7 @@ public class FesqlBatchTableEnvironment {
             query = query.trim() + ";";
         }
 
-        FesqlPlanner planner = new FesqlPlanner(this);
+        FesqlFlinkPlanner planner = new FesqlFlinkPlanner(this);
         return planner.plan(query);
     }
 
