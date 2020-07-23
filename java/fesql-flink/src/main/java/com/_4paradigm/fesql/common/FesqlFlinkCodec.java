@@ -212,8 +212,11 @@ public class FesqlFlinkCodec {
                 } else if (columnType == kTimestamp) {
                     // TODO: Set time zone if needed
                     // Get the object of LocalDateTime
-                    LocalDateTime localDateTime = (LocalDateTime) value;
-                    rowBuilder.AppendTimestamp(localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+                    //LocalDateTime localDateTime = (LocalDateTime) value;
+                    //rowBuilder.AppendTimestamp(localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+
+                    Timestamp timestamp = (Timestamp) value;
+                    rowBuilder.AppendTimestamp(timestamp.getTime());
                 } else if (columnType == kDate) {
                     // TODO: Check date data object in Flink row
                     Date dateValue = (Date) value;

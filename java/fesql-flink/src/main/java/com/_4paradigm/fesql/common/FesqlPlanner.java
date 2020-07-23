@@ -1,6 +1,7 @@
 package com._4paradigm.fesql.common;
 
 import com._4paradigm.fesql.FeSqlLibrary;
+import com._4paradigm.fesql.batch.BatchWindowAggPlan;
 import com._4paradigm.fesql.batch.DataProviderPlan;
 import com._4paradigm.fesql.batch.FesqlBatchTableEnvironment;
 import com._4paradigm.fesql.batch.TableProjectPlan;
@@ -121,7 +122,7 @@ public class FesqlPlanner {
                 PhysicalWindowAggrerationNode physicalWindowAggrerationNode = PhysicalWindowAggrerationNode.CastFrom(projectNode);
 
                 if (isBatch) {
-                    throw new FesqlException(String.format("Fesql-flink does not support over window node for batch mode"));
+                    outputTable = BatchWindowAggPlan.gen(planContext, physicalWindowAggrerationNode, children.get(0));
                 } else {
                     outputTable = StreamWindowAggPlan.gen(planContext, physicalWindowAggrerationNode, children.get(0));
                 }

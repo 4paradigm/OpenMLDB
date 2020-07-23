@@ -1,4 +1,4 @@
-package com._4paradigm.fesql.stream;
+package com._4paradigm.fesql.batch;
 
 import com._4paradigm.fesql.common.*;
 import com._4paradigm.fesql.node.ExprListNode;
@@ -6,29 +6,29 @@ import com._4paradigm.fesql.node.ExprNode;
 import com._4paradigm.fesql.node.OrderByNode;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.*;
-import org.apache.flink.api.java.tuple.Tuple;
+import org.apache.flink.api.common.functions.RichGroupReduceFunction;
+import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
-public class StreamWindowAggPlan {
+public class BatchWindowAggPlan {
 
-    private static final Logger logger = LoggerFactory.getLogger(StreamWindowAggPlan.class);
+    private static final Logger logger = LoggerFactory.getLogger(BatchWindowAggPlan.class);
 
     public static Table gen(FesqlPlanContext planContext, PhysicalWindowAggrerationNode node, Table childTable) throws FesqlException {
 
-        DataStream<Row> inputDatastream = planContext.getStreamTableEnvironment().toAppendStream(childTable, Row.class);
+        DataSet<Row> inputDataset = planContext.getBatchTableEnvironment().toDataSet(childTable, Row.class);
 
         // Take out the serializable objects
         String functionName = node.project().fn_name();
@@ -71,8 +71,8 @@ public class StreamWindowAggPlan {
             appendSlices = 0;
         }
 
-        // TODO: keyby multiple keys
-        DataStream<Row> outputDatastream = inputDatastream.keyBy(groupbyKeyIndexes.get(0)).process(new KeyedProcessFunction<Tuple, Row, Row>() {
+
+        DataSet<Row> outputDataset = inputDataset.groupBy(0).reduceGroup(new RichGroupReduceFunction<Row, Row>() {
 
             long functionPointer;
             FesqlFlinkCodec inputCodec;
@@ -94,28 +94,29 @@ public class StreamWindowAggPlan {
             }
 
             @Override
-            public void processElement(Row row, Context context, Collector<Row> collector) throws Exception {
-                processWindowCompute(row, collector);
-            }
+            public void reduce(Iterable<Row> iterable, Collector<Row> collector) throws Exception {
 
-            public void processWindowCompute(Row currentRow, Collector<Row> collector) throws Exception {
-                com._4paradigm.fesql.codec.Row inputFesqlRow = inputCodec.encodeFlinkRow(currentRow);
+                for (Row currentRow: iterable) {
+                    com._4paradigm.fesql.codec.Row inputFesqlRow = inputCodec.encodeFlinkRow(currentRow);
 
-                // TODO: Check type or orderby column
-                LocalDateTime orderbyValue = (LocalDateTime)(currentRow.getField(orderbyKeyIndex));
-                long orderbyLongValue = orderbyValue.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                    // TODO: Check type or orderby column
+                    //LocalDateTime orderbyValue = (LocalDateTime)(currentRow.getField(orderbyKeyIndex));
+                    //long orderbyLongValue = orderbyValue.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                    Timestamp timestamp = (Timestamp)currentRow.getField(orderbyKeyIndex);
+                    long orderbyLongValue = timestamp.getTime();
 
-                com._4paradigm.fesql.codec.Row outputFesqlRow = CoreAPI.WindowProject(functionPointer, orderbyLongValue, inputFesqlRow, true, appendSlices, windowInterface);
+                    com._4paradigm.fesql.codec.Row outputFesqlRow = CoreAPI.WindowProject(functionPointer, orderbyLongValue, inputFesqlRow, true, appendSlices, windowInterface);
 
-                Row outputFlinkRow = outputCodec.decodeFesqlRow(outputFesqlRow);
+                    Row outputFlinkRow = outputCodec.decodeFesqlRow(outputFesqlRow);
 
-                collector.collect(outputFlinkRow);
+                    collector.collect(outputFlinkRow);
+                }
+
             }
 
         }).returns(finalOutputTypeInfo);
 
-        // Convert DataStream<Row> to Table
-        return planContext.getStreamTableEnvironment().fromDataStream(outputDatastream);
+        return planContext.getBatchTableEnvironment().fromDataSet(outputDataset);
 
     }
 
