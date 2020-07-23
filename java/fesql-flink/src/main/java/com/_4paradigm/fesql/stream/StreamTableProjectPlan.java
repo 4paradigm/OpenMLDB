@@ -1,31 +1,29 @@
-package com._4paradigm.fesql.batch;
+package com._4paradigm.fesql.stream;
 
 import com._4paradigm.fesql.common.*;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.CoreAPI;
 import com._4paradigm.fesql.vm.FeSQLJITWrapper;
 import com._4paradigm.fesql.vm.PhysicalTableProjectNode;
-import org.apache.flink.api.common.functions.MapPartitionFunction;
 import org.apache.flink.api.common.functions.RichMapFunction;
-import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.types.Row;
-import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class TableProjectPlan {
+public class StreamTableProjectPlan {
 
-    private static final Logger logger = LoggerFactory.getLogger(TableProjectPlan.class);
+    private static final Logger logger = LoggerFactory.getLogger(StreamTableProjectPlan.class);
 
     public static Table gen(FesqlPlanContext planContext, PhysicalTableProjectNode node, Table childTable) throws FesqlException {
 
-        DataSet<Row> inputDataset = planContext.getBatchTableEnvironment().toDataSet(childTable, Row.class);
+        DataStream<Row> inputDatastream = planContext.getStreamTableEnvironment().toAppendStream(childTable, Row.class);
 
         // Take out the serializable objects
         String functionName = node.project().fn_name();
@@ -37,7 +35,7 @@ public class TableProjectPlan {
         List<TypeOuterClass.ColumnDef> finalOutputSchema = FesqlUtil.getMergedNodeOutputColumnList(node);
         RowTypeInfo finalOutputTypeInfo = FesqlUtil.generateRowTypeInfo(finalOutputSchema);
 
-        DataSet<Row> outputDataset = inputDataset.map(new RichMapFunction<Row, Row>() {
+        DataStream<Row> outputDatastream = inputDatastream.map(new RichMapFunction<Row, Row>() {
 
             long functionPointer;
             FesqlFlinkCodec inputCodec;
@@ -70,8 +68,9 @@ public class TableProjectPlan {
 
         }).returns(finalOutputTypeInfo);
 
-        // Convert DataSet<Row> to Table
-        return planContext.getBatchTableEnvironment().fromDataSet(outputDataset);
+        // Convert DataStream<Row> to Table
+        return planContext.getStreamTableEnvironment().fromDataStream(outputDatastream);
+
     }
 
 }

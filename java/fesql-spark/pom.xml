@@ -338,6 +338,19 @@
 				<activeByDefault>false</activeByDefault>
 			</activation>
 		</profile>
+
+		<!-- Build with Spark 2.4.5 -->
+		<profile>
+			<id>spark2.4.5</id>
+			<properties>
+				<spark.version>2.4.5</spark.version>
+				<scala.version>2.12.10</scala.version>
+				<scala.binary.version>2.12</scala.binary.version>
+			</properties>
+			<activation>
+				<activeByDefault>false</activeByDefault>
+			</activation>
+		</profile>
 	</profiles>
 
 </project>
