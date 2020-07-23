@@ -45,6 +45,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private RTIDBClientConfig config;
     private RpcBaseClient bs = null;
     private static Map<String, Type.DataType> TYPE_MAPING = new HashMap<>();
+
     static {
         TYPE_MAPING.put("int16", Type.DataType.kSmallInt);
         TYPE_MAPING.put("int32", Type.DataType.kInt);
@@ -56,6 +57,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         TYPE_MAPING.put("bool", Type.DataType.kBool);
         TYPE_MAPING.put("date", Type.DataType.kDate);
     }
+
     private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
         public Thread newThread(Runnable r) {
             Thread t = Executors.defaultThreadFactory().newThread(r);
@@ -79,27 +81,24 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
 
     @Deprecated
     public NameServerClientImpl(String endpoint) {
-        EndPoint addr = new EndPoint(endpoint);
-        bs = new RpcBaseClient();
-        rpcClient = new SingleEndpointRpcClient(bs);
         // get real endpoint
-        BrpcChannelGroup bcg;
+        String realEp = endpoint;
         byte[] data = null;
         try {
-            data = zookeeper.getData(this.severNamesPath + "/" + endpoint, false, null);
+            data = zookeeper.getData(this.severNamesPath + "/" + realEp, false, null);
         } catch (KeeperException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
         if (data != null) {
-            String realEp = new String(data, Charset.forName("UTF-8"));
-            bcg = new BrpcChannelGroup(realEp, addr.getPort(),
-                    bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
-        } else {
-            bcg = new BrpcChannelGroup(addr.getIp(), addr.getPort(),
-                    bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
+            realEp = new String(data, Charset.forName("UTF-8"));
         }
+        EndPoint addr = new EndPoint(realEp);
+        bs = new RpcBaseClient();
+        rpcClient = new SingleEndpointRpcClient(bs);
+        BrpcChannelGroup bcg = new BrpcChannelGroup(addr.getIp(), addr.getPort(),
+                bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
         rpcClient.updateEndpoint(addr, bcg);
         ns = (NameServer) RpcProxy.getProxy(rpcClient, NameServer.class);
     }
@@ -190,22 +189,20 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }
         Collections.sort(children);
         byte[] bytes = zookeeper.getData(leaderPath + "/" + children.get(0), false, null);
-        EndPoint endpoint = new EndPoint(new String(bytes));
+        String realEp = new String(bytes, Charset.forName("UTF-8"));
+        // get real endpoint
+        byte[] data = zookeeper.getData(this.severNamesPath + "/" + realEp, false, null);
+        if (data != null) {
+            realEp = new String(data, Charset.forName("UTF-8"));
+        }
+
+        EndPoint endpoint = new EndPoint(realEp);
         if (rpcClient != null) {
             rpcClient.stop();
         }
         rpcClient = new SingleEndpointRpcClient(bs);
-        // get real endpoint
-        BrpcChannelGroup bcg;
-        byte[] data = zookeeper.getData(this.severNamesPath + "/" + endpoint, false, null);
-        if (data != null) {
-            String realEp = new String(data, Charset.forName("UTF-8"));
-            bcg = new BrpcChannelGroup(realEp, endpoint.getPort(),
-                    bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
-        } else {
-            bcg = new BrpcChannelGroup(endpoint.getIp(), endpoint.getPort(),
-                    bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
-        }
+        BrpcChannelGroup bcg = new BrpcChannelGroup(endpoint.getIp(), endpoint.getPort(),
+                bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap());
         rpcClient.updateEndpoint(endpoint, bcg);
         ns = (NameServer) RpcProxy.getProxy(rpcClient, NameServer.class);
         logger.info("connect leader path {} endpoint {} ok", children.get(0), endpoint);

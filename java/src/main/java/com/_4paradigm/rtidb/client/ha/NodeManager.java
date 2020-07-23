@@ -30,10 +30,6 @@ public class NodeManager {
     }
 
     public void update(Set<EndPoint> aliveEndpointSet) {
-        update(aliveEndpointSet, new HashMap<String, String>());
-    }
-
-    public void update(Set<EndPoint> aliveEndpointSet, HashMap<String, String> realEpMap) {
         Map<EndPoint, BrpcChannelGroup> oldEndpoints = endpoints;
         Set<EndPoint> oldEndpointSet = oldEndpoints.keySet();
         // new add endpoint
@@ -43,26 +39,12 @@ public class NodeManager {
             EndPoint endpoint = it.next();
             if (!oldEndpoints.containsKey(endpoint)) {
                 // new add endpoint
-                String realEp = endpoint.getIp();
-                if (realEpMap != null && !realEpMap.isEmpty() && realEpMap.containsKey(endpoint.getIp())) {
-                    realEp = realEpMap.get(endpoint.getIp());
-                }
-                newEndpoints.put(endpoint, new BrpcChannelGroup(realEp, endpoint.getPort(),
+                newEndpoints.put(endpoint, new BrpcChannelGroup(endpoint.getIp(), endpoint.getPort(),
                         bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap()));
                 logger.info("add new alive endpoint ip:{} port:{}", endpoint.getIp(), endpoint.getPort());
             } else {
                 // reuse old endpoint channel
-                if (realEpMap == null || realEpMap.isEmpty() || !realEpMap.containsKey(endpoint.getIp())) {
-                    newEndpoints.put(endpoint, oldEndpoints.get(endpoint));
-                } else {
-                    String realEp = realEpMap.get(endpoint.getIp());
-                    if (oldEndpoints.get(endpoint).getIp().equals(realEp)) {
-                        newEndpoints.put(endpoint, oldEndpoints.get(endpoint));
-                    } else {
-                        newEndpoints.put(endpoint, new BrpcChannelGroup(realEp, endpoint.getPort(),
-                                bs.getRpcClientOptions().getMaxConnectionNumPerHost(), bs.getBootstrap()));
-                    }
-                }
+                newEndpoints.put(endpoint, oldEndpoints.get(endpoint));
             }
         }
 
@@ -81,7 +63,7 @@ public class NodeManager {
         }
         oldEndpoints.clear();
     }
-    
+
     public void close() {
         Iterator<Map.Entry<EndPoint, BrpcChannelGroup>> it = endpoints.entrySet().iterator();
         while (it.hasNext()) {
