@@ -7,6 +7,7 @@ import com._4paradigm.fesql.batch.TableProjectPlan;
 import com._4paradigm.fesql.stream.FesqlStreamTableEnvironment;
 import com._4paradigm.fesql.stream.StreamDataProviderPlan;
 import com._4paradigm.fesql.stream.StreamTableProjectPlan;
+import com._4paradigm.fesql.stream.StreamWindowAggPlan;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.*;
 import org.apache.flink.table.api.Table;
@@ -113,6 +114,16 @@ public class FesqlPlanner {
                     outputTable = TableProjectPlan.gen(planContext, physicalTableProjectNode, children.get(0));
                 } else {
                     outputTable = StreamTableProjectPlan.gen(planContext, physicalTableProjectNode, children.get(0));
+                }
+
+            } else if (projectType.swigValue() == ProjectType.kWindowAggregation.swigValue()) {
+
+                PhysicalWindowAggrerationNode physicalWindowAggrerationNode = PhysicalWindowAggrerationNode.CastFrom(projectNode);
+
+                if (isBatch) {
+                    throw new FesqlException(String.format("Fesql-flink does not support over window node for batch mode"));
+                } else {
+                    outputTable = StreamWindowAggPlan.gen(planContext, physicalWindowAggrerationNode, children.get(0));
                 }
 
             } else {
