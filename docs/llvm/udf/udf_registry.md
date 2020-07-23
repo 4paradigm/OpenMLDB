@@ -123,40 +123,24 @@ DefaultUDFLibrary: 用于定义当前使用的udfs
 
 
 
-## UDF Registry and Helper
+## UDFResolveContext
 
-接下来，我们介绍一下系统中用到的5种函数注册器以及相关的注册助手（XXXXUDFRegistryHelper)
+> ```
+> Overall information to resolve a sql function call.
+> SQL UDF 函数的整体信息：包括参数列表、窗口（如果有得话），所在函数库等
+> ```
 
-### ExternalFuncRegistry：External函数注册器
-
-```C++
-/**
- * Interface to resolve udf to external native functions.
- */
-class ExternalFuncRegistry : public UDFRegistry {
- public:
-    explicit ExternalFuncRegistry(const std::string& name)
-        : UDFRegistry(name), allow_window_(true), allow_project_(true) {}
-
-    Status ResolveFunction(UDFResolveContext* ctx,
-                           node::FnDefNode** result) override;
-
-    Status Register(const std::vector<std::string>& args,
-                    node::ExternalFnDefNode* func);
-
-    void SetAllowWindow(bool flag) { this->allow_window_ = flag; }
-
-    void SetAllowProject(bool flag) { this->allow_project_ = flag; }
-
-    const ArgSignatureTable<node::ExternalFnDefNode*>& GetTable() const {
-        return reg_table_;
-    }
-
+```c++
+class UDFResolveContext {
+  // ...
  private:
-    ArgSignatureTable<node::ExternalFnDefNode*> reg_table_;
-    bool allow_window_;
-    bool allow_project_;
-}
+    ExprListNode* args_;	// 函数参数列表
+    const SQLNode* over_; // 窗口（如果有的话）
+    node::NodeManager* manager_;	// NodeManager 辅助创建节点的
+    udf::UDFLibrary* library_;	// 函数库
+
+    node::ExprAnalysisContext* analysis_ctx_;
+    std::string error_msg_;
+};
 ```
 
-一般关联C Native函数
