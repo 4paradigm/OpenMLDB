@@ -336,6 +336,10 @@ class NameServerImpl : public NameServer {
                       const DropDatabaseRequest* request,
                       GeneralResponse* response, Closure* done);
 
+    void SetSdkEndpoint(RpcController* controller,
+            const SetSdkEndpointRequest* request,
+            GeneralResponse* response, Closure* done);
+
     int SyncExistTable(
         const std::string& alias, const std::string& name,
         const std::vector<::rtidb::nameserver::TableInfo> tables_remote,

@@ -320,6 +320,22 @@ bool NsClient::SyncTable(const std::string& name,
     return false;
 }
 
+bool NsClient::SetSdkEndpoint(const std::string& server_name,
+        const std::string& sdk_endpoint, std::string* msg) {
+    ::rtidb::nameserver::SetSdkEndpointRequest request;
+    request.set_server_name(server_name);
+    request.set_sdk_endpoint(sdk_endpoint);
+    ::rtidb::nameserver::GeneralResponse response;
+    bool ok = client_.SendRequest(
+            &::rtidb::nameserver::NameServer_Stub::SetSdkEndpoint,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg->swap(*response.mutable_msg());
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 bool NsClient::AddReplica(const std::string& name,
                           const std::set<uint32_t>& pid_set,
                           const std::string& endpoint, std::string& msg) {

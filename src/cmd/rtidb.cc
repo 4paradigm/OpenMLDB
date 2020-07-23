@@ -980,6 +980,22 @@ void HandleNSClientSyncTable(const std::vector<std::string>& parts,
     }
 }
 
+void HandleNSClientSetSdkEndpoint(const std::vector<std::string>& parts,
+                             ::rtidb::client::NsClient* client) {
+    if (parts.size() != 3) {
+        std::cout << "Bad format for setsdkendpoint!"
+            "eg. setsdkendpoint server_name sdkendpoint" << std::endl;
+        return;
+    }
+    std::string msg;
+    bool ret = client->SetSdkEndpoint(parts[1], parts[2], &msg);
+    if (!ret) {
+        std::cout << "setsdkendpoint failed. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "setsdkendpoint ok" << std::endl;
+}
+
 void HandleNSClientAddIndex(const std::vector<std::string>& parts,
                             ::rtidb::client::NsClient* client) {
     if (parts.size() < 3) {
@@ -3670,9 +3686,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         printf("switchmode - switch cluster mode\n");
         printf(
             "synctable - synctable from leader cluster to replica cluster\n");
-        printf("deleteindx - delete index of specified table");
-        printf("update - update record of specified table");
-        printf("query - query record from relational table");
+        printf("deleteindx - delete index of specified table\n");
+        printf("update - update record of specified table\n");
+        printf("query - query record from relational table\n");
+        printf("setsdkendpoint - set sdkendpoint for external network sdk\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -3892,6 +3909,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("usage: synctable table_name cluster_alias [pid]\n");
             printf("ex: synctable test bj\n");
             printf("ex: synctable test bj 0\n");
+        } else if (parts[1] == "setsdkendpoint") {
+            printf("desc: set sdkendpoint for external network sdk\n");
+            printf("usage: setsdkendpoint server_name sdkendpoint\n");
+            printf("ex: setsdkendpoint tb1 202.12.18.1:9527\n");
         } else if (parts[1] == "addindex") {
             printf("desc: add new index to table\n");
             printf(
@@ -6418,6 +6439,8 @@ void StartNsClient() {
             HandleNSSwitchMode(parts, &client);
         } else if (parts[0] == "synctable") {
             HandleNSClientSyncTable(parts, &client);
+        } else if (parts[0] == "setsdkendpoint") {
+            HandleNSClientSetSdkEndpoint(parts, &client);
         } else if (parts[0] == "addindex") {
             HandleNSClientAddIndex(parts, &client);
         } else if (parts[0] == "deleteindex") {

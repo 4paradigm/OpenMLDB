@@ -11880,6 +11880,42 @@ void NameServerImpl::DropDatabase(RpcController* controller,
     response->set_msg("ok");
 }
 
+void NameServerImpl::SetSdkEndpoint(RpcController* controller,
+        const SetSdkEndpointRequest* request,
+        GeneralResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    const std::string server_name = request->server_name();
+    const std::string sdk_endpoint = request->sdk_endpoint();
+    const std::string path =
+        FLAGS_zk_root_path + "/map/sdkendpoints/" + server_name;
+    std::lock_guard<std::mutex> lock(mu_);
+    if (zk_client_->IsExistNode(path) != 0) {
+        if (!zk_client_->CreateNode(path, sdk_endpoint)) {
+            PDLOG(WARNING,
+                    "create zk node %s value %s failed", path, sdk_endpoint);
+            response->set_code(::rtidb::base::ReturnCode::kCreateZkFailed);
+            response->set_msg("create zk failed");
+            return;
+        }
+    } else {
+        if (!zk_client_->SetNodeValue(path, sdk_endpoint)) {
+            PDLOG(WARNING,
+                    "set zk node %s value %s failed", path, sdk_endpoint);
+            response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
+            response->set_msg("set zk failed");
+            return;
+        }
+    }
+    PDLOG(INFO, "SetSdkEndpoint success. server_name %s sdk_endpoint %s",
+        server_name, sdk_endpoint);
+}
+
 void NameServerImpl::UpdateRealEpMapToTablet() {
     if (!running_.load(std::memory_order_acquire)) {
         return;

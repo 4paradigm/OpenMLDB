@@ -95,6 +95,9 @@ class NsClient {
     bool SyncTable(const std::string& name, const std::string& cluster_alias,
                    uint32_t pid, std::string& msg);  // NOLINT
 
+    bool SetSdkEndpoint(const std::string& server_name,
+        const std::string& sdk_endpoint, std::string* msg);
+
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
 
     bool GetTaskStatus(::rtidb::api::TaskStatusResponse& response);  // NOLINT
