@@ -29,7 +29,7 @@ if (TESTING_ENABLE)
     list(APPEND test_list udf_bm_case_test)
 
     add_executable(udf_bm udf_bm.cc)
-    target_link_libraries(udf_bm udf_bm_case 
+    target_link_libraries(udf_bm udf_bm_case
         benchmark gtest fesql_udf ${BM_LIBS})
 
     add_library(runner_bm_case STATIC runner_bm_case.cc)

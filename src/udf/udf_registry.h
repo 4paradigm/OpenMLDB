@@ -791,6 +791,7 @@ struct TypeAnnotatedFuncPtr {
               return;
           }) {}
 
+    // void fn(T*) --> T fn()
     template <typename T1>
     TypeAnnotatedFuncPtr(void (*fn)(T1*))  // NOLINT
         : ptr(reinterpret_cast<void*>(fn)),
@@ -803,6 +804,7 @@ struct TypeAnnotatedFuncPtr {
               *args = {};
           }) {}
 
+    // void fn(T1, T2*) --> T2 fn(T1)
     template <typename T1, typename T2>
     TypeAnnotatedFuncPtr(void (*fn)(T1, T2*))  // NOLINT
         : ptr(reinterpret_cast<void*>(fn)),
@@ -817,6 +819,7 @@ struct TypeAnnotatedFuncPtr {
                       to_type_node(nm)};
           }) {}
 
+    // void fn(T1, T2, Ret*) --> Ret fn(T1, T2)
     template <typename T1, typename T2, typename T3>
     TypeAnnotatedFuncPtr(void (*fn)(T1, T2, T3*))  // NOLINT
         : ptr(reinterpret_cast<void*>(fn)),
@@ -833,8 +836,9 @@ struct TypeAnnotatedFuncPtr {
                       to_type_node(nm)};
           }) {}
 
+    // void fn(T1, T2, T3, Ret*) --> Ret fn(T1, T2, T3)
     template <typename T1, typename T2, typename T3, typename T4>
-    TypeAnnotatedFuncPtr(void (*fn)(T1*, T2, T3, T4*))  // NOLINT
+    TypeAnnotatedFuncPtr(void (*fn)(T1, T2, T3, T4*))  // NOLINT
         : ptr(reinterpret_cast<void*>(fn)),
           return_by_arg(true),
           get_type_func([](node::NodeManager* nm, node::TypeNode** ret,
@@ -843,7 +847,7 @@ struct TypeAnnotatedFuncPtr {
                 DataTypeTrait<typename CCallDataTypeTrait<T4*>::LiteralTag>::
                 to_type_node(nm);
             *args = {
-                DataTypeTrait<typename CCallDataTypeTrait<T1*>::LiteralTag>::
+                DataTypeTrait<typename CCallDataTypeTrait<T1>::LiteralTag>::
                 to_type_node(nm),
                 DataTypeTrait<typename CCallDataTypeTrait<T2>::LiteralTag>::
                 to_type_node(nm),
@@ -892,6 +896,7 @@ class ExternalFuncRegistryHelper
         node::TypeNode* ret_type = nullptr;
         fn_ptr.get_type_func(node_manager(), &ret_type, &arg_types);
         args<LiteralArgTypes...>(name, fn_ptr.ptr);
+        // TODO :  validate cur_def_.arg_types_ vs arg_types
         cur_def_->SetRetType(ret_type);
         return *this;
     }

@@ -12,8 +12,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <list>
-namespace fesql{
-namespace base{
+namespace fesql {
+namespace base {
 class MemoryChuck {
  public:
     MemoryChuck(MemoryChuck* next, size_t request_size)
@@ -24,7 +24,6 @@ class MemoryChuck {
           mem_(new char[chuck_size_]) {}
     ~MemoryChuck() { delete[] mem_; }
     inline size_t available_size() { return chuck_size_ - allocated_size_; }
-
     char* Alloc(size_t request_size) {
         if (request_size > available_size()) {
             return nullptr;
@@ -33,6 +32,7 @@ class MemoryChuck {
         allocated_size_ += request_size;
         return addr;
     }
+    inline void free() { allocated_size_ = 0; }
     inline MemoryChuck* next() { return next_; }
     enum { DEFAULT_CHUCK_SIZE = 4096 };
 
@@ -48,14 +48,7 @@ class ByteMemoryPool {
         : chucks_(nullptr) {
         ExpandStorage(init_size);
     }
-    ~ByteMemoryPool() {
-        auto chuck = chucks_;
-        while (chuck) {
-            chucks_ = chuck->next();
-            delete chuck;
-            chuck = chucks_;
-        }
-    }
+    ~ByteMemoryPool() { Free(); }
     char* Alloc(size_t request_size) {
         if (chucks_->available_size() < request_size) {
             ExpandStorage(request_size);
@@ -63,6 +56,17 @@ class ByteMemoryPool {
         return chucks_->Alloc(request_size);
     }
 
+    // clear last chuck
+    // and delete other chucks
+    void Free() {
+        auto chuck = chucks_;
+        while (chuck->next()) {
+            chucks_ = chuck->next();
+            delete chuck;
+            chuck = chucks_;
+        }
+        chuck->free();
+    }
     void ExpandStorage(size_t request_size) {
         chucks_ = new MemoryChuck(chucks_, request_size);
     }
@@ -70,7 +74,7 @@ class ByteMemoryPool {
  private:
     MemoryChuck* chucks_;
 };
-}
-}
+}  // namespace base
+}  // namespace fesql
 
 #endif  // SRC_BASE_MEM_POOL_H_

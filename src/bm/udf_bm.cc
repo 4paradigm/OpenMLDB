@@ -73,6 +73,13 @@ static void BM_Month(benchmark::State& state) {  // NOLINT
 static void BM_Year(benchmark::State& state) {  // NOLINT
     CTimeYear(&state, BENCHMARK, state.range(0));
 }
+
+static void BM_AllocFromByteMemPool1000(benchmark::State& state) {  // NOLINT
+    ByteMemPoolAlloc1000(&state, BENCHMARK, state.range(0));
+}
+static void BM_AllocFromNewFree1000(benchmark::State& state) {  // NOLINT
+    NewFree1000(&state, BENCHMARK, state.range(0));
+}
 BENCHMARK(BM_TabletFullIterate)
     ->Args({10})
     ->Args({100})
@@ -142,6 +149,16 @@ BENCHMARK(BM_Month)->Args({1})->Args({10})->Args({100})->Args({1000})->Args(
     {10000});
 BENCHMARK(BM_Year)->Args({1})->Args({10})->Args({100})->Args({1000})->Args(
     {10000});
+BENCHMARK(BM_AllocFromByteMemPool1000)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
+BENCHMARK(BM_AllocFromNewFree1000)
+    ->Args({10})
+    ->Args({100})
+    ->Args({1000})
+    ->Args({10000});
 
 }  // namespace bm
 }  // namespace fesql

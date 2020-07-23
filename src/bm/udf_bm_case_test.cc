@@ -74,6 +74,12 @@ TEST_F(UDFBMCaseTest, MemTableIterate_TEST) {
 TEST_F(UDFBMCaseTest, CTimeDay_TEST) { CTimeDay(nullptr, TEST, 1); }
 TEST_F(UDFBMCaseTest, CTimeMonth) { CTimeMonth(nullptr, TEST, 1); }
 TEST_F(UDFBMCaseTest, CTimeYear_TEST) { CTimeYear(nullptr, TEST, 1); }
+TEST_F(UDFBMCaseTest, ByteMemPoolAlloc1000_TEST) {
+    ByteMemPoolAlloc1000(nullptr, TEST, 10);
+    ByteMemPoolAlloc1000(nullptr, TEST, 100);
+    ByteMemPoolAlloc1000(nullptr, TEST, 1000);
+    ByteMemPoolAlloc1000(nullptr, TEST, 10000);
+}
 }  // namespace bm
 }  // namespace fesql
 int main(int argc, char** argv) {

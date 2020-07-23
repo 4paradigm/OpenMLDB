@@ -27,20 +27,9 @@ static void BM_ArrayListIterate(benchmark::State& state) {  // NOLINT
     ArrayListIterate(&state, BENCHMARK, state.range(0));
 }
 
-static void BM_ByteMemPoolAlloc1000(benchmark::State& state) {  // NOLINT
-    ByteMemPoolAlloc1000(&state, BENCHMARK, state.range(0));
-}
-static void BM_NewFree1000(benchmark::State& state) {  // NOLINT
-    NewFree1000(&state, BENCHMARK, state.range(0));
-}
+
 
 BENCHMARK(BM_ArrayListIterate)->Args({100})->Args({1000})->Args({10000});
-BENCHMARK(BM_ByteMemPoolAlloc1000)
-    ->Args({10})
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
-BENCHMARK(BM_NewFree1000)->Args({10})->Args({100})->Args({1000})->Args({10000});
 
 }  // namespace bm
 }  // namespace fesql

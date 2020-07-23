@@ -195,7 +195,15 @@ void delete_iterator(int8_t *input) {
 }
 
 }  // namespace v1
-
+thread_local base::ByteMemoryPool __THREAD_LOCAL_MEM_POOL;
+int8_t *ThreadLocalMemoryPoolAlloc(int32_t request_size) {
+    if (request_size < 0) {
+        return nullptr;
+    }
+    return reinterpret_cast<int8_t *>(fesql::udf::__THREAD_LOCAL_MEM_POOL.Alloc(
+        static_cast<size_t>(request_size)));
+}
+void ThreadLocalMemoryPoolFree() { fesql::udf::__THREAD_LOCAL_MEM_POOL.Free(); }
 std::map<std::string, void *> NATIVE_UDF_PTRS;
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr) {
     ::llvm::orc::MangleAndInterner mi(jit_ptr->getExecutionSession(),
@@ -204,6 +212,9 @@ void InitUDFSymbol(vm::FeSQLJIT *jit_ptr) {
 }  // NOLINT
 void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                    ::llvm::orc::MangleAndInterner &mi) {  // NOLINT
+    fesql::vm::FeSQLJIT::AddSymbol(
+        jd, mi, "fesql_memery_pool_alloc",
+        reinterpret_cast<void *>(&fesql::udf::ThreadLocalMemoryPoolAlloc));
     for (auto iter = NATIVE_UDF_PTRS.cbegin(); iter != NATIVE_UDF_PTRS.cend();
          iter++) {
         AddSymbol(jd, mi, iter->first, iter->second);

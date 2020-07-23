@@ -167,9 +167,9 @@ struct DistinctCountDef {
 
 void DefaultUDFLibrary::InitStringUDF() {
     RegisterExternal("substring")
-        .args<StringRef, int32_t>(reinterpret_cast<void*>(
+        .args<StringRef, int32_t>(
             static_cast<void (*)(codec::StringRef*, int32_t,
-                                 codec::StringRef*)>(udf::v1::sub_string)))
+                                 codec::StringRef*)>(udf::v1::sub_string))
         .return_by_arg(true);
 
     RegisterExternal("substring")
@@ -200,6 +200,7 @@ void DefaultUDFLibrary::InitStringUDF() {
     //        });
 }
 void DefaultUDFLibrary::IniMathUDF() {
+    abs(1);
     RegisterExternal("log")
         .args<float>(static_cast<float (*)(float)>(log))
         .args<double>(static_cast<double (*)(double)>(log));

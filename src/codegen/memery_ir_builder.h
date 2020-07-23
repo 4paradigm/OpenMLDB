@@ -18,14 +18,13 @@ namespace codegen {
 
 class MemoryIRBuilder {
  public:
-    MemoryIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
+    MemoryIRBuilder(::llvm::BasicBlock* block);
     ~MemoryIRBuilder();
 
     base::Status Alloc(::llvm::Value* request_size,
                        ::llvm::Value** output);  // NOLINT
  private:
     ::llvm::BasicBlock* block_;
-    ScopeVar* sv_;
 };
 
 }  // namespace codegen
