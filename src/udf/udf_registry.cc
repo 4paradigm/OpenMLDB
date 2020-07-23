@@ -56,7 +56,7 @@ Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
                  "Fail to resolve fn name \"", name(), "\"");
 
     DLOG(INFO) << "Resolve expression udf \"" << name() << "\" -> " << name()
-              << "(" << signature << ")";
+               << "(" << signature << ")";
 
     // construct fn def node:
     // def fn(arg0, arg1, ...argN):
@@ -114,7 +114,7 @@ Status LLVMUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
                  "Fail to resolve fn name \"", name(), "\"");
 
     DLOG(INFO) << "Resolve llvm codegen udf \"" << name() << "\" -> " << name()
-              << "(" << signature << ")";
+               << "(" << signature << ")";
 
     std::vector<const node::TypeNode*> arg_types;
     for (size_t i = 0; i < ctx->arg_size(); ++i) {
@@ -163,7 +163,7 @@ Status ExternalFuncRegistry::ResolveFunction(UDFResolveContext* ctx,
     CHECK_TRUE(external_def->ret_type() != nullptr,
                "No return type specified for ", external_def->function_name());
     DLOG(INFO) << "Resolve udf \"" << name() << "\" -> "
-              << external_def->function_name() << "(" << signature << ")";
+               << external_def->function_name() << "(" << signature << ")";
     *result = external_def;
     return Status::OK();
 }
@@ -205,7 +205,7 @@ Status SimpleUDAFRegistry::ResolveFunction(UDFResolveContext* ctx,
                "Fail to find registry for simple udaf ", name(),
                " of input element type ", arg_type->GetName());
     DLOG(INFO) << "Resolve simple udaf " << name() << "<" << arg_type->GetName()
-              << ">";
+               << ">";
     *result = iter->second;
     return Status::OK();
 }
