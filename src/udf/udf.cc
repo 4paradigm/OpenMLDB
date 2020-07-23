@@ -164,6 +164,8 @@ void delete_iterator(int8_t *input) {
 }  // namespace v1
 
 std::map<std::string, void *> NATIVE_UDF_PTRS;
+void ClearNativeUDFDict() { NATIVE_UDF_PTRS.clear(); }
+
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr) {
     ::llvm::orc::MangleAndInterner mi(jit_ptr->getExecutionSession(),
                                       jit_ptr->getDataLayout());

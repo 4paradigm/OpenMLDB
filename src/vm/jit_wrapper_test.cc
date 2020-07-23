@@ -9,6 +9,7 @@
 #include "vm/jit_wrapper.h"
 #include "codec/fe_row_codec.h"
 #include "gtest/gtest.h"
+#include "udf/udf.h"
 #include "vm/engine.h"
 #include "vm/simple_catalog.h"
 
@@ -39,21 +40,23 @@ std::shared_ptr<SimpleCatalog> GetTestCatalog() {
     return catalog;
 }
 
-std::string GetModuleString(std::shared_ptr<SimpleCatalog> catalog) {
+std::string GetModuleString(const std::string &sql,
+                            std::shared_ptr<SimpleCatalog> catalog) {
     EngineOptions options;
     options.set_keep_ir(true);
 
     base::Status status;
     BatchRunSession session;
     Engine engine(catalog, options);
-    engine.Get("select col_1, col_2 from t1;", "db", session, status);
+    engine.Get(sql, "db", session, status);
     auto compile_info = session.GetCompileInfo();
     return compile_info->get_sql_context().ir;
 }
 
 TEST_F(JITWrapperTest, test) {
     auto catalog = GetTestCatalog();
-    std::string ir_str = GetModuleString(catalog);
+    std::string ir_str =
+        GetModuleString("select col_1, col_2 from t1;", catalog);
 
     FeSQLJITWrapper jit;
     ASSERT_TRUE(jit.Init());
@@ -82,6 +85,31 @@ TEST_F(JITWrapperTest, test) {
     ASSERT_EQ(row_view.GetInt32(1, &c2), 0);
     ASSERT_EQ(c1, 3.14);
     ASSERT_EQ(c2, 42);
+}
+
+TEST_F(JITWrapperTest, test_window) {
+    auto catalog = GetTestCatalog();
+    std::string ir_str = GetModuleString(
+        "select col_1, sum(col_2) over w, "
+        "distinct_count(col_2) over w "
+        "from t1 "
+        "window w as ("
+        "PARTITION by col_2 ORDER BY col_2 "
+        "ROWS BETWEEN 1 PRECEDING AND CURRENT ROW);",
+        catalog);
+
+    // clear this dict to ensure jit wrapper reinit all symbols
+    // this should be removed by better symbol init utility
+    udf::ClearNativeUDFDict();
+
+    FeSQLJITWrapper jit;
+    ASSERT_TRUE(jit.Init());
+
+    base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
+    ASSERT_TRUE(jit.AddModuleFromBuffer(ir_buf));
+
+    auto fn = jit.FindFunction("__internal_sql_codegen_0");
+    ASSERT_TRUE(fn != nullptr);
 }
 
 }  // namespace vm
