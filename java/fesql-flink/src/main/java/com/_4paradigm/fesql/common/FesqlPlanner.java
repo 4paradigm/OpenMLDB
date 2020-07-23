@@ -1,10 +1,8 @@
 package com._4paradigm.fesql.common;
 
 import com._4paradigm.fesql.FeSqlLibrary;
-import com._4paradigm.fesql.batch.BatchWindowAggPlan;
-import com._4paradigm.fesql.batch.DataProviderPlan;
-import com._4paradigm.fesql.batch.FesqlBatchTableEnvironment;
-import com._4paradigm.fesql.batch.TableProjectPlan;
+import com._4paradigm.fesql.batch.*;
+import com._4paradigm.fesql.common.planner.GeneralSimpleProjectPlan;
 import com._4paradigm.fesql.stream.FesqlStreamTableEnvironment;
 import com._4paradigm.fesql.stream.StreamDataProviderPlan;
 import com._4paradigm.fesql.stream.StreamTableProjectPlan;
@@ -88,12 +86,7 @@ public class FesqlPlanner {
         Table outputTable = null;
         PhysicalOpType opType = node.getType_();
 
-        /* TODO: support simple project node
-            import static org.apache.flink.table.api.Expressions.$;
-            table.select($("vendor_sum_pl"), $("vendor_sum_pl"));
-        */
-
-        if (opType.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
+        if (opType.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) { // DataProviderNode
             // Use "select *" to get Table from Flink source
             PhysicalDataProviderNode dataProviderNode = PhysicalDataProviderNode.CastFrom(node);
 
@@ -103,12 +96,18 @@ public class FesqlPlanner {
                 outputTable = StreamDataProviderPlan.gen(planContext, dataProviderNode);
             }
 
+        } else if (opType.swigValue() == PhysicalOpType.kPhysicalOpSimpleProject.swigValue()) { // SimpleProjectNode
+
+            PhysicalSimpleProjectNode physicalSimpleProjectNode = PhysicalSimpleProjectNode.CastFrom(node);
+            // Batch and Streaming has the sample implementation
+            outputTable = GeneralSimpleProjectPlan.gen(planContext, physicalSimpleProjectNode, children.get(0));
+
         } else if (opType.swigValue() == PhysicalOpType.kPhysicalOpProject.swigValue()) {
             // Use FESQL CoreAPI to generate new Table
             PhysicalProjectNode projectNode = PhysicalProjectNode.CastFrom(node);
             ProjectType projectType = projectNode.getProject_type_();
 
-            if (projectType.swigValue() == ProjectType.kTableProject.swigValue()) {
+            if (projectType.swigValue() == ProjectType.kTableProject.swigValue()) { // TableProjectNode
                 PhysicalTableProjectNode physicalTableProjectNode = PhysicalTableProjectNode.CastFrom(projectNode);
 
                 if (isBatch) {
@@ -117,7 +116,7 @@ public class FesqlPlanner {
                     outputTable = StreamTableProjectPlan.gen(planContext, physicalTableProjectNode, children.get(0));
                 }
 
-            } else if (projectType.swigValue() == ProjectType.kWindowAggregation.swigValue()) {
+            } else if (projectType.swigValue() == ProjectType.kWindowAggregation.swigValue()) { // WindowAggNode
 
                 PhysicalWindowAggrerationNode physicalWindowAggrerationNode = PhysicalWindowAggrerationNode.CastFrom(projectNode);
 
