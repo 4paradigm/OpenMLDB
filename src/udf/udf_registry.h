@@ -535,7 +535,7 @@ struct VariadicLLVMUDFGen : public LLVMUDFGenBase {
         UDFResolveContext*,
         typename std::pair<LiteralArgTypes,
                            const node::TypeNode*>::second_type...,
-        const std::vector<codegen::NativeValue>&)>;
+        const std::vector<const node::TypeNode*>&)>;
 
     Status gen(codegen::CodeGenContext* ctx,
                const std::vector<codegen::NativeValue>& args,
@@ -567,7 +567,7 @@ struct VariadicLLVMUDFGen : public LLVMUDFGenBase {
     const node::TypeNode* infer_internal(
         UDFResolveContext* ctx, const std::vector<const node::TypeNode*>& args,
         const std::index_sequence<I...>&) {
-        std::vector<node::TypeNode*> variadic_args;
+        std::vector<const node::TypeNode*> variadic_args;
         for (size_t i = sizeof...(I); i < args.size(); ++i) {
             variadic_args.emplace_back(args[i]);
         }
@@ -839,16 +839,16 @@ struct TypeAnnotatedFuncPtr {
           return_by_arg(true),
           get_type_func([](node::NodeManager* nm, node::TypeNode** ret,
                            std::vector<node::TypeNode*>* args) {
-            *ret =
-                DataTypeTrait<typename CCallDataTypeTrait<T4*>::LiteralTag>::
-                to_type_node(nm);
-            *args = {
-                DataTypeTrait<typename CCallDataTypeTrait<T1*>::LiteralTag>::
-                to_type_node(nm),
-                DataTypeTrait<typename CCallDataTypeTrait<T2>::LiteralTag>::
-                to_type_node(nm),
-                DataTypeTrait<typename CCallDataTypeTrait<T3>::LiteralTag>::
-                to_type_node(nm)};
+              *ret =
+                  DataTypeTrait<typename CCallDataTypeTrait<T4*>::LiteralTag>::
+                      to_type_node(nm);
+              *args = {
+                  DataTypeTrait<typename CCallDataTypeTrait<T1*>::LiteralTag>::
+                      to_type_node(nm),
+                  DataTypeTrait<typename CCallDataTypeTrait<T2>::LiteralTag>::
+                      to_type_node(nm),
+                  DataTypeTrait<typename CCallDataTypeTrait<T3>::LiteralTag>::
+                      to_type_node(nm)};
           }) {}
     void* ptr;
     bool return_by_arg;
