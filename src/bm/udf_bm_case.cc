@@ -12,6 +12,7 @@
 #include <vector>
 #include "bm/base_bm.h"
 #include "codec/fe_row_codec.h"
+#include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/window_ir_builder.h"
 #include "gtest/gtest.h"
@@ -543,6 +544,50 @@ void CTimeYear(benchmark::State* state, MODE mode, const int32_t data_size) {
         }
     }
 }
-
+int32_t RunByteMemPoolAlloc1000(size_t request_size) {
+    for (int i = 0; i < 1000; i++) {
+        fesql::udf::ThreadLocalMemoryPoolAlloc(request_size);
+    }
+    fesql::udf::ThreadLocalMemoryPoolFree();
+    return 1;
+}
+int32_t RunNewFree1000(size_t request_size) {
+    fesql::base::ByteMemoryPool pool;
+    std::vector<char*> chucks;
+    for (int i = 0; i < 1000; i++) {
+        chucks.push_back(new char[request_size]);
+    }
+    for (auto chuck : chucks) {
+        delete[] chuck;
+    }
+    return 1;
+}
+void NewFree1000(benchmark::State* state, MODE mode, size_t request_size) {
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(RunNewFree1000(request_size));
+            }
+            break;
+        }
+        case TEST: {
+            RunByteMemPoolAlloc1000(request_size);
+        }
+    }
+}
+void ByteMemPoolAlloc1000(benchmark::State* state, MODE mode,
+                          size_t request_size) {
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                benchmark::DoNotOptimize(RunByteMemPoolAlloc1000(request_size));
+            }
+            break;
+        }
+        case TEST: {
+            RunByteMemPoolAlloc1000(request_size);
+        }
+    }
+}
 }  // namespace bm
 }  // namespace fesql

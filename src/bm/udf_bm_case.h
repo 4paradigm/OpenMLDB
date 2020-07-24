@@ -30,6 +30,9 @@ void CTimeDay(benchmark::State* state, MODE mode, const int32_t data_size);
 void CTimeMonth(benchmark::State* state, MODE mode, const int32_t data_size);
 void CTimeYear(benchmark::State* state, MODE mode, const int32_t data_size);
 
+void ByteMemPoolAlloc1000(benchmark::State* state, MODE mode,
+                          size_t request_size);
+void NewFree1000(benchmark::State* state, MODE mode, size_t request_size);
 }  // namespace bm
 }  // namespace fesql
 #endif  // SRC_BM_UDF_BM_CASE_H_

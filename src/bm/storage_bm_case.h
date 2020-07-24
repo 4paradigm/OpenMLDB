@@ -15,9 +15,7 @@ namespace fesql {
 namespace bm {
 enum MODE { BENCHMARK, TEST };
 
-void ByteMemPoolAlloc1000(benchmark::State* state, MODE mode,
-                          size_t request_size);
-void NewFree1000(benchmark::State* state, MODE mode, size_t request_size);
+
 void ArrayListIterate(benchmark::State* state, MODE mode, int64_t data_size);
 }  // namespace bm
 }  // namespace fesql

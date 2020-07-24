@@ -23,10 +23,9 @@
 #include <string>
 #include <vector>
 #include "glog/logging.h"
-
+#include "base/mem_pool.h"
 namespace fesql {
 namespace codec {
-
 struct StringRef {
     StringRef() : size_(0), data_(nullptr) {}
     StringRef(uint32_t size, const char* data)
@@ -444,7 +443,6 @@ int32_t GetStrCol(int8_t* input, int32_t row_idx, uint32_t col_idx,
                   int32_t str_field_offset, int32_t next_str_field_offset,
                   int32_t str_start_offset, int32_t type_id, int8_t* data);
 
-int8_t * MemoeryPoolAlloc(int8_t* input, int32_t request_size);
 }  // namespace v1
 }  // namespace codec
 }  // namespace fesql
