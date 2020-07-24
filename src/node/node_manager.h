@@ -285,19 +285,21 @@ class NodeManager {
         const std::vector<const node::TypeNode *> &arg_types, int variadic_pos,
         bool return_by_arg);
 
-    SQLNode *MakeUnresolvedFnDefNode(const std::string &function_name);
+    ExternalFnDefNode *MakeUnresolvedFnDefNode(
+        const std::string &function_name);
 
-    SQLNode *MakeUDFDefNode(FnNodeFnDef *def);
+    UDFDefNode *MakeUDFDefNode(FnNodeFnDef *def);
 
-    SQLNode *MakeUDFByCodeGenDefNode(
+    UDFByCodeGenDefNode *MakeUDFByCodeGenDefNode(
         const std::vector<const node::TypeNode *> &arg_types,
         const node::TypeNode *ret_type);
 
-    SQLNode *MakeUDAFDefNode(const std::string &name,
-                             const TypeNode *input_type, const ExprNode *init,
-                             const FnDefNode *update_func,
-                             const FnDefNode *merge_func,
-                             const FnDefNode *output_func);
+    UDAFDefNode *MakeUDAFDefNode(const std::string &name,
+                                 const TypeNode *input_type,
+                                 const ExprNode *init,
+                                 const FnDefNode *update_func,
+                                 const FnDefNode *merge_func,
+                                 const FnDefNode *output_func);
     LambdaNode *MakeLambdaNode(const std::vector<ExprIdNode *> &args,
                                ExprNode *body);
 

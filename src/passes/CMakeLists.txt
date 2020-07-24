@@ -1,7 +1,7 @@
 include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
-add_library(fesql_passes STATIC resolve_udf_def.cc)
+add_library(fesql_passes STATIC resolve_udf_def.cc lambdafy_projects.cc)
 
 if (TESTING_ENABLE)
 set(vm_deps_libs
@@ -11,6 +11,11 @@ add_executable(resolve_udf_def_test resolve_udf_def_test.cc)
 target_link_libraries(resolve_udf_def_test gtest ${vm_deps_libs})
 add_test(resolve_udf_def_test resolve_udf_def_test --gtest_output=xml:${CMAKE_BINARY_DIR}/resolve_udf_def_test.xml)
 list(APPEND test_list resolve_udf_def_test)
+
+add_executable(lambdafy_projects_test lambdafy_projects_test.cc)
+target_link_libraries(lambdafy_projects_test gtest ${vm_deps_libs})
+add_test(lambdafy_projects_test lambdafy_projects_test --gtest_output=xml:${CMAKE_BINARY_DIR}/lambdafy_projects_test.xml)
+list(APPEND test_list lambdafy_projects_test)
 
 endif()
 

@@ -1532,7 +1532,7 @@ sql_call_expr:
           }
           else
           {
-            $$ = node_manager->MakeFuncNode($1, NULL, $5);
+            $$ = node_manager->MakeFuncNode($1, {node_manager->MakeAllNode("")}, $5);
           }
     }
     | function_name '(' sql_expr_list ')' over_clause
