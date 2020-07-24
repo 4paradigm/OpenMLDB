@@ -169,7 +169,9 @@ void DefaultUDFLibrary::InitStringUDF() {
     RegisterCodeGenUDF("concat").variadic_args<>(
         /* infer */ [](UDFResolveContext* ctx,
                        const std::vector<const node::TypeNode*>&
-                           arg_types) { return arg_types[0]; },
+                           arg_types) {
+           return ctx->node_manager()->MakeTypeNode(node::kVarchar);
+        },
         /* gen */
         [](CodeGenContext* ctx, const std::vector<NativeValue>& args,
            NativeValue* out) {

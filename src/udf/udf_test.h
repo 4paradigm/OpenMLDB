@@ -116,7 +116,8 @@ UDFFunctionBuilderWithFullInfo<Ret, Args...>::build() {
             -> node::ExprNode* {
             // resolve udf call
             auto arg_list = nm->MakeExprList();
-            for (auto arg_expr : {args...}) {
+            std::vector<node::ExprNode*> arg_vec = {args...};
+            for (node::ExprNode* arg_expr : arg_vec) {
                 arg_list->AddChild(arg_expr);
             }
             node::ExprNode* output_expr = nullptr;

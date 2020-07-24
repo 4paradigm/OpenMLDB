@@ -322,8 +322,7 @@ TEST_F(UDFIRBuilderTest, substring_udf_test) {
 
 TEST_F(UDFIRBuilderTest, concat_udf_test) {
     //    concat() == ""
-    // TODO(baoxinqi): CheckUDF<T,Args...> Args is empty
-    //    CheckUDF<codec::StringRef>("concat", codec::StringRef(""));
+    CheckUDFFail<codec::StringRef>("concat", codec::StringRef(""));
 
     //    concat("12345") == "12345"
     CheckUDF<codec::StringRef, codec::StringRef>(
