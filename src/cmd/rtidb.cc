@@ -3912,7 +3912,8 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         } else if (parts[1] == "setsdkendpoint") {
             printf("desc: set sdkendpoint for external network sdk\n");
             printf("usage: setsdkendpoint server_name sdkendpoint\n");
-            printf("ex: setsdkendpoint tb1 202.12.18.1:9527\n");
+            printf("eg: setsdkendpoint tb1 202.12.18.1:9527\n");
+            printf("eg: setsdkendpoint tb1 null\n");
         } else if (parts[1] == "addindex") {
             printf("desc: add new index to table\n");
             printf(

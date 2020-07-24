@@ -11891,29 +11891,56 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller,
         return;
     }
     const std::string server_name = request->server_name();
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = tablets_.find(server_name);
+        if (it == tablets_.end()) {
+            response->set_code(::rtidb::base::ReturnCode::kEndpointIsNotExist);
+            response->set_msg("endpoint is not exist");
+            PDLOG(WARNING, "endpoint[%s] is not exist", server_name.c_str());
+            return;
+        } else {
+            if (it->second->state_ !=
+                    ::rtidb::api::TabletState::kTabletHealthy) {
+                response->set_code(
+                        ::rtidb::base::ReturnCode::kTabletIsNotHealthy);
+                response->set_msg("tablet is offline!");
+                PDLOG(WARNING, "tablet[%s] is offline!", server_name.c_str());
+                return;
+            }
+        }
+    }
     const std::string sdk_endpoint = request->sdk_endpoint();
     const std::string path =
         FLAGS_zk_root_path + "/map/sdkendpoints/" + server_name;
-    std::lock_guard<std::mutex> lock(mu_);
-    if (zk_client_->IsExistNode(path) != 0) {
-        if (!zk_client_->CreateNode(path, sdk_endpoint)) {
-            PDLOG(WARNING,
-                    "create zk node %s value %s failed", path, sdk_endpoint);
-            response->set_code(::rtidb::base::ReturnCode::kCreateZkFailed);
-            response->set_msg("create zk failed");
-            return;
+    if (sdk_endpoint != "null") {
+        if (zk_client_->IsExistNode(path) != 0) {
+            if (!zk_client_->CreateNode(path, sdk_endpoint)) {
+                PDLOG(WARNING, "create zk node %s value %s failed",
+                        path.c_str(), sdk_endpoint.c_str());
+                response->set_code(::rtidb::base::ReturnCode::kCreateZkFailed);
+                response->set_msg("create zk failed");
+                return;
+            }
+        } else {
+            if (!zk_client_->SetNodeValue(path, sdk_endpoint)) {
+                PDLOG(WARNING, "set zk node %s value %s failed",
+                        path.c_str(), sdk_endpoint.c_str());
+                response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
+                response->set_msg("set zk failed");
+                return;
+            }
         }
     } else {
-        if (!zk_client_->SetNodeValue(path, sdk_endpoint)) {
-            PDLOG(WARNING,
-                    "set zk node %s value %s failed", path, sdk_endpoint);
-            response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
-            response->set_msg("set zk failed");
+        if (!zk_client_->DeleteNode(path)) {
+            response->set_code(::rtidb::base::ReturnCode::kDelZkFailed);
+            response->set_msg("del zk failed");
+            PDLOG(WARNING, "del zk node [%s] failed", path.c_str());
             return;
         }
     }
     PDLOG(INFO, "SetSdkEndpoint success. server_name %s sdk_endpoint %s",
-        server_name, sdk_endpoint);
+        server_name.c_str(), sdk_endpoint.c_str());
 }
 
 void NameServerImpl::UpdateRealEpMapToTablet() {
