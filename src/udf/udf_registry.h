@@ -289,6 +289,11 @@ struct ExprUDFGen : public ExprUDFGenBase {
 
     ExprNode* gen(UDFResolveContext* ctx,
                   const std::vector<ExprNode*>& args) override {
+        if (args.size() != sizeof...(LiteralArgTypes)) {
+            LOG(WARNING) << "fail to invoke ExprUDFGen::gen, args size isn't "
+                            "match with LiteralArgTypes)";
+            return nullptr;
+        }
         return gen_internal(ctx, args,
                             std::index_sequence_for<LiteralArgTypes...>());
     }
@@ -843,16 +848,16 @@ struct TypeAnnotatedFuncPtr {
           return_by_arg(true),
           get_type_func([](node::NodeManager* nm, node::TypeNode** ret,
                            std::vector<node::TypeNode*>* args) {
-            *ret =
-                DataTypeTrait<typename CCallDataTypeTrait<T4*>::LiteralTag>::
-                to_type_node(nm);
-            *args = {
-                DataTypeTrait<typename CCallDataTypeTrait<T1>::LiteralTag>::
-                to_type_node(nm),
-                DataTypeTrait<typename CCallDataTypeTrait<T2>::LiteralTag>::
-                to_type_node(nm),
-                DataTypeTrait<typename CCallDataTypeTrait<T3>::LiteralTag>::
-                to_type_node(nm)};
+              *ret =
+                  DataTypeTrait<typename CCallDataTypeTrait<T4*>::LiteralTag>::
+                      to_type_node(nm);
+              *args = {
+                  DataTypeTrait<typename CCallDataTypeTrait<T1>::LiteralTag>::
+                      to_type_node(nm),
+                  DataTypeTrait<typename CCallDataTypeTrait<T2>::LiteralTag>::
+                      to_type_node(nm),
+                  DataTypeTrait<typename CCallDataTypeTrait<T3>::LiteralTag>::
+                      to_type_node(nm)};
           }) {}
     void* ptr;
     bool return_by_arg;

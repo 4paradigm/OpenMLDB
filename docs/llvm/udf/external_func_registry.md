@@ -201,6 +201,8 @@ class ExternalFuncRegistryHelper
 
 
 
+#### 构建参数列表: Args
+
 通过组合函数名、函数指针、函数指针类型注解，可以生成参数列表。
 
 
@@ -263,3 +265,33 @@ template <typename... LiteralArgTypes>
 函数指针: `fn_ptr`
 
 参数列表: `Conver from template <typename... LiteralArgTypes>`
+
+
+
+#### 构建变长参数列表：`variadic_args`
+
+变长参数列表和定长参数列表`args(name, fn_ptr）`的构建类似:
+
+```C++
+ template <typename... LiteralArgTypes>
+    ExternalFuncRegistryHelper& variadic_args(const std::string& name,
+                                              void* fn_ptr) {
+   	// ....
+   // 参数列表签名尾部追加`"..."`
+     std::vector<std::string> type_args(
+            {DataTypeTrait<LiteralArgTypes>::to_string()...});
+     type_args.emplace_back("...");
+   
+   
+   // MakeExternalFnDefNode需要设置：variadic_pos = sizeof...(LiteralArgTypes)
+   cur_def_ = dynamic_cast<node::ExternalFnDefNode*>(
+            node_manager()->MakeExternalFnDefNode(
+                name, fn_ptr, nullptr, type_nodes, sizeof...(LiteralArgTypes),
+                false));
+ }
+```
+
+主要的区别有两个:
+
+1. 参数列表签名尾部追加`"..."`
+2. `MakeExternalFnDefNode`需要设置：`variadic_pos = sizeof...(LiteralArgTypes)`

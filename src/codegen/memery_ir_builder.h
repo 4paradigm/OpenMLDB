@@ -18,13 +18,21 @@ namespace codegen {
 
 class MemoryIRBuilder {
  public:
-    explicit MemoryIRBuilder(::llvm::BasicBlock* block);
+    explicit MemoryIRBuilder(::llvm::Module* m);
     ~MemoryIRBuilder();
 
-    base::Status Alloc(::llvm::Value* request_size,
-                       ::llvm::Value** output);  // NOLINT
+    base::Status Alloc(::llvm::BasicBlock* block,
+                       const NativeValue& request_size,
+                       NativeValue* output);  // NOLINT
+    base::Status MemoryCopy(::llvm::BasicBlock* block, const NativeValue& dist,
+                            const NativeValue& src, const NativeValue& size);
+
+    base::Status MemoryAddrAdd(::llvm::BasicBlock* block,
+                               const NativeValue& addr, const NativeValue& size,
+                               NativeValue* new_addr);
+
  private:
-    ::llvm::BasicBlock* block_;
+    ::llvm::Module* m_;
 };
 
 }  // namespace codegen
