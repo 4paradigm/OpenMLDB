@@ -11890,8 +11890,34 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    const std::string server_name = request->server_name();
-    {
+    const std::string& server_name = request->server_name();
+    const std::string& sdk_endpoint = request->sdk_endpoint();
+    const std::string& leader_path = FLAGS_zk_root_path + "/leader";
+    std::vector<std::string> children;
+    if (!zk_client_->GetChildren(leader_path, children) || children.empty()) {
+        PDLOG(WARNING, "get zk children failed");
+        response->set_code(::rtidb::base::ReturnCode::kGetZkFailed);
+        response->set_msg("get zk children failed");
+        return;
+    }
+    std::set<std::string> endpoint_set;
+    for (const auto& path : children) {
+        std::string endpoint;
+        const std::string& real_path = leader_path + "/" + path;
+        if (!zk_client_->GetNodeValue(real_path, endpoint)) {
+            PDLOG(WARNING, "get zk value failed");
+            response->set_code(::rtidb::base::ReturnCode::kGetZkFailed);
+            response->set_msg("get zk value failed");
+            return;
+        }
+        endpoint_set.insert(endpoint);
+    }
+    bool has_found = false;
+    if (std::find(endpoint_set.begin(), endpoint_set.end(), server_name) !=
+            endpoint_set.end()) {
+        has_found = true;
+    }
+    if (!has_found) {
         std::lock_guard<std::mutex> lock(mu_);
         auto it = tablets_.find(server_name);
         if (it == tablets_.end()) {
@@ -11910,8 +11936,7 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller,
             }
         }
     }
-    const std::string sdk_endpoint = request->sdk_endpoint();
-    const std::string path =
+    const std::string& path =
         FLAGS_zk_root_path + "/map/sdkendpoints/" + server_name;
     if (sdk_endpoint != "null") {
         if (zk_client_->IsExistNode(path) != 0) {
@@ -11941,6 +11966,8 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller,
     }
     PDLOG(INFO, "SetSdkEndpoint success. server_name %s sdk_endpoint %s",
         server_name.c_str(), sdk_endpoint.c_str());
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
 }
 
 void NameServerImpl::UpdateRealEpMapToTablet() {
