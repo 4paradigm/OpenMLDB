@@ -70,8 +70,14 @@ public class BatchWindowAggPlan {
             appendSlices = 0;
         }
 
+        // Parse List<Integer> to int[]
+        int groupbyKeySize = groupbyKeyIndexes.size();
+        int[] groupbyKeyIndexArray = new int[groupbyKeySize];
+        for (int i = 0; i < groupbyKeySize; ++i) {
+            groupbyKeyIndexArray[i] = groupbyKeyIndexes.get(i);
+        }
 
-        DataSet<Row> outputDataset = inputDataset.groupBy(0).reduceGroup(new RichGroupReduceFunction<Row, Row>() {
+        DataSet<Row> outputDataset = inputDataset.groupBy(groupbyKeyIndexArray).reduceGroup(new RichGroupReduceFunction<Row, Row>() {
 
             long functionPointer;
             FesqlFlinkCodec inputCodec;

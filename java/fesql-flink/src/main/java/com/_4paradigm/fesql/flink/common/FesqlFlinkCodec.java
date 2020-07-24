@@ -8,6 +8,8 @@ import org.apache.flink.types.Row;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 import static com._4paradigm.fesql.type.TypeOuterClass.Type.*;
@@ -119,7 +121,11 @@ public class FesqlFlinkCodec {
                     } else if (columnType == kInt32) {
                         flinkRow.setField(totalFieldIndex, rowView.GetInt32Unsafe(j));
                     } else if (columnType == kInt64) {
-                        flinkRow.setField(totalFieldIndex, rowView.GetInt64Unsafe(j));
+                        //flinkRow.setField(totalFieldIndex, rowView.GetInt64Unsafe(j));
+
+                        // TODO: Return the BigInteger instead of long object
+                        flinkRow.setField(totalFieldIndex, new java.math.BigInteger(String.valueOf(rowView.GetInt64Unsafe(j))));
+
                     } else if (columnType== kFloat) {
                         flinkRow.setField(totalFieldIndex, rowView.GetFloatUnsafe(j));
                     } else if (columnType == kDouble) {
