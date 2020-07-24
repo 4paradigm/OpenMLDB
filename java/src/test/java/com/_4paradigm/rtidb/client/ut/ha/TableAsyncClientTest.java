@@ -539,16 +539,16 @@ public class TableAsyncClientTest extends TestCaseBase {
             Assert.assertEquals(row[5], "aa1");
             sf = tableAsyncClient.scan(name, "card0", "card", 1235l, 0l, "ts_1", 0);
             it = sf.get();
-            //Assert.assertEquals(it.getCount(), 3); // TODO
+            Assert.assertEquals(it.getCount(), 2);
             row = it.getDecodedValue();
-            //Assert.assertEquals(it.getKey(), 444);  // TODO
-            //Assert.assertEquals(row.length, 6); ??TODO
+            Assert.assertEquals(it.getKey(), 333);
+            Assert.assertEquals(row.length, 6);
             Assert.assertEquals(row[0], "card0");
             Assert.assertEquals(row[1], "mcc1");
-            //Assert.assertEquals(row[2], 1.7d); //TODO
-            //Assert.assertEquals(((Long) row[3]).longValue(), 1236l);
-            //Assert.assertEquals(((Long) row[4]).longValue(), 444l);
-            //Assert.assertEquals(row[5], null); // TODO
+            Assert.assertEquals(row[2], 1.6d);
+            Assert.assertEquals(((Long) row[3]).longValue(), 1235l);
+            Assert.assertEquals(((Long) row[4]).longValue(), 333l);
+            Assert.assertEquals(row[5], "aa1");
             sf = tableAsyncClient.scan(name, "mcc1", "mcc", 1235l, 0l, "ts", 0);
             it = sf.get();
             Assert.assertTrue(it.valid());
@@ -573,7 +573,7 @@ public class TableAsyncClientTest extends TestCaseBase {
 
             sf = tableAsyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
             it = sf.get();
-            //Assert.assertEquals(it.getSchema().size(), 7); // TODO
+            Assert.assertEquals(it.getSchema().size(), 7);
 
             try {
                 data.clear();
@@ -597,7 +597,7 @@ public class TableAsyncClientTest extends TestCaseBase {
             e.printStackTrace();
             Assert.assertTrue(false);
         } finally {
-            nsc.dropTable(name);
+            //nsc.dropTable(name);
         }
     }
 
