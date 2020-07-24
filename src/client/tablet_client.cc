@@ -1415,10 +1415,14 @@ bool TabletClient::AddIndex(uint32_t tid, uint32_t pid,
         client_.SendRequest(&rtidb::api::TabletServer_Stub::AddIndex, &request,
                             &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
-        task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+        if (task_info != nullptr) {
+            task_info->set_status(::rtidb::api::TaskStatus::kFailed);
+        }
         return false;
     }
-    task_info->set_status(::rtidb::api::TaskStatus::kDone);
+    if (task_info != nullptr) {
+        task_info->set_status(::rtidb::api::TaskStatus::kDone);
+    }
     return true;
 }
 

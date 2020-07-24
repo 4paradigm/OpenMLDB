@@ -214,7 +214,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (row.length == th.getSchema().size()) {
             switch (th.getFormatVersion()) {
                 case 1:
-                    buffer = RowBuilder.encode(row, th.getSchema(), th.getCurrentSchemaVer());
+                    buffer = RowBuilder.encode(row, th.getSchema(), 1);
                     break;
                 default:
                     buffer = RowCodec.encode(row, th.getSchema());
@@ -226,12 +226,16 @@ public class TableSyncClientImpl implements TableSyncClient {
             }
             switch (th.getFormatVersion()) {
                 case 1:
-                    Map<Integer, Integer> schemaToVer = th.getSchemaToVer();
-                    Integer ver = schemaToVer.get(row.length);
-                    if (ver == null) {
-                        throw new TabletException("no version for column count " + row.length);
+                    if (th.getTableInfo().getAddedColumnDescCount() != 0) {
+                        Map<Integer, Integer> schemaToVer = th.getSchemaToVer();
+                        Integer ver = schemaToVer.get(row.length);
+                        if (ver == null) {
+                            throw new TabletException("no version for column count " + row.length);
+                        }
+                        buffer = RowBuilder.encode(row, columnDescs, ver);
+                    } else {
+                        buffer = RowBuilder.encode(row, columnDescs, 1);
                     }
-                    buffer = RowBuilder.encode(row, columnDescs, ver);
                     break;
                 default:
                     int modifyTimes = row.length - th.getSchema().size();
@@ -1290,7 +1294,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (row.length == th.getSchema().size()) {
             switch (th.getFormatVersion()) {
                 case 1:
-                    buffer = RowBuilder.encode(row, th.getSchema(), th.getCurrentSchemaVer());
+                    buffer = RowBuilder.encode(row, th.getSchema(), 1);
                     break;
                 default:
                     buffer = RowCodec.encode(row, th.getSchema());
@@ -1302,12 +1306,16 @@ public class TableSyncClientImpl implements TableSyncClient {
             }
             switch (th.getFormatVersion()) {
                 case 1:
-                    Map<Integer, Integer> schemaToVer = th.getSchemaToVer();
-                    Integer ver = schemaToVer.get(row.length);
-                    if (ver == null) {
-                        throw new TabletException("no version for column count " + row.length);
+                    if (th.getTableInfo().getAddedColumnDescCount() != 0) {
+                        Map<Integer, Integer> schemaToVer = th.getSchemaToVer();
+                        Integer ver = schemaToVer.get(columnDescs.size());
+                        if (ver == null) {
+                            throw new TabletException("no version for column count " + row.length);
+                        }
+                        buffer = RowBuilder.encode(row, columnDescs, ver);
+                    } else {
+                        buffer = RowBuilder.encode(row, columnDescs, 1);
                     }
-                    buffer = RowBuilder.encode(row, columnDescs, ver);
                     break;
                 default:
                     int modifyTimes = row.length - th.getSchema().size();

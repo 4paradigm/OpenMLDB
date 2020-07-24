@@ -4,12 +4,27 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com._4paradigm.rtidb.client.TabletException;
+import com._4paradigm.rtidb.client.type.DataType;
 
 public class SchemaCodec {
-	
+
+	private static Map<String, DataType> TYPE_MAPING = new HashMap<>();
+	static {
+		TYPE_MAPING.put("int16", DataType.SmallInt);
+		TYPE_MAPING.put("int32", DataType.Int);
+		TYPE_MAPING.put("int64", DataType.BigInt);
+		TYPE_MAPING.put("float", DataType.Float);
+		TYPE_MAPING.put("double", DataType.Double);
+		TYPE_MAPING.put("string", DataType.Varchar);
+		TYPE_MAPING.put("timestamp", DataType.Timestamp);
+		TYPE_MAPING.put("bool", DataType.Bool);
+		TYPE_MAPING.put("date", DataType.Date);
+	}
 	public static ByteBuffer encode(List<ColumnDesc> schema) throws TabletException{
 		ByteBuffer buffer = ByteBuffer.allocate(getSize(schema)).order(ByteOrder.LITTLE_ENDIAN);
 		for (ColumnDesc col : schema) {
@@ -38,6 +53,7 @@ public class SchemaCodec {
 			ColumnType type = ColumnType.valueOf((byte)buffer.get());
 			desc.setType(type);
 			desc.setAddTsIndex(false);
+			desc.setDataType(TYPE_MAPING.get(type));
 			if ((int)buffer.get() == 1) {
 				desc.setAddTsIndex(true);
 			} 

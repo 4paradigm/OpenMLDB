@@ -784,7 +784,8 @@ void InitNs(int port, vector<Server*> services,
         }
         *impls[i] = ns;
         *eps[i] = FLAGS_endpoint;
-        FLAGS_endpoint = "127.0.0.1:" + std::to_string(port + 100);
+        port += 100;
+        FLAGS_endpoint = "127.0.0.1:" + std::to_string(port);
     }
     return;
 }

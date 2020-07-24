@@ -4069,7 +4069,7 @@ bool NameServerImpl::AddFieldToTablet(const std::vector<rtidb::common::ColumnDes
         LOG(WARNING) << "Fail to encode schema form columns in table " << name;
         return false;
     }
-    int32_t version_id = 0;
+    int32_t version_id = 1;
     for (const auto& pair : table_info->schema_versions()) {
         version_id = pair.id();
     }
@@ -4087,8 +4087,8 @@ bool NameServerImpl::AddFieldToTablet(const std::vector<rtidb::common::ColumnDes
                          << "for add table field failed! err: " << msg;
             return false;
         }
-        LOG(INFO) << "update table_meta on endpoint[" << it->first
-                  << "] for add table field success!";
+        LOG(INFO) << "update table_meta on endpoint[" << it->first << "] for add table field success! version is "
+                  << version_id << " columns size is " << columns.size() << " for table " << table_info->name();
     }
     return true;
 }
@@ -11195,16 +11195,23 @@ void NameServerImpl::AddIndex(RpcController* controller,
             columns.push_back(new_col);
         }
     }
-    rtidb::common::VersionPair new_pair;
-    bool ok = AddFieldToTablet(add_cols, table_info, &new_pair);
-    if (!ok) {
-        response->set_code(ReturnCode::kFailToUpdateTablemetaForAddingField);
-        response->set_msg("fail to update tableMeta for adding field");
-        LOG(WARNING) << "update tablemeta fail";
-        return;
+    if (!add_cols.empty()) {
+        rtidb::common::VersionPair new_pair;
+        bool ok = AddFieldToTablet(add_cols, table_info, &new_pair);
+        if (!ok) {
+            response->set_code(ReturnCode::kFailToUpdateTablemetaForAddingField);
+            response->set_msg("fail to update tableMeta for adding field");
+            LOG(WARNING) << "update tablemeta fail";
+            return;
+        }
+        for (const auto& col : add_cols) {
+            rtidb::common::ColumnDesc* new_col = table_info->add_added_column_desc();
+            new_col->CopyFrom(col);
+        }
+        rtidb::common::VersionPair* pair = table_info->add_schema_versions();
+        pair->CopyFrom(new_pair);
     }
     for (uint32_t pid = 0; pid < (uint32_t)table_info->table_partition_size(); pid++) {
-        std::lock_guard<std::mutex> lock(mu_);
         if (CreateAddIndexOP(name, db, pid, request->column_key(), add_cols, index_pos) < 0) {
             LOG(WARNING) << "create AddIndexOP failed, table " << name << " pid " << pid;
             break;
@@ -11267,6 +11274,9 @@ int NameServerImpl::CreateAddIndexOP(
     add_index_meta.set_db(db);
     ::rtidb::common::ColumnKey* cur_column_key = add_index_meta.mutable_column_key();
     cur_column_key->CopyFrom(column_key);
+    if (!new_cols.empty()) {
+        add_index_meta.set_skip_data(true);
+    }
     std::string value;
     add_index_meta.SerializeToString(&value);
     if (CreateOPData(::rtidb::api::OPType::kAddIndexOP, value, op_data, name,
@@ -11343,7 +11353,29 @@ int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     uint64_t op_index = op_data->op_info_.op_id();
-    std::shared_ptr<Task> task = CreateDumpIndexDataTask(
+    std::shared_ptr<Task> task;
+    if (add_index_meta.skip_data()) {
+        task = CreateAddIndexToTabletTask(
+            op_index, ::rtidb::api::OPType::kAddIndexOP, tid, pid, endpoints,
+            add_index_meta.column_key());
+        if (!task) {
+            LOG(WARNING) << "create add index tasdk failed. tid[" << tid << "] pid[" << pid << "]";
+            return -1;
+        }
+        op_data->task_list_.push_back(task);
+        boost::function<bool()> fun =
+            boost::bind(&NameServerImpl::AddIndexToTableInfo, this, name, db,
+                        add_index_meta.column_key(), add_index_meta.idx());
+        task = CreateTableSyncTask(op_index, ::rtidb::api::OPType::kAddIndexOP, tid,
+                                   fun);
+        if (!task) {
+            LOG(WARNING) << "create table sync task failed. name[" << name << "] pid[" << pid << "]";
+            return -1;
+        }
+        op_data->task_list_.push_back(task);
+        return 0;
+    }
+    task = CreateDumpIndexDataTask(
         op_index, ::rtidb::api::OPType::kAddIndexOP, tid, pid, leader_endpoint,
         table_info->table_partition_size(), add_index_meta.column_key(),
         add_index_meta.idx());

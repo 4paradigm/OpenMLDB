@@ -111,7 +111,7 @@ class RowCodec {
     }
 
     static ::rtidb::base::ResultMsg EncodeRow(
-        const std::map<std::string, std::string>& str_map, const Schema& schema, uint32_t version,
+        const std::map<std::string, std::string>& str_map, const Schema& schema, int32_t version,
         std::string& row) {  // NOLINT
         if (str_map.empty() || str_map.size() != (uint64_t)schema.size()) {
             return ::rtidb::base::ResultMsg(-1, "input error");

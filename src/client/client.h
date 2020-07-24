@@ -48,7 +48,7 @@ struct TableHandler {
     std::string auto_gen_pk;
     std::map<std::string, ::rtidb::type::DataType> name_type_map;
     std::map<uint32_t, uint32_t> version_schema;
-    uint32_t last_schema_version;
+    int32_t last_schema_version;
 };
 
 struct GeneralResult {

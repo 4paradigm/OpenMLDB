@@ -2331,6 +2331,7 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         std::shared_ptr<Table> table = pit->second;
         // judge if field exists
         ::rtidb::api::TableMeta table_meta;
+        table_meta.CopyFrom(table->GetTableMeta());
         if (request->has_column_desc()) {
             const auto& col = request->column_desc();
             if (CheckFieldExist(col.name(), table)) {

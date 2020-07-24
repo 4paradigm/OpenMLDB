@@ -9,8 +9,8 @@ import com._4paradigm.rtidb.tablet.Tablet.GetResponse;
 import com._4paradigm.rtidb.utils.Compress;
 import com.google.protobuf.ByteString;
 
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.BitSet;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -109,6 +109,7 @@ public class GetFuture implements Future<ByteString>{
 		if (raw == null || raw.isEmpty()) {
 			return null;
 		}
+		checkVersion(raw);
 		Object[] row = new Object[rowLength];
 		decode(raw, row, 0, row.length);
 		return row;
@@ -122,9 +123,35 @@ public class GetFuture implements Future<ByteString>{
 		if (raw == null || raw.isEmpty()) {
 			return null;
 		}
+		checkVersion(raw);
 		Object[] row = new Object[rowLength];
 		decode(raw, row, 0, row.length);
 		return row;
+	}
+
+	private void checkVersion(ByteString raw) throws TabletException {
+	    if (th.getTableInfo().getFormatVersion() != 1 || th.getTableInfo().getAddedColumnDescCount() == 0) {
+	    	return;
+		}
+		ByteBuffer buf = raw.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN);
+	    int version = RowView.getSchemaVersion(buf);
+	    buf.rewind();
+	    if (version == 1) {
+	    	return;
+		}
+	    Integer maxIdx = th.getVersions().get(th.getCurrentSchemaVer());
+		if (maxIdx == null) {
+			throw new TabletException("unkown schema version " + version);
+		}
+		if (rv.getSchema().size() == maxIdx) {
+			return;
+		}
+		List<ColumnDesc> newSchema = th.getSchemaMap().get(maxIdx);
+	    if (newSchema == null) {
+	    	throw new TabletException("unkown shcema for column count " + maxIdx);
+		}
+	    rv = new RowView(newSchema);
+	    rowLength = maxIdx;
 	}
 
 	public Object[] getRowWithNoWait() throws ExecutionException, TabletException{
@@ -135,6 +162,7 @@ public class GetFuture implements Future<ByteString>{
 		if (raw == null || raw.isEmpty()) {
 			return null;
 		}
+		checkVersion(raw);
 		Object[] row = new Object[rowLength];
 		decode(raw, row, 0, row.length);
 		return row;
@@ -149,22 +177,13 @@ public class GetFuture implements Future<ByteString>{
 		if (raw == null || raw.isEmpty()) {
 		    return;
 		}
+		checkVersion(raw);
 		decode(raw, row, start, length);
 	}
 
 	private void decode(ByteString raw, Object[] row, int start, int length) throws TabletException {
 	    switch (th.getTableInfo().getFormatVersion()) {
 			case 1:
-				int schemaVersion = RowView.getSchemaVersion(raw.asReadOnlyByteBuffer());
-				if (schemaVersion != 1) {
-				    Integer maxIdx = th.getVersions().get(schemaVersion);
-				    if (maxIdx == null) {
-				    	throw new TabletException(String.format("unknown schema version %d", maxIdx));
-					}
-				    if (length > maxIdx) {
-				    	throw new TabletException(String.format("%d great than current schema end idx", length, maxIdx));
-					}
-				}
 				rv.read(raw.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN), row, start, length);
 				break;
 			default:
