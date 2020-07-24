@@ -51,7 +51,10 @@ bool FeSQLJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
     ::llvm::Error e = jit_->addIRModule(
         ::llvm::orc::ThreadSafeModule(std::move(module), std::move(llvm_ctx)));
     if (e) {
-        LOG(WARNING) << "fail to add ir module" << llvm::toString(std::move(e));
+        std::string err_str;
+        ::llvm::raw_string_ostream ss(err_str);
+        ss << e;
+        LOG(WARNING) << "fail to add ir module: " << err_str;
         return false;
     }
     InitCodecSymbol(jit_.get());

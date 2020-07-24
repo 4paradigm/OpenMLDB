@@ -49,9 +49,11 @@ using vm::RequestRunSession;
 
 using namespace ::llvm;  // NOLINT
 
-static int64_t RunTableRequest(RequestRunSession& session,  // NOLINT
-                               std::shared_ptr<vm::TableHandler> table_handler,
-                               int64_t limit_cnt) {
+// Use const return to avoid some compiler bug
+// in debug mode of benchmark
+static const int64_t RunTableRequest(
+    RequestRunSession& session,  // NOLINT
+    std::shared_ptr<vm::TableHandler> table_handler, int64_t limit_cnt) {
     auto iter = table_handler->GetIterator();
     int64_t cnt = 0;
     while (cnt < limit_cnt && iter->Valid()) {
@@ -120,8 +122,9 @@ static void EngineBatchMode(const std::string sql, MODE mode, int64_t limit_cnt,
     switch (mode) {
         case BENCHMARK: {
             for (auto _ : *state) {
-                std::shared_ptr<vm::TableHandler> res;
-                benchmark::DoNotOptimize(res = session.Run());
+                benchmark::DoNotOptimize(
+                    static_cast<const std::shared_ptr<fesql::vm::TableHandler>>(
+                        session.Run()));
             }
             break;
         }
@@ -136,9 +139,6 @@ static void EngineBatchMode(const std::string sql, MODE mode, int64_t limit_cnt,
     }
 }
 
-static int64_t RunTableRequest(RequestRunSession& session,  // NOLINT
-                               std::shared_ptr<vm::TableHandler> table_handler,
-                               int64_t limit_cnt);
 void EngineWindowSumFeature1(benchmark::State* state, MODE mode,
                              int64_t limit_cnt, int64_t size) {  // NOLINT
     // prepare data into table
@@ -534,7 +534,10 @@ void EngineBatchModeSimpleQueryBM(const std::string& db, const std::string& sql,
     switch (mode) {
         case BENCHMARK: {
             for (auto _ : *state) {
-                benchmark::DoNotOptimize(session.Run());
+                // use const value to avoid compiler bug for some version
+                benchmark::DoNotOptimize(
+                    static_cast<const std::shared_ptr<fesql::vm::TableHandler>>(
+                        session.Run()));
             }
             break;
         }
