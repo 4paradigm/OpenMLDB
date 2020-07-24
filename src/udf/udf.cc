@@ -203,7 +203,9 @@ int8_t *ThreadLocalMemoryPoolAlloc(int32_t request_size) {
     return reinterpret_cast<int8_t *>(fesql::udf::__THREAD_LOCAL_MEM_POOL.Alloc(
         static_cast<size_t>(request_size)));
 }
-void ThreadLocalMemoryPoolFree() { fesql::udf::__THREAD_LOCAL_MEM_POOL.Free(); }
+void ThreadLocalMemoryPoolReset() {
+    fesql::udf::__THREAD_LOCAL_MEM_POOL.Reset();
+}
 std::map<std::string, void *> NATIVE_UDF_PTRS;
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr) {
     ::llvm::orc::MangleAndInterner mi(jit_ptr->getExecutionSession(),

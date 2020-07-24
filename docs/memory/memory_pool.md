@@ -83,6 +83,17 @@ udf(...) {
 
 
 
+
+
+### 提供两个内置的函数:
+
+```c++
+inline int8_t *ThreadLocalMemoryPoolAlloc(int32_t request_size); //从本地内存池申请request_size大小的内存
+void ThreadLocalMemoryPoolFree(); // 重置内存池（保留一个chuck的内存）
+```
+
+
+
 ## 字节内存池的性能分析
 
 ```

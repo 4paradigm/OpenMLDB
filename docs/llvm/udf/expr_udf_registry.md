@@ -34,7 +34,7 @@ class ExprUDFRegistry : public UDFRegistry {
 
 #### ExprUDFGen相关
 
-目前系统维护两种表达式Codegen：普通表达式UDF Gen`ExprUDFGen` 和 变参表达式UDF GEN `VariadicExprUDFGen`
+目前系统维护两种表达式UDFGen：普通表达式UDF Gen`ExprUDFGen` 和 变参表达式UDF GEN `VariadicExprUDFGen`
 
 ```C++
 struct ExprUDFGenBase {
@@ -42,6 +42,7 @@ struct ExprUDFGenBase {
                           const std::vector<ExprNode*>& args) = 0;
 };
 
+// normal
 template <typename... LiteralArgTypes>
 struct ExprUDFGen : public ExprUDFGenBase {
   using FType = std::function<ExprNode*(
@@ -49,6 +50,7 @@ struct ExprUDFGen : public ExprUDFGenBase {
         typename std::pair<LiteralArgTypes, ExprNode*>::second_type...)>;
 };
 
+// variadic 
 template <typename... LiteralArgTypes>
 struct VariadicExprUDFGen : public ExprUDFGenBase {
 };
@@ -75,7 +77,7 @@ udf_gen.gen(UDFResolveContext* ctx,
 
  
 
-类似，这些`VariadicExprUDFGen`的主要目的就是:
+类似，`VariadicExprUDFGen`的主要目的就是:
 
 ```C++
 VariadicExprUDFGen<arg1, arg2, arg3 > udf_gen;

@@ -10,6 +10,7 @@
 #ifndef SRC_CODEGEN_STRING_IR_BUILDER_H_
 #define SRC_CODEGEN_STRING_IR_BUILDER_H_
 #include <string>
+#include <vector>
 #include "base/fe_status.h"
 #include "codegen/cast_expr_ir_builder.h"
 #include "codegen/scope_var.h"

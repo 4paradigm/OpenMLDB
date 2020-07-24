@@ -48,7 +48,12 @@ class ByteMemoryPool {
         : chucks_(nullptr) {
         ExpandStorage(init_size);
     }
-    ~ByteMemoryPool() { Free(); }
+    ~ByteMemoryPool() {
+        Reset();
+        if (chucks_) {
+            delete chucks_;
+        }
+    }
     char* Alloc(size_t request_size) {
         if (chucks_->available_size() < request_size) {
             ExpandStorage(request_size);
@@ -58,7 +63,7 @@ class ByteMemoryPool {
 
     // clear last chuck
     // and delete other chucks
-    void Free() {
+    void Reset() {
         auto chuck = chucks_;
         while (chuck->next()) {
             chucks_ = chuck->next();

@@ -9,6 +9,7 @@
 #include "udf/default_udf_library.h"
 
 #include <string>
+#include <vector>
 #include <tuple>
 #include <unordered_set>
 #include "codegen/date_ir_builder.h"

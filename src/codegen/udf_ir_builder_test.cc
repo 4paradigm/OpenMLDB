@@ -82,7 +82,7 @@ void CheckUDF(const std::string &name, T expect, Args... args) {
 }
 
 template <class T, class... Args>
-void CheckUDFFail(const std::string &name, Args... args) {
+void CheckUDFFail(const std::string &name, T expect, Args... args) {
     auto function = udf::UDFFunctionBuilder(name)
                         .args<Args...>()
                         .template returns<T>()
@@ -321,9 +321,6 @@ TEST_F(UDFIRBuilderTest, substring_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, concat_udf_test) {
-    //    concat() == ""
-    CheckUDFFail<codec::StringRef>("concat", codec::StringRef(""));
-
     //    concat("12345") == "12345"
     CheckUDF<codec::StringRef, codec::StringRef>(
         "concat", codec::StringRef("12345"),
@@ -349,9 +346,14 @@ TEST_F(UDFIRBuilderTest, concat_udf_test) {
                                codec::StringRef("7890"),
                                codec::StringRef("abc"), codec::StringRef("de"));
 
-    CheckUDFFail<codec::StringRef, codec::StringRef, int32_t>("concat",
-                                                              codec::StringRef("12345"),
-                                                              67890);
+    //    concat() == ""
+    CheckUDFFail<codec::StringRef>("concat", codec::StringRef("no result"));
+
+    // concat(string, int) fail
+    // TODO(chenjing): support next pr
+    CheckUDFFail<codec::StringRef, codec::StringRef, int32_t>(
+        "concat", codec::StringRef("no result"), codec::StringRef("12345"),
+        67890);
 }
 
 }  // namespace codegen

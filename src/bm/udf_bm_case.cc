@@ -548,7 +548,7 @@ int32_t RunByteMemPoolAlloc1000(size_t request_size) {
     for (int i = 0; i < 1000; i++) {
         fesql::udf::ThreadLocalMemoryPoolAlloc(request_size);
     }
-    fesql::udf::ThreadLocalMemoryPoolFree();
+    fesql::udf::ThreadLocalMemoryPoolReset();
     return 1;
 }
 int32_t RunNewFree1000(size_t request_size) {

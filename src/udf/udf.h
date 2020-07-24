@@ -102,7 +102,7 @@ void sub_string(fesql::codec::StringRef *str, int32_t pos, int32_t len,
 }  // namespace v1
 
 inline int8_t *ThreadLocalMemoryPoolAlloc(int32_t request_size);
-void ThreadLocalMemoryPoolFree();
+void ThreadLocalMemoryPoolReset();
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);                // NOLINT
 void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                    ::llvm::orc::MangleAndInterner &mi);   // NOLINT

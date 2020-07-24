@@ -8,6 +8,7 @@
  **/
 #include "vm/core_api.h"
 #include "codec/fe_row_codec.h"
+#include "udf/udf.h"
 #include "vm/mem_catalog.h"
 #include "vm/runner.h"
 #include "vm/schemas_context.h"
@@ -53,6 +54,7 @@ fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
     int8_t** row_ptrs = row.GetRowPtrs();
     int32_t* row_sizes = row.GetRowSizes();
     uint32_t ret = udf(row_ptrs, nullptr, row_sizes, &buf);
+    fesql::udf::ThreadLocalMemoryPoolReset();
     if (nullptr != row_ptrs) delete[] row_ptrs;
     if (nullptr != row_sizes) delete[] row_sizes;
     if (ret != 0) {

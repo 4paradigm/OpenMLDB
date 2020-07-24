@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 #include "base/texttable.h"
+#include "udf/udf.h"
 #include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
 #include "vm/mem_catalog.h"
@@ -378,6 +379,7 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
     int8_t* window_ptr = reinterpret_cast<int8_t*>(window);
     int32_t* row_sizes = row.GetRowSizes();
     uint32_t ret = udf(row_ptrs, window_ptr, row_sizes, &out_buf);
+    fesql::udf::ThreadLocalMemoryPoolReset();
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();
