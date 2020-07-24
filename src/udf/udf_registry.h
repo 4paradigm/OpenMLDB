@@ -540,7 +540,7 @@ struct VariadicLLVMUDFGen : public LLVMUDFGenBase {
         UDFResolveContext*,
         typename std::pair<LiteralArgTypes,
                            const node::TypeNode*>::second_type...,
-        const std::vector<codegen::NativeValue>&)>;
+        const std::vector<const node::TypeNode*>&)>;
 
     Status gen(codegen::CodeGenContext* ctx,
                const std::vector<codegen::NativeValue>& args,
@@ -572,7 +572,7 @@ struct VariadicLLVMUDFGen : public LLVMUDFGenBase {
     const node::TypeNode* infer_internal(
         UDFResolveContext* ctx, const std::vector<const node::TypeNode*>& args,
         const std::index_sequence<I...>&) {
-        std::vector<node::TypeNode*> variadic_args;
+        std::vector<const node::TypeNode*> variadic_args;
         for (size_t i = sizeof...(I); i < args.size(); ++i) {
             variadic_args.emplace_back(args[i]);
         }
