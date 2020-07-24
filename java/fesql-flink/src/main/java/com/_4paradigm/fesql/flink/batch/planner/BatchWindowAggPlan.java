@@ -8,6 +8,7 @@ import com._4paradigm.fesql.node.OrderByNode;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.*;
 import org.apache.flink.api.common.functions.RichGroupReduceFunction;
+import org.apache.flink.api.common.operators.Order;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.configuration.Configuration;
@@ -58,6 +59,10 @@ public class BatchWindowAggPlan {
         }
         ExprNode orderbyExprNode = orderbyExprListNode.GetChild(0);
         int orderbyKeyIndex = FesqlUtil.resolveColumnIndex(orderbyExprNode, node.GetProducer(0));
+        Order order = Order.ASCENDING;
+        if (!orderByNode.is_asc()) {
+            order = Order.DESCENDING;
+        }
 
         long startOffset = node.window().range().frame().GetHistoryRangeStart();
         long rowPreceding = -1 * node.window().range().frame().GetHistoryRowsStart();
@@ -70,14 +75,14 @@ public class BatchWindowAggPlan {
             appendSlices = 0;
         }
 
-        // Parse List<Integer> to int[]
+        // Parse List<Integer> to int[] to use as group by
         int groupbyKeySize = groupbyKeyIndexes.size();
         int[] groupbyKeyIndexArray = new int[groupbyKeySize];
         for (int i = 0; i < groupbyKeySize; ++i) {
             groupbyKeyIndexArray[i] = groupbyKeyIndexes.get(i);
         }
 
-        DataSet<Row> outputDataset = inputDataset.groupBy(groupbyKeyIndexArray).reduceGroup(new RichGroupReduceFunction<Row, Row>() {
+        DataSet<Row> outputDataset = inputDataset.groupBy(groupbyKeyIndexArray).sortGroup(orderbyKeyIndex, order).reduceGroup(new RichGroupReduceFunction<Row, Row>() {
 
             long functionPointer;
             FesqlFlinkCodec inputCodec;
