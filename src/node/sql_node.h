@@ -668,7 +668,7 @@ class ConstNode : public ExprNode {
 
     ~ConstNode() {
         if (data_type_ == fesql::node::kVarchar) {
-            delete val_.vstr;
+            free(const_cast<char*>(val_.vstr));
         }
     }
     void Print(std::ostream &output, const std::string &org_tab) const;

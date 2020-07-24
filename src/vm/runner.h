@@ -104,10 +104,12 @@ class ConditionGenerator : public FnGenerator {
 class RangeGenerator {
  public:
     explicit RangeGenerator(const Range& range) : ts_gen_(range.fn_info_) {
-        start_offset_ = range.frame_->GetHistoryRangeStart();
-        end_offset_ = range.frame_->GetHistoryRangeEnd();
-        start_row_ = (-1 * range.frame_->GetHistoryRowsStart());
-        end_row_ = (-1 * range.frame_->GetHistoryRowsEnd());
+        if (range.frame_ != nullptr) {
+            start_offset_ = range.frame_->GetHistoryRangeStart();
+            end_offset_ = range.frame_->GetHistoryRangeEnd();
+            start_row_ = (-1 * range.frame_->GetHistoryRowsStart());
+            end_row_ = (-1 * range.frame_->GetHistoryRowsEnd());
+        }
     }
     virtual ~RangeGenerator() {}
     const bool Valid() const { return ts_gen_.Valid(); }
