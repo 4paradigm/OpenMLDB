@@ -9,7 +9,6 @@
 
 #ifndef SRC_CASE_SQL_CASE_H_
 #define SRC_CASE_SQL_CASE_H_
-#include <parser/parser.h>
 #include <vm/catalog.h>
 #include <yaml-cpp/node/node.h>
 #include <string>

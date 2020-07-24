@@ -22,37 +22,49 @@ set(PLAN_PB_CC
     ${CMAKE_CURRENT_BINARY_DIR}/plan.pb.cc)
 
 add_custom_command(OUTPUT ${COMMON_PB_CC}
-        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/fe_common.proto
+        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto 
+        --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/fe_common.proto
+        DEPENDS ${PROJECT_SOURCE_DIR}/src/proto/fe_common.proto
         )
 
 add_custom_command(OUTPUT ${TYPE_PB_CC}
         COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/fe_type.proto
+        DEPENDS ${PROJECT_SOURCE_DIR}/src/proto/fe_type.proto
         )
 
 add_custom_command(OUTPUT ${DBMS_PB_CC}
         COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/dbms.proto
+        DEPENDS ${PROJECT_SOURCE_DIR}/src/proto/dbms.proto
         )
 
 add_custom_command(OUTPUT ${TABLET_PB_CC}
-        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/fe_tablet.proto )
+        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/fe_tablet.proto
+        DEPENDS ${PROJECT_SOURCE_DIR}/src/proto/fe_tablet.proto
+        )
 
 add_custom_command(OUTPUT ${BATCH_PB_CC}
-        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/batch.proto )
+        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto 
+        --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/batch.proto
+        DEPENDS ${PROJECT_SOURCE_DIR}/src/proto/batch.proto
+        )
 
 add_custom_command(OUTPUT ${PLAN_PB_CC}
-        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/plan.proto )
+        COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc -I ${PROJECT_SOURCE_DIR}/src/proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/src/proto/plan.proto 
+        DEPENDS ${PROJECT_SOURCE_DIR}/src/proto/plan.proto 
+        )
 
-
-ADD_CUSTOM_TARGET(run_gen_proto DEPENDS ${TABLET_PB_CC} ${DBMS_PB_CC}
+set(FESQL_PROTO_SRC_FILES 
+    ${TABLET_PB_CC}
+    ${DBMS_PB_CC}
     ${COMMON_PB_CC}
     ${TYPE_PB_CC} 
     ${BATCH_PB_CC}
-    ${PLAN_PB_CC}
-    )
+    ${PLAN_PB_CC})
 
-add_library(fesql_proto STATIC ${TYPE_PB_CC} ${COMMON_PB_CC} ${DBMS_PB_CC}
-    ${TABLET_PB_CC} ${BATCH_PB_CC} ${PLAN_PB_CC})
+ADD_CUSTOM_TARGET(run_gen_proto DEPENDS ${FESQL_PROTO_SRC_FILES})
 
+add_library(fesql_proto OBJECT ${FESQL_PROTO_SRC_FILES})
+add_dependencies(fesql_proto run_gen_proto)
 
 add_custom_target(fesql_proto_java
     COMMAND ${PROJECT_SOURCE_DIR}/thirdparty/bin/protoc
