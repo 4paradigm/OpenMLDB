@@ -734,6 +734,7 @@ message BatchQueryRequest {
     optional uint32 pid = 2;
     repeated ReadOption read_option = 3;
     repeated string query_key = 4;
+    optional bool is_debug= 5 [default = false];
 }
 
 message BatchQueryResponse {
@@ -753,6 +754,7 @@ message QueryRequest {
     optional string db = 2;
     optional bool is_batch = 3;
     optional bytes input_row = 4;
+    optional bool is_debug= 5 [default = false];
 }
 
 message QueryResponse {

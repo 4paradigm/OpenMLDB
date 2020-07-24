@@ -1,10 +1,11 @@
-image: develop-registry.4pd.io/centos6_gcc7_build_env:0.5.1
+image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.12
 services:
   - docker:dind
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 stages:
   - build
+  - daily
   - test
   - ts_integration_test
   - ns_integration_test
@@ -22,7 +23,7 @@ build:
     paths:
       - build/bin/rtidb
       - build/src/sdk/libsql_jsdk.so
-      - build/sql_pysdk/dist/
+      - build/sql_pysdk/dist/*.whl
 
 mac_build:
   variables:
@@ -38,7 +39,7 @@ mac_build:
     paths:
       - build/bin/rtidb_mac
       - build/src/sdk/libsql_jsdk.dylib
-      - build/sql_pysdk/dist/
+      - build/sql_pysdk/dist/*.whl
 
 style_check:
   stage: build
@@ -50,6 +51,10 @@ style_check:
         - ./reports/style.xml
 java_ut:
   stage: test
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -73,11 +78,40 @@ java_ut:
         - rtidb-auto-test/target/surefire-reports/TEST-*.xml
         - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
         - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+
+fesql_auto_test:
+  stage: test
+  before_script:
+    - mkdir /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/fesql_auto_test.sh
+  after_script:
+    - tar czvf $CI_COMMIT_SHA  src/sdk/java/feql-auto-test-java/target/allure-results
+    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+    - curl -s "http://auto.4paradigm.com/job/fesql-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&allure_path=src/sdk/java/feql-auto-test-java/target/allure-results&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+  artifacts:
+    reports:
+      junit:
+        - java/target/surefire-reports/junitreports/TEST-*.xml
+        - java/target/surefire-reports/TEST-*.xml
+        - java/target/failsafe-reports/junitreports/TEST-*.xml
+        - java/target/failsafe-reports/TEST-*.xml
+        - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
+        - rtidb-auto-test/target/surefire-reports/TEST-*.xml
+        - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
+        - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
   dependencies:
     - build
 
+
 auto_test:
   stage: test
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=5G tmpfs /rambuild
@@ -118,6 +152,10 @@ c++_ut:
         - reports/*.xml
   dependencies:
     - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+
 
 py3_ut:
   stage: test
@@ -134,7 +172,34 @@ py3_ut:
         - ./python/test/*xml
   dependencies:
     - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
 
+deploy-package:
+  stage: deploy
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/deploy_package.sh
+  only:
+    - tags
+
+docker-image:
+  stage: make_docker
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - sh steps/simple_compile.sh
+    - sh docker/copy_file.sh
+    - make blob_proxy
+    - bash docker/push_meta.sh
+  only:
+    - tags
+    - develop
+    - feat/push-nexus-meta
+    - release/*
 
 tablet_one_demension:
   stage: ts_integration_test
@@ -153,6 +218,9 @@ tablet_one_demension:
         - ./test-output/integrationtest/test-reports/*.xml
   dependencies:
     - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
 
 tablet_multi_demension:
   stage: ts_integration_test
@@ -171,6 +239,9 @@ tablet_multi_demension:
         - ./test-output/integrationtest/test-reports/*.xml
   dependencies:
     - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
 
 ns_one_demension:
   stage: ns_integration_test
@@ -189,6 +260,9 @@ ns_one_demension:
         - ./test-output/integrationtest/test-reports/*.xml
   dependencies:
     - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
 
 ns_multi_demension:
   stage: ns_integration_test
@@ -207,6 +281,9 @@ ns_multi_demension:
         - ./test-output/integrationtest/test-reports/*.xml
   dependencies:
     - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
     
 disk_table:
   stage: ns_integration_test
@@ -225,6 +302,20 @@ disk_table:
         - ./test-output/integrationtest/test-reports/*.xml
   dependencies:
     - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+
+deploy-fedb:
+  stage: daily
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/deploy_package_fedb.sh
+  dependencies: []
+  only:
+    variables:
+      - $ENV_BUILD == "daily"
 
 deploy-package:
   stage: deploy

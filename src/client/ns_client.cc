@@ -43,6 +43,9 @@ bool NsClient::Use(std::string db, std::string& msg) {
 }
 
 bool NsClient::CreateDatabase(const std::string& db, std::string& msg) {
+    if (db.empty()) {
+        return false;
+    }
     ::rtidb::nameserver::CreateDatabaseRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_db(db);
@@ -223,7 +226,6 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
                           std::string& msg) {
     fesql::node::NodeManager node_manager;
     fesql::parser::FeSQLParser parser;
-    fesql::plan::SimplePlanner planner(&node_manager);
     DLOG(INFO) << "start to execute script from dbms:\n" << script;
     fesql::base::Status sql_status;
     fesql::node::NodePointVector parser_trees;
@@ -232,17 +234,80 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
         msg = sql_status.msg;
         return false;
     }
-    fesql::node::PlanNodeList plan_trees;
-    planner.CreatePlanTree(parser_trees, plan_trees, sql_status);
+    fesql::node::SQLNode* node = parser_trees[0];
+    switch (node->GetType()) {
+        case fesql::node::kCmdStmt: {
+            fesql::node::CmdNode* cmd =
+                dynamic_cast<fesql::node::CmdNode*>(node);
+            bool ok = HandleSQLCmd(cmd, db, &sql_status);
+            if (!ok) {
+                msg = sql_status.msg;
+            }
+            return ok;
+        }
+        case fesql::node::kCreateStmt: {
+            bool ok = HandleSQLCreateTable(parser_trees, db, &node_manager,
+                                           &sql_status);
+            if (!ok) {
+                msg = sql_status.msg;
+            }
+            return ok;
+        }
+        default: {
+            msg = "fail to execute script with unSuppurt type";
+            return false;
+        }
+    }
+}
 
-    if (0 != sql_status.code) {
-        msg = sql_status.msg;
+bool NsClient::HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
+                            const std::string& db,
+                            fesql::base::Status* sql_status) {
+    switch (cmd_node->GetCmdType()) {
+        case fesql::node::kCmdDropTable: {
+            std::string name = cmd_node->GetArgs()[0];
+            std::string error;
+            bool ok = DropTable(name, error);
+            if (ok) {
+                return true;
+            } else {
+                sql_status->msg = error;
+                return false;
+            }
+        }
+        case fesql::node::kCmdDropIndex: {
+            std::string index_name = cmd_node->GetArgs()[0];
+            std::string table_name = cmd_node->GetArgs()[1];
+            std::string error;
+
+            bool ok = DeleteIndex(table_name, index_name, error);
+            if (ok) {
+                return true;
+            } else {
+                sql_status->msg = error;
+                return false;
+            }
+        }
+        default: {
+            sql_status->msg = "fail to execute script with unSuppurt type";
+            return false;
+        }
+    }
+}
+
+bool NsClient::HandleSQLCreateTable(
+    const fesql::node::NodePointVector& parser_trees, const std::string& db,
+    fesql::node::NodeManager* node_manager, fesql::base::Status* sql_status) {
+    fesql::plan::SimplePlanner planner(node_manager);
+    fesql::node::PlanNodeList plan_trees;
+    planner.CreatePlanTree(parser_trees, plan_trees, *sql_status);
+    if (0 != sql_status->code) {
         return false;
     }
 
     fesql::node::PlanNode* plan = plan_trees[0];
     if (nullptr == plan) {
-        msg = "fail to execute plan : plan null";
+        sql_status->msg = "fail to execute plan : plan null";
         return false;
     }
 
@@ -257,21 +322,22 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
             table_info->set_db(db);
             TransformToTableDef(create->GetTableName(),
                                 create->GetColumnDescList(), table_info,
-                                &sql_status);
-            if (0 != sql_status.code) {
-                msg = sql_status.msg;
-                std::cout << msg << std::endl;
+                                sql_status);
+            if (0 != sql_status->code) {
                 return false;
             }
             client_.SendRequest(
                 &::rtidb::nameserver::NameServer_Stub::CreateTable, &request,
                 &response, FLAGS_request_timeout_ms, 1);
-            msg = response.msg();
+            sql_status->msg = response.msg();
+            if (0 != response.code()) {
+                return false;
+            }
             break;
         }
         default: {
-            msg = "fail to execute script with unSuppurt type" +
-                  fesql::node::NameOfPlanNodeType(plan->GetType());
+            sql_status->msg = "fail to execute script with unSuppurt type" +
+                              fesql::node::NameOfPlanNodeType(plan->GetType());
             return false;
         }
     }
@@ -1007,6 +1073,11 @@ bool NsClient::TransformToTableDef(
                             rtidb::type::DataType::kBool);
                         column_desc->set_type("bool");
                         break;
+                    case fesql::node::kInt16:
+                        column_desc->set_data_type(
+                            rtidb::type::DataType::kSmallInt);
+                        column_desc->set_type("int16");
+                        break;
                     case fesql::node::kInt32:
                         column_desc->set_data_type(rtidb::type::DataType::kInt);
                         column_desc->set_type("int32");
@@ -1072,6 +1143,12 @@ bool NsClient::TransformToTableDef(
                 index_names.insert(column_index->GetName());
                 ::rtidb::common::ColumnKey* index = table->add_column_key();
                 index->set_index_name(column_index->GetName());
+
+                if (column_index->GetKey().empty()) {
+                    status->msg = "CREATE common: INDEX KEY empty";
+                    status->code = fesql::common::kSQLError;
+                    return false;
+                }
                 for (auto key : column_index->GetKey()) {
                     auto cit = column_names.find(key);
                     if (cit == column_names.end()) {
@@ -1091,11 +1168,28 @@ bool NsClient::TransformToTableDef(
                         status->code = fesql::common::kSQLError;
                         return false;
                     } else {
-                        it->second->set_is_ts_col(true);
+                        switch (it->second->data_type()) {
+                            case rtidb::type::DataType::kInt:
+                            case rtidb::type::DataType::kSmallInt:
+                            case rtidb::type::DataType::kBigInt:
+                            case rtidb::type::DataType::kTimestamp: {
+                                it->second->set_is_ts_col(true);
+                                break;
+                            }
+                            default: {
+                                status->msg = "CREATE common: TS Type " +
+                                              rtidb::type::DataType_Name(
+                                                  it->second->data_type()) +
+                                              " not support";
+                                status->code = fesql::common::kSQLError;
+                                return false;
+                            }
+                        }
                         if (!column_index->ttl_type().empty()) {
                             if (column_index->ttl_type() == "absolute") {
                                 table->mutable_ttl_desc()->set_ttl_type(
                                     rtidb::api::kAbsoluteTime);
+
                             } else if (column_index->ttl_type() == "latest") {
                                 table->mutable_ttl_desc()->set_ttl_type(
                                     rtidb::api::kLatestTime);
@@ -1118,6 +1212,10 @@ bool NsClient::TransformToTableDef(
                             }
                         }
                     }
+                } else {
+                    status->msg = "CREATE common: ts col not exist";
+                    status->code = fesql::common::kSQLError;
+                    return false;
                 }
                 break;
             }
@@ -1134,6 +1232,5 @@ bool NsClient::TransformToTableDef(
     }
     return true;
 }
-
 }  // namespace client
 }  // namespace rtidb

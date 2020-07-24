@@ -302,7 +302,6 @@ uint32_t ClusterSDK::GetTableId(const std::string& db,
     if (sit == it->second.end()) {
         return 0;
     }
-    std::set<std::string> endpoints;
     auto table_info = sit->second;
     return table_info->tid();
 }
@@ -318,7 +317,6 @@ std::shared_ptr<::rtidb::nameserver::TableInfo> ClusterSDK::GetTableInfo(
     if (sit == it->second.end()) {
         return std::shared_ptr<::rtidb::nameserver::TableInfo>();
     }
-    std::set<std::string> endpoints;
     auto table_info = sit->second;
     return table_info;
 }
