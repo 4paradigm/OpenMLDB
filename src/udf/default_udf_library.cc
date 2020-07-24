@@ -166,6 +166,17 @@ struct DistinctCountDef {
 };
 
 void DefaultUDFLibrary::InitStringUDF() {
+    RegisterCodeGenUDF("concat").variadic_args<>(
+        /* infer */ [](UDFResolveContext* ctx,
+                       const std::vector<const node::TypeNode*>&
+                           arg_types) { return arg_types[0]; },
+        /* gen */
+        [](CodeGenContext* ctx, const std::vector<NativeValue>& args,
+           NativeValue* out) {
+            codegen::StringIRBuilder string_ir_builder(ctx->GetModule());
+            return string_ir_builder.Concat(ctx->GetCurrentBlock(), args, out);
+        });
+
     RegisterExternal("substring")
         .args<StringRef, int32_t>(
             static_cast<void (*)(codec::StringRef*, int32_t,
@@ -200,7 +211,6 @@ void DefaultUDFLibrary::InitStringUDF() {
     //        });
 }
 void DefaultUDFLibrary::IniMathUDF() {
-    abs(1);
     RegisterExternal("log")
         .args<float>(static_cast<float (*)(float)>(log))
         .args<double>(static_cast<double (*)(double)>(log));

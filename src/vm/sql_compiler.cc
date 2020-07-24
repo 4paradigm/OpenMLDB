@@ -46,6 +46,8 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
                                    (reinterpret_cast<void*>(&malloc)));
     fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "memset",
                                    (reinterpret_cast<void*>(&memset)));
+    fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "memcpy",
+                                   (reinterpret_cast<void*>(&memcpy)));
     fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "__bzero",
                                    (reinterpret_cast<void*>(&bzero)));
     fesql::vm::FeSQLJIT::AddSymbol(

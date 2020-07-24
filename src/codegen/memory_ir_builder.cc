@@ -6,6 +6,7 @@
  * Date: 2020/7/22
  *--------------------------------------------------------------------------
  **/
+#include "codegen/cast_expr_ir_builder.h"
 #include "codegen/memery_ir_builder.h"
 namespace fesql {
 namespace codegen {
@@ -45,8 +46,18 @@ base::Status MemoryIRBuilder::MemoryCopy(::llvm::BasicBlock* block,
                "fail to copy memory, size llvm value is null");
 
     ::llvm::IRBuilder<> builder(block);
+
+    codegen::CastExprIRBuilder cast_ir_builder(block);
+    CHECK_TRUE(cast_ir_builder.IsSafeCast(size.GetType(), builder.getInt64Ty()),
+               "fail to add memory addr: size type invalid");
+    ::llvm::Value* size_int64 = size.GetRaw();
+    base::Status status;
+    CHECK_TRUE(cast_ir_builder.SafeCast(size.GetRaw(), builder.getInt64Ty(),
+                                        &size_int64, status),
+               "fail to add memory addr: size cast int64 fail");
+
     ::llvm::Value* ret =
-        builder.CreateMemCpy(dist.GetRaw(), 1, src.GetRaw(), 1, size.GetRaw());
+        builder.CreateMemCpy(dist.GetRaw(), 1, src.GetRaw(), 1, size_int64);
     CHECK_TRUE(nullptr != ret, "fail to copy memory, CreateMemCpy fail");
     return base::Status();
 }
@@ -56,14 +67,23 @@ base::Status MemoryIRBuilder::MemoryAddrAdd(::llvm::BasicBlock* block,
                                             const NativeValue& size,
                                             NativeValue* new_addr) {
     CHECK_TRUE(nullptr != addr.GetRaw(),
-               "fail to add memory, addr llvm value is null");
+               "fail to add memory addr, addr llvm value is null");
     CHECK_TRUE(nullptr != size.GetRaw(),
-               "fail to copy memory, size llvm value is null");
+               "fail to add memory addr, size llvm value is null");
 
+    codegen::CastExprIRBuilder cast_ir_builder(block);
     ::llvm::IRBuilder<> builder(block);
-    ::llvm::Value* ret = builder.CreateInBoundsGEP(
-        builder.getInt8PtrTy(), addr.GetRaw(), size.GetRaw());
-    CHECK_TRUE(nullptr != ret, "fail to copy memory, CreateMemCpy fail");
+    CHECK_TRUE(cast_ir_builder.IsSafeCast(size.GetType(), builder.getInt64Ty()),
+               "fail to add memory addr: size type invalid");
+    ::llvm::Value* size_int64 = size.GetRaw();
+    base::Status status;
+    CHECK_TRUE(cast_ir_builder.SafeCast(size.GetRaw(), builder.getInt64Ty(),
+                                        &size_int64, status),
+               "fail to add memory addr: size cast int64 fail");
+
+    ::llvm::Value* ret = builder.CreateInBoundsGEP(builder.getInt8Ty(),
+                                                   addr.GetRaw(), size_int64);
+    CHECK_TRUE(nullptr != ret, "fail to add memory addr, CreateMemCpy fail");
     *new_addr = NativeValue::Create(ret);
     return base::Status();
 }

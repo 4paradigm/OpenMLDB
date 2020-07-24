@@ -9,6 +9,8 @@
 #include "codegen/string_ir_builder.h"
 #include <string>
 #include <vector>
+#include "codegen/arithmetic_expr_ir_builder.h"
+#include "codegen/memery_ir_builder.h"
 namespace fesql {
 namespace codegen {
 StringIRBuilder::StringIRBuilder(::llvm::Module* m) : StructTypeIRBuilder(m) {
@@ -124,21 +126,78 @@ bool StringIRBuilder::SetData(::llvm::BasicBlock* block, ::llvm::Value* str,
                               ::llvm::Value* data) {
     return Set(block, str, 1, data);
 }
-bool StringIRBuilder::Concat(::llvm::BasicBlock* block, ::llvm::Value* mem_pool,
-                             ::llvm::Value* str1, ::llvm::Value* str2,
-                             ::llvm::Value* output) {
-    if (nullptr == mem_pool) {
-        LOG(WARNING) << "Fail to concat string: mem_pool or output is null";
-        return false;
+base::Status StringIRBuilder::Concat(::llvm::BasicBlock* block,
+                                     const std::vector<NativeValue>& strs,
+                                     NativeValue* output) {
+    CHECK_TRUE(nullptr != output,
+               "fail to concat string: output llvm value is null")
+    CHECK_TRUE(!strs.empty(), "fail to concat string: concat strs are empty");
+    codegen::MemoryIRBuilder memory_ir_builder(m_);
+    codegen::ArithmeticIRBuilder arithmetic_ir_builder(block);
+    base::Status status;
+
+    if (strs.empty()) {
+        ::llvm::Value* empty_string = nullptr;
+        CHECK_TRUE(NewString(block, "", &empty_string),
+                   "fail craete empty string");
+        *output = NativeValue::Create(empty_string);
+        return base::Status();
     }
-}
-base::Status StringIRBuilder::SubString(::llvm::BasicBlock* block,
-                                        const NativeValue& str,
-                                        const NativeValue& pos,
-                                        const NativeValue& len,
-                                        NativeValue* output) {
-    CHECK_TRUE(nullptr != str.GetRaw() && nullptr != pos.GetRaw(),
-               "fail codegen sub string op: str or pos is null");
+
+    // TODO(chenjing): cast arg to string
+    for (size_t i = 0; i < strs.size(); i++) {
+        CHECK_TRUE(TypeIRBuilder::IsStringPtr(strs[i].GetType()),
+                   "fail to concat string: args[", i, "] isn't string ptr");
+    }
+    if (1 == strs.size()) {
+        *output = strs[0];
+        return base::Status();
+    }
+    ::llvm::Value* concat_str_size = nullptr;
+    CHECK_TRUE(GetSize(block, strs[0].GetRaw(), &concat_str_size),
+               "fail to concat string: fail get 1st string size");
+
+    std::vector<NativeValue> sizes;
+    std::vector<NativeValue> datas;
+
+    sizes.push_back(NativeValue::Create(concat_str_size));
+
+    for (size_t i = 1; i < strs.size(); i++) {
+        ::llvm::Value* size_i = nullptr;
+        CHECK_TRUE(GetSize(block, strs[i].GetRaw(), &size_i),
+                   "fail to concat string: fail get ", i + 1, " string size");
+        sizes.push_back(NativeValue::Create(size_i));
+        CHECK_TRUE(
+            arithmetic_ir_builder.BuildAddExpr(concat_str_size, size_i,
+                                               &concat_str_size, status),
+            "fail to concat string: fail to compute concat string total size")
+    }
+    NativeValue concat_str_data;
+    CHECK_STATUS(
+        memory_ir_builder.Alloc(block, NativeValue::Create(concat_str_size),
+                                &concat_str_data),
+        "fail to concat string: fail to alloc string size");
+
+    NativeValue addr = concat_str_data;
+    for (size_t i = 0; i < strs.size(); i++) {
+        ::llvm::Value* data_i;
+        CHECK_TRUE(GetData(block, strs[i].GetRaw(), &data_i),
+                   "fail to concat string: fail get ", i + 1,
+                   " string data ptr");
+        CHECK_STATUS(memory_ir_builder.MemoryCopy(
+                         block, addr, NativeValue::Create(data_i), sizes[i]),
+                     "fail to concat string: fail copy strs[", i, "]");
+        CHECK_STATUS(
+            memory_ir_builder.MemoryAddrAdd(block, addr, sizes[i], &addr),
+            "fail to concat string")
+    }
+
+    ::llvm::Value* concat_str = nullptr;
+    CHECK_TRUE(NewString(block, concat_str_size, concat_str_data.GetRaw(),
+                         &concat_str),
+               "fail to concat string: create concat string fail");
+    *output = NativeValue::Create(concat_str);
+    return base::Status();
 }
 }  // namespace codegen
 }  // namespace fesql

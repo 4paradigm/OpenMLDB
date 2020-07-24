@@ -81,6 +81,15 @@ void CheckUDF(const std::string &name, T expect, Args... args) {
     ASSERT_EQ(expect, result);
 }
 
+template <class T, class... Args>
+void CheckUDFFail(const std::string &name, Args... args) {
+    auto function = udf::UDFFunctionBuilder(name)
+                        .args<Args...>()
+                        .template returns<T>()
+                        .build();
+    ASSERT_FALSE(function.valid());
+}
+
 TEST_F(UDFIRBuilderTest, dayofmonth_date_udf_test) {
     codec::Date date(2020, 05, 22);
     CheckUDF<int32_t, codec::Date>("dayofmonth", 22, date);
@@ -305,13 +314,45 @@ TEST_F(UDFIRBuilderTest, log_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, substring_udf_test) {
-    std::string res = "12345";
+    std::string res = "23456";
     std::string str = "1234567890";
     CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
-        "substring", codec::StringRef(res.size(), res.data()),
-        codec::StringRef(str.size(),
-                         str.data()),
-        1, 5);
+        "substring", codec::StringRef(res), codec::StringRef(str), 2, 5);
+}
+
+TEST_F(UDFIRBuilderTest, concat_udf_test) {
+    //    concat() == ""
+    // TODO(baoxinqi): CheckUDF<T,Args...> Args is empty
+    //    CheckUDF<codec::StringRef>("concat", codec::StringRef(""));
+
+    //    concat("12345") == "12345"
+    CheckUDF<codec::StringRef, codec::StringRef>(
+        "concat", codec::StringRef("12345"),
+        codec::StringRef(std::string("12345")));
+
+    // concat("12345", "67890") == "1234567890"
+    CheckUDF<codec::StringRef, codec::StringRef, codec::StringRef>(
+        "concat", codec::StringRef("1234567890"),
+        codec::StringRef(std::string("12345")), codec::StringRef("67890"));
+
+    // concat("123", "4567890", "abcde") == "1234567890abcde"
+    CheckUDF<codec::StringRef, codec::StringRef, codec::StringRef,
+             codec::StringRef>("concat", codec::StringRef("1234567890abcde"),
+                               codec::StringRef(std::string("123")),
+                               codec::StringRef("4567890"),
+                               codec::StringRef("abcde"));
+
+    // concat("1", "23", "456", "7890", "abc", "de") == "1234567890abcde"
+    CheckUDF<codec::StringRef, codec::StringRef, codec::StringRef,
+             codec::StringRef>("concat", codec::StringRef("1234567890abcde"),
+                               codec::StringRef("1"), codec::StringRef("23"),
+                               codec::StringRef("456"),
+                               codec::StringRef("7890"),
+                               codec::StringRef("abc"), codec::StringRef("de"));
+
+    CheckUDFFail<codec::StringRef, codec::StringRef, int32_t>("concat",
+                                                              codec::StringRef("12345"),
+                                                              67890);
 }
 
 }  // namespace codegen
