@@ -13,7 +13,7 @@ add_test(resolve_udf_def_test resolve_udf_def_test --gtest_output=xml:${CMAKE_BI
 list(APPEND test_list resolve_udf_def_test)
 
 add_executable(lambdafy_projects_test lambdafy_projects_test.cc)
-target_link_libraries(lambdafy_projects_test gtest ${vm_deps_libs})
+target_link_libraries(lambdafy_projects_test gtest ${vm_deps_libs} fesql_vm fesql_codegen)
 add_test(lambdafy_projects_test lambdafy_projects_test --gtest_output=xml:${CMAKE_BINARY_DIR}/lambdafy_projects_test.xml)
 list(APPEND test_list lambdafy_projects_test)
 
