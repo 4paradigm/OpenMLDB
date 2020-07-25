@@ -519,7 +519,7 @@ bool SQLClusterRouter::DropDB(const std::string& db,
 bool SQLClusterRouter::GetTablet(
     const std::string& db, const std::string& sql,
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets) {
-    if (tablets == NULL) return false;
+    if (tablets == NULL || tablets->size() <= 0) return false;
     // TODO(wangtaize) cache compile result
     ::fesql::vm::BatchRunSession session;
     ::fesql::base::Status status;
@@ -566,6 +566,10 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         LOG(WARNING) << "input is invalid";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
+    if (!row->OK()) {
+        LOG(WARNING) << "make sure the request row is built before execute sql";
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
     std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
     std::unique_ptr<::rtidb::api::QueryResponse> response(
         new ::rtidb::api::QueryResponse());
@@ -582,9 +586,15 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         status->msg = "request server error";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
+    if (response->code() != ::rtidb::base::kOk) {
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
     std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs(
         new rtidb::sdk::ResultSetSQL(std::move(response), std::move(cntl)));
-    rs->Init();
+    bool ok = rs->Init();
+    if (!ok) {
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
     return rs;
 }
 
