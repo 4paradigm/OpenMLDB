@@ -24,7 +24,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})
-    set(FESQL_CASE_LIBS base_test fesql_case yaml-cpp boost_filesystem)
+    set(FESQL_CASE_LIBS base_test fesql_core yaml-cpp boost_filesystem)
     add_executable(blobserver_impl_test blobserver/blobserver_impl_test.cc proto/common.pb.cc proto/tablet.pb.cc flags.cc)
     target_link_libraries(blobserver_impl_test gtest ${BIN_LIBS})
     add_library(replica STATIC replica/replicate_node.cc
