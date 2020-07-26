@@ -141,7 +141,8 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
     if (cache) {
         status->code = 0;
         return std::make_shared<SQLInsertRow>(
-            cache->table_info, cache->default_map, cache->str_length);
+            cache->table_info, cache->column_schema, cache->default_map,
+            cache->str_length);
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
@@ -152,10 +153,10 @@ std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(
         LOG(WARNING) << "get insert information failed";
         return std::shared_ptr<SQLInsertRow>();
     }
-    SetCache(
-        db, sql,
-        std::make_shared<RouterCache>(table_info, default_map, str_length));
-    return std::make_shared<SQLInsertRow>(table_info, default_map, str_length);
+    cache = std::make_shared<RouterCache>(table_info, default_map, str_length);
+    SetCache(db, sql, cache);
+    return std::make_shared<SQLInsertRow>(table_info, cache->column_schema,
+                                          default_map, str_length);
 }
 
 bool SQLClusterRouter::GetInsertInfo(
@@ -424,7 +425,8 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(
     if (cache) {
         status->code = 0;
         return std::make_shared<SQLInsertRows>(
-            cache->table_info, cache->default_map, cache->str_length);
+            cache->table_info, cache->column_schema, cache->default_map,
+            cache->str_length);
     }
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     DefaultValueMap default_map;
@@ -433,10 +435,10 @@ std::shared_ptr<SQLInsertRows> SQLClusterRouter::GetInsertRows(
                        &str_length)) {
         return std::shared_ptr<SQLInsertRows>();
     }
-    SetCache(
-        db, sql,
-        std::make_shared<RouterCache>(table_info, default_map, str_length));
-    return std::make_shared<SQLInsertRows>(table_info, default_map, str_length);
+    cache = std::make_shared<RouterCache>(table_info, default_map, str_length);
+    SetCache(db, sql, cache);
+    return std::make_shared<SQLInsertRows>(table_info, cache->column_schema,
+                                           default_map, str_length);
 }
 
 bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
@@ -627,8 +629,9 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         LOG(WARNING) << "get insert information failed";
         return false;
     }
-    std::shared_ptr<SQLInsertRow> row =
-        std::make_shared<SQLInsertRow>(table_info, default_map, str_length);
+    std::shared_ptr<SQLInsertRow> row = std::make_shared<SQLInsertRow>(
+        table_info, ::rtidb::sdk::ConvertToSchema(table_info), default_map,
+        str_length);
     if (!row) {
         status->msg = "fail to parse row from sql " + sql;
         LOG(WARNING) << status->msg;

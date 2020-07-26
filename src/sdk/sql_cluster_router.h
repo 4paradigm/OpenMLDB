@@ -37,13 +37,28 @@
 namespace rtidb {
 namespace sdk {
 
+static std::shared_ptr<::fesql::sdk::Schema> ConvertToSchema(
+    std::shared_ptr<::rtidb::nameserver::TableInfo> table_info) {
+    ::fesql::vm::Schema schema;
+    for (const auto& column_desc : table_info->column_desc_v1()) {
+        ::fesql::type::ColumnDef* column_def = schema.Add();
+        column_def->set_name(column_desc.name());
+        column_def->set_is_not_null(column_desc.not_null());
+        column_def->set_type(
+            rtidb::codec::SchemaCodec::ConvertType(column_desc.data_type()));
+    }
+    return std::make_shared<::fesql::sdk::SchemaImpl>(schema);
+}
+
 struct RouterCache {
     RouterCache(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
                 DefaultValueMap default_map, uint32_t str_length)
         : table_info(table_info),
           default_map(default_map),
           column_schema(),
-          str_length(str_length) {}
+          str_length(str_length) {
+        column_schema = rtidb::sdk::ConvertToSchema(table_info);
+    }
 
     explicit RouterCache(std::shared_ptr<::fesql::sdk::Schema> column_schema)
         : table_info(),
