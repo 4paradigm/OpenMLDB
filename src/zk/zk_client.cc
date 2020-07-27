@@ -161,6 +161,11 @@ bool ZkClient::Register(bool startup_flag) {
     if (zk_ == NULL || !connected_) {
         return false;
     }
+    if (FLAGS_use_name) {
+        if (!RegisterName()) {
+            return false;
+        }
+    }
     std::string value = endpoint_.c_str();
     if (startup_flag) {
         value = "startup_" + endpoint_;
@@ -169,11 +174,6 @@ bool ZkClient::Register(bool startup_flag) {
                          &ZOO_OPEN_ACL_UNSAFE, ZOO_EPHEMERAL, NULL, 0);
     if (ret == ZOK) {
         PDLOG(INFO, "register self with endpoint %s ok", endpoint_.c_str());
-        if (FLAGS_use_name) {
-            if (!RegisterName()) {
-                return false;
-            }
-        }
         registed_.store(true, std::memory_order_relaxed);
         return true;
     }
