@@ -44,7 +44,10 @@ ResultSetSQL::ResultSetSQL(
 ResultSetSQL::~ResultSetSQL() {}
 
 bool ResultSetSQL::Init() {
-    if (!response_ || response_->code() != ::rtidb::base::kOk) return false;
+    if (!response_ || response_->code() != ::rtidb::base::kOk) {
+        LOG(WARNING) <<  "bad response code " << response_->code();
+        return false;
+    }
     byte_size_ = response_->byte_size();
     DLOG(INFO) << "byte size " << byte_size_ << " count " << response_->count();
     if (byte_size_ <= 0) return true;

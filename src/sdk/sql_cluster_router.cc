@@ -519,7 +519,7 @@ bool SQLClusterRouter::DropDB(const std::string& db,
 bool SQLClusterRouter::GetTablet(
     const std::string& db, const std::string& sql,
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets) {
-    if (tablets == NULL || tablets->size() <= 0) return false;
+    if (tablets == NULL) return false;
     // TODO(wangtaize) cache compile result
     ::fesql::vm::BatchRunSession session;
     ::fesql::base::Status status;
@@ -607,6 +607,7 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
     bool ok = GetTablet(db, sql, &tablets);
     if (!ok || tablets.size() <= 0) {
+        DLOG(INFO) << "no tablet avilable for sql " << sql;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     DLOG(INFO) << " send query to tablet " << tablets[0]->GetEndpoint();
@@ -620,6 +621,7 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     ok = rs->Init();
     if (!ok) {
         DLOG(INFO) << "fail to init result set for sql " << sql;
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     return rs;
 }
