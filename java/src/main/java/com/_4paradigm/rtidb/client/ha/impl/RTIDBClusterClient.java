@@ -228,7 +228,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                     realEpMap.put(path, new String(data, Charset.forName("UTF-8")));
                 }
             }
-            if (!realEpMap.isEmpty()) {
+            if (realEpMap.isEmpty()) {
                 // get real endpoint
                 List<String> serverNames = zookeeper.getChildren(config.getZkServerNamePath(), false);
                 for (String path : serverNames) {
@@ -371,7 +371,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                     realEpMap.put(path, new String(data, Charset.forName("UTF-8")));
                 }
             }
-            if (!realEpMap.isEmpty()) {
+            if (realEpMap.isEmpty()) {
                 // get real endpoint
                 List<String> serverNames = zookeeper.getChildren(config.getZkServerNamePath(), false);
                 for (String path : serverNames) {
