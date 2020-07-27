@@ -218,8 +218,7 @@ bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
         if (column.is_not_null()) {
             sql.append(" NOT NULL");
         }
-        if (isGenerateIndex
-            || i < table.columns_size()-1) {
+        if (isGenerateIndex || i < table.columns_size() - 1) {
             sql.append(",\n");
         }
     }

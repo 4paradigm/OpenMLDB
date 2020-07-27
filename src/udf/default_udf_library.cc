@@ -322,6 +322,7 @@ void DefaultUDFLibrary::Init() {
         });
 
     RegisterUDAFTemplate<SumUDAFDef>("sum")
+        .doc("Compute sum of values")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date>();
 
     RegisterExternalTemplate<v1::Minimum>("min")
@@ -330,6 +331,7 @@ void DefaultUDFLibrary::Init() {
         .args_in<Timestamp, Date, StringRef>();
 
     RegisterUDAFTemplate<MinUDAFDef>("min")
+        .doc("Compute min of values")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef>();
 
@@ -339,17 +341,21 @@ void DefaultUDFLibrary::Init() {
         .args_in<Timestamp, Date, StringRef>();
 
     RegisterUDAFTemplate<MaxUDAFDef>("max")
+        .doc("Compute max of values")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef>();
 
     RegisterUDAFTemplate<CountUDAFDef>("count")
+        .doc("Compute count of values")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef>();
 
     RegisterExprUDFTemplate<AvgUDAFDef>("avg")
+        .doc("Compute average of values")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date>();
 
     RegisterUDAFTemplate<DistinctCountDef>("distinct_count")
+        .doc("Compute distinct number of values")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef>();
 
