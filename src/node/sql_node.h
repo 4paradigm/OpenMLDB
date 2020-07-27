@@ -200,6 +200,8 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "query";
         case kExprOrder:
             return "order";
+        case kExprGetField:
+            return "get field";
         case kExprUnknow:
             return "unknow";
         default:
