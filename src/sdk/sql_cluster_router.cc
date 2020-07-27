@@ -591,7 +591,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     }
     std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs(
         new rtidb::sdk::ResultSetSQL(std::move(response), std::move(cntl)));
-    bool ok = rs->Init();
+    ok = rs->Init();
     if (!ok) {
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
