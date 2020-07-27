@@ -1873,6 +1873,37 @@ void NameServerImpl::ShowTablet(RpcController* controller,
     response->set_msg("ok");
 }
 
+void NameServerImpl::ShowBlob(RpcController* controller,
+                                const ShowTabletRequest* request,
+                                ShowTabletResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    auto it = blob_servers_.begin();
+    for (; it != blob_servers_.end(); ++it) {
+        TabletStatus* status = response->add_tablets();
+        status->set_endpoint(it->first);
+        if (FLAGS_use_name) {
+            auto n_it = real_ep_map_.find(it->first);
+            if (n_it == real_ep_map_.end()) {
+                status->set_real_endpoint("-");
+            } else {
+                status->set_real_endpoint(n_it->second);
+            }
+        }
+        status->set_state(::rtidb::api::TabletState_Name(it->second->state_));
+        status->set_age(::baidu::common::timer::get_micros() / 1000 -
+                        it->second->ctime_);
+    }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
 bool NameServerImpl::Init(const std::string& real_endpoint) {
     if (FLAGS_zk_cluster.empty()) {
         PDLOG(WARNING, "zk cluster disabled");

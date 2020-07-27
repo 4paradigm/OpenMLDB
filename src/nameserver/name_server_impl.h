@@ -197,6 +197,8 @@ class NameServerImpl : public NameServer {
 
     void ShowTablet(RpcController* controller, const ShowTabletRequest* request,
                     ShowTabletResponse* response, Closure* done);
+    void ShowBlob(RpcController* controller, const ShowTabletRequest* request,
+                    ShowTabletResponse* response, Closure* done);
 
     void ShowTable(RpcController* controller, const ShowTableRequest* request,
                    ShowTableResponse* response, Closure* done);

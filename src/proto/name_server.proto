@@ -482,4 +482,5 @@ service NameServer {
     rpc ShowDatabase(GeneralRequest) returns (ShowDatabaseResponse);
     rpc DropDatabase(DropDatabaseRequest) returns (GeneralResponse);
     rpc SetSdkEndpoint(SetSdkEndpointRequest) returns (GeneralResponse);
+    rpc ShowBlob(ShowTabletRequest) returns (ShowTabletResponse);
 }

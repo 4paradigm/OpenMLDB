@@ -754,6 +754,37 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
     tp.Print(true);
 }
 
+void HandleNSShowBlob(const std::vector<std::string>& parts,
+                        ::rtidb::client::NsClient* client) {
+    std::vector<std::string> row;
+    row.push_back("endpoint");
+    if (FLAGS_use_name) {
+        row.push_back("real_endpoint");
+    }
+    row.push_back("state");
+    row.push_back("age");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+    std::vector<::rtidb::client::TabletInfo> tablets;
+    std::string msg;
+    bool ok = client->ShowBlob(tablets, msg);
+    if (!ok) {
+        std::cout << "Fail to show blobs. error msg: " << msg << std::endl;
+        return;
+    }
+    for (size_t i = 0; i < tablets.size(); i++) {
+        std::vector<std::string> row;
+        row.push_back(tablets[i].endpoint);
+        if (FLAGS_use_name) {
+            row.push_back(tablets[i].real_endpoint);
+        }
+        row.push_back(tablets[i].state);
+        row.push_back(::rtidb::base::HumanReadableTime(tablets[i].age));
+        tp.AddRow(row);
+    }
+    tp.Print(true);
+}
+
 void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts,
                                   ::rtidb::client::NsClient* client) {
     if (parts.size() < 2) {
@@ -3673,6 +3704,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         printf("scan - get records for a period of time\n");
         printf("showtable - show table info\n");
         printf("showtablet - show tablet info\n");
+        printf("showblob - show blob info\n");
         printf("showns - show nameserver info\n");
         printf("showschema - show schema info\n");
         printf("showopstatus - show op info\n");
@@ -3763,6 +3795,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("desc: show tablet info\n");
             printf("usage: showtablet\n");
             printf("ex: showtablet\n");
+        }  else if (parts[1] == "showblob") {
+            printf("desc: show blob info\n");
+            printf("usage: showblob\n");
+            printf("ex: showblob\n");
         } else if (parts[1] == "showns") {
             printf("desc: show nameserver info\n");
             printf("usage: showns\n");
@@ -6368,6 +6404,8 @@ void StartNsClient() {
             continue;
         } else if (parts[0] == "showtablet") {
             HandleNSShowTablet(parts, &client);
+        } else if (parts[0] == "showblob") {
+            HandleNSShowBlob(parts, &client);
         } else if (parts[0] == "showns") {
             HandleNSShowNameServer(parts, &client, zk_client);
         } else if (parts[0] == "showopstatus") {
