@@ -1477,6 +1477,11 @@ void NameServerImpl::UpdateBlobServers(
                     tit->second->client_ =
                         std::make_shared<BsClient>(tit->first,
                                 r_it->second, true);
+                    if (tit->second->client_->Init() != 0) {
+                        PDLOG(WARNING, "blob client init error. endpoint[%s]",
+                                tit->first.c_str());
+                        continue;
+                    }
                 }
                 tit->second->state_ = TabletState::kTabletHealthy;
                 tit->second->ctime_ =
@@ -1581,6 +1586,11 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                     tit->second->client_ = std::make_shared<
                         ::rtidb::client::TabletClient>(tit->first,
                                 r_it->second, true);
+                    if (tit->second->client_->Init() != 0) {
+                        PDLOG(WARNING, "tablet client init error. endpoint[%s]",
+                                tit->first.c_str());
+                        continue;
+                    }
                 }
                 tit->second->state_ = ::rtidb::api::TabletState::kTabletHealthy;
                 tit->second->ctime_ =

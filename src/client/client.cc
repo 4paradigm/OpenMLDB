@@ -209,6 +209,10 @@ void BaseClient::UpdateEndpoint(const std::set<std::string>& alive_endpoints) {
             if (!real_endpoint.empty()) {
                 iter->second = std::make_shared<rtidb::client::TabletClient>(
                         endpoint, real_endpoint);
+                if (iter->second->Init() != 0) {
+                    std::cerr << endpoint << " initial failed!" << std::endl;
+                    continue;
+                }
             }
             new_tablets.insert(std::make_pair(endpoint, iter->second));
         }
@@ -253,6 +257,10 @@ void BaseClient::UpdateBlobEndpoint(
             if (!real_endpoint.empty()) {
                 iter->second = std::make_shared<rtidb::client::BsClient>(
                         endpoint, real_endpoint);
+                if (iter->second->Init() != 0) {
+                    std::cerr << endpoint << " initial failed!" << std::endl;
+                    continue;
+                }
             }
             new_blobs.insert(std::make_pair(endpoint, iter->second));
         }
