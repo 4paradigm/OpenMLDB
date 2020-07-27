@@ -38,6 +38,7 @@ class TypeIRBuilder {
     static bool IsStructPtr(::llvm::Type* type);
     static bool IsInt64(::llvm::Type* type);
     static bool IsInterger(::llvm::Type* type);
+    static bool isFloatPoint(::llvm::Type* type);
     static const std::string TypeName(::llvm::Type* type);
     static const bool GetTypeNode(::llvm::Type* type,
                                   node::TypeNode* type_node);

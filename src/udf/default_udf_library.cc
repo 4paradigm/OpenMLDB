@@ -9,9 +9,9 @@
 #include "udf/default_udf_library.h"
 
 #include <string>
-#include <vector>
 #include <tuple>
 #include <unordered_set>
+#include <vector>
 #include "codegen/date_ir_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
@@ -167,11 +167,26 @@ struct DistinctCountDef {
 };
 
 void DefaultUDFLibrary::InitStringUDF() {
+    RegisterExternalTemplate<v1::ToString>("string")
+        .args_in<int16_t, int32_t, int64_t, float, double>()
+        .return_by_arg(true);
+
+    RegisterExternal("string")
+        .args<Timestamp>(
+            static_cast<void (*)(codec::Timestamp*, codec::StringRef*)>(
+                udf::v1::timestamp_to_string))
+        .return_by_arg(true);
+
+    RegisterExternal("string")
+        .args<Date>(static_cast<void (*)(codec::Date*, codec::StringRef*)>(
+            udf::v1::date_to_string))
+        .return_by_arg(true);
+
     RegisterCodeGenUDF("concat").variadic_args<>(
-        /* infer */ [](UDFResolveContext* ctx,
-                       const std::vector<const node::TypeNode*>&
-                           arg_types) {
-           return ctx->node_manager()->MakeTypeNode(node::kVarchar);
+        /* infer */
+        [](UDFResolveContext* ctx,
+           const std::vector<const node::TypeNode*>& arg_types) {
+            return ctx->node_manager()->MakeTypeNode(node::kVarchar);
         },
         /* gen */
         [](CodeGenContext* ctx, const std::vector<NativeValue>& args,
@@ -179,6 +194,22 @@ void DefaultUDFLibrary::InitStringUDF() {
             codegen::StringIRBuilder string_ir_builder(ctx->GetModule());
             return string_ir_builder.Concat(ctx->GetCurrentBlock(), args, out);
         });
+
+    RegisterCodeGenUDF("concat_ws")
+        .variadic_args<AnyArg>(
+            /* infer */
+            [](UDFResolveContext* ctx, const node::TypeNode* arg,
+               const std::vector<const node::TypeNode*>& arg_types) {
+                return ctx->node_manager()->MakeTypeNode(node::kVarchar);
+            },
+            /* gen */
+            [](CodeGenContext* ctx, NativeValue arg,
+               const std::vector<NativeValue>& args, NativeValue* out) {
+                codegen::StringIRBuilder string_ir_builder(ctx->GetModule());
+
+                return string_ir_builder.ConcatWS(ctx->GetCurrentBlock(), arg,
+                                                  args, out);
+            });
 
     RegisterExternal("substring")
         .args<StringRef, int32_t>(
@@ -193,8 +224,8 @@ void DefaultUDFLibrary::InitStringUDF() {
         .return_by_arg(true);
     //    RegisterExprUDF("substring")
     //        .args<StringRef, AnyArg, AnyArg>([](UDFResolveContext* ctx,
-    //                                             ExprNode* str, ExprNode* pos,
-    //                                             ExprNode* len) -> ExprNode* {
+    //                                            ExprNode* str, ExprNode* pos,
+    //                                            ExprNode* len) -> ExprNode* {
     //            if (!pos->GetOutputType()->IsInteger()) {
     //                ctx->SetError("substring do not support pos type " +
     //                              pos->GetOutputType()->GetName());

@@ -16,12 +16,12 @@
 #include "absl/time/time.h"
 #include "base/iterator.h"
 #include "boost/date_time.hpp"
+#include "boost/date_time/posix_time/posix_time.hpp"
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
 #include "codegen/fn_ir_builder.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
-
 namespace fesql {
 namespace udf {
 namespace v1 {
@@ -92,6 +92,44 @@ int32_t weekofyear(codec::Date *date) {
     return d.week_number();
 }
 
+
+void timestamp_to_string(codec::Timestamp *v, fesql::codec::StringRef *output) {
+    std::stringstream ss;
+    boost::posix_time::ptime my_epoch(
+        boost::gregorian::date(1970, boost::gregorian::Jan, 1));
+
+    // convert back to ptime
+    boost::posix_time::ptime pt =
+        my_epoch + boost::posix_time::milliseconds(v->ts_);
+    auto tm = to_tm(pt);
+    ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+    output->size_ = ss.str().size();
+    output->data_ =
+        reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
+    memcpy(output->data_, ss.str().data(), output->size_);
+    std::cout << ss.str() << std::endl;
+}
+
+void date_to_string(codec::Date *date, fesql::codec::StringRef *output) {
+    std::stringstream ss;
+    int32_t day, month, year;
+    if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
+        output->size_ = 0;
+        output->data_ = nullptr;
+        return;
+    }
+    boost::gregorian::date g_date(year, month, day);
+
+    boost::gregorian::date_facet *facet(
+        new boost::gregorian::date_facet("%Y-%m-%d"));
+    ss.imbue(std::locale(std::cout.getloc(), facet));
+    ss << g_date;
+    output->size_ = ss.str().size();
+    output->data_ =
+        reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
+    memcpy(output->data_, ss.str().data(), output->size_);
+    std::cout << std::string(output->data_, output->size_) << std::endl;
+}
 void sub_string(fesql::codec::StringRef *str, int32_t from,
                 fesql::codec::StringRef *output) {
     if (str->IsNull()) {

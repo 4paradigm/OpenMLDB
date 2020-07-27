@@ -179,6 +179,7 @@ struct Date {
     }
     int32_t date_;
 };
+
 __attribute__((unused)) static bool operator>(const Date& a, const Date& b) {
     return a.date_ > b.date_;
 }

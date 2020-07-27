@@ -750,6 +750,9 @@ bool TypeIRBuilder::IsInt64(::llvm::Type* type) {
 bool TypeIRBuilder::IsInterger(::llvm::Type* type) {
     return type->isIntegerTy();
 }
+bool TypeIRBuilder::isFloatPoint(::llvm::Type* type) {
+    return type->isFloatingPointTy();
+}
 const std::string TypeIRBuilder::TypeName(::llvm::Type* type) {
     node::TypeNode type_node;
     if (!GetTypeNode(type, &type_node)) {
