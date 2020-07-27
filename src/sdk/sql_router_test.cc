@@ -53,7 +53,6 @@ class SQLRouterTest : public ::testing::Test {
         bool ok = mc_.SetUp();
         ASSERT_TRUE(ok);
         usleep(5000 * 1000);
-
     }
     void TearDown() { mc_.Close(); }
 
