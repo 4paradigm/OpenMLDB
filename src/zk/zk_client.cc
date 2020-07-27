@@ -12,8 +12,11 @@
 #include <boost/algorithm/string.hpp>
 #include "boost/bind.hpp"
 #include "base/glog_wapper.h" // NOLINT
+#include "base/strings.h"
 
 DECLARE_bool(use_name);
+
+using ::rtidb::base::BLOB_PREFIX;
 
 namespace rtidb {
 namespace zk {
@@ -190,26 +193,30 @@ bool ZkClient::RegisterName() {
     if (zk_ == NULL || !connected_) {
         return false;
     }
-    std::string name = names_root_path_ + "/" + endpoint_;
+    std::string sname = endpoint_;
+    if (boost::starts_with(sname, BLOB_PREFIX)) {
+        sname = sname.substr(BLOB_PREFIX.size());
+    }
+    std::string name = names_root_path_ + "/" + sname;
     std::string value = real_endpoint_.c_str();
     if (IsExistNodeNoLock(name) == 0) {
         if (SetNodeValueNoLock(name, value)) {
             PDLOG(INFO, "set node with name %s value %s ok",
-                    endpoint_.c_str(), value.c_str());
+                    sname.c_str(), value.c_str());
             return true;
         }
         PDLOG(WARNING, "set node with name %s value %s failed",
-                endpoint_.c_str(), value.c_str());
+                sname.c_str(), value.c_str());
     } else {
         int ret = zoo_create(zk_, name.c_str(), value.c_str(), value.size(),
                 &ZOO_OPEN_ACL_UNSAFE, 0, NULL, 0);
         if (ret == ZOK) {
             PDLOG(INFO, "register with name %s value %s ok",
-                    endpoint_.c_str(), value.c_str());
+                    sname.c_str(), value.c_str());
             return true;
         }
         PDLOG(WARNING, "fail to register with name %s value %s, err from zk %d",
-                endpoint_.c_str(), value.c_str(), ret);
+                sname.c_str(), value.c_str(), ret);
     }
     return false;
 }
