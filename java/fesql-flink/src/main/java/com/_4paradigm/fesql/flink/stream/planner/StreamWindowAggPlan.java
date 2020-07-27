@@ -7,7 +7,14 @@ import com._4paradigm.fesql.node.ExprNode;
 import com._4paradigm.fesql.node.OrderByNode;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.*;
+import org.apache.flink.api.common.state.MapState;
+import org.apache.flink.api.common.state.MapStateDescriptor;
+import org.apache.flink.api.common.state.ValueState;
+import org.apache.flink.api.common.state.ValueStateDescriptor;
+import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple;
+import org.apache.flink.api.java.typeutils.ListTypeInfo;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -60,6 +67,10 @@ public class StreamWindowAggPlan {
         }
         ExprNode orderbyExprNode = orderbyExprListNode.GetChild(0);
         int orderbyKeyIndex = FesqlUtil.resolveColumnIndex(orderbyExprNode, node.GetProducer(0));
+        // TODO: Use timer to trigger instead of sorting, do not support descending now
+        if (!orderByNode.is_asc()) {
+            throw new FesqlException("Do not support desceding for over window");
+        }
 
         long startOffset = node.window().range().frame().GetHistoryRangeStart();
         long rowPreceding = -1 * node.window().range().frame().GetHistoryRowsStart();
@@ -72,13 +83,22 @@ public class StreamWindowAggPlan {
             appendSlices = 0;
         }
 
-        // TODO: keyby multiple keys
-        DataStream<Row> outputDatastream = inputDatastream.keyBy(groupbyKeyIndexes.get(0)).process(new KeyedProcessFunction<Tuple, Row, Row>() {
+        // Parse List<Integer> to int[] to use as group by
+        int groupbyKeySize = groupbyKeyIndexes.size();
+        int[] groupbyKeyIndexArray = new int[groupbyKeySize];
+        for (int i = 0; i < groupbyKeySize; ++i) {
+            groupbyKeyIndexArray[i] = groupbyKeyIndexes.get(i);
+        }
+
+        DataStream<Row> outputDatastream = inputDatastream.keyBy(groupbyKeyIndexArray).process(new KeyedProcessFunction<Tuple, Row, Row>() {
 
             long functionPointer;
             FesqlFlinkCodec inputCodec;
             FesqlFlinkCodec outputCodec;
             WindowInterface windowInterface;
+
+            private ValueState<Long> lastTriggeringTsState;
+            private MapState<Long, List<Row>> timeRowsState;
 
             @Override
             public void open(Configuration config) throws Exception {
@@ -92,25 +112,67 @@ public class StreamWindowAggPlan {
                 inputCodec = new FesqlFlinkCodec(inputSchemaLists);
                 outputCodec = new FesqlFlinkCodec(outputSchemaLists);
                 windowInterface = new WindowInterface(instanceNotInWindow, startOffset, 0, rowPreceding, 0);
+
+                // Init state
+                ValueStateDescriptor<Long> lastTriggeringTsDescriptor = new ValueStateDescriptor<>("lastTriggeringTsState", Long.class);
+                lastTriggeringTsState = this.getRuntimeContext().getState(lastTriggeringTsDescriptor);
+
+                TypeInformation<Long> keyTypeInformation = BasicTypeInfo.LONG_TYPE_INFO;
+                TypeInformation<List<Row>> valueTypeInformation = new ListTypeInfo<Row>(Row.class);
+                MapStateDescriptor<Long, List<Row>> mapStateDescriptor = new MapStateDescriptor<Long, List<Row>>("timeRowsState", keyTypeInformation, valueTypeInformation);
+                timeRowsState = this.getRuntimeContext().getMapState(mapStateDescriptor);
             }
 
             @Override
             public void processElement(Row row, Context context, Collector<Row> collector) throws Exception {
-                processWindowCompute(row, collector);
-            }
-
-            public void processWindowCompute(Row currentRow, Collector<Row> collector) throws Exception {
-                com._4paradigm.fesql.codec.Row inputFesqlRow = inputCodec.encodeFlinkRow(currentRow);
 
                 // TODO: Check type or orderby column
-                LocalDateTime orderbyValue = (LocalDateTime)(currentRow.getField(orderbyKeyIndex));
+                LocalDateTime orderbyValue = (LocalDateTime)row.getField(orderbyKeyIndex);
                 long orderbyLongValue = orderbyValue.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
 
-                com._4paradigm.fesql.codec.Row outputFesqlRow = CoreAPI.WindowProject(functionPointer, orderbyLongValue, inputFesqlRow, true, appendSlices, windowInterface);
+                Long lastTriggeringTs = this.lastTriggeringTsState.value();
 
-                Row outputFlinkRow = outputCodec.decodeFesqlRow(outputFesqlRow);
+                if (lastTriggeringTs == null || orderbyLongValue > lastTriggeringTs) { // Handle if timestamp is not out-of-date
+                    List<Row> data = this.timeRowsState.get(orderbyLongValue);
+                    if (data == null) { // Register timer if the timestamp is new
+                        List<Row> rows = new ArrayList<Row>();
+                        rows.add(row);
+                        this.timeRowsState.put(orderbyLongValue, rows);
+                        // TODO: Only support for event time now
+                        context.timerService().registerEventTimeTimer(orderbyLongValue);
+                    } else { // Add the row to state
+                        data.add(row);
+                        this.timeRowsState.put(orderbyLongValue, data);
+                    }
+                }
+            }
 
-                collector.collect(outputFlinkRow);
+            @Override
+            public void onTimer(long timestamp, KeyedProcessFunction<Tuple, Row, Row>.OnTimerContext ctx, Collector<Row> out) throws Exception {
+
+                List<Row> inputs = this.timeRowsState.get(timestamp);
+
+                if (inputs != null) {
+                    for (Row inputRow: inputs) {
+
+                        com._4paradigm.fesql.codec.Row inputFesqlRow = inputCodec.encodeFlinkRow(inputRow);
+
+                        com._4paradigm.fesql.codec.Row outputFesqlRow = CoreAPI.WindowProject(functionPointer, timestamp, inputFesqlRow, true, appendSlices, windowInterface);
+
+                        Row outputFlinkRow = outputCodec.decodeFesqlRow(outputFesqlRow);
+
+                        out.collect(outputFlinkRow);
+
+                    }
+                }
+
+            }
+
+            @Override
+            public void close() throws Exception {
+                super.close();
+                inputCodec.delete();
+                outputCodec.delete();
             }
 
         }).returns(finalOutputTypeInfo);
