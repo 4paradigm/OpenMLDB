@@ -74,7 +74,7 @@ SQLRequestRow::SQLRequestRow(std::shared_ptr<fesql::sdk::Schema> schema)
       str_length_expect_(0),
       str_length_current_(0),
       has_error_(false),
-      is_ok_(false){
+      is_ok_(false) {
     str_field_start_offset_ =
         SDK_HEADER_LENGTH + BitMapSize(schema->GetColumnCnt());
     for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {

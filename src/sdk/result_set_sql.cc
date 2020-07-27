@@ -21,8 +21,8 @@
 #include <string>
 #include <utility>
 
-#include "base/status.h"
 #include "base/fe_strings.h"
+#include "base/status.h"
 #include "codec/fe_schema_codec.h"
 #include "glog/logging.h"
 
