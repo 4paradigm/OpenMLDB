@@ -23,6 +23,7 @@ public class GetFuture implements Future<ByteString>{
 	private RowView rv;
 	private ProjectionInfo projectionInfo = null;
 	private GetResponse response = null;
+	private int currentVersion = 1;
 
 	private int rowLength;
 	public static GetFuture wrappe(Future<Tablet.GetResponse> f, RTIDBClientConfig config) {
@@ -136,8 +137,13 @@ public class GetFuture implements Future<ByteString>{
 		ByteBuffer buf = raw.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN);
 	    int version = RowView.getSchemaVersion(buf);
 	    buf.rewind();
+	    if (version == this.currentVersion) {
+			return;
+		}
 	    if (version == 1) {
-	    	return;
+	        rv = new RowView(th.getSchema());
+	        this.currentVersion = 1;
+	        return;
 		}
 	    Integer maxIdx = th.getVersions().get(th.getCurrentSchemaVer());
 		if (maxIdx == null) {
@@ -152,6 +158,7 @@ public class GetFuture implements Future<ByteString>{
 		}
 	    rv = new RowView(newSchema);
 	    rowLength = maxIdx;
+	    this.currentVersion = version;
 	}
 
 	public Object[] getRowWithNoWait() throws ExecutionException, TabletException{
