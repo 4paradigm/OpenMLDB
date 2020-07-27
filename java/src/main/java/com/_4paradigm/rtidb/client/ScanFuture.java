@@ -122,6 +122,7 @@ public class ScanFuture implements Future<KvIterator> {
                 kit.setSchemaMap(t.getSchemaMap());
                 kit.setVersionPair(t.getVersions());
                 kit.setLastSchemaVersion(t.getCurrentSchemaVer());
+                kit.setDefaultSchema(t.getSchema());
             }
         }
         kit.setCount(response.getCount());

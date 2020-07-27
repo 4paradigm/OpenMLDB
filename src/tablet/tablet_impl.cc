@@ -2360,6 +2360,7 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         if (request->has_version_pair()) {
             rtidb::common::VersionPair* pair = table_meta.add_schema_versions();
             pair->CopyFrom(request->version_pair());
+            LOG(INFO) << "add version pair";
         }
         table_meta.set_schema(schema);
         table->SetTableMeta(table_meta);
@@ -2389,6 +2390,7 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
             response->set_msg("write data failed");
             return;
         }
+        LOG(INFO) << "success update table meta for table " << tid << " pid " << pid;
     }
     response->set_code(ReturnCode::kOk);
     response->set_msg("ok");
@@ -5643,17 +5645,14 @@ void TabletImpl::AddIndex(RpcController* controller,
         return;
     }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, ::rtidb::common::StorageMode::kMemory,
-                               db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, ::rtidb::common::StorageMode::kMemory, db_root_path);
     if (!ok) {
         response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
-        PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid,
-              pid);
+        PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid, pid);
         return;
     }
-    std::string db_path =
-        db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    std::string db_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
     if (!::rtidb::base::IsExists(db_path)) {
         PDLOG(WARNING, "table db path doesn't exist. tid %u, pid %u", tid, pid);
         response->set_code(::rtidb::base::ReturnCode::kTableDbPathIsNotExist);

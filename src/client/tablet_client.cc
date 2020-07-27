@@ -224,6 +224,8 @@ bool TabletClient::UpdateTableMetaForAddField(
         column_desc_ptr->CopyFrom(col);
     }
     request.set_schema(schema);
+    rtidb::common::VersionPair* new_pair = request.mutable_version_pair();
+    new_pair->CopyFrom(pair);
     bool ok = client_.SendRequest(
         &::rtidb::api::TabletServer_Stub::UpdateTableMetaForAddField, &request,
         &response, FLAGS_request_timeout_ms, 1);

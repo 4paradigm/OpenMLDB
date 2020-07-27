@@ -28,6 +28,7 @@ public class RowKvIterator implements KvIterator {
     private Map<Integer, Integer> versionPair = null;
     private Map<Integer, List<ColumnDesc>> schemaMap = null;
     private int currentVersion = 1;
+    private List<ColumnDesc> defaultSchema;
 
     public RowKvIterator(ByteString bs, List<ColumnDesc> schema, int count) {
         this.dataList.add(new ScanResultParser(bs));
@@ -89,6 +90,10 @@ public class RowKvIterator implements KvIterator {
         return key;
     }
 
+    public void setDefaultSchema(List<ColumnDesc> defaultSchema) {
+        this.defaultSchema = defaultSchema;
+    }
+
     @Override
     public String getPK() {
         return null;
@@ -138,7 +143,13 @@ public class RowKvIterator implements KvIterator {
         }
         int version = RowView.getSchemaVersion(buf);
         buf.rewind();
+        if (version == this.currentVersion) {
+            return;
+        }
         if (version == 1) {
+            schema = this.defaultSchema;
+            rv= new RowView(this.defaultSchema);
+            this.currentVersion = version;
             return;
         }
         Integer maxIdx = versionPair.get(this.currentVersion);
@@ -154,6 +165,7 @@ public class RowKvIterator implements KvIterator {
         }
         schema = newSchema;
         rv = new RowView(schema);
+        this.currentVersion = version;
     }
 
     @Override
