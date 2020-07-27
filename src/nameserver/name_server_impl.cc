@@ -11928,23 +11928,33 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller,
         has_found = true;
     }
     if (!has_found) {
+        PDLOG(INFO, "not found server_name [%s] in nameservers",
+                server_name.c_str());
         std::lock_guard<std::mutex> lock(mu_);
         auto it = tablets_.find(server_name);
-        if (it == tablets_.end()) {
-            response->set_code(::rtidb::base::ReturnCode::kEndpointIsNotExist);
-            response->set_msg("endpoint is not exist");
-            PDLOG(WARNING, "endpoint[%s] is not exist", server_name.c_str());
-            return;
-        } else {
-            if (it->second->state_ !=
-                    ::rtidb::api::TabletState::kTabletHealthy) {
-                response->set_code(
-                        ::rtidb::base::ReturnCode::kTabletIsNotHealthy);
-                response->set_msg("tablet is offline!");
-                PDLOG(WARNING, "tablet[%s] is offline!", server_name.c_str());
-                return;
-            }
+        if (it != tablets_.end() && it->second->state_ ==
+                ::rtidb::api::TabletState::kTabletHealthy) {
+            has_found = true;
         }
+    }
+    if (!has_found) {
+        PDLOG(INFO, "not found server_name [%s] in tablets",
+                server_name.c_str());
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = blob_servers_.find(server_name);
+        if (it != blob_servers_.end() && it->second->state_ ==
+                ::rtidb::api::TabletState::kTabletHealthy) {
+            has_found = true;
+        }
+    }
+    if (!has_found) {
+        PDLOG(INFO, "not found server_name [%s] in tablets",
+                server_name);
+        response->set_code(::rtidb::base::ReturnCode::kServerNameNotFound);
+        response->set_msg("server_name is not exist or offline");
+        PDLOG(WARNING, "server_name[%s] is not exist or offline",
+                server_name.c_str());
+        return;
     }
     const std::string& path =
         FLAGS_zk_root_path + "/map/sdkendpoints/" + server_name;
