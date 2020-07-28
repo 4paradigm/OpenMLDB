@@ -544,7 +544,7 @@ bool SQLClusterRouter::GetTablet(
 
 void SQLClusterRouter::GetTables(::fesql::vm::PhysicalOpNode* node,
                                  std::set<std::string>* tables) {
-    if (node == NULL) return;
+    if (node == NULL || tables == NULL) return;
     if (node->type_ == ::fesql::vm::kPhysicalOpDataProvider) {
         ::fesql::vm::PhysicalDataProviderNode* data_node =
             reinterpret_cast<::fesql::vm::PhysicalDataProviderNode*>(node);
