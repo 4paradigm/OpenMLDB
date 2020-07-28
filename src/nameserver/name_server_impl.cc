@@ -182,8 +182,8 @@ int ClusterInfo::Init(std::string& msg) {
             return 451;
         }
     }
-    std::shared_ptr<::rtidb::client::NsClient> tmp_ptr =
-        std::make_shared<::rtidb::client::NsClient>(endpoint, real_endpoint);
+    client_ = std::make_shared<
+        ::rtidb::client::NsClient>(endpoint, real_endpoint);
     if (client_->Init() < 0) {
         msg = "connect ns failed";
         PDLOG(WARNING, "connect ns failed, replica cluster ns");
@@ -192,6 +192,7 @@ int ClusterInfo::Init(std::string& msg) {
     zk_client_->WatchNodes(boost::bind(&ClusterInfo::UpdateNSClient, this, _1));
     zk_client_->WatchNodes();
     if (FLAGS_use_name) {
+        UpdateRemoteRealEpMap();
         bool ok = zk_client_->WatchItem(cluster_add_.zk_path() + "/nodes",
                 boost::bind(&ClusterInfo::UpdateRemoteRealEpMap, this));
         if (!ok) {
@@ -232,6 +233,7 @@ bool ClusterInfo::CreateTableRemote(
 }
 
 bool ClusterInfo::UpdateRemoteRealEpMap() {
+    std::lock_guard<std::mutex> lock(mu_);
     decltype(remote_real_ep_map_) tmp_map;
     if (FLAGS_use_name) {
         std::vector<std::string> vec;
@@ -250,7 +252,6 @@ bool ClusterInfo::UpdateRemoteRealEpMap() {
             tmp_map.insert(std::make_pair(ep, real_endpoint));
         }
     }
-    std::lock_guard<std::mutex> lock(mu_);
     remote_real_ep_map_.clear();
     remote_real_ep_map_ = tmp_map;
     return true;
@@ -12064,6 +12065,9 @@ void NameServerImpl::UpdateRealEpMapToTablet() {
 void NameServerImpl::UpdateRemoteRealEpMap() {
     do {
         if (!running_.load(std::memory_order_acquire)) {
+            break;
+        }
+        if (mode_.load(std::memory_order_relaxed) != kLEADER) {
             break;
         }
         if (!FLAGS_use_name) {
