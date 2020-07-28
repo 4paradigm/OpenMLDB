@@ -140,7 +140,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
 
     sleep(5);
 
-    ZkClient zk_client(FLAGS_zk_cluster, 1000, FLAGS_endpoint,
+    ZkClient zk_client(FLAGS_zk_cluster, "", 1000, FLAGS_endpoint,
                        FLAGS_zk_root_path);
     ok = zk_client.Init();
     ASSERT_TRUE(ok);
