@@ -20,6 +20,7 @@
 
 #include "base/set.h"
 #include "base/spinlock.h"
+#include "catalog/tablet_catalog.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
 #include "storage/disk_table.h"
@@ -30,6 +31,7 @@
 #include "tablet/combine_iterator.h"
 #include "tablet/file_receiver.h"
 #include "thread_pool.h"  // NOLINT
+#include "vm/engine.h"
 #include "zk/zk_client.h"
 
 using ::baidu::common::ThreadPool;
@@ -68,6 +70,8 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     ~TabletImpl();
 
     bool Init(const std::string& real_endpoint);
+    bool Init(const std::string& zk_cluster, const std::string& zk_path,
+            const std::string& endpoint, const std::string& real_endpoint);
 
     bool RegisterZK();
 
@@ -265,6 +269,10 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                     const rtidb::api::BatchQueryRequest* request,
                     rtidb::api::BatchQueryResponse* response, Closure* done);
 
+    void Query(RpcController* controller,
+               const rtidb::api::QueryRequest* request,
+               rtidb::api::QueryResponse* response, Closure* done);
+
     void CancelOP(RpcController* controller,
                   const rtidb::api::CancelOPRequest* request,
                   rtidb::api::GeneralResponse* response, Closure* done);
@@ -293,10 +301,11 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                        const ::rtidb::api::CountRequest* request,
                        uint32_t* count);
 
+    std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
+
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization
-    std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
     // Get table by table id , and Need external synchronization
     std::shared_ptr<Table> GetTableUnLock(uint32_t tid, uint32_t pid);
     // std::shared_ptr<DiskTable> GetDiskTable(uint32_t tid, uint32_t pid);
@@ -308,10 +317,13 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                                                         uint32_t pid);
 
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
+
     std::shared_ptr<LogReplicator> GetReplicatorUnLock(uint32_t tid,
                                                        uint32_t pid);
     std::shared_ptr<Snapshot> GetSnapshot(uint32_t tid, uint32_t pid);
+
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
+
     void GcTable(uint32_t tid, uint32_t pid, bool execute_once);
 
     void GcTableSnapshot(uint32_t tid, uint32_t pid);
@@ -476,6 +488,13 @@ class TabletImpl : public ::rtidb::api::TabletServer {
         mode_recycle_root_paths_;
     std::atomic<bool> follower_;
     std::map<std::string, std::string> real_ep_map_;
+    // thread safe
+    std::shared_ptr<::rtidb::catalog::TabletCatalog> catalog_;
+    // thread safe
+    ::fesql::vm::Engine engine_;
+    std::string zk_cluster_;
+    std::string zk_path_;
+    std::string endpoint_;
 };
 
 }  // namespace tablet

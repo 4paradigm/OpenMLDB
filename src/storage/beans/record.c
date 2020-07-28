@@ -88,7 +88,7 @@ char *record_value(DataRecord *r)
     if (res == r->key + r->ksz + 1)
     {
         // value was alloced in record
-        res = (char*)safe_malloc(r->vsz);
+        res = (char*)beans_safe_malloc(r->vsz);
         memcpy(res, r->value, r->vsz); // safe
     }
     return res;
@@ -109,8 +109,8 @@ void compress_record(DataRecord *r)
     int n = sizeof(DataRecord) - sizeof(char*) + ksz + vsz;
     if (n > PADDING && (r->flag & (COMPRESS_FLAG|CLIENT_COMPRESS_FLAG)) == 0)
     {
-        char *wbuf = (char*)try_malloc(QLZ_SCRATCH_COMPRESS);
-        char *v = (char*)try_malloc(vsz + 400);
+        char *wbuf = (char*)beans_try_malloc(QLZ_SCRATCH_COMPRESS);
+        char *v = (char*)beans_try_malloc(vsz + 400);
         if (wbuf == NULL || v == NULL) return ;
         int try_size = vsz > TRY_COMPRESS_SIZE ? TRY_COMPRESS_SIZE : vsz;
         int vsize = qlz_compress(r->value, v, try_size, wbuf);
@@ -150,7 +150,7 @@ DataRecord *decompress_record(DataRecord *r)
             goto DECOMP_END;
         }
         unsigned int size = qlz_size_decompressed(r->value);
-        char *v = (char*)safe_malloc(size);
+        char *v = (char*)beans_safe_malloc(size);
         unsigned int ret = qlz_decompress(r->value, v, scratch);
         if (ret != size)
         {
@@ -205,7 +205,7 @@ DataRecord *decode_record(char *buf, uint32_t size, bool decomp, const char *pat
         return NULL;
     }
 
-    DataRecord *r2 = (DataRecord *)safe_malloc(need + 1 + sizeof(char*));
+    DataRecord *r2 = (DataRecord *)beans_safe_malloc(need + 1 + sizeof(char*));
     memcpy(&r2->crc, &r->crc, sizeof(DataRecord) - sizeof(char*) + ksz); // safe
     r2->key[ksz] = 0; // c str
     r2->free_value = false;
@@ -308,7 +308,7 @@ static inline DataRecord *scan_record(char *begin, char *end,  char **curr,
 
 DataRecord *read_record(FILE *f, bool decomp, const char *path, const char *key)
 {
-    DataRecord *r = (DataRecord*) safe_malloc(PADDING + sizeof(char*));
+    DataRecord *r = (DataRecord*) beans_safe_malloc(PADDING + sizeof(char*));
     r->value = NULL;
 
     if (fread(&r->crc, 1, PADDING, f) != PADDING)
@@ -334,7 +334,7 @@ DataRecord *read_record(FILE *f, bool decomp, const char *path, const char *key)
     }
     else
     {
-        r->value = (char*)safe_malloc(vsz);
+        r->value = (char*)beans_safe_malloc(vsz);
         r->free_value = true;
         safe_memcpy(r->value, vsz, r->key + ksz, read_size);
         int need = vsz - read_size;
@@ -370,7 +370,7 @@ READ_END:
 
 DataRecord *fast_read_record(int fd, off_t offset, bool decomp, const char *path, const char *key)
 {
-    DataRecord *r = (DataRecord*) safe_malloc(calc_max(sizeof(DataRecord) + MAX_KEY_LEN, PADDING + sizeof(char*)) + 1);
+    DataRecord *r = (DataRecord*) beans_safe_malloc(calc_max(sizeof(DataRecord) + MAX_KEY_LEN, PADDING + sizeof(char*)) + 1);
     r->value = NULL;
 
     if (pread(fd, &r->crc, PADDING, offset) != PADDING)
@@ -398,7 +398,7 @@ DataRecord *fast_read_record(int fd, off_t offset, bool decomp, const char *path
     else if (read_more > vsz)
     {
         int key_more = read_more - vsz;
-        r->value = (char*)safe_malloc(vsz + key_more);
+        r->value = (char*)beans_safe_malloc(vsz + key_more);
         r->free_value = true;
         int ret = 0;
         printf("long key ksz %d key_more, vsz %d, read_more %d\n",
@@ -415,7 +415,7 @@ DataRecord *fast_read_record(int fd, off_t offset, bool decomp, const char *path
     else 
     {
         int vreadn = vsz - read_more;
-        r->value = (char*)safe_malloc(vsz);
+        r->value = (char*)beans_safe_malloc(vsz);
         r->free_value = true;
         safe_memcpy(r->value, vsz, r->key + ksz, vreadn);
         int ret = 0;
@@ -461,7 +461,7 @@ char *encode_record(DataRecord *r, unsigned int *size)
         m += PADDING - (n % PADDING);
     }
 
-    char *buf = (char*)safe_malloc(m);
+    char *buf = (char*)beans_safe_malloc(m);
 
     DataRecord *data = (DataRecord*)(buf - hs);
     memcpy(&data->crc, &r->crc, sizeof(DataRecord) - hs); // safe
@@ -658,7 +658,7 @@ int optimizeDataFile(HTree *tree, Mgr *mgr, int bucket, const char *path, const 
             }
             hint_size = hint->size * 2;
             if (hint_size < 4096) hint_size = 4096;
-            hintdata = (char*)safe_malloc(hint_size);
+            hintdata = (char*)beans_safe_malloc(hint_size);
             memcpy(hintdata, hint->buf, hint->size); // safe
             hint_used = hint->size;
             close_hint(hint);
@@ -680,7 +680,7 @@ int optimizeDataFile(HTree *tree, Mgr *mgr, int bucket, const char *path, const 
     if (hintdata == NULL)
     {
         hint_size = 1<<20;
-        hintdata = (char*)safe_malloc(hint_size);
+        hintdata = (char*)beans_safe_malloc(hint_size);
     }
 
     cur_tree = ht_new(0, 0, true);
@@ -732,7 +732,7 @@ int optimizeDataFile(HTree *tree, Mgr *mgr, int bucket, const char *path, const 
             if (hint_used + hsize > hint_size)
             {
                 hint_size *= 2;
-                hintdata = (char*)safe_realloc(hintdata, hint_size);
+                hintdata = (char*)beans_safe_realloc(hintdata, hint_size);
             }
             HintRecord *hr = (HintRecord*)(hintdata + hint_used);
             hr->ksize = r->ksz;

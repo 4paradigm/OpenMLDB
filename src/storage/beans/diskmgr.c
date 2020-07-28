@@ -69,9 +69,9 @@ int mgr_getrealpath(const char *path, char *buf, size_t bufsiz)
 Mgr *mgr_create(const char **disks, int ndisks)
 {
     char *cwd = getcwd(NULL, 0);
-    Mgr *mgr = (Mgr*) safe_malloc(sizeof(Mgr));
+    Mgr *mgr = (Mgr*) beans_safe_malloc(sizeof(Mgr));
     mgr->ndisks = ndisks;
-    mgr->disks = (char**)safe_malloc(sizeof(char*) * ndisks);
+    mgr->disks = (char**)beans_safe_malloc(sizeof(char*) * ndisks);
     int i;
     for (i = 0; i < ndisks; i++)
     {
@@ -89,7 +89,7 @@ Mgr *mgr_create(const char **disks, int ndisks)
         }
         else
         {
-            mgr->disks[i] =  (char*)safe_malloc(strlen(disks[i]) + strlen(cwd) + 2);
+            mgr->disks[i] =  (char*)beans_safe_malloc(strlen(disks[i]) + strlen(cwd) + 2);
             sprintf(mgr->disks[i], "%s/%s", cwd, disks[i]);  //safe
         }
     }

@@ -21,16 +21,13 @@
 #include <brpc/controller.h>
 #include <brpc/retry_policy.h>
 #include <gflags/gflags.h>
-#include <mutex.h>
-#include <thread_pool.h>
 
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
-#include "base/glog_wapper.h" // NOLINT
-#include <thread> // NOLINT
-#include <string> // NOLINT
+#include <string>  // NOLINT
+#include <thread>  // NOLINT
 
-
+#include "base/glog_wapper.h"  // NOLINT
 
 DECLARE_int32(request_sleep_time);
 
@@ -94,7 +91,23 @@ class RpcClient {
         stub_ = new T(channel_);
         return 0;
     }
-
+    template <class Request, class Response, class Callback>
+    bool SendRequest(void (T::*func)(google::protobuf::RpcController*,
+                                     const Request*, Response*, Callback*),
+                     brpc::Controller* cntl, const Request* request,
+                     Response* response) {
+        if (stub_ == NULL) {
+            PDLOG(WARNING,
+                  "stub is null. client must be init before send request");
+            return false;
+        }
+        (stub_->*func)(cntl, request, response, NULL);
+        if (!cntl->Failed()) {
+            return true;
+        }
+        PDLOG(WARNING, "request error. %s", cntl->ErrorText().c_str());
+        return false;
+    }
     template <class Request, class Response, class Callback>
     bool SendRequest(void (T::*func)(google::protobuf::RpcController*,
                                      const Request*, Response*, Callback*),

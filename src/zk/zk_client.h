@@ -9,11 +9,12 @@
 #define SRC_ZK_ZK_CLIENT_H_
 
 #include <atomic>
-#include <condition_variable> // NOLINT
+#include <condition_variable>  // NOLINT
 #include <map>
-#include <mutex> // NOLINT
-#include <vector>
+#include <mutex>  // NOLINT
 #include <string>
+#include <vector>
+
 #include "boost/function.hpp"
 
 extern "C" {
@@ -63,10 +64,10 @@ class ZkClient {
     void HandleNodesChanged(int type, int state);
 
     // get all alive nodes
-    bool GetNodes(std::vector<std::string>& endpoints); // NOLINT
+    bool GetNodes(std::vector<std::string>& endpoints);  // NOLINT
 
     bool GetChildren(const std::string& path,
-                     std::vector<std::string>& children); // NOLINT
+                     std::vector<std::string>& children);  // NOLINT
 
     // log all event from zookeeper
     void LogEvent(int type, int state, const char* path);
@@ -74,8 +75,9 @@ class ZkClient {
     bool MkdirNoLock(const std::string& path);
     bool Mkdir(const std::string& path);
 
-    bool GetNodeValue(const std::string& node, std::string& value); // NOLINT
-    bool GetNodeValueLocked(const std::string& node, std::string& value); // NOLINT
+    bool GetNodeValue(const std::string& node, std::string& value);  // NOLINT
+    bool GetNodeValueLocked(const std::string& node,
+                            std::string& value);  // NOLINT
 
     bool SetNodeValueNoLock(const std::string& node, const std::string& value);
     bool SetNodeValue(const std::string& node, const std::string& value);
@@ -95,13 +97,14 @@ class ZkClient {
     bool CreateNode(const std::string& node, const std::string& value);
 
     bool CreateNode(const std::string& node, const std::string& value,
-                    int flags, std::string& assigned_path_name); // NOLINT
+                    int flags, std::string& assigned_path_name);  // NOLINT
 
     bool WatchNodes();
 
     void HandleItemChanged(const std::string& path, int type, int state);
 
     bool WatchItem(const std::string& path, ItemChangedCallback callback);
+    bool CancelWatchItem(const std::string& path);
 
     int IsExistNodeNoLock(const std::string& node);
     int IsExistNode(const std::string& node);

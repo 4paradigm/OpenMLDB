@@ -54,7 +54,7 @@ _safe_malloc(size_t s, const char *file, int line, const char *func)
     return p;
 }
 
-#define safe_malloc(X) _safe_malloc(X, __FILE__, __LINE__, __FUNCTION__)
+#define beans_safe_malloc(X) _safe_malloc(X, __FILE__, __LINE__, __FUNCTION__)
 
 inline static void*
 _try_malloc(size_t s, const char *file, int line, const char *func)
@@ -67,7 +67,7 @@ _try_malloc(size_t s, const char *file, int line, const char *func)
     return p;
 }
 
-#define try_malloc(X) _try_malloc(X, __FILE__, __LINE__, __FUNCTION__)
+#define beans_try_malloc(X) _try_malloc(X, __FILE__, __LINE__, __FUNCTION__)
 
 inline static void*
 _safe_realloc(void *ptr, size_t s, const char *file, int line, const char *func)
@@ -82,7 +82,7 @@ _safe_realloc(void *ptr, size_t s, const char *file, int line, const char *func)
     return p;
 }
 
-#define safe_realloc(X, Y) _safe_realloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
+#define beans_safe_realloc(X, Y) _safe_realloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
 
 inline static void*
 _try_realloc(void *ptr, size_t s, const char *file, int line, const char *func)
@@ -96,7 +96,7 @@ _try_realloc(void *ptr, size_t s, const char *file, int line, const char *func)
     return p;
 }
 
-#define try_realloc(X, Y) _try_realloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
+#define beans_try_realloc(X, Y) _try_realloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
 
 inline static void*
 _safe_calloc(size_t num, size_t size, const char *file, int line, const char *func)
@@ -110,7 +110,7 @@ _safe_calloc(size_t num, size_t size, const char *file, int line, const char *fu
     return p;
 }
 
-#define safe_calloc(X, Y) _safe_calloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
+#define beans_safe_calloc(X, Y) _safe_calloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
 
 inline static void*
 _try_calloc(size_t num, size_t size, const char *file, int line, const char *func)
@@ -123,7 +123,7 @@ _try_calloc(size_t num, size_t size, const char *file, int line, const char *fun
     return p;
 }
 
-#define try_calloc(X, Y) _try_calloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
+#define beans_try_calloc(X, Y) _try_calloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
 
 inline static size_t
 _check_snprintf(const char *file, int line, const char *func, char *s, size_t n, const char *format, ...)

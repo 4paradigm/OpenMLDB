@@ -9,16 +9,17 @@
 #include <gflags/gflags.h>
 #include <sched.h>
 #include <unistd.h>
+
 #include "base/file_util.h"
+#include "base/glog_wapper.h"  // NOLINT
 #include "client/ns_client.h"
 #include "gtest/gtest.h"
-#include "base/glog_wapper.h" // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 #include "tablet/tablet_impl.h"
-#include "timer.h" // NOLINT
+#include "timer.h"  // NOLINT
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -36,7 +37,9 @@ using ::rtidb::zk::ZkClient;
 namespace rtidb {
 namespace nameserver {
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() {
+    return std::to_string(rand() % 10000000 + 1);  // NOLINT
+}
 
 class MockClosure : public ::google::protobuf::Closure {
  public:
@@ -57,12 +60,27 @@ class NameServerImplRemoteTest : public ::testing::Test {
     GetTableInfo(NameServerImpl* nameserver) {
         return nameserver->table_info_;
     }
-    ZoneInfo& GetZoneInfo(NameServerImpl* nameserver) {
-        return nameserver->zone_info_;
+    ZoneInfo* GetZoneInfo(NameServerImpl* nameserver) {
+        return &(nameserver->zone_info_);
     }
+    void CreateTableRemoteBeforeAddRepClusterFunc(
+        NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
+        ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>&
+            name_server_client_1,
+        ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>&
+            name_server_client_2,
+        std::string db);
+    void CreateAndDropTableRemoteFunc(
+        NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
+        ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>&
+            name_server_client_1,
+        ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>&
+            name_server_client_2,
+        std::string db);
 };
 
-void StartNameServer(brpc::Server& server, NameServerImpl* nameserver) { // NOLINT
+void StartNameServer(brpc::Server& server,  // NOLINT
+                     NameServerImpl* nameserver) {  // NOLINT
     bool ok = nameserver->Init();
     ASSERT_TRUE(ok);
     sleep(4);
@@ -77,7 +95,7 @@ void StartNameServer(brpc::Server& server, NameServerImpl* nameserver) { // NOLI
     }
 }
 
-void StartNameServer(brpc::Server& server) { // NOLINT
+void StartNameServer(brpc::Server& server) {  // NOLINT
     NameServerImpl* nameserver = new NameServerImpl();
     bool ok = nameserver->Init();
     ASSERT_TRUE(ok);
@@ -112,44 +130,13 @@ void StartTablet(brpc::Server* server) {
     sleep(2);
 }
 
-TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
-    // local ns and tablet
-    // ns
-    FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
-    FLAGS_endpoint = "127.0.0.1:9631";
-    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-
-    NameServerImpl* nameserver_1 = new NameServerImpl();
-    brpc::Server server;
-    StartNameServer(server, nameserver_1);
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client_1(FLAGS_endpoint);
-    name_server_client_1.Init();
-
-    // tablet
-    FLAGS_endpoint = "127.0.0.1:9931";
-    brpc::Server server1;
-    StartTablet(&server1);
-
-    // remote ns and tablet
-    // ns
-    FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
-    FLAGS_endpoint = "127.0.0.1:9632";
-    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
-
-    NameServerImpl* nameserver_2 = new NameServerImpl();
-    brpc::Server server2;
-    StartNameServer(server2, nameserver_2);
-    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client_2(FLAGS_endpoint);
-    name_server_client_2.Init();
-
-    // tablet
-    FLAGS_endpoint = "127.0.0.1:9932";
-    brpc::Server server3;
-    StartTablet(&server3);
+void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
+    NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>&
+        name_server_client_1,
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>&
+        name_server_client_2,
+    std::string db) {  // NOLINT
     bool ok = false;
     std::string name = "test" + GenRand();
     {
@@ -157,6 +144,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
         GeneralResponse response;
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
+        table_info->set_db(db);
         TablePartition* partion = table_info->add_table_partition();
         partion->set_pid(1);
         PartitionMeta* meta = partion->add_partition_meta();
@@ -188,6 +176,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     {
         ::rtidb::nameserver::ShowTableRequest request;
         ::rtidb::nameserver::ShowTableResponse response;
+        request.set_db(db);
         ok = name_server_client_2.SendRequest(
             &::rtidb::nameserver::NameServer_Stub::ShowTable, &request,
             &response, FLAGS_request_timeout_ms, 1);
@@ -221,6 +210,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     {
         ::rtidb::nameserver::ShowTableRequest request;
         ::rtidb::nameserver::ShowTableResponse response;
+        request.set_db(db);
         ok = name_server_client_2.SendRequest(
             &::rtidb::nameserver::NameServer_Stub::ShowTable, &request,
             &response, FLAGS_request_timeout_ms, 1);
@@ -266,6 +256,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     {
         ::rtidb::nameserver::DropTableRequest request;
         request.set_name(name);
+        request.set_db(db);
         ::rtidb::nameserver::GeneralResponse response;
         bool ok = name_server_client_1.SendRequest(
             &::rtidb::nameserver::NameServer_Stub::DropTable, &request,
@@ -277,6 +268,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     {
         ::rtidb::nameserver::ShowTableRequest request;
         ::rtidb::nameserver::ShowTableResponse response;
+        request.set_db(db);
         ok = name_server_client_2.SendRequest(
             &::rtidb::nameserver::NameServer_Stub::ShowTable, &request,
             &response, FLAGS_request_timeout_ms, 1);
@@ -286,7 +278,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     }
 }
 
-TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
+TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     // local ns and tablet
     // ns
     FLAGS_zk_cluster = "127.0.0.1:6181";
@@ -324,6 +316,77 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     FLAGS_endpoint = "127.0.0.1:9932";
     brpc::Server server3;
     StartTablet(&server3);
+
+    // test remote without db
+    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2,
+                                             name_server_client_1,
+                                             name_server_client_2, "");
+}
+
+TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
+    // local ns and tablet
+    // ns
+    FLAGS_zk_cluster = "127.0.0.1:6181";
+    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_endpoint = "127.0.0.1:9631";
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+
+    NameServerImpl* nameserver_1 = new NameServerImpl();
+    brpc::Server server;
+    StartNameServer(server, nameserver_1);
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
+        name_server_client_1(FLAGS_endpoint);
+    name_server_client_1.Init();
+
+    // tablet
+    FLAGS_endpoint = "127.0.0.1:9931";
+    brpc::Server server1;
+    StartTablet(&server1);
+
+    // remote ns and tablet
+    // ns
+    FLAGS_zk_cluster = "127.0.0.1:6181";
+    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_endpoint = "127.0.0.1:9632";
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+
+    NameServerImpl* nameserver_2 = new NameServerImpl();
+    brpc::Server server2;
+    StartNameServer(server2, nameserver_2);
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
+        name_server_client_2(FLAGS_endpoint);
+    name_server_client_2.Init();
+
+    // tablet
+    FLAGS_endpoint = "127.0.0.1:9932";
+    brpc::Server server3;
+    StartTablet(&server3);
+
+    // create db
+    std::string db = "db" + GenRand();
+    {
+        ::rtidb::nameserver::CreateDatabaseRequest request;
+        ::rtidb::nameserver::GeneralResponse response;
+        request.set_db(db);
+        bool ok = name_server_client_1.SendRequest(
+            &::rtidb::nameserver::NameServer_Stub::CreateDatabase, &request,
+            &response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, response.code());
+    }
+    // use db create table
+    CreateTableRemoteBeforeAddRepClusterFunc(nameserver_1, nameserver_2,
+                                             name_server_client_1,
+                                             name_server_client_2, db);
+}
+
+void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
+    NameServerImpl* nameserver_1, NameServerImpl* nameserver_2,
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>&
+        name_server_client_1,
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>&
+        name_server_client_2,
+    std::string db) {
     bool ok = false;
     {
         ::rtidb::nameserver::SwitchModeRequest request;
@@ -450,6 +513,107 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     }
 }
 
+TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemoteWithDb) {
+    // local ns and tablet
+    // ns
+    FLAGS_zk_cluster = "127.0.0.1:6181";
+    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_endpoint = "127.0.0.1:9631";
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+
+    NameServerImpl* nameserver_1 = new NameServerImpl();
+    brpc::Server server;
+    StartNameServer(server, nameserver_1);
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
+        name_server_client_1(FLAGS_endpoint);
+    name_server_client_1.Init();
+
+    // tablet
+    FLAGS_endpoint = "127.0.0.1:9931";
+    brpc::Server server1;
+    StartTablet(&server1);
+
+    // remote ns and tablet
+    // ns
+    FLAGS_zk_cluster = "127.0.0.1:6181";
+    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_endpoint = "127.0.0.1:9632";
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+
+    NameServerImpl* nameserver_2 = new NameServerImpl();
+    brpc::Server server2;
+    StartNameServer(server2, nameserver_2);
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
+        name_server_client_2(FLAGS_endpoint);
+    name_server_client_2.Init();
+
+    // tablet
+    FLAGS_endpoint = "127.0.0.1:9932";
+    brpc::Server server3;
+    StartTablet(&server3);
+
+    // create db
+    std::string db = "db" + GenRand();
+    {
+        ::rtidb::nameserver::CreateDatabaseRequest request;
+        ::rtidb::nameserver::GeneralResponse response;
+        request.set_db(db);
+        bool ok = name_server_client_1.SendRequest(
+            &::rtidb::nameserver::NameServer_Stub::CreateDatabase, &request,
+            &response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, response.code());
+    }
+
+    CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2,
+                                 name_server_client_1, name_server_client_2,
+                                 db);
+}
+
+TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
+    // local ns and tablet
+    // ns
+    FLAGS_zk_cluster = "127.0.0.1:6181";
+    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_endpoint = "127.0.0.1:9631";
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+
+    NameServerImpl* nameserver_1 = new NameServerImpl();
+    brpc::Server server;
+    StartNameServer(server, nameserver_1);
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
+        name_server_client_1(FLAGS_endpoint);
+    name_server_client_1.Init();
+
+    // tablet
+    FLAGS_endpoint = "127.0.0.1:9931";
+    brpc::Server server1;
+    StartTablet(&server1);
+
+    // remote ns and tablet
+    // ns
+    FLAGS_zk_cluster = "127.0.0.1:6181";
+    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_endpoint = "127.0.0.1:9632";
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+
+    NameServerImpl* nameserver_2 = new NameServerImpl();
+    brpc::Server server2;
+    StartNameServer(server2, nameserver_2);
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
+        name_server_client_2(FLAGS_endpoint);
+    name_server_client_2.Init();
+
+    // tablet
+    FLAGS_endpoint = "127.0.0.1:9932";
+    brpc::Server server3;
+    StartTablet(&server3);
+
+    CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2,
+                                 name_server_client_1, name_server_client_2,
+                                 "");
+}
+
 TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     // local ns and tablet
     // ns
@@ -459,7 +623,8 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
 
     brpc::Server server;
     NameServerImpl* nameserver_1 = new NameServerImpl();
-    StartNameServer(server);
+    StartNameServer(server, nameserver_1);
+
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
         name_server_client_1(FLAGS_endpoint);
     name_server_client_1.Init();
@@ -528,14 +693,14 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         sleep(2);
     }
 
-    ZoneInfo zone_info = GetZoneInfo(nameserver_1);
+    ZoneInfo* zone_info = GetZoneInfo(nameserver_1);
     std::string name = "test" + GenRand();
     {
         ::rtidb::nameserver::CreateTableInfoRequest request;
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -610,7 +775,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -667,7 +832,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -735,7 +900,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -810,7 +975,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -876,7 +1041,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -996,14 +1161,14 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         sleep(2);
     }
 
-    ZoneInfo zone_info = GetZoneInfo(nameserver_1);
+    ZoneInfo* zone_info = GetZoneInfo(nameserver_1);
     std::string name = "test" + GenRand();
     {
         ::rtidb::nameserver::CreateTableInfoRequest request;
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -1059,7 +1224,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -1097,7 +1262,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -1146,7 +1311,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -1202,7 +1367,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 
@@ -1249,7 +1414,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ::rtidb::nameserver::CreateTableInfoResponse response;
         ::rtidb::nameserver::ZoneInfo* zone_info_p =
             request.mutable_zone_info();
-        zone_info_p->CopyFrom(zone_info);
+        zone_info_p->CopyFrom(*zone_info);
         TableInfo* table_info = request.mutable_table_info();
         table_info->set_name(name);
 

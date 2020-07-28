@@ -42,14 +42,13 @@ class NsClient {
  public:
      explicit NsClient(const std::string& endpoint,
              const std::string& real_endpoint);
+    ~NsClient() {}
 
     int Init();
 
     std::string GetEndpoint();
 
     const std::string& GetDb();
-
-    bool HasDb();
 
     void ClearDb();
 
@@ -72,8 +71,21 @@ class NsClient {
         std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT
         std::string& msg);                                    // NOLINT
 
+    bool ShowTable(
+        const std::string& name, const std::string& db, bool show_all,
+        std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT
+        std::string& msg);                                    // NOLINT
+
+    bool ShowAllTable(
+        std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT
+        std::string& msg);                                    // NOLINT
+
     bool MakeSnapshot(const std::string& name, uint32_t pid,
                       uint64_t end_offset, std::string& msg);  // NOLINT
+
+    bool MakeSnapshot(const std::string& name, const std::string& db,
+                      uint32_t pid, uint64_t end_offset,
+                      std::string& msg);  // NOLINT
 
     bool ShowOPStatus(
         ::rtidb::nameserver::ShowOPStatusResponse& response,       // NOLINT
@@ -88,9 +100,11 @@ class NsClient {
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
                      std::string& msg);  // NOLINT
 
-    std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
-        const std::string& script,
-        std::string& msg);  // NOLINT
+    bool ExecuteSQL(const std::string& script,
+                    std::string& msg);  // NOLINT
+
+    bool ExecuteSQL(const std::string& db, const std::string& script,
+                    std::string& msg);  // NOLINT
 
     bool DropTable(const std::string& name, std::string& msg);  // NOLINT
 
@@ -108,6 +122,11 @@ class NsClient {
                    uint32_t pid, const ::rtidb::nameserver::ZoneInfo& zone_info,
                    const ::rtidb::api::TaskInfo& task_info);
 
+    bool LoadTable(const std::string& name, const std::string& db,
+                   const std::string& endpoint, uint32_t pid,
+                   const ::rtidb::nameserver::ZoneInfo& zone_info,
+                   const ::rtidb::api::TaskInfo& task_info);
+
     bool CreateRemoteTableInfo(
         const ::rtidb::nameserver::ZoneInfo& zone_info,
         ::rtidb::nameserver::TableInfo& table_info,  // NOLINT
@@ -119,7 +138,7 @@ class NsClient {
         std::string& msg);                           // NOLINT
 
     bool DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
-                         const std::string& name,
+                         const std::string& name, const std::string& db,
                          const ::rtidb::nameserver::ZoneInfo& zone_info,
                          std::string& msg);  // NOLINT
 
@@ -223,10 +242,17 @@ class NsClient {
         const fesql::node::NodePointVector& column_desc_list,
         ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status);
 
+    bool HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
+                      const std::string& db, fesql::base::Status* sql_status);
+    bool HandleSQLCreateTable(const fesql::node::NodePointVector& parser_trees,
+                              const std::string& db,
+                              fesql::node::NodeManager* node_manager,
+                              fesql::base::Status* sql_status);
+
  private:
     std::string endpoint_;
-    std::string db_;
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> client_;
+    std::string db_;
 };
 
 }  // namespace client

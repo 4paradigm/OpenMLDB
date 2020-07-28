@@ -28,7 +28,10 @@
 #include "base/hash.h"
 #include "base/status.h"
 #include "base/strings.h"
+#include "brpc/controller.h"
+#include "butil/iobuf.h"
 #include "codec/codec.h"
+#include "glog/logging.h"
 #include "rapidjson/stringbuffer.h"
 #include "storage/binlog.h"
 #include "storage/segment.h"
@@ -103,9 +106,13 @@ TabletImpl::TabletImpl()
       snapshot_pool_(1),
       server_(NULL),
       mode_root_paths_(),
-      mode_recycle_root_paths_() {
-    follower_.store(false);
-}
+      mode_recycle_root_paths_(),
+      follower_(false),
+      catalog_(new ::rtidb::catalog::TabletCatalog()),
+      engine_(catalog_),
+      zk_cluster_(),
+      zk_path_(),
+      endpoint_() {}
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
@@ -116,6 +123,15 @@ TabletImpl::~TabletImpl() {
 }
 
 bool TabletImpl::Init(const std::string& real_endpoint) {
+    return Init(FLAGS_zk_cluster, FLAGS_zk_root_path,
+            FLAGS_endpoint, real_endpoint);
+}
+
+bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
+        const std::string& endpoint, const std::string& real_endpoint) {
+    zk_cluster_ = zk_cluster;
+    zk_path_ = zk_path;
+    endpoint_ = endpoint;
     std::lock_guard<std::mutex> lock(mu_);
     ::rtidb::base::SplitString(FLAGS_db_root_path, ",",
                                mode_root_paths_[::rtidb::common::kMemory]);
@@ -132,14 +148,13 @@ bool TabletImpl::Init(const std::string& real_endpoint) {
     ::rtidb::base::SplitString(FLAGS_recycle_hdd_bin_root_path, ",",
                                mode_recycle_root_paths_[::rtidb::common::kHDD]);
 
-    if (!FLAGS_zk_cluster.empty()) {
-        zk_client_ = new ZkClient(FLAGS_zk_cluster, real_endpoint,
-                FLAGS_zk_session_timeout,
-                FLAGS_endpoint, FLAGS_zk_root_path);
+    if (!zk_cluster.empty()) {
+        zk_client_ = new ZkClient(zk_cluster, real_endpoint,
+                FLAGS_zk_session_timeout, endpoint, zk_path);
         bool ok = zk_client_->Init();
         if (!ok) {
             PDLOG(WARNING, "fail to init zookeeper with cluster %s",
-                  FLAGS_zk_cluster.c_str());
+                  zk_cluster.c_str());
             return false;
         }
     } else {
@@ -296,14 +311,14 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
 }
 
 bool TabletImpl::RegisterZK() {
-    if (!FLAGS_zk_cluster.empty()) {
+    if (!zk_cluster_.empty()) {
         if (!zk_client_->Register(true)) {
             PDLOG(WARNING, "fail to register tablet with endpoint %s",
-                  FLAGS_endpoint.c_str());
+                  endpoint_.c_str());
             return false;
         }
         PDLOG(INFO, "tablet with endpoint %s register to zk cluster %s ok",
-              FLAGS_endpoint.c_str(), FLAGS_zk_cluster.c_str());
+              endpoint_.c_str(), zk_cluster_.c_str());
         keep_alive_pool_.DelayTask(
             FLAGS_zk_keep_alive_check_interval,
             boost::bind(&TabletImpl::CheckZkClient, this));
@@ -383,9 +398,8 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
         enable_project = true;
     }
     if (st > 0 && st < et) {
-        DEBUGLOG(
-              "invalid args for st %lu less than et %lu or expire time %lu", st,
-              et, expire_time);
+        DEBUGLOG("invalid args for st %lu less than et %lu or expire time %lu",
+                 st, et, expire_time);
         return -1;
     }
     if (it->Valid()) {
@@ -613,8 +627,8 @@ void TabletImpl::Update(RpcController* controller,
             response->set_code(::rtidb::base::ReturnCode::kUpdateFailed);
             response->set_msg("update failed: " + msg);
         }
-        PDLOG(WARNING, "update failed, msg: %s. tid %u, pid %u",
-                msg.c_str(), request->tid(), request->pid());
+        PDLOG(WARNING, "update failed, msg: %s. tid %u, pid %u", msg.c_str(),
+              request->tid(), request->pid());
         return;
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
@@ -646,6 +660,9 @@ void TabletImpl::Put(RpcController* controller,
         }
     }
     if (table) {
+        DLOG(INFO) << " request format_version " << request->format_version()
+                   << " request dimension size " << request->dimensions_size()
+                   << " request time " << request->time();
         if ((!request->has_format_version() &&
              table->GetTableMeta().format_version() == 1) ||
             (request->has_format_version() &&
@@ -688,9 +705,18 @@ void TabletImpl::Put(RpcController* controller,
                 return;
             }
             if (request->ts_dimensions_size() > 0) {
+                DLOG(INFO) << "put data to tid " << request->tid() << " pid "
+                           << request->pid() << " with key "
+                           << request->dimensions(0).key() << " ts "
+                           << request->ts_dimensions(0).ts();
                 ok = table->Put(request->dimensions(), request->ts_dimensions(),
                                 request->value());
             } else {
+                DLOG(INFO) << "put data to tid " << request->tid() << " pid "
+                           << request->pid() << " with key "
+                           << request->dimensions(0).key() << " ts "
+                           << request->time();
+
                 ok = table->Put(request->time(), request->value(),
                                 request->dimensions());
             }
@@ -756,17 +782,17 @@ void TabletImpl::Put(RpcController* controller,
         }
     } else {
         int64_t auto_gen_pk = 0;
-        ::google::protobuf::RepeatedField<::google::protobuf::int64>* blob_keys
-            = response->mutable_blob_keys();
+        ::google::protobuf::RepeatedField<::google::protobuf::int64>*
+            blob_keys = response->mutable_blob_keys();
         bool ok = false;
         std::string msg;
         if (request->has_wo()) {
-            ok = r_table->Put(request->value(), request->wo(),
-                    &auto_gen_pk, blob_keys, &msg);
+            ok = r_table->Put(request->value(), request->wo(), &auto_gen_pk,
+                              blob_keys, &msg);
         } else {
             ::rtidb::api::WriteOption wo;
             ok = r_table->Put(request->value(), wo, &auto_gen_pk, blob_keys,
-                    &msg);
+                              &msg);
         }
         if (!ok) {
             response->set_code(::rtidb::base::ReturnCode::kPutFailed);
@@ -838,7 +864,10 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
                 if (column_desc.type() != "int64" &&
                     column_desc.type() != "uint64" &&
                     column_desc.type() != "timestamp") {
-                    msg = "ttl column type must be int64, uint64, timestamp";
+                    msg =
+                        "ttl column type must be int64, uint64, timestamp "
+                        "but " +
+                        column_desc.type();
                     return -1;
                 }
                 if (column_desc.has_abs_ttl() || column_desc.has_lat_ttl()) {
@@ -1107,9 +1136,6 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt,
     uint32_t cnt = 0;
     if (st > 0) {
         if (st < et) {
-            PDLOG(WARNING,
-                  "invalid args for st %lu less than et %lu or expire time %lu",
-                  st, et, expire_time);
             return -1;
         }
         if (expire_cnt == 0) {
@@ -1620,10 +1646,9 @@ void TabletImpl::Traverse(RpcController* controller,
         if (request->has_read_option() &&
             request->read_option().index_size() > 0) {
             std::string combine_pk;
-            if (!r_table->GetCombinePk(
-                        request->read_option().index(), &combine_pk)) {
-                response->set_code(
-                        ::rtidb::base::ReturnCode::kIdxNameNotFound);
+            if (!r_table->GetCombinePk(request->read_option().index(),
+                                       &combine_pk)) {
+                response->set_code(::rtidb::base::ReturnCode::kIdxNameNotFound);
                 response->set_msg("pk index col name not found");
                 delete it;
                 return;
@@ -1804,6 +1829,101 @@ void TabletImpl::Delete(RpcController* controller,
     }
 }
 
+void TabletImpl::Query(RpcController* ctrl,
+                       const rtidb::api::QueryRequest* request,
+                       rtidb::api::QueryResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
+    butil::IOBuf& buf = cntl->response_attachment();
+    ::fesql::base::Status status;
+    if (request->is_batch()) {
+        ::fesql::vm::BatchRunSession session;
+        {
+            bool ok =
+                engine_.Get(request->sql(), request->db(), session, status);
+            if (!ok) {
+                response->set_msg(status.msg);
+                response->set_code(::rtidb::base::kSQLCompileError);
+                DLOG(WARNING) << "fail to compile sql " << request->sql();
+                return;
+            }
+        }
+        if (request->is_debug()) {
+            session.EnableDebug();
+        }
+        auto table = session.Run();
+        if (!table) {
+            DLOG(WARNING) << "fail to run sql " << request->sql();
+            response->set_code(::rtidb::base::kSQLRunError);
+            response->set_msg("fail to run sql");
+            return;
+        }
+        auto iter = table->GetIterator();
+        iter->SeekToFirst();
+        uint32_t byte_size = 0;
+        uint32_t count = 0;
+        while (iter->Valid()) {
+            const ::fesql::codec::Row& row = iter->GetValue();
+            if (byte_size > FLAGS_scan_max_bytes_size) {
+                LOG(WARNING) << "reach the max byte size truncate result";
+                response->set_schema(session.GetEncodedSchema());
+                response->set_byte_size(byte_size);
+                response->set_count(count);
+                response->set_code(::rtidb::base::kOk);
+                return;
+            }
+            byte_size += row.size();
+            iter->Next();
+            buf.append(reinterpret_cast<void*>(row.buf()), row.size());
+            count += 1;
+        }
+        response->set_schema(session.GetEncodedSchema());
+        response->set_byte_size(byte_size);
+        response->set_count(count);
+        response->set_code(::rtidb::base::kOk);
+        DLOG(INFO) << "handle batch sql " << request->sql()
+                   << " with record cnt " << count << " byte size "
+                   << byte_size;
+    } else {
+        // TODO(wangtaize) validate the row
+        if (request->input_row().empty()) {
+            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
+            response->set_msg("input row is empty");
+            return;
+        }
+        ::fesql::vm::RequestRunSession session;
+        {
+            bool ok =
+                engine_.Get(request->sql(), request->db(), session, status);
+            if (!ok) {
+                response->set_msg(status.msg);
+                response->set_code(::rtidb::base::kSQLCompileError);
+                DLOG(WARNING) << "fail to run sql " << request->sql();
+                return;
+            }
+        }
+        if (request->is_debug()) {
+            session.EnableDebug();
+        }
+        ::fesql::codec::Row row(request->input_row());
+        ::fesql::codec::Row output;
+        int32_t ret = session.Run(row, &output);
+        if (ret != 0) {
+            DLOG(WARNING) << "fail to run sql " << request->sql();
+            response->set_code(::rtidb::base::kSQLRunError);
+            response->set_msg("fail to run sql");
+            return;
+        }
+        buf.append(reinterpret_cast<void*>(output.buf()), output.size());
+        response->set_schema(session.GetEncodedSchema());
+        response->set_byte_size(output.size());
+        response->set_count(1);
+        response->set_code(::rtidb::base::kOk);
+        DLOG(INFO) << "handle request sql " << request->sql()
+                   << " with record cnt 1";
+    }
+}
+
 void TabletImpl::BatchQuery(RpcController* controller,
                             const rtidb::api::BatchQueryRequest* request,
                             rtidb::api::BatchQueryResponse* response,
@@ -1912,7 +2032,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
                   request->term());
             table->SetLeader(true);
             replicator->SetRole(ReplicatorRole::kLeaderNode);
-            if (!FLAGS_zk_cluster.empty()) {
+            if (!zk_cluster_.empty()) {
                 replicator->SetLeaderTerm(request->term());
             }
         }
@@ -2612,7 +2732,7 @@ void TabletImpl::SchedMakeSnapshot() {
                     ::rtidb::common::StorageMode::kMemory) {
                     if (ts - inner->second->GetMakeSnapshotTime() <=
                             FLAGS_make_snapshot_offline_interval &&
-                        !FLAGS_zk_cluster.empty()) {
+                        !zk_cluster_.empty()) {
                         continue;
                     }
                     table_set.push_back(
@@ -3425,6 +3545,7 @@ int32_t TabletImpl::DeleteTableInternal(
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+            engine_.ClearCacheLocked(table->GetTableMeta().db());
             tables_[tid].erase(pid);
             replicators_[tid].erase(pid);
             snapshots_[tid].erase(pid);
@@ -3438,7 +3559,11 @@ int32_t TabletImpl::DeleteTableInternal(
                 snapshots_.erase(tid);
             }
         }
-
+        if (!catalog_->DeleteTable(table->GetTableMeta().db(),
+                                   table->GetName())) {
+            LOG(WARNING) << "delete " << table->GetTableMeta().db() << " "
+                         << table->GetName() << " in catalog failed";
+        }
         if (replicator) {
             replicator->DelAllReplicateNode();
             PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
@@ -3656,6 +3781,27 @@ void TabletImpl::CreateTable(RpcController* controller,
                   tid, pid);
             return;
         }
+        if (table_meta->format_version() == 1 &&
+            table_meta->storage_mode() == ::rtidb::common::kMemory) {
+            std::shared_ptr<catalog::TabletTableHandler> handler(
+                new catalog::TabletTableHandler(*table_meta, table_meta->db(),
+                                                table));
+            bool ok = handler->Init();
+            if (ok) {
+                ok = catalog_->AddTable(handler);
+                engine_.ClearCacheLocked(table_meta->db());
+                if (ok) {
+                    LOG(INFO) << "add table " << table_meta->name()
+                              << " to catalog with db " << table_meta->db();
+                } else {
+                    LOG(WARNING) << "fail to add table " << table_meta->name()
+                                 << " to catalog with db " << table_meta->db();
+                }
+            } else {
+                LOG(WARNING) << "fail to add table " << table_meta->name()
+                             << " to catalog with db " << table_meta->db();
+            }
+        }
         table->SetTableStat(::rtidb::storage::kNormal);
         replicator->StartSyncing();
         io_pool_.DelayTask(
@@ -3839,7 +3985,7 @@ void TabletImpl::GetTermPair(RpcController* controller,
                              ::rtidb::api::GetTermPairResponse* response,
                              Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (FLAGS_zk_cluster.empty()) {
+    if (zk_cluster_.empty()) {
         response->set_code(-1);
         response->set_msg("tablet is not run in cluster mode");
         PDLOG(WARNING, "tablet is not run in cluster mode");
@@ -4156,7 +4302,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
         msg.assign("fail init replicator for table");
         return -1;
     }
-    if (!FLAGS_zk_cluster.empty() &&
+    if (!zk_cluster_.empty() &&
         table_meta->mode() == ::rtidb::api::TableMode::kTableLeader) {
         replicator->SetLeaderTerm(table_meta->term());
     }
@@ -4279,7 +4425,7 @@ int TabletImpl::CreateDiskTableInternal(
         msg.assign("fail init replicator for table");
         return -1;
     }
-    if (!FLAGS_zk_cluster.empty() &&
+    if (!zk_cluster_.empty() &&
         table_meta->mode() == ::rtidb::api::TableMode::kTableLeader) {
         replicator->SetLeaderTerm(table_meta->term());
     }
@@ -5045,7 +5191,7 @@ void TabletImpl::SendIndexDataInternal(
                   src_file.c_str(), tid, pid);
             continue;
         }
-        if (kv.second == FLAGS_endpoint) {
+        if (kv.second == endpoint_) {
             std::shared_ptr<Table> des_table = GetTable(tid, kv.first);
             if (!table) {
                 PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid,

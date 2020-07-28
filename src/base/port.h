@@ -15,7 +15,7 @@
 #define SRC_BASE_PORT_H_
 
 #undef PLATFORM_IS_LITTLE_ENDIAN
-#if defined(OS_MACOSX)
+#if __APPLE__
 #include <machine/endian.h>
 #if defined(__DARWIN_LITTLE_ENDIAN) && defined(__DARWIN_BYTE_ORDER)
 #define PLATFORM_IS_LITTLE_ENDIAN \
@@ -35,12 +35,6 @@
 #define PLATFORM_IS_LITTLE_ENDIAN (_BYTE_ORDER == _LITTLE_ENDIAN)
 #elif defined(OS_HPUX)
 #define PLATFORM_IS_LITTLE_ENDIAN false
-#elif defined(OS_ANDROID)
-// Due to a bug in the NDK x86 <sys/endian.h> definition,
-// _BYTE_ORDER must be used instead of __BYTE_ORDER on Android.
-// See http://code.google.com/p/android/issues/detail?id=39824
-#include <endian.h>
-#define PLATFORM_IS_LITTLE_ENDIAN (_BYTE_ORDER == _LITTLE_ENDIAN)
 #else
 #include <endian.h>
 #endif

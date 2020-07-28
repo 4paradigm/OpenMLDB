@@ -16,7 +16,7 @@
  */
 
 #include "codec/codec.h"
-
+#include <array>
 #include <algorithm>
 #include <unordered_set>
 
@@ -198,6 +198,9 @@ bool RowBuilder::AppendNULL() {
 
 bool RowBuilder::SetNULL(uint32_t index) {
     const ::rtidb::common::ColumnDesc& column = schema_.Get(index);
+    if (column.not_null()) return false;
+    int8_t* ptr = buf_ + HEADER_LENGTH + (index >> 3);
+    *(reinterpret_cast<uint8_t*>(ptr)) |= 1 << (index & 0x07);
     if (column.data_type() == ::rtidb::type::kVarchar ||
         column.data_type() == rtidb::type::kString) {
         uint32_t str_pos = offset_vec_[index];
