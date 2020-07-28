@@ -380,7 +380,7 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
                 }
             }
             default_map->insert(std::make_pair(idx, val));
-            if (column.data_type() == ::rtidb::type::kVarchar ||
+            if (!primary->IsNull() && column.data_type() == ::rtidb::type::kVarchar ||
                 column.data_type() == ::rtidb::type::kString) {
                 *str_length += strlen(primary->GetStr());
             }

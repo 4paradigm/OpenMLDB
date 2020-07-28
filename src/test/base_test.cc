@@ -340,7 +340,7 @@ void SQLCaseTest::PrintResultSet(
 void SQLCaseTest::CheckRow(fesql::codec::RowView &row_view,  // NOLINT
                            std::shared_ptr<fesql::sdk::ResultSet> rs) {
     for (int i = 0; i < row_view.GetSchema()->size(); i++) {
-        LOG(INFO) << "Check Column Idx: " << i;
+        DLOG(INFO) << "Check Column Idx: " << i;
         if (row_view.IsNULL(i)) {
             ASSERT_TRUE(rs->IsNULL(i)) << " At " << i;
             continue;
@@ -410,6 +410,7 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema,
     PrintRows(schema, rows);
     LOG(INFO) << "ResultSet Rows: \n";
     PrintResultSet(rs);
+    LOG(INFO) << "order: " << order_col;
     fesql::codec::RowView row_view(schema);
     int order_idx = -1;
     for (int i = 0; i < schema.size(); i++) {
@@ -422,17 +423,18 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema,
     if (order_idx >= 0) {
         int32_t row_id = 0;
         for (auto row : rows) {
-            LOG(INFO) << "Get Order String: " << row_id++;
             row_view.Reset(row.buf());
             std::string key = row_view.GetAsString(order_idx);
+            LOG(INFO) << "Get Order String: " << row_id++ << " key: " << key;
             rows_map.insert(std::make_pair(key, row));
         }
     }
     int32_t index = 0;
     rs->Reset();
     while (rs->Next()) {
-        if (order_idx > 0) {
+        if (order_idx >= 0) {
             std::string key = rs->GetAsString(order_idx);
+            LOG(INFO) << "key : " << key;
             row_view.Reset(rows_map[key].buf());
         } else {
             row_view.Reset(rows[index++].buf());
@@ -532,6 +534,7 @@ void SQLCaseTest::CheckRows(
     PrintRows(schema, rows);
     LOG(INFO) << "ResultSet Rows: \n";
     PrintResultSet(results);
+    LOG(INFO) << "order col key: " << order_col;
     fesql::codec::RowView row_view(schema);
     int order_idx = -1;
     for (int i = 0; i < schema.size(); i++) {
@@ -544,7 +547,7 @@ void SQLCaseTest::CheckRows(
     if (order_idx >= 0) {
         int32_t row_id = 0;
         for (auto row : rows) {
-            LOG(INFO) << "Get Order String: " << row_id++;
+            DLOG(INFO) << "Get Order String: " << row_id++;
             row_view.Reset(row.buf());
             std::string key = row_view.GetAsString(order_idx);
             rows_map.insert(std::make_pair(key, row));
@@ -554,7 +557,7 @@ void SQLCaseTest::CheckRows(
     for (auto rs : results) {
         rs->Reset();
         while (rs->Next()) {
-            if (order_idx > 0) {
+            if (order_idx >= 0) {
                 std::string key = rs->GetAsString(order_idx);
                 row_view.Reset(rows_map[key].buf());
             } else {
