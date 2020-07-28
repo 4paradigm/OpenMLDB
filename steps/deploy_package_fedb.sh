@@ -26,6 +26,7 @@ checkFileExist() {
         return 1
     fi
 }
+cp -rf steps/settings.xml ~/.m2/
 VERSION=`date +"%Y-%m-%d"`-`git rev-parse --short HEAD`
 sh -x steps/package_fedb.sh $VERSION || exit 1
 sh -x steps/package_fedb_pysdk.sh $VERSION || exit 1
