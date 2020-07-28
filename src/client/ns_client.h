@@ -223,7 +223,7 @@ class NsClient {
                     std::string& msg);  // NOLINT
 
     bool AddIndex(const std::string& table_name,
-                  const ::rtidb::common::ColumnKey& column_key,
+                  const ::rtidb::common::ColumnKey& column_key, std::vector<rtidb::common::ColumnDesc>* cols,
                   std::string& msg);  // NOLINT
 
     bool DeleteIndex(const std::string& table_name, const std::string& idx_name,

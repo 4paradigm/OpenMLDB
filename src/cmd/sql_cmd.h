@@ -342,7 +342,7 @@ void HandleCreateIndex(const fesql::node::CreateIndexNode *create_index_node) {
 
     std::string error;
     auto ns = cs->GetNsClient();
-    bool ok = ns->AddIndex(create_index_node->table_name_, column_key, error);
+    bool ok = ns->AddIndex(create_index_node->table_name_, column_key, nullptr, error);
     if (ok) {
         std::cout << "create index ok" << std::endl;
     } else {

@@ -1000,7 +1000,7 @@ bool NsClient::SwitchMode(const ::rtidb::nameserver::ServerMode mode,
 }
 
 bool NsClient::AddIndex(const std::string& table_name,
-                        const ::rtidb::common::ColumnKey& column_key,
+                        const ::rtidb::common::ColumnKey& column_key, std::vector<rtidb::common::ColumnDesc>* cols,
                         std::string& msg) {
     ::rtidb::nameserver::AddIndexRequest request;
     ::rtidb::nameserver::GeneralResponse response;
@@ -1008,8 +1008,13 @@ bool NsClient::AddIndex(const std::string& table_name,
     request.set_name(table_name);
     cur_column_key->CopyFrom(column_key);
     request.set_db(GetDb());
-    bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddIndex,
+    if (cols != nullptr) {
+        for (const auto& col : *cols) {
+            rtidb::common::ColumnDesc* new_col = request.add_cols();
+            new_col->CopyFrom(col);
+        }
+    }
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::AddIndex,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
