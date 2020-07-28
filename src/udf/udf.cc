@@ -17,6 +17,7 @@
 #include "base/iterator.h"
 #include "boost/date_time.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
+#include "bthread/types.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
 #include "codegen/fn_ir_builder.h"
@@ -36,6 +37,7 @@ using fesql::codec::StringRef;
 // TODO(chenjing): 时区统一配置
 const int32_t TZ = 8;
 const time_t TZ_OFFSET = TZ * 3600000;
+bthread_key_t B_THREAD_LOCAL_MEM_POOL_KEY;
 
 int32_t dayofmonth(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
@@ -91,23 +93,53 @@ int32_t weekofyear(codec::Date *date) {
     boost::gregorian::date d(year, month, day);
     return d.week_number();
 }
-
-
+void date_format(codec::Timestamp *timestamp, fesql::codec::StringRef *format,
+                 fesql::codec::StringRef *output) {
+    if (nullptr == output) {
+        return;
+    }
+    if (nullptr == timestamp || nullptr == format) {
+        output->data_ = nullptr;
+        output->size_ = 0;
+        return;
+    }
+    time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
+    struct tm t;
+    gmtime_r(&time, &t);
+    output->data_ = reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(80));
+    strftime(output->data_, 80, format->ToString().c_str(), &t);
+    output->size_ = strlen(output->data_);
+}
+void date_format(codec::Date *date, fesql::codec::StringRef *format,
+                 fesql::codec::StringRef *output) {
+    if (nullptr == output) {
+        return;
+    }
+    if (nullptr == date || nullptr == format) {
+        output->data_ = nullptr;
+        output->size_ = 0;
+        return;
+    }
+    int32_t day, month, year;
+    if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
+        output->size_ = 0;
+        output->data_ = nullptr;
+        return;
+    }
+    boost::gregorian::date g_date(year, month, day);
+    tm t = boost::gregorian::to_tm(g_date);
+    output->data_ = reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(80));
+    strftime(output->data_, 80, format->ToString().c_str(), &t);
+    output->size_ = strlen(output->data_);
+}
 void timestamp_to_string(codec::Timestamp *v, fesql::codec::StringRef *output) {
-    std::stringstream ss;
-    boost::posix_time::ptime my_epoch(
-        boost::gregorian::date(1970, boost::gregorian::Jan, 1));
-
-    // convert back to ptime
-    boost::posix_time::ptime pt =
-        my_epoch + boost::posix_time::milliseconds(v->ts_);
-    auto tm = to_tm(pt);
-    ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
-    output->size_ = ss.str().size();
+    time_t time = (v->ts_ + TZ_OFFSET) / 1000;
+    struct tm t;
+    gmtime_r(&time, &t);
+    output->size_ = 19;
     output->data_ =
         reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
-    memcpy(output->data_, ss.str().data(), output->size_);
-    std::cout << ss.str() << std::endl;
+    strftime(output->data_, 19, "%Y-%m-%d %H:%M:%S", &t);
 }
 
 void date_to_string(codec::Date *date, fesql::codec::StringRef *output) {
@@ -119,20 +151,18 @@ void date_to_string(codec::Date *date, fesql::codec::StringRef *output) {
         return;
     }
     boost::gregorian::date g_date(year, month, day);
-
-    boost::gregorian::date_facet *facet(
-        new boost::gregorian::date_facet("%Y-%m-%d"));
-    ss.imbue(std::locale(std::cout.getloc(), facet));
-    ss << g_date;
-    output->size_ = ss.str().size();
+    tm t = boost::gregorian::to_tm(g_date);
+    output->size_ = 10;
     output->data_ =
         reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
-    memcpy(output->data_, ss.str().data(), output->size_);
-    std::cout << std::string(output->data_, output->size_) << std::endl;
+    strftime(output->data_, 10, "%Y-%m-%d", &t);
 }
 void sub_string(fesql::codec::StringRef *str, int32_t from,
                 fesql::codec::StringRef *output) {
-    if (str->IsNull()) {
+    if (nullptr == output) {
+        return;
+    }
+    if (nullptr == str || str->IsNull()) {
         output->data_ = nullptr;
         output->size_ = 0;
         return;
@@ -142,7 +172,10 @@ void sub_string(fesql::codec::StringRef *str, int32_t from,
 // set output as empty string if from == 0
 void sub_string(fesql::codec::StringRef *str, int32_t from, int32_t len,
                 fesql::codec::StringRef *output) {
-    if (str->IsNull()) {
+    if (nullptr == output) {
+        return;
+    }
+    if (nullptr == str || str->IsNull()) {
         output->data_ = nullptr;
         output->size_ = 0;
         return;
@@ -234,6 +267,7 @@ void delete_iterator(int8_t *input) {
 
 }  // namespace v1
 thread_local base::ByteMemoryPool __THREAD_LOCAL_MEM_POOL;
+
 int8_t *ThreadLocalMemoryPoolAlloc(int32_t request_size) {
     if (request_size < 0) {
         return nullptr;

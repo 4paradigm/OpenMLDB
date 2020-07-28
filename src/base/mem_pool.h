@@ -12,17 +12,18 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <list>
+#include "glog/logging.h"
 namespace fesql {
 namespace base {
-class MemoryChuck {
+class MemoryChunk {
  public:
-    MemoryChuck(MemoryChuck* next, size_t request_size)
+    MemoryChunk(MemoryChunk* next, size_t request_size)
         : next_(next),
           chuck_size_(request_size > DEFAULT_CHUCK_SIZE ? request_size
                                                         : DEFAULT_CHUCK_SIZE),
           allocated_size_(0),
           mem_(new char[chuck_size_]) {}
-    ~MemoryChuck() { delete[] mem_; }
+    ~MemoryChunk() { delete[] mem_; }
     inline size_t available_size() { return chuck_size_ - allocated_size_; }
     char* Alloc(size_t request_size) {
         if (request_size > available_size()) {
@@ -33,28 +34,31 @@ class MemoryChuck {
         return addr;
     }
     inline void free() { allocated_size_ = 0; }
-    inline MemoryChuck* next() { return next_; }
+    inline MemoryChunk* next() { return next_; }
     enum { DEFAULT_CHUCK_SIZE = 4096 };
 
  private:
-    MemoryChuck* next_;
+    MemoryChunk* next_;
     size_t chuck_size_;
     size_t allocated_size_;
     char* mem_;
 };
 class ByteMemoryPool {
  public:
-    explicit ByteMemoryPool(size_t init_size = MemoryChuck::DEFAULT_CHUCK_SIZE)
+    explicit ByteMemoryPool(size_t init_size = MemoryChunk::DEFAULT_CHUCK_SIZE)
         : chucks_(nullptr) {
+        DLOG(INFO) << "ByteMemoryPool";
         ExpandStorage(init_size);
     }
     ~ByteMemoryPool() {
+        DLOG(INFO) << "~ByteMemoryPool";
         Reset();
         if (chucks_) {
             delete chucks_;
         }
     }
     char* Alloc(size_t request_size) {
+        DLOG(INFO) << "Alloc";
         if (chucks_->available_size() < request_size) {
             ExpandStorage(request_size);
         }
@@ -73,11 +77,12 @@ class ByteMemoryPool {
         chuck->free();
     }
     void ExpandStorage(size_t request_size) {
-        chucks_ = new MemoryChuck(chucks_, request_size);
+        DLOG(INFO) << "ExpandStorage";
+        chucks_ = new MemoryChunk(chucks_, request_size);
     }
 
  private:
-    MemoryChuck* chucks_;
+    MemoryChunk* chucks_;
 };
 }  // namespace base
 }  // namespace fesql

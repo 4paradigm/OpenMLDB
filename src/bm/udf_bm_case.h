@@ -29,7 +29,11 @@ void CopyArrayList(benchmark::State* state, MODE mode, int64_t data_size);
 void CTimeDay(benchmark::State* state, MODE mode, const int32_t data_size);
 void CTimeMonth(benchmark::State* state, MODE mode, const int32_t data_size);
 void CTimeYear(benchmark::State* state, MODE mode, const int32_t data_size);
+void TimestampToString(benchmark::State* state, MODE mode);
+void TimestampFormat(benchmark::State* state, MODE mode);
 
+void DateToString(benchmark::State* state, MODE mode);
+void DateFormat(benchmark::State* state, MODE mode);
 void ByteMemPoolAlloc1000(benchmark::State* state, MODE mode,
                           size_t request_size);
 void NewFree1000(benchmark::State* state, MODE mode, size_t request_size);

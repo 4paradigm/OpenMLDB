@@ -100,6 +100,10 @@ int32_t weekofyear(fesql::codec::Date *ts);
 
 void timestamp_to_string(codec::Timestamp *timestamp,
                          fesql::codec::StringRef *output);
+void date_format(codec::Timestamp *timestamp, fesql::codec::StringRef *format,
+                 fesql::codec::StringRef *output);
+void date_format(codec::Date *date, fesql::codec::StringRef *format,
+                 fesql::codec::StringRef *output);
 void date_to_string(codec::Date *date, fesql::codec::StringRef *output);
 void sub_string(fesql::codec::StringRef *str, int32_t pos,
                 fesql::codec::StringRef *output);

@@ -80,6 +80,20 @@ TEST_F(UDFBMCaseTest, ByteMemPoolAlloc1000_TEST) {
     ByteMemPoolAlloc1000(nullptr, TEST, 1000);
     ByteMemPoolAlloc1000(nullptr, TEST, 10000);
 }
+TEST_F(UDFBMCaseTest, TimestampToString_TEST) {
+    TimestampToString(nullptr, TEST);
+}
+TEST_F(UDFBMCaseTest, TimestampFormat_TEST) {
+    TimestampFormat(nullptr, TEST);
+}
+
+TEST_F(UDFBMCaseTest, DateToString_TEST) {
+    DateToString(nullptr, TEST);
+}
+TEST_F(UDFBMCaseTest, DateFormat_TEST) {
+    DateFormat(nullptr, TEST);
+}
+
 }  // namespace bm
 }  // namespace fesql
 int main(int argc, char** argv) {

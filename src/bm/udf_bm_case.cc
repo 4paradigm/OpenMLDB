@@ -545,8 +545,9 @@ void CTimeYear(benchmark::State* state, MODE mode, const int32_t data_size) {
     }
 }
 int32_t RunByteMemPoolAlloc1000(size_t request_size) {
+    std::vector<int8_t*> chucks;
     for (int i = 0; i < 1000; i++) {
-        fesql::udf::ThreadLocalMemoryPoolAlloc(request_size);
+        chucks.push_back(fesql::udf::ThreadLocalMemoryPoolAlloc(request_size));
     }
     fesql::udf::ThreadLocalMemoryPoolReset();
     return 1;
@@ -586,6 +587,83 @@ void ByteMemPoolAlloc1000(benchmark::State* state, MODE mode,
         }
         case TEST: {
             RunByteMemPoolAlloc1000(request_size);
+        }
+    }
+}
+void TimestampFormat(benchmark::State* state, MODE mode) {
+    codec::Timestamp timestamp(1590115420000L);
+    const std::string format = "%Y-%m-%d %H:%M:%S";
+    codec::StringRef str_format(format);
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                codec::StringRef str;
+                udf::v1::date_format(&timestamp, &str_format, &str);
+            }
+            break;
+        }
+        case TEST: {
+            codec::StringRef str;
+            udf::v1::date_format(&timestamp, &str_format, &str);
+            ASSERT_EQ(codec::StringRef("2020-05-22 10:43:40"), str);
+            break;
+        }
+    }
+}
+void TimestampToString(benchmark::State* state, MODE mode) {
+    codec::Timestamp timestamp(1590115420000L);
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                codec::StringRef str;
+                udf::v1::timestamp_to_string(&timestamp, &str);
+            }
+            break;
+        }
+        case TEST: {
+            codec::StringRef str;
+            udf::v1::timestamp_to_string(&timestamp, &str);
+            ASSERT_EQ(codec::StringRef("2020-05-22 10:43:40"), str);
+            break;
+        }
+    }
+}
+
+void DateFormat(benchmark::State* state, MODE mode) {
+    codec::Date date(2020, 05, 22);
+    const std::string format = "%Y-%m-%d";
+    codec::StringRef str_format(format);
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                codec::StringRef str;
+                udf::v1::date_format(&date, &str_format, &str);
+            }
+            break;
+        }
+        case TEST: {
+            codec::StringRef str;
+            udf::v1::date_format(&date, &str_format, &str);
+            ASSERT_EQ(codec::StringRef("2020-05-22"), str);
+            break;
+        }
+    }
+}
+void DateToString(benchmark::State* state, MODE mode) {
+    codec::Date date(2020, 05, 22);
+    switch (mode) {
+        case BENCHMARK: {
+            for (auto _ : *state) {
+                codec::StringRef str;
+                udf::v1::date_to_string(&date, &str);
+            }
+            break;
+        }
+        case TEST: {
+            codec::StringRef str;
+            udf::v1::date_to_string(&date, &str);
+            ASSERT_EQ(codec::StringRef("2020-05-22"), str);
+            break;
         }
     }
 }

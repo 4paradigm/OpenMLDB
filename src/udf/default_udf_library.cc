@@ -222,6 +222,17 @@ void DefaultUDFLibrary::InitStringUDF() {
             static_cast<void (*)(codec::StringRef*, int32_t, int32_t,
                                  codec::StringRef*)>(udf::v1::sub_string))
         .return_by_arg(true);
+
+    RegisterExternal("date_format")
+        .args<Timestamp, StringRef>(
+            static_cast<void (*)(codec::Timestamp*, codec::StringRef*,
+                                 codec::StringRef*)>(udf::v1::date_format))
+        .return_by_arg(true);
+    RegisterExternal("date_format")
+        .args<Date, StringRef>(
+            static_cast<void (*)(codec::Date*, codec::StringRef*,
+                                 codec::StringRef*)>(udf::v1::date_format))
+        .return_by_arg(true);
     //    RegisterExprUDF("substring")
     //        .args<StringRef, AnyArg, AnyArg>([](UDFResolveContext* ctx,
     //                                            ExprNode* str, ExprNode* pos,
