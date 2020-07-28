@@ -125,6 +125,7 @@ class RowView {
  public:
     RowView(const Schema& schema, const int8_t* row, uint32_t size);
     explicit RowView(const Schema& schema);
+    explicit RowView(const Schema& schema, const int8_t* row, uint32_t size, int32_t end_idx);
     ~RowView() = default;
     bool Reset(const int8_t* row, uint32_t size);
     bool Reset(const int8_t* row);
@@ -142,8 +143,7 @@ class RowView {
     int32_t GetFloat(uint32_t idx, float* val);
     int32_t GetDouble(uint32_t idx, double* val);
     int32_t GetString(uint32_t idx, char** val, uint32_t* length);
-    int32_t GetDate(uint32_t idx, uint32_t* year, uint32_t* month,
-                    uint32_t* day);
+    int32_t GetDate(uint32_t idx, uint32_t* year, uint32_t* month, uint32_t* day);
     int32_t GetDate(uint32_t idx, int32_t* date);
     bool IsNULL(uint32_t idx) { return IsNULL(row_, idx); }
     inline bool IsNULL(const int8_t* row, uint32_t idx) {
@@ -169,7 +169,7 @@ class RowView {
     int32_t GetStrValue(uint32_t idx, std::string* val);
 
  private:
-    bool Init();
+    bool Init(int32_t end_idx = -1);
     bool CheckValid(uint32_t idx, ::rtidb::type::DataType type);
 
  private:
@@ -181,8 +181,6 @@ class RowView {
     const int8_t* row_;
     const Schema& schema_;
     std::vector<uint32_t> offset_vec_;
-    uint8_t added_schema_size_;
-    uint8_t schema_version_;
 };
 
 namespace v1 {

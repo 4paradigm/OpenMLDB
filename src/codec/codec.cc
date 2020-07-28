@@ -437,8 +437,7 @@ RowView::RowView(const Schema& schema)
       size_(0),
       row_(NULL),
       schema_(schema),
-      offset_vec_(),
-      added_schema_size_(0) {
+      offset_vec_() {
         Init();
 }
 
@@ -450,8 +449,7 @@ RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size)
       size_(size),
       row_(row),
       schema_(schema),
-      offset_vec_(),
-      added_schema_size_(0) {
+      offset_vec_() {
     if (schema_.size() == 0) {
         is_valid_ = false;
         return;
@@ -461,11 +459,28 @@ RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size)
     }
 }
 
-bool RowView::Init() {
+RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size, int32_t end_idx)
+    : str_addr_length_(0),
+        is_valid_(true),
+        string_field_cnt_(0),
+        str_field_start_offset_(0),
+        size_(size),
+        row_(row),
+        schema_(schema),
+        offset_vec_() {
+        if (schema_.size() == 0) {
+            is_valid_ = false;
+            return;
+        }
+        if (Init(end_idx)) {
+            Reset(row, size);
+        }
+}
+
+bool RowView::Init(int32_t end_idx) {
     uint32_t offset = HEADER_LENGTH + BitMapSize(schema_.size());
-    int32_t end_idx = schema_.size();
-    if (added_schema_size_ > 0 && schema_version_ > 0) {
-        end_idx -= (schema_.size() - added_schema_size_ + schema_version_ - 1);
+    if (end_idx < 0) {
+        end_idx = schema_.size();
     }
     for (int idx = 0; idx < end_idx; idx++) {
         const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);

@@ -745,8 +745,7 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
         }
         table_meta_.mutable_column_key(index_def->GetId())->CopyFrom(column_key);
     } else {
-        ::rtidb::common::ColumnKey* added_column_key =
-            table_meta_.add_column_key();
+        ::rtidb::common::ColumnKey* added_column_key = table_meta_.add_column_key();
         added_column_key->CopyFrom(column_key);
     }
     std::vector<uint32_t> ts_vec;
@@ -765,16 +764,14 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
         }
         ts_vec.push_back(ts_iter->second);
     }
-    uint32_t index_id =
-        (index_def == NULL) ? table_index_.Size() : index_def->GetId();
+    uint32_t index_id = (index_def == NULL) ? table_index_.Size() : index_def->GetId();
+    LOG(INFO) << "new index is null " << (index_def == NULL);
     Segment** seg_arr = new Segment*[seg_cnt_];
     if (!ts_vec.empty()) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             seg_arr[j] = new Segment(key_entry_max_height_, ts_vec);
-            PDLOG(
-                INFO,
-                "init %u, %u segment. height %u, ts col num %u. tid %u pid %u",
-                index_id, j, key_entry_max_height_, ts_vec.size(), id_, pid_);
+            PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u",
+                  index_id, j, key_entry_max_height_, ts_vec.size(), id_, pid_);
         }
     } else {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
@@ -788,12 +785,12 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
     }
     segments_[index_id] = seg_arr;
     if (!index_def) {
-        index_def = std::make_shared<IndexDef>(column_key.index_name(),
-                                               table_index_.Size());
+        index_def = std::make_shared<IndexDef>(column_key.index_name(), table_index_.Size());
         if (table_index_.AddIndex(index_def) < 0) {
             PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
             return false;
         }
+        LOG(INFO) << "success add new index " << column_key.index_name();
     }
     index_def->SetTsColumn(ts_vec);
     index_def->SetStatus(IndexStatus::kReady);

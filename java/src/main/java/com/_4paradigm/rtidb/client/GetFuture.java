@@ -62,6 +62,10 @@ public class GetFuture implements Future<ByteString>{
 		rowLength = t.getSchema().size();
 		if (th.getSchemaMap().size() > 0) {
 			rowLength += th.getSchemaMap().size();
+			this.currentVersion = th.getCurrentSchemaVer();
+			Integer maxIdx = th.getVersions().get(this.currentVersion);
+			List<ColumnDesc> newSchema = th.getSchemaMap().get(maxIdx);
+			rv = new RowView(newSchema);
 		}
 	}
 
@@ -131,7 +135,7 @@ public class GetFuture implements Future<ByteString>{
 	}
 
 	private void checkVersion(ByteString raw) throws TabletException {
-	    if (th.getTableInfo().getFormatVersion() != 1 || th.getTableInfo().getAddedColumnDescCount() == 0) {
+	    if (th.getTableInfo().getFormatVersion() != 1) {
 	    	return;
 		}
 		ByteBuffer buf = raw.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN);
@@ -145,7 +149,7 @@ public class GetFuture implements Future<ByteString>{
 	        this.currentVersion = 1;
 	        return;
 		}
-	    Integer maxIdx = th.getVersions().get(th.getCurrentSchemaVer());
+	    Integer maxIdx = th.getVersions().get(version);
 		if (maxIdx == null) {
 			throw new TabletException("unkown schema version " + version);
 		}

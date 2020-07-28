@@ -147,6 +147,7 @@ class Table {
         version_schema_.clear();
         for (const auto& ver : table_meta.schema_versions()) {
             version_schema_.insert(std::make_pair(ver.id(), ver.idx()));
+            LOG(WARNING) << " id " << ver.id() << " idx " << ver.idx();
         }
     }
 

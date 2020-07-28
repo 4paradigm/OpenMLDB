@@ -5318,24 +5318,19 @@ void TabletImpl::DumpIndexDataInternal(
         SetTaskStatus(task, ::rtidb::api::kFailed);
         return;
     }
-    std::string index_path = db_root_path + "/" + std::to_string(tid) + "_" +
-                             std::to_string(pid) + "/index/";
+    std::string index_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/index/";
     if (!::rtidb::base::MkdirRecur(index_path)) {
-        PDLOG(WARNING, "fail to create path %s. tid %u pid %u",
-              index_path.c_str(), tid, pid);
+        LOG(WARNING) << "fail to create path " << index_path << ". tid " << tid << " pid " << pid;
         SetTaskStatus(task, ::rtidb::api::kFailed);
         return;
     }
-    std::string binlog_path = db_root_path + "/" + std::to_string(tid) + "_" +
-                              std::to_string(pid) + "/binlog/";
     std::vector<::rtidb::log::WriteHandle*> whs;
     for (uint32_t i = 0; i < partition_num; i++) {
         std::string index_file_name = std::to_string(pid) + "_" + std::to_string(i) + "_index.data";
         std::string index_data_path = index_path + index_file_name;
         FILE* fd = fopen(index_data_path.c_str(), "wb+");
         if (fd == NULL) {
-            PDLOG(WARNING, "fail to create file %s. tid %u pid %u",
-                  index_data_path.c_str(), tid, pid);
+            LOG(WARNING) << "fail to create file " << index_data_path << ". tid " << tid << " pid " << pid;
             SetTaskStatus(task, ::rtidb::api::kFailed);
             for (auto& wh : whs) {
                 delete wh;
@@ -5344,6 +5339,7 @@ void TabletImpl::DumpIndexDataInternal(
             return;
         }
         ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd);
+        LOG(INFO) << "success open " << index_data_path;
         whs.push_back(wh);
     }
     if (memtable_snapshot->DumpIndexData(table, column_key, idx, whs)) {
@@ -5476,8 +5472,8 @@ void TabletImpl::LoadIndexDataInternal(
         SetTaskStatus(task, ::rtidb::api::TaskStatus::kFailed);
         return;
     }
-    ::rtidb::log::SequentialFile* seq_file =
-        ::rtidb::log::NewSeqFile(index_file_path, fd);
+    LOG(INFO) << "open " << index_file_path;
+    ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(index_file_path, fd);
     ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
     std::string buffer;
     uint64_t succ_cnt = 0;

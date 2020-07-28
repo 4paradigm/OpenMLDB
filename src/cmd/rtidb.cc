@@ -2485,8 +2485,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
         return;
     }
     uint32_t tid = tables[0].tid();
-    if (tables[0].has_table_type() &&
-        tables[0].table_type() == rtidb::type::kRelational) {
+    if (tables[0].has_table_type() && tables[0].table_type() == rtidb::type::kRelational) {
         Schema schema;
         rtidb::codec::SchemaCodec::ConvertColumnDesc(
             tables[0].column_desc_v1(), schema, tables[0].added_column_desc());
