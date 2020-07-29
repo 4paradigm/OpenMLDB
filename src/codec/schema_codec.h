@@ -200,30 +200,19 @@ class SchemaCodec {
     }
 
     static fesql::type::Type ConvertType(rtidb::type::DataType type) {
-        if (type == rtidb::type::kBool) {
-            return fesql::type::kBool;
-        } else if (type == rtidb::type::kSmallInt) {
-            return fesql::type::kInt16;
-        } else if (type == rtidb::type::kInt) {
-            return fesql::type::kInt32;
-        } else if (type == rtidb::type::kBigInt) {
-            return fesql::type::kInt64;
-        } else if (type == rtidb::type::kFloat) {
-            return fesql::type::kFloat;
-        } else if (type == rtidb::type::kDouble) {
-            return fesql::type::kDouble;
-        } else if (type == rtidb::type::kDate) {
-            return fesql::type::kDate;
-        } else if (type == rtidb::type::kTimestamp) {
-            return fesql::type::kTimestamp;
-        } else if (type == rtidb::type::kVarchar) {
-            return fesql::type::kVarchar;
-        } else if (type == rtidb::type::kString) {
-            return fesql::type::kVarchar;
-        } else if (type == rtidb::type::kBlob) {
-            return fesql::type::kBlob;
-        } else {
-            return fesql::type::kNull;
+        switch (type) {
+            case rtidb::type::kBool: return fesql::type::kBool;
+            case rtidb::type::kSmallInt: return fesql::type::kInt16;
+            case rtidb::type::kInt: return fesql::type::kInt32;
+            case rtidb::type::kBigInt: return fesql::type::kInt64;
+            case rtidb::type::kFloat: return fesql::type::kFloat;
+            case rtidb::type::kDouble: return fesql::type::kDouble;
+            case rtidb::type::kDate: return fesql::type::kDate;
+            case rtidb::type::kTimestamp: return fesql::type::kTimestamp;
+            case rtidb::type::kVarchar: return fesql::type::kVarchar;
+            case rtidb::type::kString: return fesql::type::kVarchar;
+            case rtidb::type::kBlob: return fesql::type::kBlob;
+            default: return fesql::type::kNull;
         }
     }
 
