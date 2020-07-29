@@ -41,28 +41,25 @@ typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
     RtiDBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>
     RtiDBIndex;
+
+::rtidb::sdk::MiniCluster* mc_;
+
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
 
 class SQLRouterTest : public ::testing::Test {
  public:
-    SQLRouterTest() : mc_(6181) {}
+    SQLRouterTest() {}
     ~SQLRouterTest() {}
-    void SetUp() {
-        bool ok = mc_.SetUp();
-        ASSERT_TRUE(ok);
-    }
-    void TearDown() { mc_.Close(); }
-
- public:
-    MiniCluster mc_;
+    void SetUp() {}
+    void TearDown() {}
 };
 
 TEST_F(SQLRouterTest, empty_db_test) {
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_.GetZkCluster();
-    sql_opt.zk_path = mc_.GetZkPath();
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
     ::fesql::sdk::Status status;
@@ -74,7 +71,7 @@ TEST_F(SQLRouterTest, smoketest) {
     table_info.set_format_version(1);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
-    auto ns_client = mc_.GetNsClient();
+    auto ns_client = mc_->GetNsClient();
     std::string error;
     bool ok = ns_client->CreateDatabase(db, error);
     ASSERT_TRUE(ok);
@@ -113,8 +110,8 @@ TEST_F(SQLRouterTest, smoketest) {
 
     ASSERT_TRUE(ok);
     ClusterOptions option;
-    option.zk_cluster = mc_.GetZkCluster();
-    option.zk_path = mc_.GetZkPath();
+    option.zk_cluster = mc_->GetZkCluster();
+    option.zk_path = mc_->GetZkPath();
 
     ClusterSDK sdk(option);
     ASSERT_TRUE(sdk.Init());
@@ -128,8 +125,8 @@ TEST_F(SQLRouterTest, smoketest) {
     ASSERT_TRUE(ok);
 
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_.GetZkCluster();
-    sql_opt.zk_path = mc_.GetZkPath();
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
     std::string sql = "select col1, col2 + 1 from " + name + " ;";
@@ -147,8 +144,8 @@ TEST_F(SQLRouterTest, smoketest) {
 
 TEST_F(SQLRouterTest, db_api_test) {
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_.GetZkCluster();
-    sql_opt.zk_path = mc_.GetZkPath();
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
     std::string name = "test" + GenRand();
@@ -160,12 +157,14 @@ TEST_F(SQLRouterTest, db_api_test) {
     ASSERT_TRUE(router->ShowDB(&dbs, &status));
     ASSERT_EQ(1u, dbs.size());
     ASSERT_EQ(db, dbs[0]);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
 }
 
 TEST_F(SQLRouterTest, create_and_drop_table_test) {
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_.GetZkCluster();
-    sql_opt.zk_path = mc_.GetZkPath();
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
     std::string name = "test" + GenRand();
@@ -177,17 +176,45 @@ TEST_F(SQLRouterTest, create_and_drop_table_test) {
                       "("
                       "col1 string, col2 bigint,"
                       "index(key=col1, ts=col2));";
+    std::string insert = "insert into " + name + " values('hello', 1590);";
+    std::string select = "select * from " + name + ";";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
+
+    ok = router->ExecuteInsert(db, insert, &status);
+
+    auto rs = router->ExecuteSQL(db, select, &status);
+    ASSERT_TRUE(rs != nullptr);
+    ASSERT_EQ(1, rs->Size());
+
     ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+
+    std::string ddl_fake = "create table " + name +
+                           "("
+                           "col1 int, col2 bigint,"
+                           "index(key=col1, ts=col2));";
+
+    ok = router->ExecuteDDL(db, ddl_fake, &status);
+    ASSERT_TRUE(ok);
+
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    rs = router->ExecuteSQL(db, select, &status);
+    ASSERT_TRUE(rs != nullptr);
+    ASSERT_EQ(0, rs->Size());
+
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
     ASSERT_TRUE(ok);
 }
 
 TEST_F(SQLRouterTest, test_sql_insert_placeholder) {
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_.GetZkCluster();
-    sql_opt.zk_path = mc_.GetZkPath();
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
     std::string name = "test" + GenRand();
@@ -312,12 +339,17 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder) {
     ASSERT_EQ("word", rs->GetStringUnsafe(0));
     ASSERT_EQ(1592, rs->GetInt64Unsafe(1));
     ASSERT_FALSE(rs->Next());
+
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
 }
 
 TEST_F(SQLRouterTest, test_sql_insert_with_column_list) {
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_.GetZkCluster();
-    sql_opt.zk_path = mc_.GetZkPath();
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
     std::string name = "test" + GenRand();
@@ -386,12 +418,17 @@ TEST_F(SQLRouterTest, test_sql_insert_with_column_list) {
     ASSERT_EQ(1000, rs->GetInt64Unsafe(3));
 
     ASSERT_FALSE(rs->Next());
+
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
 }
 
 TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_date_column_key) {
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_.GetZkCluster();
-    sql_opt.zk_path = mc_.GetZkPath();
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
     std::string name = "test" + GenRand();
@@ -432,12 +469,17 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_date_column_key) {
     ASSERT_EQ(1000, rs->GetInt64Unsafe(2));
 
     ASSERT_FALSE(rs->Next());
+
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
 }
 
 TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_1) {
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_.GetZkCluster();
-    sql_opt.zk_path = mc_.GetZkPath();
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
     std::string name = "test" + GenRand();
@@ -522,12 +564,17 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_1) {
     ASSERT_EQ(rs->GetInt64Unsafe(3), 1001);
 
     ASSERT_FALSE(rs->Next());
+
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
 }
 
 TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_2) {
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_.GetZkCluster();
-    sql_opt.zk_path = mc_.GetZkPath();
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
     std::string name = "test" + GenRand();
@@ -648,12 +695,17 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_2) {
     ASSERT_EQ(1, rs->GetInt32Unsafe(3));
 
     ASSERT_FALSE(rs->Next());
+
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
 }
 
 TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_.GetZkCluster();
-    sql_opt.zk_path = mc_.GetZkPath();
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
     std::string name = "test" + GenRand();
@@ -781,12 +833,17 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
     ASSERT_TRUE(rs->IsNULL(6));
 
     ASSERT_FALSE(rs->Next());
+
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
 }
 
 TEST_F(SQLRouterTest, smoketest_on_sql) {
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_.GetZkCluster();
-    sql_opt.zk_path = mc_.GetZkPath();
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
     std::string name = "test" + GenRand();
@@ -861,12 +918,17 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
         ASSERT_TRUE(rs->Next());
         ASSERT_EQ(100, rs->GetInt64Unsafe(0));
     }
+
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
 }
 
 TEST_F(SQLRouterTest, smoke_explain_on_sql) {
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_.GetZkCluster();
-    sql_opt.zk_path = mc_.GetZkPath();
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
     std::string name = "test" + GenRand();
@@ -893,13 +955,17 @@ TEST_F(SQLRouterTest, smoke_explain_on_sql) {
     } else {
         ASSERT_TRUE(false);
     }
-    std::cout << explain->GetPhysicalPlan() << std::endl;
+
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
 }
 
 TEST_F(SQLRouterTest, smoke_not_null) {
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_.GetZkCluster();
-    sql_opt.zk_path = mc_.GetZkPath();
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
     std::string name = "test" + GenRand();
@@ -918,12 +984,17 @@ TEST_F(SQLRouterTest, smoke_not_null) {
         "insert into " + name + " values('hello', 1591174600000l, null);";
     ok = router->ExecuteInsert(db, insert, &status);
     ASSERT_FALSE(ok);
+
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
 }
 
 TEST_F(SQLRouterTest, smoketimestamptest_on_sql) {
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_.GetZkCluster();
-    sql_opt.zk_path = mc_.GetZkPath();
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) ASSERT_TRUE(false);
     std::string name = "test" + GenRand();
@@ -960,6 +1031,11 @@ TEST_F(SQLRouterTest, smoketimestamptest_on_sql) {
     ASSERT_EQ(6, month);
     ASSERT_EQ(3, day);
     ASSERT_FALSE(rs->Next());
+
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
 }
 
 }  // namespace sdk
@@ -967,8 +1043,14 @@ TEST_F(SQLRouterTest, smoketimestamptest_on_sql) {
 
 int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
+    ::rtidb::sdk::MiniCluster mc(6181);
+    ::rtidb::sdk::mc_ = &mc;
+    int ok = ::rtidb::sdk::mc_->SetUp();
+    sleep(1);
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    return RUN_ALL_TESTS();
+    ok = RUN_ALL_TESTS();
+    ::rtidb::sdk::mc_->Close();
+    return ok;
 }
