@@ -71,6 +71,7 @@ class SQLClusterRouter : public SQLRouter {
     bool DropDB(const std::string& db, fesql::sdk::Status* status);
 
     bool ShowDB(std::vector<std::string>* dbs, fesql::sdk::Status* status);
+
     bool ExecuteDDL(const std::string& db, const std::string& sql,
                     fesql::sdk::Status* status);
 

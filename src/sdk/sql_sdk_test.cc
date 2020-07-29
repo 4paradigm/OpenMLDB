@@ -56,6 +56,7 @@ class SQLSDKTest : public rtidb::test::SQLCaseTest {
         LOG(INFO) << "SetUpTestCase cluster init >>";
         mc_ = new MiniCluster(6181);
         mc_->SetUp();
+        usleep(5000 * 1000);
     }
 
     // Per-test-suite tear-down.
@@ -514,6 +515,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     if (!router) ASSERT_TRUE(false);
     RunBatchModeSDK(sql_case, router);
 }
+
 }  // namespace sdk
 }  // namespace rtidb
 

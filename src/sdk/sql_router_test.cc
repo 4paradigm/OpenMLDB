@@ -52,12 +52,22 @@ class SQLRouterTest : public ::testing::Test {
     void SetUp() {
         bool ok = mc_.SetUp();
         ASSERT_TRUE(ok);
+        usleep(5000 * 1000);
     }
     void TearDown() { mc_.Close(); }
 
  public:
     MiniCluster mc_;
 };
+
+TEST_F(SQLRouterTest, bad_zk) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = "127.0.0.1:1111";
+    sql_opt.zk_path = "/path";
+    sql_opt.session_timeout = 10;
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (router) ASSERT_TRUE(false);
+}
 
 TEST_F(SQLRouterTest, empty_db_test) {
     SQLRouterOptions sql_opt;
@@ -348,8 +358,11 @@ TEST_F(SQLRouterTest, test_sql_insert_with_column_list) {
 
     std::string select = "select * from " + name + ";";
     auto rs = router->ExecuteSQL(db, select, &status);
-    ASSERT_EQ(2, rs->Size());
+    if (!rs) {
+        ASSERT_FALSE(true);
+    }
 
+    ASSERT_EQ(2, rs->Size());
     ASSERT_TRUE(rs->Next());
     ASSERT_TRUE(rs->IsNULL(0));
     ASSERT_EQ(123, rs->GetInt32Unsafe(1));
@@ -387,6 +400,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_date_column_key) {
     std::string insert1 = "insert into " + name + " values(?, ?, ?);";
     std::shared_ptr<SQLInsertRow> r1 =
         router->GetInsertRow(db, insert1, &status);
+    if (!r1) ASSERT_FALSE(true);
     ASSERT_TRUE(r1->Init(0));
     ASSERT_TRUE(r1->AppendInt32(123));
     ASSERT_TRUE(r1->AppendDate(2020, 7, 22));
@@ -395,6 +409,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_date_column_key) {
     ASSERT_TRUE(ok);
     std::string select = "select * from " + name + ";";
     auto rs = router->ExecuteSQL(db, select, &status);
+    if (!rs) ASSERT_FALSE(true);
     ASSERT_EQ(1, rs->Size());
     int32_t year;
     int32_t month;
@@ -433,6 +448,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_1) {
     std::string insert1 = "insert into " + name + " values(?, ?, ?, ?);";
     std::shared_ptr<SQLInsertRow> r1 =
         router->GetInsertRow(db, insert1, &status);
+    if (!r1) ASSERT_FALSE(true);
     ASSERT_TRUE(r1->Init(5));
     ASSERT_TRUE(r1->AppendInt32(123));
     ASSERT_TRUE(r1->AppendInt32(321));
@@ -444,16 +460,17 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_1) {
     std::string insert2 = "insert into " + name + " values(?, ?, 'hello', ?);";
     std::shared_ptr<SQLInsertRow> r2 =
         router->GetInsertRow(db, insert2, &status);
+    if (!r2) ASSERT_FALSE(true);
     ASSERT_TRUE(r2->Init(0));
     ASSERT_TRUE(r2->AppendInt32(456));
     ASSERT_TRUE(r2->AppendInt32(654));
     ASSERT_TRUE(r2->AppendInt64(1001));
     ok = router->ExecuteInsert(db, insert2, r2, &status);
     ASSERT_TRUE(ok);
-
     std::string insert3 = "insert into " + name + " values(?, 987, ?, ?);";
     std::shared_ptr<SQLInsertRow> r3 =
         router->GetInsertRow(db, insert3, &status);
+    if (!r3) ASSERT_FALSE(true);
     ASSERT_TRUE(r3->Init(5));
     ASSERT_TRUE(r3->AppendInt32(789));
     ASSERT_TRUE(r3->AppendString("hello"));
@@ -464,6 +481,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_1) {
     std::string insert4 = "insert into " + name + " values(?, 0,'hello', ?);";
     std::shared_ptr<SQLInsertRow> r4 =
         router->GetInsertRow(db, insert4, &status);
+    if (!r4) ASSERT_FALSE(true);
     ASSERT_TRUE(r4->Init(0));
     ASSERT_TRUE(r4->AppendInt32(1));
     ASSERT_TRUE(r4->AppendInt64(1003));
@@ -472,6 +490,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_1) {
 
     std::string select = "select * from " + name + ";";
     auto rs = router->ExecuteSQL(db, select, &status);
+    if (!rs) ASSERT_FALSE(true);
     ASSERT_EQ(4, rs->Size());
 
     ASSERT_TRUE(rs->Next());
