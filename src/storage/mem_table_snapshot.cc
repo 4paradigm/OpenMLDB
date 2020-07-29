@@ -711,44 +711,17 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
             expired_key_num++;
             continue;
         }
-        if (!(entry.has_method_type() &&
-              entry.method_type() == ::rtidb::api::MethodType::kDelete)) {
+        if (!(entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete)) {
             // new column_key
             std::vector<std::string> row;
-            const ::rtidb::api::TableMeta& table_meta = table->GetTableMeta();
-            std::string buff;
-            rtidb::base::Slice data;
-
-            if (table->GetCompressType() == ::rtidb::api::kSnappy) {
-                std::string buff;
-                ::snappy::Uncompress(entry.value().c_str(), entry.value().size(), &buff);
-                data.reset(buff.data(), buff.size());
-            } else {
-                data.reset(entry.value().data(), entry.value().size());
-            }
-            bool ret = false;
-            if (table_meta.format_version() == 0) {
-                ret = ::rtidb::codec::RowCodec::DecodeRow(columns.size(), max_idx + 1, data, &row);
-            } else {
-                const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
-                uint8_t version = rtidb::codec::RowView::GetSchemaVersion(raw);
-                if (version == 1) {
-                    ret = rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(), raw,
-                                                            table_meta.column_desc().size(), true, 0, max_idx + 1, row);
-                } else {
-                    RepeatedPtrField<rtidb::common::ColumnDesc> cols;
-                    int code = SchemaCodec::ConvertColumnDesc(table_meta.column_desc(), cols,
-                                                              table_meta.added_column_desc());
-                    if (code != 0) {
-                        LOG(WARNING) << "convert column desc fail " << code;
-                        return false;
-                    }
-                    ret = ::rtidb::codec::RowCodec::DecodeRow(cols, data, table->GetVersion(), true,
-                                                              0, max_idx + 1, row);
-                }
-            }
+            bool ret = DecodeData(table, columns, entry, max_idx, row);
             if (!ret) {
-                return false;
+                LOG(WARNING) << "decode data error";
+                continue;
+            }
+            if (row.size() < max_idx) {
+                LOG(WARNING) << "data size is " << row.size() << " less than " << max_idx;
+                continue;
             }
             std::string cur_key;
             for (uint32_t i : index_cols) {
@@ -890,7 +863,6 @@ int MemTableSnapshot::ExtractIndexData(
     }
 
     ::rtidb::log::LogReader log_reader(log_part_, log_path_);
-    LOG(INFO) << "log path is " << log_path_;
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
     std::string buffer;
@@ -968,39 +940,14 @@ int MemTableSnapshot::ExtractIndexData(
             }
             if (!(entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete)) {
                 // new column_key
-                const ::rtidb::api::TableMeta& table_meta = table->GetTableMeta();
                 std::vector<std::string> row;
-                std::string buff;
-                rtidb::base::Slice data;
-                if (table->GetCompressType() == rtidb::api::kSnappy) {
-                    snappy::Uncompress(entry.value().data(), entry.value().size(), &buff);
-                    data.reset(buff.data(), buff.size());
-                } else {
-                    data.reset(entry.value().data(), entry.value().size());
-                }
-                bool ret = false;
-                if (table_meta.format_version() == 0) {
-                    ret = ::rtidb::codec::RowCodec::DecodeRow(columns.size(), max_idx + 1, data, &row);
-                } else {
-                    const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
-                    uint8_t version = rtidb::codec::RowView::GetSchemaVersion(raw);
-                    if (version == 1) {
-                        ret = rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(), raw,
-                                                                table_meta.column_desc().size(),
-                                                                true, 0, max_idx + 1, row);
-                    } else {
-                        RepeatedPtrField<rtidb::common::ColumnDesc> cols;
-                        int code = SchemaCodec::ConvertColumnDesc(table_meta.column_desc(), cols,
-                                                                  table_meta.added_column_desc());
-                        if (code != 0) {
-                            LOG(WARNING) << "convert column desc fail " << code;
-                            return false;
-                        }
-                        ret = ::rtidb::codec::RowCodec::DecodeRow(cols, data, table->GetVersion(), true, 0,
-                                                                  max_idx + 1, row);
-                    }
-                }
+                bool ret = DecodeData(table, columns, entry, max_idx, row);
                 if (!ret) {
+                    LOG(WARNING) << "decode data error";
+                    continue;
+                }
+                if (row.size() < max_idx) {
+                    LOG(WARNING) << "data size is " << row.size() << " less than " << max_idx;
                     continue;
                 }
                 std::string cur_key;
@@ -1012,7 +959,6 @@ int MemTableSnapshot::ExtractIndexData(
                     }
                 }
                 uint32_t index_pid = ::rtidb::base::hash64(cur_key) % partition_num;
-                LOG(INFO) << "key is " << cur_key << " pid is " << index_pid;
                 // update entry and write entry into memory
                 if (index_pid == pid) {
                     ::rtidb::api::Dimension* dim = entry.add_dimensions();
@@ -1136,36 +1082,7 @@ bool MemTableSnapshot::PackNewIndexEntry(
         }
     }
     std::vector<std::string> row;
-    const ::rtidb::api::TableMeta& table_meta = table->GetTableMeta();
-    table->GetSchema();
-    bool ret = false;
-    std::string buff;
-    rtidb::base::Slice data;
-    if (table->GetCompressType() == ::rtidb::api::kSnappy) {
-        ::snappy::Uncompress(entry->value().c_str(), entry->value().size(), &buff);
-        data.reset(buff.data(), buff.size());
-    } else {
-        data.reset(entry->value().data(), entry->value().size());
-    }
-    if (table_meta.format_version() == 0) {
-        ret = ::rtidb::codec::RowCodec::DecodeRow(columns.size(), max_idx + 1, data, &row);
-    } else {
-        const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
-        uint8_t version = rtidb::codec::RowView::GetSchemaVersion(raw);
-        if (version == 1) {
-            ret = rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(), raw, data.size(), true,
-                                                    0, table_meta.column_desc().size(), row);
-        } else {
-            RepeatedPtrField<rtidb::common::ColumnDesc> cols;
-            int code = SchemaCodec::ConvertColumnDesc(table_meta.column_desc(), cols, table_meta.added_column_desc());
-            if (code != 0) {
-                LOG(WARNING) << "convert column desc fail " << code;
-                return false;
-            }
-            ret = ::rtidb::codec::RowCodec::DecodeRow(cols, data, table->GetVersion(), true, 0,
-                                                      max_idx + 1, row);
-        }
-    }
+    bool ret = DecodeData(table, columns, *entry, max_idx, row);
     if (!ret) {
         return false;
     }
@@ -1440,6 +1357,35 @@ bool MemTableSnapshot::DumpBinlogIndexData(
         succ_cnt++;
     }
     return true;
+}
+
+bool MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector<::rtidb::codec::ColumnDesc>& columns,
+                                  const rtidb::api::LogEntry& entry, uint32_t maxIdx, std::vector<std::string>& row) {
+    const ::rtidb::api::TableMeta& table_meta = table->GetTableMeta();
+    std::string buff;
+    rtidb::base::Slice data;
+    if (table->GetCompressType() == rtidb::api::kSnappy) {
+        snappy::Uncompress(entry.value().data(), entry.value().size(), &buff);
+        data.reset(buff.data(), buff.size());
+    } else {
+        data.reset(entry.value().data(), entry.value().size());
+    }
+    if (table_meta.format_version() == 0) {
+        return rtidb::codec::RowCodec::DecodeRow(columns.size(), maxIdx + 1, data, &row);
+    }
+    const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
+    uint8_t version = rtidb::codec::RowView::GetSchemaVersion(raw);
+    int32_t data_size = data.size();
+    if (version == 1) {
+        const auto& schema = table_meta.column_desc();
+        return rtidb::codec::RowCodec::DecodeRow(schema, raw, data_size, true, 0, maxIdx + 1, row);
+    }
+    std::shared_ptr<Schemas> schema = table->GetVersionSchema(version);
+    if (schema == nullptr) {
+        LOG(WARNING) << "fail get version " << unsigned(version) << " schema";
+        return false;
+    }
+    return rtidb::codec::RowCodec::DecodeRow(*schema, raw, data_size, true, 0, maxIdx + 1, row);
 }
 
 }  // namespace storage

@@ -29,7 +29,8 @@ Table::Table(::rtidb::common::StorageMode storage_mode, const std::string &name,
       is_leader_(is_leader),
       ttl_type_(ttl_type),
       compress_type_(compress_type),
-      version_schema_() {
+      version_schema_(),
+      mu_() {
     ::rtidb::api::TTLDesc *ttl_desc = table_meta_.mutable_ttl_desc();
     ttl_desc->set_ttl_type(ttl_type);
     if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime) {
@@ -191,6 +192,7 @@ int Table::InitColumnDesc() {
             }
         }
     }
+    AddVersionSchema();
     return 0;
 }
 

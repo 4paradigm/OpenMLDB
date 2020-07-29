@@ -24,8 +24,8 @@ namespace rtidb {
 namespace storage {
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
-typedef google::protobuf::RepeatedPtrField<::rtidb::api::TSDimension>
-    TSDimensions;
+typedef google::protobuf::RepeatedPtrField<::rtidb::api::TSDimension> TSDimensions;
+typedef google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc> Schemas;
 
 enum TableStat {
     kUndefined = 0,
@@ -140,18 +140,49 @@ class Table {
         return compress_type_;
     }
 
+    inline void AddVersionSchema() {
+        Schemas base_schema;
+        for (const auto& col : table_meta_.column_desc()) {
+            rtidb::common::ColumnDesc* new_col = base_schema.Add();
+            new_col->CopyFrom(col);
+        }
+        for (const auto ver : table_meta_.schema_versions()) {
+            int remain_size = ver.schema_count() - table_meta_.column_desc_size();
+            if (remain_size < 0)  {
+                LOG(INFO) << "do not need add ver " << ver.id() << " because remain size less than 0";
+                continue;
+            }
+            if (remain_size > table_meta_.added_column_desc_size()) {
+                LOG(INFO) << "skip add ver " << ver.id() << " because remain size great than added column deisc size";
+                continue;
+            }
+            std::shared_ptr<Schemas> new_schema = std::make_shared<Schemas>();
+            new_schema->CopyFrom(table_meta_.column_desc());
+            for (int i = 0; i < remain_size; i++) {
+                rtidb::common::ColumnDesc* col = new_schema->Add();
+                col->CopyFrom(table_meta_.added_column_desc(i));
+            }
+            version_schema_.insert(std::make_pair(ver.id(), new_schema));
+        }
+    }
+
     const ::rtidb::api::TableMeta& GetTableMeta() const { return table_meta_; }
 
     inline void SetTableMeta(::rtidb::api::TableMeta& table_meta) {  // NOLINT
         table_meta_.CopyFrom(table_meta);
+        std::lock_guard<std::mutex> lock(mu_);
         version_schema_.clear();
-        for (const auto& ver : table_meta.schema_versions()) {
-            version_schema_.insert(std::make_pair(ver.id(), ver.idx()));
-            LOG(WARNING) << " id " << ver.id() << " idx " << ver.idx();
-        }
+        AddVersionSchema();
     }
 
-    const std::map<int32_t, int32_t>& GetVersion() const { return version_schema_; }
+    std::shared_ptr<Schemas> GetVersionSchema(int32_t ver) {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = version_schema_.find(ver);
+        if (it == version_schema_.end()) {
+            return nullptr;
+        }
+        return it->second;
+    }
 
     std::vector<std::shared_ptr<IndexDef>> GetAllIndex() {
         return table_index_.GetAllIndex();
@@ -251,7 +282,8 @@ class Table {
     ::rtidb::api::CompressType compress_type_;
     ::rtidb::api::TableMeta table_meta_;
     int64_t last_make_snapshot_time_;
-    std::map<int32_t, int32_t> version_schema_;
+    std::map<int32_t, std::shared_ptr<Schemas>> version_schema_;
+    std::mutex mu_;
 };
 
 }  // namespace storage

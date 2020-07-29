@@ -17,7 +17,7 @@ message KvList {
 
 message VersionPair {
     optional int32 id = 1;
-    optional int32 idx = 2;
+    optional int32 schema_count = 2;
 }
 
 message ColumnDesc {

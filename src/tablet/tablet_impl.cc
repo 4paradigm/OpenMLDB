@@ -392,7 +392,7 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
     }
     std::map<uint32_t, uint32_t> version_idx;
     for (const auto& pair : meta.schema_versions()) {
-        version_idx.insert(std::make_pair(pair.id(), pair.idx()));
+        version_idx.insert(std::make_pair(pair.id(), pair.schema_count()));
     }
     rtidb::codec::RowProject row_project(meta.column_desc(), request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
@@ -1054,7 +1054,7 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
                                     request->enable_remove_duplicated_record();
     std::map<uint32_t, uint32_t> version_idx;
     for (const auto& pair : meta.schema_versions()) {
-        version_idx.insert(std::make_pair(pair.id(), pair.idx()));
+        version_idx.insert(std::make_pair(pair.id(), pair.schema_count()));
     }
     uint64_t last_time = 0;
     boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>> tmp;

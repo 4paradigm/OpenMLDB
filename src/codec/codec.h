@@ -125,7 +125,6 @@ class RowView {
  public:
     RowView(const Schema& schema, const int8_t* row, uint32_t size);
     explicit RowView(const Schema& schema);
-    explicit RowView(const Schema& schema, const int8_t* row, uint32_t size, int32_t end_idx);
     ~RowView() = default;
     bool Reset(const int8_t* row, uint32_t size);
     bool Reset(const int8_t* row);
@@ -169,7 +168,7 @@ class RowView {
     int32_t GetStrValue(uint32_t idx, std::string* val);
 
  private:
-    bool Init(int32_t end_idx = -1);
+    bool Init();
     bool CheckValid(uint32_t idx, ::rtidb::type::DataType type);
 
  private:

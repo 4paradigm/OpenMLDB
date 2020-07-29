@@ -245,8 +245,6 @@ int SDKCodec::EncodeRow(const std::vector<std::string>& raw_data,
 
 int SDKCodec::DecodeRow(const std::string& row, std::vector<std::string>* value) {
     if (format_version_ == 1) {
-        const int8_t* data = reinterpret_cast<const int8_t*>(row.data());
-        uint8_t version = rtidb::codec::RowView::GetSchemaVersion(data);
         if (!RowCodec::DecodeRow(schema_, ::rtidb::base::Slice(row), *value)) {
             return -1;
         }

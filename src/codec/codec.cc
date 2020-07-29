@@ -459,30 +459,9 @@ RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size)
     }
 }
 
-RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size, int32_t end_idx)
-    : str_addr_length_(0),
-        is_valid_(true),
-        string_field_cnt_(0),
-        str_field_start_offset_(0),
-        size_(size),
-        row_(row),
-        schema_(schema),
-        offset_vec_() {
-        if (schema_.size() == 0) {
-            is_valid_ = false;
-            return;
-        }
-        if (Init(end_idx)) {
-            Reset(row, size);
-        }
-}
-
-bool RowView::Init(int32_t end_idx) {
+bool RowView::Init() {
     uint32_t offset = HEADER_LENGTH + BitMapSize(schema_.size());
-    if (end_idx < 0) {
-        end_idx = schema_.size();
-    }
-    for (int idx = 0; idx < end_idx; idx++) {
+    for (int idx = 0; idx < schema_.size(); idx++) {
         const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
         rtidb::type::DataType cur_type = column.data_type();
         if (cur_type == ::rtidb::type::kVarchar ||

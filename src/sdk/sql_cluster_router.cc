@@ -197,10 +197,10 @@ bool SQLClusterRouter::GetInsertInfo(
         return false;
     }
     std::map<uint32_t, uint32_t> column_map;
-    for (int j = 0; j < insert_stmt->columns_.size(); ++j) {
+    for (uint32_t j = 0; j < (uint32_t)insert_stmt->columns_.size(); ++j) {
         const std::string& col_name = insert_stmt->columns_[j];
         bool find_flag = false;
-        for (int i = 0; i < (*table_info)->column_desc_v1_size(); ++i) {
+        for (uint32_t i = 0; i < (uint32_t)(*table_info)->column_desc_v1_size(); ++i) {
             if (col_name == (*table_info)->column_desc_v1(i).name()) {
                 if (column_map.count(i)) {
                     status->msg = "duplicate column of " + col_name;
@@ -337,7 +337,7 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
     DefaultValueMap default_map(
         new std::map<uint32_t, std::shared_ptr<::fesql::node::ConstNode>>());
     if ((column_map.empty() &&
-         row->children_.size() < table_info->column_desc_v1_size()) ||
+         row->children_.size() < (size_t)table_info->column_desc_v1_size()) ||
         (!column_map.empty() && row->children_.size() < column_map.size())) {
         LOG(WARNING) << "insert value number less than column number";
         return DefaultValueMap();

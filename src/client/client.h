@@ -47,7 +47,7 @@ struct TableHandler {
     std::vector<std::string> blobFieldNames;
     std::string auto_gen_pk;
     std::map<std::string, ::rtidb::type::DataType> name_type_map;
-    std::map<uint32_t, uint32_t> version_schema;
+    std::map<uint32_t, std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>> version_schema;
     int32_t last_schema_version;
 };
 

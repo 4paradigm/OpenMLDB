@@ -315,13 +315,25 @@ void BaseClient::RefreshTable() {
         for (const auto& col_desc : *columns) {
             map.insert(std::make_pair(col_desc.name(), col_desc.data_type()));
         }
-        std::map<uint32_t, uint32_t> versions;
+        std::map<uint32_t, std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>> versions;
         handler->last_schema_version = 1;
-        for (const auto& ver : table_info->schema_versions()) {
-            versions.insert(std::make_pair(ver.id(), ver.idx()));
-            if (ver.id() > handler->last_schema_version) {
-                handler->last_schema_version = ver.id();
+        for (const auto ver : table_info->schema_versions()) {
+            int remain_size = ver.schema_count() - table_info->column_desc_size();
+            if (remain_size < 0)  {
+                continue;
             }
+            if (remain_size > table_info->added_column_desc_size()) {
+                continue;
+            }
+            std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>> schema =
+                std::make_shared<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>();
+            schema->CopyFrom(table_info->column_desc_v1());
+            for (int i = 0; i < remain_size; i++) {
+                rtidb::common::ColumnDesc* col = schema->Add();
+                col->CopyFrom(table_info->added_column_desc(i));
+            }
+            versions.insert(std::make_pair(ver.id(), schema));
+            handler->last_schema_version = ver.id();
         }
         handler->name_type_map = std::move(map);
         handler->table_info = table_info;

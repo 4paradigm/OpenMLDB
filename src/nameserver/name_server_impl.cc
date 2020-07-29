@@ -4075,7 +4075,7 @@ bool NameServerImpl::AddFieldToTablet(const std::vector<rtidb::common::ColumnDes
     }
     version_id++;
     new_pair->set_id(version_id);
-    new_pair->set_idx(columns.size());
+    new_pair->set_schema_count(columns.size());
 
     uint32_t tid = table_info->tid();
     std::string msg;
