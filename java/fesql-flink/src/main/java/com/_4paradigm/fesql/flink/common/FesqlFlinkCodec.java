@@ -1,6 +1,5 @@
-package com._4paradigm.fesql.common;
+package com._4paradigm.fesql.flink.common;
 
-import com._4paradigm.fesql.common.FesqlException;
 import com._4paradigm.fesql.codec.RowBuilder;
 import com._4paradigm.fesql.codec.RowView;
 import com._4paradigm.fesql.type.TypeOuterClass;
@@ -9,7 +8,6 @@ import org.apache.flink.types.Row;
 
 import java.sql.Date;
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -123,7 +121,11 @@ public class FesqlFlinkCodec {
                     } else if (columnType == kInt32) {
                         flinkRow.setField(totalFieldIndex, rowView.GetInt32Unsafe(j));
                     } else if (columnType == kInt64) {
-                        flinkRow.setField(totalFieldIndex, rowView.GetInt64Unsafe(j));
+                        //flinkRow.setField(totalFieldIndex, rowView.GetInt64Unsafe(j));
+
+                        // TODO: Return the BigInteger instead of long object
+                        flinkRow.setField(totalFieldIndex, new java.math.BigInteger(String.valueOf(rowView.GetInt64Unsafe(j))));
+
                     } else if (columnType== kFloat) {
                         flinkRow.setField(totalFieldIndex, rowView.GetFloatUnsafe(j));
                     } else if (columnType == kDouble) {
@@ -210,10 +212,15 @@ public class FesqlFlinkCodec {
                     String stringValue = String.valueOf(value);
                     rowBuilder.AppendString(stringValue, stringValue.length());
                 } else if (columnType == kTimestamp) {
+                    // TODO: Get the real time from flink schema
+
                     // TODO: Set time zone if needed
                     // Get the object of LocalDateTime
                     LocalDateTime localDateTime = (LocalDateTime) value;
                     rowBuilder.AppendTimestamp(localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+
+                    //Timestamp timestamp = (Timestamp) value;
+                    //rowBuilder.AppendTimestamp(timestamp.getTime());
                 } else if (columnType == kDate) {
                     // TODO: Check date data object in Flink row
                     Date dateValue = (Date) value;

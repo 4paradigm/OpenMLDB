@@ -1,29 +1,27 @@
-package com._4paradigm.fesql.batch;
+package com._4paradigm.fesql.flink.batch.planner;
 
-import com._4paradigm.fesql.common.*;
+import com._4paradigm.fesql.flink.common.*;
+import com._4paradigm.fesql.flink.common.planner.GeneralPlanContext;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.CoreAPI;
 import com._4paradigm.fesql.vm.FeSQLJITWrapper;
 import com._4paradigm.fesql.vm.PhysicalTableProjectNode;
-import org.apache.flink.api.common.functions.MapPartitionFunction;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.types.Row;
-import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class TableProjectPlan {
+public class BatchTableProjectPlan {
 
-    private static final Logger logger = LoggerFactory.getLogger(TableProjectPlan.class);
+    private static final Logger logger = LoggerFactory.getLogger(BatchTableProjectPlan.class);
 
-    public static Table gen(FesqlPlanContext planContext, PhysicalTableProjectNode node, Table childTable) throws FesqlException {
+    public static Table gen(GeneralPlanContext planContext, PhysicalTableProjectNode node, Table childTable) throws FesqlException {
 
         DataSet<Row> inputDataset = planContext.getBatchTableEnvironment().toDataSet(childTable, Row.class);
 

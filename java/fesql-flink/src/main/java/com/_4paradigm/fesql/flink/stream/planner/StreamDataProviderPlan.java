@@ -1,12 +1,12 @@
-package com._4paradigm.fesql.stream;
+package com._4paradigm.fesql.flink.stream.planner;
 
-import com._4paradigm.fesql.common.FesqlPlanContext;
+import com._4paradigm.fesql.flink.common.planner.GeneralPlanContext;
 import com._4paradigm.fesql.vm.PhysicalDataProviderNode;
 import org.apache.flink.table.api.Table;
 
 public class StreamDataProviderPlan {
 
-    public static Table gen(FesqlPlanContext planContext, PhysicalDataProviderNode dataProviderNode) {
+    public static Table gen(GeneralPlanContext planContext, PhysicalDataProviderNode dataProviderNode) {
         String tableName = dataProviderNode.GetName();
         String sqlText = "select * from " + tableName;
         return planContext.getStreamTableEnvironment().sqlQuery(sqlText);

@@ -1,4 +1,4 @@
-package com._4paradigm.fesql.stream;
+package com._4paradigm.fesql.flink.stream;
 
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.DataTypes;

@@ -1,4 +1,4 @@
-package com._4paradigm.fesql.common;
+package com._4paradigm.fesql.flink.common;
 
 import java.io.DataInputStream;
 import java.io.IOException;

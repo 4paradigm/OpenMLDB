@@ -1,12 +1,17 @@
-package com._4paradigm.fesql.common;
+package com._4paradigm.fesql.flink.common.planner;
 
 import com._4paradigm.fesql.FeSqlLibrary;
-import com._4paradigm.fesql.batch.DataProviderPlan;
-import com._4paradigm.fesql.batch.FesqlBatchTableEnvironment;
-import com._4paradigm.fesql.batch.TableProjectPlan;
-import com._4paradigm.fesql.stream.FesqlStreamTableEnvironment;
-import com._4paradigm.fesql.stream.StreamDataProviderPlan;
-import com._4paradigm.fesql.stream.StreamTableProjectPlan;
+import com._4paradigm.fesql.flink.batch.FesqlBatchTableEnvironment;
+import com._4paradigm.fesql.flink.batch.planner.BatchWindowAggPlan;
+import com._4paradigm.fesql.flink.batch.planner.BatchDataProviderPlan;
+import com._4paradigm.fesql.flink.batch.planner.BatchTableProjectPlan;
+import com._4paradigm.fesql.flink.common.FesqlException;
+import com._4paradigm.fesql.flink.common.FesqlUtil;
+import com._4paradigm.fesql.flink.common.SQLEngine;
+import com._4paradigm.fesql.flink.stream.FesqlStreamTableEnvironment;
+import com._4paradigm.fesql.flink.stream.planner.StreamDataProviderPlan;
+import com._4paradigm.fesql.flink.stream.planner.StreamTableProjectPlan;
+import com._4paradigm.fesql.flink.stream.planner.StreamWindowAggPlan;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.*;
 import org.apache.flink.table.api.Table;
@@ -20,9 +25,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class FesqlPlanner {
+public class FesqlFlinkPlanner {
 
-    private static final Logger logger = LoggerFactory.getLogger(FesqlPlanner.class);
+    private static final Logger logger = LoggerFactory.getLogger(FesqlFlinkPlanner.class);
 
     {
         // Ensure native initialized
@@ -36,13 +41,13 @@ public class FesqlPlanner {
 
     private Map<String, TableSchema> tableSchemaMap;
 
-    public FesqlPlanner(FesqlBatchTableEnvironment env) {
+    public FesqlFlinkPlanner(FesqlBatchTableEnvironment env) {
         this.isBatch = true;
         this.batchTableEnvironment = env.getBatchTableEnvironment();
         this.tableSchemaMap = env.getRegisteredTableSchemaMap();
     }
 
-    public FesqlPlanner(FesqlStreamTableEnvironment env) {
+    public FesqlFlinkPlanner(FesqlStreamTableEnvironment env) {
         this.isBatch = false;
         this.streamTableEnvironment = env.getStreamTableEnvironment();
         this.tableSchemaMap = env.getRegisteredTableSchemaMap();
@@ -53,11 +58,11 @@ public class FesqlPlanner {
         TypeOuterClass.Database fesqlDatabase = FesqlUtil.buildDatabase("flink_db", this.tableSchemaMap);
         SQLEngine engine = new SQLEngine(sqlQuery, fesqlDatabase);
 
-        FesqlPlanContext planContext = null;
+        GeneralPlanContext planContext = null;
         if (this.isBatch) {
-            planContext = new FesqlPlanContext(sqlQuery, this.batchTableEnvironment, this, engine.getIRBuffer());
+            planContext = new GeneralPlanContext(sqlQuery, this.batchTableEnvironment, this, engine.getIRBuffer());
         } else {
-            planContext = new FesqlPlanContext(sqlQuery, this.streamTableEnvironment, this, engine.getIRBuffer());
+            planContext = new GeneralPlanContext(sqlQuery, this.streamTableEnvironment, this, engine.getIRBuffer());
         }
 
         PhysicalOpNode rootNode = engine.getPlan();
@@ -76,7 +81,7 @@ public class FesqlPlanner {
 
     }
 
-    public Table visitPhysicalNode(FesqlPlanContext planContext, PhysicalOpNode node) throws FesqlException {
+    public Table visitPhysicalNode(GeneralPlanContext planContext, PhysicalOpNode node) throws FesqlException {
 
         List<Table> children = new ArrayList<Table>();
         for (int i=0; i < node.GetProducerCnt(); ++i) {
@@ -86,33 +91,44 @@ public class FesqlPlanner {
         Table outputTable = null;
         PhysicalOpType opType = node.getType_();
 
-        /* TODO: support simple project node
-            import static org.apache.flink.table.api.Expressions.$;
-            table.select($("vendor_sum_pl"), $("vendor_sum_pl"));
-        */
-
-        if (opType.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
+        if (opType.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) { // DataProviderNode
             // Use "select *" to get Table from Flink source
             PhysicalDataProviderNode dataProviderNode = PhysicalDataProviderNode.CastFrom(node);
 
             if (isBatch) {
-                outputTable = DataProviderPlan.gen(planContext, dataProviderNode);
+                outputTable = BatchDataProviderPlan.gen(planContext, dataProviderNode);
             } else {
                 outputTable = StreamDataProviderPlan.gen(planContext, dataProviderNode);
             }
+
+        } else if (opType.swigValue() == PhysicalOpType.kPhysicalOpSimpleProject.swigValue()) { // SimpleProjectNode
+
+            PhysicalSimpleProjectNode physicalSimpleProjectNode = PhysicalSimpleProjectNode.CastFrom(node);
+            // Batch and Streaming has the sample implementation
+            outputTable = GeneralSimpleProjectPlan.gen(planContext, physicalSimpleProjectNode, children.get(0));
 
         } else if (opType.swigValue() == PhysicalOpType.kPhysicalOpProject.swigValue()) {
             // Use FESQL CoreAPI to generate new Table
             PhysicalProjectNode projectNode = PhysicalProjectNode.CastFrom(node);
             ProjectType projectType = projectNode.getProject_type_();
 
-            if (projectType.swigValue() == ProjectType.kTableProject.swigValue()) {
+            if (projectType.swigValue() == ProjectType.kTableProject.swigValue()) { // TableProjectNode
                 PhysicalTableProjectNode physicalTableProjectNode = PhysicalTableProjectNode.CastFrom(projectNode);
 
                 if (isBatch) {
-                    outputTable = TableProjectPlan.gen(planContext, physicalTableProjectNode, children.get(0));
+                    outputTable = BatchTableProjectPlan.gen(planContext, physicalTableProjectNode, children.get(0));
                 } else {
                     outputTable = StreamTableProjectPlan.gen(planContext, physicalTableProjectNode, children.get(0));
+                }
+
+            } else if (projectType.swigValue() == ProjectType.kWindowAggregation.swigValue()) { // WindowAggNode
+
+                PhysicalWindowAggrerationNode physicalWindowAggrerationNode = PhysicalWindowAggrerationNode.CastFrom(projectNode);
+
+                if (isBatch) {
+                    outputTable = BatchWindowAggPlan.gen(planContext, physicalWindowAggrerationNode, children.get(0));
+                } else {
+                    outputTable = StreamWindowAggPlan.gen(planContext, physicalWindowAggrerationNode, children.get(0));
                 }
 
             } else {

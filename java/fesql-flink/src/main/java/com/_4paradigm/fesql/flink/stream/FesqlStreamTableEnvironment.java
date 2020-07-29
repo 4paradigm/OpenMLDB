@@ -1,6 +1,6 @@
-package com._4paradigm.fesql.stream;
+package com._4paradigm.fesql.flink.stream;
 
-import com._4paradigm.fesql.common.FesqlPlanner;
+import com._4paradigm.fesql.flink.common.planner.FesqlFlinkPlanner;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -186,7 +186,7 @@ public class FesqlStreamTableEnvironment {
             query = query.trim() + ";";
         }
 
-        FesqlPlanner planner = new FesqlPlanner(this);
+        FesqlFlinkPlanner planner = new FesqlFlinkPlanner(this);
         return planner.plan(query);
     }
 

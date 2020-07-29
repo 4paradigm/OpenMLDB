@@ -1,4 +1,4 @@
-package com._4paradigm.fesql.batch;
+package com._4paradigm.fesql.flink.batch;
 
 import java.util.List;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -8,7 +8,7 @@ import org.apache.flink.table.api.bridge.java.BatchTableEnvironment;
 import org.apache.flink.types.Row;
 import org.apache.parquet.schema.MessageType;
 import org.junit.Test;
-import com._4paradigm.fesql.common.ParquetHelper;
+import com._4paradigm.fesql.flink.common.ParquetHelper;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 

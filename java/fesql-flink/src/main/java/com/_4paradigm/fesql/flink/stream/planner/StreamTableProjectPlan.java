@@ -1,6 +1,7 @@
-package com._4paradigm.fesql.stream;
+package com._4paradigm.fesql.flink.stream.planner;
 
-import com._4paradigm.fesql.common.*;
+import com._4paradigm.fesql.flink.common.*;
+import com._4paradigm.fesql.flink.common.planner.GeneralPlanContext;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.CoreAPI;
 import com._4paradigm.fesql.vm.FeSQLJITWrapper;
@@ -21,7 +22,7 @@ public class StreamTableProjectPlan {
 
     private static final Logger logger = LoggerFactory.getLogger(StreamTableProjectPlan.class);
 
-    public static Table gen(FesqlPlanContext planContext, PhysicalTableProjectNode node, Table childTable) throws FesqlException {
+    public static Table gen(GeneralPlanContext planContext, PhysicalTableProjectNode node, Table childTable) throws FesqlException {
 
         DataStream<Row> inputDatastream = planContext.getStreamTableEnvironment().toAppendStream(childTable, Row.class);
 

@@ -1,9 +1,12 @@
-package com._4paradigm.fesql.common;
+package com._4paradigm.fesql.flink.common;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import com._4paradigm.fesql.common.FesqlException;
+import com._4paradigm.fesql.node.ColumnRefNode;
+import com._4paradigm.fesql.node.ExprNode;
+import com._4paradigm.fesql.node.ExprType;
+import com._4paradigm.fesql.vm.CoreAPI;
 import com._4paradigm.fesql.vm.PhysicalOpNode;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -15,8 +18,8 @@ import org.apache.flink.table.api.TableColumn;
 import org.apache.flink.table.api.TableSchema;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.type.TypeOuterClass.Type;
-
 import static com._4paradigm.fesql.type.TypeOuterClass.Type.*;
+
 
 public class FesqlUtil {
 
@@ -145,4 +148,30 @@ public class FesqlUtil {
 
         return new RowTypeInfo(fieldTypes);
     }
+
+    public static int resolveColumnIndex(ExprNode exprNode, PhysicalOpNode physicalOpNode) throws FesqlException {
+        if (exprNode.getExpr_type_().swigValue() == ExprType.kExprColumnRef.swigValue()) {
+            int index = CoreAPI.ResolveColumnIndex(physicalOpNode, ColumnRefNode.CastFrom(exprNode));
+            if (index < 0) {
+                throw new FesqlException("Fail to resolve column ref expression node and get index " + index);
+            } else if (index > physicalOpNode.GetOutputSchema().size()) {
+                throw new FesqlException("Fail to resolve column ref  expression node and get index " + index);
+            } else {
+                return index;
+            }
+        } else {
+            throw new FesqlException("Do not support nono-columnref expression");
+        }
+    }
+
+    public static int resolveColumnIndex(int schemaIdx, int columnIdx, PhysicalOpNode planNode) throws FesqlException {
+        int index = CoreAPI.ResolveColumnIndex(planNode, schemaIdx, columnIdx);
+        if (index < 0) {
+            throw new FesqlException("Fail to resolve schema_idx: " + schemaIdx + ", column_idx" + columnIdx);
+        } else if (index >= planNode.GetOutputSchema().size()) {
+            throw new FesqlException("Column index out of bounds: " + index);
+        }
+        return index;
+    }
+
 }

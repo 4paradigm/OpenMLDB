@@ -1,6 +1,7 @@
-package com._4paradigm.fesql.batch;
+package com._4paradigm.fesql.flink.batch;
 
-import com._4paradigm.fesql.common.FesqlPlanner;
+import com._4paradigm.fesql.flink.common.planner.FesqlFlinkPlanner;
+import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.table.api.Table;
@@ -98,7 +99,7 @@ public class FesqlBatchTableEnvironment {
             query = query.trim() + ";";
         }
 
-        FesqlPlanner planner = new FesqlPlanner(this);
+        FesqlFlinkPlanner planner = new FesqlFlinkPlanner(this);
         return planner.plan(query);
     }
 
@@ -124,6 +125,10 @@ public class FesqlBatchTableEnvironment {
 
     public <T> DataSet<T> toDataSet(Table table, TypeInformation<T> typeInfo) {
         return this.batchTableEnvironment.toDataSet(table, typeInfo);
+    }
+
+    public JobExecutionResult execute(String jobName) throws Exception {
+        return this.batchTableEnvironment.execute(jobName);
     }
 
 }
