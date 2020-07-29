@@ -204,6 +204,9 @@ TEST_F(SQLRouterTest, create_and_drop_table_test) {
     rs = router->ExecuteSQL(db, select, &status);
     ASSERT_TRUE(rs != nullptr);
     ASSERT_EQ(0, rs->Size());
+    // db still has table, drop fail
+    ok = router->DropDB(db, &status);
+    ASSERT_FALSE(ok);
 
     ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
     ASSERT_TRUE(ok);
