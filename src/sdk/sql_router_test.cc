@@ -161,6 +161,29 @@ TEST_F(SQLRouterTest, db_api_test) {
     ASSERT_EQ(1u, dbs.size());
     ASSERT_EQ(db, dbs[0]);
 }
+
+TEST_F(SQLRouterTest, create_and_drop_table_test) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_.GetZkCluster();
+    sql_opt.zk_path = mc_.GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) ASSERT_TRUE(false);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 string, col2 bigint,"
+                      "index(key=col1, ts=col2));";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+}
+
 TEST_F(SQLRouterTest, test_sql_insert_placeholder) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_.GetZkCluster();
