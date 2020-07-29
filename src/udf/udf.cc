@@ -93,12 +93,20 @@ int32_t weekofyear(codec::Date *date) {
     boost::gregorian::date d(year, month, day);
     return d.week_number();
 }
+
 void date_format(codec::Timestamp *timestamp, fesql::codec::StringRef *format,
+                 fesql::codec::StringRef *output) {
+    if (nullptr == format) {
+        return;
+    }
+    date_format(timestamp, format->ToString(), output);
+}
+void date_format(codec::Timestamp *timestamp, const std::string &format,
                  fesql::codec::StringRef *output) {
     if (nullptr == output) {
         return;
     }
-    if (nullptr == timestamp || nullptr == format) {
+    if (nullptr == timestamp) {
         output->data_ = nullptr;
         output->size_ = 0;
         return;
@@ -107,18 +115,26 @@ void date_format(codec::Timestamp *timestamp, fesql::codec::StringRef *format,
     struct tm t;
     gmtime_r(&time, &t);
     char buffer[80];
-    strftime(buffer, 80, format->ToString().c_str(), &t);
+    strftime(buffer, 80, format.c_str(), &t);
     output->size_ = strlen(buffer);
     output->data_ =
         reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
     memcpy(output->data_, buffer, output->size_);
 }
+
 void date_format(codec::Date *date, fesql::codec::StringRef *format,
+                 fesql::codec::StringRef *output) {
+    if (nullptr == format) {
+        return;
+    }
+    date_format(date, format->ToString(), output);
+}
+void date_format(codec::Date *date, const std::string &format,
                  fesql::codec::StringRef *output) {
     if (nullptr == output) {
         return;
     }
-    if (nullptr == date || nullptr == format) {
+    if (nullptr == date) {
         output->data_ = nullptr;
         output->size_ = 0;
         return;
@@ -132,36 +148,19 @@ void date_format(codec::Date *date, fesql::codec::StringRef *format,
     boost::gregorian::date g_date(year, month, day);
     tm t = boost::gregorian::to_tm(g_date);
     char buffer[80];
-    strftime(buffer, 80, format->ToString().c_str(), &t);
+    strftime(buffer, 80, format.c_str(), &t);
     output->size_ = strlen(buffer);
     output->data_ =
         reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
     memcpy(output->data_, buffer, output->size_);
 }
+
 void timestamp_to_string(codec::Timestamp *v, fesql::codec::StringRef *output) {
-    time_t time = (v->ts_ + TZ_OFFSET) / 1000;
-    struct tm t;
-    gmtime_r(&time, &t);
-    output->size_ = 19;
-    output->data_ =
-        reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
-    strftime(output->data_, 19, "%Y-%m-%d %H:%M:%S", &t);
+    date_format(v, "%Y-%m-%d %H:%M:%S", output);
 }
 
 void date_to_string(codec::Date *date, fesql::codec::StringRef *output) {
-    std::stringstream ss;
-    int32_t day, month, year;
-    if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
-        output->size_ = 0;
-        output->data_ = nullptr;
-        return;
-    }
-    boost::gregorian::date g_date(year, month, day);
-    tm t = boost::gregorian::to_tm(g_date);
-    output->size_ = 10;
-    output->data_ =
-        reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
-    strftime(output->data_, 10, "%Y-%m-%d", &t);
+    date_format(date, "%Y-%m-%d", output);
 }
 void sub_string(fesql::codec::StringRef *str, int32_t from,
                 fesql::codec::StringRef *output) {
