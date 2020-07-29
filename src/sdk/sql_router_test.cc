@@ -61,7 +61,7 @@ TEST_F(SQLRouterTest, empty_db_test) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     ::fesql::sdk::Status status;
     ASSERT_FALSE(router->CreateDB("", &status));
 }
@@ -100,7 +100,7 @@ TEST_F(SQLRouterTest, smoketest) {
                                                    &fe_schema);
     ::fesql::codec::RowBuilder rb(fe_schema);
     std::string pk = "pk1";
-    uint64_t ts = 1589780888000l;
+    int64_t ts = 1589780888000l;
     uint32_t size = rb.CalTotalLength(pk.size());
     std::string value;
     value.resize(size);
@@ -128,11 +128,11 @@ TEST_F(SQLRouterTest, smoketest) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     std::string sql = "select col1, col2 + 1 from " + name + " ;";
     ::fesql::sdk::Status status;
     auto rs = router->ExecuteSQL(db, sql, &status);
-    if (!rs) ASSERT_TRUE(false);
+    ASSERT_TRUE(rs != nullptr);
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ(1, rs->Size());
     ASSERT_EQ(2, rs->GetSchema()->GetColumnCnt());
@@ -147,7 +147,7 @@ TEST_F(SQLRouterTest, db_api_test) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
@@ -166,7 +166,7 @@ TEST_F(SQLRouterTest, create_and_drop_table_test) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
@@ -219,7 +219,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
@@ -309,7 +309,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder) {
     ASSERT_TRUE(router->RefreshCatalog());
     std::string sql_select = "select col1, col2 from " + name + ";";
     auto rs = router->ExecuteSQL(db, sql_select, &status);
-    if (!rs) ASSERT_TRUE(false);
+    ASSERT_TRUE(rs != nullptr);
     ASSERT_EQ(10, rs->Size());
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ("hello", rs->GetStringUnsafe(0));
@@ -354,7 +354,7 @@ TEST_F(SQLRouterTest, test_sql_insert_with_column_list) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
@@ -433,7 +433,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_date_column_key) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
@@ -484,7 +484,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_1) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
@@ -579,7 +579,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_2) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
@@ -710,7 +710,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
@@ -848,7 +848,7 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
@@ -867,7 +867,7 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     ASSERT_TRUE(router->RefreshCatalog());
     std::string sql_select = "select col1 from " + name + " ;";
     auto rs = router->ExecuteSQL(db, sql_select, &status);
-    if (!rs) ASSERT_TRUE(false);
+    ASSERT_TRUE(rs != nullptr);
     ASSERT_EQ(1, rs->Size());
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ("hello", rs->GetStringUnsafe(0));
@@ -882,7 +882,7 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     {
         std::shared_ptr<SQLRequestRow> row =
             router->GetRequestRow(db, sql_window_batch, &status);
-        if (!row) ASSERT_FALSE(true);
+        ASSERT_TRUE(row != nullptr);
         ASSERT_EQ(2, row->GetSchema()->GetColumnCnt());
         ASSERT_TRUE(row->Init(5));
         ASSERT_TRUE(row->AppendString("hello"));
@@ -895,7 +895,7 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
             ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
 
         rs = router->ExecuteSQL(db, sql_window_request, row, &status);
-        if (!rs) ASSERT_FALSE(true);
+        ASSERT_TRUE(rs != nullptr);
         ASSERT_EQ(1, rs->Size());
         ASSERT_TRUE(rs->Next());
         ASSERT_EQ(100, rs->GetInt64Unsafe(0));
@@ -903,7 +903,7 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     {
         std::shared_ptr<SQLRequestRow> row =
             router->GetRequestRow(db, sql_window_batch, &status);
-        if (!row) ASSERT_FALSE(true);
+        ASSERT_TRUE(row != nullptr);
         ASSERT_EQ(2, row->GetSchema()->GetColumnCnt());
         ASSERT_TRUE(row->Init(5));
         ASSERT_TRUE(row->AppendString("hello"));
@@ -916,7 +916,7 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
             ".col2 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
 
         rs = router->ExecuteSQL(db, sql_window_request, row, &status);
-        if (!rs) ASSERT_FALSE(true);
+        ASSERT_TRUE(rs != nullptr);
         ASSERT_EQ(1, rs->Size());
         ASSERT_TRUE(rs->Next());
         ASSERT_EQ(100, rs->GetInt64Unsafe(0));
@@ -933,7 +933,7 @@ TEST_F(SQLRouterTest, smoke_explain_on_sql) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
@@ -953,11 +953,7 @@ TEST_F(SQLRouterTest, smoke_explain_on_sql) {
     ASSERT_TRUE(router->RefreshCatalog());
     std::string sql_select = "select * from " + name + " ;";
     auto explain = router->Explain(db, sql_select, &status);
-    if (explain) {
-        ASSERT_TRUE(true);
-    } else {
-        ASSERT_TRUE(false);
-    }
+    ASSERT_TRUE(explain != nullptr);
 
     ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
     ASSERT_TRUE(ok);
@@ -970,7 +966,7 @@ TEST_F(SQLRouterTest, smoke_not_null) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
@@ -999,7 +995,7 @@ TEST_F(SQLRouterTest, smoketimestamptest_on_sql) {
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
@@ -1020,7 +1016,7 @@ TEST_F(SQLRouterTest, smoketimestamptest_on_sql) {
     ASSERT_TRUE(router->RefreshCatalog());
     std::string sql_select = "select * from " + name + " ;";
     auto rs = router->ExecuteSQL(db, sql_select, &status);
-    if (!rs) ASSERT_TRUE(false);
+    ASSERT_TRUE(rs != nullptr);
     ASSERT_EQ(1, rs->Size());
     ASSERT_EQ(3, rs->GetSchema()->GetColumnCnt());
     ASSERT_TRUE(rs->Next());
