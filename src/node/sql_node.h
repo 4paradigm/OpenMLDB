@@ -244,6 +244,7 @@ inline const std::string FrameTypeName(const FrameType &type) {
         case fesql::node::kFrameRowsRange:
             return "ROWS_RANGE";
     }
+    return "";
 }
 
 inline const std::string BoundTypeName(const BoundType &type) {
@@ -308,6 +309,7 @@ inline const std::string DataTypeName(const DataType &type) {
         default:
             return "unknown";
     }
+    return "";
 }
 
 inline const std::string FnNodeName(const SQLNodeType &type) {
@@ -897,6 +899,7 @@ class FrameBound : public SQLNode {
             case node::kFollowingUnbound:
                 return "UNBOUND";
         }
+        return "";
     }
 
     BoundType bound_type() const { return bound_type_; }
@@ -1048,6 +1051,7 @@ class FrameNode : public SQLNode {
                 return GetHistoryRangeEnd() < 0;
             }
         }
+        return false;
     }
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *node) const;

@@ -18,7 +18,7 @@
 
 namespace fesql {
 namespace udf {
-inline int8_t *ThreadLocalMemoryPoolAlloc(int32_t request_size);
+int8_t *ThreadLocalMemoryPoolAlloc(int32_t request_size);
 void ThreadLocalMemoryPoolReset();
 
 namespace v1 {

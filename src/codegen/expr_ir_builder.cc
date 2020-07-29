@@ -308,7 +308,7 @@ Status ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call,
     }
     ExprIRBuilder sub_builder(block_, sv_, schemas_context_, !is_udaf, module_);
     sub_builder.set_frame(this->frame_);
-    for (int i = 0; i < call->GetChildNum(); ++i) {
+    for (size_t i = 0; i < call->GetChildNum(); ++i) {
         node::ExprNode* arg_expr = call->GetChild(i);
         NativeValue arg_value;
         CHECK_TRUE(sub_builder.Build(arg_expr, &arg_value, status),

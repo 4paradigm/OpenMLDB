@@ -66,7 +66,8 @@ bool ResultSetImpl::Reset() {
 }
 bool ResultSetImpl::Next() {
     index_++;
-    if (index_ < response_->count() && position_ < byte_size_) {
+    if (index_ < static_cast<int32_t>(response_->count()) &&
+        static_cast<int32_t>(position_) < byte_size_) {
         // get row size
         uint32_t row_size = 0;
         cntl_->response_attachment().copy_to(reinterpret_cast<void*>(&row_size),

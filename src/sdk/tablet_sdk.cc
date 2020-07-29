@@ -323,14 +323,15 @@ void TabletSdkImpl::BuildInsertRequest(const std::string& db,
                 std::make_pair(columns[i], values->children_[i]));
         }
     } else {
-        if (schema.columns().size() != values->children_.size()) {
+        if (schema.columns().size() !=
+            static_cast<int32_t>(values->children_.size())) {
             status->msg =
                 "Fail Build Request: insert column size != value size";
             status->code = -1;
             LOG(WARNING) << status->msg;
             return;
         }
-        for (size_t i = 0; i < schema.columns().size(); i++) {
+        for (int i = 0; i < schema.columns().size(); i++) {
             column_value_map.insert(
                 std::make_pair(schema.columns(i).name(), values->children_[i]));
         }
