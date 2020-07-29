@@ -78,6 +78,8 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     public NameServerClientImpl(String zkEndpoints, String leaderPath) {
         this.zkEndpoints = zkEndpoints;
         this.leaderPath = leaderPath;
+        this.severNamesPath = "";
+        this.sdkEndpointPath = "";
         this.config = null;
     }
 
