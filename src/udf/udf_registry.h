@@ -1479,7 +1479,7 @@ class SimpleUDAFRegistryHelperImpl {
             UDFResolveContext ctx(arg_list, nullptr, library_, &analysis_ctx);
             auto status = udf_registry->ResolveFunction(&ctx, &res);
             if (!status.isOK() || res == nullptr) {
-                LOG(WARNING) << status.msg;
+                DLOG(WARNING) << status.msg;
                 continue;
             }
             return res;

@@ -2670,7 +2670,7 @@ base::Status ResolveFnAndAttrs::Visit(node::ExprNode* expr,
         expr->GetExprType() != node::kExprAll) {
         auto status = (*output)->InferAttr(&analysis_context_);
         if (!status.isOK()) {
-            LOG(WARNING) << "Fail to infer " << (*output)->GetExprString()
+            DLOG(WARNING) << "Fail to infer " << (*output)->GetExprString()
                          << ": " << status.msg;
         }
     }
