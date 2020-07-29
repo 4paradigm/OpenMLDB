@@ -83,16 +83,17 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
 
     @Deprecated
     public NameServerClientImpl(String endpoint) {
-        // get real endpoint
         String realEp = endpoint;
-        // get sdkendpoint
         try {
-            byte[] data1 = zookeeper.getData(this.sdkEndpointPath + "/" + realEp, false, null);
-            if (data1 != null) {
-                realEp = new String(data1, Charset.forName("UTF-8"));
-            } else {
-                byte[] data2 = null;
-                data2 = zookeeper.getData(this.severNamesPath + "/" + realEp, false, null);
+            if (zookeeper.exists(this.sdkEndpointPath + "/" + realEp, false) != null) {
+                // get sdkendpoint
+                byte[] data1 = zookeeper.getData(this.sdkEndpointPath + "/" + realEp, false, null);
+                if (data1 != null) {
+                    realEp = new String(data1, Charset.forName("UTF-8"));
+                }
+            } else if (zookeeper.exists(this.severNamesPath + "/" + realEp, false) != null) {
+                // get real endpoint
+                byte[] data2 = zookeeper.getData(this.severNamesPath + "/" + realEp, false, null);
                 if (data2 != null) {
                     realEp = new String(data2, Charset.forName("UTF-8"));
                 }
@@ -198,11 +199,14 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         Collections.sort(children);
         byte[] bytes = zookeeper.getData(leaderPath + "/" + children.get(0), false, null);
         String realEp = new String(bytes, Charset.forName("UTF-8"));
-        // get sdkendpoint
-        byte[] data1 = zookeeper.getData(this.sdkEndpointPath + "/" + realEp, false, null);
-        if (data1 != null) {
-            realEp = new String(data1, Charset.forName("UTF-8"));
-        } else {
+
+        if (zookeeper.exists(this.sdkEndpointPath + "/" + realEp, false) != null) {
+            // get sdkendpoint
+            byte[] data1 = zookeeper.getData(this.sdkEndpointPath + "/" + realEp, false, null);
+            if (data1 != null) {
+                realEp = new String(data1, Charset.forName("UTF-8"));
+            }
+        } else if (zookeeper.exists(this.severNamesPath + "/" + realEp, false) != null) {
             // get real endpoint
             byte[] data2 = zookeeper.getData(this.severNamesPath + "/" + realEp, false, null);
             if (data2 != null) {
