@@ -315,7 +315,7 @@ class RowCodec {
     }
 
     static bool DecodeRow(const Schema& schema, const int8_t* data, int32_t size, bool replace_empty_str,
-                          int start, int len, std::vector<std::string>& values) {
+                          int start, int len, std::vector<std::string>& values) { // NOLINT
         rtidb::codec::RowView rv(schema, data, size);
         return DecodeRow(schema, rv, replace_empty_str, start, len, &values);
     }
