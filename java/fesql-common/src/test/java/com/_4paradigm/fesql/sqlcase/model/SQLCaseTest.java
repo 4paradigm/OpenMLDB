@@ -35,6 +35,5 @@ public class SQLCaseTest {
                         "index(key=(c1,c2),ts=c5,ttl=365d),\n" +
                         "index(key=(c1),ts=c5,ttl=1000,ttl_type=absolute)" +
                         ");");
-
     }
 }

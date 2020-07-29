@@ -1,5 +1,5 @@
 db: test_zw
-debugs: []
+debugs:
 cases:
   -
     id: 0
@@ -8,7 +8,6 @@ cases:
       -
         columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c1:c7"]
-        order: c3
         rows:
           - ["aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - ["aa",21,31,1.2,2.2,1590738991000,"2020-05-02"]
