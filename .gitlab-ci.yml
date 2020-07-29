@@ -82,14 +82,6 @@ java_ut:
 fesql_auto_test:
   stage: test
   before_script:
-<<<<<<< HEAD
-    - mkdir /rambuild
-=======
-      - mkdir /rambuild
-  except:
-      variables:
-          - $ENV_BUILD == "daily"
->>>>>>> develop
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
@@ -110,6 +102,9 @@ fesql_auto_test:
         - rtidb-auto-test/target/surefire-reports/TEST-*.xml
         - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
         - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
   dependencies:
     - build
 
@@ -127,21 +122,10 @@ auto_test:
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && HOME=/rambuild bash steps/auto_test.sh
   after_script:
-<<<<<<< HEAD
     - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
     - bash steps/upload-nexus.sh $CI_COMMIT_SHA
     - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
     - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
-=======
-      - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
-      - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-      - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
-      - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
-  except:
-      variables:
-          - $ENV_BUILD == "daily"
-
->>>>>>> develop
   artifacts:
     reports:
       junit:
@@ -153,6 +137,9 @@ auto_test:
         - rtidb-auto-test/target/surefire-reports/TEST-*.xml
         - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
         - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
   dependencies:
     - build
 
@@ -191,59 +178,8 @@ py3_ut:
   dependencies:
     - build
   except:
-<<<<<<< HEAD
     variables:
       - $ENV_BUILD == "daily"
-
-deploy-package:
-  stage: deploy
-  script:
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && bash steps/deploy_package.sh
-  only:
-    - tags
-
-docker-image:
-  stage: make_docker
-  script:
-    - source /root/.bashrc && sh tools/install_fesql.sh
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - sh steps/simple_compile.sh
-    - sh docker/copy_file.sh
-    - make blob_proxy
-    - bash docker/push_meta.sh
-  only:
-    - tags
-    - develop
-    - feat/push-nexus-meta
-    - release/*
-=======
-      variables:
-          - $ENV_BUILD == "daily"
-
-
-tablet_one_demension:
-    stage: ts_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-    except:
-        variables:
-            - $ENV_BUILD == "daily"
-
->>>>>>> develop
 
 tablet_one_demension:
   stage: ts_integration_test
