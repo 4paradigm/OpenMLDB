@@ -116,16 +116,20 @@ TEST_F(ClusterSDKTest, smoketest) {
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablet;
     ok = sdk.GetTabletByTable(db, name, &tablet);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(1, tablet.size());
+    ASSERT_EQ(1u, tablet.size());
     auto leader_tablet = sdk.GetLeaderTabletByTable(db, name);
-    if (!leader_tablet) ASSERT_TRUE(false);
+    if (!leader_tablet) {
+        ASSERT_TRUE(false);
+    }
     uint32_t tid = sdk.GetTableId(db, name);
-    ASSERT_NE(tid, 0);
+    ASSERT_NE(tid, 0u);
     auto table_ptr = sdk.GetTableInfo(db, name);
     ASSERT_EQ(table_ptr->db(), db);
     ASSERT_EQ(table_ptr->name(), name);
     auto ns_ptr = sdk.GetNsClient();
-    if (!ns_ptr) ASSERT_TRUE(false);
+    if (!ns_ptr) {
+        ASSERT_TRUE(false);
+    }
     ASSERT_EQ(ns_ptr->GetEndpoint(), ns_client->GetEndpoint());
     ASSERT_TRUE(sdk.Refresh());
 }

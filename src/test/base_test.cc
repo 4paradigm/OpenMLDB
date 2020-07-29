@@ -119,39 +119,39 @@ void SQLCaseTest::CheckSchema(const fesql::vm::Schema &exp_schema,
         ASSERT_EQ(exp_schema.Get(i).name(), schema.GetColumnName(i));
         switch (exp_schema.Get(i).type()) {
             case fesql::type::kInt32: {
-                ASSERT_EQ(fesql::node::kInt32, schema.GetColumnType(i));
+                ASSERT_EQ(fesql::sdk::kTypeInt32, schema.GetColumnType(i));
                 break;
             }
             case fesql::type::kInt64: {
-                ASSERT_EQ(fesql::node::kInt64, schema.GetColumnType(i));
+                ASSERT_EQ(fesql::sdk::kTypeInt64, schema.GetColumnType(i));
                 break;
             }
             case fesql::type::kInt16: {
-                ASSERT_EQ(fesql::node::kInt16, schema.GetColumnType(i));
+                ASSERT_EQ(fesql::sdk::kTypeInt16, schema.GetColumnType(i));
                 break;
             }
             case fesql::type::kFloat: {
-                ASSERT_EQ(fesql::node::kFloat, schema.GetColumnType(i));
+                ASSERT_EQ(fesql::sdk::kTypeFloat, schema.GetColumnType(i));
                 break;
             }
             case fesql::type::kDouble: {
-                ASSERT_EQ(fesql::node::kDouble, schema.GetColumnType(i));
+                ASSERT_EQ(fesql::sdk::kTypeDouble, schema.GetColumnType(i));
                 break;
             }
             case fesql::type::kVarchar: {
-                ASSERT_EQ(fesql::node::kVarchar, schema.GetColumnType(i));
+                ASSERT_EQ(fesql::sdk::kTypeString, schema.GetColumnType(i));
                 break;
             }
             case fesql::type::kTimestamp: {
-                ASSERT_EQ(fesql::node::kTimestamp, schema.GetColumnType(i));
+                ASSERT_EQ(fesql::sdk::kTypeTimestamp, schema.GetColumnType(i));
                 break;
             }
             case fesql::type::kDate: {
-                ASSERT_EQ(fesql::node::kDate, schema.GetColumnType(i));
+                ASSERT_EQ(fesql::sdk::kTypeDate, schema.GetColumnType(i));
                 break;
             }
             case fesql::type::kBool: {
-                ASSERT_EQ(fesql::node::kBool, schema.GetColumnType(i));
+                ASSERT_EQ(fesql::sdk::kTypeBool, schema.GetColumnType(i));
                 break;
             }
             default: {
@@ -404,7 +404,7 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema,
                             const std::string &order_col,
                             const std::vector<fesql::codec::Row> &rows,
                             std::shared_ptr<fesql::sdk::ResultSet> rs) {
-    ASSERT_EQ(rows.size(), rs->Size());
+    ASSERT_EQ(static_cast<int32_t>(rows.size()), rs->Size());
 
     LOG(INFO) << "Expected Rows: \n";
     PrintRows(schema, rows);

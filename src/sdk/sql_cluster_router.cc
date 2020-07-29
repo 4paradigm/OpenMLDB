@@ -197,7 +197,7 @@ bool SQLClusterRouter::GetInsertInfo(
         return false;
     }
     std::map<uint32_t, uint32_t> column_map;
-    for (int j = 0; j < insert_stmt->columns_.size(); ++j) {
+    for (size_t j = 0; j < insert_stmt->columns_.size(); ++j) {
         const std::string& col_name = insert_stmt->columns_[j];
         bool find_flag = false;
         for (int i = 0; i < (*table_info)->column_desc_v1_size(); ++i) {
@@ -336,8 +336,8 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
     }
     DefaultValueMap default_map(
         new std::map<uint32_t, std::shared_ptr<::fesql::node::ConstNode>>());
-    if ((column_map.empty() &&
-         row->children_.size() < table_info->column_desc_v1_size()) ||
+    if ((column_map.empty() && static_cast<int32_t>(row->children_.size()) <
+                                   table_info->column_desc_v1_size()) ||
         (!column_map.empty() && row->children_.size() < column_map.size())) {
         LOG(WARNING) << "insert value number less than column number";
         return DefaultValueMap();
@@ -381,8 +381,8 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
             }
             default_map->insert(std::make_pair(idx, val));
             if (!primary->IsNull() &&
-                    column.data_type() == ::rtidb::type::kVarchar ||
-                column.data_type() == ::rtidb::type::kString) {
+                (column.data_type() == ::rtidb::type::kVarchar ||
+                 column.data_type() == ::rtidb::type::kString)) {
                 *str_length += strlen(primary->GetStr());
             }
         }
