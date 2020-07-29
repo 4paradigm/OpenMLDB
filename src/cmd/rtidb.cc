@@ -367,9 +367,9 @@ int PutData(
     uint32_t format_version) {
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>
         clients;
-    std::shared_ptr<ZkClient> zk_client;
+    std::shared_ptr<::rtidb::zk::ZkClient> zk_client;
     if (FLAGS_use_name) {
-        zk_client = std::make_shared<ZkClient>(
+        zk_client = std::make_shared<::rtidb::zk::ZkClient>(
                 FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
         if (!zk_client->Init()) {
             printf("zk client init failed \n");
@@ -568,8 +568,9 @@ std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
     }
     std::string real_endpoint;
     if (FLAGS_use_name) {
-        std::shared_ptr<ZkClient> zk_client = std::make_shared<ZkClient>(
-                FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
+        std::shared_ptr<::rtidb::zk::ZkClient> zk_client =
+            std::make_shared<::rtidb::zk::ZkClient>(
+                    FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
         if (!zk_client->Init()) {
             msg = "zk client init failed";
             return std::shared_ptr<::rtidb::client::TabletClient>();
@@ -6320,8 +6321,8 @@ void StartNsClient() {
     }
     std::shared_ptr<::rtidb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
-        zk_client = std::make_shared<ZkClient>(FLAGS_zk_cluster, "", 1000, "",
-                FLAGS_zk_root_path);
+        zk_client = std::make_shared<::rtidb::zk::ZkClient>(
+                FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
             return;
