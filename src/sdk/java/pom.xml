@@ -61,18 +61,26 @@
             </plugins>
         </pluginManagement>
     </build>
+<pluginRepositories>
+    <pluginRepository>
+      <id>4pd-nexus-public</id>
+      <name>4Paradigm nexus maven public</name>
+      <url>https://nexus.4pd.io/repository/maven-public/</url>
+    </pluginRepository>
+  </pluginRepositories>
 
-    <distributionManagement>
-        <repository>
-            <id>4pd-nexus</id>
-            <uniqueVersion>true</uniqueVersion>
-            <url>https://nexus.4pd.io/repository/maven-releases/</url>
-        </repository>
-        <snapshotRepository>
-            <id>4pd-nexus</id>
-            <uniqueVersion>true</uniqueVersion>
-            <url>https://nexus.4pd.io/repository/maven-snapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
-</project>
+  <distributionManagement>
+    <repository>
+      <id>4pd-nexus-releases</id>
+      <uniqueVersion>true</uniqueVersion>
+      <url>https://nexus.4pd.io/repository/maven-releases/</url>
+    </repository>
+    <snapshotRepository>
+      <id>4pd-nexus-snapshots</id>
+      <uniqueVersion>true</uniqueVersion>
+      <url>https://nexus.4pd.io/repository/maven-snapshots/</url>
+    </snapshotRepository>
+  </distributionManagement>
+
+ </project>
 

@@ -83,6 +83,9 @@ fesql_auto_test:
   stage: test
   before_script:
       - mkdir /rambuild
+  except:
+      variables:
+          - $ENV_BUILD == "daily"
   script:
       - ln -sf /depends/thirdparty thirdparty
       - ln -sf /depends/thirdsrc thirdsrc
@@ -122,6 +125,10 @@ auto_test:
       - bash steps/upload-nexus.sh $CI_COMMIT_SHA
       - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
       - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+  except:
+      variables:
+          - $ENV_BUILD == "daily"
+
   artifacts:
       reports:
           junit:
@@ -168,32 +175,6 @@ py3_ut:
           - $ENV_BUILD == "daily"
 
 
-
-
-deploy-package:
-    stage: deploy
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - source /root/.bashrc && bash steps/deploy_package.sh
-    only:
-        - tags
-
-docker-image:
-    stage: make_docker
-    script:
-        - source /root/.bashrc && sh tools/install_fesql.sh
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - sh steps/simple_compile.sh
-        - sh docker/copy_file.sh
-        - make blob_proxy
-        - bash docker/push_meta.sh
-    only:
-        - tags
-        - develop
-        - feat/push-nexus-meta
-        - release/*
 tablet_one_demension:
     stage: ts_integration_test
     before_script:
@@ -311,6 +292,10 @@ deploy-package:
         - source /root/.bashrc && bash steps/deploy_package.sh
     only:
         - tags
+    except:
+        variables:
+            - $ENV_BUILD == "daily"
+
 docker-image:
     stage: deploy
     script:
@@ -325,3 +310,7 @@ docker-image:
         - develop
         - release/*
         - feat/push-nexus-meta
+    except:
+        variables:
+            - $ENV_BUILD == "daily"
+
