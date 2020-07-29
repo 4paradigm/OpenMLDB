@@ -118,7 +118,11 @@ void RunListAtCase(T expected, const type::TableDef& table,
                 // build column
                 base::Status status;
                 ::llvm::Value* column = NULL;
-                ::llvm::Value* list_ptr = builder.CreateExtractValue(arg0, {0});
+                ::llvm::Value* list_gep_0 = builder.CreateStructGEP(
+                    cast<PointerType>(arg0->getType()->getScalarType())
+                        ->getElementType(),
+                    arg0, 0);
+                ::llvm::Value* list_ptr = builder.CreateLoad(list_gep_0);
                 CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
 
                 ::llvm::Value* val = nullptr;
@@ -136,10 +140,15 @@ void RunListAtCase(T expected, const type::TableDef& table,
                         break;
                     }
                     default: {
-                        if (TypeIRBuilder::IsStructPtr(val->getType())) {
+                        if (codegen::TypeIRBuilder::IsStructPtr(
+                                val->getType())) {
                             val = builder.CreateLoad(val);
+                            builder.CreateStore(
+                                val, fn->arg_begin() + fn->arg_size() - 1);
+                            builder.CreateRetVoid();
+                        } else {
+                            builder.CreateRet(val);
                         }
-                        builder.CreateRet(val);
                     }
                 }
                 return Status::OK();
@@ -170,7 +179,11 @@ void RunListIteratorCase(T expected, const type::TableDef& table,
 
                 // build column
                 ::llvm::Value* column = NULL;
-                ::llvm::Value* list_ptr = builder.CreateExtractValue(arg0, {0});
+                ::llvm::Value* list_gep_0 = builder.CreateStructGEP(
+                    cast<PointerType>(arg0->getType()->getScalarType())
+                        ->getElementType(),
+                    arg0, 0);
+                ::llvm::Value* list_ptr = builder.CreateLoad(list_gep_0);
                 CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
 
                 ::llvm::Value* iterator = nullptr;
@@ -223,8 +236,7 @@ void RunListIteratorByRowCase(T expected, const type::TableDef& table,
                 auto row_type =
                     DataTypeTrait<udf::LiteralTypedRow<>>::to_type_node(&nm);
 
-                auto list_ref_ptr = builder.CreateAlloca(arg0->getType());
-                builder.CreateStore(arg0, list_ref_ptr);
+                auto list_ref_ptr = arg0;
 
                 CHECK_STATUS(list_builder.BuildIterator(list_ref_ptr, row_type,
                                                         &iterator));
@@ -278,7 +290,11 @@ void RunInnerListIteratorCase(T expected, const type::TableDef& table,
                 Argument* arg0 = &*it;
 
                 ::llvm::Value* inner_list = NULL;
-                ::llvm::Value* list_ptr = builder.CreateExtractValue(arg0, {0});
+                ::llvm::Value* list_gep_0 = builder.CreateStructGEP(
+                    cast<PointerType>(arg0->getType()->getScalarType())
+                        ->getElementType(),
+                    arg0, 0);
+                ::llvm::Value* list_ptr = builder.CreateLoad(list_gep_0);
                 if (inner_range) {
                     CHECK_TRUE(buf_builder.BuildInnerRangeList(
                         list_ptr, start_offset, end_offset, &inner_list));
@@ -360,7 +376,11 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
 
                 // build column
                 ::llvm::Value* column = NULL;
-                ::llvm::Value* list_ptr = builder.CreateExtractValue(arg0, {0});
+                ::llvm::Value* list_gep_0 = builder.CreateStructGEP(
+                    cast<PointerType>(arg0->getType()->getScalarType())
+                        ->getElementType(),
+                    arg0, 0);
+                ::llvm::Value* list_ptr = builder.CreateLoad(list_gep_0);
                 CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
 
                 ::llvm::Value* iter = nullptr;
@@ -406,10 +426,14 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
 
                 ::llvm::Value* ret_delete = nullptr;
                 list_builder.BuildIteratorDelete(iter, elem_type, &ret_delete);
-                if (TypeIRBuilder::IsStructPtr(res->getType())) {
+                if (codegen::TypeIRBuilder::IsStructPtr(res->getType())) {
                     res = builder.CreateLoad(res);
+                    builder.CreateStore(res,
+                                        fn->arg_begin() + fn->arg_size() - 1);
+                    builder.CreateRetVoid();
+                } else {
+                    builder.CreateRet(res);
                 }
-                builder.CreateRet(res);
                 return Status::OK();
             });
 
@@ -440,7 +464,11 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
 
                 // build column
                 ::llvm::Value* column = NULL;
-                ::llvm::Value* list_ptr = builder.CreateExtractValue(arg0, {0});
+                ::llvm::Value* list_gep_0 = builder.CreateStructGEP(
+                    cast<PointerType>(arg0->getType()->getScalarType())
+                        ->getElementType(),
+                    arg0, 0);
+                ::llvm::Value* list_ptr = builder.CreateLoad(list_gep_0);
                 CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
 
                 node::NodeManager nm;
@@ -466,10 +494,15 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
                         break;
                     }
                     default: {
-                        if (TypeIRBuilder::IsStructPtr(next1->getType())) {
+                        if (codegen::TypeIRBuilder::IsStructPtr(
+                                next1->getType())) {
                             next1 = builder.CreateLoad(next1);
+                            builder.CreateStore(
+                                next1, fn->arg_begin() + fn->arg_size() - 1);
+                            builder.CreateRetVoid();
+                        } else {
+                            builder.CreateRet(next1);
                         }
-                        builder.CreateRet(next1);
                     }
                 }
                 return Status::OK();

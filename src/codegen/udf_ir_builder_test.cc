@@ -467,16 +467,15 @@ TEST_F(UDFIRBuilderTest, timestamp_format_test) {
 TEST_F(UDFIRBuilderTest, date_format_test) {
     CheckUDF<codec::StringRef, codec::Date, codec::StringRef>(
         "date_format", codec::StringRef("2020-05-22 00:00:00"),
-        codec::Date(2020, 05, 22),
-        codec::StringRef("%Y-%m-%d %H:%M:%S"));
+        codec::Date(2020, 05, 22), codec::StringRef("%Y-%m-%d %H:%M:%S"));
 
     CheckUDF<codec::StringRef, codec::Date, codec::StringRef>(
         "date_format", codec::StringRef("2020-05-22"),
         codec::Date(2020, 05, 22), codec::StringRef("%Y-%m-%d"));
 
     CheckUDF<codec::StringRef, codec::Date, codec::StringRef>(
-        "date_format", codec::StringRef("00:00:00"),
-        codec::Date(2020, 05, 22), codec::StringRef("%H:%M:%S"));
+        "date_format", codec::StringRef("00:00:00"), codec::Date(2020, 05, 22),
+        codec::StringRef("%H:%M:%S"));
 }
 
 }  // namespace codegen
