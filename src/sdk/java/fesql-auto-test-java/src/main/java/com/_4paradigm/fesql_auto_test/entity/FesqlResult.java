@@ -16,7 +16,7 @@ import java.util.List;
 public class FesqlResult {
     private boolean ok;
     private int count;
-    private List<List> result;
+    private List<List<Object>> result;
     private Schema resultSchema;
 
     @Override
