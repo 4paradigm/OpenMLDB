@@ -397,13 +397,13 @@ TEST_F(UDFTest, TimestampToString) {
         codec::StringRef str;
         codec::Timestamp ts(1590115420000L);
         udf::v1::timestamp_to_string(&ts, &str);
-        ASSERT_EQ(codec::StringRef("2020-05-22 02:43:40"), str);
+        ASSERT_EQ(codec::StringRef("2020-05-22 10:43:40"), str);
     }
     {
         codec::StringRef str;
         codec::Timestamp ts(1590115421000L);
         udf::v1::timestamp_to_string(&ts, &str);
-        ASSERT_EQ(codec::StringRef("2020-05-22 02:43:41"), str);
+        ASSERT_EQ(codec::StringRef("2020-05-22 10:43:41"), str);
     }
 }
 }  // namespace udf

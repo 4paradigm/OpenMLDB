@@ -106,9 +106,12 @@ void date_format(codec::Timestamp *timestamp, fesql::codec::StringRef *format,
     time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
     struct tm t;
     gmtime_r(&time, &t);
-    output->data_ = reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(80));
-    strftime(output->data_, 80, format->ToString().c_str(), &t);
-    output->size_ = strlen(output->data_);
+    char buffer[80];
+    strftime(buffer, 80, format->ToString().c_str(), &t);
+    output->size_ = strlen(buffer);
+    output->data_ =
+        reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
+    memcpy(output->data_, buffer, output->size_);
 }
 void date_format(codec::Date *date, fesql::codec::StringRef *format,
                  fesql::codec::StringRef *output) {
@@ -128,9 +131,12 @@ void date_format(codec::Date *date, fesql::codec::StringRef *format,
     }
     boost::gregorian::date g_date(year, month, day);
     tm t = boost::gregorian::to_tm(g_date);
-    output->data_ = reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(80));
-    strftime(output->data_, 80, format->ToString().c_str(), &t);
-    output->size_ = strlen(output->data_);
+    char buffer[80];
+    strftime(buffer, 80, format->ToString().c_str(), &t);
+    output->size_ = strlen(buffer);
+    output->data_ =
+        reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
+    memcpy(output->data_, buffer, output->size_);
 }
 void timestamp_to_string(codec::Timestamp *v, fesql::codec::StringRef *output) {
     time_t time = (v->ts_ + TZ_OFFSET) / 1000;
