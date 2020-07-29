@@ -2,7 +2,6 @@ package com._4paradigm.fesql_auto_test.util;
 
 import com._4paradigm.fesql.sqlcase.model.InputDesc;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
-import com._4paradigm.fesql.sqlcase.model.Table;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.sql.DataType;
 import com._4paradigm.sql.ResultSet;
