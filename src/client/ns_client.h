@@ -66,6 +66,10 @@ class NsClient {
 
     bool ShowBlob(std::vector<TabletInfo>& tablets,  // NOLINT
                     std::string& msg);                 // NOLINT
+
+    bool ShowSdkEndpoint(std::vector<TabletInfo>& tablets,  // NOLINT
+                    std::string& msg);                 // NOLINT
+
     bool ShowTable(
         const std::string& name,
         std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT

@@ -795,6 +795,30 @@ void HandleNSShowBlob(const std::vector<std::string>& parts,
     tp.Print(true);
 }
 
+void HandleNSShowSdkEndpoint(const std::vector<std::string>& parts,
+                        ::rtidb::client::NsClient* client) {
+    std::vector<std::string> row;
+    row.push_back("endpoint");
+    row.push_back("sdk_endpoint");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+    std::vector<::rtidb::client::TabletInfo> tablets;
+    std::string msg;
+    bool ok = client->ShowSdkEndpoint(tablets, msg);
+    if (!ok) {
+        std::cout << "Fail to show sdkendpoint. error msg: "
+            << msg << std::endl;
+        return;
+    }
+    for (size_t i = 0; i < tablets.size(); i++) {
+        std::vector<std::string> row;
+        row.push_back(tablets[i].endpoint);
+        row.push_back(tablets[i].real_endpoint);
+        tp.AddRow(row);
+    }
+    tp.Print(true);
+}
+
 void HandleNSRemoveReplicaCluster(const std::vector<std::string>& parts,
                                   ::rtidb::client::NsClient* client) {
     if (parts.size() < 2) {
@@ -3713,6 +3737,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         printf("showtable - show table info\n");
         printf("showtablet - show tablet info\n");
         printf("showblob - show blob info\n");
+        printf("showsdkendpoint - show sdkendpoint info\n");
         printf("showns - show nameserver info\n");
         printf("showschema - show schema info\n");
         printf("showopstatus - show op info\n");
@@ -3803,10 +3828,14 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("desc: show tablet info\n");
             printf("usage: showtablet\n");
             printf("ex: showtablet\n");
-        }  else if (parts[1] == "showblob") {
+        } else if (parts[1] == "showblob") {
             printf("desc: show blob info\n");
             printf("usage: showblob\n");
             printf("ex: showblob\n");
+        } else if (parts[1] == "showsdkendpoint") {
+            printf("desc: show sdkendpoint info\n");
+            printf("usage: showsdkendpoint\n");
+            printf("ex: showsdkendpoint\n");
         } else if (parts[1] == "showns") {
             printf("desc: show nameserver info\n");
             printf("usage: showns\n");
@@ -6414,6 +6443,8 @@ void StartNsClient() {
             HandleNSShowTablet(parts, &client);
         } else if (parts[0] == "showblob") {
             HandleNSShowBlob(parts, &client);
+        } else if (parts[0] == "showsdkendpoint") {
+            HandleNSShowSdkEndpoint(parts, &client);
         } else if (parts[0] == "showns") {
             HandleNSShowNameServer(parts, &client, zk_client);
         } else if (parts[0] == "showopstatus") {

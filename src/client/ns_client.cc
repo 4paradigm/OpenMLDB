@@ -132,6 +132,27 @@ bool NsClient::ShowBlob(std::vector<TabletInfo>& tablets, std::string& msg) {
     return false;
 }
 
+bool NsClient::ShowSdkEndpoint(std::vector<TabletInfo>& tablets,
+        std::string& msg) {
+    ::rtidb::nameserver::ShowTabletRequest request;
+    ::rtidb::nameserver::ShowTabletResponse response;
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::
+            ShowSdkEndpoint, &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        for (int32_t i = 0; i < response.tablets_size(); i++) {
+            const ::rtidb::nameserver::TabletStatus status =
+                response.tablets(i);
+            TabletInfo info;
+            info.endpoint = status.endpoint();
+            info.real_endpoint = status.real_endpoint();
+            tablets.push_back(info);
+        }
+        return true;
+    }
+    return false;
+}
+
 bool NsClient::ShowTable(const std::string& name, const std::string& db,
                          bool show_all,
                          std::vector<::rtidb::nameserver::TableInfo>& tables,

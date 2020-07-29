@@ -504,4 +504,5 @@ service NameServer {
     rpc DropDatabase(DropDatabaseRequest) returns (GeneralResponse);
     rpc SetSdkEndpoint(SetSdkEndpointRequest) returns (GeneralResponse);
     rpc ShowBlob(ShowTabletRequest) returns (ShowTabletResponse);
+    rpc ShowSdkEndpoint(ShowTabletRequest) returns (ShowTabletResponse);
 }

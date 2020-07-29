@@ -202,6 +202,9 @@ class NameServerImpl : public NameServer {
                     ShowTabletResponse* response, Closure* done);
     void ShowBlob(RpcController* controller, const ShowTabletRequest* request,
                     ShowTabletResponse* response, Closure* done);
+    void ShowSdkEndpoint(RpcController* controller,
+            const ShowTabletRequest* request,
+            ShowTabletResponse* response, Closure* done);
 
     void ShowTable(RpcController* controller, const ShowTableRequest* request,
                    ShowTableResponse* response, Closure* done);

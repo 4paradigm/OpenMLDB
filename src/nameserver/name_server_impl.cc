@@ -1880,37 +1880,6 @@ void NameServerImpl::ShowTablet(RpcController* controller,
     response->set_msg("ok");
 }
 
-void NameServerImpl::ShowBlob(RpcController* controller,
-                                const ShowTabletRequest* request,
-                                ShowTabletResponse* response, Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
-        response->set_msg("nameserver is not leader");
-        PDLOG(WARNING, "cur nameserver is not leader");
-        return;
-    }
-    std::lock_guard<std::mutex> lock(mu_);
-    auto it = blob_servers_.begin();
-    for (; it != blob_servers_.end(); ++it) {
-        TabletStatus* status = response->add_tablets();
-        status->set_endpoint(it->first);
-        if (FLAGS_use_name) {
-            auto n_it = real_ep_map_.find(it->first);
-            if (n_it == real_ep_map_.end()) {
-                status->set_real_endpoint("-");
-            } else {
-                status->set_real_endpoint(n_it->second);
-            }
-        }
-        status->set_state(::rtidb::api::TabletState_Name(it->second->state_));
-        status->set_age(::baidu::common::timer::get_micros() / 1000 -
-                        it->second->ctime_);
-    }
-    response->set_code(::rtidb::base::ReturnCode::kOk);
-    response->set_msg("ok");
-}
-
 bool NameServerImpl::Init(const std::string& zk_cluster,
         const std::string& zk_path, const std::string& endpoint,
         const std::string& real_endpoint) {
@@ -12132,6 +12101,79 @@ void NameServerImpl::UpdateRemoteRealEpMap() {
     } while (false);
     task_thread_pool_.DelayTask(FLAGS_get_replica_status_interval,
             boost::bind(&NameServerImpl::UpdateRemoteRealEpMap, this));
+}
+
+void NameServerImpl::ShowBlob(RpcController* controller,
+                                const ShowTabletRequest* request,
+                                ShowTabletResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    auto it = blob_servers_.begin();
+    for (; it != blob_servers_.end(); ++it) {
+        TabletStatus* status = response->add_tablets();
+        status->set_endpoint(it->first);
+        if (FLAGS_use_name) {
+            auto n_it = real_ep_map_.find(it->first);
+            if (n_it == real_ep_map_.end()) {
+                status->set_real_endpoint("-");
+            } else {
+                status->set_real_endpoint(n_it->second);
+            }
+        }
+        status->set_state(::rtidb::api::TabletState_Name(it->second->state_));
+        status->set_age(::baidu::common::timer::get_micros() / 1000 -
+                        it->second->ctime_);
+    }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
+void NameServerImpl::ShowSdkEndpoint(RpcController* controller,
+        const ShowTabletRequest* request,
+        ShowTabletResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    const std::string& path = FLAGS_zk_root_path + "/map/sdkendpoints";
+    if (zk_client_->IsExistNode(path) != 0) {
+        PDLOG(INFO, "zk node %s not exist", path.c_str());
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+        return;
+    } else {
+        std::vector<std::string> children;
+        if (!zk_client_->GetChildren(path, children) || children.empty()) {
+            PDLOG(WARNING, "get zk children failed");
+            response->set_code(::rtidb::base::ReturnCode::kGetZkFailed);
+            response->set_msg("get zk children failed");
+            return;
+        }
+        for (const auto& child : children) {
+            std::string real_ep;
+            if (!zk_client_->GetNodeValue(path + "/" + child, real_ep)) {
+                PDLOG(WARNING, "get zk value failed");
+                response->set_code(::rtidb::base::ReturnCode::kGetZkFailed);
+                response->set_msg("get zk value failed");
+                continue;
+            }
+            TabletStatus* status = response->add_tablets();
+            status->set_endpoint(child);
+            status->set_real_endpoint(real_ep);
+        }
+    }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
 }
 
 }  // namespace nameserver
