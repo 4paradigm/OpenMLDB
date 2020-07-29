@@ -218,6 +218,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
     ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
 
     std::string buffer;
+    std::string tmp_buf;
     ::rtidb::api::LogEntry entry;
     bool has_error = false;
     std::set<uint32_t> deleted_index;
@@ -246,47 +247,13 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
             has_error = true;
             break;
         }
-        if (entry.dimensions_size() == 0) {
-            std::string combined_key = entry.pk() + "|0";
-            if (deleted_keys_.find(combined_key) != deleted_keys_.end()) {
-                deleted_key_num++;
-                continue;
-            }
-        } else {
-            std::set<int> deleted_pos_set;
-            for (int pos = 0; pos < entry.dimensions_size(); pos++) {
-                std::string combined_key =
-                    entry.dimensions(pos).key() + "|" +
-                    std::to_string(entry.dimensions(pos).idx());
-                if (deleted_keys_.find(combined_key) != deleted_keys_.end() ||
-                    deleted_index.count(entry.dimensions(pos).idx())) {
-                    deleted_pos_set.insert(pos);
-                }
-            }
-            if (!deleted_pos_set.empty()) {
-                if ((int)deleted_pos_set.size() ==  // NOLINT
-                    entry.dimensions_size()) {
-                    deleted_key_num++;
-                    continue;
-                } else {
-                    ::rtidb::api::LogEntry tmp_entry(entry);
-                    entry.clear_dimensions();
-                    for (int pos = 0; pos < tmp_entry.dimensions_size();
-                         pos++) {
-                        if (deleted_pos_set.find(pos) ==
-                            deleted_pos_set.end()) {
-                            ::rtidb::api::Dimension* dimension =
-                                entry.add_dimensions();
-                            dimension->CopyFrom(tmp_entry.dimensions(pos));
-                        }
-                    }
-                    std::string tmp_buf;
-                    entry.SerializeToString(&tmp_buf);
-                    record.reset(tmp_buf.data(), tmp_buf.size());
-                }
-            }
+        int ret = RemoveDeletedKey(entry, deleted_index, &tmp_buf);
+        if (ret == 1) {
+            deleted_key_num++;
+            continue;
+        } else if (ret == 2) {
+            record.reset(tmp_buf.data(), tmp_buf.size());
         }
-        // delete timeout key
         if (table->IsExpire(entry)) {
             expired_key_num++;
             continue;
@@ -457,6 +424,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
     std::string buffer;
+    std::string tmp_buf;
     while (!has_error && cur_offset < collected_offset) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -487,50 +455,12 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
             if (entry.has_term()) {
                 last_term = entry.term();
             }
-            if (entry.dimensions_size() == 0) {
-                std::string combined_key = entry.pk() + "|0";
-                auto iter = deleted_keys_.find(combined_key);
-                if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
-                    DEBUGLOG("delete key %s  offset %lu", entry.pk().c_str(),
-                             entry.log_index());
-                    deleted_key_num++;
-                    continue;
-                }
-            } else {
-                std::set<int> deleted_pos_set;
-                for (int pos = 0; pos < entry.dimensions_size(); pos++) {
-                    std::string combined_key =
-                        entry.dimensions(pos).key() + "|" +
-                        std::to_string(entry.dimensions(pos).idx());
-                    auto iter = deleted_keys_.find(combined_key);
-                    if ((iter != deleted_keys_.end() &&
-                         cur_offset <= iter->second) ||
-                        deleted_index.count(entry.dimensions(pos).idx())) {
-                        deleted_pos_set.insert(pos);
-                    }
-                }
-                if (!deleted_pos_set.empty()) {
-                    if ((int)deleted_pos_set.size() ==  // NOLINT
-                        entry.dimensions_size()) {
-                        deleted_key_num++;
-                        continue;
-                    } else {
-                        ::rtidb::api::LogEntry tmp_entry(entry);
-                        entry.clear_dimensions();
-                        for (int pos = 0; pos < tmp_entry.dimensions_size();
-                             pos++) {
-                            if (deleted_pos_set.find(pos) ==
-                                deleted_pos_set.end()) {
-                                ::rtidb::api::Dimension* dimension =
-                                    entry.add_dimensions();
-                                dimension->CopyFrom(tmp_entry.dimensions(pos));
-                            }
-                        }
-                        std::string tmp_buf;
-                        entry.SerializeToString(&tmp_buf);
-                        record.reset(tmp_buf.data(), tmp_buf.size());
-                    }
-                }
+            int ret = RemoveDeletedKey(entry, deleted_index, &tmp_buf);
+            if (ret == 1) {
+                deleted_key_num++;
+                continue;
+            } else if (ret == 2) {
+                record.reset(tmp_buf.data(), tmp_buf.size());
             }
             if (table->IsExpire(entry)) {
                 expired_key_num++;
@@ -618,6 +548,52 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     deleted_keys_.clear();
     making_snapshot_.store(false, std::memory_order_release);
     return ret;
+}
+
+int MemTableSnapshot::RemoveDeletedKey(const ::rtidb::api::LogEntry& entry,
+            const std::set<uint32_t>& deleted_index,
+            std::string* buffer) {
+    uint64_t cur_offset = entry.log_index();
+    if (entry.dimensions_size() == 0) {
+        std::string combined_key = entry.pk() + "|0";
+        auto iter = deleted_keys_.find(combined_key);
+        if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
+            DEBUGLOG("delete key %s  offset %lu", entry.pk().c_str(),
+                     entry.log_index());
+            return 1;
+        }
+    } else {
+        std::set<int> deleted_pos_set;
+        for (int pos = 0; pos < entry.dimensions_size(); pos++) {
+            std::string combined_key =
+                entry.dimensions(pos).key() + "|" +
+                std::to_string(entry.dimensions(pos).idx());
+            auto iter = deleted_keys_.find(combined_key);
+            if ((iter != deleted_keys_.end() &&
+                 cur_offset <= iter->second) ||
+                deleted_index.count(entry.dimensions(pos).idx())) {
+                deleted_pos_set.insert(pos);
+            }
+        }
+        if (!deleted_pos_set.empty()) {
+            if ((int)deleted_pos_set.size() == entry.dimensions_size()) {
+                return 1;
+            } else {
+                ::rtidb::api::LogEntry tmp_entry(entry);
+                tmp_entry.clear_dimensions();
+                for (int pos = 0; pos < entry.dimensions_size(); pos++) {
+                    if (deleted_pos_set.find(pos) == deleted_pos_set.end()) {
+                        ::rtidb::api::Dimension* dimension = tmp_entry.add_dimensions();
+                        dimension->CopyFrom(entry.dimensions(pos));
+                    }
+                }
+                buffer->clear();
+                tmp_entry.SerializeToString(buffer);
+                return 2;
+            }
+        }
+    }
+    return 0;
 }
 
 int MemTableSnapshot::ExtractIndexFromSnapshot(
