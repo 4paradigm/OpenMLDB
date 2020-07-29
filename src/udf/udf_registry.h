@@ -90,8 +90,13 @@ class UDFTransformRegistry {
 
     const std::string& name() const { return name_; }
 
+    void SetDoc(const std::string& doc) { this->doc_ = doc; }
+
+    const std::string& doc() const { return doc_; }
+
  private:
     std::string name_;
+    std::string doc_;
 };
 
 /**
@@ -413,6 +418,11 @@ class ExprUDFRegistryHelper : public UDFRegistryHelper<ExprUDFRegistry> {
         registry()->SetAllowWindow(flag);
         return *this;
     }
+
+    ExprUDFRegistryHelper& doc(const std::string& doc) {
+        registry()->SetDoc(doc);
+        return *this;
+    }
 };
 
 template <template <typename> typename FTemplate>
@@ -427,6 +437,11 @@ class ExprUDFTemplateRegistryHelper {
             LiteralArgTypes,
             typename FTemplate<LiteralArgTypes>::LiteralArgTypes>()(
             helper_)...};
+    }
+
+    auto& doc(const std::string& str) {
+        helper_.doc(str);
+        return *this;
     }
 
  private:
@@ -687,6 +702,11 @@ class LLVMUDFRegistryHelper : public UDFRegistryHelper<LLVMUDFRegistry> {
         return *this;
     }
 
+    LLVMUDFRegistryHelper& doc(const std::string& str) {
+        registry()->SetDoc(str);
+        return *this;
+    }
+
     std::shared_ptr<LLVMUDFGenBase> cur_def() const { return cur_def_; }
 
  private:
@@ -722,6 +742,11 @@ class CodeGenUDFTemplateRegistryHelper {
         for (auto def : cur_defs_) {
             def->SetFixedReturnType(fixed_ret_type_);
         }
+        return *this;
+    }
+
+    auto& doc(const std::string& str) {
+        helper_.doc(str);
         return *this;
     }
 
@@ -982,6 +1007,11 @@ class ExternalFuncRegistryHelper
         return *this;
     }
 
+    ExternalFuncRegistryHelper& doc(const std::string& str) {
+        registry()->SetDoc(str);
+        return *this;
+    }
+
     node::ExternalFnDefNode* cur_def() const { return cur_def_; }
 
  private:
@@ -993,13 +1023,14 @@ class ExternalTemplateFuncRegistryHelper {
  public:
     ExternalTemplateFuncRegistryHelper(const std::string& name,
                                        UDFLibrary* library)
-        : name_(name), library_(library) {}
+        : name_(name),
+          library_(library),
+          helper_(library_->RegisterExternal(name_)) {}
 
     template <typename... LiteralArgTypes>
     ExternalTemplateFuncRegistryHelper& args_in() {
-        auto helper = library_->RegisterExternal(name_);
-        cur_defs_ = {
-            RegisterSingle(helper, &FTemplate<LiteralArgTypes>::operator())...};
+        cur_defs_ = {RegisterSingle(
+            helper_, &FTemplate<LiteralArgTypes>::operator())...};
         for (auto def : cur_defs_) {
             def->SetReturnByArg(return_by_arg_);
         }
@@ -1011,6 +1042,11 @@ class ExternalTemplateFuncRegistryHelper {
         for (auto def : cur_defs_) {
             def->SetReturnByArg(flag);
         }
+        return *this;
+    }
+
+    auto& doc(const std::string& str) {
+        helper_.doc(str);
         return *this;
     }
 
@@ -1096,6 +1132,7 @@ class ExternalTemplateFuncRegistryHelper {
     UDFLibrary* library_;
     bool return_by_arg_ = false;
     std::vector<node::ExternalFnDefNode*> cur_defs_;
+    ExternalFuncRegistryHelper helper_;
 };
 
 class SimpleUDFRegistry : public UDFRegistry {
@@ -1138,6 +1175,11 @@ class SimpleUDAFRegistryHelper : public UDFRegistryHelper<SimpleUDAFRegistry> {
 
     template <typename IN, typename ST, typename OUT>
     SimpleUDAFRegistryHelperImpl<IN, ST, OUT> templates();
+
+    auto& doc(const std::string str) {
+        registry()->SetDoc(str);
+        return *this;
+    }
 };
 
 template <typename IN, typename ST, typename OUT>
@@ -1383,6 +1425,11 @@ class SimpleUDAFRegistryHelperImpl {
         library_->SetIsUDAF(registry_->name(), 1);
     }
 
+    SimpleUDAFRegistryHelperImpl& doc(const std::string& str) {
+        registry_->SetDoc(str);
+        return *this;
+    }
+
  private:
     template <typename... RetType>
     bool check_fn_ret_type(const std::string& ref, node::FnDefNode* fn,
@@ -1467,12 +1514,17 @@ class UDAFTemplateRegistryHelper
  public:
     UDAFTemplateRegistryHelper(std::shared_ptr<SimpleUDAFRegistry> registry,
                                UDFLibrary* library)
-        : UDFRegistryHelper<SimpleUDAFRegistry>(registry, library) {}
+        : UDFRegistryHelper<SimpleUDAFRegistry>(registry, library),
+          helper_(registry, library) {}
 
     template <typename... LiteralArgTypes>
     UDAFTemplateRegistryHelper& args_in() {
-        SimpleUDAFRegistryHelper helper(registry(), library());
-        results_ = {RegisterSingle<LiteralArgTypes>(helper)...};
+        results_ = {RegisterSingle<LiteralArgTypes>(helper_)...};
+        return *this;
+    }
+
+    auto& doc(const std::string& str) {
+        helper_.doc(str);
         return *this;
     }
 
@@ -1484,6 +1536,7 @@ class UDAFTemplateRegistryHelper
         return 0;
     }
 
+    SimpleUDAFRegistryHelper helper_;
     std::vector<int> results_;
 };
 

@@ -112,6 +112,7 @@ add_test(buf_ir_builder_test buf_ir_builder_test
 list(APPEND test_list buf_ir_builder_test)
 
 add_executable(list_ir_builder_test list_ir_builder_test.cc codegen_base_test.cc)
+target_link_options(list_ir_builder_test PUBLIC -rdynamic)
 target_link_libraries(list_ir_builder_test  gtest ${vm_deps_libs})
 add_test(list_ir_builder_test list_ir_builder_test
         --gtest_output=xml:${CMAKE_BINARY_DIR}/list_ir_builder_test.xml)

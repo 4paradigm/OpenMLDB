@@ -29,6 +29,7 @@
 
 #include "base/fe_status.h"
 #include "codegen/context.h"
+#include "codegen/expr_ir_builder.h"
 #include "codegen/type_ir_builder.h"
 #include "udf/default_udf_library.h"
 #include "udf/literal_traits.h"
@@ -120,6 +121,7 @@ class ModuleTestFunction {
         llvm::InitializeNativeTargetAsmPrinter();
         ::llvm::ExitOnError ExitOnErr;
         jit = std::move(ExitOnErr(vm::FeSQLJITBuilder().create()));
+        jit->Init();
         auto &jd = jit->getMainJITDylib();
         ::llvm::orc::MangleAndInterner mi(jit->getExecutionSession(),
                                           jit->getDataLayout());

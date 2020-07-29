@@ -36,9 +36,9 @@ bool GetLLVMType(::llvm::BasicBlock* block, const ::fesql::node::TypeNode* type,
                  ::llvm::Type** output);
 bool GetLLVMType(::llvm::Module* m, const ::fesql::node::DataType& type,
                  ::llvm::Type** output);
-bool GetLLVMListType(::llvm::Module* m, ::fesql::node::TypeNode* type,
+bool GetLLVMListType(::llvm::Module* m, const ::fesql::node::TypeNode* type,
                      ::llvm::Type** output);
-bool GetLLVMIteratorType(::llvm::Module* m, ::fesql::node::TypeNode* type,
+bool GetLLVMIteratorType(::llvm::Module* m, const ::fesql::node::TypeNode* type,
                          ::llvm::Type** output);
 bool GetLLVMColumnSize(::fesql::node::TypeNode* v_type, uint32_t* size);
 

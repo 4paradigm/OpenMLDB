@@ -9,7 +9,6 @@
 
 #ifndef SRC_CASE_SQL_CASE_H_
 #define SRC_CASE_SQL_CASE_H_
-#include <parser/parser.h>
 #include <vm/catalog.h>
 #include <yaml-cpp/node/node.h>
 #include <string>
@@ -86,9 +85,9 @@ class SQLCase {
                               type::TableDef& table);  // NOLINT
     static bool ExtractSchema(const std::string& schema_str,
                               type::TableDef& table);  // NOLINT
-    static bool BuildCreateSQLFromSchema(const type::TableDef& table,
-                                         std::string* create_sql,
-                                         bool isGenerateIndex = true);  // NOLINT
+    static bool BuildCreateSQLFromSchema(
+        const type::TableDef& table, std::string* create_sql,
+        bool isGenerateIndex = true);  // NOLINT
     static bool ExtractIndex(const std::string& index_str,
                              type::TableDef& table);  // NOLINT
     static bool ExtractIndex(const std::vector<std::string>& indexs,

@@ -160,8 +160,7 @@ bool GetLLVMColumnSize(::fesql::node::TypeNode* v_type, uint32_t* size) {
     return true;
 }  // namespace codegen
 
-bool GetLLVMListType(::llvm::Module* m,
-                     ::fesql::node::TypeNode* v_type,  // NOLINT
+bool GetLLVMListType(::llvm::Module* m, const ::fesql::node::TypeNode* v_type,
                      ::llvm::Type** output) {
     if (output == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
@@ -201,6 +200,10 @@ bool GetLLVMListType(::llvm::Module* m,
             name = "fe.list_ref_string";
             break;
         }
+        case ::fesql::node::kRow: {
+            name = "fe.list_ref_row";
+            break;
+        }
         default: {
             LOG(WARNING) << "not supported list<type> when type is  "
                          << v_type->GetName();
@@ -224,7 +227,7 @@ bool GetLLVMListType(::llvm::Module* m,
 }
 
 bool GetLLVMIteratorType(::llvm::Module* m,
-                         ::fesql::node::TypeNode* v_type,  // NOLINT
+                         const ::fesql::node::TypeNode* v_type,
                          ::llvm::Type** output) {
     if (output == NULL) {
         LOG(WARNING) << "the output ptr is NULL ";
@@ -262,6 +265,10 @@ bool GetLLVMIteratorType(::llvm::Module* m,
         }
         case ::fesql::node::kDate: {
             name = "fe.iterator_ref_date";
+            break;
+        }
+        case ::fesql::node::kRow: {
+            name = "fe.iterator_ref_row";
             break;
         }
         default: {

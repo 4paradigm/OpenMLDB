@@ -20,6 +20,7 @@
 #include "codegen/buf_ir_builder.h"
 #include "codegen/codegen_base_test.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/ir_base_builder_test.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "codegen/window_ir_builder.h"
@@ -64,8 +65,10 @@ void AssertStrEq(std::string exp, int8_t* ptr) {
 namespace fesql {
 namespace codegen {
 
+using fesql::codec::ListRef;
 using fesql::codec::ListV;
 using fesql::codec::Row;
+
 class ListIRBuilderTest : public ::testing::Test {
  public:
     ListIRBuilderTest() {}
@@ -91,991 +94,602 @@ V IteratorSum(int8_t* input) {
     return result;
 }
 
-codec::Timestamp IteratorSumTimestamp(int8_t* input) {
-    if (nullptr == input) {
-        std::cout << "iter is null" << std::endl;
-    } else {
-        std::cout << "iter ptr is ok" << std::endl;
-    }
-    int64_t result = 0;
-    ::fesql::codec::IteratorRef* iter_ref =
-        (::fesql::codec::IteratorRef*)(input);
-    ConstIterator<uint64_t, codec::Timestamp>* iter =
-        (ConstIterator<uint64_t, codec::Timestamp>*)(iter_ref->iterator);
-    while (iter->Valid()) {
-        result += iter->GetValue().ts_;
-        iter->Next();
-    }
-    return codec::Timestamp(result);
-}
-int16_t IteratorSumInt16(int8_t* input) { return IteratorSum<int16_t>(input); }
-int32_t IteratorSumInt32(int8_t* input) { return IteratorSum<int32_t>(input); }
-int64_t IteratorSumInt64(int8_t* input) { return IteratorSum<int64_t>(input); }
-float IteratorSumFloat(int8_t* input) { return IteratorSum<float>(input); }
-double IteratorSumDouble(int8_t* input) { return IteratorSum<double>(input); }
-
-template <class T>
-void GetListAtPos(const type::TableDef& table, T* result,
-                  const ::fesql::type::Type& type, const std::string& col,
-                  int8_t* window, int32_t pos) {
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("test_load_buf", *ctx);
-    ::fesql::udf::RegisterUDFToModule(m.get());
-    base::Status status;
-    udf::DefaultUDFLibrary lib;
-    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
-    // Create the add1 function entry and insert this entry into module M.  The
-    // function will have a return type of "int" and take an argument of "int".
-    ::llvm::Type* retTy = NULL;
-    switch (type) {
-        case ::fesql::type::kInt16:
-            retTy = Type::getInt16Ty(*ctx);
-            break;
-        case ::fesql::type::kInt32:
-            retTy = Type::getInt32Ty(*ctx);
-            break;
-        case ::fesql::type::kInt64:
-            retTy = Type::getInt64Ty(*ctx);
-            break;
-        case ::fesql::type::kDouble:
-            retTy = Type::getDoubleTy(*ctx);
-            break;
-        case ::fesql::type::kFloat:
-            retTy = Type::getFloatTy(*ctx);
-            break;
-        case ::fesql::type::kTimestamp: {
-            node::TypeNode type_node(fesql::node::kTimestamp);
-            ASSERT_TRUE(codegen::GetLLVMType(m.get(), &type_node, &retTy));
-            break;
-        }
-        case ::fesql::type::kVarchar: {
-            node::TypeNode type_node(fesql::node::kVarchar);
-            ASSERT_TRUE(codegen::GetLLVMType(m.get(), &type_node, &retTy));
-            break;
-        }
-        default:
-            LOG(WARNING) << "invalid test type";
-            FAIL();
-    }
-    if (!TypeIRBuilder::IsStructPtr(retTy)) {
-        retTy = retTy->getPointerTo();
-    }
-    Function* fn = Function::Create(
-        FunctionType::get(
-            ::llvm::Type::getVoidTy(*ctx),
-            {Type::getInt8PtrTy(*ctx), Type::getInt32Ty(*ctx), retTy}, false),
-        Function::ExternalLinkage, "fn", m.get());
-    BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
-    ScopeVar sv;
-    sv.Enter("enter row scope");
-    MemoryWindowDecodeIRBuilder buf_builder(table.columns(), entry_block);
-    ListIRBuilder list_builder(entry_block, &sv);
-    IRBuilder<> builder(entry_block);
-    Function::arg_iterator it = fn->arg_begin();
-    Argument* arg0 = &*it;
-    it++;
-    Argument* arg1 = &*it;
-    it++;
-    Argument* arg2 = &*it;
-
-    // build column
-    ::llvm::Value* column = NULL;
-    bool ok = buf_builder.BuildGetCol(col, arg0, &column);
-    ASSERT_TRUE(ok);
-
-    ::llvm::Value* val = nullptr;
-    ASSERT_TRUE(list_builder.BuildAt(column, arg1, &val, status));
-
-    switch (type) {
-        case type::kTimestamp: {
-            codegen::TimestampIRBuilder timestamp_builder(m.get());
-            ::llvm::Value* ts_output;
-            ASSERT_TRUE(timestamp_builder.GetTs(builder.GetInsertBlock(), val,
-                                                &ts_output));
-            ASSERT_TRUE(timestamp_builder.SetTs(builder.GetInsertBlock(), arg2,
-                                                ts_output));
-            break;
-        }
-        case type::kVarchar: {
-            codegen::StringIRBuilder string_builder(m.get());
-            ASSERT_TRUE(
-                string_builder.CopyFrom(builder.GetInsertBlock(), val, arg2));
-            break;
-        }
-        default: {
-            builder.CreateStore(val, arg2);
-        }
-    }
-    builder.CreateRetVoid();
-
-    m->print(::llvm::errs(), NULL);
-    auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
-    auto& jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-    lib.InitJITSymbols(J.get());
-    ::fesql::udf::InitUDFSymbol(jd, mi);
-    // add codec
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto load_fn_jit = ExitOnErr(J->lookup("fn"));
-    void (*decode)(int8_t*, int32_t, T*) =
-        reinterpret_cast<void (*)(int8_t*, int32_t, T*)>(
-            load_fn_jit.getAddress());
-    decode(window, pos, result);
-}
-template <class T>
-void GetListIterator(T expected, const type::TableDef& table,
-                     const ::fesql::type::Type& type, const std::string& col,
-                     int8_t* window) {
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("test_load_buf", *ctx);
-    ::fesql::udf::RegisterUDFToModule(m.get());
-    base::Status status;
-    udf::DefaultUDFLibrary lib;
-    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
-    // Create the add1 function entry and insert this entry into module M.  The
-    // function will have a return type of "int" and take an argument of "int".
-    ::llvm::Type* retTy = NULL;
-    switch (type) {
-        case ::fesql::type::kInt16:
-            retTy = Type::getInt16Ty(*ctx);
-            break;
-        case ::fesql::type::kInt32:
-            retTy = Type::getInt32Ty(*ctx);
-            break;
-        case ::fesql::type::kInt64:
-            retTy = Type::getInt64Ty(*ctx);
-            break;
-        case ::fesql::type::kDouble:
-            retTy = Type::getDoubleTy(*ctx);
-            break;
-        case ::fesql::type::kFloat:
-            retTy = Type::getFloatTy(*ctx);
-            break;
-        case ::fesql::type::kVarchar:
-            retTy = Type::getInt8PtrTy(*ctx);
-            break;
-        case ::fesql::type::kTimestamp:
-            ASSERT_TRUE(GetLLVMType(m.get(), node::kTimestamp, &retTy));
-            break;
-        default:
-            LOG(WARNING) << "invalid test type";
-            FAIL();
-    }
-    Function* fn = Function::Create(
-        FunctionType::get(retTy, {Type::getInt8PtrTy(*ctx)}, false),
-        Function::ExternalLinkage, "fn", m.get());
-    BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
-    ScopeVar sv;
-    sv.Enter("enter row scope");
-
-    MemoryWindowDecodeIRBuilder buf_builder(table.columns(), entry_block);
-    ListIRBuilder list_builder(entry_block, &sv);
-
-    IRBuilder<> builder(entry_block);
-    Function::arg_iterator it = fn->arg_begin();
-    Argument* arg0 = &*it;
-
-    // build column
-    ::llvm::Value* column = NULL;
-    bool ok = buf_builder.BuildGetCol(col, arg0, &column);
-    ASSERT_TRUE(ok);
-
-    ::llvm::Value* iterator = nullptr;
-    ASSERT_TRUE(list_builder.BuildIterator(column, &iterator, status));
-    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-    ::llvm::Value* i8_ptr = builder.CreatePointerCast(iterator, i8_ptr_ty);
-    llvm::FunctionCallee callee;
-    switch (type) {
-        case fesql::type::kInt16:
-            callee =
-                m->getOrInsertFunction("iterator_sum_i16", retTy, i8_ptr_ty);
-            break;
-        case fesql::type::kInt32:
-            callee =
-                m->getOrInsertFunction("iterator_sum_i32", retTy, i8_ptr_ty);
-            break;
-        case fesql::type::kInt64:
-            callee =
-                m->getOrInsertFunction("iterator_sum_i64", retTy, i8_ptr_ty);
-            break;
-        case fesql::type::kFloat:
-            callee =
-                m->getOrInsertFunction("iterator_sum_float", retTy, i8_ptr_ty);
-            break;
-        case fesql::type::kDouble:
-            callee =
-                m->getOrInsertFunction("iterator_sum_double", retTy, i8_ptr_ty);
-            break;
-        case fesql::type::kTimestamp:
-            callee = m->getOrInsertFunction("iterator_sum_timestamp", retTy,
-                                            i8_ptr_ty);
-            break;
-        case fesql::type::kVarchar:
-            callee =
-                m->getOrInsertFunction("iterator_sum_string", retTy, i8_ptr_ty);
-            break;
-        default: {
-            FAIL();
-        }
-    }
-    ::llvm::Value* ret_val =
-        builder.CreateCall(callee, ::llvm::ArrayRef<Value*>(i8_ptr));
-
-    ::llvm::Value* ret_delete = nullptr;
-    list_builder.BuildIteratorDelete(iterator, &ret_delete, status);
-    builder.CreateRet(ret_val);
-
-    m->print(::llvm::errs(), NULL);
-    auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
-    auto& jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-
-    ::llvm::StringRef symbol1("iterator_sum_i16");
-    ::llvm::StringRef symbol2("iterator_sum_i32");
-    ::llvm::StringRef symbol3("iterator_sum_i64");
-    ::llvm::StringRef symbol4("iterator_sum_float");
-    ::llvm::StringRef symbol5("iterator_sum_double");
-    ::llvm::StringRef symbol6("iterator_sum_timestamp");
-    //    ::llvm::StringRef symbol6("iterator_sum_string");
-    ::llvm::orc::SymbolMap symbol_map;
-
-    ::llvm::JITEvaluatedSymbol jit_symbol1(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&IteratorSumInt16)),
-        ::llvm::JITSymbolFlags());
-    ::llvm::JITEvaluatedSymbol jit_symbol2(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&IteratorSumInt32)),
-        ::llvm::JITSymbolFlags());
-
-    ::llvm::JITEvaluatedSymbol jit_symbol3(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&IteratorSumInt64)),
-        ::llvm::JITSymbolFlags());
-    ::llvm::JITEvaluatedSymbol jit_symbol4(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&IteratorSumFloat)),
-        ::llvm::JITSymbolFlags());
-    ::llvm::JITEvaluatedSymbol jit_symbol5(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&IteratorSumDouble)),
-        ::llvm::JITSymbolFlags());
-    ::llvm::JITEvaluatedSymbol jit_symbol6(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&IteratorSumTimestamp)),
-        ::llvm::JITSymbolFlags());
-
-    //    ::llvm::JITEvaluatedSymbol jit_symbol6(
-    //        ::llvm::pointerToJITTargetAddress(
-    //            reinterpret_cast<void*>(&PrintListString)),
-    //        ::llvm::JITSymbolFlags());
-
-    symbol_map.insert(std::make_pair(mi(symbol1), jit_symbol1));
-    symbol_map.insert(std::make_pair(mi(symbol2), jit_symbol2));
-    symbol_map.insert(std::make_pair(mi(symbol3), jit_symbol3));
-    symbol_map.insert(std::make_pair(mi(symbol4), jit_symbol4));
-    symbol_map.insert(std::make_pair(mi(symbol5), jit_symbol5));
-    symbol_map.insert(std::make_pair(mi(symbol6), jit_symbol6));
-
-    // add codec
-    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-    if (err) {
-        ASSERT_TRUE(false);
-    }
-    ::fesql::udf::InitUDFSymbol(jd, mi);
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto load_fn_jit = ExitOnErr(J->lookup("fn"));
-    T(*decode)
-    (int8_t*) = reinterpret_cast<T (*)(int8_t*)>(load_fn_jit.getAddress());
-    T res = decode(window);
-    ASSERT_FLOAT_EQ(res, expected);
-}
-
-template <class T>
-void GetInnerListIterator(T expected, const type::TableDef& table,
-                          const ::fesql::type::Type& type,
-                          const std::string& col, int8_t* window,
-                          int64_t start_offset, int64_t end_offset,
-                          bool inner_range) {
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("test_load_buf", *ctx);
-    ::fesql::udf::RegisterUDFToModule(m.get());
-    base::Status status;
-    udf::DefaultUDFLibrary lib;
-    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
-    // Create the add1 function entry and insert this entry into module M.  The
-    // function will have a return type of "int" and take an argument of "int".
-    ::llvm::Type* retTy = NULL;
-    switch (type) {
-        case ::fesql::type::kInt16:
-            retTy = Type::getInt16Ty(*ctx);
-            break;
-        case ::fesql::type::kInt32:
-            retTy = Type::getInt32Ty(*ctx);
-            break;
-        case ::fesql::type::kInt64:
-            retTy = Type::getInt64Ty(*ctx);
-            break;
-        case ::fesql::type::kDouble:
-            retTy = Type::getDoubleTy(*ctx);
-            break;
-        case ::fesql::type::kFloat:
-            retTy = Type::getFloatTy(*ctx);
-            break;
-        case ::fesql::type::kVarchar:
-            retTy = Type::getInt8PtrTy(*ctx);
-            break;
-        case ::fesql::type::kTimestamp:
-            ASSERT_TRUE(GetLLVMType(m.get(), node::kTimestamp, &retTy));
-            break;
-        default:
-            LOG(WARNING) << "invalid test type";
-            FAIL();
-    }
-    Function* fn = Function::Create(
-        FunctionType::get(retTy, {Type::getInt8PtrTy(*ctx)}, false),
-        Function::ExternalLinkage, "fn", m.get());
-    BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
-    ScopeVar sv;
-    sv.Enter("enter row scope");
-
-    MemoryWindowDecodeIRBuilder buf_builder(table.columns(), entry_block);
-    ListIRBuilder list_builder(entry_block, &sv);
-
-    IRBuilder<> builder(entry_block);
-    Function::arg_iterator it = fn->arg_begin();
-    Argument* arg0 = &*it;
-
-    ::llvm::Value* inner_list = NULL;
-    if (inner_range) {
-        ASSERT_TRUE(buf_builder.BuildInnerRangeList(arg0, start_offset,
-                                                    end_offset, &inner_list));
-    } else {
-        ASSERT_TRUE(buf_builder.BuildInnerRowsList(arg0, start_offset,
-                                                   end_offset, &inner_list));
-    }
-    // build column
-    ::llvm::Value* column = NULL;
-    bool ok = buf_builder.BuildGetCol(col, inner_list, &column);
-    ASSERT_TRUE(ok);
-
-    ::llvm::Value* iterator = nullptr;
-    ASSERT_TRUE(list_builder.BuildIterator(column, &iterator, status));
-    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
-    ::llvm::Value* i8_ptr = builder.CreatePointerCast(iterator, i8_ptr_ty);
-    llvm::FunctionCallee callee;
-    switch (type) {
-        case fesql::type::kInt16:
-            callee =
-                m->getOrInsertFunction("iterator_sum_i16", retTy, i8_ptr_ty);
-            break;
-        case fesql::type::kInt32:
-            callee =
-                m->getOrInsertFunction("iterator_sum_i32", retTy, i8_ptr_ty);
-            break;
-        case fesql::type::kInt64:
-            callee =
-                m->getOrInsertFunction("iterator_sum_i64", retTy, i8_ptr_ty);
-            break;
-        case fesql::type::kFloat:
-            callee =
-                m->getOrInsertFunction("iterator_sum_float", retTy, i8_ptr_ty);
-            break;
-        case fesql::type::kDouble:
-            callee =
-                m->getOrInsertFunction("iterator_sum_double", retTy, i8_ptr_ty);
-            break;
-        case fesql::type::kTimestamp:
-            callee = m->getOrInsertFunction("iterator_sum_timestamp", retTy,
-                                            i8_ptr_ty);
-            break;
-        case fesql::type::kVarchar:
-            callee =
-                m->getOrInsertFunction("iterator_sum_string", retTy, i8_ptr_ty);
-            break;
-        default: {
-            FAIL();
-        }
-    }
-    ::llvm::Value* ret_val =
-        builder.CreateCall(callee, ::llvm::ArrayRef<Value*>(i8_ptr));
-
-    ::llvm::Value* ret_delete = nullptr;
-    list_builder.BuildIteratorDelete(iterator, &ret_delete, status);
-    builder.CreateRet(ret_val);
-
-    m->print(::llvm::errs(), NULL);
-    auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
-    auto& jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-
-    ::llvm::StringRef symbol1("iterator_sum_i16");
-    ::llvm::StringRef symbol2("iterator_sum_i32");
-    ::llvm::StringRef symbol3("iterator_sum_i64");
-    ::llvm::StringRef symbol4("iterator_sum_float");
-    ::llvm::StringRef symbol5("iterator_sum_double");
-    ::llvm::StringRef symbol6("iterator_sum_timestamp");
-    //    ::llvm::StringRef symbol6("iterator_sum_string");
-    ::llvm::orc::SymbolMap symbol_map;
-
-    ::llvm::JITEvaluatedSymbol jit_symbol1(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&IteratorSumInt16)),
-        ::llvm::JITSymbolFlags());
-    ::llvm::JITEvaluatedSymbol jit_symbol2(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&IteratorSumInt32)),
-        ::llvm::JITSymbolFlags());
-
-    ::llvm::JITEvaluatedSymbol jit_symbol3(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&IteratorSumInt64)),
-        ::llvm::JITSymbolFlags());
-    ::llvm::JITEvaluatedSymbol jit_symbol4(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&IteratorSumFloat)),
-        ::llvm::JITSymbolFlags());
-    ::llvm::JITEvaluatedSymbol jit_symbol5(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&IteratorSumDouble)),
-        ::llvm::JITSymbolFlags());
-    ::llvm::JITEvaluatedSymbol jit_symbol6(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&IteratorSumTimestamp)),
-        ::llvm::JITSymbolFlags());
-
-    //    ::llvm::JITEvaluatedSymbol jit_symbol6(
-    //        ::llvm::pointerToJITTargetAddress(
-    //            reinterpret_cast<void*>(&PrintListString)),
-    //        ::llvm::JITSymbolFlags());
-
-    symbol_map.insert(std::make_pair(mi(symbol1), jit_symbol1));
-    symbol_map.insert(std::make_pair(mi(symbol2), jit_symbol2));
-    symbol_map.insert(std::make_pair(mi(symbol3), jit_symbol3));
-    symbol_map.insert(std::make_pair(mi(symbol4), jit_symbol4));
-    symbol_map.insert(std::make_pair(mi(symbol5), jit_symbol5));
-    symbol_map.insert(std::make_pair(mi(symbol6), jit_symbol6));
-
-    // add codec
-    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-    if (err) {
-        ASSERT_TRUE(false);
-    }
-    ::fesql::udf::InitUDFSymbol(jd, mi);
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto load_fn_jit = ExitOnErr(J->lookup("fn"));
-    T(*decode)
-    (int8_t*) = reinterpret_cast<T (*)(int8_t*)>(load_fn_jit.getAddress());
-    T res = decode(window);
-    ASSERT_FLOAT_EQ(res, expected);
-}
-
-template <class T>
-void RunListIteratorSumCase(T* result, const type::TableDef& table,
-                            const ::fesql::type::Type& type,
-                            const std::string& col, int8_t* window) {
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("test_load_iterator_next", *ctx);
-    ::fesql::udf::RegisterUDFToModule(m.get());
-    base::Status status;
-    udf::DefaultUDFLibrary lib;
-    ASSERT_TRUE(vm::RegisterFeLibs(&lib, status));
-    // Create the add1 function entry and insert this entry into module M.  The
-    // function will have a return type of "int" and take an argument of "int".
-    ::llvm::Type* retTy = NULL;
-    switch (type) {
-        case ::fesql::type::kInt16:
-            retTy = Type::getInt16Ty(*ctx);
-            break;
-        case ::fesql::type::kInt32:
-            retTy = Type::getInt32Ty(*ctx);
-            break;
-        case ::fesql::type::kInt64:
-            retTy = Type::getInt64Ty(*ctx);
-            break;
-        case ::fesql::type::kDouble:
-            retTy = Type::getDoubleTy(*ctx);
-            break;
-        case ::fesql::type::kFloat:
-            retTy = Type::getFloatTy(*ctx);
-            break;
-        case ::fesql::type::kVarchar:
-            ASSERT_TRUE(
-                codegen::GetLLVMType(m.get(), fesql::node::kVarchar, &retTy));
-            break;
-        case ::fesql::type::kTimestamp: {
-            ASSERT_TRUE(
-                codegen::GetLLVMType(m.get(), fesql::node::kTimestamp, &retTy));
-            break;
-        }
-        default:
-            LOG(WARNING) << "invalid test type";
-            FAIL();
-    }
-    if (!TypeIRBuilder::IsStructPtr(retTy)) {
-        retTy = retTy->getPointerTo();
-    }
-    Function* fn = Function::Create(
-        FunctionType::get(Type::getVoidTy(*ctx),
-                          {Type::getInt8PtrTy(*ctx), retTy}, false),
-        Function::ExternalLinkage, "fn", m.get());
-    BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
-    ScopeVar sv;
-    sv.Enter("enter row scope");
-
-    MemoryWindowDecodeIRBuilder buf_builder(table.columns(), entry_block);
-    ListIRBuilder list_builder(entry_block, &sv);
-
-    IRBuilder<> builder(entry_block);
-    Function::arg_iterator it = fn->arg_begin();
-    Argument* arg0 = &*it;
-    it++;
-    Argument* res_ptr = &*it;
-
-    // build column
-    ::llvm::Value* column = NULL;
-    bool ok = buf_builder.BuildGetCol(col, arg0, &column);
-    ASSERT_TRUE(ok);
-
-    ::llvm::Value* iter = nullptr;
-    ASSERT_TRUE(list_builder.BuildIterator(column, &iter, status));
-    ::llvm::Value* next1;
-    ASSERT_TRUE(list_builder.BuildIteratorNext(iter, &next1, status));
-    ::llvm::Value* next2;
-    ASSERT_TRUE(list_builder.BuildIteratorNext(iter, &next2, status));
-
-    ArithmeticIRBuilder arithmetic_ir_builder(builder.GetInsertBlock());
-    ::llvm::Value* res = nullptr;
-    ASSERT_TRUE(arithmetic_ir_builder.BuildAddExpr(next1, next2, &res, status));
-    ::llvm::Value* next3;
-    ASSERT_TRUE(list_builder.BuildIteratorNext(iter, &next3, status));
-    ASSERT_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next3, &res, status));
-
-    ::llvm::Value* next4;
-    ASSERT_TRUE(list_builder.BuildIteratorNext(iter, &next4, status));
-    ASSERT_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next4, &res, status));
-
-    ::llvm::Value* next5;
-    ASSERT_TRUE(list_builder.BuildIteratorNext(iter, &next5, status));
-    ASSERT_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next5, &res, status));
-
-    ::llvm::Value* ret_delete = nullptr;
-    list_builder.BuildIteratorDelete(iter, &ret_delete, status);
-    switch (type) {
-        case type::kTimestamp: {
-            codegen::TimestampIRBuilder timestamp_builder(m.get());
-            ::llvm::Value* ts_output;
-            ASSERT_TRUE(timestamp_builder.GetTs(builder.GetInsertBlock(), res,
-                                                &ts_output));
-            ASSERT_TRUE(timestamp_builder.SetTs(builder.GetInsertBlock(),
-                                                res_ptr, ts_output));
-            break;
-        }
-        default: {
-            builder.CreateStore(res, res_ptr);
-        }
-    }
-    builder.CreateRetVoid();
-
-    m->print(::llvm::errs(), NULL);
-    auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
-    auto& jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-
-    ::fesql::udf::InitUDFSymbol(jd, mi);
-    // add codec
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto load_fn_jit = ExitOnErr(J->lookup("fn"));
-    void (*decode)(int8_t*, T*) =
-        reinterpret_cast<void (*)(int8_t*, T*)>(load_fn_jit.getAddress());
-    decode(window, result);
-}
-
-template <class T>
-void GetListIteratorNext(T* result, const type::TableDef& table,
-                         const ::fesql::type::Type& type,
-                         const std::string& col, int8_t* window) {
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("test_load_iterator_next", *ctx);
-    ::fesql::udf::RegisterUDFToModule(m.get());
-    // Create the add1 function entry and insert this entry into module M.  The
-    // function will have a return type of "int" and take an argument of "int".
-    ::llvm::Type* retTy = NULL;
-    switch (type) {
-        case ::fesql::type::kInt16:
-            retTy = Type::getInt16Ty(*ctx);
-            break;
-        case ::fesql::type::kInt32:
-            retTy = Type::getInt32Ty(*ctx);
-            break;
-        case ::fesql::type::kInt64:
-            retTy = Type::getInt64Ty(*ctx);
-            break;
-        case ::fesql::type::kDouble:
-            retTy = Type::getDoubleTy(*ctx);
-            break;
-        case ::fesql::type::kFloat:
-            retTy = Type::getFloatTy(*ctx);
-            break;
-        case ::fesql::type::kVarchar:
-            ASSERT_TRUE(
-                codegen::GetLLVMType(m.get(), fesql::node::kVarchar, &retTy));
-            break;
-        case ::fesql::type::kTimestamp: {
-            ASSERT_TRUE(
-                codegen::GetLLVMType(m.get(), fesql::node::kTimestamp, &retTy));
-            break;
-        }
-        default:
-            LOG(WARNING) << "invalid test type";
-            FAIL();
-    }
-
-    if (!TypeIRBuilder::IsStructPtr(retTy)) {
-        retTy = retTy->getPointerTo();
-    }
-
-    Function* fn = Function::Create(
-        FunctionType::get(Type::getVoidTy(*ctx),
-                          {Type::getInt8PtrTy(*ctx), retTy}, false),
-        Function::ExternalLinkage, "fn", m.get());
-    BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
-    ScopeVar sv;
-    sv.Enter("enter row scope");
-
-    MemoryWindowDecodeIRBuilder buf_builder(table.columns(), entry_block);
-    ListIRBuilder list_builder(entry_block, &sv);
-
-    IRBuilder<> builder(entry_block);
-    Function::arg_iterator it = fn->arg_begin();
-    Argument* arg0 = &*it;
-    it++;
-    Argument* res_ptr = &*it;
-
-    // build column
-    ::llvm::Value* column = NULL;
-    bool ok = buf_builder.BuildGetCol(col, arg0, &column);
-    ASSERT_TRUE(ok);
-
-    ::llvm::Value* iter = nullptr;
-    base::Status status;
-    ASSERT_TRUE(list_builder.BuildIterator(column, &iter, status));
-    ::llvm::Value* next1;
-    ASSERT_TRUE(list_builder.BuildIteratorNext(iter, &next1, status));
-    ::llvm::Value* ret_delete = nullptr;
-    list_builder.BuildIteratorDelete(iter, &ret_delete, status);
-    switch (type) {
-        case type::kTimestamp: {
-            codegen::TimestampIRBuilder timestamp_builder(m.get());
-            ::llvm::Value* ts_output;
-            ASSERT_TRUE(timestamp_builder.GetTs(builder.GetInsertBlock(), next1,
-                                                &ts_output));
-            ASSERT_TRUE(timestamp_builder.SetTs(builder.GetInsertBlock(),
-                                                res_ptr, ts_output));
-            break;
-        }
-        case type::kVarchar: {
-            codegen::StringIRBuilder string_builder(m.get());
-            ASSERT_TRUE(string_builder.CopyFrom(builder.GetInsertBlock(), next1,
-                                                res_ptr));
-            break;
-        }
-        default: {
-            builder.CreateStore(next1, res_ptr);
-        }
-    }
-    builder.CreateRetVoid();
-
-    m->print(::llvm::errs(), NULL);
-    auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
-    auto& jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-
-    ::fesql::udf::InitUDFSymbol(jd, mi);
-    // add codec
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto load_fn_jit = ExitOnErr(J->lookup("fn"));
-    void (*decode)(int8_t*, T*) =
-        reinterpret_cast<void (*)(int8_t*, T*)>(load_fn_jit.getAddress());
-    decode(window, result);
-}
+using ListOfRow = ListRef<udf::LiteralTypedRow<>>;
 
 template <class T>
 void RunListAtCase(T expected, const type::TableDef& table,
-                   const ::fesql::type::Type& type, const std::string& col,
-                   int8_t* window, int32_t pos) {
-    T result;
-    GetListAtPos<T>(table, &result, type, col, window, pos);
-    ASSERT_EQ(result, expected);
+                   const std::string& col, const ListOfRow& window,
+                   int32_t pos) {
+    auto sum_func =
+        ModuleFunctionBuilder().args<ListOfRow, int32_t>().returns<T>().build(
+            [&](codegen::CodeGenContext* ctx) {
+                BasicBlock* entry_block = ctx->GetCurrentBlock();
+                ScopeVar sv;
+                sv.Enter("enter row scope");
+                MemoryWindowDecodeIRBuilder buf_builder(table.columns(),
+                                                        entry_block);
+                ListIRBuilder list_builder(entry_block, &sv);
+                IRBuilder<> builder(entry_block);
+                auto fn = ctx->GetCurrentFunction();
+                Function::arg_iterator it = fn->arg_begin();
+                auto arg0 = it;
+                auto arg1 = it + 1;
+
+                // build column
+                base::Status status;
+                ::llvm::Value* column = NULL;
+                ::llvm::Value* list_ptr = builder.CreateExtractValue(arg0, {0});
+                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
+
+                ::llvm::Value* val = nullptr;
+                CHECK_TRUE(list_builder.BuildAt(column, arg1, &val, status));
+
+                node::NodeManager nm;
+                auto elem_type = DataTypeTrait<T>::to_type_node(&nm);
+                switch (elem_type->base_) {
+                    case node::kVarchar: {
+                        codegen::StringIRBuilder string_builder(
+                            ctx->GetModule());
+                        CHECK_TRUE(string_builder.CopyFrom(
+                            builder.GetInsertBlock(), val, it + 2));
+                        builder.CreateRetVoid();
+                        break;
+                    }
+                    default: {
+                        if (TypeIRBuilder::IsStructPtr(val->getType())) {
+                            val = builder.CreateLoad(val);
+                        }
+                        builder.CreateRet(val);
+                    }
+                }
+                return Status::OK();
+            });
+
+    T result = sum_func(window, pos);
+    ASSERT_EQ(expected, result);
 }
-//
-// void RunTimestampListAtCase(codec::Timestamp* expected,
-//                            const type::TableDef& table,
-//                            const ::fesql::type::Type& type,
-//                            const std::string& col, int8_t* window,
-//                            int32_t pos) {
-//    codec::Timestamp result;
-//    GetListAtPos<codec::Timestamp>(table, &result, type, col, window, pos);
-//    ASSERT_EQ(result.ts_, expected->ts_);
-//}
+
+template <class T>
+void RunListIteratorCase(T expected, const type::TableDef& table,
+                         const std::string& col, const ListOfRow& window) {
+    auto sum_func =
+        ModuleFunctionBuilder().args<ListOfRow>().returns<T>().build(
+            [&](codegen::CodeGenContext* ctx) {
+                BasicBlock* entry_block = ctx->GetCurrentBlock();
+                ScopeVar sv;
+                sv.Enter("enter row scope");
+
+                MemoryWindowDecodeIRBuilder buf_builder(table.columns(),
+                                                        entry_block);
+                ListIRBuilder list_builder(entry_block, &sv);
+
+                auto fn = ctx->GetCurrentFunction();
+                IRBuilder<> builder(entry_block);
+                Function::arg_iterator it = fn->arg_begin();
+                Argument* arg0 = &*it;
+
+                // build column
+                ::llvm::Value* column = NULL;
+                ::llvm::Value* list_ptr = builder.CreateExtractValue(arg0, {0});
+                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
+
+                ::llvm::Value* iterator = nullptr;
+                node::NodeManager nm;
+                auto elem_type = DataTypeTrait<T>::to_type_node(&nm);
+                CHECK_STATUS(
+                    list_builder.BuildIterator(column, elem_type, &iterator));
+                ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+                ::llvm::Value* i8_ptr =
+                    builder.CreatePointerCast(iterator, i8_ptr_ty);
+                llvm::FunctionCallee callee =
+                    ctx->GetModule()->getOrInsertFunction(
+                        "iterator_sum_" + elem_type->GetName(),
+                        fn->getReturnType(), i8_ptr_ty);
+
+                ::llvm::Value* ret_val = builder.CreateCall(
+                    callee, ::llvm::ArrayRef<Value*>(i8_ptr));
+
+                ::llvm::Value* ret_delete = nullptr;
+                list_builder.BuildIteratorDelete(iterator, elem_type,
+                                                 &ret_delete);
+                builder.CreateRet(ret_val);
+                return Status::OK();
+            });
+
+    ASSERT_TRUE(sum_func.valid());
+    T res = sum_func(window);
+    ASSERT_FLOAT_EQ(res, expected);
+}
+
+template <class T>
+void RunListIteratorByRowCase(T expected, const type::TableDef& table,
+                              const std::string& col, const ListOfRow& window) {
+    const int32_t col_offset = 7 + 4 + 2 + 4;
+    auto sum_func =
+        ModuleFunctionBuilder().args<ListOfRow>().returns<T>().build(
+            [&](codegen::CodeGenContext* ctx) {
+                BasicBlock* entry_block = ctx->GetCurrentBlock();
+                ScopeVar sv;
+                sv.Enter("enter row scope");
+
+                ListIRBuilder list_builder(entry_block, &sv);
+                auto fn = ctx->GetCurrentFunction();
+                IRBuilder<> builder(entry_block);
+                Function::arg_iterator it = fn->arg_begin();
+                Argument* arg0 = &*it;
+
+                ::llvm::Value* iterator = nullptr;
+                node::NodeManager nm;
+                auto row_type =
+                    DataTypeTrait<udf::LiteralTypedRow<>>::to_type_node(&nm);
+
+                auto list_ref_ptr = builder.CreateAlloca(arg0->getType());
+                builder.CreateStore(arg0, list_ref_ptr);
+
+                CHECK_STATUS(list_builder.BuildIterator(list_ref_ptr, row_type,
+                                                        &iterator));
+                ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+                ::llvm::Value* i8_ptr =
+                    builder.CreatePointerCast(iterator, i8_ptr_ty);
+
+                auto col_offset_val = builder.getInt32(col_offset);
+                llvm::FunctionCallee callee =
+                    ctx->GetModule()->getOrInsertFunction(
+                        "iterator_sum_" + row_type->GetName(),
+                        fn->getReturnType(), i8_ptr_ty,
+                        col_offset_val->getType());
+
+                ::llvm::Value* ret_val =
+                    builder.CreateCall(callee, {i8_ptr, col_offset_val});
+
+                ::llvm::Value* ret_delete = nullptr;
+                list_builder.BuildIteratorDelete(iterator, row_type,
+                                                 &ret_delete);
+                builder.CreateRet(ret_val);
+                return Status::OK();
+            });
+
+    ASSERT_TRUE(sum_func.valid());
+    T res = sum_func(window);
+    ASSERT_FLOAT_EQ(res, expected);
+}
+
+template <class T>
+void RunInnerListIteratorCase(T expected, const type::TableDef& table,
+                              const std::string& col, const ListOfRow& window,
+                              int64_t start_offset, int64_t end_offset,
+                              bool inner_range) {
+    auto sum_func =
+        ModuleFunctionBuilder()
+            .args<ListRef<udf::LiteralTypedRow<>>>()
+            .returns<T>()
+            .build([&](codegen::CodeGenContext* ctx) {
+                BasicBlock* entry_block = ctx->GetCurrentBlock();
+                ScopeVar sv;
+                sv.Enter("enter row scope");
+
+                MemoryWindowDecodeIRBuilder buf_builder(table.columns(),
+                                                        entry_block);
+                ListIRBuilder list_builder(entry_block, &sv);
+
+                IRBuilder<> builder(entry_block);
+                auto fn = ctx->GetCurrentFunction();
+                Function::arg_iterator it = fn->arg_begin();
+                Argument* arg0 = &*it;
+
+                ::llvm::Value* inner_list = NULL;
+                ::llvm::Value* list_ptr = builder.CreateExtractValue(arg0, {0});
+                if (inner_range) {
+                    CHECK_TRUE(buf_builder.BuildInnerRangeList(
+                        list_ptr, start_offset, end_offset, &inner_list));
+                } else {
+                    CHECK_TRUE(buf_builder.BuildInnerRowsList(
+                        list_ptr, start_offset, end_offset, &inner_list));
+                }
+                // build column
+                ::llvm::Value* column = NULL;
+                CHECK_TRUE(buf_builder.BuildGetCol(col, inner_list, &column));
+
+                ::llvm::Value* iterator = nullptr;
+                node::NodeManager nm;
+                auto elem_type = DataTypeTrait<T>::to_type_node(&nm);
+                CHECK_STATUS(
+                    list_builder.BuildIterator(column, elem_type, &iterator));
+                ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+                ::llvm::Value* i8_ptr =
+                    builder.CreatePointerCast(iterator, i8_ptr_ty);
+                llvm::FunctionCallee callee =
+                    ctx->GetModule()->getOrInsertFunction(
+                        "iterator_sum_" + elem_type->GetName(),
+                        fn->getReturnType(), i8_ptr_ty);
+
+                ::llvm::Value* ret_val = builder.CreateCall(
+                    callee, ::llvm::ArrayRef<Value*>(i8_ptr));
+
+                ::llvm::Value* ret_delete = nullptr;
+                list_builder.BuildIteratorDelete(iterator, elem_type,
+                                                 &ret_delete);
+                builder.CreateRet(ret_val);
+                return Status::OK();
+            });
+
+    ASSERT_TRUE(sum_func.valid());
+    T res = sum_func(window);
+    ASSERT_FLOAT_EQ(res, expected);
+}
 
 template <class V>
-void RunListIteratorCase(V expected, const type::TableDef& table,
-                         const ::fesql::type::Type& type,
-                         const std::string& col, int8_t* window) {
-    GetListIterator(expected, table, type, col, window);
-}
-template <class V>
 void RunInnerRangeListIteratorCase(V expected, const type::TableDef& table,
-                                   const ::fesql::type::Type& type,
-                                   const std::string& col, int8_t* window,
-                                   int64_t start, int64_t end) {
-    GetInnerListIterator(expected, table, type, col, window, start, end, true);
+                                   const std::string& col,
+                                   const ListOfRow& window, int64_t start,
+                                   int64_t end) {
+    RunInnerListIteratorCase(expected, table, col, window, start, end, true);
 }
 
 template <class V>
 void RunInnerRowsListIteratorCase(V expected, const type::TableDef& table,
-                                  const ::fesql::type::Type& type,
-                                  const std::string& col, int8_t* window,
-                                  int64_t start, int64_t end) {
-    GetInnerListIterator(expected, table, type, col, window, start, end, false);
-}
-template <class V>
-void RunListIteratorNextCase(V expected, const type::TableDef& table,
-                             const ::fesql::type::Type& type,
-                             const std::string& col, int8_t* window) {
-    V result;
-    GetListIteratorNext(&result, table, type, col, window);
-    ASSERT_EQ(result, expected);
+                                  const std::string& col,
+                                  const ListOfRow& window, int64_t start,
+                                  int64_t end) {
+    RunInnerListIteratorCase(expected, table, col, window, start, end, false);
 }
 
-template <class V>
-void RunListIteratorSumCase(V expected, const type::TableDef& table,
-                            const ::fesql::type::Type& type,
-                            const std::string& col, int8_t* window) {
-    V result;
-    RunListIteratorSumCase(&result, table, type, col, window);
-    ASSERT_EQ(result, expected);
+template <class T>
+void RunListIteratorSumCase(T expected, const type::TableDef& table,
+                            const std::string& col, const ListOfRow& window) {
+    auto func =
+        ModuleFunctionBuilder()
+            .args<ListRef<udf::LiteralTypedRow<>>>()
+            .returns<T>()
+            .build([&](codegen::CodeGenContext* ctx) {
+                BasicBlock* entry_block = ctx->GetCurrentBlock();
+                ScopeVar sv;
+                sv.Enter("enter row scope");
+
+                MemoryWindowDecodeIRBuilder buf_builder(table.columns(),
+                                                        entry_block);
+                ListIRBuilder list_builder(entry_block, &sv);
+
+                IRBuilder<> builder(entry_block);
+                auto fn = ctx->GetCurrentFunction();
+                Function::arg_iterator it = fn->arg_begin();
+                Argument* arg0 = &*it;
+
+                node::NodeManager nm;
+                auto elem_type = DataTypeTrait<T>::to_type_node(&nm);
+
+                // build column
+                ::llvm::Value* column = NULL;
+                ::llvm::Value* list_ptr = builder.CreateExtractValue(arg0, {0});
+                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
+
+                ::llvm::Value* iter = nullptr;
+                CHECK_STATUS(
+                    list_builder.BuildIterator(column, elem_type, &iter));
+                NativeValue next1_wrapper;
+                CHECK_STATUS(list_builder.BuildIteratorNext(iter, elem_type,
+                                                            &next1_wrapper));
+                NativeValue next2_wrapper;
+                CHECK_STATUS(list_builder.BuildIteratorNext(iter, elem_type,
+                                                            &next2_wrapper));
+
+                auto next1 = next1_wrapper.GetValue(&builder);
+                auto next2 = next2_wrapper.GetValue(&builder);
+
+                ArithmeticIRBuilder arithmetic_ir_builder(
+                    builder.GetInsertBlock());
+                ::llvm::Value* res = nullptr;
+                base::Status status;
+                CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(next1, next2,
+                                                              &res, status));
+
+                NativeValue next3_wrapper;
+                CHECK_STATUS(list_builder.BuildIteratorNext(iter, elem_type,
+                                                            &next3_wrapper));
+                auto next3 = next3_wrapper.GetValue(&builder);
+                CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next3, &res,
+                                                              status));
+
+                NativeValue next4_wrapper;
+                CHECK_STATUS(list_builder.BuildIteratorNext(iter, elem_type,
+                                                            &next4_wrapper));
+                auto next4 = next4_wrapper.GetValue(&builder);
+                CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next4, &res,
+                                                              status));
+
+                NativeValue next5_wrapper;
+                CHECK_STATUS(list_builder.BuildIteratorNext(iter, elem_type,
+                                                            &next5_wrapper));
+                auto next5 = next5_wrapper.GetValue(&builder);
+                CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next5, &res,
+                                                              status));
+
+                ::llvm::Value* ret_delete = nullptr;
+                list_builder.BuildIteratorDelete(iter, elem_type, &ret_delete);
+                if (TypeIRBuilder::IsStructPtr(res->getType())) {
+                    res = builder.CreateLoad(res);
+                }
+                builder.CreateRet(res);
+                return Status::OK();
+            });
+
+    T result = func(window);
+    ASSERT_EQ(expected, result);
 }
+
+template <class T>
+void RunListIteratorNextCase(T expected, const type::TableDef& table,
+                             const std::string& col, const ListOfRow& window) {
+    auto func =
+        ModuleFunctionBuilder()
+            .args<ListRef<udf::LiteralTypedRow<>>>()
+            .returns<T>()
+            .build([&](codegen::CodeGenContext* ctx) {
+                BasicBlock* entry_block = ctx->GetCurrentBlock();
+                ScopeVar sv;
+                sv.Enter("enter row scope");
+
+                MemoryWindowDecodeIRBuilder buf_builder(table.columns(),
+                                                        entry_block);
+                ListIRBuilder list_builder(entry_block, &sv);
+
+                auto fn = ctx->GetCurrentFunction();
+                IRBuilder<> builder(entry_block);
+                Function::arg_iterator it = fn->arg_begin();
+                Argument* arg0 = &*it;
+
+                // build column
+                ::llvm::Value* column = NULL;
+                ::llvm::Value* list_ptr = builder.CreateExtractValue(arg0, {0});
+                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
+
+                node::NodeManager nm;
+                auto elem_type = DataTypeTrait<T>::to_type_node(&nm);
+                ::llvm::Value* iter = nullptr;
+                base::Status status;
+                CHECK_STATUS(
+                    list_builder.BuildIterator(column, elem_type, &iter));
+                NativeValue next1_wrapper;
+                CHECK_STATUS(list_builder.BuildIteratorNext(iter, elem_type,
+                                                            &next1_wrapper));
+                ::llvm::Value* next1 = next1_wrapper.GetValue(&builder);
+                ::llvm::Value* ret_delete = nullptr;
+                list_builder.BuildIteratorDelete(iter, elem_type, &ret_delete);
+                switch (elem_type->base_) {
+                    case node::kVarchar: {
+                        auto res_ptr = fn->arg_begin() + 1;
+                        codegen::StringIRBuilder string_builder(
+                            ctx->GetModule());
+                        CHECK_TRUE(string_builder.CopyFrom(
+                            builder.GetInsertBlock(), next1, res_ptr));
+                        builder.CreateRetVoid();
+                        break;
+                    }
+                    default: {
+                        if (TypeIRBuilder::IsStructPtr(next1->getType())) {
+                            next1 = builder.CreateLoad(next1);
+                        }
+                        builder.CreateRet(next1);
+                    }
+                }
+                return Status::OK();
+            });
+
+    T result = func(window);
+    ASSERT_EQ(expected, result);
+}
+
 TEST_F(ListIRBuilderTest, list_int16_at_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
-    RunListAtCase<int16_t>(2, table, ::fesql::type::kInt16, "col2", ptr, 0);
-    RunListAtCase<int16_t>(22, table, ::fesql::type::kInt16, "col2", ptr, 1);
-    RunListAtCase<int16_t>(22222, table, ::fesql::type::kInt16, "col2", ptr, 4);
-    RunListAtCase<int16_t>(2222, table, ::fesql::type::kInt16, "col2", ptr, 3);
-    RunListAtCase<int16_t>(222, table, ::fesql::type::kInt16, "col2", ptr, 2);
-    free(ptr);
+    BuildWindow(table, rows, &window.list);
+    RunListAtCase<int16_t>(2, table, "col2", window, 0);
+    RunListAtCase<int16_t>(22, table, "col2", window, 1);
+    RunListAtCase<int16_t>(22222, table, "col2", window, 4);
+    RunListAtCase<int16_t>(2222, table, "col2", window, 3);
+    RunListAtCase<int16_t>(222, table, "col2", window, 2);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_int32_at_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
-    RunListAtCase<int32_t>(1, table, ::fesql::type::kInt32, "col1", ptr, 0);
-    RunListAtCase<int32_t>(11, table, ::fesql::type::kInt32, "col1", ptr, 1);
-    RunListAtCase<int32_t>(11111, table, ::fesql::type::kInt32, "col1", ptr, 4);
-    RunListAtCase<int32_t>(1111, table, ::fesql::type::kInt32, "col1", ptr, 3);
-    RunListAtCase<int32_t>(111, table, ::fesql::type::kInt32, "col1", ptr, 2);
-    free(ptr);
+    BuildWindow(table, rows, &window.list);
+    RunListAtCase<int32_t>(1, table, "col1", window, 0);
+    RunListAtCase<int32_t>(11, table, "col1", window, 1);
+    RunListAtCase<int32_t>(11111, table, "col1", window, 4);
+    RunListAtCase<int32_t>(1111, table, "col1", window, 3);
+    RunListAtCase<int32_t>(111, table, "col1", window, 2);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_int64_at_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
-    RunListAtCase<int64_t>(5, table, ::fesql::type::kInt64, "col5", ptr, 0);
-    RunListAtCase<int64_t>(55, table, ::fesql::type::kInt64, "col5", ptr, 1);
-    RunListAtCase<int64_t>(55555, table, ::fesql::type::kInt64, "col5", ptr, 4);
-    RunListAtCase<int64_t>(5555, table, ::fesql::type::kInt64, "col5", ptr, 3);
-    RunListAtCase<int64_t>(555, table, ::fesql::type::kInt64, "col5", ptr, 2);
-    free(ptr);
+    BuildWindow(table, rows, &window.list);
+    RunListAtCase<int64_t>(5, table, "col5", window, 0);
+    RunListAtCase<int64_t>(55, table, "col5", window, 1);
+    RunListAtCase<int64_t>(55555, table, "col5", window, 4);
+    RunListAtCase<int64_t>(5555, table, "col5", window, 3);
+    RunListAtCase<int64_t>(555, table, "col5", window, 2);
+    free(window.list);
 }
 TEST_F(ListIRBuilderTest, list_float_at_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
-    RunListAtCase<float>(3.1f, table, ::fesql::type::kFloat, "col3", ptr, 0);
-    RunListAtCase<float>(33.1f, table, ::fesql::type::kFloat, "col3", ptr, 1);
-    free(ptr);
+    BuildWindow(table, rows, &window.list);
+    RunListAtCase<float>(3.1f, table, "col3", window, 0);
+    RunListAtCase<float>(33.1f, table, "col3", window, 1);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_double_at_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
-    RunListAtCase<double>(4.1, table, ::fesql::type::kDouble, "col4", ptr, 0);
-    RunListAtCase<double>(44.1, table, ::fesql::type::kDouble, "col4", ptr, 1);
-    free(ptr);
+    BuildWindow(table, rows, &window.list);
+    RunListAtCase<double>(4.1, table, "col4", window, 0);
+    RunListAtCase<double>(44.1, table, "col4", window, 1);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_timestamp_at_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
+    BuildWindow(table, rows, &window.list);
     codec::Timestamp ts(1590115420000L);
-    RunListAtCase<codec::Timestamp>(ts, table, ::fesql::type::kTimestamp,
-                                    "std_ts", ptr, 0);
-    free(ptr);
+    RunListAtCase<codec::Timestamp>(ts, table, "std_ts", window, 0);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_string_at_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
+    BuildWindow(table, rows, &window.list);
     RunListAtCase<codec::StringRef>(codec::StringRef(strlen("1"), strdup("1")),
-                                    table, ::fesql::type::kVarchar, "col6", ptr,
-                                    0);
-    free(ptr);
+                                    table, "col6", window, 0);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_int32_iterator_sum_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
-    RunListIteratorSumCase<int32_t>(1 + 11 + 111 + 1111 + 11111, table,
-                                    ::fesql::type::kInt32, "col1", ptr);
-    free(ptr);
+    BuildWindow(table, rows, &window.list);
+    RunListIteratorSumCase<int32_t>(1 + 11 + 111 + 1111 + 11111, table, "col1",
+                                    window);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_int16_iterator_sum_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
-    RunListIteratorSumCase<int16_t>(2 + 22 + 222 + 2222 + 22222, table,
-                                    ::fesql::type::kInt16, "col2", ptr);
-    free(ptr);
+    BuildWindow(table, rows, &window.list);
+    RunListIteratorSumCase<int16_t>(2 + 22 + 222 + 2222 + 22222, table, "col2",
+                                    window);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_int64_iterator_sum_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
+    BuildWindow(table, rows, &window.list);
     RunListIteratorSumCase<int64_t>(5L + 55L + 555L + 5555L + 55555L, table,
-                                    ::fesql::type::kInt64, "col5", ptr);
-    free(ptr);
+                                    "col5", window);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_float_iterator_sum_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
+    BuildWindow(table, rows, &window.list);
     RunListIteratorSumCase<float>(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
-                                  table, ::fesql::type::kFloat, "col3", ptr);
-    free(ptr);
+                                  table, "col3", window);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_double_iterator_sum_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
+    BuildWindow(table, rows, &window.list);
     RunListIteratorCase<double>(4.1 + 44.1 + 444.1 + 4444.1 + 44444.1, table,
-                                ::fesql::type::kDouble, "col4", ptr);
-    free(ptr);
+                                "col4", window);
+    free(window.list);
+}
+
+TEST_F(ListIRBuilderTest, list_iterator_by_row_double_sum_test) {
+    ListOfRow window;
+    std::vector<Row> rows;
+    type::TableDef table;
+    BuildWindow(table, rows, &window.list);
+    RunListIteratorByRowCase<double>(4.1 + 44.1 + 444.1 + 4444.1 + 44444.1,
+                                     table, "col4", window);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_timestamp_iterator_sum_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
+    BuildWindow(table, rows, &window.list);
     codec::Timestamp ts(1590115420000L + 1590115430000 + 1590115440000 +
                         1590115450000 + 1590115460000);
-    RunListIteratorSumCase(ts, table, ::fesql::type::kTimestamp, "std_ts", ptr);
-    free(ptr);
+    RunListIteratorSumCase(ts, table, "std_ts", window);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_int32_iterator_next_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
-    RunListIteratorNextCase<int32_t>(1, table, ::fesql::type::kInt32, "col1",
-                                     ptr);
-    free(ptr);
+    BuildWindow(table, rows, &window.list);
+    RunListIteratorNextCase<int32_t>(1, table, "col1", window);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_int16_iterator_next_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
-    RunListIteratorNextCase<int16_t>(2, table, ::fesql::type::kInt16, "col2",
-                                     ptr);
-    free(ptr);
+    BuildWindow(table, rows, &window.list);
+    RunListIteratorNextCase<int16_t>(2, table, "col2", window);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_int64_iterator_next_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
-    RunListIteratorNextCase<int64_t>(5L, table, ::fesql::type::kInt64, "col5",
-                                     ptr);
-    free(ptr);
+    BuildWindow(table, rows, &window.list);
+    RunListIteratorNextCase<int64_t>(5L, table, "col5", window);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_float_iterator_next_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
-    RunListIteratorNextCase<float>(3.1f, table, ::fesql::type::kFloat, "col3",
-                                   ptr);
-    free(ptr);
+    BuildWindow(table, rows, &window.list);
+    RunListIteratorNextCase<float>(3.1f, table, "col3", window);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_double_iterator_next_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
-    RunListIteratorNextCase<double>(4.1, table, ::fesql::type::kDouble, "col4",
-                                    ptr);
-    free(ptr);
+    BuildWindow(table, rows, &window.list);
+    RunListIteratorNextCase<double>(4.1, table, "col4", window);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_timestamp_iterator_next_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
+    BuildWindow(table, rows, &window.list);
     codec::Timestamp ts(1590115420000L);
-    RunListIteratorNextCase(ts, table, ::fesql::type::kTimestamp, "std_ts",
-                            ptr);
-    free(ptr);
+    RunListIteratorNextCase(ts, table, "std_ts", window);
+    free(window.list);
 }
 TEST_F(ListIRBuilderTest, list_string_iterator_next_test) {
-    int8_t* ptr = NULL;
+    ListOfRow window;
     std::vector<Row> rows;
     type::TableDef table;
-    BuildWindow(table, rows, &ptr);
+    BuildWindow(table, rows, &window.list);
     codec::StringRef str(strlen("1"), strdup("1"));
-    RunListIteratorNextCase(str, table, ::fesql::type::kVarchar, "col6", ptr);
-    free(ptr);
+    RunListIteratorNextCase(str, table, "col6", window);
+    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_double_inner_range_test) {
@@ -1084,29 +698,27 @@ TEST_F(ListIRBuilderTest, list_double_inner_range_test) {
     type::TableDef table;
     BuildWindow(table, rows, &ptr);
 
+    ListOfRow row_list;
     vm::CurrentHistoryWindow window(-3600000);
     codec::RowView row_view(table.columns());
     for (auto row : rows) {
         row_view.Reset(row.buf());
         window.BufferData(row_view.GetTimestampUnsafe(6), row);
     }
-    RunInnerRangeListIteratorCase<double>(
-        4.1 + 44.1 + 444.1 + 4444.1 + 44444.1, table, ::fesql::type::kDouble,
-        "col4", reinterpret_cast<int8_t*>(&window), 0, -3600000);
+    row_list.list = reinterpret_cast<int8_t*>(&window);
 
-    RunInnerRangeListIteratorCase<double>(
-        44444.1, table, ::fesql::type::kDouble, "col4",
-        reinterpret_cast<int8_t*>(&window), 0, -5000);
-    RunInnerRangeListIteratorCase<double>(
-        4444.1 + 44444.1, table, ::fesql::type::kDouble, "col4",
-        reinterpret_cast<int8_t*>(&window), 0, -10000);
-    RunInnerRangeListIteratorCase<double>(
-        444.1 + 4444.1 + 44444.1, table, ::fesql::type::kDouble, "col4",
-        reinterpret_cast<int8_t*>(&window), 0, -20000);
+    RunInnerRangeListIteratorCase<double>(4.1 + 44.1 + 444.1 + 4444.1 + 44444.1,
+                                          table, "col4", row_list, 0, -3600000);
 
-    RunInnerRangeListIteratorCase<double>(
-        444.1 + 4444.1, table, ::fesql::type::kDouble, "col4",
-        reinterpret_cast<int8_t*>(&window), -10000, -20000);
+    RunInnerRangeListIteratorCase<double>(44444.1, table, "col4", row_list, 0,
+                                          -5000);
+    RunInnerRangeListIteratorCase<double>(4444.1 + 44444.1, table, "col4",
+                                          row_list, 0, -10000);
+    RunInnerRangeListIteratorCase<double>(444.1 + 4444.1 + 44444.1, table,
+                                          "col4", row_list, 0, -20000);
+
+    RunInnerRangeListIteratorCase<double>(444.1 + 4444.1, table, "col4",
+                                          row_list, -10000, -20000);
     free(ptr);
 }
 
@@ -1116,34 +728,64 @@ TEST_F(ListIRBuilderTest, list_double_inner_rows_test) {
     type::TableDef table;
     BuildWindow(table, rows, &ptr);
 
+    ListOfRow row_list;
     vm::CurrentHistoryWindow window(-3600000);
     codec::RowView row_view(table.columns());
     for (auto row : rows) {
         row_view.Reset(row.buf());
         window.BufferData(row_view.GetTimestampUnsafe(6), row);
     }
-    RunInnerRowsListIteratorCase<double>(
-        4.1 + 44.1 + 444.1 + 4444.1 + 44444.1, table, ::fesql::type::kDouble,
-        "col4", reinterpret_cast<int8_t*>(&window), 0, 100);
+    row_list.list = reinterpret_cast<int8_t*>(&window);
 
-    RunInnerRowsListIteratorCase<double>(
-        44444.1, table, ::fesql::type::kDouble, "col4",
-        reinterpret_cast<int8_t*>(&window), 0, 0);
-    RunInnerRowsListIteratorCase<double>(
-        4444.1 + 44444.1, table, ::fesql::type::kDouble, "col4",
-        reinterpret_cast<int8_t*>(&window), 0, 1);
-    RunInnerRowsListIteratorCase<double>(
-        444.1 + 4444.1 + 44444.1, table, ::fesql::type::kDouble, "col4",
-        reinterpret_cast<int8_t*>(&window), 0, 2);
+    RunInnerRowsListIteratorCase<double>(4.1 + 44.1 + 444.1 + 4444.1 + 44444.1,
+                                         table, "col4", row_list, 0, 100);
 
-    RunInnerRowsListIteratorCase<double>(
-        444.1 + 4444.1, table, ::fesql::type::kDouble, "col4",
-        reinterpret_cast<int8_t*>(&window), 1, 2);
+    RunInnerRowsListIteratorCase<double>(44444.1, table, "col4", row_list, 0,
+                                         0);
+    RunInnerRowsListIteratorCase<double>(4444.1 + 44444.1, table, "col4",
+                                         row_list, 0, 1);
+    RunInnerRowsListIteratorCase<double>(444.1 + 4444.1 + 44444.1, table,
+                                         "col4", row_list, 0, 2);
+
+    RunInnerRowsListIteratorCase<double>(444.1 + 4444.1, table, "col4",
+                                         row_list, 1, 2);
     free(ptr);
 }
 
 }  // namespace codegen
 }  // namespace fesql
+
+extern "C" {
+int16_t iterator_sum_int16(int8_t* input) {
+    return fesql::codegen::IteratorSum<int16_t>(input);
+}
+int32_t iterator_sum_int32(int8_t* input) {
+    return fesql::codegen::IteratorSum<int32_t>(input);
+}
+int64_t iterator_sum_int64(int8_t* input) {
+    return fesql::codegen::IteratorSum<int64_t>(input);
+}
+float iterator_sum_float(int8_t* input) {
+    return fesql::codegen::IteratorSum<float>(input);
+}
+double iterator_sum_double(int8_t* input) {
+    return fesql::codegen::IteratorSum<double>(input);
+}
+double iterator_sum_row(int8_t* input, int32_t offset) {
+    double result = 0;
+    ::fesql::codec::IteratorRef* iter_ref =
+        (::fesql::codec::IteratorRef*)(input);
+    auto iter =
+        (ConstIterator<uint64_t, fesql::codec::Row>*)(iter_ref->iterator);
+    while (iter->Valid()) {
+        auto& row = iter->GetValue();
+        auto buf = row.buf(0);
+        result += *reinterpret_cast<double*>(buf + offset);
+        iter->Next();
+    }
+    return result;
+}
+}  // extern "C"
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

@@ -530,14 +530,19 @@ void CallExprNode::Print(std::ostream &output,
     ExprNode::Print(output, org_tab);
     output << "\n";
     const std::string tab = org_tab + INDENT + SPACE_ED;
-    output << tab << "function_name: " << GetFnDef()->GetSimpleName();
-    output << "\n";
-    output << "args: ";
+    PrintSQLNode(output, tab, GetFnDef(), "function", false);
+    size_t i = 0;
+    bool has_over = over_ != nullptr;
     for (auto child : children_) {
-        output << child->GetExprString() << ", ";
+        output << "\n";
+        bool is_last_arg = i == children_.size() - 1;
+        PrintSQLNode(output, tab, child, "arg[" + std::to_string(i++) + "]",
+                     is_last_arg);
     }
-    output << "\n";
-    PrintSQLNode(output, tab, over_, "over", true);
+    if (has_over) {
+        output << "\n";
+        PrintSQLNode(output, tab, over_, "over", true);
+    }
 }
 const std::string CallExprNode::GetExprString() const {
     std::string str = GetFnDef()->GetSimpleName();
@@ -1413,8 +1418,38 @@ bool BetweenExpr::Equals(const ExprNode *node) const {
 }
 
 void ExternalFnDefNode::Print(std::ostream &output,
-                              const std::string &tab) const {
-    output << tab << "ExternalFnDefNode(" << function_name_ << ")";
+                              const std::string &org_tab) const {
+    if (!IsResolved()) {
+        output << org_tab << "[Unresolved](" << function_name_ << ")";
+    } else {
+        output << org_tab << "[kExternalFnDef] ";
+        if (GetReturnType() == nullptr) {
+            output << "?";
+        } else {
+            output << GetReturnType()->GetName();
+        }
+        output << " " << function_name_ << "(";
+        for (size_t i = 0; i < GetArgSize(); ++i) {
+            auto arg_ty = GetArgType(i);
+            if (arg_ty == nullptr) {
+                output << "?";
+            } else {
+                output << arg_ty->GetName();
+            }
+            if (i < GetArgSize() - 1) {
+                output << ", ";
+            }
+        }
+        if (variadic_pos_ >= 0) {
+            output << ", ...";
+        }
+        output << ")";
+        if (return_by_arg_) {
+            output << "\n";
+            const std::string tab = org_tab + INDENT;
+            PrintValue(output, tab, "true", "return_by_arg", true);
+        }
+    }
 }
 
 bool ExternalFnDefNode::Equals(const SQLNode *node) const {
@@ -1466,16 +1501,21 @@ bool UDFDefNode::Equals(const SQLNode *node) const {
 }
 
 void LambdaNode::Print(std::ostream &output, const std::string &tab) const {
-    output << tab << "LambdaNode(";
+    output << tab << "[kLambda](";
     for (size_t i = 0; i < GetArgSize(); ++i) {
-        output << GetArg(i)->GetExprString();
+        auto arg = GetArg(i);
+        output << arg->GetExprString() << ":";
+        if (arg->GetOutputType() == nullptr) {
+            output << "?";
+        } else {
+            output << arg->GetOutputType()->GetName();
+        }
         if (i < GetArgSize() - 1) {
             output << ", ";
         }
     }
-    output << ") {\n";
+    output << ")\n";
     body()->Print(output, tab + INDENT);
-    output << tab << "\n}";
 }
 
 bool LambdaNode::Equals(const SQLNode *node) const {
@@ -1517,20 +1557,19 @@ bool UDAFDefNode::Equals(const SQLNode *node) const {
            FnDefEquals(output_, other->output_);
 }
 
-void UDAFDefNode::Print(std::ostream &output, const std::string &tab) const {
-    output << tab << "UDAFDefNode {\n";
-    init_->Print(output, tab + INDENT);
+void UDAFDefNode::Print(std::ostream &output,
+                        const std::string &org_tab) const {
+    output << org_tab << "[kUDAFDef] " << name_ << " \n";
+    const std::string tab = org_tab + INDENT;
+    PrintSQLNode(output, tab, input_type_, "elem_type", false);
     output << "\n";
-    update_->Print(output, tab + INDENT);
+    PrintSQLNode(output, tab, init_, "init", false);
     output << "\n";
-    if (merge_ != nullptr) {
-        merge_->Print(output, tab + INDENT);
-        output << "\n";
-    }
-    if (output_ != nullptr) {
-        output_->Print(output, tab + INDENT);
-    }
-    output << tab << "\n}";
+    PrintSQLNode(output, tab, update_, "update", false);
+    output << "\n";
+    PrintSQLNode(output, tab, merge_, "merge", false);
+    output << "\n";
+    PrintSQLNode(output, tab, output_, "output", true);
 }
 
 }  // namespace node

@@ -141,264 +141,162 @@ bool ListIRBuilder::BuildAt(::llvm::Value* list, ::llvm::Value* pos,
     return true;
 }
 
-bool ListIRBuilder::BuildIterator(::llvm::Value* list, ::llvm::Value** output,
-                                  base::Status& status) {
-    if (nullptr == list) {
-        status.msg = "fail to codegen list[pos]: list is null";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    fesql::node::TypeNode type_node;
-    if (false == GetFullType(list->getType(), &type_node) ||
-        fesql::node::kList != type_node.base_) {
-        status.msg = "fail to codegen list[pos]: invalid list type";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    ::std::string fn_name =
-        "iterator." + type_node.GetName() + "." +
-        node::TypeNode(node::kIterator, type_node.generics_[0]).GetName();
-    ::llvm::Function* fn =
-        block_->getModule()->getFunction(::llvm::StringRef(fn_name));
-    if (nullptr == fn) {
-        status.msg = "fail to codegen iterator: can't find function " + fn_name;
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+Status ListIRBuilder::BuildIterator(::llvm::Value* list,
+                                    const node::TypeNode* elem_type,
+                                    ::llvm::Value** output) {
+    CHECK_TRUE(list != nullptr, "fail to codegen list[pos]: list is null");
+
+    ::llvm::Type* iter_ref_type = NULL;
+    CHECK_TRUE(
+        GetLLVMIteratorType(block_->getModule(), elem_type, &iter_ref_type),
+        "fail to get iterator ref type");
+    ::llvm::Type* list_ref_type = nullptr;
+    CHECK_TRUE(GetLLVMListType(block_->getModule(), elem_type, &list_ref_type),
+               "fail to get list ref type");
+
+    ::std::string fn_name = "iterator.list_" + elem_type->GetName() +
+                            ".iterator_" + elem_type->GetName();
 
     ::llvm::IRBuilder<> builder(block_);
-    ::llvm::Type* iter_ref_type = NULL;
-    if (!GetLLVMIteratorType(block_->getModule(), type_node.generics_[0],
-                             &iter_ref_type)) {
-        LOG(WARNING) << "fail to get iterator ref type";
-        return false;
-    }
+    ::llvm::Type* bool_ty = ::llvm::Type::getInt1Ty(builder.getContext());
+
+    auto iter_function_ty = ::llvm::FunctionType::get(
+        bool_ty, {list_ref_type->getPointerTo(), iter_ref_type->getPointerTo()},
+        false);
+    ::llvm::FunctionCallee callee =
+        block_->getModule()->getOrInsertFunction(fn_name, iter_function_ty);
+
     // alloca memory on stack
     ::llvm::Value* iter_ref_ptr = builder.CreateAlloca(iter_ref_type);
-    ::llvm::Value* call_res = builder.CreateCall(
-        fn->getFunctionType(), fn,
-        ::llvm::ArrayRef<::llvm::Value*>{list, iter_ref_ptr});
-    if (nullptr == call_res) {
-        status.msg = "fail to codegen list.iterator(): call function error";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    builder.CreateCall(callee, {list, iter_ref_ptr});
 
     // TODO(chenjing): check call res true
     *output = iter_ref_ptr;
-    return true;
+    return Status::OK();
 }
-bool ListIRBuilder::BuildIteratorHasNext(::llvm::Value* iterator,
-                                         ::llvm::Value** output,
-                                         base::Status& status) {
-    if (nullptr == iterator) {
-        status.msg = "fail to codegen iter.has_next(): iterator is null";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
 
-    fesql::node::TypeNode type_node;
-    if (false == GetFullType(iterator->getType(), &type_node) ||
-        fesql::node::kIterator != type_node.base_) {
-        status.msg =
-            "fail to codegen iterator.has_next(): invalid iterator type";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    ::std::string fn_name = "has_next." + type_node.GetName();
-    ::llvm::Function* fn =
-        block_->getModule()->getFunction(::llvm::StringRef(fn_name));
-    if (nullptr == fn) {
-        status.msg =
-            "fail to codegen iterator.has_next(): can't find function " +
-            fn_name;
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+Status ListIRBuilder::BuildIteratorHasNext(::llvm::Value* iterator,
+                                           const node::TypeNode* elem_type,
+                                           ::llvm::Value** output) {
+    CHECK_TRUE(nullptr != iterator,
+               "fail to codegen iter.has_next(): iterator is null");
+
     ::llvm::IRBuilder<> builder(block_);
-    *output = builder.CreateCall(fn->getFunctionType(), fn,
-                                 ::llvm::ArrayRef<::llvm::Value*>{iterator});
-    if (nullptr == *output) {
-        status.msg = "fail to codegen list[pos]: call function error";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    return true;
-}
-bool ListIRBuilder::BuildStructTypeIteratorNext(::llvm::Value* iterator,
-                                                ::llvm::Value** output,
-                                                base::Status& status) {
-    if (nullptr == iterator) {
-        status.msg = "fail to codegen iter.has_next(): iterator is null";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    ::llvm::Type* iter_ref_type = NULL;
+    CHECK_TRUE(
+        GetLLVMIteratorType(block_->getModule(), elem_type, &iter_ref_type),
+        "fail to get iterator ref type");
 
-    fesql::node::TypeNode type_node;
-    if (false == GetFullType(iterator->getType(), &type_node) ||
-        fesql::node::kIterator != type_node.base_) {
-        status.msg = "fail to codegen iterator.next(): invalid iterator type";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    ::std::string fn_name = "has_next.iterator_" + elem_type->GetName();
+
+    ::llvm::Type* bool_ty = ::llvm::Type::getInt1Ty(builder.getContext());
+    auto iter_has_next_fn_ty = ::llvm::FunctionType::get(
+        bool_ty, {iter_ref_type->getPointerTo()}, false);
+
+    ::llvm::FunctionCallee callee =
+        block_->getModule()->getOrInsertFunction(fn_name, iter_has_next_fn_ty);
+
+    *output = builder.CreateCall(callee, {iterator});
+    return Status::OK();
+}
+
+Status ListIRBuilder::BuildStructTypeIteratorNext(
+    ::llvm::Value* iterator, const node::TypeNode* elem_type,
+    NativeValue* output) {
+    CHECK_TRUE(nullptr != iterator,
+               "fail to codegen iter.has_next(): iterator is null");
+
     ::llvm::Type* struct_type = nullptr;
-    if (false == GetLLVMType(block_, type_node.generics_[0], &struct_type)) {
-        status.msg =
-            "fail to codegen iterator.next(): invalid value type of iterator";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    if (!TypeIRBuilder::IsStructPtr(struct_type)) {
-        status.msg =
-            "fail to codegen struct iterator.next(), invalid struct type";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    CHECK_TRUE(
+        GetLLVMType(block_, elem_type, &struct_type),
+        "fail to codegen iterator.next(): invalid value type of iterator");
+
+    CHECK_TRUE(TypeIRBuilder::IsStructPtr(struct_type),
+               "fail to codegen struct iterator.next(), invalid struct type");
 
     struct_type = struct_type->getPointerElementType();
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Value* next_value_ptr = builder.CreateAlloca(struct_type);
 
-    ::std::string fn_name =
-        "next." + type_node.GetName() + "." + type_node.generics_[0]->GetName();
-    ::llvm::Function* fn =
-        block_->getModule()->getFunction(::llvm::StringRef(fn_name));
-    if (nullptr == fn) {
-        status.msg =
-            "fail to codegen iterator.next(): can't find function " + fn_name;
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    DLOG(INFO) << "fn name " << fn_name;
-    DLOG(INFO) << "iterator type "
-               << TypeIRBuilder::IsStructPtr(iterator->getType());
-    DLOG(INFO) << "next_value_ptr type "
-               << TypeIRBuilder::IsTimestampPtr(next_value_ptr->getType());
-    ::llvm::Value* ret = builder.CreateCall(
-        fn->getFunctionType(), fn,
-        ::llvm::ArrayRef<::llvm::Value*>{iterator, next_value_ptr});
-    if (nullptr == ret) {
-        status.msg = "fail to codegen iterator.next(): call function error";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    *output = next_value_ptr;
-    return true;
-}
-bool ListIRBuilder::BuildIteratorNext(::llvm::Value* iterator,
-                                      ::llvm::Value** output,
-                                      base::Status& status) {
-    if (nullptr == iterator) {
-        status.msg = "fail to codegen iter.has_next(): iterator is null";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    ::llvm::Type* iter_ref_type = NULL;
+    CHECK_TRUE(
+        GetLLVMIteratorType(block_->getModule(), elem_type, &iter_ref_type),
+        "fail to get iterator ref type");
+    ::llvm::Type* bool_ty = ::llvm::Type::getInt1Ty(builder.getContext());
+    auto iter_next_fn_ty = ::llvm::FunctionType::get(
+        bool_ty, {iter_ref_type->getPointerTo(), struct_type->getPointerTo()},
+        false);
 
-    fesql::node::TypeNode type_node;
-    if (false == GetFullType(iterator->getType(), &type_node) ||
-        fesql::node::kIterator != type_node.base_) {
-        status.msg = "fail to codegen iterator.next(): invalid iterator type";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    ::std::string fn_name =
+        "next.iterator_" + elem_type->GetName() + "." + elem_type->GetName();
+    ::llvm::FunctionCallee callee =
+        block_->getModule()->getOrInsertFunction(fn_name, iter_next_fn_ty);
+
+    builder.CreateCall(callee, {iterator, next_value_ptr});
+    *output = NativeValue::Create(next_value_ptr);
+    return Status::OK();
+}
+
+Status ListIRBuilder::BuildIteratorNext(::llvm::Value* iterator,
+                                        const node::TypeNode* elem_type,
+                                        NativeValue* output) {
+    CHECK_TRUE(nullptr != iterator,
+               "fail to codegen iter.has_next(): iterator is null");
+
     ::llvm::Type* v1_type = nullptr;
-    if (false == GetLLVMType(block_, type_node.generics_[0], &v1_type)) {
-        status.msg =
-            "fail to codegen iterator.next(): invalid value type of iterator";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    CHECK_TRUE(
+        GetLLVMType(block_, elem_type, &v1_type),
+        "fail to codegen iterator.next(): invalid value type of iterator");
 
     if (TypeIRBuilder::IsStructPtr(v1_type)) {
-        return BuildStructTypeIteratorNext(iterator, output, status);
+        return BuildStructTypeIteratorNext(iterator, elem_type, output);
     }
-    ::std::string fn_name = "next." + type_node.GetName();
-    ::llvm::Function* fn =
-        block_->getModule()->getFunction(::llvm::StringRef(fn_name));
-    if (nullptr == fn) {
-        status.msg =
-            "fail to codegen iterator.next(): can't find function " + fn_name;
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+
+    ::llvm::Type* iter_ref_type = NULL;
+    CHECK_TRUE(
+        GetLLVMIteratorType(block_->getModule(), elem_type, &iter_ref_type),
+        "fail to get iterator ref type");
+
+    ::std::string fn_name = "next.iterator_" + elem_type->GetName();
+    auto iter_next_fn_ty = ::llvm::FunctionType::get(
+        v1_type, {iter_ref_type->getPointerTo()}, false);
+
+    ::llvm::FunctionCallee callee =
+        block_->getModule()->getOrInsertFunction(fn_name, iter_next_fn_ty);
+
     ::llvm::IRBuilder<> builder(block_);
-    ::llvm::Value* next_value = builder.CreateCall(
-        fn->getFunctionType(), fn, ::llvm::ArrayRef<::llvm::Value*>{iterator});
-    if (nullptr == next_value) {
-        status.msg = "fail to codegen iterator.next(): call function error";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    *output = next_value;
-    return true;
+    ::llvm::Value* next_value = builder.CreateCall(callee, {iterator});
+    *output = NativeValue::Create(next_value);
+    return Status::OK();
 }
-bool ListIRBuilder::BuildIteratorDelete(::llvm::Value* iterator,
-                                        ::llvm::Value** output,
-                                        base::Status& status) {
-    if (nullptr == iterator) {
-        status.msg = "fail to codegen iter.delete(): iterator is null";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
 
-    fesql::node::TypeNode type_node;
-    if (false == GetFullType(iterator->getType(), &type_node) ||
-        fesql::node::kIterator != type_node.base_) {
-        status.msg = "fail to codegen iterator.delete(): invalid iterator type";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+Status ListIRBuilder::BuildIteratorDelete(::llvm::Value* iterator,
+                                          const node::TypeNode* elem_type,
+                                          ::llvm::Value** output) {
+    CHECK_TRUE(nullptr != iterator,
+               "fail to codegen iter.delete(): iterator is null");
+
     ::llvm::Type* v1_type = nullptr;
-    if (false == GetLLVMType(block_, type_node.generics_[0], &v1_type)) {
-        status.msg =
-            "fail to codegen iterator.delete(): invalid value type of iterator";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    CHECK_TRUE(
+        GetLLVMType(block_, elem_type, &v1_type),
+        "fail to codegen iterator.delete(): invalid value type of iterator");
 
-    ::std::string fn_name = "delete_iterator." + type_node.GetName();
-    ::llvm::Function* fn =
-        block_->getModule()->getFunction(::llvm::StringRef(fn_name));
-    if (nullptr == fn) {
-        status.msg =
-            "fail to codegen iterator.next(): can't find function " + fn_name;
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    ::llvm::Type* iter_ref_type = NULL;
+    CHECK_TRUE(
+        GetLLVMIteratorType(block_->getModule(), elem_type, &iter_ref_type),
+        "fail to get iterator ref type");
+
     ::llvm::IRBuilder<> builder(block_);
-    ::llvm::Value* ret = builder.CreateCall(
-        fn->getFunctionType(), fn, ::llvm::ArrayRef<::llvm::Value*>{iterator});
-    if (nullptr == ret) {
-        status.msg = "fail to codegen iterator.delete(): call function error";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    ::llvm::Type* bool_ty = ::llvm::Type::getInt1Ty(builder.getContext());
+    ::std::string fn_name = "delete_iterator.iterator_" + elem_type->GetName();
+    auto iter_delete_fn_ty = ::llvm::FunctionType::get(
+        bool_ty, {iter_ref_type->getPointerTo()}, false);
+    ::llvm::FunctionCallee callee =
+        block_->getModule()->getOrInsertFunction(fn_name, iter_delete_fn_ty);
+
+    ::llvm::Value* ret = builder.CreateCall(callee, {iterator});
     *output = ret;
-    return true;
+    return Status::OK();
 }
 }  // namespace codegen
 }  // namespace fesql
