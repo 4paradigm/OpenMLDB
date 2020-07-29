@@ -59,6 +59,26 @@ public class Table {
 
 
     /**
+     * 从输入构造Insert SQLS：
+     * 如果insert非空，直接返回insert，否则需要根据columns和rows来构造Insert SQL语句
+     *
+     * @return
+     */
+    public List<String> getInserts() {
+        if (!StringUtils.isEmpty(insert)) {
+            return Lists.newArrayList(insert);
+        }
+        List<String> inserts = Lists.newArrayList();
+        for (List<Object> row : getRows()) {
+            List<List<Object>> rows = Lists.newArrayList();
+            rows.add(row);
+            inserts.add(buildInsertSQLFromRows(name, getColumns(),
+                    rows));
+        }
+        return inserts;
+    }
+
+    /**
      * 获取Indexs
      * 如果indexs非空，直接返回indexs，否则需要从index解析出indexs
      *

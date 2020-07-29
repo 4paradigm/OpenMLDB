@@ -107,7 +107,6 @@ cases:
         - ["",2,"",1590738989000]
   - id: 10
     desc: 查询的数据中有null
-    tags: ["TODO", "@panxuchen:rtidb/src/sdk/sql_cluster_router.cc:343 core"]
     inputs:
       - columns: ["c1 string","c2 int","c3 string","c4 timestamp"]
         indexs: ["index1:c1:c4"]
