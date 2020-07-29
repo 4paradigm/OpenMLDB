@@ -10,15 +10,17 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include <iostream>
 #include <vector>
+
 #include "base/file_util.h"
+#include "base/glog_wapper.h"
 #include "log/coding.h"
 #include "log/crc32c.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
 #include "proto/tablet.pb.h"
-#include "base/glog_wapper.h"
 
 using ::rtidb::base::Slice;
 using ::rtidb::base::Status;
@@ -32,7 +34,9 @@ class LogWRTest : public ::testing::Test {
     ~LogWRTest() {}
 };
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() {
+    return std::to_string(rand() % 10000000 + 1);
+}  // NOLINT
 
 uint32_t type_crc_[kMaxRecordType + 1];
 int block_offset_ = 0;
@@ -45,7 +49,8 @@ void InitTypeCrc(uint32_t* type_crc) {
 }
 
 void GenPhysicalRecord(RecordType t, const char* ptr, size_t n,
-                       int& block_offset_, std::vector<std::string>& rec_vec) { // NOLINT
+                       int& block_offset_,
+                       std::vector<std::string>& rec_vec) {  // NOLINT
     assert(n <= 0xffff);  // Must fit in two bytes
     assert(block_offset_ + kHeaderSize + n <= kBlockSize);
     // Format the header
@@ -66,7 +71,7 @@ void GenPhysicalRecord(RecordType t, const char* ptr, size_t n,
     block_offset_ += kHeaderSize + n;
 }
 
-int AddRecord(const Slice& slice, std::vector<std::string>& vec) { // NOLINT
+int AddRecord(const Slice& slice, std::vector<std::string>& vec) {  // NOLINT
     const char* ptr = slice.data();
     size_t left = slice.size();
 
@@ -196,7 +201,6 @@ TEST_F(LogWRTest, TestLogEntry) {
         ASSERT_EQ("test0", entry2.pk());
         ASSERT_EQ("test1", entry2.value());
         ASSERT_EQ(9527u, entry2.ts());
-
     }
     status = writer.AddRecord(sval);
     ASSERT_TRUE(status.ok());
