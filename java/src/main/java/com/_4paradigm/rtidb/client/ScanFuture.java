@@ -112,15 +112,13 @@ public class ScanFuture implements Future<KvIterator> {
         }else {
             int ver = t.getCurrentSchemaVer();
             if (ver != 1) {
-                Integer maxIdx = t.getVersions().get(ver);
-                List<ColumnDesc> schema = t.getSchemaMap().get(maxIdx);
+                List<ColumnDesc> schema = t.getVersions().get(ver);
                 kit = new RowKvIterator(response.getPairs(), schema, response.getCount());
             } else {
                 kit = new RowKvIterator(response.getPairs(), t.getSchema(), response.getCount());
             }
             if (t.getSchemaMap().size() > 0) {
-                kit.setSchemaMap(t.getSchemaMap());
-                kit.setVersionPair(t.getVersions());
+                kit.setSchemaMap(t.getVersions());
                 kit.setLastSchemaVersion(t.getCurrentSchemaVer());
                 kit.setDefaultSchema(t.getSchema());
             }

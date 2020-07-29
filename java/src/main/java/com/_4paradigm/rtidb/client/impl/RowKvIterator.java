@@ -25,7 +25,6 @@ public class RowKvIterator implements KvIterator {
     private long key;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
     private RowView rv;
-    private Map<Integer, Integer> versionPair = null;
     private Map<Integer, List<ColumnDesc>> schemaMap = null;
     private int currentVersion = 1;
     private List<ColumnDesc> defaultSchema;
@@ -56,10 +55,6 @@ public class RowKvIterator implements KvIterator {
 
     public void setSchemaMap(Map<Integer, List<ColumnDesc>> schemas) {
         this.schemaMap = schemas;
-    }
-
-    public void setVersionPair(Map<Integer, Integer> versions) {
-        this.versionPair = versions;
     }
 
     public void setLastSchemaVersion(int ver) {
@@ -138,7 +133,7 @@ public class RowKvIterator implements KvIterator {
     }
 
     private void checkVersion(ByteBuffer buf) throws TabletException {
-        if (this.schemaMap == null || this.versionPair == null) {
+        if (this.schemaMap == null) {
             return;
         }
         int version = RowView.getSchemaVersion(buf);
@@ -152,16 +147,13 @@ public class RowKvIterator implements KvIterator {
             this.currentVersion = version;
             return;
         }
-        Integer maxIdx = versionPair.get(this.currentVersion);
-        if (maxIdx == null) {
-            throw new TabletException("unkown schema version " + version);
-        }
-        if (rv.getSchema().size() == maxIdx) {
-            return;
-        }
-        List<ColumnDesc> newSchema = schemaMap.get(maxIdx);
+
+        List<ColumnDesc> newSchema = schemaMap.get(version);
         if (newSchema == null) {
-            throw new TabletException("unkown shcema for column count " + maxIdx);
+            throw new TabletException("unkown shcema for column count " + newSchema.size());
+        }
+        if (rv.getSchema().size() == newSchema.size()) {
+            return;
         }
         schema = newSchema;
         rv = new RowView(schema);

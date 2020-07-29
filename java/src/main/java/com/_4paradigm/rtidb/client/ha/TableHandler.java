@@ -28,7 +28,7 @@ public class TableHandler {
     private boolean isObjectStore = false;
     private BlobServer blobServer = null;
     private List<Integer> blobIdxList = new ArrayList<Integer>();
-    private Map<Integer, Integer> versions = new HashMap<>();
+    private Map<Integer, List<ColumnDesc>> versions = new HashMap<>();
     private Map<Integer, Integer> schemaToVer = new HashMap<>();
     private int currentSchemaVersion = 1;
 
@@ -169,8 +169,12 @@ public class TableHandler {
             }
         }
         for(Common.VersionPair ver : tableInfo.getSchemaVersionsList()) {
-            versions.put(ver.getId(), ver.getIdx());
-            schemaToVer.put(ver.getIdx(), ver.getId());
+            List<ColumnDesc> schema = this.schemaMap.get(ver.getSchemaCount());
+            if (schema == null) {
+                continue;
+            }
+            versions.put(ver.getId(), schema);
+            schemaToVer.put(ver.getSchemaCount(), ver.getId());
             if (ver.getId() > this.currentSchemaVersion) {
                 this.currentSchemaVersion = ver.getId();
             }
@@ -220,8 +224,8 @@ public class TableHandler {
         }
         this.schema = schema;
         for(Common.VersionPair ver : idxVersions) {
-            versions.put(ver.getId(), ver.getIdx());
-            schemaToVer.put(ver.getId(), ver.getIdx());
+            List<ColumnDesc> versionSchema = schema.subList(0, ver.getSchemaCount());
+            versions.put(ver.getId(), versionSchema);
             if (ver.getId() > this.currentSchemaVersion) {
                 this.currentSchemaVersion = ver.getId();
             }
@@ -319,7 +323,7 @@ public class TableHandler {
         return nameTypeMap;
     }
 
-    public Map<Integer, Integer> getVersions() {
+    public Map<Integer, List<ColumnDesc>> getVersions() {
         return versions;
     }
 
