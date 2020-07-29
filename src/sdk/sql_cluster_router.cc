@@ -544,7 +544,7 @@ bool SQLClusterRouter::GetTablet(
 
 void SQLClusterRouter::GetTables(::fesql::vm::PhysicalOpNode* node,
                                  std::set<std::string>* tables) {
-    if (node == NULL) return;
+    if (node == NULL || tables == NULL) return;
     if (node->type_ == ::fesql::vm::kPhysicalOpDataProvider) {
         ::fesql::vm::PhysicalDataProviderNode* data_node =
             reinterpret_cast<::fesql::vm::PhysicalDataProviderNode*>(node);
@@ -566,6 +566,10 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         LOG(WARNING) << "input is invalid";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
+    if (!row->OK()) {
+        LOG(WARNING) << "make sure the request row is built before execute sql";
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
     std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
     std::unique_ptr<::rtidb::api::QueryResponse> response(
         new ::rtidb::api::QueryResponse());
@@ -582,9 +586,15 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         status->msg = "request server error";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
+    if (response->code() != ::rtidb::base::kOk) {
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
     std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs(
         new rtidb::sdk::ResultSetSQL(std::move(response), std::move(cntl)));
-    rs->Init();
+    ok = rs->Init();
+    if (!ok) {
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
     return rs;
 }
 
@@ -597,6 +607,7 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
     bool ok = GetTablet(db, sql, &tablets);
     if (!ok || tablets.size() <= 0) {
+        DLOG(INFO) << "no tablet avilable for sql " << sql;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     DLOG(INFO) << " send query to tablet " << tablets[0]->GetEndpoint();
@@ -610,6 +621,7 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     ok = rs->Init();
     if (!ok) {
         DLOG(INFO) << "fail to init result set for sql " << sql;
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     return rs;
 }

@@ -45,6 +45,9 @@ class SQLRequestRow {
     bool AppendString(const std::string& val);
     bool AppendNULL();
     bool Build();
+    inline bool OK() {
+        return is_ok_;
+    }
     inline const std::string& GetRow() { return val_; }
     inline const std::shared_ptr<fesql::sdk::Schema> GetSchema() {
         return schema_;
@@ -67,6 +70,7 @@ class SQLRequestRow {
     uint32_t str_length_expect_;
     uint32_t str_length_current_;
     bool has_error_;
+    bool is_ok_;
 };
 
 }  // namespace sdk

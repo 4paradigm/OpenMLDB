@@ -82,7 +82,14 @@ java_ut:
 fesql_auto_test:
   stage: test
   before_script:
+<<<<<<< HEAD
     - mkdir /rambuild
+=======
+      - mkdir /rambuild
+  except:
+      variables:
+          - $ENV_BUILD == "daily"
+>>>>>>> develop
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
@@ -120,10 +127,21 @@ auto_test:
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && HOME=/rambuild bash steps/auto_test.sh
   after_script:
+<<<<<<< HEAD
     - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
     - bash steps/upload-nexus.sh $CI_COMMIT_SHA
     - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
     - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+=======
+      - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
+      - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+      - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+      - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+  except:
+      variables:
+          - $ENV_BUILD == "daily"
+
+>>>>>>> develop
   artifacts:
     reports:
       junit:
@@ -173,6 +191,7 @@ py3_ut:
   dependencies:
     - build
   except:
+<<<<<<< HEAD
     variables:
       - $ENV_BUILD == "daily"
 
@@ -200,6 +219,31 @@ docker-image:
     - develop
     - feat/push-nexus-meta
     - release/*
+=======
+      variables:
+          - $ENV_BUILD == "daily"
+
+
+tablet_one_demension:
+    stage: ts_integration_test
+    before_script:
+        - mkdir /rambuild
+        - mount -t tmpfs -o size=3G tmpfs /rambuild
+    script:
+        - ln -sf /depends/thirdparty thirdparty
+        - ln -sf /depends/thirdsrc thirdsrc
+        - rm -rf ./test-output/integrationtest/test-reports/
+        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
+    artifacts:
+        reports:
+            junit:
+                - ./test-output/integrationtest/test-reports/*.xml
+    except:
+        variables:
+            - $ENV_BUILD == "daily"
+
+>>>>>>> develop
 
 tablet_one_demension:
   stage: ts_integration_test
@@ -325,6 +369,9 @@ deploy-package:
     - source /root/.bashrc && bash steps/deploy_package.sh
   only:
     - tags
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
   dependencies: []
 
 docker-image:
@@ -342,4 +389,7 @@ docker-image:
     - develop
     - release/*
     - feat/push-nexus-meta
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
   dependencies: []
