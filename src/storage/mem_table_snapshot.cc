@@ -71,8 +71,7 @@ bool MemTableSnapshot::Init() {
     return true;
 }
 
-bool MemTableSnapshot::Recover(std::shared_ptr<Table> table,
-                               uint64_t& latest_offset) {
+bool MemTableSnapshot::Recover(std::shared_ptr<Table> table, uint64_t& latest_offset) {
     ::rtidb::api::Manifest manifest;
     manifest.set_offset(0);
     int ret = GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
@@ -734,16 +733,18 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                 const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
                 uint8_t version = rtidb::codec::RowView::GetSchemaVersion(raw);
                 if (version == 1) {
-                    ret = rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(), raw, data.size(), true, 0, max_idx + 1, row);
+                    ret = rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(), raw,
+                                                            table_meta.column_desc().size(), true, 0, max_idx + 1, row);
                 } else {
                     RepeatedPtrField<rtidb::common::ColumnDesc> cols;
-                    int code = SchemaCodec::ConvertColumnDesc(table_meta.column_desc(), cols, table_meta.added_column_desc());
+                    int code = SchemaCodec::ConvertColumnDesc(table_meta.column_desc(), cols,
+                                                              table_meta.added_column_desc());
                     if (code != 0) {
                         LOG(WARNING) << "convert column desc fail " << code;
                         return false;
                     }
-                    LOG(INFO) << "-------------------";
-                    ret = ::rtidb::codec::RowCodec::DecodeRow(cols, data, table->GetVersion(), true, 0, max_idx + 1, row);
+                    ret = ::rtidb::codec::RowCodec::DecodeRow(cols, data, table->GetVersion(), true,
+                                                              0, max_idx + 1, row);
                 }
             }
             if (!ret) {
@@ -983,25 +984,25 @@ int MemTableSnapshot::ExtractIndexData(
                 } else {
                     const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
                     uint8_t version = rtidb::codec::RowView::GetSchemaVersion(raw);
-                    LOG(INFO) << "version is-------------- " << unsigned(version) << " size is " << data.size();
                     if (version == 1) {
-                        ret = rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(), raw, data.size(), true, 0, max_idx + 1, row);
+                        ret = rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(), raw,
+                                                                table_meta.column_desc().size(),
+                                                                true, 0, max_idx + 1, row);
                     } else {
                         RepeatedPtrField<rtidb::common::ColumnDesc> cols;
-                        int code = SchemaCodec::ConvertColumnDesc(table_meta.column_desc(), cols, table_meta.added_column_desc());
+                        int code = SchemaCodec::ConvertColumnDesc(table_meta.column_desc(), cols,
+                                                                  table_meta.added_column_desc());
                         if (code != 0) {
                             LOG(WARNING) << "convert column desc fail " << code;
                             return false;
                         }
-                        LOG(INFO) << "-------------------";
-                        ret = ::rtidb::codec::RowCodec::DecodeRow(cols, data, table->GetVersion(), true, 0, max_idx + 1, row);
+                        ret = ::rtidb::codec::RowCodec::DecodeRow(cols, data, table->GetVersion(), true, 0,
+                                                                  max_idx + 1, row);
                     }
                 }
                 if (!ret) {
-                    LOG(INFO) << "extract index data fail";
                     continue;
                 }
-                LOG(INFO) << "extract index data success";
                 std::string cur_key;
                 for (uint32_t i : index_cols) {
                     if (cur_key.empty()) {
@@ -1027,14 +1028,6 @@ int MemTableSnapshot::ExtractIndexData(
                     extract_count++;
                 }
             }
-            {
-                std::string ss(record.data(), record.size());
-                LogEntry e;
-                e.ParseFromString(ss);
-                const int8_t* raw = reinterpret_cast<const int8_t*>(e.value().data());
-                uint8_t version = rtidb::codec::RowView::GetSchemaVersion(raw);
-                LOG(INFO) << "version is*************- " << unsigned(version) << " size is " << e.value().size();
-            }
             ::rtidb::base::Status status = wh->Write(record);
             if (!status.ok()) {
                 PDLOG(WARNING, "fail to write snapshot. path[%s] status[%s]",
@@ -1043,11 +1036,8 @@ int MemTableSnapshot::ExtractIndexData(
                 break;
             }
             write_count++;
-            if ((write_count + expired_key_num + deleted_key_num) %
-                    KEY_NUM_DISPLAY ==
-                0) {
-                PDLOG(INFO, "has write key num[%lu] expired key num[%lu]",
-                      write_count, expired_key_num);
+            if ((write_count + expired_key_num + deleted_key_num) % KEY_NUM_DISPLAY == 0) {
+                PDLOG(INFO, "has write key num[%lu] expired key num[%lu]", write_count, expired_key_num);
             }
         } else if (status.IsEof()) {
             continue;
@@ -1163,8 +1153,8 @@ bool MemTableSnapshot::PackNewIndexEntry(
         const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
         uint8_t version = rtidb::codec::RowView::GetSchemaVersion(raw);
         if (version == 1) {
-            LOG(INFO) << "%^&*(^T";
-            ret = rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(), raw, data.size(), true, 0, table_meta.column_desc().size(), row);
+            ret = rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc(), raw, data.size(), true,
+                                                    0, table_meta.column_desc().size(), row);
         } else {
             RepeatedPtrField<rtidb::common::ColumnDesc> cols;
             int code = SchemaCodec::ConvertColumnDesc(table_meta.column_desc(), cols, table_meta.added_column_desc());
@@ -1172,12 +1162,11 @@ bool MemTableSnapshot::PackNewIndexEntry(
                 LOG(WARNING) << "convert column desc fail " << code;
                 return false;
             }
-            LOG(INFO) << "-------------------";
-            ret = ::rtidb::codec::RowCodec::DecodeRow(cols, data, table->GetVersion(), true, 0, max_idx + 1, row);
+            ret = ::rtidb::codec::RowCodec::DecodeRow(cols, data, table->GetVersion(), true, 0,
+                                                      max_idx + 1, row);
         }
     }
     if (!ret) {
-        LOG(INFO) << "decode error " ;
         return false;
     }
     std::string key;
@@ -1199,7 +1188,6 @@ bool MemTableSnapshot::PackNewIndexEntry(
         if (skip_calc) {
             continue;
         }
-        LOG(INFO) << "cur key is " << cur_key << "]";
         uint32_t pid = ::rtidb::base::hash64(cur_key) % partition_num;
         if (i < index_cols.size() - 1) {
             pid_set.insert(pid);
@@ -1438,17 +1426,8 @@ bool MemTableSnapshot::DumpBinlogIndexData(
             LOG(INFO) << "pack new index entry fail" << cur_offset;
             continue;
         }
-        LOG(INFO) << "pack new success";
         std::string entry_str;
         entry.SerializeToString(&entry_str);
-        {
-            LogEntry newe;
-            newe.ParseFromString(entry_str);
-            rtidb::base::Slice data(newe.value());
-            const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
-            uint8_t version = rtidb::codec::RowView::GetSchemaVersion(raw);
-            LOG(INFO) << "version is " << unsigned(version);
-        }
         ::rtidb::base::Slice new_record(entry_str);
         status = whs[index_pid]->Write(new_record);
         if (!status.ok()) {
