@@ -676,6 +676,25 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
         "insert into " + name + " values(?, ?, ?, ?, ?, ?, ?);";
     std::shared_ptr<SQLInsertRow> r1 =
         router->GetInsertRow(db, insert1, &status);
+
+    // test schema
+    std::shared_ptr<fesql::sdk::Schema> schema = r1->GetSchema();
+    ASSERT_EQ(schema->GetColumnCnt(), 7);
+    ASSERT_EQ(schema->GetColumnName(0), "col1");
+    ASSERT_EQ(schema->GetColumnType(0), fesql::sdk::kTypeString);
+    ASSERT_EQ(schema->GetColumnName(1), "col2");
+    ASSERT_EQ(schema->GetColumnType(1), fesql::sdk::kTypeInt64);
+    ASSERT_EQ(schema->GetColumnName(2), "col3");
+    ASSERT_EQ(schema->GetColumnType(2), fesql::sdk::kTypeDate);
+    ASSERT_EQ(schema->GetColumnName(3), "col4");
+    ASSERT_EQ(schema->GetColumnType(3), fesql::sdk::kTypeInt32);
+    ASSERT_EQ(schema->GetColumnName(4), "col5");
+    ASSERT_EQ(schema->GetColumnType(4), fesql::sdk::kTypeInt16);
+    ASSERT_EQ(schema->GetColumnName(5), "col6");
+    ASSERT_EQ(schema->GetColumnType(5), fesql::sdk::kTypeFloat);
+    ASSERT_EQ(schema->GetColumnName(6), "col7");
+    ASSERT_EQ(schema->GetColumnType(6), fesql::sdk::kTypeDouble);
+
     ASSERT_TRUE(r1->Init(5));
     ASSERT_TRUE(r1->AppendString("hello"));
     ASSERT_TRUE(r1->AppendInt64(1000));
