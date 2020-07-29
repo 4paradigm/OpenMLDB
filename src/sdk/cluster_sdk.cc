@@ -71,8 +71,8 @@ void ClusterSDK::CheckZk() {
 }
 
 bool ClusterSDK::Init() {
-    zk_client_ = new ::rtidb::zk::ZkClient(
-        options_.zk_cluster, options_.session_timeout, "", options_.zk_path);
+    zk_client_ = new ::rtidb::zk::ZkClient(options_.zk_cluster, "",
+            options_.session_timeout, "", options_.zk_path);
     bool ok = zk_client_->Init();
     if (!ok) {
         LOG(WARNING) << "fail to init zk client with zk cluster "
@@ -118,7 +118,7 @@ bool ClusterSDK::CreateNsClient() {
 
     DLOG(INFO) << "leader path " << real_path << " with value " << endpoint;
     std::shared_ptr<::rtidb::client::NsClient> ns_client(
-        new ::rtidb::client::NsClient(endpoint));
+        new ::rtidb::client::NsClient(endpoint, ""));
     int ret = ns_client->Init();
     if (ret != 0) {
         LOG(WARNING) << "fail to init ns client with endpoint " << endpoint;
@@ -199,7 +199,7 @@ bool ClusterSDK::InitTabletClient() {
         if (boost::starts_with(tablets[i], ::rtidb::base::BLOB_PREFIX))
             continue;
         std::shared_ptr<::rtidb::client::TabletClient> client(
-            new ::rtidb::client::TabletClient(tablets[i]));
+            new ::rtidb::client::TabletClient(tablets[i], ""));
         int ret = client->Init();
         if (ret != 0) {
             LOG(WARNING) << "fail to init tablet client " << tablets[i];

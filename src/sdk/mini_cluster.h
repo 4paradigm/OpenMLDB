@@ -76,7 +76,7 @@ class MiniCluster {
         LOG(INFO) << "zk cluster " << zk_cluster_ << " zk path " << zk_path_;
         ::rtidb::nameserver::NameServerImpl* nameserver =
             new ::rtidb::nameserver::NameServerImpl();
-        bool ok = nameserver->Init(zk_cluster_, zk_path_, ns_endpoint);
+        bool ok = nameserver->Init(zk_cluster_, zk_path_, ns_endpoint, "");
         if (!ok) {
             return false;
         }
@@ -89,13 +89,13 @@ class MiniCluster {
             return false;
         }
         sleep(2);
-        ns_client_ = new ::rtidb::client::NsClient(ns_endpoint);
+        ns_client_ = new ::rtidb::client::NsClient(ns_endpoint, "");
         if (ns_client_->Init() != 0) {
             return false;
         }
         std::string ts_endpoint = "127.0.0.1:" + GenRand();
         ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-        ok = tablet->Init(zk_cluster_, zk_path_, ts_endpoint);
+        ok = tablet->Init(zk_cluster_, zk_path_, ts_endpoint, "");
         if (!ok) {
             return false;
         }

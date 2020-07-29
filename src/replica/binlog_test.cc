@@ -53,7 +53,7 @@ TEST_F(BinlogTest, DeleteBinlog) {
     FLAGS_binlog_single_file_max_size = 1;
     FLAGS_binlog_delete_interval = 500;
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    tablet->Init();
+    tablet->Init("");
     int offset = FLAGS_make_snapshot_threshold_offset;
     FLAGS_make_snapshot_threshold_offset = 0;
     brpc::Server server;
@@ -71,7 +71,7 @@ TEST_F(BinlogTest, DeleteBinlog) {
     uint32_t tid = 2;
     uint32_t pid = 123;
 
-    ::rtidb::client::TabletClient client(leader_point);
+    ::rtidb::client::TabletClient client(leader_point, "");
     client.Init();
     std::vector<std::string> endpoints;
     bool ret =

@@ -1880,7 +1880,6 @@ void NameServerImpl::ShowTablet(RpcController* controller,
     response->set_msg("ok");
 }
 
-<<<<<<< HEAD
 void NameServerImpl::ShowBlob(RpcController* controller,
                                 const ShowTabletRequest* request,
                                 ShowTabletResponse* response, Closure* done) {

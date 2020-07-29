@@ -68,7 +68,7 @@ TEST_F(TabletImplTest, KeepAlive) {
     ok = zk_client.WatchNodes();
     ASSERT_TRUE(ok);
     TabletImpl tablet;
-    ok = tablet.Init();
+    ok = tablet.Init("");
     ASSERT_TRUE(ok);
     ok = tablet.RegisterZK();
     ASSERT_TRUE(ok);

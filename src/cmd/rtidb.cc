@@ -100,7 +100,6 @@ void SetupLog() {
     }
 }
 
-<<<<<<< HEAD
 void GetRealEndpoint(std::string *real_endpoint) {
     if (real_endpoint == nullptr) {
         return;
