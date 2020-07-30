@@ -318,7 +318,7 @@ void BaseClient::RefreshTable() {
         std::map<uint32_t, std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>> versions;
         handler->last_schema_version = 1;
         for (const auto ver : table_info->schema_versions()) {
-            int remain_size = ver.schema_count() - table_info->column_desc_size();
+            int remain_size = ver.field_count() - table_info->column_desc_size();
             if (remain_size < 0)  {
                 continue;
             }

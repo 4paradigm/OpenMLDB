@@ -169,12 +169,12 @@ public class TableHandler {
             }
         }
         for(Common.VersionPair ver : tableInfo.getSchemaVersionsList()) {
-            List<ColumnDesc> schema = this.schemaMap.get(ver.getSchemaCount());
+            List<ColumnDesc> schema = this.schemaMap.get(ver.getFieldCount());
             if (schema == null) {
                 continue;
             }
             versions.put(ver.getId(), schema);
-            schemaToVer.put(ver.getSchemaCount(), ver.getId());
+            schemaToVer.put(ver.getFieldCount(), ver.getId());
             if (ver.getId() > this.currentSchemaVersion) {
                 this.currentSchemaVersion = ver.getId();
             }
@@ -224,7 +224,7 @@ public class TableHandler {
         }
         this.schema = schema;
         for(Common.VersionPair ver : idxVersions) {
-            List<ColumnDesc> versionSchema = schema.subList(0, ver.getSchemaCount());
+            List<ColumnDesc> versionSchema = schema.subList(0, ver.getFieldCount());
             versions.put(ver.getId(), versionSchema);
             if (ver.getId() > this.currentSchemaVersion) {
                 this.currentSchemaVersion = ver.getId();

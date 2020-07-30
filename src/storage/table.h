@@ -147,7 +147,7 @@ class Table {
             new_col->CopyFrom(col);
         }
         for (const auto ver : table_meta_.schema_versions()) {
-            int remain_size = ver.schema_count() - table_meta_.column_desc_size();
+            int remain_size = ver.field_count() - table_meta_.column_desc_size();
             if (remain_size < 0)  {
                 LOG(INFO) << "do not need add ver " << ver.id() << " because remain size less than 0";
                 continue;
