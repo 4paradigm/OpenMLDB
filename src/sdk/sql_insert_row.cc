@@ -30,8 +30,10 @@ namespace sdk {
 
 SQLInsertRows::SQLInsertRows(
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-    DefaultValueMap default_map, uint32_t default_str_length)
+    std::shared_ptr<fesql::sdk::Schema> schema, DefaultValueMap default_map,
+    uint32_t default_str_length)
     : table_info_(table_info),
+      schema_(schema),
       default_map_(default_map),
       default_str_length_(default_str_length) {}
 
@@ -40,15 +42,17 @@ std::shared_ptr<SQLInsertRow> SQLInsertRows::NewRow() {
         return std::shared_ptr<SQLInsertRow>();
     }
     std::shared_ptr<SQLInsertRow> row = std::make_shared<SQLInsertRow>(
-        table_info_, default_map_, default_str_length_);
+        table_info_, schema_, default_map_, default_str_length_);
     rows_.push_back(row);
     return row;
 }
 
 SQLInsertRow::SQLInsertRow(
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-    DefaultValueMap default_map, uint32_t default_string_length)
+    std::shared_ptr<fesql::sdk::Schema> schema, DefaultValueMap default_map,
+    uint32_t default_string_length)
     : table_info_(table_info),
+      schema_(schema),
       default_map_(default_map),
       default_string_length_(default_string_length),
       rb_(table_info->column_desc_v1()),
