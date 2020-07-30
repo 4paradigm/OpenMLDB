@@ -86,10 +86,6 @@ class SQLInsertRow {
     const std::vector<std::pair<std::string, uint32_t>>& GetDimensions();
     inline const std::vector<uint64_t>& GetTs() { return ts_; }
     inline const std::string& GetRow() { return val_; }
-    inline const std::shared_ptr<::rtidb::nameserver::TableInfo>
-    GetTableInfo() {
-        return table_info_;
-    }
     inline const std::shared_ptr<fesql::sdk::Schema> GetSchema() {
         return schema_;
     }

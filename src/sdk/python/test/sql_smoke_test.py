@@ -23,7 +23,7 @@ def test_smoke():
     assert ok == True
     ok, error = sdk.executeDDL(db_name, ddl)
     assert ok == False
-    time.sleep(1)
+
     # insert table normal
     insert_normal = "insert into " + table_name + " values('hello', 123, 3.14, 1000);"
     ok, error = sdk.executeInsert(db_name, insert_normal)
