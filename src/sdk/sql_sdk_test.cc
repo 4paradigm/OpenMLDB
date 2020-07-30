@@ -37,12 +37,12 @@
 namespace rtidb {
 namespace sdk {
 
+MiniCluster* mc_ = nullptr;
+
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
     RtiDBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>
     RtiDBIndex;
-
-::rtidb::sdk::MiniCluster* mc_;
 
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -79,11 +79,8 @@ class SQLSDKTest : public rtidb::test::SQLCaseTest {
                                 std::shared_ptr<SQLRouter> router);
     static void RunBatchModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                 std::shared_ptr<SQLRouter> router);
-
- public:
-    static MiniCluster* mc_;
 };
-MiniCluster* SQLSDKTest::mc_ = nullptr;
+
 
 TEST_P(SQLSDKTest, sql_sdk_batch_test) {
     auto sql_case = GetParam();
