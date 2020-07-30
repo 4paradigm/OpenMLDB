@@ -70,6 +70,23 @@ public class SelectTest extends FesqlTest {
     }
 
     @DataProvider
+    public Object[] testUDFFunctionData() throws FileNotFoundException {
+        FesqlDataProvider dp = FesqlDataProvider
+                .dataProviderGenerator("/integration/v1/test_udf_function.yaml");
+        return dp.getCases().toArray();
+    }
+
+    @Test(enabled = false, dataProvider = "testUDFFunctionData")
+    public void testUDFFunction(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase).run();
+    }
+
+    @Test(enabled = false, dataProvider = "testUDFFunctionData")
+    public void testUDFFunctionRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, true).run();
+    }
+
+    @DataProvider
     public Object[] testSubSelectData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
                 .dataProviderGenerator("/integration/v1/test_sub_select.yaml");

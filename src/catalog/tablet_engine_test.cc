@@ -411,6 +411,9 @@ INSTANTIATE_TEST_SUITE_P(EngineTestSubSelect, TabletEngineTest,
 INSTANTIATE_TEST_SUITE_P(EngineTestUdafFunction, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases(
                              "/cases/integration/v1/test_udaf_function.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineTestUdfFunction, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/integration/v1/test_udf_function.yaml")));
 
 }  // namespace catalog
 }  // namespace rtidb

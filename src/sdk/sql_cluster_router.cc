@@ -82,8 +82,12 @@ SQLClusterRouter::SQLClusterRouter(ClusterSDK* sdk)
       rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::~SQLClusterRouter() {
-    delete cluster_sdk_;
-    delete engine_;
+    if (NULL != cluster_sdk_) {
+        delete cluster_sdk_;
+    }
+    if (NULL != engine_) {
+        delete engine_;
+    }
 }
 
 bool SQLClusterRouter::Init() {
@@ -100,11 +104,12 @@ bool SQLClusterRouter::Init() {
         }
     }
     ::fesql::vm::Engine::InitializeGlobalLLVM();
-    std::shared_ptr<::fesql::vm::Catalog> catalog = cluster_sdk_->GetCatalog();
     ::fesql::vm::EngineOptions eopt;
     eopt.set_compile_only(true);
     eopt.set_plan_only(true);
-    engine_ = new ::fesql::vm::Engine(catalog, eopt);
+    engine_ = new ::fesql::vm::Engine(
+        std::make_shared<::rtidb::catalog::SDKCatalog>(), eopt);
+    engine_->UpdateCatalog(cluster_sdk_->GetCatalog());
     return true;
 }
 
