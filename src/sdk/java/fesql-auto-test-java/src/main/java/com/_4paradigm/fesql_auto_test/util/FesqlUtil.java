@@ -400,7 +400,11 @@ public class FesqlUtil {
                 String createSql = inputs.get(i).getCreate();
                 createSql = SQLCase.formatSql(createSql, i, inputs.get(i).getName());
                 if (!createSql.isEmpty()) {
-                    FesqlUtil.ddl(executor, dbName, createSql);
+                    FesqlResult res = FesqlUtil.ddl(executor, dbName, createSql);
+                    if (!res.isOk()) {
+                        logger.error("fail to create table");
+                        return res;
+                    }
                 }
                 if (0 == i && requestMode) {
                     continue;
@@ -411,7 +415,7 @@ public class FesqlUtil {
                     if (!insertSql.isEmpty()) {
                         FesqlResult res = FesqlUtil.insert(executor, dbName, insertSql);
                         if (!res.isOk()) {
-                            logger.error("fail to insert table: {}", insertSql);
+                            logger.error("fail to insert table");
                             return res;
                         }
                     }
