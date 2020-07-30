@@ -831,7 +831,7 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<TabletInfo> GetTabletInfoWithoutLock(const std::string& endpoint);
 
-    std::shared_ptr<TabletInfo> GetHealthTabletInfo(const std::string& endpoint);
+    std::shared_ptr<TabletInfo> GetHealthTabletInfoNoLock(const std::string& endpoint);
 
     std::shared_ptr<OPData> FindRunningOP(uint64_t op_id);
 
@@ -904,7 +904,7 @@ class NameServerImpl : public NameServer {
         const std::vector<uint32_t>& table_tid_vec,
         std::vector<::rtidb::nameserver::TableInfo>* local_table_info_vec);
 
-    bool AddFieldToTablet(const std::vector<rtidb::common::ColumnDesc> cols,
+    bool AddFieldToTablet(const std::vector<rtidb::common::ColumnDesc>& cols,
                           std::shared_ptr<TableInfo> table_info,
                           rtidb::common::VersionPair* new_pair);
 

@@ -4019,7 +4019,7 @@ void NameServerImpl::DropTableInternel(
     }
 }
 
-bool NameServerImpl::AddFieldToTablet(const std::vector<rtidb::common::ColumnDesc> cols,
+bool NameServerImpl::AddFieldToTablet(const std::vector<rtidb::common::ColumnDesc>& cols,
                                       std::shared_ptr<TableInfo> table_info,
                                       rtidb::common::VersionPair* new_pair) {
     std::set<std::string> endpoint_set;
@@ -9980,7 +9980,7 @@ std::shared_ptr<TabletInfo> NameServerImpl::GetTabletInfoWithoutLock(const std::
     return tablet;
 }
 
-std::shared_ptr<TabletInfo> NameServerImpl::GetHealthTabletInfo(const std::string& endpoint) {
+std::shared_ptr<TabletInfo> NameServerImpl::GetHealthTabletInfoNoLock(const std::string& endpoint) {
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end() || !it->second->Health()) {
         return std::shared_ptr<TabletInfo>();
@@ -11325,10 +11325,9 @@ int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
             if (!meta.is_alive()) {
                 continue;
             }
-            const std::string ep = meta.endpoint();
+            const std::string& ep = meta.endpoint();
             if (meta.is_leader()) {
                 if (part.pid() == pid) {
-                    leader_endpoint = meta.endpoint();
                     leader_endpoint = ep;
                 } else {
                     pid_endpoint_map.insert(std::make_pair(part.pid(), ep));
@@ -11336,7 +11335,6 @@ int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
             }
             if (part.pid() == pid) {
                 if (!meta.is_leader() && follower_endpoint.empty()) {
-                    follower_endpoint = meta.endpoint();
                     follower_endpoint = ep;
                 }
                 endpoints.push_back(ep);
@@ -11530,7 +11528,7 @@ std::shared_ptr<Task> NameServerImpl::CreateSendIndexDataTask(
     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
     const std::string& endpoint,
     const std::map<uint32_t, std::string>& pid_endpoint_map) {
-    std::shared_ptr<TabletInfo> tablet = GetHealthTabletInfo(endpoint);
+    std::shared_ptr<TabletInfo> tablet = GetHealthTabletInfoNoLock(endpoint);
     if (!tablet) {
         return std::shared_ptr<Task>();
     }
@@ -11551,7 +11549,7 @@ std::shared_ptr<Task> NameServerImpl::CreateSendIndexDataTask(
 std::shared_ptr<Task> NameServerImpl::CreateLoadIndexDataTask(
     uint64_t op_index, ::rtidb::api::OPType op_type, uint32_t tid, uint32_t pid,
     const std::string& endpoint, uint32_t partition_num) {
-    std::shared_ptr<TabletInfo> tablet = GetHealthTabletInfo(endpoint);
+    std::shared_ptr<TabletInfo> tablet = GetHealthTabletInfoNoLock(endpoint);
     if (!tablet) {
         return std::shared_ptr<Task>();
     }
@@ -11576,7 +11574,7 @@ std::shared_ptr<Task> NameServerImpl::CreateExtractIndexDataTask(
     std::shared_ptr<Task> task =
         std::make_shared<Task>("", std::make_shared<::rtidb::api::TaskInfo>());
     for (const auto& endpoint : endpoints) {
-        std::shared_ptr<TabletInfo> tablet = GetHealthTabletInfo(endpoint);
+        std::shared_ptr<TabletInfo> tablet = GetHealthTabletInfoNoLock(endpoint);
         if (!tablet) {
             return std::shared_ptr<Task>();
         }
@@ -11621,7 +11619,7 @@ std::shared_ptr<Task> NameServerImpl::CreateAddIndexToTabletTask(
     std::shared_ptr<Task> task =
         std::make_shared<Task>("", std::make_shared<::rtidb::api::TaskInfo>());
     for (const auto& endpoint : endpoints) {
-        std::shared_ptr<TabletInfo> tablet = GetHealthTabletInfo(endpoint);
+        std::shared_ptr<TabletInfo> tablet = GetHealthTabletInfoNoLock(endpoint);
         if (!tablet) {
             return std::shared_ptr<Task>();
         }
