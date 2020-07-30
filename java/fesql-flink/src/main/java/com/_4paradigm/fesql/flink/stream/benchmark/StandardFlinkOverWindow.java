@@ -21,7 +21,7 @@ import static org.apache.flink.table.api.Expressions.$;
 
 public class StandardFlinkOverWindow {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 
 		final MultipleParameterTool params = MultipleParameterTool.fromArgs(args);
 
@@ -31,12 +31,18 @@ public class StandardFlinkOverWindow {
 
 		bsEnv.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
+		// Check params
+		if (!params.has("input") || !params.has("output")) {
+			System.err.println("Usage: --input <path> --output <path>");
+			return;
+		}
+
 		// Input source
-		String csvFilePath = "file:///taxi_tour_all_csv_orderbytimestamp_sample/";
+		String csvFilePath = null;
 		if (params.has("input")) {
 			csvFilePath = params.getRequired("input");
 		} else {
-			//throw new Exception("Need to set input csv path");
+			throw new Exception("Need to set input csv path");
 		}
 
 		CsvTableSource csvSrc = CsvTableSource.builder()
@@ -56,7 +62,7 @@ public class StandardFlinkOverWindow {
 		sEnv.registerTableSource("t1", csvSrc);
 
 		// Output sink
-		String csvOutputFile = "file:///tmp/flink_over_window_output";
+		String csvOutputFile = null;
 		if (params.has("output")) {
 			csvOutputFile = params.getRequired("output");
 		}
