@@ -41,6 +41,15 @@ public class FesqlBatchTableEnvironment {
         return this.registeredTableSchemaMap;
     }
 
+    public void registerTable(String name, Table table) {
+        this.batchTableEnvironment.registerTable(name, table);
+        if (this.registeredTableSchemaMap.containsKey(name)) {
+            logger.warn(String.format("The table %s has been registered, ignore registeration", name));
+        } else {
+            this.registeredTableSchemaMap.put(name, table.getSchema());
+        }
+    }
+
     public void registerTableSource(String name, TableSource<?> tableSource) {
         this.batchTableEnvironment.registerTableSource(name, tableSource);
 
