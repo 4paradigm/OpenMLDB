@@ -36,7 +36,12 @@ namespace vm {
 
 static bool LLVM_IS_INITIALIZED = false;
 Engine::Engine(const std::shared_ptr<Catalog>& catalog)
-    : cl_(catalog), options_(), mu_(), batch_cache_(), request_cache_() {}
+    : cl_(catalog),
+      options_(),
+      mu_(),
+      batch_cache_(),
+      request_cache_() {
+}
 
 Engine::Engine(const std::shared_ptr<Catalog>& catalog,
                const EngineOptions& options)
@@ -44,7 +49,8 @@ Engine::Engine(const std::shared_ptr<Catalog>& catalog,
       options_(options),
       mu_(),
       batch_cache_(),
-      request_cache_() {}
+      request_cache_() {
+}
 
 Engine::~Engine() {}
 
@@ -62,7 +68,6 @@ bool Engine::Get(const std::string& sql, const std::string& db,
             GetCacheLocked(db, sql, session.IsBatchRun());
         if (info) {
             session.SetCompileInfo(info);
-            session.SetCatalog(cl_);
             return true;
         }
     }
@@ -71,8 +76,9 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
     info->get_sql_context().is_batch_mode = session.IsBatchRun();
-    SQLCompiler compiler(cl_, options_.is_keep_ir(), false,
-                         options_.is_plan_only());
+    SQLCompiler compiler(
+        std::atomic_load_explicit(&cl_, std::memory_order_acquire),
+        options_.is_keep_ir(), false, options_.is_plan_only());
     bool ok = compiler.Compile(info->get_sql_context(), status);
     if (!ok || 0 != status.code) {
         // TODO(chenjing): do clean
@@ -86,7 +92,6 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         }
     }
     {
-        session.SetCatalog(cl_);
         // check
         std::lock_guard<base::SpinMutex> lock(mu_);
         if (session.IsBatchRun()) {
@@ -129,7 +134,8 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     ctx.is_batch_mode = is_batch;
     ctx.sql = sql;
     ctx.db = db;
-    SQLCompiler compiler(cl_, true, true);
+    SQLCompiler compiler(
+        std::atomic_load_explicit(&cl_, std::memory_order_acquire), true, true);
     bool ok = compiler.Compile(ctx, *status);
     if (!ok || 0 != status->code) {
         LOG(WARNING) << "fail to compile sql " << sql << " in db " << db
@@ -179,7 +185,7 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
     }
 }
 
-RunSession::RunSession() : is_debug_(false) {}
+RunSession::RunSession() : mu_(), is_debug_(false) {}
 RunSession::~RunSession() {}
 
 bool RunSession::SetCompileInfo(
