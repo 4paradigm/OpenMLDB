@@ -267,7 +267,7 @@ bool NsClient::HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
         case fesql::node::kCmdDropTable: {
             std::string name = cmd_node->GetArgs()[0];
             std::string error;
-            bool ok = DropTable(name, error);
+            bool ok = DropTable(db, name, error);
             if (ok) {
                 return true;
             } else {
@@ -280,7 +280,7 @@ bool NsClient::HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
             std::string table_name = cmd_node->GetArgs()[1];
             std::string error;
 
-            bool ok = DeleteIndex(table_name, index_name, error);
+            bool ok = DeleteIndex(db, table_name, index_name, error);
             if (ok) {
                 return true;
             } else {
@@ -361,9 +361,14 @@ bool NsClient::CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
 }
 
 bool NsClient::DropTable(const std::string& name, std::string& msg) {
+    return DropTable(GetDb(), name, msg);
+}
+
+bool NsClient::DropTable(const std::string& db, const std::string& name,
+                         std::string& msg) {
     ::rtidb::nameserver::DropTableRequest request;
     request.set_name(name);
-    request.set_db(GetDb());
+    request.set_db(db);
     ::rtidb::nameserver::GeneralResponse response;
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropTable,
@@ -1018,19 +1023,24 @@ bool NsClient::AddIndex(const std::string& table_name,
     return false;
 }
 
-bool NsClient::DeleteIndex(const std::string& table_name,
+bool NsClient::DeleteIndex(const std::string& db, const std::string& table_name,
                            const std::string& idx_name, std::string& msg) {
     ::rtidb::nameserver::DeleteIndexRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_table_name(table_name);
     request.set_idx_name(idx_name);
-    request.set_db_name(GetDb());
+    request.set_db_name(db);
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DeleteIndex,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     int code = response.code();
     return ok && code == 0;
+}
+
+bool NsClient::DeleteIndex(const std::string& table_name,
+                           const std::string& idx_name, std::string& msg) {
+    return DeleteIndex(GetDb(), table_name, idx_name, msg);
 }
 
 bool NsClient::TransformToTableDef(
