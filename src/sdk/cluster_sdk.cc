@@ -115,10 +115,21 @@ bool ClusterSDK::CreateNsClient() {
         LOG(WARNING) << "fail to get zk value with path " << real_path;
         return false;
     }
-
     DLOG(INFO) << "leader path " << real_path << " with value " << endpoint;
+
+    std::string real_endpoint;
+    std::string sdk_path = options_.zk_path + "/map/sdkendpoints/" + endpoint;
+    if (!zk_client_->GetNodeValue(sdk_path, real_endpoint)) {
+        DLOG(INFO) << "get zk failed! : sdk_path: " << sdk_path;
+    }
+    if (real_endpoint.empty()) {
+        std::string sname_path = options_.zk_path + "/map/names/" + endpoint;
+        if (!zk_client_->GetNodeValue(sname_path, real_endpoint)) {
+            DLOG(INFO) << "get zk failed! : sname_path: " << sname_path;
+        }
+    }
     std::shared_ptr<::rtidb::client::NsClient> ns_client(
-        new ::rtidb::client::NsClient(endpoint, ""));
+        new ::rtidb::client::NsClient(endpoint, real_endpoint));
     int ret = ns_client->Init();
     if (ret != 0) {
         LOG(WARNING) << "fail to init ns client with endpoint " << endpoint;
@@ -198,8 +209,22 @@ bool ClusterSDK::InitTabletClient() {
     for (uint32_t i = 0; i < tablets.size(); i++) {
         if (boost::starts_with(tablets[i], ::rtidb::base::BLOB_PREFIX))
             continue;
+
+        std::string real_endpoint;
+        std::string sdk_path =
+            options_.zk_path + "/map/sdkendpoints/" + tablets[i];
+        if (!zk_client_->GetNodeValue(sdk_path, real_endpoint)) {
+            DLOG(INFO) << "get zk failed! : sdk_path: " << sdk_path;
+        }
+        if (real_endpoint.empty()) {
+            std::string sname_path =
+                options_.zk_path + "/map/names/" + tablets[i];
+            if (!zk_client_->GetNodeValue(sname_path, real_endpoint)) {
+                DLOG(INFO) << "get zk failed! : sname_path: " << sname_path;
+            }
+        }
         std::shared_ptr<::rtidb::client::TabletClient> client(
-            new ::rtidb::client::TabletClient(tablets[i], ""));
+            new ::rtidb::client::TabletClient(tablets[i], real_endpoint));
         int ret = client->Init();
         if (ret != 0) {
             LOG(WARNING) << "fail to init tablet client " << tablets[i];
