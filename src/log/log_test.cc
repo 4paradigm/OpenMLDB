@@ -35,7 +35,7 @@ class LogWRTest : public ::testing::Test {
 };
 
 inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);
+    return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }  // NOLINT
 
 uint32_t type_crc_[kMaxRecordType + 1];
@@ -49,7 +49,7 @@ void InitTypeCrc(uint32_t* type_crc) {
 }
 
 void GenPhysicalRecord(RecordType t, const char* ptr, size_t n,
-                       int& block_offset_,
+                       int& block_offset_,                   // NOLINT
                        std::vector<std::string>& rec_vec) {  // NOLINT
     assert(n <= 0xffff);  // Must fit in two bytes
     assert(block_offset_ + kHeaderSize + n <= kBlockSize);
