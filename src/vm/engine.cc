@@ -36,12 +36,7 @@ namespace vm {
 
 static bool LLVM_IS_INITIALIZED = false;
 Engine::Engine(const std::shared_ptr<Catalog>& catalog)
-    : cl_(catalog),
-      options_(),
-      mu_(),
-      batch_cache_(),
-      request_cache_() {
-}
+    : cl_(catalog), options_(), mu_(), batch_cache_(), request_cache_() {}
 
 Engine::Engine(const std::shared_ptr<Catalog>& catalog,
                const EngineOptions& options)
@@ -49,8 +44,7 @@ Engine::Engine(const std::shared_ptr<Catalog>& catalog,
       options_(options),
       mu_(),
       batch_cache_(),
-      request_cache_() {
-}
+      request_cache_() {}
 
 Engine::~Engine() {}
 
@@ -185,7 +179,7 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
     }
 }
 
-RunSession::RunSession() : mu_(), is_debug_(false) {}
+RunSession::RunSession() : is_debug_(false) {}
 RunSession::~RunSession() {}
 
 bool RunSession::SetCompileInfo(
