@@ -358,6 +358,7 @@ bool TabletImpl::CheckGetDone(::rtidb::api::GetType type, uint64_t ts,
 
 int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
                              const ::rtidb::api::TableMeta& meta,
+                             const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
                              CombineIterator* it, std::string* value,
                              uint64_t* ts) {
     if (it == nullptr || value == nullptr || ts == nullptr) {
@@ -389,11 +390,7 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
         LOG(WARNING) << "convert column desc failed";
         return -1;
     }
-    std::map<uint32_t, uint32_t> version_idx;
-    for (const auto& pair : meta.schema_versions()) {
-        version_idx.insert(std::make_pair(pair.id(), pair.field_count()));
-    }
-    rtidb::codec::RowProject row_project(meta.column_desc(), request->projection());
+    rtidb::codec::RowProject row_project(columns, request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
             return -1;
@@ -417,7 +414,6 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
             return 1;
         }
         bool jump_out = false;
-        bool skip_copy = false;
         if (st_type == ::rtidb::api::GetType::kSubKeyGe ||
             st_type == ::rtidb::api::GetType::kSubKeyGt) {
             ::rtidb::base::Slice it_value = it->GetValue();
@@ -427,12 +423,12 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
                 const int8_t* row_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
                 uint8_t version = rtidb::codec::RowView::GetSchemaVersion(row_ptr);
                 if (version != 1) {
-                    auto version_it = version_idx.find(version);
-                    if (version_it == version_idx.end()) {
-                        LOG(WARNING) << "not found version " << version << " in version map";
+                    auto version_it = vers_schema.find(version);
+                    if (version_it == vers_schema.end()) {
+                        LOG(WARNING) << "not found version " << unsigned(version) << " in version map";
                         return -1;
                     }
-                    if (row_project.GetMaxIdx() >= version_it->second) {
+                    if (row_project.GetMaxIdx() >= version_it->second->size()) {
                         LOG(WARNING) << "projection idx is valid " << row_project.GetMaxIdx();
                         return -1;
                     }
@@ -446,9 +442,8 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
                 delete[] ptr;
             } else {
                 value->assign(it_value.data(), it_value.size());
-                return 0;
             }
-            skip_copy = true;
+            return 0;
         }
         switch (real_et_type) {
             case ::rtidb::api::GetType::kSubKeyEq:
@@ -477,7 +472,7 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
         if (jump_out) {
             return 1;
         }
-        if (enable_project && !skip_copy) {
+        if (enable_project) {
             int8_t* ptr = nullptr;
             uint32_t size = 0;
             bool ok = row_project.Project(
@@ -572,14 +567,13 @@ void TabletImpl::Get(RpcController* controller,
             expire_cnt = ttl.lat_ttl;
         }
     }
-    const ::rtidb::api::TableMeta& table_meta =
-        query_its.begin()->table->GetTableMeta();
-    CombineIterator combine_it(std::move(query_its), request->ts(),
-                               request->type(), expire_time, expire_cnt);
+    const ::rtidb::api::TableMeta& table_meta = query_its.begin()->table->GetTableMeta();
+    const std::map<int32_t, std::shared_ptr<Schema>> vers_schema = query_its.begin()->table->GetAllVersionSchema();
+    CombineIterator combine_it(std::move(query_its), request->ts(), request->type(), expire_time, expire_cnt);
     combine_it.SeekToFirst();
     std::string* value = response->mutable_value();
     uint64_t ts = 0;
-    int32_t code = GetIndex(request, table_meta, &combine_it, value, &ts);
+    int32_t code = GetIndex(request, table_meta, vers_schema, &combine_it, value, &ts);
     response->set_ts(ts);
     response->set_code(code);
     uint64_t end_time = ::baidu::common::timer::get_micros();
@@ -998,6 +992,7 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
 
 int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
                               const ::rtidb::api::TableMeta& meta,
+                              const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
                               CombineIterator* combine_it, std::string* pairs,
                               uint32_t* count) {
     uint32_t limit = request->limit();
@@ -1029,14 +1024,13 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
 
     bool enable_project = false;
     // TODO(wangtaize) support extend columns
-    ::rtidb::codec::RowProject row_project(meta.column_desc(),
-                                           request->projection());
     RepeatedPtrField<rtidb::common::ColumnDesc> columns;
     int code = SchemaCodec::ConvertColumnDesc(meta.column_desc(), columns, meta.added_column_desc());
     if (code != 0) {
         LOG(WARNING) << "convert column desc failed";
         return -1;
     }
+    ::rtidb::codec::RowProject row_project(columns, request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
             LOG(WARNING) << "project on compress row data do not eing supported";
@@ -1051,10 +1045,6 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
     }
     bool remove_duplicated_record = request->has_enable_remove_duplicated_record() &&
                                     request->enable_remove_duplicated_record();
-    std::map<uint32_t, uint32_t> version_idx;
-    for (const auto& pair : meta.schema_versions()) {
-        version_idx.insert(std::make_pair(pair.id(), pair.field_count()));
-    }
     uint64_t last_time = 0;
     boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>> tmp;
     uint32_t total_block_size = 0;
@@ -1101,12 +1091,13 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
             const int8_t* row_ptr = reinterpret_cast<const int8_t*>(combine_it->GetValue().data());
             uint8_t version = rtidb::codec::RowView::GetSchemaVersion(row_ptr);
             if (version != 1) {
-                auto version_it = version_idx.find(version);
-                if (version_it == version_idx.end()) {
-                    LOG(WARNING) << "no found version " << version << " in version map";
+
+                auto version_it = vers_schema.find(version);
+                if (version_it == vers_schema.end()) {
+                    LOG(WARNING) << "no found version " << unsigned(version) << " in version map";
                     return -1;
                 }
-                if (row_project.GetMaxIdx() >= version_it->second) {
+                if (row_project.GetMaxIdx() >= version_it->second->size()) {
                     LOG(WARNING) << "projection idx is valid " << row_project.GetMaxIdx();
                     return -1;
                 }
@@ -1340,15 +1331,14 @@ void TabletImpl::Scan(RpcController* controller,
             expire_cnt = ttl.lat_ttl;
         }
     }
-    const ::rtidb::api::TableMeta& table_meta =
-        query_its.begin()->table->GetTableMeta();
-    CombineIterator combine_it(std::move(query_its), request->st(),
-                               request->st_type(), expire_time, expire_cnt);
+    const ::rtidb::api::TableMeta& table_meta = query_its.begin()->table->GetTableMeta();
+    const std::map<int32_t, std::shared_ptr<Schema>> vers_schema = query_its.begin()->table->GetAllVersionSchema();
+    CombineIterator combine_it(std::move(query_its), request->st(), request->st_type(), expire_time, expire_cnt);
 
     std::string* pairs = response->mutable_pairs();
     uint32_t count = 0;
     int32_t code = 0;
-    code = ScanIndex(request, table_meta, &combine_it, pairs, &count);
+    code = ScanIndex(request, table_meta, vers_schema, &combine_it, pairs, &count);
     response->set_code(code);
     response->set_count(count);
     uint64_t end_time = ::baidu::common::timer::get_micros();
@@ -2291,23 +2281,6 @@ void TabletImpl::GetTableSchema(
     response->mutable_table_meta()->CopyFrom(table->GetTableMeta());
 }
 
-bool TabletImpl::CheckFieldExist(const std::string& name, std::shared_ptr<Table> table) {
-    const auto& meta = table->GetTableMeta();
-    for (const auto& column : meta.column_desc()) {
-        if (column.name() == name) {
-            LOG(WARNING) << "field name[" << name << "] repeated in tablet!";
-            return true;
-        }
-    }
-    for (const auto& col : meta.added_column_desc()) {
-        if (col.name() == name) {
-            LOG(WARNING) << "field name[" << name << "] repeated in tablet!";
-            return true;
-        }
-    }
-    return false;
-}
-
 void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
     const ::rtidb::api::UpdateTableMetaForAddFieldRequest* request,
     ::rtidb::api::GeneralResponse* response, Closure* done) {
@@ -2334,7 +2307,7 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         table_meta.CopyFrom(table->GetTableMeta());
         if (request->has_column_desc()) {
             const auto& col = request->column_desc();
-            if (CheckFieldExist(col.name(), table)) {
+            if (table->CheckFieldExist(col.name())) {
                 continue;
             }
             rtidb::common::ColumnDesc* column_desc = table_meta.add_added_column_desc();
@@ -2343,7 +2316,7 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
             bool do_continue = false;
             const auto& cols = request->column_descs();
             for (const auto& col : cols) {
-                if (CheckFieldExist(col.name(), table)) {
+                if (table->CheckFieldExist(col.name())) {
                     do_continue = true;
                     break;
                 }
@@ -5471,7 +5444,6 @@ void TabletImpl::LoadIndexDataInternal(
         SetTaskStatus(task, ::rtidb::api::TaskStatus::kFailed);
         return;
     }
-    LOG(INFO) << "open " << index_file_path;
     ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(index_file_path, fd);
     ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
     std::string buffer;

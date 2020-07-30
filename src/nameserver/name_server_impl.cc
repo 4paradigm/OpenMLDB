@@ -4023,22 +4023,22 @@ bool NameServerImpl::AddFieldToTablet(const std::vector<rtidb::common::ColumnDes
                                       std::shared_ptr<TableInfo> table_info,
                                       rtidb::common::VersionPair* new_pair) {
     std::set<std::string> endpoint_set;
+    std::map<std::string, std::shared_ptr<TabletClient>> tablet_client_map;
     for (const auto& part : table_info->table_partition()) {
         for (const auto& meta : part.partition_meta()) {
-            endpoint_set.insert(meta.endpoint());
+            if (tablet_client_map.find(meta.endpoint()) != tablet_client_map.end()) {
+                continue;
+            }
+            std::shared_ptr<TabletInfo> tablet = GetTabletInfo(meta.endpoint());
+            if (!tablet) {
+                continue;
+            }
+            if (!tablet->Health()) {
+                LOG(WARNING) << "endpoint[" << meta.endpoint() << "] is offline";
+                return false;
+            }
+            tablet_client_map.insert(std::make_pair(meta.endpoint(), tablet->client_));
         }
-    }
-    std::map<std::string, std::shared_ptr<TabletClient>> tablet_client_map;
-    for (const auto& endpoint : endpoint_set) {
-        std::shared_ptr<TabletInfo> tablet = GetTabletInfo(endpoint);
-        if (!tablet) {
-            continue;
-        }
-        if (!tablet->Health()) {
-            LOG(WARNING) << "endpoint[" << endpoint << "] is offline";
-            return false;
-        }
-        tablet_client_map.insert(std::make_pair(endpoint, tablet->client_));
     }
     const std::string& name = table_info->name();
     // update tableMeta.schema
@@ -4070,7 +4070,9 @@ bool NameServerImpl::AddFieldToTablet(const std::vector<rtidb::common::ColumnDes
         return false;
     }
     int32_t version_id = 1;
-    for (const auto& pair : table_info->schema_versions()) {
+    if (table_info->schema_versions_size() > 0) {
+        int32_t versions_size = table_info->schema_versions_size();
+        const auto& pair = table_info->schema_versions(versions_size - 1);
         version_id = pair.id();
     }
     version_id++;
@@ -11137,7 +11139,7 @@ void NameServerImpl::AddIndex(RpcController* controller,
         LOG(WARNING) << "column key " << index_name << " should contain ts_col, table " << name;
         return;
     }
-    std::set<std::string> request_cols;
+    std::map<std::string, rtidb::common::ColumnDesc> request_cols;
     for (const auto& col : request->cols()) {
         if (col.type() == "float" || col.type() == "double") {
             response->set_code(ReturnCode::kWrongColumnKey);
@@ -11146,9 +11148,10 @@ void NameServerImpl::AddIndex(RpcController* controller,
                          << " it is not allow be index col";
             return;
         }
-        request_cols.insert(col.name());
+        request_cols.insert(std::make_pair(col.name(), col));
     }
     std::set<std::string> need_create_cols;
+    std::vector<rtidb::common::ColumnDesc> add_cols;
     for (const auto& col_name : request->column_key().col_name()) {
         auto it = col_map.find(col_name);
         if (it == col_map.end()) {
@@ -11159,7 +11162,10 @@ void NameServerImpl::AddIndex(RpcController* controller,
                 LOG(WARNING) << "miss column desc in the request";
                 return;
             } else {
-                need_create_cols.insert(col_name);
+                if (need_create_cols.find(col_name) == need_create_cols.end()) {
+                    need_create_cols.insert(col_name);
+                    add_cols.push_back(it->second);
+                }
             }
         } else if (it->second.type() == "float" || it->second.type() == "double") {
             response->set_code(ReturnCode::kWrongColumnKey);
@@ -11167,32 +11173,6 @@ void NameServerImpl::AddIndex(RpcController* controller,
             LOG(WARNING) << "column_desc " << col_name
                          << " has wrong type or not exist, table " << name;
             return;
-        }
-    }
-    std::vector<::rtidb::codec::ColumnDesc> columns;
-    if (table_info->added_column_desc_size() > 0) {
-        if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(
-            *table_info, columns, table_info->added_column_desc_size()) <
-            0) {
-            LOG(WARNING) << "convert table " << name << "column desc failed";
-            return;
-        }
-    } else {
-        if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
-            LOG(WARNING) << "convert table " << name << "column desc failed";
-            return;
-        }
-    }
-    std::vector<rtidb::common::ColumnDesc> add_cols;
-    for (const auto& col : request->cols()) {
-        if (need_create_cols.find(col.name()) != need_create_cols.end()) {
-            add_cols.push_back(col);
-            rtidb::codec::ColumnDesc new_col;
-            new_col.name = col.name();
-            new_col.type = rtidb::codec::SchemaCodec::ConvertType(col.type());
-            new_col.add_ts_idx = false;
-            new_col.is_ts_col = false;
-            columns.push_back(new_col);
         }
     }
     if (!add_cols.empty()) {
@@ -11204,12 +11184,28 @@ void NameServerImpl::AddIndex(RpcController* controller,
             LOG(WARNING) << "update tablemeta fail";
             return;
         }
+        std::shared_ptr<TableInfo> table_info_zk(table_info->New());
+        table_info_zk->CopyFrom(*table_info);
+        for (const auto& col : add_cols) {
+            rtidb::common::ColumnDesc* new_col = table_info_zk->add_added_column_desc();
+            new_col->CopyFrom(col);
+        }
+        rtidb::common::VersionPair* add_pair = table_info_zk->add_schema_versions();
+        add_pair->CopyFrom(new_pair);
+        if (!UpdateZkTableNodeWithoutNotify(table_info_zk.get())) {
+            response->set_code(ReturnCode::kSetZkFailed);
+            response->set_msg("set zk failed!");
+            LOG(WARNING) << "set zk failed! table " << name << " db " << db;
+            return;
+        }
+        std::lock_guard<std::mutex> lock(mu_);
         for (const auto& col : add_cols) {
             rtidb::common::ColumnDesc* new_col = table_info->add_added_column_desc();
             new_col->CopyFrom(col);
         }
         rtidb::common::VersionPair* pair = table_info->add_schema_versions();
         pair->CopyFrom(new_pair);
+        NotifyTableChanged();
     }
     for (uint32_t pid = 0; pid < (uint32_t)table_info->table_partition_size(); pid++) {
         if (CreateAddIndexOP(name, db, pid, request->column_key(), add_cols, index_pos) < 0) {

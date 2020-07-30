@@ -561,8 +561,7 @@ UpdateResult RtidbClient::Update(
                                                new_value_schema);
     std::string data;
     ::rtidb::base::ResultMsg rm =
-        ::rtidb::codec::RowCodec::EncodeRow(value_map,
-                                            new_value_schema, data);
+        ::rtidb::codec::RowCodec::EncodeRow(value_map, new_value_schema, th->last_schema_version, data);
     if (rm.code < 0) {
         result.SetError(rm.code, "encode error, msg: " + rm.msg);
         return result;

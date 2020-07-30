@@ -593,7 +593,7 @@ void PutRelational(
     }
     std::string value;
     ::rtidb::base::ResultMsg rm =
-        ::rtidb::codec::RowCodec::EncodeRow(map, schema, value);
+        ::rtidb::codec::RowCodec::EncodeRow(map, schema, 1,value);
     if (rm.code < 0) {
         printf("encode error, msg: %s\n", rm.msg.c_str());
         return;
@@ -1559,8 +1559,8 @@ void HandleNSUpdate(const std::vector<std::string>& parts,
     ::rtidb::codec::SchemaCodec::GetSchemaData(
         value_columns_map, tables[0].column_desc_v1(), new_value_schema);
     std::string value;
-    ::rtidb::base::ResultMsg value_rm = ::rtidb::codec::RowCodec::EncodeRow(
-        value_columns_map, new_value_schema, value);
+    ::rtidb::base::ResultMsg value_rm = ::rtidb::codec::RowCodec::EncodeRow(value_columns_map,
+                                                                            new_value_schema, 1, value);
     if (value_rm.code < 0) {
         printf("encode error, msg: %s\n", value_rm.msg.c_str());
         return;

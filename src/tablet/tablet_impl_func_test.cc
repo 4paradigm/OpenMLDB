@@ -37,6 +37,7 @@ DECLARE_int32(binlog_delete_interval);
 
 namespace rtidb {
 namespace tablet {
+using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 
 using ::rtidb::api::TableStatus;
 
@@ -128,6 +129,7 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
     uint64_t ts;
     int32_t code = 0;
     ::rtidb::api::TableMeta meta;
+    std::map<int32_t, std::shared_ptr<Schema>> vers_schema = q_its->begin()->table->GetAllVersionSchema();
     // get the st kSubKeyGt
     {
         // for the legacy
@@ -139,7 +141,7 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
         CombineIterator combine_it(*q_its, request.ts(), request.type(),
                                    expired_ts, 0);
         combine_it.SeekToFirst();
-        code = tablet_impl.GetIndex(&request, meta, &combine_it, &value, &ts);
+        code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 900 + base_ts);
         ASSERT_EQ(value, "value900");
@@ -156,7 +158,7 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
         CombineIterator combine_it(*q_its, request.ts(), request.type(),
                                    expired_ts, 0);
         combine_it.SeekToFirst();
-        code = tablet_impl.GetIndex(&request, meta, &combine_it, &value, &ts);
+        code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 100 + base_ts);
         ASSERT_EQ(value, "value100");
@@ -173,7 +175,7 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
         CombineIterator combine_it(*q_its, request.ts(), request.type(),
                                    expired_ts, 0);
         combine_it.SeekToFirst();
-        code = tablet_impl.GetIndex(&request, meta, &combine_it, &value, &ts);
+        code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 900 + base_ts);
         ASSERT_EQ(value, "value900");
@@ -190,7 +192,7 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
         CombineIterator combine_it(*q_its, request.ts(), request.type(),
                                    expired_ts, 0);
         combine_it.SeekToFirst();
-        code = tablet_impl.GetIndex(&request, meta, &combine_it, &value, &ts);
+        code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 800 + base_ts);
         ASSERT_EQ(value, "value800");
@@ -207,7 +209,7 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
         CombineIterator combine_it(*q_its, request.ts(), request.type(),
                                    expired_ts, 0);
         combine_it.SeekToFirst();
-        code = tablet_impl.GetIndex(&request, meta, &combine_it, &value, &ts);
+        code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 800 + base_ts);
         ASSERT_EQ(value, "value800");
@@ -224,7 +226,7 @@ void RunGetTimeIndexAssert(std::vector<QueryIt>* q_its, uint64_t base_ts,
         CombineIterator combine_it(*q_its, request.ts(), request.type(),
                                    expired_ts, 0);
         combine_it.SeekToFirst();
-        code = tablet_impl.GetIndex(&request, meta, &combine_it, &value, &ts);
+        code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(1, code);
     }
 }
@@ -235,6 +237,7 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
     uint64_t ts;
     int32_t code = 0;
     ::rtidb::api::TableMeta meta;
+    std::map<int32_t, std::shared_ptr<Schema>> vers_schema = q_its->begin()->table->GetAllVersionSchema();
     // get the st kSubKeyGt
     {
         // for the legacy
@@ -245,7 +248,7 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
         request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), 0, 10);
         combine_it.SeekToFirst();
-        code = tablet_impl.GetIndex(&request, meta, &combine_it, &value, &ts);
+        code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 1900);
         ASSERT_EQ(value, "value900");
@@ -260,7 +263,7 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
         request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), 0, 10);
         combine_it.SeekToFirst();
-        code = tablet_impl.GetIndex(&request, meta, &combine_it, &value, &ts);
+        code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 1100);
         ASSERT_EQ(value, "value100");
@@ -275,7 +278,7 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
         request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), 0, 10);
         combine_it.SeekToFirst();
-        code = tablet_impl.GetIndex(&request, meta, &combine_it, &value, &ts);
+        code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(-1, code);
     }
 
@@ -288,7 +291,7 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
         request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), 0, 10);
         combine_it.SeekToFirst();
-        code = tablet_impl.GetIndex(&request, meta, &combine_it, &value, &ts);
+        code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(-1, code);
     }
 
@@ -301,7 +304,7 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
         request.set_et_type(::rtidb::api::GetType::kSubKeyEq);
         CombineIterator combine_it(*q_its, request.ts(), request.type(), 0, 10);
         combine_it.SeekToFirst();
-        code = tablet_impl.GetIndex(&request, meta, &combine_it, &value, &ts);
+        code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
         ASSERT_EQ(ts, 1200);
         ASSERT_EQ(value, "value200");
