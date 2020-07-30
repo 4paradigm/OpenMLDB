@@ -451,7 +451,9 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
     std::string err;
     bool ok = ns_ptr->ExecuteSQL(db, sql, err);
     if (!ok) {
-        LOG(WARNING) << "fail to execute sql " << sql << " for error " << err;
+        status->msg = "fail to execute sql " + sql + " for error " + err;
+        LOG(WARNING) << status->msg;
+        status->code = -1;
         return false;
     }
     return true;
@@ -466,7 +468,9 @@ bool SQLClusterRouter::ShowDB(std::vector<std::string>* dbs,
     std::string err;
     bool ok = ns_ptr->ShowDatabase(dbs, err);
     if (!ok) {
-        LOG(WARNING) << "fail to show databases: " << err;
+        status->msg = "fail to show databases: " + err;
+        LOG(WARNING) << status->msg;
+        status->code = -1;
         return false;
     }
     return true;

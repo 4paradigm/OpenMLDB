@@ -72,4 +72,14 @@ public class SQLExecutor extends BaseExecutor {
         return fesqlResult;
     }
 
+    @Override
+    protected void tearDown() {
+        if (CollectionUtils.isEmpty(tableNames)) {
+            return;
+        }
+        for (String tableName : tableNames) {
+            String drop = "drop table " + tableName + ";";
+            FesqlUtil.ddl(executor, dbName, drop);
+        }
+    }
 }
