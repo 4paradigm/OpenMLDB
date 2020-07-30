@@ -1,7 +1,7 @@
 from setuptools import setup
 setup(
         name='rtidb',
-        version='1.0',
+        version='2.0.0.0',
         description='This is a rtidb python client',
         author='kongquan',
         author_email='kongquan@4paradigm.com',

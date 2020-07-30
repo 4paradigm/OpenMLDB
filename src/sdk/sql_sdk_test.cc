@@ -41,6 +41,9 @@ typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
     RtiDBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>
     RtiDBIndex;
+
+::rtidb::sdk::MiniCluster* mc_;
+
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
@@ -52,21 +55,12 @@ class SQLSDKTest : public rtidb::test::SQLCaseTest {
     // Per-test-suite set-up.
     // Called before the first test in this test suite.
     // Can be omitted if not needed.
-    static void SetUpTestCase() {
-        LOG(INFO) << "SetUpTestCase cluster init >>";
-        mc_ = new MiniCluster(6181);
-        mc_->SetUp();
-        usleep(5000 * 1000);
-    }
+    static void SetUpTestCase() {}
 
     // Per-test-suite tear-down.
     // Called after the last test in this test suite.
     // Can be omitted if not needed.
-    static void TearDownTestCase() {
-        mc_->Close();
-        delete mc_;
-        LOG(INFO) << "TearDownTestCase cluster close>>";
-    }
+    static void TearDownTestCase() {}
     void SetUp() {}
     void TearDown() {}
 
@@ -429,7 +423,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
     sql_opt.zk_path = query_mc_->GetZkPath();
     sql_opt.enbale_debug = true;
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     RunRequestModeSDK(sql_case, router);
 }
 TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
@@ -440,7 +434,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     sql_opt.zk_path = query_mc_->GetZkPath();
     sql_opt.enbale_debug = true;
     auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) ASSERT_TRUE(false);
+    ASSERT_TRUE(router != nullptr);
     RunBatchModeSDK(sql_case, router);
 }
 
@@ -449,8 +443,14 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
 
 int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
+    ::rtidb::sdk::MiniCluster mc(6181);
+    ::rtidb::sdk::mc_ = &mc;
+    int ok = ::rtidb::sdk::mc_->SetUp();
+    sleep(1);
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    return RUN_ALL_TESTS();
+    ok = RUN_ALL_TESTS();
+    ::rtidb::sdk::mc_->Close();
+    return ok;
 }
