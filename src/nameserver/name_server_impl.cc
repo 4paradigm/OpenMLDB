@@ -11205,7 +11205,6 @@ void NameServerImpl::AddIndex(RpcController* controller,
         }
         rtidb::common::VersionPair* pair = table_info->add_schema_versions();
         pair->CopyFrom(new_pair);
-        NotifyTableChanged();
     }
     for (uint32_t pid = 0; pid < (uint32_t)table_info->table_partition_size(); pid++) {
         if (CreateAddIndexOP(name, db, pid, request->column_key(), add_cols, index_pos) < 0) {

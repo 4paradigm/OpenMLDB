@@ -152,6 +152,7 @@ class Table {
         if (it == versions->end()) {
             return nullptr;
         }
+        return it->second;
     }
 
     std::map<int32_t, std::shared_ptr<Schema>> GetAllVersionSchema() {
