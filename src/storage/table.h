@@ -148,10 +148,10 @@ class Table {
 
     std::shared_ptr<Schema> GetVersionSchema(int32_t ver) {
         auto versions = std::atomic_load_explicit(&version_schema_, std::memory_order_relaxed);
-        if ((size_t)ver < versions->size()) {
-            return versions->at(ver);
+        auto it = versions->find(ver);
+        if (it == versions->end()) {
+            return nullptr;
         }
-        return nullptr;
     }
 
     std::map<int32_t, std::shared_ptr<Schema>> GetAllVersionSchema() {
