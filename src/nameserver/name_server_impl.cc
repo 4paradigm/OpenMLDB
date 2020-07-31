@@ -11164,7 +11164,7 @@ void NameServerImpl::AddIndex(RpcController* controller,
             } else {
                 if (need_create_cols.find(col_name) == need_create_cols.end()) {
                     need_create_cols.insert(col_name);
-                    add_cols.push_back(it->second);
+                    add_cols.push_back(tit->second);
                 }
             }
         } else if (it->second.type() == "float" || it->second.type() == "double") {
