@@ -82,8 +82,12 @@ SQLClusterRouter::SQLClusterRouter(ClusterSDK* sdk)
       rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::~SQLClusterRouter() {
-    delete cluster_sdk_;
-    delete engine_;
+    if (NULL != cluster_sdk_) {
+        delete cluster_sdk_;
+    }
+    if (NULL != engine_) {
+        delete engine_;
+    }
 }
 
 bool SQLClusterRouter::Init() {
@@ -100,11 +104,12 @@ bool SQLClusterRouter::Init() {
         }
     }
     ::fesql::vm::Engine::InitializeGlobalLLVM();
-    std::shared_ptr<::fesql::vm::Catalog> catalog = cluster_sdk_->GetCatalog();
     ::fesql::vm::EngineOptions eopt;
     eopt.set_compile_only(true);
     eopt.set_plan_only(true);
-    engine_ = new ::fesql::vm::Engine(catalog, eopt);
+    engine_ = new ::fesql::vm::Engine(
+        std::make_shared<::rtidb::catalog::SDKCatalog>(), eopt);
+    engine_->UpdateCatalog(cluster_sdk_->GetCatalog());
     return true;
 }
 
@@ -198,7 +203,7 @@ bool SQLClusterRouter::GetInsertInfo(
         return false;
     }
     std::map<uint32_t, uint32_t> column_map;
-    for (int j = 0; j < insert_stmt->columns_.size(); ++j) {
+    for (size_t j = 0; j < insert_stmt->columns_.size(); ++j) {
         const std::string& col_name = insert_stmt->columns_[j];
         bool find_flag = false;
         for (int i = 0; i < (*table_info)->column_desc_v1_size(); ++i) {
@@ -337,8 +342,8 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
     }
     DefaultValueMap default_map(
         new std::map<uint32_t, std::shared_ptr<::fesql::node::ConstNode>>());
-    if ((column_map.empty() &&
-         row->children_.size() < table_info->column_desc_v1_size()) ||
+    if ((column_map.empty() && static_cast<int32_t>(row->children_.size()) <
+                                   table_info->column_desc_v1_size()) ||
         (!column_map.empty() && row->children_.size() < column_map.size())) {
         LOG(WARNING) << "insert value number less than column number";
         return DefaultValueMap();
@@ -381,8 +386,9 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
                 }
             }
             default_map->insert(std::make_pair(idx, val));
-            if (column.data_type() == ::rtidb::type::kVarchar ||
-                column.data_type() == ::rtidb::type::kString) {
+            if (!primary->IsNull() &&
+                (column.data_type() == ::rtidb::type::kVarchar ||
+                 column.data_type() == ::rtidb::type::kString)) {
                 *str_length += strlen(primary->GetStr());
             }
         }
@@ -452,7 +458,9 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
     std::string err;
     bool ok = ns_ptr->ExecuteSQL(db, sql, err);
     if (!ok) {
-        LOG(WARNING) << "fail to execute sql " << sql << " for error " << err;
+        status->msg = "fail to execute sql " + sql + " for error " + err;
+        LOG(WARNING) << status->msg;
+        status->code = -1;
         return false;
     }
     return true;
@@ -467,7 +475,9 @@ bool SQLClusterRouter::ShowDB(std::vector<std::string>* dbs,
     std::string err;
     bool ok = ns_ptr->ShowDatabase(dbs, err);
     if (!ok) {
-        LOG(WARNING) << "fail to show databases: " << err;
+        status->msg = "fail to show databases: " + err;
+        LOG(WARNING) << status->msg;
+        status->code = -1;
         return false;
     }
     return true;
