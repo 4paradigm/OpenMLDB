@@ -25,7 +25,7 @@ namespace storage {
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::TSDimension> TSDimensions;
-using Schemas = google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>;
+using Schema = google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>;
 
 enum TableStat {
     kUndefined = 0,
@@ -146,7 +146,7 @@ class Table {
 
     void SetTableMeta(::rtidb::api::TableMeta& table_meta); // NOLINT
 
-    std::shared_ptr<Schemas> GetVersionSchema(int32_t ver) {
+    std::shared_ptr<Schema> GetVersionSchema(int32_t ver) {
         auto versions = std::atomic_load_explicit(&version_schema_, std::memory_order_relaxed);
         if ((size_t)ver < versions->size()) {
             return versions->at(ver);
@@ -154,7 +154,7 @@ class Table {
         return nullptr;
     }
 
-    std::map<int32_t, std::shared_ptr<Schemas>> GetAllVersionSchema() {
+    std::map<int32_t, std::shared_ptr<Schema>> GetAllVersionSchema() {
         return *std::atomic_load_explicit(&version_schema_, std::memory_order_relaxed);
     }
 
@@ -258,7 +258,7 @@ class Table {
     ::rtidb::api::CompressType compress_type_;
     ::rtidb::api::TableMeta table_meta_;
     int64_t last_make_snapshot_time_;
-    std::shared_ptr<std::map<int32_t, std::shared_ptr<Schemas>>> version_schema_;
+    std::shared_ptr<std::map<int32_t, std::shared_ptr<Schema>>> version_schema_;
 };
 
 }  // namespace storage

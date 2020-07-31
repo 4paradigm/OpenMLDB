@@ -1375,7 +1375,7 @@ bool MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vecto
         const auto& schema = table_meta.column_desc();
         return rtidb::codec::RowCodec::DecodeRow(schema, raw, data_size, true, 0, maxIdx + 1, row);
     }
-    std::shared_ptr<Schemas> schema = table->GetVersionSchema(version);
+    std::shared_ptr<Schema> schema = table->GetVersionSchema(version);
     if (schema == nullptr) {
         LOG(WARNING) << "fail get version " << unsigned(version) << " schema";
         return false;

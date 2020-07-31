@@ -46,7 +46,7 @@ Table::Table(::rtidb::common::StorageMode storage_mode, const std::string &name,
 }
 
 void Table::AddVersionSchema() {
-    auto new_versions = std::make_shared<std::map<int32_t, std::shared_ptr<Schemas>>>();
+    auto new_versions = std::make_shared<std::map<int32_t, std::shared_ptr<Schema>>>();
     for (const auto ver : table_meta_.schema_versions()) {
         int remain_size = ver.field_count() - table_meta_.column_desc_size();
         if (remain_size < 0)  {
@@ -57,7 +57,7 @@ void Table::AddVersionSchema() {
             LOG(INFO) << "skip add ver " << ver.id() << " because remain size great than added column deisc size";
             continue;
         }
-        std::shared_ptr<Schemas> new_schema = std::make_shared<Schemas>(table_meta_.column_desc());
+        std::shared_ptr<Schema> new_schema = std::make_shared<Schema>(table_meta_.column_desc());
         for (int i = 0; i < remain_size; i++) {
             rtidb::common::ColumnDesc* col = new_schema->Add();
             col->CopyFrom(table_meta_.added_column_desc(i));
