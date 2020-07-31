@@ -1218,7 +1218,6 @@ bool MemTableSnapshot::DumpIndexData(
     std::map<std::string, uint32_t> column_desc_map;
     for (uint32_t i = 0; i < columns.size(); ++i) {
         column_desc_map.insert(std::make_pair(columns[i].name, i));
-        LOG(INFO) << "add col " << columns[i].name << " idx is " << i;
     }
     std::vector<std::vector<uint32_t>> index_cols;
     uint32_t max_idx = 0;
@@ -1227,12 +1226,10 @@ bool MemTableSnapshot::DumpIndexData(
         if (ck.flag()) {
             continue;
         }
-        LOG(INFO) << " ck is " << ck.index_name();
         for (const auto& name : ck.col_name()) {
             if (column_desc_map.find(name) != column_desc_map.end()) {
                 uint32_t idx = column_desc_map[name];
                 cols.push_back(idx);
-                LOG(INFO) << "ck idx " << idx;
                 if (idx > max_idx) {
                     max_idx = idx;
                 }
@@ -1340,7 +1337,6 @@ bool MemTableSnapshot::DumpBinlogIndexData(
         }
         uint32_t index_pid = 0;
         if (!PackNewIndexEntry(table, index_cols, columns, max_idx, idx, partition_num, &entry, &index_pid)) {
-            LOG(INFO) << "pack new index entry fail" << cur_offset;
             continue;
         }
         std::string entry_str;
@@ -1352,7 +1348,6 @@ bool MemTableSnapshot::DumpBinlogIndexData(
                   index_pid);
             return false;
         }
-        LOG(INFO) << "write new record success";
         cur_offset = entry.log_index();
         succ_cnt++;
     }

@@ -592,8 +592,7 @@ void PutRelational(
         return;
     }
     std::string value;
-    ::rtidb::base::ResultMsg rm =
-        ::rtidb::codec::RowCodec::EncodeRow(map, schema, 1,value);
+    ::rtidb::base::ResultMsg rm = ::rtidb::codec::RowCodec::EncodeRow(map, schema, 1, value);
     if (rm.code < 0) {
         printf("encode error, msg: %s\n", rm.msg.c_str());
         return;

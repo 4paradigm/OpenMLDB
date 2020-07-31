@@ -144,7 +144,7 @@ class Table {
 
     const ::rtidb::api::TableMeta& GetTableMeta() const { return table_meta_; }
 
-    void SetTableMeta(::rtidb::api::TableMeta& table_meta);
+    void SetTableMeta(::rtidb::api::TableMeta& table_meta); // NOLINT
 
     std::shared_ptr<Schemas> GetVersionSchema(int32_t ver) {
         auto versions = std::atomic_load_explicit(&version_schema_, std::memory_order_relaxed);

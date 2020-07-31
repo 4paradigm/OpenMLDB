@@ -151,44 +151,6 @@ class RowCodec {
     }
 
     static ::rtidb::base::ResultMsg EncodeRow(
-        const std::map<std::string, std::string>& str_map, const Schema& schema, std::string& row) {  // NOLINT
-        if (str_map.empty() || str_map.size() != (uint64_t)schema.size()) {
-            return ::rtidb::base::ResultMsg(-1, "input error");
-        }
-        int32_t str_len = CalStrLength(str_map, schema);
-        if (str_len < 0) {
-            return ::rtidb::base::ResultMsg(-1, "cal str len error");
-        }
-        ::rtidb::codec::RowBuilder builder(schema);
-        uint32_t size = builder.CalTotalLength(str_len);
-        row.resize(size);
-        builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
-        for (int i = 0; i < schema.size(); i++) {
-            const ::rtidb::common::ColumnDesc& col = schema.Get(i);
-            auto iter = str_map.find(col.name());
-            if (iter == str_map.end()) {
-                return ::rtidb::base::ResultMsg(-1,
-                                                col.name() + " not in str_map");
-            }
-            if (!col.not_null() &&
-                (iter->second == "null" || iter->second == NONETOKEN)) {
-                builder.AppendNULL();
-                continue;
-            } else if (iter->second == "null" || iter->second == NONETOKEN) {
-                return ::rtidb::base::ResultMsg(
-                    -1, col.name() + " should not be null");
-            }
-            if (!builder.AppendValue(iter->second)) {
-                std::string msg =
-                    "append " + ::rtidb::type::DataType_Name(col.data_type()) +
-                    " error";
-                return ::rtidb::base::ResultMsg(-1, msg);
-            }
-        }
-        return ::rtidb::base::ResultMsg(0, "ok");
-    }
-
-    static ::rtidb::base::ResultMsg EncodeRow(
         const std::vector<std::string>& input_value,
         const std::vector<::rtidb::codec::ColumnDesc>& columns,
         int modify_times, std::string* row) {

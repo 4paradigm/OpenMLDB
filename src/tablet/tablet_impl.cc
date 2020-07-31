@@ -16,6 +16,7 @@
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
+#include <algorithm>
 
 #include "boost/container/deque.hpp"
 #include "config.h"  // NOLINT
@@ -1091,7 +1092,6 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
             const int8_t* row_ptr = reinterpret_cast<const int8_t*>(combine_it->GetValue().data());
             uint8_t version = rtidb::codec::RowView::GetSchemaVersion(row_ptr);
             if (version != 1) {
-
                 auto version_it = vers_schema.find(version);
                 if (version_it == vers_schema.end()) {
                     LOG(WARNING) << "no found version " << unsigned(version) << " in version map";
