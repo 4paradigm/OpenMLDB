@@ -272,7 +272,8 @@ int32_t SchemasContext::ColumnIdxResolved(const std::string& column,
 }
 int32_t SchemasContext::ColumnOffsetResolved(const int32_t schema_idx,
                                              const int32_t column_idx) const {
-    if (schema_idx < 0 || schema_idx >= row_schema_info_list_.size()) {
+    if (schema_idx < 0 ||
+        schema_idx >= static_cast<int32_t>(row_schema_info_list_.size())) {
         LOG(WARNING) << "Resolved column offset failed, schema idx invalid";
         return -1;
     }

@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "base/mem_pool.h"
 #include "bm/base_bm.h"
 #include "codec/fe_row_codec.h"
 #include "codegen/ir_base_builder.h"

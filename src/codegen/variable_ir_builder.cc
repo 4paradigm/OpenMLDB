@@ -134,7 +134,12 @@ bool VariableIRBuilder::LoadRetStruct(NativeValue* output,
                                       base::Status& status) {
     return LoadValue("@ret_struct", output, status);
 }
-
+base::Status VariableIRBuilder::LoadMemoryPool(NativeValue* output) {
+    base::Status status;
+    CHECK_TRUE(LoadValue("@mem_pool", output, status),
+               "fail to load memory pool", status.msg);
+    return status;
+}
 bool fesql::codegen::VariableIRBuilder::LoadWindow(
     const std::string& frame_str, NativeValue* output,
     fesql::base::Status& status) {

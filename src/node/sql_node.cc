@@ -1466,7 +1466,7 @@ bool ExternalFnDefNode::Validate(
                      << actual_arg_num;
         return false;
     } else if (arg_types_.size() < actual_arg_num &&
-               variadic_pos_ != arg_types_.size()) {
+               variadic_pos_ != static_cast<int>(arg_types_.size())) {
         LOG(WARNING) << function_name() << " take explicit "
                      << arg_types_.size() << " arguments, but get "
                      << actual_arg_num;

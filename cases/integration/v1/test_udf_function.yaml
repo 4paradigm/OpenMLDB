@@ -1,0 +1,27 @@
+db: test_zw
+debugs:
+cases:
+  - id: 0
+    desc: concat两个字符串
+    inputs:
+      - columns: ["id int", "c1 string","c2 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1, "aa","bbb",1590738989000]
+    sql: select id, c1, c2, concat(c1, c2) as c12 from {0};
+    expect:
+      columns: ["id int", "c1 string","c2 string", "c12 string"]
+      rows:
+        - [1, "aa", "bbb", "aabbb"]
+  - id: 1
+    desc: concat_ws两个字符串
+    inputs:
+      - columns: ["id int", "c1 string","c2 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1, "aa","bbb",1590738989000]
+    sql: select id, c1, c2, concat_ws("-", c1, c2) as c1_2 from {0};
+    expect:
+      columns: ["id int", "c1 string","c2 string","c1_2 string"]
+      rows:
+        - [1, "aa", "bbb", "aa-bbb"]

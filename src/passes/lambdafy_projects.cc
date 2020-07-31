@@ -35,7 +35,7 @@ Status LambdafyProjects::Transform(const node::PlanNodeList& projects,
                  slice < input_schemas_.GetSchemaSourceListSize(); ++slice) {
                 auto schema_slice = input_schemas_.GetSchemaSourceSlice(slice);
                 std::string rel_name = schema_slice.table_name_;
-                for (size_t k = 0; k < schema_slice.schema_->size(); ++k) {
+                for (int k = 0; k < schema_slice.schema_->size(); ++k) {
                     auto col_name = schema_slice.schema_->Get(k).name();
 
                     auto get_col =

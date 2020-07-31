@@ -18,6 +18,7 @@
 #include "codec/type_codec.h"
 #include <string>
 #include <utility>
+#include "base/mem_pool.h"
 #include "base/raw_buffer.h"
 #include "codec/fe_row_codec.h"
 #include "codec/list_iterator_codec.h"
@@ -273,7 +274,6 @@ int32_t GetInnerRowsList(int8_t* input, int64_t start_rows, int64_t end_rows,
     new (data) InnerRowsList<Row>(w, start, end);
     return 0;
 }
-
 }  // namespace v1
 }  // namespace codec
 }  // namespace fesql

@@ -44,18 +44,62 @@ using udf::DataTypeTrait;
 template <typename Ret, typename... Args>
 class ModuleFunctionBuilderWithFullInfo;
 
+template <typename T, typename Dummy = void>
+struct ToLLVMArgTrait;
+
+// For struct type arg, pass pointer to llvm
+template <>
+struct ToLLVMArgTrait<codec::Date> {
+    using ArgT = codec::Date *;
+    static ArgT to_llvm_arg(codec::Date &val) { return &val; }  // NOLINT
+};
+template <>
+struct ToLLVMArgTrait<codec::Timestamp> {
+    using ArgT = codec::Timestamp *;
+    static ArgT to_llvm_arg(codec::Timestamp &val) { return &val; }  // NOLINT
+};
+template <>
+struct ToLLVMArgTrait<codec::StringRef> {
+    using ArgT = codec::StringRef *;
+    static ArgT to_llvm_arg(codec::StringRef &val) { return &val; }  // NOLINT
+};
+template <typename T>
+struct ToLLVMArgTrait<codec::ListRef<T>> {
+    using ArgT = codec::ListRef<T> *;
+    static ArgT to_llvm_arg(codec::ListRef<T> &val) { return &val; }  // NOLINT
+};
+
+// For row type, pass row ptr
+template <typename... ArgTypes>
+struct ToLLVMArgTrait<udf::LiteralTypedRow<ArgTypes...>> {
+    using ArgT = int8_t *;
+    static ArgT to_llvm_arg(udf::LiteralTypedRow<ArgTypes...> &val) {  // NOLINT
+        return val.row_ptr;
+    }
+};
+
+// For primitive type arg, pass directly
+template <typename T>
+struct ToLLVMArgTrait<
+    T, typename std::enable_if_t<std::is_fundamental<T>::value>> {
+    using ArgT = T;
+    static ArgT to_llvm_arg(const T &val) { return val; }
+};
+
 template <typename Ret, typename... Args>
 class ModuleTestFunction {
  public:
     Ret operator()(Args... args) {
         if (return_by_arg) {
-            auto fn = reinterpret_cast<void (*)(Args..., Ret *)>(fn_ptr);
+            auto fn = reinterpret_cast<void (*)(  // NOLINT
+                typename ToLLVMArgTrait<Args>::ArgT..., Ret *)>(fn_ptr);
             Ret res;
-            fn(args..., &res);
+            fn(ToLLVMArgTrait<Args>::to_llvm_arg(args)..., &res);
             return res;
         } else {
-            auto fn = reinterpret_cast<Ret (*)(Args...)>(fn_ptr);
-            return fn(args...);
+            auto fn = reinterpret_cast<Ret (*)(  // NOLINT
+                typename ToLLVMArgTrait<Args>::ArgT...)>(fn_ptr);
+            return fn(ToLLVMArgTrait<Args>::to_llvm_arg(args)...);
         }
     }
 
@@ -202,10 +246,6 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
             LOG(WARNING) << "Fail for arg type " << type_node->GetName();
             return nil;
         }
-        if (codegen::TypeIRBuilder::IsStructPtr(llvm_ty)) {
-            llvm_ty = reinterpret_cast<::llvm::PointerType *>(llvm_ty)
-                          ->getElementType();
-        }
         llvm_arg_types.push_back(llvm_ty);
     }
 
@@ -214,14 +254,11 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
     if (!codegen::GetLLVMType(module.get(), ret_type, &llvm_ret_ty)) {
         return nil;
     }
-    if (codegen::TypeIRBuilder::IsStructPtr(llvm_ret_ty)) {
-        llvm_ret_ty = reinterpret_cast<::llvm::PointerType *>(llvm_ret_ty)
-                          ->getElementType();
-    }
+
+    // for struct type, return/pass by value is in danger
     bool ret_by_arg = false;
-    if (ret_type->base_ == node::kVarchar) {
-        // strange problem to return StringRef
-        llvm_arg_types.push_back(llvm_ret_ty->getPointerTo());
+    if (codegen::TypeIRBuilder::IsStructPtr(llvm_ret_ty)) {
+        llvm_arg_types.push_back(llvm_ret_ty);
         llvm_ret_ty = ::llvm::Type::getVoidTy(*(llvm_ctx.get()));
         ret_by_arg = true;
     }
@@ -251,6 +288,16 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
 }
 
 /**
+ * Helper function to apply vector of args to variadic function
+ */
+template <typename F, std::size_t... I>
+static node::ExprNode *ApplyExprFuncHelper(
+    node::NodeManager *nm, const std::vector<node::ExprIdNode *> &args,
+    const std::index_sequence<I...> &, const F &expr_func) {
+    return expr_func(nm, args[I]...);
+}
+
+/**
  * Build a callable function object from expr build function.
  */
 template <typename Ret, typename... Args>
@@ -264,23 +311,25 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
         .template args<Args...>()
         .build([&](CodeGenContext *ctx) {
             node::NodeManager nm;
-            size_t idx = 0;
             std::vector<::llvm::Type *> llvm_arg_types;
-            std::vector<node::ExprIdNode *> arg_exprs;
 
-            auto make_arg = [&](node::TypeNode *dtype) {
-                auto arg = nm.MakeExprIdNode("arg_" + std::to_string(idx++),
+            std::vector<node::TypeNode *> arg_node_types = {
+                udf::DataTypeTrait<Args>::to_type_node(&nm)...};
+
+            std::vector<node::ExprIdNode *> arg_exprs;
+            for (size_t i = 0; i < sizeof...(Args); ++i) {
+                auto arg = nm.MakeExprIdNode("arg_" + std::to_string(i),
                                              node::ExprIdNode::GetNewId());
+                auto dtype = arg_node_types[i];
                 arg->SetOutputType(dtype);
                 arg_exprs.push_back(arg);
 
                 ::llvm::Type *llvm_ty = nullptr;
                 codegen::GetLLVMType(ctx->GetModule(), dtype, &llvm_ty);
                 llvm_arg_types.push_back(llvm_ty);
-                return arg;
-            };
-            node::ExprNode *body = expr_func(
-                &nm, make_arg(udf::DataTypeTrait<Args>::to_type_node(&nm))...);
+            }
+            node::ExprNode *body = ApplyExprFuncHelper(
+                &nm, arg_exprs, std::index_sequence_for<Args...>(), expr_func);
             CHECK_TRUE(body != nullptr, "Build output expr failed");
 
             vm::SchemaSourceList empty;
@@ -293,11 +342,6 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
             auto llvm_func = ctx->GetCurrentFunction();
             for (size_t i = 0; i < llvm_arg_types.size(); ++i) {
                 ::llvm::Value *llvm_arg = llvm_func->arg_begin() + i;
-                if (codegen::TypeIRBuilder::IsStructPtr(llvm_arg_types[i])) {
-                    auto alloca = builder.CreateAlloca(llvm_arg->getType());
-                    builder.CreateStore(llvm_arg, alloca);
-                    llvm_arg = alloca;
-                }
                 node::ExprIdNode *arg_expr_id = arg_exprs[i];
                 sv.AddVar(arg_expr_id->GetExprString(),
                           NativeValue::Create(llvm_arg));
@@ -309,16 +353,11 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
             base::Status status;
             CHECK_TRUE(expr_builder.Build(body, &out, status), status.msg);
 
-            auto ret_type = udf::DataTypeTrait<Ret>::to_type_node(&nm);
             auto ret_value = out.GetValue(&builder);
             if (codegen::TypeIRBuilder::IsStructPtr(ret_value->getType())) {
                 ret_value = builder.CreateLoad(ret_value);
-            }
-            if (ret_type->base_ == node::kVarchar) {
-                // strange problem to return StringRef
-                ::llvm::Value *addr =
-                    llvm_func->arg_begin() + llvm_arg_types.size();
-                builder.CreateStore(ret_value, addr);
+                builder.CreateStore(
+                    ret_value, llvm_func->arg_begin() + llvm_arg_types.size());
                 builder.CreateRetVoid();
             } else {
                 builder.CreateRet(ret_value);

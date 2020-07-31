@@ -321,6 +321,7 @@ SQLNode *NodeManager::MakeFrameNode(FrameType frame_type, SQLNode *frame_extent,
             return RegisterNode(node_ptr);
         }
     }
+    return nullptr;
 }
 
 SQLNode *NodeManager::MakeFrameNode(FrameType frame_type,

@@ -336,7 +336,7 @@ bool SQLCase::BuildInsertSQLFromRows(
     std::string sql = "";
     sql.append("Insert into ").append(table.name()).append(" values");
 
-    int32_t i = 0;
+    size_t i = 0;
     for (auto item_vec : rows) {
         std::string values = "";
         if (!BuildInsertValueStringFromRow(table, item_vec, &values)) {
@@ -731,7 +731,7 @@ std::ostream& operator<<(std::ostream& output, const SQLCase& thiz) {
 }
 bool SQLCase::CreateStringListFromYamlNode(const YAML::Node& node,
                                            std::vector<std::string>& rows) {
-    for (int i = 0; i < node.size(); i++) {
+    for (size_t i = 0; i < node.size(); i++) {
         if (node[i].IsNull()) {
             rows.push_back("null");
         } else {
@@ -742,7 +742,7 @@ bool SQLCase::CreateStringListFromYamlNode(const YAML::Node& node,
 }
 bool SQLCase::CreateRowsFromYamlNode(
     const YAML::Node& node, std::vector<std::vector<std::string>>& rows) {
-    for (int i = 0; i < node.size(); ++i) {
+    for (size_t i = 0; i < node.size(); ++i) {
         std::vector<std::string> row;
         if (!CreateStringListFromYamlNode(node[i], row)) {
             LOG(WARNING) << "Fail create rows from yaml node";

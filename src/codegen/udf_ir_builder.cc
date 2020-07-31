@@ -376,7 +376,7 @@ Status UDFIRBuilder::GetExternCallee(
                "External function call validation error of ", fn_name);
 
     std::vector<::llvm::Type*> llvm_arg_types;
-    for (int i = 0; i < fn->GetArgSize(); ++i) {
+    for (size_t i = 0; i < fn->GetArgSize(); ++i) {
         ::llvm::Type* expect_llvm_ty = nullptr;
         CHECK_TRUE(GetLLVMType(module_, fn->GetArgType(i), &expect_llvm_ty));
         llvm_arg_types.push_back(expect_llvm_ty);

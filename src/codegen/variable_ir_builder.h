@@ -27,6 +27,7 @@ class VariableIRBuilder {
                         base::Status& status);  // NOLINT
     bool LoadRetStruct(NativeValue* output,
                        base::Status& status);  // NOLINT
+    base::Status LoadMemoryPool(NativeValue* output);  // NOLINT
     bool LoadWindow(const std::string& frame_str, NativeValue* output,
                     base::Status& status);  // NOLINT
     bool LoadColumnRef(const std::string& relation_name,

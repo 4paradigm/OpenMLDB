@@ -22,17 +22,18 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include "base/mem_pool.h"
 #include "glog/logging.h"
-
 namespace fesql {
 namespace codec {
-
 struct StringRef {
     StringRef() : size_(0), data_(nullptr) {}
+    explicit StringRef(const std::string& str)
+        : size_(str.size()), data_(const_cast<char*>(str.data())) {}
     StringRef(uint32_t size, const char* data)
         : size_(size), data_(strdup(data)) {}
     ~StringRef() {}
-    const bool IsNull() const { return nullptr == data_; }
+    const inline bool IsNull() const { return nullptr == data_; }
     const std::string ToString() const {
         return size_ == 0 ? "" : std::string(data_, size_);
     }
@@ -65,6 +66,11 @@ __attribute__((unused)) static const StringRef operator+(const StringRef& a,
     }
     str.data_[str.size_] = '\0';
     return str;
+}
+__attribute__((unused)) static std::ostream& operator<<(std::ostream& os,
+                                                        const StringRef& a) {
+    os << a.ToString();
+    return os;
 }
 __attribute__((unused)) static bool operator==(const StringRef& a,
                                                const StringRef& b) {
@@ -173,6 +179,7 @@ struct Date {
     }
     int32_t date_;
 };
+
 __attribute__((unused)) static bool operator>(const Date& a, const Date& b) {
     return a.date_ > b.date_;
 }

@@ -41,7 +41,6 @@ bool BatchPlanner::MakePlan(GraphDesc* graph) {
         return false;
     }
     graph->set_ir(ctx.ir);
-    uint64_t id_counter = 0;
     return true;
 }
 
