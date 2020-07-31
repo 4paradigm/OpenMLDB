@@ -52,8 +52,12 @@ class SQLSDKTest : public rtidb::test::SQLCaseTest {
  public:
     SQLSDKTest() : rtidb::test::SQLCaseTest() {}
     ~SQLSDKTest() {}
-    void SetUp() {}
-    void TearDown() {}
+    void SetUp() {
+        LOG(INFO) << "SQLSDKTest TearDown";
+    }
+    void TearDown() {
+        LOG(INFO) << "SQLSDKTest TearDown";
+    }
 
     static void CreateDB(const fesql::sqlcase::SQLCase& sql_case,
                          std::shared_ptr<SQLRouter> router);
@@ -308,6 +312,8 @@ void SQLSDKTest::RunBatchModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
     InsertTables(sql_case, router, true);
     BatchExecuteSQL(sql_case, router);
     //    DropTables(sql_case, router);
+    LOG(INFO) << "RunBatchModeSDK ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc() << " done!";
 }
 
 void SQLSDKQueryTest::RequestExecuteSQL(
@@ -465,6 +471,8 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
         return;
     }
     RunRequestModeSDK(sql_case, router);
+    LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
 }
 TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     auto sql_case = GetParam();
