@@ -181,7 +181,7 @@ void DefaultUDFLibrary::IniMathUDF() {
             return nm->MakeFuncNode("log", {cast}, nullptr);
         });
     RegisterExprUDF("log")
-        .doc("Returns the logarithm of expr with base.\log(base, expr)")
+        .doc("Returns the logarithm of expr with base.")
         .args<AnyArg, AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
