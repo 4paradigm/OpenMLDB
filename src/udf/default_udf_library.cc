@@ -14,7 +14,6 @@
 #include "codegen/timestamp_ir_builder.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
-#include <math.h>
 
 using fesql::codec::Date;
 using fesql::codec::StringRef;
@@ -196,7 +195,7 @@ void DefaultUDFLibrary::IniMathUDF() {
             auto logy = nm->MakeFuncNode("log", {cast2}, nullptr);
             return nm->MakeBinaryExprNode(logy, logx, node::kFnOpFDiv);
         });
-    
+
     RegisterExternal("ln")
         .doc("Return the natural logarithm of the argument")
         .args<float>(static_cast<float (*)(float)>(log))
@@ -317,9 +316,7 @@ void DefaultUDFLibrary::IniMathUDF() {
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("ceil")
         .args<float>(static_cast<float (*)(float)>(ceilf));
-    
     RegisterAlias("ceil", "ceiling");
-
 }
 
 void DefaultUDFLibrary::Init() {

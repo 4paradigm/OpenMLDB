@@ -93,8 +93,8 @@ int32_t weekofyear(codec::Date *date) {
     return d.week_number();
 }
 
-int16_t abs_int16(int16_t x) { 
-    return static_cast<int16_t>(abs(x)); 
+int16_t abs_int16(int16_t x) {
+    return static_cast<int16_t>(abs(x));
 }
 
 template <class V>

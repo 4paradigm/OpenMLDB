@@ -340,7 +340,7 @@ TEST_F(UDFIRBuilderTest, acos_udf_test) {
     CheckUDF<double, int64_t>("acos", 1.5707963267948966, 0);
     CheckFloatUDF<float, float>("acos", 1.0471976, 0.5f);
     CheckUDF<double, double>("acos", 1.0471975511965979, 0.5);
-    //CheckUDF<double, double>("acos", nan, -2.1);
+    // CheckUDF<double, double>("acos", nan, -2.1);
 }
 
 TEST_F(UDFIRBuilderTest, asin_udf_test) {
@@ -352,7 +352,7 @@ TEST_F(UDFIRBuilderTest, asin_udf_test) {
     CheckUDF<double, int64_t>("asin", 1.5707963267948966, 1);
     CheckFloatUDF<float, float>("asin", 0.2013579, 0.2f);
     CheckUDF<double, double>("asin", 0.2013579207903308, 0.2);
-    //CheckUDF<double, double>("asin", nan, -2.1);
+    // CheckUDF<double, double>("asin", nan, -2.1);
 }
 
 TEST_F(UDFIRBuilderTest, atan_udf_test) {
