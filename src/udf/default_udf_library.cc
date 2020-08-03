@@ -212,12 +212,54 @@ void DefaultUDFLibrary::InitStringUDF() {
             });
 
     RegisterExternal("substring")
+        .doc(R"(
+Return a substring from string `str` starting at position `pos `.
+
+example:
+@code{.sql}
+
+
+    select substr("hello world", 2);
+    -- output "llo world"
+
+@endcode
+
+@param **str**
+@param **pos** define the begining of the substring.
+
+- If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
+- If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
+
+@since 2.0.0.0
+)")
         .args<StringRef, int32_t>(
             static_cast<void (*)(codec::StringRef*, int32_t,
                                  codec::StringRef*)>(udf::v1::sub_string))
         .return_by_arg(true);
 
     RegisterExternal("substring")
+        .doc(R"(
+Return a substring `len` characters long from string str, starting at position `pos`.
+
+example
+@code{.sql}
+
+    select substr("hello world", 3, 6);
+    -- output "llo wo"
+
+@endcode
+
+
+@param **str**
+@param **pos**: define the begining of the substring.
+
+ - If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
+ - If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
+
+@param **len** length of substring. If len is less than 1, the result is the empty string.
+
+@since 2.0.0.0
+            )")
         .args<StringRef, int32_t, int32_t>(
             static_cast<void (*)(codec::StringRef*, int32_t, int32_t,
                                  codec::StringRef*)>(udf::v1::sub_string))
@@ -233,27 +275,6 @@ void DefaultUDFLibrary::InitStringUDF() {
             static_cast<void (*)(codec::Date*, codec::StringRef*,
                                  codec::StringRef*)>(udf::v1::date_format))
         .return_by_arg(true);
-    //    RegisterExprUDF("substring")
-    //        .args<StringRef, AnyArg, AnyArg>([](UDFResolveContext* ctx,
-    //                                            ExprNode* str, ExprNode* pos,
-    //                                            ExprNode* len) -> ExprNode* {
-    //            if (!pos->GetOutputType()->IsInteger()) {
-    //                ctx->SetError("substring do not support pos type " +
-    //                              pos->GetOutputType()->GetName());
-    //                return nullptr;
-    //            }
-    //            if (!len->GetOutputType()->IsInteger()) {
-    //                ctx->SetError("substring do not support len type " +
-    //                              pos->GetOutputType()->GetName());
-    //                return nullptr;
-    //            }
-    //            auto nm = ctx->node_manager();
-    //            return nm->MakeFuncNode("substring",
-    //                                    {str, nm->MakeCastNode(node::kInt32,
-    //                                    pos),
-    //                                     nm->MakeCastNode(node::kInt32, len)},
-    //                                    nullptr);
-    //        });
 }
 void DefaultUDFLibrary::IniMathUDF() {
     RegisterExternal("log")
