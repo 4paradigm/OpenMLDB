@@ -144,3 +144,63 @@ class UDFResolveContext {
 };
 ```
 
+
+
+### UDFRegistry Doc String
+
+UDFRegistry提供DOC String接口，允许注册函数的时候，添加函数的使用说明文档。[doxygen的markdown语法](https://www.doxygen.nl/manual/markdown.html)
+
+具体的使用方法
+
+```c++
+RegisterExternal("substring")
+        .doc(R"(
+Return a substring from string `str` starting at position `pos `.
+
+example:
+@code{.sql}
+
+
+    select substr("hello world", 2);
+    -- output "llo world"
+
+@endcode
+
+@param **str**
+@param **pos** define the begining of the substring.
+
+- If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
+- If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
+
+@since 2.0.0.0
+)")
+   .args<StringRef, int32_t>(
+            static_cast<void (*)(codec::StringRef*, int32_t,
+                                 codec::StringRef*)>(udf::v1::sub_string))
+   .return_by_arg(true);
+```
+
+
+
+Doc string遵循doxygen的格式。通常需要配置: 
+
+1. 函数简单描述（必选）
+
+2. 例子作代码示范（尽量有）
+
+     ``` 
+   @code
+       这里面放代码
+   @endcode
+     ```
+
+   
+
+3. 参数@param
+
+4. 返回值@return 如果需要特别说明
+
+5. 函数支持的初始版本@since
+
+6. 其他说明@note
+
