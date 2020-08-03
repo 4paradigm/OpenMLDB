@@ -134,27 +134,27 @@ public class GetFuture implements Future<ByteString>{
 	}
 
 	private void checkVersion(ByteString raw) throws TabletException {
-	    if (th.getTableInfo().getFormatVersion() != 1) {
-	    	return;
+		if (th.getTableInfo().getFormatVersion() != 1) {
+			return;
 		}
 		ByteBuffer buf = raw.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN);
-	    int version = RowView.getSchemaVersion(buf);
-	    buf.rewind();
-	    if (version == this.currentVersion) {
+		int version = RowView.getSchemaVersion(buf);
+		buf.rewind();
+		if (version == this.currentVersion) {
 			return;
 		}
 	    if (version == 1) {
-	        rv = new RowView(th.getSchema());
-	        this.currentVersion = 1;
-	        return;
+			rv = new RowView(th.getSchema());
+			this.currentVersion = 1;
+			return;
 		}
 		List<ColumnDesc> newSchema = th.getSchemaByVer(version);
 		if (newSchema == null) {
 			throw new TabletException(String.format("unkown shcema for ver %d", version));
 		}
-	    rv = new RowView(newSchema);
-	    rowLength = newSchema.size();
-	    this.currentVersion = version;
+		rv = new RowView(newSchema);
+		rowLength = newSchema.size();
+		this.currentVersion = version;
 	}
 
 	public Object[] getRowWithNoWait() throws ExecutionException, TabletException{
