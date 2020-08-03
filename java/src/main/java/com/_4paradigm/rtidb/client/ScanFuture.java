@@ -112,7 +112,7 @@ public class ScanFuture implements Future<KvIterator> {
         }else {
             int ver = t.getCurrentSchemaVer();
             if (ver != 1) {
-                List<ColumnDesc> schema = t.getVersions().get(ver);
+                List<ColumnDesc> schema = t.getSchemaByVer(ver);
                 kit = new RowKvIterator(response.getPairs(), schema, response.getCount());
             } else {
                 kit = new RowKvIterator(response.getPairs(), t.getSchema(), response.getCount());

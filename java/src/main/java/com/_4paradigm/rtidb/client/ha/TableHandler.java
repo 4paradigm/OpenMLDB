@@ -331,6 +331,14 @@ public class TableHandler {
         return schemaToVer;
     }
 
+    public Integer getVerByRowLength(Integer rowLength) {
+        return schemaToVer.get(rowLength);
+    }
+
+    public List<ColumnDesc> getSchemaByVer(Integer ver) {
+        return versions.get(ver);
+    }
+
     public int getCurrentSchemaVer() {
         return this.currentSchemaVersion;
     }

@@ -227,8 +227,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             switch (th.getFormatVersion()) {
                 case 1:
                     if (th.getTableInfo().getAddedColumnDescCount() != 0) {
-                        Map<Integer, Integer> schemaToVer = th.getSchemaToVer();
-                        Integer ver = schemaToVer.get(row.length);
+                        Integer ver = th.getVerByRowLength(row.length);
                         if (ver == null) {
                             throw new TabletException("no version for column count " + row.length);
                         }
@@ -1307,8 +1306,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             switch (th.getFormatVersion()) {
                 case 1:
                     if (th.getTableInfo().getAddedColumnDescCount() != 0) {
-                        Map<Integer, Integer> schemaToVer = th.getSchemaToVer();
-                        Integer ver = schemaToVer.get(columnDescs.size());
+                        Integer ver = th.getVerByRowLength(row.length);
                         if (ver == null) {
                             throw new TabletException("no version for column count " + row.length);
                         }

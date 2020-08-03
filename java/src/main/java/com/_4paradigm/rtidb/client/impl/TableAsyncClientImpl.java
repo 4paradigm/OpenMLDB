@@ -125,8 +125,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             switch (tableHandler.getFormatVersion()) {
                 case 1:
                     if (tableHandler.getTableInfo().getAddedColumnDescCount() != 0) {
-                        Map<Integer, Integer> schemaToVer = tableHandler.getSchemaToVer();
-                        Integer ver = schemaToVer.get(row.length);
+                        Integer ver = tableHandler.getVerByRowLength(row.length);
                         if (ver == null) {
                             throw new TabletException("no version for column count " + row.length);
                         }
@@ -211,8 +210,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             switch (th.getFormatVersion()) {
                 case 1:
                     if (th.getTableInfo().getAddedColumnDescCount() != 0) {
-                        Map<Integer, Integer> schemaToVer = th.getSchemaToVer();
-                        Integer ver = schemaToVer.get(row.length);
+                        Integer ver = th.getVerByRowLength(row.length);
                         if (ver == null) {
                             throw new TabletException("no version for column count " + row.length);
                         }

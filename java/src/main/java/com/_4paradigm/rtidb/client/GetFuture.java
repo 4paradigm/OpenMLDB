@@ -63,7 +63,7 @@ public class GetFuture implements Future<ByteString>{
 		if (th.getSchemaMap().size() > 0) {
 			rowLength += th.getSchemaMap().size();
 			this.currentVersion = th.getCurrentSchemaVer();
-			List<ColumnDesc> newSchema = th.getVersions().get(this.currentVersion);
+			List<ColumnDesc> newSchema = th.getSchemaByVer(this.currentVersion);
 			rv = new RowView(newSchema);
 		}
 	}
@@ -148,7 +148,7 @@ public class GetFuture implements Future<ByteString>{
 	        this.currentVersion = 1;
 	        return;
 		}
-		List<ColumnDesc> newSchema = th.getVersions().get(version);
+		List<ColumnDesc> newSchema = th.getSchemaByVer(version);
 		if (newSchema == null) {
 			throw new TabletException(String.format("unkown shcema for ver %d", version));
 		}
