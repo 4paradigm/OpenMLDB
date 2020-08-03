@@ -29,7 +29,7 @@ namespace tablet {
 
 uint32_t counter = 10;
 static bool call_invoked = false;
-static int32_t endpoint_size = 1;
+static size_t endpoint_size = 1;
 
 inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 

@@ -37,7 +37,6 @@ DECLARE_int32(binlog_delete_interval);
 
 namespace rtidb {
 namespace tablet {
-using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 
 using ::rtidb::api::TableStatus;
 

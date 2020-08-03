@@ -2,6 +2,7 @@ package com._4paradigm.rtidb.client;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.tablet.Tablet;

@@ -529,6 +529,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
                                 dimension->CopyFrom(tmp_entry.dimensions(pos));
                             }
                         }
+                        std::string tmp_buf;
                         entry.SerializeToString(&tmp_buf);
                         record.reset(tmp_buf.data(), tmp_buf.size());
                     }
@@ -701,6 +702,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                             dimension->CopyFrom(tmp_entry.dimensions(pos));
                         }
                     }
+                    std::string tmp_buf;
                     entry.SerializeToString(&tmp_buf);
                     record.reset(tmp_buf.data(), tmp_buf.size());
                 }
@@ -922,8 +924,7 @@ int MemTableSnapshot::ExtractIndexData(
                     } else {
                         ::rtidb::api::LogEntry tmp_entry(entry);
                         entry.clear_dimensions();
-                        for (int pos = 0; pos < tmp_entry.dimensions_size();
-                             pos++) {
+                        for (int pos = 0; pos < tmp_entry.dimensions_size(); pos++) {
                             if (deleted_pos_set.find(pos) == deleted_pos_set.end()) {
                                 ::rtidb::api::Dimension* dimension = entry.add_dimensions();
                                 dimension->CopyFrom(tmp_entry.dimensions(pos));

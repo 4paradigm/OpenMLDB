@@ -46,8 +46,8 @@ public class SchemaCodec {
 	public static List<ColumnDesc> decode(ByteBuffer buffer) {
 		List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
 		if (buffer.order() == ByteOrder.BIG_ENDIAN) {
-            buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
-        }
+                    buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
+                }
 		while (buffer.position() < buffer.limit()) {
 			ColumnDesc desc = new ColumnDesc();
 			ColumnType type = ColumnType.valueOf((byte)buffer.get());

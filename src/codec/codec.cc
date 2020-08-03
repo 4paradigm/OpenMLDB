@@ -438,7 +438,7 @@ RowView::RowView(const Schema& schema)
       row_(NULL),
       schema_(schema),
       offset_vec_() {
-        Init();
+    Init();
 }
 
 RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size)
@@ -983,14 +983,7 @@ RowProject::RowProject(const Schema& schema, const ProjectList& plist)
       plist_(plist),
       output_schema_(),
       row_builder_(NULL),
-      row_view_(NULL),
-      max_idx_(0) {
-    for (const auto& idx : plist_) {
-        if (idx > max_idx_) {
-            max_idx_ = idx;
-        }
-    }
-}
+      row_view_(NULL) {}
 
 RowProject::~RowProject() {
     delete row_builder_;

@@ -99,7 +99,9 @@ bool SQLRequestRow::Init(int32_t str_length) {
     if (schema_->GetColumnCnt() == 0) {
         return true;
     }
+    has_error_ = false;
     str_length_expect_ = str_length;
+    str_length_current_ = 0;
     uint32_t total_length = str_field_start_offset_;
     total_length += str_length;
     if (total_length + str_field_cnt_ <= UINT8_MAX) {
@@ -297,8 +299,14 @@ bool SQLRequestRow::AppendNULL() {
 }
 
 bool SQLRequestRow::Build() {
-    if (has_error_) return false;
-    if (str_length_current_ != str_length_expect_) return false;
+    if (has_error_) {
+        return false;
+    }
+    if (str_length_current_ != str_length_expect_) {
+        LOG(WARNING) << "str_length_current_ != str_length_expect_ "
+                     << str_length_current_ << ", " << str_length_expect_;
+        return false;
+    }
     int32_t cnt = cnt_;
     for (; cnt < schema_->GetColumnCnt(); cnt++) {
         bool ok = AppendNULL();

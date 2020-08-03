@@ -13,10 +13,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <algorithm>
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
-#include <algorithm>
 
 #include "boost/container/deque.hpp"
 #include "config.h"  // NOLINT
@@ -1024,7 +1024,6 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
     }
 
     bool enable_project = false;
-    // TODO(wangtaize) support extend columns
     RepeatedPtrField<rtidb::common::ColumnDesc> columns;
     int code = SchemaCodec::ConvertColumnDesc(meta.column_desc(), columns, meta.added_column_desc());
     if (code != 0) {
@@ -5311,7 +5310,6 @@ void TabletImpl::DumpIndexDataInternal(
             return;
         }
         ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd);
-        LOG(INFO) << "success open " << index_data_path;
         whs.push_back(wh);
     }
     if (memtable_snapshot->DumpIndexData(table, column_key, idx, whs)) {

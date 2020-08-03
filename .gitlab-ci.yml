@@ -161,7 +161,6 @@ c++_ut:
     variables:
       - $ENV_BUILD == "daily"
 
-
 py3_ut:
   stage: test
   before_script:

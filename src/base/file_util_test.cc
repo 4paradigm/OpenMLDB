@@ -3,7 +3,9 @@
 // Copyright 2017 4paradigm.com
 
 #include "base/file_util.h"
+
 #include <algorithm>
+
 #include "gtest/gtest.h"
 
 namespace rtidb {
@@ -24,7 +26,7 @@ TEST_F(FileUtilTest, GetChildFileName) {
     if (f != nullptr) fclose(f);
     std::vector<std::string> file_vec;
     GetChildFileName(std::string("/tmp/gtest"), file_vec);
-    ASSERT_EQ(file_vec.size(), 3);
+    ASSERT_EQ(file_vec.size(), 3u);
     sort(file_vec.begin(), file_vec.end());
     ASSERT_EQ("/tmp/gtest/test", file_vec[0]);
     ASSERT_EQ("/tmp/gtest/test0.txt", file_vec[1]);
@@ -89,7 +91,7 @@ TEST_F(FileUtilTest, GetDirSizeRecur) {
     lstat("/tmp/gtest/testsize/test/", &stat_buf);
     uint64_t size = 0;
     GetDirSizeRecur(std::string("/tmp/gtest/testsize"), size);
-    ASSERT_EQ(size, 2000 + 1000 + 5000 + 100 + stat_buf.st_size);
+    ASSERT_EQ(size, static_cast<size_t>(2000 + 1000 + 5000 + 100 + stat_buf.st_size));
     RemoveDirRecursive("/tmp/gtest");
 }
 

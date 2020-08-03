@@ -912,14 +912,9 @@ class NameServerImpl : public NameServer {
     std::mutex mu_;
     Tablets tablets_;
     BlobServers blob_servers_;
-    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>
-        table_info_;
-    std::map<
-        std::string,
-        std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>>
-        db_table_info_;
-    std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>>
-        nsc_;
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
+    std::map< std::string, std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>> db_table_info_;
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
     ZoneInfo zone_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;
@@ -951,8 +946,7 @@ class NameServerImpl : public NameServer {
     ::rtidb::base::Random rand_;
     uint64_t session_term_;
     std::atomic<uint64_t> task_rpc_version_;
-    std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>>
-        task_map_;
+    std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>> task_map_;
     std::set<std::string> databases_;
     std::string zk_root_path_;
     std::string endpoint_;

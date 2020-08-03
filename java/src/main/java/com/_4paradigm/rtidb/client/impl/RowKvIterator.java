@@ -176,6 +176,5 @@ public class RowKvIterator implements KvIterator {
         }
         checkVersion(buf);
         rv.read(buf, row, start, length);
-
     }
 }

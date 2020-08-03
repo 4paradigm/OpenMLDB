@@ -422,7 +422,6 @@ message AddIndexMeta {
     optional rtidb.common.ColumnKey column_key = 3;
     optional uint32 idx = 4;
     optional string db = 5 [default = ""];
-    optional bool skip_data = 6 [default = false];
 }
 
 message AddIndexRequest {

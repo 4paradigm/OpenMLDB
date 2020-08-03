@@ -26,8 +26,14 @@ public class SelectTest extends FesqlTest {
 
     @Test(dataProvider = "testSampleSelectData")
     public void testSampleSelect(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor,testCase).run();
+        ExecutorFactory.build(executor, testCase).run();
     }
+
+    @Test(dataProvider = "testSampleSelectData")
+    public void testSampleSelectRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, true).run();
+    }
+
     @DataProvider
     public Object[] testExpressionData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
@@ -37,8 +43,15 @@ public class SelectTest extends FesqlTest {
 
     @Test(enabled = false, dataProvider = "testExpressionData")
     public void testExpression(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor,testCase).run();
+        ExecutorFactory.build(executor, testCase).run();
     }
+
+    @Test(enabled = false, dataProvider = "testExpressionData")
+    public void testExpressionRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, true).run();
+    }
+
+
     @DataProvider
     public Object[] testUDAFFunctionData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
@@ -48,8 +61,31 @@ public class SelectTest extends FesqlTest {
 
     @Test(enabled = false, dataProvider = "testUDAFFunctionData")
     public void testUDAFFunction(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor,testCase).run();
+        ExecutorFactory.build(executor, testCase).run();
     }
+
+    @Test(enabled = false, dataProvider = "testUDAFFunctionData")
+    public void testUDAFFunctionRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, true).run();
+    }
+
+    @DataProvider
+    public Object[] testUDFFunctionData() throws FileNotFoundException {
+        FesqlDataProvider dp = FesqlDataProvider
+                .dataProviderGenerator("/integration/v1/test_udf_function.yaml");
+        return dp.getCases().toArray();
+    }
+
+    @Test(enabled = false, dataProvider = "testUDFFunctionData")
+    public void testUDFFunction(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase).run();
+    }
+
+    @Test(enabled = false, dataProvider = "testUDFFunctionData")
+    public void testUDFFunctionRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, true).run();
+    }
+
     @DataProvider
     public Object[] testSubSelectData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
@@ -59,6 +95,11 @@ public class SelectTest extends FesqlTest {
 
     @Test(enabled = false, dataProvider = "testSubSelectData")
     public void testSubSelect(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor,testCase).run();
+        ExecutorFactory.build(executor, testCase).run();
+    }
+
+    @Test(enabled = false, dataProvider = "testSubSelectData")
+    public void testSubSelectRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, true).run();
     }
 }

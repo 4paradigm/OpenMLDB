@@ -790,7 +790,6 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
             PDLOG(WARNING, "add index failed. tid %u pid %u", id_, pid_);
             return false;
         }
-        LOG(INFO) << "success add new index " << column_key.index_name();
     }
     index_def->SetTsColumn(ts_vec);
     index_def->SetStatus(IndexStatus::kReady);

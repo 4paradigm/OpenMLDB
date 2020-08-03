@@ -11535,8 +11535,7 @@ std::shared_ptr<Task> NameServerImpl::CreateSendIndexDataTask(
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(endpoint);
     boost::function<bool()> fun =
-        boost::bind(&TabletClient::SendIndexData, tablet->client_, tid, pid,
-                    pid_endpoint_map, task->task_info_);
+        boost::bind(&TabletClient::SendIndexData, tablet->client_, tid, pid, pid_endpoint_map, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
@@ -11556,8 +11555,7 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadIndexDataTask(
     task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
     task->task_info_->set_endpoint(endpoint);
     boost::function<bool()> fun =
-        boost::bind(&TabletClient::LoadIndexData, tablet->client_, tid, pid,
-                    partition_num, task->task_info_);
+        boost::bind(&TabletClient::LoadIndexData, tablet->client_, tid, pid, partition_num, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
@@ -11626,8 +11624,7 @@ std::shared_ptr<Task> NameServerImpl::CreateAddIndexToTabletTask(
             ::rtidb::api::TaskType::kAddIndexToTablet);
         sub_task->task_info_->set_status(::rtidb::api::TaskStatus::kInited);
         boost::function<bool()> fun =
-            boost::bind(&TabletClient::AddIndex, tablet->client_, tid, pid,
-                        column_key, sub_task->task_info_);
+            boost::bind(&TabletClient::AddIndex, tablet->client_, tid, pid, column_key, sub_task->task_info_);
         sub_task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun,
                                      sub_task->task_info_);
         task->sub_task_.push_back(sub_task);

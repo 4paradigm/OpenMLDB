@@ -24,8 +24,12 @@ public class LastJoinTest extends FesqlTest {
         return dp.getCases().toArray();
     }
 
-    @Test(enabled = false, dataProvider = "testLastJoinData")
+    @Test(dataProvider = "testLastJoinData")
     public void testLastJoin(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor,testCase).run();
+    }
+    @Test(dataProvider = "testLastJoinData")
+    public void testLastJoinRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, true).run();
     }
 }

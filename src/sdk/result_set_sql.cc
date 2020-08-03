@@ -45,7 +45,7 @@ ResultSetSQL::~ResultSetSQL() {}
 
 bool ResultSetSQL::Init() {
     if (!response_ || response_->code() != ::rtidb::base::kOk) {
-        LOG(WARNING) <<  "bad response code " << response_->code();
+        LOG(WARNING) << "bad response code " << response_->code();
         return false;
     }
     byte_size_ = response_->byte_size();
@@ -68,7 +68,8 @@ bool ResultSetSQL::IsNULL(int index) { return row_view_->IsNULL(index); }
 
 bool ResultSetSQL::Next() {
     index_++;
-    if (index_ < response_->count() && position_ < byte_size_) {
+    if (index_ < static_cast<int32_t>(response_->count()) &&
+        position_ < byte_size_) {
         // get row size
         uint32_t row_size = 0;
         cntl_->response_attachment().copy_to(reinterpret_cast<void*>(&row_size),
