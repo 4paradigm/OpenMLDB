@@ -207,7 +207,7 @@ build_rtidb_pz:
         - mkdir TitanSE-rtidb && cp release/* TitanSE-rtidb/ -rf && cp tools TitanSE-rtidb/ -rf && cp build/bin/rtidb TitanSE-rtidb/bin/
         - mkdir TitanSE-rtidb/lib && cp thirdparty/lib/*.so* TitanSE-rtidb/lib/ -L
         - tar zcf TitanSE-rtidb-${CI_COMMIT_SHA:0:8}.tar.gz TitanSE-rtidb
-        - curl -T TitanSE-rtidb-${CI_COMMIT_SHA:0:8}.tar.gz ftp://172.27.12.154/pub/team_hpc/pz_rtidb/
+        - curl -T TitanSE-rtidb-${CI_COMMIT_SHA:0:8}.tar.gz ftp://ftp.4pd.io/pub/team_hpc/pz_rtidb/
     artifacts:
         expire_in: 3h
         paths:
