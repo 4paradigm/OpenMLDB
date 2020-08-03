@@ -7,14 +7,16 @@
  *--------------------------------------------------------------------------
  **/
 #include "udf/default_udf_library.h"
+
 #include <string>
 #include <tuple>
 #include <unordered_set>
+#include <vector>
 #include "codegen/date_ir_builder.h"
+#include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
-#include <math.h>
 
 using fesql::codec::Date;
 using fesql::codec::StringRef;
@@ -164,9 +166,97 @@ struct DistinctCountDef {
     }
 };
 
+void DefaultUDFLibrary::InitStringUDF() {
+    RegisterExternalTemplate<v1::ToString>("string")
+        .args_in<int16_t, int32_t, int64_t, float, double>()
+        .return_by_arg(true);
+
+    RegisterExternal("string")
+        .args<Timestamp>(
+            static_cast<void (*)(codec::Timestamp*, codec::StringRef*)>(
+                udf::v1::timestamp_to_string))
+        .return_by_arg(true);
+
+    RegisterExternal("string")
+        .args<Date>(static_cast<void (*)(codec::Date*, codec::StringRef*)>(
+            udf::v1::date_to_string))
+        .return_by_arg(true);
+
+    RegisterCodeGenUDF("concat").variadic_args<>(
+        /* infer */
+        [](UDFResolveContext* ctx,
+           const std::vector<const node::TypeNode*>& arg_types) {
+            return ctx->node_manager()->MakeTypeNode(node::kVarchar);
+        },
+        /* gen */
+        [](CodeGenContext* ctx, const std::vector<NativeValue>& args,
+           NativeValue* out) {
+            codegen::StringIRBuilder string_ir_builder(ctx->GetModule());
+            return string_ir_builder.Concat(ctx->GetCurrentBlock(), args, out);
+        });
+
+    RegisterCodeGenUDF("concat_ws")
+        .variadic_args<AnyArg>(
+            /* infer */
+            [](UDFResolveContext* ctx, const node::TypeNode* arg,
+               const std::vector<const node::TypeNode*>& arg_types) {
+                return ctx->node_manager()->MakeTypeNode(node::kVarchar);
+            },
+            /* gen */
+            [](CodeGenContext* ctx, NativeValue arg,
+               const std::vector<NativeValue>& args, NativeValue* out) {
+                codegen::StringIRBuilder string_ir_builder(ctx->GetModule());
+
+                return string_ir_builder.ConcatWS(ctx->GetCurrentBlock(), arg,
+                                                  args, out);
+            });
+
+    RegisterExternal("substring")
+        .args<StringRef, int32_t>(
+            static_cast<void (*)(codec::StringRef*, int32_t,
+                                 codec::StringRef*)>(udf::v1::sub_string))
+        .return_by_arg(true);
+
+    RegisterExternal("substring")
+        .args<StringRef, int32_t, int32_t>(
+            static_cast<void (*)(codec::StringRef*, int32_t, int32_t,
+                                 codec::StringRef*)>(udf::v1::sub_string))
+        .return_by_arg(true);
+
+    RegisterExternal("date_format")
+        .args<Timestamp, StringRef>(
+            static_cast<void (*)(codec::Timestamp*, codec::StringRef*,
+                                 codec::StringRef*)>(udf::v1::date_format))
+        .return_by_arg(true);
+    RegisterExternal("date_format")
+        .args<Date, StringRef>(
+            static_cast<void (*)(codec::Date*, codec::StringRef*,
+                                 codec::StringRef*)>(udf::v1::date_format))
+        .return_by_arg(true);
+    //    RegisterExprUDF("substring")
+    //        .args<StringRef, AnyArg, AnyArg>([](UDFResolveContext* ctx,
+    //                                            ExprNode* str, ExprNode* pos,
+    //                                            ExprNode* len) -> ExprNode* {
+    //            if (!pos->GetOutputType()->IsInteger()) {
+    //                ctx->SetError("substring do not support pos type " +
+    //                              pos->GetOutputType()->GetName());
+    //                return nullptr;
+    //            }
+    //            if (!len->GetOutputType()->IsInteger()) {
+    //                ctx->SetError("substring do not support len type " +
+    //                              pos->GetOutputType()->GetName());
+    //                return nullptr;
+    //            }
+    //            auto nm = ctx->node_manager();
+    //            return nm->MakeFuncNode("substring",
+    //                                    {str, nm->MakeCastNode(node::kInt32,
+    //                                    pos),
+    //                                     nm->MakeCastNode(node::kInt32, len)},
+    //                                    nullptr);
+    //        });
+}
 void DefaultUDFLibrary::IniMathUDF() {
     RegisterExternal("log")
-        .doc("Return the natural logarithm of the argument")
         .args<float>(static_cast<float (*)(float)>(log))
         .args<double>(static_cast<double (*)(double)>(log));
     RegisterExprUDF("log").args<AnyArg>(
@@ -180,41 +270,9 @@ void DefaultUDFLibrary::IniMathUDF() {
             auto cast = nm->MakeCastNode(node::kDouble, x);
             return nm->MakeFuncNode("log", {cast}, nullptr);
         });
-    RegisterExprUDF("log")
-        .doc("Returns the logarithm of expr with base.")
-        .args<AnyArg, AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
-            if (!x->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("log do not support type " +
-                              x->GetOutputType()->GetName());
-                return nullptr;
-            }
-            auto nm = ctx->node_manager();
-            auto cast1 = nm->MakeCastNode(node::kDouble, x);
-            auto cast2 = nm->MakeCastNode(node::kDouble, y);
-            auto logx = nm->MakeFuncNode("log", {cast1}, nullptr);
-            auto logy = nm->MakeFuncNode("log", {cast2}, nullptr);
-            return nm->MakeBinaryExprNode(logy, logx, node::kFnOpFDiv);
-        });
-    
-    RegisterExternal("ln")
-        .doc("Return the natural logarithm of the argument")
-        .args<float>(static_cast<float (*)(float)>(log))
-        .args<double>(static_cast<double (*)(double)>(log));
-    RegisterExprUDF("ln").args<AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
-            if (!x->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("log do not support type " +
-                              x->GetOutputType()->GetName());
-                return nullptr;
-            }
-            auto nm = ctx->node_manager();
-            auto cast = nm->MakeCastNode(node::kDouble, x);
-            return nm->MakeFuncNode("ln", {cast}, nullptr);
-        });
+    RegisterAlias("ln", "log");
 
     RegisterExternal("log2")
-        .doc("Return the base-2 logarithm of the argument")
         .args<float>(static_cast<float (*)(float)>(log2))
         .args<double>(static_cast<double (*)(double)>(log2));
     RegisterExprUDF("log2").args<AnyArg>(
@@ -230,7 +288,6 @@ void DefaultUDFLibrary::IniMathUDF() {
         });
 
     RegisterExternal("log10")
-        .doc("Return the base-10 logarithm of the argument")
         .args<float>(static_cast<float (*)(float)>(log10))
         .args<double>(static_cast<double (*)(double)>(log10));
     RegisterExprUDF("log10").args<AnyArg>(
@@ -244,82 +301,6 @@ void DefaultUDFLibrary::IniMathUDF() {
             auto cast = nm->MakeCastNode(node::kDouble, x);
             return nm->MakeFuncNode("log10", {cast}, nullptr);
         });
-
-    RegisterExternal("abs")
-        .args<int16_t>(static_cast<int16_t (*)(int16_t)>(v1::abs_int16))
-        .args<int32_t>(static_cast<int32_t (*)(int32_t)>(abs));
-    RegisterExternal("abs")
-        .args<int64_t>(static_cast<int64_t (*)(int64_t)>(labs));
-    RegisterExternal("abs")
-        .args<float>(static_cast<float (*)(float)>(fabs))
-        .args<double>(static_cast<double (*)(double)>(fabs));
-
-    RegisterExternalTemplate<v1::Acos>("acos")
-        .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("acos")
-        .args<float>(static_cast<float (*)(float)>(acosf));
-
-    RegisterExternalTemplate<v1::Asin>("asin")
-        .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("asin")
-        .args<float>(static_cast<float (*)(float)>(asinf));
-
-    RegisterExternalTemplate<v1::Atan>("atan")
-        .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("atan")
-        .args<float>(static_cast<float (*)(float)>(atanf));
-
-    RegisterExternalTemplate<v1::Atan2>("atan")
-        .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("atan")
-        .args<float, float>(static_cast<float (*)(float, float)>(atan2f));
-    RegisterExprUDF("atan").args<AnyArg, AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
-            if (!x->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("atan do not support type " +
-                              x->GetOutputType()->GetName());
-                return nullptr;
-            }
-            if (!y->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("atan do not support type " +
-                              y->GetOutputType()->GetName());
-                return nullptr;
-            }
-            auto nm = ctx->node_manager();
-            auto cast1 = nm->MakeCastNode(node::kDouble, x);
-            auto cast2 = nm->MakeCastNode(node::kDouble, y);
-            return nm->MakeFuncNode("atan", {cast1, cast2}, nullptr);
-        });
-
-    RegisterExternalTemplate<v1::Atan2>("atan2")
-        .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("atan2")
-        .args<float, float>(static_cast<float (*)(float, float)>(atan2f));
-    RegisterExprUDF("atan2").args<AnyArg, AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
-            if (!x->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("atan do not support type " +
-                              x->GetOutputType()->GetName());
-                return nullptr;
-            }
-            if (!y->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("atan do not support type " +
-                              y->GetOutputType()->GetName());
-                return nullptr;
-            }
-            auto nm = ctx->node_manager();
-            auto cast1 = nm->MakeCastNode(node::kDouble, x);
-            auto cast2 = nm->MakeCastNode(node::kDouble, y);
-            return nm->MakeFuncNode("atan2", {cast1, cast2}, nullptr);
-        });
-
-    RegisterExternalTemplate<v1::Ceil>("ceil")
-        .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("ceil")
-        .args<float>(static_cast<float (*)(float)>(ceilf));
-    
-    RegisterAlias("ceil", "ceiling");
-
 }
 
 void DefaultUDFLibrary::Init() {
@@ -413,6 +394,8 @@ void DefaultUDFLibrary::Init() {
         .return_by_arg(true)
         .args_in<Timestamp, Date, StringRef>();
 
+    //
+
     RegisterAlias("lead", "at");
 
     RegisterCodeGenUDF("identity")
@@ -470,6 +453,7 @@ void DefaultUDFLibrary::Init() {
                  StringRef>();
 
     IniMathUDF();
+    InitStringUDF();
 }
 
 }  // namespace udf
