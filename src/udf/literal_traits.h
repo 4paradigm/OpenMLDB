@@ -50,6 +50,51 @@ struct Opaque {
     Opaque() = delete;
 };
 
+template <typename T>
+struct Nullable {
+    Nullable(std::nullptr_t) : is_null_(true) {}  // NOLINT
+    Nullable(const T& t) : data_(t), is_null_(false) {}
+    Nullable() : is_null_(false) {}
+
+    const T& value() const { return data_; }
+    bool is_null() const { return is_null_; }
+    T* ptr() { return &data_; }
+
+    T data_;
+    bool is_null_;
+};
+
+template <typename T>
+static bool operator==(const Nullable<T>& x, const Nullable<T>& y) {
+    if (x.is_null()) {
+        return y.is_null();
+    } else {
+        return !y.is_null() && x.value() == y.value();
+    }
+}
+
+template <typename... T>
+struct Tuple {
+    Tuple(){};
+    Tuple(T&&... t) : tuple(std::make_tuple(std::forward<T>(t)...)){};
+    std::tuple<T...> tuple;
+
+    template <size_t I>
+    auto& get() const {
+        return std::get<I>(this->tuple);
+    }
+};
+
+template <typename... T>
+Tuple<T...> MakeTuple(T&&... t) {
+    return Tuple<T...>(std::forward<T>(t)...);
+}
+
+template <typename... T>
+static bool operator==(const Tuple<T...>& x, const Tuple<T...>& y) {
+    return x.tuple == y.tuple;
+}
+
 template <>
 struct DataTypeTrait<AnyArg> {
     static std::string to_string() { return "?"; }
@@ -64,6 +109,7 @@ struct DataTypeTrait<bool> {
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
         return nm->MakeTypeNode(node::kBool);
     }
+    using CCallArgType = bool;
 };
 
 template <>
@@ -83,6 +129,7 @@ struct DataTypeTrait<int16_t> {
     static const int16_t maximum_value() {
         return std::numeric_limits<int16_t>::max();
     }
+    using CCallArgType = int16_t;
 };
 
 template <>
@@ -102,6 +149,7 @@ struct DataTypeTrait<int32_t> {
     static const int32_t maximum_value() {
         return std::numeric_limits<int32_t>::max();
     }
+    using CCallArgType = int32_t;
 };
 
 template <>
@@ -121,6 +169,7 @@ struct DataTypeTrait<int64_t> {
     static const int64_t maximum_value() {
         return std::numeric_limits<int64_t>::max();
     }
+    using CCallArgType = int64_t;
 };
 
 template <>
@@ -140,6 +189,7 @@ struct DataTypeTrait<float> {
     static const float maximum_value() {
         return std::numeric_limits<float>::max();
     }
+    using CCallArgType = float;
 };
 
 template <>
@@ -159,6 +209,7 @@ struct DataTypeTrait<double> {
     static const double maximum_value() {
         return std::numeric_limits<double>::max();
     }
+    using CCallArgType = double;
 };
 
 template <>
@@ -179,6 +230,7 @@ struct DataTypeTrait<codec::Timestamp> {
     static const codec::Timestamp maximum_value() {
         return codec::Timestamp(std::numeric_limits<int64_t>::max());
     }
+    using CCallArgType = codec::Timestamp*;
 };
 
 template <>
@@ -197,6 +249,7 @@ struct DataTypeTrait<codec::Date> {
     static const codec::Date maximum_value() {
         return codec::Date(std::numeric_limits<int32_t>::max());
     }
+    using CCallArgType = codec::Date*;
 };
 
 template <>
@@ -207,6 +260,7 @@ struct DataTypeTrait<codec::StringRef> {
         return nm->MakeTypeNode(node::kVarchar);
     }
     static int32_t codec_type_enum() { return fesql::type::kVarchar; }
+    using CCallArgType = codec::StringRef*;
 };
 
 template <typename T>
@@ -219,6 +273,7 @@ struct DataTypeTrait<codec::ListRef<T>> {
         return nm->MakeTypeNode(node::kList,
                                 DataTypeTrait<T>::to_type_node(nm));
     }
+    using CCallArgType = codec::ListRef<T>*;
 };
 
 template <typename T>
@@ -229,6 +284,69 @@ struct DataTypeTrait<Opaque<T>> {
     static node::DataType to_type_enum() { return node::kOpaque; }
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
         return nm->MakeOpaqueType(sizeof(T));
+    }
+    using CCallArgType = T*;
+};
+
+template <typename T>
+struct DataTypeTrait<Nullable<T>> {
+    static std::string to_string() { return DataTypeTrait<T>::to_string(); }
+    static node::DataType to_type_enum() {
+        return DataTypeTrait<T>::to_type_enum();
+    }
+    static node::TypeNode* to_type_node(node::NodeManager* nm) {
+        return DataTypeTrait<T>::to_type_node(nm);
+    }
+};
+
+template <typename T>
+struct IsNullableTrait {
+    static const bool value;
+};
+template <typename T>
+const bool IsNullableTrait<T>::value = false;
+
+template <typename T>
+struct IsNullableTrait<Nullable<T>> {
+    static const bool value;
+};
+template <typename T>
+const bool IsNullableTrait<Nullable<T>>::value = true;
+
+template <typename... T>
+struct DataTypeTrait<Tuple<T...>> {
+    static std::string to_string() {
+        std::stringstream ss;
+        ss << "tuple_";
+        size_t idx = 0;
+        for (auto name : {DataTypeTrait<T>::to_string()...}) {
+            ss << name;
+            if (idx < sizeof...(T) - 1) {
+                ss << "_";
+            }
+            idx += 1;
+        }
+        return ss.str();
+    }
+    static node::DataType to_type_enum() { return node::kTuple; }
+    static node::TypeNode* to_type_node(node::NodeManager* nm) {
+        auto tuple_type = nm->MakeTypeNode(node::kTuple);
+        tuple_type->generics_ = {DataTypeTrait<T>::to_type_node(nm)...};
+        tuple_type->generics_nullable_ = {IsNullableTrait<T>::value...};
+        return tuple_type;
+    }
+    static node::ExprNode* to_const(node::NodeManager* nm,
+                                    const Tuple<T...>& tuple) {
+        return to_const_impl(nm, tuple, std::index_sequence_for<T...>());
+    }
+
+    template <size_t... I>
+    static node::ExprNode* to_const_impl(node::NodeManager* nm,
+                                         const Tuple<T...>& tuple,
+                                         const std::index_sequence<I...>&) {
+        std::vector<node::ExprNode*> fields(
+            {DataTypeTrait<T>::to_const(nm, std::get<I>(tuple.tuple))...});
+        return nm->MakeFuncNode("make_tuple", fields, nullptr);
     }
 };
 
@@ -255,6 +373,23 @@ struct CCallDataTypeTrait<codec::StringRef*> {
 template <typename V>
 struct CCallDataTypeTrait<codec::ListRef<V>*> {
     using LiteralTag = codec::ListRef<V>;
+};
+
+template <>
+struct CCallDataTypeTrait<codec::Timestamp> {
+    using LiteralTag = AnyArg;
+};
+template <>
+struct CCallDataTypeTrait<codec::Date> {
+    using LiteralTag = AnyArg;
+};
+template <>
+struct CCallDataTypeTrait<codec::StringRef> {
+    using LiteralTag = AnyArg;
+};
+template <typename V>
+struct CCallDataTypeTrait<codec::ListRef<V>> {
+    using LiteralTag = AnyArg;
 };
 
 template <typename... LiteralArgTypes>

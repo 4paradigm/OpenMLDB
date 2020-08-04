@@ -27,6 +27,8 @@
 namespace fesql {
 namespace codegen {
 
+using base::Status;
+
 bool GetLLVMType(::llvm::BasicBlock* block,
                  const ::fesql::node::DataType& type,  // NOLINT
                  ::llvm::Type** output) {
@@ -180,6 +182,10 @@ bool GetLLVMListType(::llvm::Module* m, const ::fesql::node::TypeNode* v_type,
             name = "fe.list_ref_int64";
             break;
         }
+        case ::fesql::node::kBool: {
+            name = "fe.list_ref_bool";
+            break;
+        };
         case ::fesql::node::kTimestamp: {
             name = "fe.list_ref_timestamp";
             break;
@@ -245,6 +251,10 @@ bool GetLLVMIteratorType(::llvm::Module* m,
         }
         case ::fesql::node::kInt64: {
             name = "fe.iterator_ref_int64";
+            break;
+        }
+        case ::fesql::node::kBool: {
+            name = "fe.iterator_ref_bool";
             break;
         }
         case ::fesql::node::kFloat: {
@@ -802,6 +812,110 @@ bool TypeIRBuilder::IsStructPtr(::llvm::Type* type) {
         }
     }
     return false;
+}
+
+static Status ExpandLLVMArgTypes(
+    ::llvm::Module* m, const node::TypeNode* dtype, bool nullable,
+    std::vector<std::pair<::llvm::Type*, bool>>* output) {
+    if (dtype->base() == node::kTuple) {
+        CHECK_TRUE(!nullable, "kTuple should never be nullable");
+        for (size_t i = 0; i < dtype->GetGenericSize(); ++i) {
+            CHECK_STATUS(ExpandLLVMArgTypes(m, dtype->GetGenericType(i),
+                                            dtype->IsGenericNullable(i),
+                                            output));
+        }
+    } else {
+        ::llvm::Type* llvm_ty = nullptr;
+        CHECK_TRUE(GetLLVMType(m, dtype, &llvm_ty), "Fail to lower ",
+                   dtype->GetName());
+        output->push_back(std::make_pair(llvm_ty, nullable));
+    }
+    return Status::OK();
+}
+
+static Status ExpandLLVMReturnTypes(
+    ::llvm::Module* m, const node::TypeNode* dtype, bool nullable,
+    std::vector<std::pair<::llvm::Type*, bool>>* output) {
+    if (dtype->base() == node::kTuple) {
+        CHECK_TRUE(!nullable, "kTuple should never be nullable");
+        for (size_t i = 0; i < dtype->GetGenericSize(); ++i) {
+            CHECK_STATUS(ExpandLLVMReturnTypes(m, dtype->GetGenericType(i),
+                                               dtype->IsGenericNullable(i),
+                                               output));
+        }
+    } else {
+        ::llvm::Type* llvm_ty = nullptr;
+        CHECK_TRUE(GetLLVMType(m, dtype, &llvm_ty), "Fail to lower ",
+                   dtype->GetName());
+        if (dtype->base() == node::kOpaque) {
+            llvm_ty = ::llvm::Type::getInt8Ty(m->getContext());
+        }
+        output->push_back(std::make_pair(llvm_ty, nullable));
+    }
+    return Status::OK();
+}
+
+Status GetLLVMFunctionType(::llvm::Module* m,
+                           const std::vector<const node::TypeNode*>& arg_types,
+                           const std::vector<int>& arg_nullable,
+                           const node::TypeNode* return_type,
+                           bool return_nullable, bool variadic,
+                           bool* return_by_arg, ::llvm::FunctionType** output) {
+    // expand raw llvm arg types from signature
+    std::vector<std::pair<::llvm::Type*, bool>> llvm_arg_types;
+    for (size_t i = 0; i < arg_types.size(); ++i) {
+        CHECK_STATUS(ExpandLLVMArgTypes(m, arg_types[i], arg_nullable[i],
+                                        &llvm_arg_types))
+    }
+
+    ::llvm::Type* ret_llvm_ty = nullptr;
+
+    // expand raw llvm return types
+    std::vector<std::pair<::llvm::Type*, bool>> llvm_ret_types;
+    CHECK_STATUS(
+        ExpandLLVMReturnTypes(m, return_type, return_nullable, &llvm_ret_types))
+    CHECK_TRUE(llvm_ret_types.size() > 0);
+
+    if (llvm_ret_types.size() > 1 ||
+        TypeIRBuilder::IsStructPtr(llvm_ret_types[0].first) ||
+        llvm_ret_types[0].second) {
+        // tuple / struct / nullable
+        *return_by_arg = true;
+    }
+
+    auto bool_ty = ::llvm::Type::getInt1Ty(m->getContext());
+    std::vector<::llvm::Type*> expand_llvm_arg_types;
+    for (auto& pair : llvm_arg_types) {
+        expand_llvm_arg_types.push_back(pair.first);
+        if (pair.second) {
+            expand_llvm_arg_types.push_back(bool_ty);
+        }
+    }
+
+    if (*return_by_arg) {
+        ret_llvm_ty = ::llvm::Type::getVoidTy(m->getContext());
+        for (auto& pair : llvm_ret_types) {
+            auto addr_type = pair.first;
+            bool is_struct_ptr = TypeIRBuilder::IsStructPtr(addr_type);
+            if (!is_struct_ptr) {
+                addr_type = addr_type->getPointerTo();
+            }
+            expand_llvm_arg_types.push_back(addr_type);
+            if (pair.second) {
+                expand_llvm_arg_types.push_back(bool_ty->getPointerTo());
+            }
+        }
+    } else {
+        CHECK_TRUE(return_type->base() != node::kTuple);
+        ret_llvm_ty = llvm_ret_types[0].first;
+        if (return_type->base() == node::kOpaque) {
+            ret_llvm_ty = ret_llvm_ty->getPointerTo();
+        }
+    }
+
+    *output =
+        llvm::FunctionType::get(ret_llvm_ty, expand_llvm_arg_types, variadic);
+    return Status::OK();
 }
 
 }  // namespace codegen

@@ -117,7 +117,7 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     ::fesql::parser::FeSQLParser parser;
     ::fesql::base::Status status;
     ::fesql::udf::RegisterUDFToModule(m.get());
-    udf::DefaultUDFLibrary lib;
+    auto lib = udf::DefaultUDFLibrary::get();
     AddFunc(udf_str, manager, m.get());
     m->print(::llvm::errs(), NULL);
     int ret = parser.parse(sql, list, manager, status);
@@ -130,15 +130,20 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
 
     bool is_multi_row = pp_node_ptr->GetW() != nullptr;
-    ASSERT_TRUE(vm::ResolveProjects(name_schemas, pp_node_ptr->GetProjects(),
-                                    !is_multi_row, manager, &lib, status));
+    node::LambdaNode* to_compile_func = nullptr;
+    status = vm::ResolveProjects(name_schemas, pp_node_ptr->GetProjects(), false,
+                                 manager, lib, &to_compile_func);
+    if (!status.isOK()) {
+      LOG(WARNING) << status.msg;
+    }
+    ASSERT_TRUE(status.isOK());
 
     RowFnLetIRBuilder ir_builder(name_schemas,
                                  nullptr == pp_node_ptr->GetW()
                                      ? nullptr
                                      : pp_node_ptr->GetW()->frame_node(),
                                  m.get());
-    bool ok = ir_builder.Build("test_at_fn", pp_node_ptr->GetProjects(),
+    bool ok = ir_builder.Build("test_at_fn", to_compile_func,
                                output_schema, column_sources);
     ASSERT_TRUE(ok);
     LOG(INFO) << "fn let ir build ok";
@@ -148,7 +153,7 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     auto& jd = J->getMainJITDylib();
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
-    lib.InitJITSymbols(J.get());
+    lib->InitJITSymbols(J.get());
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
 

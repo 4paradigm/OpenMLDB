@@ -16,6 +16,7 @@
 #include "case/sql_case.h"
 #include "codec/list_iterator_codec.h"
 #include "udf/udf.h"
+#include "udf/udf_registry.h"
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace udf {
@@ -383,6 +384,182 @@ TEST_F(UDFTest, GetColHeapTest) {
         iter->Next();
         ASSERT_FALSE(iter->Valid());
     }
+}
+
+class ExternUDFTest : public ::testing::Test {
+ public:
+    static int32_t if_null(int32_t in, bool is_null, int32_t default_val) {
+        return is_null ? default_val : in;
+    }
+
+    static int32_t add_one(int32_t in) { return in + 1; }
+
+    static int32_t add_two(int32_t x, int32_t y) { return x + y; }
+
+    static int32_t add_two_one_nullable(int32_t x, bool x_is_null, int32_t y) {
+        return x_is_null ? y : x + y;
+    }
+
+    static void if_string_null(codec::StringRef* in, bool is_null,
+                               codec::StringRef* default_val,
+                               codec::StringRef* output) {
+        *output = is_null ? *default_val : *in;
+    }
+
+    static void new_date(int64_t in, bool is_null, codec::Date* out,
+                         bool* is_null_addr) {
+        *is_null_addr = is_null;
+        if (!is_null) {
+            out->date_ = in;
+        }
+    }
+
+    static double sum_tuple(float x1, bool x1_is_null, float x2, double x3,
+                            double x4, bool x4_is_null) {
+        double res = 0;
+        if (!x1_is_null) {
+            res += x1;
+        }
+        res += x2;
+        res += x3;
+        if (!x4_is_null) {
+            res += x4;
+        }
+        return res;
+    }
+
+    static void make_tuple(int16_t x, int32_t y, bool y_is_null, int64_t z,
+                           int16_t* t1, int32_t* t2, bool* t2_is_null,
+                           int64_t* t3) {
+        *t1 = x;
+        *t2 = y;
+        *t2_is_null = y_is_null;
+        *t3 = z;
+    }
+};
+
+template <class Ret, class... Args>
+void CheckUDF(UDFLibrary* library, const std::string& name, Ret&& expect,
+                     Args&&... args) {
+    auto function = udf::UDFFunctionBuilder(name)
+                        .args<Args...>()
+                        .template returns<Ret>()
+                        .library(library)
+                        .build();
+    ASSERT_TRUE(function.valid());
+    auto result = function(std::forward<Args>(args)...);
+    ASSERT_EQ(std::forward<Ret>(expect), result);
+}
+
+TEST_F(ExternUDFTest, TestCompoundTypedExternalCall) {
+    UDFLibrary library;
+    library.RegisterExternal("if_null")
+        .args<Nullable<int32_t>, int32_t>(ExternUDFTest::if_null)
+        .args<Nullable<codec::StringRef>, codec::StringRef>(
+            ExternUDFTest::if_string_null);
+
+    library.RegisterExternal("add_one").args<int32_t>(ExternUDFTest::add_one);
+
+    library.RegisterExternal("add_two").args<int32_t, int32_t>(
+        ExternUDFTest::add_two);
+
+    library.RegisterExternal("add_two_one_nullable")
+        .args<Nullable<int32_t>, int32_t>(ExternUDFTest::add_two_one_nullable);
+
+    library.RegisterExternal("new_date")
+        .args<Nullable<int64_t>>(
+            TypeAnnotatedFuncPtrImpl<std::tuple<Nullable<int64_t>>>::RBA<
+                Nullable<codec::Date>>(ExternUDFTest::new_date));
+
+    library.RegisterExternal("sum_tuple")
+        .args<Tuple<Nullable<float>, float>, Tuple<double, Nullable<double>>>(
+            ExternUDFTest::sum_tuple)
+        .args<Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>>(
+            ExternUDFTest::sum_tuple);
+
+    library.RegisterExternal("make_tuple")
+        .args<int16_t, Nullable<int32_t>, int64_t>(
+            TypeAnnotatedFuncPtrImpl<
+                std::tuple<int16_t, Nullable<int32_t>, int64_t>>::
+                RBA<Tuple<int16_t, Nullable<int32_t>, int64_t>>(
+                    ExternUDFTest::make_tuple));
+
+    // pass null to primitive
+    CheckUDF<int32_t, Nullable<int32_t>, int32_t>(&library, "if_null", 1, 1, 3);
+    CheckUDF<int32_t, Nullable<int32_t>, int32_t>(&library, "if_null", 3,
+                                                  nullptr, 3);
+
+    // pass null to struct
+    CheckUDF<codec::StringRef, Nullable<codec::StringRef>, codec::StringRef>(
+        &library, "if_null", codec::StringRef("1"), codec::StringRef("1"),
+        codec::StringRef("3"));
+    CheckUDF<codec::StringRef, Nullable<codec::StringRef>, codec::StringRef>(
+        &library, "if_null", codec::StringRef("3"), nullptr,
+        codec::StringRef("3"));
+
+    // pass null to non-null arg
+    CheckUDF<Nullable<int32_t>, int32_t>(&library, "add_one", 2, 1);
+    CheckUDF<Nullable<int32_t>, Nullable<int32_t>>(&library, "add_one", 2, 1);
+    CheckUDF<Nullable<int32_t>, Nullable<int32_t>>(&library, "add_one", nullptr,
+                                                   nullptr);
+
+    CheckUDF<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        &library, "add_two", nullptr, 1, nullptr);
+    CheckUDF<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        &library, "add_two_one_nullable", 3, 2, 1);
+    CheckUDF<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        &library, "add_two_one_nullable", nullptr, 1, nullptr);
+    CheckUDF<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        &library, "add_two_one_nullable", 1, nullptr, 1);
+    CheckUDF<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        &library, "add_two_one_nullable", nullptr, nullptr, nullptr);
+
+    // nullable return
+    CheckUDF<Nullable<codec::Date>, Nullable<int64_t>>(&library, "new_date",
+                                                       codec::Date(1), 1);
+    CheckUDF<Nullable<codec::Date>, Nullable<int64_t>>(&library, "new_date",
+                                                       nullptr, nullptr);
+
+    // pass tuple
+    CheckUDF<double, Tuple<Nullable<float>, float>,
+             Tuple<double, Nullable<double>>>(
+        &library, "sum_tuple", 10.0, Tuple<Nullable<float>, float>(1.0f, 2.0f),
+        Tuple<double, Nullable<double>>(3.0, 4.0));
+    CheckUDF<double, Tuple<Nullable<float>, float>,
+             Tuple<double, Nullable<double>>>(
+        &library, "sum_tuple", 5.0,
+        Tuple<Nullable<float>, float>(nullptr, 2.0f),
+        Tuple<double, Nullable<double>>(3.0, nullptr));
+    CheckUDF<Nullable<double>, Tuple<float, Nullable<float>>,
+             Tuple<double, double>>(
+        &library, "sum_tuple", nullptr,
+        Tuple<float, Nullable<float>>(1.0f, nullptr),
+        Tuple<double, double>(3.0, 4.0));
+
+    // nested tuple
+    CheckUDF<double,
+             Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>>(
+        &library, "sum_tuple", 10.0,
+        Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>(
+            1.0f, Tuple<float, double, Nullable<double>>(2.0f, 3.0, 4.0)));
+    CheckUDF<double,
+             Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>>(
+        &library, "sum_tuple", 5.0,
+        Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>(
+            nullptr,
+            Tuple<float, double, Nullable<double>>(2.0f, 3.0, nullptr)));
+    CheckUDF<Nullable<double>,
+             Tuple<float, Tuple<Nullable<float>, double, double>>>(
+        &library, "sum_tuple", nullptr,
+        Tuple<float, Tuple<Nullable<float>, double, double>>(
+            1.0f, Tuple<Nullable<float>, double, double>(nullptr, 3.0, 4.0)));
+
+    // return tuple
+    using TupleResT = Tuple<int16_t, Nullable<int32_t>, int64_t>;
+    CheckUDF<TupleResT, int16_t, Nullable<int32_t>, int64_t>(
+        &library, "make_tuple", TupleResT(1, 2, 3), 1, 2, 3);
+    CheckUDF<TupleResT, int16_t, Nullable<int32_t>, int64_t>(
+        &library, "make_tuple", TupleResT(1, nullptr, 3), 1, nullptr, 3);
 }
 
 }  // namespace udf

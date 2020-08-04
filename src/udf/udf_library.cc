@@ -72,10 +72,8 @@ ExternalFuncRegistryHelper UDFLibrary::RegisterExternal(
         name);
 }
 
-SimpleUDAFRegistryHelper UDFLibrary::RegisterSimpleUDAF(
-    const std::string& name) {
-    auto helper =
-        DoStartRegister<SimpleUDAFRegistryHelper, SimpleUDAFRegistry>(name);
+UDAFRegistryHelper UDFLibrary::RegisterUDAF(const std::string& name) {
+    auto helper = DoStartRegister<UDAFRegistryHelper, UDAFRegistry>(name);
     return helper;
 }
 

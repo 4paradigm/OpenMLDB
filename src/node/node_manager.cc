@@ -350,6 +350,9 @@ GetFieldExpr *NodeManager::MakeGetFieldExpr(ExprNode *input,
                                             const std::string &relation_name) {
     return RegisterNode(new GetFieldExpr(input, column_name, relation_name));
 }
+GetFieldExpr *NodeManager::MakeGetFieldExpr(ExprNode *input, size_t idx) {
+    return RegisterNode(new GetFieldExpr(input, std::to_string(idx), ""));
+}
 
 ExprNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
                                          const std::string &relation_name) {
@@ -399,14 +402,14 @@ ExprNode *NodeManager::MakeFuncNode(const std::string &name,
     return RegisterNode(node_ptr);
 }
 
-ExprNode *NodeManager::MakeFuncNode(const FnDefNode *fn, ExprListNode *list_ptr,
+ExprNode *NodeManager::MakeFuncNode(FnDefNode *fn, ExprListNode *list_ptr,
                                     const SQLNode *over) {
     CallExprNode *node_ptr = new CallExprNode(
         fn, list_ptr, dynamic_cast<const WindowDefNode *>(over));
     return RegisterNode(node_ptr);
 }
 
-ExprNode *NodeManager::MakeFuncNode(const FnDefNode *fn,
+ExprNode *NodeManager::MakeFuncNode(FnDefNode *fn,
                                     const std::vector<ExprNode *> &args,
                                     const SQLNode *over) {
     ExprListNode args_node;
@@ -872,7 +875,7 @@ TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base) {
     return node_ptr;
 }
 TypeNode *NodeManager::MakeTypeNode(fesql::node::DataType base,
-                                    fesql::node::TypeNode *v1) {
+                                    const fesql::node::TypeNode *v1) {
     TypeNode *node_ptr = new TypeNode(base, v1);
     RegisterNode(node_ptr);
     return node_ptr;
@@ -1186,18 +1189,19 @@ node::ExprListNode *NodeManager::BuildExprListFromSchemaSource(
 
 ExternalFnDefNode *NodeManager::MakeExternalFnDefNode(
     const std::string &function_name, void *function_ptr,
-    node::TypeNode *ret_type,
-    const std::vector<const node::TypeNode *> &arg_types, int variadic_pos,
+    node::TypeNode *ret_type, bool ret_nullable,
+    const std::vector<const node::TypeNode *> &arg_types,
+    const std::vector<int> &arg_nullable, int variadic_pos,
     bool return_by_arg) {
-    return RegisterNode(
-        new node::ExternalFnDefNode(function_name, function_ptr, ret_type,
-                                    arg_types, variadic_pos, return_by_arg));
+    return RegisterNode(new node::ExternalFnDefNode(
+        function_name, function_ptr, ret_type, ret_nullable, arg_types,
+        arg_nullable, variadic_pos, return_by_arg));
 }
 
 node::ExternalFnDefNode *NodeManager::MakeUnresolvedFnDefNode(
     const std::string &function_name) {
-    return RegisterNode(new node::ExternalFnDefNode(function_name, nullptr,
-                                                    nullptr, {}, -1, false));
+    return RegisterNode(new node::ExternalFnDefNode(
+        function_name, nullptr, nullptr, true, {}, {}, -1, false));
 }
 
 node::UDFDefNode *NodeManager::MakeUDFDefNode(FnNodeFnDef *def) {
@@ -1206,18 +1210,18 @@ node::UDFDefNode *NodeManager::MakeUDFDefNode(FnNodeFnDef *def) {
 
 node::UDFByCodeGenDefNode *NodeManager::MakeUDFByCodeGenDefNode(
     const std::vector<const node::TypeNode *> &arg_types,
-    const node::TypeNode *ret_type) {
-    return RegisterNode(new node::UDFByCodeGenDefNode(arg_types, ret_type));
+    const std::vector<int> &arg_nullable, const node::TypeNode *ret_type,
+    bool ret_nullable) {
+    return RegisterNode(new node::UDFByCodeGenDefNode(arg_types, arg_nullable,
+                                                      ret_type, ret_nullable));
 }
 
-node::UDAFDefNode *NodeManager::MakeUDAFDefNode(const std::string &name,
-                                                const TypeNode *input_type,
-                                                const ExprNode *init,
-                                                const FnDefNode *update_func,
-                                                const FnDefNode *merge_func,
-                                                const FnDefNode *output_func) {
+node::UDAFDefNode *NodeManager::MakeUDAFDefNode(
+    const std::string &name, const std::vector<const TypeNode *> &arg_types,
+    ExprNode *init, FnDefNode *update_func, FnDefNode *merge_func,
+    FnDefNode *output_func) {
     return RegisterNode(new node::UDAFDefNode(
-        name, input_type, init, update_func, merge_func, output_func));
+        name, arg_types, init, update_func, merge_func, output_func));
 }
 
 LambdaNode *NodeManager::MakeLambdaNode(const std::vector<ExprIdNode *> &args,

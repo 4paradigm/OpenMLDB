@@ -65,18 +65,34 @@ class UDFIRBuilder {
                         const std::vector<const node::TypeNode*>& arg_types,
                         ::llvm::FunctionCallee* callee, bool* return_by_arg);
 
-    Status GetExternCallee(const node::ExternalFnDefNode* fn,
-                           const std::vector<const node::TypeNode*>& arg_types,
-                           ::llvm::FunctionCallee* callee, bool* return_by_arg);
-
-    Status BuildCallWithLLVMCallee(const node::FnDefNode* fn,
-                                   ::llvm::FunctionCallee callee,
-                                   const std::vector<llvm::Value*>& args,
-                                   bool return_by_arg, ::llvm::Value** output);
-
-    static bool IsReturnByArg(node::TypeNode* type);
-
  private:
+    Status ExpandLLVMCallArgs(const node::TypeNode* dtype, bool nullable,
+                              const NativeValue& value,
+                              ::llvm::IRBuilder<>* builder,
+                              std::vector<::llvm::Value*>* arg_vec,
+                              ::llvm::Value** should_ret_null);
+
+    Status ExpandLLVMCallVariadicArgs(const NativeValue& value,
+                                      ::llvm::IRBuilder<>* builder,
+                                      std::vector<::llvm::Value*>* arg_vec,
+                                      ::llvm::Value** should_ret_null);
+
+    Status ExpandLLVMCallReturnArgs(const node::TypeNode* dtype, bool nullable,
+                                    ::llvm::IRBuilder<>* builder,
+                                    std::vector<::llvm::Value*>* arg_vec);
+
+    Status ExtractLLVMReturnValue(const node::TypeNode* dtype, bool nullable,
+                                  const std::vector<::llvm::Value*>& llvm_args,
+                                  ::llvm::IRBuilder<>* builder, size_t* pos_idx,
+                                  NativeValue* output);
+
+    Status BuildLLVMCall(const node::FnDefNode* fn,
+                         ::llvm::FunctionCallee callee,
+                         const std::vector<NativeValue>& args,
+                         bool return_by_arg, NativeValue* output);
+
+    Status GetLLVMFunctionType(const node::FnDefNode* fn,
+                               ::llvm::FunctionType** func_ty);
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
     ::llvm::Module* module_;

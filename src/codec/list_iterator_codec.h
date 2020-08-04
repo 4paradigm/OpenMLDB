@@ -226,21 +226,34 @@ class ArrayListIterator : public ConstIterator<uint64_t, V> {
           iter_start_(buffer->cbegin() + start),
           iter_end_(buffer->cbegin() + end),
           iter_(iter_start_),
-          key_(0) {}
+          key_(0) {
+        if (Valid()) {
+            tmp_ = *iter_;
+        }
+    }
 
     explicit ArrayListIterator(const ArrayListIterator<V> &impl)
         : buffer_(impl.buffer_),
           iter_start_(impl.iter_start_),
           iter_end_(impl.iter_end_),
           iter_(impl.iter_start_),
-          key_(0) {}
+          key_(0) {
+        if (Valid()) {
+            tmp_ = *iter_;
+        }
+    }
     explicit ArrayListIterator(const ArrayListIterator<V> &impl, uint64_t start,
                                uint64_t end)
         : buffer_(impl.buffer_),
           iter_start_(impl.iter_start_ + start),
           iter_end_(impl.iter_start_ + end),
           iter_(iter_start_),
-          key_(0) {}
+          tmp_(*iter_),
+          key_(0) {
+        if (Valid()) {
+            tmp_ = *iter_;
+        }
+    }
 
     ~ArrayListIterator() {}
     void Seek(const uint64_t &key) override {
@@ -251,9 +264,9 @@ class ArrayListIterator : public ConstIterator<uint64_t, V> {
 
     bool Valid() const override { return iter_end_ != iter_; }
 
-    void Next() override { iter_++; }
+    void Next() override { tmp_ = *(++iter_); }
 
-    const V &GetValue() override { return *iter_; }
+    const V &GetValue() override { return tmp_; }
 
     const uint64_t &GetKey() const override { return key_; }
 
@@ -274,6 +287,7 @@ class ArrayListIterator : public ConstIterator<uint64_t, V> {
     const typename std::vector<V>::const_iterator iter_start_;
     const typename std::vector<V>::const_iterator iter_end_;
     typename std::vector<V>::const_iterator iter_;
+    V tmp_;
     uint64_t key_;
 };
 

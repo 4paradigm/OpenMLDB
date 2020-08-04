@@ -37,7 +37,7 @@ const node::FnDefNode* GetFnDef(UDFLibrary* lib, const std::string& name,
         arg_list->AddChild(expr);
     }
     node::ExprNode* transformed = nullptr;
-    node::ExprAnalysisContext analysis_ctx(nm, nullptr, over != nullptr);
+    node::ExprAnalysisContext analysis_ctx(nm, nullptr);
     auto status =
         lib->Transform(name, arg_list, over, &analysis_ctx, &transformed);
     if (!status.isOK()) {
@@ -54,14 +54,10 @@ const node::FnDefNode* GetFnDef(UDFLibrary* lib, const std::string& name,
 TEST_F(UDFRegistryTest, test_expr_udf_register) {
     UDFLibrary library;
     node::NodeManager nm;
-    auto over = nm.MakeWindowDefNode("w");
     const node::FnDefNode* fn_def;
 
     // define "add"
     library.RegisterExprUDF("add")
-        .allow_window(false)
-        .allow_project(true)
-
         .args<AnyArg, AnyArg>(
             [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) {
                 // extra check logic
@@ -90,10 +86,6 @@ TEST_F(UDFRegistryTest, test_expr_udf_register) {
     // match placeholder
     fn_def = GetFnDef<int32_t, int32_t>(&library, "add", &nm);
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kLambdaDef);
-
-    // allow_window(false)
-    fn_def = GetFnDef<int32_t, int32_t>(&library, "add", &nm, over);
-    ASSERT_TRUE(fn_def == nullptr);
 
     // match argument num
     fn_def = GetFnDef<int32_t, int32_t, int32_t>(&library, "add", &nm);
@@ -215,14 +207,10 @@ TEST_F(UDFRegistryTest, test_variadic_expr_udf_register_order) {
 TEST_F(UDFRegistryTest, test_external_udf_register) {
     UDFLibrary library;
     node::NodeManager nm;
-    auto over = nm.MakeWindowDefNode("w");
     const node::ExternalFnDefNode* fn_def;
 
     // define "add"
     library.RegisterExternal("add")
-        .allow_window(false)
-        .allow_project(true)
-
         .args<AnyArg, AnyArg>("add_any", reinterpret_cast<void*>(0x01))
         .returns<int32_t>()
 
@@ -240,11 +228,6 @@ TEST_F(UDFRegistryTest, test_external_udf_register) {
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kExternalFnDef);
     ASSERT_EQ("add_any", fn_def->function_name());
     ASSERT_EQ("int32", fn_def->ret_type()->GetName());
-
-    // allow_window(false)
-    fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-        GetFnDef<int32_t, int32_t>(&library, "add", &nm, over));
-    ASSERT_TRUE(fn_def == nullptr);
 
     // match argument num
     fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
@@ -363,7 +346,7 @@ TEST_F(UDFRegistryTest, test_simple_udaf_register) {
     library.RegisterExprUDF("identity")
         .args<AnyArg>([](UDFResolveContext* ctx, ExprNode* x) { return x; });
 
-    library.RegisterSimpleUDAF("sum")
+    library.RegisterUDAF("sum")
         .templates<int32_t, int32_t, int32_t>()
         .const_init(0)
         .update("add")
@@ -395,11 +378,12 @@ TEST_F(UDFRegistryTest, test_codegen_udf_register) {
     const node::UDFByCodeGenDefNode* fn_def;
 
     library.RegisterCodeGenUDF("add")
-        .allow_window(false)
-        .allow_project(true)
         .args<AnyArg, AnyArg>(
-            /* infer */ [](UDFResolveContext* ctx, const TypeNode* x,
-                           const TypeNode* y) { return x; },
+            /* infer */ [](UDFResolveContext* ctx, const ExprAttrNode* x,
+                           const ExprAttrNode* y, ExprAttrNode* out) {
+                out->SetType(x->type());
+                return Status::OK();
+            },
             /* gen */
             [](CodeGenContext* ctx, NativeValue x, NativeValue y,
                NativeValue* out) {
@@ -411,6 +395,12 @@ TEST_F(UDFRegistryTest, test_codegen_udf_register) {
         GetFnDef<int32_t, int32_t>(&library, "add", &nm));
     ASSERT_TRUE(fn_def != nullptr &&
                 fn_def->GetType() == node::kUDFByCodeGenDef);
+}
+
+TEST_F(UDFRegistryTest, test_reg) {
+    using Check = FuncTypeCheckHelper<int, std::tuple<int, int>, int,
+                                      std::tuple<int, int>>;
+    static_assert(Check::value, "error");
 }
 
 }  // namespace udf

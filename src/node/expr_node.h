@@ -34,22 +34,17 @@ using fesql::base::Status;
 class ExprAnalysisContext {
  public:
     ExprAnalysisContext(node::NodeManager* nm,
-                        const vm::SchemasContext* schemas_context,
-                        bool is_multi_row)
-        : nm_(nm),
-          schemas_context_(schemas_context),
-          is_multi_row_(is_multi_row) {}
+                        const vm::SchemasContext* schemas_context)
+        : nm_(nm), schemas_context_(schemas_context) {}
 
     node::NodeManager* node_manager() { return nm_; }
     const vm::SchemasContext* schemas_context() const {
         return schemas_context_;
     }
-    bool is_multi_row() const { return is_multi_row_; }
 
  private:
     node::NodeManager* nm_;
     const vm::SchemasContext* schemas_context_;
-    bool is_multi_row_;
 };
 
 }  // namespace node

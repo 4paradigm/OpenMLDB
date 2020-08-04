@@ -45,40 +45,29 @@ namespace codegen {
 class UDFIRBuilderTest : public ::testing::Test {
  public:
     UDFIRBuilderTest() {}
+
     ~UDFIRBuilderTest() {}
 };
 
-template <class T, class... Args>
-void CheckExternalUDF(const std::string udf_name, T exp, Args... args) {
-    base::Status status;
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("udf_test", *ctx);
-    udf::DefaultUDFLibrary lib;
-    ASSERT_TRUE(fesql::udf::RegisterUDFToModule(m.get()));
-    m->print(::llvm::errs(), NULL, true, true);
-
-    auto J = ExitOnErr(LLJITBuilder().create());
-    auto &jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-    lib.InitJITSymbols(J.get());
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ::fesql::udf::InitUDFSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto fn = ExitOnErr(J->lookup(udf_name));
-    T (*udf)(Args...) = (T(*)(Args...))fn.getAddress();
-    ASSERT_EQ(exp, udf(args...));
-}
-
-template <class T, class... Args>
-void CheckUDF(const std::string &name, T expect, Args... args) {
+template <class Ret, class... Args>
+void CheckUDF(const std::string &name, Ret expect, Args... args) {
     auto function = udf::UDFFunctionBuilder(name)
                         .args<Args...>()
-                        .template returns<T>()
+                        .template returns<Ret>()
+                        .library(udf::DefaultUDFLibrary::get())
                         .build();
     ASSERT_TRUE(function.valid());
     auto result = function(args...);
-    ASSERT_EQ(expect, result);
+    udf::EqualValChecker<Ret>::check(expect, result);
+}
+
+template <typename T>
+codec::ListRef<T> MakeList(const std::initializer_list<T> &vec) {
+    codec::ArrayListV<T> *list =
+        new codec::ArrayListV<T>(new std::vector<T>(vec));
+    codec::ListRef<T> list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(list);
+    return list_ref;
 }
 
 TEST_F(UDFIRBuilderTest, dayofmonth_date_udf_test) {
@@ -302,6 +291,29 @@ TEST_F(UDFIRBuilderTest, log_udf_test) {
     CheckUDF<double, double>("log2", log2(2.0), 2.0);
     CheckUDF<double, int32_t>("log10", log10(65536), 65536);
     CheckUDF<double, double>("log10", log10(2.0), 2.0);
+}
+
+TEST_F(UDFIRBuilderTest, count_where_test) {
+    CheckUDF<int64_t, codec::ListRef<int32_t>, codec::ListRef<bool>>(
+        "count_where", 2, MakeList<int32_t>({4, 5, 6}),
+        MakeList<bool>({true, false, true}));
+}
+
+TEST_F(UDFIRBuilderTest, avg_test) {
+    CheckUDF<double, codec::ListRef<int16_t>>("avg", 2.5,
+                                              MakeList<int16_t>({1, 2, 3, 4}));
+    CheckUDF<double, codec::ListRef<int32_t>>("avg", 2.5,
+                                              MakeList<int32_t>({1, 2, 3, 4}));
+    CheckUDF<double, codec::ListRef<int64_t>>("avg", 2.5,
+                                              MakeList<int64_t>({1, 2, 3, 4}));
+    CheckUDF<double, codec::ListRef<float>>("avg", 2.5,
+                                            MakeList<float>({1, 2, 3, 4}));
+    CheckUDF<double, codec::ListRef<double>>("avg", 2.5,
+                                             MakeList<double>({1, 2, 3, 4}));
+
+    // empty list
+    CheckUDF<double, codec::ListRef<double>>("avg", 0.0 / 0,
+                                             MakeList<double>({}));
 }
 
 }  // namespace codegen

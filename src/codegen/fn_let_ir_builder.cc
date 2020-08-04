@@ -32,6 +32,11 @@ RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::SchemaSourceList& schema_sources,
     : schema_context_(schema_sources), frame_(frame), module_(module) {}
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
+bool RowFnLetIRBuilder::Build(const std::string& name,
+                              node::LambdaNode* project_func,
+                              vm::Schema* output_schema,
+                              vm::ColumnSourceList* output_column_sources) {}
+
 /**
  * Codegen For int32 RowFnLetUDF(int_8* row_ptrs, int8_t* window_ptr, int32 *
  * row_sizes, int8_t * output_ptr)

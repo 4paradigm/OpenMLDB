@@ -30,10 +30,11 @@ class TypeNode : public SQLNode {
     TypeNode() : SQLNode(node::kType, 0, 0), base_(fesql::node::kNull) {}
     explicit TypeNode(fesql::node::DataType base)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({}) {}
-    explicit TypeNode(fesql::node::DataType base, TypeNode *v1)
+    explicit TypeNode(fesql::node::DataType base, const TypeNode *v1)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({v1}) {}
-    explicit TypeNode(fesql::node::DataType base, fesql::node::TypeNode *v1,
-                      fesql::node::TypeNode *v2)
+    explicit TypeNode(fesql::node::DataType base,
+                      const fesql::node::TypeNode *v1,
+                      const fesql::node::TypeNode *v2)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({v1, v2}) {}
     ~TypeNode() {}
     virtual const std::string GetName() const {
@@ -47,14 +48,27 @@ class TypeNode : public SQLNode {
         return type_name;
     }
 
-    fesql::node::TypeNode *GetGenericType(size_t idx) const {
+    const fesql::node::TypeNode *GetGenericType(size_t idx) const {
         return generics_[idx];
     }
 
+    bool IsGenericNullable(size_t idx) const { return generics_nullable_[idx]; }
+
     size_t GetGenericSize() const { return generics_.size(); }
 
+    fesql::node::DataType base() const { return base_; }
+    const std::vector<const fesql::node::TypeNode *> &generics() const {
+        return generics_;
+    }
+
+    void AddGeneric(const node::TypeNode *dtype, bool nullable) {
+        generics_.push_back(dtype);
+        generics_nullable_.push_back(nullable);
+    }
+
     fesql::node::DataType base_;
-    std::vector<fesql::node::TypeNode *> generics_;
+    std::vector<const fesql::node::TypeNode *> generics_;
+    std::vector<int> generics_nullable_;
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual bool Equals(const SQLNode *node) const;
 

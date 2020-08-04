@@ -190,7 +190,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
 
     // build new udaf call
     auto new_udaf = nm_->MakeUDAFDefNode(
-        fn->function_name(), row_arg->GetOutputType(), ori_init, update_func,
+        fn->function_name(), {row_arg->GetOutputType()}, ori_init, update_func,
         ori_merge_fn, ori_output_fn);
     *out = nm_->MakeFuncNode(new_udaf, {window_arg}, nullptr);
     return Status::OK();

@@ -32,9 +32,9 @@ using fesql::node::SQLNode;
 class ExprUDFRegistryHelper;
 class LLVMUDFRegistryHelper;
 class ExternalFuncRegistryHelper;
-class SimpleUDAFRegistryHelper;
+class UDAFRegistryHelper;
 class UDFTransformRegistry;
-class SimpleUDAFRegistry;
+class UDAFRegistry;
 class CompositeRegistry;
 class UDFResolveContext;
 
@@ -73,7 +73,7 @@ class UDFLibrary {
     ExprUDFRegistryHelper RegisterExprUDF(const std::string& name);
     LLVMUDFRegistryHelper RegisterCodeGenUDF(const std::string& name);
     ExternalFuncRegistryHelper RegisterExternal(const std::string& name);
-    SimpleUDAFRegistryHelper RegisterSimpleUDAF(const std::string& name);
+    UDAFRegistryHelper RegisterUDAF(const std::string& name);
 
     Status RegisterAlias(const std::string& alias, const std::string& name);
     Status RegisterFromFile(const std::string& path);
@@ -91,7 +91,7 @@ class UDFLibrary {
     template <template <typename> class FTemplate>
     auto RegisterUDAFTemplate(const std::string& name) {
         return DoStartRegister<UDAFTemplateRegistryHelper<FTemplate>,
-                               SimpleUDAFRegistry>(name);
+                               UDAFRegistry>(name);
     }
 
     template <template <typename> class FTemplate>
@@ -103,6 +103,11 @@ class UDFLibrary {
     void InitJITSymbols(::llvm::orc::LLJIT* jit_ptr);
 
     node::NodeManager* node_manager() { return &nm_; }
+
+    const std::unordered_map<std::string, std::shared_ptr<CompositeRegistry>>&
+    GetAllRegistries() {
+        return table_;
+    }
 
  private:
     template <typename Helper, typename RegistryT>

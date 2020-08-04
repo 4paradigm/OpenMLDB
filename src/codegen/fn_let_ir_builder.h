@@ -40,6 +40,11 @@ class RowFnLetIRBuilder {
 
     ~RowFnLetIRBuilder();
 
+    bool Build(const std::string& name, node::LambdaNode* project_func,
+               vm::Schema* output_schema,
+               vm::ColumnSourceList*
+                   output_column_sources);  // NOLINT (runtime/references)
+
     bool Build(const std::string& name, const node::PlanNodeList& projects,
                vm::Schema* output_schema,
                vm::ColumnSourceList*

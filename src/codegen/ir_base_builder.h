@@ -57,6 +57,12 @@ bool DataType2SchemaType(const ::fesql::node::TypeNode& type,
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
                       ::llvm::Value** output);
 
+base::Status GetLLVMFunctionType(
+    ::llvm::Module* m, const std::vector<const node::TypeNode*>& arg_types,
+    const std::vector<int>& arg_nullable, const node::TypeNode* return_type,
+    bool return_nullable, bool variadic, bool* return_by_arg,
+    ::llvm::FunctionType** output);
+
 template <typename T>
 std::string GetLLVMObjectString(T* obj) {
     std::string res;

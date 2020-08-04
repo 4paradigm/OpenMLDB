@@ -230,8 +230,7 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             }
             NativeValue val;
             if (!variable_ir_builder_.LoadValue(id_node->GetExprString(), &val,
-                                                status) ||
-                val.GetRaw() == nullptr) {
+                                                status)) {
                 status.msg = "fail to find var " + id_node->GetExprString();
                 status.code = common::kCodegenError;
                 LOG(WARNING) << status.msg;
@@ -923,43 +922,65 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
 
 Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
                                         NativeValue* output) {
-    auto& llvm_ctx = module_->getContext();
-    auto ptr_ty = llvm::Type::getInt8Ty(llvm_ctx)->getPointerTo();
-    auto int64_ty = llvm::Type::getInt64Ty(llvm_ctx);
-    auto int32_ty = llvm::Type::getInt32Ty(llvm_ctx);
-
-    auto row_type =
-        dynamic_cast<const node::RowTypeNode*>(node->GetRow()->GetOutputType());
-    CHECK_TRUE(row_type != nullptr, "Get field's input is not row");
-    vm::SchemasContext schemas_context(row_type->schema_source());
-
-    const vm::RowSchemaInfo* schema_info = nullptr;
-    bool ok = schemas_context.ColumnRefResolved(
-        node->GetRelationName(), node->GetColumnName(), &schema_info);
-    CHECK_TRUE(ok, "Fail to resolve column ", node->GetExprString(), row_type);
-
+    // build input
     ::llvm::IRBuilder<> builder(block_);
     Status status;
-    NativeValue input_row;
-    CHECK_TRUE(this->Build(node->GetRow(), &input_row, status), status.msg);
-    auto row_ptr = input_row.GetValue(&builder);
+    NativeValue input_value;
+    CHECK_TRUE(this->Build(node->GetRow(), &input_value, status), status.msg);
 
-    auto slice_idx = builder.getInt64(schema_info->idx_);
-    auto get_slice_func = module_->getOrInsertFunction(
-        "fesql_storage_get_row_slice",
-        ::llvm::FunctionType::get(ptr_ty, {ptr_ty, int64_ty}, false));
-    auto get_slice_size_func = module_->getOrInsertFunction(
-        "fesql_storage_get_row_slice_size",
-        ::llvm::FunctionType::get(int64_ty, {ptr_ty, int64_ty}, false));
-    ::llvm::Value* slice_ptr =
-        builder.CreateCall(get_slice_func, {row_ptr, slice_idx});
-    ::llvm::Value* slice_size = builder.CreateIntCast(
-        builder.CreateCall(get_slice_size_func, {row_ptr, slice_idx}), int32_ty,
-        false);
+    auto input_type = node->GetRow()->GetOutputType();
+    if (input_type->base() == node::kTuple) {
+        CHECK_TRUE(input_value.IsTuple() && input_value.GetFieldNum() ==
+                                                input_type->GetGenericSize(),
+                   "Illegal input for kTuple, expect ", input_type->GetName());
+        try {
+            int idx = std::stoi(node->GetColumnName());
+            CHECK_TRUE(0 <= idx && idx < input_value.GetFieldNum(),
+                       "Tuple idx out of range: ", idx);
+            *output = input_value.GetField(idx);
 
-    BufNativeIRBuilder buf_builder(*schema_info->schema_, block_, sv_);
-    CHECK_TRUE(buf_builder.BuildGetField(node->GetColumnName(), slice_ptr,
-                                         slice_size, output));
+        } catch (std::invalid_argument err) {
+            return Status(common::kCodegenError,
+                          "Invalid Tuple index: " + node->GetColumnName());
+        }
+
+    } else if (input_type->base() == node::kRow) {
+        auto& llvm_ctx = module_->getContext();
+        auto ptr_ty = llvm::Type::getInt8Ty(llvm_ctx)->getPointerTo();
+        auto int64_ty = llvm::Type::getInt64Ty(llvm_ctx);
+        auto int32_ty = llvm::Type::getInt32Ty(llvm_ctx);
+
+        auto row_type = dynamic_cast<const node::RowTypeNode*>(
+            node->GetRow()->GetOutputType());
+        vm::SchemasContext schemas_context(row_type->schema_source());
+
+        const vm::RowSchemaInfo* schema_info = nullptr;
+        bool ok = schemas_context.ColumnRefResolved(
+            node->GetRelationName(), node->GetColumnName(), &schema_info);
+        CHECK_TRUE(ok, "Fail to resolve column ", node->GetExprString(),
+                   row_type);
+        auto row_ptr = input_value.GetValue(&builder);
+
+        auto slice_idx = builder.getInt64(schema_info->idx_);
+        auto get_slice_func = module_->getOrInsertFunction(
+            "fesql_storage_get_row_slice",
+            ::llvm::FunctionType::get(ptr_ty, {ptr_ty, int64_ty}, false));
+        auto get_slice_size_func = module_->getOrInsertFunction(
+            "fesql_storage_get_row_slice_size",
+            ::llvm::FunctionType::get(int64_ty, {ptr_ty, int64_ty}, false));
+        ::llvm::Value* slice_ptr =
+            builder.CreateCall(get_slice_func, {row_ptr, slice_idx});
+        ::llvm::Value* slice_size = builder.CreateIntCast(
+            builder.CreateCall(get_slice_size_func, {row_ptr, slice_idx}),
+            int32_ty, false);
+
+        BufNativeIRBuilder buf_builder(*schema_info->schema_, block_, sv_);
+        CHECK_TRUE(buf_builder.BuildGetField(node->GetColumnName(), slice_ptr,
+                                             slice_size, output));
+    } else {
+        return Status(common::kCodegenError,
+                      "Get field's input is neither tuple nor row");
+    }
     return Status::OK();
 }
 

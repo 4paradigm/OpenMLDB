@@ -7,9 +7,11 @@
  *--------------------------------------------------------------------------
  **/
 #include "udf/udf_registry.h"
+
 #include <memory>
 #include <sstream>
-#include "vm/transform.h"
+
+#include "passes/resolve_fn_and_attrs.h"
 
 namespace fesql {
 namespace udf {
@@ -39,15 +41,6 @@ Status CompositeRegistry::Transform(UDFResolveContext* ctx,
 
 Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
                                         node::FnDefNode** result) {
-    // env check
-    if (ctx->over() != nullptr) {
-        CHECK_TRUE(allow_window_,
-                   "Called in aggregate window is not supported: ", name());
-    } else {
-        CHECK_TRUE(allow_project_, "Called in project is not supported",
-                   name());
-    }
-
     // find generator with specified input argument types
     int variadic_pos = -1;
     std::shared_ptr<ExprUDFGenBase> gen_ptr;
@@ -63,10 +56,12 @@ Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
     //     return gen_impl(arg0, arg1, ...argN)
     auto nm = ctx->node_manager();
     std::vector<node::ExprIdNode*> func_params;
+    std::vector<const node::TypeNode*> arg_types;
     std::vector<node::ExprNode*> func_params_to_gen;
     for (size_t i = 0; i < ctx->arg_size(); ++i) {
         std::string arg_name = "arg_" + std::to_string(i);
         auto arg_type = ctx->arg(i)->GetOutputType();
+        arg_types.push_back(arg_type);
 
         auto arg_expr =
             nm->MakeExprIdNode(arg_name, node::ExprIdNode::GetNewId());
@@ -79,13 +74,8 @@ Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
     CHECK_TRUE(ret_expr != nullptr && !ctx->HasError(),
                "Fail to create expr udf: ", ctx->GetError());
 
-    vm::SchemaSourceList empty;
-    vm::SchemasContext empty_schema(empty);
-    vm::ResolveFnAndAttrs resolver(false, &empty_schema, nm, ctx->library());
-    node::ExprNode* new_ret_expr = nullptr;
-    CHECK_STATUS(resolver.Visit(ret_expr, &new_ret_expr));
-
-    *result = nm->MakeLambdaNode(func_params, new_ret_expr);
+    auto lambda = nm->MakeLambdaNode(func_params, ret_expr);
+    *result = lambda;
     return Status::OK();
 }
 
@@ -97,15 +87,6 @@ Status ExprUDFRegistry::Register(
 
 Status LLVMUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
                                         node::FnDefNode** result) {
-    // env check
-    if (ctx->over() != nullptr) {
-        CHECK_TRUE(allow_window_,
-                   "Called in aggregate window is not supported: ", name());
-    } else {
-        CHECK_TRUE(allow_project_, "Called in project is not supported",
-                   name());
-    }
-
     // find generator with specified input argument types
     int variadic_pos = -1;
     std::shared_ptr<LLVMUDFGenBase> gen_ptr;
@@ -117,20 +98,32 @@ Status LLVMUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
                << "(" << signature << ")";
 
     std::vector<const node::TypeNode*> arg_types;
+    std::vector<int> arg_nullable;
+    std::vector<const ExprAttrNode*> arg_attrs;
     for (size_t i = 0; i < ctx->arg_size(); ++i) {
         auto arg_type = ctx->arg(i)->GetOutputType();
+        bool nullable = ctx->arg(i)->nullable();
         CHECK_TRUE(arg_type != nullptr, i,
                    "th argument node type is unknown: ", name());
         arg_types.push_back(arg_type);
+        arg_nullable.push_back(nullable);
+        arg_attrs.push_back(new ExprAttrNode(arg_type, nullable));
     }
-    auto return_type = gen_ptr->fixed_ret_type() == nullptr
-                           ? gen_ptr->infer(ctx, arg_types)
-                           : gen_ptr->fixed_ret_type();
+    ExprAttrNode out_attr(nullptr, true);
+    auto status = gen_ptr->infer(ctx, arg_attrs, &out_attr);
+    for (auto ptr : arg_attrs) {
+        delete const_cast<ExprAttrNode*>(ptr);
+    }
+    CHECK_STATUS(status, "Infer llvm output attr failed: ", status.msg);
+
+    auto return_type = out_attr.type();
+    bool return_nullable = out_attr.nullable();
     CHECK_TRUE(return_type != nullptr && !ctx->HasError(),
                "Infer node return type failed: ", ctx->GetError());
 
     auto udf_def = dynamic_cast<node::UDFByCodeGenDefNode*>(
-        ctx->node_manager()->MakeUDFByCodeGenDefNode(arg_types, return_type));
+        ctx->node_manager()->MakeUDFByCodeGenDefNode(
+            arg_types, arg_nullable, return_type, return_nullable));
     udf_def->SetGenImpl(gen_ptr);
     *result = udf_def;
     return Status::OK();
@@ -144,15 +137,6 @@ Status LLVMUDFRegistry::Register(
 
 Status ExternalFuncRegistry::ResolveFunction(UDFResolveContext* ctx,
                                              node::FnDefNode** result) {
-    // env check
-    if (ctx->over() != nullptr) {
-        CHECK_TRUE(allow_window_,
-                   "Called in aggregate window is not supported: ", name());
-    } else {
-        CHECK_TRUE(allow_project_, "Called in project is not supported",
-                   name());
-    }
-
     // find generator with specified input argument types
     int variadic_pos = -1;
     node::ExternalFnDefNode* external_def = nullptr;
@@ -184,39 +168,23 @@ Status SimpleUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
 }
 
 Status SimpleUDFRegistry::Register(const std::vector<std::string>& args,
-                                   node::UDFDefNode* udaf_def) {
+                                   node::UDFDefNode* udf_def) {
+    return reg_table_.Register(args, udf_def);
+}
+
+Status UDAFRegistry::ResolveFunction(UDFResolveContext* ctx,
+                                     node::FnDefNode** result) {
+    int variadic_pos = -1;
+    std::string signature;
+    node::UDAFDefNode* udaf_def = nullptr;
+    CHECK_STATUS(reg_table_.Find(ctx, &udaf_def, &signature, &variadic_pos));
+    *result = udaf_def;
+    return Status::OK();
+}
+
+Status UDAFRegistry::Register(const std::vector<std::string>& args,
+                              node::UDAFDefNode* udaf_def) {
     return reg_table_.Register(args, udaf_def);
-}
-
-Status SimpleUDAFRegistry::ResolveFunction(UDFResolveContext* ctx,
-                                           node::FnDefNode** result) {
-    CHECK_TRUE(ctx->arg_size() == 1,
-               "Input arg_num of simple udaf should be 1: ", name());
-
-    auto arg_type = ctx->arg(0)->GetOutputType();
-    CHECK_TRUE(arg_type != nullptr && (arg_type->base_ == node::kIterator ||
-                                       arg_type->base_ == node::kList),
-               "Illegal input type for simple udaf: ",
-               arg_type == nullptr ? "null" : arg_type->GetName());
-    arg_type = arg_type->GetGenericType(0);
-
-    auto iter = reg_table_.find(arg_type->GetName());
-    CHECK_TRUE(iter != reg_table_.end(),
-               "Fail to find registry for simple udaf ", name(),
-               " of input element type ", arg_type->GetName());
-    DLOG(INFO) << "Resolve simple udaf " << name() << "<" << arg_type->GetName()
-               << ">";
-    *result = iter->second;
-    return Status::OK();
-}
-
-Status SimpleUDAFRegistry::Register(const std::string& input_arg,
-                                    node::UDAFDefNode* udaf_def) {
-    auto iter = reg_table_.find(input_arg);
-    CHECK_TRUE(iter == reg_table_.end(), "Duplicate udaf register '", name(),
-               "'' for element type ", input_arg);
-    reg_table_.insert(iter, std::make_pair(input_arg, udaf_def));
-    return Status::OK();
 }
 
 }  // namespace udf

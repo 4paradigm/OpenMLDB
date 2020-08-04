@@ -63,7 +63,7 @@ bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
                 case node::kUDAFDef: {
                     agg_func_name =
                         dynamic_cast<const node::UDAFDefNode*>(call->GetFnDef())
-                            ->GetSimpleName();
+                            ->GetName();
                     break;
                 }
                 default:

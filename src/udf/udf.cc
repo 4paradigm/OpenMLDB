@@ -232,6 +232,7 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
     auto list_i32_ty = nm.MakeTypeNode(node::kList, i32_ty);
     auto list_i64_ty = nm.MakeTypeNode(node::kList, i64_ty);
     auto list_i16_ty = nm.MakeTypeNode(node::kList, i16_ty);
+    auto list_bool_ty = nm.MakeTypeNode(node::kList, bool_ty);
     auto list_float_ty = nm.MakeTypeNode(node::kList, float_ty);
     auto list_double_ty = nm.MakeTypeNode(node::kList, double_ty);
     auto list_time_ty = nm.MakeTypeNode(node::kList, time_ty);
@@ -242,6 +243,7 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
     auto iter_i32_ty = nm.MakeTypeNode(node::kIterator, i32_ty);
     auto iter_i64_ty = nm.MakeTypeNode(node::kIterator, i64_ty);
     auto iter_i16_ty = nm.MakeTypeNode(node::kIterator, i16_ty);
+    auto iter_bool_ty = nm.MakeTypeNode(node::kIterator, bool_ty);
     auto iter_float_ty = nm.MakeTypeNode(node::kIterator, float_ty);
     auto iter_double_ty = nm.MakeTypeNode(node::kIterator, double_ty);
     auto iter_time_ty = nm.MakeTypeNode(node::kIterator, time_ty);
@@ -255,6 +257,8 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
                    reinterpret_cast<void *>(v1::iterator_list<int32_t>));
     RegisterMethod(module, "iterator", bool_ty, {list_i64_ty, iter_i64_ty},
                    reinterpret_cast<void *>(v1::iterator_list<int64_t>));
+    RegisterMethod(module, "iterator", bool_ty, {list_bool_ty, iter_bool_ty},
+                   reinterpret_cast<void *>(v1::iterator_list<bool>));
     RegisterMethod(module, "iterator", bool_ty, {list_float_ty, iter_float_ty},
                    reinterpret_cast<void *>(v1::iterator_list<float>));
     RegisterMethod(module, "iterator", bool_ty,
@@ -277,6 +281,8 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
                    reinterpret_cast<void *>(v1::next_iterator<int32_t>));
     RegisterMethod(module, "next", i64_ty, {iter_i64_ty},
                    reinterpret_cast<void *>(v1::next_iterator<int64_t>));
+    RegisterMethod(module, "next", bool_ty, {iter_bool_ty},
+                   reinterpret_cast<void *>(v1::next_iterator<bool>));
     RegisterMethod(module, "next", float_ty, {iter_float_ty},
                    reinterpret_cast<void *>(v1::next_iterator<float>));
     RegisterMethod(module, "next", double_ty, {iter_double_ty},
@@ -300,6 +306,8 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
                    reinterpret_cast<void *>(v1::has_next<int32_t>));
     RegisterMethod(module, "has_next", bool_ty, {iter_i64_ty},
                    reinterpret_cast<void *>(v1::has_next<int64_t>));
+    RegisterMethod(module, "has_next", bool_ty, {iter_bool_ty},
+                   reinterpret_cast<void *>(v1::has_next<bool>));
     RegisterMethod(module, "has_next", bool_ty, {iter_float_ty},
                    reinterpret_cast<void *>(v1::has_next<float>));
     RegisterMethod(module, "has_next", bool_ty, {iter_double_ty},
@@ -319,6 +327,8 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
                    reinterpret_cast<void *>(v1::delete_iterator<int32_t>));
     RegisterMethod(module, "delete_iterator", bool_ty, {iter_i64_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<int64_t>));
+    RegisterMethod(module, "delete_iterator", bool_ty, {iter_bool_ty},
+                   reinterpret_cast<void *>(v1::delete_iterator<bool>));
     RegisterMethod(module, "delete_iterator", bool_ty, {iter_float_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<float>));
     RegisterMethod(module, "delete_iterator", bool_ty, {iter_double_ty},

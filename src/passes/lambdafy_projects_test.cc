@@ -30,6 +30,7 @@ TEST_F(LambdafyProjectsTest, Test) {
 
     const std::string udf1 =
         "select a, b, c, "
+        "substring(\"hello\", 1, 3), "
         "sum(d), "
         "count_where(x, y > 2), "
         "count(c) + g(sum(a + 1 + f(max(d)))) + 1,"
@@ -56,10 +57,10 @@ TEST_F(LambdafyProjectsTest, Test) {
         project_plan->project_list_vec_[0]);
     ASSERT_TRUE(project_list_node != nullptr);
 
-    udf::DefaultUDFLibrary lib;
-    lib.SetIsUDAF("count_where", 2);
-    lib.SetIsUDAF("slice", 3);
-    LambdafyProjects transformer(&nm, &lib, input_schemas);
+    auto lib = udf::DefaultUDFLibrary::get();
+    lib->SetIsUDAF("count_where", 2);
+    lib->SetIsUDAF("slice", 3);
+    LambdafyProjects transformer(&nm, lib, input_schemas);
 
     std::vector<int> is_agg_vec;
     node::LambdaNode *lambda;

@@ -10,6 +10,7 @@
 #include <dlfcn.h>
 #include <execinfo.h>
 #include <signal.h>
+#include "codegen/context.h"
 
 namespace fesql {
 namespace codegen {
@@ -33,15 +34,23 @@ namespace codegen {
     return is_null;
 }
 
+::llvm::Value* NativeValue::GetIsNull(CodeGenContext* ctx) const {
+    return GetIsNull(ctx->GetBuilder());
+}
+
 ::llvm::Value* NativeValue::GetValue(::llvm::IRBuilder<>* builder) const {
     if (IsConstNull()) {
         LOG(WARNING) << "Get value from const null";
-        return nullptr;
+        return ::llvm::UndefValue::get(GetType());
     } else if (IsMem()) {
         return builder->CreateLoad(raw_);
     } else {
         return raw_;
     }
+}
+
+::llvm::Value* NativeValue::GetValue(CodeGenContext* ctx) const {
+    return GetValue(ctx->GetBuilder());
 }
 
 ::llvm::Value* NativeValue::GetAddr(::llvm::IRBuilder<>* builder) const {
@@ -123,6 +132,18 @@ NativeValue NativeValue::Replace(::llvm::Value* val) const {
         return CreateWithFlag(val, flag_);
     } else {
         return Create(val);
+    }
+}
+
+NativeValue NativeValue::WithFlag(::llvm::Value* flag) const {
+    if (IsTuple()) {
+        NativeValue res = *this;
+        for (size_t i = 0; i < GetFieldNum(); ++i) {
+            res.args_[i] = res.args_[i].WithFlag(flag);
+        }
+        return res;
+    } else {
+        return NativeValue(raw_, flag, type_);
     }
 }
 
