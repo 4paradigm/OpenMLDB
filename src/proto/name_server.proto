@@ -459,6 +459,22 @@ message DropDatabaseRequest {
     optional string db = 1;
 }
 
+message ShowBlobServerRequest {}
+
+message ShowBlobServerResponse {
+    repeated TabletStatus tablets = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
+message ShowSdkEndpointRequest {}
+
+message ShowSdkEndpointResponse {
+    repeated TabletStatus tablets = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -503,6 +519,6 @@ service NameServer {
     rpc ShowDatabase(GeneralRequest) returns (ShowDatabaseResponse);
     rpc DropDatabase(DropDatabaseRequest) returns (GeneralResponse);
     rpc SetSdkEndpoint(SetSdkEndpointRequest) returns (GeneralResponse);
-    rpc ShowBlob(ShowTabletRequest) returns (ShowTabletResponse);
-    rpc ShowSdkEndpoint(ShowTabletRequest) returns (ShowTabletResponse);
+    rpc ShowBlobServer(ShowBlobServerRequest) returns (ShowBlobServerResponse);
+    rpc ShowSdkEndpoint(ShowSdkEndpointRequest) returns (ShowSdkEndpointResponse);
 }

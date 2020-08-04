@@ -368,6 +368,8 @@ class BaseClient {
     std::shared_ptr<rtidb::client::BsClient> GetBlobClient(
         const std::string& endpoint, std::string* msg);
     std::shared_ptr<TableHandler> GetTableHandler(const std::string& name);
+    bool GetRealEndpoint(const std::string& endpoint,
+            std::string* real_endpoint);
 
  private:
     std::mutex mu_;

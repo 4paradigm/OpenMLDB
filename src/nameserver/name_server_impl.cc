@@ -100,7 +100,7 @@ void ClusterInfo::UpdateNSClient(const std::vector<std::string>& children) {
         std::vector<std::string> vec;
         if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/map/names",
                     vec) || vec.empty()) {
-            PDLOG(WARNING, "get zk failed, get remote children");
+            PDLOG(WARNING, "get zk /map/names children failed");
             return;
         }
         auto n_iter = std::find(vec.begin(), vec.end(), endpoint);
@@ -232,7 +232,6 @@ bool ClusterInfo::CreateTableRemote(
 }
 
 bool ClusterInfo::UpdateRemoteRealEpMap() {
-    std::lock_guard<std::mutex> lock(mu_);
     decltype(remote_real_ep_map_) tmp_map;
     if (FLAGS_use_name) {
         std::vector<std::string> vec;
@@ -248,11 +247,11 @@ bool ClusterInfo::UpdateRemoteRealEpMap() {
                 PDLOG(WARNING, "get zk failed, get real_endpoint failed");
                 continue;
             }
-            tmp_map.insert(std::make_pair(ep, real_endpoint));
+            tmp_map->insert(std::make_pair(ep, real_endpoint));
         }
     }
-    remote_real_ep_map_.clear();
-    remote_real_ep_map_ = tmp_map;
+    std::atomic_store_explicit(&remote_real_ep_map_, tmp_map,
+            std::memory_order_release);
     return true;
 }
 
@@ -1436,15 +1435,11 @@ void NameServerImpl::UpdateBlobServers(
                     continue;
                 }
                 blob->client_ = std::make_shared<BsClient>(*it, real_ep, true);
-                if (real_ep_map_.empty()) {
+                auto n_it = real_ep_map_.find(*it);
+                if (n_it == real_ep_map_.end()) {
                     real_ep_map_.insert(std::make_pair(*it, real_ep));
                 } else {
-                    auto n_it = real_ep_map_.find(*it);
-                    if (n_it == real_ep_map_.end()) {
-                        real_ep_map_.insert(std::make_pair(*it, real_ep));
-                    } else {
-                        n_it->second = real_ep;
-                    }
+                    n_it->second = real_ep;
                 }
             } else {
                 blob->client_ = std::make_shared<BsClient>(*it, "", true);
@@ -1543,15 +1538,11 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                 }
                 tablet->client_ = std::make_shared<
                     ::rtidb::client::TabletClient>(*it, real_ep, true);
-                if (real_ep_map_.empty()) {
+                auto n_it = real_ep_map_.find(*it);
+                if (n_it == real_ep_map_.end()) {
                     real_ep_map_.insert(std::make_pair(*it, real_ep));
                 } else {
-                    auto n_it = real_ep_map_.find(*it);
-                    if (n_it == real_ep_map_.end()) {
-                        real_ep_map_.insert(std::make_pair(*it, real_ep));
-                    } else {
-                        n_it->second = real_ep;
-                    }
+                    n_it->second = real_ep;
                 }
             } else {
                 tablet->client_ = std::make_shared<
@@ -1924,16 +1915,12 @@ bool NameServerImpl::Init(const std::string& zk_cluster,
         if (!zk_client_->RegisterName()) {
             PDLOG(WARNING, "fail to RegisterName");
         }
-        if (real_ep_map_.empty()) {
-            real_ep_map_.insert(std::make_pair(FLAGS_endpoint, real_endpoint));
+        auto n_it = real_ep_map_.find(FLAGS_endpoint);
+        if (n_it == real_ep_map_.end()) {
+            real_ep_map_.insert(std::make_pair(
+                        FLAGS_endpoint, real_endpoint));
         } else {
-            auto n_it = real_ep_map_.find(FLAGS_endpoint);
-            if (n_it == real_ep_map_.end()) {
-                real_ep_map_.insert(std::make_pair(
-                            FLAGS_endpoint, real_endpoint));
-            } else {
-                n_it->second = real_endpoint;
-            }
+            n_it->second = real_endpoint;
         }
     }
     task_vec_.resize(FLAGS_name_server_task_max_concurrency +
@@ -11918,9 +11905,9 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    const std::string& server_name = request->server_name();
-    const std::string& sdk_endpoint = request->sdk_endpoint();
-    const std::string& leader_path = FLAGS_zk_root_path + "/leader";
+    std::string server_name = request->server_name();
+    std::string sdk_endpoint = request->sdk_endpoint();
+    std::string leader_path = FLAGS_zk_root_path + "/leader";
     std::vector<std::string> children;
     if (!zk_client_->GetChildren(leader_path, children) || children.empty()) {
         PDLOG(WARNING, "get zk children failed");
@@ -11931,7 +11918,7 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller,
     std::set<std::string> endpoint_set;
     for (const auto& path : children) {
         std::string endpoint;
-        const std::string& real_path = leader_path + "/" + path;
+        std::string real_path = leader_path + "/" + path;
         if (!zk_client_->GetNodeValue(real_path, endpoint)) {
             PDLOG(WARNING, "get zk value failed");
             response->set_code(::rtidb::base::ReturnCode::kGetZkFailed);
@@ -11974,7 +11961,12 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller,
                 server_name.c_str());
         return;
     }
-    const std::string& path =
+    decltype(sdk_endpoint_map_) tmp_map;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        tmp_map = sdk_endpoint_map_;
+    }
+    std::string path =
         FLAGS_zk_root_path + "/map/sdkendpoints/" + server_name;
     if (sdk_endpoint != "null") {
         if (zk_client_->IsExistNode(path) != 0) {
@@ -11994,6 +11986,12 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller,
                 return;
             }
         }
+        auto iter = tmp_map.find(server_name);
+        if (iter == tmp_map.end()) {
+            tmp_map.insert(std::make_pair(server_name, sdk_endpoint));
+        } else {
+            iter->second = sdk_endpoint;
+        }
     } else {
         if (!zk_client_->DeleteNode(path)) {
             response->set_code(::rtidb::base::ReturnCode::kDelZkFailed);
@@ -12001,6 +11999,12 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller,
             PDLOG(WARNING, "del zk node [%s] failed", path.c_str());
             return;
         }
+        tmp_map.erase(server_name);
+    }
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        sdk_endpoint_map_.swap(tmp_map);
+        NotifyTableChanged();
     }
     PDLOG(INFO, "SetSdkEndpoint success. server_name %s sdk_endpoint %s",
         server_name.c_str(), sdk_endpoint.c_str());
@@ -12028,10 +12032,6 @@ void NameServerImpl::UpdateRealEpMapToTablet() {
         }
         tmp_map = real_ep_map_;
         for (auto& pair : remote_real_ep_map_) {
-            if (tmp_map.empty()) {
-                tmp_map.insert(std::make_pair(pair.first, pair.second));
-                continue;
-            }
             auto it = tmp_map.find(pair.first);
             if (it == tmp_map.end()) {
                 tmp_map.insert(std::make_pair(pair.first, pair.second));
@@ -12076,11 +12076,9 @@ void NameServerImpl::UpdateRemoteRealEpMap() {
         }
         decltype(remote_real_ep_map_) tmp_map;
         for (auto& i : tmp_nsc) {
-            for (auto& pair : i.second->remote_real_ep_map_) {
-                if (tmp_map.empty()) {
-                    tmp_map.insert(std::make_pair(pair.first, pair.second));
-                    continue;
-                }
+            auto r_map = std::atomic_load_explicit(
+                    &i.second->remote_real_ep_map_, std::memory_order_acquire);
+            for (auto& pair : *r_map) {
                 auto it = tmp_map.find(pair.first);
                 if (it == tmp_map.end()) {
                     tmp_map.insert(std::make_pair(pair.first, pair.second));
@@ -12091,8 +12089,7 @@ void NameServerImpl::UpdateRemoteRealEpMap() {
         }
         {
             std::lock_guard<std::mutex> lock(mu_);
-            remote_real_ep_map_.clear();
-            remote_real_ep_map_ = tmp_map;
+            remote_real_ep_map_.swap(tmp_map);
         }
         if (old_map != tmp_map) {
             thread_pool_.AddTask(boost::bind(
@@ -12103,9 +12100,9 @@ void NameServerImpl::UpdateRemoteRealEpMap() {
             boost::bind(&NameServerImpl::UpdateRemoteRealEpMap, this));
 }
 
-void NameServerImpl::ShowBlob(RpcController* controller,
-                                const ShowTabletRequest* request,
-                                ShowTabletResponse* response, Closure* done) {
+void NameServerImpl::ShowBlobServer(RpcController* controller,
+        const ShowBlobServerRequest* request,
+        ShowBlobServerResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
@@ -12135,8 +12132,8 @@ void NameServerImpl::ShowBlob(RpcController* controller,
 }
 
 void NameServerImpl::ShowSdkEndpoint(RpcController* controller,
-        const ShowTabletRequest* request,
-        ShowTabletResponse* response, Closure* done) {
+        const ShowSdkEndpointRequest* request,
+        ShowSdkEndpointResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (!running_.load(std::memory_order_acquire)) {
         response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
@@ -12145,32 +12142,16 @@ void NameServerImpl::ShowSdkEndpoint(RpcController* controller,
         return;
     }
     std::lock_guard<std::mutex> lock(mu_);
-    const std::string& path = FLAGS_zk_root_path + "/map/sdkendpoints";
-    if (zk_client_->IsExistNode(path) != 0) {
-        PDLOG(INFO, "zk node %s not exist", path.c_str());
+    if (sdk_endpoint_map_.empty()) {
+        PDLOG(INFO, "sdk_endpoint_map is empty");
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
-    } else {
-        std::vector<std::string> children;
-        if (!zk_client_->GetChildren(path, children) || children.empty()) {
-            PDLOG(WARNING, "get zk children failed");
-            response->set_code(::rtidb::base::ReturnCode::kGetZkFailed);
-            response->set_msg("get zk children failed");
-            return;
-        }
-        for (const auto& child : children) {
-            std::string real_ep;
-            if (!zk_client_->GetNodeValue(path + "/" + child, real_ep)) {
-                PDLOG(WARNING, "get zk value failed");
-                response->set_code(::rtidb::base::ReturnCode::kGetZkFailed);
-                response->set_msg("get zk value failed");
-                continue;
-            }
-            TabletStatus* status = response->add_tablets();
-            status->set_endpoint(child);
-            status->set_real_endpoint(real_ep);
-        }
+    }
+    for (const auto& kv : sdk_endpoint_map_) {
+        TabletStatus* status = response->add_tablets();
+        status->set_endpoint(kv.first);
+        status->set_real_endpoint(kv.second);
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");

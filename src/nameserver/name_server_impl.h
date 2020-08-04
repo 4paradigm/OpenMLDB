@@ -102,10 +102,9 @@ class ClusterInfo {
     ::rtidb::nameserver::ClusterAddress cluster_add_;
     uint64_t ctime_;
     std::atomic<ClusterStatus> state_;
-    std::map<std::string, std::string> remote_real_ep_map_;
+    std::shared_ptr<std::map<std::string, std::string>> remote_real_ep_map_;
 
  private:
-    std::mutex mu_;
     std::shared_ptr<ZkClient> zk_client_;
     uint64_t session_term_;
     // todo :: add statsus variable show replicas status
@@ -200,11 +199,12 @@ class NameServerImpl : public NameServer {
 
     void ShowTablet(RpcController* controller, const ShowTabletRequest* request,
                     ShowTabletResponse* response, Closure* done);
-    void ShowBlob(RpcController* controller, const ShowTabletRequest* request,
-                    ShowTabletResponse* response, Closure* done);
+    void ShowBlobServer(RpcController* controller,
+            const ShowBlobServerRequest* request,
+                    ShowBlobServerResponse* response, Closure* done);
     void ShowSdkEndpoint(RpcController* controller,
-            const ShowTabletRequest* request,
-            ShowTabletResponse* response, Closure* done);
+            const ShowSdkEndpointRequest* request,
+            ShowSdkEndpointResponse* response, Closure* done);
 
     void ShowTable(RpcController* controller, const ShowTableRequest* request,
                    ShowTableResponse* response, Closure* done);
@@ -959,10 +959,11 @@ class NameServerImpl : public NameServer {
     std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>>
         task_map_;
     std::set<std::string> databases_;
-    std::map<std::string, std::string> real_ep_map_;
-    std::map<std::string, std::string> remote_real_ep_map_;
     std::string zk_root_path_;
     std::string endpoint_;
+    std::map<std::string, std::string> real_ep_map_;
+    std::map<std::string, std::string> remote_real_ep_map_;
+    std::map<std::string, std::string> sdk_endpoint_map_;
 };
 
 }  // namespace nameserver

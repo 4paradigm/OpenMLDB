@@ -64,7 +64,7 @@ class NsClient {
     bool ShowTablet(std::vector<TabletInfo>& tablets,  // NOLINT
                     std::string& msg);                 // NOLINT
 
-    bool ShowBlob(std::vector<TabletInfo>& tablets,  // NOLINT
+    bool ShowBlobServer(std::vector<TabletInfo>& tablets,  // NOLINT
                     std::string& msg);                 // NOLINT
 
     bool ShowSdkEndpoint(std::vector<TabletInfo>& tablets,  // NOLINT

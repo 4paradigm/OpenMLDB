@@ -1572,8 +1572,8 @@ bool TabletClient::UpdateRealEndpointMap(
         const std::map<std::string, std::string>& map) {
     ::rtidb::api::UpdateRealEndpointMapRequest request;
     ::rtidb::api::GeneralResponse response;
-    for (std::map<std::string, std::string>::const_iterator it = map.begin();
-            it != map.end(); ++it) {
+    for (std::map<std::string, std::string>::const_iterator it = map.cbegin();
+            it != map.cend(); ++it) {
         ::rtidb::api::RealEndpointPair* pair =
             request.add_real_endpoint_map();
         pair->set_name(it->first);

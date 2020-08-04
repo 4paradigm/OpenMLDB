@@ -79,7 +79,6 @@ class ZkClient {
     bool GetNodeValueLocked(const std::string& node,
                             std::string& value);  // NOLINT
 
-    bool SetNodeValueNoLock(const std::string& node, const std::string& value);
     bool SetNodeValue(const std::string& node, const std::string& value);
 
     bool SetNodeWatcher(const std::string& node, watcher_fn watcher,
@@ -106,7 +105,6 @@ class ZkClient {
     bool WatchItem(const std::string& path, ItemChangedCallback callback);
     bool CancelWatchItem(const std::string& path);
 
-    int IsExistNodeNoLock(const std::string& node);
     int IsExistNode(const std::string& node);
 
     inline bool IsConnected() {

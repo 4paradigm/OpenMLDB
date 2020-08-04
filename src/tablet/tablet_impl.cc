@@ -312,6 +312,11 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
 
 bool TabletImpl::RegisterZK() {
     if (!zk_cluster_.empty()) {
+        if (FLAGS_use_name) {
+            if (!zk_client_->RegisterName()) {
+                return false;
+            }
+        }
         if (!zk_client_->Register(true)) {
             PDLOG(WARNING, "fail to register tablet with endpoint %s",
                   endpoint_.c_str());
@@ -2005,12 +2010,13 @@ void TabletImpl::ChangeRole(RpcController* controller,
     }
     std::vector<std::string> r_vec;
     if (FLAGS_use_name) {
-        std::lock_guard<std::mutex> lock(mu_);
+        auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+                std::memory_order_acquire);
         for (auto& ep : vec) {
-            auto iter = real_ep_map_.find(ep);
-            if (iter == real_ep_map_.end()) {
-                PDLOG(WARNING, "name not found in real_ep_map."
-                        "tid[%u] pid[%u]", tid, pid);
+            auto iter = tmp_map->find(ep);
+            if (iter == tmp_map->end()) {
+                PDLOG(WARNING, "name %s not found in real_ep_map."
+                        "tid[%u] pid[%u]", ep.c_str(), tid, pid);
                 response->set_code(
                         ::rtidb::base::ReturnCode::kServerNameNotFound);
                 response->set_msg("name not found in real_ep_map");
@@ -2043,12 +2049,13 @@ void TabletImpl::ChangeRole(RpcController* controller,
             std::vector<std::string> endpoints{e.endpoint()};
             std::vector<std::string> remote_r_vec;
             if (FLAGS_use_name) {
-                std::lock_guard<std::mutex> lock(mu_);
+                auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+                        std::memory_order_acquire);
                 for (auto& ep : endpoints) {
-                    auto iter = real_ep_map_.find(ep);
-                    if (iter == real_ep_map_.end()) {
-                        PDLOG(WARNING, "name not found in real_ep_map."
-                                "tid[%u] pid[%u]", tid, pid);
+                    auto iter = tmp_map->find(ep);
+                    if (iter == tmp_map->end()) {
+                        PDLOG(WARNING, "name %s not found in real_ep_map."
+                                "tid[%u] pid[%u]", ep.c_str(), tid, pid);
                         response->set_code(
                                 ::rtidb::base::ReturnCode::kServerNameNotFound);
                         response->set_msg("name not found in real_ep_map");
@@ -2120,12 +2127,14 @@ void TabletImpl::AddReplica(RpcController* controller,
         vec.push_back(request->endpoint());
         std::vector<std::string> real_vec;
         if (FLAGS_use_name) {
-            std::lock_guard<std::mutex> lock(mu_);
+            auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+                    std::memory_order_acquire);
             for (const auto& ep : vec) {
-                auto iter = real_ep_map_.find(ep);
-                if (iter == real_ep_map_.end()) {
-                    PDLOG(WARNING, "name not found in real_ep_map."
-                            "tid[%u] pid[%u]", request->tid(), request->pid());
+                auto iter = tmp_map->find(ep);
+                if (iter == tmp_map->end()) {
+                    PDLOG(WARNING, "name %s not found in real_ep_map."
+                            "tid[%u] pid[%u]", ep.c_str(), request->tid(),
+                            request->pid());
                     response->set_code(
                             ::rtidb::base::ReturnCode::kServerNameNotFound);
                     response->set_msg("name not found in real_ep_map");
@@ -2999,11 +3008,12 @@ void TabletImpl::SendSnapshotInternal(
         }
         std::string real_endpoint = endpoint;
         if (FLAGS_use_name) {
-            std::lock_guard<std::mutex> lock(mu_);
-            auto iter = real_ep_map_.find(endpoint);
-            if (iter == real_ep_map_.end()) {
-                PDLOG(WARNING, "name not found in real_ep_map."
-                        "tid[%u] pid[%u]", tid, pid);
+            auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+                    std::memory_order_acquire);
+            auto iter = tmp_map->find(endpoint);
+            if (iter == tmp_map->end()) {
+                PDLOG(WARNING, "name %s not found in real_ep_map."
+                        "tid[%u] pid[%u]", endpoint.c_str(), tid, pid);
                 break;
             }
             real_endpoint = iter->second;
@@ -4242,12 +4252,13 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
     uint32_t pid = table_meta->pid();
     std::vector<std::string> real_endpoints;
     if (FLAGS_use_name) {
-        std::lock_guard<std::mutex> lock(mu_);
+        auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+                std::memory_order_acquire);
         for (const auto& ep : endpoints) {
-            auto iter = real_ep_map_.find(ep);
-            if (iter == real_ep_map_.end()) {
-                PDLOG(WARNING, "name not found in real_ep_map."
-                        "tid[%u] pid[%u]", tid, pid);
+            auto iter = tmp_map->find(ep);
+            if (iter == tmp_map->end()) {
+                PDLOG(WARNING, "name %s not found in real_ep_map."
+                        "tid[%u] pid[%u]", ep.c_str(), tid, pid);
                 msg.assign("name not found in real_ep_map");
                 return -1;
             }
@@ -4348,12 +4359,13 @@ int TabletImpl::CreateDiskTableInternal(
     uint32_t pid = table_meta->pid();
     std::vector<std::string> real_endpoints;
     if (FLAGS_use_name) {
-        std::lock_guard<std::mutex> lock(mu_);
+        auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+                std::memory_order_acquire);
         for (auto& ep : endpoints) {
-            auto iter = real_ep_map_.find(ep);
-            if (iter == real_ep_map_.end()) {
-                PDLOG(WARNING, "name not found in real_ep_map."
-                        "tid[%u] pid[%u]", tid, pid);
+            auto iter = tmp_map->find(ep);
+            if (iter == tmp_map->end()) {
+                PDLOG(WARNING, "name %s not found in real_ep_map."
+                        "tid[%u] pid[%u]", ep.c_str(), tid, pid);
                 msg.assign("name not found in real_ep_map");
                 return -1;
             }
@@ -5243,11 +5255,12 @@ void TabletImpl::SendIndexDataInternal(
         } else {
             std::string real_endpoint = kv.second;
             if (FLAGS_use_name) {
-                std::lock_guard<std::mutex> lock(mu_);
-                auto iter = real_ep_map_.find(kv.second);
-                if (iter == real_ep_map_.end()) {
-                    PDLOG(WARNING, "name not found in real_ep_map."
-                            "tid[%u] pid[%u]", tid, pid);
+                auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+                        std::memory_order_acquire);
+                auto iter = tmp_map->find(kv.second);
+                if (iter == tmp_map->end()) {
+                    PDLOG(WARNING, "name %s not found in real_ep_map."
+                            "tid[%u] pid[%u]", kv.second.c_str(), tid, pid);
                     break;
                 }
                 real_endpoint = iter->second;
@@ -5765,14 +5778,11 @@ void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
     decltype(real_ep_map_) tmp_real_ep_map;
     for (int i = 0; i < request->real_endpoint_map_size(); i++) {
         auto& pair = request->real_endpoint_map(i);
-        tmp_real_ep_map.insert(
+        tmp_real_ep_map->insert(
                 std::make_pair(pair.name(), pair.real_endpoint()));
     }
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        real_ep_map_.clear();
-        real_ep_map_ = tmp_real_ep_map;
-    }
+    std::atomic_store_explicit(&real_ep_map_, tmp_real_ep_map,
+            std::memory_order_release);
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }

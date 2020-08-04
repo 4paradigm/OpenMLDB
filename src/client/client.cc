@@ -184,16 +184,8 @@ void BaseClient::UpdateEndpoint(const std::set<std::string>& alive_endpoints) {
     }
     for (const auto& endpoint : alive_endpoints) {
         std::string real_endpoint;
-        std::string sdk_path = zk_root_path_ + "/map/sdkendpoints/" + endpoint;
-        if (!zk_client_->GetNodeValue(sdk_path, real_endpoint)) {
-            std::cout << "get zk failed! : sdk_path: " << sdk_path << std::endl;
-        }
-        if (real_endpoint.empty()) {
-            std::string sname_path = zk_root_path_ + "/map/names/" + endpoint;
-            if (!zk_client_->GetNodeValue(sname_path, real_endpoint)) {
-                std::cout << "get zk failed! sname_path: " << sname_path
-                    << std::endl;
-            }
+        if (!GetRealEndpoint(endpoint, &real_endpoint)) {
+            continue;
         }
         auto iter = old_tablets.find(endpoint);
         if (iter == old_tablets.end()) {
@@ -232,16 +224,8 @@ void BaseClient::UpdateBlobEndpoint(
     }
     for (const auto& endpoint : alive_endpoints) {
         std::string real_endpoint;
-        std::string sdk_path = zk_root_path_ + "/map/sdkendpoints/" + endpoint;
-        if (!zk_client_->GetNodeValue(sdk_path, real_endpoint)) {
-            std::cout << "get zk failed! : sdk_path: " << sdk_path << std::endl;
-        }
-        if (real_endpoint.empty()) {
-            std::string sname_path = zk_root_path_ + "/map/names/" + endpoint;
-            if (!zk_client_->GetNodeValue(sname_path, real_endpoint)) {
-                std::cout << "get zk failed! sname_path: " << sname_path
-                    << std::endl;
-            }
+        if (!GetRealEndpoint(endpoint, &real_endpoint)) {
+            continue;
         }
         auto iter = old_blobs.find(endpoint);
         if (iter == old_blobs.end()) {
@@ -414,16 +398,8 @@ std::shared_ptr<rtidb::client::TabletClient> BaseClient::GetTabletClient(
         }
     }
     std::string real_endpoint;
-    std::string sdk_path = zk_root_path_ + "/map/sdkendpoints/" + endpoint;
-    if (!zk_client_->GetNodeValue(sdk_path, real_endpoint)) {
-        std::cout << "get zk failed! : sdk_path: " << sdk_path << std::endl;
-    }
-    if (real_endpoint.empty()) {
-        std::string sname_path = zk_root_path_ + "/map/names/" + endpoint;
-        if (!zk_client_->GetNodeValue(sname_path, real_endpoint)) {
-            std::cout << "get zk failed! sname_path: " << sname_path
-                << std::endl;
-        }
+    if (!GetRealEndpoint(endpoint, &real_endpoint)) {
+        return std::shared_ptr<rtidb::client::TabletClient>();
     }
     std::shared_ptr<rtidb::client::TabletClient> tablet =
         std::make_shared<rtidb::client::TabletClient>(endpoint, real_endpoint);
@@ -449,16 +425,8 @@ std::shared_ptr<rtidb::client::BsClient> BaseClient::GetBlobClient(
         }
     }
     std::string real_endpoint;
-    std::string sdk_path = zk_root_path_ + "/map/sdkendpoints/" + endpoint;
-    if (!zk_client_->GetNodeValue(sdk_path, real_endpoint)) {
-        std::cout << "get zk failed! : sdk_path: " << sdk_path << std::endl;
-    }
-    if (real_endpoint.empty()) {
-        std::string sname_path = zk_root_path_ + "/map/names/" + endpoint;
-        if (!zk_client_->GetNodeValue(sname_path, real_endpoint)) {
-            std::cout << "get zk failed! sname_path: " << sname_path
-                << std::endl;
-        }
+    if (!GetRealEndpoint(endpoint, &real_endpoint)) {
+        return std::shared_ptr<rtidb::client::BsClient>();
     }
     std::shared_ptr<rtidb::client::BsClient> blob =
         std::make_shared<rtidb::client::BsClient>(endpoint, real_endpoint);
@@ -483,10 +451,38 @@ std::shared_ptr<TableHandler> BaseClient::GetTableHandler(
     }
     return iter->second;
 }
+
+bool BaseClient::GetRealEndpoint(const std::string& endpoint,
+        std::string* real_endpoint) {
+    if (real_endpoint == nullptr) {
+        return false;
+    }
+    std::string sdk_path = zk_root_path_ + "/map/sdkendpoints/" + endpoint;
+    if (zk_client_->IsExistNode(sdk_path) == 0) {
+        if (!zk_client_->GetNodeValue(sdk_path, *real_endpoint)) {
+            std::cout << "get zk failed! : sdk_path: " << sdk_path <<
+                " real_endpoint: " << *real_endpoint << std::endl;
+            return false;
+        }
+    }
+    if (real_endpoint->empty()) {
+        std::string sname_path = zk_root_path_ + "/map/names/" + endpoint;
+        if (zk_client_->IsExistNode(sname_path) == 0) {
+            if (!zk_client_->GetNodeValue(sname_path, *real_endpoint)) {
+                std::cout << "get zk failed! sname_path: " << sname_path
+                    << " real_endpoint: " << *real_endpoint << std::endl;
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 BaseClient::BaseClient(
     const std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>>&
         tablets)
     : tablets_(tablets) {}
+
 
 RtidbClient::RtidbClient() : client_(nullptr), empty_vector_() {}
 

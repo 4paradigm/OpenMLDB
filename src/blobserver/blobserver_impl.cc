@@ -78,6 +78,8 @@ bool BlobServerImpl::Init(const std::string& real_endpoint) {
             return false;
         }
     }
+    PDLOG(INFO, "FLAGS_endpoint: %s, real_endpoint: %s.",
+            FLAGS_endpoint.c_str(), real_endpoint.c_str());
     return true;
 }
 

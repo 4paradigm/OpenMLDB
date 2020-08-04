@@ -109,12 +109,12 @@ bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg) {
     return false;
 }
 
-bool NsClient::ShowBlob(std::vector<TabletInfo>& tablets, std::string& msg) {
-    ::rtidb::nameserver::ShowTabletRequest request;
-    ::rtidb::nameserver::ShowTabletResponse response;
-    bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowBlob,
-                            &request, &response, FLAGS_request_timeout_ms, 1);
+bool NsClient::ShowBlobServer(std::vector<TabletInfo>& tablets,
+        std::string& msg) {
+    ::rtidb::nameserver::ShowBlobServerRequest request;
+    ::rtidb::nameserver::ShowBlobServerResponse response;
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::
+            ShowBlobServer, &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if (ok && response.code() == 0) {
         for (int32_t i = 0; i < response.tablets_size(); i++) {
@@ -134,8 +134,8 @@ bool NsClient::ShowBlob(std::vector<TabletInfo>& tablets, std::string& msg) {
 
 bool NsClient::ShowSdkEndpoint(std::vector<TabletInfo>& tablets,
         std::string& msg) {
-    ::rtidb::nameserver::ShowTabletRequest request;
-    ::rtidb::nameserver::ShowTabletResponse response;
+    ::rtidb::nameserver::ShowSdkEndpointRequest request;
+    ::rtidb::nameserver::ShowSdkEndpointResponse response;
     bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::
             ShowSdkEndpoint, &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
@@ -372,8 +372,8 @@ bool NsClient::HandleSQLCreateTable(
                 request.mutable_table_info();
             table_info->set_db(db);
             TransformToTableDef(create->GetTableName(),
-                                create->GetColumnDescList(), table_info,
-                                sql_status);
+                    create->GetColumnDescList(), table_info,
+                    sql_status);
             if (0 != sql_status->code) {
                 return false;
             }

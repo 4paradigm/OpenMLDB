@@ -487,7 +487,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::map<::rtidb::common::StorageMode, std::vector<std::string>>
         mode_recycle_root_paths_;
     std::atomic<bool> follower_;
-    std::map<std::string, std::string> real_ep_map_;
+    std::shared_ptr<std::map<std::string, std::string>> real_ep_map_;
     // thread safe
     std::shared_ptr<::rtidb::catalog::TabletCatalog> catalog_;
     // thread safe

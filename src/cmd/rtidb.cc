@@ -764,7 +764,7 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
     tp.Print(true);
 }
 
-void HandleNSShowBlob(const std::vector<std::string>& parts,
+void HandleNSShowBlobServer(const std::vector<std::string>& parts,
                         ::rtidb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("endpoint");
@@ -777,7 +777,7 @@ void HandleNSShowBlob(const std::vector<std::string>& parts,
     tp.AddRow(row);
     std::vector<::rtidb::client::TabletInfo> tablets;
     std::string msg;
-    bool ok = client->ShowBlob(tablets, msg);
+    bool ok = client->ShowBlobServer(tablets, msg);
     if (!ok) {
         std::cout << "Fail to show blobs. error msg: " << msg << std::endl;
         return;
@@ -3736,7 +3736,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         printf("scan - get records for a period of time\n");
         printf("showtable - show table info\n");
         printf("showtablet - show tablet info\n");
-        printf("showblob - show blob info\n");
+        printf("showblobserver - show blobserver info\n");
         printf("showsdkendpoint - show sdkendpoint info\n");
         printf("showns - show nameserver info\n");
         printf("showschema - show schema info\n");
@@ -3828,10 +3828,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("desc: show tablet info\n");
             printf("usage: showtablet\n");
             printf("ex: showtablet\n");
-        } else if (parts[1] == "showblob") {
+        } else if (parts[1] == "showblobserver") {
             printf("desc: show blob info\n");
-            printf("usage: showblob\n");
-            printf("ex: showblob\n");
+            printf("usage: showblobserver\n");
+            printf("ex: showblobserver\n");
         } else if (parts[1] == "showsdkendpoint") {
             printf("desc: show sdkendpoint info\n");
             printf("usage: showsdkendpoint\n");
@@ -6441,8 +6441,8 @@ void StartNsClient() {
             continue;
         } else if (parts[0] == "showtablet") {
             HandleNSShowTablet(parts, &client);
-        } else if (parts[0] == "showblob") {
-            HandleNSShowBlob(parts, &client);
+        } else if (parts[0] == "showblobserver") {
+            HandleNSShowBlobServer(parts, &client);
         } else if (parts[0] == "showsdkendpoint") {
             HandleNSShowSdkEndpoint(parts, &client);
         } else if (parts[0] == "showns") {
