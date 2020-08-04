@@ -14,7 +14,6 @@ import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS.*;
 import com._4paradigm.rtidb.type.Type;
 import io.brpc.client.*;
-import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
@@ -70,42 +69,23 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     public NameServerClientImpl(RTIDBClientConfig config) {
         this.zkEndpoints = config.getZkEndpoints();
         this.leaderPath = config.getZkRootPath() + "/leader";
-        this.severNamesPath = config.getZkRootPath() + "/map/names";
-        this.sdkEndpointPath = config.getZkRootPath() + "/map/sdkendpoints";
+        this.severNamesPath = config.getZkServerNamePath();
+        this.sdkEndpointPath = config.getZkSdkEndpointPath();
         this.config = config;
     }
 
     public NameServerClientImpl(String zkEndpoints, String leaderPath) {
         this.zkEndpoints = zkEndpoints;
         this.leaderPath = leaderPath;
-        this.severNamesPath = "";
-        this.sdkEndpointPath = "";
+        int pos = leaderPath.lastIndexOf("/");
+        this.severNamesPath = leaderPath.substring(0, pos) + "/map/names";
+        this.sdkEndpointPath = leaderPath.substring(0, pos) + "/map/sdkendpoints";
         this.config = null;
     }
 
     @Deprecated
     public NameServerClientImpl(String endpoint) {
-        String realEp = endpoint;
-        try {
-            if (zookeeper.exists(this.sdkEndpointPath + "/" + realEp, false) != null) {
-                // get sdkendpoint
-                byte[] data1 = zookeeper.getData(this.sdkEndpointPath + "/" + realEp, false, null);
-                if (data1 != null) {
-                    realEp = new String(data1, Charset.forName("UTF-8"));
-                }
-            } else if (zookeeper.exists(this.severNamesPath + "/" + realEp, false) != null) {
-                // get real endpoint
-                byte[] data2 = zookeeper.getData(this.severNamesPath + "/" + realEp, false, null);
-                if (data2 != null) {
-                    realEp = new String(data2, Charset.forName("UTF-8"));
-                }
-            }
-        } catch (KeeperException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        EndPoint addr = new EndPoint(realEp);
+        EndPoint addr = new EndPoint(endpoint);
         bs = new RpcBaseClient();
         rpcClient = new SingleEndpointRpcClient(bs);
         BrpcChannelGroup bcg = new BrpcChannelGroup(addr.getIp(), addr.getPort(),

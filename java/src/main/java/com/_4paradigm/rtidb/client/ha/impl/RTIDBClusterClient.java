@@ -6,9 +6,9 @@ import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
-import com._4paradigm.rtidb.type.Type;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.brpc.client.*;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
@@ -215,35 +215,8 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                     }
                 }
             }
-            // get sdkendpoint
             HashMap<String, String> realEpMap = new HashMap<>();
-            if (zookeeper.exists(config.getZkSdkEndpointPath(), false) != null) {
-                List<String> sdkEndpoints = zookeeper.getChildren(config.getZkSdkEndpointPath(), false);
-                for (String path : sdkEndpoints) {
-                    if (path.isEmpty()) {
-                        continue;
-                    }
-                    logger.debug("alive sdkendpoint {}", path);
-                    byte[] data = zookeeper.getData(config.getZkSdkEndpointPath() + "/" + path, false, null);
-                    if (data != null) {
-                        realEpMap.put(path, new String(data, Charset.forName("UTF-8")));
-                    }
-                }
-            }
-            if (realEpMap.isEmpty() && zookeeper.exists(config.getZkServerNamePath(), false) != null) {
-                // get real endpoint
-                List<String> serverNames = zookeeper.getChildren(config.getZkServerNamePath(), false);
-                for (String path : serverNames) {
-                    if (path.isEmpty()) {
-                        continue;
-                    }
-                    logger.debug("alive server name {}", path);
-                    byte[] data = zookeeper.getData(config.getZkServerNamePath() + "/" + path, false, null);
-                    if (data != null) {
-                        realEpMap.put(path, new String(data, Charset.forName("UTF-8")));
-                    }
-                }
-            }
+            getRealEpMap(realEpMap);
 
             for (TableInfo table : newTableList) {
                 try {
@@ -360,35 +333,8 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 logger.warn("path {} does not exist", config.getZkNodeRootPath());
                 return true;
             }
-            // get sdkendpoint
             HashMap<String, String> realEpMap = new HashMap<>();
-            if (zookeeper.exists(config.getZkSdkEndpointPath(), false) != null) {
-                List<String> sdkEndpoints = zookeeper.getChildren(config.getZkSdkEndpointPath(), false);
-                for (String path : sdkEndpoints) {
-                    if (path.isEmpty()) {
-                        continue;
-                    }
-                    logger.debug("alive sdkendpoint {}", path);
-                    byte[] data = zookeeper.getData(config.getZkSdkEndpointPath() + "/" + path, false, null);
-                    if (data != null) {
-                        realEpMap.put(path, new String(data, Charset.forName("UTF-8")));
-                    }
-                }
-            }
-            if (realEpMap.isEmpty() && zookeeper.exists(config.getZkServerNamePath(), false) != null) {
-                // get real endpoint
-                List<String> serverNames = zookeeper.getChildren(config.getZkServerNamePath(), false);
-                for (String path : serverNames) {
-                    if (path.isEmpty()) {
-                        continue;
-                    }
-                    logger.debug("alive server name {}", path);
-                    byte[] data = zookeeper.getData(config.getZkServerNamePath() + "/" + path, false, null);
-                    if (data != null) {
-                        realEpMap.put(path, new String(data, Charset.forName("UTF-8")));
-                    }
-                }
-            }
+            getRealEpMap(realEpMap);
             Set<EndPoint> endpoinSet = new HashSet<EndPoint>();
             List<String> children = zookeeper.getChildren(config.getZkNodeRootPath(), false);
             for (String path : children) {
@@ -459,6 +405,37 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 baseClient.stop();
             } catch (Exception e) {
                 logger.error("fail to close base client", e);
+            }
+        }
+    }
+
+    private void getRealEpMap(HashMap<String, String> realEpMap) throws KeeperException, InterruptedException {
+        // get sdkendpoint
+        if (zookeeper.exists(config.getZkSdkEndpointPath(), false) != null) {
+            List<String> sdkEndpoints = zookeeper.getChildren(config.getZkSdkEndpointPath(), false);
+            for (String path : sdkEndpoints) {
+                if (path.isEmpty()) {
+                    continue;
+                }
+                logger.debug("alive sdkendpoint {}", path);
+                byte[] data = zookeeper.getData(config.getZkSdkEndpointPath() + "/" + path, false, null);
+                if (data != null) {
+                    realEpMap.put(path, new String(data, Charset.forName("UTF-8")));
+                }
+            }
+        }
+        if (realEpMap.isEmpty() && zookeeper.exists(config.getZkServerNamePath(), false) != null) {
+            // get real endpoint
+            List<String> serverNames = zookeeper.getChildren(config.getZkServerNamePath(), false);
+            for (String path : serverNames) {
+                if (path.isEmpty()) {
+                    continue;
+                }
+                logger.debug("alive server name {}", path);
+                byte[] data = zookeeper.getData(config.getZkServerNamePath() + "/" + path, false, null);
+                if (data != null) {
+                    realEpMap.put(path, new String(data, Charset.forName("UTF-8")));
+                }
             }
         }
     }
