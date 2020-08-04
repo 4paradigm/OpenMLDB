@@ -50,7 +50,6 @@ BlobServerImpl::~BlobServerImpl() {
 }
 
 bool BlobServerImpl::Init(const std::string& real_endpoint) {
-    std::lock_guard<SpinMutex> lock(spin_mutex_);
     if (FLAGS_hdd_root_path.empty()) {
         PDLOG(WARNING, "hdd root path did not set");
         return false;
