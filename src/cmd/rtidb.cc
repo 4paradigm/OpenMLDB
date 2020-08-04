@@ -938,27 +938,31 @@ void HandleNSClientAddIndex(const std::vector<std::string>& parts,
     ::rtidb::common::ColumnKey column_key;
     column_key.set_index_name(parts[2]);
     std::vector<rtidb::common::ColumnDesc> cols;
-    std::vector<std::string> col_vec;
-    ::rtidb::base::SplitString(parts[3], ",", col_vec);
-    for (const auto& col_name : col_vec) {
-        std::vector<std::string> type_pair;
-        rtidb::base::SplitString(col_name, ":", type_pair);
-        if (type_pair.size() > 1) {
-            column_key.add_col_name(type_pair[0]);
-            rtidb::common::ColumnDesc col_desc;
-            col_desc.set_name(type_pair[0]);
-            auto it = rtidb::codec::DATA_TYPE_MAP.find(type_pair[1]);
-            if (it == rtidb::codec::DATA_TYPE_MAP.end()) {
-                std::cerr << col_name << " type " << type_pair[0] << " invalid";
-                return;
+    if (parts.size() > 3) {
+        std::vector<std::string> col_vec;
+        ::rtidb::base::SplitString(parts[3], ",", col_vec);
+        for (const auto& col_name : col_vec) {
+            std::vector<std::string> type_pair;
+            rtidb::base::SplitString(col_name, ":", type_pair);
+            if (type_pair.size() > 1) {
+                column_key.add_col_name(type_pair[0]);
+                rtidb::common::ColumnDesc col_desc;
+                col_desc.set_name(type_pair[0]);
+                auto it = rtidb::codec::DATA_TYPE_MAP.find(type_pair[1]);
+                if (it == rtidb::codec::DATA_TYPE_MAP.end()) {
+                    std::cerr << col_name << " type " << type_pair[0] << " invalid";
+                    return;
+                }
+                rtidb::type::DataType type = it->second;
+                col_desc.set_type(type_pair[1]);
+                col_desc.set_data_type(type);
+                cols.push_back(std::move(col_desc));
+            } else {
+                column_key.add_col_name(col_name);
             }
-            rtidb::type::DataType type = it->second;
-            col_desc.set_type(type_pair[1]);
-            col_desc.set_data_type(type);
-            cols.push_back(std::move(col_desc));
-        } else {
-            column_key.add_col_name(col_name);
         }
+    } else {
+        column_key.add_col_name(parts[2]);
     }
     if (parts.size() > 4) {
         std::vector<std::string> ts_vec;
