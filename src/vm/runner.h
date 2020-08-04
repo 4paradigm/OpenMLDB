@@ -70,6 +70,14 @@ class ProjectGenerator : public FnGenerator {
     RowProjectFun fun_;
 };
 
+class ConstProjectGenerator : public FnGenerator {
+ public:
+    explicit ConstProjectGenerator(const FnInfo& info)
+        : FnGenerator(info), fun_(info.fn_) {}
+    virtual ~ConstProjectGenerator() {}
+    const Row Gen();
+    RowProjectFun fun_;
+};
 class AggGenerator : public FnGenerator {
  public:
     explicit AggGenerator(const FnInfo& info) : FnGenerator(info) {}
@@ -259,6 +267,7 @@ enum RunnerType {
     kRunnerFilter,
     kRunnerOrder,
     kRunnerGroupAndSort,
+    kRunnerConstProject,
     kRunnerTableProject,
     kRunnerRowProject,
     kRunnerSimpleProject,
@@ -285,6 +294,8 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "GROUP_AND_SORT";
         case kRunnerFilter:
             return "FILTER";
+        case kRunnerConstProject:
+            return "CONST_PROJECT";
         case kRunnerTableProject:
             return "TABLE_PROJECT";
         case kRunnerRowProject:
@@ -522,6 +533,7 @@ class DataRunner : public Runner {
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     const std::shared_ptr<DataHandler> data_handler_;
 };
+
 class RequestRunner : public Runner {
  public:
     RequestRunner(const int32_t id, const SchemaSourceList& schema)
@@ -555,6 +567,17 @@ class SortRunner : public Runner {
     ~SortRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     SortGenerator sort_gen_;
+};
+class ConstProjectRunner : public Runner {
+ public:
+    ConstProjectRunner(const int32_t id, const SchemaSourceList& schema,
+                       const int32_t limit_cnt, const FnInfo& fn_info)
+        : Runner(id, kRunnerConstProject, schema, limit_cnt),
+          project_gen_(fn_info) {}
+    ~ConstProjectRunner() {}
+
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    ConstProjectGenerator project_gen_;
 };
 class TableProjectRunner : public Runner {
  public:

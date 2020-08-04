@@ -332,6 +332,10 @@ class BatchModeTransformer {
     virtual bool TransformDistinctOp(const node::DistinctPlanNode* node,
                                      PhysicalOpNode** output,
                                      base::Status& status);  // NOLINT
+
+    virtual bool CreatePhysicalConstProjectNode(
+        node::ProjectListNode* project_list,
+        PhysicalOpNode** output, base::Status& status); //NOLINT
     virtual bool CreatePhysicalProjectNode(const ProjectType project_type,
                                            PhysicalOpNode* node,
                                            node::ProjectListNode* project_list,

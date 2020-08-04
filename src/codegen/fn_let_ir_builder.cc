@@ -94,10 +94,10 @@ bool RowFnLetIRBuilder::Build(
     variable_ir_builder.StoreWindow(
         nullptr == frame_ ? "" : frame_->GetExprString(), window.GetRaw(),
         status);
-    if (schema_context_.row_schema_info_list_.empty()) {
-        LOG(WARNING) << "fail to build fn: row info list is empty";
-        return false;
-    }
+//    if (schema_context_.row_schema_info_list_.empty()) {
+//        LOG(WARNING) << "fail to build fn: row info list is empty";
+//        return false;
+//    }
     ExprIRBuilder expr_ir_builder(block, &sv, &schema_context_, true, module_);
     ::fesql::node::PlanNodeList::const_iterator it = projects.cbegin();
     std::map<uint32_t, NativeValue> outputs;

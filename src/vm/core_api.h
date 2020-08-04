@@ -65,6 +65,8 @@ class CoreAPI {
     static fesql::codec::Row RowProject(const fesql::vm::RawPtrHandle fn,
                                         const fesql::codec::Row row,
                                         const bool need_free = false);
+    static fesql::codec::Row RowConstProject(const fesql::vm::RawPtrHandle fn,
+                                             const bool need_free = false);
 
     static fesql::codec::Row WindowProject(const fesql::vm::RawPtrHandle fn,
                                            const uint64_t key, const Row row,

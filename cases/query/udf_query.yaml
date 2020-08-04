@@ -175,7 +175,6 @@ cases:
     desc: SELECT day(null)
     tags: ["TODO", "null还不支持"]
     mode: request
-    db: db1
     sql: select col1 as id, std_date, day(std_date) as m from t1;
     inputs:
       - name: t1
@@ -195,3 +194,75 @@ cases:
         2, 2020-05-23, 23
         3, 2020-05-24, 24
         4, NULL, NULL
+  - id: 9
+    desc: substr pos
+    mode: request-unsupport
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, col_str:string
+        index: index2:col1:std_ts
+        data: |
+          1, 1, hello_world
+          2, 2, abcdefghig
+    sql: |
+      select col1 as id, substring(col_str, 3) as col1 from t1;
+    expect:
+      schema: id:int32, col1:string
+      order: id
+      rows:
+        - [1, "llo_world"]
+        - [2, "cdefghig"]
+  - id: 10
+    desc: substr pos len
+    mode: request-unsupport
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, col_str:string
+        index: index2:col1:std_ts
+        data: |
+          1, 1, hello_world
+          2, 2, abcdefghig
+    sql: |
+      select col1 as id, substring(col_str, 3, 6) as col1 from t1;
+    expect:
+      schema: id:int32, col1:string
+      order: id
+      rows:
+        - [1, "llo_wo"]
+        - [2, "cdefgh"]
+  - id: 11
+    desc: concat
+    mode: request-unsupport
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, col2:string, col3:int64, col4:int16
+        index: index2:col1:std_ts
+        data: |
+          1, 1, hello_world, 1234567890, 12
+          2, 2, abcdefghig, 9876543210, -12
+    sql: |
+      select col1 as id, concat(col2, col3, col4) as concatstr from t1;
+    expect:
+      schema: id:int32, concatstr:string
+      order: id
+      rows:
+        - [1, "hello_world123456789012"]
+        - [2, "abcdefghig9876543210-12"]
+  - id: 12
+    desc: concat_ws
+    mode: request-unsupport
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, col2:string, col3:int64, col4:int16
+        index: index2:col1:std_ts
+        data: |
+          1, 1, hello_world, 1234567890, 12
+          2, 2, abcdefghig, 9876543210, -12
+    sql: |
+      select col1 as id, concat_ws("#", col2, col3, col4) as concatstr from t1;
+    expect:
+      schema: id:int32, concatstr:string
+      order: id
+      rows:
+        - [1, "hello_world#1234567890#12"]
+        - [2, "abcdefghig#9876543210#-12"]

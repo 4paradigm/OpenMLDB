@@ -100,3 +100,11 @@ cases:
   - id: 33
     desc: SELECT 算术表达式MOD
     sql: SELECT COL1 MOD COL2 as col12 FROM t1;
+  - id: 34
+    desc: SELECT 常量表达式
+    mode: request-unsupport
+    sql: SELECT 1+2;
+  - id: 35
+    desc: SELECT 常量函数表达式
+    mode: request-unsupport
+    sql: SELECT substr("hello world", 3, 6);
