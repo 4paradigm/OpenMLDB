@@ -12,10 +12,6 @@ sleep 5
 echo "ROOT_DIR:${ROOT_DIR}"
 sh steps/gen_code.sh
 sh tools/install_fesql.sh
-
-cd ${ROOT_DIR}/fesql/java/fesql-common
-mvn clean install
-
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. && make -j16
 
 case_xml=test_v1.xml
@@ -23,3 +19,5 @@ cd ${ROOT_DIR}/src/sdk/java/
 mvn install -Dmaven.test.skip=true
 cd ${ROOT_DIR}/src/sdk/java/fesql-auto-test-java
 mvn test -DsuiteXmlFile=test_suite/${case_xml}
+cd ${ROOT_DIR}/src/sdk/java/sql-jdbc
+mvn test

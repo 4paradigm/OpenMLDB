@@ -161,7 +161,7 @@ void TabletEngineTest::BatchModeCheck(
     fesql::base::Status get_status;
     fesql::vm::Engine engine(catalog);
     fesql::vm::BatchRunSession session;
-    session.EnableDebug();
+    //    session.EnableDebug();
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_EQ(sql_case.expect().success_, ok);
     if (!sql_case.expect().success_) {
@@ -258,7 +258,7 @@ void TabletEngineTest::RequestModeCheck(
     fesql::base::Status get_status;
     fesql::vm::Engine engine(catalog);
     fesql::vm::RequestRunSession session;
-    session.EnableDebug();
+    //    session.EnableDebug();
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_EQ(sql_case.expect().success_, ok);
     if (!sql_case.expect().success_) {
@@ -346,71 +346,74 @@ TEST_P(TabletEngineTest, request_query_test) {
     }
 }
 
-INSTANTIATE_TEST_CASE_P(EngineSimpleQuery, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/query/simple_query.yaml")));
-INSTANTIATE_TEST_CASE_P(EngineUdfQuery, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/query/udf_query.yaml")));
-INSTANTIATE_TEST_CASE_P(EngineUdafQuery, TabletEngineTest,
-                        testing::ValuesIn(rtidb::test::SQLCaseTest::InitCases(
-                            "/cases/query/udaf_query.yaml")));
-INSTANTIATE_TEST_CASE_P(EngineExtreamQuery, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/query/extream_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineSimpleQuery, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/query/simple_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineUdfQuery, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/query/udf_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineUdafQuery, TabletEngineTest,
+                         testing::ValuesIn(rtidb::test::SQLCaseTest::InitCases(
+                             "/cases/query/udaf_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineExtreamQuery, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/query/extream_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(EngineLastJoinQuery, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/query/last_join_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineLastJoinQuery, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/query/last_join_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(EngineLastJoinWindowQuery, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/query/last_join_window_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineLastJoinWindowQuery, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/query/last_join_window_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(EngineRequestLastJoinWindowQuery, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/query/last_join_window_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineRequestLastJoinWindowQuery, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/query/last_join_window_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(EngineWindowQuery, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/query/window_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineWindowQuery, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/query/window_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(EngineWindowWithUnionQuery, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/query/window_with_union_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineWindowWithUnionQuery, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/query/window_with_union_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(EngineBatchGroupQuery, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/query/group_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineBatchGroupQuery, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/query/group_query.yaml")));
 
-INSTANTIATE_TEST_CASE_P(EngineTestWindowRow, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/integration/v1/test_window_row.yaml")));
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(EngineTestWindowRow, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/integration/v1/test_window_row.yaml")));
+INSTANTIATE_TEST_SUITE_P(
     EngineTestWindowRowRange, TabletEngineTest,
     testing::ValuesIn(TabletEngineTest::InitCases(
         "/cases/integration/v1/test_window_row_range.yaml")));
 
-INSTANTIATE_TEST_CASE_P(EngineTestWindowUnion, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/integration/v1/test_window_union.yaml")));
-INSTANTIATE_TEST_CASE_P(EngineTestLastJoin, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/integration/v1/test_last_join.yaml")));
-INSTANTIATE_TEST_CASE_P(EngineTestExpression, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/integration/v1/test_expression.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineTestWindowUnion, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/integration/v1/test_window_union.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineTestLastJoin, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/integration/v1/test_last_join.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineTestExpression, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/integration/v1/test_expression.yaml")));
 
-INSTANTIATE_TEST_CASE_P(EngineTestSelectSample, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/integration/v1/test_select_sample.yaml")));
-INSTANTIATE_TEST_CASE_P(EngineTestSubSelect, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/integration/v1/test_sub_select.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineTestSelectSample, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/integration/v1/test_select_sample.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineTestSubSelect, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/integration/v1/test_sub_select.yaml")));
 
-INSTANTIATE_TEST_CASE_P(EngineTestUdafFunction, TabletEngineTest,
-                        testing::ValuesIn(TabletEngineTest::InitCases(
-                            "/cases/integration/v1/test_udaf_function.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineTestUdafFunction, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/integration/v1/test_udaf_function.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineTestUdfFunction, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/integration/v1/test_udf_function.yaml")));
 
 }  // namespace catalog
 }  // namespace rtidb

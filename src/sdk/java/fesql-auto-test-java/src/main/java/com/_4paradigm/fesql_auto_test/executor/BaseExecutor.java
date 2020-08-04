@@ -24,7 +24,9 @@ public abstract class BaseExecutor {
         this.fesqlCase = fesqlCase;
     }
 
-    public void run() {
+    public abstract void run();
+
+    public void process() {
         log.info(fesqlCase.getDesc() + " Begin!");
         if (null == fesqlCase) {
             Assert.fail("executor run with null case");

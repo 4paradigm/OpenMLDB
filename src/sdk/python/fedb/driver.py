@@ -5,6 +5,8 @@
 #
 """
 """
+import sys,os
+sys.path.append("/rtidb/build/sql_pysdk")
 import logging
 from fedb import sql_router_sdk
 logger = logging.getLogger("fedb_driver")
@@ -56,6 +58,7 @@ class Driver(object):
         if not self.sdk.ExecuteDDL(db, ddl, status):
             return False, status.msg
         else:
+            self.sdk.RefreshCatalog()
             return True, "ok"
 
     def getInsertBuilder(self, db, sql):
@@ -71,7 +74,7 @@ class Driver(object):
         if not self.sdk:
             return False, "please init driver first"
         status = sql_router_sdk.Status()
-        row_builders = self.sdk.GetInsertRows(db, sql, status)
+        rows_builder = self.sdk.GetInsertRows(db, sql, status)
         if not rows_builder:
             return False, status.msg
         return True, rows_builder

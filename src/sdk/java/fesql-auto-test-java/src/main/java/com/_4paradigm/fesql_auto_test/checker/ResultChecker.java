@@ -40,9 +40,9 @@ public class ResultChecker extends BaseChecker {
         if (fesqlCase.getExpect().getColumns().isEmpty()) {
             throw new RuntimeException("fail check result: columns are empty");
         }
-        List<List<Object>> expect = convertRows(fesqlCase.getExpect().getRows(),
+        List<List<Object>> expect = FesqlUtil.convertRows(fesqlCase.getExpect().getRows(),
                 fesqlCase.getExpect().getColumns());
-        List<List> actual = fesqlResult.getResult();
+        List<List<Object>> actual = fesqlResult.getResult();
 
         String orderName = fesqlCase.getExpect().getOrder();
         if (orderName != null && orderName.length() > 0) {
@@ -71,6 +71,15 @@ public class ResultChecker extends BaseChecker {
         public int compare(List o1, List o2) {
             Object obj1 = o1.get(index);
             Object obj2 = o2.get(index);
+            if (obj1 == obj2) {
+                return 0;
+            }
+            if (obj1 == null) {
+                return -1;
+            }
+            if (obj2 == null) {
+                return 1;
+            }
             if (obj1 instanceof Comparable && obj2 instanceof Comparable) {
                 return ((Comparable) obj1).compareTo(obj2);
             } else {
@@ -79,76 +88,4 @@ public class ResultChecker extends BaseChecker {
         }
     }
 
-    public static List<List<Object>> convertRows(List<List<Object>> rows, List<String> columns) throws ParseException {
-        List<List<Object>> list = new ArrayList<>();
-        for (List row : rows) {
-            list.add(convertList(row, columns));
-        }
-        return list;
-    }
-
-    public static List<Object> convertList(List<Object> datas, List<String> columns) throws ParseException {
-        List<Object> list = new ArrayList();
-        for (int i = 0; i < datas.size(); i++) {
-            if (datas.get(i) == null) {
-                list.add(null);
-            } else {
-                String obj = datas.get(i).toString();
-                String column = columns.get(i);
-                list.add(convertData(obj, column));
-            }
-        }
-        return list;
-    }
-
-    public static Object convertData(String data, String column) throws ParseException {
-        String[] ss = column.split("\\s+");
-        String type = ss[ss.length - 1];
-        Object obj = null;
-        if ("null".equalsIgnoreCase(data)) {
-            return null;
-        }
-        switch (type) {
-            case "smallint":
-            case "int16":
-                obj = Short.parseShort(data);
-                break;
-            case "int32":
-            case "i32":
-            case "int":
-                obj = Integer.parseInt(data);
-                break;
-            case "int64":
-            case "bigint":
-                obj = Long.parseLong(data);
-                break;
-            case "float":
-                obj = Float.parseFloat(data);
-                break;
-            case "double":
-                obj = Double.parseDouble(data);
-                break;
-            case "bool":
-                obj = Boolean.parseBoolean(data);
-                break;
-            case "string":
-                obj = data;
-                break;
-            case "timestamp":
-                obj = new Timestamp(Long.parseLong(data));
-                break;
-            case "date":
-                try {
-                    obj = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(data.trim() + " 00:00:00").getTime());
-                } catch (ParseException e) {
-                    logger.error("Fail convert {} to date", data.trim());
-                    throw e;
-                }
-                break;
-            default:
-                obj = data;
-                break;
-        }
-        return obj;
-    }
 }

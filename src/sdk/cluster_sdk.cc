@@ -170,8 +170,8 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
         } else {
             it->second.insert(std::make_pair(table_info->name(), table_info));
         }
-        LOG(INFO) << "load table info with name " << table_info->name()
-                  << " in db " << table_info->db();
+        DLOG(INFO) << "load table info with name " << table_info->name()
+                   << " in db " << table_info->db();
     }
     bool ok = new_catalog->Init(tables);
     if (!ok) {
