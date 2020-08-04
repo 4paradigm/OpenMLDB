@@ -20,6 +20,7 @@ class DefaultUDFLibrary : public UDFLibrary {
  private:
     void Init();
     void IniMathUDF();
+    void InitStringUDF();
 
     static DefaultUDFLibrary inst_;
 

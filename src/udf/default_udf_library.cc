@@ -11,7 +11,9 @@
 #include <string>
 #include <tuple>
 #include <unordered_set>
+#include <vector>
 #include "codegen/date_ir_builder.h"
+#include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
@@ -225,6 +227,116 @@ struct DistinctCountDef {
     }
 };
 
+void DefaultUDFLibrary::InitStringUDF() {
+    RegisterExternalTemplate<v1::ToString>("string")
+        .args_in<int16_t, int32_t, int64_t, float, double>()
+        .return_by_arg(true);
+
+    RegisterExternal("string")
+        .args<Timestamp>(
+            static_cast<void (*)(codec::Timestamp*, codec::StringRef*)>(
+                udf::v1::timestamp_to_string))
+        .return_by_arg(true);
+
+    RegisterExternal("string")
+        .args<Date>(static_cast<void (*)(codec::Date*, codec::StringRef*)>(
+            udf::v1::date_to_string))
+        .return_by_arg(true);
+
+    RegisterCodeGenUDF("concat").variadic_args<>(
+        /* infer */
+        [](UDFResolveContext* ctx,
+           const std::vector<const node::TypeNode*>& arg_types) {
+            return ctx->node_manager()->MakeTypeNode(node::kVarchar);
+        },
+        /* gen */
+        [](CodeGenContext* ctx, const std::vector<NativeValue>& args,
+           NativeValue* out) {
+            codegen::StringIRBuilder string_ir_builder(ctx->GetModule());
+            return string_ir_builder.Concat(ctx->GetCurrentBlock(), args, out);
+        });
+
+    RegisterCodeGenUDF("concat_ws")
+        .variadic_args<AnyArg>(
+            /* infer */
+            [](UDFResolveContext* ctx, const node::TypeNode* arg,
+               const std::vector<const node::TypeNode*>& arg_types) {
+                return ctx->node_manager()->MakeTypeNode(node::kVarchar);
+            },
+            /* gen */
+            [](CodeGenContext* ctx, NativeValue arg,
+               const std::vector<NativeValue>& args, NativeValue* out) {
+                codegen::StringIRBuilder string_ir_builder(ctx->GetModule());
+
+                return string_ir_builder.ConcatWS(ctx->GetCurrentBlock(), arg,
+                                                  args, out);
+            });
+
+    RegisterExternal("substring")
+        .doc(R"(
+Return a substring from string `str` starting at position `pos `.
+
+example:
+@code{.sql}
+
+
+    select substr("hello world", 2);
+    -- output "llo world"
+
+@endcode
+
+@param **str**
+@param **pos** define the begining of the substring.
+
+- If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
+- If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
+
+@since 2.0.0.0
+)")
+        .args<StringRef, int32_t>(
+            static_cast<void (*)(codec::StringRef*, int32_t,
+                                 codec::StringRef*)>(udf::v1::sub_string))
+        .return_by_arg(true);
+
+    RegisterExternal("substring")
+        .doc(R"(
+Return a substring `len` characters long from string str, starting at position `pos`.
+
+example
+@code{.sql}
+
+    select substr("hello world", 3, 6);
+    -- output "llo wo"
+
+@endcode
+
+
+@param **str**
+@param **pos**: define the begining of the substring.
+
+ - If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
+ - If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
+
+@param **len** length of substring. If len is less than 1, the result is the empty string.
+
+@since 2.0.0.0
+            )")
+        .args<StringRef, int32_t, int32_t>(
+            static_cast<void (*)(codec::StringRef*, int32_t, int32_t,
+                                 codec::StringRef*)>(udf::v1::sub_string))
+        .return_by_arg(true);
+
+    RegisterExternal("date_format")
+        .args<Timestamp, StringRef>(
+            static_cast<void (*)(codec::Timestamp*, codec::StringRef*,
+                                 codec::StringRef*)>(udf::v1::date_format))
+        .return_by_arg(true);
+    RegisterExternal("date_format")
+        .args<Date, StringRef>(
+            static_cast<void (*)(codec::Date*, codec::StringRef*,
+                                 codec::StringRef*)>(udf::v1::date_format))
+        .return_by_arg(true);
+}
 void DefaultUDFLibrary::IniMathUDF() {
     RegisterExternal("log")
         .args<float>(static_cast<float (*)(float)>(log))
@@ -364,6 +476,8 @@ void DefaultUDFLibrary::Init() {
         .return_by_arg(true)
         .args_in<Timestamp, Date, StringRef>();
 
+    //
+
     RegisterAlias("lead", "at");
 
     RegisterCodeGenUDF("identity")
@@ -457,6 +571,7 @@ void DefaultUDFLibrary::Init() {
                  StringRef>();
 
     IniMathUDF();
+    InitStringUDF();
 }
 
 }  // namespace udf

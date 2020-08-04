@@ -54,6 +54,8 @@ inline const std::string DataTypeName(const DataType& type) {
             return "string";
         case kTypeTimestamp:
             return "timestamp";
+        case kTypeDate:
+            return "date";
         default:
             return "unknownType";
     }

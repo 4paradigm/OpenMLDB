@@ -295,7 +295,13 @@ struct ExprUDFGen : public ExprUDFGenBase {
 
     ExprNode* gen(UDFResolveContext* ctx,
                   const std::vector<ExprNode*>& args) override {
-        return gen_internal(ctx, args, std::index_sequence_for<Args...>());
+        if (args.size() != sizeof...(LiteralArgTypes)) {
+            LOG(WARNING) << "fail to invoke ExprUDFGen::gen, args size isn't "
+                            "match with LiteralArgTypes)";
+            return nullptr;
+        }
+        return gen_internal(ctx, args,
+                            std::index_sequence_for<LiteralArgTypes...>());
     }
 
     template <std::size_t... I>
@@ -1068,6 +1074,24 @@ struct TypeAnnotatedFuncPtrImpl<std::tuple<Args...>> {
 
     TypeAnnotatedFuncPtrImpl() {}
 
+    // void fn(T1, T2, T3, Ret*) --> Ret fn(T1, T2, T3)
+    template <typename T1, typename T2, typename T3, typename T4>
+    TypeAnnotatedFuncPtr(void (*fn)(T1, T2, T3, T4*))  // NOLINT
+        : ptr(reinterpret_cast<void*>(fn)),
+          return_by_arg(true),
+          get_type_func([](node::NodeManager* nm, node::TypeNode** ret,
+                           std::vector<node::TypeNode*>* args) {
+              *ret =
+                  DataTypeTrait<typename CCallDataTypeTrait<T4*>::LiteralTag>::
+                      to_type_node(nm);
+              *args = {
+                  DataTypeTrait<typename CCallDataTypeTrait<T1>::LiteralTag>::
+                      to_type_node(nm),
+                  DataTypeTrait<typename CCallDataTypeTrait<T2>::LiteralTag>::
+                      to_type_node(nm),
+                  DataTypeTrait<typename CCallDataTypeTrait<T3>::LiteralTag>::
+                      to_type_node(nm)};
+          }) {}
     void* ptr;
     bool return_by_arg;
     bool return_nullable;
@@ -1752,7 +1776,7 @@ class UDAFRegistryHelperImpl {
             UDFResolveContext ctx(arg_list, nullptr, library_, &analysis_ctx);
             auto status = udf_registry->ResolveFunction(&ctx, &res);
             if (!status.isOK() || res == nullptr) {
-                LOG(WARNING) << status.msg;
+                DLOG(WARNING) << status.msg;
                 continue;
             }
             return res;

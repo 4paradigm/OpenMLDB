@@ -106,11 +106,7 @@ class RunSession {
 
  protected:
     bool SetCompileInfo(const std::shared_ptr<CompileInfo>& compile_info);
-
-    inline void SetCatalog(const std::shared_ptr<Catalog>& cl) { cl_ = cl; }
-
     std::shared_ptr<CompileInfo> compile_info_;
-    std::shared_ptr<Catalog> cl_;
     bool is_debug_;
     friend Engine;
 };
@@ -173,10 +169,8 @@ class Engine {
 
     bool Explain(const std::string& sql, const std::string& db, bool is_batch,
                  ExplainOutput* explain_output, base::Status* status);
-
     inline void UpdateCatalog(std::shared_ptr<Catalog> cl) {
-        std::lock_guard<base::SpinMutex> lock(mu_);
-        cl_ = cl;
+        std::atomic_store_explicit(&cl_, cl, std::memory_order_release);
     }
 
     void ClearCacheLocked(const std::string& db);

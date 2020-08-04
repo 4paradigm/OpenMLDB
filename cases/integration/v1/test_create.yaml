@@ -339,7 +339,6 @@ cases:
   -
     id: 36
     desc: key和ts为同一列
-    tags: ["@denglong: key和ts是否可以为同一列"]
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 

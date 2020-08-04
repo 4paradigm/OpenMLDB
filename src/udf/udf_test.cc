@@ -386,6 +386,44 @@ TEST_F(UDFTest, GetColHeapTest) {
     }
 }
 
+TEST_F(UDFTest, DateToString) {
+    {
+        codec::StringRef str;
+        codec::Date date(2020, 5, 22);
+        udf::v1::date_to_string(&date, &str);
+        ASSERT_EQ(codec::StringRef("2020-05-22"), str);
+    }
+}
+
+TEST_F(UDFTest, TimestampToString) {
+    {
+        codec::StringRef str;
+        codec::Timestamp ts(1590115420000L);
+        udf::v1::timestamp_to_string(&ts, &str);
+        ASSERT_EQ(codec::StringRef("2020-05-22 10:43:40"), str);
+    }
+    {
+        codec::StringRef str;
+        codec::Timestamp ts(1590115421000L);
+        udf::v1::timestamp_to_string(&ts, &str);
+        ASSERT_EQ(codec::StringRef("2020-05-22 10:43:41"), str);
+    }
+}
+
+
+template <class Ret, class... Args>
+void CheckUDF(UDFLibrary* library, const std::string& name, Ret&& expect,
+                     Args&&... args) {
+    auto function = udf::UDFFunctionBuilder(name)
+                        .args<Args...>()
+                        .template returns<Ret>()
+                        .library(library)
+                        .build();
+    ASSERT_TRUE(function.valid());
+    auto result = function(std::forward<Args>(args)...);
+    ASSERT_EQ(std::forward<Ret>(expect), result);
+}
+
 class ExternUDFTest : public ::testing::Test {
  public:
     static int32_t if_null(int32_t in, bool is_null, int32_t default_val) {
@@ -437,19 +475,6 @@ class ExternUDFTest : public ::testing::Test {
         *t3 = z;
     }
 };
-
-template <class Ret, class... Args>
-void CheckUDF(UDFLibrary* library, const std::string& name, Ret&& expect,
-                     Args&&... args) {
-    auto function = udf::UDFFunctionBuilder(name)
-                        .args<Args...>()
-                        .template returns<Ret>()
-                        .library(library)
-                        .build();
-    ASSERT_TRUE(function.valid());
-    auto result = function(std::forward<Args>(args)...);
-    ASSERT_EQ(std::forward<Ret>(expect), result);
-}
 
 TEST_F(ExternUDFTest, TestCompoundTypedExternalCall) {
     UDFLibrary library;

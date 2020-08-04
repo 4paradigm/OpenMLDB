@@ -9,24 +9,22 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <vector>
+#include <iostream>
+#include <string>
+char* memcpy_test(char* src1, char* src2, size_t l1, size_t l2) {
+    char *dist = reinterpret_cast<char* >(malloc(l1+l2));
+    memcpy(dist, src1, l1);
+    memcpy(dist+l1, src2, l2);
+    return dist;
 
-int GetDate(int64_t date, int32_t* year, int32_t* month, int32_t* day) {
-    *day = date & 255;
-    date = date << 4;
-    //    *month = 1 + (date & 0x0000FF);
-    //    *year = 1900 + (date >> 8);
-    return date;
+//    std::cout << std::string(dist, l1+l2);
 }
 
-int YearTime() {
-    time_t t;
-    time(&t);
-    struct tm* tmp_time = localtime(&t);
-    char s[100];
-    strftime(s, sizeof(s), "%04Y%02m%02d %H:%M:%S", tmp_time);
-    printf("%d: %s\n", (int)t, s);
-    return 0;
+
+const char* cast_to_string(int64_t x) {
+    return std::to_string(x).data();
 }
+
 //
 // int main() {
 //    long num1[5] = {1L, 2L, 3L, 4L, 5L};

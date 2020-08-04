@@ -591,6 +591,16 @@ static void WriteReturnValueArgs(const NativeValue& value,
 }
 
 /**
+ * Helper function to apply vector of args to variadic function
+ */
+template <typename F, std::size_t... I>
+static node::ExprNode *ApplyExprFuncHelper(
+    node::NodeManager *nm, const std::vector<node::ExprIdNode *> &args,
+    const std::index_sequence<I...> &, const F &expr_func) {
+    return expr_func(nm, args[I]...);
+}
+
+/**
  * Build a callable function object from expr build function.
  */
 template <typename Ret, typename... Args>

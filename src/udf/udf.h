@@ -18,6 +18,9 @@
 
 namespace fesql {
 namespace udf {
+int8_t *ThreadLocalMemoryPoolAlloc(int32_t request_size);
+void ThreadLocalMemoryPoolReset();
+
 namespace v1 {
 
 template <class V>
@@ -108,7 +111,38 @@ int32_t weekofyear(int64_t ts);
 int32_t weekofyear(fesql::codec::Timestamp *ts);
 int32_t weekofyear(fesql::codec::Date *ts);
 
+void date_format(codec::Date *date, const std::string &format,
+                 fesql::codec::StringRef *output);
+void date_format(codec::Timestamp *timestamp, const std::string &format,
+                 fesql::codec::StringRef *output);
+
+void date_format(codec::Timestamp *timestamp, fesql::codec::StringRef *format,
+                 fesql::codec::StringRef *output);
+void date_format(codec::Date *date, fesql::codec::StringRef *format,
+                 fesql::codec::StringRef *output);
+
+void timestamp_to_string(codec::Timestamp *timestamp,
+                         fesql::codec::StringRef *output);
+void date_to_string(codec::Date *date, fesql::codec::StringRef *output);
+
+void sub_string(fesql::codec::StringRef *str, int32_t pos,
+                fesql::codec::StringRef *output);
+void sub_string(fesql::codec::StringRef *str, int32_t pos, int32_t len,
+                fesql::codec::StringRef *output);
+
+template <class V>
+struct ToString {
+    void operator()(V v, codec::StringRef *output) {
+        std::ostringstream ss;
+        ss << v;
+        output->size_ = ss.str().size();
+        output->data_ =
+            reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
+        memcpy(output->data_, ss.str().data(), output->size_);
+    }
+};
 }  // namespace v1
+
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);                // NOLINT
 void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                    ::llvm::orc::MangleAndInterner &mi);   // NOLINT

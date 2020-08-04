@@ -10,6 +10,7 @@
 #ifndef SRC_CODEGEN_STRING_IR_BUILDER_H_
 #define SRC_CODEGEN_STRING_IR_BUILDER_H_
 #include <string>
+#include <vector>
 #include "base/fe_status.h"
 #include "codegen/cast_expr_ir_builder.h"
 #include "codegen/scope_var.h"
@@ -40,6 +41,14 @@ class StringIRBuilder : public StructTypeIRBuilder {
                  ::llvm::Value** output);
     bool SetData(::llvm::BasicBlock* block, ::llvm::Value* str,
                  ::llvm::Value* data);
+    bool CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
+                  ::llvm::Value** output);
+    base::Status Concat(::llvm::BasicBlock* block,
+                        const std::vector<NativeValue>& strs,
+                        NativeValue* output);
+    base::Status ConcatWS(::llvm::BasicBlock* block, const NativeValue& on,
+                          const std::vector<NativeValue>& strs,
+                          NativeValue* output);
 };
 }  // namespace codegen
 }  // namespace fesql

@@ -397,6 +397,28 @@ TEST_F(UDFRegistryTest, test_codegen_udf_register) {
                 fn_def->GetType() == node::kUDFByCodeGenDef);
 }
 
+TEST_F(UDFRegistryTest, test_variadic_codegen_udf_register) {
+    UDFLibrary library;
+    node::NodeManager nm;
+    const node::UDFByCodeGenDefNode* fn_def;
+
+    library.RegisterCodeGenUDF("concat").variadic_args<>(
+        /* infer */ [](UDFResolveContext* ctx,
+                       const std::vector<const node::TypeNode*>&
+                           arg_types) { return arg_types[0]; },
+        /* gen */
+        [](CodeGenContext* ctx, const std::vector<NativeValue>& args,
+           NativeValue* out) {
+            *out = args[0];
+            return Status::OK();
+        });
+
+    fn_def = dynamic_cast<const node::UDFByCodeGenDefNode*>(
+        GetFnDef<int32_t, int32_t>(&library, "concat", &nm));
+    ASSERT_TRUE(fn_def != nullptr &&
+                fn_def->GetType() == node::kUDFByCodeGenDef);
+}
+
 TEST_F(UDFRegistryTest, test_reg) {
     using Check = FuncTypeCheckHelper<int, std::tuple<int, int>, int,
                                       std::tuple<int, int>>;

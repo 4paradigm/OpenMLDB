@@ -24,14 +24,14 @@ target_link_libraries(fesql_bm_lib fesql_sdk fesql_flags ${BM_LIIBS})
 
 # bm executables
 set(BM_TARGET_LIST)
-foreach(BM_SCRIPT ${BM_EXEC_FILE_LIST}) 
+foreach(BM_SCRIPT ${BM_EXEC_FILE_LIST})
     file(RELATIVE_PATH RELATIVE_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR} ${BM_SCRIPT})
         get_filename_component(BM_TARGET_DIR ${RELATIVE_SRC_PATH} DIRECTORY)
         get_filename_component(BM_TARGET_NAME ${RELATIVE_SRC_PATH} NAME_WE)
         set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${BM_TARGET_DIR})
         add_executable(${BM_TARGET_NAME} ${BM_SCRIPT})
-         
-        target_link_libraries(${BM_TARGET_NAME} 
+
+        target_link_libraries(${BM_TARGET_NAME}
             fesql_sdk fesql_flags fesql_bm_lib ${BM_LIBS} benchmark)
         list(APPEND BM_TARGET_LIST ${BM_TARGET_NAME})
 endforeach()
@@ -41,7 +41,7 @@ add_custom_target(fesql_bm DEPENDS ${BM_TARGET_LIST})
 # bm unittests
 if (TESTING_ENABLE)
     set(TEST_CPP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-    foreach(TEST_SCRIPT ${BM_TEST_FILE_LIST}) 
+    foreach(TEST_SCRIPT ${BM_TEST_FILE_LIST})
         file(RELATIVE_PATH RELATIVE_TEST_PATH ${TEST_CPP_SOURCE_DIR} ${TEST_SCRIPT})
         get_filename_component(TEST_TARGET_DIR ${RELATIVE_TEST_PATH} DIRECTORY)
         get_filename_component(TEST_TARGET_NAME ${RELATIVE_TEST_PATH} NAME_WE)
@@ -51,9 +51,9 @@ if (TESTING_ENABLE)
         add_test(${TEST_TARGET_NAME}
             ${TEST_TARGET_NAME}
             --gtest_output=xml:${CMAKE_BINARY_DIR}/${TEST_TARGET_NAME}.xml)
-         
+
         target_link_libraries(${TEST_TARGET_NAME}
-            fesql_bm_lib fesql_sdk fesql_flags 
+            fesql_bm_lib fesql_sdk fesql_flags
             gtest benchmark ${yaml_libs} ${BRPC_LIBS} ${OS_LIBS} ${g_libs})
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()

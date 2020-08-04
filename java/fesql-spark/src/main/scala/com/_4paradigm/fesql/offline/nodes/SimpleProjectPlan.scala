@@ -43,7 +43,7 @@ object SimpleProjectPlan {
       columnSource.`type`() match {
         case SourceType.kSourceColumn => {
           // Resolved the column index to get column and rename
-          val colIndex = SparkColumnUtil.resolveColumnIndex(columnSource.schema_idx(), columnSourceList.get(i).column_idx(), node.GetProducer(0))
+          val colIndex = SparkColumnUtil.resolveColumnIndex(columnSource.schema_idx(), columnSource.column_idx(), node.GetProducer(0))
           SparkColumnUtil.getCol(inputDf, colIndex).alias(outputColNameList(i));
         }
         case SourceType.kSourceConst => {

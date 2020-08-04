@@ -141,8 +141,12 @@ Status ExternalFuncRegistry::ResolveFunction(UDFResolveContext* ctx,
     int variadic_pos = -1;
     node::ExternalFnDefNode* external_def = nullptr;
     std::string signature;
-    CHECK_STATUS(reg_table_.Find(ctx, &external_def, &signature, &variadic_pos),
-                 "Fail to resolve fn name \"", name(), "\"");
+    auto status =
+        reg_table_.Find(ctx, &external_def, &signature, &variadic_pos);
+    if (!status.isOK()) {
+        DLOG(WARNING) << "Fail to resolve fn name \"" << name() << "\"";
+        return status;
+    }
 
     CHECK_TRUE(external_def->ret_type() != nullptr,
                "No return type specified for ", external_def->function_name());
