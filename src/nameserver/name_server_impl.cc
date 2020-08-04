@@ -11158,7 +11158,7 @@ void NameServerImpl::AddIndex(RpcController* controller,
             auto tit = request_cols.find(col_name);
             if (tit == request_cols.end()) {
                 response->set_code(ReturnCode::kWrongColumnKey);
-                response->set_msg("wrong column key");
+                response->set_msg("wrong column key!");
                 LOG(WARNING) << "miss column desc in the request";
                 return;
             } else {
