@@ -23,6 +23,8 @@
 #include "glog/logging.h"
 #include "vm/transform.h"
 
+using ::fesql::base::Status;
+
 namespace fesql {
 namespace codegen {
 
@@ -32,63 +34,42 @@ RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::SchemaSourceList& schema_sources,
     : schema_context_(schema_sources), frame_(frame), module_(module) {}
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
-bool RowFnLetIRBuilder::Build(const std::string& name,
-                              node::LambdaNode* project_func,
-                              vm::Schema* output_schema,
-                              vm::ColumnSourceList* output_column_sources) {}
-
-/**
- * Codegen For int32 RowFnLetUDF(int_8* row_ptrs, int8_t* window_ptr, int32 *
- * row_sizes, int8_t * output_ptr)
- * @param name
- * @param projects
- * @param output_schema
- * @return
- */
-bool RowFnLetIRBuilder::Build(
-    const std::string& name, const node::PlanNodeList& projects,
-    vm::Schema* output_schema,
-    vm::ColumnSourceList*
-        output_column_sources) {  // NOLINT (runtime/references)
+Status RowFnLetIRBuilder::Build(
+    const std::string& name, node::LambdaNode* compile_func,
+    const std::vector<std::string>& project_names,
+    const std::vector<node::FrameNode*>& project_frames,
+    vm::Schema* output_schema, vm::ColumnSourceList* output_column_sources) {
     ::llvm::Function* fn = NULL;
-    std::string output_ptr_name = "output_ptr_name";
-    ::llvm::StringRef name_ref(name);
-    if (module_->getFunction(name_ref) != NULL) {
-        LOG(WARNING) << "function with name " << name << " exist";
-        return false;
-    }
+    CHECK_TRUE(module_->getFunction(name) == NULL, "function ", name,
+               " already exists");
 
     std::vector<std::string> args;
     std::vector<::llvm::Type*> args_llvm_type;
-    args_llvm_type.push_back(
-        ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
+    args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
     args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
     args_llvm_type.push_back(
-        ::llvm::Type::getInt32Ty(module_->getContext())->getPointerTo());
-    args_llvm_type.push_back(
         ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
 
-    args.push_back("@row_ptrs");
+    std::string output_ptr_name = "output_ptr_name";
+    args.push_back("@row_ptr");
     args.push_back("@window");
-    args.push_back("@row_sizes");
     args.push_back(output_ptr_name);
 
-    base::Status status;
+    Status status;
     bool ok =
         BuildFnHeader(name, args_llvm_type,
                       ::llvm::Type::getInt32Ty(module_->getContext()), &fn);
+    CHECK_TRUE(ok && fn != nullptr, "Fail to build fn header for name ", name);
 
-    if (!ok || fn == NULL) {
-        LOG(WARNING) << "fail to build fn header for name " << name;
-        return false;
-    }
-
+    // bind input function argument
     ScopeVar sv;
     sv.Enter(name);
-    ok = FillArgs(args, fn, sv);
-    if (!ok) {
-        return false;
-    }
+    CHECK_TRUE(FillArgs(args, fn, sv));
+
+    // bind row arg
+    NativeValue row_arg_value;
+    CHECK_TRUE(sv.FindVar("@row_ptr", &row_arg_value));
+    sv.AddVar(compile_func->GetArg(0)->GetExprString(), row_arg_value);
 
     ::llvm::BasicBlock* block =
         ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
@@ -99,101 +80,72 @@ bool RowFnLetIRBuilder::Build(
     variable_ir_builder.StoreWindow(
         nullptr == frame_ ? "" : frame_->GetExprString(), window.GetRaw(),
         status);
-    if (schema_context_.row_schema_info_list_.empty()) {
-        LOG(WARNING) << "fail to build fn: row info list is empty";
-        return false;
-    }
+    CHECK_TRUE(!schema_context_.row_schema_info_list_.empty(),
+               "Fail to build fn: row info list is empty");
+
     ExprIRBuilder expr_ir_builder(block, &sv, &schema_context_, true, module_);
-    ::fesql::node::PlanNodeList::const_iterator it = projects.cbegin();
+
     std::map<uint32_t, NativeValue> outputs;
 
     // maybe collect agg expressions
     std::map<std::string, AggregateIRBuilder> window_agg_builder;
     uint32_t agg_builder_id = 0;
 
-    uint32_t index = 0;
-    for (; it != projects.cend(); it++) {
-        const ::fesql::node::PlanNode* pn = *it;
-        if (pn == NULL) {
-            LOG(WARNING) << "plan node is null";
-            return false;
-        }
-        if (pn->GetType() != ::fesql::node::kProjectNode) {
-            LOG(WARNING) << "project node is required but "
-                         << ::fesql::node::NameOfPlanNodeType(pn->GetType());
-            return false;
-        }
+    auto expr_list = compile_func->body();
+    CHECK_TRUE(project_frames.size() == expr_list->GetChildNum(),
+               "Frame num should match expr num");
+    CHECK_TRUE(project_names.size() == expr_list->GetChildNum(),
+               "Output name num should match expr num");
 
-        const ::fesql::node::ProjectNode* pp_node =
-            (const ::fesql::node::ProjectNode*)pn;
-        const ::fesql::node::ExprNode* sql_node = pp_node->GetExpression();
+    for (size_t i = 0; i < expr_list->GetChildNum(); ++i) {
+        const ::fesql::node::ExprNode* expr = expr_list->GetChild(i);
+
+        std::string project_name = project_names[i];
+        auto frame = project_frames[i];
+        const std::string frame_str =
+            frame == nullptr ? "" : frame->GetExprString();
+
         ::fesql::type::Type col_agg_type;
-        const std::string frame_str = nullptr == pp_node->frame()
-                                          ? ""
-                                          : pp_node->frame()->GetExprString();
+
         auto agg_iter = window_agg_builder.find(frame_str);
 
         if (agg_iter == window_agg_builder.end()) {
             window_agg_builder.insert(std::make_pair(
-                frame_str,
-                AggregateIRBuilder(&schema_context_, module_, pp_node->frame(),
-                                   agg_builder_id++)));
+                frame_str, AggregateIRBuilder(&schema_context_, module_, frame,
+                                              agg_builder_id++)));
             agg_iter = window_agg_builder.find(frame_str);
         }
-        if (agg_iter->second.CollectAggColumn(sql_node, index, &col_agg_type)) {
-            AddOutputColumnInfo(pp_node->GetName(), col_agg_type, sql_node,
-                                output_schema, output_column_sources);
-            index++;
+        if (agg_iter->second.CollectAggColumn(expr, i, &col_agg_type)) {
+            AddOutputColumnInfo(project_name, col_agg_type, expr, output_schema,
+                                output_column_sources);
             continue;
         }
 
-        switch (sql_node->expr_type_) {
-            case node::kExprAll: {
-                const node::AllNode* expr_all =
-                    dynamic_cast<const node::AllNode*>(sql_node);
-                for (auto expr : expr_all->children_) {
-                    auto column_ref = dynamic_cast<node::ColumnRefNode*>(expr);
-                    expr_ir_builder.set_frame(pp_node->frame());
-                    if (!BuildProject(index, column_ref,
-                                      column_ref->GetColumnName(), &outputs,
-                                      expr_ir_builder, output_schema,
-                                      output_column_sources, status)) {
-                        return false;
-                    }
-                    index++;
-                }
-                break;
-            }
-            default: {
-                std::string col_name = pp_node->GetName();
-                expr_ir_builder.set_frame(pp_node->frame());
-                if (!BuildProject(index, sql_node, col_name, &outputs,
-                                  expr_ir_builder, output_schema,
-                                  output_column_sources, status)) {
-                    return false;
-                }
-                index++;
-                break;
-            }
-        }
+        CHECK_TRUE(expr->GetExprType() != node::kExprAll,
+                   "* should be resolved before codegen stage");
+
+        // bind window frame
+        CHECK_STATUS(BindProjectFrame(&expr_ir_builder, frame, compile_func,
+                                      block, &sv));
+
+        CHECK_TRUE(
+            BuildProject(i, expr, project_name, &outputs, expr_ir_builder,
+                         output_schema, output_column_sources, status),
+            "Build expr failed: ", status.msg, "\n", expr->GetTreeString());
     }
 
-    ok = EncodeBuf(&outputs, *output_schema, variable_ir_builder, block,
-                   output_ptr_name);
-    if (!ok) {
-        return false;
-    }
+    CHECK_TRUE(EncodeBuf(&outputs, *output_schema, variable_ir_builder, block,
+                         output_ptr_name),
+               "Gen encode into output buffer failed");
 
     if (!window_agg_builder.empty()) {
         for (auto iter = window_agg_builder.begin();
              iter != window_agg_builder.end(); iter++) {
             if (!iter->second.empty()) {
-                if (!iter->second.BuildMulti(name, &expr_ir_builder,
-                                             &variable_ir_builder, block,
-                                             output_ptr_name, output_schema)) {
-                    LOG(WARNING) << "Multi column sum codegen failed";
-                    return false;
-                }
+                CHECK_TRUE(iter->second.BuildMulti(
+                               name, &expr_ir_builder, &variable_ir_builder,
+                               block, output_ptr_name, output_schema),
+                           "Multi column sum codegen failed");
             }
         }
     }
@@ -201,7 +153,7 @@ bool RowFnLetIRBuilder::Build(
     ::llvm::IRBuilder<> ir_builder(block);
     ::llvm::Value* ret = ir_builder.getInt32(0);
     ir_builder.CreateRet(ret);
-    return true;
+    return Status::OK();
 }
 
 bool RowFnLetIRBuilder::EncodeBuf(
@@ -257,6 +209,7 @@ bool RowFnLetIRBuilder::FillArgs(const std::vector<std::string>& args,
     }
     return true;
 }
+
 bool RowFnLetIRBuilder::BuildProject(
     const uint32_t index, const node::ExprNode* expr,
     const std::string& col_name, std::map<uint32_t, NativeValue>* outputs,
@@ -294,9 +247,9 @@ bool RowFnLetIRBuilder::AddOutputColumnInfo(
     cdef->set_name(col_name);
     cdef->set_type(ctype);
     switch (expr->GetExprType()) {
-        case fesql::node::kExprColumnRef: {
-            const ::fesql::node::ColumnRefNode* column_expr =
-                (const ::fesql::node::ColumnRefNode*)expr;
+        case fesql::node::kExprGetField: {
+            const ::fesql::node::GetFieldExpr* column_expr =
+                (const ::fesql::node::GetFieldExpr*)expr;
             output_column_sources->push_back(
                 schema_context_.ColumnSourceResolved(
                     column_expr->GetRelationName(),
@@ -313,6 +266,35 @@ bool RowFnLetIRBuilder::AddOutputColumnInfo(
         }
     }
     return true;
+}
+
+Status RowFnLetIRBuilder::BindProjectFrame(ExprIRBuilder* expr_ir_builder,
+                                           node::FrameNode* frame,
+                                           node::LambdaNode* compile_func,
+                                           ::llvm::BasicBlock* block,
+                                           ScopeVar* sv) {
+    Status status;
+    expr_ir_builder->set_frame(frame);
+    auto window_arg = compile_func->GetArg(1);
+    auto window_key = window_arg->GetExprString();
+    NativeValue window_arg_value;
+    CHECK_TRUE(expr_ir_builder->BuildWindow(&window_arg_value, status),
+               "Bind window failed: ", status.msg);
+
+    ::llvm::IRBuilder<> builder(block);
+    ::llvm::Value* frame_ptr = window_arg_value.GetValue(&builder);
+    CHECK_TRUE(frame_ptr != nullptr && frame_ptr->getType()->isPointerTy());
+    ::llvm::Type* row_list_ptr_ty = nullptr;
+    CHECK_TRUE(
+        GetLLVMType(module_, window_arg->GetOutputType(), &row_list_ptr_ty));
+    frame_ptr = builder.CreatePointerCast(frame_ptr, row_list_ptr_ty);
+    window_arg_value = window_arg_value.Replace(frame_ptr);
+    if (sv->ExistVar(window_key)) {
+        sv->ReplaceVar(window_key, window_arg_value);
+    } else {
+        sv->AddVar(window_key, window_arg_value);
+    }
+    return Status::OK();
 }
 
 }  // namespace codegen

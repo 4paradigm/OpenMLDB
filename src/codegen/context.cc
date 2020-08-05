@@ -7,7 +7,7 @@
  *--------------------------------------------------------------------------
  **/
 #include "codegen/context.h"
-
+#include <memory>
 #include "glog/logging.h"
 
 namespace fesql {

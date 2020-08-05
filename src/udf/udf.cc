@@ -250,8 +250,8 @@ V next_iterator(int8_t *input) {
     iter->Next();
     return v;
 }
-template <>
-const codec::Row *next_iterator(int8_t *input) {
+
+const codec::Row *next_row_iterator(int8_t *input) {
     ::fesql::codec::IteratorRef *iter_ref =
         (::fesql::codec::IteratorRef *)(input);
     ConstIterator<uint64_t, codec::Row> *iter =
@@ -260,6 +260,7 @@ const codec::Row *next_iterator(int8_t *input) {
     iter->Next();
     return res;
 }
+
 template <class V>
 bool next_struct_iterator(int8_t *input, V *v) {
     ::fesql::codec::IteratorRef *iter_ref =
@@ -431,8 +432,8 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
     RegisterMethod(
         module, "next", bool_ty, {iter_string_ty, string_ty},
         reinterpret_cast<void *>(v1::next_struct_iterator<codec::StringRef>));
-    RegisterMethod(module, "next", bool_ty, {iter_row_ty, row_ty},
-                   reinterpret_cast<void *>(v1::next_iterator<codec::Row>));
+    RegisterMethod(module, "next", row_ty, {iter_row_ty},
+                   reinterpret_cast<void *>(v1::next_row_iterator));
 
     RegisterMethod(module, "has_next", bool_ty, {iter_i16_ty},
                    reinterpret_cast<void *>(v1::has_next<int16_t>));

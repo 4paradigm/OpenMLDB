@@ -70,6 +70,14 @@ codec::ListRef<T> MakeList(const std::initializer_list<T> &vec) {
     return list_ref;
 }
 
+codec::ListRef<bool> MakeBoolList(const std::initializer_list<int> &vec) {
+    codec::BoolArrayListV *list =
+        new codec::BoolArrayListV(new std::vector<int>(vec));
+    codec::ListRef<bool> list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(list);
+    return list_ref;
+}
+
 template <class T, class... Args>
 void CheckUDFFail(const std::string &name, T expect, Args... args) {
     auto function = udf::UDFFunctionBuilder(name)
@@ -438,6 +446,7 @@ TEST_F(UDFIRBuilderTest, to_string_test) {
     CheckUDF<codec::StringRef, codec::Date>(
         "string", codec::StringRef("2020-05-22"), codec::Date(2020, 5, 22));
 }
+
 TEST_F(UDFIRBuilderTest, timestamp_format_test) {
     CheckUDF<codec::StringRef, codec::Timestamp, codec::StringRef>(
         "date_format", codec::StringRef("2020-05-22 10:43:40"),
@@ -470,7 +479,13 @@ TEST_F(UDFIRBuilderTest, date_format_test) {
 TEST_F(UDFIRBuilderTest, count_where_test) {
     CheckUDF<int64_t, codec::ListRef<int32_t>, codec::ListRef<bool>>(
         "count_where", 2, MakeList<int32_t>({4, 5, 6}),
-        MakeList<bool>({true, false, true}));
+        MakeBoolList({true, false, true}));
+
+    CheckUDF<int64_t, codec::ListRef<codec::StringRef>, codec::ListRef<bool>>(
+        "count_where", 2,
+        MakeList({codec::StringRef("1"), codec::StringRef("2"),
+                  codec::StringRef("3")}),
+        MakeBoolList({true, false, true}));
 }
 
 TEST_F(UDFIRBuilderTest, avg_test) {
@@ -484,12 +499,10 @@ TEST_F(UDFIRBuilderTest, avg_test) {
                                             MakeList<float>({1, 2, 3, 4}));
     CheckUDF<double, codec::ListRef<double>>("avg", 2.5,
                                              MakeList<double>({1, 2, 3, 4}));
-
     // empty list
     CheckUDF<double, codec::ListRef<double>>("avg", 0.0 / 0,
                                              MakeList<double>({}));
 }
-
 
 }  // namespace codegen
 }  // namespace fesql

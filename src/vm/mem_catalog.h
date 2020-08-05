@@ -109,6 +109,7 @@ class MemWindowIterator : public WindowIterator {
     void Next();
     bool Valid();
     std::unique_ptr<RowIterator> GetValue();
+    RowIterator* GetValue(int8_t* addr);
     const Row GetKey();
 
  private:
@@ -375,7 +376,11 @@ class MemSegmentHandler : public TableHandler {
         return std::unique_ptr<RowIterator>();
     }
     RowIterator* GetIterator(int8_t* addr) const override {
-        LOG(WARNING) << "can't get iterator with given address";
+        auto iter = partition_hander_->GetWindowIterator();
+        if (iter) {
+            iter->Seek(key_);
+            return iter->Valid() ? iter->GetValue(addr) : nullptr;
+        }
         return nullptr;
     }
     std::unique_ptr<vm::WindowIterator> GetWindowIterator(

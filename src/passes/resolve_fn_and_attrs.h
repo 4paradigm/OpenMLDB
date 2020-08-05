@@ -7,6 +7,7 @@
 #define SRC_PASSES_RESOLVE_FN_AND_ATTRS_H_
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "node/expr_node.h"

@@ -20,7 +20,7 @@ class LambdafyProjectsTest : public ::testing::Test {};
 
 TEST_F(LambdafyProjectsTest, Test) {
     vm::SchemaSourceList input_schemas;
-    auto schema = udf::MakeLiteralSchema<int32_t, float>();
+    auto schema = udf::MakeLiteralSchema<int32_t, float, double>();
     input_schemas.AddSchemaSource(&schema);
 
     parser::FeSQLParser parser;
@@ -29,13 +29,13 @@ TEST_F(LambdafyProjectsTest, Test) {
     plan::SimplePlanner planner(&nm);
 
     const std::string udf1 =
-        "select a, b, c, "
-        "substring(\"hello\", 1, 3), "
-        "sum(d), "
-        "count_where(x, y > 2), "
-        "count(c) + g(sum(a + 1 + f(max(d)))) + 1,"
-        "*, count(*),"
-        "sum(slice(x, 1, 3))"
+        "select "
+        "    col_0, col_1 * col_2, "
+        "    substring(\"hello\", 1, 3), "
+        "    sum(col_0), "
+        "    count_where(col_1, col_2 > 2), "
+        "    count(col_0) + g(sum(col_1 + 1 + f(max(col_2)))) + 1,"
+        "    *, count(*) "
         "from t1;";
     node::NodePointVector list1;
     int ok = parser.parse(udf1, list1, &nm, status);
@@ -60,14 +60,16 @@ TEST_F(LambdafyProjectsTest, Test) {
     auto lib = udf::DefaultUDFLibrary::get();
     lib->SetIsUDAF("count_where", 2);
     lib->SetIsUDAF("slice", 3);
-    LambdafyProjects transformer(&nm, lib, input_schemas);
+    LambdafyProjects transformer(&nm, lib, input_schemas, false);
 
     std::vector<int> is_agg_vec;
+    std::vector<std::string> names;
+    std::vector<node::FrameNode *> frames;
     node::LambdaNode *lambda;
     status = transformer.Transform(project_list_node->GetProjects(), &lambda,
-                                   &is_agg_vec);
+                                   &is_agg_vec, &names, &frames);
     ASSERT_TRUE(status.isOK());
-    std::vector<int> expect_is_agg = {0, 0, 0, 1, 1, 1, 0, 0, 1, 1};
+    std::vector<int> expect_is_agg = {0, 0, 0, 1, 1, 1, 0, 0, 0, 1};
     ASSERT_TRUE(is_agg_vec.size() == expect_is_agg.size());
     for (size_t i = 0; i < expect_is_agg.size(); ++i) {
         ASSERT_EQ(expect_is_agg[i], is_agg_vec[i]);

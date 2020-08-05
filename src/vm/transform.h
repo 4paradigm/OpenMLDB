@@ -460,12 +460,11 @@ inline bool SchemaType2DataType(const ::fesql::type::Type type,
 }
 
 // TODO(xxx): make it common step before all codegen
-fesql::base::Status ResolveProjects(const SchemaSourceList& input_schemas,
-                                    const node::PlanNodeList& projects,
-                                    bool row_project,
-                                    node::NodeManager* node_manager,
-                                    udf::UDFLibrary* library,
-                                    node::LambdaNode** output);
+fesql::base::Status ResolveProjects(
+    const SchemaSourceList& input_schemas, const node::PlanNodeList& projects,
+    bool row_project, node::NodeManager* node_manager, udf::UDFLibrary* library,
+    node::LambdaNode** output_func, std::vector<std::string>* output_names,
+    std::vector<node::FrameNode*>* output_frames);
 
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
                                         LogicalGraph* graph,

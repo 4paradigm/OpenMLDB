@@ -67,15 +67,16 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     uint32_t size = 0;
     fesql::type::TableDef table1;
     BuildT1Buf(table1, &buf, &size);
+    Row row(base::RefCountedSlice::Create(buf, size));
+
     int8_t* output = NULL;
-    int8_t* row_ptrs[1] = {buf};
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
     int8_t* window_ptr = nullptr;
-    int32_t row_sizes[1] = {static_cast<int32_t>(size)};
     vm::Schema schema;
     vm::ColumnSourceList column_sources;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table1, "", sql, row_ptrs, window_ptr,
-                      row_sizes, &schema, &column_sources, &output);
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
+                      &column_sources, &output);
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
     ASSERT_EQ(4, schema.size());
     ASSERT_EQ(4, column_sources.size());
@@ -125,10 +126,10 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
     BuildT2Buf(table2, &buf2, &size2);
     int8_t* output = NULL;
 
-    int8_t* row_ptrs[2] = {buf, buf2};
+    Row row(1, Row(base::RefCountedSlice::Create(buf, size)), 1,
+            Row(base::RefCountedSlice::Create(buf2, size2)));
     int8_t* window_ptr = nullptr;
-    int32_t row_sizes[2] = {static_cast<int32_t>(size),
-                            static_cast<int32_t>(size2)};
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
     vm::Schema schema;
     vm::ColumnSourceList column_sources;
     node::NodeManager manager;
@@ -136,8 +137,8 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
     vm::SchemaSourceList name_schema_list;
     name_schema_list.AddSchemaSource(table1.name(), &table1.columns());
     name_schema_list.AddSchemaSource(table2.name(), &table2.columns());
-    CheckFnLetBuilder(&manager, name_schema_list, "", sql, row_ptrs, window_ptr,
-                      row_sizes, &schema, &column_sources, &output);
+    CheckFnLetBuilder(&manager, name_schema_list, "", sql, row_ptr, window_ptr,
+                      &schema, &column_sources, &output);
 
     ASSERT_EQ(4, schema.size());
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
@@ -179,14 +180,14 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     uint32_t size = 0;
     type::TableDef table1;
     BuildT1Buf(table1, &buf, &size);
+    Row row(base::RefCountedSlice::Create(buf, size));
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
     int8_t* output = NULL;
-    int8_t* row_ptrs[1] = {buf};
     int8_t* window_ptr = nullptr;
-    int32_t row_sizes[1] = {static_cast<int32_t>(size)};
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table1, udf_sql, sql, row_ptrs, window_ptr,
-                      row_sizes, &schema, &output);
+    CheckFnLetBuilder(&manager, table1, udf_sql, sql, row_ptr, window_ptr,
+                      &schema, &output);
     ASSERT_EQ(2, schema.size());
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
     ASSERT_EQ(out_size, 13u);
@@ -203,14 +204,14 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     uint32_t size = 0;
     type::TableDef table1;
     BuildT1Buf(table1, &ptr, &size);
+    Row row(base::RefCountedSlice::Create(ptr, size));
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
     int8_t* output = NULL;
-    int8_t* row_ptrs[1] = {ptr};
     int8_t* window_ptr = nullptr;
-    int32_t row_sizes[1] = {static_cast<int32_t>(size)};
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table1, "", sql, row_ptrs, window_ptr,
-                      row_sizes, &schema, &output);
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
+                      &output);
     ASSERT_EQ(1, schema.size());
     ASSERT_EQ(11u, *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(32u, *reinterpret_cast<uint32_t*>(output + 7));
@@ -223,14 +224,14 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     uint32_t size = 0;
     type::TableDef table1;
     BuildT1Buf(table1, &ptr, &size);
+    Row row(base::RefCountedSlice::Create(ptr, size));
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
     int8_t* output = NULL;
-    int8_t* row_ptrs[1] = {ptr};
     int8_t* window_ptr = nullptr;
-    int32_t row_sizes[1] = {static_cast<int32_t>(size)};
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table1, "", sql, row_ptrs, window_ptr,
-                      row_sizes, &schema, &output);
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
+                      &output);
     ASSERT_EQ(1, schema.size());
     ASSERT_EQ(11u, *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(33u, *reinterpret_cast<uint32_t*>(output + 7));
@@ -256,13 +257,13 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     type::TableDef table1;
     BuildWindow(table1, window, &ptr);
     int8_t* output = NULL;
-    int8_t* row_ptrs[1] = {window.back().buf()};
-    int8_t* window_ptr = ptr;
-    int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&window[window.size() - 1]);
+    codec::ListRef<> window_ref({ptr});
+    int8_t* window_ptr = reinterpret_cast<int8_t*>(&window_ref);
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table1, "", sql, row_ptrs, window_ptr,
-                      row_sizes, &schema, &output);
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
+                      &output);
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
               *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(3.1f + 33.1f + 333.1f + 3333.1f + 33333.1f,
@@ -295,13 +296,13 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
     type::TableDef table1;
     BuildWindow(table1, window, &ptr);
     int8_t* output = NULL;
-    int8_t* row_ptrs[1] = {window.back().buf()};
-    int8_t* window_ptr = ptr;
-    int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&window[window.size() - 1]);
+    codec::ListRef<> window_ref({ptr});
+    int8_t* window_ptr = reinterpret_cast<int8_t*>(&window_ref);
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table1, "", sql, row_ptrs, window_ptr,
-                      row_sizes, &schema, &output);
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
+                      &output);
     ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
               *reinterpret_cast<uint32_t*>(output + 7 + 4));
@@ -353,9 +354,10 @@ TEST_F(FnLetIRBuilderTest, test_join_window_project_mix) {
 
     ArrayListV<Row>* w = new ArrayListV<Row>(&window_t12);
     int8_t* output = NULL;
-    int8_t** row_ptrs = window_t12.back().GetRowPtrs();
-    int8_t* window_ptr = reinterpret_cast<int8_t*>(w);
-    int32_t* row_sizes = window_t12.back().GetRowSizes();
+    int8_t* row_ptr =
+        reinterpret_cast<int8_t*>(&window_t12[window_t12.size() - 1]);
+    codec::ListRef<> window_ref({reinterpret_cast<int8_t*>(w)});
+    int8_t* window_ptr = reinterpret_cast<int8_t*>(&window_ref);
     vm::Schema schema;
 
     vm::SchemaSourceList name_schema_list;
@@ -364,8 +366,8 @@ TEST_F(FnLetIRBuilderTest, test_join_window_project_mix) {
 
     vm::ColumnSourceList column_sources;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, name_schema_list, "", sql, row_ptrs, window_ptr,
-                      row_sizes, &schema, &column_sources, &output);
+    CheckFnLetBuilder(&manager, name_schema_list, "", sql, row_ptr, window_ptr,
+                      &schema, &column_sources, &output);
 
     ASSERT_EQ(8u, column_sources.size());
     {
@@ -437,13 +439,13 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     type::TableDef table1;
     BuildWindow(table1, window, &ptr);
     int8_t* output = NULL;
-    int8_t* row_ptrs[1] = {window.back().buf()};
-    int8_t* window_ptr = ptr;
-    int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&window[window.size() - 1]);
+    codec::ListRef<> window_ref({ptr});
+    int8_t* window_ptr = reinterpret_cast<int8_t*>(&window_ref);
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table1, "", sql, row_ptrs, window_ptr,
-                      row_sizes, &schema, &output);
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
+                      &output);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
               *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(1u, *reinterpret_cast<uint32_t*>(output + 7));
@@ -471,13 +473,13 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     type::TableDef table1;
     BuildWindow(table1, window, &ptr);
     int8_t* output = NULL;
-    int8_t* row_ptrs[1] = {window.back().buf()};
-    int8_t* window_ptr = ptr;
-    int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&window[window.size() - 1]);
+    codec::ListRef<> window_ref({ptr});
+    int8_t* window_ptr = reinterpret_cast<int8_t*>(&window_ref);
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table1, "", sql, row_ptrs, window_ptr,
-                      row_sizes, &schema, &output);
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
+                      &output);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
               *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));
@@ -523,13 +525,13 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     type::TableDef table1;
     BuildWindow(table1, window, &ptr);
     int8_t* output = NULL;
-    int8_t* row_ptrs[1] = {window.back().buf()};
-    int8_t* window_ptr = ptr;
-    int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&window[window.size() - 1]);
+    codec::ListRef<> window_ref({ptr});
+    int8_t* window_ptr = reinterpret_cast<int8_t*>(&window_ref);
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table1, udf_str, sql, row_ptrs, window_ptr,
-                      row_sizes, &schema, &output);
+    CheckFnLetBuilder(&manager, table1, udf_str, sql, row_ptr, window_ptr,
+                      &schema, &output);
     ASSERT_EQ(3, schema.size());
     ASSERT_EQ(7u + 4u + 4u + 4u, *reinterpret_cast<uint32_t*>(output + 2));
     ASSERT_EQ(3.1f, *reinterpret_cast<float*>(output + 7));

@@ -40,38 +40,29 @@ using fesql::node::SQLNode;
  */
 class UDFResolveContext {
  public:
-    UDFResolveContext(ExprListNode* args, const node::SQLNode* over,
-                      udf::UDFLibrary* library,
-                      node::ExprAnalysisContext* analysis_ctx)
-        : args_(args),
-          over_(over),
-          manager_(analysis_ctx->node_manager()),
-          library_(library),
-          analysis_ctx_(analysis_ctx) {}
+    UDFResolveContext(const std::vector<node::ExprNode*>& args,
+                      node::NodeManager* node_manager, udf::UDFLibrary* library)
+        : args_(args), node_manager_(node_manager), library_(library) {}
 
-    ExprListNode* args() { return args_; }
-    const node::SQLNode* over() { return over_; }
-    node::NodeManager* node_manager() { return manager_; }
+    const std::vector<node::ExprNode*>& args() const { return args_; }
+    node::NodeManager* node_manager() { return node_manager_; }
     udf::UDFLibrary* library() { return library_; }
 
-    size_t arg_size() const { return args_->GetChildNum(); }
-    const ExprNode* arg(size_t i) const { return args_->GetChild(i); }
+    size_t arg_size() const { return args_.size(); }
+    const node::TypeNode* arg_type(size_t i) const {
+        return args_[i]->GetOutputType();
+    }
+    bool arg_nullable(size_t i) const { return args_[i]->nullable(); }
 
     const std::string& GetError() const { return error_msg_; }
     void SetError(const std::string& err) { error_msg_ = err; }
     bool HasError() const { return error_msg_ != ""; }
 
-    node::ExprAnalysisContext* analysis_context() const {
-        return analysis_ctx_;
-    }
-
  private:
-    ExprListNode* args_;
-    const SQLNode* over_;
-    node::NodeManager* manager_;
+    std::vector<node::ExprNode*> args_;
+    node::NodeManager* node_manager_;
     udf::UDFLibrary* library_;
 
-    node::ExprAnalysisContext* analysis_ctx_;
     std::string error_msg_;
 };
 
@@ -86,6 +77,10 @@ class UDFTransformRegistry {
     // transform "f(arg0, arg1, ...argN)" -> some expression
     virtual Status Transform(UDFResolveContext* ctx,
                              node::ExprNode** result) = 0;
+
+    // "f(arg0, arg1, ...argN)" -> resolved f
+    virtual Status ResolveFunction(UDFResolveContext* ctx,
+                                   node::FnDefNode** result) = 0;
 
     virtual ~UDFTransformRegistry() {}
 
@@ -109,10 +104,6 @@ class UDFRegistry : public UDFTransformRegistry {
     explicit UDFRegistry(const std::string& name)
         : UDFTransformRegistry(name) {}
 
-    // "f(arg0, arg1, ...argN)" -> resolved f
-    virtual Status ResolveFunction(UDFResolveContext* ctx,
-                                   node::FnDefNode** result) = 0;
-
     virtual ~UDFRegistry() {}
 
     Status Transform(UDFResolveContext* ctx, node::ExprNode** result) override {
@@ -120,7 +111,7 @@ class UDFRegistry : public UDFTransformRegistry {
         CHECK_STATUS(ResolveFunction(ctx, &fn_def));
 
         *result =
-            ctx->node_manager()->MakeFuncNode(fn_def, ctx->args(), ctx->over());
+            ctx->node_manager()->MakeFuncNode(fn_def, ctx->args(), nullptr);
         return Status::OK();
     }
 };
@@ -135,6 +126,8 @@ class CompositeRegistry : public UDFTransformRegistry {
     }
 
     Status Transform(UDFResolveContext* ctx, node::ExprNode** result) override;
+    Status ResolveFunction(UDFResolveContext* ctx,
+                           node::FnDefNode** result) override;
 
     const std::vector<std::shared_ptr<UDFTransformRegistry>>& GetSubRegistries()
         const {
@@ -153,7 +146,7 @@ class ArgSignatureTable {
         std::stringstream ss;
         std::vector<std::string> input_args;
         for (size_t i = 0; i < ctx->arg_size(); ++i) {
-            auto type_node = ctx->arg(i)->GetOutputType();
+            auto type_node = ctx->arg_type(i);
             if (type_node == nullptr) {
                 input_args.emplace_back("?");
                 ss << "?";
@@ -295,13 +288,12 @@ struct ExprUDFGen : public ExprUDFGenBase {
 
     ExprNode* gen(UDFResolveContext* ctx,
                   const std::vector<ExprNode*>& args) override {
-        if (args.size() != sizeof...(LiteralArgTypes)) {
+        if (args.size() != sizeof...(Args)) {
             LOG(WARNING) << "fail to invoke ExprUDFGen::gen, args size isn't "
-                            "match with LiteralArgTypes)";
+                            "match with template args)";
             return nullptr;
         }
-        return gen_internal(ctx, args,
-                            std::index_sequence_for<LiteralArgTypes...>());
+        return gen_internal(ctx, args, std::index_sequence_for<Args...>());
     }
 
     template <std::size_t... I>
@@ -364,8 +356,7 @@ class UDFRegistryHelper {
  */
 class ExprUDFRegistry : public UDFRegistry {
  public:
-    explicit ExprUDFRegistry(const std::string& name)
-        : UDFRegistry(name) {}
+    explicit ExprUDFRegistry(const std::string& name) : UDFRegistry(name) {}
 
     Status ResolveFunction(UDFResolveContext* ctx,
                            node::FnDefNode** result) override;
@@ -1074,24 +1065,6 @@ struct TypeAnnotatedFuncPtrImpl<std::tuple<Args...>> {
 
     TypeAnnotatedFuncPtrImpl() {}
 
-    // void fn(T1, T2, T3, Ret*) --> Ret fn(T1, T2, T3)
-    template <typename T1, typename T2, typename T3, typename T4>
-    TypeAnnotatedFuncPtr(void (*fn)(T1, T2, T3, T4*))  // NOLINT
-        : ptr(reinterpret_cast<void*>(fn)),
-          return_by_arg(true),
-          get_type_func([](node::NodeManager* nm, node::TypeNode** ret,
-                           std::vector<node::TypeNode*>* args) {
-              *ret =
-                  DataTypeTrait<typename CCallDataTypeTrait<T4*>::LiteralTag>::
-                      to_type_node(nm);
-              *args = {
-                  DataTypeTrait<typename CCallDataTypeTrait<T1>::LiteralTag>::
-                      to_type_node(nm),
-                  DataTypeTrait<typename CCallDataTypeTrait<T2>::LiteralTag>::
-                      to_type_node(nm),
-                  DataTypeTrait<typename CCallDataTypeTrait<T3>::LiteralTag>::
-                      to_type_node(nm)};
-          }) {}
     void* ptr;
     bool return_by_arg;
     bool return_nullable;
@@ -1329,7 +1302,6 @@ class ExternalTemplateFuncRegistryHelper {
         node::ExternalFnDefNode* operator()(
             ExternalFuncRegistryHelper& helper,    // NOLINT
             CRet (FTemplate<T>::*fn)(CArgs...)) {  // NOLINT
-
             helper.args<Args...>(FTemplateInst<T, CArgs...>::fcompute)
                 .finalize();
             return helper.cur_def();
@@ -1358,19 +1330,28 @@ class SimpleUDFRegistry : public UDFRegistry {
     ArgSignatureTable<node::UDFDefNode*> reg_table_;
 };
 
+struct UDAFDefGen {
+    std::shared_ptr<ExprUDFGenBase> init_gen = nullptr;
+    std::shared_ptr<UDFTransformRegistry> update_gen = nullptr;
+    std::shared_ptr<UDFTransformRegistry> merge_gen = nullptr;
+    std::shared_ptr<UDFTransformRegistry> output_gen = nullptr;
+    node::TypeNode* state_type = nullptr;
+    bool state_nullable = false;
+};
+
 class UDAFRegistry : public UDFRegistry {
  public:
     explicit UDAFRegistry(const std::string& name) : UDFRegistry(name) {}
 
     Status Register(const std::vector<std::string>& input_args,
-                    node::UDAFDefNode* udaf_def);
+                    const UDAFDefGen& udaf_gen);
 
     Status ResolveFunction(UDFResolveContext* ctx,
                            node::FnDefNode** result) override;
 
  private:
     // input arg type -> udaf def
-    ArgSignatureTable<node::UDAFDefNode*> reg_table_;
+    ArgSignatureTable<UDAFDefGen> reg_table_;
 };
 
 template <typename OUT, typename ST, typename... IN>
@@ -1398,19 +1379,21 @@ class UDAFRegistryHelperImpl {
                                     std::shared_ptr<UDAFRegistry> registry)
         : registry_(registry),
           library_(library),
-          nm_(library->node_manager()),
-          elem_tys_({DataTypeTrait<IN>::to_type_node(nm_)...}),
+          elem_tys_(
+              {DataTypeTrait<IN>::to_type_node(library->node_manager())...}),
           elem_nullable_({IsNullableTrait<IN>::value...}),
-          state_ty_(DataTypeTrait<ST>::to_type_node(nm_)),
+          state_ty_(DataTypeTrait<ST>::to_type_node(library->node_manager())),
           state_nullable_(IsNullableTrait<ST>::value),
-          output_ty_(DataTypeTrait<OUT>::to_type_node(nm_)),
+          output_ty_(DataTypeTrait<OUT>::to_type_node(library->node_manager())),
           output_nullable_(IsNullableTrait<OUT>::value) {
         // specify update function argument types
         update_tys_.push_back(state_ty_);
         update_nullable_.push_back(state_nullable_);
+        update_tags_.push_back(state_ty_->GetName());
         for (size_t i = 0; i < elem_tys_.size(); ++i) {
             update_tys_.push_back(elem_tys_[i]);
             update_nullable_.push_back(elem_nullable_[i]);
+            update_tags_.push_back(elem_tys_[i]->GetName());
         }
     }
 
@@ -1425,18 +1408,22 @@ class UDAFRegistryHelperImpl {
     }
 
     UDAFRegistryHelperImpl& init(const std::string& fname) {
-        node::FnDefNode* fn = fn_spec_by_name(fname, {}, {});
-        if (check_fn_ret_type(fname, fn, state_ty_, state_nullable_)) {
-            this->init_ = nm_->MakeFuncNode(fn, nm_->MakeExprList(), nullptr);
-        }
+        udaf_gen_.init_gen =
+            std::make_shared<ExprUDFGen>([fname](UDFResolveContext* ctx) {
+                return ctx->node_manager()->MakeFuncNode(fname, {}, nullptr);
+            });
         return *this;
     }
 
     UDAFRegistryHelperImpl& init(const std::string& fname, void* fn_ptr) {
-        auto fn =
-            dynamic_cast<node::ExternalFnDefNode*>(nm_->MakeExternalFnDefNode(
+        auto fn = dynamic_cast<node::ExternalFnDefNode*>(
+            library_->node_manager()->MakeExternalFnDefNode(
                 fname, fn_ptr, state_ty_, state_nullable_, {}, {}, -1, false));
-        this->init_ = nm_->MakeFuncNode(fn, nm_->MakeExprList(), nullptr);
+
+        udaf_gen_.init_gen =
+            std::make_shared<ExprUDFGen>([fn](UDFResolveContext* ctx) {
+                return ctx->node_manager()->MakeFuncNode(fn, {}, nullptr);
+            });
         library_->AddExternalSymbol(fname, fn_ptr);
         return *this;
     }
@@ -1445,7 +1432,7 @@ class UDAFRegistryHelperImpl {
         const std::string& fname,
         const typename TypeAnnotatedFuncPtr<>::type& fn_ptr) {
         node::TypeNode* ret_type = nullptr;
-        fn_ptr.get_ret_type_func(nm_, &ret_type);
+        fn_ptr.get_ret_type_func(library_->node_manager(), &ret_type);
 
         if (ret_type == nullptr) {
             LOG(WARNING) << "Fail to get return type of function ptr";
@@ -1460,24 +1447,39 @@ class UDAFRegistryHelperImpl {
                 << ret_type->GetName();
             return *this;
         }
-        auto fn_def = nm_->MakeExternalFnDefNode(fname, fn_ptr.ptr, state_ty_,
-                                                 state_nullable_, {}, {}, -1,
-                                                 fn_ptr.return_by_arg);
-        this->init_ = nm_->MakeFuncNode(fn_def, {}, nullptr);
+        auto fn = library_->node_manager()->MakeExternalFnDefNode(
+            fname, fn_ptr.ptr, state_ty_, state_nullable_, {}, {}, -1,
+            fn_ptr.return_by_arg);
+        udaf_gen_.init_gen =
+            std::make_shared<ExprUDFGen<>>([fn](UDFResolveContext* ctx) {
+                return ctx->node_manager()->MakeFuncNode(fn, {}, nullptr);
+            });
         library_->AddExternalSymbol(fname, fn_ptr.ptr);
         return *this;
     }
 
     UDAFRegistryHelperImpl& const_init(const ST& value) {
-        this->init_ = DataTypeTrait<ST>::to_const(nm_, value);
+        udaf_gen_.init_gen =
+            std::make_shared<ExprUDFGen<>>([value](UDFResolveContext* ctx) {
+                return DataTypeTrait<ST>::to_const(ctx->node_manager(), value);
+            });
+        return *this;
+    }
+
+    UDAFRegistryHelperImpl& const_init(const std::string& str) {
+        udaf_gen_.init_gen =
+            std::make_shared<ExprUDFGen<>>([str](UDFResolveContext* ctx) {
+                return DataTypeTrait<ST>::to_const(ctx->node_manager(), str);
+            });
         return *this;
     }
 
     UDAFRegistryHelperImpl& update(const std::string& fname) {
-        node::FnDefNode* fn =
-            fn_spec_by_name(fname, update_tys_, update_nullable_);
-        if (check_fn_ret_type(fname, fn, state_ty_, state_nullable_)) {
-            this->update_ = fn;
+        auto registry = library_->Find(fname);
+        if (registry != nullptr) {
+            udaf_gen_.update_gen = registry;
+        } else {
+            LOG(WARNING) << "Fail to find udaf registry " << fname;
         }
         return *this;
     }
@@ -1491,17 +1493,11 @@ class UDAFRegistryHelperImpl {
             Status(codegen::CodeGenContext*, codegen::NativeValue,
                    typename std::pair<IN, codegen::NativeValue>::second_type...,
                    codegen::NativeValue*)>& gen) {
-        // llvm gen always process nullable argument
-        std::vector<int> arg_nullables(sizeof...(IN) + 1, true);
-        auto fn = dynamic_cast<node::UDFByCodeGenDefNode*>(
-            nm_->MakeUDFByCodeGenDefNode(update_tys_, arg_nullables, state_ty_,
-                                         state_nullable_));
-        fn->SetGenImpl(std::make_shared<LLVMUDFGen<ST, IN...>>(gen, infer));
-
-        auto fname = "anonymous<" + registry_->name() + "@update>";
-        if (check_fn_ret_type(fname, fn, state_ty_, state_nullable_)) {
-            this->update_ = fn;
-        }
+        auto llvm_gen = std::make_shared<LLVMUDFGen<ST, IN...>>(gen, infer);
+        auto registry =
+            std::make_shared<LLVMUDFRegistry>(registry_->name() + "@update");
+        registry->Register(update_tags_, llvm_gen);
+        udaf_gen_.update_gen = registry;
         return *this;
     }
 
@@ -1509,55 +1505,23 @@ class UDAFRegistryHelperImpl {
         const std::function<node::ExprNode*(
             UDFResolveContext*, node::ExprNode*,
             typename std::pair<IN, node::ExprNode*>::second_type...)>& gen) {
-        auto fname = "anonymous<" + registry_->name() + "@update>";
-        ExprUDFRegistry expr_reg(fname);
-
-        std::vector<std::string> arg_tags;
-        arg_tags.push_back(state_ty_->GetName());
-        for (auto elem_ty : elem_tys_) {
-            arg_tags.push_back(elem_ty->GetName());
-        }
-        expr_reg.Register(arg_tags,
-                          std::make_shared<ExprUDFGen<ST, IN...>>(gen));
-
-        node::FnDefNode* fn = nullptr;
-        node::ExprListNode arg_list;
-        node::ExprNode* state_arg =
-            nm_->MakeExprIdNode("state", node::ExprIdNode::GetNewId());
-        state_arg->SetOutputType(state_ty_);
-        state_arg->SetNullable(true);
-        arg_list.AddChild(state_arg);
-        for (size_t i = 0; i < sizeof...(IN); ++i) {
-            node::ExprNode* input_arg = nm_->MakeExprIdNode(
-                "input_" + std::to_string(i), node::ExprIdNode::GetNewId());
-            input_arg->SetOutputType(elem_tys_[i]);
-            input_arg->SetNullable(true);
-            arg_list.AddChild(input_arg);
-        }
-
-        vm::SchemaSourceList empty;
-        vm::SchemasContext schema_ctx(empty);
-        node::ExprAnalysisContext sub_analysis_ctx(nm_, &schema_ctx);
-        UDFResolveContext sub_ctx(&arg_list, nullptr, library_,
-                                  &sub_analysis_ctx);
-        auto status = expr_reg.ResolveFunction(&sub_ctx, &fn);
-        if (!status.isOK()) {
-            LOG(WARNING) << "Resolve expr based update function failed: "
-                         << status.msg;
-        }
-        // if (check_fn_ret_type(fname, fn, state_ty_, state_nullable_)) {
-        this->update_ = fn;
-        // }
+        auto expr_gen = std::make_shared<ExprUDFGen<ST, IN...>>(gen);
+        auto registry =
+            std::make_shared<ExprUDFRegistry>(registry_->name() + "@update");
+        registry->Register(update_tags_, expr_gen);
+        udaf_gen_.update_gen = registry;
         return *this;
     }
 
     UDAFRegistryHelperImpl& update(const std::string& fname, void* fn_ptr) {
-        auto fn =
-            dynamic_cast<node::ExternalFnDefNode*>(nm_->MakeExternalFnDefNode(
+        auto fn = dynamic_cast<node::ExternalFnDefNode*>(
+            library_->node_manager()->MakeExternalFnDefNode(
                 fname, fn_ptr, state_ty_, state_nullable_, update_tys_,
                 update_nullable_, -1, false));
-        this->update_ = fn;
-        this->library_->AddExternalSymbol(fname, fn_ptr);
+        auto registry = std::make_shared<ExternalFuncRegistry>(fname);
+        registry->Register(update_tags_, fn);
+        udaf_gen_.update_gen = registry;
+        library_->AddExternalSymbol(fname, fn_ptr);
         return *this;
     }
 
@@ -1565,7 +1529,7 @@ class UDAFRegistryHelperImpl {
         const std::string& fname,
         const typename TypeAnnotatedFuncPtr<ST, IN...>::type& fn_ptr) {
         node::TypeNode* ret_type = nullptr;
-        fn_ptr.get_ret_type_func(nm_, &ret_type);
+        fn_ptr.get_ret_type_func(library_->node_manager(), &ret_type);
         if (ret_type == nullptr) {
             LOG(WARNING) << "Fail to get return type of function ptr";
             return *this;
@@ -1579,49 +1543,53 @@ class UDAFRegistryHelperImpl {
                 << ret_type->GetName();
             return *this;
         }
-        this->update_ = nm_->MakeExternalFnDefNode(
-            fname, fn_ptr.ptr, state_ty_, state_nullable_, update_tys_,
-            update_nullable_, -1, fn_ptr.return_by_arg);
-        this->library_->AddExternalSymbol(fname, fn_ptr.ptr);
-        return *this;
+        return update(fname, fn_ptr.ptr);
     }
 
     UDAFRegistryHelperImpl& merge(const std::string& fname) {
-        node::FnDefNode* fn = fn_spec_by_name(
-            fname, {state_ty_, state_ty_}, {state_nullable_, state_nullable_});
-        if (check_fn_ret_type(fname, fn, state_ty_, state_nullable_)) {
-            this->merge_ = fn;
+        auto registry = library_->Find(fname);
+        if (registry != nullptr) {
+            udaf_gen_.merge_gen = registry;
+        } else {
+            LOG(WARNING) << "Fail to find udaf registry " << fname;
         }
         return *this;
     }
 
     UDAFRegistryHelperImpl& merge(const std::string& fname, void* fn_ptr) {
-        auto fn =
-            dynamic_cast<node::ExternalFnDefNode*>(nm_->MakeExternalFnDefNode(
+        auto fn = dynamic_cast<node::ExternalFnDefNode*>(
+            library_->node_manager()->MakeExternalFnDefNode(
                 fname, fn_ptr, state_ty_, state_nullable_,
                 {state_ty_, state_ty_}, {state_nullable_, state_nullable_}, -1,
                 false));
-        this->merge_ = fn;
-        this->library_->AddExternalSymbol(fname, fn_ptr);
+        auto registry = std::make_shared<ExternalFuncRegistry>(fname);
+        auto state_tag = state_ty_->GetName();
+        registry->Register({state_tag, state_tag}, fn);
+        udaf_gen_.merge_gen = registry;
+        library_->AddExternalSymbol(fname, fn_ptr);
         return *this;
     }
 
     UDAFRegistryHelperImpl& output(const std::string& fname) {
-        node::FnDefNode* fn =
-            fn_spec_by_name(fname, {state_ty_}, {state_nullable_});
-        if (check_fn_ret_type(fname, fn, output_ty_, output_nullable_)) {
-            this->output_ = fn;
+        auto registry = library_->Find(fname);
+        if (registry != nullptr) {
+            udaf_gen_.output_gen = registry;
+        } else {
+            LOG(WARNING) << "Fail to find udaf registry " << fname;
         }
         return *this;
     }
 
     UDAFRegistryHelperImpl& output(const std::string& fname, void* fn_ptr) {
-        auto fn =
-            dynamic_cast<node::ExternalFnDefNode*>(nm_->MakeExternalFnDefNode(
+        auto fn = dynamic_cast<node::ExternalFnDefNode*>(
+            library_->node_manager()->MakeExternalFnDefNode(
                 fname, fn_ptr, output_ty_, output_nullable_, {state_ty_},
                 {state_nullable_}, -1, false));
-        this->output_ = fn;
-        this->library_->AddExternalSymbol(fname, fn_ptr);
+        auto registry = std::make_shared<ExternalFuncRegistry>(fname);
+        auto state_tag = state_ty_->GetName();
+        registry->Register({state_tag}, fn);
+        udaf_gen_.output_gen = registry;
+        library_->AddExternalSymbol(fname, fn_ptr);
         return *this;
     }
 
@@ -1629,7 +1597,7 @@ class UDAFRegistryHelperImpl {
         const std::string& fname,
         const typename TypeAnnotatedFuncPtr<ST>::type& fn_ptr) {
         node::TypeNode* ret_type = nullptr;
-        fn_ptr.get_ret_type_func(nm_, &ret_type);
+        fn_ptr.get_ret_type_func(library_->node_manager(), &ret_type);
         if (ret_type == nullptr) {
             LOG(WARNING) << "Fail to get return type of function ptr";
             return *this;
@@ -1642,43 +1610,18 @@ class UDAFRegistryHelperImpl {
                 << ret_type->GetName();
             return *this;
         }
-        this->output_ = nm_->MakeExternalFnDefNode(
-            fname, fn_ptr.ptr, output_ty_, output_nullable_, {state_ty_},
-            {state_nullable_}, -1, fn_ptr.return_by_arg);
-        this->library_->AddExternalSymbol(fname, fn_ptr.ptr);
-        return *this;
+        return output(fname, fn_ptr.ptr);
     }
 
     UDAFRegistryHelperImpl& output(
         const std::function<node::ExprNode*(UDFResolveContext*,
                                             node::ExprNode*)>& gen) {
-        auto fname = "anonymous<" + registry_->name() + "@output>";
-        ExprUDFRegistry expr_reg(fname);
-        expr_reg.Register({state_ty_->GetName()},
-                          std::make_shared<ExprUDFGen<ST>>(gen));
-
-        node::FnDefNode* fn = nullptr;
-        node::ExprListNode arg_list;
-        node::ExprNode* state_arg =
-            nm_->MakeExprIdNode("state", node::ExprIdNode::GetNewId());
-        state_arg->SetOutputType(state_ty_);
-        state_arg->SetNullable(true);
-        arg_list.AddChild(state_arg);
-
-        vm::SchemaSourceList empty;
-        vm::SchemasContext schema_ctx(empty);
-        node::ExprAnalysisContext sub_analysis_ctx(nm_, &schema_ctx);
-        UDFResolveContext sub_ctx(&arg_list, nullptr, library_,
-                                  &sub_analysis_ctx);
-
-        auto status = expr_reg.ResolveFunction(&sub_ctx, &fn);
-        if (!status.isOK()) {
-            LOG(WARNING) << "Resolve expr based update function failed: "
-                         << status.msg;
-        }
-        // if (check_fn_ret_type(fname, fn, output_ty_, output_nullable_)) {
-        this->output_ = fn;
-        // }
+        auto expr_gen = std::make_shared<ExprUDFGen<ST>>(gen);
+        auto registry =
+            std::make_shared<ExprUDFRegistry>(registry_->name() + "@output");
+        auto state_tag = state_ty_->GetName();
+        registry->Register({state_tag}, expr_gen);
+        udaf_gen_.output_gen = registry;
         return *this;
     }
 
@@ -1687,31 +1630,30 @@ class UDAFRegistryHelperImpl {
             LOG(WARNING) << "UDAF must take at least one input";
             return;
         }
-        if (update_ == nullptr) {
+        if (udaf_gen_.update_gen == nullptr) {
             LOG(WARNING) << "Update function not specified for "
                          << registry_->name();
             return;
         }
-        if (init_ == nullptr) {
+        if (udaf_gen_.init_gen == nullptr) {
             if (!(elem_tys_.size() == 1 && elem_tys_[0]->Equals(state_ty_))) {
                 LOG(WARNING) << "No init expr provided but input "
                              << "type does not equal to state type";
                 return;
             }
         }
+        udaf_gen_.state_type = state_ty_;
+        udaf_gen_.state_nullable = state_nullable_;
         std::vector<const node::TypeNode*> input_list_types;
         for (auto elem_ty : elem_tys_) {
-            input_list_types.push_back(nm_->MakeTypeNode(node::kList, elem_ty));
+            input_list_types.push_back(
+                library_->node_manager()->MakeTypeNode(node::kList, elem_ty));
         }
-        auto udaf = dynamic_cast<node::UDAFDefNode*>(
-            nm_->MakeUDAFDefNode(registry_->name(), input_list_types, init_,
-                                 update_, merge_, output_));
-
         std::vector<std::string> arg_keys;
         for (auto input_ty : input_list_types) {
             arg_keys.push_back(input_ty->GetName());
         }
-        registry_->Register(arg_keys, udaf);
+        registry_->Register(arg_keys, udaf_gen_);
         library_->SetIsUDAF(registry_->name(), sizeof...(IN));
     }
 
@@ -1721,74 +1663,8 @@ class UDAFRegistryHelperImpl {
     }
 
  private:
-    template <typename... RetType>
-    bool check_fn_ret_type(const std::string& ref, node::FnDefNode* fn,
-                           node::TypeNode* expect, bool nullable) {
-        if (fn == nullptr) {
-            return false;
-        }
-        const node::TypeNode* ret_type = fn->GetReturnType();
-        bool ret_nullable = fn->IsReturnNullable();
-        if (ret_type != nullptr && ret_type->Equals(expect) &&
-            (!ret_nullable || nullable)) {
-            return true;
-        } else {
-            LOG(WARNING) << "Illegal return type of " << ref << ": "
-                         << (ret_nullable ? "nullable " : "")
-                         << (ret_type == nullptr ? "null" : ret_type->GetName())
-                         << ", expect " << (nullable ? "nullable " : "")
-                         << expect->GetName();
-            return false;
-        }
-    }
-
-    template <typename... Args>
-    node::FnDefNode* fn_spec_by_name(
-        const std::string& name,
-        const std::vector<const node::TypeNode*>& arg_types,
-        const std::vector<int>& arg_nullable) {
-        std::vector<node::ExprNode> dummy_args;
-        auto arg_list = nm_->MakeExprList();
-        for (size_t i = 0; i < arg_types.size(); ++i) {
-            std::string arg_name = "arg_" + std::to_string(i);
-            node::ExprNode* arg =
-                nm_->MakeExprIdNode(arg_name, node::ExprIdNode::GetNewId());
-            arg->SetOutputType(arg_types[i]);
-            arg->SetNullable(arg_nullable[i]);
-            arg_list->AddChild(arg);
-        }
-
-        auto registries =
-            std::dynamic_pointer_cast<CompositeRegistry>(library_->Find(name));
-        if (registries == nullptr) {
-            LOG(WARNING) << "Fail to find registry '" << name
-                         << "' for simple udaf '" << registry_->name() << "'";
-            return nullptr;
-        }
-        std::shared_ptr<UDFRegistry> udf_registry = nullptr;
-        for (auto sub_reg : registries->GetSubRegistries()) {
-            udf_registry = std::dynamic_pointer_cast<UDFRegistry>(sub_reg);
-            if (udf_registry == nullptr) {
-                continue;
-            }
-            node::FnDefNode* res = nullptr;
-            node::ExprAnalysisContext analysis_ctx(nm_, nullptr);
-            UDFResolveContext ctx(arg_list, nullptr, library_, &analysis_ctx);
-            auto status = udf_registry->ResolveFunction(&ctx, &res);
-            if (!status.isOK() || res == nullptr) {
-                DLOG(WARNING) << status.msg;
-                continue;
-            }
-            return res;
-        }
-        LOG(WARNING) << "Fail to resolve sub function def '" << name
-                     << "' for simple udaf '" << registry_->name() << "'";
-        return nullptr;
-    }
-
     std::shared_ptr<UDAFRegistry> registry_;
     UDFLibrary* library_;
-    node::NodeManager* nm_;
     std::vector<const node::TypeNode*> elem_tys_;
     std::vector<int> elem_nullable_;
     node::TypeNode* state_ty_;
@@ -1796,13 +1672,10 @@ class UDAFRegistryHelperImpl {
     node::TypeNode* output_ty_;
     bool output_nullable_;
 
+    UDAFDefGen udaf_gen_;
     std::vector<const node::TypeNode*> update_tys_;
     std::vector<int> update_nullable_;
-
-    node::ExprNode* init_ = nullptr;
-    node::FnDefNode* update_ = nullptr;
-    node::FnDefNode* merge_ = nullptr;
-    node::FnDefNode* output_ = nullptr;
+    std::vector<std::string> update_tags_;
 };
 
 template <typename OUT, typename ST, typename... IN>

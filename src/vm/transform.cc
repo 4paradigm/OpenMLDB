@@ -797,18 +797,20 @@ bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
     return true;
 }
 
-fesql::base::Status ResolveProjects(const SchemaSourceList& input_schemas,
-                                    const node::PlanNodeList& projects,
-                                    const bool row_project,
-                                    node::NodeManager* node_manager,
-                                    udf::UDFLibrary* library,
-                                    node::LambdaNode** output) {
+fesql::base::Status ResolveProjects(
+    const SchemaSourceList& input_schemas, const node::PlanNodeList& projects,
+    const bool row_project, node::NodeManager* node_manager,
+    udf::UDFLibrary* library, node::LambdaNode** output_func,
+    std::vector<std::string>* output_names,
+    std::vector<node::FrameNode*>* output_frames) {
     // lambdafy
-    passes::LambdafyProjects lambdafy_pass(node_manager, library,
-                                           input_schemas);
+    const bool enable_legacy_agg_opt = true;
+    passes::LambdafyProjects lambdafy_pass(node_manager, library, input_schemas,
+                                           enable_legacy_agg_opt);
     node::LambdaNode* lambda = nullptr;
     std::vector<int> require_agg;
-    CHECK_STATUS(lambdafy_pass.Transform(projects, &lambda, &require_agg));
+    CHECK_STATUS(lambdafy_pass.Transform(projects, &lambda, &require_agg,
+                                         output_names, output_frames));
 
     // check lambdafy output
     CHECK_TRUE(lambda->GetArgSize() == 2);
@@ -830,7 +832,7 @@ fesql::base::Status ResolveProjects(const SchemaSourceList& input_schemas,
     CHECK_STATUS(
         resolve_pass.VisitLambda(lambda, global_arg_types, &resolved_lambda));
 
-    *output = resolved_lambda;
+    *output_func = resolved_lambda;
     return fesql::base::Status::OK();
 }
 
@@ -844,8 +846,11 @@ bool BatchModeTransformer::GenProjects(const SchemaSourceList& input_schemas,
                                        base::Status& status) {  // NOLINT
     // run expr passes
     node::LambdaNode* project_func = nullptr;
+    std::vector<std::string> project_names;
+    std::vector<node::FrameNode*> project_frames;
     status = ResolveProjects(input_schemas, projects, row_project,
-                             node_manager_, library_, &project_func);
+                             node_manager_, library_, &project_func,
+                             &project_names, &project_frames);
     if (!status.isOK()) {
         LOG(WARNING) << status.msg;
         return false;
@@ -854,15 +859,9 @@ bool BatchModeTransformer::GenProjects(const SchemaSourceList& input_schemas,
     // TODO(wangtaize) use ops end op output schema
     ::fesql::codegen::RowFnLetIRBuilder builder(input_schemas, frame, module_);
     fn_name = "__internal_sql_codegen_" + std::to_string(id_++);
-    bool ok = builder.Build(fn_name, project_func, output_schema,
-                            output_column_sources);
-    if (!ok) {
-        status.code = common::kCodegenError;
-        status.msg = "fail to codegen projects node";
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    return true;
+    status = builder.Build(fn_name, project_func, project_names, project_frames,
+                           output_schema, output_column_sources);
+    return status.isOK();
 }
 
 bool BatchModeTransformer::AddDefaultPasses() {

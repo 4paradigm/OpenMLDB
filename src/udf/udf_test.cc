@@ -11,6 +11,8 @@
 #include <gtest/gtest.h>
 #include <stdint.h>
 #include <algorithm>
+#include <tuple>
+#include <utility>
 #include <vector>
 #include "base/fe_slice.h"
 #include "case/sql_case.h"
@@ -76,8 +78,11 @@ bool FetchColList(vm::ListV<Row>* table, size_t col_idx, size_t offset,
     int8_t* buf = reinterpret_cast<int8_t*>(malloc(size));
     auto datatype = DataTypeTrait<V>::codec_type_enum();
 
-    if (0 != ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(table), 0,
-                                        col_idx, offset, datatype, buf)) {
+    codec::ListRef<Row> table_ref;
+    table_ref.list = reinterpret_cast<int8_t*>(table);
+
+    if (0 != ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table_ref),
+                                        0, col_idx, offset, datatype, buf)) {
         return false;
     }
     res->list = buf;
@@ -171,13 +176,16 @@ TEST_F(UDFTest, UDF_sum_test) {
 TEST_F(UDFTest, GetColTest) {
     ArrayListV<Row> impl(&rows);
     const uint32_t size = sizeof(ColumnImpl<int16_t>);
+    codec::ListRef<Row> impl_ref;
+    impl_ref.list = reinterpret_cast<int8_t*>(&impl);
+
     for (int i = 0; i < 10; ++i) {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
         ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 0,
-                                          0, 2, fesql::type::kInt32, buf));
+            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl_ref),
+                                          0, 0, 2, fesql::type::kInt32, buf));
         ::fesql::codec::ColumnImpl<int16_t>* col =
             reinterpret_cast<::fesql::codec::ColumnImpl<int16_t>*>(
                 list_ref.list);
@@ -230,9 +238,13 @@ TEST_F(UDFTest, GetWindowColRangeTest) {
     fesql::type::Type type = fesql::type::kInt32;
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+    ListRef<> inner_list_ref;
+    inner_list_ref.list = inner_list_buf;
+
     for (int i = 0; i < 100000; ++i) {
-        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(inner_list_buf, 0, 0, offset,
-                                                type, buf));
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&inner_list_ref), 0, 0,
+                         offset, type, buf));
         ::fesql::codec::ColumnImpl<int32_t>* col =
             reinterpret_cast<::fesql::codec::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
@@ -285,9 +297,14 @@ TEST_F(UDFTest, GetWindowColRowsTest) {
     fesql::type::Type type = fesql::type::kInt32;
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+
+    ListRef<> inner_list_ref;
+    inner_list_ref.list = inner_list_buf;
+
     for (int i = 0; i < 100000; ++i) {
-        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(inner_list_buf, 0, 0, offset,
-                                                type, buf));
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&inner_list_ref), 0, 0,
+                         offset, type, buf));
         ::fesql::codec::ColumnImpl<int32_t>* col =
             reinterpret_cast<::fesql::codec::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
@@ -316,12 +333,15 @@ TEST_F(UDFTest, GetWindowColTest) {
         table.BufferData(ts++, row);
     }
 
+    ListRef<> table_ref;
+    table_ref.list = reinterpret_cast<int8_t*>(&table);
+
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
     for (int i = 0; i < 100000; ++i) {
         ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table), 0,
-                                          0, 2, fesql::type::kInt32, buf));
+            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table_ref),
+                                          0, 0, 2, fesql::type::kInt32, buf));
         ::fesql::codec::ColumnImpl<int32_t>* col =
             reinterpret_cast<::fesql::codec::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
@@ -342,12 +362,15 @@ TEST_F(UDFTest, GetTimeMemColTest) {
     for (auto row : rows) {
         table.AddRow(ts++, row);
     }
+    ListRef<> table_ref;
+    table_ref.list = reinterpret_cast<int8_t*>(&table);
+
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
     for (int i = 0; i < 1000000; ++i) {
         ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table), 0,
-                                          0, 2, fesql::type::kInt32, buf));
+            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table_ref),
+                                          0, 0, 2, fesql::type::kInt32, buf));
         ColumnImpl<int32_t>* col = reinterpret_cast<ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
         ASSERT_TRUE(col_iterator->Valid());
@@ -364,14 +387,17 @@ TEST_F(UDFTest, GetTimeMemColTest) {
 }
 TEST_F(UDFTest, GetColHeapTest) {
     ArrayListV<Row> impl(&rows);
+    ListRef<> impl_ref;
+    impl_ref.list = reinterpret_cast<int8_t*>(&impl);
+
     const uint32_t size = sizeof(ColumnImpl<int16_t>);
     for (int i = 0; i < 1000; ++i) {
         int8_t buf[size];  // NOLINT
         ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 0,
-                                          0, 2, fesql::type::kInt32, buf));
+            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl_ref),
+                                          0, 0, 2, fesql::type::kInt32, buf));
         ::fesql::codec::ColumnImpl<int16_t>* impl =
             reinterpret_cast<::fesql::codec::ColumnImpl<int16_t>*>(
                 list_ref.list);
@@ -410,10 +436,9 @@ TEST_F(UDFTest, TimestampToString) {
     }
 }
 
-
 template <class Ret, class... Args>
 void CheckUDF(UDFLibrary* library, const std::string& name, Ret&& expect,
-                     Args&&... args) {
+              Args&&... args) {
     auto function = udf::UDFFunctionBuilder(name)
                         .args<Args...>()
                         .template returns<Ret>()

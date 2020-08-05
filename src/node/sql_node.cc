@@ -31,7 +31,7 @@ bool ExprEquals(const ExprNode *left, const ExprNode *right) {
 bool FnDefEquals(const FnDefNode *left, const FnDefNode *right) {
     return left == right ? true : nullptr == left ? false : left->Equals(right);
 }
-bool TypeEquals(const TypeNode* left, const TypeNode *right) {
+bool TypeEquals(const TypeNode *left, const TypeNode *right) {
     if (left == nullptr || right == nullptr) {
         return false;  // ? != ?
     }
@@ -232,11 +232,12 @@ bool AllNode::Equals(const ExprNode *node) const {
 void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     output << "\n";
-    output << org_tab << SPACE_ST;
-    output << "value: " << GetExprString() << "\n";
-    output << org_tab << SPACE_ST;
-    output << "type: " << DataTypeName(data_type_) << "\n";
+    auto tab = org_tab + INDENT;
+    PrintValue(output, tab, GetExprString(), "value", false);
+    output << "\n";
+    PrintValue(output, tab, DataTypeName(data_type_), "type", true);
 }
+
 const std::string ConstNode::GetExprString() const {
     switch (data_type_) {
         case fesql::node::kInt16:
@@ -804,6 +805,21 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
             break;
         case kFnForInBlock:
             output = "kFnForInBlock";
+            break;
+        case kExternalFnDef:
+            output = "kExternFnDef";
+            break;
+        case kUDFDef:
+            output = "kUDFDef";
+            break;
+        case kUDFByCodeGenDef:
+            output = "kUDFByCodeGenDef";
+            break;
+        case kUDAFDef:
+            output = "kUDAFDef";
+            break;
+        case kLambdaDef:
+            output = "kLambdaDef";
             break;
         default:
             output = "unknown";
@@ -1603,8 +1619,9 @@ Status UDAFDefNode::Validate(
                    merge_func()->GetArgSize());
         CHECK_TRUE(merge_func()->GetArgType(0) != nullptr);
         CHECK_TRUE(merge_func()->GetArgType(0)->Equals(GetStateType()),
-                   "Merge's 0th argument type should be ", GetStateType(),
-                   ", but get ", merge_func()->GetArgType(0)->GetName());
+                   "Merge's 0th argument type should be ",
+                   GetStateType()->GetName(), ", but get ",
+                   merge_func()->GetArgType(0)->GetName());
         CHECK_TRUE(merge_func()->GetArgType(1) != nullptr);
         CHECK_TRUE(merge_func()->GetArgType(1)->Equals(GetStateType()),
                    "Merge's 1th argument type should be ", GetStateType(),
@@ -1626,15 +1643,13 @@ Status UDAFDefNode::Validate(
         CHECK_TRUE(output_func()->GetReturnType() != nullptr);
     }
     // actual args check
-    CHECK_TRUE(arg_types.size() == arg_types_.size(), GetName(),
-               " expect ", arg_types_.size(), " inputs, but get ",
-               arg_types.size());
+    CHECK_TRUE(arg_types.size() == arg_types_.size(), GetName(), " expect ",
+               arg_types_.size(), " inputs, but get ", arg_types.size());
     for (size_t i = 0; i < arg_types.size(); ++i) {
         if (arg_types[i] != nullptr) {
-            CHECK_TRUE(arg_types_[i]->Equals(arg_types[i]), GetName(),
-                       "'s ", i, "th argument expect ",
-                       arg_types_[i]->GetName(), ", but get ",
-                       arg_types[i]->GetName());
+            CHECK_TRUE(arg_types_[i]->Equals(arg_types[i]), GetName(), "'s ", i,
+                       "th argument expect ", arg_types_[i]->GetName(),
+                       ", but get ", arg_types[i]->GetName());
         }
     }
     return Status::OK();

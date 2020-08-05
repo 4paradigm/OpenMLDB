@@ -64,6 +64,15 @@ std::unique_ptr<RowIterator> MemWindowIterator::GetValue() {
     return std::unique_ptr<RowIterator>(
         new MemTimeTableIterator(&(iter_->second), schema_));
 }
+
+RowIterator* MemWindowIterator::GetValue(int8_t* addr) {
+    if (addr == nullptr) {
+        return new MemTimeTableIterator(&(iter_->second), schema_);
+    } else {
+        return new (addr) MemTimeTableIterator(&(iter_->second), schema_);
+    }
+}
+
 const Row MemWindowIterator::GetKey() { return Row(iter_->first); }
 
 MemTimeTableHandler::MemTimeTableHandler()
@@ -237,7 +246,11 @@ std::unique_ptr<RowIterator> MemTableHandler::GetIterator() const {
     return std::move(it);
 }
 RowIterator* MemTableHandler::GetIterator(int8_t* addr) const {
-    return new (addr) MemTableIterator(&table_, schema_);
+    if (addr == nullptr) {
+        return new MemTableIterator(&table_, schema_);
+    } else {
+        return new (addr) MemTableIterator(&table_, schema_);
+    }
 }
 
 MemTableHandler::MemTableHandler()
@@ -308,7 +321,8 @@ bool MemTableIterator::IsSeekable() const { return true; }
 
 // row iter interfaces for llvm
 void GetRowIter(int8_t* input, int8_t* iter_addr) {
-    auto handler = reinterpret_cast<ListV<Row>*>(input);
+    auto list_ref = reinterpret_cast<codec::ListRef<Row>*>(input);
+    auto handler = reinterpret_cast<codec::ListV<Row>*>(list_ref->list);
     auto local_iter =
         new (iter_addr) std::unique_ptr<RowIterator>(handler->GetIterator());
     (*local_iter)->SeekToFirst();

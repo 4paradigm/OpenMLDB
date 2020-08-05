@@ -11,6 +11,7 @@
 #define SRC_CODEGEN_NATIVE_VALUE_H_
 
 #include <string>
+#include <vector>
 
 #include "glog/logging.h"
 #include "llvm/IR/IRBuilder.h"

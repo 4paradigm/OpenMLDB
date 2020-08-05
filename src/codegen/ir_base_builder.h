@@ -19,6 +19,7 @@
 #define SRC_CODEGEN_IR_BASE_BUILDER_H_
 
 #include <string>
+#include <vector>
 #include "glog/logging.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"

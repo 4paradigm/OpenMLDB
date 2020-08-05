@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------
  **/
 #include "passes/resolve_fn_and_attrs.h"
+#include <utility>
 #include "passes/resolve_udf_def.h"
 
 namespace fesql {
@@ -26,8 +27,7 @@ Status ResolveFnAndAttrs::CheckSignature(
         }
         CHECK_TRUE(TypeEquals(expect_type, arg_types[i]),
                    "Infer fn def failed, expect ", expect_type->GetName(),
-                   " at ", i, " th argument, but get ",
-                   arg_types[i]->GetName());
+                   " at ", i, "th argument, but get ", arg_types[i]->GetName());
     }
     return Status::OK();
 }
@@ -70,7 +70,8 @@ Status ResolveFnAndAttrs::VisitLambda(
     node::LambdaNode** output) {
     // sanity checks
     CHECK_STATUS(CheckSignature(lambda, arg_types),
-        "Check lambda signature failed for\n", lambda->GetTreeString());
+                 "Check lambda signature failed for\n",
+                 lambda->GetTreeString());
 
     // bind lambda argument types
     for (size_t i = 0; i < arg_types.size(); ++i) {
@@ -81,7 +82,7 @@ Status ResolveFnAndAttrs::VisitLambda(
 
     node::ExprNode* new_body = nullptr;
     CHECK_STATUS(VisitExpr(lambda->body(), &new_body),
-        "Resolve lambda body failed for\n", lambda->GetTreeString());
+                 "Resolve lambda body failed for\n", lambda->GetTreeString());
     lambda->SetBody(new_body);
 
     *output = lambda;
@@ -94,11 +95,12 @@ Status ResolveFnAndAttrs::VisitUDFDef(
     node::UDFDefNode** output) {
     // sanity checks
     CHECK_STATUS(CheckSignature(udf_def, arg_types),
-        "Check udf signature failed for\n", udf_def->GetTreeString());
+                 "Check udf signature failed for\n", udf_def->GetTreeString());
 
     ResolveUdfDef udf_resolver;
     CHECK_STATUS(udf_resolver.Visit(udf_def->def()),
-        "Resolve udf definition failed for\n", udf_def->GetTreeString());
+                 "Resolve udf definition failed for\n",
+                 udf_def->GetTreeString());
 
     *output = udf_def;
     return Status::OK();
@@ -110,14 +112,14 @@ Status ResolveFnAndAttrs::VisitUDAFDef(
     node::UDAFDefNode** output) {
     // sanity checks
     CHECK_STATUS(CheckSignature(udaf, arg_types),
-        "Check udaf signature failed for\n", udaf->GetTreeString());
+                 "Check udaf signature failed for\n", udaf->GetTreeString());
 
     // visit init
     node::ExprNode* resolved_init = nullptr;
     if (udaf->init_expr() != nullptr) {
         CHECK_STATUS(VisitExpr(udaf->init_expr(), &resolved_init),
-            "Resolve init expr failed for ", udaf->GetName(),
-            ":\n", udaf->GetTreeString());
+                     "Resolve init expr failed for ", udaf->GetName(), ":\n",
+                     udaf->GetTreeString());
     }
 
     // get state type
@@ -127,7 +129,8 @@ Status ResolveFnAndAttrs::VisitUDAFDef(
     } else {
         state_type = udaf->GetElementType(0);
     }
-    CHECK_TRUE(state_type != nullptr, "Fail to resolve state type of udaf ", udaf->GetName());
+    CHECK_TRUE(state_type != nullptr, "Fail to resolve state type of udaf ",
+               udaf->GetName());
 
     // visit update
     std::vector<const node::TypeNode*> update_arg_types;
@@ -142,14 +145,15 @@ Status ResolveFnAndAttrs::VisitUDAFDef(
         VisitFnDef(udaf->update_func(), update_arg_types, &resolved_update),
         "Resolve update function of ", udaf->GetName(), " failed");
     state_type = resolved_update->GetReturnType();
-    CHECK_TRUE(state_type != nullptr, "Fail to resolve state type of udaf ", udaf->GetName());
+    CHECK_TRUE(state_type != nullptr, "Fail to resolve state type of udaf ",
+               udaf->GetName());
 
     // visit merge
     node::FnDefNode* resolved_merge = nullptr;
     if (udaf->merge_func() != nullptr) {
         CHECK_STATUS(VisitFnDef(udaf->merge_func(), {state_type, state_type},
                                 &resolved_merge),
-            "Resolve merge function of ", udaf->GetName(), " failed");
+                     "Resolve merge function of ", udaf->GetName(), " failed");
     }
 
     // visit output
@@ -163,7 +167,8 @@ Status ResolveFnAndAttrs::VisitUDAFDef(
     *output =
         nm_->MakeUDAFDefNode(udaf->GetName(), arg_types, resolved_init,
                              resolved_update, resolved_merge, resolved_output);
-    CHECK_STATUS((*output)->Validate(arg_types), "Illegal resolved udaf: \n", (*output)->GetTreeString());
+    CHECK_STATUS((*output)->Validate(arg_types), "Illegal resolved udaf: \n",
+                 (*output)->GetTreeString());
     return Status::OK();
 }
 
@@ -175,9 +180,10 @@ Status ResolveFnAndAttrs::VisitExpr(node::ExprNode* expr,
         return Status::OK();
     }
     for (size_t i = 0; i < expr->GetChildNum(); ++i) {
+        node::ExprNode* old_child = expr->GetChild(i);
         node::ExprNode* new_child = nullptr;
-        CHECK_STATUS(VisitExpr(expr->GetChild(i), &new_child),
-            "Visit ", i, "th child failed of\n", expr->GetTreeString());
+        CHECK_STATUS(VisitExpr(old_child, &new_child), "Visit ", i,
+                     "th child failed of\n", old_child->GetTreeString());
         if (new_child != nullptr && new_child != expr->GetChild(i)) {
             expr->SetChild(i, new_child);
         }
@@ -207,14 +213,13 @@ Status ResolveFnAndAttrs::VisitExpr(node::ExprNode* expr,
                     break;
                 }
                 node::ExprNode* result = nullptr;
-                node::ExprListNode arg_list;
+                std::vector<node::ExprNode*> arg_list;
                 for (size_t i = 0; i < call->GetChildNum(); ++i) {
-                    arg_list.AddChild(call->GetChild(i));
+                    arg_list.push_back(call->GetChild(i));
                 }
 
                 auto status = library_->Transform(external_fn->function_name(),
-                                                  &arg_list, call->GetOver(),
-                                                  &analysis_context_, &result);
+                                                  arg_list, nm_, &result);
                 if (status.isOK() && result != nullptr) {
                     *output = result;
                 } else {
@@ -231,12 +236,13 @@ Status ResolveFnAndAttrs::VisitExpr(node::ExprNode* expr,
     }
 
     // Infer attr for non-group expr
-    auto status = (*output)->InferAttr(&analysis_context_);
-    if (!status.isOK()) {
-        LOG(WARNING) << "Fail to infer " << (*output)->GetExprString() << ": "
-                     << status.msg;
+    if ((*output)->GetExprType() != node::kExprList) {
+        auto status = (*output)->InferAttr(&analysis_context_);
+        if (!status.isOK()) {
+            LOG(WARNING) << "Fail to infer " << (*output)->GetExprString()
+                         << ": " << status.msg;
+        }
     }
-
     cache_.insert(iter, std::make_pair(expr, *output));
     return Status::OK();
 }

@@ -167,18 +167,6 @@ struct FillProxyReturns {
 template <typename Ret, typename... Args>
 class ModuleTestFunction {
  public:
-    Ret operator()(Args&&... args) {
-        std::vector<int8_t*> proxy_arg_ptrs;
-        FillProxyArgs<Args...>()(&args..., &proxy_arg_ptrs);
-
-        Ret ret;
-        FillProxyReturns<Ret>()(&ret, &proxy_arg_ptrs);
-
-        auto fn = reinterpret_cast<void (*)(int8_t**)>(fn_ptr);
-        fn(proxy_arg_ptrs.data());
-        return ret;
-    }
-
     Ret operator()(const Args&... args) {
         std::vector<int8_t*> proxy_arg_ptrs;
         FillProxyArgs<Args...>()(const_cast<Args*>(&args)..., &proxy_arg_ptrs);
@@ -227,6 +215,9 @@ class ModuleTestFunction {
         udf::RegisterNativeUDFToModule(module.get());
         ::fesql::vm::InitCodecSymbol(jd, mi);
         ::fesql::udf::InitUDFSymbol(jd, mi);
+
+        // module = nullptr;
+        // llvm_ctx = nullptr;
 
         ExitOnErr(jit->addIRModule(::llvm::orc::ThreadSafeModule(
             std::move(module), std::move(llvm_ctx))));
@@ -454,7 +445,6 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
 
     CodeGenContext context(module.get());
 
-    node::NodeManager nm;
     auto arg_types = state->arg_types;
     auto arg_nullable = state->arg_nullable;
     auto ret_type = state->ret_type;
@@ -516,16 +506,6 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
 
     return ModuleTestFunction<Ret, Args...>(
         proxy_fn_name, state->library, std::move(module), std::move(llvm_ctx));
-}
-
-/**
- * Helper function to apply vector of args to variadic function
- */
-template <typename F, std::size_t... I>
-static node::ExprNode* ApplyExprFuncHelper(
-    node::NodeManager* nm, const std::vector<node::ExprIdNode*>& args,
-    const std::index_sequence<I...>&, const F& expr_func) {
-    return expr_func(nm, args[I]...);
 }
 
 static inline NativeValue BindValueFromLLVMFunction(
@@ -594,9 +574,9 @@ static void WriteReturnValueArgs(const NativeValue& value,
  * Helper function to apply vector of args to variadic function
  */
 template <typename F, std::size_t... I>
-static node::ExprNode *ApplyExprFuncHelper(
-    node::NodeManager *nm, const std::vector<node::ExprIdNode *> &args,
-    const std::index_sequence<I...> &, const F &expr_func) {
+static node::ExprNode* ApplyExprFuncHelper(
+    node::NodeManager* nm, const std::vector<node::ExprIdNode*>& args,
+    const std::index_sequence<I...>&, const F& expr_func) {
     return expr_func(nm, args[I]...);
 }
 
@@ -615,30 +595,30 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
         .returns<Ret>()
         .template args<Args...>()
         .build([&](CodeGenContext* ctx) {
-            node::NodeManager* nm = library->node_manager();
+            node::NodeManager nm;
 
             std::vector<node::TypeNode*> arg_types = {
-                udf::DataTypeTrait<Args>::to_type_node(nm)...};
+                udf::DataTypeTrait<Args>::to_type_node(&nm)...};
             std::vector<int> arg_nullable = {
                 udf::IsNullableTrait<Args>::value...};
 
             std::vector<node::ExprIdNode*> arg_exprs;
             for (size_t i = 0; i < sizeof...(Args); ++i) {
-                auto arg = nm->MakeExprIdNode("arg_" + std::to_string(i),
-                                              node::ExprIdNode::GetNewId());
+                auto arg = nm.MakeExprIdNode("arg_" + std::to_string(i),
+                                             node::ExprIdNode::GetNewId());
                 auto arg_type = arg_types[i];
                 arg->SetOutputType(arg_type);
                 arg->SetNullable(arg_nullable[i]);
                 arg_exprs.push_back(arg);
             }
             node::ExprNode* body = ApplyExprFuncHelper(
-                nm, arg_exprs, std::index_sequence_for<Args...>(), expr_func);
+                &nm, arg_exprs, std::index_sequence_for<Args...>(), expr_func);
             CHECK_TRUE(body != nullptr, "Build output expr failed");
 
             // type infer
             vm::SchemaSourceList empty;
             vm::SchemasContext empty_context(empty);
-            passes::ResolveFnAndAttrs resolver(nm, library, empty);
+            passes::ResolveFnAndAttrs resolver(&nm, library, empty);
             node::ExprNode* resolved_body = nullptr;
             auto status = resolver.VisitExpr(body, &resolved_body);
             if (!status.isOK()) {
@@ -664,7 +644,7 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
             CHECK_TRUE(expr_builder.Build(resolved_body, &out, status),
                        status.msg);
 
-            auto ret_type = udf::DataTypeTrait<Ret>::to_type_node(nm);
+            auto ret_type = udf::DataTypeTrait<Ret>::to_type_node(&nm);
             bool ret_nullable = udf::IsNullableTrait<Ret>::value;
             WriteReturnValueArgs(out, ret_type, ret_nullable, ctx, llvm_func,
                                  &llvm_arg_idx);

@@ -93,16 +93,22 @@ struct SumUDAFDef {
 template <typename T>
 struct MinUDAFDef {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
-        helper.templates<T, T, T>().update("minimum").merge("minimum").output(
-            "identity");
+        helper.templates<T, T, T>()
+            .const_init(DataTypeTrait<T>::maximum_value())
+            .update("minimum")
+            .merge("minimum")
+            .output("identity");
     }
 };
 
 template <typename T>
 struct MaxUDAFDef {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
-        helper.templates<T, T, T>().update("maximum").merge("maximum").output(
-            "identity");
+        helper.templates<T, T, T>()
+            .const_init(DataTypeTrait<T>::minimum_value())
+            .update("maximum")
+            .merge("maximum")
+            .output("identity");
     }
 };
 
@@ -202,22 +208,18 @@ struct AvgUDAFDef {
 template <typename T>
 struct DistinctCountDef {
     using ArgT = typename DataTypeTrait<T>::CCallArgType;
-    using SetT = std::unordered_set<ArgT>;
+    using SetT = std::unordered_set<T>;
 
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
         std::string suffix = ".opaque_std_set_" + DataTypeTrait<T>::to_string();
         helper.templates<int64_t, Opaque<SetT>, T>()
             .init("distinct_count_init" + suffix, init_set)
-            .update("distinct_count_update" + suffix, update_set)
+            .update("distinct_count_update" + suffix,
+                    UpdateImpl<ArgT>::update_set)
             .output("distinct_count_output" + suffix, set_size);
     }
 
     static void init_set(SetT* addr) { new (addr) SetT(); }
-
-    static SetT* update_set(SetT* set, ArgT value) {
-        set->insert(value);
-        return set;
-    }
 
     static int64_t set_size(SetT* set) {
         int64_t size = set->size();
@@ -225,6 +227,22 @@ struct DistinctCountDef {
         set->~SetT();
         return size;
     }
+
+    template <typename V>
+    struct UpdateImpl {
+        static SetT* update_set(SetT* set, V value) {
+            set->insert(value);
+            return set;
+        }
+    };
+
+    template <typename V>
+    struct UpdateImpl<V*> {
+        static SetT* update_set(SetT* set, V* value) {
+            set->insert(*value);
+            return set;
+        }
+    };
 };
 
 void DefaultUDFLibrary::InitStringUDF() {
@@ -246,8 +264,11 @@ void DefaultUDFLibrary::InitStringUDF() {
     RegisterCodeGenUDF("concat").variadic_args<>(
         /* infer */
         [](UDFResolveContext* ctx,
-           const std::vector<const node::TypeNode*>& arg_types) {
-            return ctx->node_manager()->MakeTypeNode(node::kVarchar);
+           const std::vector<const ExprAttrNode*>& arg_attrs,
+           ExprAttrNode* out) {
+            out->SetType(ctx->node_manager()->MakeTypeNode(node::kVarchar));
+            out->SetNullable(false);
+            return Status::OK();
         },
         /* gen */
         [](CodeGenContext* ctx, const std::vector<NativeValue>& args,
@@ -259,9 +280,12 @@ void DefaultUDFLibrary::InitStringUDF() {
     RegisterCodeGenUDF("concat_ws")
         .variadic_args<AnyArg>(
             /* infer */
-            [](UDFResolveContext* ctx, const node::TypeNode* arg,
-               const std::vector<const node::TypeNode*>& arg_types) {
-                return ctx->node_manager()->MakeTypeNode(node::kVarchar);
+            [](UDFResolveContext* ctx, const ExprAttrNode* arg,
+               const std::vector<const ExprAttrNode*>& arg_types,
+               ExprAttrNode* out) {
+                out->SetType(ctx->node_manager()->MakeTypeNode(node::kVarchar));
+                out->SetNullable(false);
+                return Status::OK();
             },
             /* gen */
             [](CodeGenContext* ctx, NativeValue arg,
@@ -273,58 +297,56 @@ void DefaultUDFLibrary::InitStringUDF() {
             });
 
     RegisterExternal("substring")
-        .doc(R"(
-Return a substring from string `str` starting at position `pos `.
-
-example:
-@code{.sql}
-
-
-    select substr("hello world", 2);
-    -- output "llo world"
-
-@endcode
-
-@param **str**
-@param **pos** define the begining of the substring.
-
-- If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
-- If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
-
-@since 2.0.0.0
-)")
         .args<StringRef, int32_t>(
             static_cast<void (*)(codec::StringRef*, int32_t,
                                  codec::StringRef*)>(udf::v1::sub_string))
-        .return_by_arg(true);
+        .return_by_arg(true)
+        .doc(R"(
+            Return a substring from string `str` starting at position `pos `.
+
+            example:
+            @code{.sql}
+
+                select substr("hello world", 2);
+                -- output "llo world"
+
+            @endcode
+
+            @param **str**
+            @param **pos** define the begining of the substring.
+
+            - If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
+            - If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
+
+            @since 2.0.0.0
+            )");
 
     RegisterExternal("substring")
-        .doc(R"(
-Return a substring `len` characters long from string str, starting at position `pos`.
-
-example
-@code{.sql}
-
-    select substr("hello world", 3, 6);
-    -- output "llo wo"
-
-@endcode
-
-
-@param **str**
-@param **pos**: define the begining of the substring.
-
- - If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
- - If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
-
-@param **len** length of substring. If len is less than 1, the result is the empty string.
-
-@since 2.0.0.0
-            )")
         .args<StringRef, int32_t, int32_t>(
             static_cast<void (*)(codec::StringRef*, int32_t, int32_t,
                                  codec::StringRef*)>(udf::v1::sub_string))
-        .return_by_arg(true);
+        .return_by_arg(true)
+        .doc(R"(
+            Return a substring `len` characters long from string str, starting at position `pos`.
+
+            example
+            @code{.sql}
+
+                select substr("hello world", 3, 6);
+                -- output "llo wo"
+
+            @endcode
+
+            @param **str**
+            @param **pos**: define the begining of the substring.
+
+             - If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
+             - If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
+
+            @param **len** length of substring. If len is less than 1, the result is the empty string.
+
+            @since 2.0.0.0
+        )");
 
     RegisterExternal("date_format")
         .args<Timestamp, StringRef>(
@@ -337,6 +359,7 @@ example
                                  codec::StringRef*)>(udf::v1::date_format))
         .return_by_arg(true);
 }
+
 void DefaultUDFLibrary::IniMathUDF() {
     RegisterExternal("log")
         .args<float>(static_cast<float (*)(float)>(log))
@@ -476,8 +499,6 @@ void DefaultUDFLibrary::Init() {
         .return_by_arg(true)
         .args_in<Timestamp, Date, StringRef>();
 
-    //
-
     RegisterAlias("lead", "at");
 
     RegisterCodeGenUDF("identity")
@@ -537,8 +558,7 @@ void DefaultUDFLibrary::Init() {
 
     RegisterUDAFTemplate<MinUDAFDef>("min")
         .doc("Compute min of values")
-        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
-                 StringRef>();
+        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date>();
 
     RegisterExternalTemplate<v1::Maximum>("maximum")
         .args_in<int16_t, int32_t, int64_t, float, double>();
@@ -554,7 +574,7 @@ void DefaultUDFLibrary::Init() {
     RegisterUDAFTemplate<CountUDAFDef>("count")
         .doc("Compute count of values")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
-                 StringRef>();
+                 StringRef, LiteralTypedRow<>>();
 
     RegisterUDAFTemplate<AvgUDAFDef>("avg")
         .doc("Compute average of values")

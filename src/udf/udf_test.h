@@ -146,15 +146,10 @@ UDFFunctionBuilderWithFullInfo<Ret, Args...>::build() {
             typename std::pair<Args, node::ExprNode*>::second_type... args)
             -> node::ExprNode* {
             // resolve udf call
-            auto arg_list = nm->MakeExprList();
             std::vector<node::ExprNode*> arg_vec = {args...};
-            for (node::ExprNode* arg_expr : arg_vec) {
-                arg_list->AddChild(arg_expr);
-            }
             node::ExprNode* output_expr = nullptr;
-            node::ExprAnalysisContext analysis_ctx(nm, nullptr);
-            auto status = library->Transform(state->name, arg_list, nullptr,
-                                             &analysis_ctx, &output_expr);
+            auto status =
+                library->Transform(state->name, arg_vec, nm, &output_expr);
             if (!status.isOK() || output_expr == nullptr) {
                 LOG(WARNING) << status.msg;
                 return nullptr;

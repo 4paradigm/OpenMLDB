@@ -17,6 +17,8 @@
 
 #include "codegen/ir_base_builder.h"
 #include <string>
+#include <tuple>
+#include <utility>
 #include <vector>
 #include "codec/list_iterator_codec.h"
 #include "codegen/date_ir_builder.h"

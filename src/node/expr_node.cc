@@ -86,5 +86,31 @@ Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
     return Status::OK();
 }
 
+Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
+    CHECK_TRUE(GetChildNum() == 2);
+    auto left_type = GetChild(0)->GetOutputType();
+    auto right_type = GetChild(1)->GetOutputType();
+    switch (GetOp()) {
+        case kFnOpEq:
+        case kFnOpNeq:
+        case kFnOpLt:
+        case kFnOpLe:
+        case kFnOpGt:
+        case kFnOpGe: {
+            SetOutputType(ctx->node_manager()->MakeTypeNode(node::kBool));
+            break;
+        }
+        default: {
+            if (left_type != nullptr) {
+                SetOutputType(left_type);
+            } else {
+                SetOutputType(right_type);
+            }
+        }
+    }
+    SetNullable(false);
+    return Status::OK();
+}
+
 }  // namespace node
 }  // namespace fesql

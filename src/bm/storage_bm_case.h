@@ -15,7 +15,6 @@ namespace fesql {
 namespace bm {
 enum MODE { BENCHMARK, TEST };
 
-
 void ArrayListIterate(benchmark::State* state, MODE mode, int64_t data_size);
 }  // namespace bm
 }  // namespace fesql

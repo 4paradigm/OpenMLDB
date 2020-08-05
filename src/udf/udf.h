@@ -11,6 +11,8 @@
 #define SRC_UDF_UDF_H_
 #include <stdint.h>
 #include <string>
+#include <tuple>
+
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
 #include "proto/fe_type.pb.h"
@@ -132,6 +134,8 @@ void sub_string(fesql::codec::StringRef *str, int32_t pos, int32_t len,
 
 template <class V>
 struct ToString {
+    using Args = std::tuple<V>;
+
     void operator()(V v, codec::StringRef *output) {
         std::ostringstream ss;
         ss << v;

@@ -296,6 +296,8 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
         from_iter->Next();
     }
     codec::ArrayListV<Row> list_table(&buffer);
+    codec::ListRef<Row> list_table_ref;
+    list_table_ref.list = reinterpret_cast<int8_t*>(&list_table);
 
     codegen::MemoryWindowDecodeIRBuilder builder(table_def.columns(), nullptr);
     codec::ColInfo info;
@@ -307,7 +309,7 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     type::Type storage_type;
     ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
     ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-                     reinterpret_cast<int8_t*>(&list_table), 0, info.idx,
+                     reinterpret_cast<int8_t*>(&list_table_ref), 0, info.idx,
                      info.offset, storage_type, buf));
 
     {
@@ -407,10 +409,13 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
     ASSERT_TRUE(codegen::GetLLVMColumnSize(&type, &col_size));
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
     type::Type storage_type;
+
+    codec::ListRef<> window_ref;
+    window_ref.list = reinterpret_cast<int8_t*>(&window);
     ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
-    ASSERT_EQ(0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&window),
-                                            0, info.idx, info.offset,
-                                            storage_type, buf));
+    ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+                     reinterpret_cast<int8_t*>(&window_ref), 0, info.idx,
+                     info.offset, storage_type, buf));
     {
         switch (mode) {
             case BENCHMARK: {

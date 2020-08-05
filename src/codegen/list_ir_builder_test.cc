@@ -118,11 +118,8 @@ void RunListAtCase(T expected, const type::TableDef& table,
                 // build column
                 base::Status status;
                 ::llvm::Value* column = NULL;
-                ::llvm::Value* list_gep_0 = builder.CreateStructGEP(
-                    cast<PointerType>(arg0->getType()->getScalarType())
-                        ->getElementType(),
-                    arg0, 0);
-                ::llvm::Value* list_ptr = builder.CreateLoad(list_gep_0);
+                ::llvm::Value* list_ptr = builder.CreatePointerCast(
+                    arg0, builder.getInt8Ty()->getPointerTo());
                 CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
 
                 ::llvm::Value* val = nullptr;
@@ -143,12 +140,10 @@ void RunListAtCase(T expected, const type::TableDef& table,
                         if (codegen::TypeIRBuilder::IsStructPtr(
                                 val->getType())) {
                             val = builder.CreateLoad(val);
-                            builder.CreateStore(
-                                val, fn->arg_begin() + fn->arg_size() - 1);
-                            builder.CreateRetVoid();
-                        } else {
-                            builder.CreateRet(val);
                         }
+                        builder.CreateStore(
+                            val, fn->arg_begin() + fn->arg_size() - 1);
+                        builder.CreateRetVoid();
                     }
                 }
                 return Status::OK();
@@ -179,11 +174,8 @@ void RunListIteratorCase(T expected, const type::TableDef& table,
 
                 // build column
                 ::llvm::Value* column = NULL;
-                ::llvm::Value* list_gep_0 = builder.CreateStructGEP(
-                    cast<PointerType>(arg0->getType()->getScalarType())
-                        ->getElementType(),
-                    arg0, 0);
-                ::llvm::Value* list_ptr = builder.CreateLoad(list_gep_0);
+                ::llvm::Value* list_ptr = builder.CreatePointerCast(
+                    arg0, builder.getInt8Ty()->getPointerTo());
                 CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
 
                 ::llvm::Value* iterator = nullptr;
@@ -194,10 +186,15 @@ void RunListIteratorCase(T expected, const type::TableDef& table,
                 ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
                 ::llvm::Value* i8_ptr =
                     builder.CreatePointerCast(iterator, i8_ptr_ty);
+
+                ::llvm::Value* ret_addr = fn->arg_begin() + fn->arg_size() - 1;
                 llvm::FunctionCallee callee =
                     ctx->GetModule()->getOrInsertFunction(
                         "iterator_sum_" + elem_type->GetName(),
-                        fn->getReturnType(), i8_ptr_ty);
+                        reinterpret_cast<::llvm::PointerType*>(
+                            ret_addr->getType())
+                            ->getElementType(),
+                        i8_ptr_ty);
 
                 ::llvm::Value* ret_val = builder.CreateCall(
                     callee, ::llvm::ArrayRef<Value*>(i8_ptr));
@@ -205,7 +202,8 @@ void RunListIteratorCase(T expected, const type::TableDef& table,
                 ::llvm::Value* ret_delete = nullptr;
                 list_builder.BuildIteratorDelete(iterator, elem_type,
                                                  &ret_delete);
-                builder.CreateRet(ret_val);
+                builder.CreateStore(ret_val, ret_addr);
+                builder.CreateRetVoid();
                 return Status::OK();
             });
 
@@ -245,11 +243,14 @@ void RunListIteratorByRowCase(T expected, const type::TableDef& table,
                     builder.CreatePointerCast(iterator, i8_ptr_ty);
 
                 auto col_offset_val = builder.getInt32(col_offset);
+                ::llvm::Value* ret_addr = fn->arg_begin() + fn->arg_size() - 1;
                 llvm::FunctionCallee callee =
                     ctx->GetModule()->getOrInsertFunction(
                         "iterator_sum_" + row_type->GetName(),
-                        fn->getReturnType(), i8_ptr_ty,
-                        col_offset_val->getType());
+                        reinterpret_cast<::llvm::PointerType*>(
+                            ret_addr->getType())
+                            ->getElementType(),
+                        i8_ptr_ty, col_offset_val->getType());
 
                 ::llvm::Value* ret_val =
                     builder.CreateCall(callee, {i8_ptr, col_offset_val});
@@ -257,7 +258,9 @@ void RunListIteratorByRowCase(T expected, const type::TableDef& table,
                 ::llvm::Value* ret_delete = nullptr;
                 list_builder.BuildIteratorDelete(iterator, row_type,
                                                  &ret_delete);
-                builder.CreateRet(ret_val);
+
+                builder.CreateStore(ret_val, ret_addr);
+                builder.CreateRetVoid();
                 return Status::OK();
             });
 
@@ -304,20 +307,38 @@ void RunInnerListIteratorCase(T expected, const type::TableDef& table,
                 }
                 // build column
                 ::llvm::Value* column = NULL;
-                CHECK_TRUE(buf_builder.BuildGetCol(col, inner_list, &column));
+                ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+                ::llvm::Type* list_ref_ty =
+                    reinterpret_cast<::llvm::PointerType*>(arg0->getType())
+                        ->getElementType();
+                ::llvm::Value* inner_list_ref =
+                    builder.CreateAlloca(list_ref_ty);
+                ::llvm::Value* list_ref_gep_0 = builder.CreateStructGEP(
+                    cast<PointerType>(arg0->getType()->getScalarType())
+                        ->getElementType(),
+                    inner_list_ref, 0);
+                builder.CreateStore(inner_list, list_ref_gep_0);
+                inner_list_ref =
+                    builder.CreatePointerCast(inner_list_ref, i8_ptr_ty);
+                CHECK_TRUE(
+                    buf_builder.BuildGetCol(col, inner_list_ref, &column));
 
                 ::llvm::Value* iterator = nullptr;
                 node::NodeManager nm;
                 auto elem_type = DataTypeTrait<T>::to_type_node(&nm);
                 CHECK_STATUS(
                     list_builder.BuildIterator(column, elem_type, &iterator));
-                ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+
                 ::llvm::Value* i8_ptr =
                     builder.CreatePointerCast(iterator, i8_ptr_ty);
+                ::llvm::Value* ret_addr = fn->arg_begin() + fn->arg_size() - 1;
                 llvm::FunctionCallee callee =
                     ctx->GetModule()->getOrInsertFunction(
                         "iterator_sum_" + elem_type->GetName(),
-                        fn->getReturnType(), i8_ptr_ty);
+                        reinterpret_cast<::llvm::PointerType*>(
+                            ret_addr->getType())
+                            ->getElementType(),
+                        i8_ptr_ty);
 
                 ::llvm::Value* ret_val = builder.CreateCall(
                     callee, ::llvm::ArrayRef<Value*>(i8_ptr));
@@ -325,7 +346,8 @@ void RunInnerListIteratorCase(T expected, const type::TableDef& table,
                 ::llvm::Value* ret_delete = nullptr;
                 list_builder.BuildIteratorDelete(iterator, elem_type,
                                                  &ret_delete);
-                builder.CreateRet(ret_val);
+                builder.CreateStore(ret_val, ret_addr);
+                builder.CreateRetVoid();
                 return Status::OK();
             });
 
@@ -376,11 +398,8 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
 
                 // build column
                 ::llvm::Value* column = NULL;
-                ::llvm::Value* list_gep_0 = builder.CreateStructGEP(
-                    cast<PointerType>(arg0->getType()->getScalarType())
-                        ->getElementType(),
-                    arg0, 0);
-                ::llvm::Value* list_ptr = builder.CreateLoad(list_gep_0);
+                ::llvm::Value* list_ptr = builder.CreatePointerCast(
+                    arg0, builder.getInt8Ty()->getPointerTo());
                 CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
 
                 ::llvm::Value* iter = nullptr;
@@ -428,12 +447,9 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 list_builder.BuildIteratorDelete(iter, elem_type, &ret_delete);
                 if (codegen::TypeIRBuilder::IsStructPtr(res->getType())) {
                     res = builder.CreateLoad(res);
-                    builder.CreateStore(res,
-                                        fn->arg_begin() + fn->arg_size() - 1);
-                    builder.CreateRetVoid();
-                } else {
-                    builder.CreateRet(res);
                 }
+                builder.CreateStore(res, fn->arg_begin() + fn->arg_size() - 1);
+                builder.CreateRetVoid();
                 return Status::OK();
             });
 
@@ -464,11 +480,8 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
 
                 // build column
                 ::llvm::Value* column = NULL;
-                ::llvm::Value* list_gep_0 = builder.CreateStructGEP(
-                    cast<PointerType>(arg0->getType()->getScalarType())
-                        ->getElementType(),
-                    arg0, 0);
-                ::llvm::Value* list_ptr = builder.CreateLoad(list_gep_0);
+                ::llvm::Value* list_ptr = builder.CreatePointerCast(
+                    arg0, builder.getInt8Ty()->getPointerTo());
                 CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
 
                 node::NodeManager nm;
@@ -497,12 +510,10 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
                         if (codegen::TypeIRBuilder::IsStructPtr(
                                 next1->getType())) {
                             next1 = builder.CreateLoad(next1);
-                            builder.CreateStore(
-                                next1, fn->arg_begin() + fn->arg_size() - 1);
-                            builder.CreateRetVoid();
-                        } else {
-                            builder.CreateRet(next1);
                         }
+                        builder.CreateStore(
+                            next1, fn->arg_begin() + fn->arg_size() - 1);
+                        builder.CreateRetVoid();
                     }
                 }
                 return Status::OK();

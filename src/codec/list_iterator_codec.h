@@ -43,6 +43,7 @@ class WindowIterator {
     virtual void Next() = 0;
     virtual bool Valid() = 0;
     virtual std::unique_ptr<RowIterator> GetValue() = 0;
+    virtual RowIterator *GetValue(int8_t *addr) = 0;
     virtual const Row GetKey() = 0;
 };
 
@@ -226,34 +227,21 @@ class ArrayListIterator : public ConstIterator<uint64_t, V> {
           iter_start_(buffer->cbegin() + start),
           iter_end_(buffer->cbegin() + end),
           iter_(iter_start_),
-          key_(0) {
-        if (Valid()) {
-            tmp_ = *iter_;
-        }
-    }
+          key_(0) {}
 
     explicit ArrayListIterator(const ArrayListIterator<V> &impl)
         : buffer_(impl.buffer_),
           iter_start_(impl.iter_start_),
           iter_end_(impl.iter_end_),
           iter_(impl.iter_start_),
-          key_(0) {
-        if (Valid()) {
-            tmp_ = *iter_;
-        }
-    }
+          key_(0) {}
     explicit ArrayListIterator(const ArrayListIterator<V> &impl, uint64_t start,
                                uint64_t end)
         : buffer_(impl.buffer_),
           iter_start_(impl.iter_start_ + start),
           iter_end_(impl.iter_start_ + end),
           iter_(iter_start_),
-          tmp_(*iter_),
-          key_(0) {
-        if (Valid()) {
-            tmp_ = *iter_;
-        }
-    }
+          key_(0) {}
 
     ~ArrayListIterator() {}
     void Seek(const uint64_t &key) override {
@@ -264,9 +252,9 @@ class ArrayListIterator : public ConstIterator<uint64_t, V> {
 
     bool Valid() const override { return iter_end_ != iter_; }
 
-    void Next() override { tmp_ = *(++iter_); }
+    void Next() override { ++iter_; }
 
-    const V &GetValue() override { return tmp_; }
+    const V &GetValue() override { return *iter_; }
 
     const uint64_t &GetKey() const override { return key_; }
 
@@ -287,8 +275,103 @@ class ArrayListIterator : public ConstIterator<uint64_t, V> {
     const typename std::vector<V>::const_iterator iter_start_;
     const typename std::vector<V>::const_iterator iter_end_;
     typename std::vector<V>::const_iterator iter_;
-    V tmp_;
     uint64_t key_;
+};
+
+class BoolArrayListIterator : public ConstIterator<uint64_t, bool> {
+ public:
+    explicit BoolArrayListIterator(const std::vector<int> *buffer,
+                                   const uint64_t start, const uint64_t end)
+        : buffer_(buffer),
+          iter_start_(buffer->cbegin() + start),
+          iter_end_(buffer->cbegin() + end),
+          iter_(iter_start_),
+          key_(0) {
+        if (Valid()) {
+            tmp_ = *iter_;
+        }
+    }
+
+    explicit BoolArrayListIterator(const BoolArrayListIterator &impl)
+        : buffer_(impl.buffer_),
+          iter_start_(impl.iter_start_),
+          iter_end_(impl.iter_end_),
+          iter_(impl.iter_start_),
+          key_(0) {
+        if (Valid()) {
+            tmp_ = *iter_;
+        }
+    }
+    explicit BoolArrayListIterator(const BoolArrayListIterator &impl,
+                                   uint64_t start, uint64_t end)
+        : buffer_(impl.buffer_),
+          iter_start_(impl.iter_start_ + start),
+          iter_end_(impl.iter_start_ + end),
+          iter_(iter_start_),
+          key_(0) {
+        if (Valid()) {
+            tmp_ = *iter_;
+        }
+    }
+
+    ~BoolArrayListIterator() {}
+    void Seek(const uint64_t &key) override {
+        iter_ =
+            (iter_start_ + key) >= iter_end_ ? iter_end_ : iter_start_ + key;
+        key_ = iter_end_ - iter_start_;
+    }
+
+    bool Valid() const override { return iter_end_ != iter_; }
+
+    void Next() override { tmp_ = *(++iter_); }
+
+    const bool &GetValue() override { return tmp_; }
+
+    const uint64_t &GetKey() const override { return key_; }
+
+    void SeekToFirst() { iter_ = iter_start_; }
+
+    bool IsSeekable() const override { return true; }
+
+ protected:
+    const std::vector<int> *buffer_;
+    const typename std::vector<int>::const_iterator iter_start_;
+    const typename std::vector<int>::const_iterator iter_end_;
+    typename std::vector<int>::const_iterator iter_;
+    uint64_t key_;
+    bool tmp_;
+};
+
+class BoolArrayListV : public ListV<bool> {
+ public:
+    BoolArrayListV() : start_(0), end_(0), buffer_(nullptr) {}
+    explicit BoolArrayListV(std::vector<int> *buffer)
+        : start_(0), end_(buffer->size()), buffer_(buffer) {}
+
+    BoolArrayListV(std::vector<int> *buffer, uint32_t start, uint32_t end)
+        : start_(start), end_(end), buffer_(buffer) {}
+
+    ~BoolArrayListV() {}
+
+    std::unique_ptr<ConstIterator<uint64_t, bool>> GetIterator()
+        const override {
+        return std::unique_ptr<BoolArrayListIterator>(
+            new BoolArrayListIterator(buffer_, start_, end_));
+    }
+    ConstIterator<uint64_t, bool> *GetIterator(int8_t *addr) const override {
+        if (nullptr == addr) {
+            return new BoolArrayListIterator(buffer_, start_, end_);
+        } else {
+            return new (addr) BoolArrayListIterator(buffer_, start_, end_);
+        }
+    }
+    virtual const uint64_t GetCount() { return end_ - start_; }
+    virtual bool At(uint64_t pos) const { return buffer_->at(start_ + pos); }
+
+ protected:
+    uint64_t start_;
+    uint64_t end_;
+    std::vector<int> *buffer_;
 };
 
 template <class V>

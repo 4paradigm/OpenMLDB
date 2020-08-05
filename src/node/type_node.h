@@ -31,11 +31,17 @@ class TypeNode : public SQLNode {
     explicit TypeNode(fesql::node::DataType base)
         : SQLNode(node::kType, 0, 0), base_(base), generics_({}) {}
     explicit TypeNode(fesql::node::DataType base, const TypeNode *v1)
-        : SQLNode(node::kType, 0, 0), base_(base), generics_({v1}) {}
+        : SQLNode(node::kType, 0, 0),
+          base_(base),
+          generics_({v1}),
+          generics_nullable_({false}) {}
     explicit TypeNode(fesql::node::DataType base,
                       const fesql::node::TypeNode *v1,
                       const fesql::node::TypeNode *v2)
-        : SQLNode(node::kType, 0, 0), base_(base), generics_({v1, v2}) {}
+        : SQLNode(node::kType, 0, 0),
+          base_(base),
+          generics_({v1, v2}),
+          generics_nullable_({false, false}) {}
     ~TypeNode() {}
     virtual const std::string GetName() const {
         std::string type_name = DataTypeName(base_);

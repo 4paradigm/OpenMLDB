@@ -75,13 +75,14 @@ TEST_F(AggregateIRBuilderTest, test_mixed_multiple_agg) {
     type::TableDef table1;
     BuildWindow(table1, window, &ptr);
     int8_t* output = NULL;
-    int8_t* row_ptrs[1] = {window.back().buf()};
-    int8_t* window_ptr = ptr;
-    int32_t row_sizes[1] = {static_cast<int32_t>(window.back().size())};
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&window[window.size() - 1]);
+    codec::ListRef<Row> window_ref;
+    window_ref.list = ptr;
+    int8_t* window_ptr = reinterpret_cast<int8_t*>(&window_ref);
     vm::Schema schema;
     node::NodeManager manager;
-    CheckFnLetBuilder(&manager, table1, "", sql, row_ptrs, window_ptr,
-                      row_sizes, &schema, &output);
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
+                      &output);
 
     codec::RowView view(schema);
     view.Reset(output, view.GetSize(output));

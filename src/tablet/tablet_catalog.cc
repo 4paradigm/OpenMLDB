@@ -111,8 +111,13 @@ const Row TabletTableHandler::Get(int32_t pos) {
     return iter->Valid() ? iter->GetValue() : Row();
 }
 RowIterator* TabletTableHandler::GetIterator(int8_t* addr) const {
-    return new (addr) storage::FullTableIterator(table_->GetSegments(),
-                                                 table_->GetSegCnt(), table_);
+    if (addr == nullptr) {
+        return new storage::FullTableIterator(table_->GetSegments(),
+                                              table_->GetSegCnt(), table_);
+    } else {
+        return new (addr) storage::FullTableIterator(
+            table_->GetSegments(), table_->GetSegCnt(), table_);
+    }
 }
 const uint64_t TabletTableHandler::GetCount() {
     auto iter = GetIterator();
@@ -206,7 +211,11 @@ std::unique_ptr<RowIterator> TabletSegmentHandler::GetIterator() const {
     return std::unique_ptr<RowIterator>();
 }
 RowIterator* TabletSegmentHandler::GetIterator(int8_t* addr) const {
-    LOG(WARNING) << "can't get iterator with given address";
+    auto iter = partition_hander_->GetWindowIterator();
+    if (iter) {
+        iter->Seek(key_);
+        return iter->Valid() ? iter->GetValue(addr) : nullptr;
+    }
     return nullptr;
 }
 std::unique_ptr<WindowIterator> TabletSegmentHandler::GetWindowIterator(

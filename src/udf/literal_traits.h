@@ -52,8 +52,8 @@ struct Opaque {
 
 template <typename T>
 struct Nullable {
-    Nullable(std::nullptr_t) : is_null_(true) {}  // NOLINT
-    Nullable(const T& t) : data_(t), is_null_(false) {}
+    Nullable(std::nullptr_t) : is_null_(true) {}         // NOLINT
+    Nullable(const T& t) : data_(t), is_null_(false) {}  // NOLINT
     Nullable() : is_null_(false) {}
 
     const T& value() const { return data_; }
@@ -75,8 +75,9 @@ static bool operator==(const Nullable<T>& x, const Nullable<T>& y) {
 
 template <typename... T>
 struct Tuple {
-    Tuple(){};
-    Tuple(T&&... t) : tuple(std::make_tuple(std::forward<T>(t)...)){};
+    Tuple() {}
+    Tuple(T&&... t)  // NOLINT
+        : tuple(std::make_tuple(std::forward<T>(t)...)) {}
     std::tuple<T...> tuple;
 
     template <size_t I>
@@ -261,6 +262,13 @@ struct DataTypeTrait<codec::StringRef> {
     }
     static int32_t codec_type_enum() { return fesql::type::kVarchar; }
     using CCallArgType = codec::StringRef*;
+
+    static node::ExprNode* to_const(node::NodeManager* nm,
+                                    const std::string& str) {
+        return nm->MakeConstNode(str);
+    }
+
+    static const std::string minimum_value() { return ""; }
 };
 
 template <typename T>

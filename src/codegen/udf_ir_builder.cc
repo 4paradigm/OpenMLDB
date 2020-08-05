@@ -423,9 +423,11 @@ Status UDFIRBuilder::BuildUDAFCall(
     const std::vector<NativeValue>& args, NativeValue* output) {
     // Compute udaf in sub-function
     // "void f_udaf_call_impl_(Inputs, Output*)"
+    size_t sub_function_id = module_->getFunctionList().size();
     std::stringstream ss;
     ss << block_->getParent()->getName().str() << "_udaf_call_impl_"
-       << udaf->GetName() << "." << arg_types[0]->GetName();
+       << udaf->GetName() << "." << arg_types[0]->GetName() << "_"
+       << sub_function_id;
     std::string sub_function_name = ss.str();
 
     // udaf state type
@@ -472,6 +474,12 @@ Status UDFIRBuilder::BuildUDAFCall(
     // build sub-function
     ::llvm::Function* sub_fn = module_->getFunction(sub_function_name);
     CHECK_TRUE(sub_fn != nullptr, sub_function_name, " not generated");
+
+    // function scope
+    ScopeVar sub_sv;
+    sub_sv.Enter("sub_func_entry");
+    ScopeVar* old_sv = sv_;
+    sv_ = &sub_sv;
 
     std::vector<::llvm::Value*> output_addrs;
     for (size_t i = 0; i < output_num; ++i) {
@@ -639,6 +647,7 @@ Status UDFIRBuilder::BuildUDAFCall(
     for (size_t i = 0; i < input_num; ++i) {
         update_arg_types.push_back(elem_types[i]);
     }
+    CHECK_TRUE(udaf->update_func() != nullptr);
     CHECK_STATUS(sub_udf_builder.BuildCall(
         udaf->update_func(), update_arg_types, update_args, &update_value));
 
@@ -715,6 +724,8 @@ Status UDFIRBuilder::BuildUDAFCall(
     builder.CreateStore(::llvm::ConstantInt::getFalse(llvm_ctx),
                         output_is_null_ptr);
     builder.CreateRetVoid();
+
+    sv_ = old_sv;
     return Status::OK();
 }
 

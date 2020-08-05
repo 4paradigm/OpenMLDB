@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "base/fe_status.h"
 #include "node/node_manager.h"
@@ -56,13 +57,20 @@ class ExprUDFTemplateRegistryHelper;
  */
 class UDFLibrary {
  public:
-    Status Transform(const std::string& name, ExprListNode* args,
-                     const node::SQLNode* over,
-                     node::ExprAnalysisContext* analysis_ctx,
-                     ExprNode** result);
+    Status Transform(const std::string& name,
+                     const std::vector<node::ExprNode*>& args,
+                     node::NodeManager* node_manager, ExprNode** result);
 
     Status Transform(const std::string& name, UDFResolveContext* ctx,
                      ExprNode** result);
+
+    Status ResolveFunction(const std::string& name, UDFResolveContext* ctx,
+                           node::FnDefNode** result);
+
+    Status ResolveFunction(const std::string& name,
+                           const std::vector<node::ExprNode*>& args,
+                           node::NodeManager* node_manager,
+                           node::FnDefNode** result);
 
     std::shared_ptr<UDFTransformRegistry> Find(const std::string& name) const;
 

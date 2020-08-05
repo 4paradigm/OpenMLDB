@@ -1238,6 +1238,8 @@ class BinaryExpr : public ExprNode {
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *node) const;
 
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+
  private:
     FnOperator op_;
 };
@@ -2075,7 +2077,7 @@ bool SQLEquals(const SQLNode *left, const SQLNode *right);
 bool SQLListEquals(const SQLNodeList *left, const SQLNodeList *right);
 bool ExprEquals(const ExprNode *left, const ExprNode *right);
 bool FnDefEquals(const FnDefNode *left, const FnDefNode *right);
-bool TypeEquals(const TypeNode* left, const TypeNode* right);
+bool TypeEquals(const TypeNode *left, const TypeNode *right);
 bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
                         ExprNode *node_ptr, const WindowDefNode **output);
 void FillSQLNodeList2NodeVector(
