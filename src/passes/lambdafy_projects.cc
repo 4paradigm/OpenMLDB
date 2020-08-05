@@ -50,6 +50,7 @@ Status LambdafyProjects::Transform(const node::PlanNodeList& projects,
                 }
             }
         } else if (legacy_agg_opt_ && FallBackToLegacyAgg(expr)) {
+            DLOG(INFO) << "Use agg opt for " << expr->GetExprString();
             out_list->AddChild(expr);
             require_agg_vec->push_back(true);
             out_frames->push_back(pp_node->frame());
@@ -288,6 +289,35 @@ bool LambdafyProjects::FallBackToLegacyAgg(node::ExprNode* expr) {
             if (input_expr->expr_type_ != node::kExprColumnRef) {
                 return false;
             }
+            auto col = dynamic_cast<node::ColumnRefNode*>(
+                const_cast<node::ExprNode*>(input_expr));
+            const std::string& rel_name = col->GetRelationName();
+            const std::string& col_name = col->GetColumnName();
+            const vm::RowSchemaInfo* info;
+            vm::SchemasContext schema_context(input_schemas_);
+            if (!schema_context.ColumnRefResolved(rel_name, col_name, &info)) {
+                LOG(WARNING)
+                    << "fail to resolve column " << rel_name + "." + col_name;
+                return false;
+            }
+            codec::RowDecoder decoder(*info->schema_);
+            codec::ColInfo col_info;
+            if (!decoder.ResolveColumn(col_name, &col_info)) {
+                LOG(WARNING)
+                    << "fail to resolve column " << rel_name + "." + col_name;
+                return false;
+            }
+            switch (col_info.type) {
+                case fesql::type::kInt16:
+                case fesql::type::kInt32:
+                case fesql::type::kInt64:
+                case fesql::type::kFloat:
+                case fesql::type::kDouble:
+                    break;
+                default:
+                    return false;
+            }
+            break;
         }
         default:
             return false;

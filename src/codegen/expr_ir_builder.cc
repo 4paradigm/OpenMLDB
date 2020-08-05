@@ -615,7 +615,8 @@ bool ExprIRBuilder::BuildWindow(NativeValue* output,
         ::llvm::Value* inner_list_ref_ptr =
             builder.CreateAlloca(window_ptr->getType());
         builder.CreateStore(window_ptr, inner_list_ref_ptr);
-        window_ptr = inner_list_ref_ptr;
+        window_ptr = builder.CreatePointerCast(inner_list_ref_ptr,
+                                               window_ptr->getType());
 
     } else {
         *output = NativeValue::Create(window_ptr);
