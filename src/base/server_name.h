@@ -15,8 +15,6 @@
 #include "base/id_generator.h"
 #include "base/glog_wapper.h"
 
-DECLARE_string(data_dir);
-
 namespace rtidb {
 namespace base {
 
@@ -55,18 +53,18 @@ bool ReadTxt(const std::string& full_path,
     return true;
 }
 
-bool GetNameFromTxt(std::string* name) {
+bool GetNameFromTxt(const std::string& data_dir, std::string* name) {
     if (name == nullptr) {
         return false;
     }
-    if (!IsExists(FLAGS_data_dir)) {
-        if (!MkdirRecur(FLAGS_data_dir)) {
+    if (!IsExists(data_dir)) {
+        if (!MkdirRecur(data_dir)) {
             PDLOG(WARNING, "make dir failed, path %s",
-                    FLAGS_data_dir.data());
+                    data_dir.data());
             return false;
         }
     }
-    std::string full_path = FLAGS_data_dir + "/name.txt";
+    std::string full_path = data_dir + "/name.txt";
     if (!IsExists(full_path)) {
         return WriteTxt(full_path, name);
     }
