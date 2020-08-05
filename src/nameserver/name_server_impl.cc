@@ -232,7 +232,8 @@ bool ClusterInfo::CreateTableRemote(
 }
 
 bool ClusterInfo::UpdateRemoteRealEpMap() {
-    decltype(remote_real_ep_map_) tmp_map;
+    decltype(remote_real_ep_map_) tmp_map =
+        std::make_shared<std::map<std::string, std::string>>();
     if (FLAGS_use_name) {
         std::vector<std::string> vec;
         if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/map/names",

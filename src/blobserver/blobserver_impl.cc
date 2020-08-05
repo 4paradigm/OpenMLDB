@@ -25,6 +25,7 @@ DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_string(hdd_root_path);
 DECLARE_uint32(oss_flush_size);
 DECLARE_int32(oss_flush_period);
+DECLARE_bool(use_name);
 
 using ::rtidb::base::ReturnCode;
 using ::rtidb::base::BLOB_PREFIX;
@@ -84,6 +85,11 @@ bool BlobServerImpl::Init(const std::string& real_endpoint) {
 
 bool BlobServerImpl::RegisterZK() {
     if (!FLAGS_zk_cluster.empty()) {
+        if (FLAGS_use_name) {
+            if (!zk_client_->RegisterName()) {
+                return false;
+            }
+        }
         if (!zk_client_->Register(true)) {
             PDLOG(WARNING, "fail to register blob with value %s%s",
                   BLOB_PREFIX.c_str(), FLAGS_endpoint.c_str());

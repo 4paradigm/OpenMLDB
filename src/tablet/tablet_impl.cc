@@ -5775,7 +5775,8 @@ void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
         PDLOG(WARNING, "FLAGS_use_name is false");
         return;
     }
-    decltype(real_ep_map_) tmp_real_ep_map;
+    decltype(real_ep_map_) tmp_real_ep_map =
+        std::make_shared<std::map<std::string, std::string>>();
     for (int i = 0; i < request->real_endpoint_map_size(); i++) {
         auto& pair = request->real_endpoint_map(i);
         tmp_real_ep_map->insert(

@@ -14,8 +14,6 @@
 #include "boost/bind.hpp"
 #include "base/strings.h"
 
-DECLARE_bool(use_name);
-
 using ::rtidb::base::BLOB_PREFIX;
 
 namespace rtidb {
