@@ -53,7 +53,6 @@ bool Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
 }
 bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
                                     PlanNode **plan_tree, Status &status) {
-
     const node::NodePointVector &table_ref_list =
         nullptr == root->GetTableRefList() ? std::vector<SQLNode *>()
                                            : root->GetTableRefList()->GetList();
