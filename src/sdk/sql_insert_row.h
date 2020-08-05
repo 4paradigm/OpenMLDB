@@ -35,9 +35,7 @@
 namespace rtidb {
 namespace sdk {
 
-typedef std::shared_ptr<
-    std::map<uint32_t, std::shared_ptr<::fesql::node::ConstNode>>>
-    DefaultValueMap;
+typedef std::shared_ptr<std::map<uint32_t, std::shared_ptr<::fesql::node::ConstNode>>> DefaultValueMap;
 
 static inline ::fesql::sdk::DataType ConvertType(::rtidb::type::DataType type) {
     switch (type) {
@@ -67,7 +65,8 @@ class SQLInsertRow {
  public:
     explicit SQLInsertRow(
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
-        DefaultValueMap default_map, uint32_t default_str_length);
+        std::shared_ptr<fesql::sdk::Schema> schema, DefaultValueMap default_map,
+        uint32_t default_str_length);
     ~SQLInsertRow() = default;
     bool Init(int str_length);
     bool AppendBool(bool val);
@@ -85,9 +84,8 @@ class SQLInsertRow {
     const std::vector<std::pair<std::string, uint32_t>>& GetDimensions();
     inline const std::vector<uint64_t>& GetTs() { return ts_; }
     inline const std::string& GetRow() { return val_; }
-    inline const std::shared_ptr<::rtidb::nameserver::TableInfo>
-    GetTableInfo() {
-        return table_info_;
+    inline const std::shared_ptr<fesql::sdk::Schema> GetSchema() {
+        return schema_;
     }
 
  private:
@@ -104,6 +102,7 @@ class SQLInsertRow {
 
  private:
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info_;
+    std::shared_ptr<fesql::sdk::Schema> schema_;
     DefaultValueMap default_map_;
     uint32_t default_string_length_;
     std::map<uint32_t, std::vector<uint32_t>> index_map_;
@@ -118,6 +117,7 @@ class SQLInsertRow {
 class SQLInsertRows {
  public:
     SQLInsertRows(std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
+                  std::shared_ptr<fesql::sdk::Schema> schema,
                   DefaultValueMap default_map, uint32_t str_size);
     ~SQLInsertRows() = default;
     std::shared_ptr<SQLInsertRow> NewRow();
@@ -131,6 +131,7 @@ class SQLInsertRows {
 
  private:
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info_;
+    std::shared_ptr<fesql::sdk::Schema> schema_;
     DefaultValueMap default_map_;
     uint32_t default_str_length_;
     std::vector<std::shared_ptr<SQLInsertRow>> rows_;

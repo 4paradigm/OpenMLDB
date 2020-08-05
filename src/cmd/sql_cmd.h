@@ -145,7 +145,7 @@ void PrintTableIndex(std::ostream &stream,
     t.add("keys");
     t.add("ts");
     t.endOfRow();
-    for (uint32_t i = 0; i < index_list.size(); i++) {
+    for (int i = 0; i < index_list.size(); i++) {
         const ::fesql::type::IndexDef &index = index_list.Get(i);
         t.add(std::to_string(i + 1));
         t.add(index.name());
@@ -342,7 +342,7 @@ void HandleCreateIndex(const fesql::node::CreateIndexNode *create_index_node) {
 
     std::string error;
     auto ns = cs->GetNsClient();
-    bool ok = ns->AddIndex(create_index_node->table_name_, column_key, error);
+    bool ok = ns->AddIndex(create_index_node->table_name_, column_key, nullptr, error);
     if (ok) {
         std::cout << "create index ok" << std::endl;
     } else {

@@ -47,8 +47,7 @@ using ::rtidb::storage::RelationalTable;
 using ::rtidb::storage::Snapshot;
 using ::rtidb::storage::Table;
 using ::rtidb::zk::ZkClient;
-using Schema =
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 
 const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
@@ -286,12 +285,14 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     // get on value from specified ttl type index
     int32_t GetIndex(const ::rtidb::api::GetRequest* request,
                      const ::rtidb::api::TableMeta& meta,
+                     const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
                      CombineIterator* combine_it, std::string* value,
                      uint64_t* ts);
 
     // scan specified ttl type index
     int32_t ScanIndex(const ::rtidb::api::ScanRequest* request,
                       const ::rtidb::api::TableMeta& meta,
+                      const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
                       CombineIterator* combine_it, std::string* pairs,
                       uint32_t* count);
 

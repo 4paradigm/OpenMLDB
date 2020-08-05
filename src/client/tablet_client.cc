@@ -226,15 +226,18 @@ bool TabletClient::CreateTable(const ::rtidb::api::TableMeta& table_meta) {
 }
 
 bool TabletClient::UpdateTableMetaForAddField(
-    uint32_t tid, const ::rtidb::common::ColumnDesc& column_desc,
-    const std::string& schema, std::string& msg) {
+    uint32_t tid, const std::vector<rtidb::common::ColumnDesc>& cols,
+    const rtidb::common::VersionPair& pair, const std::string& schema, std::string& msg) {
     ::rtidb::api::UpdateTableMetaForAddFieldRequest request;
     ::rtidb::api::GeneralResponse response;
     request.set_tid(tid);
-    ::rtidb::common::ColumnDesc* column_desc_ptr =
-        request.mutable_column_desc();
-    column_desc_ptr->CopyFrom(column_desc);
+    for (const auto& col : cols) {
+        ::rtidb::common::ColumnDesc* column_desc_ptr = request.add_column_descs();
+        column_desc_ptr->CopyFrom(col);
+    }
     request.set_schema(schema);
+    rtidb::common::VersionPair* new_pair = request.mutable_version_pair();
+    new_pair->CopyFrom(pair);
     bool ok = client_.SendRequest(
         &::rtidb::api::TabletServer_Stub::UpdateTableMetaForAddField, &request,
         &response, FLAGS_request_timeout_ms, 1);

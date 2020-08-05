@@ -214,7 +214,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (row.length == th.getSchema().size()) {
             switch (th.getFormatVersion()) {
                 case 1:
-                    buffer = RowBuilder.encode(row, th.getSchema());
+                    buffer = RowBuilder.encode(row, th.getSchema(), 1);
                     break;
                 default:
                     buffer = RowCodec.encode(row, th.getSchema());
@@ -224,11 +224,25 @@ public class TableSyncClientImpl implements TableSyncClient {
             if (columnDescs == null) {
                 throw new TabletException("no schema for column count " + row.length);
             }
-            int modifyTimes = row.length - th.getSchema().size();
-            if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
-                modifyTimes = th.getSchemaMap().size();
+            switch (th.getFormatVersion()) {
+                case 1:
+                    if (th.getTableInfo().getAddedColumnDescCount() != 0) {
+                        Integer ver = th.getVerByRowLength(row.length);
+                        if (ver == null) {
+                            throw new TabletException("no version for column count " + row.length);
+                        }
+                        buffer = RowBuilder.encode(row, columnDescs, ver);
+                    } else {
+                        buffer = RowBuilder.encode(row, columnDescs, 1);
+                    }
+                    break;
+                default:
+                    int modifyTimes = row.length - th.getSchema().size();
+                    if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
+                        modifyTimes = th.getSchemaMap().size();
+                    }
+                    buffer = RowCodec.encode(row, columnDescs, modifyTimes);
             }
-            buffer = RowCodec.encode(row, columnDescs, modifyTimes);
         }
         List<Tablet.Dimension> dimList = TableClientCommon.fillTabletDimension(row, th, client.getConfig().isHandleNull());
         return put(tid, pid, null, time, dimList, null, buffer, th);
@@ -1279,7 +1293,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (row.length == th.getSchema().size()) {
             switch (th.getFormatVersion()) {
                 case 1:
-                    buffer = RowBuilder.encode(row, th.getSchema());
+                    buffer = RowBuilder.encode(row, th.getSchema(), 1);
                     break;
                 default:
                     buffer = RowCodec.encode(row, th.getSchema());
@@ -1289,12 +1303,27 @@ public class TableSyncClientImpl implements TableSyncClient {
             if (columnDescs == null) {
                 throw new TabletException("no schema for column count " + row.length);
             }
-            int modifyTimes = row.length - th.getSchema().size();
-            if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
-                modifyTimes = th.getSchemaMap().size();
+            switch (th.getFormatVersion()) {
+                case 1:
+                    if (th.getTableInfo().getAddedColumnDescCount() != 0) {
+                        Integer ver = th.getVerByRowLength(row.length);
+                        if (ver == null) {
+                            throw new TabletException("no version for column count " + row.length);
+                        }
+                        buffer = RowBuilder.encode(row, columnDescs, ver);
+                    } else {
+                        buffer = RowBuilder.encode(row, columnDescs, 1);
+                    }
+                    break;
+                default:
+                    int modifyTimes = row.length - th.getSchema().size();
+                    if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
+                        modifyTimes = th.getSchemaMap().size();
+                    }
+                    buffer = RowCodec.encode(row, columnDescs, modifyTimes);
             }
-            buffer = RowCodec.encode(row, columnDescs, modifyTimes);
         }
+
         if (!th.GetPartitionKeyList().isEmpty()) {
             List<Tablet.Dimension> dims = TableClientCommon.fillTabletDimension(row, th, handleNull);
             int pid = TableClientCommon.computePidByKey(TableClientCommon.combinePartitionKey(row, th.GetPartitionKeyList(),
@@ -1514,7 +1543,7 @@ public class TableSyncClientImpl implements TableSyncClient {
                 putObjectStore(row, th, blobKeys);
             }
         }
-        buffer = RowBuilder.encode(row, schema, blobKeys);
+        buffer = RowBuilder.encode(row, schema, blobKeys, th.getCurrentSchemaVer());
 
         int pid = 0;
         /*
@@ -1651,7 +1680,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (th.getBlobServer() != null && !th.IsObjectTable()) {
             putObjectStore(valueColumns, th, blobKeys);
         }
-        ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema, blobKeys);
+        ByteBuffer valueBuffer = RowBuilder.encode(valueColumns, newValueSchema, blobKeys, th.getCurrentSchemaVer());
         try {
             return updateRequest(th, 0, conditionColumns, newValueSchema, valueBuffer);
         } catch (Exception e) {

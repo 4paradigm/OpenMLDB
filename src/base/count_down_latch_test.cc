@@ -43,12 +43,12 @@ TEST_F(CountDownLatchTest, MultiIsDone) {
     pool.AddTask(boost::bind(&DoCountDown, &latch));
     latch.TimeWait(10);
     ASSERT_FALSE(latch.IsDone());
-    ASSERT_EQ(2, latch.GetCount());
+    ASSERT_EQ(2u, latch.GetCount());
     pool.AddTask(boost::bind(&DoCountDown, &latch));
     pool.AddTask(boost::bind(&DoCountDown, &latch));
     latch.Wait();
     ASSERT_TRUE(latch.IsDone());
-    ASSERT_EQ(0, latch.GetCount());
+    ASSERT_EQ(0u, latch.GetCount());
 }
 
 }  // namespace base

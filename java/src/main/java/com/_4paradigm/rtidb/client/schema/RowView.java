@@ -295,6 +295,11 @@ public class RowView {
         read(buf, row, 0, row.length);
         return row;
     }
+
+    public List<ColumnDesc> getSchema() {
+        return this.schema;
+    }
+
     public String getStrField(ByteBuffer row, int fieldOffset,
                               int nextStrFieldOffset, int strStartOffset,
                               int addrSpace,

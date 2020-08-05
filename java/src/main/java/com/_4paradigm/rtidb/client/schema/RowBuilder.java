@@ -31,6 +31,15 @@ public class RowBuilder {
     private List<Integer> strIdx = new ArrayList<>();
 
     public RowBuilder(List<ColumnDesc> schema) {
+        calcSchemaOffset(schema);
+    }
+
+    public RowBuilder(List<ColumnDesc> schema, int schemaversion) {
+        this.schemaVersion = schemaversion;
+        calcSchemaOffset(schema);
+    }
+
+    private void calcSchemaOffset(List<ColumnDesc> schema) {
         strFieldStartOffset = RowCodecCommon.HEADER_LENGTH + RowCodecCommon.getBitMapSize(schema.size());
         this.schema = schema;
         for (int idx = 0; idx < schema.size(); idx++) {
@@ -51,7 +60,7 @@ public class RowBuilder {
     }
 
     public void SetSchemaVersion(int version) {
-        schemaVersion = version;
+        this.schemaVersion = version;
     }
 
     public int calTotalLength(List<Object> row) throws TabletException {
@@ -291,12 +300,12 @@ public class RowBuilder {
         return true;
     }
 
-    public static ByteBuffer encode(Object[] row, List<ColumnDesc> schema) throws TabletException {
+    public static ByteBuffer encode(Object[] row, List<ColumnDesc> schema, int schemaVer) throws TabletException {
         if (row == null || row.length == 0 || schema == null || schema.size() == 0 || row.length != schema.size()) {
             throw new TabletException("input error");
         }
         int strLength = RowCodecCommon.calStrLength(row, schema);
-        RowBuilder builder = new RowBuilder(schema);
+        RowBuilder builder = new RowBuilder(schema, schemaVer);
         int size = builder.calTotalLength(strLength);
         ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
         buffer = builder.setBuffer(buffer, size);
@@ -359,12 +368,12 @@ public class RowBuilder {
         return buffer;
     }
 
-    public static ByteBuffer encode(Map<String, Object> row, List<ColumnDesc> schema, Map<String, Long> blobKeys) throws TabletException {
+    public static ByteBuffer encode(Map<String, Object> row, List<ColumnDesc> schema, Map<String, Long> blobKeys, int schemaVersion) throws TabletException {
         if (row == null || row.size() == 0 || schema == null || schema.size() == 0 || row.size() != schema.size()) {
             throw new TabletException("input error");
         }
         int strLength = RowCodecCommon.calStrLength(row, schema);
-        RowBuilder builder = new RowBuilder(schema);
+        RowBuilder builder = new RowBuilder(schema, schemaVersion);
         int size = builder.calTotalLength(strLength);
         ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
         buffer = builder.setBuffer(buffer, size);

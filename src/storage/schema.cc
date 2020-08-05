@@ -107,8 +107,7 @@ std::shared_ptr<IndexDef> TableIndex::GetIndex(uint32_t idx) {
 }
 
 std::shared_ptr<IndexDef> TableIndex::GetIndex(const std::string& name) {
-    auto indexs =
-        std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
+    auto indexs = std::atomic_load_explicit(&indexs_, std::memory_order_relaxed);
     for (const auto& index : *indexs) {
         if (index->GetName() == name) {
             return index;

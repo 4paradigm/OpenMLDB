@@ -693,7 +693,7 @@ TEST_P(TabletProjectTest, scan_case) {
     }
 }
 
-INSTANTIATE_TEST_CASE_P(TabletProjectPrefix, TabletProjectTest,
+INSTANTIATE_TEST_SUITE_P(TabletProjectPrefix, TabletProjectTest,
                         testing::ValuesIn(GenCommonCase()));
 
 }  // namespace tablet

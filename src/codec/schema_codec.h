@@ -20,6 +20,7 @@
 #include "boost/lexical_cast.hpp"
 #include "codec/codec.h"
 #include "proto/name_server.pb.h"
+#include "codec/fe_row_codec.h"
 #include "codec/field_codec.h"
 
 namespace rtidb {
@@ -196,6 +197,23 @@ class SchemaCodec {
             type = ::rtidb::codec::ColType::kUnknown;
         }
         return type;
+    }
+
+    static fesql::type::Type ConvertType(rtidb::type::DataType type) {
+        switch (type) {
+            case rtidb::type::kBool: return fesql::type::kBool;
+            case rtidb::type::kSmallInt: return fesql::type::kInt16;
+            case rtidb::type::kInt: return fesql::type::kInt32;
+            case rtidb::type::kBigInt: return fesql::type::kInt64;
+            case rtidb::type::kFloat: return fesql::type::kFloat;
+            case rtidb::type::kDouble: return fesql::type::kDouble;
+            case rtidb::type::kDate: return fesql::type::kDate;
+            case rtidb::type::kTimestamp: return fesql::type::kTimestamp;
+            case rtidb::type::kVarchar: return fesql::type::kVarchar;
+            case rtidb::type::kString: return fesql::type::kVarchar;
+            case rtidb::type::kBlob: return fesql::type::kBlob;
+            default: return fesql::type::kNull;
+        }
     }
 
     static int ConvertColumnDesc(

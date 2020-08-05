@@ -10,15 +10,17 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include <iostream>
 #include <vector>
+
 #include "base/file_util.h"
+#include "base/glog_wapper.h"
 #include "log/coding.h"
 #include "log/crc32c.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
 #include "proto/tablet.pb.h"
-#include "base/glog_wapper.h"
 
 using ::rtidb::base::Slice;
 using ::rtidb::base::Status;
@@ -32,7 +34,9 @@ class LogWRTest : public ::testing::Test {
     ~LogWRTest() {}
 };
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() {
+    return std::to_string(rand() % 10000000 + 1);  // NOLINT
+}  // NOLINT
 
 uint32_t type_crc_[kMaxRecordType + 1];
 int block_offset_ = 0;
@@ -45,7 +49,8 @@ void InitTypeCrc(uint32_t* type_crc) {
 }
 
 void GenPhysicalRecord(RecordType t, const char* ptr, size_t n,
-                       int& block_offset_, std::vector<std::string>& rec_vec) { // NOLINT
+                       int& block_offset_,                   // NOLINT
+                       std::vector<std::string>& rec_vec) {  // NOLINT
     assert(n <= 0xffff);  // Must fit in two bytes
     assert(block_offset_ + kHeaderSize + n <= kBlockSize);
     // Format the header
@@ -66,7 +71,7 @@ void GenPhysicalRecord(RecordType t, const char* ptr, size_t n,
     block_offset_ += kHeaderSize + n;
 }
 
-int AddRecord(const Slice& slice, std::vector<std::string>& vec) { // NOLINT
+int AddRecord(const Slice& slice, std::vector<std::string>& vec) {  // NOLINT
     const char* ptr = slice.data();
     size_t left = slice.size();
 
@@ -125,7 +130,7 @@ TEST_F(LogWRTest, TestWriteSize) {
     WritableFile* wf = NewWritableFile(fname, fd_w);
     wf->Append(Slice("1234567"));
     wf->Append(Slice("abcde"));
-    ASSERT_EQ(12, wf->GetSize());
+    ASSERT_EQ(12u, wf->GetSize());
     delete wf;
 }
 
@@ -195,7 +200,7 @@ TEST_F(LogWRTest, TestLogEntry) {
         ASSERT_TRUE(ok);
         ASSERT_EQ("test0", entry2.pk());
         ASSERT_EQ("test1", entry2.value());
-        ASSERT_EQ(9527, entry2.ts());
+        ASSERT_EQ(9527u, entry2.ts());
     }
     status = writer.AddRecord(sval);
     ASSERT_TRUE(status.ok());
@@ -208,7 +213,7 @@ TEST_F(LogWRTest, TestLogEntry) {
         ASSERT_TRUE(ok);
         ASSERT_EQ("test0", entry2.pk());
         ASSERT_EQ("test1", entry2.value());
-        ASSERT_EQ(9527, entry2.ts());
+        ASSERT_EQ(9527u, entry2.ts());
         status = reader.ReadRecord(&value2, &scratch2);
         std::cout << status.ToString() << std::endl;
         ASSERT_TRUE(status.IsWaitRecord());
@@ -218,7 +223,7 @@ TEST_F(LogWRTest, TestLogEntry) {
         ASSERT_TRUE(ok);
         ASSERT_EQ("test0", entry2.pk());
         ASSERT_EQ("test1", entry2.value());
-        ASSERT_EQ(9527, entry2.ts());
+        ASSERT_EQ(9527u, entry2.ts());
     }
 }
 
@@ -246,7 +251,7 @@ TEST_F(LogWRTest, TestWait) {
     Slice value;
     status = reader.ReadRecord(&value, &scratch2);
     ASSERT_TRUE(status.ok());
-    ASSERT_EQ(1024 * 5, value.size());
+    ASSERT_EQ(1024 * 5u, value.size());
     value.clear();
     scratch2.clear();
 
@@ -255,7 +260,7 @@ TEST_F(LogWRTest, TestWait) {
     Slice sval3(val3.c_str(), val3.size());
     std::vector<std::string> vec;
     AddRecord(sval3, vec);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2u, vec.size());
 
     status = wf->Append(Slice(vec[0].c_str(), vec[0].length()));
     ASSERT_TRUE(status.ok());
@@ -267,7 +272,7 @@ TEST_F(LogWRTest, TestWait) {
     wf->Flush();
     status = reader.ReadRecord(&value, &scratch2);
     ASSERT_TRUE(status.ok());
-    ASSERT_EQ(1024 * 5, value.size());
+    ASSERT_EQ(1024 * 5u, value.size());
 }
 
 TEST_F(LogWRTest, TestGoBack) {

@@ -28,7 +28,8 @@ Table::Table(::rtidb::common::StorageMode storage_mode, const std::string &name,
       ttl_offset_(ttl_offset),
       is_leader_(is_leader),
       ttl_type_(ttl_type),
-      compress_type_(compress_type) {
+      compress_type_(compress_type),
+      version_schema_() {
     ::rtidb::api::TTLDesc *ttl_desc = table_meta_.mutable_ttl_desc();
     ttl_desc->set_ttl_type(ttl_type);
     if (ttl_type == ::rtidb::api::TTLType::kAbsoluteTime) {
@@ -42,6 +43,33 @@ Table::Table(::rtidb::common::StorageMode storage_mode, const std::string &name,
     for (const auto &kv : mapping) {
         table_index_.AddIndex(std::make_shared<IndexDef>(kv.first, kv.second));
     }
+}
+
+void Table::AddVersionSchema() {
+    auto new_versions = std::make_shared<std::map<int32_t, std::shared_ptr<Schema>>>();
+    for (const auto ver : table_meta_.schema_versions()) {
+        int remain_size = ver.field_count() - table_meta_.column_desc_size();
+        if (remain_size < 0)  {
+            LOG(INFO) << "do not need add ver " << ver.id() << " because remain size less than 0";
+            continue;
+        }
+        if (remain_size > table_meta_.added_column_desc_size()) {
+            LOG(INFO) << "skip add ver " << ver.id() << " because remain size great than added column deisc size";
+            continue;
+        }
+        std::shared_ptr<Schema> new_schema = std::make_shared<Schema>(table_meta_.column_desc());
+        for (int i = 0; i < remain_size; i++) {
+            rtidb::common::ColumnDesc* col = new_schema->Add();
+            col->CopyFrom(table_meta_.added_column_desc(i));
+        }
+        new_versions->insert(std::make_pair(ver.id(), new_schema));
+    }
+    std::atomic_store_explicit(&version_schema_, new_versions, std::memory_order_relaxed);
+}
+
+void Table::SetTableMeta(::rtidb::api::TableMeta& table_meta) { // NOLINT
+    table_meta_.CopyFrom(table_meta);
+    AddVersionSchema();
 }
 
 bool Table::CheckTsValid(uint32_t index, int32_t ts_idx) {
@@ -190,6 +218,7 @@ int Table::InitColumnDesc() {
             }
         }
     }
+    AddVersionSchema();
     return 0;
 }
 
@@ -281,6 +310,22 @@ bool Table::InitFromMeta() {
     if (table_meta_.has_compress_type())
         compress_type_ = table_meta_.compress_type();
     return true;
+}
+
+bool Table::CheckFieldExist(const std::string& name) {
+    for (const auto& column : table_meta_.column_desc()) {
+        if (column.name() == name) {
+            LOG(WARNING) << "field name[" << name << "] repeated in tablet!";
+            return true;
+        }
+    }
+    for (const auto& col : table_meta_.added_column_desc()) {
+        if (col.name() == name) {
+            LOG(WARNING) << "field name[" << name << "] repeated in tablet!";
+            return true;
+        }
+    }
+    return false;
 }
 
 }  // namespace storage

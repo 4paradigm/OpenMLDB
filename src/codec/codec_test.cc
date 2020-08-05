@@ -320,7 +320,7 @@ TEST_F(CodecTest, AppendNULLAndEmpty) {
                 ASSERT_EQ(ret, 1);
             } else if (i % 3 == 1) {
                 ASSERT_EQ(ret, 0);
-                ASSERT_EQ(length, 0);
+                ASSERT_EQ(length, 0u);
             } else {
                 ASSERT_EQ(ret, 0);
                 std::string str(ch, length);
@@ -374,7 +374,7 @@ TEST_F(CodecTest, ManyCol) {
             int64_t val = 0;
             ret = view.GetInt64(idx * 3 + 1, &val);
             ASSERT_EQ(ret, 0);
-            ASSERT_EQ(val, ts + idx);
+            ASSERT_EQ(val, static_cast<int64_t>(ts + idx));
             double d = 0.0;
             ret = view.GetDouble(idx * 3 + 2, &d);
             ASSERT_EQ(ret, 0);
@@ -430,7 +430,7 @@ TEST_F(CodecTest, NotAppendCol) {
             char* ch = NULL;
             uint32_t length = 0;
             ASSERT_EQ(view.GetString(i, &ch, &length), 0);
-            ASSERT_EQ(10, length);
+            ASSERT_EQ(10u, length);
             std::string str(ch, length);
             ASSERT_STREQ(str.c_str(), std::string(10, 'a' + i).c_str());
         }
@@ -469,7 +469,7 @@ TEST_F(CodecTest, NotAppendString) {
         char* ch = NULL;
         uint32_t length = 0;
         ASSERT_EQ(view.GetString(i, &ch, &length), 0);
-        ASSERT_EQ(10, length);
+        ASSERT_EQ(10u, length);
         std::string str(ch, length);
         ASSERT_STREQ(str.c_str(), std::string(10, 'a' + i).c_str());
     }

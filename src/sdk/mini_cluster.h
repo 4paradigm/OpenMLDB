@@ -138,8 +138,6 @@ class MiniCluster {
 
  private:
     int32_t zk_port_;
-    int32_t ns_port_;
-    int32_t ts_port_;
     brpc::Server* ns_;
     brpc::Server* ts_;
     std::string zk_cluster_;

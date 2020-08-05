@@ -80,7 +80,7 @@ public class RTIDBSingleNodeClient implements RTIDBClient {
                     th = new TableHandler();
                 } else {
                     List<ColumnDesc> schema = SchemaCodec.decode(response.getSchema().asReadOnlyByteBuffer());
-                    th = new TableHandler(schema);
+                    th = new TableHandler(schema, response.getTableMeta().getSchemaVersionsList());
                 }
                 for (Tablet.TableStatus status : statusResponse.getAllTableStatusList()) {
                     if (status.getTid() == id) {

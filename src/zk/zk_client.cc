@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <utility>
+
 #include "base/glog_wapper.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/bind.hpp"
@@ -217,9 +218,11 @@ bool ZkClient::RegisterName() {
 }
 
 bool ZkClient::CloseZK() {
-    std::lock_guard<std::mutex> lock(mu_);
-    connected_ = false;
-    registed_.store(false, std::memory_order_relaxed);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        connected_ = false;
+        registed_.store(false, std::memory_order_relaxed);
+    }
     if (zk_) {
         zookeeper_close(zk_);
         zk_ = NULL;
@@ -413,7 +416,7 @@ void ZkClient::HandleItemChanged(const std::string& path, int type, int state) {
     WatchItem(path, callback);
 }
 
-bool ZkClient::CancelWatchItem(const std::string& path) {
+void ZkClient::CancelWatchItem(const std::string& path) {
     std::lock_guard<std::mutex> lock(mu_);
     item_callbacks_.erase(path);
 }

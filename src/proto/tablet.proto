@@ -353,6 +353,7 @@ message TableMeta {
     // format_version 0 , the legacy format 1 ,the new one
     optional uint32 format_version = 21 [default = 0];
     optional string db = 22 [default = ""];
+    repeated common.VersionPair schema_versions = 23;
 }
 
 message CreateTableRequest {
@@ -362,6 +363,8 @@ message UpdateTableMetaForAddFieldRequest {
     optional uint32 tid = 1;
     optional rtidb.common.ColumnDesc column_desc = 2;
     optional string schema = 3;
+    repeated rtidb.common.ColumnDesc column_descs = 4;
+    optional rtidb.common.VersionPair version_pair = 5;
 }
 
 message CreateTableResponse {
@@ -835,7 +838,7 @@ service TabletServer {
     rpc ShowMemPool(HttpRequest) returns (HttpResponse);
     rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
     rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
-    rpc UpdateTableMetaForAddField (UpdateTableMetaForAddFieldRequest) returns (GeneralResponse);
+    rpc UpdateTableMetaForAddField(UpdateTableMetaForAddFieldRequest) returns (GeneralResponse);
     rpc SetMode(SetModeRequest) returns (GeneralResponse);
     rpc GetAllSnapshotOffset(EmptyRequest) returns(TableSnapshotOffsetResponse);
     rpc AddIndex(AddIndexRequest) returns(GeneralResponse);
