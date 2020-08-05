@@ -957,7 +957,7 @@ Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
                                                 input_type->GetGenericSize(),
                    "Illegal input for kTuple, expect ", input_type->GetName());
         try {
-            int idx = std::stoi(node->GetColumnName());
+            size_t idx = std::stoi(node->GetColumnName());
             CHECK_TRUE(0 <= idx && idx < input_value.GetFieldNum(),
                        "Tuple idx out of range: ", idx);
             *output = input_value.GetField(idx);

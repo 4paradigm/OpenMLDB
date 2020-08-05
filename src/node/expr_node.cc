@@ -49,7 +49,7 @@ Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
     auto input_type = GetRow()->GetOutputType();
     if (input_type->base() == node::kTuple) {
         try {
-            int idx = std::stoi(this->GetColumnName());
+            size_t idx = std::stoi(this->GetColumnName());
             CHECK_TRUE(0 <= idx && idx < input_type->GetGenericSize(),
                        "Tuple idx out of range: ", idx);
             SetOutputType(input_type->GetGenericType(idx));

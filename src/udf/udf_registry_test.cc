@@ -435,6 +435,10 @@ void StaticSignatureCheckFail() {
 }
 
 TEST_F(UDFRegistryTest, static_extern_signature_check) {
+    using codec::Date;
+    using codec::StringRef;
+    using codec::Timestamp;
+
     // normal arg
     StaticSignatureCheck<int, std::tuple<int, int>, int,
                          std::tuple<int, int>>();

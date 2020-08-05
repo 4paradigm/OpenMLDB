@@ -1488,9 +1488,10 @@ Status ExternalFnDefNode::Validate(
                " take at least ", arg_types_.size(), " arguments, but get ",
                actual_arg_num);
     if (arg_types_.size() < actual_arg_num) {
-        CHECK_TRUE(variadic_pos_ == arg_types_.size(), function_name(),
-                   " take explicit ", arg_types_.size(), " arguments, but get ",
-                   actual_arg_num);
+        CHECK_TRUE(variadic_pos_ >= 0 &&
+                       static_cast<size_t>(variadic_pos_) == arg_types_.size(),
+                   function_name(), " take explicit ", arg_types_.size(),
+                   " arguments, but get ", actual_arg_num);
     }
     for (size_t i = 0; i < arg_types_.size(); ++i) {
         auto actual_ty = actual_types[i];
