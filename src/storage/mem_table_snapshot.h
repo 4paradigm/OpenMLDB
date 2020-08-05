@@ -115,6 +115,9 @@ class MemTableSnapshot : public Snapshot {
 
     uint64_t CollectDeletedKey(uint64_t end_offset);
 
+    bool DecodeData(std::shared_ptr<Table> table, const std::vector<::rtidb::codec::ColumnDesc>& columns,
+                    const rtidb::api::LogEntry& entry, uint32_t maxIdx, std::vector<std::string>& row); // NOLINT
+
  private:
     LogParts* log_part_;
     std::string log_path_;

@@ -35,9 +35,7 @@
 namespace rtidb {
 namespace sdk {
 
-typedef std::shared_ptr<
-    std::map<uint32_t, std::shared_ptr<::fesql::node::ConstNode>>>
-    DefaultValueMap;
+typedef std::shared_ptr<std::map<uint32_t, std::shared_ptr<::fesql::node::ConstNode>>> DefaultValueMap;
 
 static inline ::fesql::sdk::DataType ConvertType(::rtidb::type::DataType type) {
     switch (type) {

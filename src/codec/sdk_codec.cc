@@ -243,15 +243,13 @@ int SDKCodec::EncodeRow(const std::vector<std::string>& raw_data,
     }
 }
 
-int SDKCodec::DecodeRow(const std::string& row,
-                        std::vector<std::string>* value) {
+int SDKCodec::DecodeRow(const std::string& row, std::vector<std::string>* value) {
     if (format_version_ == 1) {
         if (!RowCodec::DecodeRow(schema_, ::rtidb::base::Slice(row), *value)) {
             return -1;
         }
     } else {
-        if (!RowCodec::DecodeRow(base_schema_size_, ::rtidb::base::Slice(row),
-                                 value)) {
+        if (!RowCodec::DecodeRow(base_schema_size_, ::rtidb::base::Slice(row), value)) {
             return -1;
         }
     }
