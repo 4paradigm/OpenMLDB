@@ -483,7 +483,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enbale_debug = false;
+    sql_opt.enbale_debug = true;
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
