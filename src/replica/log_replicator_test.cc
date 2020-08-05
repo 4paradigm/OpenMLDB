@@ -35,23 +35,23 @@ using ::rtidb::storage::Ticket;
 namespace rtidb {
 namespace replica {
 
-const std::vector<std::string> g_endpoints;
+const std::map<std::string, std::string> g_endpoints;
 
 class MockTabletImpl : public ::rtidb::api::TabletServer {
  public:
     MockTabletImpl(const ReplicatorRole& role, const std::string& path,
-                   const std::vector<std::string>& endpoints,
+                   const std::map<std::string, std::string>& real_ep_map,
                    std::shared_ptr<MemTable> table)
         : role_(role),
           path_(path),
-          endpoints_(endpoints),
-          replicator_(path_, endpoints_, role_, table, &follower_) {}
+          real_ep_map_(real_ep_map),
+          replicator_(path_, real_ep_map_, role_, table, &follower_) {}
 
     ~MockTabletImpl() {}
     bool Init() {
         // table_ = new Table("test", 1, 1, 8, 0, false, g_endpoints);
         // table_->Init();
-        return replicator_.Init(std::vector<std::string>());
+        return replicator_.Init();
     }
 
     void Put(RpcController* controller, const ::rtidb::api::PutRequest* request,
@@ -93,7 +93,7 @@ class MockTabletImpl : public ::rtidb::api::TabletServer {
  private:
     ReplicatorRole role_;
     std::string path_;
-    std::vector<std::string> endpoints_;
+    std::map<std::string, std::string> real_ep_map_;
     LogReplicator replicator_;
     std::atomic<bool> follower_;
 };
@@ -110,7 +110,7 @@ class LogReplicatorTest : public ::testing::Test {
 inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 
 TEST_F(LogReplicatorTest, Init) {
-    std::vector<std::string> endpoints;
+    std::map<std::string, std::string> map;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
     std::atomic<bool> follower(false);
@@ -118,13 +118,13 @@ TEST_F(LogReplicatorTest, Init) {
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
         "test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
-    LogReplicator replicator(folder, endpoints, kLeaderNode, table, &follower);
-    bool ok = replicator.Init(std::vector<std::string>());
+    LogReplicator replicator(folder, map, kLeaderNode, table, &follower);
+    bool ok = replicator.Init();
     ASSERT_TRUE(ok);
 }
 
 TEST_F(LogReplicatorTest, BenchMark) {
-    std::vector<std::string> endpoints;
+    std::map<std::string, std::string> map;
     std::string folder = "/tmp/" + GenRand() + "/";
     std::map<std::string, uint32_t> mapping;
     std::atomic<bool> follower(false);
@@ -132,8 +132,8 @@ TEST_F(LogReplicatorTest, BenchMark) {
     std::shared_ptr<MemTable> table = std::make_shared<MemTable>(
         "test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
-    LogReplicator replicator(folder, endpoints, kLeaderNode, table, &follower);
-    bool ok = replicator.Init(std::vector<std::string>());
+    LogReplicator replicator(folder, map, kLeaderNode, table, &follower);
+    bool ok = replicator.Init();
     ::rtidb::api::LogEntry entry;
     entry.set_term(1);
     entry.set_pk("test");
@@ -174,7 +174,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
     std::string folder = "/tmp/" + GenRand() + "/";
     std::atomic<bool> follower(false);
     LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
-    bool ok = leader.Init(std::vector<std::string>());
+    bool ok = leader.Init();
     ASSERT_TRUE(ok);
     // put the first row
     {
@@ -216,9 +216,9 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
         ASSERT_TRUE(ok);
     }
     leader.Notify();
-    std::vector<std::string> vec;
-    vec.push_back("127.0.0.1:17528");
-    leader.AddReplicateNode(vec, std::vector<std::string>());
+    std::map<std::string, std::string> map;
+    map.insert(std::make_pair("127.0.0.1:17528", ""));
+    leader.AddReplicateNode(map);
     sleep(2);
 
     std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>(
@@ -318,7 +318,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     std::string folder = "/tmp/" + GenRand() + "/";
     std::atomic<bool> follower(false);
     LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
-    bool ok = leader.Init(std::vector<std::string>());
+    bool ok = leader.Init();
     ASSERT_TRUE(ok);
     ::rtidb::api::LogEntry entry;
     entry.set_pk("test_pk");
@@ -336,12 +336,12 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     ok = leader.AppendEntry(entry);
     ASSERT_TRUE(ok);
     leader.Notify();
-    std::vector<std::string> vec;
-    vec.push_back("127.0.0.1:18528");
-    leader.AddReplicateNode(vec, std::vector<std::string>());
-    vec.clear();
-    vec.push_back("127.0.0.1:18529");
-    leader.AddReplicateNode(vec, std::vector<std::string>(), 2);
+    std::map<std::string, std::string> map;
+    map.insert(std::make_pair("127.0.0.1:18528", ""));
+    leader.AddReplicateNode(map);
+    map.clear();
+    map.insert(std::make_pair("127.0.0.1:18529", ""));
+    leader.AddReplicateNode(map, 2);
     sleep(2);
 
     std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>(
@@ -496,7 +496,7 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
     std::string folder = "/tmp/" + GenRand() + "/";
     std::atomic<bool> follower(false);
     LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
-    bool ok = leader.Init(std::vector<std::string>());
+    bool ok = leader.Init();
     ASSERT_TRUE(ok);
     ::rtidb::api::LogEntry entry;
     entry.set_pk("test_pk");
@@ -514,12 +514,12 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
     ok = leader.AppendEntry(entry);
     ASSERT_TRUE(ok);
     leader.Notify();
-    std::vector<std::string> vec;
-    vec.push_back("127.0.0.1:18528");
-    leader.AddReplicateNode(vec, std::vector<std::string>());
-    vec.clear();
-    vec.push_back("127.0.0.1:18529");
-    leader.AddReplicateNode(vec, std::vector<std::string>(), 2);
+    std::map<std::string, std::string> map;
+    map.insert(std::make_pair("127.0.0.1:18528", ""));
+    leader.AddReplicateNode(map);
+    map.clear();
+    map.insert(std::make_pair("127.0.0.1:18529", ""));
+    leader.AddReplicateNode(map, 2);
     sleep(2);
 
     std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>(
