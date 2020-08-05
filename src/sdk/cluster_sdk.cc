@@ -262,7 +262,7 @@ std::shared_ptr<::rtidb::client::TabletClient> ClusterSDK::PickOneTablet() {
 
     if (alive_tablets_.empty()) {
         LOG(WARNING) << "no alive tablets exist!";
-        return false;
+        return std::shared_ptr<::rtidb::client::TabletClient>();
     }
     auto ait = alive_tablets_.begin();
     if (ait != alive_tablets_.end()) {
