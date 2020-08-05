@@ -15,6 +15,11 @@ message KvList {
     repeated KvPair pairs = 2;
 }
 
+message VersionPair {
+    optional int32 id = 1;
+    optional int32 field_count = 2;
+}
+
 message ColumnDesc {
     required string name = 1;
     optional string type = 2;
@@ -32,7 +37,7 @@ message ColumnKey {
     repeated string col_name = 2;
     repeated string ts_name = 3;
     optional rtidb.type.IndexType index_type = 4;
-    optional uint32 flag = 5 [default=0];
+    optional uint32 flag = 5 [default=0]; // 0 mean index exist, 1 mean index has been deleted
 }
 
 enum StorageMode {

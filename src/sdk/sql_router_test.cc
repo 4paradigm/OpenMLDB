@@ -523,7 +523,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_2) {
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
-    std::string name = "test" + GenRand();
+      std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
     bool ok = router->CreateDB(db, &status);

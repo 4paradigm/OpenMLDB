@@ -91,8 +91,7 @@ TEST_F(FileUtilTest, GetDirSizeRecur) {
     lstat("/tmp/gtest/testsize/test/", &stat_buf);
     uint64_t size = 0;
     GetDirSizeRecur(std::string("/tmp/gtest/testsize"), size);
-    ASSERT_EQ(size,
-              static_cast<size_t>(2000 + 1000 + 5000 + 100 + stat_buf.st_size));
+    ASSERT_EQ(size, static_cast<size_t>(2000 + 1000 + 5000 + 100 + stat_buf.st_size));
     RemoveDirRecursive("/tmp/gtest");
 }
 

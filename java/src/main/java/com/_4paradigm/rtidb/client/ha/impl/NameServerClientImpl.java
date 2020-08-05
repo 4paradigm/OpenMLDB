@@ -3,14 +3,13 @@ package com._4paradigm.rtidb.client.ha.impl;
 import com._4paradigm.rtidb.client.NameServerClient;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.schema.*;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
-import com._4paradigm.rtidb.client.schema.ColumnType;
-import com._4paradigm.rtidb.client.schema.IndexDef;
-import com._4paradigm.rtidb.client.schema.TableDesc;
 import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.client.type.IndexType;
 import com._4paradigm.rtidb.client.type.TableType;
 import com._4paradigm.rtidb.common.Common;
+import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.ns.NS.*;
 import com._4paradigm.rtidb.type.Type;
 import io.brpc.client.*;
@@ -327,8 +326,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }
         Common.ColumnDesc columnDesc = Common.ColumnDesc.newBuilder()
                 .setName(columnName)
-                .setType(columnType)
-                .build();
+                .setType(columnType).setDataType(TYPE_MAPING.get(columnType)).build();
         AddTableFieldRequest request = AddTableFieldRequest.newBuilder()
                 .setName(tableName)
                 .setColumnDesc(columnDesc)
@@ -338,6 +336,42 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             return true;
         } else if (response != null) {
             logger.warn("fail to add table field for error {}", response.getMsg());
+        }
+        return false;
+    }
+
+    @Override
+    public boolean addIndex(String tableName, String indexName, List<String> tss, Map<String, String> cols) {
+        Common.ColumnKey.Builder keyBuilder = Common.ColumnKey.newBuilder();
+        keyBuilder.setIndexName(indexName);
+        for (String ts : tss) {
+            keyBuilder.addTsName(ts);
+        }
+        AddIndexRequest.Builder builder = AddIndexRequest.newBuilder();
+        builder.setName(tableName);
+        for (String col : cols.keySet()) {
+            keyBuilder.addColName(col);
+            String type = cols.get(col);
+            if (type == null) {
+                continue;
+            }
+            try {
+                ColumnType.valueFrom(type);
+            } catch (Exception e) {
+                logger.warn(e.getMessage());
+                return false;
+            }
+            Common.ColumnDesc.Builder colBuilder = Common.ColumnDesc.newBuilder();
+            colBuilder.setName(col).setType(type).setDataType(TYPE_MAPING.get(type));
+            builder.addCols(colBuilder);
+        }
+        builder.setColumnKey(keyBuilder.build());
+        AddIndexRequest request = builder.build();
+        GeneralResponse response = ns.addIndex(request);
+        if (response != null && response.getCode() == 0) {
+            return true;
+        } else if (response != null) {
+            logger.warn("fail to add table index for error {}", response.getMsg());
         }
         return false;
     }
