@@ -53,14 +53,6 @@ bool Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
 }
 bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
                                     PlanNode **plan_tree, Status &status) {
-    //    if (nullptr == root->GetTableRefList() ||
-    //        root->GetTableRefList()->GetList().empty()) {
-    //        status.msg =
-    //            "can not create select plan node with null or empty table "
-    //            "references";
-    //        status.code = common::kSQLError;
-    //        return false;
-    //    }
 
     const node::NodePointVector &table_ref_list =
         nullptr == root->GetTableRefList() ? std::vector<SQLNode *>()
