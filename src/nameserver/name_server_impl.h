@@ -58,6 +58,10 @@ struct TabletInfo {
     std::shared_ptr<TabletClient> client_;
     // the date create
     uint64_t ctime_;
+
+    bool Health() {
+        return state_ == ::rtidb::api::TabletState::kTabletHealthy;
+    }
 };
 // oss info
 struct BlobServerInfo {
@@ -797,6 +801,7 @@ class NameServerImpl : public NameServer {
     int CreateAddIndexOP(const std::string& name, const std::string& db,
                          uint32_t pid,
                          const ::rtidb::common::ColumnKey& column_key,
+                         const std::vector<rtidb::common::ColumnDesc>& new_cols,
                          uint32_t idx);
 
     int CreateAddIndexOPTask(std::shared_ptr<OPData> op_data);
@@ -836,6 +841,11 @@ class NameServerImpl : public NameServer {
 
     // get tablet info
     std::shared_ptr<TabletInfo> GetTabletInfo(const std::string& endpoint);
+
+    std::shared_ptr<TabletInfo> GetTabletInfoWithoutLock(const std::string& endpoint);
+
+    std::shared_ptr<TabletInfo> GetHealthTabletInfoNoLock(const std::string& endpoint);
+
     std::shared_ptr<OPData> FindRunningOP(uint64_t op_id);
 
     // update ttl for partition
@@ -898,9 +908,7 @@ class NameServerImpl : public NameServer {
         const std::shared_ptr<::rtidb::nameserver::TableInfo>&
             table_info);  // NOLINT
 
-    bool UpdateZkTableNodeWithoutNotify(
-        const std::shared_ptr<::rtidb::nameserver::TableInfo>&
-            table_info);  // NOLINT
+    bool UpdateZkTableNodeWithoutNotify(const TableInfo* table_info);
 
     void ShowDbTable(
         const std::map<std::string, std::shared_ptr<TableInfo>>& table_infos,
@@ -913,18 +921,17 @@ class NameServerImpl : public NameServer {
         const std::vector<uint32_t>& table_tid_vec,
         std::vector<::rtidb::nameserver::TableInfo>* local_table_info_vec);
 
+    bool AddFieldToTablet(const std::vector<rtidb::common::ColumnDesc>& cols,
+                          std::shared_ptr<TableInfo> table_info,
+                          rtidb::common::VersionPair* new_pair);
+
  private:
     std::mutex mu_;
     Tablets tablets_;
     BlobServers blob_servers_;
-    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>
-        table_info_;
-    std::map<
-        std::string,
-        std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>>
-        db_table_info_;
-    std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>>
-        nsc_;
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
+    std::map< std::string, std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>> db_table_info_;
+    std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
     ZoneInfo zone_info_;
     ZkClient* zk_client_;
     DistLock* dist_lock_;
@@ -956,8 +963,7 @@ class NameServerImpl : public NameServer {
     ::rtidb::base::Random rand_;
     uint64_t session_term_;
     std::atomic<uint64_t> task_rpc_version_;
-    std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>>
-        task_map_;
+    std::map<uint64_t, std::list<std::shared_ptr<::rtidb::api::TaskInfo>>> task_map_;
     std::set<std::string> databases_;
     std::string zk_root_path_;
     std::string endpoint_;

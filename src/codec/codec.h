@@ -52,6 +52,8 @@ class RowProject {
     bool Project(const int8_t* row_ptr, uint32_t row_size, int8_t** out_ptr,
                  uint32_t* out_size);
 
+    uint32_t GetMaxIdx() { return max_idx_; }
+
  private:
     const Schema& schema_;
     const ProjectList& plist_;
@@ -59,6 +61,7 @@ class RowProject {
     // TODO(wangtaize) share the init overhead
     RowBuilder* row_builder_;
     RowView* row_view_;
+    uint32_t max_idx_;
 };
 
 class RowBuilder {
@@ -139,8 +142,7 @@ class RowView {
     int32_t GetFloat(uint32_t idx, float* val);
     int32_t GetDouble(uint32_t idx, double* val);
     int32_t GetString(uint32_t idx, char** val, uint32_t* length);
-    int32_t GetDate(uint32_t idx, uint32_t* year, uint32_t* month,
-                    uint32_t* day);
+    int32_t GetDate(uint32_t idx, uint32_t* year, uint32_t* month, uint32_t* day);
     int32_t GetDate(uint32_t idx, int32_t* date);
     bool IsNULL(uint32_t idx) { return IsNULL(row_, idx); }
     inline bool IsNULL(const int8_t* row, uint32_t idx) {

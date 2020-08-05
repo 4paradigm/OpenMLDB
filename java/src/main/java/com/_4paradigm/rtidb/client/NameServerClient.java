@@ -4,6 +4,7 @@ import com._4paradigm.rtidb.client.schema.TableDesc;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 
 import java.util.List;
+import java.util.Map;
 
 public interface NameServerClient {
 
@@ -16,4 +17,5 @@ public interface NameServerClient {
     List<String> showTablet();
 
     boolean addTableField(String tableName, String columnName, String columnType);
+    boolean addIndex(String tableName, String indexName, List<String> tss, Map<String, String> cols);
 }

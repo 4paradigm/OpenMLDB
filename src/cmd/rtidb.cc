@@ -635,8 +635,7 @@ void PutRelational(
         return;
     }
     std::string value;
-    ::rtidb::base::ResultMsg rm =
-        ::rtidb::codec::RowCodec::EncodeRow(map, schema, value);
+    ::rtidb::base::ResultMsg rm = ::rtidb::codec::RowCodec::EncodeRow(map, schema, 1, value);
     if (rm.code < 0) {
         printf("encode error, msg: %s\n", rm.msg.c_str());
         return;
@@ -1071,24 +1070,47 @@ void HandleNSClientAddIndex(const std::vector<std::string>& parts,
     }
     ::rtidb::common::ColumnKey column_key;
     column_key.set_index_name(parts[2]);
+    std::vector<rtidb::common::ColumnDesc> cols;
     if (parts.size() > 3) {
         std::vector<std::string> col_vec;
         ::rtidb::base::SplitString(parts[3], ",", col_vec);
         for (const auto& col_name : col_vec) {
-            column_key.add_col_name(col_name);
-        }
-        if (parts.size() > 4) {
-            std::vector<std::string> ts_vec;
-            ::rtidb::base::SplitString(parts[4], ",", ts_vec);
-            for (const auto& ts_name : ts_vec) {
-                column_key.add_ts_name(ts_name);
+            std::vector<std::string> type_pair;
+            rtidb::base::SplitString(col_name, ":", type_pair);
+            if (type_pair.size() > 1) {
+                column_key.add_col_name(type_pair[0]);
+                rtidb::common::ColumnDesc col_desc;
+                col_desc.set_name(type_pair[0]);
+                auto it = rtidb::codec::DATA_TYPE_MAP.find(type_pair[1]);
+                if (it == rtidb::codec::DATA_TYPE_MAP.end()) {
+                    std::cerr << col_name << " type " << type_pair[0] << " invalid";
+                    return;
+                }
+                rtidb::type::DataType type = it->second;
+                col_desc.set_type(type_pair[1]);
+                col_desc.set_data_type(type);
+                cols.push_back(std::move(col_desc));
+            } else {
+                column_key.add_col_name(col_name);
             }
         }
     } else {
         column_key.add_col_name(parts[2]);
     }
+    if (parts.size() > 4) {
+        std::vector<std::string> ts_vec;
+        ::rtidb::base::SplitString(parts[4], ",", ts_vec);
+        for (const auto& ts_name : ts_vec) {
+            column_key.add_ts_name(ts_name);
+        }
+    }
     std::string msg;
-    bool ret = client->AddIndex(parts[1], column_key, msg);
+    bool ret = false;
+    if (cols.empty()) {
+        ret = client->AddIndex(parts[1], column_key, nullptr, msg);
+    } else {
+        ret = client->AddIndex(parts[1], column_key, &cols, msg);
+    }
     if (!ret) {
         std::cout << "failed to addindex. error msg: " << msg << std::endl;
         return;
@@ -1673,8 +1695,8 @@ void HandleNSUpdate(const std::vector<std::string>& parts,
     ::rtidb::codec::SchemaCodec::GetSchemaData(
         value_columns_map, tables[0].column_desc_v1(), new_value_schema);
     std::string value;
-    ::rtidb::base::ResultMsg value_rm = ::rtidb::codec::RowCodec::EncodeRow(
-        value_columns_map, new_value_schema, value);
+    ::rtidb::base::ResultMsg value_rm = ::rtidb::codec::RowCodec::EncodeRow(value_columns_map,
+                                                                            new_value_schema, 1, value);
     if (value_rm.code < 0) {
         printf("encode error, msg: %s\n", value_rm.msg.c_str());
         return;
@@ -2618,8 +2640,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
         return;
     }
     uint32_t tid = tables[0].tid();
-    if (tables[0].has_table_type() &&
-        tables[0].table_type() == rtidb::type::kRelational) {
+    if (tables[0].has_table_type() && tables[0].table_type() == rtidb::type::kRelational) {
         Schema schema;
         rtidb::codec::SchemaCodec::ConvertColumnDesc(
             tables[0].column_desc_v1(), schema, tables[0].added_column_desc());

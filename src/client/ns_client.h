@@ -112,6 +112,9 @@ class NsClient {
 
     bool DropTable(const std::string& name, std::string& msg);  // NOLINT
 
+    bool DropTable(const std::string& db, const std::string& name,
+                   std::string& msg);  // NOLINT
+
     bool SyncTable(const std::string& name, const std::string& cluster_alias,
                    uint32_t pid, std::string& msg);  // NOLINT
 
@@ -234,11 +237,14 @@ class NsClient {
                     std::string& msg);  // NOLINT
 
     bool AddIndex(const std::string& table_name,
-                  const ::rtidb::common::ColumnKey& column_key,
+                  const ::rtidb::common::ColumnKey& column_key, std::vector<rtidb::common::ColumnDesc>* cols,
                   std::string& msg);  // NOLINT
 
     bool DeleteIndex(const std::string& table_name, const std::string& idx_name,
                      std::string& msg);  // NOLINT
+
+    bool DeleteIndex(const std::string& db, const std::string& table_name,
+                     const std::string& idx_name, std::string& msg);  // NOLINT
 
  private:
     bool TransformToTableDef(

@@ -122,15 +122,13 @@ bool BaseClient::Init(std::string* msg) {
     zk_table_data_path_ = zk_root_path_ + "/table/table_data";
     RefreshNodeList();
     RefreshTable();
-    bool ok = zk_client_->WatchItem(
-        table_notify_, boost::bind(&BaseClient::DoFresh, this));
+    bool ok = zk_client_->WatchItem(table_notify_, boost::bind(&BaseClient::DoFresh, this));
     if (!ok) {
         zk_client_->CloseZK();
         *msg = "zk watch table notify failed";
         return false;
     }
-    task_thread_pool_.DelayTask(zk_keep_alive_check_,
-                                [this] { CheckZkClient(); });
+    task_thread_pool_.DelayTask(zk_keep_alive_check_, [this] { CheckZkClient(); });
     return true;
 }
 
@@ -267,24 +265,19 @@ void BaseClient::RefreshTable() {
         std::string value;
         std::string table_node = zk_table_data_path_ + "/" + table_name;
         if (!zk_client_->GetNodeValue(table_node, value)) {
-            std::cerr << "get table info failed! name " << table_name
-                      << " table node " << table_node << std::endl;
+            std::cerr << "get table info failed! name " << table_name << " table node " << table_node << std::endl;
             continue;
         }
-        std::shared_ptr<rtidb::nameserver::TableInfo> table_info =
-            std::make_shared<rtidb::nameserver::TableInfo>();
+        std::shared_ptr<rtidb::nameserver::TableInfo> table_info = std::make_shared<rtidb::nameserver::TableInfo>();
         if (!table_info->ParseFromString(value)) {
-            std::cerr << "parse table info failed! name " << table_name
-                      << std::endl;
+            std::cerr << "parse table info failed! name " << table_name << std::endl;
             continue;
         }
         rtidb::type::TableType tb = table_info->table_type();
-        if (tb != rtidb::type::TableType::kRelational &&
-            tb != rtidb::type::TableType::kObjectStore) {
+        if (tb != rtidb::type::TableType::kRelational && tb != rtidb::type::TableType::kObjectStore) {
             continue;
         }
-        std::shared_ptr<TableHandler> handler =
-            std::make_shared<TableHandler>();
+        std::shared_ptr<TableHandler> handler = std::make_shared<TableHandler>();
         handler->partition.resize(table_info->table_partition_size());
         int id = 0;
         for (const auto& part : table_info->table_partition()) {
@@ -298,8 +291,7 @@ void BaseClient::RefreshTable() {
             id++;
         }
         if (table_info->has_blob_info()) {
-            handler->blob_partition.resize(
-                table_info->blob_info().blob_partition_size());
+            handler->blob_partition.resize(table_info->blob_info().blob_partition_size());
             int id = 0;
             for (const auto& part : table_info->blob_info().blob_partition()) {
                 for (const auto& meta : part.partition_meta()) {
@@ -309,8 +301,7 @@ void BaseClient::RefreshTable() {
                     if (meta.is_leader()) {
                         handler->blob_partition[id].leader = meta.endpoint();
                     } else {
-                        handler->blob_partition[id].follower.push_back(
-                            meta.endpoint());
+                        handler->blob_partition[id].follower.push_back(meta.endpoint());
                     }
                 }
                 id++;
@@ -321,21 +312,19 @@ void BaseClient::RefreshTable() {
             new_tables.insert(std::make_pair(table_name, handler));
             continue;
         }
-        for (int i = 0; i < table_info->column_key_size(); i++) {
-            if (table_info->column_key(i).has_index_type() &&
-                table_info->column_key(i).index_type() ==
-                    ::rtidb::type::IndexType::kAutoGen) {
-                handler->auto_gen_pk = table_info->column_key(i).col_name(0);
-                break;
+        for (const auto& key : table_info->column_key()) {
+            if (key.has_flag() && key.flag() == 0) {
+                continue;
+            }
+            if (key.has_index_type() && key.index_type() == rtidb::type::IndexType::kAutoGen) {
+                handler->auto_gen_pk = key.col_name(0);
             }
         }
-        std::shared_ptr<google::protobuf::RepeatedPtrField<
-            rtidb::common::ColumnDesc>> columns =
-            std::make_shared<google::protobuf::RepeatedPtrField<
-                rtidb::common::ColumnDesc>>();
+
+        std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>> columns =
+            std::make_shared<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>();
         int code = rtidb::codec::SchemaCodec::ConvertColumnDesc(
-            table_info->column_desc_v1(), *columns,
-            table_info->added_column_desc());
+            table_info->column_desc_v1(), *columns, table_info->added_column_desc());
         if (code != 0) {
             continue;
         }
@@ -353,9 +342,30 @@ void BaseClient::RefreshTable() {
         for (const auto& col_desc : *columns) {
             map.insert(std::make_pair(col_desc.name(), col_desc.data_type()));
         }
+        std::map<uint32_t, std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>> versions;
+        handler->last_schema_version = 1;
+        for (const auto ver : table_info->schema_versions()) {
+            int remain_size = ver.field_count() - table_info->column_desc_size();
+            if (remain_size < 0)  {
+                continue;
+            }
+            if (remain_size > table_info->added_column_desc_size()) {
+                continue;
+            }
+            std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>> schema =
+                std::make_shared<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>();
+            schema->CopyFrom(table_info->column_desc_v1());
+            for (int i = 0; i < remain_size; i++) {
+                rtidb::common::ColumnDesc* col = schema->Add();
+                col->CopyFrom(table_info->added_column_desc(i));
+            }
+            versions.insert(std::make_pair(ver.id(), schema));
+            handler->last_schema_version = ver.id();
+        }
         handler->name_type_map = std::move(map);
         handler->table_info = table_info;
         handler->columns = columns;
+        handler->version_schema = versions;
         new_tables.insert(std::make_pair(table_name, handler));
     }
     std::lock_guard<std::mutex> mx(mu_);
@@ -616,8 +626,7 @@ UpdateResult RtidbClient::Update(
                                                new_value_schema);
     std::string data;
     ::rtidb::base::ResultMsg rm =
-        ::rtidb::codec::RowCodec::EncodeRow(value_map,
-                                            new_value_schema, data);
+        ::rtidb::codec::RowCodec::EncodeRow(value_map, new_value_schema, th->last_schema_version, data);
     if (rm.code < 0) {
         result.SetError(rm.code, "encode error, msg: " + rm.msg);
         return result;
@@ -644,10 +653,8 @@ UpdateResult RtidbClient::Update(
     return result;
 }
 
-PutResult RtidbClient::Put(
-    const std::string& name,
-    const std::map<std::string, std::string>& value,
-    const WriteOption& wo) {
+PutResult RtidbClient::Put(const std::string& name, const std::map<std::string, std::string>& value,
+                           const WriteOption& wo) {
     PutResult result;
 
     std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
@@ -663,16 +670,15 @@ PutResult RtidbClient::Put(
             return result;
         } else {
             val = value;
-            val.insert(
-                std::make_pair(th->auto_gen_pk, ::rtidb::codec::DEFAULT_LONG));
+            val.insert(std::make_pair(th->auto_gen_pk, ::rtidb::codec::DEFAULT_LONG));
         }
     }
     std::string buffer;
     rtidb::base::ResultMsg rm;
     if (!th->auto_gen_pk.empty()) {
-        rm = ::rtidb::codec::RowCodec::EncodeRow(val, *(th->columns), buffer);
+        rm = ::rtidb::codec::RowCodec::EncodeRow(val, *(th->columns), th->last_schema_version, buffer);
     } else {
-        rm = ::rtidb::codec::RowCodec::EncodeRow(value, *(th->columns), buffer);
+        rm = ::rtidb::codec::RowCodec::EncodeRow(value, *(th->columns), th->last_schema_version, buffer);
     }
     if (rm.code != 0) {
         result.SetError(rm.code, "encode error, msg: " + rm.msg);
@@ -689,8 +695,7 @@ PutResult RtidbClient::Put(
     pb_wo.set_update_if_exist(wo.update_if_exist);
     int64_t auto_key = 0;
     std::vector<int64_t> blob_keys;
-    bool ok = tablet->Put(th->table_info->tid(), 0, buffer, pb_wo, &auto_key,
-            &blob_keys, &err_msg);
+    bool ok = tablet->Put(th->table_info->tid(), 0, buffer, pb_wo, &auto_key, &blob_keys, &err_msg);
     if (!ok) {
         result.SetError(-4, "put error, msg: " + err_msg);
         return result;
@@ -707,8 +712,7 @@ PutResult RtidbClient::Put(
     return result;
 }
 
-bool RtidbClient::DeleteBlobs(const std::string& name,
-                              const std::vector<int64_t>& keys) {
+bool RtidbClient::DeleteBlobs(const std::string& name, const std::vector<int64_t>& keys) {
     std::shared_ptr<TableHandler> th = client_->GetTableHandler(name);
     if (th == nullptr) {
         return false;

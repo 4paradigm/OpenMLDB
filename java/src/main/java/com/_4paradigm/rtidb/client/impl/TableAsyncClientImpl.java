@@ -5,10 +5,7 @@ import com._4paradigm.rtidb.client.ha.PartitionHandler;
 import com._4paradigm.rtidb.client.ha.RTIDBClient;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
 import com._4paradigm.rtidb.client.ha.TableHandler;
-import com._4paradigm.rtidb.client.schema.ColumnDesc;
-import com._4paradigm.rtidb.client.schema.ProjectionInfo;
-import com._4paradigm.rtidb.client.schema.RowBuilder;
-import com._4paradigm.rtidb.client.schema.RowCodec;
+import com._4paradigm.rtidb.client.schema.*;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
 import com._4paradigm.rtidb.tablet.Tablet.GetResponse;
@@ -21,6 +18,7 @@ import io.brpc.client.RpcCallback;
 import rtidb.api.TabletServer;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.*;
 import java.util.concurrent.Future;
 
@@ -114,7 +112,7 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         if (row.length == tableHandler.getSchema().size()) {
             switch (tableHandler.getFormatVersion()) {
                 case 1:
-                    buffer = RowBuilder.encode(row, tableHandler.getSchema());
+                    buffer = RowBuilder.encode(row, tableHandler.getSchema(), 1);
                     break;
                 default:
                     buffer = RowCodec.encode(row, tableHandler.getSchema());
@@ -124,11 +122,25 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             if (columnDescs == null) {
                 throw new TabletException("no schema for column count " + row.length);
             }
-            int modifyTimes = row.length - tableHandler.getSchema().size();
-            if (row.length > tableHandler.getSchema().size() + tableHandler.getSchemaMap().size()) {
-                modifyTimes = tableHandler.getSchemaMap().size();
+            switch (tableHandler.getFormatVersion()) {
+                case 1:
+                    if (tableHandler.getTableInfo().getAddedColumnDescCount() != 0) {
+                        Integer ver = tableHandler.getVerByRowLength(row.length);
+                        if (ver == null) {
+                            throw new TabletException("no version for column count " + row.length);
+                        }
+                        buffer = RowBuilder.encode(row, columnDescs, ver);
+                    } else {
+                        buffer = RowBuilder.encode(row, columnDescs, 1);
+                    }
+                    break;
+                default:
+                    int modifyTimes = row.length - tableHandler.getSchema().size();
+                    if (row.length > tableHandler.getSchema().size() + tableHandler.getSchemaMap().size()) {
+                        modifyTimes = tableHandler.getSchemaMap().size();
+                    }
+                    buffer = RowCodec.encode(row, columnDescs, modifyTimes);
             }
-            buffer = RowCodec.encode(row, columnDescs, modifyTimes);
         }
         return put(tid, pid, null, time, dimList, buffer, tableHandler);
     }
@@ -183,9 +195,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
         Map<Integer, List<Tablet.Dimension>> mapping = TableClientCommon.fillPartitionTabletDimension(row, th, client.getConfig().isHandleNull());
         ByteBuffer buffer = null;
         if (row.length == th.getSchema().size()) {
-            switch (th.getTableInfo().getFormatVersion()) {
+            switch (th.getFormatVersion()) {
                 case 1:
-                    buffer = RowBuilder.encode(row, th.getSchema());
+                    buffer = RowBuilder.encode(row, th.getSchema(), 1);
                     break;
                 default:
                     buffer = RowCodec.encode(row, th.getSchema());
@@ -195,11 +207,25 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             if (columnDescs == null) {
                 throw new TabletException("no schema for column count " + row.length);
             }
-            int modifyTimes = row.length - th.getSchema().size();
-            if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
-                modifyTimes = th.getSchemaMap().size();
+            switch (th.getFormatVersion()) {
+                case 1:
+                    if (th.getTableInfo().getAddedColumnDescCount() != 0) {
+                        Integer ver = th.getVerByRowLength(row.length);
+                        if (ver == null) {
+                            throw new TabletException("no version for column count " + row.length);
+                        }
+                        buffer = RowBuilder.encode(row, columnDescs, ver);
+                    } else {
+                        buffer = RowBuilder.encode(row, columnDescs, 1);
+                    }
+                    break;
+                default:
+                    int modifyTimes = row.length - th.getSchema().size();
+                    if (row.length > th.getSchema().size() + th.getSchemaMap().size()) {
+                        modifyTimes = th.getSchemaMap().size();
+                    }
+                    buffer = RowCodec.encode(row, columnDescs, modifyTimes);
             }
-            buffer = RowCodec.encode(row, columnDescs, modifyTimes);
         }
         List<Future<PutResponse>> pl = new ArrayList<Future<PutResponse>>();
         Iterator<Map.Entry<Integer, List<Tablet.Dimension>>> it = mapping.entrySet().iterator();

@@ -40,7 +40,6 @@ struct ClusterOptions {
     int32_t session_timeout = 2000;
 };
 
-
 class ClusterSDK {
  public:
     explicit ClusterSDK(const ClusterOptions& options);
@@ -56,9 +55,9 @@ class ClusterSDK {
     }
 
     inline std::shared_ptr<::fesql::vm::Catalog> GetCatalog() {
+        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         return catalog_;
     }
-
     bool GetTabletByTable(
         const std::string& db, const std::string& tname,
         std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets);

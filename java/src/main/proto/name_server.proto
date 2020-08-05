@@ -110,6 +110,7 @@ message TableInfo {
     optional BlobInfo blob_info = 19;
     optional string db = 20 [default = ""];
     repeated string partition_key = 21;
+    repeated common.VersionPair schema_versions = 22;
 }
 
 message CreateTableRequest {
@@ -421,12 +422,14 @@ message AddIndexMeta {
     optional rtidb.common.ColumnKey column_key = 3;
     optional uint32 idx = 4;
     optional string db = 5 [default = ""];
+    optional bool skip_data = 6 [default = false];
 }
 
 message AddIndexRequest {
     optional string name = 1;
     optional rtidb.common.ColumnKey column_key = 2;
     optional string db = 3 [default = ""];
+    repeated rtidb.common.ColumnDesc cols = 4;
 }
 
 message DeleteIndexRequest {

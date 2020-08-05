@@ -5,6 +5,7 @@ import com._4paradigm.fesql_auto_test.common.FesqlTest;
 import com._4paradigm.fesql_auto_test.entity.FesqlDataProvider;
 import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
 import lombok.extern.slf4j.Slf4j;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -24,21 +25,37 @@ public class WindowTest extends FesqlTest {
         return dp.getCases().toArray();
     }
 
-    @Test(enabled = false, dataProvider = "testRowRangeData")
+    @Test(dataProvider = "testRowRangeData")
     public void testRowRange(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase).run();
+            ExecutorFactory.build(executor, testCase).run();
+    }
+
+    @Test(dataProvider = "testRowRangeData")
+    public void testRowRangeRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, true).run();
     }
 
     @DataProvider
     public Object[] testRowData() throws FileNotFoundException {
-        FesqlDataProvider dp = FesqlDataProvider
-                .dataProviderGenerator("/integration/v1/test_window_row.yaml");
-        return dp.getCases().toArray();
+        try {
+            FesqlDataProvider dp = FesqlDataProvider
+                    .dataProviderGenerator("/integration/v1/test_window_row.yaml");
+            return dp.getCases().toArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail("fail to load sql cases");
+        }
+        return null;
     }
 
-    @Test(enabled = false, dataProvider = "testRowData")
+    @Test(dataProvider = "testRowData")
     public void testRow(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase).run();
+    }
+
+    @Test(dataProvider = "testRowData")
+    public void testRowRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, true).run();
     }
 
     @DataProvider
@@ -48,8 +65,13 @@ public class WindowTest extends FesqlTest {
         return dp.getCases().toArray();
     }
 
-    @Test(enabled = false, dataProvider = "testWindowUnionData")
+    @Test(dataProvider = "testWindowUnionData")
     public void testWindowUnion(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase).run();
+    }
+
+    @Test(dataProvider = "testWindowUnionData")
+    public void testWindowUnionRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, true).run();
     }
 }
