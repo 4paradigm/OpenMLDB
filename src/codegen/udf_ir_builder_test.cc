@@ -82,15 +82,12 @@ void CheckUDF(const std::string &name, T expect, Args... args) {
 }
 
 template <class T, class... Args>
-void CheckFloatUDF(const std::string &name, T expect, Args... args) {
+void CheckUDFFail(const std::string &name, T expect, Args... args) {
     auto function = udf::UDFFunctionBuilder(name)
                         .args<Args...>()
                         .template returns<T>()
                         .build();
-    ASSERT_TRUE(function.valid());
-    auto result = function(args...);
-    LOG(INFO) << expect << "  " << result;
-    ASSERT_FLOAT_EQ(expect, result);
+    ASSERT_FALSE(function.valid());
 }
 
 TEST_F(UDFIRBuilderTest, dayofmonth_date_udf_test) {
@@ -310,8 +307,6 @@ TEST_F(UDFIRBuilderTest, min_timestamp_udf_test) {
 TEST_F(UDFIRBuilderTest, log_udf_test) {
     CheckUDF<float, float>("log", log(2.0f), 2.0f);
     CheckUDF<double, double>("log", log(2.0), 2.0);
-    CheckUDF<double, double, int16_t>("log", 2, 10, 100);
-    CheckUDF<double, double, int32_t>("log", 16, 2, 65536);
     CheckUDF<double, int32_t>("log2", log2(65536), 65536);
     CheckUDF<double, double>("log2", log2(2.0), 2.0);
     CheckUDF<double, int32_t>("log10", log10(65536), 65536);
@@ -385,6 +380,169 @@ TEST_F(UDFIRBuilderTest, ceil_udf_test) {
     CheckUDF<float, float>("ceil", 2, 1.23);
     CheckUDF<double, double>("ceil", -1, -1.23);
     CheckUDF<double, double>("ceil", 0, 0);
+TEST_F(UDFIRBuilderTest, substring_pos_len_udf_test) {
+    CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
+        "substring", codec::StringRef("12345"), codec::StringRef("1234567890"),
+        1, 5);
+
+    CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
+        "substring", codec::StringRef("23456"), codec::StringRef("1234567890"),
+        2, 5);
+
+    CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
+        "substring", codec::StringRef("23456"), codec::StringRef("1234567890"),
+        -9, 5);
+
+    CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
+        "substring", codec::StringRef("90"), codec::StringRef("1234567890"), -2,
+        5);
+
+    CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
+        "substring", codec::StringRef(""), codec::StringRef("1234567890"), 2,
+        0);
+
+    CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
+        "substring", codec::StringRef(""), codec::StringRef("1234567890"), 2,
+        -1);
+}
+
+TEST_F(UDFIRBuilderTest, substring_pos_udf_test) {
+    CheckUDF<codec::StringRef, codec::StringRef, int32_t>(
+        "substring", codec::StringRef("1234567890"),
+        codec::StringRef("1234567890"), 1);
+
+    CheckUDF<codec::StringRef, codec::StringRef, int32_t>(
+        "substring", codec::StringRef("234567890"),
+        codec::StringRef("1234567890"), 2);
+
+    CheckUDF<codec::StringRef, codec::StringRef, int32_t>(
+        "substring", codec::StringRef("234567890"),
+        codec::StringRef("1234567890"), -9);
+
+    CheckUDF<codec::StringRef, codec::StringRef, int32_t>(
+        "substring", codec::StringRef("90"), codec::StringRef("1234567890"),
+        -2);
+
+    CheckUDF<codec::StringRef, codec::StringRef, int32_t>(
+        "substring", codec::StringRef(""), codec::StringRef("1234567890"), 12);
+    CheckUDF<codec::StringRef, codec::StringRef, int32_t>(
+        "substring", codec::StringRef(""), codec::StringRef("1234567890"), -12);
+}
+
+TEST_F(UDFIRBuilderTest, concat_str_udf_test) {
+    //    concat("12345") == "12345"
+    CheckUDF<codec::StringRef, codec::StringRef>(
+        "concat", codec::StringRef("12345"),
+        codec::StringRef(std::string("12345")));
+
+    // concat("12345", "67890") == "1234567890"
+    CheckUDF<codec::StringRef, codec::StringRef, codec::StringRef>(
+        "concat", codec::StringRef("1234567890"),
+        codec::StringRef(std::string("12345")), codec::StringRef("67890"));
+
+    // concat("123", "4567890", "abcde") == "1234567890abcde"
+    CheckUDF<codec::StringRef, codec::StringRef, codec::StringRef,
+             codec::StringRef>("concat", codec::StringRef("1234567890abcde"),
+                               codec::StringRef(std::string("123")),
+                               codec::StringRef("4567890"),
+                               codec::StringRef("abcde"));
+
+    // concat("1", "23", "456", "7890", "abc", "de") == "1234567890abcde"
+    CheckUDF<codec::StringRef, codec::StringRef, codec::StringRef,
+             codec::StringRef>("concat", codec::StringRef("1234567890abcde"),
+                               codec::StringRef("1"), codec::StringRef("23"),
+                               codec::StringRef("456"),
+                               codec::StringRef("7890"),
+                               codec::StringRef("abc"), codec::StringRef("de"));
+
+    //    concat() == ""
+    CheckUDFFail<codec::StringRef>("concat", codec::StringRef("no result"));
+}
+TEST_F(UDFIRBuilderTest, concat_anytype_udf_test) {
+    CheckUDF<codec::StringRef, codec::StringRef, int32_t>(
+        "concat", codec::StringRef("1234567890"), codec::StringRef("12345"),
+        67890);
+
+    CheckUDF<codec::StringRef, float, int32_t>(
+        "concat", codec::StringRef("1234.567890"), 1234.5f, 67890);
+
+    CheckUDF<codec::StringRef, codec::StringRef, int16_t, int32_t, int64_t,
+             float, double, codec::Timestamp, codec::Date>(
+        "concat", codec::StringRef("12345.67.82020-05-22 10:43:402020-06-23"),
+        codec::StringRef("1"), static_cast<int16_t>(2), 3, 4L, 5.6f, 7.8,
+        codec::Timestamp(1590115420000L), codec::Date(2020, 06, 23));
+}
+
+TEST_F(UDFIRBuilderTest, concat_ws_anytype_udf_test) {
+    // concat on string "--"
+    CheckUDF<codec::StringRef, codec::StringRef, codec::StringRef, int32_t>(
+        "concat_ws", codec::StringRef("12345--67890"), codec::StringRef("--"),
+        codec::StringRef("12345"), 67890);
+
+    // concat on int32
+    CheckUDF<codec::StringRef, int32_t, float, int32_t>(
+        "concat_ws", codec::StringRef("1234.5067890"), 0, 1234.5f, 67890);
+
+    // concat on string "#"
+    CheckUDF<codec::StringRef, codec::StringRef, codec::StringRef, int16_t,
+             int32_t, int64_t, float, double, codec::Timestamp, codec::Date>(
+        "concat_ws",
+
+        codec::StringRef("1#2#3#4#5.6#7.8#2020-05-22 10:43:40#2020-06-23"),
+        codec::StringRef("#"), codec::StringRef("1"), static_cast<int16_t>(2),
+        3, 4L, 5.6f, 7.8, codec::Timestamp(1590115420000L),
+        codec::Date(2020, 06, 23));
+}
+
+TEST_F(UDFIRBuilderTest, to_string_test) {
+    CheckUDF<codec::StringRef, int32_t>("string", codec::StringRef("67890"),
+                                        67890);
+    CheckUDF<codec::StringRef, int16_t>("string", codec::StringRef("128"),
+                                        static_cast<int16_t>(128));
+    CheckUDF<codec::StringRef, float>("string", codec::StringRef("1.234"),
+                                      1.234f);
+    CheckUDF<codec::StringRef, double>("string", codec::StringRef("1.234"),
+                                       1.234);
+
+    CheckUDF<codec::StringRef, int64_t>(
+        "string", codec::StringRef("1234567890"), 1234567890L);
+
+    CheckUDF<codec::StringRef, int64_t>(
+        "string", codec::StringRef("1234567890"), 1234567890L);
+    CheckUDF<codec::StringRef, codec::Timestamp>(
+        "string", codec::StringRef("2020-05-22 10:43:40"),
+        codec::Timestamp(1590115420000L));
+
+    CheckUDF<codec::StringRef, codec::Date>(
+        "string", codec::StringRef("2020-05-22"), codec::Date(2020, 5, 22));
+}
+TEST_F(UDFIRBuilderTest, timestamp_format_test) {
+    CheckUDF<codec::StringRef, codec::Timestamp, codec::StringRef>(
+        "date_format", codec::StringRef("2020-05-22 10:43:40"),
+        codec::Timestamp(1590115420000L),
+        codec::StringRef("%Y-%m-%d %H:%M:%S"));
+
+    CheckUDF<codec::StringRef, codec::Timestamp, codec::StringRef>(
+        "date_format", codec::StringRef("2020-05-22"),
+        codec::Timestamp(1590115420000L), codec::StringRef("%Y-%m-%d"));
+
+    CheckUDF<codec::StringRef, codec::Timestamp, codec::StringRef>(
+        "date_format", codec::StringRef("10:43:40"),
+        codec::Timestamp(1590115420000L), codec::StringRef("%H:%M:%S"));
+}
+
+TEST_F(UDFIRBuilderTest, date_format_test) {
+    CheckUDF<codec::StringRef, codec::Date, codec::StringRef>(
+        "date_format", codec::StringRef("2020-05-22 00:00:00"),
+        codec::Date(2020, 05, 22), codec::StringRef("%Y-%m-%d %H:%M:%S"));
+
+    CheckUDF<codec::StringRef, codec::Date, codec::StringRef>(
+        "date_format", codec::StringRef("2020-05-22"),
+        codec::Date(2020, 05, 22), codec::StringRef("%Y-%m-%d"));
+
+    CheckUDF<codec::StringRef, codec::Date, codec::StringRef>(
+        "date_format", codec::StringRef("00:00:00"), codec::Date(2020, 05, 22),
+        codec::StringRef("%H:%M:%S"));
 }
 
 }  // namespace codegen
