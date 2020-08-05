@@ -308,8 +308,10 @@ bool BatchModeTransformer::TransformProjecPlantOp(
         return false;
     }
     PhysicalOpNode* depend = nullptr;
-    if (!TransformPlanOp(node->GetChildren()[0], &depend, status)) {
-        return false;
+    if (!node->GetChildren().empty() && nullptr != node->GetChildren()[0]) {
+        if (!TransformPlanOp(node->GetChildren()[0], &depend, status)) {
+            return false;
+        }
     }
 
     if (node->project_list_vec_.empty()) {
@@ -862,12 +864,52 @@ bool BatchModeTransformer::AddDefaultPasses() {
     return false;
 }
 
+bool BatchModeTransformer::CreatePhysicalConstProjectNode(
+    node::ProjectListNode* project_list, PhysicalOpNode** output,
+    base::Status& status) {
+    if (nullptr == project_list || nullptr == output) {
+        status.msg = "project list node or output node is null";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    const node::PlanNodeList& projects = project_list->GetProjects();
+    node::PlanNodeList new_projects;
+
+    for (auto iter = projects.cbegin(); iter != projects.cend(); iter++) {
+        auto project_node = dynamic_cast<node::ProjectNode*>(*iter);
+        auto expr = project_node->GetExpression();
+        if (nullptr == expr) {
+            status.msg = "invalid project: expression is null";
+            status.code = common::kPlanError;
+            return false;
+        }
+        if (node::kExprAll == expr->expr_type_) {
+            status.msg = "invalid project: no table used";
+            status.code = common::kPlanError;
+            return false;
+        }
+    }
+    Schema output_schema;
+    ColumnSourceList output_column_sources;
+    std::string fn_name;
+    vm::SchemaSourceList empty_schema_source;
+    if (!GenProjects(empty_schema_source, projects, true, nullptr, fn_name,
+                     &output_schema, &output_column_sources, status)) {
+        return false;
+    }
+    PhysicalOpNode* op = new PhysicalConstProjectNode(fn_name, output_schema,
+                                                      output_column_sources);
+    node_manager_->RegisterNode(op);
+    *output = op;
+    return true;
+}
 bool BatchModeTransformer::CreatePhysicalProjectNode(
     const ProjectType project_type, PhysicalOpNode* node,
     node::ProjectListNode* project_list, PhysicalOpNode** output,
     base::Status& status) {
     if (nullptr == project_list || nullptr == output) {
-        status.msg = "project node or output node is null";
+        status.msg = "project list node or output node is null";
         status.code = common::kPlanError;
         LOG(WARNING) << status.msg;
         return false;
@@ -1003,6 +1045,9 @@ bool BatchModeTransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* node,
     PhysicalOpNode** output, base::Status& status) {
     auto depend = node;
+    if (nullptr == depend) {
+        return CreatePhysicalConstProjectNode(project_list, output, status);
+    }
     switch (depend->output_type_) {
         case kSchemaTypeRow:
             return CreatePhysicalProjectNode(kRowProject, depend, project_list,
@@ -2263,7 +2308,7 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
         LOG(WARNING) << "LeftJoin optimized skip: node is null";
         return false;
     }
-    if (in->producers().empty() ||
+    if (in->producers().empty() || nullptr == in->producers()[0] ||
         kPhysicalOpJoin != in->producers()[0]->type_) {
         return false;
     }
@@ -2597,7 +2642,8 @@ bool SimpleProjectOptimized::Transform(PhysicalOpNode* in,
         case kPhysicalOpSimpleProject: {
             PhysicalSimpleProjectNode* simple_project =
                 dynamic_cast<PhysicalSimpleProjectNode*>(in);
-            if (kPhysicalOpSimpleProject == in->producers()[0]->type_) {
+            if (nullptr != in->producers()[0] &&
+                kPhysicalOpSimpleProject == in->producers()[0]->type_) {
                 auto depend = dynamic_cast<PhysicalSimpleProjectNode*>(
                     in->producers()[0]);
                 ColumnSourceList new_sources;
@@ -2671,7 +2717,7 @@ base::Status ResolveFnAndAttrs::Visit(node::ExprNode* expr,
         auto status = (*output)->InferAttr(&analysis_context_);
         if (!status.isOK()) {
             DLOG(WARNING) << "Fail to infer " << (*output)->GetExprString()
-                         << ": " << status.msg;
+                          << ": " << status.msg;
         }
     }
     cache_.insert(iter, std::make_pair(expr, *output));

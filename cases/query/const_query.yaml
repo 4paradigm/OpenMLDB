@@ -1,0 +1,57 @@
+debugs:
+cases:
+  - id: 0
+    desc: select const number
+    mode: request-unsupport
+    db: db1
+    sql: |
+      select 1 as id, 2 as col1, 3.3 as col2;
+    expect:
+      schema: id:int32, col1:int, col2:double
+      order: id
+      rows:
+        - [1, 2, 3.3]
+  - id: 1
+    desc: select str
+    mode: request-unsupport
+    db: db1
+    sql: |
+      select 1 as id, "hello_world" as col1;
+    expect:
+      schema: id:int32, col1:string
+      order: id
+      rows:
+        - [1, "hello_world"]
+  - id: 2
+    desc: const substr pos len
+    mode: request-unsupport
+    db: db1
+    sql: |
+      select 1 as id, substring("hello_world", 3, 6) as col1;
+    expect:
+      schema: id:int32, col1:string
+      order: id
+      rows:
+        - [1, "llo_wo"]
+  - id: 3
+    desc: const substr pos
+    mode: request-unsupport
+    db: db1
+    sql: |
+      select 1 as id, substring("hello world", 3) as col1;
+    expect:
+      schema: id:int32, col1:string
+      order: id
+      rows:
+        - [1, "llo world"]
+  - id: 4
+    desc: const concat 1
+    mode: request-unsupport
+    db: db1
+    sql: |
+      select 1 as id, concat("hello", "world", "abc") as col1;
+    expect:
+      schema: id:int32, col1:string
+      order: id
+      rows:
+        - [1, "helloworldabc"]

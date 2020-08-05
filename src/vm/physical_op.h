@@ -30,6 +30,7 @@ enum PhysicalOpType {
     kPhysicalOpWindowAgg,
     kPhysicalOpProject,
     kPhysicalOpSimpleProject,
+    kPhysicalOpConstProject,
     kPhysicalOpLimit,
     kPhysicalOpRename,
     kPhysicalOpDistinct,
@@ -58,6 +59,8 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "PROJECT";
         case kPhysicalOpSimpleProject:
             return "SIMPLE_PROJECT";
+        case kPhysicalOpConstProject:
+            return "CONST_PROJECT";
         case kPhysicalOpAggrerate:
             return "AGGRERATE";
         case kPhysicalOpLimit:
@@ -552,7 +555,24 @@ class PhysicalTableProjectNode : public PhysicalProjectNode {
     virtual ~PhysicalTableProjectNode() {}
     static PhysicalTableProjectNode *CastFrom(PhysicalOpNode *node);
 };
-
+class PhysicalConstProjectNode : public PhysicalOpNode {
+ public:
+    PhysicalConstProjectNode(const std::string &fn_name, const Schema &schema,
+                             const ColumnSourceList &sources)
+        : PhysicalOpNode(kPhysicalOpConstProject, true, false),
+          project_({fn_name, nullptr, schema}),
+          sources_(sources) {
+        InitSchema();
+        fn_infos_.push_back(&project_);
+    }
+    virtual ~PhysicalConstProjectNode() {}
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+    bool InitSchema() override;
+    static PhysicalConstProjectNode *CastFrom(PhysicalOpNode *node);
+    const FnInfo &project() const { return project_; }
+    FnInfo project_;
+    const ColumnSourceList sources_;
+};
 class PhysicalSimpleProjectNode : public PhysicalUnaryNode {
  public:
     PhysicalSimpleProjectNode(PhysicalOpNode *node, const Schema &schema,

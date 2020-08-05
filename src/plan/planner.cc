@@ -53,17 +53,9 @@ bool Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
 }
 bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
                                     PlanNode **plan_tree, Status &status) {
-    if (nullptr == root->GetTableRefList() ||
-        root->GetTableRefList()->GetList().empty()) {
-        status.msg =
-            "can not create select plan node with null or empty table "
-            "references";
-        status.code = common::kSQLError;
-        return false;
-    }
-
     const node::NodePointVector &table_ref_list =
-        root->GetTableRefList()->GetList();
+        nullptr == root->GetTableRefList() ? std::vector<SQLNode *>()
+                                           : root->GetTableRefList()->GetList();
     std::vector<node::PlanNode *> relation_nodes;
     for (node::SQLNode *node : table_ref_list) {
         node::PlanNode *table_ref_plan = nullptr;
@@ -91,19 +83,23 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         relation_nodes.push_back(table_ref_plan);
     }
 
+    std::string table_name = "";
+    node::PlanNode *current_node = nullptr;
     // from tables
-    auto iter = relation_nodes.cbegin();
-    node::PlanNode *current_node = *iter;
-    iter++;
-    // cross product if there are multi tables
-    for (; iter != relation_nodes.cend(); iter++) {
-        current_node = node_manager_->MakeJoinNode(
-            current_node, *iter, node::JoinType::kJoinTypeFull, nullptr,
-            nullptr);
-    }
+    if (!relation_nodes.empty()) {
+        auto iter = relation_nodes.cbegin();
+        current_node = *iter;
+        iter++;
+        // cross product if there are multi tables
+        for (; iter != relation_nodes.cend(); iter++) {
+            current_node = node_manager_->MakeJoinNode(
+                current_node, *iter, node::JoinType::kJoinTypeFull, nullptr,
+                nullptr);
+        }
 
-    // TODO(chenjing): 处理子查询
-    std::string table_name = MakeTableName(current_node);
+        // TODO(chenjing): 处理子查询
+        table_name = MakeTableName(current_node);
+    }
     // where condition
     if (nullptr != root->where_clause_ptr_) {
         current_node = node_manager_->MakeFilterPlanNode(
@@ -206,7 +202,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
     std::map<const node::WindowDefNode *, node::ProjectListNode *>
         merged_project_list_map;
     if (!MergeProjectMap(project_list_map, &merged_project_list_map, status)) {
-        LOG(WARNING) << "Fail t merge window project";
+        LOG(WARNING) << "Fail to merge window project";
         return false;
     }
     // add MergeNode if multi ProjectionLists exist

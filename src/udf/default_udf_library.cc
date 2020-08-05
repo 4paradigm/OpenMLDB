@@ -265,6 +265,8 @@ example
                                  codec::StringRef*)>(udf::v1::sub_string))
         .return_by_arg(true);
 
+    RegisterAlias("substr", "substring");
+
     RegisterExternal("date_format")
         .args<Timestamp, StringRef>(
             static_cast<void (*)(codec::Timestamp*, codec::StringRef*,

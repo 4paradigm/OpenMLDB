@@ -75,6 +75,13 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             runner->AddProducer(input);
             return runner;
         }
+        case kPhysicalOpConstProject: {
+            auto op = dynamic_cast<const PhysicalConstProjectNode*>(node);
+            auto runner =
+                new ConstProjectRunner(id_++, node->GetOutputNameSchemaList(),
+                                       op->GetLimitCnt(), op->project_);
+            return runner;
+        }
         case kPhysicalOpProject: {
             auto input = Build(node->producers().at(0), status);
             if (nullptr == input) {
@@ -496,6 +503,7 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
 std::shared_ptr<DataHandler> DataRunner::Run(RunnerContext& ctx) {
     return data_handler_;
 }
+
 std::shared_ptr<DataHandler> RequestRunner::Run(RunnerContext& ctx) {
     return std::shared_ptr<DataHandler>(new MemRowHandler(ctx.request_));
 }
@@ -518,6 +526,11 @@ std::shared_ptr<DataHandler> SortRunner::Run(RunnerContext& ctx) {
     return sort_gen_.Sort(input);
 }
 
+std::shared_ptr<DataHandler> ConstProjectRunner::Run(RunnerContext& ctx) {
+    auto output_table = std::shared_ptr<MemTableHandler>(new MemTableHandler());
+    output_table->AddRow(project_gen_.Gen());
+    return output_table;
+}
 std::shared_ptr<DataHandler> TableProjectRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
     if (!input) {
@@ -1649,6 +1662,9 @@ const Row ProjectGenerator::Gen(const Row& row) {
     return CoreAPI::RowProject(fn_, row, false);
 }
 
+const Row ConstProjectGenerator::Gen() {
+    return CoreAPI::RowConstProject(fn_, false);
+}
 const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
     auto iter = table->GetIterator();
     if (!iter) {
