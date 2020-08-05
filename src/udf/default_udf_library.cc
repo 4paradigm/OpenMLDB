@@ -348,6 +348,8 @@ void DefaultUDFLibrary::InitStringUDF() {
             @since 2.0.0.0
         )");
 
+    RegisterAlias("substr", "substring");
+
     RegisterExternal("date_format")
         .args<Timestamp, StringRef>(
             static_cast<void (*)(codec::Timestamp*, codec::StringRef*,

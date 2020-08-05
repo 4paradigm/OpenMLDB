@@ -55,6 +55,7 @@ class SQLCase {
     const bool standard_sql_compatible() const {
         return standard_sql_compatible_;
     }
+    const bool debug() const { return debug_; }
     const std::string& db() const { return db_; }
     const std::vector<TableInfo>& inputs() const { return inputs_; }
     const ExpectInfo& expect() const { return expect_; }
@@ -159,6 +160,7 @@ class SQLCase {
     std::string db_;
     std::string sql_str_;
     std::vector<std::string> sql_strs_;
+    bool debug_;
     bool standard_sql_;
     bool standard_sql_compatible_;
     std::string batch_plan_;

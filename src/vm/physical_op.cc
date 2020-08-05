@@ -68,6 +68,7 @@ void PhysicalBinaryNode::Print(std::ostream& output,
     output << "\n";
     PrintChildren(output, tab);
 }
+
 void PhysicalTableProviderNode::Print(std::ostream& output,
                                       const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
@@ -118,6 +119,13 @@ bool PhysicalProjectNode::InitSchema() {
     PrintSchema();
     return true;
 }
+bool PhysicalConstProjectNode::InitSchema() {
+    output_schema_.CopyFrom(project_.fn_schema_);
+    output_name_schema_list_.AddSchemaSource("", &project_.fn_schema_,
+                                             &sources_);
+    PrintSchema();
+    return true;
+}
 bool PhysicalSimpleProjectNode::InitSchema() {
     output_name_schema_list_.AddSchemaSource("", &output_schema_,
                                              &project_.column_sources());
@@ -137,9 +145,17 @@ PhysicalTableProjectNode* PhysicalTableProjectNode::CastFrom(
     PhysicalOpNode* node) {
     return dynamic_cast<PhysicalTableProjectNode*>(node);
 }
+PhysicalConstProjectNode* PhysicalConstProjectNode::CastFrom(
+    PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalConstProjectNode*>(node);
+}
 PhysicalSimpleProjectNode* PhysicalSimpleProjectNode::CastFrom(
     PhysicalOpNode* node) {
     return dynamic_cast<PhysicalSimpleProjectNode*>(node);
+}
+void PhysicalConstProjectNode::Print(std::ostream& output,
+                                     const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
 }
 void PhysicalSimpleProjectNode::Print(std::ostream& output,
                                       const std::string& tab) const {

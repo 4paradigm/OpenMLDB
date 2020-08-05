@@ -41,6 +41,22 @@ int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                            column_expr->GetColumnName());
 }
 
+fesql::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
+                                           const bool need_free) {
+    auto udf =
+        reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
+            const_cast<int8_t*>(fn));
+
+    int8_t* buf = nullptr;
+    uint32_t ret = udf(nullptr, nullptr, &buf);
+    fesql::udf::ThreadLocalMemoryPoolReset();
+    if (ret != 0) {
+        LOG(WARNING) << "fail to run udf " << ret;
+        return fesql::codec::Row();
+    }
+    return Row(base::RefCountedSlice::CreateManaged(
+        buf, fesql::codec::RowView::GetSize(buf)));
+}
 fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
                                       const fesql::codec::Row row,
                                       const bool need_free) {

@@ -114,6 +114,10 @@ void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
 }
 
 TEST_P(RunnerTest, request_mode_test) {
+    if (boost::contains(GetParam().mode(), "request-unsupport")) {
+        LOG(INFO) << "Skip sql case: request unsupport";
+        return;
+    }
     std::string sqlstr = GetParam().sql_str();
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
     boost::to_lower(sqlstr);
@@ -184,6 +188,10 @@ TEST_P(RunnerTest, request_mode_test) {
 }
 
 TEST_P(RunnerTest, batch_mode_test) {
+    if (boost::contains(GetParam().mode(), "batch-unsupport")) {
+        LOG(INFO) << "Skip sql case: batch unsupport";
+        return;
+    }
     std::string sqlstr = GetParam().sql_str();
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
     boost::to_lower(sqlstr);

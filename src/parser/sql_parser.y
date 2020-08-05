@@ -435,8 +435,8 @@ typedef void* yyscan_t;
 %type <list> opt_target_list
             select_projection_list
             table_references
-
             window_clause window_definition_list
+            opt_from_clause
             opt_union_clause
 
 %type <strval> relation_name relation_factor
@@ -758,10 +758,10 @@ query_clause:
 		;
 
 select_stmt:
-			SELECT opt_distinct_clause opt_target_list FROM table_references
+			SELECT opt_distinct_clause opt_target_list opt_from_clause
 			where_expr group_expr having_expr opt_sort_clause window_clause limit_clause
             {
-                $$ = node_manager->MakeSelectQueryNode($2, $3, $5, $6, $7, $8, $9, $10, $11);
+                $$ = node_manager->MakeSelectQueryNode($2, $3, $4, $5, $6, $7, $8, $9, $10);
             }
             | '(' select_stmt ')'
             {
@@ -769,6 +769,13 @@ select_stmt:
             }
     		;
 
+opt_from_clause: FROM table_references {
+				$$ = $2;
+			}
+			|/* EMPTY*/
+			{
+				$$ = NULL;
+			}
 
 create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list ')'
                 {
@@ -1054,7 +1061,6 @@ over_clause: OVER window_specification
 			| /*EMPTY*/
 				{ $$ = NULL; }
 		;
-
 table_references:
 		table_reference
 		{

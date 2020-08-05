@@ -582,10 +582,9 @@ TEST_P(SqlParserErrorTest, ParserErrorStatusTest) {
     std::cout << status.msg << std::endl;
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    SQLErrorParse, SqlParserErrorTest,
-    testing::Values(std::make_pair(common::kSQLError, "SELECT SUM(*) FROM t1;"),
-                    std::make_pair(common::kSQLError, "SELECT t1;")));
+INSTANTIATE_TEST_SUITE_P(SQLErrorParse, SqlParserErrorTest,
+                         testing::Values(std::make_pair(
+                             common::kSQLError, "SELECT SUM(*) FROM t1;")));
 
 INSTANTIATE_TEST_SUITE_P(
     UDFErrorParse, SqlParserErrorTest,
@@ -598,8 +597,7 @@ INSTANTIATE_TEST_SUITE_P(
                        "return c\nend"),
         std::make_pair(common::kSQLError,
                        "%%fun\ndef test(x:i32,y:i32):i32\n    c=x)(y\n    "
-                       "return c\nend"),
-        std::make_pair(common::kSQLError, "SELECT t1;")));
+                       "return c\nend")));
 
 }  // namespace parser
 }  // namespace fesql

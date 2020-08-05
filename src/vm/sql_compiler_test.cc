@@ -140,6 +140,10 @@ void RequestSchemaCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
 }
 
 TEST_P(SQLCompilerTest, compile_request_mode_test) {
+    if (boost::contains(GetParam().mode(), "request-unsupport")) {
+        LOG(INFO) << "Skip sql case: request unsupport";
+        return;
+    }
     std::string sqlstr = GetParam().sql_str();
     LOG(INFO) << sqlstr;
 
@@ -214,6 +218,10 @@ TEST_P(SQLCompilerTest, compile_request_mode_test) {
 }
 
 TEST_P(SQLCompilerTest, compile_batch_mode_test) {
+    if (boost::contains(GetParam().mode(), "batch-unsupport")) {
+        LOG(INFO) << "Skip sql case: batch unsupport";
+        return;
+    }
     std::string sqlstr = GetParam().sql_str();
     LOG(INFO) << sqlstr;
 

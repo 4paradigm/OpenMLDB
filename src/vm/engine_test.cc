@@ -415,7 +415,7 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
 
     Engine engine(catalog);
     BatchRunSession session;
-    if (IS_DEBUG) {
+    if (IS_DEBUG || sql_case.debug()) {
         session.EnableDebug();
     }
 
@@ -547,6 +547,9 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     EngineSimpleQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineConstQuery, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/const_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
     EngineUdfQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/udf_query.yaml")));

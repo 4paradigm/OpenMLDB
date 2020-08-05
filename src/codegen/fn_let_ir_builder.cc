@@ -80,8 +80,6 @@ Status RowFnLetIRBuilder::Build(
     variable_ir_builder.StoreWindow(
         nullptr == frame_ ? "" : frame_->GetExprString(), window.GetRaw(),
         status);
-    CHECK_TRUE(!schema_context_.row_schema_info_list_.empty(),
-               "Fail to build fn: row info list is empty");
 
     ExprIRBuilder expr_ir_builder(block, &sv, &schema_context_, true, module_);
 

@@ -971,6 +971,8 @@ bool SQLCase::CreateSQLCasesFromYaml(
         if (!debugs.empty()) {
             if (debugs.find(sql_case.desc_) == debugs.end()) {
                 continue;
+            } else {
+                sql_case.debug_ = true;
             }
         }
         if (sql_case_node["mode"]) {
@@ -978,6 +980,12 @@ bool SQLCase::CreateSQLCasesFromYaml(
             boost::trim(sql_case.mode_);
         } else {
             sql_case.mode_ = "batch";
+        }
+
+        if (sql_case_node["debug"]) {
+            sql_case.debug_ = sql_case_node["debug"].as<bool>();
+        } else {
+            sql_case.debug_ = false;
         }
         if (!filter_modes.empty()) {
             bool need_filter = false;
