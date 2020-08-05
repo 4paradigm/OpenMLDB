@@ -414,7 +414,9 @@ void SQLSDKQueryTest::RunRequestModeSDK(
     LOG(INFO) << "RequestExecuteSQL ID: " << sql_case.id()
               << ", DESC: " << sql_case.desc() << " done!";
 }
-
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestConstsSelect, SQLSDKQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases(
+                             "/cases/query/const_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestSelectSample, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases(
                              "/cases/integration/v1/test_select_sample.yaml")));
