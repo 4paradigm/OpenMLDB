@@ -374,7 +374,7 @@ TEST_F(TabletImplTest, Count_Time_Table) {
         ::rtidb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(10, response.count());
+        ASSERT_EQ(10, (int32_t)response.count());
     }
 
     {
@@ -387,7 +387,7 @@ TEST_F(TabletImplTest, Count_Time_Table) {
         ::rtidb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(10, response.count());
+        ASSERT_EQ(10, (int64_t)(response.count()));
     }
 
     {
@@ -400,7 +400,7 @@ TEST_F(TabletImplTest, Count_Time_Table) {
         ::rtidb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(100, response.count());
+        ASSERT_EQ(100, (signed)response.count());
     }
 
     {
@@ -414,7 +414,7 @@ TEST_F(TabletImplTest, Count_Time_Table) {
         ::rtidb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(10, response.count());
+        ASSERT_EQ(10, (signed)response.count());
     }
 
     {
@@ -427,7 +427,7 @@ TEST_F(TabletImplTest, Count_Time_Table) {
         ::rtidb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(10, response.count());
+        ASSERT_EQ(10, (signed)response.count());
     }
 
     {
@@ -442,7 +442,7 @@ TEST_F(TabletImplTest, Count_Time_Table) {
         ::rtidb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(1, response.count());
+        ASSERT_EQ(1, (signed)response.count());
     }
 
     {
@@ -458,7 +458,7 @@ TEST_F(TabletImplTest, Count_Time_Table) {
         ::rtidb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(2, response.count());
+        ASSERT_EQ(2, (signed)response.count());
     }
 
     {
@@ -474,7 +474,7 @@ TEST_F(TabletImplTest, Count_Time_Table) {
         ::rtidb::api::CountResponse response;
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(1, response.count());
+        ASSERT_EQ(1, (signed)response.count());
     }
 }
 
@@ -512,10 +512,10 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
         ::rtidb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(1, srp.count());
+        ASSERT_EQ(1, (signed)srp.count());
         ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(&srp);
         ASSERT_TRUE(kv_it->Valid());
-        ASSERT_EQ(92lu, kv_it->GetKey());
+        ASSERT_EQ(92l, (signed)kv_it->GetKey());
         ASSERT_STREQ("91", kv_it->GetValue().ToString().c_str());
         kv_it->Next();
         ASSERT_FALSE(kv_it->Valid());
@@ -533,10 +533,10 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
         ::rtidb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(5, srp.count());
+        ASSERT_EQ(5, (signed)srp.count());
         ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(&srp);
         ASSERT_TRUE(kv_it->Valid());
-        ASSERT_EQ(92lu, kv_it->GetKey());
+        ASSERT_EQ(92l, (signed)kv_it->GetKey());
         ASSERT_STREQ("91", kv_it->GetValue().ToString().c_str());
         kv_it->Next();
         ASSERT_TRUE(kv_it->Valid());
@@ -612,7 +612,7 @@ TEST_F(TabletImplTest, GetRelationalTable) {
         MockClosure closure;
         tablet.BatchQuery(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(0, response.count());
+        ASSERT_EQ(0, (signed)response.count());
     }
     // put some key
     ::rtidb::codec::RowBuilder builder(schema_t);
@@ -677,7 +677,7 @@ TEST_F(TabletImplTest, GetRelationalTable) {
     traverse_request.set_pid(1);
     tablet.Traverse(NULL, &traverse_request, &traverse_response, &closure);
     ASSERT_EQ(0, traverse_response.code());
-    ASSERT_EQ(1, traverse_response.count());
+    ASSERT_EQ(1, (signed)traverse_response.count());
     ASSERT_TRUE(traverse_response.is_finish());
     const char* buffer = NULL;
     buffer = traverse_response.pairs().data();
@@ -832,7 +832,7 @@ TEST_F(TabletImplTest, StringKeyRelationalTable) {
         MockClosure closure;
         tablet.BatchQuery(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(0, response.count());
+        ASSERT_EQ(0, (signed)response.count());
     }
     // put some key
     ::rtidb::codec::RowBuilder builder(schema_t);
@@ -908,7 +908,7 @@ TEST_F(TabletImplTest, StringKeyRelationalTable) {
     MockClosure closure;
     tablet.Traverse(NULL, &traverse_request, &traverse_response, &closure);
     ASSERT_EQ(0, traverse_response.code());
-    ASSERT_EQ(10, traverse_response.count());
+    ASSERT_EQ(10, (signed)traverse_response.count());
     ASSERT_TRUE(traverse_response.is_finish());
     const char* buffer = NULL;
     buffer = traverse_response.pairs().data();
@@ -1261,7 +1261,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(100, ts.ttl());
+                ASSERT_EQ(100, (int64_t)ts.ttl());
                 checked = true;
             }
         }
@@ -1280,7 +1280,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(0, ts.ttl());
+                ASSERT_EQ(0, (int64_t)(ts.ttl()));
                 checked = true;
             }
         }
@@ -1303,7 +1303,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(0, ts.ttl());
+                ASSERT_EQ(0, (signed)ts.ttl());
                 checked = true;
             }
         }
@@ -1322,7 +1322,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(50, ts.ttl());
+                ASSERT_EQ(50, (signed)ts.ttl());
                 checked = true;
             }
         }
@@ -1344,7 +1344,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(50, ts.ttl());
+                ASSERT_EQ(50, (signed)ts.ttl());
                 checked = true;
             }
         }
@@ -1367,7 +1367,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(100, ts.ttl());
+                ASSERT_EQ(100, (signed)ts.ttl());
                 checked = true;
             }
         }
@@ -1455,7 +1455,7 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(2, ts.ttl());
+                ASSERT_EQ(2, (signed)ts.ttl());
                 checked = true;
             }
         }
@@ -1535,7 +1535,7 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
 
         std::vector<::rtidb::codec::ColumnDesc> ncolumns;
         codec.Decode(response0.schema(), ncolumns);
-        ASSERT_EQ(3, ncolumns.size());
+        ASSERT_EQ(3, (signed)ncolumns.size());
         ASSERT_EQ(::rtidb::codec::ColType::kString, ncolumns[0].type);
         ASSERT_EQ("card", ncolumns[0].name);
         ASSERT_EQ(::rtidb::codec::ColType::kDouble, ncolumns[1].type);
@@ -1624,11 +1624,11 @@ TEST_F(TabletImplTest, MultiGet) {
 
     tablet.Get(NULL, &get_request, &get_response, &closure);
     ASSERT_EQ(0, get_response.code());
-    ASSERT_EQ(1100, get_response.ts());
+    ASSERT_EQ(1100, (signed)get_response.ts());
     std::string value(get_response.value());
     std::vector<std::string> vec;
     MultiDimensionDecode(value, vec, columns.size());
-    ASSERT_EQ(3, vec.size());
+    ASSERT_EQ(3, (signed)vec.size());
     ASSERT_STREQ("test2", vec[0].c_str());
     ASSERT_STREQ("abcd2", vec[1].c_str());
     ASSERT_STREQ("12122", vec[2].c_str());
@@ -1737,7 +1737,7 @@ TEST_F(TabletImplTest, CreateTable) {
         fileInput.SetCloseOnDelete(true);
         ::rtidb::api::TableMeta table_meta_test;
         google::protobuf::TextFormat::Parse(&fileInput, &table_meta_test);
-        ASSERT_EQ(table_meta_test.tid(), id);
+        ASSERT_EQ(table_meta_test.tid(), (signed)id);
         ASSERT_STREQ(table_meta_test.name().c_str(), "t0");
 
         table_meta->set_name("");
@@ -1856,7 +1856,7 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
     ::rtidb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
-    ASSERT_EQ(3, srp.count());
+    ASSERT_EQ(3, (signed)srp.count());
 }
 
 TEST_F(TabletImplTest, Scan_with_latestN) {
@@ -1895,13 +1895,13 @@ TEST_F(TabletImplTest, Scan_with_latestN) {
     ::rtidb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
-    ASSERT_EQ(2, srp.count());
+    ASSERT_EQ(2, (signed)srp.count());
     ::rtidb::base::KvIterator* kv_it =
         new ::rtidb::base::KvIterator(&srp, false);
-    ASSERT_EQ(9539, kv_it->GetKey());
+    ASSERT_EQ(9539, (signed)kv_it->GetKey());
     ASSERT_STREQ("test9539", kv_it->GetValue().ToString().c_str());
     kv_it->Next();
-    ASSERT_EQ(9538, kv_it->GetKey());
+    ASSERT_EQ(9538, (signed)kv_it->GetKey());
     ASSERT_STREQ("test9538", kv_it->GetValue().ToString().c_str());
     kv_it->Next();
     ASSERT_FALSE(kv_it->Valid());
@@ -1940,7 +1940,7 @@ TEST_F(TabletImplTest, Traverse) {
     ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(13, srp->count());
+    ASSERT_EQ(13, (signed)srp->count());
     ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(srp);
     for (int cnt = 0; cnt < 13; cnt++) {
         uint64_t cur_ts = 9539 - cnt;
@@ -2004,35 +2004,35 @@ TEST_F(TabletImplTest, TraverseTTL) {
     ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(0, srp->count());
+    ASSERT_EQ(0, (signed)srp->count());
     ASSERT_EQ("test10050", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(0, srp->count());
+    ASSERT_EQ(0, (signed)srp->count());
     ASSERT_EQ("test10099", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(25, srp->count());
+    ASSERT_EQ(25, (signed)srp->count());
     ASSERT_EQ("test21024", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(25, srp->count());
+    ASSERT_EQ(25, (signed)srp->count());
     ASSERT_EQ("test21049", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(10, srp->count());
+    ASSERT_EQ(10, (signed)srp->count());
     ASSERT_EQ("test21059", srp->pk());
     ASSERT_TRUE(srp->is_finish());
     FLAGS_max_traverse_cnt = old_max_traverse;
@@ -2090,35 +2090,35 @@ TEST_F(TabletImplTest, TraverseTTLSSD) {
     ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(0, srp->count());
+    ASSERT_EQ(0, (signed)srp->count());
     ASSERT_EQ("test10048", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(0, srp->count());
+    ASSERT_EQ(0, (signed)srp->count());
     ASSERT_EQ("test10096", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(45, srp->count());
+    ASSERT_EQ(45, (signed)srp->count());
     ASSERT_EQ("test21044", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(48, srp->count());
+    ASSERT_EQ(48, (signed)srp->count());
     ASSERT_EQ("test21092", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(7, srp->count());
+    ASSERT_EQ(7, (signed)srp->count());
     ASSERT_EQ("test21099", srp->pk());
     ASSERT_TRUE(srp->is_finish());
     FLAGS_max_traverse_cnt = old_max_traverse;
@@ -2231,21 +2231,21 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(14, srp->count());
+    ASSERT_EQ(14, (signed)srp->count());
     ASSERT_EQ("card21006", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(33, srp->count());
+    ASSERT_EQ(33, (signed)srp->count());
     ASSERT_EQ("card21023", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(13, srp->count());
+    ASSERT_EQ(13, (signed)srp->count());
     ASSERT_EQ("card21029", srp->pk());
     ASSERT_TRUE(srp->is_finish());
 
@@ -2254,21 +2254,21 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     sr.set_ts_name("ts2");
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(15, srp->count());
+    ASSERT_EQ(15, (signed)srp->count());
     ASSERT_EQ("card21006", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(33, srp->count());
+    ASSERT_EQ(33, (signed)srp->count());
     ASSERT_EQ("card21023", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(12, srp->count());
+    ASSERT_EQ(12, (signed)srp->count());
     ASSERT_EQ("card21029", srp->pk());
     ASSERT_TRUE(srp->is_finish());
 
@@ -2278,21 +2278,21 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     sr.set_ts_name("ts2");
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(34, srp->count());
+    ASSERT_EQ(34, (signed)srp->count());
     ASSERT_EQ("mcc10016", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(26, srp->count());
+    ASSERT_EQ(26, (signed)srp->count());
     ASSERT_EQ("mcc21009", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(0, srp->count());
+    ASSERT_EQ(0, (signed)srp->count());
     ASSERT_TRUE(srp->is_finish());
     FLAGS_max_traverse_cnt = old_max_traverse;
 }
@@ -2405,28 +2405,28 @@ TEST_F(TabletImplTest, TraverseTTLSSDTS) {
     ::rtidb::api::TraverseResponse* srp = new ::rtidb::api::TraverseResponse();
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(0, srp->count());
+    ASSERT_EQ(0, (signed)srp->count());
     ASSERT_EQ("card10016", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(11, srp->count());
+    ASSERT_EQ(11, (signed)srp->count());
     ASSERT_EQ("card21005", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(24, srp->count());
+    ASSERT_EQ(24, (signed)srp->count());
     ASSERT_EQ("card21017", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(15, srp->count());
+    ASSERT_EQ(15, (signed)srp->count());
     ASSERT_EQ("card21024", srp->pk());
     ASSERT_TRUE(srp->is_finish());
 
@@ -2435,28 +2435,28 @@ TEST_F(TabletImplTest, TraverseTTLSSDTS) {
     sr.set_ts_name("ts2");
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(24, srp->count());
+    ASSERT_EQ(24, (signed)srp->count());
     ASSERT_EQ("card10012", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(25, srp->count());
+    ASSERT_EQ(25, (signed)srp->count());
     ASSERT_EQ("card10024", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(1, srp->count());
+    ASSERT_EQ(1, (signed)srp->count());
     ASSERT_EQ("card21015", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(0, srp->count());
+    ASSERT_EQ(0, (signed)srp->count());
     ASSERT_EQ("card21015", srp->pk());
     ASSERT_TRUE(srp->is_finish());
 
@@ -2466,14 +2466,14 @@ TEST_F(TabletImplTest, TraverseTTLSSDTS) {
     sr.set_ts_name("ts2");
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(49, srp->count());
+    ASSERT_EQ(49, (signed)srp->count());
     ASSERT_EQ("mcc10024", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
-    ASSERT_EQ(1, srp->count());
+    ASSERT_EQ(1, (signed)srp->count());
     ASSERT_EQ("mcc10024", srp->pk());
     ASSERT_TRUE(srp->is_finish());
     FLAGS_max_traverse_cnt = old_max_traverse;
@@ -2538,7 +2538,7 @@ TEST_F(TabletImplTest, Scan_with_limit) {
     ::rtidb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
-    ASSERT_EQ(2, srp.count());
+    ASSERT_EQ(2, (signed)srp.count());
 }
 
 TEST_F(TabletImplTest, Scan) {
@@ -2564,14 +2564,14 @@ TEST_F(TabletImplTest, Scan) {
     sr.set_limit(10);
     ::rtidb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
-    ASSERT_EQ(0, srp.pairs().size());
+    ASSERT_EQ(0, (signed)srp.pairs().size());
     ASSERT_EQ(100, srp.code());
 
     sr.set_tid(id);
     sr.set_pid(1);
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
-    ASSERT_EQ(0, srp.count());
+    ASSERT_EQ(0, (signed)srp.count());
 
     {
         ::rtidb::api::PutRequest prequest;
@@ -2608,7 +2608,7 @@ TEST_F(TabletImplTest, Scan) {
     }
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
-    ASSERT_EQ(1, srp.count());
+    ASSERT_EQ(1, (signed)srp.count());
 }
 
 TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
@@ -2683,7 +2683,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
         ::rtidb::api::GetResponse response;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(1, response.ts());
+        ASSERT_EQ(1, (signed)response.ts());
         ASSERT_EQ("test1", response.value());
     }
 
@@ -2791,7 +2791,7 @@ TEST_F(TabletImplTest, GC) {
     ::rtidb::api::ScanResponse srp;
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
-    ASSERT_EQ(1, srp.count());
+    ASSERT_EQ(1, (signed)srp.count());
 }
 
 TEST_F(TabletImplTest, DropTable) {
@@ -2957,7 +2957,7 @@ TEST_F(TabletImplTest, Recover) {
         ::rtidb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(1, srp.count());
+        ASSERT_EQ(1, (signed)srp.count());
         ::rtidb::api::GeneralRequest grq;
         grq.set_tid(id);
         grq.set_pid(1);
@@ -3000,7 +3000,7 @@ TEST_F(TabletImplTest, Recover) {
         ::rtidb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(2, srp.count());
+        ASSERT_EQ(2, (signed)srp.count());
     }
 }
 
@@ -3093,7 +3093,7 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
         sr.set_idx_name("card");
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(srp.count(), 1u);
+        ASSERT_EQ((signed)srp.count(), 1);
     }
 }
 
@@ -3193,17 +3193,17 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         ::rtidb::api::ScanResponse srp;
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(20, srp.count());
+        ASSERT_EQ(20, (signed)srp.count());
 
         sr.set_pk("key");
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(10, srp.count());
+        ASSERT_EQ(10, (signed)srp.count());
 
         sr.set_pk("key_xxx");
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(30, srp.count());
+        ASSERT_EQ(30, (signed)srp.count());
 
         ::rtidb::api::PutRequest prequest;
         prequest.set_pk("test1");
@@ -3232,14 +3232,14 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
         fileInput.SetCloseOnDelete(true);
         ::rtidb::api::Manifest manifest;
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
-        ASSERT_EQ(61, manifest.offset());
+        ASSERT_EQ(61, (signed)manifest.offset());
 
         sleep(10);
         std::vector<std::string> vec;
         std::string binlog_path =
             FLAGS_db_root_path + "/" + std::to_string(tid) + "_0/binlog";
         ::rtidb::base::GetFileName(binlog_path, vec);
-        ASSERT_EQ(4, vec.size());
+        ASSERT_EQ(4, (signed)vec.size());
         std::sort(vec.begin(), vec.end());
         std::string file_name = binlog_path + "/00000001.log";
         ASSERT_STREQ(file_name.c_str(), vec[0].c_str());
@@ -3484,7 +3484,7 @@ TEST_F(TabletImplTest, TestGetType) {
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(1, response.ts());
+        ASSERT_EQ(1, (signed)response.ts());
         ASSERT_EQ("test1", response.value());
     }
     // le
@@ -3499,7 +3499,7 @@ TEST_F(TabletImplTest, TestGetType) {
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(3, response.ts());
+        ASSERT_EQ(3, (signed)response.ts());
         ASSERT_EQ("test3", response.value());
     }
     // lt
@@ -3515,7 +3515,7 @@ TEST_F(TabletImplTest, TestGetType) {
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(2, response.ts());
+        ASSERT_EQ(2, (signed)response.ts());
         ASSERT_EQ("test2", response.value());
     }
     // gt
@@ -3530,7 +3530,7 @@ TEST_F(TabletImplTest, TestGetType) {
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(6, response.ts());
+        ASSERT_EQ(6, (signed)response.ts());
         ASSERT_EQ("test6", response.value());
     }
     // ge
@@ -3545,7 +3545,7 @@ TEST_F(TabletImplTest, TestGetType) {
         MockClosure closure;
         tablet.Get(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(6, response.ts());
+        ASSERT_EQ(6, (signed)response.ts());
         ASSERT_EQ("test6", response.value());
     }
 }
@@ -3623,7 +3623,7 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Default) {
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(1, ts.skiplist_height());
+        ASSERT_EQ(1, (signed)ts.skiplist_height());
     }
 }
 
@@ -3654,7 +3654,7 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Specify) {
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(2, ts.skiplist_height());
+        ASSERT_EQ(2, (signed)ts.skiplist_height());
     }
 }
 
@@ -3684,7 +3684,7 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Default) {
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(4, ts.skiplist_height());
+        ASSERT_EQ(4, (signed)ts.skiplist_height());
     }
 }
 
@@ -3715,7 +3715,7 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Specify) {
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(8, ts.skiplist_height());
+        ASSERT_EQ(8, (signed)ts.skiplist_height());
     }
 }
 
@@ -3746,8 +3746,8 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_TTlDesc) {
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(10, ts.ttl_desc().abs_ttl());
-        ASSERT_EQ(0, ts.ttl_desc().lat_ttl());
+        ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
+        ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
         ASSERT_EQ(::rtidb::api::TTLType::kAbsoluteTime,
                   ts.ttl_desc().ttl_type());
     }
@@ -3780,8 +3780,8 @@ TEST_F(TabletImplTest, CreateTableLatestTest_TTlDesc) {
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(0, ts.ttl_desc().abs_ttl());
-        ASSERT_EQ(10, ts.ttl_desc().lat_ttl());
+        ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
+        ASSERT_EQ(10, (signed)ts.ttl_desc().lat_ttl());
         ASSERT_EQ(::rtidb::api::TTLType::kLatestTime, ts.ttl_desc().ttl_type());
     }
 }
@@ -3814,8 +3814,8 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest) {
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(10, ts.ttl_desc().abs_ttl());
-        ASSERT_EQ(20, ts.ttl_desc().lat_ttl());
+        ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
+        ASSERT_EQ(20, (signed)ts.ttl_desc().lat_ttl());
         ASSERT_EQ(::rtidb::api::TTLType::kAbsAndLat, ts.ttl_desc().ttl_type());
     }
 }
@@ -3848,8 +3848,8 @@ TEST_F(TabletImplTest, CreateTableAbsAndOrTest) {
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(10, ts.ttl_desc().abs_ttl());
-        ASSERT_EQ(20, ts.ttl_desc().lat_ttl());
+        ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
+        ASSERT_EQ(20, (signed)ts.ttl_desc().lat_ttl());
         ASSERT_EQ(::rtidb::api::TTLType::kAbsOrLat, ts.ttl_desc().ttl_type());
     }
 }
@@ -3881,7 +3881,7 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest_Specify) {
         tablet.GetTableStatus(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         const TableStatus& ts = response.all_table_status(0);
-        ASSERT_EQ(8, ts.skiplist_height());
+        ASSERT_EQ(8, (signed)ts.skiplist_height());
     }
 }
 
@@ -3932,7 +3932,7 @@ TEST_F(TabletImplTest, GetTermPair) {
         tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
         ASSERT_EQ(0, pair_response.code());
         ASSERT_TRUE(pair_response.has_table());
-        ASSERT_EQ(1, pair_response.offset());
+        ASSERT_EQ(1, (signed)pair_response.offset());
     }
     TabletImpl tablet;
     tablet.Init("");
@@ -3943,7 +3943,7 @@ TEST_F(TabletImplTest, GetTermPair) {
     tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
     ASSERT_EQ(0, pair_response.code());
     ASSERT_FALSE(pair_response.has_table());
-    ASSERT_EQ(1, pair_response.offset());
+    ASSERT_EQ(1, (signed)pair_response.offset());
 
     std::string manifest_file =
         FLAGS_db_root_path + "/" + std::to_string(id) + "_1/snapshot/MANIFEST";
@@ -3959,7 +3959,7 @@ TEST_F(TabletImplTest, GetTermPair) {
     tablet.GetTermPair(NULL, &pair_request, &pair_response, &closure);
     ASSERT_EQ(0, pair_response.code());
     ASSERT_FALSE(pair_response.has_table());
-    ASSERT_EQ(0, pair_response.offset());
+    ASSERT_EQ(0, (signed)pair_response.offset());
     FLAGS_make_snapshot_threshold_offset = offset;
 }
 
@@ -4012,7 +4012,7 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         fileInput.SetCloseOnDelete(true);
         ::rtidb::api::Manifest manifest;
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
-        ASSERT_EQ(1, manifest.offset());
+        ASSERT_EQ(1, (signed)manifest.offset());
     }
     FLAGS_make_snapshot_threshold_offset = 5;
     {
@@ -4050,7 +4050,7 @@ TEST_F(TabletImplTest, MakeSnapshotThreshold) {
         fileInput.SetCloseOnDelete(true);
         ::rtidb::api::Manifest manifest;
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
-        ASSERT_EQ(1, manifest.offset());
+        ASSERT_EQ(1, (signed)manifest.offset());
         std::string snapshot_file = FLAGS_db_root_path + "/" +
                                     std::to_string(id) + "_1/snapshot/" +
                                     manifest.name();
@@ -4209,8 +4209,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(100, ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(50, ts.ttl_desc().lat_ttl());
+                ASSERT_EQ(100, (signed)ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(50, (signed)ts.ttl_desc().lat_ttl());
                 checked = true;
             }
         }
@@ -4229,8 +4229,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(0, ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(0, ts.ttl_desc().lat_ttl());
+                ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
                 checked = true;
             }
         }
@@ -4260,8 +4260,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(0, ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(0, ts.ttl_desc().lat_ttl());
+                ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
                 checked = true;
             }
         }
@@ -4281,8 +4281,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(50, ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(1, ts.ttl_desc().lat_ttl());
+                ASSERT_EQ(50, (signed)ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(1, (signed)ts.ttl_desc().lat_ttl());
                 checked = true;
             }
         }
@@ -4312,8 +4312,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(50, ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(1, ts.ttl_desc().lat_ttl());
+                ASSERT_EQ(50, (signed)ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(1, (signed)ts.ttl_desc().lat_ttl());
                 checked = true;
             }
         }
@@ -4336,8 +4336,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(100, ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(2, ts.ttl_desc().lat_ttl());
+                ASSERT_EQ(100, (signed)ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(2, (signed)ts.ttl_desc().lat_ttl());
                 checked = true;
             }
         }
@@ -4495,8 +4495,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(100, ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(50, ts.ttl_desc().lat_ttl());
+                ASSERT_EQ(100, (signed)ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(50, (signed)ts.ttl_desc().lat_ttl());
                 checked = true;
             }
         }
@@ -4515,8 +4515,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(0, ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(0, ts.ttl_desc().lat_ttl());
+                ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
                 checked = true;
             }
         }
@@ -4546,8 +4546,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(0, ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(0, ts.ttl_desc().lat_ttl());
+                ASSERT_EQ(0, (signed)ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(0, (signed)ts.ttl_desc().lat_ttl());
                 checked = true;
             }
         }
@@ -4566,8 +4566,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(10, ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(1, ts.ttl_desc().lat_ttl());
+                ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(1, (signed)ts.ttl_desc().lat_ttl());
                 checked = true;
             }
         }
@@ -4596,8 +4596,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(10, ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(1, ts.ttl_desc().lat_ttl());
+                ASSERT_EQ(10, (signed)ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(1, (signed)ts.ttl_desc().lat_ttl());
                 checked = true;
             }
         }
@@ -4620,8 +4620,8 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
         for (int32_t i = 0; i < gres.all_table_status_size(); i++) {
             const ::rtidb::api::TableStatus& ts = gres.all_table_status(i);
             if (ts.tid() == id) {
-                ASSERT_EQ(100, ts.ttl_desc().abs_ttl());
-                ASSERT_EQ(2, ts.ttl_desc().lat_ttl());
+                ASSERT_EQ(100, (signed)ts.ttl_desc().abs_ttl());
+                ASSERT_EQ(2, (signed)ts.ttl_desc().lat_ttl());
                 checked = true;
             }
         }
@@ -4676,7 +4676,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(80, srp.count());
+        ASSERT_EQ(80, (signed)srp.count());
     }
     // test atleast less than et
     for (int i = 0; i < 10; ++i) {
@@ -4689,7 +4689,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(70, srp.count());
+        ASSERT_EQ(70, (signed)srp.count());
     }
     // test atleast and limit
     for (int i = 0; i < 10; ++i) {
@@ -4703,7 +4703,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(60, srp.count());
+        ASSERT_EQ(60, (signed)srp.count());
     }
     // test atleast more than limit
     sr.set_tid(id);
@@ -4728,7 +4728,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(100, srp.count());
+        ASSERT_EQ(100, (signed)srp.count());
     }
 }
 
@@ -4848,7 +4848,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
             new ::rtidb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(100, srp->count());
+        ASSERT_EQ(100, (signed)srp->count());
     }
     // ts2 has 20 expire
     {
@@ -4861,7 +4861,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
             new ::rtidb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(80, srp->count());
+        ASSERT_EQ(80, (signed)srp->count());
     }
     // ts3 has 30 expire
     {
@@ -4874,7 +4874,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
             new ::rtidb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(70, srp->count());
+        ASSERT_EQ(70, (signed)srp->count());
     }
     // ts4 has no expire
     {
@@ -4887,7 +4887,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
             new ::rtidb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(100, srp->count());
+        ASSERT_EQ(100, (signed)srp->count());
     }
     // ts5 has no expire
     {
@@ -4900,7 +4900,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
             new ::rtidb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(100, srp->count());
+        ASSERT_EQ(100, (signed)srp->count());
     }
     // ts6 has no expire
     {
@@ -4913,7 +4913,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
             new ::rtidb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(100, srp->count());
+        ASSERT_EQ(100, (signed)srp->count());
     }
     // //// Scan Count test
     ::rtidb::api::ScanRequest sr;
@@ -4934,7 +4934,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(10, srp.count());
+        ASSERT_EQ(10, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -4944,7 +4944,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(10, crp.count());
+        ASSERT_EQ(10, (signed)crp.count());
     }
     //     time    cnt
     // st  valid   valid
@@ -4959,7 +4959,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, srp.count());
+        ASSERT_EQ(6, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -4969,7 +4969,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(6, crp.count());
+        ASSERT_EQ(6, (signed)crp.count());
     }
     //     time    cnt
     // st  valid   valid
@@ -4984,7 +4984,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, srp.count());
+        ASSERT_EQ(6, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -4994,7 +4994,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(6, crp.count());
+        ASSERT_EQ(6, (signed)crp.count());
     }
     //     time    cnt
     // st  valid   valid
@@ -5009,7 +5009,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(7, srp.count());
+        ASSERT_EQ(7, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5019,7 +5019,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(7, crp.count());
+        ASSERT_EQ(7, (signed)crp.count());
     }
     //     time    cnt
     // st  expire  valid
@@ -5034,7 +5034,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(2, srp.count());
+        ASSERT_EQ(2, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5044,7 +5044,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(2, crp.count());
+        ASSERT_EQ(2, (signed)crp.count());
     }
     //     time    cnt
     // st  valid   expire
@@ -5059,7 +5059,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(2, srp.count());
+        ASSERT_EQ(2, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5069,7 +5069,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(2, crp.count());
+        ASSERT_EQ(2, (signed)crp.count());
     }
     //     time    cnt
     // st  expire  valid
@@ -5084,7 +5084,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(2, srp.count());
+        ASSERT_EQ(2, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5094,7 +5094,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(2, crp.count());
+        ASSERT_EQ(2, (signed)crp.count());
     }
     //     time    cnt
     // st  valid   expire
@@ -5109,7 +5109,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(1, srp.count());
+        ASSERT_EQ(1, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5119,7 +5119,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(1, crp.count());
+        ASSERT_EQ(1, (signed)crp.count());
     }
     //     time    cnt
     // st  expire  expire
@@ -5134,7 +5134,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(0, srp.count());
+        ASSERT_EQ(0, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5144,7 +5144,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(0, crp.count());
+        ASSERT_EQ(0, (signed)crp.count());
     }
     //     time    cnt
     // ttl 0       !0
@@ -5160,7 +5160,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(4, srp.count());
+        ASSERT_EQ(4, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5170,7 +5170,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(4, crp.count());
+        ASSERT_EQ(4, (signed)crp.count());
     }
     //     time    cnt
     // ttl 0       !0
@@ -5186,7 +5186,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(8, srp.count());
+        ASSERT_EQ(8, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5196,7 +5196,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(8, crp.count());
+        ASSERT_EQ(8, (signed)crp.count());
     }
     //     time    cnt
     // ttl 0       !0
@@ -5212,7 +5212,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(2, srp.count());
+        ASSERT_EQ(2, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5222,7 +5222,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(2, crp.count());
+        ASSERT_EQ(2, (signed)crp.count());
     }
     //     time    cnt
     // ttl !0       0
@@ -5238,7 +5238,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(4, srp.count());
+        ASSERT_EQ(4, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5248,7 +5248,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(4, crp.count());
+        ASSERT_EQ(4, (signed)crp.count());
     }
     //     time    cnt
     // ttl !0       0
@@ -5264,7 +5264,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(8, srp.count());
+        ASSERT_EQ(8, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5274,7 +5274,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(8, crp.count());
+        ASSERT_EQ(8, (signed)crp.count());
     }
     //     time    cnt
     // ttl !0       0
@@ -5290,7 +5290,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(2, srp.count());
+        ASSERT_EQ(2, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5300,7 +5300,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(2, crp.count());
+        ASSERT_EQ(2, (signed)crp.count());
     }
     //     time    cnt
     // ttl 0       0
@@ -5316,7 +5316,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(2, srp.count());
+        ASSERT_EQ(2, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5326,7 +5326,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(2, crp.count());
+        ASSERT_EQ(2, (signed)crp.count());
     }
     //// Get test
     ::rtidb::api::GetRequest gr;
@@ -5448,7 +5448,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(10, srp.count());
+        ASSERT_EQ(10, (signed)srp.count());
     }
     // test atleast more than et and expire and with ttl
     for (int i = 0; i < 10; ++i) {
@@ -5462,7 +5462,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(8, srp.count());
+        ASSERT_EQ(8, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -5475,7 +5475,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(7, srp.count());
+        ASSERT_EQ(7, (signed)srp.count());
     }
     // test et less than expire
     for (int i = 0; i < 10; ++i) {
@@ -5489,7 +5489,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(10, srp.count());
+        ASSERT_EQ(10, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -5502,7 +5502,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(8, srp.count());
+        ASSERT_EQ(8, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -5515,7 +5515,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(7, srp.count());
+        ASSERT_EQ(7, (signed)srp.count());
     }
     // test atleast less than expire
     for (int i = 0; i < 10; ++i) {
@@ -5529,7 +5529,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(10, srp.count());
+        ASSERT_EQ(10, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -5542,7 +5542,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(8, srp.count());
+        ASSERT_EQ(8, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -5555,7 +5555,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(7, srp.count());
+        ASSERT_EQ(7, (signed)srp.count());
     }
     // test atleast and limit ls than valid
     for (int i = 0; i < 10; ++i) {
@@ -5570,7 +5570,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, srp.count());
+        ASSERT_EQ(6, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -5584,7 +5584,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, srp.count());
+        ASSERT_EQ(6, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -5598,7 +5598,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, srp.count());
+        ASSERT_EQ(6, (signed)srp.count());
     }
     // test atleast and limit more than valid
     for (int i = 0; i < 10; ++i) {
@@ -5613,7 +5613,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(9, srp.count());
+        ASSERT_EQ(9, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -5627,7 +5627,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(8, srp.count());
+        ASSERT_EQ(8, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -5641,7 +5641,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(7, srp.count());
+        ASSERT_EQ(7, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -5655,7 +5655,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(5, srp.count());
+        ASSERT_EQ(5, (signed)srp.count());
     }
 }  // NOLINT
 
@@ -5774,7 +5774,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
             new ::rtidb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(100, srp->count());
+        ASSERT_EQ(100, (signed)srp->count());
     }
     {
         ::rtidb::api::TraverseRequest sr;
@@ -5786,7 +5786,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
             new ::rtidb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(50, srp->count());
+        ASSERT_EQ(50, (signed)srp->count());
     }
     {
         ::rtidb::api::TraverseRequest sr;
@@ -5798,7 +5798,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
             new ::rtidb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(60, srp->count());
+        ASSERT_EQ(60, (signed)srp->count());
     }
     // ts4 has 50 expire
     {
@@ -5811,7 +5811,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
             new ::rtidb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(50, srp->count());
+        ASSERT_EQ(50, (signed)srp->count());
     }
     // ts5 has 50 expire
     {
@@ -5824,7 +5824,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
             new ::rtidb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(50, srp->count());
+        ASSERT_EQ(50, (signed)srp->count());
     }
     // ts6 has no expire
     {
@@ -5837,7 +5837,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
             new ::rtidb::api::TraverseResponse();
         tablet.Traverse(NULL, &sr, srp, &closure);
         ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(100, srp->count());
+        ASSERT_EQ(100, (signed)srp->count());
     }
 
     // //// Scan Count test
@@ -5859,7 +5859,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(10, srp.count());
+        ASSERT_EQ(10, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5869,7 +5869,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(10, crp.count());
+        ASSERT_EQ(10, (signed)crp.count());
     }
     //     time    cnt
     // st  valid   valid
@@ -5884,7 +5884,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(5, srp.count());
+        ASSERT_EQ(5, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5894,7 +5894,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(5, crp.count());
+        ASSERT_EQ(5, (signed)crp.count());
     }
     //     time    cnt
     // st  valid   valid
@@ -5909,7 +5909,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, srp.count());
+        ASSERT_EQ(6, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5919,7 +5919,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(6, crp.count());
+        ASSERT_EQ(6, (signed)crp.count());
     }
     //     time    cnt
     // st  valid   valid
@@ -5934,7 +5934,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, srp.count());
+        ASSERT_EQ(6, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5944,7 +5944,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(6, crp.count());
+        ASSERT_EQ(6, (signed)crp.count());
     }
     //     time    cnt
     // st  expire  valid
@@ -5959,7 +5959,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
-        ASSERT_EQ(0, srp.count());
+        ASSERT_EQ(0, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5969,7 +5969,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
-        ASSERT_EQ(0, crp.count());
+        ASSERT_EQ(0, (signed)crp.count());
     }
     //     time    cnt
     // st  valid   expire
@@ -5984,7 +5984,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(0, srp.count());
+        ASSERT_EQ(0, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -5994,7 +5994,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(0, crp.count());
+        ASSERT_EQ(0, (signed)crp.count());
     }
     //     time    cnt
     // st  expire  valid
@@ -6009,7 +6009,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
-        ASSERT_EQ(0, srp.count());
+        ASSERT_EQ(0, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -6019,7 +6019,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
-        ASSERT_EQ(0, crp.count());
+        ASSERT_EQ(0, (signed)crp.count());
     }
     //     time    cnt
     // st  valid   expire
@@ -6034,7 +6034,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(0, srp.count());
+        ASSERT_EQ(0, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -6044,7 +6044,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(0, crp.count());
+        ASSERT_EQ(0, (signed)crp.count());
     }
     //     time    cnt
     // st  expire  expire
@@ -6059,7 +6059,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
-        ASSERT_EQ(0, srp.count());
+        ASSERT_EQ(0, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -6069,7 +6069,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
-        ASSERT_EQ(0, crp.count());
+        ASSERT_EQ(0, (signed)crp.count());
     }
     //     time    cnt
     // ttl 0       !0
@@ -6085,7 +6085,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(4, srp.count());
+        ASSERT_EQ(4, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -6095,7 +6095,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(4, crp.count());
+        ASSERT_EQ(4, (signed)crp.count());
     }
     //     time    cnt
     // ttl 0       !0
@@ -6111,7 +6111,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(5, srp.count());
+        ASSERT_EQ(5, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -6121,7 +6121,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(5, crp.count());
+        ASSERT_EQ(5, (signed)crp.count());
     }
     //     time    cnt
     // ttl 0       !0
@@ -6137,7 +6137,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(0, srp.count());
+        ASSERT_EQ(0, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -6147,7 +6147,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(0, crp.count());
+        ASSERT_EQ(0, (signed)crp.count());
     }
     //     time    cnt
     // ttl !0       0
@@ -6163,7 +6163,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(4, srp.count());
+        ASSERT_EQ(4, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -6173,7 +6173,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(4, crp.count());
+        ASSERT_EQ(4, (signed)crp.count());
     }
     //     time    cnt
     // ttl !0       0
@@ -6189,7 +6189,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(5, srp.count());
+        ASSERT_EQ(5, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -6199,7 +6199,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(5, crp.count());
+        ASSERT_EQ(5, (signed)crp.count());
     }
     //     time    cnt
     // ttl !0       0
@@ -6215,7 +6215,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(307, srp.code());
-        ASSERT_EQ(0, srp.count());
+        ASSERT_EQ(0, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -6225,7 +6225,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(307, crp.code());
-        ASSERT_EQ(0, crp.count());
+        ASSERT_EQ(0, (signed)crp.count());
     }
     //     time    cnt
     // ttl 0       0
@@ -6241,7 +6241,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(2, srp.count());
+        ASSERT_EQ(2, (signed)srp.count());
         cr.set_tid(id);
         cr.set_pid(0);
         cr.set_key("test" + std::to_string(i));
@@ -6251,7 +6251,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         cr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Count(NULL, &cr, &crp, &closure);
         ASSERT_EQ(0, crp.code());
-        ASSERT_EQ(2, crp.count());
+        ASSERT_EQ(2, (signed)crp.count());
     }
     //// Get test
     ::rtidb::api::GetRequest gr;
@@ -6373,7 +6373,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(10, srp.count());
+        ASSERT_EQ(10, (signed)srp.count());
     }
     // test atleast more than et and expire and with ttl
     for (int i = 0; i < 10; ++i) {
@@ -6387,7 +6387,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(5, srp.count());
+        ASSERT_EQ(5, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -6400,7 +6400,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, srp.count());
+        ASSERT_EQ(6, (signed)srp.count());
     }
     // test et less than expire
     for (int i = 0; i < 10; ++i) {
@@ -6414,7 +6414,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(10, srp.count());
+        ASSERT_EQ(10, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -6427,7 +6427,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(5, srp.count());
+        ASSERT_EQ(5, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -6440,7 +6440,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, srp.count());
+        ASSERT_EQ(6, (signed)srp.count());
     }
     // test atleast less than expire
     for (int i = 0; i < 10; ++i) {
@@ -6454,7 +6454,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(10, srp.count());
+        ASSERT_EQ(10, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -6467,7 +6467,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(5, srp.count());
+        ASSERT_EQ(5, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -6480,7 +6480,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, srp.count());
+        ASSERT_EQ(6, (signed)srp.count());
     }
     // test atleast and limit ls than valid
     for (int i = 0; i < 10; ++i) {
@@ -6495,7 +6495,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(4, srp.count());
+        ASSERT_EQ(4, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -6509,7 +6509,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(4, srp.count());
+        ASSERT_EQ(4, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -6523,7 +6523,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(4, srp.count());
+        ASSERT_EQ(4, (signed)srp.count());
     }
     // test atleast and limit more than valid
     for (int i = 0; i < 10; ++i) {
@@ -6538,7 +6538,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(9, srp.count());
+        ASSERT_EQ(9, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -6552,7 +6552,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(5, srp.count());
+        ASSERT_EQ(5, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);
@@ -6566,7 +6566,7 @@ TEST_F(TabletImplTest, AbsOrLat) {
         sr.set_et_type(::rtidb::api::kSubKeyGe);
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(6, srp.count());
+        ASSERT_EQ(6, (signed)srp.count());
     }
 }  // NOLINT
 
@@ -6586,7 +6586,7 @@ TEST_F(TabletImplTest, DelRecycle) {
 
     std::vector<std::string> file_vec;
     ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
-    ASSERT_EQ(2, file_vec.size());
+    ASSERT_EQ(2, (signed)file_vec.size());
     std::cout << "sleep for 30s" << std::endl;
     sleep(30);
 
@@ -6597,21 +6597,21 @@ TEST_F(TabletImplTest, DelRecycle) {
                               "/binlog/");
     file_vec.clear();
     ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
-    ASSERT_EQ(4, file_vec.size());
+    ASSERT_EQ(4, (signed)file_vec.size());
 
     std::cout << "sleep for 35s" << std::endl;
     sleep(35);
 
     file_vec.clear();
     ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
-    ASSERT_EQ(2, file_vec.size());
+    ASSERT_EQ(2, (signed)file_vec.size());
 
     std::cout << "sleep for 65s" << std::endl;
     sleep(65);
 
     file_vec.clear();
     ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
-    ASSERT_EQ(0, file_vec.size());
+    ASSERT_EQ(0, (signed)file_vec.size());
 
     ::rtidb::base::RemoveDirRecursive("/tmp/gtest");
     FLAGS_recycle_ttl = tmp_recycle_ttl;

@@ -415,7 +415,7 @@ TEST_P(ProjectCodecTest, common_case) {
     CompareRow(&left, &right, args->output_schema);
 }
 
-INSTANTIATE_TEST_CASE_P(ProjectCodecTestPrefix, ProjectCodecTest,
+INSTANTIATE_TEST_SUITE_P(ProjectCodecTestPrefix, ProjectCodecTest,
                         testing::ValuesIn(GenCommonCase()));
 
 }  // namespace codec

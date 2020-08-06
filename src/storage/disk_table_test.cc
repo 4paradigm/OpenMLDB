@@ -46,20 +46,20 @@ TEST_F(DiskTableTest, ParseKeyAndTs) {
     uint64_t ts;
     ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
     ASSERT_EQ("abcdexxx11", key);
-    ASSERT_EQ(1552619498000, ts);
+    ASSERT_EQ(1552619498000, (int64_t)ts);
     combined_key = CombineKeyTs("abcdexxx11", 1);
     ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
     ASSERT_EQ("abcdexxx11", key);
-    ASSERT_EQ(1, ts);
+    ASSERT_EQ(1, (int64_t)ts);
     combined_key = CombineKeyTs("0", 0);
     ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
     ASSERT_EQ("0", key);
-    ASSERT_EQ(0, ts);
+    ASSERT_EQ(0, (int64_t)ts);
     ASSERT_EQ(-1, ParseKeyAndTs("abc", key, ts));
     combined_key = CombineKeyTs("", 1122);
     ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
     ASSERT_TRUE(key.empty());
-    ASSERT_EQ(1122, ts);
+    ASSERT_EQ(1122, (int64_t)ts);
 }
 
 TEST_F(DiskTableTest, Put) {
@@ -84,7 +84,7 @@ TEST_F(DiskTableTest, Put) {
         ASSERT_TRUE(it->Valid());
         std::string pk = it->GetPK();
         ASSERT_EQ(pk, raw_key);
-        ASSERT_EQ(9537 + 9 - k, it->GetKey());
+        ASSERT_EQ(9537 + 9 - k, (int64_t)(it->GetKey()));
         std::string value1 = it->GetValue().ToString();
         ASSERT_EQ("value", value1);
         it->Next();
@@ -105,7 +105,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
         "yjtable2", 1, 2, mapping, 10, ::rtidb::api::TTLType::kAbsoluteTime,
         ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
-    ASSERT_EQ(3, table->GetIdxCnt());
+    ASSERT_EQ(3, (int64_t)table->GetIdxCnt());
     //    ASSERT_EQ(0, table->GetRecordIdxCnt());
     //    ASSERT_EQ(0, table->GetRecordCnt());
     Dimensions dimensions;
@@ -128,7 +128,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     uint64_t ts = it->GetKey();
-    ASSERT_EQ(1, ts);
+    ASSERT_EQ(1, (int64_t)ts);
     std::string value1 = it->GetValue().ToString();
     ASSERT_EQ("yjtestvalue", value1);
     it->Next();
@@ -138,7 +138,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     it = table->NewIterator(1, "yjdim1", ticket);
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(1, it->GetKey());
+    ASSERT_EQ(1, (int64_t)it->GetKey());
     value1 = it->GetValue().ToString();
     ASSERT_EQ("yjtestvalue", value1);
     it->Next();
@@ -149,7 +149,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ts = it->GetKey();
-    ASSERT_EQ(1, ts);
+    ASSERT_EQ(1, (int64_t)ts);
     value1 = it->GetValue().ToString();
     ASSERT_EQ("yjtestvalue", value1);
     it->Next();
@@ -174,7 +174,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ts = it->GetKey();
-    ASSERT_EQ(2, ts);
+    ASSERT_EQ(2, (int64_t)ts);
     value1 = it->GetValue().ToString();
     ASSERT_EQ("value2", value1);
     delete it;
@@ -192,7 +192,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
     ts = it->GetKey();
-    ASSERT_EQ(2, ts);
+    ASSERT_EQ(2, (int64_t)ts);
     value1 = it->GetValue().ToString();
     ASSERT_EQ("value2", value1);
     delete it;
@@ -201,7 +201,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     it->Seek(2);
     ASSERT_TRUE(it->Valid());
     ts = it->GetKey();
-    ASSERT_EQ(2, ts);
+    ASSERT_EQ(2, (int64_t)ts);
     value1 = it->GetValue().ToString();
     ASSERT_EQ("value2", value1);
     delete it;
@@ -209,7 +209,7 @@ TEST_F(DiskTableTest, MultiDimensionPut) {
     it = table->NewIterator(1, "key1", ticket);
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(2, it->GetKey());
+    ASSERT_EQ(2, (int64_t)it->GetKey());
     value1 = it->GetValue().ToString();
     ASSERT_EQ("value2", value1);
     delete it;
@@ -264,8 +264,8 @@ TEST_F(DiskTableTest, LongPut) {
             std::string pk1 = it1->GetPK();
             ASSERT_EQ(pk0, raw_key0);
             ASSERT_EQ(pk1, raw_key1);
-            ASSERT_EQ(1581931824136 + 9 - k, it0->GetKey());
-            ASSERT_EQ(1581931824136 + 9 - k, it1->GetKey());
+            ASSERT_EQ(1581931824136 + 9 - k, (int64_t)it0->GetKey());
+            ASSERT_EQ(1581931824136 + 9 - k, (int64_t)it1->GetKey());
             std::string value0 = it0->GetValue().ToString();
             std::string value1 = it1->GetValue().ToString();
             ASSERT_EQ("ThisIsAVeryLongKeyWhichLengthIsMoreThan40'sValue",
@@ -359,7 +359,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
         if (count == 0) {
             std::string pk = it->GetPK();
             ASSERT_EQ("test90", pk);
-            ASSERT_EQ(9542, it->GetKey());
+            ASSERT_EQ(9542, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
@@ -372,7 +372,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
         if (count == 0) {
             std::string pk = it->GetPK();
             ASSERT_EQ("test91", pk);
-            ASSERT_EQ(9546, it->GetKey());
+            ASSERT_EQ(9546, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
@@ -385,7 +385,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
         if (count == 0) {
             std::string pk = it->GetPK();
             ASSERT_EQ("test91", pk);
-            ASSERT_EQ(9546, it->GetKey());
+            ASSERT_EQ(9546, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
@@ -399,7 +399,7 @@ TEST_F(DiskTableTest, TraverseIterator) {
         if (count == 0) {
             std::string pk = it->GetPK();
             ASSERT_EQ("test98", pk);
-            ASSERT_EQ(9546, it->GetKey());
+            ASSERT_EQ(9546, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
@@ -449,7 +449,7 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
         if (count == 0) {
             std::string pk = it->GetPK();
             ASSERT_EQ("test90", pk);
-            ASSERT_EQ(9542, it->GetKey());
+            ASSERT_EQ(9542, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
@@ -464,7 +464,7 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
         if (count == 0) {
             std::string pk = it->GetPK();
             ASSERT_EQ("test91", pk);
-            ASSERT_EQ(9546, it->GetKey());
+            ASSERT_EQ(9546, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
@@ -479,7 +479,7 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
         if (count == 0) {
             std::string pk = it->GetPK();
             ASSERT_EQ("test91", pk);
-            ASSERT_EQ(9546, it->GetKey());
+            ASSERT_EQ(9546, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
@@ -502,8 +502,8 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
         "t1", 1, 3, mapping, 5, ::rtidb::api::TTLType::kAbsoluteTime,
         ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
-    ASSERT_EQ(table->GetTTL().abs_ttl * 60 * 1000, 5 * 60 * 1000);
-    ASSERT_EQ(table->GetTTL().lat_ttl, 0);
+    ASSERT_EQ((int64_t)(table->GetTTL().abs_ttl * 60 * 1000), 5 * 60 * 1000);
+    ASSERT_EQ((int64_t)table->GetTTL().lat_ttl, 0);
     ASSERT_EQ(table->GetTTLType(), ::rtidb::api::TTLType::kAbsoluteTime);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     for (int idx = 0; idx < 10; idx++) {
@@ -534,7 +534,7 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
     }
     ASSERT_FALSE(it->Valid());
     ASSERT_EQ(47, count);
-    ASSERT_EQ(50, it->GetCount());
+    ASSERT_EQ(50, (int64_t)it->GetCount());
     delete it;
 
     it = table->NewTraverseIterator(0);
@@ -545,7 +545,7 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
         it->Next();
     }
     ASSERT_EQ(46, count);
-    ASSERT_EQ(50, it->GetCount());
+    ASSERT_EQ(50, (int64_t)it->GetCount());
     delete table;
     FLAGS_max_traverse_cnt = old_max_traverse;
     std::string path = FLAGS_hdd_root_path + "/1_3";
@@ -559,8 +559,8 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
         "t1", 1, 3, mapping, 3, ::rtidb::api::TTLType::kLatestTime,
         ::rtidb::common::StorageMode::kHDD, FLAGS_hdd_root_path);
     ASSERT_TRUE(table->Init());
-    ASSERT_EQ(table->GetTTL().abs_ttl, 0);
-    ASSERT_EQ(table->GetTTL().lat_ttl, 3);
+    ASSERT_EQ((int64_t)table->GetTTL().abs_ttl, 0);
+    ASSERT_EQ((int64_t)table->GetTTL().lat_ttl, 3);
     ASSERT_EQ(table->GetTTLType(), ::rtidb::api::TTLType::kLatestTime);
     for (int idx = 0; idx < 100; idx++) {
         std::string key = "test" + std::to_string(idx);
@@ -590,7 +590,7 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
         if (count == 0) {
             std::string pk = it->GetPK();
             ASSERT_EQ("test90", pk);
-            ASSERT_EQ(9540, it->GetKey());
+            ASSERT_EQ(9540, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
@@ -603,7 +603,7 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
         if (count == 0) {
             std::string pk = it->GetPK();
             ASSERT_EQ("test91", pk);
-            ASSERT_EQ(9541, it->GetKey());
+            ASSERT_EQ(9541, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
@@ -615,7 +615,7 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
         if (count == 0) {
             std::string pk = it->GetPK();
             ASSERT_EQ("test91", pk);
-            ASSERT_EQ(9541, it->GetKey());
+            ASSERT_EQ(9541, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
@@ -649,7 +649,7 @@ TEST_F(DiskTableTest, Load) {
         ASSERT_TRUE(it->Valid());
         std::string pk = it->GetPK();
         ASSERT_EQ(pk, raw_key);
-        ASSERT_EQ(9537 + 9 - k, it->GetKey());
+        ASSERT_EQ(9537 + 9 - k, (int64_t)it->GetKey());
         std::string value1 = it->GetValue().ToString();
         ASSERT_EQ("value", value1);
         it->Next();
@@ -669,7 +669,7 @@ TEST_F(DiskTableTest, Load) {
         ASSERT_TRUE(it->Valid());
         std::string pk = it->GetPK();
         ASSERT_EQ(pk, raw_key);
-        ASSERT_EQ(9537 + 9 - k, it->GetKey());
+        ASSERT_EQ(9537 + 9 - k, (int64_t)it->GetKey());
         std::string value1 = it->GetValue().ToString();
         ASSERT_EQ("value", value1);
         it->Next();
@@ -1185,7 +1185,7 @@ TEST_F(DiskTableTest, CheckPoint) {
         ASSERT_TRUE(it->Valid());
         std::string pk = it->GetPK();
         ASSERT_EQ(pk, raw_key);
-        ASSERT_EQ(9537 + 9 - k, it->GetKey());
+        ASSERT_EQ(9537 + 9 - k, (int64_t)it->GetKey());
         std::string value1 = it->GetValue().ToString();
         ASSERT_EQ("value", value1);
         it->Next();
@@ -1213,7 +1213,7 @@ TEST_F(DiskTableTest, CheckPoint) {
         ASSERT_TRUE(it->Valid());
         std::string pk = it->GetPK();
         ASSERT_EQ(pk, raw_key);
-        ASSERT_EQ(9537 + 9 - k, it->GetKey());
+        ASSERT_EQ(9537 + 9 - k, (int64_t)(it->GetKey()));
         std::string value1 = it->GetValue().ToString();
         ASSERT_EQ("value", value1);
         it->Next();
