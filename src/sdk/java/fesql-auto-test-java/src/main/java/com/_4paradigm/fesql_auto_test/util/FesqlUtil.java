@@ -43,7 +43,37 @@ public class FesqlUtil {
         return -1;
     }
 
-    public static String getColumnType(DataType dataType) {
+
+    public static DataType getColumnType(String type) {
+        switch (type) {
+            case "smallint":
+            case "int16":
+                return DataType.kTypeInt16;
+            case "int32":
+            case "i32":
+            case "int":
+                return DataType.kTypeInt32;
+            case "int64":
+            case "bigint":
+                return DataType.kTypeInt64;
+            case "float":
+                return DataType.kTypeFloat;
+            case "double":
+                return DataType.kTypeDouble;
+            case "bool":
+                return DataType.kTypeBool;
+            case "string":
+                return DataType.kTypeString;
+            case "timestamp":
+                return DataType.kTypeTimestamp;
+            case "date":
+                return DataType.kTypeDate;
+            default:
+                return null;
+        }
+    }
+
+    public static String getColumnTypeString(DataType dataType) {
         if (dataType.equals(DataType.kTypeBool)) {
             return "bool";
         } else if (dataType.equals(DataType.kTypeString)) {

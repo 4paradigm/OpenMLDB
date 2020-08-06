@@ -18,6 +18,19 @@ import java.io.FileNotFoundException;
 public class SelectTest extends FesqlTest {
 
     @DataProvider
+    public Object[] testConstSelectData() throws FileNotFoundException {
+        FesqlDataProvider dp = FesqlDataProvider
+                .dataProviderGenerator("/query/const_query.yaml");
+        return dp.getCases().toArray();
+    }
+
+    @Test(dataProvider = "testConstSelectData")
+    public void testConstSelect(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase).run();
+    }
+
+
+    @DataProvider
     public Object[] testSampleSelectData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
                 .dataProviderGenerator("/integration/v1/test_select_sample.yaml");

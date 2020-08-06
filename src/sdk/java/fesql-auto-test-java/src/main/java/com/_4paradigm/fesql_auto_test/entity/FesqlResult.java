@@ -28,7 +28,7 @@ public class FesqlResult {
             for (int i = 0; i < columnCount; i++) {
                 builder.append(resultSchema.GetColumnName(i))
                         .append(" ")
-                        .append(FesqlUtil.getColumnType(resultSchema.GetColumnType(i)));
+                        .append(FesqlUtil.getColumnTypeString(resultSchema.GetColumnType(i)));
                 if (i < columnCount - 1) {
                     builder.append(",");
                 }

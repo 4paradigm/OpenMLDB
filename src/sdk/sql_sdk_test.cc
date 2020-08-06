@@ -414,7 +414,9 @@ void SQLSDKQueryTest::RunRequestModeSDK(
     LOG(INFO) << "RequestExecuteSQL ID: " << sql_case.id()
               << ", DESC: " << sql_case.desc() << " done!";
 }
-
+INSTANTIATE_TEST_SUITE_P(SQLSDKTestConstsSelect, SQLSDKQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases(
+                             "/cases/query/const_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestSelectSample, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases(
                              "/cases/integration/v1/test_select_sample.yaml")));
@@ -481,7 +483,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enbale_debug = false;
+    sql_opt.enbale_debug = true;
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";

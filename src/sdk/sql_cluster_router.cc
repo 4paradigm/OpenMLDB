@@ -535,6 +535,16 @@ bool SQLClusterRouter::GetTablet(
         return false;
     }
     ::fesql::vm::PhysicalOpNode* physical_plan = session.GetPhysicalPlan();
+
+    if (IsConstQuery(physical_plan)) {
+        auto tablet = cluster_sdk_->PickOneTablet();
+        if (!tablet) {
+            LOG(WARNING) << "fail to pack a tablet";
+            return false;
+        }
+        tablets->push_back(tablet);
+        return true;
+    }
     std::set<std::string> tables;
     GetTables(physical_plan, &tables);
     auto it = tables.begin();
@@ -547,7 +557,22 @@ bool SQLClusterRouter::GetTablet(
     }
     return true;
 }
+bool SQLClusterRouter::IsConstQuery(::fesql::vm::PhysicalOpNode* node) {
+    if (node->type_ == ::fesql::vm::kPhysicalOpConstProject) {
+        return true;
+    }
 
+    if (node->GetProducerCnt() <= 0) {
+        return false;
+    }
+
+    for (size_t i = 0; i < node->GetProducerCnt(); i++) {
+        if (!IsConstQuery(node->GetProducer(i))) {
+            return false;
+        }
+    }
+    return true;
+}
 void SQLClusterRouter::GetTables(::fesql::vm::PhysicalOpNode* node,
                                  std::set<std::string>* tables) {
     if (node == NULL || tables == NULL) return;
