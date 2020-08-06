@@ -176,8 +176,8 @@ public class StreamWindowAggPlan {
                     super.close();
                     inputCodec.delete();
                     outputCodec.delete();
-                    this.lastTriggeringTsState.clear();
-                    this.timeRowsState.clear();
+                    //this.lastTriggeringTsState.clear();
+                    //this.timeRowsState.clear();
                 }
 
             }).returns(finalOutputTypeInfo);
@@ -255,7 +255,7 @@ public class StreamWindowAggPlan {
                     super.close();
                     inputCodec.delete();
                     outputCodec.delete();
-                    this.timeRowsState.clear();
+                    //this.timeRowsState.clear();
                 }
 
             }).returns(finalOutputTypeInfo);
