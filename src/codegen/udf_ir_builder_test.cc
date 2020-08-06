@@ -333,7 +333,7 @@ TEST_F(UDFIRBuilderTest, acos_udf_test) {
     CheckUDF<double, int32_t>("acos", 1.5707963267948966, 0);
     CheckUDF<double, int64_t>("acos", 0, 1);
     CheckUDF<double, int64_t>("acos", 1.5707963267948966, 0);
-    CheckFloatUDF<float, float>("acos", 1.0471976, 0.5f);
+    CheckUDF<float, float>("acos", acosf(0.5f), 0.5f);
     CheckUDF<double, double>("acos", 1.0471975511965979, 0.5);
     // CheckUDF<double, double>("acos", nan, -2.1);
 }
@@ -345,7 +345,7 @@ TEST_F(UDFIRBuilderTest, asin_udf_test) {
     CheckUDF<double, int32_t>("asin", 1.5707963267948966, 1);
     CheckUDF<double, int64_t>("asin", 0, 0);
     CheckUDF<double, int64_t>("asin", 1.5707963267948966, 1);
-    CheckFloatUDF<float, float>("asin", 0.2013579, 0.2f);
+    CheckUDF<float, float>("asin", asinf(0.2f), 0.2f);
     CheckUDF<double, double>("asin", 0.2013579207903308, 0.2);
     // CheckUDF<double, double>("asin", nan, -2.1);
 }
@@ -357,7 +357,7 @@ TEST_F(UDFIRBuilderTest, atan_udf_test) {
     CheckUDF<double, int32_t>("atan", 1.1071487177940904, 2);
     CheckUDF<double, int64_t>("atan", 0, 0);
     CheckUDF<double, int64_t>("atan", -1.1071487177940904, -2);
-    CheckFloatUDF<float, float>("atan", -1.5485827, -45.01f);
+    CheckUDF<float, float>("atan", atan(-45.01f), -45.01f);
     CheckUDF<double, double>("atan", 0.1462226769376524, 0.1472738);
     CheckUDF<double, int16_t, int32_t>("atan", 2.3561944901923448, 2, -2);
     CheckUDF<double, int64_t, int32_t>("atan", 2.3561944901923448, 2, -2);
@@ -373,13 +373,15 @@ TEST_F(UDFIRBuilderTest, atan2_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, ceil_udf_test) {
-    CheckUDF<double, int16_t>("ceil", 5, 5);
-    CheckUDF<double, int32_t>("ceil", 32769, 32769);
-    CheckUDF<double, int64_t>("ceil", 2147483649, 2147483649);
-    CheckUDF<float, float>("ceil", 0, -0.1);
-    CheckUDF<float, float>("ceil", 2, 1.23);
-    CheckUDF<double, double>("ceil", -1, -1.23);
-    CheckUDF<double, double>("ceil", 0, 0);
+    CheckUDF<int16_t, int16_t>("ceil", 5, 5);
+    CheckUDF<int32_t, int32_t>("ceil", 32769, 32769);
+    CheckUDF<int64_t, int64_t>("ceil", 2147483649, 2147483649);
+    CheckUDF<int, float>("ceil", 0, -0.1);
+    CheckUDF<int, float>("ceil", 2, 1.23);
+    CheckUDF<int, double>("ceil", -1, -1.23);
+    CheckUDF<int, double>("ceil", 0, 0);
+}
+
 TEST_F(UDFIRBuilderTest, substring_pos_len_udf_test) {
     CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
         "substring", codec::StringRef("12345"), codec::StringRef("1234567890"),

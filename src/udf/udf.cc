@@ -97,6 +97,14 @@ int32_t weekofyear(codec::Date *date) {
 
 int16_t abs_int16(int16_t x) {
     return static_cast<int16_t>(abs(x));
+}
+int Ceild(double x){
+    return static_cast<int>(ceil(x));
+}
+int Ceilf(float x){
+    return static_cast<int>(ceilf(x));
+}
+
 void date_format(codec::Timestamp *timestamp, fesql::codec::StringRef *format,
                  fesql::codec::StringRef *output) {
     if (nullptr == format) {
@@ -284,6 +292,7 @@ void delete_iterator(int8_t *input) {
 }
 
 }  // namespace v1
+
 thread_local base::ByteMemoryPool __THREAD_LOCAL_MEM_POOL;
 
 int8_t *ThreadLocalMemoryPoolAlloc(int32_t request_size) {
