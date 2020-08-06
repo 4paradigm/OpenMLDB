@@ -80,6 +80,7 @@ DECLARE_uint32(preview_default_limit);
 DECLARE_uint32(max_col_display_length);
 DECLARE_bool(version);
 DECLARE_bool(use_name);
+DECLARE_string(data_dir);
 
 static std::map<std::string, std::string> real_ep_map;
 
@@ -119,7 +120,8 @@ void GetRealEndpoint(std::string *real_endpoint) {
         *real_endpoint = oss.str();
         if (FLAGS_use_name) {
             std::string server_name;
-            if (!::rtidb::base::GetNameFromTxt(&server_name)) {
+            if (!::rtidb::base::GetNameFromTxt(FLAGS_data_dir,
+                        &server_name)) {
                 PDLOG(WARNING, "GetNameFromTxt failed");
                 exit(1);
             }

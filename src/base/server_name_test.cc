@@ -17,14 +17,12 @@ class ServerNameTest : public ::testing::Test {
 };
 
 TEST_F(ServerNameTest, GetName) {
-    std::string restore_dir = FLAGS_data_dir;
-    FLAGS_data_dir = "/tmp/data";
+    std::string restore_dir = "/tmp/data";
     std::string server_name;
-    ASSERT_TRUE(GetNameFromTxt(&server_name));
+    ASSERT_TRUE(GetNameFromTxt(restore_dir, &server_name));
     std::string server_name_2;
-    ASSERT_TRUE(GetNameFromTxt(&server_name_2));
+    ASSERT_TRUE(GetNameFromTxt(restore_dir, &server_name_2));
     ASSERT_EQ(server_name, server_name_2);
-    FLAGS_data_dir = restore_dir;
 }
 
 }  // namespace base
