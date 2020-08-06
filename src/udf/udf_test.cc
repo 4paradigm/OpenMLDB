@@ -451,25 +451,25 @@ void CheckUDF(UDFLibrary* library, const std::string& name, Ret&& expect,
 
 class ExternUDFTest : public ::testing::Test {
  public:
-    static int32_t if_null(int32_t in, bool is_null, int32_t default_val) {
+    static int32_t IfNull(int32_t in, bool is_null, int32_t default_val) {
         return is_null ? default_val : in;
     }
 
-    static int32_t add_one(int32_t in) { return in + 1; }
+    static int32_t AddOne(int32_t in) { return in + 1; }
 
-    static int32_t add_two(int32_t x, int32_t y) { return x + y; }
+    static int32_t AddTwo(int32_t x, int32_t y) { return x + y; }
 
-    static int32_t add_two_one_nullable(int32_t x, bool x_is_null, int32_t y) {
+    static int32_t AddTwoOneNullable(int32_t x, bool x_is_null, int32_t y) {
         return x_is_null ? y : x + y;
     }
 
-    static void if_string_null(codec::StringRef* in, bool is_null,
+    static void IfStringNull(codec::StringRef* in, bool is_null,
                                codec::StringRef* default_val,
                                codec::StringRef* output) {
         *output = is_null ? *default_val : *in;
     }
 
-    static void new_date(int64_t in, bool is_null, codec::Date* out,
+    static void NewDate(int64_t in, bool is_null, codec::Date* out,
                          bool* is_null_addr) {
         *is_null_addr = is_null;
         if (!is_null) {
@@ -477,7 +477,7 @@ class ExternUDFTest : public ::testing::Test {
         }
     }
 
-    static double sum_tuple(float x1, bool x1_is_null, float x2, double x3,
+    static double SumTuple(float x1, bool x1_is_null, float x2, double x3,
                             double x4, bool x4_is_null) {
         double res = 0;
         if (!x1_is_null) {
@@ -491,7 +491,7 @@ class ExternUDFTest : public ::testing::Test {
         return res;
     }
 
-    static void make_tuple(int16_t x, int32_t y, bool y_is_null, int64_t z,
+    static void MakeTuple(int16_t x, int32_t y, bool y_is_null, int64_t z,
                            int16_t* t1, int32_t* t2, bool* t2_is_null,
                            int64_t* t3) {
         *t1 = x;
@@ -504,35 +504,35 @@ class ExternUDFTest : public ::testing::Test {
 TEST_F(ExternUDFTest, TestCompoundTypedExternalCall) {
     UDFLibrary library;
     library.RegisterExternal("if_null")
-        .args<Nullable<int32_t>, int32_t>(ExternUDFTest::if_null)
+        .args<Nullable<int32_t>, int32_t>(ExternUDFTest::IfNull)
         .args<Nullable<codec::StringRef>, codec::StringRef>(
-            ExternUDFTest::if_string_null);
+            ExternUDFTest::IfStringNull);
 
-    library.RegisterExternal("add_one").args<int32_t>(ExternUDFTest::add_one);
+    library.RegisterExternal("add_one").args<int32_t>(ExternUDFTest::AddOne);
 
     library.RegisterExternal("add_two").args<int32_t, int32_t>(
-        ExternUDFTest::add_two);
+        ExternUDFTest::AddTwo);
 
     library.RegisterExternal("add_two_one_nullable")
-        .args<Nullable<int32_t>, int32_t>(ExternUDFTest::add_two_one_nullable);
+        .args<Nullable<int32_t>, int32_t>(ExternUDFTest::AddTwoOneNullable);
 
     library.RegisterExternal("new_date")
         .args<Nullable<int64_t>>(
             TypeAnnotatedFuncPtrImpl<std::tuple<Nullable<int64_t>>>::RBA<
-                Nullable<codec::Date>>(ExternUDFTest::new_date));
+                Nullable<codec::Date>>(ExternUDFTest::NewDate));
 
     library.RegisterExternal("sum_tuple")
         .args<Tuple<Nullable<float>, float>, Tuple<double, Nullable<double>>>(
-            ExternUDFTest::sum_tuple)
+            ExternUDFTest::SumTuple)
         .args<Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>>(
-            ExternUDFTest::sum_tuple);
+            ExternUDFTest::SumTuple);
 
     library.RegisterExternal("make_tuple")
         .args<int16_t, Nullable<int32_t>, int64_t>(
             TypeAnnotatedFuncPtrImpl<
                 std::tuple<int16_t, Nullable<int32_t>, int64_t>>::
                 RBA<Tuple<int16_t, Nullable<int32_t>, int64_t>>(
-                    ExternUDFTest::make_tuple));
+                    ExternUDFTest::MakeTuple));
 
     // pass null to primitive
     CheckUDF<int32_t, Nullable<int32_t>, int32_t>(&library, "if_null", 1, 1, 3);

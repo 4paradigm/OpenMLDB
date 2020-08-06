@@ -177,8 +177,8 @@ struct CountWhereDef {
 template <typename T>
 struct AvgUDAFDef {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
-        helper.templates<double, Tuple<int32_t, double>, T>()
-            .const_init(MakeTuple(0, 0.0))
+        helper.templates<double, Tuple<int64_t, double>, T>()
+            .const_init(MakeTuple((int64_t)0, 0.0))
             .update(
                 [](UDFResolveContext* ctx, ExprNode* state, ExprNode* input) {
                     auto nm = ctx->node_manager();
