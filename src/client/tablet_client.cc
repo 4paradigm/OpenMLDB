@@ -24,11 +24,23 @@ DECLARE_bool(enable_show_tp);
 namespace rtidb {
 namespace client {
 
-TabletClient::TabletClient(const std::string& endpoint)
-    : endpoint_(endpoint), client_(endpoint) {}
+TabletClient::TabletClient(const std::string& endpoint,
+        const std::string& real_endpoint)
+    : endpoint_(endpoint), client_(endpoint) {
+        if (!real_endpoint.empty()) {
+            client_ = ::rtidb::RpcClient<
+                ::rtidb::api::TabletServer_Stub>(real_endpoint);
+        }
+    }
 
-TabletClient::TabletClient(const std::string& endpoint, bool use_sleep_policy)
-    : endpoint_(endpoint), client_(endpoint, use_sleep_policy) {}
+TabletClient::TabletClient(const std::string& endpoint,
+        const std::string& real_endpoint, bool use_sleep_policy)
+    : endpoint_(endpoint), client_(endpoint, use_sleep_policy) {
+        if (!real_endpoint.empty()) {
+            client_ = ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(
+                    real_endpoint, use_sleep_policy);
+        }
+    }
 
 TabletClient::~TabletClient() {}
 
@@ -1557,6 +1569,27 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid,
     }
     *msg = response.msg();
     return false;
+}
+
+bool TabletClient::UpdateRealEndpointMap(
+        const std::map<std::string, std::string>& map) {
+    ::rtidb::api::UpdateRealEndpointMapRequest request;
+    ::rtidb::api::GeneralResponse response;
+    for (std::map<std::string, std::string>::const_iterator it = map.cbegin();
+            it != map.cend(); ++it) {
+        ::rtidb::api::RealEndpointPair* pair =
+            request.add_real_endpoint_map();
+        pair->set_name(it->first);
+        pair->set_real_endpoint(it->second);
+    }
+    bool ok = client_.SendRequest(
+            &::rtidb::api::TabletServer_Stub::UpdateRealEndpointMap,
+            &request, &response, FLAGS_request_timeout_ms,
+            FLAGS_request_max_retry);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
 }
 
 }  // namespace client

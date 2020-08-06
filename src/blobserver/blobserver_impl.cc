@@ -25,6 +25,7 @@ DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_string(hdd_root_path);
 DECLARE_uint32(oss_flush_size);
 DECLARE_int32(oss_flush_period);
+DECLARE_bool(use_name);
 
 using ::rtidb::base::ReturnCode;
 using ::rtidb::base::BLOB_PREFIX;
@@ -49,16 +50,16 @@ BlobServerImpl::~BlobServerImpl() {
     }
 }
 
-bool BlobServerImpl::Init() {
-    std::lock_guard<SpinMutex> lock(spin_mutex_);
+bool BlobServerImpl::Init(const std::string& real_endpoint) {
     if (FLAGS_hdd_root_path.empty()) {
         PDLOG(WARNING, "hdd root path did not set");
         return false;
     }
     if (!FLAGS_zk_cluster.empty()) {
         zk_client_ =
-            new ZkClient(FLAGS_zk_cluster, FLAGS_zk_session_timeout,
-                         BLOB_PREFIX + FLAGS_endpoint, FLAGS_zk_root_path);
+            new ZkClient(FLAGS_zk_cluster, real_endpoint,
+                    FLAGS_zk_session_timeout,
+                    BLOB_PREFIX + FLAGS_endpoint, FLAGS_zk_root_path);
         bool ok = zk_client_->Init();
         if (!ok) {
             PDLOG(WARNING, "fail to init zookeeper with cluster %s",
@@ -77,11 +78,18 @@ bool BlobServerImpl::Init() {
             return false;
         }
     }
+    PDLOG(INFO, "FLAGS_endpoint: %s, real_endpoint: %s.",
+            FLAGS_endpoint.c_str(), real_endpoint.c_str());
     return true;
 }
 
 bool BlobServerImpl::RegisterZK() {
     if (!FLAGS_zk_cluster.empty()) {
+        if (FLAGS_use_name) {
+            if (!zk_client_->RegisterName()) {
+                return false;
+            }
+        }
         if (!zk_client_->Register(true)) {
             PDLOG(WARNING, "fail to register blob with value %s%s",
                   BLOB_PREFIX.c_str(), FLAGS_endpoint.c_str());

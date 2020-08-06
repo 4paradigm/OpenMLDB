@@ -22,6 +22,8 @@
 #include "base/kv_iterator.h"
 #include "base/linenoise.h"
 #include "base/strings.h"
+#include "base/ip.h"
+#include "base/server_name.h"
 #if __linux__
 #include "blob_proxy/blob_proxy_impl.h"
 #include "blobserver/blobserver_impl.h"
@@ -77,6 +79,8 @@ DECLARE_uint32(preview_limit_max_num);
 DECLARE_uint32(preview_default_limit);
 DECLARE_uint32(max_col_display_length);
 DECLARE_bool(version);
+DECLARE_bool(use_name);
+DECLARE_string(data_dir);
 
 void shutdown_signal_handler(int signal) {
     std::cout << "catch signal: " << signal << std::endl;
@@ -97,12 +101,43 @@ void SetupLog() {
     }
 }
 
+void GetRealEndpoint(std::string *real_endpoint) {
+    if (real_endpoint == nullptr) {
+        return;
+    }
+    if (FLAGS_endpoint.empty() && FLAGS_port > 0) {
+        std::string ip;
+        if (::rtidb::base::GetLocalIp(&ip)) {
+            PDLOG(INFO, "local ip is: %s", ip.c_str());
+        } else {
+            PDLOG(WARNING, "fail to get local ip: %s", ip.c_str());
+            exit(1);
+        }
+        std::ostringstream oss;
+        oss << ip << ":" << std::to_string(FLAGS_port);
+        *real_endpoint = oss.str();
+        if (FLAGS_use_name) {
+            std::string server_name;
+            if (!::rtidb::base::GetNameFromTxt(FLAGS_data_dir,
+                        &server_name)) {
+                PDLOG(WARNING, "GetNameFromTxt failed");
+                exit(1);
+            }
+            FLAGS_endpoint = server_name;
+        } else {
+            FLAGS_endpoint = *real_endpoint;
+        }
+    }
+}
+
 #if __linux__
 void StartNameServer() {
     SetupLog();
+    std::string real_endpoint;
+    GetRealEndpoint(&real_endpoint);
     ::rtidb::nameserver::NameServerImpl* name_server =
         new ::rtidb::nameserver::NameServerImpl();
-    if (!name_server->Init()) {
+    if (!name_server->Init(real_endpoint)) {
         PDLOG(WARNING, "Fail to init");
         exit(1);
     }
@@ -113,23 +148,16 @@ void StartNameServer() {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
     }
-    if (FLAGS_port > 0) {
-        if (server.Start(FLAGS_port, &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start nameserver on endpoint %d with version %d.%d.%d.%d",
-              FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
-    } else {
-        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start nameserver on endpoint %s with version %d.%d.%d.%d",
-              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    if (real_endpoint.empty()) {
+        real_endpoint = FLAGS_endpoint;
     }
+    if (server.Start(real_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    PDLOG(INFO, "start nameserver on endpoint %s with version %d.%d.%d.%d",
+            real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     std::ostringstream oss;
     oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
         << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
@@ -207,8 +235,10 @@ void StartTablet() {
     }
     SetupLog();
     ::fesql::vm::Engine::InitializeGlobalLLVM();
+    std::string real_endpoint;
+    GetRealEndpoint(&real_endpoint);
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    bool ok = tablet->Init();
+    bool ok = tablet->Init(real_endpoint);
     if (!ok) {
         PDLOG(WARNING, "fail to init tablet");
         exit(1);
@@ -224,23 +254,16 @@ void StartTablet() {
     server.MaxConcurrencyOf(tablet, "Put") = FLAGS_put_concurrency_limit;
     tablet->SetServer(&server);
     server.MaxConcurrencyOf(tablet, "Get") = FLAGS_get_concurrency_limit;
-    if (FLAGS_port > 0) {
-        if (server.Start(FLAGS_port, &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start tablet on port %d with version %d.%d.%d.%d",
-              FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
-    } else {
-        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
-              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    if (real_endpoint.empty()) {
+        real_endpoint = FLAGS_endpoint;
     }
+    if (server.Start(real_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
+            real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     if (!tablet->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
@@ -254,6 +277,8 @@ void StartTablet() {
 
 void StartBlobProxy() {
     SetupLog();
+    std::string real_endpoint;
+    GetRealEndpoint(&real_endpoint);
     ::rtidb::blobproxy::BlobProxyImpl* proxy =
         new ::rtidb::blobproxy::BlobProxyImpl();
     bool ok = proxy->Init();
@@ -270,23 +295,16 @@ void StartBlobProxy() {
         exit(1);
     }
     server.MaxConcurrencyOf(proxy, "Get") = FLAGS_get_concurrency_limit;
-    if (FLAGS_port > 0) {
-        if (server.Start(FLAGS_port, &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start tablet on port %d with version %d.%d.%d.%d",
-              FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
-    } else {
-        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start blobproxy on endpoint %s with version %d.%d.%d.%d",
-              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    if (real_endpoint.empty()) {
+        real_endpoint = FLAGS_endpoint;
     }
+    if (server.Start(real_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    PDLOG(INFO, "start blobproxy on endpoint %s with version %d.%d.%d.%d",
+            real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     std::ostringstream oss;
     oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
         << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
@@ -298,9 +316,11 @@ void StartBlobProxy() {
 #if __linux__
 void StartBlob() {
     SetupLog();
+    std::string real_endpoint;
+    GetRealEndpoint(&real_endpoint);
     ::rtidb::blobserver::BlobServerImpl* server_impl =
         new ::rtidb::blobserver::BlobServerImpl();
-    bool ok = server_impl->Init();
+    bool ok = server_impl->Init(real_endpoint);
     if (!ok) {
         PDLOG(WARNING, "fail to init tablet");
         exit(1);
@@ -315,23 +335,16 @@ void StartBlob() {
     server.MaxConcurrencyOf(server_impl, "Put") = FLAGS_put_concurrency_limit;
     server_impl->SetServer(&server);
     server.MaxConcurrencyOf(server_impl, "Get") = FLAGS_get_concurrency_limit;
-    if (FLAGS_port > 0) {
-        if (server.Start(FLAGS_port, &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start blob on port %d with version %d.%d.%d.%d",
-              FLAGS_port, RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
-    } else {
-        if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-            PDLOG(WARNING, "Fail to start server");
-            exit(1);
-        }
-        PDLOG(INFO, "start blob on endpoint %s with version %d.%d.%d.%d",
-              FLAGS_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-              RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    if (real_endpoint.empty()) {
+        real_endpoint = FLAGS_endpoint;
     }
+    if (server.Start(real_endpoint.c_str(), &options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    PDLOG(INFO, "start blob on endpoint %s with version %d.%d.%d.%d",
+            real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
     if (!server_impl->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
@@ -356,6 +369,15 @@ int PutData(
     uint32_t format_version) {
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>
         clients;
+    std::shared_ptr<::rtidb::zk::ZkClient> zk_client;
+    if (FLAGS_use_name) {
+        zk_client = std::make_shared<::rtidb::zk::ZkClient>(
+                FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
+        if (!zk_client->Init()) {
+            printf("zk client init failed \n");
+            return -1;
+        }
+    }
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
         uint32_t pid = iter->first;
         std::string endpoint;
@@ -380,9 +402,16 @@ int PutData(
             return -1;
         }
         if (clients.find(endpoint) == clients.end()) {
-            clients.insert(std::make_pair(
-                endpoint,
-                std::make_shared<::rtidb::client::TabletClient>(endpoint)));
+            std::string real_endpoint;
+            if (FLAGS_use_name) {
+                if (!zk_client->GetNodeValue(FLAGS_zk_root_path +
+                            "/map/names/" + endpoint, real_endpoint)) {
+                    printf("get real_endpoint failed \n");
+                    return -1;
+                }
+            }
+            clients.insert(std::make_pair(endpoint, std::make_shared<
+                    ::rtidb::client::TabletClient>(endpoint, real_endpoint)));
             if (clients[endpoint]->Init() < 0) {
                 printf("tablet client init failed, endpoint is %s\n",
                        endpoint.c_str());
@@ -539,8 +568,24 @@ std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
         msg = "cannot find healthy endpoint. pid is " + std::to_string(pid);
         return std::shared_ptr<::rtidb::client::TabletClient>();
     }
+    std::string real_endpoint;
+    if (FLAGS_use_name) {
+        std::shared_ptr<::rtidb::zk::ZkClient> zk_client =
+            std::make_shared<::rtidb::zk::ZkClient>(
+                    FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
+        if (!zk_client->Init()) {
+            msg = "zk client init failed";
+            return std::shared_ptr<::rtidb::client::TabletClient>();
+        }
+        if (!zk_client->GetNodeValue(FLAGS_zk_root_path +
+                    "/map/names/" + endpoint, real_endpoint)) {
+            msg = "get real_endpoint failed";
+            return std::shared_ptr<::rtidb::client::TabletClient>();
+        }
+    }
     std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
-        std::make_shared<::rtidb::client::TabletClient>(endpoint);
+        std::make_shared<::rtidb::client::TabletClient>(
+        endpoint, real_endpoint);
     if (tablet_client->Init() < 0) {
         msg = "tablet client init failed, endpoint is " + endpoint;
         tablet_client.reset();
@@ -693,6 +738,9 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
                         ::rtidb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("endpoint");
+    if (FLAGS_use_name) {
+        row.push_back("real_endpoint");
+    }
     row.push_back("state");
     row.push_back("age");
     ::baidu::common::TPrinter tp(row.size());
@@ -707,8 +755,66 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
     for (size_t i = 0; i < tablets.size(); i++) {
         std::vector<std::string> row;
         row.push_back(tablets[i].endpoint);
+        if (FLAGS_use_name) {
+            row.push_back(tablets[i].real_endpoint);
+        }
         row.push_back(tablets[i].state);
         row.push_back(::rtidb::base::HumanReadableTime(tablets[i].age));
+        tp.AddRow(row);
+    }
+    tp.Print(true);
+}
+
+void HandleNSShowBlobServer(const std::vector<std::string>& parts,
+                        ::rtidb::client::NsClient* client) {
+    std::vector<std::string> row;
+    row.push_back("endpoint");
+    if (FLAGS_use_name) {
+        row.push_back("real_endpoint");
+    }
+    row.push_back("state");
+    row.push_back("age");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+    std::vector<::rtidb::client::TabletInfo> tablets;
+    std::string msg;
+    bool ok = client->ShowBlobServer(tablets, msg);
+    if (!ok) {
+        std::cout << "Fail to show blobs. error msg: " << msg << std::endl;
+        return;
+    }
+    for (size_t i = 0; i < tablets.size(); i++) {
+        std::vector<std::string> row;
+        row.push_back(tablets[i].endpoint);
+        if (FLAGS_use_name) {
+            row.push_back(tablets[i].real_endpoint);
+        }
+        row.push_back(tablets[i].state);
+        row.push_back(::rtidb::base::HumanReadableTime(tablets[i].age));
+        tp.AddRow(row);
+    }
+    tp.Print(true);
+}
+
+void HandleNSShowSdkEndpoint(const std::vector<std::string>& parts,
+                        ::rtidb::client::NsClient* client) {
+    std::vector<std::string> row;
+    row.push_back("endpoint");
+    row.push_back("sdk_endpoint");
+    ::baidu::common::TPrinter tp(row.size());
+    tp.AddRow(row);
+    std::vector<::rtidb::client::TabletInfo> tablets;
+    std::string msg;
+    bool ok = client->ShowSdkEndpoint(tablets, msg);
+    if (!ok) {
+        std::cout << "Fail to show sdkendpoint. error msg: "
+            << msg << std::endl;
+        return;
+    }
+    for (size_t i = 0; i < tablets.size(); i++) {
+        std::vector<std::string> row;
+        row.push_back(tablets[i].endpoint);
+        row.push_back(tablets[i].real_endpoint);
         tp.AddRow(row);
     }
     tp.Print(true);
@@ -793,12 +899,25 @@ void HandleNSShowNameServer(const std::vector<std::string>& parts,
     }
     std::vector<std::string> row;
     row.push_back("endpoint");
+    if (FLAGS_use_name) {
+        row.push_back("real_endpoint");
+    }
     row.push_back("role");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     for (size_t i = 0; i < endpoint_vec.size(); i++) {
         std::vector<std::string> row;
         row.push_back(endpoint_vec[i]);
+        if (FLAGS_use_name) {
+            std::string real_endpoint;
+            std::string name = "/map/names/" + endpoint_vec[i];
+            if (!zk_client->GetNodeValue(FLAGS_zk_root_path + name,
+                        real_endpoint)) {
+                std::cout << "get real_endpoint failed" << std::endl;
+                return;
+            }
+            row.push_back(real_endpoint);
+        }
         if (i == 0) {
             row.push_back("leader");
         } else {
@@ -925,6 +1044,22 @@ void HandleNSClientSyncTable(const std::vector<std::string>& parts,
     } catch (std::exception const& e) {
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
     }
+}
+
+void HandleNSClientSetSdkEndpoint(const std::vector<std::string>& parts,
+                             ::rtidb::client::NsClient* client) {
+    if (parts.size() != 3) {
+        std::cout << "Bad format for setsdkendpoint!"
+            "eg. setsdkendpoint server_name sdkendpoint" << std::endl;
+        return;
+    }
+    std::string msg;
+    bool ret = client->SetSdkEndpoint(parts[1], parts[2], &msg);
+    if (!ret) {
+        std::cout << "setsdkendpoint failed. error msg: " << msg << std::endl;
+        return;
+    }
+    std::cout << "setsdkendpoint ok" << std::endl;
 }
 
 void HandleNSClientAddIndex(const std::vector<std::string>& parts,
@@ -3624,6 +3759,8 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         printf("scan - get records for a period of time\n");
         printf("showtable - show table info\n");
         printf("showtablet - show tablet info\n");
+        printf("showblobserver - show blobserver info\n");
+        printf("showsdkendpoint - show sdkendpoint info\n");
         printf("showns - show nameserver info\n");
         printf("showschema - show schema info\n");
         printf("showopstatus - show op info\n");
@@ -3637,9 +3774,10 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         printf("switchmode - switch cluster mode\n");
         printf(
             "synctable - synctable from leader cluster to replica cluster\n");
-        printf("deleteindx - delete index of specified table");
-        printf("update - update record of specified table");
-        printf("query - query record from relational table");
+        printf("deleteindx - delete index of specified table\n");
+        printf("update - update record of specified table\n");
+        printf("query - query record from relational table\n");
+        printf("setsdkendpoint - set sdkendpoint for external network sdk\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -3713,6 +3851,14 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("desc: show tablet info\n");
             printf("usage: showtablet\n");
             printf("ex: showtablet\n");
+        } else if (parts[1] == "showblobserver") {
+            printf("desc: show blob info\n");
+            printf("usage: showblobserver\n");
+            printf("ex: showblobserver\n");
+        } else if (parts[1] == "showsdkendpoint") {
+            printf("desc: show sdkendpoint info\n");
+            printf("usage: showsdkendpoint\n");
+            printf("ex: showsdkendpoint\n");
         } else if (parts[1] == "showns") {
             printf("desc: show nameserver info\n");
             printf("usage: showns\n");
@@ -3859,6 +4005,11 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("usage: synctable table_name cluster_alias [pid]\n");
             printf("ex: synctable test bj\n");
             printf("ex: synctable test bj 0\n");
+        } else if (parts[1] == "setsdkendpoint") {
+            printf("desc: set sdkendpoint for external network sdk\n");
+            printf("usage: setsdkendpoint server_name sdkendpoint\n");
+            printf("eg: setsdkendpoint tb1 202.12.18.1:9527\n");
+            printf("eg: setsdkendpoint tb1 null\n");
         } else if (parts[1] == "addindex") {
             printf("desc: add new index to table\n");
             printf(
@@ -6102,7 +6253,7 @@ void StartClient() {
                   << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR
                   << "." << RTIDB_VERSION_BUG << std::endl;
     }
-    ::rtidb::client::TabletClient client(FLAGS_endpoint);
+    ::rtidb::client::TabletClient client(FLAGS_endpoint, "");
     client.Init();
     std::string display_prefix = FLAGS_endpoint + "> ";
     while (true) {
@@ -6214,6 +6365,7 @@ void StartClient() {
 
 void StartNsClient() {
     std::string endpoint;
+    std::string real_endpoint;
     if (FLAGS_interactive) {
         std::cout << "Welcome to rtidb with version " << RTIDB_VERSION_MAJOR
                   << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR
@@ -6222,7 +6374,7 @@ void StartNsClient() {
     std::shared_ptr<::rtidb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
         zk_client = std::make_shared<::rtidb::zk::ZkClient>(
-            FLAGS_zk_cluster, 1000, "", FLAGS_zk_root_path);
+                FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
             return;
@@ -6239,6 +6391,13 @@ void StartNsClient() {
             return;
         }
         std::cout << "ns leader: " << endpoint << std::endl;
+        if (FLAGS_use_name) {
+            if (!zk_client->GetNodeValue(FLAGS_zk_root_path +
+                        "/map/names/" + endpoint, real_endpoint)) {
+                std::cout << "get real_endpoint failed" << std::endl;
+                return;
+            }
+        }
     } else if (!FLAGS_endpoint.empty()) {
         endpoint = FLAGS_endpoint;
     } else {
@@ -6246,7 +6405,7 @@ void StartNsClient() {
                   << std::endl;
         return;
     }
-    ::rtidb::client::NsClient client(endpoint);
+    ::rtidb::client::NsClient client(endpoint, real_endpoint);
 
     if (client.Init() < 0) {
         std::cout << "client init failed" << std::endl;
@@ -6305,6 +6464,10 @@ void StartNsClient() {
             continue;
         } else if (parts[0] == "showtablet") {
             HandleNSShowTablet(parts, &client);
+        } else if (parts[0] == "showblobserver") {
+            HandleNSShowBlobServer(parts, &client);
+        } else if (parts[0] == "showsdkendpoint") {
+            HandleNSShowSdkEndpoint(parts, &client);
         } else if (parts[0] == "showns") {
             HandleNSShowNameServer(parts, &client, zk_client);
         } else if (parts[0] == "showopstatus") {
@@ -6377,6 +6540,8 @@ void StartNsClient() {
             HandleNSSwitchMode(parts, &client);
         } else if (parts[0] == "synctable") {
             HandleNSClientSyncTable(parts, &client);
+        } else if (parts[0] == "setsdkendpoint") {
+            HandleNSClientSetSdkEndpoint(parts, &client);
         } else if (parts[0] == "addindex") {
             HandleNSClientAddIndex(parts, &client);
         } else if (parts[0] == "deleteindex") {
@@ -6418,7 +6583,7 @@ void StartBsClient() {
                   << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR
                   << "." << RTIDB_VERSION_BUG << std::endl;
     }
-    ::rtidb::client::BsClient client(FLAGS_endpoint);
+    ::rtidb::client::BsClient client(FLAGS_endpoint, "");
     client.Init();
     std::string display_prefix = FLAGS_endpoint + "> ";
     while (true) {

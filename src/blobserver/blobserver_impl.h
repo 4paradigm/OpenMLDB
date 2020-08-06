@@ -38,7 +38,7 @@ class BlobServerImpl : public ::rtidb::blobserver::BlobServer {
 
     ~BlobServerImpl();
 
-    bool Init();
+    bool Init(const std::string& real_endpoint);
 
     void CheckZkClient();
 

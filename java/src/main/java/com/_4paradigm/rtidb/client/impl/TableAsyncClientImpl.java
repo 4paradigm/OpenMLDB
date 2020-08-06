@@ -567,6 +567,9 @@ public class TableAsyncClientImpl implements TableAsyncClient {
             throw new TabletException("ts is null or empty");
         }
         PartitionHandler ph = th.getHandler(pid);
+        if (ph == null) {
+            throw new TabletException("Cannot find available PartitionHandler with tid " + tid + " pid " + pid);
+        }
         TabletServer tablet = ph.getLeader();
         if (tablet == null) {
             throw new TabletException("Cannot find available tabletServer with tid " + tid);

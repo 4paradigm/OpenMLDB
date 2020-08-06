@@ -36,7 +36,8 @@ class ZkClient {
     // hosts , the zookeeper server lists eg host1:2181,host2:2181
     // session_timeout, the session timeout
     // endpoint, the client endpoint
-    ZkClient(const std::string& hosts, int32_t session_timeout,
+     ZkClient(const std::string& hosts, const std::string& real_endpoint,
+             int32_t session_timeout,
              const std::string& endpoint, const std::string& zk_root_path);
 
     ZkClient(const std::string& hosts, int32_t session_timeout,
@@ -50,6 +51,8 @@ class ZkClient {
     // the client will create a ephemeral node in zk_root_path
     // eg {zk_root_path}/nodes/000000 -> endpoint
     bool Register(bool startup_flag = false);
+
+    bool RegisterName();
 
     // close zk connection
     bool CloseZK();
@@ -69,6 +72,7 @@ class ZkClient {
     // log all event from zookeeper
     void LogEvent(int type, int state, const char* path);
 
+    bool MkdirNoLock(const std::string& path);
     bool Mkdir(const std::string& path);
 
     bool GetNodeValue(const std::string& node, std::string& value);  // NOLINT
@@ -128,10 +132,12 @@ class ZkClient {
     int32_t session_timeout_;
     std::string endpoint_;
     std::string zk_root_path_;
+    std::string real_endpoint_;
 
     // internal args
     std::string nodes_root_path_;
     std::vector<NodesChangedCallback> nodes_watch_callbacks_;
+    std::string names_root_path_;
 
     //
     std::mutex mu_;

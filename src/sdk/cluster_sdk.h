@@ -77,6 +77,8 @@ class ClusterSDK {
         CreateNsClient();
         return ns_client_;
     }
+    bool GetRealEndpoint(const std::string& endpoint,
+            std::string* real_endpoint);
 
  private:
     bool InitCatalog();

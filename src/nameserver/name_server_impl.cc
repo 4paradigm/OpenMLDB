@@ -43,6 +43,7 @@ DECLARE_uint32(name_server_op_execute_timeout);
 DECLARE_uint32(get_replica_status_interval);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
+DECLARE_bool(use_name);
 
 using ::rtidb::base::BLOB_PREFIX;
 using ::rtidb::base::ReturnCode;
@@ -94,8 +95,27 @@ void ClusterInfo::UpdateNSClient(const std::vector<std::string>& children) {
         PDLOG(WARNING, "get replica cluster leader ns failed");
         return;
     }
+    std::string real_endpoint;
+    if (FLAGS_use_name) {
+        std::vector<std::string> vec;
+        if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/map/names",
+                    vec) || vec.empty()) {
+            PDLOG(WARNING, "get zk /map/names children failed");
+            return;
+        }
+        auto n_iter = std::find(vec.begin(), vec.end(), endpoint);
+        if (n_iter == vec.end()) {
+            PDLOG(WARNING, "name not in names_vec");
+            return;
+        }
+        if (!zk_client_->GetNodeValue(cluster_add_.zk_path() +
+                    "/map/names/" + *n_iter, real_endpoint)) {
+            PDLOG(WARNING, "get zk failed, get real_endpoint failed");
+            return;
+        }
+    }
     std::shared_ptr<::rtidb::client::NsClient> tmp_ptr =
-        std::make_shared<::rtidb::client::NsClient>(endpoint);
+        std::make_shared<::rtidb::client::NsClient>(endpoint, real_endpoint);
     if (tmp_ptr->Init() < 0) {
         PDLOG(WARNING, "replica cluster ns client init failed");
         return;
@@ -139,7 +159,30 @@ int ClusterInfo::Init(std::string& msg) {
         PDLOG(WARNING, "get zk failed, get replica cluster leader ns failed");
         return 451;
     }
-    client_ = std::make_shared<::rtidb::client::NsClient>(endpoint);
+    std::string real_endpoint;
+    if (FLAGS_use_name) {
+        std::vector<std::string> vec;
+        if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/map/names",
+                    vec) || vec.empty()) {
+            msg = "get zk failed";
+            PDLOG(WARNING, "get zk failed, get remote children");
+            return 451;
+        }
+        auto n_iter = std::find(vec.begin(), vec.end(), endpoint);
+        if (n_iter == vec.end()) {
+            msg = "name not in names_vec";
+            PDLOG(WARNING, "name not in names_vec");
+            return -1;
+        }
+        if (!zk_client_->GetNodeValue(cluster_add_.zk_path() +
+                    "/map/names/" + *n_iter, real_endpoint)) {
+            msg = "get zk failed";
+            PDLOG(WARNING, "get zk failed, get real_endpoint failed");
+            return 451;
+        }
+    }
+    client_ = std::make_shared<
+        ::rtidb::client::NsClient>(endpoint, real_endpoint);
     if (client_->Init() < 0) {
         msg = "connect ns failed";
         PDLOG(WARNING, "connect ns failed, replica cluster ns");
@@ -147,6 +190,17 @@ int ClusterInfo::Init(std::string& msg) {
     }
     zk_client_->WatchNodes(boost::bind(&ClusterInfo::UpdateNSClient, this, _1));
     zk_client_->WatchNodes();
+    if (FLAGS_use_name) {
+        UpdateRemoteRealEpMap();
+        bool ok = zk_client_->WatchItem(cluster_add_.zk_path() + "/nodes",
+                boost::bind(&ClusterInfo::UpdateRemoteRealEpMap, this));
+        if (!ok) {
+            zk_client_->CloseZK();
+            msg = "zk watch nodes failed";
+            PDLOG(WARNING, "zk watch nodes failed");
+            return -1;
+        }
+    }
     return 0;
 }
 
@@ -174,6 +228,31 @@ bool ClusterInfo::CreateTableRemote(
               msg.c_str());
         return false;
     }
+    return true;
+}
+
+bool ClusterInfo::UpdateRemoteRealEpMap() {
+    decltype(remote_real_ep_map_) tmp_map =
+        std::make_shared<std::map<std::string, std::string>>();
+    if (FLAGS_use_name) {
+        std::vector<std::string> vec;
+        if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/map/names",
+                    vec) || vec.empty()) {
+            PDLOG(WARNING, "get zk failed, get remote children");
+            return false;
+        }
+        for (auto& ep : vec) {
+            std::string real_endpoint;
+            if (!zk_client_->GetNodeValue(cluster_add_.zk_path() +
+                        "/map/names/" + ep, real_endpoint)) {
+                PDLOG(WARNING, "get zk failed, get real_endpoint failed");
+                continue;
+            }
+            tmp_map->insert(std::make_pair(ep, real_endpoint));
+        }
+    }
+    std::atomic_store_explicit(&remote_real_ep_map_, tmp_map,
+            std::memory_order_release);
     return true;
 }
 
@@ -823,6 +902,9 @@ bool NameServerImpl::Recover() {
         }
         RecoverOfflineTablet();
     }
+    if (FLAGS_use_name) {
+        UpdateRemoteRealEpMap();
+    }
     UpdateTaskStatus(true);
     return true;
 }
@@ -1346,7 +1428,23 @@ void NameServerImpl::UpdateBlobServers(
             std::shared_ptr<BlobServerInfo> blob =
                 std::make_shared<BlobServerInfo>();
             blob->state_ = TabletState::kTabletHealthy;
-            blob->client_ = std::make_shared<BsClient>(*it, true);
+            if (FLAGS_use_name) {
+                std::string real_ep;
+                if (!zk_client_->GetNodeValue(
+                          FLAGS_zk_root_path + "/map/names/" + *it, real_ep)) {
+                    PDLOG(WARNING, "get blobserver names value failed");
+                    continue;
+                }
+                blob->client_ = std::make_shared<BsClient>(*it, real_ep, true);
+                auto n_it = real_ep_map_.find(*it);
+                if (n_it == real_ep_map_.end()) {
+                    real_ep_map_.insert(std::make_pair(*it, real_ep));
+                } else {
+                    n_it->second = real_ep;
+                }
+            } else {
+                blob->client_ = std::make_shared<BsClient>(*it, "", true);
+            }
             if (blob->client_->Init() != 0) {
                 PDLOG(WARNING, "blob client init error. endpoint[%s]",
                       it->c_str());
@@ -1357,6 +1455,22 @@ void NameServerImpl::UpdateBlobServers(
             PDLOG(INFO, "add blob client. endpoint[%s]", it->c_str());
         } else {
             if (tit->second->state_ != TabletState::kTabletHealthy) {
+                if (FLAGS_use_name) {
+                    auto r_it = real_ep_map_.find(tit->first);
+                    if (r_it == real_ep_map_.end()) {
+                        PDLOG(WARNING, "%s not in real_ep_map",
+                                tit->first.c_str());
+                        continue;
+                    }
+                    tit->second->client_ =
+                        std::make_shared<BsClient>(tit->first,
+                                r_it->second, true);
+                    if (tit->second->client_->Init() != 0) {
+                        PDLOG(WARNING, "blob client init error. endpoint[%s]",
+                                tit->first.c_str());
+                        continue;
+                    }
+                }
                 tit->second->state_ = TabletState::kTabletHealthy;
                 tit->second->ctime_ =
                     ::baidu::common::timer::get_micros() / 1000;
@@ -1389,6 +1503,8 @@ void NameServerImpl::UpdateBlobServers(
             }
         }
     }
+    thread_pool_.AddTask(
+        boost::bind(&NameServerImpl::UpdateRealEpMapToTablet, this));
 }
 
 void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
@@ -1414,8 +1530,25 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         if (tit == tablets_.end()) {
             std::shared_ptr<TabletInfo> tablet = std::make_shared<TabletInfo>();
             tablet->state_ = ::rtidb::api::TabletState::kTabletHealthy;
-            tablet->client_ =
-                std::make_shared<::rtidb::client::TabletClient>(*it, true);
+            if (FLAGS_use_name) {
+                std::string real_ep;
+                if (!zk_client_->GetNodeValue(
+                          FLAGS_zk_root_path + "/map/names/" + *it, real_ep)) {
+                    PDLOG(WARNING, "get tablet names value failed");
+                    continue;
+                }
+                tablet->client_ = std::make_shared<
+                    ::rtidb::client::TabletClient>(*it, real_ep, true);
+                auto n_it = real_ep_map_.find(*it);
+                if (n_it == real_ep_map_.end()) {
+                    real_ep_map_.insert(std::make_pair(*it, real_ep));
+                } else {
+                    n_it->second = real_ep;
+                }
+            } else {
+                tablet->client_ = std::make_shared<
+                    ::rtidb::client::TabletClient>(*it, "", true);
+            }
             if (tablet->client_->Init() != 0) {
                 PDLOG(WARNING, "tablet client init error. endpoint[%s]",
                       it->c_str());
@@ -1427,6 +1560,22 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         } else {
             if (tit->second->state_ !=
                 ::rtidb::api::TabletState::kTabletHealthy) {
+                if (FLAGS_use_name) {
+                    auto r_it = real_ep_map_.find(tit->first);
+                    if (r_it == real_ep_map_.end()) {
+                        PDLOG(WARNING, "%s not in real_ep_map",
+                                tit->first.c_str());
+                        continue;
+                    }
+                    tit->second->client_ = std::make_shared<
+                        ::rtidb::client::TabletClient>(tit->first,
+                                r_it->second, true);
+                    if (tit->second->client_->Init() != 0) {
+                        PDLOG(WARNING, "tablet client init error. endpoint[%s]",
+                                tit->first.c_str());
+                        continue;
+                    }
+                }
                 tit->second->state_ = ::rtidb::api::TabletState::kTabletHealthy;
                 tit->second->ctime_ =
                     ::baidu::common::timer::get_micros() / 1000;
@@ -1465,6 +1614,8 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
     UpdateBlobServers(blobs);
     thread_pool_.AddTask(
         boost::bind(&NameServerImpl::DistributeTabletMode, this));
+    thread_pool_.AddTask(
+        boost::bind(&NameServerImpl::UpdateRealEpMapToTablet, this));
 }
 
 void NameServerImpl::OnBlobOnline(const std::string& endpoint) { return; }
@@ -1705,6 +1856,14 @@ void NameServerImpl::ShowTablet(RpcController* controller,
     for (; it != tablets_.end(); ++it) {
         TabletStatus* status = response->add_tablets();
         status->set_endpoint(it->first);
+        if (FLAGS_use_name) {
+            auto n_it = real_ep_map_.find(it->first);
+            if (n_it == real_ep_map_.end()) {
+                status->set_real_endpoint("-");
+            } else {
+                status->set_real_endpoint(n_it->second);
+            }
+        }
         status->set_state(::rtidb::api::TabletState_Name(it->second->state_));
         status->set_age(::baidu::common::timer::get_micros() / 1000 -
                         it->second->ctime_);
@@ -1714,8 +1873,8 @@ void NameServerImpl::ShowTablet(RpcController* controller,
 }
 
 bool NameServerImpl::Init(const std::string& zk_cluster,
-                          const std::string& zk_path,
-                          const std::string& endpoint) {
+        const std::string& zk_path, const std::string& endpoint,
+        const std::string& real_endpoint) {
     if (zk_cluster.empty()) {
         PDLOG(WARNING, "zk cluster disabled");
         return false;
@@ -1746,12 +1905,24 @@ bool NameServerImpl::Init(const std::string& zk_cluster,
     zone_info_.set_replica_alias("");
     zone_info_.set_zone_term(1);
     LOG(INFO) << "zone name " << zone_info_.zone_name();
-    zk_client_ =
-        new ZkClient(zk_cluster, FLAGS_zk_session_timeout, endpoint, zk_path);
+    zk_client_ = new ZkClient(zk_cluster, real_endpoint,
+            FLAGS_zk_session_timeout, endpoint, zk_path);
     if (!zk_client_->Init()) {
         PDLOG(WARNING, "fail to init zookeeper with cluster[%s]",
               zk_cluster.c_str());
         return false;
+    }
+    if (FLAGS_use_name) {
+        if (!zk_client_->RegisterName()) {
+            PDLOG(WARNING, "fail to RegisterName");
+        }
+        auto n_it = real_ep_map_.find(FLAGS_endpoint);
+        if (n_it == real_ep_map_.end()) {
+            real_ep_map_.insert(std::make_pair(
+                        FLAGS_endpoint, real_endpoint));
+        } else {
+            n_it->second = real_endpoint;
+        }
     }
     task_vec_.resize(FLAGS_name_server_task_max_concurrency +
                      FLAGS_name_server_task_concurrency_for_replica_cluster);
@@ -1784,8 +1955,9 @@ bool NameServerImpl::Init(const std::string& zk_cluster,
     return true;
 }
 
-bool NameServerImpl::Init() {
-    return Init(FLAGS_zk_cluster, FLAGS_zk_root_path, FLAGS_endpoint);
+bool NameServerImpl::Init(const std::string& real_endpoint) {
+    return Init(FLAGS_zk_cluster, FLAGS_zk_root_path,
+            FLAGS_endpoint, real_endpoint);
 }
 
 void NameServerImpl::CheckZkClient() {
@@ -9685,8 +9857,8 @@ void NameServerImpl::ChangeLeader(
         endpoint_tid.push_back(e);
     }
     if (!tablet_ptr->client_->ChangeRole(
-            change_leader_data.tid(), change_leader_data.pid(), true,
-            follower_endpoint, cur_term, &endpoint_tid)) {
+                change_leader_data.tid(), change_leader_data.pid(), true,
+                follower_endpoint, cur_term, &endpoint_tid)) {
         PDLOG(WARNING,
               "change leader failed. name[%s] tid[%u] pid[%u] endpoint[%s] "
               "op_id[%lu]",
@@ -11749,6 +11921,266 @@ void NameServerImpl::DropDatabase(RpcController* controller,
         response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
         response->set_msg("set zk failed");
         return;
+    }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
+void NameServerImpl::SetSdkEndpoint(RpcController* controller,
+        const SetSdkEndpointRequest* request,
+        GeneralResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::string server_name = request->server_name();
+    std::string sdk_endpoint = request->sdk_endpoint();
+    std::string leader_path = FLAGS_zk_root_path + "/leader";
+    std::vector<std::string> children;
+    if (!zk_client_->GetChildren(leader_path, children) || children.empty()) {
+        PDLOG(WARNING, "get zk children failed");
+        response->set_code(::rtidb::base::ReturnCode::kGetZkFailed);
+        response->set_msg("get zk children failed");
+        return;
+    }
+    std::set<std::string> endpoint_set;
+    for (const auto& path : children) {
+        std::string endpoint;
+        std::string real_path = leader_path + "/" + path;
+        if (!zk_client_->GetNodeValue(real_path, endpoint)) {
+            PDLOG(WARNING, "get zk value failed");
+            response->set_code(::rtidb::base::ReturnCode::kGetZkFailed);
+            response->set_msg("get zk value failed");
+            return;
+        }
+        endpoint_set.insert(endpoint);
+    }
+    bool has_found = true;
+    do {
+        if (std::find(endpoint_set.begin(), endpoint_set.end(),
+                    server_name) != endpoint_set.end()) {
+            break;
+        }
+        PDLOG(INFO, "not found server_name [%s] in nameservers",
+                server_name.c_str());
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = tablets_.find(server_name);
+        if (it != tablets_.end() && it->second->state_ ==
+                ::rtidb::api::TabletState::kTabletHealthy) {
+            break;
+        }
+        PDLOG(INFO, "not found server_name [%s] in tablets",
+                server_name.c_str());
+        auto bit = blob_servers_.find(server_name);
+        if (bit != blob_servers_.end() && bit->second->state_ ==
+                ::rtidb::api::TabletState::kTabletHealthy) {
+            break;
+        }
+        PDLOG(INFO, "not found server_name [%s] in tablets",
+                server_name);
+        has_found = false;
+    } while (0);
+    if (!has_found) {
+        response->set_code(::rtidb::base::ReturnCode::kServerNameNotFound);
+        response->set_msg("server_name is not exist or offline");
+        PDLOG(WARNING, "server_name[%s] is not exist or offline",
+                server_name.c_str());
+        return;
+    }
+    decltype(sdk_endpoint_map_) tmp_map;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        tmp_map = sdk_endpoint_map_;
+    }
+    std::string path =
+        FLAGS_zk_root_path + "/map/sdkendpoints/" + server_name;
+    if (sdk_endpoint != "null") {
+        if (zk_client_->IsExistNode(path) != 0) {
+            if (!zk_client_->CreateNode(path, sdk_endpoint)) {
+                PDLOG(WARNING, "create zk node %s value %s failed",
+                        path.c_str(), sdk_endpoint.c_str());
+                response->set_code(::rtidb::base::ReturnCode::kCreateZkFailed);
+                response->set_msg("create zk failed");
+                return;
+            }
+        } else {
+            if (!zk_client_->SetNodeValue(path, sdk_endpoint)) {
+                PDLOG(WARNING, "set zk node %s value %s failed",
+                        path.c_str(), sdk_endpoint.c_str());
+                response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
+                response->set_msg("set zk failed");
+                return;
+            }
+        }
+        auto iter = tmp_map.find(server_name);
+        if (iter == tmp_map.end()) {
+            tmp_map.insert(std::make_pair(server_name, sdk_endpoint));
+        } else {
+            iter->second = sdk_endpoint;
+        }
+    } else {
+        if (!zk_client_->DeleteNode(path)) {
+            response->set_code(::rtidb::base::ReturnCode::kDelZkFailed);
+            response->set_msg("del zk failed");
+            PDLOG(WARNING, "del zk node [%s] failed", path.c_str());
+            return;
+        }
+        tmp_map.erase(server_name);
+    }
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        sdk_endpoint_map_.swap(tmp_map);
+        NotifyTableChanged();
+    }
+    PDLOG(INFO, "SetSdkEndpoint success. server_name %s sdk_endpoint %s",
+        server_name.c_str(), sdk_endpoint.c_str());
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
+void NameServerImpl::UpdateRealEpMapToTablet() {
+    if (!running_.load(std::memory_order_acquire)) {
+        return;
+    }
+    decltype(tablets_) tmp_tablets;
+    decltype(real_ep_map_) tmp_map;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (real_ep_map_.empty()) {
+            return;
+        }
+        for (const auto& tablet : tablets_) {
+            if (tablet.second->state_ !=
+                ::rtidb::api::TabletState::kTabletHealthy) {
+                continue;
+            }
+            tmp_tablets.insert(std::make_pair(tablet.first, tablet.second));
+        }
+        tmp_map = real_ep_map_;
+        for (auto& pair : remote_real_ep_map_) {
+            auto it = tmp_map.find(pair.first);
+            if (it == tmp_map.end()) {
+                tmp_map.insert(std::make_pair(pair.first, pair.second));
+            } else {
+                it->second = pair.second;
+            }
+        }
+    }
+    for (const auto& tablet : tmp_tablets) {
+        if (!tablet.second->client_->UpdateRealEndpointMap(tmp_map)) {
+            PDLOG(WARNING, "UpdateRealEndpointMap for tablet %s failed!",
+                    tablet.first.c_str());
+        }
+    }
+}
+
+void NameServerImpl::UpdateRemoteRealEpMap() {
+    do {
+        if (!running_.load(std::memory_order_acquire)) {
+            break;
+        }
+        if (mode_.load(std::memory_order_relaxed) != kLEADER) {
+            break;
+        }
+        if (!FLAGS_use_name) {
+            break;
+        }
+        decltype(nsc_) tmp_nsc;
+        decltype(remote_real_ep_map_) old_map;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            if (nsc_.empty()) {
+                break;
+            }
+            for (auto& i : nsc_) {
+                if (i.second->state_.load(std::memory_order_relaxed) ==
+                        kClusterHealthy) {
+                    tmp_nsc.insert(std::make_pair(i.first, i.second));
+                }
+            }
+            old_map = remote_real_ep_map_;
+        }
+        decltype(remote_real_ep_map_) tmp_map;
+        for (auto& i : tmp_nsc) {
+            auto r_map = std::atomic_load_explicit(
+                    &i.second->remote_real_ep_map_, std::memory_order_acquire);
+            for (auto& pair : *r_map) {
+                auto it = tmp_map.find(pair.first);
+                if (it == tmp_map.end()) {
+                    tmp_map.insert(std::make_pair(pair.first, pair.second));
+                } else {
+                    it->second = pair.second;
+                }
+            }
+        }
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            remote_real_ep_map_.swap(tmp_map);
+        }
+        if (old_map != tmp_map) {
+            thread_pool_.AddTask(boost::bind(
+                        &NameServerImpl::UpdateRealEpMapToTablet, this));
+        }
+    } while (false);
+    task_thread_pool_.DelayTask(FLAGS_get_replica_status_interval,
+            boost::bind(&NameServerImpl::UpdateRemoteRealEpMap, this));
+}
+
+void NameServerImpl::ShowBlobServer(RpcController* controller,
+        const ShowBlobServerRequest* request,
+        ShowBlobServerResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    auto it = blob_servers_.begin();
+    for (; it != blob_servers_.end(); ++it) {
+        TabletStatus* status = response->add_tablets();
+        status->set_endpoint(it->first);
+        if (FLAGS_use_name) {
+            auto n_it = real_ep_map_.find(it->first);
+            if (n_it == real_ep_map_.end()) {
+                status->set_real_endpoint("-");
+            } else {
+                status->set_real_endpoint(n_it->second);
+            }
+        }
+        status->set_state(::rtidb::api::TabletState_Name(it->second->state_));
+        status->set_age(::baidu::common::timer::get_micros() / 1000 -
+                        it->second->ctime_);
+    }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
+void NameServerImpl::ShowSdkEndpoint(RpcController* controller,
+        const ShowSdkEndpointRequest* request,
+        ShowSdkEndpointResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    if (sdk_endpoint_map_.empty()) {
+        PDLOG(INFO, "sdk_endpoint_map is empty");
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+        return;
+    }
+    for (const auto& kv : sdk_endpoint_map_) {
+        TabletStatus* status = response->add_tablets();
+        status->set_endpoint(kv.first);
+        status->set_real_endpoint(kv.second);
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");

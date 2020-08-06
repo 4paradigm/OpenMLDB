@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import rtidb.nameserver.NameServer;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -32,6 +33,8 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private final static Logger logger = LoggerFactory.getLogger(NameServerClientImpl.class);
     private String zkEndpoints;
     private String leaderPath;
+    private String severNamesPath;
+    private String sdkEndpointPath;
     private volatile ZooKeeper zookeeper;
     private SingleEndpointRpcClient rpcClient;
     private volatile NameServer ns;
@@ -41,6 +44,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private RTIDBClientConfig config;
     private RpcBaseClient bs = null;
     private static Map<String, Type.DataType> TYPE_MAPING = new HashMap<>();
+
     static {
         TYPE_MAPING.put("int16", Type.DataType.kSmallInt);
         TYPE_MAPING.put("int32", Type.DataType.kInt);
@@ -52,6 +56,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         TYPE_MAPING.put("bool", Type.DataType.kBool);
         TYPE_MAPING.put("date", Type.DataType.kDate);
     }
+
     private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
         public Thread newThread(Runnable r) {
             Thread t = Executors.defaultThreadFactory().newThread(r);
@@ -63,12 +68,17 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     public NameServerClientImpl(RTIDBClientConfig config) {
         this.zkEndpoints = config.getZkEndpoints();
         this.leaderPath = config.getZkRootPath() + "/leader";
+        this.severNamesPath = config.getZkServerNamePath();
+        this.sdkEndpointPath = config.getZkSdkEndpointPath();
         this.config = config;
     }
 
     public NameServerClientImpl(String zkEndpoints, String leaderPath) {
         this.zkEndpoints = zkEndpoints;
         this.leaderPath = leaderPath;
+        int pos = leaderPath.lastIndexOf("/");
+        this.severNamesPath = leaderPath.substring(0, pos) + "/map/names";
+        this.sdkEndpointPath = leaderPath.substring(0, pos) + "/map/sdkendpoints";
         this.config = null;
     }
 
@@ -169,7 +179,23 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }
         Collections.sort(children);
         byte[] bytes = zookeeper.getData(leaderPath + "/" + children.get(0), false, null);
-        EndPoint endpoint = new EndPoint(new String(bytes));
+        String realEp = new String(bytes, Charset.forName("UTF-8"));
+
+        if (zookeeper.exists(this.sdkEndpointPath + "/" + realEp, false) != null) {
+            // get sdkendpoint
+            byte[] data1 = zookeeper.getData(this.sdkEndpointPath + "/" + realEp, false, null);
+            if (data1 != null) {
+                realEp = new String(data1, Charset.forName("UTF-8"));
+            }
+        } else if (zookeeper.exists(this.severNamesPath + "/" + realEp, false) != null) {
+            // get real endpoint
+            byte[] data2 = zookeeper.getData(this.severNamesPath + "/" + realEp, false, null);
+            if (data2 != null) {
+                realEp = new String(data2, Charset.forName("UTF-8"));
+            }
+        }
+
+        EndPoint endpoint = new EndPoint(realEp);
         if (rpcClient != null) {
             rpcClient.stop();
         }

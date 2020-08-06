@@ -20,9 +20,11 @@ using ::rtidb::blobserver::TableMeta;
 
 class BsClient {
  public:
-    explicit BsClient(const std::string& endpoint);
+    explicit BsClient(const std::string& endpoint,
+            const std::string& real_endpoint);
 
-    BsClient(const std::string& endpoint, bool use_sleep_policy);
+    BsClient(const std::string& endpoint,
+            const std::string& real_endpoint, bool use_sleep_policy);
 
     int Init();
 

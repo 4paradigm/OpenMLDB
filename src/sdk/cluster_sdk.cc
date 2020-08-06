@@ -71,8 +71,8 @@ void ClusterSDK::CheckZk() {
 }
 
 bool ClusterSDK::Init() {
-    zk_client_ = new ::rtidb::zk::ZkClient(
-        options_.zk_cluster, options_.session_timeout, "", options_.zk_path);
+    zk_client_ = new ::rtidb::zk::ZkClient(options_.zk_cluster, "",
+            options_.session_timeout, "", options_.zk_path);
     bool ok = zk_client_->Init();
     if (!ok) {
         LOG(WARNING) << "fail to init zk client with zk cluster "
@@ -115,10 +115,14 @@ bool ClusterSDK::CreateNsClient() {
         LOG(WARNING) << "fail to get zk value with path " << real_path;
         return false;
     }
-
     DLOG(INFO) << "leader path " << real_path << " with value " << endpoint;
+
+    std::string real_endpoint;
+    if (!GetRealEndpoint(endpoint, &real_endpoint)) {
+        return false;
+    }
     std::shared_ptr<::rtidb::client::NsClient> ns_client(
-        new ::rtidb::client::NsClient(endpoint));
+        new ::rtidb::client::NsClient(endpoint, real_endpoint));
     int ret = ns_client->Init();
     if (ret != 0) {
         LOG(WARNING) << "fail to init ns client with endpoint " << endpoint;
@@ -198,8 +202,13 @@ bool ClusterSDK::InitTabletClient() {
     for (uint32_t i = 0; i < tablets.size(); i++) {
         if (boost::starts_with(tablets[i], ::rtidb::base::BLOB_PREFIX))
             continue;
+
+        std::string real_endpoint;
+        if (!GetRealEndpoint(tablets[i], &real_endpoint)) {
+            return false;
+        }
         std::shared_ptr<::rtidb::client::TabletClient> client(
-            new ::rtidb::client::TabletClient(tablets[i]));
+            new ::rtidb::client::TabletClient(tablets[i], real_endpoint));
         int ret = client->Init();
         if (ret != 0) {
             LOG(WARNING) << "fail to init tablet client " << tablets[i];
@@ -334,6 +343,30 @@ ClusterSDK::GetTables(const std::string& db) {
         tables.push_back(iit->second);
     }
     return tables;
+}
+
+bool ClusterSDK::GetRealEndpoint(const std::string& endpoint,
+        std::string* real_endpoint) {
+    if (real_endpoint == nullptr) {
+        return false;
+    }
+    std::string sdk_path = options_.zk_path + "/map/sdkendpoints/" + endpoint;
+    if (zk_client_->IsExistNode(sdk_path) == 0) {
+        if (!zk_client_->GetNodeValue(sdk_path, *real_endpoint)) {
+            DLOG(WARNING) << "get zk failed! : sdk_path: " << sdk_path;
+            return false;
+        }
+    }
+    if (real_endpoint->empty()) {
+        std::string sname_path = options_.zk_path + "/map/names/" + endpoint;
+        if (zk_client_->IsExistNode(sname_path) == 0) {
+            if (!zk_client_->GetNodeValue(sname_path, *real_endpoint)) {
+                DLOG(WARNING) << "get zk failed! : sname_path: " << sname_path;
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 }  // namespace sdk

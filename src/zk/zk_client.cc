@@ -13,6 +13,9 @@
 #include "base/glog_wapper.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/bind.hpp"
+#include "base/strings.h"
+
+using ::rtidb::base::BLOB_PREFIX;
 
 namespace rtidb {
 namespace zk {
@@ -59,14 +62,17 @@ void ItemWatcher(zhandle_t* zh, int type, int state, const char* path,
     }
 }
 
-ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout,
-                   const std::string& endpoint, const std::string& zk_root_path)
+ZkClient::ZkClient(const std::string& hosts, const std::string& real_endpoint,
+        int32_t session_timeout,
+        const std::string& endpoint, const std::string& zk_root_path)
     : hosts_(hosts),
       session_timeout_(session_timeout),
       endpoint_(endpoint),
       zk_root_path_(zk_root_path),
+      real_endpoint_(real_endpoint),
       nodes_root_path_(zk_root_path_ + "/nodes"),
       nodes_watch_callbacks_(),
+      names_root_path_(zk_root_path_ + "/map/names"),
       mu_(),
       cv_(),
       zk_(NULL),
@@ -172,6 +178,42 @@ bool ZkClient::Register(bool startup_flag) {
     }
     PDLOG(WARNING, "fail to register self with endpoint %s, err from zk %d",
           endpoint_.c_str(), ret);
+    return false;
+}
+
+bool ZkClient::RegisterName() {
+    bool ok = Mkdir(names_root_path_);
+    if (!ok) {
+        return false;
+    }
+    if (zk_ == NULL || !connected_) {
+        return false;
+    }
+    std::string sname = endpoint_;
+    if (boost::starts_with(sname, BLOB_PREFIX)) {
+        sname = sname.substr(BLOB_PREFIX.size());
+    }
+    std::string name = names_root_path_ + "/" + sname;
+    std::string value = real_endpoint_.c_str();
+    if (IsExistNode(name) == 0) {
+        if (SetNodeValue(name, value)) {
+            PDLOG(INFO, "set node with name %s value %s ok",
+                    sname.c_str(), value.c_str());
+            return true;
+        }
+        PDLOG(WARNING, "set node with name %s value %s failed",
+                sname.c_str(), value.c_str());
+    } else {
+        int ret = zoo_create(zk_, name.c_str(), value.c_str(), value.size(),
+                &ZOO_OPEN_ACL_UNSAFE, 0, NULL, 0);
+        if (ret == ZOK) {
+            PDLOG(INFO, "register with name %s value %s ok",
+                    sname.c_str(), value.c_str());
+            return true;
+        }
+        PDLOG(WARNING, "fail to register with name %s value %s, err from zk %d",
+                sname.c_str(), value.c_str(), ret);
+    }
     return false;
 }
 
@@ -316,10 +358,10 @@ bool ZkClient::GetNodeValue(const std::string& node, std::string& value) {
 }
 
 bool ZkClient::SetNodeValue(const std::string& node, const std::string& value) {
+    std::lock_guard<std::mutex> lock(mu_);
     if (node.empty()) {
         return false;
     }
-    std::lock_guard<std::mutex> lock(mu_);
     if (zoo_set(zk_, node.c_str(), value.c_str(), value.length(), -1) == ZOK) {
         return true;
     }
@@ -327,10 +369,10 @@ bool ZkClient::SetNodeValue(const std::string& node, const std::string& value) {
 }
 
 int ZkClient::IsExistNode(const std::string& node) {
+    std::lock_guard<std::mutex> lock(mu_);
     if (node.empty()) {
         return -1;
     }
-    std::lock_guard<std::mutex> lock(mu_);
     Stat stat;
     int ret = zoo_exists(zk_, node.c_str(), 0, &stat);
     if (ret == ZOK) {
@@ -486,8 +528,7 @@ void ZkClient::Connected() {
     PDLOG(INFO, "connect success");
 }
 
-bool ZkClient::Mkdir(const std::string& path) {
-    std::lock_guard<std::mutex> lock(mu_);
+bool ZkClient::MkdirNoLock(const std::string& path) {
     if (zk_ == NULL || !connected_) {
         return false;
     }
@@ -515,6 +556,11 @@ bool ZkClient::Mkdir(const std::string& path) {
         return false;
     }
     return true;
+}
+
+bool ZkClient::Mkdir(const std::string& path) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return MkdirNoLock(path);
 }
 
 }  // namespace zk

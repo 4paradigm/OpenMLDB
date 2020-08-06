@@ -35,7 +35,8 @@ class ReplicateNode {
                   std::atomic<uint64_t>* term,
                   std::atomic<uint64_t>* leader_log_offset, bthread::Mutex* mu,
                   bthread::ConditionVariable* cv, bool rep_follower,
-                  std::atomic<uint64_t>* follower_offset);
+                  std::atomic<uint64_t>* follower_offset,
+                  const std::string& real_point);
     int Init();
 
     int Start();

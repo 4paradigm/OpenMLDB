@@ -47,7 +47,7 @@ class LogReplicator {
 
     ~LogReplicator();
 
-    bool Init();
+    bool Init(const std::vector<std::string>& real_endpoints);
 
     bool StartSyncing();
 
@@ -68,10 +68,12 @@ class LogReplicator {
     void DeleteBinlog();
 
     // add replication
-    int AddReplicateNode(const std::vector<std::string>& endpoint_vec);
+    int AddReplicateNode(const std::vector<std::string>& endpoint_vec,
+            const std::vector<std::string>& real_endpoint_vec);
     // add replication with tid
     int AddReplicateNode(const std::vector<std::string>& endpoint_vec,
-                         uint32_t tid);
+            const std::vector<std::string>& real_endpoint_vec,
+            uint32_t tid);
 
     int DelReplicateNode(const std::string& endpoint);
 

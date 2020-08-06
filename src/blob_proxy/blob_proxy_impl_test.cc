@@ -51,7 +51,7 @@ class BlobProxyImplTest : public ::testing::Test {
 };
 
 void StartNameServer(brpc::Server* server, NameServerImpl* nameserver) {
-    bool ok = nameserver->Init();
+    bool ok = nameserver->Init("");
     ASSERT_TRUE(ok);
     brpc::ServerOptions options;
     if (server->AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -69,7 +69,7 @@ void StartBlob(brpc::Server* server) {
     FLAGS_hdd_root_path = "/tmp/object_store_test/" + GenRand();
     ::rtidb::blobserver::BlobServerImpl* blob =
         new ::rtidb::blobserver::BlobServerImpl();
-    bool ok = blob->Init();
+    bool ok = blob->Init("");
     ASSERT_TRUE(ok);
     brpc::ServerOptions options1;
     if (server->AddService(blob, brpc::SERVER_OWNS_SERVICE) != 0) {
@@ -121,7 +121,7 @@ TEST_F(BlobProxyImplTest, Basic_Test) {
     FLAGS_endpoint = "127.0.0.1:9931";
     brpc::Server server1;
     StartBlob(&server1);
-    ::rtidb::client::BsClient blob_client(FLAGS_endpoint);
+    ::rtidb::client::BsClient blob_client(FLAGS_endpoint, "");
     ASSERT_EQ(0, blob_client.Init());
 
     sleep(6);

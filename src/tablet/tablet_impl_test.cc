@@ -210,7 +210,7 @@ void PrepareLatestTableData(TabletImpl& tablet, int32_t tid,  // NOLINT
 
 TEST_F(TabletImplTest, Count_Latest_Table) {
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     // create table
     MockClosure closure;
     uint32_t id = counter++;
@@ -345,7 +345,7 @@ TEST_F(TabletImplTest, Count_Latest_Table) {
 
 TEST_F(TabletImplTest, Count_Time_Table) {
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     // create table
     MockClosure closure;
     uint32_t id = counter++;
@@ -480,7 +480,7 @@ TEST_F(TabletImplTest, Count_Time_Table) {
 
 TEST_F(TabletImplTest, SCAN_latest_table) {
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     // create table
     MockClosure closure;
     uint32_t id = counter++;
@@ -545,7 +545,7 @@ TEST_F(TabletImplTest, SCAN_latest_table) {
 
 TEST_F(TabletImplTest, GetRelationalTable) {
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     // table not found
     {
         ::rtidb::api::BatchQueryRequest request;
@@ -767,7 +767,7 @@ TEST_F(TabletImplTest, GetRelationalTable) {
 
 TEST_F(TabletImplTest, StringKeyRelationalTable) {
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     std::string table_name = "relation_test" + GenRand();
     // table not found
     {
@@ -952,7 +952,7 @@ TEST_F(TabletImplTest, StringKeyRelationalTable) {
 
 TEST_F(TabletImplTest, Get) {
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     // table not found
     {
         ::rtidb::api::GetRequest request;
@@ -1155,7 +1155,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsoluteTime) {
     // 1 minute
     FLAGS_gc_interval = 1;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     // create table
     uint32_t id = counter++;
     {
@@ -1381,7 +1381,7 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
     // 1 minute
     FLAGS_gc_interval = 1;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     // create table
     uint32_t id = counter++;
     {
@@ -1466,7 +1466,7 @@ TEST_F(TabletImplTest, UpdateTTLLatest) {
 
 TEST_F(TabletImplTest, CreateTableWithSchema) {
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     {
         uint32_t id = counter++;
         ::rtidb::api::CreateTableRequest request;
@@ -1547,7 +1547,7 @@ TEST_F(TabletImplTest, CreateTableWithSchema) {
 
 TEST_F(TabletImplTest, MultiGet) {
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     uint32_t id = counter++;
     std::vector<::rtidb::codec::ColumnDesc> columns;
     ::rtidb::codec::ColumnDesc desc1;
@@ -1675,7 +1675,7 @@ TEST_F(TabletImplTest, TTL) {
     uint32_t id = counter++;
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
@@ -1716,7 +1716,7 @@ TEST_F(TabletImplTest, TTL) {
 TEST_F(TabletImplTest, CreateTable) {
     uint32_t id = counter++;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     {
         ::rtidb::api::CreateTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
@@ -1759,7 +1759,7 @@ TEST_F(TabletImplTest, CreateTable) {
 TEST_F(TabletImplTest, Put) {
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
@@ -1789,7 +1789,7 @@ TEST_F(TabletImplTest, Put) {
 TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
@@ -1862,7 +1862,7 @@ TEST_F(TabletImplTest, Scan_with_duplicate_skip) {
 TEST_F(TabletImplTest, Scan_with_latestN) {
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
@@ -1911,7 +1911,7 @@ TEST_F(TabletImplTest, Scan_with_latestN) {
 TEST_F(TabletImplTest, Traverse) {
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
@@ -1958,7 +1958,7 @@ TEST_F(TabletImplTest, TraverseTTL) {
     FLAGS_max_traverse_cnt = 50;
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
@@ -2043,7 +2043,7 @@ TEST_F(TabletImplTest, TraverseTTLSSD) {
     FLAGS_max_traverse_cnt = 50;
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
@@ -2129,7 +2129,7 @@ TEST_F(TabletImplTest, TraverseTTLTS) {
     FLAGS_max_traverse_cnt = 50;
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
@@ -2302,7 +2302,7 @@ TEST_F(TabletImplTest, TraverseTTLSSDTS) {
     FLAGS_max_traverse_cnt = 50;
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
@@ -2482,7 +2482,7 @@ TEST_F(TabletImplTest, TraverseTTLSSDTS) {
 TEST_F(TabletImplTest, Scan_with_limit) {
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
@@ -2544,7 +2544,7 @@ TEST_F(TabletImplTest, Scan_with_limit) {
 TEST_F(TabletImplTest, Scan) {
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
@@ -2617,7 +2617,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
     FLAGS_gc_interval = 1;
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     MockClosure closure;
     // create a latest table
     {
@@ -2757,7 +2757,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_LATEST) {
 TEST_F(TabletImplTest, GC) {
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
@@ -2797,7 +2797,7 @@ TEST_F(TabletImplTest, GC) {
 TEST_F(TabletImplTest, DropTable) {
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     MockClosure closure;
     ::rtidb::api::DropTableRequest dr;
     dr.set_tid(id);
@@ -2844,7 +2844,7 @@ TEST_F(TabletImplTest, DropTableNoRecycle) {
     ::rtidb::base::RemoveDirRecursive("/tmp/gtest");
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     MockClosure closure;
     ::rtidb::api::DropTableRequest dr;
     dr.set_tid(id);
@@ -2894,7 +2894,7 @@ TEST_F(TabletImplTest, Recover) {
     MockClosure closure;
     {
         TabletImpl tablet;
-        tablet.Init();
+        tablet.Init("");
         ::rtidb::api::CreateTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
@@ -2921,7 +2921,7 @@ TEST_F(TabletImplTest, Recover) {
     // recover
     {
         TabletImpl tablet;
-        tablet.Init();
+        tablet.Init("");
         ::rtidb::api::LoadTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
@@ -2979,7 +2979,7 @@ TEST_F(TabletImplTest, Recover) {
 
     {
         TabletImpl tablet;
-        tablet.Init();
+        tablet.Init("");
         ::rtidb::api::LoadTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
@@ -3010,7 +3010,7 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
     ::rtidb::api::TableMeta table_meta_test;
     {
         TabletImpl tablet;
-        tablet.Init();
+        tablet.Init("");
         ::rtidb::api::CreateTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
@@ -3067,7 +3067,7 @@ TEST_F(TabletImplTest, LoadWithDeletedKey) {
     // load
     {
         TabletImpl tablet;
-        tablet.Init();
+        tablet.Init("");
         ::rtidb::api::LoadTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
@@ -3171,7 +3171,7 @@ TEST_F(TabletImplTest, Load_with_incomplete_binlog) {
     delete wh;
     {
         TabletImpl tablet;
-        tablet.Init();
+        tablet.Init("");
         ::rtidb::api::LoadTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
@@ -3256,7 +3256,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
     FLAGS_gc_interval = 1;
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     MockClosure closure;
     // create a latest table
     {
@@ -3362,7 +3362,7 @@ TEST_F(TabletImplTest, GC_WITH_UPDATE_TTL) {
 TEST_F(TabletImplTest, DropTableFollower) {
     uint32_t id = counter++;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     MockClosure closure;
     ::rtidb::api::DropTableRequest dr;
     dr.set_tid(id);
@@ -3410,7 +3410,7 @@ TEST_F(TabletImplTest, DropTableFollower) {
 TEST_F(TabletImplTest, TestGetType) {
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
@@ -3553,7 +3553,7 @@ TEST_F(TabletImplTest, TestGetType) {
 TEST_F(TabletImplTest, Snapshot) {
     TabletImpl tablet;
     uint32_t id = counter++;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     table_meta->set_name("t0");
@@ -3600,7 +3600,7 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Default) {
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     // no height specify
     {
         ::rtidb::api::CreateTableRequest request;
@@ -3631,7 +3631,7 @@ TEST_F(TabletImplTest, CreateTableLatestTest_Specify) {
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     {
         ::rtidb::api::CreateTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
@@ -3662,7 +3662,7 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Default) {
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     {
         ::rtidb::api::CreateTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
@@ -3692,7 +3692,7 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_Specify) {
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     {
         ::rtidb::api::CreateTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
@@ -3723,7 +3723,7 @@ TEST_F(TabletImplTest, CreateTableAbsoluteTest_TTlDesc) {
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     {
         ::rtidb::api::CreateTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
@@ -3757,7 +3757,7 @@ TEST_F(TabletImplTest, CreateTableLatestTest_TTlDesc) {
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     {
         ::rtidb::api::CreateTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
@@ -3790,7 +3790,7 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest) {
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     {
         ::rtidb::api::CreateTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
@@ -3824,7 +3824,7 @@ TEST_F(TabletImplTest, CreateTableAbsAndOrTest) {
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     {
         ::rtidb::api::CreateTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
@@ -3858,7 +3858,7 @@ TEST_F(TabletImplTest, CreateTableAbsAndLatTest_Specify) {
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     {
         ::rtidb::api::CreateTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
@@ -3894,7 +3894,7 @@ TEST_F(TabletImplTest, GetTermPair) {
     MockClosure closure;
     {
         TabletImpl tablet;
-        tablet.Init();
+        tablet.Init("");
         ::rtidb::api::CreateTableRequest request;
         ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
         table_meta->set_name("t0");
@@ -3935,7 +3935,7 @@ TEST_F(TabletImplTest, GetTermPair) {
         ASSERT_EQ(1, pair_response.offset());
     }
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::GetTermPairRequest pair_request;
     ::rtidb::api::GetTermPairResponse pair_response;
     pair_request.set_tid(id);
@@ -3965,7 +3965,7 @@ TEST_F(TabletImplTest, GetTermPair) {
 
 TEST_F(TabletImplTest, MakeSnapshotThreshold) {
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     MockClosure closure;
     int offset = FLAGS_make_snapshot_threshold_offset;
     FLAGS_make_snapshot_threshold_offset = 0;
@@ -4064,7 +4064,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsAndLat) {
     // 1 minute
     FLAGS_gc_interval = 1;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     // create table
     uint32_t id = counter++;
     {
@@ -4351,7 +4351,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
     // 1 minute
     FLAGS_gc_interval = 1;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     // create table
     uint32_t id = counter++;
     {
@@ -4632,7 +4632,7 @@ TEST_F(TabletImplTest, UpdateTTLAbsOrLat) {
 
 TEST_F(TabletImplTest, ScanAtLeast) {
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     MockClosure closure;
     uint32_t id = 100;
     {
@@ -4734,7 +4734,7 @@ TEST_F(TabletImplTest, ScanAtLeast) {
 
 TEST_F(TabletImplTest, AbsAndLat) {
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     MockClosure closure;
     uint32_t id = 101;
     {
@@ -5661,7 +5661,7 @@ TEST_F(TabletImplTest, AbsAndLat) {
 
 TEST_F(TabletImplTest, AbsOrLat) {
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     MockClosure closure;
     uint32_t id = 102;
     {
@@ -6582,7 +6582,7 @@ TEST_F(TabletImplTest, DelRecycle) {
     ::rtidb::base::MkdirRecur(
         "/tmp/gtest/recycle/100_2_20191111115149/binlog/");
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
 
     std::vector<std::string> file_vec;
     ::rtidb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
@@ -6624,7 +6624,7 @@ TEST_F(TabletImplTest, DumpIndex) {
     uint32_t id = counter++;
     MockClosure closure;
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     ::rtidb::api::CreateTableRequest request;
     ::rtidb::api::TableMeta* table_meta = request.mutable_table_meta();
     ::rtidb::common::ColumnDesc* desc = table_meta->add_column_desc();
@@ -6754,7 +6754,7 @@ TEST_F(TabletImplTest, DumpIndex) {
 
 TEST_F(TabletImplTest, SendIndexData) {
     TabletImpl tablet;
-    tablet.Init();
+    tablet.Init("");
     MockClosure closure;
     uint32_t id = counter++;
     {

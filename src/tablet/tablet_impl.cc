@@ -70,6 +70,7 @@ DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(get_table_diskused_interval);
 DECLARE_uint32(task_check_interval);
 DECLARE_uint32(load_index_max_wait_time);
+DECLARE_bool(use_name);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -123,12 +124,13 @@ TabletImpl::~TabletImpl() {
     snapshot_pool_.Stop(true);
 }
 
-bool TabletImpl::Init() {
-    return Init(FLAGS_zk_cluster, FLAGS_zk_root_path, FLAGS_endpoint);
+bool TabletImpl::Init(const std::string& real_endpoint) {
+    return Init(FLAGS_zk_cluster, FLAGS_zk_root_path,
+            FLAGS_endpoint, real_endpoint);
 }
 
 bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
-                      const std::string& endpoint) {
+        const std::string& endpoint, const std::string& real_endpoint) {
     zk_cluster_ = zk_cluster;
     zk_path_ = zk_path;
     endpoint_ = endpoint;
@@ -149,8 +151,8 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
                                mode_recycle_root_paths_[::rtidb::common::kHDD]);
 
     if (!zk_cluster.empty()) {
-        zk_client_ = new ZkClient(zk_cluster, FLAGS_zk_session_timeout,
-                                  endpoint, zk_path);
+        zk_client_ = new ZkClient(zk_cluster, real_endpoint,
+                FLAGS_zk_session_timeout, endpoint, zk_path);
         bool ok = zk_client_->Init();
         if (!ok) {
             PDLOG(WARNING, "fail to init zookeeper with cluster %s",
@@ -312,6 +314,11 @@ void TabletImpl::UpdateTTL(RpcController* ctrl,
 
 bool TabletImpl::RegisterZK() {
     if (!zk_cluster_.empty()) {
+        if (FLAGS_use_name) {
+            if (!zk_client_->RegisterName()) {
+                return false;
+            }
+        }
         if (!zk_client_->Register(true)) {
             PDLOG(WARNING, "fail to register tablet with endpoint %s",
                   endpoint_.c_str());
@@ -2031,6 +2038,23 @@ void TabletImpl::ChangeRole(RpcController* controller,
     for (int idx = 0; idx < request->replicas_size(); idx++) {
         vec.push_back(request->replicas(idx).c_str());
     }
+    std::vector<std::string> r_vec;
+    if (FLAGS_use_name) {
+        auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+                std::memory_order_acquire);
+        for (auto& ep : vec) {
+            auto iter = tmp_map->find(ep);
+            if (iter == tmp_map->end()) {
+                PDLOG(WARNING, "name %s not found in real_ep_map."
+                        "tid[%u] pid[%u]", ep.c_str(), tid, pid);
+                response->set_code(
+                        ::rtidb::base::ReturnCode::kServerNameNotFound);
+                response->set_msg("name not found in real_ep_map");
+                return;
+            }
+            r_vec.push_back(iter->second);
+        }
+    }
     if (is_leader) {
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
@@ -2048,12 +2072,29 @@ void TabletImpl::ChangeRole(RpcController* controller,
                 replicator->SetLeaderTerm(request->term());
             }
         }
-        if (replicator->AddReplicateNode(vec) < 0) {
+        if (replicator->AddReplicateNode(vec, r_vec) < 0) {
             PDLOG(WARNING, "add replicator failed. tid[%u] pid[%u]", tid, pid);
         }
         for (auto& e : request->endpoint_tid()) {
             std::vector<std::string> endpoints{e.endpoint()};
-            replicator->AddReplicateNode(endpoints, e.tid());
+            std::vector<std::string> remote_r_vec;
+            if (FLAGS_use_name) {
+                auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+                        std::memory_order_acquire);
+                for (auto& ep : endpoints) {
+                    auto iter = tmp_map->find(ep);
+                    if (iter == tmp_map->end()) {
+                        PDLOG(WARNING, "name %s not found in real_ep_map."
+                                "tid[%u] pid[%u]", ep.c_str(), tid, pid);
+                        response->set_code(
+                                ::rtidb::base::ReturnCode::kServerNameNotFound);
+                        response->set_msg("name not found in real_ep_map");
+                        return;
+                    }
+                    remote_r_vec.push_back(iter->second);
+                }
+            }
+            replicator->AddReplicateNode(endpoints, remote_r_vec, e.tid());
         }
     } else {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
@@ -2114,11 +2155,30 @@ void TabletImpl::AddReplica(RpcController* controller,
         }
         std::vector<std::string> vec;
         vec.push_back(request->endpoint());
+        std::vector<std::string> real_vec;
+        if (FLAGS_use_name) {
+            auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+                    std::memory_order_acquire);
+            for (const auto& ep : vec) {
+                auto iter = tmp_map->find(ep);
+                if (iter == tmp_map->end()) {
+                    PDLOG(WARNING, "name %s not found in real_ep_map."
+                            "tid[%u] pid[%u]", ep.c_str(), request->tid(),
+                            request->pid());
+                    response->set_code(
+                            ::rtidb::base::ReturnCode::kServerNameNotFound);
+                    response->set_msg("name not found in real_ep_map");
+                    break;
+                }
+                real_vec.push_back(iter->second);
+            }
+        }
         int ret = -1;
         if (request->has_remote_tid()) {
-            ret = replicator->AddReplicateNode(vec, request->remote_tid());
+            ret = replicator->AddReplicateNode(vec, real_vec,
+                    request->remote_tid());
         } else {
-            ret = replicator->AddReplicateNode(vec);
+            ret = replicator->AddReplicateNode(vec, real_vec);
         }
         if (ret == 0) {
             response->set_code(::rtidb::base::ReturnCode::kOk);
@@ -2975,7 +3035,20 @@ void TabletImpl::SendSnapshotInternal(
                   tid, pid);
             break;
         }
-        FileSender sender(remote_tid, pid, table->GetStorageMode(), endpoint);
+        std::string real_endpoint = endpoint;
+        if (FLAGS_use_name) {
+            auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+                    std::memory_order_acquire);
+            auto iter = tmp_map->find(endpoint);
+            if (iter == tmp_map->end()) {
+                PDLOG(WARNING, "name %s not found in real_ep_map."
+                        "tid[%u] pid[%u]", endpoint.c_str(), tid, pid);
+                break;
+            }
+            real_endpoint = iter->second;
+        }
+        FileSender sender(
+                remote_tid, pid, table->GetStorageMode(), real_endpoint);
         if (!sender.Init()) {
             PDLOG(WARNING,
                   "Init FileSender failed. tid[%u] pid[%u] endpoint[%s]", tid,
@@ -4206,6 +4279,21 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
     }
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
+    std::vector<std::string> real_endpoints;
+    if (FLAGS_use_name) {
+        auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+                std::memory_order_acquire);
+        for (const auto& ep : endpoints) {
+            auto iter = tmp_map->find(ep);
+            if (iter == tmp_map->end()) {
+                PDLOG(WARNING, "name %s not found in real_ep_map."
+                        "tid[%u] pid[%u]", ep.c_str(), tid, pid);
+                msg.assign("name not found in real_ep_map");
+                return -1;
+            }
+            real_endpoints.push_back(iter->second);
+        }
+    }
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
     if (table) {
@@ -4246,7 +4334,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
         msg.assign("fail create replicator for table");
         return -1;
     }
-    ok = replicator->Init();
+    ok = replicator->Init(real_endpoints);
     if (!ok) {
         PDLOG(WARNING, "fail to init replicator for table tid %u, pid %u",
               table_meta->tid(), table_meta->pid());
@@ -4298,6 +4386,21 @@ int TabletImpl::CreateDiskTableInternal(
     }
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
+    std::vector<std::string> real_endpoints;
+    if (FLAGS_use_name) {
+        auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+                std::memory_order_acquire);
+        for (auto& ep : endpoints) {
+            auto iter = tmp_map->find(ep);
+            if (iter == tmp_map->end()) {
+                PDLOG(WARNING, "name %s not found in real_ep_map."
+                        "tid[%u] pid[%u]", ep.c_str(), tid, pid);
+                msg.assign("name not found in real_ep_map");
+                return -1;
+            }
+            real_endpoints.push_back(iter->second);
+        }
+    }
     std::string db_root_path;
     bool ok = ChooseDBRootPath(table_meta->tid(), table_meta->pid(),
                                table_meta->storage_mode(), db_root_path);
@@ -4355,7 +4458,7 @@ int TabletImpl::CreateDiskTableInternal(
         msg.assign("fail create replicator for table");
         return -1;
     }
-    ok = replicator->Init();
+    ok = replicator->Init(real_endpoints);
     if (!ok) {
         PDLOG(WARNING, "fail to init replicator for table tid %u, pid %u",
               table_meta->tid(), table_meta->pid());
@@ -5179,8 +5282,20 @@ void TabletImpl::SendIndexDataInternal(
                       index_file_name.c_str(), tid, pid);
             }
         } else {
+            std::string real_endpoint = kv.second;
+            if (FLAGS_use_name) {
+                auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+                        std::memory_order_acquire);
+                auto iter = tmp_map->find(kv.second);
+                if (iter == tmp_map->end()) {
+                    PDLOG(WARNING, "name %s not found in real_ep_map."
+                            "tid[%u] pid[%u]", kv.second.c_str(), tid, pid);
+                    break;
+                }
+                real_endpoint = iter->second;
+            }
             FileSender sender(tid, kv.first, table->GetStorageMode(),
-                              kv.second);
+                              real_endpoint);
             if (!sender.Init()) {
                 PDLOG(WARNING,
                       "Init FileSender failed. tid[%u] pid[%u] des_pid[%u] "
@@ -5658,6 +5773,35 @@ void TabletImpl::CancelOP(RpcController* controller,
             }
         }
     }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
+void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
+        const rtidb::api::UpdateRealEndpointMapRequest* request,
+        rtidb::api::GeneralResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (FLAGS_zk_cluster.empty()) {
+        response->set_code(-1);
+        response->set_msg("tablet is not run in cluster mode");
+        PDLOG(WARNING, "tablet is not run in cluster mode");
+        return;
+    }
+    if (!FLAGS_use_name) {
+        response->set_code(::rtidb::base::ReturnCode::kUseNameIsFalse);
+        response->set_msg("FLAGS_use_name is false");
+        PDLOG(WARNING, "FLAGS_use_name is false");
+        return;
+    }
+    decltype(real_ep_map_) tmp_real_ep_map =
+        std::make_shared<std::map<std::string, std::string>>();
+    for (int i = 0; i < request->real_endpoint_map_size(); i++) {
+        auto& pair = request->real_endpoint_map(i);
+        tmp_real_ep_map->insert(
+                std::make_pair(pair.name(), pair.real_endpoint()));
+    }
+    std::atomic_store_explicit(&real_ep_map_, tmp_real_ep_map,
+            std::memory_order_release);
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }

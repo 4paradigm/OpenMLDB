@@ -68,10 +68,9 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     ~TabletImpl();
 
+    bool Init(const std::string& real_endpoint);
     bool Init(const std::string& zk_cluster, const std::string& zk_path,
-              const std::string& endpoint);
-
-    bool Init();
+            const std::string& endpoint, const std::string& real_endpoint);
 
     bool RegisterZK();
 
@@ -276,6 +275,10 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     void CancelOP(RpcController* controller,
                   const rtidb::api::CancelOPRequest* request,
                   rtidb::api::GeneralResponse* response, Closure* done);
+
+    void UpdateRealEndpointMap(RpcController* controller,
+            const rtidb::api::UpdateRealEndpointMapRequest* request,
+            rtidb::api::GeneralResponse* response, Closure* done);
 
     inline void SetServer(brpc::Server* server) { server_ = server; }
 
@@ -485,6 +488,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::map<::rtidb::common::StorageMode, std::vector<std::string>>
         mode_recycle_root_paths_;
     std::atomic<bool> follower_;
+    std::shared_ptr<std::map<std::string, std::string>> real_ep_map_;
     // thread safe
     std::shared_ptr<::rtidb::catalog::TabletCatalog> catalog_;
     // thread safe

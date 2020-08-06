@@ -16,8 +16,14 @@ DECLARE_int32(request_timeout_ms);
 namespace rtidb {
 namespace client {
 
-NsClient::NsClient(const std::string& endpoint)
-    : endpoint_(endpoint), client_(endpoint), db_("") {}
+NsClient::NsClient(const std::string& endpoint,
+    const std::string& real_endpoint)
+    : endpoint_(endpoint), client_(endpoint), db_("") {
+        if (!real_endpoint.empty()) {
+            client_ = ::rtidb::RpcClient<
+                ::rtidb::nameserver::NameServer_Stub>(real_endpoint);
+        }
+    }
 
 int NsClient::Init() { return client_.Init(); }
 
@@ -95,6 +101,51 @@ bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg) {
             info.endpoint = status.endpoint();
             info.state = status.state();
             info.age = status.age();
+            info.real_endpoint = status.real_endpoint();
+            tablets.push_back(info);
+        }
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::ShowBlobServer(std::vector<TabletInfo>& tablets,
+        std::string& msg) {
+    ::rtidb::nameserver::ShowBlobServerRequest request;
+    ::rtidb::nameserver::ShowBlobServerResponse response;
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::
+            ShowBlobServer, &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        for (int32_t i = 0; i < response.tablets_size(); i++) {
+            const ::rtidb::nameserver::TabletStatus status =
+                response.tablets(i);
+            TabletInfo info;
+            info.endpoint = status.endpoint();
+            info.state = status.state();
+            info.age = status.age();
+            info.real_endpoint = status.real_endpoint();
+            tablets.push_back(info);
+        }
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::ShowSdkEndpoint(std::vector<TabletInfo>& tablets,
+        std::string& msg) {
+    ::rtidb::nameserver::ShowSdkEndpointRequest request;
+    ::rtidb::nameserver::ShowSdkEndpointResponse response;
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::
+            ShowSdkEndpoint, &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        for (int32_t i = 0; i < response.tablets_size(); i++) {
+            const ::rtidb::nameserver::TabletStatus status =
+                response.tablets(i);
+            TabletInfo info;
+            info.endpoint = status.endpoint();
+            info.real_endpoint = status.real_endpoint();
             tablets.push_back(info);
         }
         return true;
@@ -321,8 +372,8 @@ bool NsClient::HandleSQLCreateTable(
                 request.mutable_table_info();
             table_info->set_db(db);
             TransformToTableDef(create->GetTableName(),
-                                create->GetColumnDescList(), table_info,
-                                sql_status);
+                    create->GetColumnDescList(), table_info,
+                    sql_status);
             if (0 != sql_status->code) {
                 return false;
             }
@@ -395,6 +446,22 @@ bool NsClient::SyncTable(const std::string& name,
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::SyncTable,
                             &request, &response, FLAGS_request_timeout_ms, 1);
     msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::SetSdkEndpoint(const std::string& server_name,
+        const std::string& sdk_endpoint, std::string* msg) {
+    ::rtidb::nameserver::SetSdkEndpointRequest request;
+    request.set_server_name(server_name);
+    request.set_sdk_endpoint(sdk_endpoint);
+    ::rtidb::nameserver::GeneralResponse response;
+    bool ok = client_.SendRequest(
+            &::rtidb::nameserver::NameServer_Stub::SetSdkEndpoint,
+            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg->swap(*response.mutable_msg());
     if (ok && response.code() == 0) {
         return true;
     }

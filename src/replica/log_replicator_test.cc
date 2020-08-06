@@ -51,7 +51,7 @@ class MockTabletImpl : public ::rtidb::api::TabletServer {
     bool Init() {
         // table_ = new Table("test", 1, 1, 8, 0, false, g_endpoints);
         // table_->Init();
-        return replicator_.Init();
+        return replicator_.Init(std::vector<std::string>());
     }
 
     void Put(RpcController* controller, const ::rtidb::api::PutRequest* request,
@@ -119,7 +119,7 @@ TEST_F(LogReplicatorTest, Init) {
         "test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table, &follower);
-    bool ok = replicator.Init();
+    bool ok = replicator.Init(std::vector<std::string>());
     ASSERT_TRUE(ok);
 }
 
@@ -133,7 +133,7 @@ TEST_F(LogReplicatorTest, BenchMark) {
         "test", 1, 1, 8, mapping, 0, ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     LogReplicator replicator(folder, endpoints, kLeaderNode, table, &follower);
-    bool ok = replicator.Init();
+    bool ok = replicator.Init(std::vector<std::string>());
     ::rtidb::api::LogEntry entry;
     entry.set_term(1);
     entry.set_pk("test");
@@ -174,7 +174,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
     std::string folder = "/tmp/" + GenRand() + "/";
     std::atomic<bool> follower(false);
     LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
-    bool ok = leader.Init();
+    bool ok = leader.Init(std::vector<std::string>());
     ASSERT_TRUE(ok);
     // put the first row
     {
@@ -218,7 +218,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
     leader.Notify();
     std::vector<std::string> vec;
     vec.push_back("127.0.0.1:17528");
-    leader.AddReplicateNode(vec);
+    leader.AddReplicateNode(vec, std::vector<std::string>());
     sleep(2);
 
     std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>(
@@ -318,7 +318,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     std::string folder = "/tmp/" + GenRand() + "/";
     std::atomic<bool> follower(false);
     LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
-    bool ok = leader.Init();
+    bool ok = leader.Init(std::vector<std::string>());
     ASSERT_TRUE(ok);
     ::rtidb::api::LogEntry entry;
     entry.set_pk("test_pk");
@@ -338,10 +338,10 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
     leader.Notify();
     std::vector<std::string> vec;
     vec.push_back("127.0.0.1:18528");
-    leader.AddReplicateNode(vec);
+    leader.AddReplicateNode(vec, std::vector<std::string>());
     vec.clear();
     vec.push_back("127.0.0.1:18529");
-    leader.AddReplicateNode(vec, 2);
+    leader.AddReplicateNode(vec, std::vector<std::string>(), 2);
     sleep(2);
 
     std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>(
@@ -496,7 +496,7 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
     std::string folder = "/tmp/" + GenRand() + "/";
     std::atomic<bool> follower(false);
     LogReplicator leader(folder, g_endpoints, kLeaderNode, t7, &follower);
-    bool ok = leader.Init();
+    bool ok = leader.Init(std::vector<std::string>());
     ASSERT_TRUE(ok);
     ::rtidb::api::LogEntry entry;
     entry.set_pk("test_pk");
@@ -516,10 +516,10 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
     leader.Notify();
     std::vector<std::string> vec;
     vec.push_back("127.0.0.1:18528");
-    leader.AddReplicateNode(vec);
+    leader.AddReplicateNode(vec, std::vector<std::string>());
     vec.clear();
     vec.push_back("127.0.0.1:18529");
-    leader.AddReplicateNode(vec, 2);
+    leader.AddReplicateNode(vec, std::vector<std::string>(), 2);
     sleep(2);
 
     std::shared_ptr<MemTable> t8 = std::make_shared<MemTable>(

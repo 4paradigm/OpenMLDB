@@ -81,7 +81,7 @@ class NameServerImplRemoteTest : public ::testing::Test {
 
 void StartNameServer(brpc::Server& server,  // NOLINT
                      NameServerImpl* nameserver) {  // NOLINT
-    bool ok = nameserver->Init();
+    bool ok = nameserver->Init("");
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
@@ -97,7 +97,7 @@ void StartNameServer(brpc::Server& server,  // NOLINT
 
 void StartNameServer(brpc::Server& server) {  // NOLINT
     NameServerImpl* nameserver = new NameServerImpl();
-    bool ok = nameserver->Init();
+    bool ok = nameserver->Init("");
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
@@ -113,7 +113,7 @@ void StartNameServer(brpc::Server& server) {  // NOLINT
 
 void StartTablet(brpc::Server* server) {
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    bool ok = tablet->Init();
+    bool ok = tablet->Init("");
     ASSERT_TRUE(ok);
     sleep(2);
     brpc::ServerOptions options1;
@@ -290,7 +290,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     brpc::Server server;
     StartNameServer(server, nameserver_1);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client_1(FLAGS_endpoint);
+        name_server_client_1(FLAGS_endpoint, "");
     name_server_client_1.Init();
 
     // tablet
@@ -309,7 +309,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     brpc::Server server2;
     StartNameServer(server2, nameserver_2);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client_2(FLAGS_endpoint);
+        name_server_client_2(FLAGS_endpoint, "");
     name_server_client_2.Init();
 
     // tablet
@@ -335,7 +335,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
     brpc::Server server;
     StartNameServer(server, nameserver_1);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client_1(FLAGS_endpoint);
+        name_server_client_1(FLAGS_endpoint, "");
     name_server_client_1.Init();
 
     // tablet
@@ -354,7 +354,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
     brpc::Server server2;
     StartNameServer(server2, nameserver_2);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client_2(FLAGS_endpoint);
+        name_server_client_2(FLAGS_endpoint, "");
     name_server_client_2.Init();
 
     // tablet
@@ -525,7 +525,7 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemoteWithDb) {
     brpc::Server server;
     StartNameServer(server, nameserver_1);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client_1(FLAGS_endpoint);
+        name_server_client_1(FLAGS_endpoint, "");
     name_server_client_1.Init();
 
     // tablet
@@ -544,7 +544,7 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemoteWithDb) {
     brpc::Server server2;
     StartNameServer(server2, nameserver_2);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client_2(FLAGS_endpoint);
+        name_server_client_2(FLAGS_endpoint, "");
     name_server_client_2.Init();
 
     // tablet
@@ -582,7 +582,7 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     brpc::Server server;
     StartNameServer(server, nameserver_1);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client_1(FLAGS_endpoint);
+        name_server_client_1(FLAGS_endpoint, "");
     name_server_client_1.Init();
 
     // tablet
@@ -601,7 +601,7 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     brpc::Server server2;
     StartNameServer(server2, nameserver_2);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client_2(FLAGS_endpoint);
+        name_server_client_2(FLAGS_endpoint, "");
     name_server_client_2.Init();
 
     // tablet
@@ -626,7 +626,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     StartNameServer(server, nameserver_1);
 
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client_1(FLAGS_endpoint);
+        name_server_client_1(FLAGS_endpoint, "");
     name_server_client_1.Init();
 
     // tablet
@@ -654,7 +654,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     brpc::Server server4;
     StartNameServer(server4);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client_2(FLAGS_endpoint);
+        name_server_client_2(FLAGS_endpoint, "");
     name_server_client_2.Init();
 
     // tablet
@@ -1094,7 +1094,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     brpc::Server server;
     StartNameServer(server, nameserver_1);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client_1(FLAGS_endpoint);
+        name_server_client_1(FLAGS_endpoint, "");
     name_server_client_1.Init();
 
     // tablet
@@ -1122,7 +1122,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     brpc::Server server4;
     StartNameServer(server4);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client_2(FLAGS_endpoint);
+        name_server_client_2(FLAGS_endpoint, "");
     name_server_client_2.Init();
 
     // tablet

@@ -1,4 +1,5 @@
 //
+// tools/parse_log.cc
 // Copyright (C) 2020 4paradigm.com
 // Author wangbao
 // Date 2020-07-06
@@ -28,7 +29,7 @@ namespace tools {
 
 void ReadLog(const std::string& full_path) {
     std::string fname = ParseFileNameFromPath(full_path);
-    std::ofstream my_count(fname + "_result.txt");
+    std::ofstream my_cout(fname + "_result.txt");
     FILE* fd_r = fopen(full_path.c_str(), "rb");
     if (fd_r == NULL) {
         printf("fopen failed: %s\n", full_path.c_str());
@@ -48,24 +49,24 @@ void ReadLog(const std::string& full_path) {
         ::rtidb::api::LogEntry entry;
         entry.ParseFromString(value.ToString());
         if (entry.ts_dimensions_size() == 0) {
-            my_count << entry.ts() << std::endl;
+            my_cout << entry.ts() << std::endl;
         } else {
             for (int i = 0; i < entry.ts_dimensions_size(); i++) {
-                my_count << entry.ts_dimensions(i).idx() << "\t" <<
+                my_cout << entry.ts_dimensions(i).idx() << "\t" <<
                     entry.ts_dimensions(i).ts() << std::endl;
             }
         }
         if (entry.dimensions_size() == 0) {
-            my_count << entry.pk() << std::endl;
+            my_cout << entry.pk() << std::endl;
         } else {
             for (int i = 0; i < entry.dimensions_size(); i++) {
-                my_count << entry.dimensions(i).idx() << "\t"
+                my_cout << entry.dimensions(i).idx() << "\t"
                     << entry.dimensions(i).key().c_str() << std::endl;
             }
         }
         success_cnt++;
     } while (status.ok());
-    my_count.close();
+    my_cout.close();
     printf("--------success_cnt: %lu\n", success_cnt);
 }
 

@@ -98,12 +98,15 @@ class ClusterInfo {
                                   const uint64_t term, int& code,  // NOLINT
                                   std::string& msg);               // NOLINT
 
+    bool UpdateRemoteRealEpMap();
+
     std::shared_ptr<::rtidb::client::NsClient> client_;
     std::map<std::string, std::map<std::string, std::vector<TablePartition>>>
         last_status;
     ::rtidb::nameserver::ClusterAddress cluster_add_;
     uint64_t ctime_;
     std::atomic<ClusterStatus> state_;
+    std::shared_ptr<std::map<std::string, std::string>> remote_real_ep_map_;
 
  private:
     std::shared_ptr<ZkClient> zk_client_;
@@ -146,9 +149,9 @@ class NameServerImpl : public NameServer {
 
     ~NameServerImpl();
 
+    bool Init(const std::string& real_endpoint);
     bool Init(const std::string& zk_cluster, const std::string& zk_path,
-              const std::string& endpoint);
-    bool Init();
+            const std::string& endpoint, const std::string& real_endpoint);
 
     NameServerImpl(const NameServerImpl&) = delete;
 
@@ -200,6 +203,12 @@ class NameServerImpl : public NameServer {
 
     void ShowTablet(RpcController* controller, const ShowTabletRequest* request,
                     ShowTabletResponse* response, Closure* done);
+    void ShowBlobServer(RpcController* controller,
+            const ShowBlobServerRequest* request,
+                    ShowBlobServerResponse* response, Closure* done);
+    void ShowSdkEndpoint(RpcController* controller,
+            const ShowSdkEndpointRequest* request,
+            ShowSdkEndpointResponse* response, Closure* done);
 
     void ShowTable(RpcController* controller, const ShowTableRequest* request,
                    ShowTableResponse* response, Closure* done);
@@ -351,6 +360,10 @@ class NameServerImpl : public NameServer {
     void DropDatabase(RpcController* controller,
                       const DropDatabaseRequest* request,
                       GeneralResponse* response, Closure* done);
+
+    void SetSdkEndpoint(RpcController* controller,
+            const SetSdkEndpointRequest* request,
+            GeneralResponse* response, Closure* done);
 
     int SyncExistTable(
         const std::string& alias, const std::string& name,
@@ -887,6 +900,10 @@ class NameServerImpl : public NameServer {
         const std::unordered_map<std::string, ::rtidb::api::TableStatus>&
             pos_response);
 
+    void UpdateRealEpMapToTablet();
+
+    void UpdateRemoteRealEpMap();
+
     bool UpdateZkTableNode(
         const std::shared_ptr<::rtidb::nameserver::TableInfo>&
             table_info);  // NOLINT
@@ -950,6 +967,9 @@ class NameServerImpl : public NameServer {
     std::set<std::string> databases_;
     std::string zk_root_path_;
     std::string endpoint_;
+    std::map<std::string, std::string> real_ep_map_;
+    std::map<std::string, std::string> remote_real_ep_map_;
+    std::map<std::string, std::string> sdk_endpoint_map_;
 };
 
 }  // namespace nameserver

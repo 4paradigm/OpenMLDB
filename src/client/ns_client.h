@@ -35,11 +35,13 @@ struct TabletInfo {
     std::string endpoint;
     std::string state;
     uint64_t age;
+    std::string real_endpoint;
 };
 
 class NsClient {
  public:
-    explicit NsClient(const std::string& endpoint);
+     explicit NsClient(const std::string& endpoint,
+             const std::string& real_endpoint);
     ~NsClient() {}
 
     int Init();
@@ -60,6 +62,12 @@ class NsClient {
     bool DropDatabase(const std::string& db, std::string& msg);  // NOLINT
 
     bool ShowTablet(std::vector<TabletInfo>& tablets,  // NOLINT
+                    std::string& msg);                 // NOLINT
+
+    bool ShowBlobServer(std::vector<TabletInfo>& tablets,  // NOLINT
+                    std::string& msg);                 // NOLINT
+
+    bool ShowSdkEndpoint(std::vector<TabletInfo>& tablets,  // NOLINT
                     std::string& msg);                 // NOLINT
 
     bool ShowTable(
@@ -109,6 +117,9 @@ class NsClient {
 
     bool SyncTable(const std::string& name, const std::string& cluster_alias,
                    uint32_t pid, std::string& msg);  // NOLINT
+
+    bool SetSdkEndpoint(const std::string& server_name,
+        const std::string& sdk_endpoint, std::string* msg);
 
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
 

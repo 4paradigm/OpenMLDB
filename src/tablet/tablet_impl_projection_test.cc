@@ -82,7 +82,7 @@ class TabletProjectTest : public ::testing::TestWithParam<TestArgs*> {
  public:
     TabletProjectTest() {}
     ~TabletProjectTest() {}
-    void SetUp() { tablet_.Init(); }
+    void SetUp() { tablet_.Init(""); }
 
  public:
     ::rtidb::tablet::TabletImpl tablet_;

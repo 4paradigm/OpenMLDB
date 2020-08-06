@@ -39,8 +39,8 @@ bool BlobProxyImpl::Init() {
         return false;
     }
     client_ = new BaseClient(FLAGS_zk_cluster, FLAGS_zk_root_path,
-                             FLAGS_endpoint, FLAGS_zk_session_timeout,
-                             FLAGS_zk_keep_alive_check_interval);
+            FLAGS_endpoint, FLAGS_zk_session_timeout,
+            FLAGS_zk_keep_alive_check_interval);
     std::string msg;
     bool ok = client_->Init(&msg);
     if (!ok) {

@@ -33,9 +33,11 @@ const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
 class TabletClient {
  public:
-    explicit TabletClient(const std::string& endpoint);
+    explicit TabletClient(const std::string& endpoint,
+            const std::string& real_endpoint);
 
-    TabletClient(const std::string& endpoint, bool use_sleep_policy);
+    TabletClient(const std::string& endpoint,
+            const std::string& real_endpoint, bool use_sleep_policy);
 
     ~TabletClient();
 
@@ -315,6 +317,8 @@ class TabletClient {
                           uint32_t idx, std::shared_ptr<TaskInfo> task_info);
 
     bool CancelOP(const uint64_t op_id);
+
+    bool UpdateRealEndpointMap(const std::map<std::string, std::string>& map);
 
  private:
     std::string endpoint_;
