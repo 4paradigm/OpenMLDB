@@ -586,7 +586,7 @@ example
 )")
         .args_in<int16_t, int32_t, int64_t>();
     RegisterExternal("ceil")
-        .args<double>(static_cast<int (*)(double)>(v1::Ceild));        
+        .args<double>(static_cast<int (*)(double)>(v1::Ceild));
     RegisterExternal("ceil")
         .args<float>(static_cast<int (*)(float)>(v1::Ceilf));
     RegisterAlias("ceil", "ceiling");

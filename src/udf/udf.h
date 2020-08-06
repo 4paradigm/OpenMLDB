@@ -22,7 +22,7 @@ int8_t *ThreadLocalMemoryPoolAlloc(int32_t request_size);
 void ThreadLocalMemoryPoolReset();
 
 namespace v1 {
-    
+
 template <class V>
 struct Acos {
     double operator()(V r) { return acos(r); }

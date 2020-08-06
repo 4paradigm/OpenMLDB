@@ -98,10 +98,10 @@ int32_t weekofyear(codec::Date *date) {
 int16_t abs_int16(int16_t x) {
     return static_cast<int16_t>(abs(x));
 }
-int Ceild(double x){
+int Ceild(double x) {
     return static_cast<int>(ceil(x));
 }
-int Ceilf(float x){
+int Ceilf(float x) {
     return static_cast<int>(ceilf(x));
 }
 
