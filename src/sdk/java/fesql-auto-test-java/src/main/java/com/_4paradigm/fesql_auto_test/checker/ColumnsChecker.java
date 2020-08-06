@@ -29,7 +29,8 @@ public class ColumnsChecker extends BaseChecker {
         Assert.assertEquals(expect.size(), schema.GetColumnCnt());
         for (int i = 0; i < expect.size(); i++) {
             Assert.assertEquals(schema.GetColumnName(i), Table.getColumnName(expect.get(i)));
-            Assert.assertEquals(FesqlUtil.getColumnType(schema.GetColumnType(i)), Table.getColumnType(expect.get(i)));
+            Assert.assertEquals(schema.GetColumnType(i),
+                    FesqlUtil.getColumnType(Table.getColumnType(expect.get(i))));
         }
     }
 }
