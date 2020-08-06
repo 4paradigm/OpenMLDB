@@ -24,7 +24,7 @@ fi
 sh steps/gen_code.sh
 
 mkdir -p $WORK_DIR/build  || :
-cd $WORK_DIR/build && cmake .. && make -j16 sql_pysdk_package sql_jsdk parse_log
+cd $WORK_DIR/build && cmake .. && make -j10
 code=$?
 cd $WORK_DIR
 exit $code
