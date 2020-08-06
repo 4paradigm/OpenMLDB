@@ -164,7 +164,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     std::vector<std::string> vec;
     int cnt = ::rtidb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, cnt);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int64_t)vec.size());
 
     std::string table_data_node =
         FLAGS_zk_root_path + "/table/table_data/" + name;
@@ -240,7 +240,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     vec.clear();
     cnt = ::rtidb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, cnt);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int64_t)vec.size());
 
     table_data_node = FLAGS_zk_root_path + "/table/db_table_data/" +
                       std::to_string(table.tid());
@@ -1329,7 +1329,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
             tablet->Traverse(NULL, &traverse_request, &traverse_response,
                              &closure);
             ASSERT_EQ(0, traverse_response.code());
-            ASSERT_EQ(1, traverse_response.count());
+            ASSERT_EQ(1, (int64_t)traverse_response.count());
             traverse_response.Clear();
         }
     }
@@ -1342,7 +1342,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
             tablet->Traverse(NULL, &traverse_request, &traverse_response,
                              &closure);
             ASSERT_EQ(0, traverse_response.code());
-            ASSERT_EQ(1, traverse_response.count());
+            ASSERT_EQ(1, (int64_t)traverse_response.count());
             traverse_response.Clear();
         }
     }
@@ -1358,14 +1358,14 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     for (auto& tablet : tablets) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(1, scan_response->count());
+        ASSERT_EQ(1, (int64_t)scan_response->count());
         scan_response->Clear();
     }
     scan_request.set_tid(tid + 1);
     for (auto& tablet : f2_tablets) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(1, scan_response->count());
+        ASSERT_EQ(1, (int64_t)scan_response->count());
         scan_response->Clear();
     }
     {
@@ -1400,14 +1400,14 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     for (auto& tablet : tablets) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(2, scan_response->count());
+        ASSERT_EQ(2, (int64_t)scan_response->count());
         scan_response->Clear();
     }
     scan_request.set_tid(tid + 1);
     for (auto& tablet : f2_tablets) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(2, scan_response->count());
+        ASSERT_EQ(2, (int64_t)scan_response->count());
         scan_response->Clear();
     }
     for (auto& i : follower_nss) {
@@ -1464,14 +1464,14 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     for (auto& tablet : tablets) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(3, scan_response->count());
+        ASSERT_EQ(3, (int64_t)scan_response->count());
         scan_response->Clear();
     }
     scan_request.set_tid(tid + 1);
     for (auto& tablet : f2_tablets) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(3, scan_response->count());
+        ASSERT_EQ(3, (int64_t)scan_response->count());
         scan_response->Clear();
     }
 }

@@ -241,8 +241,8 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
     }
     sleep(20);
     leader.DelAllReplicateNode();
-    ASSERT_EQ(3, t8->GetRecordCnt());
-    ASSERT_EQ(5, t8->GetRecordIdxCnt());
+    ASSERT_EQ(3, (int64_t)t8->GetRecordCnt());
+    ASSERT_EQ(5, (int64_t)t8->GetRecordIdxCnt());
     {
         Ticket ticket;
         // check 18527
@@ -252,14 +252,14 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
         ::rtidb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
         ASSERT_EQ("value 1", value_str);
-        ASSERT_EQ(9527, it->GetKey());
+        ASSERT_EQ(9527, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str1(value.data(), value.size());
         ASSERT_EQ("value 3", value_str1);
-        ASSERT_EQ(9525, it->GetKey());
+        ASSERT_EQ(9525, (signed)it->GetKey());
 
         it->Next();
         ASSERT_FALSE(it->Valid());
@@ -273,14 +273,14 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
         ::rtidb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
         ASSERT_EQ("value 1", value_str);
-        ASSERT_EQ(9527, it->GetKey());
+        ASSERT_EQ(9527, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str1(value.data(), value.size());
         ASSERT_EQ("value 2", value_str1);
-        ASSERT_EQ(9526, it->GetKey());
+        ASSERT_EQ(9526, (signed)it->GetKey());
 
         it->Next();
         ASSERT_FALSE(it->Valid());
@@ -395,8 +395,8 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
 
     sleep(2);
     leader.DelAllReplicateNode();
-    ASSERT_EQ(4, t8->GetRecordCnt());
-    ASSERT_EQ(4, t8->GetRecordIdxCnt());
+    ASSERT_EQ(4, (signed)t8->GetRecordCnt());
+    ASSERT_EQ(4, (signed)t8->GetRecordIdxCnt());
     {
         Ticket ticket;
         // check 18527
@@ -406,31 +406,31 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         ::rtidb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
         ASSERT_EQ("value1", value_str);
-        ASSERT_EQ(9527, it->GetKey());
+        ASSERT_EQ(9527, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str1(value.data(), value.size());
         ASSERT_EQ("value2", value_str1);
-        ASSERT_EQ(9526, it->GetKey());
+        ASSERT_EQ(9526, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str2(value.data(), value.size());
         ASSERT_EQ("value3", value_str2);
-        ASSERT_EQ(9525, it->GetKey());
+        ASSERT_EQ(9525, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str3(value.data(), value.size());
         ASSERT_EQ("value4", value_str3);
-        ASSERT_EQ(9524, it->GetKey());
+        ASSERT_EQ(9524, (signed)it->GetKey());
     }
-    ASSERT_EQ(4, t9->GetRecordCnt());
-    ASSERT_EQ(4, t9->GetRecordIdxCnt());
+    ASSERT_EQ(4, (signed)t9->GetRecordCnt());
+    ASSERT_EQ(4, (signed)t9->GetRecordIdxCnt());
     {
         Ticket ticket;
         // check 18527
@@ -440,28 +440,28 @@ TEST_F(LogReplicatorTest, LeaderAndFollower) {
         ::rtidb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
         ASSERT_EQ("value1", value_str);
-        ASSERT_EQ(9527, it->GetKey());
+        ASSERT_EQ(9527, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str1(value.data(), value.size());
         ASSERT_EQ("value2", value_str1);
-        ASSERT_EQ(9526, it->GetKey());
+        ASSERT_EQ(9526, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str2(value.data(), value.size());
         ASSERT_EQ("value3", value_str2);
-        ASSERT_EQ(9525, it->GetKey());
+        ASSERT_EQ(9525, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str3(value.data(), value.size());
         ASSERT_EQ("value4", value_str3);
-        ASSERT_EQ(9524, it->GetKey());
+        ASSERT_EQ(9524, (signed)it->GetKey());
     }
 }
 
@@ -574,8 +574,8 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
 
     sleep(4);
     leader.DelAllReplicateNode();
-    ASSERT_EQ(4, t8->GetRecordCnt());
-    ASSERT_EQ(4, t8->GetRecordIdxCnt());
+    ASSERT_EQ(4, (signed)t8->GetRecordCnt());
+    ASSERT_EQ(4, (signed)t8->GetRecordIdxCnt());
     {
         Ticket ticket;
         // check 18527
@@ -585,31 +585,31 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
         ::rtidb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
         ASSERT_EQ("value1", value_str);
-        ASSERT_EQ(9527, it->GetKey());
+        ASSERT_EQ(9527, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str1(value.data(), value.size());
         ASSERT_EQ("value2", value_str1);
-        ASSERT_EQ(9526, it->GetKey());
+        ASSERT_EQ(9526, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str2(value.data(), value.size());
         ASSERT_EQ("value3", value_str2);
-        ASSERT_EQ(9525, it->GetKey());
+        ASSERT_EQ(9525, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str3(value.data(), value.size());
         ASSERT_EQ("value4", value_str3);
-        ASSERT_EQ(9524, it->GetKey());
+        ASSERT_EQ(9524, (signed)it->GetKey());
     }
-    ASSERT_EQ(5, t9->GetRecordCnt());
-    ASSERT_EQ(5, t9->GetRecordIdxCnt());
+    ASSERT_EQ(5, (signed)t9->GetRecordCnt());
+    ASSERT_EQ(5, (signed)t9->GetRecordIdxCnt());
     {
         Ticket ticket;
         // check 18527
@@ -619,35 +619,35 @@ TEST_F(LogReplicatorTest, Leader_Remove_local_follower) {
         ::rtidb::base::Slice value = it->GetValue();
         std::string value_str(value.data(), value.size());
         ASSERT_EQ("value1", value_str);
-        ASSERT_EQ(9527, it->GetKey());
+        ASSERT_EQ(9527, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str1(value.data(), value.size());
         ASSERT_EQ("value2", value_str1);
-        ASSERT_EQ(9526, it->GetKey());
+        ASSERT_EQ(9526, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str2(value.data(), value.size());
         ASSERT_EQ("value3", value_str2);
-        ASSERT_EQ(9525, it->GetKey());
+        ASSERT_EQ(9525, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str3(value.data(), value.size());
         ASSERT_EQ("value4", value_str3);
-        ASSERT_EQ(9524, it->GetKey());
+        ASSERT_EQ(9524, (signed)it->GetKey());
 
         it->Next();
         ASSERT_TRUE(it->Valid());
         value = it->GetValue();
         std::string value_str4(value.data(), value.size());
         ASSERT_EQ("value4", value_str3);
-        ASSERT_EQ(9523, it->GetKey());
+        ASSERT_EQ(9523, (signed)it->GetKey());
     }
 }
 

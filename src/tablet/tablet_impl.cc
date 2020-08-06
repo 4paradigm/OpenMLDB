@@ -436,7 +436,7 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
                         LOG(WARNING) << "not found version " << unsigned(version) << " in version map";
                         return -1;
                     }
-                    if (row_project.GetMaxIdx() >= version_it->second->size()) {
+                    if (row_project.GetMaxIdx() >= (uint32_t)(version_it->second->size())) {
                         LOG(WARNING) << "projection idx is valid " << row_project.GetMaxIdx();
                         return -1;
                     }
@@ -1103,7 +1103,7 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
                     LOG(WARNING) << "no found version " << unsigned(version) << " in version map";
                     return -1;
                 }
-                if (row_project.GetMaxIdx() >= version_it->second->size()) {
+                if (row_project.GetMaxIdx() >= (uint32_t)(version_it->second->size())) {
                     LOG(WARNING) << "projection idx is valid " << row_project.GetMaxIdx();
                     return -1;
                 }

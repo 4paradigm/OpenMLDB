@@ -24,7 +24,7 @@ fi
 sh steps/gen_code.sh
 
 mkdir -p $WORK_DIR/build  || :
-cd $WORK_DIR/build && cmake .. && make -j10
+cd $WORK_DIR/build && cmake .. && make -j30
 code=$?
 cd $WORK_DIR
 exit $code
