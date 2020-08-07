@@ -44,20 +44,20 @@ build_fesql_on_linux:
             - build/src/fesql
 #            - bm_cases.tar.gz
 
-# build_fesql_on_mac:
-#    stage: build
-#    variables:
-#        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
-#        CICD_RUNNER_TAG: "macos"
-#    script:
-#        - bash tools/compile_and_test.sh
-#        - bash tools/cicd/gen_intermediate_java_cicd_artifacts.sh mac
-#    tags:
-#        - macos
-#    artifacts:
-#        paths:
-#            - java_intermediate_cicd_artifact_mac.tar.gz
-#            - build/src/fesql
+build_fesql_on_mac:
+    stage: build
+    variables:
+        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
+        CICD_RUNNER_TAG: "macos"
+    script:
+        - bash tools/compile_and_test.sh
+        - bash tools/cicd/gen_intermediate_java_cicd_artifacts.sh mac
+    tags:
+        - macos
+    artifacts:
+        paths:
+            - java_intermediate_cicd_artifact_mac.tar.gz
+            - build/src/fesql
 
 test_java_sdk_on_linux:
     stage: test
@@ -72,25 +72,25 @@ test_java_sdk_on_linux:
                 - java/fesql-spark/target/surefire-reports/*.xml
                 - java/fesql-jdbc/target/surefire-reports/*.xml
 
-#test_java_sdk_on_mac:
-#    stage: test
-#    variables:
-#        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
-#        CICD_RUNNER_TAG: "macos"
-#    script:
-#        - bash tools/cicd/extract_intermediate_java_cicd_artifacts.sh mac
-#        - bash tools/test_java_sdk.sh
-#    after_script:
-#        - cd onebox && sh stop_all.sh
-#    tags:
-#        - macos
-#    dependencies:
-#        - build_fesql_on_mac
-#    artifacts:
-#        reports:
-#            junit:
-#                - java/fesql-spark/target/surefire-reports/*.xml
-#                - java/fesql-jdbc/target/surefire-reports/*.xml
+test_java_sdk_on_mac:
+    stage: test
+    variables:
+        CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
+        CICD_RUNNER_TAG: "macos"
+    script:
+        - bash tools/cicd/extract_intermediate_java_cicd_artifacts.sh mac
+        - bash tools/test_java_sdk.sh
+    after_script:
+        - cd onebox && sh stop_all.sh
+    tags:
+        - macos
+    dependencies:
+        - build_fesql_on_mac
+    artifacts:
+        reports:
+            junit:
+                - java/fesql-spark/target/surefire-reports/*.xml
+                - java/fesql-jdbc/target/surefire-reports/*.xml
 
 test_py3sdk_linux:
     stage: test
@@ -138,11 +138,11 @@ deploy_jar:
     stage: deploy
     script:
         - bash tools/cicd/extract_intermediate_java_cicd_artifacts.sh linux
-        # - bash tools/cicd/extract_intermediate_java_cicd_artifacts.sh mac
+        - bash tools/cicd/extract_intermediate_java_cicd_artifacts.sh mac
         - bash tools/cicd/deploy_fesql_spark_jar.sh
     dependencies:
         - build_fesql_on_linux
-#        - build_fesql_on_mac
+        - build_fesql_on_mac
     artifacts:
         paths:
             - ./java/fesql-spark/target/*.jar
