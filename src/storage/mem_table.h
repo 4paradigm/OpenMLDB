@@ -111,6 +111,7 @@ class MemTableKeyIterator : public ::fesql::vm::WindowIterator {
     bool Valid();
 
     std::unique_ptr<::fesql::vm::RowIterator> GetValue();
+    ::fesql::vm::RowIterator* GetValue(int8_t *addr);
 
     const fesql::codec::Row GetKey();
 
