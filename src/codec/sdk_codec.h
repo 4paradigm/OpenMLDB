@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <memory>
 
 #include "codec/schema_codec.h"
 #include "proto/common.pb.h"

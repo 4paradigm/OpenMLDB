@@ -75,7 +75,6 @@ SDKCodec::SDKCodec(const ::rtidb::nameserver::TableInfo& table_info)
             version_schema_.insert(std::make_pair(ver, base_schema));
             last_ver_ = ver;
         }
-
     }
     for (const auto& name : table_info.partition_key()) {
         auto iter = schema_idx_map_.find(name);
