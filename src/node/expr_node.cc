@@ -20,34 +20,13 @@ namespace node {
 std::atomic<int64_t> ExprIdNode::expr_id_cnt_(0);
 
 Status ColumnRefNode::InferAttr(ExprAnalysisContext* ctx) {
-    auto schemas_context = ctx->schemas_context();
-    CHECK_TRUE(schemas_context != nullptr, "No schema context provided");
-
-    const vm::RowSchemaInfo* schema_info = nullptr;
-    bool ok = schemas_context->ColumnRefResolved(relation_name_, column_name_,
-                                                 &schema_info);
-    CHECK_TRUE(ok, "Fail to resolve column ", GetExprString());
-
-    codec::RowDecoder decoder(*schema_info->schema_);
-    codec::ColInfo col_info;
-    CHECK_TRUE(decoder.ResolveColumn(column_name_, &col_info),
-               "Fail to resolve column ", GetExprString());
-
-    node::DataType dtype;
-    CHECK_TRUE(vm::SchemaType2DataType(col_info.type, &dtype),
-               "Fail to convert type: ", col_info.type);
-
-    auto nm = ctx->node_manager();
-    if (ctx->is_multi_row()) {
-        SetOutputType(nm->MakeTypeNode(node::kList, dtype));
-    } else {
-        SetOutputType(nm->MakeTypeNode(dtype));
-    }
-    return Status::OK();
+    return Status(common::kCodegenError,
+                  "ColumnRef should be transformed out before infer pass");
 }
 
 Status ConstNode::InferAttr(ExprAnalysisContext* ctx) {
     SetOutputType(ctx->node_manager()->MakeTypeNode(data_type_));
+    SetNullable(false);
     return Status::OK();
 }
 
@@ -67,26 +46,69 @@ Status CastExprNode::InferAttr(ExprAnalysisContext* ctx) {
 }
 
 Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
-    auto row_type = dynamic_cast<const RowTypeNode*>(GetRow()->GetOutputType());
-    CHECK_TRUE(row_type != nullptr, "Get field's input is not row");
-    vm::SchemasContext schemas_context(row_type->schema_source());
+    auto input_type = GetRow()->GetOutputType();
+    if (input_type->base() == node::kTuple) {
+        try {
+            size_t idx = std::stoi(this->GetColumnName());
+            CHECK_TRUE(0 <= idx && idx < input_type->GetGenericSize(),
+                       "Tuple idx out of range: ", idx);
+            SetOutputType(input_type->GetGenericType(idx));
+            SetNullable(input_type->IsGenericNullable(idx));
+        } catch (std::invalid_argument err) {
+            return Status(common::kCodegenError,
+                          "Invalid Tuple index: " + this->GetColumnName());
+        }
 
-    const vm::RowSchemaInfo* schema_info = nullptr;
-    bool ok = schemas_context.ColumnRefResolved(relation_name_, column_name_,
-                                                &schema_info);
-    CHECK_TRUE(ok, "Fail to resolve column ", GetExprString());
+    } else if (input_type->base() == node::kRow) {
+        auto row_type = dynamic_cast<const RowTypeNode*>(input_type);
+        vm::SchemasContext schemas_context(row_type->schema_source());
 
-    codec::RowDecoder decoder(*schema_info->schema_);
-    codec::ColInfo col_info;
-    CHECK_TRUE(decoder.ResolveColumn(column_name_, &col_info),
-               "Fail to resolve column ", GetExprString());
+        const vm::RowSchemaInfo* schema_info = nullptr;
+        bool ok = schemas_context.ColumnRefResolved(relation_name_,
+                                                    column_name_, &schema_info);
+        CHECK_TRUE(ok, "Fail to resolve column ", GetExprString());
 
-    node::DataType dtype;
-    CHECK_TRUE(vm::SchemaType2DataType(col_info.type, &dtype),
-               "Fail to convert type: ", col_info.type);
+        codec::RowDecoder decoder(*schema_info->schema_);
+        codec::ColInfo col_info;
+        CHECK_TRUE(decoder.ResolveColumn(column_name_, &col_info),
+                   "Fail to resolve column ", GetExprString());
 
-    auto nm = ctx->node_manager();
-    SetOutputType(nm->MakeTypeNode(dtype));
+        node::DataType dtype;
+        CHECK_TRUE(vm::SchemaType2DataType(col_info.type, &dtype),
+                   "Fail to convert type: ", col_info.type);
+
+        auto nm = ctx->node_manager();
+        SetOutputType(nm->MakeTypeNode(dtype));
+    } else {
+        return Status(common::kCodegenError,
+                      "Get field's input is neither tuple nor row");
+    }
+    return Status::OK();
+}
+
+Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
+    CHECK_TRUE(GetChildNum() == 2);
+    auto left_type = GetChild(0)->GetOutputType();
+    auto right_type = GetChild(1)->GetOutputType();
+    switch (GetOp()) {
+        case kFnOpEq:
+        case kFnOpNeq:
+        case kFnOpLt:
+        case kFnOpLe:
+        case kFnOpGt:
+        case kFnOpGe: {
+            SetOutputType(ctx->node_manager()->MakeTypeNode(node::kBool));
+            break;
+        }
+        default: {
+            if (left_type != nullptr) {
+                SetOutputType(left_type);
+            } else {
+                SetOutputType(right_type);
+            }
+        }
+    }
+    SetNullable(false);
     return Status::OK();
 }
 

@@ -42,12 +42,13 @@ int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
 }
 
 fesql::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
-                                      const bool need_free) {
-    int32_t (*udf)(int8_t**, int8_t*, int32_t*, int8_t**) =
-    (int32_t(*)(int8_t**, int8_t*, int32_t*, int8_t**))(fn);
+                                           const bool need_free) {
+    auto udf =
+        reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
+            const_cast<int8_t*>(fn));
 
     int8_t* buf = nullptr;
-    uint32_t ret = udf(nullptr, nullptr, nullptr, &buf);
+    uint32_t ret = udf(nullptr, nullptr, &buf);
     fesql::udf::ThreadLocalMemoryPoolReset();
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
@@ -62,16 +63,14 @@ fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
     if (row.empty()) {
         return fesql::codec::Row();
     }
-    int32_t (*udf)(int8_t**, int8_t*, int32_t*, int8_t**) =
-        (int32_t(*)(int8_t**, int8_t*, int32_t*, int8_t**))(fn);
+    auto udf =
+        reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
+            const_cast<int8_t*>(fn));
 
+    auto row_ptr = reinterpret_cast<const int8_t*>(&row);
     int8_t* buf = nullptr;
-    int8_t** row_ptrs = row.GetRowPtrs();
-    int32_t* row_sizes = row.GetRowSizes();
-    uint32_t ret = udf(row_ptrs, nullptr, row_sizes, &buf);
+    uint32_t ret = udf(row_ptr, nullptr, &buf);
     fesql::udf::ThreadLocalMemoryPoolReset();
-    if (nullptr != row_ptrs) delete[] row_ptrs;
-    if (nullptr != row_sizes) delete[] row_sizes;
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return fesql::codec::Row();

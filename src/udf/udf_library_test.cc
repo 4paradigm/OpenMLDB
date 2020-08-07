@@ -21,7 +21,7 @@ TEST_F(UDFLibraryTest, test_check_is_udaf_by_name) {
     UDFLibrary library;
     node::NodeManager nm;
 
-    library.RegisterSimpleUDAF("sum")
+    library.RegisterUDAF("sum")
         .templates<int32_t, int32_t, int32_t>()
         .const_init(0)
         .update("add", reinterpret_cast<void*>(0))

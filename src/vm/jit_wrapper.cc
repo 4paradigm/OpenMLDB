@@ -59,8 +59,8 @@ bool FeSQLJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
     }
     InitCodecSymbol(jit_.get());
     udf::InitUDFSymbol(jit_.get());
-    udf::DefaultUDFLibrary library;
-    library.InitJITSymbols(jit_.get());
+    udf::DefaultUDFLibrary* library = udf::DefaultUDFLibrary::get();
+    library->InitJITSymbols(jit_.get());
     return true;
 }
 

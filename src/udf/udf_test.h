@@ -9,11 +9,11 @@
 #ifndef SRC_UDF_UDF_TEST_H_
 #define SRC_UDF_UDF_TEST_H_
 
+#include <gtest/gtest.h>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
 
@@ -36,9 +36,10 @@ class UDFFunctionBuilderWithFullInfo;
 struct UDFFunctionBuilderState {
     std::string name;
     std::vector<node::TypeNode*> arg_types;
+    std::vector<int> arg_nullable;
     node::TypeNode* ret_type;
     node::NodeManager nm;
-    DefaultUDFLibrary library;
+    UDFLibrary* library;
 };
 
 typedef std::unique_ptr<UDFFunctionBuilderState> BuilderStatePtr;
@@ -48,6 +49,11 @@ class UDFFunctionBuilderWithFullInfo {
  public:
     explicit UDFFunctionBuilderWithFullInfo(BuilderStatePtr&& state)
         : state(std::move(state)) {}
+
+    auto& library(UDFLibrary* library) {
+        state->library = library;
+        return *this;
+    }
 
     codegen::ModuleTestFunction<Ret, Args...> build();
 
@@ -60,6 +66,11 @@ class UDFFunctionBuilderWithArgs {
  public:
     explicit UDFFunctionBuilderWithArgs(BuilderStatePtr&& state)
         : state(std::move(state)) {}
+
+    auto& library(UDFLibrary* library) {
+        state->library = library;
+        return *this;
+    }
 
     template <typename Ret>
     auto returns() {
@@ -74,9 +85,15 @@ class UDFFunctionBuilderWithArgs {
 template <typename Ret>
 class UDFFunctionBuilderWithRet {
  public:
+    auto& library(UDFLibrary* library) {
+        state->library = library;
+        return *this;
+    }
+
     template <typename... Args>
     auto args() {
         state->arg_types = {DataTypeTrait<Args>::to_type_node(&(state->nm))...};
+        state->arg_nullable = {IsNullableTrait<Args>::value...};
         return UDFFunctionBuilderWithFullInfo<Ret, Args...>(std::move(state));
     }
 
@@ -91,9 +108,15 @@ class UDFFunctionBuilder {
         state->name = name;
     }
 
+    auto& library(udf::UDFLibrary* library) {
+        state->library = library;
+        return *this;
+    }
+
     template <typename... Args>
     auto args() {
         state->arg_types = {DataTypeTrait<Args>::to_type_node(&(state->nm))...};
+        state->arg_nullable = {IsNullableTrait<Args>::value...};
         return UDFFunctionBuilderWithArgs<Args...>(std::move(state));
     }
 
@@ -110,20 +133,23 @@ class UDFFunctionBuilder {
 template <typename Ret, typename... Args>
 codegen::ModuleTestFunction<Ret, Args...>
 UDFFunctionBuilderWithFullInfo<Ret, Args...>::build() {
+    UDFLibrary* library;
+    if (state->library != nullptr) {
+        library = state->library;
+    } else {
+        library = DefaultUDFLibrary::get();
+    }
     return codegen::BuildExprFunction<Ret, Args...>(
-        [this](node::NodeManager* nm,
-               typename std::pair<Args, node::ExprNode*>::second_type... args)
+        library,
+        [this, library](
+            node::NodeManager* nm,
+            typename std::pair<Args, node::ExprNode*>::second_type... args)
             -> node::ExprNode* {
             // resolve udf call
-            auto arg_list = nm->MakeExprList();
             std::vector<node::ExprNode*> arg_vec = {args...};
-            for (node::ExprNode* arg_expr : arg_vec) {
-                arg_list->AddChild(arg_expr);
-            }
             node::ExprNode* output_expr = nullptr;
-            node::ExprAnalysisContext analysis_ctx(nm, nullptr, true);
-            auto status = state->library.Transform(
-                state->name, arg_list, nullptr, &analysis_ctx, &output_expr);
+            auto status =
+                library->Transform(state->name, arg_vec, nm, &output_expr);
             if (!status.isOK() || output_expr == nullptr) {
                 LOG(WARNING) << status.msg;
                 return nullptr;
@@ -131,6 +157,37 @@ UDFFunctionBuilderWithFullInfo<Ret, Args...>::build() {
             return output_expr;
         });
 }
+
+template <typename T>
+struct EqualValChecker {
+    static void check(const T& expect, const T& output) {
+        ASSERT_EQ(expect, output);
+    }
+};
+
+template <>
+struct EqualValChecker<float> {
+    static void check(const float& expect, const float& output) {
+        if (expect != expect) {
+            bool is_nan = output != output;
+            ASSERT_TRUE(is_nan);
+        } else {
+            ASSERT_FLOAT_EQ(expect, output);
+        }
+    }
+};
+
+template <>
+struct EqualValChecker<double> {
+    static void check(const double& expect, const double& output) {
+        if (expect != expect) {
+            bool is_nan = output != output;
+            ASSERT_TRUE(is_nan);
+        } else {
+            ASSERT_FLOAT_EQ(expect, output);
+        }
+    }
+};
 
 }  // namespace udf
 }  // namespace fesql

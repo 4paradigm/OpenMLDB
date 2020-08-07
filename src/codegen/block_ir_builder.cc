@@ -268,7 +268,8 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
         LOG(WARNING) << status.msg;
         return false;
     }
-    fesql::node::TypeNode *elem_type_node = container_type_node.generics_[0];
+    const fesql::node::TypeNode *elem_type_node =
+        container_type_node.generics_[0];
 
     llvm::Value *iterator = nullptr;
     status = list_ir_builder.BuildIterator(container_value, elem_type_node,
@@ -406,7 +407,8 @@ bool BlockIRBuilder::ClearScopeValue(llvm::BasicBlock *block,
                 LOG(WARNING) << status.msg;
                 return false;
             }
-            fesql::node::TypeNode *elem_type_node = iter_type_node.generics_[0];
+            const fesql::node::TypeNode *elem_type_node =
+                iter_type_node.generics_[0];
             status = list_ir_builder_delete.BuildIteratorDelete(
                 *iter, elem_type_node, &ret_delete);
             if (!status.isOK()) {
@@ -438,7 +440,7 @@ bool BlockIRBuilder::ClearAllScopeValues(llvm::BasicBlock *block,
                     LOG(WARNING) << status.msg;
                     return false;
                 }
-                fesql::node::TypeNode *elem_type_node =
+                const fesql::node::TypeNode *elem_type_node =
                     iter_type_node.generics_[0];
                 status = list_ir_builder_delete.BuildIteratorDelete(
                     *iter, elem_type_node, &ret_delete);

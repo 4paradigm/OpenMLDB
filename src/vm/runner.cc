@@ -379,13 +379,17 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
         return Row();
     }
 
-    int32_t (*udf)(int8_t**, int8_t*, int32_t*, int8_t**) =
-        (int32_t(*)(int8_t**, int8_t*, int32_t*, int8_t**))(fn);
+    auto udf =
+        reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
+            const_cast<int8_t*>(fn));
     int8_t* out_buf = nullptr;
-    int8_t** row_ptrs = row.GetRowPtrs();
-    int8_t* window_ptr = reinterpret_cast<int8_t*>(window);
-    int32_t* row_sizes = row.GetRowSizes();
-    uint32_t ret = udf(row_ptrs, window_ptr, row_sizes, &out_buf);
+
+    codec::ListRef<Row> window_ref;
+    window_ref.list = reinterpret_cast<int8_t*>(window);
+    auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
+    auto row_ptr = reinterpret_cast<const int8_t*>(&row);
+
+    uint32_t ret = udf(row_ptr, window_ptr, &out_buf);
     fesql::udf::ThreadLocalMemoryPoolReset();
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
@@ -1676,14 +1680,19 @@ const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
         return Row();
     }
     auto& row = iter->GetValue();
-    int32_t (*udf)(int8_t**, int8_t*, int32_t*, int8_t**) =
-        (int32_t(*)(int8_t**, int8_t*, int32_t*, int8_t**))(fn_);
+    auto udf =
+        reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
+            const_cast<int8_t*>(fn_));
     int8_t* buf = nullptr;
 
-    int8_t** row_ptrs = row.GetRowPtrs();
-    int8_t* window_ptr = reinterpret_cast<int8_t*>(table.get());
-    int32_t* row_sizes = row.GetRowSizes();
-    uint32_t ret = udf(row_ptrs, window_ptr, row_sizes, &buf);
+    auto row_ptr = reinterpret_cast<const int8_t*>(&row);
+
+    codec::ListRef<Row> window_ref;
+    window_ref.list = reinterpret_cast<int8_t*>(table.get());
+
+    auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
+
+    uint32_t ret = udf(row_ptr, window_ptr, &buf);
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();

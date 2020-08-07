@@ -285,7 +285,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
 
-    udf::DefaultUDFLibrary library;
+    udf::DefaultUDFLibrary* library = udf::DefaultUDFLibrary::get();
     ::fesql::udf::RegisterUDFToModule(m.get());
 
     if (!::fesql::udf::RegisterUDFToModule(m.get())) {
@@ -296,7 +296,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     }
     if (ctx.is_batch_mode) {
         vm::BatchModeTransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
-                                             &library);
+                                             library);
         transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (batch mode): "
@@ -306,7 +306,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         }
     } else {
         vm::RequestModeransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
-                                              &library);
+                                              library);
         transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (request mode) "
@@ -373,7 +373,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
 
-    library.InitJITSymbols(ctx.jit.get());
+    library->InitJITSymbols(ctx.jit.get());
     InitCodecSymbol(ctx.jit.get());
     udf::InitUDFSymbol(ctx.jit.get());
 

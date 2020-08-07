@@ -126,6 +126,7 @@ enum DataType {
     kInt8Ptr,
     kRow,
     kOpaque,
+    kTuple,
     kVoid = 100,
     kNull = 101,
     kPlaceholder = 102

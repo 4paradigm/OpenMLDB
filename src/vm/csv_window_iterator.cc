@@ -57,5 +57,15 @@ std::unique_ptr<RowIterator> CSVWindowIterator::GetValue() {
     return std::move(segment_it);
 }
 
+RowIterator* CSVWindowIterator::GetValue(int8_t* addr) {
+    if (addr == nullptr) {
+        return new CSVSegmentIterator(table_, index_datas_, index_name_,
+                                      first_it_->first, schema_);
+    } else {
+        return new (addr) CSVSegmentIterator(table_, index_datas_, index_name_,
+                                             first_it_->first, schema_);
+    }
+}
+
 }  // namespace vm
 }  // namespace fesql

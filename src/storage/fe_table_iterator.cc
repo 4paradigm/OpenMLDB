@@ -93,6 +93,23 @@ std::unique_ptr<RowIterator> WindowTableIterator::GetValue() {
     return std::move(wit);
 }
 
+RowIterator* WindowTableIterator::GetValue(int8_t* addr) {
+    if (!pk_it_) {
+        if (addr == nullptr) {
+            return new EmptyWindowIterator();
+        } else {
+            return new (addr) EmptyWindowIterator();
+        }
+    }
+    std::unique_ptr<base::Iterator<uint64_t, DataBlock*>> it(
+        (reinterpret_cast<TimeEntry*>(pk_it_->GetValue()))->NewIterator());
+    if (addr == nullptr) {
+        return new WindowInternalIterator(std::move(it));
+    } else {
+        return new (addr) WindowInternalIterator(std::move(it));
+    }
+}
+
 void WindowTableIterator::GoToStart() {
     while (seg_idx_ < seg_cnt_) {
         if (!pk_it_) {

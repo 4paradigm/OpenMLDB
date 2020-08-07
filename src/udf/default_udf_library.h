@@ -15,12 +15,16 @@ namespace udf {
 
 class DefaultUDFLibrary : public UDFLibrary {
  public:
-    DefaultUDFLibrary() { Init(); }
+    static DefaultUDFLibrary* get() { return &inst_; }
 
  private:
     void Init();
     void IniMathUDF();
     void InitStringUDF();
+
+    static DefaultUDFLibrary inst_;
+
+    DefaultUDFLibrary() { Init(); }
 };
 
 }  // namespace udf

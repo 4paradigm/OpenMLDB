@@ -11,6 +11,8 @@
 #define SRC_UDF_UDF_H_
 #include <stdint.h>
 #include <string>
+#include <tuple>
+
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
 #include "proto/fe_type.pb.h"
@@ -53,6 +55,8 @@ double avg_list(int8_t *input);
 
 template <class V>
 struct AtList {
+    using Args = std::tuple<::fesql::codec::ListRef<V>, int32_t>;
+
     V operator()(::fesql::codec::ListRef<V> *list_ref, int32_t pos) {
         auto list = (codec::ListV<V> *)(list_ref->list);
         return list->At(pos);
@@ -61,6 +65,8 @@ struct AtList {
 
 template <class V>
 struct AtStructList {
+    using Args = std::tuple<::fesql::codec::ListRef<V>, int32_t>;
+
     void operator()(::fesql::codec::ListRef<V> *list_ref, int32_t pos, V *v) {
         *v = AtList<V>()(list_ref, pos);
     }
@@ -68,22 +74,30 @@ struct AtStructList {
 
 template <class V>
 struct Minimum {
+    using Args = std::tuple<V, V>;
+
     V operator()(V l, V r) { return l < r ? l : r; }
 };
 
 template <class V>
 struct Maximum {
+    using Args = std::tuple<V, V>;
+
     V operator()(V l, V r) { return l > r ? l : r; }
 };
 
 template <class V>
 struct StructMinimum {
-    V *operator()(V *l, V *r) { return *l < *r ? l : r; }
+    using Args = std::tuple<V, V>;
+
+    void operator()(V *l, V *r, V *res) { *res = (*l < *r) ? *l : *r; }
 };
 
 template <class V>
 struct StructMaximum {
-    V *operator()(V *l, V *r) { return *l > *r ? l : r; }
+    using Args = std::tuple<V, V>;
+
+    void operator()(V *l, V *r, V *res) { *res = (*l > *r) ? *l : *r; }
 };
 
 template <class V>
@@ -103,6 +117,7 @@ bool next_struct_iterator(int8_t *input, V *v);
 
 template <class V>
 struct IncOne {
+    using Args = std::tuple<V>;
     V operator()(V i) { return i + 1; }
 };
 
@@ -148,6 +163,8 @@ void sub_string(fesql::codec::StringRef *str, int32_t pos, int32_t len,
 
 template <class V>
 struct ToString {
+    using Args = std::tuple<V>;
+
     void operator()(V v, codec::StringRef *output) {
         std::ostringstream ss;
         ss << v;

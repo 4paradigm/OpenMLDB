@@ -483,15 +483,18 @@ void RunColCase(T expected, type::TableDef& table,  // NOLINT
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("fn"));
+
+    codec::ListRef<> window_ref;
+    window_ref.list = window;
     if (!is_void) {
         T(*decode)
         (int8_t*) = reinterpret_cast<T (*)(int8_t*)>(load_fn_jit.getAddress());
-        ASSERT_EQ(expected, decode(window));
+        ASSERT_EQ(expected, decode(reinterpret_cast<int8_t*>(&window_ref)));
 
     } else {
         void (*decode)(int8_t*) =
             reinterpret_cast<void (*)(int8_t*)>(load_fn_jit.getAddress());
-        decode(window);
+        decode(reinterpret_cast<int8_t*>(&window_ref));
     }
 }
 

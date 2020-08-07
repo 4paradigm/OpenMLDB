@@ -16,6 +16,8 @@
 namespace fesql {
 namespace node {
 
+using base::Status;
+
 bool SQLEquals(const SQLNode *left, const SQLNode *right) {
     return left == right ? true : nullptr == left ? false : left->Equals(right);
 }
@@ -28,6 +30,12 @@ bool ExprEquals(const ExprNode *left, const ExprNode *right) {
 }
 bool FnDefEquals(const FnDefNode *left, const FnDefNode *right) {
     return left == right ? true : nullptr == left ? false : left->Equals(right);
+}
+bool TypeEquals(const TypeNode *left, const TypeNode *right) {
+    if (left == nullptr || right == nullptr) {
+        return false;  // ? != ?
+    }
+    return left == right || left->Equals(right);
 }
 void PrintSQLNode(std::ostream &output, const std::string &org_tab,
                   const SQLNode *node_ptr, const std::string &item_name,
@@ -224,11 +232,12 @@ bool AllNode::Equals(const ExprNode *node) const {
 void ConstNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     output << "\n";
-    output << org_tab << SPACE_ST;
-    output << "value: " << GetExprString() << "\n";
-    output << org_tab << SPACE_ST;
-    output << "type: " << DataTypeName(data_type_) << "\n";
+    auto tab = org_tab + INDENT;
+    PrintValue(output, tab, GetExprString(), "value", false);
+    output << "\n";
+    PrintValue(output, tab, DataTypeName(data_type_), "type", true);
 }
+
 const std::string ConstNode::GetExprString() const {
     switch (data_type_) {
         case fesql::node::kInt16:
@@ -545,7 +554,7 @@ void CallExprNode::Print(std::ostream &output,
     }
 }
 const std::string CallExprNode::GetExprString() const {
-    std::string str = GetFnDef()->GetSimpleName();
+    std::string str = GetFnDef()->GetName();
     str.append("(");
     for (size_t i = 0; i < children_.size(); ++i) {
         str.append(children_[i]->GetExprString());
@@ -796,6 +805,21 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
             break;
         case kFnForInBlock:
             output = "kFnForInBlock";
+            break;
+        case kExternalFnDef:
+            output = "kExternFnDef";
+            break;
+        case kUDFDef:
+            output = "kUDFDef";
+            break;
+        case kUDFByCodeGenDef:
+            output = "kUDFByCodeGenDef";
+            break;
+        case kUDAFDef:
+            output = "kUDAFDef";
+            break;
+        case kLambdaDef:
+            output = "kLambdaDef";
             break;
         default:
             output = "unknown";
@@ -1256,11 +1280,11 @@ bool TypeNode::Equals(const SQLNode *node) const {
 
     const TypeNode *that = dynamic_cast<const TypeNode *>(node);
     return this->base_ == that->base_ &&
-           std::equal(this->generics_.cbegin(), this->generics_.cend(),
-                      that->generics_.cbegin(),
-                      [&](fesql::node::TypeNode *a, fesql::node::TypeNode *b) {
-                          return a->Equals(b);
-                      });
+           std::equal(
+               this->generics_.cbegin(), this->generics_.cend(),
+               that->generics_.cbegin(),
+               [&](const fesql::node::TypeNode *a,
+                   const fesql::node::TypeNode *b) { return a->Equals(b); });
 }
 
 void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -1457,36 +1481,29 @@ bool ExternalFnDefNode::Equals(const SQLNode *node) const {
     return other != nullptr && other->function_name() == function_name();
 }
 
-bool ExternalFnDefNode::Validate(
+Status ExternalFnDefNode::Validate(
     const std::vector<const TypeNode *> &actual_types) const {
     size_t actual_arg_num = actual_types.size();
-    if (arg_types_.size() > actual_arg_num) {
-        LOG(WARNING) << function_name() << " take at least "
-                     << arg_types_.size() << " arguments, but get "
-                     << actual_arg_num;
-        return false;
-    } else if (arg_types_.size() < actual_arg_num &&
-               variadic_pos_ != static_cast<int>(arg_types_.size())) {
-        LOG(WARNING) << function_name() << " take explicit "
-                     << arg_types_.size() << " arguments, but get "
-                     << actual_arg_num;
-        return false;
+    CHECK_TRUE(actual_arg_num >= arg_types_.size(), function_name(),
+               " take at least ", arg_types_.size(), " arguments, but get ",
+               actual_arg_num);
+    if (arg_types_.size() < actual_arg_num) {
+        CHECK_TRUE(variadic_pos_ >= 0 &&
+                       static_cast<size_t>(variadic_pos_) == arg_types_.size(),
+                   function_name(), " take explicit ", arg_types_.size(),
+                   " arguments, but get ", actual_arg_num);
     }
     for (size_t i = 0; i < arg_types_.size(); ++i) {
         auto actual_ty = actual_types[i];
         if (actual_ty == nullptr) {
-            LOG(WARNING) << function_name() << "'s " << i
-                         << "th actual argument take unknown type";
-            return false;
-        } else if (!arg_types_[i]->Equals(actual_ty)) {
-            LOG(WARNING) << function_name() << "'s " << i
-                         << "th actual argument mismatch: get "
-                         << actual_ty->GetName() << " but expect "
-                         << arg_types_[i]->GetName();
-            return false;
+            continue;
         }
+        CHECK_TRUE(arg_types_[i] != nullptr, i, "th argument is not inferred");
+        CHECK_TRUE(arg_types_[i]->Equals(actual_ty), function_name(), "'s ", i,
+                   "th actual argument mismatch: get ", actual_ty->GetName(),
+                   " but expect ", arg_types_[i]->GetName());
     }
-    return true;
+    return Status::OK();
 }
 
 void UDFDefNode::Print(std::ostream &output, const std::string &tab) const {
@@ -1534,24 +1551,114 @@ bool LambdaNode::Equals(const SQLNode *node) const {
     return ExprEquals(this->body(), other->body());
 }
 
-bool LambdaNode::Validate(
+Status LambdaNode::Validate(
     const std::vector<const TypeNode *> &actual_types) const {
-    if (actual_types.size() != GetArgSize()) {
-        return false;
-    }
+    CHECK_TRUE(actual_types.size() == GetArgSize(), "Lambda expect ",
+               GetArgSize(), " arguments but get ", actual_types.size());
     for (size_t i = 0; i < GetArgSize(); ++i) {
-        if (GetArgType(i) == nullptr) {
-            return false;
-        } else if (!GetArgType(i)->Equals(actual_types[i])) {
-            return false;
+        CHECK_TRUE(GetArgType(i) != nullptr);
+        if (actual_types[i] == nullptr) {
+            continue;
+        }
+        CHECK_TRUE(GetArgType(i)->Equals(actual_types[i]), "Lambda's", i,
+                   "th argument type should be ", GetArgType(i)->GetName(),
+                   ", but get ", actual_types[i]->GetName());
+    }
+    return Status::OK();
+}
+
+const TypeNode *UDAFDefNode::GetElementType(size_t i) const {
+    if (i > arg_types_.size() || arg_types_[i] == nullptr ||
+        arg_types_[i]->generics_.size() < 1) {
+        return nullptr;
+    }
+    return arg_types_[i]->generics_[0];
+}
+
+Status UDAFDefNode::Validate(
+    const std::vector<const TypeNode *> &arg_types) const {
+    // check non-null fields
+    CHECK_TRUE(update_func() != nullptr, "update func is null");
+    for (auto ty : arg_types_) {
+        CHECK_TRUE(ty != nullptr && ty->base() == kList,
+                   "udaf's argument type must be list");
+    }
+    // init check
+    CHECK_TRUE(GetStateType() != nullptr, "State type not inferred");
+    if (init_expr() == nullptr) {
+        CHECK_TRUE(arg_types_.size() == 1,
+                   "Only support single input if init not set");
+    } else {
+        CHECK_TRUE(init_expr()->GetOutputType() != nullptr)
+        CHECK_TRUE(init_expr()->GetOutputType()->Equals(GetStateType()),
+                   "Init type expect to be ", GetStateType()->GetName(),
+                   ", but get ", init_expr()->GetOutputType()->GetName());
+    }
+    // update check
+    CHECK_TRUE(update_func()->GetArgSize() == 1 + arg_types_.size(),
+               "Update should take ", 1 + arg_types_.size(), ", get ",
+               update_func()->GetArgSize());
+    for (size_t i = 0; i < arg_types_.size() + 1; ++i) {
+        auto arg_type = update_func()->GetArgType(i);
+        CHECK_TRUE(arg_type != nullptr, i,
+                   "th update argument type is not inferred");
+        if (i == 0) {
+            CHECK_TRUE(arg_type->Equals(GetStateType()),
+                       "Update's first argument type should be ",
+                       GetStateType()->GetName(), ", but get ",
+                       arg_type->GetName());
+        } else {
+            CHECK_TRUE(arg_type->Equals(GetElementType(i - 1)), "Update's ", i,
+                       "th argument type should be ", GetElementType(i - 1),
+                       ", but get ", arg_type->GetName());
         }
     }
-    return true;
+    // merge check
+    if (merge_func() != nullptr) {
+        CHECK_TRUE(merge_func()->GetArgSize() == 2,
+                   "Merge should take 2 arguments, but get ",
+                   merge_func()->GetArgSize());
+        CHECK_TRUE(merge_func()->GetArgType(0) != nullptr);
+        CHECK_TRUE(merge_func()->GetArgType(0)->Equals(GetStateType()),
+                   "Merge's 0th argument type should be ",
+                   GetStateType()->GetName(), ", but get ",
+                   merge_func()->GetArgType(0)->GetName());
+        CHECK_TRUE(merge_func()->GetArgType(1) != nullptr);
+        CHECK_TRUE(merge_func()->GetArgType(1)->Equals(GetStateType()),
+                   "Merge's 1th argument type should be ", GetStateType(),
+                   ", but get ", merge_func()->GetArgType(1)->GetName());
+        CHECK_TRUE(merge_func()->GetReturnType() != nullptr);
+        CHECK_TRUE(merge_func()->GetReturnType()->Equals(GetStateType()),
+                   "Merge's return type should be ", GetStateType(),
+                   ", but get ", merge_func()->GetReturnType()->GetName());
+    }
+    // output check
+    if (output_func() != nullptr) {
+        CHECK_TRUE(output_func()->GetArgSize() == 1,
+                   "Output should take 1 arguments, but get ",
+                   output_func()->GetArgSize());
+        CHECK_TRUE(output_func()->GetArgType(0) != nullptr);
+        CHECK_TRUE(output_func()->GetArgType(0)->Equals(GetStateType()),
+                   "Output's 0th argument type should be ", GetStateType(),
+                   ", but get ", output_func()->GetArgType(0)->GetName());
+        CHECK_TRUE(output_func()->GetReturnType() != nullptr);
+    }
+    // actual args check
+    CHECK_TRUE(arg_types.size() == arg_types_.size(), GetName(), " expect ",
+               arg_types_.size(), " inputs, but get ", arg_types.size());
+    for (size_t i = 0; i < arg_types.size(); ++i) {
+        if (arg_types[i] != nullptr) {
+            CHECK_TRUE(arg_types_[i]->Equals(arg_types[i]), GetName(), "'s ", i,
+                       "th argument expect ", arg_types_[i]->GetName(),
+                       ", but get ", arg_types[i]->GetName());
+        }
+    }
+    return Status::OK();
 }
 
 bool UDAFDefNode::Equals(const SQLNode *node) const {
     auto other = dynamic_cast<const UDAFDefNode *>(node);
-    return other != nullptr && init_->Equals(other->init_) &&
+    return other != nullptr && init_expr_->Equals(other->init_expr()) &&
            update_->Equals(other->update_) &&
            FnDefEquals(merge_, other->merge_) &&
            FnDefEquals(output_, other->output_);
@@ -1559,11 +1666,21 @@ bool UDAFDefNode::Equals(const SQLNode *node) const {
 
 void UDAFDefNode::Print(std::ostream &output,
                         const std::string &org_tab) const {
-    output << org_tab << "[kUDAFDef] " << name_ << " \n";
+    output << org_tab << "[kUDAFDef] " << name_;
+    output << "(";
+    for (size_t i = 0; i < GetArgSize(); ++i) {
+        if (arg_types_[i] == nullptr) {
+            output << "?";
+        } else {
+            output << arg_types_[i]->GetName();
+        }
+        if (i < GetArgSize() - 1) {
+            output << ", ";
+        }
+    }
+    output << ")\n";
     const std::string tab = org_tab + INDENT;
-    PrintSQLNode(output, tab, input_type_, "elem_type", false);
-    output << "\n";
-    PrintSQLNode(output, tab, init_, "init", false);
+    PrintSQLNode(output, tab, init_expr_, "init", false);
     output << "\n";
     PrintSQLNode(output, tab, update_, "update", false);
     output << "\n";

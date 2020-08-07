@@ -106,9 +106,8 @@ void AddFunc(const std::string& fn, ::fesql::node::NodeManager* manager,
 
 void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
                        const vm::SchemaSourceList& name_schemas,
-                       std::string udf_str, std::string sql, int8_t** row_ptrs,
-                       int8_t* window_ptr, int32_t* row_sizes,
-                       vm::Schema* output_schema,
+                       std::string udf_str, std::string sql, int8_t* row_ptr,
+                       int8_t* window_ptr, vm::Schema* output_schema,
                        vm::ColumnSourceList* column_sources, int8_t** output) {
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -117,7 +116,7 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     ::fesql::parser::FeSQLParser parser;
     ::fesql::base::Status status;
     ::fesql::udf::RegisterUDFToModule(m.get());
-    udf::DefaultUDFLibrary lib;
+    auto lib = udf::DefaultUDFLibrary::get();
     AddFunc(udf_str, manager, m.get());
     m->print(::llvm::errs(), NULL);
     int ret = parser.parse(sql, list, manager, status);
@@ -129,60 +128,65 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     ASSERT_EQ(0, ret);
     fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
 
-    bool is_multi_row = pp_node_ptr->GetW() != nullptr;
-    ASSERT_TRUE(vm::ResolveProjects(name_schemas, pp_node_ptr->GetProjects(),
-                                    !is_multi_row, manager, &lib, status));
+    node::LambdaNode* to_compile_func = nullptr;
+    std::vector<std::string> project_names;
+    std::vector<node::FrameNode*> project_frames;
+    status = vm::ResolveProjects(name_schemas, pp_node_ptr->GetProjects(),
+                                 false, manager, lib, &to_compile_func,
+                                 &project_names, &project_frames);
+    if (!status.isOK()) {
+        LOG(WARNING) << status.msg;
+    }
+    ASSERT_TRUE(status.isOK());
 
     RowFnLetIRBuilder ir_builder(name_schemas,
                                  nullptr == pp_node_ptr->GetW()
                                      ? nullptr
                                      : pp_node_ptr->GetW()->frame_node(),
                                  m.get());
-    bool ok = ir_builder.Build("test_at_fn", pp_node_ptr->GetProjects(),
-                               output_schema, column_sources);
-    ASSERT_TRUE(ok);
-    LOG(INFO) << "fn let ir build ok";
+    status = ir_builder.Build("test_at_fn", to_compile_func, project_names,
+                              project_frames, output_schema, column_sources);
+    LOG(INFO) << "fn let ir build status: " << status.msg;
+    ASSERT_TRUE(status.isOK());
     m->print(::llvm::errs(), NULL);
     ExitOnError ExitOnErr;
     auto J = ExitOnErr(LLJITBuilder().create());
     auto& jd = J->getMainJITDylib();
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
-    lib.InitJITSymbols(J.get());
+    udf::RegisterNativeUDFToModule(m.get());
+    lib->InitJITSymbols(J.get());
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);
 
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
     auto load_fn_jit = ExitOnErr(J->lookup("test_at_fn"));
 
-    int32_t (*decode)(int8_t**, int8_t*, int32_t*, int8_t**) = (int32_t(*)(
-        int8_t**, int8_t*, int32_t*, int8_t**))load_fn_jit.getAddress();
-    int32_t ret2 = decode(row_ptrs, window_ptr, row_sizes, output);
+    int32_t (*decode)(int8_t*, int8_t*, int8_t**) =
+        (int32_t(*)(int8_t*, int8_t*, int8_t**))load_fn_jit.getAddress();
+    int32_t ret2 = decode(row_ptr, window_ptr, output);
     ASSERT_EQ(0, ret2);
 }
 
 void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
                        type::TableDef& table, std::string udf_str,  // NOLINT
-                       std::string sql, int8_t** row_ptrs, int8_t* window_ptr,
-                       int32_t* row_sizes, vm::Schema* output_schema,
-                       int8_t** output) {
+                       std::string sql, int8_t* row_ptr, int8_t* window_ptr,
+                       vm::Schema* output_schema, int8_t** output) {
     vm::SchemaSourceList name_schema_list;
     name_schema_list.AddSchemaSource(table.name(), &table.columns());
     vm::ColumnSourceList column_sources;
-    CheckFnLetBuilder(manager, name_schema_list, udf_str, sql, row_ptrs,
-                      window_ptr, row_sizes, output_schema, &column_sources,
-                      output);
+    CheckFnLetBuilder(manager, name_schema_list, udf_str, sql, row_ptr,
+                      window_ptr, output_schema, &column_sources, output);
 }
 void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
                        type::TableDef& table, std::string udf_str,  // NOLINT
-                       std::string sql, int8_t** row_ptrs, int8_t* window_ptr,
-                       int32_t* row_sizes, vm::Schema* output_schema,
+                       std::string sql, int8_t* row_ptr, int8_t* window_ptr,
+                       vm::Schema* output_schema,
                        vm::ColumnSourceList* column_sources, int8_t** output) {
     vm::SchemaSourceList name_schema_list;
     name_schema_list.AddSchemaSource(table.name(), &table.columns());
-    CheckFnLetBuilder(manager, name_schema_list, udf_str, sql, row_ptrs,
-                      window_ptr, row_sizes, output_schema, column_sources,
-                      output);
+    CheckFnLetBuilder(manager, name_schema_list, udf_str, sql, row_ptr,
+                      window_ptr, output_schema, column_sources, output);
 }
 
 }  // namespace codegen

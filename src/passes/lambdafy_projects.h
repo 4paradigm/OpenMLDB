@@ -7,6 +7,7 @@
 #define SRC_PASSES_LAMBDAFY_PROJECTS_H_
 
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "node/expr_node.h"
@@ -23,8 +24,12 @@ using base::Status;
 class LambdafyProjects {
  public:
     LambdafyProjects(node::NodeManager* nm, udf::UDFLibrary* library,
-                     const vm::SchemaSourceList& input_schemas)
-        : nm_(nm), library_(library), input_schemas_(input_schemas) {}
+                     const vm::SchemaSourceList& input_schemas,
+                     bool legacy_agg_opt)
+        : nm_(nm),
+          library_(library),
+          input_schemas_(input_schemas),
+          legacy_agg_opt_(legacy_agg_opt) {}
 
     /**
      * Create a virtual lambda representation for all project
@@ -45,7 +50,9 @@ class LambdafyProjects {
      */
     Status Transform(const node::PlanNodeList& projects,
                      node::LambdaNode** out_lambda,
-                     std::vector<int>* require_agg);
+                     std::vector<int>* require_agg,
+                     std::vector<std::string>* out_names,
+                     std::vector<node::FrameNode*>* out_frames);
 
     /**
      * Transform original expression under lambda scope with arg
@@ -70,6 +77,12 @@ class LambdafyProjects {
     node::NodeManager* nm_;
     udf::UDFLibrary* library_;
     vm::SchemaSourceList input_schemas_;
+
+    // to make compatible with legacy agg builder
+    bool FallBackToLegacyAgg(node::ExprNode* expr);
+    bool legacy_agg_opt_;
+    std::unordered_set<std::string> agg_opt_fn_names_ = {"sum", "min", "max",
+                                                         "count", "avg"};
 };
 
 }  // namespace passes

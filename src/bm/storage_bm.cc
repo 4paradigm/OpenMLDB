@@ -27,8 +27,6 @@ static void BM_ArrayListIterate(benchmark::State& state) {  // NOLINT
     ArrayListIterate(&state, BENCHMARK, state.range(0));
 }
 
-
-
 BENCHMARK(BM_ArrayListIterate)->Args({100})->Args({1000})->Args({10000});
 
 }  // namespace bm

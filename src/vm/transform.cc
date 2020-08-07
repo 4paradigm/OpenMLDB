@@ -15,6 +15,9 @@
 #include "vm/physical_op.h"
 #include "vm/schemas_context.h"
 
+#include "passes/lambdafy_projects.h"
+#include "passes/resolve_fn_and_attrs.h"
+
 namespace fesql {
 namespace vm {
 
@@ -796,65 +799,73 @@ bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
     return true;
 }
 
-bool ResolveProjects(const SchemaSourceList& schema_list,
-                     const node::PlanNodeList& projects, const bool row_project,
-                     node::NodeManager* node_manager, udf::UDFLibrary* library,
-                     base::Status& status) {  // NOLINT
+fesql::base::Status ResolveProjects(
+    const SchemaSourceList& input_schemas, const node::PlanNodeList& projects,
+    const bool row_project, node::NodeManager* node_manager,
+    udf::UDFLibrary* library, node::LambdaNode** output_func,
+    std::vector<std::string>* output_names,
+    std::vector<node::FrameNode*>* output_frames) {
+    // lambdafy
+    const bool enable_legacy_agg_opt = true;
+    passes::LambdafyProjects lambdafy_pass(node_manager, library, input_schemas,
+                                           enable_legacy_agg_opt);
+    node::LambdaNode* lambda = nullptr;
+    std::vector<int> require_agg;
+    CHECK_STATUS(lambdafy_pass.Transform(projects, &lambda, &require_agg,
+                                         output_names, output_frames));
+
+    // check lambdafy output
+    CHECK_TRUE(lambda->GetArgSize() == 2);
+    std::vector<const node::TypeNode*> global_arg_types = {
+        lambda->GetArgType(0), lambda->GetArgType(1)};
+    if (row_project) {
+        for (size_t i = 0; i < require_agg.size(); ++i) {
+            CHECK_TRUE(require_agg[i] == false,
+                       "Can not gen agg project in row project node, ", i,
+                       "th expression is: ",
+                       lambda->body()->GetChild(i)->GetExprString());
+        }
+    }
+
     // type inference and udf function resolve
-    vm::SchemasContext schema_context(schema_list);
-    ResolveFnAndAttrs resolve_pass(!row_project, &schema_context, node_manager,
-                                   library);
-    auto expr_group = node_manager->MakeExprList();
-    for (auto pnode : projects) {
-        auto pp_node = dynamic_cast<const node::ProjectNode*>(pnode);
-        auto expr = pp_node->GetExpression();
-        expr_group->AddChild(expr);
-    }
-    node::ExprNode* new_expr_group = nullptr;
-    auto pass_status = resolve_pass.Visit(expr_group, &new_expr_group);
-    if (!pass_status.isOK()) {
-        LOG(WARNING) << "Expression type inference failed, "
-                     << "all udfs fallback to legacy: " << pass_status.msg;
-        return true;
-    }
-    size_t expr_idx = 0;
-    for (auto pnode : projects) {
-        auto pp_node = dynamic_cast<node::ProjectNode*>(pnode);
-        pp_node->SetExpression(new_expr_group->GetChild(expr_idx));
-        expr_idx += 1;
-    }
-    return true;
+    node::LambdaNode* resolved_lambda = nullptr;
+    passes::ResolveFnAndAttrs resolve_pass(node_manager, library,
+                                           input_schemas);
+    CHECK_STATUS(
+        resolve_pass.VisitLambda(lambda, global_arg_types, &resolved_lambda));
+
+    *output_func = resolved_lambda;
+    return fesql::base::Status::OK();
 }
 
-bool BatchModeTransformer::GenProjects(
-    const SchemaSourceList& input_name_schema_list,
-    const node::PlanNodeList& projects, const bool row_project,
-    const node::FrameNode* frame,
-    std::string& fn_name,   // NOLINT
-    Schema* output_schema,  // NOLINT
-    ColumnSourceList* output_column_sources,
-    base::Status& status) {  // NOLINT
-
-    // type inference and udf function resolve
-    if (!ResolveProjects(input_name_schema_list, projects, row_project,
-                         node_manager_, library_, status)) {
+bool BatchModeTransformer::GenProjects(const SchemaSourceList& input_schemas,
+                                       const node::PlanNodeList& projects,
+                                       const bool row_project,
+                                       const node::FrameNode* frame,
+                                       std::string& fn_name,   // NOLINT
+                                       Schema* output_schema,  // NOLINT
+                                       ColumnSourceList* output_column_sources,
+                                       base::Status& status) {  // NOLINT
+    // run expr passes
+    node::LambdaNode* project_func = nullptr;
+    std::vector<std::string> project_names;
+    std::vector<node::FrameNode*> project_frames;
+    status = ResolveProjects(input_schemas, projects, row_project,
+                             node_manager_, library_, &project_func,
+                             &project_names, &project_frames);
+    if (!status.isOK()) {
+        LOG(WARNING) << status.msg;
         return false;
     }
 
     // TODO(wangtaize) use ops end op output schema
-    ::fesql::codegen::RowFnLetIRBuilder builder(input_name_schema_list, frame,
-                                                module_);
+    ::fesql::codegen::RowFnLetIRBuilder builder(input_schemas, frame, module_);
     fn_name = "__internal_sql_codegen_" + std::to_string(id_++);
-    bool ok =
-        builder.Build(fn_name, projects, output_schema, output_column_sources);
-    if (!ok) {
-        status.code = common::kCodegenError;
-        status.msg = "fail to codegen projects node";
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    return true;
+    status = builder.Build(fn_name, project_func, project_names, project_frames,
+                           output_schema, output_column_sources);
+    return status.isOK();
 }
+
 bool BatchModeTransformer::AddDefaultPasses() {
     AddPass(kPassColumnProjectOptimized);
     AddPass(kPassFilterOptimized);
@@ -2664,64 +2675,6 @@ bool SimpleProjectOptimized::Transform(PhysicalOpNode* in,
             return false;
         }
     }
-}
-
-base::Status ResolveFnAndAttrs::Visit(node::ExprNode* expr,
-                                      node::ExprNode** output) {
-    auto iter = cache_.find(expr);
-    if (iter != cache_.end()) {
-        *output = iter->second;
-        return base::Status::OK();
-    }
-    for (size_t i = 0; i < expr->GetChildNum(); ++i) {
-        node::ExprNode* new_child = nullptr;
-        CHECK_STATUS(Visit(expr->GetChild(i), &new_child));
-        if (new_child != nullptr && new_child != expr->GetChild(i)) {
-            expr->SetChild(i, new_child);
-        }
-    }
-    *output = expr;  // default
-    switch (expr->GetExprType()) {
-        case node::kExprCall: {
-            auto call = dynamic_cast<node::CallExprNode*>(expr);
-            auto external_fn =
-                dynamic_cast<const node::ExternalFnDefNode*>(call->GetFnDef());
-            if (external_fn == nullptr || external_fn->IsResolved()) {
-                break;
-            }
-            node::ExprNode* result = nullptr;
-            node::ExprListNode arg_list;
-            for (size_t i = 0; i < call->GetChildNum(); ++i) {
-                arg_list.AddChild(call->GetChild(i));
-            }
-
-            auto status = library_->Transform(external_fn->function_name(),
-                                              &arg_list, call->GetOver(),
-                                              &analysis_context_, &result);
-            if (status.isOK() && result != nullptr) {
-                *output = result;
-            } else {
-                // fallback to legacy fn gen with warning
-                LOG(WARNING)
-                    << "Resolve function '" << external_fn->function_name()
-                    << "' failed, fallback to legacy: " << status.msg;
-            }
-        }
-        default:
-            break;
-    }
-
-    // Infer attr for non-group expr
-    if (expr->GetExprType() != node::kExprList &&
-        expr->GetExprType() != node::kExprAll) {
-        auto status = (*output)->InferAttr(&analysis_context_);
-        if (!status.isOK()) {
-            DLOG(WARNING) << "Fail to infer " << (*output)->GetExprString()
-                          << ": " << status.msg;
-        }
-    }
-    cache_.insert(iter, std::make_pair(expr, *output));
-    return base::Status::OK();
 }
 
 }  // namespace vm
