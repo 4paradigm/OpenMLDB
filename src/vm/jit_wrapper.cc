@@ -47,7 +47,6 @@ bool FeSQLJITWrapper::Init() {
 
 bool FeSQLJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
                                 std::unique_ptr<llvm::LLVMContext> llvm_ctx) {
-    udf::RegisterUDFToModule(module.get());
     ::llvm::Error e = jit_->addIRModule(
         ::llvm::orc::ThreadSafeModule(std::move(module), std::move(llvm_ctx)));
     if (e) {

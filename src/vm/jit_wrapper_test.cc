@@ -100,7 +100,6 @@ TEST_F(JITWrapperTest, test_window) {
 
     // clear this dict to ensure jit wrapper reinit all symbols
     // this should be removed by better symbol init utility
-    udf::ClearNativeUDFDict();
 
     FeSQLJITWrapper jit;
     ASSERT_TRUE(jit.Init());

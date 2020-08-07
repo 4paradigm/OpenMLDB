@@ -115,7 +115,6 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     ::fesql::node::NodePointVector list;
     ::fesql::parser::FeSQLParser parser;
     ::fesql::base::Status status;
-    ::fesql::udf::RegisterUDFToModule(m.get());
     auto lib = udf::DefaultUDFLibrary::get();
     AddFunc(udf_str, manager, m.get());
     m->print(::llvm::errs(), NULL);
@@ -154,7 +153,6 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     auto& jd = J->getMainJITDylib();
     ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
                                       J->getDataLayout());
-    udf::RegisterNativeUDFToModule(m.get());
     lib->InitJITSymbols(J.get());
     ::fesql::vm::InitCodecSymbol(jd, mi);
     ::fesql::udf::InitUDFSymbol(jd, mi);

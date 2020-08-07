@@ -286,14 +286,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
 
     udf::DefaultUDFLibrary* library = udf::DefaultUDFLibrary::get();
-    ::fesql::udf::RegisterUDFToModule(m.get());
-
-    if (!::fesql::udf::RegisterUDFToModule(m.get())) {
-        status.msg = "fail to generate native udf libs";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
     if (ctx.is_batch_mode) {
         vm::BatchModeTransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
                                              library);

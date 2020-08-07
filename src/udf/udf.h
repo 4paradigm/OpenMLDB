@@ -192,9 +192,7 @@ void InitCLibSymbol(::llvm::orc::JITDylib &jd,            // NOLINT
 bool AddSymbol(::llvm::orc::JITDylib &jd,                 // NOLINT
                ::llvm::orc::MangleAndInterner &mi,        // NOLINT
                const std::string &fn_name, void *fn_ptr);
-bool RegisterUDFToModule(::llvm::Module *m);
-void ClearNativeUDFDict();
-void RegisterNativeUDFToModule(::llvm::Module *m);
+void RegisterNativeUDFToModule();
 }  // namespace udf
 }  // namespace fesql
 

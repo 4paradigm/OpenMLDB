@@ -679,6 +679,7 @@ example
 }
 
 void DefaultUDFLibrary::Init() {
+    udf::RegisterNativeUDFToModule();
     RegisterExternal("year")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::year))
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::year));

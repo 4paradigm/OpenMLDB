@@ -31,7 +31,11 @@ class NodeManager {
         }
     }
 
-    int GetNodeListSize() { return node_list_.size(); }
+    int GetNodeListSize() {
+        int node_size = node_list_.size();
+        DLOG(INFO) << "GetNodeListSize: " << node_size;
+        return node_size;
+    }
 
     // Make xxxPlanNode
     //    PlanNode *MakePlanNode(const PlanType &type);

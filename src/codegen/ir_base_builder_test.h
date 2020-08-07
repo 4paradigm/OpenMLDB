@@ -212,7 +212,6 @@ class ModuleTestFunction {
             return;
         }
 
-        udf::RegisterNativeUDFToModule(module.get());
         ::fesql::vm::InitCodecSymbol(jd, mi);
         ::fesql::udf::InitUDFSymbol(jd, mi);
 
@@ -441,7 +440,6 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
         std::unique_ptr<::llvm::LLVMContext>(new llvm::LLVMContext());
     auto module =
         std::unique_ptr<::llvm::Module>(new ::llvm::Module("Test", *llvm_ctx));
-    ::fesql::udf::RegisterUDFToModule(module.get());
 
     CodeGenContext context(module.get());
 

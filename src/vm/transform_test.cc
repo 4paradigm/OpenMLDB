@@ -206,7 +206,6 @@ TEST_P(TransformTest, transform_physical_plan) {
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    ::fesql::udf::RegisterUDFToModule(m.get());
     auto lib = ::fesql::udf::DefaultUDFLibrary::get();
     BatchModeTransformer transform(&manager, "db", catalog, m.get(), lib);
 
@@ -251,7 +250,6 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    ::fesql::udf::RegisterUDFToModule(m.get());
     base::Status status;
     auto lib = ::fesql::udf::DefaultUDFLibrary::get();
     BatchModeTransformer transform(&manager, "db", catalog, m.get(), lib);
@@ -493,7 +491,6 @@ TEST_P(TransformTest, window_merge_opt_test) {
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    ::fesql::udf::RegisterUDFToModule(m.get());
     base::Status status;
     auto lib = ::fesql::udf::DefaultUDFLibrary::get();
     BatchModeTransformer transform(&manager, "db", catalog, m.get(), lib);
@@ -548,7 +545,6 @@ TEST_P(KeyGenTest, GenTest) {
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    ::fesql::udf::RegisterUDFToModule(m.get());
     auto lib = ::fesql::udf::DefaultUDFLibrary::get();
     BatchModeTransformer transformer(&nm, "db", catalog, m.get(), lib);
 
@@ -598,7 +594,6 @@ TEST_P(FilterGenTest, GenFilter) {
 
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
-    ::fesql::udf::RegisterUDFToModule(m.get());
     auto lib = ::fesql::udf::DefaultUDFLibrary::get();
     BatchModeTransformer transformer(&nm, "db", catalog, m.get(), lib);
 
