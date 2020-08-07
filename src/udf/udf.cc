@@ -330,12 +330,10 @@ bool RegisterMethod(const std::string &fn_name, fesql::node::TypeNode *ret,
     for (auto &arg : args) {
         fn_args->AddChild(nm.MakeFnParaNode("", arg));
     }
-
     auto header = dynamic_cast<node::FnNodeFnHeander *>(
         nm.MakeFnHeaderNode(fn_name, fn_args, ret));
     DefaultUDFLibrary::get()->AddExternalSymbol(header->GeIRFunctionName(),
                                                 fn_ptr);
-    DLOG(INFO) << "register native udf: " << header->GeIRFunctionName();
     return true;
 }
 
