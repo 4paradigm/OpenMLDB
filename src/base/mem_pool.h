@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <list>
+#include <thread>
 #include "glog/logging.h"
 namespace fesql {
 namespace base {
@@ -22,8 +23,19 @@ class MemoryChunk {
           chuck_size_(request_size > DEFAULT_CHUCK_SIZE ? request_size
                                                         : DEFAULT_CHUCK_SIZE),
           allocated_size_(0),
-          mem_(new char[chuck_size_]) {}
-    ~MemoryChunk() { delete[] mem_; }
+          mem_(new char[chuck_size_]) {
+        DLOG(INFO) << std::this_thread::get_id()
+                  << " " << __FUNCTION__
+                  << "(" << (void *)this << ")"
+                  << std::endl;
+    }
+    ~MemoryChunk() {
+        DLOG(INFO) << std::this_thread::get_id()
+                  << " " << __FUNCTION__
+                  << "(" << (void *)this << ")"
+                  << std::endl;
+        delete[] mem_;
+    }
     inline size_t available_size() { return chuck_size_ - allocated_size_; }
     char* Alloc(size_t request_size) {
         if (request_size > available_size()) {
@@ -47,18 +59,21 @@ class ByteMemoryPool {
  public:
     explicit ByteMemoryPool(size_t init_size = MemoryChunk::DEFAULT_CHUCK_SIZE)
         : chucks_(nullptr) {
-        DLOG(INFO) << "ByteMemoryPool";
+        DLOG(INFO) << std::this_thread::get_id()
+                   << " " << __FUNCTION__
+                   << "(" << (void *)this << ")"
+                   << std::endl;
+
         ExpandStorage(init_size);
     }
     ~ByteMemoryPool() {
-        DLOG(INFO) << "~ByteMemoryPool";
+        DLOG(INFO) << std::this_thread::get_id()
+                   << " " << __FUNCTION__
+                   << "(" << (void *)this << ")"
+                   << std::endl;
         Reset();
-        if (chucks_) {
-            delete chucks_;
-        }
     }
     char* Alloc(size_t request_size) {
-        DLOG(INFO) << "Alloc";
         if (chucks_->available_size() < request_size) {
             ExpandStorage(request_size);
         }
@@ -69,15 +84,13 @@ class ByteMemoryPool {
     // and delete other chucks
     void Reset() {
         auto chuck = chucks_;
-        while (chuck->next()) {
+        while (chuck) {
             chucks_ = chuck->next();
             delete chuck;
             chuck = chucks_;
         }
-        chuck->free();
     }
     void ExpandStorage(size_t request_size) {
-        DLOG(INFO) << "ExpandStorage";
         chucks_ = new MemoryChunk(chucks_, request_size);
     }
 
