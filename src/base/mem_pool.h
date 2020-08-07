@@ -26,13 +26,13 @@ class MemoryChunk {
           mem_(new char[chuck_size_]) {
         DLOG(INFO) << std::this_thread::get_id()
                   << " " << __FUNCTION__
-                  << "(" << (void *)this << ")"
+                  << "(" << reinterpret_cast<void *>(this) << ")"
                   << std::endl;
     }
     ~MemoryChunk() {
         DLOG(INFO) << std::this_thread::get_id()
                   << " " << __FUNCTION__
-                  << "(" << (void *)this << ")"
+                  << "(" << reinterpret_cast<void *>(this) << ")"
                   << std::endl;
         delete[] mem_;
     }
@@ -61,7 +61,7 @@ class ByteMemoryPool {
         : chucks_(nullptr) {
         DLOG(INFO) << std::this_thread::get_id()
                    << " " << __FUNCTION__
-                   << "(" << (void *)this << ")"
+                   << "(" << reinterpret_cast<void *>(this) << ")"
                    << std::endl;
 
         ExpandStorage(init_size);
@@ -69,7 +69,7 @@ class ByteMemoryPool {
     ~ByteMemoryPool() {
         DLOG(INFO) << std::this_thread::get_id()
                    << " " << __FUNCTION__
-                   << "(" << (void *)this << ")"
+                   << "(" << reinterpret_cast<void *>(this) << ")"
                    << std::endl;
         Reset();
     }
