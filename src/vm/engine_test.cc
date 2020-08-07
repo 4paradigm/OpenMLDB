@@ -797,9 +797,6 @@ TEST_F(EngineTest, EngineGetDependentTableTest) {
         std::vector<std::pair<std::string, std::set<std::string>>> pairs;
         pairs.push_back(std::make_pair("SELECT col1, col2 from t1;",
                                        std::set<std::string>({"t1"})));
-
-        pairs.push_back(std::make_pair("SELECT substr(\"hello world\", 3, 6);",
-                                       std::set<std::string>()));
         pairs.push_back(
             std::make_pair("SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 "
                            "last join t2 "
