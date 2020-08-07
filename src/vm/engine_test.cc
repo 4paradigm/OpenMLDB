@@ -858,6 +858,7 @@ TEST_F(EngineTest, EngineGetDependentTableTest) {
     {
         std::vector<std::pair<std::string, std::set<std::string>>> pairs;
         pairs.push_back(std::make_pair("SELECT substr(\"hello world\", 3, 6);",
+                                       std::set<std::string>()));
         for (auto pair : pairs) {
             base::Status get_status;
             EngineOptions options;
@@ -871,7 +872,6 @@ TEST_F(EngineTest, EngineGetDependentTableTest) {
                                                   get_status));
             ASSERT_EQ(tables, pair.second);
         }
-
     }
 }
 
