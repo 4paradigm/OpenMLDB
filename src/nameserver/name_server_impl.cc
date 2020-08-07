@@ -4247,6 +4247,10 @@ bool NameServerImpl::AddFieldToTablet(const std::vector<rtidb::common::ColumnDes
         const auto& pair = table_info->schema_versions(versions_size - 1);
         version_id = pair.id();
     }
+    if (version_id >= UINT8_MAX) {
+        LOG(WARNING) << "reach max veriosn " <<  UINT8_MAX << " table " << table_info->name();
+        return false;
+    }
     version_id++;
     new_pair->set_id(version_id);
     new_pair->set_field_count(columns.size());
