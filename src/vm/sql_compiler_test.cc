@@ -96,9 +96,9 @@ void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);
-    ASSERT_TRUE(nullptr != sql_context.plan);
+    ASSERT_TRUE(nullptr != sql_context.physical_plan);
     std::ostringstream oss;
-    sql_context.plan->Print(oss, "");
+    sql_context.physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
 
     std::ostringstream oss_schema;
@@ -117,9 +117,9 @@ void RequestSchemaCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);
-    ASSERT_TRUE(nullptr != sql_context.plan);
+    ASSERT_TRUE(nullptr != sql_context.physical_plan);
     std::ostringstream oss;
-    sql_context.plan->Print(oss, "");
+    sql_context.physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
 
     std::ostringstream oss_schema;

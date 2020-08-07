@@ -21,6 +21,7 @@
 #include <map>
 #include <memory>
 #include <mutex>  //NOLINT
+#include <set>
 #include <string>
 #include <vector>
 #include "base/raw_buffer.h"
@@ -88,7 +89,7 @@ class RunSession {
     }
 
     virtual inline vm::PhysicalOpNode* GetPhysicalPlan() {
-        return compile_info_->get_sql_context().plan;
+        return compile_info_->get_sql_context().physical_plan;
     }
 
     virtual inline vm::Runner* GetRunner() {
@@ -167,6 +168,9 @@ class Engine {
              RunSession& session,    // NOLINT
              base::Status& status);  // NOLINT
 
+    bool GetDependentTables(const std::string& sql, const std::string& db,
+                            bool is_batch_mode, std::set<std::string>* tables,
+                            base::Status& status);  // NOLINT
     bool Explain(const std::string& sql, const std::string& db, bool is_batch,
                  ExplainOutput* explain_output, base::Status* status);
     inline void UpdateCatalog(std::shared_ptr<Catalog> cl) {
@@ -176,6 +180,8 @@ class Engine {
     void ClearCacheLocked(const std::string& db);
 
  private:
+    bool GetDependentTables(node::PlanNode* node, std::set<std::string>* tables,
+                            base::Status& status);  // NOLINT
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,
                                                 bool is_batch);
