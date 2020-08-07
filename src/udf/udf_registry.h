@@ -278,6 +278,7 @@ class ArgSignatureTable {
 struct ExprUDFGenBase {
     virtual ExprNode* gen(UDFResolveContext* ctx,
                           const std::vector<ExprNode*>& args) = 0;
+    virtual ~ExprUDFGenBase() {}
 };
 
 template <typename... Args>
@@ -473,6 +474,7 @@ class LLVMUDFGenBase {
         this->fixed_ret_type_ = dtype;
     }
 
+    virtual ~LLVMUDFGenBase() {}
  private:
     node::TypeNode* fixed_ret_type_ = nullptr;
 };
