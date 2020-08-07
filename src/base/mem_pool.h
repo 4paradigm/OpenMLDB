@@ -66,7 +66,7 @@ class ByteMemoryPool {
         Reset();
     }
     char* Alloc(size_t request_size) {
-        if (chucks_->available_size() < request_size) {
+        if (nullptr == chucks_ || chucks_->available_size() < request_size) {
             ExpandStorage(request_size);
         }
         return chucks_->Alloc(request_size);
