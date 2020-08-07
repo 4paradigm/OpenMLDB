@@ -24,6 +24,7 @@
 #include "codegen/fn_ir_builder.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
+#include "udf/default_udf_library.h"
 namespace fesql {
 namespace udf {
 namespace v1 {
@@ -95,19 +96,11 @@ int32_t weekofyear(codec::Date *date) {
     return d.week_number();
 }
 
-int16_t abs_int16(int16_t x) {
-    return static_cast<int16_t>(abs(x));
-}
-int64_t abs_int64(int64_t x) {
-    return static_cast<int64_t>(labs(x));
-}
+int16_t abs_int16(int16_t x) { return static_cast<int16_t>(abs(x)); }
+int64_t abs_int64(int64_t x) { return static_cast<int64_t>(labs(x)); }
 
-int Ceild(double x) {
-    return static_cast<int>(ceil(x));
-}
-int Ceilf(float x) {
-    return static_cast<int>(ceilf(x));
-}
+int Ceild(double x) { return static_cast<int>(ceil(x)); }
+int Ceilf(float x) { return static_cast<int>(ceilf(x)); }
 
 void date_format(codec::Timestamp *timestamp, fesql::codec::StringRef *format,
                  fesql::codec::StringRef *output) {
@@ -328,8 +321,7 @@ bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
     return ::fesql::vm::FeSQLJIT::AddSymbol(jd, mi, fn_name, fn_ptr);
 }
 
-bool RegisterMethod(::llvm::Module *module, const std::string &fn_name,
-                    fesql::node::TypeNode *ret,
+bool RegisterMethod(const std::string &fn_name, fesql::node::TypeNode *ret,
                     std::initializer_list<fesql::node::TypeNode *> args,
                     void *fn_ptr) {
     node::NodeManager nm;
@@ -342,11 +334,12 @@ bool RegisterMethod(::llvm::Module *module, const std::string &fn_name,
     auto header = dynamic_cast<node::FnNodeFnHeander *>(
         nm.MakeFnHeaderNode(fn_name, fn_args, ret));
     DefaultUDFLibrary::get()->AddExternalSymbol(header->GeIRFunctionName(),
-    DLOG(INFO) << "register native udf: " << fn->getName().str();
+                                                fn_ptr);
+    DLOG(INFO) << "register native udf: " << header->GeIRFunctionName();
     return true;
 }
 
-void RegisterNativeUDFToModule(::llvm::Module *module) {
+void RegisterNativeUDFToModule() {
     node::NodeManager nm;
     base::Status status;
 
@@ -383,103 +376,97 @@ void RegisterNativeUDFToModule(::llvm::Module *module) {
     auto iter_string_ty = nm.MakeTypeNode(node::kIterator, string_ty);
     auto iter_row_ty = nm.MakeTypeNode(node::kIterator, row_ty);
 
-    RegisterMethod(module, "iterator", bool_ty, {list_i16_ty, iter_i16_ty},
+    RegisterMethod("iterator", bool_ty, {list_i16_ty, iter_i16_ty},
                    reinterpret_cast<void *>(v1::iterator_list<int16_t>));
-    RegisterMethod(module, "iterator", bool_ty, {list_i32_ty, iter_i32_ty},
+    RegisterMethod("iterator", bool_ty, {list_i32_ty, iter_i32_ty},
                    reinterpret_cast<void *>(v1::iterator_list<int32_t>));
-    RegisterMethod(module, "iterator", bool_ty, {list_i64_ty, iter_i64_ty},
+    RegisterMethod("iterator", bool_ty, {list_i64_ty, iter_i64_ty},
                    reinterpret_cast<void *>(v1::iterator_list<int64_t>));
-    RegisterMethod(module, "iterator", bool_ty, {list_bool_ty, iter_bool_ty},
+    RegisterMethod("iterator", bool_ty, {list_bool_ty, iter_bool_ty},
                    reinterpret_cast<void *>(v1::iterator_list<bool>));
-    RegisterMethod(module, "iterator", bool_ty, {list_float_ty, iter_float_ty},
+    RegisterMethod("iterator", bool_ty, {list_float_ty, iter_float_ty},
                    reinterpret_cast<void *>(v1::iterator_list<float>));
-    RegisterMethod(module, "iterator", bool_ty,
-                   {list_double_ty, iter_double_ty},
+    RegisterMethod("iterator", bool_ty, {list_double_ty, iter_double_ty},
                    reinterpret_cast<void *>(v1::iterator_list<double>));
     RegisterMethod(
-        module, "iterator", bool_ty, {list_time_ty, iter_time_ty},
+        "iterator", bool_ty, {list_time_ty, iter_time_ty},
         reinterpret_cast<void *>(v1::iterator_list<codec::Timestamp>));
-    RegisterMethod(module, "iterator", bool_ty, {list_date_ty, iter_date_ty},
+    RegisterMethod("iterator", bool_ty, {list_date_ty, iter_date_ty},
                    reinterpret_cast<void *>(v1::iterator_list<codec::Date>));
     RegisterMethod(
-        module, "iterator", bool_ty, {list_string_ty, iter_string_ty},
+        "iterator", bool_ty, {list_string_ty, iter_string_ty},
         reinterpret_cast<void *>(v1::iterator_list<codec::StringRef>));
-    RegisterMethod(module, "iterator", bool_ty, {list_row_ty, iter_row_ty},
+    RegisterMethod("iterator", bool_ty, {list_row_ty, iter_row_ty},
                    reinterpret_cast<void *>(v1::iterator_list<codec::Row>));
 
-    RegisterMethod(module, "next", i16_ty, {iter_i16_ty},
+    RegisterMethod("next", i16_ty, {iter_i16_ty},
                    reinterpret_cast<void *>(v1::next_iterator<int16_t>));
-    RegisterMethod(module, "next", i32_ty, {iter_i32_ty},
+    RegisterMethod("next", i32_ty, {iter_i32_ty},
                    reinterpret_cast<void *>(v1::next_iterator<int32_t>));
-    RegisterMethod(module, "next", i64_ty, {iter_i64_ty},
+    RegisterMethod("next", i64_ty, {iter_i64_ty},
                    reinterpret_cast<void *>(v1::next_iterator<int64_t>));
-    RegisterMethod(module, "next", bool_ty, {iter_bool_ty},
+    RegisterMethod("next", bool_ty, {iter_bool_ty},
                    reinterpret_cast<void *>(v1::next_iterator<bool>));
-    RegisterMethod(module, "next", float_ty, {iter_float_ty},
+    RegisterMethod("next", float_ty, {iter_float_ty},
                    reinterpret_cast<void *>(v1::next_iterator<float>));
-    RegisterMethod(module, "next", double_ty, {iter_double_ty},
+    RegisterMethod("next", double_ty, {iter_double_ty},
                    reinterpret_cast<void *>(v1::next_iterator<double>));
     RegisterMethod(
-        module, "next", bool_ty, {iter_time_ty, time_ty},
+        "next", bool_ty, {iter_time_ty, time_ty},
         reinterpret_cast<void *>(v1::next_struct_iterator<codec::Timestamp>));
 
     RegisterMethod(
-        module, "next", bool_ty, {iter_date_ty, date_ty},
+        "next", bool_ty, {iter_date_ty, date_ty},
         reinterpret_cast<void *>(v1::next_struct_iterator<codec::Date>));
     RegisterMethod(
-        module, "next", bool_ty, {iter_string_ty, string_ty},
+        "next", bool_ty, {iter_string_ty, string_ty},
         reinterpret_cast<void *>(v1::next_struct_iterator<codec::StringRef>));
-    RegisterMethod(module, "next", row_ty, {iter_row_ty},
+    RegisterMethod("next", row_ty, {iter_row_ty},
                    reinterpret_cast<void *>(v1::next_row_iterator));
 
-    RegisterMethod(module, "has_next", bool_ty, {iter_i16_ty},
+    RegisterMethod("has_next", bool_ty, {iter_i16_ty},
                    reinterpret_cast<void *>(v1::has_next<int16_t>));
-    RegisterMethod(module, "has_next", bool_ty, {iter_i32_ty},
+    RegisterMethod("has_next", bool_ty, {iter_i32_ty},
                    reinterpret_cast<void *>(v1::has_next<int32_t>));
-    RegisterMethod(module, "has_next", bool_ty, {iter_i64_ty},
+    RegisterMethod("has_next", bool_ty, {iter_i64_ty},
                    reinterpret_cast<void *>(v1::has_next<int64_t>));
-    RegisterMethod(module, "has_next", bool_ty, {iter_bool_ty},
+    RegisterMethod("has_next", bool_ty, {iter_bool_ty},
                    reinterpret_cast<void *>(v1::has_next<bool>));
-    RegisterMethod(module, "has_next", bool_ty, {iter_float_ty},
+    RegisterMethod("has_next", bool_ty, {iter_float_ty},
                    reinterpret_cast<void *>(v1::has_next<float>));
-    RegisterMethod(module, "has_next", bool_ty, {iter_double_ty},
+    RegisterMethod("has_next", bool_ty, {iter_double_ty},
                    reinterpret_cast<void *>(v1::has_next<double>));
-    RegisterMethod(module, "has_next", bool_ty, {iter_time_ty},
+    RegisterMethod("has_next", bool_ty, {iter_time_ty},
                    reinterpret_cast<void *>(v1::has_next<codec::Timestamp>));
-    RegisterMethod(module, "has_next", bool_ty, {iter_date_ty},
+    RegisterMethod("has_next", bool_ty, {iter_date_ty},
                    reinterpret_cast<void *>(v1::has_next<codec::Date>));
-    RegisterMethod(module, "has_next", bool_ty, {iter_string_ty},
+    RegisterMethod("has_next", bool_ty, {iter_string_ty},
                    reinterpret_cast<void *>(v1::has_next<codec::StringRef>));
-    RegisterMethod(module, "has_next", bool_ty, {iter_row_ty},
+    RegisterMethod("has_next", bool_ty, {iter_row_ty},
                    reinterpret_cast<void *>(v1::has_next<codec::Row>));
 
-    RegisterMethod(module, "delete_iterator", bool_ty, {iter_i16_ty},
+    RegisterMethod("delete_iterator", bool_ty, {iter_i16_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<int16_t>));
-    RegisterMethod(module, "delete_iterator", bool_ty, {iter_i32_ty},
+    RegisterMethod("delete_iterator", bool_ty, {iter_i32_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<int32_t>));
-    RegisterMethod(module, "delete_iterator", bool_ty, {iter_i64_ty},
+    RegisterMethod("delete_iterator", bool_ty, {iter_i64_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<int64_t>));
-    RegisterMethod(module, "delete_iterator", bool_ty, {iter_bool_ty},
+    RegisterMethod("delete_iterator", bool_ty, {iter_bool_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<bool>));
-    RegisterMethod(module, "delete_iterator", bool_ty, {iter_float_ty},
+    RegisterMethod("delete_iterator", bool_ty, {iter_float_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<float>));
-    RegisterMethod(module, "delete_iterator", bool_ty, {iter_double_ty},
+    RegisterMethod("delete_iterator", bool_ty, {iter_double_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<double>));
     RegisterMethod(
-        module, "delete_iterator", bool_ty, {iter_time_ty},
+        "delete_iterator", bool_ty, {iter_time_ty},
         reinterpret_cast<void *>(v1::delete_iterator<codec::Timestamp>));
-    RegisterMethod(module, "delete_iterator", bool_ty, {iter_date_ty},
+    RegisterMethod("delete_iterator", bool_ty, {iter_date_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<codec::Date>));
     RegisterMethod(
-        module, "delete_iterator", bool_ty, {iter_string_ty},
+        "delete_iterator", bool_ty, {iter_string_ty},
         reinterpret_cast<void *>(v1::delete_iterator<codec::StringRef>));
-    RegisterMethod(module, "delete_iterator", bool_ty, {iter_row_ty},
+    RegisterMethod("delete_iterator", bool_ty, {iter_row_ty},
                    reinterpret_cast<void *>(v1::delete_iterator<codec::Row>));
-}
-bool RegisterUDFToModule(::llvm::Module *m) {
-    base::Status status;
-    RegisterNativeUDFToModule(m);
-    return true;
 }
 void InitCLibSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                     ::llvm::orc::MangleAndInterner &mi) {  // NOLINT
