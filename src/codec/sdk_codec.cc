@@ -15,7 +15,9 @@ namespace codec {
 SDKCodec::SDKCodec(const ::rtidb::nameserver::TableInfo& table_info)
     : format_version_(table_info.format_version()),
       base_schema_size_(0),
-      modify_times_(0) {
+      modify_times_(0),
+      version_schema_(),
+      last_ver_(1) {
     if (table_info.column_desc_v1_size() > 0) {
         ParseColumnDesc(table_info.column_desc_v1());
     } else {
@@ -52,6 +54,29 @@ SDKCodec::SDKCodec(const ::rtidb::nameserver::TableInfo& table_info)
         index_.CopyFrom(table_info.column_key());
     }
     ParseAddedColumnDesc(table_info.added_column_desc());
+    if (table_info.format_version() == 1) {
+        std::shared_ptr<Schema> origin_scehma = std::make_shared<Schema>(table_info.column_desc_v1());
+        version_schema_.insert(std::make_pair(1, origin_scehma));
+        for (const auto pair : table_info.schema_versions()) {
+            int32_t ver = pair.id();
+            int32_t times = pair.field_count();
+            std::shared_ptr<Schema> base_schema = std::make_shared<Schema>(table_info.column_desc_v1());
+            int remain_size = times - table_info.column_desc_v1_size();
+            if (remain_size < 0)  {
+                continue;
+            }
+            if (remain_size > table_info.added_column_desc_size()) {
+                continue;
+            }
+            for (int i = 0; i < remain_size; i++) {
+                rtidb::common::ColumnDesc* col = base_schema->Add();
+                col->CopyFrom(table_info.added_column_desc(i));
+            }
+            version_schema_.insert(std::make_pair(ver, base_schema));
+            last_ver_ = ver;
+        }
+
+    }
     for (const auto& name : table_info.partition_key()) {
         auto iter = schema_idx_map_.find(name);
         if (iter != schema_idx_map_.end()) {
@@ -119,6 +144,13 @@ void SDKCodec::ParseColumnDesc(const Schema& column_desc) {
 }
 
 void SDKCodec::ParseAddedColumnDesc(const Schema& column_desc) {
+    if (format_version_ == 1) {
+        for (const auto& col : column_desc) {
+            rtidb::common::ColumnDesc* new_col = schema_.Add();
+            new_col->CopyFrom(col);
+        }
+        return;
+    }
     uint32_t idx = old_schema_.size();
     for (const auto& cur_column_desc : column_desc) {
         schema_idx_map_.emplace(cur_column_desc.name(), idx);
@@ -245,7 +277,14 @@ int SDKCodec::EncodeRow(const std::vector<std::string>& raw_data,
 
 int SDKCodec::DecodeRow(const std::string& row, std::vector<std::string>* value) {
     if (format_version_ == 1) {
-        if (!RowCodec::DecodeRow(schema_, ::rtidb::base::Slice(row), *value)) {
+        const int8_t* data = reinterpret_cast<const int8_t*>(row.data());
+        int32_t ver = rtidb::codec::RowView::GetSchemaVersion(data);
+        auto it = version_schema_.find(ver);
+        if (it == version_schema_.end()) {
+            return -1;
+        }
+        auto schema = it->second;
+        if (!RowCodec::DecodeRow(*schema, data, schema->size(), false, 0, schema->size(), *value)) {
             return -1;
         }
     } else {

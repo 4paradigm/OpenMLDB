@@ -52,8 +52,8 @@
 #include "version.h"   // NOLINT
 #include "vm/engine.h"
 
-using Schema =
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using TabletClient = rtidb::client::TabletClient;
 
 DECLARE_string(endpoint);
 DECLARE_int32(port);
@@ -2148,27 +2148,25 @@ void HandleNSGet(const std::vector<std::string>& parts,
         return;
     }
     uint32_t tid = tables[0].tid();
-    uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) %
-                              tables[0].table_partition_size());
-    std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
-        GetTabletClient(tables[0], pid, msg);
-    if (!tablet_client) {
+    uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) % tables[0].table_partition_size());
+    std::shared_ptr<TabletClient> tb_client = GetTabletClient(tables[0], pid, msg);
+    if (!tb_client) {
         std::cout << "failed to get. error msg: " << msg << std::endl;
         return;
     }
-    if (tables[0].column_desc_size() == 0 &&
-        tables[0].column_desc_v1_size() == 0) {
+    ::rtidb::codec::SDKCodec codec(tables[0]);
+    bool has_ts_col = codec.HasTSCol();
+    bool no_schema = tables[0].column_desc_v1_size() == 0 && tables[0].column_desc_size() == 0;
+    if (no_schema) {
         std::string value;
         uint64_t ts = 0;
         try {
             std::string msg;
-            bool ok =
-                tablet_client->Get(tid, pid, key, timestamp, value, ts, msg);
+            bool ok = tb_client->Get(tid, pid, key, timestamp, value, ts, msg);
             if (ok) {
                 if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
                     std::string uncompressed;
-                    ::snappy::Uncompress(value.c_str(), value.length(),
-                                         &uncompressed);
+                    ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
                     value = uncompressed;
                 }
                 std::cout << "value :" << value << std::endl;
@@ -2180,56 +2178,31 @@ void HandleNSGet(const std::vector<std::string>& parts,
             return;
         }
     } else {
-        std::vector<::rtidb::codec::ColumnDesc> columns;
-        if (tables[0].added_column_desc_size() > 0) {
-            if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(
-                    tables[0], columns, tables[0].added_column_desc_size()) <
-                0) {
-                std::cout << "convert table column desc failed" << std::endl;
-                return;
-            }
-        } else {
-            if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(tables[0],
-                                                               columns) < 0) {
-                std::cout << "convert table column desc failed" << std::endl;
-                return;
-            }
-        }
-        ::baidu::common::TPrinter tp(columns.size() + 2,
-                                     FLAGS_max_col_display_length);
-        std::vector<std::string> row;
-        row.push_back("#");
-        row.push_back("ts");
-        for (uint32_t i = 0; i < columns.size(); i++) {
-            row.push_back(columns[i].name);
-        }
+        std::vector<std::string> row = codec.GetColNames();
+        row.insert(row.begin(), "ts");
+        row.insert(row.begin(), "#");
+        uint64_t max_size = row.size();
+        ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
         tp.AddRow(row);
         std::string value;
         uint64_t ts = 0;
+        std::string msg;
         if (tables[0].partition_key_size() == 0) {
-            std::string msg;
-            if (!tablet_client->Get(tid, pid, key, timestamp, index_name,
-                                    ts_name, value, ts, msg)) {
-                std::cout << "Fail to get value! error msg: " << msg
-                          << std::endl;
+            if (!tb_client->Get(tid, pid, key, timestamp, index_name, ts_name, value, ts, msg)) {
+                std::cout << "Fail to get value! error msg: " << msg << std::endl;
                 return;
             }
         } else {
             int failed_cnt = 0;
-            for (uint32_t cur_pid = 0;
-                 cur_pid < (size_t)tables[0].table_partition_size();
-                 cur_pid++) {
-                std::string msg;
+            for (uint32_t cur_pid = 0; cur_pid < (size_t)tables[0].table_partition_size(); cur_pid++) {
                 uint64_t cur_ts = 0;
                 std::string cur_value;
-                tablet_client = GetTabletClient(tables[0], cur_pid, msg);
-                if (!tablet_client) {
-                    std::cout << "failed to get. error msg: " << msg
-                              << std::endl;
+                tb_client = GetTabletClient(tables[0], cur_pid, msg);
+                if (!tb_client) {
+                    std::cout << "failed to get. error msg: " << msg << std::endl;
                     return;
                 }
-                if (!tablet_client->Get(tid, cur_pid, key, timestamp,
-                                        index_name, ts_name, cur_value, cur_ts,
+                if (!tb_client->Get(tid, cur_pid, key, timestamp, index_name, ts_name, cur_value, cur_ts,
                                         msg)) {
                     failed_cnt++;
                     continue;
@@ -2250,11 +2223,14 @@ void HandleNSGet(const std::vector<std::string>& parts,
             value.swap(uncompressed);
         }
         row.clear();
-        row.push_back("1");
-        row.push_back(std::to_string(ts));
-        ::rtidb::codec::SDKCodec codec(tables[0]);
         codec.DecodeRow(value, &row);
         ::rtidb::cmd::TransferString(&row);
+        row.insert(row.begin(), std::to_string(ts));
+        row.insert(row.begin(), "1");
+        uint64_t row_size = row.size();
+        for (uint64_t i = 0; i < max_size - row_size; i++) {
+            row.push_back("");
+        }
         tp.AddRow(row);
         tp.Print(true);
     }
@@ -2353,8 +2329,7 @@ void HandleNSScan(const std::vector<std::string>& parts,
     std::string msg;
     bool ret = client->ShowTable(table_name, tables, msg);
     if (!ret) {
-        std::cout << "failed to get table info. error msg: " << msg
-                  << std::endl;
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
         return;
     }
     if (tables.empty()) {
@@ -2362,21 +2337,17 @@ void HandleNSScan(const std::vector<std::string>& parts,
         return;
     }
     uint32_t tid = tables[0].tid();
-    uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) %
-                              tables[0].table_partition_size());
-    std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
-        GetTabletClient(tables[0], pid, msg);
-    if (!tablet_client) {
+    uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) % tables[0].table_partition_size());
+    std::shared_ptr<TabletClient> tb_client = GetTabletClient(tables[0], pid, msg);
+    if (!tb_client) {
         std::cout << "failed to scan. error msg: " << msg << std::endl;
         return;
     }
-    if (tables[0].column_desc_size() == 0 &&
-        tables[0].column_desc_v1_size() == 0) {
-        std::string msg;
+    bool no_schema = tables[0].column_desc_v1_size() == 0 && tables[0].column_desc_size() == 0;
+    if (no_schema) {
         std::shared_ptr<::rtidb::base::KvIterator> it;
         if (is_pair_format) {
-            it.reset(tablet_client->Scan(tid, pid, key, st, et, limit, atleast,
-                                         msg));
+            it.reset(tb_client->Scan(tid, pid, key, st, et, limit, atleast, msg));
         } else {
             try {
                 st = boost::lexical_cast<uint64_t>(parts[3]);
@@ -2384,12 +2355,10 @@ void HandleNSScan(const std::vector<std::string>& parts,
                 if (parts.size() > 5) {
                     limit = boost::lexical_cast<uint32_t>(parts[5]);
                 }
-                it.reset(tablet_client->Scan(tid, pid, key, st, et, limit,
-                                             atleast, msg));
+                it.reset(tb_client->Scan(tid, pid, key, st, et, limit, atleast, msg));
             } catch (std::exception const& e) {
-                printf(
-                    "Invalid args. st and et should be uint64_t, limit should "
-                    "be uint32_t\n");
+                std::cout << "Invalid args. st and et should be uint64_t, limit should"
+                          << "be uint32_t" << std::endl;
                 return;
             }
         }
@@ -2410,7 +2379,6 @@ void HandleNSScan(const std::vector<std::string>& parts,
                       << std::endl;
             return;
         }
-        std::string msg;
         if (!is_pair_format) {
             index_name = parts[3];
             try {
@@ -2431,14 +2399,14 @@ void HandleNSScan(const std::vector<std::string>& parts,
             for (uint32_t cur_pid = 0;
                  cur_pid < (uint32_t)tables[0].table_partition_size();
                  cur_pid++) {
-                tablet_client = GetTabletClient(tables[0], cur_pid, msg);
-                if (!tablet_client) {
+                tb_client = GetTabletClient(tables[0], cur_pid, msg);
+                if (!tb_client) {
                     std::cout << "failed to scan. error msg: " << msg
                               << std::endl;
                     return;
                 }
                 std::shared_ptr<::rtidb::base::KvIterator> it(
-                    tablet_client->Scan(tid, cur_pid, key, st, et, index_name,
+                    tb_client->Scan(tid, cur_pid, key, st, et, index_name,
                                         ts_name, limit, atleast, msg));
                 if (!it) {
                     std::cout << "Fail to scan table. error msg: " << msg
@@ -2449,7 +2417,7 @@ void HandleNSScan(const std::vector<std::string>& parts,
             }
         } else {
             std::shared_ptr<::rtidb::base::KvIterator> it(
-                tablet_client->Scan(tid, pid, key, st, et, index_name, ts_name,
+                tb_client->Scan(tid, pid, key, st, et, index_name, ts_name,
                                     limit, atleast, msg));
             if (!it) {
                 std::cout << "Fail to scan table. error msg: " << msg
@@ -2720,9 +2688,9 @@ void HandleNSPreview(const std::vector<std::string>& parts,
     }
     ::rtidb::codec::SDKCodec codec(tables[0]);
     bool has_ts_col = codec.HasTSCol();
-    bool no_schema = tables[0].column_desc_v1_size() == 0 &&
-                     tables[0].column_desc_size() == 0;
+    bool no_schema = tables[0].column_desc_v1_size() == 0 && tables[0].column_desc_size() == 0;
     std::vector<std::string> row;
+    uint64_t max_size = 0;
     if (no_schema) {
         row.push_back("#");
         row.push_back("key");
@@ -2734,24 +2702,22 @@ void HandleNSPreview(const std::vector<std::string>& parts,
             row.insert(row.begin(), "ts");
         }
         row.insert(row.begin(), "#");
+        max_size = row.size();
     }
     ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     uint32_t index = 1;
-    for (uint32_t pid = 0; pid < (uint32_t)tables[0].table_partition_size();
-         pid++) {
+    for (uint32_t pid = 0; pid < (uint32_t)tables[0].table_partition_size(); pid++) {
         if (limit == 0) {
             break;
         }
-        std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
-            GetTabletClient(tables[0], pid, msg);
-        if (!tablet_client) {
+        std::shared_ptr<TabletClient> tb_client = GetTabletClient(tables[0], pid, msg);
+        if (!tb_client) {
             std::cout << "failed to preview. error msg: " << msg << std::endl;
             return;
         }
         uint32_t count = 0;
-        ::rtidb::base::KvIterator* it =
-            tablet_client->Traverse(tid, pid, "", "", 0, limit, count);
+        ::rtidb::base::KvIterator* it = tb_client->Traverse(tid, pid, "", "", 0, limit, count);
         if (it == NULL) {
             std::cout << "Fail to preview table" << std::endl;
             return;
@@ -2765,8 +2731,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
                 std::string value = it->GetValue().ToString();
                 if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
                     std::string uncompressed;
-                    ::snappy::Uncompress(value.c_str(), value.length(),
-                                         &uncompressed);
+                    ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
                     value = uncompressed;
                 }
                 row.push_back(it->GetPK());
@@ -2778,13 +2743,16 @@ void HandleNSPreview(const std::vector<std::string>& parts,
                 }
                 std::string value;
                 if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
-                    ::snappy::Uncompress(it->GetValue().data(),
-                                         it->GetValue().size(), &value);
+                    ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(), &value);
                 } else {
                     value.assign(it->GetValue().data(), it->GetValue().size());
                 }
                 codec.DecodeRow(value, &row);
                 ::rtidb::cmd::TransferString(&row);
+                uint64_t row_size = row.size();
+                for (uint64_t i = 0; i < max_size - row_size; i++) {
+                    row.push_back("");
+                }
             }
             tp.AddRow(row);
             index++;
