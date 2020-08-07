@@ -464,13 +464,13 @@ class ExternUDFTest : public ::testing::Test {
     }
 
     static void IfStringNull(codec::StringRef* in, bool is_null,
-                               codec::StringRef* default_val,
-                               codec::StringRef* output) {
+                             codec::StringRef* default_val,
+                             codec::StringRef* output) {
         *output = is_null ? *default_val : *in;
     }
 
     static void NewDate(int64_t in, bool is_null, codec::Date* out,
-                         bool* is_null_addr) {
+                        bool* is_null_addr) {
         *is_null_addr = is_null;
         if (!is_null) {
             out->date_ = in;
@@ -478,7 +478,7 @@ class ExternUDFTest : public ::testing::Test {
     }
 
     static double SumTuple(float x1, bool x1_is_null, float x2, double x3,
-                            double x4, bool x4_is_null) {
+                           double x4, bool x4_is_null) {
         double res = 0;
         if (!x1_is_null) {
             res += x1;
@@ -492,8 +492,8 @@ class ExternUDFTest : public ::testing::Test {
     }
 
     static void MakeTuple(int16_t x, int32_t y, bool y_is_null, int64_t z,
-                           int16_t* t1, int32_t* t2, bool* t2_is_null,
-                           int64_t* t3) {
+                          int16_t* t1, int32_t* t2, bool* t2_is_null,
+                          int64_t* t3) {
         *t1 = x;
         *t2 = y;
         *t2_is_null = y_is_null;

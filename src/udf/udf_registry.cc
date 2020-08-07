@@ -86,6 +86,9 @@ Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
     for (size_t i = 0; i < ctx->arg_size(); ++i) {
         std::string arg_name = "arg_" + std::to_string(i);
         auto arg_type = ctx->arg_type(i);
+        CHECK_TRUE(arg_type != nullptr, "ExprUDF's ", i,
+                   "th argument type is null, maybe error occurs in type infer "
+                   "process");
         arg_types.push_back(arg_type);
 
         auto arg_expr =

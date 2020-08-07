@@ -98,7 +98,7 @@ TEST_F(UDFRegistryTest, test_expr_udf_register) {
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kLambdaDef);
 
     // match with unknown input arg type
-    fn_def = GetFnDef<int32_t, AnyArg>(&library, "add", &nm);
+    fn_def = GetFnDef<int16_t, int16_t>(&library, "add", &nm);
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kLambdaDef);
 
     // match different argument num
