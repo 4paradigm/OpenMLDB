@@ -12,7 +12,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <list>
-#include <thread>
+#include <thread>  //NOLINT
 #include "glog/logging.h"
 namespace fesql {
 namespace base {
@@ -24,16 +24,12 @@ class MemoryChunk {
                                                         : DEFAULT_CHUCK_SIZE),
           allocated_size_(0),
           mem_(new char[chuck_size_]) {
-        DLOG(INFO) << std::this_thread::get_id()
-                  << " " << __FUNCTION__
-                  << "(" << reinterpret_cast<void *>(this) << ")"
-                  << std::endl;
+        DLOG(INFO) << std::this_thread::get_id() << " " << __FUNCTION__ << "("
+                   << reinterpret_cast<void*>(this) << ")" << std::endl;
     }
     ~MemoryChunk() {
-        DLOG(INFO) << std::this_thread::get_id()
-                  << " " << __FUNCTION__
-                  << "(" << reinterpret_cast<void *>(this) << ")"
-                  << std::endl;
+        DLOG(INFO) << std::this_thread::get_id() << " " << __FUNCTION__ << "("
+                   << reinterpret_cast<void*>(this) << ")" << std::endl;
         delete[] mem_;
     }
     inline size_t available_size() { return chuck_size_ - allocated_size_; }
@@ -59,18 +55,14 @@ class ByteMemoryPool {
  public:
     explicit ByteMemoryPool(size_t init_size = MemoryChunk::DEFAULT_CHUCK_SIZE)
         : chucks_(nullptr) {
-        DLOG(INFO) << std::this_thread::get_id()
-                   << " " << __FUNCTION__
-                   << "(" << reinterpret_cast<void *>(this) << ")"
-                   << std::endl;
+        DLOG(INFO) << std::this_thread::get_id() << " " << __FUNCTION__ << "("
+                   << reinterpret_cast<void*>(this) << ")" << std::endl;
 
         ExpandStorage(init_size);
     }
     ~ByteMemoryPool() {
-        DLOG(INFO) << std::this_thread::get_id()
-                   << " " << __FUNCTION__
-                   << "(" << reinterpret_cast<void *>(this) << ")"
-                   << std::endl;
+        DLOG(INFO) << std::this_thread::get_id() << " " << __FUNCTION__ << "("
+                   << reinterpret_cast<void*>(this) << ")" << std::endl;
         Reset();
     }
     char* Alloc(size_t request_size) {
