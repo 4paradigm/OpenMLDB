@@ -324,8 +324,8 @@ TEST_F(UDFIRBuilderTest, abs_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, acos_udf_test) {
-    CheckUDF<double, int16_t>("acos", 0, 1);
-    CheckUDF<double, int16_t>("acos", 1.5707963267948966, 0);
+    // CheckUDF<double, int16_t>("acos", 0, 1);
+    // CheckUDF<double, int16_t>("acos", 1.5707963267948966, 0);
     CheckUDF<double, int32_t>("acos", 0, 1);
     CheckUDF<double, int32_t>("acos", 1.5707963267948966, 0);
     CheckUDF<double, int64_t>("acos", 0, 1);
@@ -336,8 +336,8 @@ TEST_F(UDFIRBuilderTest, acos_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, asin_udf_test) {
-    CheckUDF<double, int16_t>("asin", 0, 0);
-    CheckUDF<double, int16_t>("asin", 1.5707963267948966, 1);
+    // CheckUDF<double, int16_t>("asin", 0, 0);
+    // CheckUDF<double, int16_t>("asin", 1.5707963267948966, 1);
     CheckUDF<double, int32_t>("asin", 0, 0);
     CheckUDF<double, int32_t>("asin", 1.5707963267948966, 1);
     CheckUDF<double, int64_t>("asin", 0, 0);
@@ -348,8 +348,8 @@ TEST_F(UDFIRBuilderTest, asin_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, atan_udf_test) {
-    CheckUDF<double, int16_t>("atan", 0, 0);
-    CheckUDF<double, int16_t>("atan", 1.1071487177940904, 2);
+    // CheckUDF<double, int16_t>("atan", 0, 0);
+    // CheckUDF<double, int16_t>("atan", 1.1071487177940904, 2);
     CheckUDF<double, int32_t>("atan", -1.1071487177940904, -2);
     CheckUDF<double, int32_t>("atan", 1.1071487177940904, 2);
     CheckUDF<double, int64_t>("atan", 0, 0);

@@ -522,7 +522,7 @@ example
         .args<int16_t>(static_cast<int16_t (*)(int16_t)>(v1::abs_int16))
         .args<int32_t>(static_cast<int32_t (*)(int32_t)>(abs));
     RegisterExternal("abs")
-        .args<int64_t>(static_cast<int64_t (*)(int64_t)>(labs));
+        .args<int64_t>(static_cast<int64_t (*)(int64_t)>(v1::abs_int64));
     RegisterExternal("abs")
         .args<float>(static_cast<float (*)(float)>(fabs))
         .args<double>(static_cast<double (*)(double)>(fabs));

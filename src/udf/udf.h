@@ -144,6 +144,8 @@ int32_t weekofyear(fesql::codec::Timestamp *ts);
 int32_t weekofyear(fesql::codec::Date *ts);
 
 int16_t abs_int16(int16_t x);
+int64_t abs_int64(int64_t x);
+
 int Ceild(double x);
 int Ceilf(float x);
 
