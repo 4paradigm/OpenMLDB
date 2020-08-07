@@ -27,26 +27,31 @@ namespace v1 {
 
 template <class V>
 struct Acos {
+    using Args = std::tuple<V>;
     double operator()(V r) { return acos(r); }
 };
 
 template <class V>
 struct Asin {
+    using Args = std::tuple<V>;
     double operator()(V r) { return asin(r); }
 };
 
 template <class V>
 struct Atan {
+    using Args = std::tuple<V>;
     double operator()(V r) { return atan(r); }
 };
 
 template <class V>
 struct Atan2 {
+    using Args = std::tuple<V, V>;
     double operator()(V l, V r) { return atan2(l, r); }
 };
 
 template <class V>
 struct Ceil {
+    using Args = std::tuple<V>;
     V operator()(V r) { return static_cast<V>(ceil(r)); }
 };
 
