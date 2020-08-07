@@ -853,6 +853,26 @@ TEST_F(EngineTest, EngineGetDependentTableTest) {
             ASSERT_EQ(tables, pair.second);
         }
     }
+
+    // const select
+    {
+        std::vector<std::pair<std::string, std::set<std::string>>> pairs;
+        pairs.push_back(std::make_pair("SELECT substr(\"hello world\", 3, 6);",
+        for (auto pair : pairs) {
+            base::Status get_status;
+            EngineOptions options;
+            Engine engine(std::shared_ptr<Catalog>(), options);
+            std::string sqlstr = pair.first;
+            boost::to_lower(sqlstr);
+            LOG(INFO) << sqlstr;
+            std::cout << sqlstr << std::endl;
+            std::set<std::string> tables;
+            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", true, &tables,
+                                                  get_status));
+            ASSERT_EQ(tables, pair.second);
+        }
+
+    }
 }
 
 }  // namespace vm

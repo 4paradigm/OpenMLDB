@@ -272,7 +272,6 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
 }
 
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
-    ::fesql::node::PlanNodeList trees;
     bool ok = Parse(ctx, status);
     if (!ok) {
         return false;
@@ -304,8 +303,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         vm::BatchModeTransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
                                              &library);
         transformer.AddDefaultPasses();
-        if (!transformer.TransformPhysicalPlan(trees, &ctx.physical_plan,
-                                               status)) {
+        if (!transformer.TransformPhysicalPlan(ctx.logical_plan,
+                                               &ctx.physical_plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (batch mode): "
                          << status.msg << " for sql: \n"
                          << ctx.sql;
@@ -315,8 +314,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         vm::RequestModeransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
                                               &library);
         transformer.AddDefaultPasses();
-        if (!transformer.TransformPhysicalPlan(trees, &ctx.physical_plan,
-                                               status)) {
+        if (!transformer.TransformPhysicalPlan(ctx.logical_plan,
+                                               &ctx.physical_plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (request mode) "
                             "for sql: \n"
                          << ctx.sql;
