@@ -24,6 +24,31 @@ void ThreadLocalMemoryPoolReset();
 namespace v1 {
 
 template <class V>
+struct Acos {
+    double operator()(V r) { return acos(r); }
+};
+
+template <class V>
+struct Asin {
+    double operator()(V r) { return asin(r); }
+};
+
+template <class V>
+struct Atan {
+    double operator()(V r) { return atan(r); }
+};
+
+template <class V>
+struct Atan2 {
+    double operator()(V l, V r) { return atan2(l, r); }
+};
+
+template <class V>
+struct Ceil {
+    V operator()(V r) { return static_cast<V>(ceil(r)); }
+};
+
+template <class V>
 double avg_list(int8_t *input);
 
 template <class V>
@@ -97,6 +122,10 @@ int32_t dayofweek(fesql::codec::Date *ts);
 int32_t weekofyear(int64_t ts);
 int32_t weekofyear(fesql::codec::Timestamp *ts);
 int32_t weekofyear(fesql::codec::Date *ts);
+
+int16_t abs_int16(int16_t x);
+int Ceild(double x);
+int Ceilf(float x);
 
 void date_format(codec::Date *date, const std::string &format,
                  fesql::codec::StringRef *output);

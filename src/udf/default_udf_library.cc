@@ -280,6 +280,26 @@ example
 }
 void DefaultUDFLibrary::IniMathUDF() {
     RegisterExternal("log")
+        .doc(R"(
+log(base, expr)
+If called with one parameter, this function returns the natural logarithm of expr.
+If called with two parameters, this function returns the logarithm of expr to the base.
+
+example
+@code{.sql}
+
+    SELECT LOG(1);  
+    -- output 0.000000
+
+    SELECT LOG(10,100);
+    -- output 2
+@endcode
+
+@param **base**
+@param **expr**
+
+@since 2.0.0.0
+)")
         .args<float>(static_cast<float (*)(float)>(log))
         .args<double>(static_cast<double (*)(double)>(log));
     RegisterExprUDF("log").args<AnyArg>(
@@ -293,9 +313,68 @@ void DefaultUDFLibrary::IniMathUDF() {
             auto cast = nm->MakeCastNode(node::kDouble, x);
             return nm->MakeFuncNode("log", {cast}, nullptr);
         });
-    RegisterAlias("ln", "log");
+    RegisterExprUDF("log")
+        .args<AnyArg, AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("log do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast1 = nm->MakeCastNode(node::kDouble, x);
+            auto cast2 = nm->MakeCastNode(node::kDouble, y);
+            auto logx = nm->MakeFuncNode("log", {cast1}, nullptr);
+            auto logy = nm->MakeFuncNode("log", {cast2}, nullptr);
+            return nm->MakeBinaryExprNode(logy, logx, node::kFnOpFDiv);
+        });
+
+    RegisterExternal("ln")
+.doc(R"(
+Return the natural logarithm of expr.
+
+example
+@code{.sql}
+
+    SELECT LN(1);  
+    -- output 0.000000
+
+@endcode
+
+@param **expr**
+
+@since 2.0.0.0
+)")
+        .args<float>(static_cast<float (*)(float)>(log))
+        .args<double>(static_cast<double (*)(double)>(log));
+    RegisterExprUDF("ln").args<AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("log do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast = nm->MakeCastNode(node::kDouble, x);
+            return nm->MakeFuncNode("ln", {cast}, nullptr);
+        });
 
     RegisterExternal("log2")
+.doc(R"(
+Return the base-2 logarithm of expr.
+
+example
+@code{.sql}
+
+    SELECT LOG2(65536);  
+    -- output 16
+
+@endcode
+
+@param **expr**
+
+@since 2.0.0.0
+)")
         .args<float>(static_cast<float (*)(float)>(log2))
         .args<double>(static_cast<double (*)(double)>(log2));
     RegisterExprUDF("log2").args<AnyArg>(
@@ -311,6 +390,21 @@ void DefaultUDFLibrary::IniMathUDF() {
         });
 
     RegisterExternal("log10")
+.doc(R"(
+Return the base-10 logarithm of expr.
+
+example
+@code{.sql}
+
+    SELECT LOG10(100);  
+    -- output 2
+
+@endcode
+
+@param **expr**
+
+@since 2.0.0.0
+)")
         .args<float>(static_cast<float (*)(float)>(log10))
         .args<double>(static_cast<double (*)(double)>(log10));
     RegisterExprUDF("log10").args<AnyArg>(
@@ -324,6 +418,180 @@ void DefaultUDFLibrary::IniMathUDF() {
             auto cast = nm->MakeCastNode(node::kDouble, x);
             return nm->MakeFuncNode("log10", {cast}, nullptr);
         });
+
+    RegisterExternal("abs")
+.doc(R"(
+Return the absolute value of expr.
+
+example
+@code{.sql}
+
+    SELECT ABS(-32);
+    -- output 32
+
+@endcode
+
+@param **expr**
+
+@since 2.0.0.0
+)")
+        .args<int16_t>(static_cast<int16_t (*)(int16_t)>(v1::abs_int16))
+        .args<int32_t>(static_cast<int32_t (*)(int32_t)>(abs));
+    RegisterExternal("abs")
+        .args<int64_t>(static_cast<int64_t (*)(int64_t)>(labs));
+    RegisterExternal("abs")
+        .args<float>(static_cast<float (*)(float)>(fabs))
+        .args<double>(static_cast<double (*)(double)>(fabs));
+
+    RegisterExternalTemplate<v1::Acos>("acos")
+.doc(R"(
+Return the arc cosine of expr.
+
+example
+@code{.sql}
+
+    SELECT ACOS(1);
+    -- output 0
+
+@endcode
+
+@param **expr**
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("acos")
+        .args<float>(static_cast<float (*)(float)>(acosf));
+
+    RegisterExternalTemplate<v1::Asin>("asin")
+.doc(R"(
+Return the arc sine of expr.
+
+example
+@code{.sql}
+
+    SELECT ASIN(0.0);
+    -- output 0.000000
+
+@endcode
+
+@param **expr**
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("asin")
+        .args<float>(static_cast<float (*)(float)>(asinf));
+
+    RegisterExternalTemplate<v1::Atan>("atan")
+.doc(R"(
+atan(Y, X)
+If called with one parameter, this function returns the arc tangent of expr.
+If called with two parameters X and Y, this function returns the arc tangent of Y / X.
+
+example
+@code{.sql}
+
+    SELECT ATAN(-0.0);  
+    -- output -0.000000
+
+    SELECT ATAN(0, -0);
+    -- output 3.141593
+
+@endcode
+
+@param **X**
+@param **Y**
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("atan")
+        .args<float>(static_cast<float (*)(float)>(atanf));
+
+    RegisterExternalTemplate<v1::Atan2>("atan")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("atan")
+        .args<float, float>(static_cast<float (*)(float, float)>(atan2f));
+    RegisterExprUDF("atan").args<AnyArg, AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("atan do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            if (!y->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("atan do not support type " +
+                              y->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast1 = nm->MakeCastNode(node::kDouble, x);
+            auto cast2 = nm->MakeCastNode(node::kDouble, y);
+            return nm->MakeFuncNode("atan", {cast1, cast2}, nullptr);
+        });
+
+    RegisterExternalTemplate<v1::Atan2>("atan2")
+.doc(R"(
+atan2(Y, X)
+Return the arc tangent of Y / X..
+
+example
+@code{.sql}
+
+    SELECT ATAN2(0, -0);
+    -- output 3.141593
+
+@endcode
+
+@param **X**
+@param **Y**
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("atan2")
+        .args<float, float>(static_cast<float (*)(float, float)>(atan2f));
+    RegisterExprUDF("atan2").args<AnyArg, AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("atan do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            if (!y->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("atan do not support type " +
+                              y->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast1 = nm->MakeCastNode(node::kDouble, x);
+            auto cast2 = nm->MakeCastNode(node::kDouble, y);
+            return nm->MakeFuncNode("atan2", {cast1, cast2}, nullptr);
+        });
+
+    RegisterExternalTemplate<v1::Ceil>("ceil")
+.doc(R"(
+Return the smallest integer value not less than the expr
+
+example
+@code{.sql}
+
+    SELECT CEIL(1.23);
+    -- output 2
+
+@endcode
+
+@param **expr**
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t>();
+    RegisterExternal("ceil")
+        .args<double>(static_cast<int (*)(double)>(v1::Ceild));
+    RegisterExternal("ceil")
+        .args<float>(static_cast<int (*)(float)>(v1::Ceilf));
+    RegisterAlias("ceil", "ceiling");
 }
 
 void DefaultUDFLibrary::Init() {
