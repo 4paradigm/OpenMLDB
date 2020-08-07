@@ -95,15 +95,9 @@ int32_t weekofyear(codec::Date *date) {
     return d.week_number();
 }
 
-int16_t abs_int16(int16_t x) {
-    return static_cast<int16_t>(abs(x));
-}
-int Ceild(double x) {
-    return static_cast<int>(ceil(x));
-}
-int Ceilf(float x) {
-    return static_cast<int>(ceilf(x));
-}
+int16_t abs_int16(int16_t x) { return static_cast<int16_t>(abs(x)); }
+int Ceild(double x) { return static_cast<int>(ceil(x)); }
+int Ceilf(float x) { return static_cast<int>(ceilf(x)); }
 
 void date_format(codec::Timestamp *timestamp, fesql::codec::StringRef *format,
                  fesql::codec::StringRef *output) {
@@ -306,8 +300,6 @@ int8_t *ThreadLocalMemoryPoolAlloc(int32_t request_size) {
 void ThreadLocalMemoryPoolReset() {
     fesql::udf::__THREAD_LOCAL_MEM_POOL.Reset();
 }
-std::map<std::string, void *> NATIVE_UDF_PTRS;
-void ClearNativeUDFDict() { NATIVE_UDF_PTRS.clear(); }
 
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr) {
     ::llvm::orc::MangleAndInterner mi(jit_ptr->getExecutionSession(),
@@ -319,10 +311,6 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_memery_pool_alloc",
         reinterpret_cast<void *>(&fesql::udf::ThreadLocalMemoryPoolAlloc));
-    for (auto iter = NATIVE_UDF_PTRS.cbegin(); iter != NATIVE_UDF_PTRS.cend();
-         iter++) {
-        AddSymbol(jd, mi, iter->first, iter->second);
-    }
 }
 bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
                ::llvm::orc::MangleAndInterner &mi,  // NOLINT
@@ -343,19 +331,7 @@ bool RegisterMethod(::llvm::Module *module, const std::string &fn_name,
 
     auto header = dynamic_cast<node::FnNodeFnHeander *>(
         nm.MakeFnHeaderNode(fn_name, fn_args, ret));
-
-    codegen::FnIRBuilder fn_ir_builder(module);
-    ::llvm::Function *fn;
-    if (!fn_ir_builder.CreateFunction(header, false, &fn, status)) {
-        LOG(WARNING) << "Fail to register native udf: "
-                     << header->GeIRFunctionName();
-        return false;
-    }
-
-    if (NATIVE_UDF_PTRS.find(fn->getName().str()) != NATIVE_UDF_PTRS.cend()) {
-        return false;
-    }
-    NATIVE_UDF_PTRS.insert(std::make_pair(fn->getName().str(), fn_ptr));
+    DefaultUDFLibrary::get()->AddExternalSymbol(header->GeIRFunctionName(),
     DLOG(INFO) << "register native udf: " << fn->getName().str();
     return true;
 }
