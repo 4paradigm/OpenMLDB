@@ -546,7 +546,7 @@ TEST_F(SQLSDKQueryTest, execute_insert_loops_test) {
     ASSERT_TRUE(router->RefreshCatalog());
     while (true) {
         char buffer[4096];
-        sprintf(buffer,
+        sprintf(buffer,  // NOLINT
                 "insert into trans "
                 "values('c_sk_seq0','cust_no0','pay_cust_name0','card_%d','"
                 "payee_card_no0','card_type0','mc_%d','2020-"
@@ -555,7 +555,7 @@ TEST_F(SQLSDKQueryTest, execute_insert_loops_test) {
                 ",'client_mac0',10,20,'cust_idt_no0','"
                 "province0',"
                 "'city0', 'longitude', %s);",
-                card++, mc++, std::to_string(ts++).c_str());
+                card++, mc++, std::to_string(ts++).c_str());  // NOLINT
         std::string insert_sql = std::string(buffer, strlen(buffer));
         //        LOG(INFO) << insert_sql;
         fesql::sdk::Status status;
