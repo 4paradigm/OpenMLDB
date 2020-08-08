@@ -806,11 +806,13 @@ create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list 
 insert_stmt:	INSERT INTO table_name VALUES insert_values
 				{
 					$$ = node_manager->MakeInsertTableNode($3, NULL, $5);
+					free($3);
 				}
 				|INSERT INTO table_name '(' column_ref_list ')' VALUES insert_values
 				{
 
 					$$ = node_manager->MakeInsertTableNode($3, $5, $8);
+					free($3);
 				}
 				;
 insert_values:	insert_value
@@ -1651,6 +1653,7 @@ window_specification:
 					opt_sort_clause opt_frame_clause opt_instance_not_in_window ')'
 					{
                  		$$ = node_manager->MakeWindowDefNode($3, $4, $5, $6, $7);
+                 		free($1);
                  	}
 		;
 
