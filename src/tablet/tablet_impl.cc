@@ -3327,6 +3327,28 @@ void TabletImpl::LoadTable(RpcController* controller,
                   table_meta.schema().size(), ttl);
             task_pool_.AddTask(boost::bind(&TabletImpl::LoadTableInternal, this,
                                            tid, pid, task_ptr));
+            table = GetTable(tid, pid);
+            if (table_meta.format_version() == 1 &&
+                table_meta.storage_mode() == ::rtidb::common::kMemory) {
+                std::shared_ptr<catalog::TabletTableHandler> handler(
+                    new catalog::TabletTableHandler(table_meta, table_meta.db(),
+                                                    table));
+                bool ok = handler->Init();
+                if (ok) {
+                    ok = catalog_->AddTable(handler);
+                    engine_.ClearCacheLocked(table_meta.db());
+                    if (ok) {
+                        LOG(INFO) << "add table " << table_meta.name()
+                                  << " to catalog with db " << table_meta.db();
+                    } else {
+                        LOG(WARNING) << "fail to add table " << table_meta.name()
+                                     << " to catalog with db " << table_meta.db();
+                    }
+                } else {
+                    LOG(WARNING) << "fail to add table " << table_meta.name()
+                                 << " to catalog with db " << table_meta.db();
+                }
+            }
         } else if (table_meta.table_type() == ::rtidb::type::kRelational) {
             task_pool_.AddTask(
                 boost::bind(&TabletImpl::LoadRelationalTableInternal, this,
