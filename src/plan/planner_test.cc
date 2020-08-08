@@ -1401,6 +1401,7 @@ TEST_F(PlannerTest, CreatePlanLeakTest) {
             LOG(INFO) << "process .......... " << cnt;
         }
         cnt++;
+        break;
     }
 }
 }  // namespace plan
