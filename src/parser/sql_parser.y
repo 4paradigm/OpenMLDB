@@ -52,6 +52,7 @@ typedef void* yyscan_t;
 	char* strval;
 	int subtok;
 	bool flag;
+	std::string str = "";
 	::fesql::node::SQLNode* node;
 	::fesql::node::QueryNode* query_node;
 	::fesql::node::FnNode* fnnode;
@@ -84,6 +85,7 @@ typedef void* yyscan_t;
 %token <strval> USERVAR
 %token <strval> SQL_IDENTIFIER
 %token <strval> FUN_IDENTIFIER
+%token <strval> join_outer
 
 /* operators and precedence levels */
 
@@ -439,12 +441,13 @@ typedef void* yyscan_t;
             opt_from_clause
             opt_union_clause
 
-%type <strval> relation_name relation_factor
+%type <str> relation_name relation_factor
+			  id_name
                column_name
                function_name
                opt_existing_window_name
                database_name table_name group_name file_path
-               join_outer
+
 
 %type <intval> opt_window_exclusion_clause
 
@@ -785,8 +788,6 @@ create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list 
                 {
                     $$ = node_manager->MakeCreateIndexNode($3, $5,
                     dynamic_cast<fesql::node::ColumnIndexNode *>(node_manager->MakeColumnIndexNode($7)));
-                    free($3);
-                    free($5);
                 }
                 ;
 
@@ -849,18 +850,15 @@ cmd_stmt:
 			CREATE GROUP group_name
 			{
 				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdCreateGroup, $3);
-				free($3);
 			}
 			|CREATE DATABASE database_name
 			{
 				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdCreateDatabase, $3);
-				free($3);
 			}
 			|CREATE TABLE file_path
 			{
 
 				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdSource, $3);
-				free($3);
 			}
 			|SHOW DATABASES
 			{
@@ -873,33 +871,28 @@ cmd_stmt:
 			|DESC table_name
 			{
 				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdDescTable, $2);
-				free($2);
 			}
 			|USE database_name
 			{
 				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdUseDatabase, $2);
-				free($2);
 			}
             |DROP TABLE table_name
             {
                 $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropTable, $3);
-                free($3);
             }
             |DROP INDEX column_name ON table_name
             {
                 $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropIndex, $3, $5);
-                free($3);
-                free($5);
             }
             |EXIT {
                 $$ = node_manager->MakeCmdNode(::fesql::node::kCmdExit);
             }
 			;
 
-file_path:
-			STRING
-			{}
-			;
+file_path: STRING
+			{
+        		$$ = std::string($1, strlen($1));
+			};
 
 column_desc_list:   column_desc
                     {
@@ -949,7 +942,7 @@ column_index_item:  KEY EQUALS column_name
                     {
                         $$ = node_manager->MakeIndexTTLNode($3);
                     }
-                    | TTL_TYPE EQUALS SQL_IDENTIFIER
+                    | TTL_TYPE EQUALS id_name
                     {
                         $$ = node_manager->MakeIndexTTLTypeNode($3);
                     }
@@ -1034,15 +1027,13 @@ projection:	sql_expr
 			{
 				$$ = node_manager->MakeResTargetNode($1, "");
 			}
-			|sql_expr SQL_IDENTIFIER
+			|sql_expr column_name
 			{
         		$$ = node_manager->MakeResTargetNode($1, $2);
-				free($2);
     		}
-    		| sql_expr AS SQL_IDENTIFIER
+    		| sql_expr AS column_name
     		{
     			$$ = node_manager->MakeResTargetNode($1, $3);
-    			free($3);
     		}
     		| '*'
         	{
@@ -1053,10 +1044,9 @@ projection:	sql_expr
 
 over_clause: OVER window_specification
 				{ $$ = $2; }
-			| OVER SQL_IDENTIFIER
+			| OVER id_name
 				{
 				    $$ = node_manager->MakeWindowDefNode($2);
-				    free($2);
 				}
 			| /*EMPTY*/
 				{ $$ = NULL; }
@@ -1170,37 +1160,44 @@ union_stmt:
 		}
 		;
 join_type:
-		FULL join_outer
+		FULL OUTER
 		{
 			$$ = fesql::node::kJoinTypeFull;
 		}
-		|LAST join_outer
+		|LAST OUTER
 		{
 			$$ = fesql::node::kJoinTypeLast;
 		}
-		|LEFT join_outer
+		|LEFT OUTER
 		{
 			$$ = fesql::node::kJoinTypeLeft;
 		}
-		|RIGHT join_outer
+		|RIGHT OUTER
 		{
 			$$ = fesql::node::kJoinTypeRight;
 		}
+		|FULL
+        {
+        	$$ = fesql::node::kJoinTypeFull;
+        }
+        |LAST
+        {
+        	$$ = fesql::node::kJoinTypeLast;
+        }
+        |LEFT
+        {
+        	$$ = fesql::node::kJoinTypeLeft;
+        }
+        |RIGHT
+        {
+        	$$ = fesql::node::kJoinTypeRight;
+        }
 		|INNER
 		{
 			$$ = fesql::node::kJoinTypeInner;
 		}
 		;
 
-join_outer:
-		OUTER {
-			$$ = NULL;
-		}
-		|/*EMPTY*/
-		{
-			$$ = NULL;
-		}
-		;
 join_condition:
 		ON sql_expr
 		{
@@ -1237,11 +1234,11 @@ sql_expr_list:
 	}
 	;
 sql_id_list:
-	SQL_IDENTIFIER
+	id_name
 	{
 		$$ = node_manager->MakeExprList(node_manager->MakeUnresolvedExprId($1));
 	}
-	| sql_id_list ',' SQL_IDENTIFIER
+	| sql_id_list ',' id_name
 	{
 		$$ = $1;
 		$$->AddChild(node_manager->MakeUnresolvedExprId($3));
@@ -1531,8 +1528,7 @@ expr_const:
 sql_call_expr:
     function_name '(' '*' ')' over_clause
     {
-          if (strcasecmp($1, "count") != 0)
-          {
+          if ($1 != "count") {
             yyerror(&(@3), scanner, trees, node_manager, status, "Only COUNT function can be with '*' parameter!");
             YYABORT;
           }
@@ -1600,10 +1596,9 @@ window_definition_list:
 	;
 
 window_definition:
-		SQL_IDENTIFIER AS window_specification
+		id_name AS window_specification
 		{
 		    ((::fesql::node::WindowDefNode*)$3)->SetName($1);
-			free($1);
 		    $$ = $3;
 		}
 		;
@@ -1617,8 +1612,8 @@ window_specification:
 		;
 
 opt_existing_window_name:
-						SQL_IDENTIFIER { $$ = $1; }
-						| /*EMPTY*/		{ $$ = NULL; }
+						id_name { $$ = $1; }
+						| /*EMPTY*/		{ $$ = ""; }
 
                         ;
 opt_union_clause:
@@ -1817,27 +1812,44 @@ column_ref:
  *===========================================================*/
 
 database_name:
-	SQL_IDENTIFIER
+	SQL_IDENTIFIER {
+        	$$ = std::string($1, strlen($1));
+        }
 	;
 
 group_name:
-	SQL_IDENTIFIER
+	SQL_IDENTIFIER {
+        	$$ = std::string($1, strlen($1));
+        }
 	;
 
 table_name:
-	SQL_IDENTIFIER
+	SQL_IDENTIFIER {
+        	$$ = std::string($1, strlen($1));
+        }
 	;
 column_name:
-    SQL_IDENTIFIER
+    SQL_IDENTIFIER {
+        	$$ = std::string($1, strlen($1));
+        }
   ;
 
 relation_name:
-    SQL_IDENTIFIER
+    SQL_IDENTIFIER {
+    	$$ = std::string($1, strlen($1));
+    }
   ;
-
+id_name:
+ 	SQL_IDENTIFIER {
+   		$$ = std::string($1, strlen($1));
+    };
 function_name:
-    SQL_IDENTIFIER
-    |FUN_IDENTIFIER
+    SQL_IDENTIFIER {
+    	$$ = std::string($1, strlen($1));
+    }
+    |FUN_IDENTIFIER {
+    	$$ = std::string($1, strlen($1));
+    }
   ;
 
 %%

@@ -481,6 +481,7 @@ class TableRefNode : public SQLNode {
         : SQLNode(kTableRef, 0, 0),
           ref_type_(ref_type),
           alias_table_name_(alias_table_name) {}
+    ~TableRefNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *node) const;
 
@@ -492,6 +493,7 @@ class QueryNode : public SQLNode {
  public:
     explicit QueryNode(QueryType query_type)
         : SQLNode(node::kQuery, 0, 0), query_type_(query_type) {}
+    ~QueryNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *node) const;
     const QueryType query_type_;
@@ -503,6 +505,7 @@ class TableNode : public TableRefNode {
 
     TableNode(const std::string &name, const std::string &alias)
         : TableRefNode(kRefTable, alias), org_table_name_(name) {}
+    ~TableNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *node) const;
     const std::string org_table_name_;
@@ -512,6 +515,7 @@ class QueryRefNode : public TableRefNode {
  public:
     QueryRefNode(const QueryNode *query, const std::string &alias)
         : TableRefNode(kRefQuery, alias), query_(query) {}
+    ~QueryRefNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SQLNode *node) const;
     const QueryNode *query_;
@@ -1135,6 +1139,7 @@ class AllNode : public ExprNode {
           relation_name_(relation_name),
           db_name_(db_name) {}
 
+    ~AllNode() {}
     std::string GetRelationName() const { return relation_name_; }
     std::string GetDBName() const { return db_name_; }
 
