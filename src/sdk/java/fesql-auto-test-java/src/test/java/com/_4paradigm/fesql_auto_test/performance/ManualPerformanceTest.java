@@ -7,6 +7,12 @@ import org.testng.annotations.Test;
 public class ManualPerformanceTest {
     @Test(enabled = false)
     public void requestAggExample8ThreadTest() {
-        RequestAggExample.run(8);
+
+        RequestAggExample.run(RequestAggExample.ExecuteType.kRequestAgg, 8);
+    }
+
+    @Test(enabled = false)
+    public void requestInsertExample8ThreadTest() {
+        RequestAggExample.run(RequestAggExample.ExecuteType.kRequestInsert, 8);
     }
 }

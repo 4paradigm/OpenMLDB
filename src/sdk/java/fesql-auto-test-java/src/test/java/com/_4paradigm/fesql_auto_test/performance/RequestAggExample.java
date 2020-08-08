@@ -20,6 +20,7 @@ public class RequestAggExample {
 
     private static final Logger logger = LoggerFactory.getLogger(RequestAggExample.class);
     public static ThreadLocal<Integer> threadLocalProcessCnt = new ThreadLocal<Integer>();
+    public static ThreadLocal<Integer> threadLocalProcessErrorCnt = new ThreadLocal<Integer>();
     private String ddl = "create table trans(c_sk_seq string,\n" +
             "                   cust_no string,\n" +
             "                   pay_cust_name string,\n" +
@@ -61,6 +62,11 @@ public class RequestAggExample {
     private String cardNo = "card1";
     private String merchantId = "merChantId1";
 
+    public void printSQL() {
+        logger.info("ddl: \n{}", ddl);
+        logger.info("insertTpl: \n{}", insertTpl);
+    }
+
     public void init() throws SqlException {
         SdkOption option = new SdkOption();
         option.setZkCluster(zkCluster);
@@ -89,25 +95,30 @@ public class RequestAggExample {
 
     }
 
+    private void updateProcessInfo(boolean isOk) {
+        int cnt = threadLocalProcessCnt.get();
+        int errorCnt = threadLocalProcessErrorCnt.get();
+        if (0 == cnt % 1000) {
+            logger.info("thread {} process {} error {} ..........", Thread.currentThread().getId(), cnt, errorCnt);
+            System.gc();
+        }
+        threadLocalProcessCnt.set(cnt + 1);
+        if (!isOk) {
+            threadLocalProcessErrorCnt.set(errorCnt + 1);
+        }
+    }
+
     public void requestInsert() {
         Random random = new Random(System.currentTimeMillis());
         String card = String.valueOf(random.nextInt(1000000));
         String mc = String.valueOf(random.nextInt(1000000));
         String sql = String.format(insertTpl, card, mc, System.currentTimeMillis());
         int cnt = threadLocalProcessCnt.get();
-        if (0 == cnt % 100) {
-            logger.info("thread {} process {} ..........", Thread.currentThread().getId(), cnt);
-        }
-        threadLocalProcessCnt.set(cnt + 1);
-        sqlExecutor.executeInsert(db, sql);
+        int errorCnt = threadLocalProcessErrorCnt.get();
+        updateProcessInfo(sqlExecutor.executeInsert(db, sql));
     }
 
     public void requestAgg() throws Exception {
-        int cnt = threadLocalProcessCnt.get();
-        if (0 == cnt % 100) {
-            logger.info("thread {} process {} ..........", Thread.currentThread().getId(), cnt);
-        }
-        threadLocalProcessCnt.set(cnt + 1);
         String sql = "select " +
                 " count(c_sk_seq) over w1 as count_include_request, sum(txn_amt) over w3 as sum_include_request," +
                 " count(c_sk_seq) over w2 as count_not_include_request, sum(txn_amt) over w4 as sum_not_include_request from trans window w1 as (PARTITION BY trans.pay_card_no ORDER BY trans.txn_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW)," +
@@ -137,21 +148,24 @@ public class RequestAggExample {
         }
         boolean ok = request.Build();
         if (!ok) {
-            throw new Exception("fail to build request");
+            updateProcessInfo(false);
+            request.delete();
+            schema.delete();
+            return;
         }
         ResultSet rs = sqlExecutor.executeSQL(db, sql, request);
-        if (rs == null) {
-            throw new Exception("fail to execute sql");
-        }
-        if (rs.Size() <= 0) {
-            throw new Exception("invalid result set");
-        }
+        updateProcessInfo(rs != null && rs.Size() > 0);
         rs.delete();
         request.delete();
         schema.delete();
     }
 
-    public static void run(int threadNum) {
+    public enum ExecuteType {
+        kRequestInsert,
+        kRequestAgg,
+    }
+
+    public static void run(ExecuteType type, int threadNum) {
         CountDownLatch latch = new CountDownLatch(threadNum);
         final RequestAggExample example = new RequestAggExample();
         try {
@@ -165,9 +179,23 @@ public class RequestAggExample {
                 executor.execute(new Runnable() {
                     public void run() {
                         threadLocalProcessCnt.set(0);
+                        threadLocalProcessErrorCnt.set(0);
                         while (true) {
                             try {
-                                example.requestAgg();
+                                switch (type) {
+                                    case kRequestInsert: {
+                                        example.requestInsert();
+                                        break;
+                                    }
+                                    case kRequestAgg: {
+                                        example.requestAgg();
+                                        break;
+                                    }
+                                    default: {
+                                        logger.error("invalid executor type");
+                                    }
+                                }
+
                             } catch (Exception e) {
                                 e.printStackTrace();
                                 latch.countDown();
@@ -195,6 +223,6 @@ public class RequestAggExample {
     }
 
     public static void main(String[] args) {
-        run(8);
+        run(ExecuteType.kRequestAgg, 8);
     }
 }
