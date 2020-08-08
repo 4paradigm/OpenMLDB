@@ -1653,7 +1653,7 @@ window_specification:
 					opt_sort_clause opt_frame_clause opt_instance_not_in_window ')'
 					{
                  		$$ = node_manager->MakeWindowDefNode($3, $4, $5, $6, $7);
-                 		free($1);
+                 		free($2);
                  	}
 		;
 
