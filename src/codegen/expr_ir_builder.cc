@@ -1049,13 +1049,28 @@ Status ExprIRBuilder::BuildCondExpr(const ::fesql::node::CondExpr* node,
         }
     }
 
-    ::llvm::Value* raw_value = builder.CreateSelect(raw_cond, left_value.GetValue(&builder), right_value.GetValue(&builder));
-    if (output_is_null == nullptr){
-        *output = NativeValue::Create(raw_value);
+    if (left_value.IsTuple()) {
+        CHECK_TRUE(right_value.IsTuple() && left_value.GetFieldNum() == right_value.GetFieldNum());
+        std::vector<NativeValue> result_tuple;
+        for (size_t i = 0; i < left_value.GetFieldNum(); ++i) {
+            NativeValue sub_left = left_value.GetField(i);
+            NativeValue sub_right = right_value.GetField(i);
+            ::llvm::Value* raw_value = builder.CreateSelect(raw_cond, left_value.GetValue(&builder), right_value.GetValue(&builder));
+            if (output_is_null == nullptr){
+                result_tuple.push_back(NativeValue::Create(raw_value));
+            } else {
+                result_tuple.push_back(*output = NativeValue::CreateWithFlag(raw_value, output_is_null));
+            }
+        }
+        *output = NativeValue::CreateTuple(result_tuple);
     } else {
-        *output = NativeValue::CreateWithFlag(raw_value, output_is_null);
+        ::llvm::Value* raw_value = builder.CreateSelect(raw_cond, left_value.GetValue(&builder), right_value.GetValue(&builder));
+        if (output_is_null == nullptr){
+            *output = NativeValue::Create(raw_value);
+        } else {
+            *output = NativeValue::CreateWithFlag(raw_value, output_is_null);
+        }
     }
-    
     return Status::OK();
 }
 

@@ -2055,6 +2055,7 @@ class UDAFDefNode : public FnDefNode {
         const std::vector<const TypeNode *> &arg_types) const override;
 
     const TypeNode *GetElementType(size_t i) const;
+    bool IsElementNullable(size_t i) const;
 
     const TypeNode *GetStateType() const {
         if (init_expr_ != nullptr) {

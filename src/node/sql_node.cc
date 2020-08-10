@@ -1575,6 +1575,14 @@ const TypeNode *UDAFDefNode::GetElementType(size_t i) const {
     return arg_types_[i]->generics_[0];
 }
 
+bool UDAFDefNode::IsElementNullable(size_t i) const {
+    if (i > arg_types_.size() || arg_types_[i] == nullptr ||
+        arg_types_[i]->generics_.size() < 1) {
+        return false;
+    }
+    return arg_types_[i]->generics_nullable_[0];
+}
+
 Status UDAFDefNode::Validate(
     const std::vector<const TypeNode *> &arg_types) const {
     // check non-null fields

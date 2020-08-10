@@ -115,6 +115,9 @@ template <class V>
 V next_iterator(int8_t *input);
 
 template <class V>
+void next_nullable_iterator(int8_t *input, V* v, bool* is_null);
+
+template <class V>
 void delete_iterator(int8_t *input);
 
 template <class V>

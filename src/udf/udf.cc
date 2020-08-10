@@ -25,6 +25,8 @@
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "udf/default_udf_library.h"
+#include "udf/literal_traits.h"
+
 namespace fesql {
 namespace udf {
 namespace v1 {
@@ -96,7 +98,7 @@ int32_t weekofyear(codec::Date *date) {
     return d.week_number();
 }
 
-int16_t abs_int16(int16_t x) { return static_cast<int16_t>(abs(x)); }
+int16_t abs_int16(int16_t x) { return static_cast<int16_t>(abs((int32_t)x)); }
 int64_t abs_int64(int64_t x) { return static_cast<int64_t>(labs(x)); }
 
 int Ceild(double x) { return static_cast<int>(ceil(x)); }
@@ -269,6 +271,19 @@ const codec::Row *next_row_iterator(int8_t *input) {
 }
 
 template <class V>
+void next_nullable_iterator(int8_t *input, V* v, bool* is_null) {
+    ::fesql::codec::IteratorRef *iter_ref =
+        (::fesql::codec::IteratorRef *)(input);
+    ConstIterator<uint64_t, Nullable<V>> *iter =
+        (ConstIterator<uint64_t, Nullable<V>> *)(iter_ref->iterator);
+    auto nullable_value = iter->GetValue();
+    iter->Next();
+    *v = nullable_value.value();
+    *is_null = nullable_value.is_null();
+    return;
+}
+
+template <class V>
 bool next_struct_iterator(int8_t *input, V *v) {
     ::fesql::codec::IteratorRef *iter_ref =
         (::fesql::codec::IteratorRef *)(input);
@@ -397,7 +412,7 @@ void RegisterNativeUDFToModule() {
     RegisterMethod("iterator", bool_ty, {list_row_ty, iter_row_ty},
                    reinterpret_cast<void *>(v1::iterator_list<codec::Row>));
 
-    RegisterMethod("next", i16_ty, {iter_i16_ty},
+    RegisterMethod("next", i16_ty, {iter_i16_ty,},
                    reinterpret_cast<void *>(v1::next_iterator<int16_t>));
     RegisterMethod("next", i32_ty, {iter_i32_ty},
                    reinterpret_cast<void *>(v1::next_iterator<int32_t>));
@@ -412,15 +427,36 @@ void RegisterNativeUDFToModule() {
     RegisterMethod(
         "next", bool_ty, {iter_time_ty, time_ty},
         reinterpret_cast<void *>(v1::next_struct_iterator<codec::Timestamp>));
-
     RegisterMethod(
         "next", bool_ty, {iter_date_ty, date_ty},
         reinterpret_cast<void *>(v1::next_struct_iterator<codec::Date>));
     RegisterMethod(
         "next", bool_ty, {iter_string_ty, string_ty},
-        reinterpret_cast<void *>(v1::next_struct_iterator<codec::StringRef>));
+        reinterpret_cast<void *>(v1::next_struct_iterator<codec::StringRef>));    
     RegisterMethod("next", row_ty, {iter_row_ty},
                    reinterpret_cast<void *>(v1::next_row_iterator));
+
+    RegisterMethod("next_nullable", i16_ty, {iter_i16_ty},
+                   reinterpret_cast<void *>(v1::next_nullable_iterator<int16_t>));
+    RegisterMethod("next_nullable", i32_ty, {iter_i32_ty},
+                   reinterpret_cast<void *>(v1::next_nullable_iterator<int32_t>));
+    RegisterMethod("next_nullable", i64_ty, {iter_i64_ty},
+                   reinterpret_cast<void *>(v1::next_nullable_iterator<int64_t>));
+    RegisterMethod("next_nullable", bool_ty, {iter_bool_ty},
+                   reinterpret_cast<void *>(v1::next_nullable_iterator<bool>));
+    RegisterMethod("next_nullable", float_ty, {iter_float_ty},
+                   reinterpret_cast<void *>(v1::next_nullable_iterator<float>));
+    RegisterMethod("next_nullable", double_ty, {iter_double_ty},
+                   reinterpret_cast<void *>(v1::next_nullable_iterator<double>));
+    RegisterMethod(
+        "next_nullable", bool_ty, {iter_time_ty, time_ty},
+        reinterpret_cast<void *>(v1::next_nullable_iterator<codec::Timestamp>));
+    RegisterMethod(
+        "next_nullable", bool_ty, {iter_date_ty, date_ty},
+        reinterpret_cast<void *>(v1::next_nullable_iterator<codec::Date>));
+    RegisterMethod(
+        "next_nullable", bool_ty, {iter_string_ty, string_ty},
+        reinterpret_cast<void *>(v1::next_nullable_iterator<codec::StringRef>));    
 
     RegisterMethod("has_next", bool_ty, {iter_i16_ty},
                    reinterpret_cast<void *>(v1::has_next<int16_t>));

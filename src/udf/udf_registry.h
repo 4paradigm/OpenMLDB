@@ -1290,7 +1290,7 @@ class ExternalTemplateFuncRegistryHelper {
 
     template <typename T, typename... CArgs>
     struct FTemplateInst {
-        static inline auto fcompute(CArgs... args) {
+        static auto fcompute(CArgs... args) {
             return FTemplate<T>()(args...);
         }
     };

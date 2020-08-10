@@ -42,6 +42,8 @@ ExitOnError ExitOnErr;
 namespace fesql {
 namespace codegen {
 
+using udf::Nullable;
+
 class UDFIRBuilderTest : public ::testing::Test {
  public:
     UDFIRBuilderTest() {}
@@ -312,7 +314,7 @@ TEST_F(UDFIRBuilderTest, log_udf_test) {
 
 TEST_F(UDFIRBuilderTest, abs_udf_test) {
     CheckUDF<int16_t, int16_t>("abs", 32767, 32767);
-    CheckUDF<int16_t, int16_t>("abs", 32767, -32767);
+    CheckUDF<int16_t, int16_t>("abs", 1, -1);
     CheckUDF<int32_t, int32_t>("abs", 32768, 32768);
     CheckUDF<int32_t, int32_t>("abs", 32769, -32769);
     CheckUDF<int64_t, int64_t>("abs", 2147483648, 2147483648);
@@ -324,8 +326,8 @@ TEST_F(UDFIRBuilderTest, abs_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, acos_udf_test) {
-    // CheckUDF<double, int16_t>("acos", 0, 1);
-    // CheckUDF<double, int16_t>("acos", 1.5707963267948966, 0);
+    CheckUDF<double, int16_t>("acos", 0, 1);
+    CheckUDF<double, int16_t>("acos", 1.5707963267948966, 0);
     CheckUDF<double, int32_t>("acos", 0, 1);
     CheckUDF<double, int32_t>("acos", 1.5707963267948966, 0);
     CheckUDF<double, int64_t>("acos", 0, 1);
@@ -336,8 +338,8 @@ TEST_F(UDFIRBuilderTest, acos_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, asin_udf_test) {
-    // CheckUDF<double, int16_t>("asin", 0, 0);
-    // CheckUDF<double, int16_t>("asin", 1.5707963267948966, 1);
+    CheckUDF<double, int16_t>("asin", 0, 0);
+    CheckUDF<double, int16_t>("asin", 1.5707963267948966, 1);
     CheckUDF<double, int32_t>("asin", 0, 0);
     CheckUDF<double, int32_t>("asin", 1.5707963267948966, 1);
     CheckUDF<double, int64_t>("asin", 0, 0);
@@ -348,8 +350,8 @@ TEST_F(UDFIRBuilderTest, asin_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, atan_udf_test) {
-    // CheckUDF<double, int16_t>("atan", 0, 0);
-    // CheckUDF<double, int16_t>("atan", 1.1071487177940904, 2);
+    CheckUDF<double, int16_t>("atan", 0, 0);
+    CheckUDF<double, int16_t>("atan", 1.1071487177940904, 2);
     CheckUDF<double, int32_t>("atan", -1.1071487177940904, -2);
     CheckUDF<double, int32_t>("atan", 1.1071487177940904, 2);
     CheckUDF<double, int64_t>("atan", 0, 0);
@@ -555,6 +557,10 @@ TEST_F(UDFIRBuilderTest, count_where_test) {
         MakeList({codec::StringRef("1"), codec::StringRef("2"),
                   codec::StringRef("3")}),
         MakeBoolList({true, false, true}));
+
+    CheckUDF<int64_t, codec::ListRef<Nullable<int32_t>>, codec::ListRef<Nullable<bool>>>(
+        "count_where", 2, MakeList<Nullable<int32_t>>({4, 5, 6, nullptr}),
+        MakeList<Nullable<bool>>({true, false, nullptr, true}));
 }
 
 TEST_F(UDFIRBuilderTest, avg_test) {
