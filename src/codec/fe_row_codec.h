@@ -109,6 +109,7 @@ class RowView {
     RowView(const fesql::codec::Schema& schema, const int8_t* row,
             uint32_t size);
     explicit RowView(const fesql::codec::Schema& schema);
+    RowView(const RowView& row_view);
     ~RowView() = default;
     bool Reset(const int8_t* row, uint32_t size);
     bool Reset(const int8_t* row);

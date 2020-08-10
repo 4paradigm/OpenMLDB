@@ -47,7 +47,7 @@ class FnGenerator {
     inline const bool Valid() const { return nullptr != fn_; }
     const int8_t* fn_;
     const Schema fn_schema_;
-    RowView row_view_;
+    const RowView row_view_;
     std::vector<int32_t> idxs_;
 };
 
