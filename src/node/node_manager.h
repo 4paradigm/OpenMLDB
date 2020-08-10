@@ -5,8 +5,8 @@
 // Author: chenjing
 // Date: 2019/10/28
 
-#ifndef SRC_NODE_NODE_MANAGER_H_
-#define SRC_NODE_NODE_MANAGER_H_
+#ifndef FESQL_SRC_NODE_NODE_MANAGER_H_
+#define FESQL_SRC_NODE_NODE_MANAGER_H_
 
 #include <ctype.h>
 #include <list>
@@ -23,13 +23,9 @@ namespace fesql {
 namespace node {
 class NodeManager {
  public:
-    NodeManager() {}
+    NodeManager();
 
-    ~NodeManager() {
-        for (auto node : node_list_) {
-            delete node;
-        }
-    }
+    ~NodeManager();
 
     int GetNodeListSize() {
         int node_size = node_list_.size();
@@ -330,4 +326,4 @@ class NodeManager {
 
 }  // namespace node
 }  // namespace fesql
-#endif  // SRC_NODE_NODE_MANAGER_H_
+#endif  // FESQL_SRC_NODE_NODE_MANAGER_H_

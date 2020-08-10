@@ -452,7 +452,7 @@ typedef void* yyscan_t;
                join_outer
                endpoint
 
-%type <intval> opt_window_exclusion_clause replica_num
+%type <intval> opt_window_exclusion_clause replica_num replicas
 
 
 %start grammar
@@ -804,11 +804,10 @@ opt_from_clause: FROM table_references {
 				$$ = NULL;
 			}
 
-create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list ')' REPLICANUM EQUALS replica_num ',' partition_meta_list
+create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list ')' replica_num partition_meta_list
                 {
-                    $$ = node_manager->MakeCreateTableNode($3, $4, $6, $10, $12);
+                    $$ = node_manager->MakeCreateTableNode($3, $4, $6, $8, $9);
                     free($4);
-                    free($12);
                 }
                 |CREATE INDEX column_name ON table_name '(' column_index_item_list ')'
                 {
@@ -1050,6 +1049,15 @@ opt_distinct_clause:
         }
     ;
 
+replica_num:  REPLICANUM EQUALS replicas ','
+              {
+                  $$ = $3;
+              }
+              |/*EMPTY*/
+              {
+                  $$ = 1;
+              }
+
 partition_meta_list:    partition_meta
                         {
                             $$ = node_manager->MakeNodeList($1);
@@ -1058,6 +1066,10 @@ partition_meta_list:    partition_meta
                         {
                             $$ = $1;
                             $$->PushBack($3);
+                        }
+                        |/*EMPTY*/
+                        {
+                            $$ = NULL;
                         }
                         ;
 
@@ -1832,15 +1844,11 @@ opt_window_exclusion_clause:
              /*EMPTY*/				{ $$ = 0; }
             ;
 
-replica_num:    INTNUM
-                {
-                    $$ = $1;
-                }
-                | /*EMPTY*/
-                {
-                    $$ = 1;
-                }
-                ;
+replicas:   INTNUM
+            {
+                $$ = $1;
+            }
+            ;
 
 frame_extent:
 			frame_bound
@@ -1931,7 +1939,7 @@ function_name:
   ;
 
 endpoint:
-    SQL_IDENTIFIER
+    STRING
   ;
 
 %%
