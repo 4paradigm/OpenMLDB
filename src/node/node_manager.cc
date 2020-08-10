@@ -526,10 +526,13 @@ SQLNode *NodeManager::MakeNameNode(const std::string &name) {
 }
 
 SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
-                                          const std::string &table_name,
-                                          SQLNodeList *column_desc_list) {
-    CreateStmt *node_ptr = new CreateStmt(table_name, op_if_not_exist);
+        const std::string &table_name,
+        SQLNodeList *column_desc_list,
+        int replica_num,
+        SQLNodeList *partition_meta_list) {
+    CreateStmt *node_ptr = new CreateStmt(table_name, op_if_not_exist, replica_num);
     FillSQLNodeList2NodeVector(column_desc_list, node_ptr->GetColumnDefList());
+    FillSQLNodeList2NodeVector(partition_meta_list, node_ptr->GetPartitionMetaList());
     return RegisterNode(node_ptr);
 }
 
@@ -961,9 +964,10 @@ ProjectNode *NodeManager::MakeProjectNode(const int32_t pos,
     return node_ptr;
 }
 CreatePlanNode *NodeManager::MakeCreateTablePlanNode(
-    std::string table_name, const NodePointVector &column_list) {
+    const std::string& table_name, int replica_num, const NodePointVector &column_list,
+    const NodePointVector &partition_meta_list) {
     node::CreatePlanNode *node_ptr =
-        new CreatePlanNode(table_name, column_list);
+        new CreatePlanNode(table_name, replica_num, column_list, partition_meta_list);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -1228,6 +1232,12 @@ node::UDAFDefNode *NodeManager::MakeUDAFDefNode(
 LambdaNode *NodeManager::MakeLambdaNode(const std::vector<ExprIdNode *> &args,
                                         ExprNode *body) {
     return RegisterNode(new node::LambdaNode(args, body));
+}
+
+SQLNode *NodeManager::MakePartitionMetaNode(RoleType role_type,
+        const std::string &endpoint) {
+    SQLNode *node_ptr = new PartitionMetaNode(endpoint, role_type);
+    return RegisterNode(node_ptr);
 }
 
 }  // namespace node

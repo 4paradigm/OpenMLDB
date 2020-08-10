@@ -366,6 +366,11 @@ I64_MIN { return I64_MIN; }
 I16_MIN { return I16_MIN; }
 FLOAT_MIN { return FLOAT_MIN; }
 DOUBLE_MIN { return DOUBLE_MIN; }
+
+REPLICANUM { return REPLICANUM; }
+LEADER { return LEADER; }
+FOLLOWER { return FOLLOWER; }
+
  /* function definition */
 <FUN_INDENT>"def" {
             BEGIN FUN;

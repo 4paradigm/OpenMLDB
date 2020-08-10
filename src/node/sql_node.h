@@ -335,6 +335,17 @@ inline const std::string FnNodeName(const SQLNodeType &type) {
     }
 }
 
+inline const std::string RoleTypeName(RoleType type) {
+    switch (type) {
+        case kLeader:
+            return "leader";
+        case kFollower:
+            return "follower";
+        default:
+            return "unknow";
+    }
+}
+
 class NodeBase {
  public:
     virtual ~NodeBase() {}
@@ -1454,12 +1465,14 @@ class CreateStmt : public SQLNode {
     CreateStmt()
         : SQLNode(kCreateStmt, 0, 0),
           table_name_(""),
-          op_if_not_exist_(false) {}
+          op_if_not_exist_(false),
+          replica_num_(1) {}
 
-    CreateStmt(const std::string &table_name, bool op_if_not_exist)
+    CreateStmt(const std::string &table_name, bool op_if_not_exist, int replica_num)
         : SQLNode(kCreateStmt, 0, 0),
           table_name_(table_name),
-          op_if_not_exist_(op_if_not_exist) {}
+          op_if_not_exist_(op_if_not_exist),
+          replica_num_(replica_num) {}
 
     ~CreateStmt() {}
 
@@ -1472,12 +1485,21 @@ class CreateStmt : public SQLNode {
 
     bool GetOpIfNotExist() const { return op_if_not_exist_; }
 
+    int GetReplicaNum() const { return replica_num_; }
+
+    NodePointVector &GetPartitionMetaList() { return partition_meta_list_; }
+    const NodePointVector &GetPartitionMetaList() const {
+        return partition_meta_list_;
+    }
+
     void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
     std::string table_name_;
     bool op_if_not_exist_;
     NodePointVector column_desc_list_;
+    int replica_num_;
+    NodePointVector partition_meta_list_;
 };
 class IndexKeyNode : public SQLNode {
  public:
@@ -2074,6 +2096,30 @@ class UDAFDefNode : public FnDefNode {
     FnDefNode *merge_;
     FnDefNode *output_;
 };
+
+class PartitionMetaNode : public SQLNode {
+ public:
+    PartitionMetaNode()
+        : SQLNode(kPartitionMeta, 0, 0), endpoint_(""), role_type_() {}
+
+    PartitionMetaNode(const std::string &endpoint, RoleType role_type)
+        : SQLNode(kPartitionMeta, 0, 0),
+          endpoint_(endpoint),
+          role_type_(role_type) {}
+
+    ~PartitionMetaNode() {}
+
+    std::string GetEndpoint() const { return endpoint_; }
+
+    RoleType GetRoleType() const { return role_type_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    std::string endpoint_;
+    RoleType role_type_;
+};
+
 
 std::string ExprString(const ExprNode *expr);
 std::string MakeExprWithTable(const ExprNode *expr, const std::string db);

@@ -389,7 +389,8 @@ bool Planner::CreateCreateTablePlan(
     Status &status) {  // NOLINT (runtime/references)
     const node::CreateStmt *create_tree = (const node::CreateStmt *)root;
     *output = node_manager_->MakeCreateTablePlanNode(
-        create_tree->GetTableName(), create_tree->GetColumnDefList());
+        create_tree->GetTableName(), create_tree->GetReplicaNum(),
+        create_tree->GetColumnDefList(), create_tree->GetPartitionMetaList());
     return true;
 }
 bool Planner::IsTable(node::PlanNode *node) {

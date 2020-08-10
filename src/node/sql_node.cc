@@ -897,6 +897,10 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSQLVector(output, tab, column_desc_list_, "column_desc_list_", true);
     output << "\n";
+    PrintValue(output, tab, std::to_string(replica_num_), "replica_num_", false);
+    output << "\n";
+    PrintSQLVector(output, tab, partition_meta_list_, "partition_meta_list_", true);
+    output << "\n";
 }
 
 void ColumnDefNode::Print(std::ostream &output,
@@ -1687,6 +1691,16 @@ void UDAFDefNode::Print(std::ostream &output,
     PrintSQLNode(output, tab, merge_, "merge", false);
     output << "\n";
     PrintSQLNode(output, tab, output_, "output", true);
+}
+
+void PartitionMetaNode::Print(std::ostream &output,
+                          const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, endpoint_, "endpoint", false);
+    output << "\n";
+    PrintValue(output, tab, RoleTypeName(role_type_), "role_type", false);
 }
 
 }  // namespace node

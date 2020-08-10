@@ -123,7 +123,9 @@ class NodeManager {
                                  const ExprListNode *values);
     SQLNode *MakeCreateTableNode(bool op_if_not_exist,
                                  const std::string &table_name,
-                                 SQLNodeList *column_desc_list);
+                                 SQLNodeList *column_desc_list,
+                                 int replica_num,
+                                 SQLNodeList *partition_meta_list);
     SQLNode *MakeColumnDescNode(const std::string &column_name,
                                 const DataType data_type, bool op_not_null);
     SQLNode *MakeColumnIndexNode(SQLNodeList *keys, SQLNode *ts, SQLNode *ttl,
@@ -252,8 +254,9 @@ class NodeManager {
 
     PlanNode *MakeLimitPlanNode(PlanNode *node, int limit_cnt);
 
-    CreatePlanNode *MakeCreateTablePlanNode(std::string table_name,
-                                            const NodePointVector &column_list);
+    CreatePlanNode *MakeCreateTablePlanNode(const std::string& table_name,
+            int replica_num, const NodePointVector &column_list,
+            const NodePointVector &partition_meta_list);
 
     CmdPlanNode *MakeCmdPlanNode(const CmdNode *node);
 
@@ -306,6 +309,9 @@ class NodeManager {
                                  FnDefNode *merge_func, FnDefNode *output_func);
     LambdaNode *MakeLambdaNode(const std::vector<ExprIdNode *> &args,
                                ExprNode *body);
+
+    SQLNode* MakePartitionMetaNode(RoleType role_type,
+            const std::string &endpoint);
 
     template <typename T>
     T *RegisterNode(T *node_ptr) {
