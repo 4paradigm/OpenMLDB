@@ -463,7 +463,7 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     if (sql_case.expect().count_ >= 0) {
         ASSERT_EQ(sql_case.expect().count_, output.size());
     }
-    if (!sql_case.expect().schema_.empty() &&
+    if (!sql_case.expect().schema_.empty() ||
         !sql_case.expect().columns_.empty()) {
         // Check Output Schema
         std::vector<Row> case_output_data;
