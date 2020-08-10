@@ -258,6 +258,9 @@ ClusterSDK::GetLeaderTabletByTable(const std::string& db,
         for (int32_t j = 0; j < partition.partition_meta_size(); j++) {
             if (!partition.partition_meta(j).is_leader()) continue;
             std::string endpoint = partition.partition_meta(j).endpoint();
+            if (!partition.partition_meta(j).is_alive()) {
+                return std::shared_ptr<::rtidb::client::TabletClient>();
+            }
             auto ait = alive_tablets_.find(endpoint);
             if (ait != alive_tablets_.end()) {
                 return ait->second;
@@ -301,6 +304,9 @@ bool ClusterSDK::GetTabletByTable(
             for (int32_t j = 0; j < partition.partition_meta_size(); j++) {
                 std::string endpoint = partition.partition_meta(j).endpoint();
                 if (endpoints.find(endpoint) != endpoints.end()) continue;
+                if (!partition.partition_meta(j).is_alive()) {
+                    continue;
+                }
                 endpoints.insert(endpoint);
                 auto ait = alive_tablets_.find(endpoint);
                 if (ait != alive_tablets_.end()) {
