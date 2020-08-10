@@ -33,7 +33,6 @@
 #include "sdk/sql_router.h"
 #include "test/base_test.h"
 #include "vm/catalog.h"
-
 namespace rtidb {
 namespace sdk {
 
@@ -492,6 +491,85 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     RunBatchModeSDK(sql_case, router);
 }
 
+TEST_F(SQLSDKQueryTest, execute_insert_loops_test) {
+    std::string ddl =
+        "create table trans(c_sk_seq string,\n"
+        "                   cust_no string,\n"
+        "                   pay_cust_name string,\n"
+        "                   pay_card_no string,\n"
+        "                   payee_card_no string,\n"
+        "                   card_type string,\n"
+        "                   merch_id string,\n"
+        "                   txn_datetime string,\n"
+        "                   txn_amt double,\n"
+        "                   txn_curr string,\n"
+        "                   card_balance double,\n"
+        "                   day_openbuy double,\n"
+        "                   credit double,\n"
+        "                   remainning_credit double,\n"
+        "                   indi_openbuy double,\n"
+        "                   lgn_ip string,\n"
+        "                   IEMI string,\n"
+        "                   client_mac string,\n"
+        "                   chnl_type int32,\n"
+        "                   cust_idt int32,\n"
+        "                   cust_idt_no string,\n"
+        "                   province string,\n"
+        "                   city string,\n"
+        "                   latitudeandlongitude string,\n"
+        "                   txn_time timestamp,\n"
+        "                   index(key=pay_card_no, ts=txn_time),\n"
+        "                   index(key=merch_id, ts=txn_time));";
+    int64_t ts = 1594800959827;
+    int card = 0;
+    int mc = 0;
+    int64_t error_cnt = 0;
+    int64_t cnt = 0;
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    sql_opt.enbale_debug = true;
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) {
+        FAIL() << "Fail new cluster sql router";
+    }
+    std::string db = "leak_test";
+    fesql::sdk::Status status;
+    router->CreateDB(db, &status);
+    router->ExecuteDDL(db, "drop table trans;", &status);
+    ASSERT_TRUE(router->RefreshCatalog());
+    if (!router->ExecuteDDL(db, ddl, &status)) {
+        ASSERT_TRUE(router->RefreshCatalog());
+        LOG(WARNING) << "fail to create table";
+        return;
+    }
+    ASSERT_TRUE(router->RefreshCatalog());
+    while (true) {
+        char buffer[4096];
+        sprintf(buffer,  // NOLINT
+                "insert into trans "
+                "values('c_sk_seq0','cust_no0','pay_cust_name0','card_%d','"
+                "payee_card_no0','card_type0','mc_%d','2020-"
+                "10-20 "
+                "10:23:50',1.0,'txn_curr',2.0,3.0,4.0,5.0,6.0,'lgn_ip0','iemi0'"
+                ",'client_mac0',10,20,'cust_idt_no0','"
+                "province0',"
+                "'city0', 'longitude', %s);",
+                card++, mc++, std::to_string(ts++).c_str());  // NOLINT
+        std::string insert_sql = std::string(buffer, strlen(buffer));
+        //        LOG(INFO) << insert_sql;
+        fesql::sdk::Status status;
+        if (!router->ExecuteInsert(db, insert_sql, &status)) {
+            error_cnt += 1;
+        }
+
+        if (cnt % 10000 == 0) {
+            LOG(INFO) << "process ...... " << cnt << " error: " << error_cnt;
+        }
+        cnt++;
+        break;
+    }
+}
 }  // namespace sdk
 }  // namespace rtidb
 
