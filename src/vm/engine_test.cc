@@ -362,13 +362,6 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     session.GetRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
 
-    // Check Output Schema
-    std::vector<Row> case_output_data;
-    type::TableDef case_output_table;
-    ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
-    ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
-    CheckSchema(schema, case_output_table.columns());
-
     // Check Output Data
     auto request_table = name_table_map[request_name];
     ASSERT_TRUE(request_table->Init());
@@ -381,8 +374,21 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
         output.push_back(out_row);
     }
 
-    CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
-              case_output_data);
+    if (sql_case.expect().count_ >= 0) {
+        ASSERT_EQ(sql_case.expect().count_, output.size());
+    }
+
+    if (!sql_case.expect().columns_.empty() ||
+        !sql_case.expect().schema_.empty()) {
+        // Check Output Schema
+        std::vector<Row> case_output_data;
+        type::TableDef case_output_table;
+        ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
+        ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
+        CheckSchema(schema, case_output_table.columns());
+        CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
+                  case_output_data);
+    }
 }
 
 void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
@@ -450,18 +456,25 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     session.GetRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
 
-    // Check Output Schema
-    std::vector<Row> case_output_data;
-    type::TableDef case_output_table;
-    ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
-    ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
-    CheckSchema(schema, case_output_table.columns());
-
     // Check Output Data
     std::vector<Row> output;
     ASSERT_EQ(0, session.Run(output));
-    CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
-              case_output_data);
+
+    if (sql_case.expect().count_ >= 0) {
+        ASSERT_EQ(sql_case.expect().count_, output.size());
+    }
+    if (!sql_case.expect().schema_.empty() &&
+        !sql_case.expect().columns_.empty()) {
+        // Check Output Schema
+        std::vector<Row> case_output_data;
+        type::TableDef case_output_table;
+        ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
+        ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
+        CheckSchema(schema, case_output_table.columns());
+        CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
+                  case_output_data);
+    }
+
 
     /* Compare with SQLite*/
 
