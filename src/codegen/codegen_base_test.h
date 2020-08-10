@@ -17,8 +17,8 @@
 
 namespace fesql {
 namespace codegen {
-using fesql::codec::Row;
 using fesql::codec::ArrayListV;
+using fesql::codec::Row;
 using fesql::sqlcase::SQLCase;
 
 bool BuildWindowFromResource(const std::string& resource_path,

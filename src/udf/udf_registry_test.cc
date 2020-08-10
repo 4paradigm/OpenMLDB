@@ -29,17 +29,15 @@ const node::FnDefNode* GetFnDef(UDFLibrary* lib, const std::string& name,
                                 const node::SQLNode* over = nullptr) {
     std::vector<node::TypeNode*> arg_types(
         {DataTypeTrait<LiteralArgTypes>::to_type_node(nm)...});
-    auto arg_list = reinterpret_cast<node::ExprListNode*>(nm->MakeExprList());
+    std::vector<node::ExprNode*> arg_list;
     for (size_t i = 0; i < arg_types.size(); ++i) {
         std::string arg_name = "arg_" + std::to_string(i);
         auto expr = nm->MakeExprIdNode(arg_name, node::ExprIdNode::GetNewId());
         expr->SetOutputType(arg_types[i]);
-        arg_list->AddChild(expr);
+        arg_list.push_back(expr);
     }
     node::ExprNode* transformed = nullptr;
-    node::ExprAnalysisContext analysis_ctx(nm, nullptr, over != nullptr);
-    auto status =
-        lib->Transform(name, arg_list, over, &analysis_ctx, &transformed);
+    auto status = lib->Transform(name, arg_list, nm, &transformed);
     if (!status.isOK()) {
         LOG(WARNING) << status.msg;
         return nullptr;
@@ -54,14 +52,10 @@ const node::FnDefNode* GetFnDef(UDFLibrary* lib, const std::string& name,
 TEST_F(UDFRegistryTest, test_expr_udf_register) {
     UDFLibrary library;
     node::NodeManager nm;
-    auto over = nm.MakeWindowDefNode("w");
     const node::FnDefNode* fn_def;
 
     // define "add"
     library.RegisterExprUDF("add")
-        .allow_window(false)
-        .allow_project(true)
-
         .args<AnyArg, AnyArg>(
             [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) {
                 // extra check logic
@@ -91,10 +85,6 @@ TEST_F(UDFRegistryTest, test_expr_udf_register) {
     fn_def = GetFnDef<int32_t, int32_t>(&library, "add", &nm);
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kLambdaDef);
 
-    // allow_window(false)
-    fn_def = GetFnDef<int32_t, int32_t>(&library, "add", &nm, over);
-    ASSERT_TRUE(fn_def == nullptr);
-
     // match argument num
     fn_def = GetFnDef<int32_t, int32_t, int32_t>(&library, "add", &nm);
     ASSERT_TRUE(fn_def == nullptr);
@@ -108,7 +98,7 @@ TEST_F(UDFRegistryTest, test_expr_udf_register) {
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kLambdaDef);
 
     // match with unknown input arg type
-    fn_def = GetFnDef<int32_t, AnyArg>(&library, "add", &nm);
+    fn_def = GetFnDef<int16_t, int16_t>(&library, "add", &nm);
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kLambdaDef);
 
     // match different argument num
@@ -215,14 +205,10 @@ TEST_F(UDFRegistryTest, test_variadic_expr_udf_register_order) {
 TEST_F(UDFRegistryTest, test_external_udf_register) {
     UDFLibrary library;
     node::NodeManager nm;
-    auto over = nm.MakeWindowDefNode("w");
     const node::ExternalFnDefNode* fn_def;
 
     // define "add"
     library.RegisterExternal("add")
-        .allow_window(false)
-        .allow_project(true)
-
         .args<AnyArg, AnyArg>("add_any", reinterpret_cast<void*>(0x01))
         .returns<int32_t>()
 
@@ -240,11 +226,6 @@ TEST_F(UDFRegistryTest, test_external_udf_register) {
     ASSERT_TRUE(fn_def != nullptr && fn_def->GetType() == node::kExternalFnDef);
     ASSERT_EQ("add_any", fn_def->function_name());
     ASSERT_EQ("int32", fn_def->ret_type()->GetName());
-
-    // allow_window(false)
-    fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
-        GetFnDef<int32_t, int32_t>(&library, "add", &nm, over));
-    ASSERT_TRUE(fn_def == nullptr);
 
     // match argument num
     fn_def = dynamic_cast<const node::ExternalFnDefNode*>(
@@ -357,19 +338,20 @@ TEST_F(UDFRegistryTest, test_simple_udaf_register) {
             auto res =
                 ctx->node_manager()->MakeBinaryExprNode(x, y, node::kFnOpAdd);
             res->SetOutputType(x->GetOutputType());
+            res->SetNullable(false);
             return res;
         });
 
     library.RegisterExprUDF("identity")
         .args<AnyArg>([](UDFResolveContext* ctx, ExprNode* x) { return x; });
 
-    library.RegisterSimpleUDAF("sum")
+    library.RegisterUDAF("sum")
         .templates<int32_t, int32_t, int32_t>()
         .const_init(0)
         .update("add")
         .merge("add")
         .output("identity")
-        .templates<float, double, double>()
+        .templates<double, double, float>()
         .const_init(0.0)
         .update("add")
         .merge("add")
@@ -394,18 +376,19 @@ TEST_F(UDFRegistryTest, test_codegen_udf_register) {
     node::NodeManager nm;
     const node::UDFByCodeGenDefNode* fn_def;
 
-    library.RegisterCodeGenUDF("add")
-        .allow_window(false)
-        .allow_project(true)
-        .args<AnyArg, AnyArg>(
-            /* infer */ [](UDFResolveContext* ctx, const TypeNode* x,
-                           const TypeNode* y) { return x; },
-            /* gen */
-            [](CodeGenContext* ctx, NativeValue x, NativeValue y,
-               NativeValue* out) {
-                *out = x;
-                return Status::OK();
-            });
+    library.RegisterCodeGenUDF("add").args<AnyArg, AnyArg>(
+        /* infer */
+        [](UDFResolveContext* ctx, const ExprAttrNode* x, const ExprAttrNode* y,
+           ExprAttrNode* out) {
+            out->SetType(x->type());
+            return Status::OK();
+        },
+        /* gen */
+        [](CodeGenContext* ctx, NativeValue x, NativeValue y,
+           NativeValue* out) {
+            *out = x;
+            return Status::OK();
+        });
 
     fn_def = dynamic_cast<const node::UDFByCodeGenDefNode*>(
         GetFnDef<int32_t, int32_t>(&library, "add", &nm));
@@ -419,9 +402,13 @@ TEST_F(UDFRegistryTest, test_variadic_codegen_udf_register) {
     const node::UDFByCodeGenDefNode* fn_def;
 
     library.RegisterCodeGenUDF("concat").variadic_args<>(
-        /* infer */ [](UDFResolveContext* ctx,
-                       const std::vector<const node::TypeNode*>&
-                           arg_types) { return arg_types[0]; },
+        /* infer */
+        [](UDFResolveContext* ctx,
+           const std::vector<const ExprAttrNode*>& arg_attrs,
+           ExprAttrNode* out) {
+            out->SetType(arg_attrs[0]->type());
+            return Status::OK();
+        },
         /* gen */
         [](CodeGenContext* ctx, const std::vector<NativeValue>& args,
            NativeValue* out) {
@@ -433,6 +420,96 @@ TEST_F(UDFRegistryTest, test_variadic_codegen_udf_register) {
         GetFnDef<int32_t, int32_t>(&library, "concat", &nm));
     ASSERT_TRUE(fn_def != nullptr &&
                 fn_def->GetType() == node::kUDFByCodeGenDef);
+}
+
+template <typename A, typename B, typename C, typename D>
+void StaticSignatureCheck() {
+    using Check = FuncTypeCheckHelper<A, B, C, D>;
+    static_assert(Check::value, "error");
+}
+
+template <typename A, typename B, typename C, typename D>
+void StaticSignatureCheckFail() {
+    using Check = FuncTypeCheckHelper<A, B, C, D>;
+    static_assert(!Check::value, "error");
+}
+
+TEST_F(UDFRegistryTest, static_extern_signature_check) {
+    using codec::Date;
+    using codec::StringRef;
+    using codec::Timestamp;
+
+    // normal arg
+    StaticSignatureCheck<int, std::tuple<int, int>, int,
+                         std::tuple<int, int>>();
+
+    // c arg not enough
+    StaticSignatureCheckFail<int, std::tuple<int, int>, int, std::tuple<int>>();
+
+    // c arg is too much
+    StaticSignatureCheckFail<int, std::tuple<int>, int, std::tuple<int, int>>();
+
+    // return by arg
+    StaticSignatureCheck<int, std::tuple<int>, void, std::tuple<int, int*>>();
+    StaticSignatureCheckFail<int, std::tuple<int>, void, std::tuple<int>>();
+
+    // struct arg
+    StaticSignatureCheck<int, std::tuple<int, StringRef>, int,
+                         std::tuple<int, StringRef*>>();
+    StaticSignatureCheckFail<int, std::tuple<int, StringRef>, int,
+                             std::tuple<int, StringRef>>();
+
+    // struct return
+    StaticSignatureCheck<Date, std::tuple<Date, Date>, void,
+                         std::tuple<Date*, Date*, Date*>>();
+    StaticSignatureCheckFail<Date, std::tuple<Date, Date>, void,
+                             std::tuple<Date*, Date*, Date>>();
+
+    // nullable arg
+    StaticSignatureCheck<int, std::tuple<int, Nullable<int>, int>, int,
+                         std::tuple<int, int, bool, int>>();
+    StaticSignatureCheckFail<int, std::tuple<int, Nullable<int>, int>, int,
+                             std::tuple<int, int, int>>();
+    StaticSignatureCheck<int, std::tuple<int, Nullable<StringRef>, int>, int,
+                         std::tuple<int, StringRef*, bool, int>>();
+    StaticSignatureCheckFail<int, std::tuple<int, Nullable<StringRef>, int>,
+                             int, std::tuple<int, StringRef, bool, int>>();
+
+    // nullable return
+    StaticSignatureCheck<Nullable<int>, std::tuple<>, void,
+                         std::tuple<int*, bool*>>();
+    StaticSignatureCheckFail<Nullable<int>, std::tuple<>, void,
+                             std::tuple<int*>>();
+
+    // nullable arg and return
+    StaticSignatureCheck<Nullable<Date>, std::tuple<Nullable<int>>, void,
+                         std::tuple<int, bool, Date*, bool*>>();
+
+    // tuple arg
+    StaticSignatureCheck<int, std::tuple<Tuple<Nullable<int>, int>>, int,
+                         std::tuple<int, bool, int>>();
+    StaticSignatureCheckFail<int, std::tuple<Tuple<>>, int, std::tuple<>>();
+
+    // nested tuple arg
+    StaticSignatureCheck<
+        int, std::tuple<Tuple<float, Tuple<float, Nullable<int>>, int>>, int,
+        std::tuple<float, float, int, bool, int>>();
+
+    // tuple return
+    StaticSignatureCheck<Tuple<double, Nullable<int>, Nullable<StringRef>>,
+                         std::tuple<>, void,
+                         std::tuple<double*, int*, bool*, StringRef*, bool*>>();
+
+    // nest tuple return
+    StaticSignatureCheck<
+        Tuple<Tuple<Date, int>, Tuple<Nullable<float>>>,
+        std::tuple<Tuple<int, Nullable<Date>>>, void,
+        std::tuple<int, Date*, bool, Date*, int*, float*, bool*>>();
+
+    // opaque
+    StaticSignatureCheck<Opaque<std::string>,
+                         std::tuple<Opaque<std::string>, int>, std::string*,
+                         std::tuple<std::string*, int>>();
 }
 
 }  // namespace udf

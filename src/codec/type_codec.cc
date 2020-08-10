@@ -175,8 +175,8 @@ int32_t GetStrCol(int8_t* input, int32_t row_idx, uint32_t col_idx,
     if (nullptr == input || nullptr == data) {
         return -2;
     }
-
-    ListV<Row>* w = reinterpret_cast<ListV<Row>*>(input);
+    ListRef<>* w_ref = reinterpret_cast<ListRef<>*>(input);
+    ListV<Row>* w = reinterpret_cast<ListV<Row>*>(w_ref->list);
     fesql::type::Type type = static_cast<fesql::type::Type>(type_id);
     switch (type) {
         case fesql::type::kVarchar: {
@@ -198,7 +198,8 @@ int32_t GetCol(int8_t* input, int32_t row_idx, uint32_t col_idx, int32_t offset,
     if (nullptr == input || nullptr == data) {
         return -2;
     }
-    ListV<Row>* w = reinterpret_cast<ListV<Row>*>(input);
+    ListRef<>* w_ref = reinterpret_cast<ListRef<>*>(input);
+    ListV<Row>* w = reinterpret_cast<ListV<Row>*>(w_ref->list);
     switch (type) {
         case fesql::type::kInt32: {
             new (data) ColumnImpl<int>(w, row_idx, col_idx, offset);

@@ -83,16 +83,10 @@ TEST_F(UDFBMCaseTest, ByteMemPoolAlloc1000_TEST) {
 TEST_F(UDFBMCaseTest, TimestampToString_TEST) {
     TimestampToString(nullptr, TEST);
 }
-TEST_F(UDFBMCaseTest, TimestampFormat_TEST) {
-    TimestampFormat(nullptr, TEST);
-}
+TEST_F(UDFBMCaseTest, TimestampFormat_TEST) { TimestampFormat(nullptr, TEST); }
 
-TEST_F(UDFBMCaseTest, DateToString_TEST) {
-    DateToString(nullptr, TEST);
-}
-TEST_F(UDFBMCaseTest, DateFormat_TEST) {
-    DateFormat(nullptr, TEST);
-}
+TEST_F(UDFBMCaseTest, DateToString_TEST) { DateToString(nullptr, TEST); }
+TEST_F(UDFBMCaseTest, DateFormat_TEST) { DateFormat(nullptr, TEST); }
 
 }  // namespace bm
 }  // namespace fesql

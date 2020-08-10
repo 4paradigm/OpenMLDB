@@ -11,11 +11,14 @@
 #include <gtest/gtest.h>
 #include <stdint.h>
 #include <algorithm>
+#include <tuple>
+#include <utility>
 #include <vector>
 #include "base/fe_slice.h"
 #include "case/sql_case.h"
 #include "codec/list_iterator_codec.h"
 #include "udf/udf.h"
+#include "udf/udf_registry.h"
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace udf {
@@ -75,8 +78,11 @@ bool FetchColList(vm::ListV<Row>* table, size_t col_idx, size_t offset,
     int8_t* buf = reinterpret_cast<int8_t*>(malloc(size));
     auto datatype = DataTypeTrait<V>::codec_type_enum();
 
-    if (0 != ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(table), 0,
-                                        col_idx, offset, datatype, buf)) {
+    codec::ListRef<Row> table_ref;
+    table_ref.list = reinterpret_cast<int8_t*>(table);
+
+    if (0 != ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table_ref),
+                                        0, col_idx, offset, datatype, buf)) {
         return false;
     }
     res->list = buf;
@@ -170,13 +176,16 @@ TEST_F(UDFTest, UDF_sum_test) {
 TEST_F(UDFTest, GetColTest) {
     ArrayListV<Row> impl(&rows);
     const uint32_t size = sizeof(ColumnImpl<int16_t>);
+    codec::ListRef<Row> impl_ref;
+    impl_ref.list = reinterpret_cast<int8_t*>(&impl);
+
     for (int i = 0; i < 10; ++i) {
         int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
         ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 0,
-                                          0, 2, fesql::type::kInt32, buf));
+            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl_ref),
+                                          0, 0, 2, fesql::type::kInt32, buf));
         ::fesql::codec::ColumnImpl<int16_t>* col =
             reinterpret_cast<::fesql::codec::ColumnImpl<int16_t>*>(
                 list_ref.list);
@@ -229,9 +238,13 @@ TEST_F(UDFTest, GetWindowColRangeTest) {
     fesql::type::Type type = fesql::type::kInt32;
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+    ListRef<> inner_list_ref;
+    inner_list_ref.list = inner_list_buf;
+
     for (int i = 0; i < 100000; ++i) {
-        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(inner_list_buf, 0, 0, offset,
-                                                type, buf));
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&inner_list_ref), 0, 0,
+                         offset, type, buf));
         ::fesql::codec::ColumnImpl<int32_t>* col =
             reinterpret_cast<::fesql::codec::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
@@ -284,9 +297,14 @@ TEST_F(UDFTest, GetWindowColRowsTest) {
     fesql::type::Type type = fesql::type::kInt32;
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
+
+    ListRef<> inner_list_ref;
+    inner_list_ref.list = inner_list_buf;
+
     for (int i = 0; i < 100000; ++i) {
-        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(inner_list_buf, 0, 0, offset,
-                                                type, buf));
+        ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
+                         reinterpret_cast<int8_t*>(&inner_list_ref), 0, 0,
+                         offset, type, buf));
         ::fesql::codec::ColumnImpl<int32_t>* col =
             reinterpret_cast<::fesql::codec::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
@@ -315,12 +333,15 @@ TEST_F(UDFTest, GetWindowColTest) {
         table.BufferData(ts++, row);
     }
 
+    ListRef<> table_ref;
+    table_ref.list = reinterpret_cast<int8_t*>(&table);
+
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
     for (int i = 0; i < 100000; ++i) {
         ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table), 0,
-                                          0, 2, fesql::type::kInt32, buf));
+            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table_ref),
+                                          0, 0, 2, fesql::type::kInt32, buf));
         ::fesql::codec::ColumnImpl<int32_t>* col =
             reinterpret_cast<::fesql::codec::ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
@@ -341,12 +362,15 @@ TEST_F(UDFTest, GetTimeMemColTest) {
     for (auto row : rows) {
         table.AddRow(ts++, row);
     }
+    ListRef<> table_ref;
+    table_ref.list = reinterpret_cast<int8_t*>(&table);
+
     const uint32_t size = sizeof(ColumnImpl<int32_t>);
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(size));
     for (int i = 0; i < 1000000; ++i) {
         ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table), 0,
-                                          0, 2, fesql::type::kInt32, buf));
+            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&table_ref),
+                                          0, 0, 2, fesql::type::kInt32, buf));
         ColumnImpl<int32_t>* col = reinterpret_cast<ColumnImpl<int32_t>*>(buf);
         auto col_iterator = col->GetIterator();
         ASSERT_TRUE(col_iterator->Valid());
@@ -363,14 +387,17 @@ TEST_F(UDFTest, GetTimeMemColTest) {
 }
 TEST_F(UDFTest, GetColHeapTest) {
     ArrayListV<Row> impl(&rows);
+    ListRef<> impl_ref;
+    impl_ref.list = reinterpret_cast<int8_t*>(&impl);
+
     const uint32_t size = sizeof(ColumnImpl<int16_t>);
     for (int i = 0; i < 1000; ++i) {
         int8_t buf[size];  // NOLINT
         ::fesql::codec::ListRef<> list_ref;
         list_ref.list = buf;
         ASSERT_EQ(
-            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl), 0,
-                                          0, 2, fesql::type::kInt32, buf));
+            0, ::fesql::codec::v1::GetCol(reinterpret_cast<int8_t*>(&impl_ref),
+                                          0, 0, 2, fesql::type::kInt32, buf));
         ::fesql::codec::ColumnImpl<int16_t>* impl =
             reinterpret_cast<::fesql::codec::ColumnImpl<int16_t>*>(
                 list_ref.list);
@@ -384,6 +411,7 @@ TEST_F(UDFTest, GetColHeapTest) {
         ASSERT_FALSE(iter->Valid());
     }
 }
+
 TEST_F(UDFTest, DateToString) {
     {
         codec::StringRef str;
@@ -392,6 +420,7 @@ TEST_F(UDFTest, DateToString) {
         ASSERT_EQ(codec::StringRef("2020-05-22"), str);
     }
 }
+
 TEST_F(UDFTest, TimestampToString) {
     {
         codec::StringRef str;
@@ -406,6 +435,183 @@ TEST_F(UDFTest, TimestampToString) {
         ASSERT_EQ(codec::StringRef("2020-05-22 10:43:41"), str);
     }
 }
+
+template <class Ret, class... Args>
+void CheckUDF(UDFLibrary* library, const std::string& name, Ret&& expect,
+              Args&&... args) {
+    auto function = udf::UDFFunctionBuilder(name)
+                        .args<Args...>()
+                        .template returns<Ret>()
+                        .library(library)
+                        .build();
+    ASSERT_TRUE(function.valid());
+    auto result = function(std::forward<Args>(args)...);
+    ASSERT_EQ(std::forward<Ret>(expect), result);
+}
+
+class ExternUDFTest : public ::testing::Test {
+ public:
+    static int32_t IfNull(int32_t in, bool is_null, int32_t default_val) {
+        return is_null ? default_val : in;
+    }
+
+    static int32_t AddOne(int32_t in) { return in + 1; }
+
+    static int32_t AddTwo(int32_t x, int32_t y) { return x + y; }
+
+    static int32_t AddTwoOneNullable(int32_t x, bool x_is_null, int32_t y) {
+        return x_is_null ? y : x + y;
+    }
+
+    static void IfStringNull(codec::StringRef* in, bool is_null,
+                             codec::StringRef* default_val,
+                             codec::StringRef* output) {
+        *output = is_null ? *default_val : *in;
+    }
+
+    static void NewDate(int64_t in, bool is_null, codec::Date* out,
+                        bool* is_null_addr) {
+        *is_null_addr = is_null;
+        if (!is_null) {
+            out->date_ = in;
+        }
+    }
+
+    static double SumTuple(float x1, bool x1_is_null, float x2, double x3,
+                           double x4, bool x4_is_null) {
+        double res = 0;
+        if (!x1_is_null) {
+            res += x1;
+        }
+        res += x2;
+        res += x3;
+        if (!x4_is_null) {
+            res += x4;
+        }
+        return res;
+    }
+
+    static void MakeTuple(int16_t x, int32_t y, bool y_is_null, int64_t z,
+                          int16_t* t1, int32_t* t2, bool* t2_is_null,
+                          int64_t* t3) {
+        *t1 = x;
+        *t2 = y;
+        *t2_is_null = y_is_null;
+        *t3 = z;
+    }
+};
+
+TEST_F(ExternUDFTest, TestCompoundTypedExternalCall) {
+    UDFLibrary library;
+    library.RegisterExternal("if_null")
+        .args<Nullable<int32_t>, int32_t>(ExternUDFTest::IfNull)
+        .args<Nullable<codec::StringRef>, codec::StringRef>(
+            ExternUDFTest::IfStringNull);
+
+    library.RegisterExternal("add_one").args<int32_t>(ExternUDFTest::AddOne);
+
+    library.RegisterExternal("add_two").args<int32_t, int32_t>(
+        ExternUDFTest::AddTwo);
+
+    library.RegisterExternal("add_two_one_nullable")
+        .args<Nullable<int32_t>, int32_t>(ExternUDFTest::AddTwoOneNullable);
+
+    library.RegisterExternal("new_date")
+        .args<Nullable<int64_t>>(
+            TypeAnnotatedFuncPtrImpl<std::tuple<Nullable<int64_t>>>::RBA<
+                Nullable<codec::Date>>(ExternUDFTest::NewDate));
+
+    library.RegisterExternal("sum_tuple")
+        .args<Tuple<Nullable<float>, float>, Tuple<double, Nullable<double>>>(
+            ExternUDFTest::SumTuple)
+        .args<Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>>(
+            ExternUDFTest::SumTuple);
+
+    library.RegisterExternal("make_tuple")
+        .args<int16_t, Nullable<int32_t>, int64_t>(
+            TypeAnnotatedFuncPtrImpl<
+                std::tuple<int16_t, Nullable<int32_t>, int64_t>>::
+                RBA<Tuple<int16_t, Nullable<int32_t>, int64_t>>(
+                    ExternUDFTest::MakeTuple));
+
+    // pass null to primitive
+    CheckUDF<int32_t, Nullable<int32_t>, int32_t>(&library, "if_null", 1, 1, 3);
+    CheckUDF<int32_t, Nullable<int32_t>, int32_t>(&library, "if_null", 3,
+                                                  nullptr, 3);
+
+    // pass null to struct
+    CheckUDF<codec::StringRef, Nullable<codec::StringRef>, codec::StringRef>(
+        &library, "if_null", codec::StringRef("1"), codec::StringRef("1"),
+        codec::StringRef("3"));
+    CheckUDF<codec::StringRef, Nullable<codec::StringRef>, codec::StringRef>(
+        &library, "if_null", codec::StringRef("3"), nullptr,
+        codec::StringRef("3"));
+
+    // pass null to non-null arg
+    CheckUDF<Nullable<int32_t>, int32_t>(&library, "add_one", 2, 1);
+    CheckUDF<Nullable<int32_t>, Nullable<int32_t>>(&library, "add_one", 2, 1);
+    CheckUDF<Nullable<int32_t>, Nullable<int32_t>>(&library, "add_one", nullptr,
+                                                   nullptr);
+
+    CheckUDF<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        &library, "add_two", nullptr, 1, nullptr);
+    CheckUDF<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        &library, "add_two_one_nullable", 3, 2, 1);
+    CheckUDF<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        &library, "add_two_one_nullable", nullptr, 1, nullptr);
+    CheckUDF<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        &library, "add_two_one_nullable", 1, nullptr, 1);
+    CheckUDF<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(
+        &library, "add_two_one_nullable", nullptr, nullptr, nullptr);
+
+    // nullable return
+    CheckUDF<Nullable<codec::Date>, Nullable<int64_t>>(&library, "new_date",
+                                                       codec::Date(1), 1);
+    CheckUDF<Nullable<codec::Date>, Nullable<int64_t>>(&library, "new_date",
+                                                       nullptr, nullptr);
+
+    // pass tuple
+    CheckUDF<double, Tuple<Nullable<float>, float>,
+             Tuple<double, Nullable<double>>>(
+        &library, "sum_tuple", 10.0, Tuple<Nullable<float>, float>(1.0f, 2.0f),
+        Tuple<double, Nullable<double>>(3.0, 4.0));
+    CheckUDF<double, Tuple<Nullable<float>, float>,
+             Tuple<double, Nullable<double>>>(
+        &library, "sum_tuple", 5.0,
+        Tuple<Nullable<float>, float>(nullptr, 2.0f),
+        Tuple<double, Nullable<double>>(3.0, nullptr));
+    CheckUDF<Nullable<double>, Tuple<float, Nullable<float>>,
+             Tuple<double, double>>(
+        &library, "sum_tuple", nullptr,
+        Tuple<float, Nullable<float>>(1.0f, nullptr),
+        Tuple<double, double>(3.0, 4.0));
+
+    // nested tuple
+    CheckUDF<double,
+             Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>>(
+        &library, "sum_tuple", 10.0,
+        Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>(
+            1.0f, Tuple<float, double, Nullable<double>>(2.0f, 3.0, 4.0)));
+    CheckUDF<double,
+             Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>>(
+        &library, "sum_tuple", 5.0,
+        Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>(
+            nullptr,
+            Tuple<float, double, Nullable<double>>(2.0f, 3.0, nullptr)));
+    CheckUDF<Nullable<double>,
+             Tuple<float, Tuple<Nullable<float>, double, double>>>(
+        &library, "sum_tuple", nullptr,
+        Tuple<float, Tuple<Nullable<float>, double, double>>(
+            1.0f, Tuple<Nullable<float>, double, double>(nullptr, 3.0, 4.0)));
+
+    // return tuple
+    using TupleResT = Tuple<int16_t, Nullable<int32_t>, int64_t>;
+    CheckUDF<TupleResT, int16_t, Nullable<int32_t>, int64_t>(
+        &library, "make_tuple", TupleResT(1, 2, 3), 1, 2, 3);
+    CheckUDF<TupleResT, int16_t, Nullable<int32_t>, int64_t>(
+        &library, "make_tuple", TupleResT(1, nullptr, 3), 1, nullptr, 3);
+}
+
 }  // namespace udf
 }  // namespace fesql
 int main(int argc, char** argv) {

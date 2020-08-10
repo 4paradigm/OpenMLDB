@@ -31,7 +31,11 @@ class NodeManager {
         }
     }
 
-    int GetNodeListSize() { return node_list_.size(); }
+    int GetNodeListSize() {
+        int node_size = node_list_.size();
+        DLOG(INFO) << "GetNodeListSize: " << node_size;
+        return node_size;
+    }
 
     // Make xxxPlanNode
     //    PlanNode *MakePlanNode(const PlanType &type);
@@ -81,13 +85,12 @@ class NodeManager {
     ExprNode *MakeTimeFuncNode(const TimeUnit time_unit, ExprListNode *args);
     ExprNode *MakeFuncNode(const std::string &name, ExprListNode *args,
                            const SQLNode *over);
-    ExprNode *MakeFuncNode(const FnDefNode *fn, ExprListNode *args,
+    ExprNode *MakeFuncNode(FnDefNode *fn, ExprListNode *args,
                            const SQLNode *over);
     ExprNode *MakeFuncNode(const std::string &name,
                            const std::vector<ExprNode *> &args,
                            const SQLNode *over);
-    ExprNode *MakeFuncNode(const FnDefNode *fn,
-                           const std::vector<ExprNode *> &args,
+    ExprNode *MakeFuncNode(FnDefNode *fn, const std::vector<ExprNode *> &args,
                            const SQLNode *over);
 
     ExprNode *MakeQueryExprNode(const QueryNode *query);
@@ -139,7 +142,7 @@ class NodeManager {
 
     TypeNode *MakeTypeNode(fesql::node::DataType base);
     TypeNode *MakeTypeNode(fesql::node::DataType base,
-                           fesql::node::TypeNode *v1);
+                           const fesql::node::TypeNode *v1);
     TypeNode *MakeTypeNode(fesql::node::DataType base,
                            fesql::node::DataType v1);
     TypeNode *MakeTypeNode(fesql::node::DataType base, fesql::node::DataType v1,
@@ -156,6 +159,7 @@ class NodeManager {
     GetFieldExpr *MakeGetFieldExpr(ExprNode *input,
                                    const std::string &column_name,
                                    const std::string &relation_name);
+    GetFieldExpr *MakeGetFieldExpr(ExprNode *input, size_t idx);
 
     ExprNode *MakeBetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right);
     ExprNode *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
@@ -281,8 +285,9 @@ class NodeManager {
 
     ExternalFnDefNode *MakeExternalFnDefNode(
         const std::string &function_name, void *function_ptr,
-        node::TypeNode *ret_type,
-        const std::vector<const node::TypeNode *> &arg_types, int variadic_pos,
+        node::TypeNode *ret_type, bool ret_nullable,
+        const std::vector<const node::TypeNode *> &arg_types,
+        const std::vector<int> &arg_nullable, int variadic_pos,
         bool return_by_arg);
 
     ExternalFnDefNode *MakeUnresolvedFnDefNode(
@@ -292,14 +297,13 @@ class NodeManager {
 
     UDFByCodeGenDefNode *MakeUDFByCodeGenDefNode(
         const std::vector<const node::TypeNode *> &arg_types,
-        const node::TypeNode *ret_type);
+        const std::vector<int> &arg_nullable, const node::TypeNode *ret_type,
+        bool ret_nullable);
 
     UDAFDefNode *MakeUDAFDefNode(const std::string &name,
-                                 const TypeNode *input_type,
-                                 const ExprNode *init,
-                                 const FnDefNode *update_func,
-                                 const FnDefNode *merge_func,
-                                 const FnDefNode *output_func);
+                                 const std::vector<const TypeNode *> &arg_types,
+                                 ExprNode *init, FnDefNode *update_func,
+                                 FnDefNode *merge_func, FnDefNode *output_func);
     LambdaNode *MakeLambdaNode(const std::vector<ExprIdNode *> &args,
                                ExprNode *body);
 

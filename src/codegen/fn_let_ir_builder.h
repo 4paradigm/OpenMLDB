@@ -40,10 +40,11 @@ class RowFnLetIRBuilder {
 
     ~RowFnLetIRBuilder();
 
-    bool Build(const std::string& name, const node::PlanNodeList& projects,
-               vm::Schema* output_schema,
-               vm::ColumnSourceList*
-                   output_column_sources);  // NOLINT (runtime/references)
+    base::Status Build(const std::string& name, node::LambdaNode* project_func,
+                       const std::vector<std::string>& project_names,
+                       const std::vector<node::FrameNode*>& project_frames,
+                       vm::Schema* output_schema,
+                       vm::ColumnSourceList* output_column_sources);
 
  private:
     bool BuildFnHeader(const std::string& name,
@@ -70,6 +71,11 @@ class RowFnLetIRBuilder {
                              const node::ExprNode* expr,
                              vm::Schema* output_schema,
                              vm::ColumnSourceList* output_column_sources);
+
+    Status BindProjectFrame(ExprIRBuilder* expr_ir_builder,
+                            node::FrameNode* frame,
+                            node::LambdaNode* compile_func,
+                            ::llvm::BasicBlock* block, ScopeVar* sv);
 
  private:
     // input schema

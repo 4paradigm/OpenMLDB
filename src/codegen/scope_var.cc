@@ -120,6 +120,22 @@ bool ScopeVar::FindVar(const std::string& name, NativeValue* value) {
     DLOG(INFO) << "var with name " << name << " does not exist ";
     return false;
 }
+bool ScopeVar::ExistVar(const std::string& name) {
+    if (scopes_.size() <= 0) {
+        LOG(WARNING) << "no scope exists " << name;
+        return false;
+    }
+    for (auto scope_iter = scopes_.rbegin(); scope_iter != scopes_.rend();
+         scope_iter++) {
+        Scope& exist_scope = *scope_iter;
+        std::map<std::string, NativeValue>::iterator it =
+            exist_scope.scope_map.find(name);
+        if (it != exist_scope.scope_map.end()) {
+            return true;
+        }
+    }
+    return false;
+}
 std::vector<const std::vector<::llvm::Value*>*> ScopeVar::GetIteratorValues() {
     std::vector<const std::vector<::llvm::Value*>*> values;
     if (scopes_.size() <= 0) {

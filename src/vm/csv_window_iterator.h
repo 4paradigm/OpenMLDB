@@ -40,6 +40,7 @@ class CSVWindowIterator : public WindowIterator {
     void Next();
     bool Valid();
     std::unique_ptr<RowIterator> GetValue();
+    RowIterator* GetValue(int8_t* addr);
     const Row GetKey();
 
  private:

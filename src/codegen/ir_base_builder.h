@@ -19,6 +19,7 @@
 #define SRC_CODEGEN_IR_BASE_BUILDER_H_
 
 #include <string>
+#include <vector>
 #include "glog/logging.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
@@ -56,6 +57,12 @@ bool DataType2SchemaType(const ::fesql::node::TypeNode& type,
 
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
                       ::llvm::Value** output);
+
+base::Status GetLLVMFunctionType(
+    ::llvm::Module* m, const std::vector<const node::TypeNode*>& arg_types,
+    const std::vector<int>& arg_nullable, const node::TypeNode* return_type,
+    bool return_nullable, bool variadic, bool* return_by_arg,
+    ::llvm::FunctionType** output);
 
 template <typename T>
 std::string GetLLVMObjectString(T* obj) {

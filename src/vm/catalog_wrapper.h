@@ -51,6 +51,13 @@ class WindowIteratorWrapper : public WindowIterator {
         return std::unique_ptr<RowIterator>(
             new IteratorWrapper(iter_->GetValue(), fun_));
     }
+    RowIterator* GetValue(int8_t* addr) override {
+        if (addr == nullptr) {
+            return new IteratorWrapper(iter_->GetValue(), fun_);
+        } else {
+            return new (addr) IteratorWrapper(iter_->GetValue(), fun_);
+        }
+    }
     void Seek(const std::string& key) override { iter_->Seek(key); }
     void SeekToFirst() override { iter_->SeekToFirst(); }
     void Next() override { iter_->Next(); }

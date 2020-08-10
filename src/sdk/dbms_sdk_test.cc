@@ -686,7 +686,7 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
     }
     {
         // create and insert inputs
-        for (auto i = 0; i < sql_case.inputs().size(); i++) {
+        for (size_t i = 0; i < sql_case.inputs().size(); i++) {
             if (sql_case.inputs()[i].name_.empty()) {
                 sql_case.set_input_name(SQLCase::GenRand("auto_t"), i);
             }
@@ -710,7 +710,7 @@ TEST_P(DBMSSdkTest, ExecuteQueryTest) {
     {
         Status status;
         std::string sql = sql_case.sql_str();
-        for (auto i = 0; i < sql_case.inputs().size(); i++) {
+        for (size_t i = 0; i < sql_case.inputs().size(); i++) {
             std::string placeholder = "{" + std::to_string(i) + "}";
             boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
         }

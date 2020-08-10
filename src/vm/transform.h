@@ -334,8 +334,8 @@ class BatchModeTransformer {
                                      base::Status& status);  // NOLINT
 
     virtual bool CreatePhysicalConstProjectNode(
-        node::ProjectListNode* project_list,
-        PhysicalOpNode** output, base::Status& status); //NOLINT
+        node::ProjectListNode* project_list, PhysicalOpNode** output,
+        base::Status& status);  // NOLINT
     virtual bool CreatePhysicalProjectNode(const ProjectType project_type,
                                            PhysicalOpNode* node,
                                            node::ProjectListNode* project_list,
@@ -464,33 +464,11 @@ inline bool SchemaType2DataType(const ::fesql::type::Type type,
 }
 
 // TODO(xxx): make it common step before all codegen
-bool ResolveProjects(const SchemaSourceList& schema_list,
-                     const node::PlanNodeList& projects, const bool row_project,
-                     node::NodeManager* node_manager, udf::UDFLibrary* library,
-                     base::Status& status);  // NOLINT
-
-class ResolveFnAndAttrs {
- public:
-    ResolveFnAndAttrs(bool is_multi_row,
-                      const vm::SchemasContext* schemas_context,
-                      node::NodeManager* nm, udf::UDFLibrary* library)
-        : is_multi_row_(is_multi_row),
-          schemas_context_(schemas_context),
-          nm_(nm),
-          library_(library),
-          analysis_context_(nm, schemas_context, is_multi_row) {}
-
-    base::Status Visit(node::ExprNode* expr, node::ExprNode** output);
-
- private:
-    bool is_multi_row_;
-    const vm::SchemasContext* schemas_context_;
-    node::NodeManager* nm_;
-    udf::UDFLibrary* library_;
-    node::ExprAnalysisContext analysis_context_;
-
-    std::unordered_map<node::ExprNode*, node::ExprNode*> cache_;
-};
+fesql::base::Status ResolveProjects(
+    const SchemaSourceList& input_schemas, const node::PlanNodeList& projects,
+    bool row_project, node::NodeManager* node_manager, udf::UDFLibrary* library,
+    node::LambdaNode** output_func, std::vector<std::string>* output_names,
+    std::vector<node::FrameNode*>* output_frames);
 
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
                                         LogicalGraph* graph,

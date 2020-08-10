@@ -7,7 +7,7 @@
  *--------------------------------------------------------------------------
  **/
 #include "codegen/context.h"
-
+#include <memory>
 #include "glog/logging.h"
 
 namespace fesql {
@@ -175,9 +175,50 @@ void CodeGenContext::SetCurrentBlock(::llvm::BasicBlock* block) {
 Status CodeGenContext::CreateBranch(const NativeValue& cond,
                                     const std::function<Status()>& left,
                                     const std::function<Status()>& right) {
+    return CreateBranchImpl(cond.GetValue(this), &left, &right);
+}
+
+Status CodeGenContext::CreateBranch(::llvm::Value* cond,
+                                    const std::function<Status()>& left,
+                                    const std::function<Status()>& right) {
+    return CreateBranchImpl(cond, &left, &right);
+}
+
+Status CodeGenContext::CreateBranch(const NativeValue& cond,
+                                    const std::function<Status()>& left) {
+    return CreateBranchImpl(cond.GetValue(this), &left, nullptr);
+}
+
+Status CodeGenContext::CreateBranch(::llvm::Value* cond,
+                                    const std::function<Status()>& left) {
+    return CreateBranchImpl(cond, &left, nullptr);
+}
+
+Status CodeGenContext::CreateBranchNot(const NativeValue& cond,
+                                       const std::function<Status()>& right) {
+    return CreateBranchImpl(cond.GetValue(this), nullptr, &right);
+}
+
+Status CodeGenContext::CreateBranchNot(::llvm::Value* cond,
+                                       const std::function<Status()>& right) {
+    return CreateBranchImpl(cond, nullptr, &right);
+}
+
+Status CodeGenContext::CreateBranchImpl(llvm::Value* cond,
+                                        const std::function<Status()>* left,
+                                        const std::function<Status()>* right) {
     auto builder = this->GetBuilder();
-    auto if_body = BlockGroup("__true_branch__", this);
-    auto else_body = BlockGroup("__false_branch__", this);
+    std::unique_ptr<BlockGroup> if_body = nullptr;
+    if (left != nullptr) {
+        if_body = std::unique_ptr<BlockGroup>(
+            new BlockGroup("__true_branch__", this));
+    }
+
+    std::unique_ptr<BlockGroup> else_body = nullptr;
+    if (right != nullptr) {
+        else_body = std::unique_ptr<BlockGroup>(
+            new BlockGroup("__false_branch__", this));
+    }
 
     // current scope blocks
     auto cur_block_group = this->GetCurrentBlockGroup();
@@ -187,11 +228,16 @@ Status CodeGenContext::CreateBranch(const NativeValue& cond,
 
     // get condition
     auto bool_ty = ::llvm::Type::getInt1Ty(*llvm_ctx_);
-    ::llvm::Value* raw_cond = cond.GetValue(builder);
-    if (raw_cond->getType() != bool_ty) {
-        raw_cond = builder->CreateIntCast(raw_cond, bool_ty, true);
+    if (cond->getType() != bool_ty) {
+        cond = builder->CreateIntCast(cond, bool_ty, true);
     }
-    builder->CreateCondBr(raw_cond, if_body.first(), else_body.first());
+    if (left == nullptr) {
+        builder->CreateCondBr(cond, exit_block, else_body->first());
+    } else if (right == nullptr) {
+        builder->CreateCondBr(cond, if_body->first(), exit_block);
+    } else {
+        builder->CreateCondBr(cond, if_body->first(), else_body->first());
+    }
 
     // goto exit point if current branch does not ends with terminal
     auto do_end_block = [this, builder, exit_block]() {
@@ -201,17 +247,18 @@ Status CodeGenContext::CreateBranch(const NativeValue& cond,
         }
     };
 
-    {
-        BlockGroupGuard guard(&if_body);
-        CHECK_STATUS(left());
+    if (left != nullptr) {
+        BlockGroupGuard guard(if_body.get());
+        CHECK_STATUS((*left)());
         do_end_block();
-        cur_block_group->Add(if_body);
+        cur_block_group->Add(*if_body);
     }
-    {
-        BlockGroupGuard guard(&else_body);
-        CHECK_STATUS(right());
+
+    if (right != nullptr) {
+        BlockGroupGuard guard(else_body.get());
+        CHECK_STATUS((*right)());
         do_end_block();
-        cur_block_group->Add(else_body);
+        cur_block_group->Add(*else_body);
     }
 
     cur_block_group->Add(exit_block);

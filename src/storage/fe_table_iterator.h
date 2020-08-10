@@ -97,6 +97,7 @@ class WindowTableIterator : public WindowIterator {
     void Next();
     bool Valid();
     std::unique_ptr<vm::RowIterator> GetValue();
+    vm::RowIterator* GetValue(int8_t* addr);
     const Row GetKey();
 
  private:

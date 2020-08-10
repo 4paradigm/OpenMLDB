@@ -72,10 +72,8 @@ ExternalFuncRegistryHelper UDFLibrary::RegisterExternal(
         name);
 }
 
-SimpleUDAFRegistryHelper UDFLibrary::RegisterSimpleUDAF(
-    const std::string& name) {
-    auto helper =
-        DoStartRegister<SimpleUDAFRegistryHelper, SimpleUDAFRegistry>(name);
+UDAFRegistryHelper UDFLibrary::RegisterUDAF(const std::string& name) {
+    auto helper = DoStartRegister<UDAFRegistryHelper, UDAFRegistry>(name);
     return helper;
 }
 
@@ -153,11 +151,11 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
     return Status::OK();
 }
 
-Status UDFLibrary::Transform(const std::string& name, ExprListNode* args,
-                             const node::SQLNode* over,
-                             node::ExprAnalysisContext* analysis_ctx,
+Status UDFLibrary::Transform(const std::string& name,
+                             const std::vector<node::ExprNode*>& args,
+                             node::NodeManager* node_manager,
                              ExprNode** result) {
-    UDFResolveContext ctx(args, over, this, analysis_ctx);
+    UDFResolveContext ctx(args, node_manager, this);
     return this->Transform(name, &ctx, result);
 }
 
@@ -167,6 +165,23 @@ Status UDFLibrary::Transform(const std::string& name, UDFResolveContext* ctx,
     CHECK_TRUE(iter != table_.end(),
                "Fail to find registered function: ", name);
     return iter->second->Transform(ctx, result);
+}
+
+Status UDFLibrary::ResolveFunction(const std::string& name,
+                                   UDFResolveContext* ctx,
+                                   node::FnDefNode** result) {
+    auto iter = table_.find(name);
+    CHECK_TRUE(iter != table_.end(),
+               "Fail to find registered function: ", name);
+    return iter->second->ResolveFunction(ctx, result);
+}
+
+Status UDFLibrary::ResolveFunction(const std::string& name,
+                                   const std::vector<node::ExprNode*>& args,
+                                   node::NodeManager* node_manager,
+                                   node::FnDefNode** result) {
+    UDFResolveContext ctx(args, node_manager, this);
+    return this->ResolveFunction(name, &ctx, result);
 }
 
 void UDFLibrary::AddExternalSymbol(const std::string& name, void* addr) {

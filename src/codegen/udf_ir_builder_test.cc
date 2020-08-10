@@ -45,40 +45,37 @@ namespace codegen {
 class UDFIRBuilderTest : public ::testing::Test {
  public:
     UDFIRBuilderTest() {}
+
     ~UDFIRBuilderTest() {}
 };
 
-template <class T, class... Args>
-void CheckExternalUDF(const std::string udf_name, T exp, Args... args) {
-    base::Status status;
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("udf_test", *ctx);
-    udf::DefaultUDFLibrary lib;
-    ASSERT_TRUE(fesql::udf::RegisterUDFToModule(m.get()));
-    m->print(::llvm::errs(), NULL, true, true);
-
-    auto J = ExitOnErr(LLJITBuilder().create());
-    auto &jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-    lib.InitJITSymbols(J.get());
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ::fesql::udf::InitUDFSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto fn = ExitOnErr(J->lookup(udf_name));
-    T (*udf)(Args...) = (T(*)(Args...))fn.getAddress();
-    ASSERT_EQ(exp, udf(args...));
-}
-
-template <class T, class... Args>
-void CheckUDF(const std::string &name, T expect, Args... args) {
+template <class Ret, class... Args>
+void CheckUDF(const std::string &name, Ret expect, Args... args) {
     auto function = udf::UDFFunctionBuilder(name)
                         .args<Args...>()
-                        .template returns<T>()
+                        .template returns<Ret>()
+                        .library(udf::DefaultUDFLibrary::get())
                         .build();
     ASSERT_TRUE(function.valid());
     auto result = function(args...);
-    ASSERT_EQ(expect, result);
+    udf::EqualValChecker<Ret>::check(expect, result);
+}
+
+template <typename T>
+codec::ListRef<T> MakeList(const std::initializer_list<T> &vec) {
+    codec::ArrayListV<T> *list =
+        new codec::ArrayListV<T>(new std::vector<T>(vec));
+    codec::ListRef<T> list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(list);
+    return list_ref;
+}
+
+codec::ListRef<bool> MakeBoolList(const std::initializer_list<int> &vec) {
+    codec::BoolArrayListV *list =
+        new codec::BoolArrayListV(new std::vector<int>(vec));
+    codec::ListRef<bool> list_ref;
+    list_ref.list = reinterpret_cast<int8_t *>(list);
+    return list_ref;
 }
 
 template <class T, class... Args>
@@ -313,6 +310,75 @@ TEST_F(UDFIRBuilderTest, log_udf_test) {
     CheckUDF<double, double>("log10", log10(2.0), 2.0);
 }
 
+TEST_F(UDFIRBuilderTest, abs_udf_test) {
+    CheckUDF<int16_t, int16_t>("abs", 32767, 32767);
+    CheckUDF<int16_t, int16_t>("abs", 32767, -32767);
+    CheckUDF<int32_t, int32_t>("abs", 32768, 32768);
+    CheckUDF<int32_t, int32_t>("abs", 32769, -32769);
+    CheckUDF<int64_t, int64_t>("abs", 2147483648, 2147483648);
+    CheckUDF<int64_t, int64_t>("abs", 2147483649, -2147483649);
+    CheckUDF<float, float>("abs", 2.1f, 2.1f);
+    CheckUDF<float, float>("abs", 2.1f, -2.1f);
+    CheckUDF<double, double>("abs", 2.1, 2.1);
+    CheckUDF<double, double>("abs", 2.1, -2.1);
+}
+
+TEST_F(UDFIRBuilderTest, acos_udf_test) {
+    // CheckUDF<double, int16_t>("acos", 0, 1);
+    // CheckUDF<double, int16_t>("acos", 1.5707963267948966, 0);
+    CheckUDF<double, int32_t>("acos", 0, 1);
+    CheckUDF<double, int32_t>("acos", 1.5707963267948966, 0);
+    CheckUDF<double, int64_t>("acos", 0, 1);
+    CheckUDF<double, int64_t>("acos", 1.5707963267948966, 0);
+    CheckUDF<float, float>("acos", acosf(0.5f), 0.5f);
+    CheckUDF<double, double>("acos", 1.0471975511965979, 0.5);
+    // CheckUDF<double, double>("acos", nan, -2.1);
+}
+
+TEST_F(UDFIRBuilderTest, asin_udf_test) {
+    // CheckUDF<double, int16_t>("asin", 0, 0);
+    // CheckUDF<double, int16_t>("asin", 1.5707963267948966, 1);
+    CheckUDF<double, int32_t>("asin", 0, 0);
+    CheckUDF<double, int32_t>("asin", 1.5707963267948966, 1);
+    CheckUDF<double, int64_t>("asin", 0, 0);
+    CheckUDF<double, int64_t>("asin", 1.5707963267948966, 1);
+    CheckUDF<float, float>("asin", asinf(0.2f), 0.2f);
+    CheckUDF<double, double>("asin", 0.2013579207903308, 0.2);
+    // CheckUDF<double, double>("asin", nan, -2.1);
+}
+
+TEST_F(UDFIRBuilderTest, atan_udf_test) {
+    // CheckUDF<double, int16_t>("atan", 0, 0);
+    // CheckUDF<double, int16_t>("atan", 1.1071487177940904, 2);
+    CheckUDF<double, int32_t>("atan", -1.1071487177940904, -2);
+    CheckUDF<double, int32_t>("atan", 1.1071487177940904, 2);
+    CheckUDF<double, int64_t>("atan", 0, 0);
+    CheckUDF<double, int64_t>("atan", -1.1071487177940904, -2);
+    CheckUDF<float, float>("atan", atan(-45.01f), -45.01f);
+    CheckUDF<double, double>("atan", 0.1462226769376524, 0.1472738);
+    CheckUDF<double, int16_t, int32_t>("atan", 2.3561944901923448, 2, -2);
+    CheckUDF<double, int64_t, int32_t>("atan", 2.3561944901923448, 2, -2);
+    CheckUDF<double, int64_t, float>("atan", 2.3561944901923448, 2, -2);
+    CheckUDF<double, double, int32_t>("atan", 2.3561944901923448, 2, -2);
+}
+
+TEST_F(UDFIRBuilderTest, atan2_udf_test) {
+    CheckUDF<double, int16_t, int32_t>("atan2", 2.3561944901923448, 2, -2);
+    CheckUDF<double, int64_t, int32_t>("atan2", 2.3561944901923448, 2, -2);
+    CheckUDF<double, int64_t, float>("atan2", 2.3561944901923448, 2, -2);
+    CheckUDF<double, double, int32_t>("atan2", 2.3561944901923448, 2, -2);
+}
+
+TEST_F(UDFIRBuilderTest, ceil_udf_test) {
+    CheckUDF<int16_t, int16_t>("ceil", 5, 5);
+    CheckUDF<int32_t, int32_t>("ceil", 32769, 32769);
+    CheckUDF<int64_t, int64_t>("ceil", 2147483649, 2147483649);
+    CheckUDF<int, float>("ceil", 0, -0.1);
+    CheckUDF<int, float>("ceil", 2, 1.23);
+    CheckUDF<int, double>("ceil", -1, -1.23);
+    CheckUDF<int, double>("ceil", 0, 0);
+}
+
 TEST_F(UDFIRBuilderTest, substring_pos_len_udf_test) {
     CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
         "substring", codec::StringRef("12345"), codec::StringRef("1234567890"),
@@ -449,6 +515,7 @@ TEST_F(UDFIRBuilderTest, to_string_test) {
     CheckUDF<codec::StringRef, codec::Date>(
         "string", codec::StringRef("2020-05-22"), codec::Date(2020, 5, 22));
 }
+
 TEST_F(UDFIRBuilderTest, timestamp_format_test) {
     CheckUDF<codec::StringRef, codec::Timestamp, codec::StringRef>(
         "date_format", codec::StringRef("2020-05-22 10:43:40"),
@@ -476,6 +543,34 @@ TEST_F(UDFIRBuilderTest, date_format_test) {
     CheckUDF<codec::StringRef, codec::Date, codec::StringRef>(
         "date_format", codec::StringRef("00:00:00"), codec::Date(2020, 05, 22),
         codec::StringRef("%H:%M:%S"));
+}
+
+TEST_F(UDFIRBuilderTest, count_where_test) {
+    CheckUDF<int64_t, codec::ListRef<int32_t>, codec::ListRef<bool>>(
+        "count_where", 2, MakeList<int32_t>({4, 5, 6}),
+        MakeBoolList({true, false, true}));
+
+    CheckUDF<int64_t, codec::ListRef<codec::StringRef>, codec::ListRef<bool>>(
+        "count_where", 2,
+        MakeList({codec::StringRef("1"), codec::StringRef("2"),
+                  codec::StringRef("3")}),
+        MakeBoolList({true, false, true}));
+}
+
+TEST_F(UDFIRBuilderTest, avg_test) {
+    CheckUDF<double, codec::ListRef<int16_t>>("avg", 2.5,
+                                              MakeList<int16_t>({1, 2, 3, 4}));
+    CheckUDF<double, codec::ListRef<int32_t>>("avg", 2.5,
+                                              MakeList<int32_t>({1, 2, 3, 4}));
+    CheckUDF<double, codec::ListRef<int64_t>>("avg", 2.5,
+                                              MakeList<int64_t>({1, 2, 3, 4}));
+    CheckUDF<double, codec::ListRef<float>>("avg", 2.5,
+                                            MakeList<float>({1, 2, 3, 4}));
+    CheckUDF<double, codec::ListRef<double>>("avg", 2.5,
+                                             MakeList<double>({1, 2, 3, 4}));
+    // empty list
+    CheckUDF<double, codec::ListRef<double>>("avg", 0.0 / 0,
+                                             MakeList<double>({}));
 }
 
 }  // namespace codegen

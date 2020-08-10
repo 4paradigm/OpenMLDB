@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "base/fe_status.h"
 #include "node/node_manager.h"
@@ -32,9 +33,9 @@ using fesql::node::SQLNode;
 class ExprUDFRegistryHelper;
 class LLVMUDFRegistryHelper;
 class ExternalFuncRegistryHelper;
-class SimpleUDAFRegistryHelper;
+class UDAFRegistryHelper;
 class UDFTransformRegistry;
-class SimpleUDAFRegistry;
+class UDAFRegistry;
 class CompositeRegistry;
 class UDFResolveContext;
 
@@ -56,13 +57,20 @@ class ExprUDFTemplateRegistryHelper;
  */
 class UDFLibrary {
  public:
-    Status Transform(const std::string& name, ExprListNode* args,
-                     const node::SQLNode* over,
-                     node::ExprAnalysisContext* analysis_ctx,
-                     ExprNode** result);
+    Status Transform(const std::string& name,
+                     const std::vector<node::ExprNode*>& args,
+                     node::NodeManager* node_manager, ExprNode** result);
 
     Status Transform(const std::string& name, UDFResolveContext* ctx,
                      ExprNode** result);
+
+    Status ResolveFunction(const std::string& name, UDFResolveContext* ctx,
+                           node::FnDefNode** result);
+
+    Status ResolveFunction(const std::string& name,
+                           const std::vector<node::ExprNode*>& args,
+                           node::NodeManager* node_manager,
+                           node::FnDefNode** result);
 
     std::shared_ptr<UDFTransformRegistry> Find(const std::string& name) const;
 
@@ -73,7 +81,7 @@ class UDFLibrary {
     ExprUDFRegistryHelper RegisterExprUDF(const std::string& name);
     LLVMUDFRegistryHelper RegisterCodeGenUDF(const std::string& name);
     ExternalFuncRegistryHelper RegisterExternal(const std::string& name);
-    SimpleUDAFRegistryHelper RegisterSimpleUDAF(const std::string& name);
+    UDAFRegistryHelper RegisterUDAF(const std::string& name);
 
     Status RegisterAlias(const std::string& alias, const std::string& name);
     Status RegisterFromFile(const std::string& path);
@@ -91,7 +99,7 @@ class UDFLibrary {
     template <template <typename> class FTemplate>
     auto RegisterUDAFTemplate(const std::string& name) {
         return DoStartRegister<UDAFTemplateRegistryHelper<FTemplate>,
-                               SimpleUDAFRegistry>(name);
+                               UDAFRegistry>(name);
     }
 
     template <template <typename> class FTemplate>
@@ -103,6 +111,11 @@ class UDFLibrary {
     void InitJITSymbols(::llvm::orc::LLJIT* jit_ptr);
 
     node::NodeManager* node_manager() { return &nm_; }
+
+    const std::unordered_map<std::string, std::shared_ptr<CompositeRegistry>>&
+    GetAllRegistries() {
+        return table_;
+    }
 
  private:
     template <typename Helper, typename RegistryT>

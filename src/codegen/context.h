@@ -103,10 +103,25 @@ class CodeGenContext {
     Status CreateBranch(const NativeValue& cond,
                         const std::function<Status()>& left,
                         const std::function<Status()>& right);
+    Status CreateBranch(::llvm::Value* cond,
+                        const std::function<Status()>& left,
+                        const std::function<Status()>& right);
+    Status CreateBranch(const NativeValue& cond,
+                        const std::function<Status()>& left);
+    Status CreateBranch(::llvm::Value* cond,
+                        const std::function<Status()>& left);
+    Status CreateBranchNot(const NativeValue& cond,
+                           const std::function<Status()>& right);
+    Status CreateBranchNot(::llvm::Value* cond,
+                           const std::function<Status()>& right);
 
     ::llvm::BasicBlock* AppendNewBlock(const std::string& name = "");
 
  private:
+    Status CreateBranchImpl(::llvm::Value* cond,
+                            const std::function<Status()>* left,
+                            const std::function<Status()>* right);
+
     ::llvm::LLVMContext* llvm_ctx_;
     ::llvm::Module* llvm_module_;
     ::llvm::IRBuilder<> llvm_ir_builder_;
