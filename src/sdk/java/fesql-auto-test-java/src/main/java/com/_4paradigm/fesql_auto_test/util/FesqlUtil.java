@@ -455,4 +455,17 @@ public class FesqlUtil {
         fesqlResult.setOk(true);
         return fesqlResult;
     }
+
+    public static void show(ResultSet rs) {
+        if (null == rs || rs.Size() == 0) {
+            System.out.println("EMPTY RESULT");
+            return;
+        }
+        StringBuffer sb = new StringBuffer();
+
+        while (rs.Next()) {
+            sb.append(rs.GetRowString()).append("\n");
+        }
+        logger.info("RESULT:\n{} row in set\n{}", rs.Size(), sb.toString());
+    }
 }

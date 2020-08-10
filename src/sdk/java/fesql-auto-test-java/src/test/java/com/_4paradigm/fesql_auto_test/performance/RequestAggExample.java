@@ -1,5 +1,6 @@
 package com._4paradigm.fesql_auto_test.performance;
 
+import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import com._4paradigm.sql.DataType;
 import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.SQLRequestRow;
