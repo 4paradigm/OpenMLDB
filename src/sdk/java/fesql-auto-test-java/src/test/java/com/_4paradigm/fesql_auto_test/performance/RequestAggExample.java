@@ -1,6 +1,5 @@
 package com._4paradigm.fesql_auto_test.performance;
 
-import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import com._4paradigm.sql.DataType;
 import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.SQLRequestRow;
@@ -17,11 +16,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-public class RequestAggExample {
+public class RequestAggExample extends BaseExample {
 
     private static final Logger logger = LoggerFactory.getLogger(RequestAggExample.class);
-    public static ThreadLocal<Integer> threadLocalProcessCnt = new ThreadLocal<Integer>();
-    public static ThreadLocal<Integer> threadLocalProcessErrorCnt = new ThreadLocal<Integer>();
     private String ddl = "create table trans(c_sk_seq string,\n" +
             "                   cust_no string,\n" +
             "                   pay_cust_name string,\n" +
@@ -51,8 +48,7 @@ public class RequestAggExample {
             "                   index(key=merch_id, ts=txn_time));";
     //    private String zkCluster="172.27.128.81:16181";
 //    private String zkPath="/fedb_cluster";
-    private String zkCluster = "127.0.0.1:6181";
-    private String zkPath = "/onebox";
+
     private SqlExecutor sqlExecutor = null;
     private String db = "test_db2";
     private String tname = "trans";
