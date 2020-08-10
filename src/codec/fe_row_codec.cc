@@ -276,7 +276,7 @@ RowView::RowView(const RowView& copy)
       string_field_cnt_(copy.string_field_cnt_),
       str_field_start_offset_(copy.str_field_start_offset_),
       size_(copy.size_),
-      row_(NULL),
+      row_(copy.row_),
       schema_(copy.schema_),
       offset_vec_(copy.offset_vec_) {}
 bool RowView::Init() {
