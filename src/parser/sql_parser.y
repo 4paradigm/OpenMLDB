@@ -1076,6 +1076,7 @@ partition_meta_list:    partition_meta
 partition_meta:   role_type EQUALS endpoint
                   {
                       $$ = node_manager->MakePartitionMetaNode($1, $3);
+                      free($3);
                   }
                   ;
 
