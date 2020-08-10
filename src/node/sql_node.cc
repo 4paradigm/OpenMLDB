@@ -1689,5 +1689,58 @@ void UDAFDefNode::Print(std::ostream &output,
     PrintSQLNode(output, tab, output_, "output", true);
 }
 
+void CondExpr::Print(std::ostream &output, const std::string &org_tab) const {
+    output << org_tab << "[kCondExpr]" << "\n";
+    const std::string tab = org_tab + INDENT;
+    PrintSQLNode(output, tab, GetCondition(), "condition", false);
+    output << "\n";
+    PrintSQLNode(output, tab, GetLeft(), "left", false);
+    output << "\n";
+    PrintSQLNode(output, tab, GetRight(), "right", true);
+}
+
+const std::string CondExpr::GetExprString() const {
+    std::stringstream ss;
+    ss << "cond(";
+    ss << GetCondition() != nullptr ? GetCondition()->GetExprString() : "";
+    ss << ", ";
+    ss << GetLeft() != nullptr ? GetLeft()->GetExprString() : "";
+    ss << ", ";
+    ss << GetRight() != nullptr ? GetRight()->GetExprString() : "";
+    ss << ")";
+    return ss.str();
+}
+
+bool Equals(const ExprNode *node) const {
+    return node != nullptr && node->GetExprType() == this->GetExprType() &&
+        ExprEquals(node->GetCondition(), this->GetCondition()) &&
+        ExprEquals(node->GetLeft(), this->GetLeft()) &&
+        ExprEquals(node->GetRight(), this->GetRight());
+}
+
+ExprNode* CondExpr::GetCondition() const {
+    if (GetChildNum() > 0) {
+        return GetChild(0);
+    } else {
+        return nullptr;
+    }
+}
+
+ExprNode* CondExpr::GetLeft() const {
+    if (GetChildNum() > 1) {
+        return GetChild(1);
+    } else {
+        return nullptr;
+    }
+}
+
+ExprNode* CondExpr::GetRight() const {
+    if (GetChildNum() > 2) {
+        return GetChild(2);
+    } else {
+        return nullptr;
+    }
+}
+
 }  // namespace node
 }  // namespace fesql

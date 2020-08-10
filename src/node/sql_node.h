@@ -202,6 +202,8 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "order";
         case kExprGetField:
             return "get field";
+        case kExprCond:
+            return "cond";
         case kExprUnknow:
             return "unknow";
         default:
@@ -1248,6 +1250,7 @@ class BinaryExpr : public ExprNode {
  private:
     FnOperator op_;
 };
+
 class UnaryExpr : public ExprNode {
  public:
     UnaryExpr() : ExprNode(kExprUnary) {}
@@ -1260,6 +1263,25 @@ class UnaryExpr : public ExprNode {
  private:
     FnOperator op_;
 };
+
+class CondExpr : public ExprNode {
+ public:
+    CondExpr(ExprNode* condition, ExprNode* left, ExprNode* right) : ExprNode(kExprCond) {
+        AddChild(condition);
+        AddChild(left);
+        AddChild(right);
+    }
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *node) const;
+
+    ExprNode* GetCondition() const;
+    ExprNode* GetLeft() const;
+    ExprNode* GetRight() const;
+
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+};
+
 class ExprIdNode : public ExprNode {
  public:
     ExprIdNode() : ExprNode(kExprId) {}

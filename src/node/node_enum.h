@@ -103,6 +103,7 @@ enum ExprType {
     kExprQuery,
     kExprOrder,
     kExprGetField,
+    kExprCond,
     kExprUnknow = 9999
 };
 // typedef fesql::type::Type DataType;

@@ -1007,6 +1007,49 @@ Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
     return Status::OK();
 }
 
+Status ExprIRBuilder::BuildCondExpr(const ::fesql::node::CondExpr* node,
+                                    NativeValue* output) {
+    // build condition
+    ::llvm::IRBuilder<> builder(block_);
+    Status status;
+    NativeValue cond_value;
+    CHECK_TRUE(this->Build(node->GetCondition(), &cond_value, status), status.msg);
+
+    // build left
+    NativeValue left_value;
+    CHECK_TRUE(this->Build(node->GetLeft(), &left_value, status), status.msg);
+
+    // build right
+    NativeValue right_value;
+    CHECK_TRUE(this->Build(node->GetRight(), &right_value, status), status.msg);
+
+    auto raw_cond = cond_value.GetValue(&builder);
+    if (cond_value.HasFlag()) {
+        raw_cond = builder.CreateAnd(raw_cond, builder.CreateNot(cond_value.GetIsNull(&builder)));
+    }
+
+    ::llvm::Value* output_is_null = nullptr;
+    if (left_value.HasFlag()) {
+        output_is_null = left_value.GetIsNull(&builder);
+    }
+    if (right_value.HasFlag()) {
+        if (output_is_null == nullptr) {
+            output_is_null = right_value.GetIsNull(&builder);
+        } else {
+            output_is_null = builder.CreateOr(output_is_null, right_value.GetIsNull(&builder));
+        }
+    }
+
+    ::llvm::Value* raw_value = builder.CreateSelect(raw_cond, left_value.GetValue(&builder), right_value.GetValue(&builder));
+    if (output_is_null == nullptr){
+        *output = NativeValue::Create(raw_value);
+    } else {
+        *output = NativeValue::CreateWithFlag(raw_value, output_is_null);
+    }
+    
+    return Status::OK();
+}
+
 bool ExprIRBuilder::IsUADF(std::string function_name) {
     if (module_->getFunctionList().empty()) {
         return false;

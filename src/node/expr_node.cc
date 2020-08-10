@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  * Copyright (C) 2019, 4paradigm
- * expr_node.cc
+ * expr_node_test.cc
  *
  * Author: chenjing
  * Date: 2019/10/11
@@ -109,6 +109,23 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
         }
     }
     SetNullable(false);
+    return Status::OK();
+}
+
+Status CondExpr::InferAttr(ExprAnalysisContext* ctx) {
+    CHECK_TRUE(GetCondition() != nullptr &&
+               GetCondition()->GetOutputType()->base() == node::kBool,
+               "Condition must be boolean type");
+    CHECK_TRUE(GetLeft() != nullptr && GetRight() != nullptr);
+    auto left_type = GetLeft()->GetOutputType();
+    auto right_type = GetRight()->GetOutputType();
+    CHECK_TRUE(left_type != nullptr, "Unknown cond left type");
+    CHECK_TRUE(right_type != nullptr, "Unknown cond left type");
+    CHECK_TRUE(TypeEquals(left_type, right_type),
+        "Condition's left and right type do not match: ",
+        left_type->GetName(), " : ", right_type->GetName());
+    this->SetOutputType(left_type);
+    this->SetNullable(GetLeft()->nullable() || GetRight()->nullable());
     return Status::OK();
 }
 

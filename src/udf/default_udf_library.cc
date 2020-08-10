@@ -137,44 +137,6 @@ struct CountUDAFDef {
 };
 
 template <typename T>
-struct CountWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
-        helper.templates<int64_t, int64_t, T, bool>()
-            .const_init(0)
-            .update(/* inferr */
-                    [](UDFResolveContext* ctx, const ExprAttrNode* st,
-                       const ExprAttrNode*, const ExprAttrNode*,
-                       ExprAttrNode* out) {
-                        out->SetType(st->type());
-                        out->SetNullable(false);
-                        return Status::OK();
-                    },
-                    /* gen */
-                    [](CodeGenContext* ctx, NativeValue cnt, NativeValue elem,
-                       NativeValue cond, NativeValue* out) {
-                        auto builder = ctx->GetBuilder();
-                        ::llvm::Value* keep;
-                        if (cond.HasFlag()) {
-                            keep = builder->CreateAnd(
-                                builder->CreateNot(cond.GetIsNull(ctx)),
-                                cond.GetValue(ctx));
-                        } else {
-                            keep = cond.GetValue(ctx);
-                        }
-                        ::llvm::Value* old_value = cnt.GetValue(ctx);
-                        ::llvm::Value* new_value = builder->CreateSelect(
-                            keep,
-                            builder->CreateAdd(old_value, builder->getInt64(1)),
-                            old_value);
-                        *out = NativeValue::Create(new_value);
-                        return Status::OK();
-                    })
-            .merge("add")
-            .output("identity");
-    }
-};
-
-template <typename T>
 struct AvgUDAFDef {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
         helper.templates<double, Tuple<int64_t, double>, T>()
@@ -243,6 +205,53 @@ struct DistinctCountDef {
             return set;
         }
     };
+};
+
+template <typename T>
+struct CountWhereDef {
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        helper.templates<int64_t, int64_t, T, bool>()
+            .const_init(0)
+            .update([](UDFResolveContext* ctx, ExprNode* cnt, ExprNode* elem, ExprNode* cond) {
+                auto nm = ctx->node_manager();
+                auto new_cnt = nm->MakeBinaryExprNode(cnt, nm->MakeConst(1), node::kFnOpAdd);
+                return nm->MakeCondExpr(cond, new_cnt, cnt);
+            })
+            .merge("add")
+            .output("identity");
+    }
+};
+
+template <typename T>
+struct AvgWhereDef {
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        helper.templates<int64_t, Tuple<int64_t, double>, T, bool>()
+            .const_init(0)
+            .update([](UDFResolveContext* ctx, ExprNode* state, ExprNode* elem, ExprNode* cond) {
+                auto nm = ctx->node_manager();
+                auto cnt = nm->MakeGetFieldExpr(state, 0);
+                auto sum = nm->MakeGetFieldExpr(state, 1);
+                auto cnt_ty = state->GetOutputType()->GetGenericType(0);
+                auto sum_ty = state->GetOutputType()->GetGenericType(1);
+                auto new_cnt = nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(1),
+                                             node::kFnOpAdd);
+                auto new_sum = nm->MakeBinaryExprNode(sum, elem, node::kFnOpAdd);
+                new_cnt->SetOutputType(cnt_ty);
+                new_sum->SetOutputType(sum_ty);
+                auto new_state = nm->MakeFuncNode("make_tuple", {cnt, sum}, nullptr);
+                return nm->MakeCondExpr(cond, new_state, state);
+            })
+            .merge("add")
+            .output([](UDFResolveContext* ctx, ExprNode* state) {
+                auto nm = ctx->node_manager();
+                ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
+                ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
+                ExprNode* avg =
+                    nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv);
+                avg->SetOutputType(state->GetOutputType()->GetGenericType(1));
+                return avg;
+            });
+    }
 };
 
 void DefaultUDFLibrary::InitStringUDF() {
