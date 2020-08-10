@@ -1637,12 +1637,16 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
 
 const std::string KeyGenerator::Gen(const Row& row) {
     Row key_row = CoreAPI::RowProject(fn_, row, true);
-    row_view_.Reset(key_row.buf());
+    RowView row_view(row_view_);
+    if (!row_view.Reset(key_row.buf())) {
+        LOG(WARNING) << "fail to gen key: row view reset fail";
+        return "NA";
+    }
     std::string keys = "";
     for (auto pos : idxs_) {
         std::string key = fn_schema_.Get(pos).type() == fesql::type::kDate
-                              ? std::to_string(row_view_.GetDateUnsafe(pos))
-                              : row_view_.GetAsString(pos);
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -1655,12 +1659,14 @@ const std::string KeyGenerator::Gen(const Row& row) {
 }
 const int64_t OrderGenerator::Gen(const Row& row) {
     Row order_row = CoreAPI::RowProject(fn_, row, true);
-    row_view_.Reset(order_row.buf());
-    return Runner::GetColumnInt64(&row_view_, idxs_[0],
+    RowView row_view(row_view_);
+    row_view.Reset(order_row.buf());
+    return Runner::GetColumnInt64(&row_view, idxs_[0],
                                   fn_schema_.Get(idxs_[0]).type());
 }
 const bool ConditionGenerator::Gen(const Row& row) {
-    return CoreAPI::ComputeCondition(fn_, row, &row_view_, idxs_[0]);
+    RowView row_view(row_view_);
+    return CoreAPI::ComputeCondition(fn_, row, &row_view, idxs_[0]);
 }
 const Row ProjectGenerator::Gen(const Row& row) {
     return CoreAPI::RowProject(fn_, row, false);

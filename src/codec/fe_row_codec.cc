@@ -270,7 +270,15 @@ RowView::RowView(const Schema& schema, const int8_t* row, uint32_t size)
         Reset(row, size);
     }
 }
-
+RowView::RowView(const RowView& copy)
+    : str_addr_length_(copy.str_addr_length_),
+      is_valid_(copy.is_valid_),
+      string_field_cnt_(copy.string_field_cnt_),
+      str_field_start_offset_(copy.str_field_start_offset_),
+      size_(copy.size_),
+      row_(NULL),
+      schema_(copy.schema_),
+      offset_vec_(copy.offset_vec_) {}
 bool RowView::Init() {
     uint32_t offset = HEADER_LENGTH + BitMapSize(schema_.size());
     for (int idx = 0; idx < schema_.size(); idx++) {
@@ -710,8 +718,26 @@ std::string RowView::GetAsString(uint32_t idx) {
         case fesql::type::kVarchar: {
             char* str = nullptr;
             uint32_t str_size;
-            if (0 == GetString(idx, &str, &str_size)) {
+            int32_t ret = GetString(idx, &str, &str_size);
+            if (0 == ret) {
+                if (str_size > 4096) {
+                    LOG(ERROR) << "Invalid String: string size exceed max "
+                                  "string size 4096, trunk string";
+                    LOG(INFO) << "size_ = " << size_
+                              << " *(reinterpret_cast<const uint32_t*>(row + "
+                                 "VERSION_LENGTH)) = "
+                              << *(reinterpret_cast<const uint32_t*>(
+                                     row_ + VERSION_LENGTH));
+                    return std::string(str, 4096);
+                }
                 return std::string(str, str_size);
+            } else {
+                LOG(ERROR) << "fail to get string: ret = " << ret;
+                LOG(INFO) << "size_ = " << size_
+                          << " *(reinterpret_cast<const uint32_t*>(row + "
+                             "VERSION_LENGTH)) = "
+                          << *(reinterpret_cast<const uint32_t*>(
+                                 row_ + VERSION_LENGTH));
             }
             break;
         }
@@ -783,6 +809,10 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
     }
 
     if (!CheckValid(idx, ::fesql::type::kVarchar)) {
+        return -1;
+    }
+    uint32_t size = GetSize(row_);
+    if (size <= HEADER_LENGTH) {
         return -1;
     }
     if (IsNULL(row_, idx)) {
