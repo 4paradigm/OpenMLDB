@@ -214,8 +214,9 @@ struct CountWhereDef {
             .const_init(0)
             .update([](UDFResolveContext* ctx, ExprNode* cnt, ExprNode* elem, ExprNode* cond) {
                 auto nm = ctx->node_manager();
-                auto new_cnt = nm->MakeBinaryExprNode(cnt, nm->MakeConst(1), node::kFnOpAdd);
-                return nm->MakeCondExpr(cond, new_cnt, cnt);
+                auto new_cnt = nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(1), node::kFnOpAdd);
+                ExprNode* update = nm->MakeCondExpr(cond, new_cnt, cnt);
+                return update;
             })
             .merge("add")
             .output("identity");

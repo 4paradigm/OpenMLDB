@@ -265,6 +265,15 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             }
             return true;
         }
+        case ::fesql::node::kExprCond: {
+            status = BuildCondExpr(
+                dynamic_cast<const ::fesql::node::CondExpr*>(node), output);
+            if (!status.isOK()) {
+                LOG(WARNING) << "Build cond expr failed: " << status.msg;
+                return false;
+            }
+            return true;
+        }   
         default: {
             LOG(WARNING) << "Expression Type "
                          << node::ExprTypeName(node->GetExprType())

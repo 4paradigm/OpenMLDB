@@ -1702,20 +1702,21 @@ void CondExpr::Print(std::ostream &output, const std::string &org_tab) const {
 const std::string CondExpr::GetExprString() const {
     std::stringstream ss;
     ss << "cond(";
-    ss << GetCondition() != nullptr ? GetCondition()->GetExprString() : "";
+    ss << (GetCondition() != nullptr ? GetCondition()->GetExprString() : "");
     ss << ", ";
-    ss << GetLeft() != nullptr ? GetLeft()->GetExprString() : "";
+    ss << (GetLeft() != nullptr ? GetLeft()->GetExprString() : "");
     ss << ", ";
-    ss << GetRight() != nullptr ? GetRight()->GetExprString() : "";
+    ss << (GetRight() != nullptr ? GetRight()->GetExprString() : "");
     ss << ")";
     return ss.str();
 }
 
-bool Equals(const ExprNode *node) const {
-    return node != nullptr && node->GetExprType() == this->GetExprType() &&
-        ExprEquals(node->GetCondition(), this->GetCondition()) &&
-        ExprEquals(node->GetLeft(), this->GetLeft()) &&
-        ExprEquals(node->GetRight(), this->GetRight());
+bool CondExpr::Equals(const ExprNode *node) const {
+    auto other = dynamic_cast<const CondExpr*>(node);
+    return other != nullptr &&
+        ExprEquals(other->GetCondition(), this->GetCondition()) &&
+        ExprEquals(other->GetLeft(), this->GetLeft()) &&
+        ExprEquals(other->GetRight(), this->GetRight());
 }
 
 ExprNode* CondExpr::GetCondition() const {
