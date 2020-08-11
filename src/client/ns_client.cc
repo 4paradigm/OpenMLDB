@@ -1127,6 +1127,11 @@ bool NsClient::TransformToTableDef(
     table->set_name(table_name);
     // todo: change default setting
     table->set_partition_num(1);
+    if (replica_num <= 0) {
+        status->msg = "CREATE common: replica_num should be bigger than 0";
+        status->code = fesql::common::kSQLError;
+        return false;
+    }
     table->set_replica_num((uint32_t)replica_num);
     table->set_format_version(1);
     ::rtidb::api::TTLDesc* ttl_desc = table->mutable_ttl_desc();
@@ -1315,21 +1320,44 @@ bool NsClient::TransformToTableDef(
         }
     }
     if (!partition_meta_list.empty()) {
+        if (replica_num != partition_meta_list.size()) {
+            status->msg = "CREATE common: "
+                "replica_num should equal to partition meta size";
+            status->code = fesql::common::kSQLError;
+            return false;
+        }
         ::rtidb::nameserver::TablePartition* table_partition =
             table->add_table_partition();
         table_partition->set_pid(0);
+        std::vector<std::string> ep_vec;
         for (auto partition_meta : partition_meta_list) {
             switch (partition_meta->GetType()) {
                 case fesql::node::kPartitionMeta: {
                     fesql::node::PartitionMetaNode* p_meta_node =
                         (fesql::node::PartitionMetaNode*)partition_meta;
+                    const std::string& ep = p_meta_node->GetEndpoint();
+                    if (std::find(ep_vec.begin(), ep_vec.end(), ep) !=
+                        ep_vec.end()) {
+                        status->msg = "CREATE common: "
+                            "partition meta endpoint duplicate";
+                        status->code = fesql::common::kSQLError;
+                        return false;
+                    }
+                    ep_vec.push_back(ep);
                     ::rtidb::nameserver::PartitionMeta* meta =
                         table_partition->add_partition_meta();
-                    meta->set_endpoint(p_meta_node->GetEndpoint());
+                    meta->set_endpoint(ep);
                     if (p_meta_node->GetRoleType() == fesql::node::kLeader) {
                         meta->set_is_leader(true);
-                    } else {
+                    } else if (p_meta_node->GetRoleType() ==
+                            fesql::node::kFollower) {
                         meta->set_is_leader(false);
+                    } else {
+                        status->msg = "CREATE common: role_type " +
+                            fesql::node::RoleTypeName(p_meta_node->GetRoleType()) +
+                            " not support";
+                        status->code = fesql::common::kSQLError;
+                        return false;
                     }
                     break;
                 }
