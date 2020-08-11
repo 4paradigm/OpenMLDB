@@ -5,8 +5,8 @@
 // Author: chenjing
 // Date: 2019/10/28
 
-#ifndef FESQL_SRC_NODE_NODE_MANAGER_H_
-#define FESQL_SRC_NODE_NODE_MANAGER_H_
+#ifndef SRC_NODE_NODE_MANAGER_H_
+#define SRC_NODE_NODE_MANAGER_H_
 
 #include <ctype.h>
 #include <list>
@@ -326,4 +326,4 @@ class NodeManager {
 
 }  // namespace node
 }  // namespace fesql
-#endif  // FESQL_SRC_NODE_NODE_MANAGER_H_
+#endif  // SRC_NODE_NODE_MANAGER_H_

@@ -7,8 +7,8 @@
  *--------------------------------------------------------------------------
  **/
 
-#ifndef FESQL_SRC_NODE_NODE_ENUM_H_
-#define FESQL_SRC_NODE_NODE_ENUM_H_
+#ifndef SRC_NODE_NODE_ENUM_H_
+#define SRC_NODE_NODE_ENUM_H_
 
 #include <string>
 #include "proto/fe_common.pb.h"
@@ -240,4 +240,4 @@ enum RoleType {
 }  // namespace node
 }  // namespace fesql
 
-#endif  // FESQL_SRC_NODE_NODE_ENUM_H_
+#endif  // SRC_NODE_NODE_ENUM_H_
