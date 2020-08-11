@@ -86,8 +86,6 @@ bool ClusterSDK::Init() {
                  << zk_client_->GetSessionTerm();
     ok = InitCatalog();
     if (!ok) return false;
-    ok = InitTabletClient();
-    if (!ok) return false;
     CheckZk();
     return true;
 }
@@ -202,7 +200,6 @@ bool ClusterSDK::InitTabletClient() {
     for (uint32_t i = 0; i < tablets.size(); i++) {
         if (boost::starts_with(tablets[i], ::rtidb::base::BLOB_PREFIX))
             continue;
-
         std::string real_endpoint;
         if (!GetRealEndpoint(tablets[i], &real_endpoint)) {
             return false;
@@ -236,8 +233,11 @@ bool ClusterSDK::InitCatalog() {
     } else {
         LOG(INFO) << "no tables in db";
     }
+    ok = InitTabletClient();
+    if (!ok) return false;
     return RefreshCatalog(table_datas);
 }
+
 
 std::shared_ptr<::rtidb::client::TabletClient>
 ClusterSDK::GetLeaderTabletByTable(const std::string& db,
