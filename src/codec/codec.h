@@ -26,8 +26,7 @@ namespace rtidb {
 namespace codec {
 
 using ProjectList = ::google::protobuf::RepeatedField<uint32_t>;
-using Schema =
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;

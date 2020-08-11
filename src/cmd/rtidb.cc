@@ -2155,7 +2155,6 @@ void HandleNSGet(const std::vector<std::string>& parts,
         return;
     }
     ::rtidb::codec::SDKCodec codec(tables[0]);
-    bool has_ts_col = codec.HasTSCol();
     bool no_schema = tables[0].column_desc_v1_size() == 0 && tables[0].column_desc_size() == 0;
     if (no_schema) {
         std::string value;

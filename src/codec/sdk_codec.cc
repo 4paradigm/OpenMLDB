@@ -55,7 +55,17 @@ SDKCodec::SDKCodec(const ::rtidb::nameserver::TableInfo& table_info)
     }
     ParseAddedColumnDesc(table_info.added_column_desc());
     if (table_info.format_version() == 1) {
-        std::shared_ptr<Schema> origin_scehma = std::make_shared<Schema>(table_info.column_desc_v1());
+        std::shared_ptr<Schema> origin_scehma = std::make_shared<Schema>();
+        if (table_info.column_desc_size() > 0) {
+            for (const auto& col : table_info.column_desc()) {
+                rtidb::common::ColumnDesc* new_col = origin_scehma->Add();
+                new_col->set_type(col.type());
+                auto it = rtidb::codec::DATA_TYPE_MAP.find(col.type());
+                new_col->set_data_type(it->second);
+            }
+        } else {
+            origin_scehma->CopyFrom(table_info.column_desc_v1());
+        }
         version_schema_.insert(std::make_pair(1, origin_scehma));
         for (const auto pair : table_info.schema_versions()) {
             int32_t ver = pair.id();

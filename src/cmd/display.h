@@ -386,9 +386,7 @@ __attribute__((unused)) static void ShowTableRows(
     const ::rtidb::nameserver::TableInfo& table_info,
     ::rtidb::cmd::SDKIterator* it) {
     ::rtidb::codec::SDKCodec codec(table_info);
-    bool is_compress =
-        table_info.compress_type() == ::rtidb::nameserver::kSnappy ? true
-                                                                   : false;
+    bool is_compress = table_info.compress_type() == ::rtidb::nameserver::kSnappy ? true : false;
     ShowTableRows(is_compress, &codec, it);
 }
 
