@@ -1748,15 +1748,6 @@ void HandleNsCreateDb(const std::vector<std::string>& parts,
     }
 }
 
-void HandleNsShowDb(const std::vector<std::string>& parts,
-                    ::rtidb::client::NsClient* client) {
-    std::string msg;
-    std::vector<std::string> dbs;
-    if (client->ShowDatabase(&dbs, msg)) {
-        ::rtidb::cmd::PrintDatabase(dbs);
-    }
-}
-
 void HandleNsDropDb(const std::vector<std::string>& parts,
                     ::rtidb::client::NsClient* client) {
     if (parts.size() < 2) {
@@ -1865,6 +1856,27 @@ bool GetCondAndPrintColumns(
     }
     get_type = static_cast<rtidb::api::GetType>(first_type);
     return true;
+}
+
+void HandleNSShowDB(::rtidb::client::NsClient* client) {
+    std::vector<std::string> dbs;
+    std::string error;
+    client->ShowDatabase(&dbs, error);
+    auto tp = new baidu::common::TPrinter(2,
+                        FLAGS_max_col_display_length);
+    std::vector<std::string> row;
+    row.push_back("#");
+    row.push_back("name");
+    tp->AddRow(row);
+    row.clear();
+    for (uint64_t i = 0; i < dbs.size(); i++) {
+        row.push_back(std::to_string(i + 1));
+        row.push_back(dbs[i]);
+        tp->AddRow(row);
+        row.clear();
+    }
+    tp->Print(true);
+    delete tp;
 }
 
 void HandleNSQuery(const std::vector<std::string>& parts,
@@ -3762,6 +3774,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         printf("showblobserver - show blobserver info\n");
         printf("showsdkendpoint - show sdkendpoint info\n");
         printf("showns - show nameserver info\n");
+        printf("showdb - show all databases\n");
         printf("showschema - show schema info\n");
         printf("showopstatus - show op info\n");
         printf("settablepartition - update partition info\n");
@@ -3944,6 +3957,8 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("desc: set partition info\n");
             printf("usage: settablepartition table_name partition_file_path\n");
             printf("ex: settablepartition table1 ./partition_file.txt\n");
+        } else if (parts[1] == "showdb") {
+            printf("desc: show all databases\n");
         } else if (parts[1] == "exit" || parts[1] == "quit") {
             printf("desc: exit client\n");
             printf("ex: quit\n");
@@ -4040,10 +4055,6 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("desc: use database\n");
             printf("usage: use database_name\n");
             printf("eg: use db1");
-        } else if (parts[1] == "showdb") {
-            printf("desc: show databases\n");
-            printf("usage: showdb\n");
-            printf("eg: showdb");
         } else if (parts[1] == "dropdb") {
             printf("desc: drop database\n");
             printf("usage: dropdb database_name\n");
@@ -6550,6 +6561,8 @@ void StartNsClient() {
             HandleNSUpdate(parts, &client);
         } else if (parts[0] == "query") {
             HandleNSQuery(parts, &client);
+        } else if (parts[0] == "showdb") {
+            HandleNSShowDB(&client);
         } else if (parts[0] == "use") {
             HandleNsUseDb(parts, &client);
         } else if (parts[0] == "sql") {

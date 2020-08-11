@@ -32,7 +32,7 @@ rm -rf ${package}/tools/dataImporter || :
 rm -rf ${package}/tools/rtidbCmdUtil || :
 ls -l build/bin/
 cp -r build/bin/rtidb ${package}/bin/fedb
-cp -r build/bin/rtidb_mac ${package}/bin/fedb_mac_cli
+test -e build/bin/rtidb_mac &&  cp -r build/bin/rtidb_mac ${package}/bin/fedb_mac_cli
 cd ${package}/bin
 wget http://pkg.4paradigm.com/rtidb/dev/node_exporter
 wget http://pkg.4paradigm.com/rtidb/metricbeat
