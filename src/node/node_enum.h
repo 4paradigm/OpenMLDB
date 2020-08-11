@@ -231,7 +231,6 @@ enum PlanType {
 // batch plan node type
 enum BatchPlanNodeType { kBatchDataset, kBatchPartition, kBatchMap };
 
-// typedef fesql::type::Type DataType;
 enum RoleType {
     kLeader,
     kFollower

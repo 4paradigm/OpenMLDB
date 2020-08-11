@@ -1080,6 +1080,16 @@ partition_meta:   role_type EQUALS endpoint
                   }
                   ;
 
+endpoint:
+    STRING
+  ;
+
+replicas:   INTNUM
+            {
+                $$ = $1;
+            }
+            ;
+
 
 /*****************************************************************************
  *
@@ -1845,12 +1855,6 @@ opt_window_exclusion_clause:
              /*EMPTY*/				{ $$ = 0; }
             ;
 
-replicas:   INTNUM
-            {
-                $$ = $1;
-            }
-            ;
-
 frame_extent:
 			frame_bound
 			{
@@ -1937,10 +1941,6 @@ relation_name:
 function_name:
     SQL_IDENTIFIER
     |FUN_IDENTIFIER
-  ;
-
-endpoint:
-    STRING
   ;
 
 %%
