@@ -195,15 +195,27 @@ bool ClusterSDK::InitTabletClient() {
         LOG(WARNING) << "fail to get tablet";
         return false;
     }
+
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>
         tablet_clients;
+    {
+        // copy a pice of tablets
+        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+        tablet_clients = alive_tablets_;
+    }
+    std::vector<std::string> dead_tablets;
     for (uint32_t i = 0; i < tablets.size(); i++) {
         if (boost::starts_with(tablets[i], ::rtidb::base::BLOB_PREFIX))
             continue;
+
+        // reuse the exist client
+        if (tablet_clients.find(tablets[i]) != tablet_clients.end()) continue;
+
         std::string real_endpoint;
         if (!GetRealEndpoint(tablets[i], &real_endpoint)) {
             return false;
         }
+
         std::shared_ptr<::rtidb::client::TabletClient> client(
             new ::rtidb::client::TabletClient(tablets[i], real_endpoint));
         int ret = client->Init();
@@ -214,7 +226,29 @@ bool ClusterSDK::InitTabletClient() {
         LOG(INFO) << "add alive tablet " << tablets[i];
         tablet_clients.insert(std::make_pair(tablets[i], client));
     }
+
+    // find the dead tablets
+    auto it = tablet_clients.begin();
+    for (; it != tablet_clients.end(); ++it) {
+        bool is_alive = false;
+        for (uint32_t i = 0; i < tablets.size(); i++) {
+            if (it->first == tablets[i]) {
+                is_alive = true;
+                break;
+            }
+        }
+        if (!is_alive) {
+            dead_tablets.push_back(it->first);
+        }
+    }
+
+    // remove dead tablets
+    for (uint32_t i = 0;  i < dead_tablets.size(); i++) {
+        tablet_clients.erase(dead_tablets[i]);
+    }
+
     {
+        // swap the new  tablets
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         alive_tablets_ = tablet_clients;
     }
@@ -233,7 +267,7 @@ bool ClusterSDK::InitCatalog() {
     } else {
         LOG(INFO) << "no tables in db";
     }
-    ok = InitTabletClient();
+    bool ok = InitTabletClient();
     if (!ok) return false;
     return RefreshCatalog(table_datas);
 }
