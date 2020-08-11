@@ -387,7 +387,7 @@ class SQLNodeList : public NodeBase {
  public:
     SQLNodeList() {}
     virtual ~SQLNodeList() {}
-    void PushBack(SQLNode *node_ptr) { list_.push_back(node_ptr); }
+    void PushBack(SQLNode *node_ptr);
     const bool IsEmpty() const { return list_.empty(); }
     const int GetSize() const { return list_.size(); }
     const std::vector<SQLNode *> &GetList() const { return list_; }

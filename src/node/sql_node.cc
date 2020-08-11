@@ -170,6 +170,10 @@ bool SQLNode::Equals(const SQLNode *that) const {
     return true;
 }
 
+void SQLNodeList::PushBack(SQLNode *node_ptr) {
+    list_.push_back(node_ptr);
+}
+
 void SQLNodeList::Print(std::ostream &output, const std::string &tab) const {
     PrintSQLVector(output, tab, list_, "list", true);
 }

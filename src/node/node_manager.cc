@@ -15,13 +15,13 @@
 namespace fesql {
 namespace node {
 
-    NodeManager::NodeManager() {}
+NodeManager::NodeManager() {}
 
-    NodeManager::~NodeManager() {
-        for (auto node : node_list_) {
-            delete node;
-        }
+NodeManager::~NodeManager() {
+    for (auto node : node_list_) {
+        delete node;
     }
+}
 
 QueryNode *NodeManager::MakeSelectQueryNode(
     bool is_distinct, SQLNodeList *select_list_ptr,
