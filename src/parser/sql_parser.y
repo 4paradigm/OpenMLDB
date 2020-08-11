@@ -432,10 +432,10 @@ typedef void* yyscan_t;
 %type<expr> insert_expr where_expr having_expr
 
  /* create table */
-%type <node>  create_stmt column_desc column_index_item column_index_key partition_meta
+%type <node>  create_stmt column_desc column_index_item column_index_key option
 %type <node>  cmd_stmt
 %type <flag>  op_not_null op_if_not_exist opt_distinct_clause opt_instance_not_in_window
-%type <list>  column_desc_list column_index_item_list partition_meta_list
+%type <list>  column_desc_list column_index_item_list table_option
 
 %type <list> opt_target_list
             select_projection_list
@@ -452,7 +452,7 @@ typedef void* yyscan_t;
                join_outer
                endpoint
 
-%type <intval> opt_window_exclusion_clause replica_num replicas
+%type <intval> opt_window_exclusion_clause replica_num
 
 
 %start grammar
@@ -804,9 +804,9 @@ opt_from_clause: FROM table_references {
 				$$ = NULL;
 			}
 
-create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list ')' replica_num partition_meta_list
+create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list ')' table_option
                 {
-                    $$ = node_manager->MakeCreateTableNode($3, $4, $6, $8, $9);
+                    $$ = node_manager->MakeCreateTableNode($3, $4, $6, $8);
                     free($4);
                 }
                 |CREATE INDEX column_name ON table_name '(' column_index_item_list ')'
@@ -1049,47 +1049,41 @@ opt_distinct_clause:
         }
     ;
 
-replica_num:  REPLICANUM EQUALS replicas ','
-              {
-                  $$ = $3;
-              }
-              |/*EMPTY*/
-              {
-                  $$ = 1;
-              }
+table_option:   option
+                {
+                    $$ = node_manager->MakeNodeList($1);
+                }
+                | table_option ',' option
+                {
+                    $$ = $1;
+                    $$->PushBack($3);
+                }
+                | /*EMPTY*/
+                {
+                    $$ = NULL;
+                }
+                ;
 
-partition_meta_list:    partition_meta
-                        {
-                            $$ = node_manager->MakeNodeList($1);
-                        }
-                        | partition_meta_list ',' partition_meta
-                        {
-                            $$ = $1;
-                            $$->PushBack($3);
-                        }
-                        |/*EMPTY*/
-                        {
-                            $$ = NULL;
-                        }
-                        ;
-
-partition_meta:   role_type EQUALS endpoint
-                  {
-                      $$ = node_manager->MakePartitionMetaNode($1, $3);
-                      free($3);
-                  }
-                  ;
+option:     REPLICANUM EQUALS replica_num
+            {
+                $$ = node_manager->MakeReplicaNumNode($3);
+            }
+            | role_type EQUALS endpoint
+            {
+                $$ = node_manager->MakePartitionMetaNode($1, $3);
+                free($3);
+            }
+            ;
 
 endpoint:
     STRING
   ;
 
-replicas:   INTNUM
+replica_num:   INTNUM
             {
                 $$ = $1;
             }
             ;
-
 
 /*****************************************************************************
  *

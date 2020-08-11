@@ -534,13 +534,32 @@ SQLNode *NodeManager::MakeNameNode(const std::string &name) {
 }
 
 SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
-        const std::string &table_name,
-        SQLNodeList *column_desc_list,
-        int replica_num,
-        SQLNodeList *partition_meta_list) {
+                                          const std::string &table_name,
+                                          SQLNodeList *column_desc_list,
+                                          SQLNodeList *table_option_list) {
+    int replica_num = 1;
+    SQLNodeList partition_meta_list;
+    if (nullptr != table_option_list) {
+        for (auto node_ptr : table_option_list->GetList()) {
+            switch (node_ptr->GetType()) {
+                case kReplicaNum:
+                    replica_num =
+                        dynamic_cast<ReplicaNumNode*>(node_ptr)->GetReplicaNum();
+                    break;
+                case kPartitionMeta:
+                    partition_meta_list.PushBack(node_ptr);
+                    break;
+                default: {
+                             LOG(WARNING) << "can not handle type "
+                                 << NameOfSQLNodeType(node_ptr->GetType())
+                                 << " for column index";
+                         }
+            }
+        }
+    }
     CreateStmt *node_ptr = new CreateStmt(table_name, op_if_not_exist, replica_num);
     FillSQLNodeList2NodeVector(column_desc_list, node_ptr->GetColumnDefList());
-    FillSQLNodeList2NodeVector(partition_meta_list, node_ptr->GetPartitionMetaList());
+    FillSQLNodeList2NodeVector(&partition_meta_list, node_ptr->GetPartitionMetaList());
     return RegisterNode(node_ptr);
 }
 
@@ -1245,6 +1264,11 @@ LambdaNode *NodeManager::MakeLambdaNode(const std::vector<ExprIdNode *> &args,
 SQLNode *NodeManager::MakePartitionMetaNode(RoleType role_type,
         const std::string &endpoint) {
     SQLNode *node_ptr = new PartitionMetaNode(endpoint, role_type);
+    return RegisterNode(node_ptr);
+}
+
+SQLNode *NodeManager::MakeReplicaNumNode(int num) {
+    SQLNode *node_ptr = new ReplicaNumNode(num);
     return RegisterNode(node_ptr);
 }
 

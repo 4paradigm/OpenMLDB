@@ -170,10 +170,6 @@ bool SQLNode::Equals(const SQLNode *that) const {
     return true;
 }
 
-void SQLNodeList::PushBack(SQLNode *node_ptr) {
-    list_.push_back(node_ptr);
-}
-
 void SQLNodeList::Print(std::ostream &output, const std::string &tab) const {
     PrintSQLVector(output, tab, list_, "list", true);
 }
@@ -899,7 +895,7 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, std::to_string(op_if_not_exist_), "IF NOT EXIST",
                false);
     output << "\n";
-    PrintSQLVector(output, tab, column_desc_list_, "column_desc_list_", true);
+    PrintSQLVector(output, tab, column_desc_list_, "column_desc_list_", false);
     output << "\n";
     PrintValue(output, tab, std::to_string(replica_num_), "replica_num_", false);
     output << "\n";
@@ -1704,7 +1700,15 @@ void PartitionMetaNode::Print(std::ostream &output,
     output << "\n";
     PrintValue(output, tab, endpoint_, "endpoint", false);
     output << "\n";
-    PrintValue(output, tab, RoleTypeName(role_type_), "role_type", false);
+    PrintValue(output, tab, RoleTypeName(role_type_), "role_type", true);
+}
+
+void ReplicaNumNode::Print(std::ostream &output,
+                          const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, std::to_string(replica_num_), "replica_num", true);
 }
 
 }  // namespace node

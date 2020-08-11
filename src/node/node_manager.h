@@ -120,7 +120,6 @@ class NodeManager {
     SQLNode *MakeCreateTableNode(bool op_if_not_exist,
                                  const std::string &table_name,
                                  SQLNodeList *column_desc_list,
-                                 int replica_num,
                                  SQLNodeList *partition_meta_list);
     SQLNode *MakeColumnDescNode(const std::string &column_name,
                                 const DataType data_type, bool op_not_null);
@@ -308,6 +307,8 @@ class NodeManager {
 
     SQLNode* MakePartitionMetaNode(RoleType role_type,
             const std::string &endpoint);
+
+    SQLNode* MakeReplicaNumNode(int num);
 
     template <typename T>
     T *RegisterNode(T *node_ptr) {

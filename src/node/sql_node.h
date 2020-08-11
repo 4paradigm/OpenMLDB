@@ -387,7 +387,7 @@ class SQLNodeList : public NodeBase {
  public:
     SQLNodeList() {}
     virtual ~SQLNodeList() {}
-    void PushBack(SQLNode *node_ptr);
+    void PushBack(SQLNode *node_ptr) { list_.push_back(node_ptr); }
     const bool IsEmpty() const { return list_.empty(); }
     const int GetSize() const { return list_.size(); }
     const std::vector<SQLNode *> &GetList() const { return list_; }
@@ -1468,7 +1468,8 @@ class CreateStmt : public SQLNode {
           op_if_not_exist_(false),
           replica_num_(1) {}
 
-    CreateStmt(const std::string &table_name, bool op_if_not_exist, int replica_num)
+    CreateStmt(const std::string &table_name, bool op_if_not_exist,
+            int replica_num)
         : SQLNode(kCreateStmt, 0, 0),
           table_name_(table_name),
           op_if_not_exist_(op_if_not_exist),
@@ -2120,6 +2121,24 @@ class PartitionMetaNode : public SQLNode {
     RoleType role_type_;
 };
 
+class ReplicaNumNode : public SQLNode {
+ public:
+    ReplicaNumNode()
+        : SQLNode(kReplicaNum, 0, 0), replica_num_(1) {}
+
+    explicit ReplicaNumNode(int num)
+        : SQLNode(kReplicaNum, 0, 0),
+          replica_num_(num) {}
+
+    ~ReplicaNumNode() {}
+
+    int GetReplicaNum() const { return replica_num_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    int replica_num_;
+};
 
 std::string ExprString(const ExprNode *expr);
 std::string MakeExprWithTable(const ExprNode *expr, const std::string db);
