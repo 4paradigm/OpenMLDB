@@ -249,7 +249,9 @@ class NsClient {
  private:
     bool TransformToTableDef(
         const std::string& table_name,
+        int replica_num,
         const fesql::node::NodePointVector& column_desc_list,
+        const fesql::node::NodePointVector& partition_meta_list,
         ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status);
 
     bool HandleSQLCmd(const fesql::node::CmdNode* cmd_node,

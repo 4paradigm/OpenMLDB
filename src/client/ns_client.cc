@@ -371,9 +371,9 @@ bool NsClient::HandleSQLCreateTable(
             ::rtidb::nameserver::TableInfo* table_info =
                 request.mutable_table_info();
             table_info->set_db(db);
-            TransformToTableDef(create->GetTableName(),
-                    create->GetColumnDescList(), table_info,
-                    sql_status);
+            TransformToTableDef(create->GetTableName(), create->GetReplicaNum(),
+                    create->GetColumnDescList(), create->GetPartitionMetaList(),
+                    table_info, sql_status);
             if (0 != sql_status->code) {
                 return false;
             }
@@ -1117,7 +1117,9 @@ bool NsClient::DeleteIndex(const std::string& table_name,
 
 bool NsClient::TransformToTableDef(
     const std::string& table_name,
+    int replica_num,
     const fesql::node::NodePointVector& column_desc_list,
+    const fesql::node::NodePointVector& partition_meta_list,
     ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status) {
     if (table == NULL || status == NULL) return false;
     std::set<std::string> index_names;
@@ -1125,7 +1127,7 @@ bool NsClient::TransformToTableDef(
     table->set_name(table_name);
     // todo: change default setting
     table->set_partition_num(1);
-    table->set_replica_num(1);
+    table->set_replica_num((uint32_t)replica_num);
     table->set_format_version(1);
     ::rtidb::api::TTLDesc* ttl_desc = table->mutable_ttl_desc();
     ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
@@ -1309,6 +1311,35 @@ bool NsClient::TransformToTableDef(
                     " when CREATE TABLE";
                 status->code = fesql::common::kSQLError;
                 return false;
+            }
+        }
+    }
+    if (!partition_meta_list.empty()) {
+        ::rtidb::nameserver::TablePartition* table_partition =
+            table->add_table_partition();
+        table_partition->set_pid(0);
+        for (auto partition_meta : partition_meta_list) {
+            switch (partition_meta->GetType()) {
+                case fesql::node::kPartitionMeta: {
+                    fesql::node::PartitionMetaNode* p_meta_node =
+                        (fesql::node::PartitionMetaNode*)partition_meta;
+                    ::rtidb::nameserver::PartitionMeta* meta =
+                        table_partition->add_partition_meta();
+                    meta->set_endpoint(p_meta_node->GetEndpoint());
+                    if (p_meta_node->GetRoleType() == fesql::node::kLeader) {
+                        meta->set_is_leader(true);
+                    } else {
+                        meta->set_is_leader(false);
+                    }
+                    break;
+                }
+                default: {
+                    status->msg = "can not support " +
+                        fesql::node::NameOfSQLNodeType(partition_meta->GetType()) +
+                        " when CREATE TABLE 2";
+                    status->code = fesql::common::kSQLError;
+                    return false;
+                }
             }
         }
     }
