@@ -543,8 +543,8 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
         for (auto node_ptr : table_option_list->GetList()) {
             switch (node_ptr->GetType()) {
                 case kReplicaNum:
-                    replica_num =
-                        dynamic_cast<ReplicaNumNode*>(node_ptr)->GetReplicaNum();
+                    replica_num = dynamic_cast<ReplicaNumNode*>(node_ptr)->
+                        GetReplicaNum();
                     break;
                 case kPartitionMeta:
                     partition_meta_list.PushBack(node_ptr);
@@ -557,9 +557,11 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
             }
         }
     }
-    CreateStmt *node_ptr = new CreateStmt(table_name, op_if_not_exist, replica_num);
+    CreateStmt *node_ptr = new CreateStmt(
+            table_name, op_if_not_exist, replica_num);
     FillSQLNodeList2NodeVector(column_desc_list, node_ptr->GetColumnDefList());
-    FillSQLNodeList2NodeVector(&partition_meta_list, node_ptr->GetPartitionMetaList());
+    FillSQLNodeList2NodeVector(
+            &partition_meta_list, node_ptr->GetPartitionMetaList());
     return RegisterNode(node_ptr);
 }
 
@@ -991,10 +993,11 @@ ProjectNode *NodeManager::MakeProjectNode(const int32_t pos,
     return node_ptr;
 }
 CreatePlanNode *NodeManager::MakeCreateTablePlanNode(
-    const std::string& table_name, int replica_num, const NodePointVector &column_list,
+    const std::string& table_name, int replica_num,
+    const NodePointVector &column_list,
     const NodePointVector &partition_meta_list) {
-    node::CreatePlanNode *node_ptr =
-        new CreatePlanNode(table_name, replica_num, column_list, partition_meta_list);
+    node::CreatePlanNode *node_ptr = new CreatePlanNode(
+            table_name, replica_num, column_list, partition_meta_list);
     RegisterNode(node_ptr);
     return node_ptr;
 }

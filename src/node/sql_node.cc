@@ -895,11 +895,12 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, std::to_string(op_if_not_exist_), "IF NOT EXIST",
                false);
     output << "\n";
-    PrintSQLVector(output, tab, column_desc_list_, "column_desc_list_", false);
+    PrintSQLVector(output, tab, column_desc_list_, "column_desc_list", false);
     output << "\n";
-    PrintValue(output, tab, std::to_string(replica_num_), "replica_num_", false);
+    PrintValue(output, tab, std::to_string(replica_num_), "replica_num", false);
     output << "\n";
-    PrintSQLVector(output, tab, partition_meta_list_, "partition_meta_list_", true);
+    PrintSQLVector(
+            output, tab, partition_meta_list_, "partition_meta_list", true);
     output << "\n";
 }
 
