@@ -77,3 +77,25 @@ cases:
           column5 int NOT NULL,
           index(key=(column4, column3), ts=column2, ttl=1000, ttl_type=latest)
       );
+  - id: 8
+    desc: Create 指定副本数
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=column1, ts=column2)) replicanum=2;
+      );
+  - id: 9
+    desc: Create 指定副本数与节点分布
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=column1, ts=column2)) replicanum=2, leader="127.0.0.1:9927", follower="leader=127.0.0.1:9926";
+      );
