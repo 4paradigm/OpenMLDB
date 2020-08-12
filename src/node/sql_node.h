@@ -2140,6 +2140,24 @@ class ReplicaNumNode : public SQLNode {
     int replica_num_;
 };
 
+class DistributionsNode : public SQLNode {
+ public:
+    explicit DistributionsNode(SQLNodeList *distribution_list)
+        : SQLNode(kDistributions, 0, 0),
+        distribution_list_(distribution_list) {}
+
+    ~DistributionsNode() {}
+
+    const SQLNodeList *GetDistributionList() const {
+        return distribution_list_;
+    }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    SQLNodeList *distribution_list_;
+};
+
 std::string ExprString(const ExprNode *expr);
 std::string MakeExprWithTable(const ExprNode *expr, const std::string db);
 bool ExprListNullOrEmpty(const ExprListNode *expr);

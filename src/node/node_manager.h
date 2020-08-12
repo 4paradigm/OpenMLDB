@@ -310,6 +310,8 @@ class NodeManager {
 
     SQLNode* MakeReplicaNumNode(int num);
 
+    SQLNode* MakeDistributionsNode(SQLNodeList *distribution_list);
+
     template <typename T>
     T *RegisterNode(T *node_ptr) {
         node_list_.push_back(node_ptr);

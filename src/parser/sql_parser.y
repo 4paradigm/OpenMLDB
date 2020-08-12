@@ -387,6 +387,7 @@ typedef void* yyscan_t;
 %token YEAR
 %token ZEROFILL
 %token REPLICANUM
+%token DISTRIBUTION
 %token LEADER
 %token FOLLOWER
 
@@ -432,10 +433,10 @@ typedef void* yyscan_t;
 %type<expr> insert_expr where_expr having_expr
 
  /* create table */
-%type <node>  create_stmt column_desc column_index_item column_index_key option
+%type <node>  create_stmt column_desc column_index_item column_index_key option distribution
 %type <node>  cmd_stmt
 %type <flag>  op_not_null op_if_not_exist opt_distinct_clause opt_instance_not_in_window
-%type <list>  column_desc_list column_index_item_list table_option
+%type <list>  column_desc_list column_index_item_list table_option distribution_list
 
 %type <list> opt_target_list
             select_projection_list
@@ -1068,10 +1069,9 @@ option:     REPLICANUM EQUALS replica_num
             {
                 $$ = node_manager->MakeReplicaNumNode($3);
             }
-            | role_type EQUALS endpoint
+            | DISTRIBUTION '(' distribution_list ')'
             {
-                $$ = node_manager->MakePartitionMetaNode($1, $3);
-                free($3);
+                $$ = node_manager->MakeDistributionsNode($3);
             }
             ;
 
@@ -1084,6 +1084,24 @@ replica_num:   INTNUM
                 $$ = $1;
             }
             ;
+
+distribution_list:      distribution
+                        {
+                            $$ = node_manager->MakeNodeList($1);
+                        }
+                        | distribution_list ',' distribution
+                        {
+                            $$ = $1;
+                            $$->PushBack($3);
+                        }
+                        ;
+
+distribution:   role_type EQUALS endpoint
+                {
+                    $$ = node_manager->MakePartitionMetaNode($1, $3);
+                    free($3);
+                }
+                ;
 
 /*****************************************************************************
  *

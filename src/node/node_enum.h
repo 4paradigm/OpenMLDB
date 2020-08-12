@@ -73,6 +73,7 @@ enum SQLNodeType {
     kLambdaDef,
     kPartitionMeta,
     kReplicaNum,
+    kDistributions,
     kUnknow
 };
 

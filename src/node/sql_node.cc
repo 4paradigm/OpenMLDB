@@ -901,7 +901,6 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSQLVector(
             output, tab, partition_meta_list_, "partition_meta_list", true);
-    output << "\n";
 }
 
 void ColumnDefNode::Print(std::ostream &output,
@@ -1710,6 +1709,15 @@ void ReplicaNumNode::Print(std::ostream &output,
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, std::to_string(replica_num_), "replica_num", true);
+}
+
+void DistributionsNode::Print(std::ostream &output,
+        const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLVector(output, tab, distribution_list_->GetList(),
+            "distribution_list", true);
 }
 
 }  // namespace node

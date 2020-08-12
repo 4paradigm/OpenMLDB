@@ -541,19 +541,38 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
     SQLNodeList partition_meta_list;
     if (nullptr != table_option_list) {
         for (auto node_ptr : table_option_list->GetList()) {
-            switch (node_ptr->GetType()) {
-                case kReplicaNum:
-                    replica_num = dynamic_cast<ReplicaNumNode*>(node_ptr)->
-                        GetReplicaNum();
-                    break;
-                case kPartitionMeta:
-                    partition_meta_list.PushBack(node_ptr);
-                    break;
-                default: {
-                             LOG(WARNING) << "can not handle type "
-                                 << NameOfSQLNodeType(node_ptr->GetType())
-                                 << " for column index";
-                         }
+            if (nullptr != node_ptr) {
+                switch (node_ptr->GetType()) {
+                    case kReplicaNum: {
+                        replica_num = dynamic_cast<ReplicaNumNode*>(node_ptr)->
+                            GetReplicaNum();
+                        break;
+                    }
+                    case kDistributions: {
+                        auto d_list =
+                            dynamic_cast<DistributionsNode*>(node_ptr)->
+                            GetDistributionList();
+                        if (nullptr != d_list) {
+                            for (auto meta_ptr : d_list->GetList()) {
+                                if (nullptr != meta_ptr) {
+                                    if (meta_ptr->GetType() != kPartitionMeta) {
+                                        LOG(WARNING) << "can not handle type "
+                                            << NameOfSQLNodeType(
+                                                    meta_ptr->GetType())
+                                            << " for table node";
+                                    }
+                                    partition_meta_list.PushBack(meta_ptr);
+                                }
+                            }
+                        }
+                        break;
+                    }
+                    default: {
+                                 LOG(WARNING) << "can not handle type "
+                                     << NameOfSQLNodeType(node_ptr->GetType())
+                                     << " for table node";
+                    }
+                }
             }
         }
     }
@@ -1273,6 +1292,11 @@ SQLNode *NodeManager::MakePartitionMetaNode(RoleType role_type,
 SQLNode *NodeManager::MakeReplicaNumNode(int num) {
     SQLNode *node_ptr = new ReplicaNumNode(num);
     return RegisterNode(node_ptr);
+}
+
+SQLNode *NodeManager::MakeDistributionsNode(SQLNodeList *distribution_list) {
+    DistributionsNode *index_ptr = new DistributionsNode(distribution_list);
+    return RegisterNode(index_ptr);
 }
 
 }  // namespace node
