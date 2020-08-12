@@ -169,6 +169,9 @@ public class StreamWindowAggPlan {
                             out.collect(outputFlinkRow);
                         }
                     }
+
+                    // Clear state if the data has been processed
+                    this.timeRowsState.remove(timestamp);
                 }
 
                 @Override
@@ -176,8 +179,6 @@ public class StreamWindowAggPlan {
                     super.close();
                     inputCodec.delete();
                     outputCodec.delete();
-                    //this.lastTriggeringTsState.clear();
-                    //this.timeRowsState.clear();
                 }
 
             }).returns(finalOutputTypeInfo);
@@ -190,8 +191,6 @@ public class StreamWindowAggPlan {
                 FesqlFlinkCodec inputCodec;
                 FesqlFlinkCodec outputCodec;
                 WindowInterface windowInterface;
-
-                private MapState<Long, List<Row>> timeRowsState;
 
                 @Override
                 public void open(Configuration config) throws Exception {
@@ -210,7 +209,6 @@ public class StreamWindowAggPlan {
                     TypeInformation<Long> keyTypeInformation = BasicTypeInfo.LONG_TYPE_INFO;
                     TypeInformation<List<Row>> valueTypeInformation = new ListTypeInfo<Row>(Row.class);
                     MapStateDescriptor<Long, List<Row>> mapStateDescriptor = new MapStateDescriptor<Long, List<Row>>("timeRowsState", keyTypeInformation, valueTypeInformation);
-                    timeRowsState = this.getRuntimeContext().getMapState(mapStateDescriptor);
                 }
 
                 @Override
@@ -220,29 +218,10 @@ public class StreamWindowAggPlan {
                     LocalDateTime orderbyValue = (LocalDateTime)row.getField(orderbyKeyIndex);
                     long orderbyLongValue = orderbyValue.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
 
-                    List<Row> data = this.timeRowsState.get(orderbyLongValue);
-                    if (data == null) { // Register timer if the timestamp is new
-                        List<Row> rows = new ArrayList<Row>();
-                        rows.add(row);
-                        this.timeRowsState.put(orderbyLongValue, rows);
-                        // TODO: Only support for event time now
-                        context.timerService().registerEventTimeTimer(orderbyLongValue);
-                    } else { // Add the row to state
-                        data.add(row);
-                        this.timeRowsState.put(orderbyLongValue, data);
-                    }
-
-                    List<Row> inputs = this.timeRowsState.get(orderbyLongValue);
-
-                    if (inputs != null) {
-                        for (Row inputRow: inputs) {
-                            com._4paradigm.fesql.codec.Row inputFesqlRow = inputCodec.encodeFlinkRow(inputRow);
-                            com._4paradigm.fesql.codec.Row outputFesqlRow = CoreAPI.WindowProject(functionPointer, orderbyLongValue, inputFesqlRow, true, appendSlices, windowInterface);
-                            Row outputFlinkRow = outputCodec.decodeFesqlRow(outputFesqlRow);
-                            collector.collect(outputFlinkRow);
-                        }
-                    }
-
+                    com._4paradigm.fesql.codec.Row inputFesqlRow = inputCodec.encodeFlinkRow(row);
+                    com._4paradigm.fesql.codec.Row outputFesqlRow = CoreAPI.WindowProject(functionPointer, orderbyLongValue, inputFesqlRow, true, appendSlices, windowInterface);
+                    Row outputFlinkRow = outputCodec.decodeFesqlRow(outputFesqlRow);
+                    collector.collect(outputFlinkRow);
                 }
 
                 @Override
@@ -255,7 +234,6 @@ public class StreamWindowAggPlan {
                     super.close();
                     inputCodec.delete();
                     outputCodec.delete();
-                    //this.timeRowsState.clear();
                 }
 
             }).returns(finalOutputTypeInfo);
