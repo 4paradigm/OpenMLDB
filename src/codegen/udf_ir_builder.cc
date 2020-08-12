@@ -434,7 +434,6 @@ Status UDFIRBuilder::BuildExternCall(
             function->addAttribute(::llvm::AttributeList::ReturnIndex, sext_attr);
         }
     }
-
     return BuildLLVMCall(fn, callee, args, fn->return_by_arg(), output);
 }
 

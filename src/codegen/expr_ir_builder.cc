@@ -1055,7 +1055,7 @@ Status ExprIRBuilder::BuildCondExpr(const ::fesql::node::CondExpr* node,
         for (size_t i = 0; i < left_value.GetFieldNum(); ++i) {
             NativeValue sub_left = left_value.GetField(i);
             NativeValue sub_right = right_value.GetField(i);
-            ::llvm::Value* raw_value = builder.CreateSelect(raw_cond, left_value.GetValue(&builder), right_value.GetValue(&builder));
+            ::llvm::Value* raw_value = builder.CreateSelect(raw_cond, sub_left.GetValue(&builder), sub_right.GetValue(&builder));
             if (output_is_null == nullptr){
                 result_tuple.push_back(NativeValue::Create(raw_value));
             } else {

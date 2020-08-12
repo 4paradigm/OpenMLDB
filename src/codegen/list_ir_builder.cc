@@ -261,7 +261,8 @@ Status ListIRBuilder::BuildIteratorNext(::llvm::Value* iterator,
         ::llvm::Type* bool_ty = ::llvm::Type::getInt1Ty(block_->getContext());
         ::std::string fn_name = "next_nullable.iterator_" + elem_type->GetName();
         auto iter_next_fn_ty = ::llvm::FunctionType::get(
-            v1_type, {iter_ref_type->getPointerTo(), v1_type->getPointerTo(), bool_ty->getPointerTo()}, false);
+            ::llvm::Type::getVoidTy(block_->getContext()), 
+            {iter_ref_type->getPointerTo(), v1_type->getPointerTo(), bool_ty->getPointerTo()}, false);
 
         ::llvm::FunctionCallee callee =
             block_->getModule()->getOrInsertFunction(fn_name, iter_next_fn_ty);
@@ -270,7 +271,12 @@ Status ListIRBuilder::BuildIteratorNext(::llvm::Value* iterator,
         ::llvm::Value* next_addr = builder.CreateAlloca(v1_type);
         ::llvm::Value* is_null_addr = builder.CreateAlloca(bool_ty);
         builder.CreateCall(callee, {iterator, next_addr, is_null_addr});
-        *output = NativeValue::CreateWithFlag(builder.CreateLoad(next_addr), builder.CreateLoad(is_null_addr));
+
+        ::llvm::Value* next_raw = next_addr;
+        if (!TypeIRBuilder::IsStructPtr(next_addr->getType())) {
+            next_raw = builder.CreateLoad(next_addr);
+        }
+        *output = NativeValue::CreateWithFlag(next_raw, builder.CreateLoad(is_null_addr));
     } else {
         if (TypeIRBuilder::IsStructPtr(v1_type)) {
             return BuildStructTypeIteratorNext(iterator, elem_type, output);

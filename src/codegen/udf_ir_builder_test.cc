@@ -43,6 +43,9 @@ namespace fesql {
 namespace codegen {
 
 using udf::Nullable;
+using codec::Date;
+using codec::Timestamp;
+using codec::StringRef;
 
 class UDFIRBuilderTest : public ::testing::Test {
  public:
@@ -90,108 +93,108 @@ void CheckUDFFail(const std::string &name, T expect, Args... args) {
 }
 
 TEST_F(UDFIRBuilderTest, dayofmonth_date_udf_test) {
-    codec::Date date(2020, 05, 22);
-    CheckUDF<int32_t, codec::Date>("dayofmonth", 22, date);
+    Date date(2020, 05, 22);
+    CheckUDF<int32_t, Date>("dayofmonth", 22, date);
 }
 TEST_F(UDFIRBuilderTest, month_date_udf_test) {
-    codec::Date date(2020, 05, 22);
-    CheckUDF<int32_t, codec::Date>("month", 5, date);
+    Date date(2020, 05, 22);
+    CheckUDF<int32_t, Date>("month", 5, date);
 }
 TEST_F(UDFIRBuilderTest, year_date_udf_test) {
-    codec::Date date(2020, 05, 22);
-    CheckUDF<int32_t, codec::Date>("year", 2020, date);
+    Date date(2020, 05, 22);
+    CheckUDF<int32_t, Date>("year", 2020, date);
 }
 TEST_F(UDFIRBuilderTest, dayofweek_date_udf_test) {
-    codec::Date date(2020, 05, 22);
-    CheckUDF<int32_t, codec::Date>("dayofweek", 6, date);
+    Date date(2020, 05, 22);
+    CheckUDF<int32_t, Date>("dayofweek", 6, date);
 }
 TEST_F(UDFIRBuilderTest, weekofyear_date_udf_test) {
     {
-        codec::Date date(2020, 01, 01);
-        CheckUDF<int32_t, codec::Date>("weekofyear", 1, date);
+        Date date(2020, 01, 01);
+        CheckUDF<int32_t, Date>("weekofyear", 1, date);
     }
     {
-        codec::Date date(2020, 01, 02);
-        CheckUDF<int32_t, codec::Date>("weekofyear", 1, date);
+        Date date(2020, 01, 02);
+        CheckUDF<int32_t, Date>("weekofyear", 1, date);
     }
     {
-        codec::Date date(2020, 01, 03);
-        CheckUDF<int32_t, codec::Date>("weekofyear", 1, date);
+        Date date(2020, 01, 03);
+        CheckUDF<int32_t, Date>("weekofyear", 1, date);
     }
     {
-        codec::Date date(2020, 01, 04);
-        CheckUDF<int32_t, codec::Date>("weekofyear", 1, date);
+        Date date(2020, 01, 04);
+        CheckUDF<int32_t, Date>("weekofyear", 1, date);
     }
     {
-        codec::Date date(2020, 01, 05);
-        CheckUDF<int32_t, codec::Date>("weekofyear", 1, date);
+        Date date(2020, 01, 05);
+        CheckUDF<int32_t, Date>("weekofyear", 1, date);
     }
     {
-        codec::Date date(2020, 01, 06);
-        CheckUDF<int32_t, codec::Date>("weekofyear", 2, date);
+        Date date(2020, 01, 06);
+        CheckUDF<int32_t, Date>("weekofyear", 2, date);
     }
     {
-        codec::Date date(2020, 05, 22);
-        CheckUDF<int32_t, codec::Date>("weekofyear", 21, date);
+        Date date(2020, 05, 22);
+        CheckUDF<int32_t, Date>("weekofyear", 21, date);
     }
     {
-        codec::Date date(2020, 05, 23);
-        CheckUDF<int32_t, codec::Date>("weekofyear", 21, date);
+        Date date(2020, 05, 23);
+        CheckUDF<int32_t, Date>("weekofyear", 21, date);
     }
     {
-        codec::Date date(2020, 05, 24);
-        CheckUDF<int32_t, codec::Date>("weekofyear", 21, date);
+        Date date(2020, 05, 24);
+        CheckUDF<int32_t, Date>("weekofyear", 21, date);
     }
     {
-        codec::Date date(2020, 05, 25);
-        CheckUDF<int32_t, codec::Date>("weekofyear", 22, date);
+        Date date(2020, 05, 25);
+        CheckUDF<int32_t, Date>("weekofyear", 22, date);
     }
 }
 
 TEST_F(UDFIRBuilderTest, minute_timestamp_udf_test) {
-    codec::Timestamp time(1590115420000L);
-    CheckUDF<int32_t, codec::Timestamp>("minute", 43, time);
+    Timestamp time(1590115420000L);
+    CheckUDF<int32_t, Timestamp>("minute", 43, time);
 }
 TEST_F(UDFIRBuilderTest, second_timestamp_udf_test) {
-    codec::Timestamp time(1590115420000L);
-    CheckUDF<int32_t, codec::Timestamp>("second", 40, time);
+    Timestamp time(1590115420000L);
+    CheckUDF<int32_t, Timestamp>("second", 40, time);
 }
 TEST_F(UDFIRBuilderTest, hour_timestamp_udf_test) {
-    codec::Timestamp time(1590115420000L);
-    CheckUDF<int32_t, codec::Timestamp>("hour", 10, time);
+    Timestamp time(1590115420000L);
+    CheckUDF<int32_t, Timestamp>("hour", 10, time);
 }
 TEST_F(UDFIRBuilderTest, dayofmonth_timestamp_udf_test) {
-    codec::Timestamp time(1590115420000L);
-    CheckUDF<int32_t, codec::Timestamp>("dayofmonth", 22, time);
+    Timestamp time(1590115420000L);
+    CheckUDF<int32_t, Timestamp>("dayofmonth", 22, time);
 }
 
 TEST_F(UDFIRBuilderTest, dayofweek_timestamp_udf_test) {
-    codec::Timestamp time(1590115420000L);
-    CheckUDF<int32_t, codec::Timestamp>("dayofweek", 6, time);
+    Timestamp time(1590115420000L);
+    CheckUDF<int32_t, Timestamp>("dayofweek", 6, time);
 }
 TEST_F(UDFIRBuilderTest, weekofyear_timestamp_udf_test) {
-    codec::Timestamp time(1590115420000L);
-    CheckUDF<int32_t, codec::Timestamp>("weekofyear", 21, time);
+    Timestamp time(1590115420000L);
+    CheckUDF<int32_t, Timestamp>("weekofyear", 21, time);
 }
 
 TEST_F(UDFIRBuilderTest, month_timestamp_udf_test) {
-    codec::Date date(2020, 05, 22);
-    CheckUDF<int32_t, codec::Date>("month", 5, date);
+    Date date(2020, 05, 22);
+    CheckUDF<int32_t, Date>("month", 5, date);
 }
 TEST_F(UDFIRBuilderTest, year_timestamp_udf_test) {
-    codec::Date date(2020, 05, 22);
-    CheckUDF<int32_t, codec::Date>("year", 2020, date);
+    Date date(2020, 05, 22);
+    CheckUDF<int32_t, Date>("year", 2020, date);
 }
 
 TEST_F(UDFIRBuilderTest, minute_int64_udf_test) {
     CheckUDF<int32_t, int64_t>("minute", 43, 1590115420000L);
 }
 TEST_F(UDFIRBuilderTest, second_int64_udf_test) {
-    codec::Timestamp time(1590115420000L);
+    Timestamp time(1590115420000L);
     CheckUDF<int32_t, int64_t>("second", 40, 1590115420000L);
 }
 TEST_F(UDFIRBuilderTest, hour_int64_udf_test) {
-    codec::Timestamp time(1590115420000L);
+    Timestamp time(1590115420000L);
     CheckUDF<int32_t, int64_t>("hour", 10, 1590115420000L);
 }
 
@@ -277,30 +280,30 @@ TEST_F(UDFIRBuilderTest, max_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, max_timestamp_udf_test) {
-    std::vector<codec::Timestamp> vec = {
-        codec::Timestamp(1590115390000L), codec::Timestamp(1590115410000L),
-        codec::Timestamp(1590115420000L), codec::Timestamp(1590115430000L),
-        codec::Timestamp(1590115400000L)};
-    codec::ArrayListV<codec::Timestamp> list(&vec);
-    codec::ListRef<codec::Timestamp> list_ref;
+    std::vector<Timestamp> vec = {
+        Timestamp(1590115390000L), Timestamp(1590115410000L),
+        Timestamp(1590115420000L), Timestamp(1590115430000L),
+        Timestamp(1590115400000L)};
+    codec::ArrayListV<Timestamp> list(&vec);
+    codec::ListRef<Timestamp> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
 
-    codec::Timestamp max_time;
-    CheckUDF<codec::Timestamp, codec::ListRef<codec::Timestamp>>(
-        "max", codec::Timestamp(1590115430000L), list_ref);
+    Timestamp max_time;
+    CheckUDF<Timestamp, codec::ListRef<Timestamp>>(
+        "max", Timestamp(1590115430000L), list_ref);
 }
 TEST_F(UDFIRBuilderTest, min_timestamp_udf_test) {
-    std::vector<codec::Timestamp> vec = {
-        codec::Timestamp(1590115390000L), codec::Timestamp(1590115410000L),
-        codec::Timestamp(1590115420000L), codec::Timestamp(1590115430000L),
-        codec::Timestamp(1590115400000L)};
-    codec::ArrayListV<codec::Timestamp> list(&vec);
-    codec::ListRef<codec::Timestamp> list_ref;
+    std::vector<Timestamp> vec = {
+        Timestamp(1590115390000L), Timestamp(1590115410000L),
+        Timestamp(1590115420000L), Timestamp(1590115430000L),
+        Timestamp(1590115400000L)};
+    codec::ArrayListV<Timestamp> list(&vec);
+    codec::ListRef<Timestamp> list_ref;
     list_ref.list = reinterpret_cast<int8_t *>(&list);
 
-    codec::Timestamp max_time;
-    CheckUDF<codec::Timestamp, codec::ListRef<codec::Timestamp>>(
-        "min", codec::Timestamp(1590115390000L), list_ref);
+    Timestamp max_time;
+    CheckUDF<Timestamp, codec::ListRef<Timestamp>>(
+        "min", Timestamp(1590115390000L), list_ref);
 }
 
 TEST_F(UDFIRBuilderTest, log_udf_test) {
@@ -382,201 +385,169 @@ TEST_F(UDFIRBuilderTest, ceil_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, substring_pos_len_udf_test) {
-    CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
-        "substring", codec::StringRef("12345"), codec::StringRef("1234567890"),
+    CheckUDF<StringRef, StringRef, int32_t, int32_t>(
+        "substring", StringRef("12345"), StringRef("1234567890"),
         1, 5);
 
-    CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
-        "substring", codec::StringRef("23456"), codec::StringRef("1234567890"),
+    CheckUDF<StringRef, StringRef, int32_t, int32_t>(
+        "substring", StringRef("23456"), StringRef("1234567890"),
         2, 5);
 
-    CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
-        "substring", codec::StringRef("23456"), codec::StringRef("1234567890"),
+    CheckUDF<StringRef, StringRef, int32_t, int32_t>(
+        "substring", StringRef("23456"), StringRef("1234567890"),
         -9, 5);
 
-    CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
-        "substring", codec::StringRef("90"), codec::StringRef("1234567890"), -2,
+    CheckUDF<StringRef, StringRef, int32_t, int32_t>(
+        "substring", StringRef("90"), StringRef("1234567890"), -2,
         5);
 
-    CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
-        "substring", codec::StringRef(""), codec::StringRef("1234567890"), 2,
+    CheckUDF<StringRef, StringRef, int32_t, int32_t>(
+        "substring", StringRef(""), StringRef("1234567890"), 2,
         0);
 
-    CheckUDF<codec::StringRef, codec::StringRef, int32_t, int32_t>(
-        "substring", codec::StringRef(""), codec::StringRef("1234567890"), 2,
+    CheckUDF<StringRef, StringRef, int32_t, int32_t>(
+        "substring", StringRef(""), StringRef("1234567890"), 2,
         -1);
 }
 
 TEST_F(UDFIRBuilderTest, substring_pos_udf_test) {
-    CheckUDF<codec::StringRef, codec::StringRef, int32_t>(
-        "substring", codec::StringRef("1234567890"),
-        codec::StringRef("1234567890"), 1);
+    CheckUDF<StringRef, StringRef, int32_t>(
+        "substring", StringRef("1234567890"),
+        StringRef("1234567890"), 1);
 
-    CheckUDF<codec::StringRef, codec::StringRef, int32_t>(
-        "substring", codec::StringRef("234567890"),
-        codec::StringRef("1234567890"), 2);
+    CheckUDF<StringRef, StringRef, int32_t>(
+        "substring", StringRef("234567890"),
+        StringRef("1234567890"), 2);
 
-    CheckUDF<codec::StringRef, codec::StringRef, int32_t>(
-        "substring", codec::StringRef("234567890"),
-        codec::StringRef("1234567890"), -9);
+    CheckUDF<StringRef, StringRef, int32_t>(
+        "substring", StringRef("234567890"),
+        StringRef("1234567890"), -9);
 
-    CheckUDF<codec::StringRef, codec::StringRef, int32_t>(
-        "substring", codec::StringRef("90"), codec::StringRef("1234567890"),
+    CheckUDF<StringRef, StringRef, int32_t>(
+        "substring", StringRef("90"), StringRef("1234567890"),
         -2);
 
-    CheckUDF<codec::StringRef, codec::StringRef, int32_t>(
-        "substring", codec::StringRef(""), codec::StringRef("1234567890"), 12);
-    CheckUDF<codec::StringRef, codec::StringRef, int32_t>(
-        "substring", codec::StringRef(""), codec::StringRef("1234567890"), -12);
+    CheckUDF<StringRef, StringRef, int32_t>(
+        "substring", StringRef(""), StringRef("1234567890"), 12);
+    CheckUDF<StringRef, StringRef, int32_t>(
+        "substring", StringRef(""), StringRef("1234567890"), -12);
 }
 
 TEST_F(UDFIRBuilderTest, concat_str_udf_test) {
     //    concat("12345") == "12345"
-    CheckUDF<codec::StringRef, codec::StringRef>(
-        "concat", codec::StringRef("12345"),
-        codec::StringRef(std::string("12345")));
+    CheckUDF<StringRef, StringRef>(
+        "concat", StringRef("12345"),
+        StringRef(std::string("12345")));
 
     // concat("12345", "67890") == "1234567890"
-    CheckUDF<codec::StringRef, codec::StringRef, codec::StringRef>(
-        "concat", codec::StringRef("1234567890"),
-        codec::StringRef(std::string("12345")), codec::StringRef("67890"));
+    CheckUDF<StringRef, StringRef, StringRef>(
+        "concat", StringRef("1234567890"),
+        StringRef(std::string("12345")), StringRef("67890"));
 
     // concat("123", "4567890", "abcde") == "1234567890abcde"
-    CheckUDF<codec::StringRef, codec::StringRef, codec::StringRef,
-             codec::StringRef>("concat", codec::StringRef("1234567890abcde"),
-                               codec::StringRef(std::string("123")),
-                               codec::StringRef("4567890"),
-                               codec::StringRef("abcde"));
+    CheckUDF<StringRef, StringRef, StringRef,
+             StringRef>("concat", StringRef("1234567890abcde"),
+                               StringRef(std::string("123")),
+                               StringRef("4567890"),
+                               StringRef("abcde"));
 
     // concat("1", "23", "456", "7890", "abc", "de") == "1234567890abcde"
-    CheckUDF<codec::StringRef, codec::StringRef, codec::StringRef,
-             codec::StringRef>("concat", codec::StringRef("1234567890abcde"),
-                               codec::StringRef("1"), codec::StringRef("23"),
-                               codec::StringRef("456"),
-                               codec::StringRef("7890"),
-                               codec::StringRef("abc"), codec::StringRef("de"));
+    CheckUDF<StringRef, StringRef, StringRef,
+             StringRef>("concat", StringRef("1234567890abcde"),
+                               StringRef("1"), StringRef("23"),
+                               StringRef("456"),
+                               StringRef("7890"),
+                               StringRef("abc"), StringRef("de"));
 
     //    concat() == ""
-    CheckUDFFail<codec::StringRef>("concat", codec::StringRef("no result"));
+    CheckUDFFail<StringRef>("concat", StringRef("no result"));
 }
 TEST_F(UDFIRBuilderTest, concat_anytype_udf_test) {
-    CheckUDF<codec::StringRef, codec::StringRef, int32_t>(
-        "concat", codec::StringRef("1234567890"), codec::StringRef("12345"),
+    CheckUDF<StringRef, StringRef, int32_t>(
+        "concat", StringRef("1234567890"), StringRef("12345"),
         67890);
 
-    CheckUDF<codec::StringRef, float, int32_t>(
-        "concat", codec::StringRef("1234.567890"), 1234.5f, 67890);
+    CheckUDF<StringRef, float, int32_t>(
+        "concat", StringRef("1234.567890"), 1234.5f, 67890);
 
-    CheckUDF<codec::StringRef, codec::StringRef, int16_t, int32_t, int64_t,
-             float, double, codec::Timestamp, codec::Date>(
-        "concat", codec::StringRef("12345.67.82020-05-22 10:43:402020-06-23"),
-        codec::StringRef("1"), static_cast<int16_t>(2), 3, 4L, 5.6f, 7.8,
-        codec::Timestamp(1590115420000L), codec::Date(2020, 06, 23));
+    CheckUDF<StringRef, StringRef, int16_t, int32_t, int64_t,
+             float, double, Timestamp, Date>(
+        "concat", StringRef("12345.67.82020-05-22 10:43:402020-06-23"),
+        StringRef("1"), static_cast<int16_t>(2), 3, 4L, 5.6f, 7.8,
+        Timestamp(1590115420000L), Date(2020, 06, 23));
 }
 
 TEST_F(UDFIRBuilderTest, concat_ws_anytype_udf_test) {
     // concat on string "--"
-    CheckUDF<codec::StringRef, codec::StringRef, codec::StringRef, int32_t>(
-        "concat_ws", codec::StringRef("12345--67890"), codec::StringRef("--"),
-        codec::StringRef("12345"), 67890);
+    CheckUDF<StringRef, StringRef, StringRef, int32_t>(
+        "concat_ws", StringRef("12345--67890"), StringRef("--"),
+        StringRef("12345"), 67890);
 
     // concat on int32
-    CheckUDF<codec::StringRef, int32_t, float, int32_t>(
-        "concat_ws", codec::StringRef("1234.5067890"), 0, 1234.5f, 67890);
+    CheckUDF<StringRef, int32_t, float, int32_t>(
+        "concat_ws", StringRef("1234.5067890"), 0, 1234.5f, 67890);
 
     // concat on string "#"
-    CheckUDF<codec::StringRef, codec::StringRef, codec::StringRef, int16_t,
-             int32_t, int64_t, float, double, codec::Timestamp, codec::Date>(
+    CheckUDF<StringRef, StringRef, StringRef, int16_t,
+             int32_t, int64_t, float, double, Timestamp, Date>(
         "concat_ws",
 
-        codec::StringRef("1#2#3#4#5.6#7.8#2020-05-22 10:43:40#2020-06-23"),
-        codec::StringRef("#"), codec::StringRef("1"), static_cast<int16_t>(2),
-        3, 4L, 5.6f, 7.8, codec::Timestamp(1590115420000L),
-        codec::Date(2020, 06, 23));
+        StringRef("1#2#3#4#5.6#7.8#2020-05-22 10:43:40#2020-06-23"),
+        StringRef("#"), StringRef("1"), static_cast<int16_t>(2),
+        3, 4L, 5.6f, 7.8, Timestamp(1590115420000L),
+        Date(2020, 06, 23));
 }
 
 TEST_F(UDFIRBuilderTest, to_string_test) {
-    CheckUDF<codec::StringRef, int32_t>("string", codec::StringRef("67890"),
+    CheckUDF<StringRef, int32_t>("string", StringRef("67890"),
                                         67890);
-    CheckUDF<codec::StringRef, int16_t>("string", codec::StringRef("128"),
+    CheckUDF<StringRef, int16_t>("string", StringRef("128"),
                                         static_cast<int16_t>(128));
-    CheckUDF<codec::StringRef, float>("string", codec::StringRef("1.234"),
+    CheckUDF<StringRef, float>("string", StringRef("1.234"),
                                       1.234f);
-    CheckUDF<codec::StringRef, double>("string", codec::StringRef("1.234"),
+    CheckUDF<StringRef, double>("string", StringRef("1.234"),
                                        1.234);
 
-    CheckUDF<codec::StringRef, int64_t>(
-        "string", codec::StringRef("1234567890"), 1234567890L);
+    CheckUDF<StringRef, int64_t>(
+        "string", StringRef("1234567890"), 1234567890L);
 
-    CheckUDF<codec::StringRef, int64_t>(
-        "string", codec::StringRef("1234567890"), 1234567890L);
-    CheckUDF<codec::StringRef, codec::Timestamp>(
-        "string", codec::StringRef("2020-05-22 10:43:40"),
-        codec::Timestamp(1590115420000L));
+    CheckUDF<StringRef, int64_t>(
+        "string", StringRef("1234567890"), 1234567890L);
+    CheckUDF<StringRef, Timestamp>(
+        "string", StringRef("2020-05-22 10:43:40"),
+        Timestamp(1590115420000L));
 
-    CheckUDF<codec::StringRef, codec::Date>(
-        "string", codec::StringRef("2020-05-22"), codec::Date(2020, 5, 22));
+    CheckUDF<StringRef, Date>(
+        "string", StringRef("2020-05-22"), Date(2020, 5, 22));
 }
 
 TEST_F(UDFIRBuilderTest, timestamp_format_test) {
-    CheckUDF<codec::StringRef, codec::Timestamp, codec::StringRef>(
-        "date_format", codec::StringRef("2020-05-22 10:43:40"),
-        codec::Timestamp(1590115420000L),
-        codec::StringRef("%Y-%m-%d %H:%M:%S"));
+    CheckUDF<StringRef, Timestamp, StringRef>(
+        "date_format", StringRef("2020-05-22 10:43:40"),
+        Timestamp(1590115420000L),
+        StringRef("%Y-%m-%d %H:%M:%S"));
 
-    CheckUDF<codec::StringRef, codec::Timestamp, codec::StringRef>(
-        "date_format", codec::StringRef("2020-05-22"),
-        codec::Timestamp(1590115420000L), codec::StringRef("%Y-%m-%d"));
+    CheckUDF<StringRef, Timestamp, StringRef>(
+        "date_format", StringRef("2020-05-22"),
+        Timestamp(1590115420000L), StringRef("%Y-%m-%d"));
 
-    CheckUDF<codec::StringRef, codec::Timestamp, codec::StringRef>(
-        "date_format", codec::StringRef("10:43:40"),
-        codec::Timestamp(1590115420000L), codec::StringRef("%H:%M:%S"));
+    CheckUDF<StringRef, Timestamp, StringRef>(
+        "date_format", StringRef("10:43:40"),
+        Timestamp(1590115420000L), StringRef("%H:%M:%S"));
 }
 
 TEST_F(UDFIRBuilderTest, date_format_test) {
-    CheckUDF<codec::StringRef, codec::Date, codec::StringRef>(
-        "date_format", codec::StringRef("2020-05-22 00:00:00"),
-        codec::Date(2020, 05, 22), codec::StringRef("%Y-%m-%d %H:%M:%S"));
+    CheckUDF<StringRef, Date, StringRef>(
+        "date_format", StringRef("2020-05-22 00:00:00"),
+        Date(2020, 05, 22), StringRef("%Y-%m-%d %H:%M:%S"));
 
-    CheckUDF<codec::StringRef, codec::Date, codec::StringRef>(
-        "date_format", codec::StringRef("2020-05-22"),
-        codec::Date(2020, 05, 22), codec::StringRef("%Y-%m-%d"));
+    CheckUDF<StringRef, Date, StringRef>(
+        "date_format", StringRef("2020-05-22"),
+        Date(2020, 05, 22), StringRef("%Y-%m-%d"));
 
-    CheckUDF<codec::StringRef, codec::Date, codec::StringRef>(
-        "date_format", codec::StringRef("00:00:00"), codec::Date(2020, 05, 22),
-        codec::StringRef("%H:%M:%S"));
-}
-
-TEST_F(UDFIRBuilderTest, count_where_test) {
-    CheckUDF<int64_t, codec::ListRef<int32_t>, codec::ListRef<bool>>(
-        "count_where", 2, MakeList<int32_t>({4, 5, 6}),
-        MakeBoolList({true, false, true}));
-
-    CheckUDF<int64_t, codec::ListRef<codec::StringRef>, codec::ListRef<bool>>(
-        "count_where", 2,
-        MakeList({codec::StringRef("1"), codec::StringRef("2"),
-                  codec::StringRef("3")}),
-        MakeBoolList({true, false, true}));
-
-    CheckUDF<int64_t, codec::ListRef<Nullable<int32_t>>, codec::ListRef<Nullable<bool>>>(
-        "count_where", 2, MakeList<Nullable<int32_t>>({4, 5, 6, nullptr}),
-        MakeList<Nullable<bool>>({true, false, nullptr, true}));
-}
-
-TEST_F(UDFIRBuilderTest, avg_test) {
-    CheckUDF<double, codec::ListRef<int16_t>>("avg", 2.5,
-                                              MakeList<int16_t>({1, 2, 3, 4}));
-    CheckUDF<double, codec::ListRef<int32_t>>("avg", 2.5,
-                                              MakeList<int32_t>({1, 2, 3, 4}));
-    CheckUDF<double, codec::ListRef<int64_t>>("avg", 2.5,
-                                              MakeList<int64_t>({1, 2, 3, 4}));
-    CheckUDF<double, codec::ListRef<float>>("avg", 2.5,
-                                            MakeList<float>({1, 2, 3, 4}));
-    CheckUDF<double, codec::ListRef<double>>("avg", 2.5,
-                                             MakeList<double>({1, 2, 3, 4}));
-    // empty list
-    CheckUDF<double, codec::ListRef<double>>("avg", 0.0 / 0,
-                                             MakeList<double>({}));
+    CheckUDF<StringRef, Date, StringRef>(
+        "date_format", StringRef("00:00:00"), Date(2020, 05, 22),
+        StringRef("%H:%M:%S"));
 }
 
 }  // namespace codegen

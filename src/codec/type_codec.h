@@ -38,7 +38,7 @@ struct StringRef {
         return size_ == 0 ? "" : std::string(data_, size_);
     }
     uint32_t size_;
-    char* data_;
+    const char* data_;
 };
 
 __attribute__((unused)) static int compare(const StringRef& a,
@@ -57,14 +57,15 @@ __attribute__((unused)) static const StringRef operator+(const StringRef& a,
                                                          const StringRef& b) {
     StringRef str;
     str.size_ = a.size_ + b.size_;
-    str.data_ = static_cast<char*>(malloc(str.size_ + 1));
+    char * buffer = static_cast<char*>(malloc(str.size_ + 1));
+    str.data_ = buffer;
     if (a.size_ > 0) {
-        memcpy(str.data_, a.data_, a.size_);
+        memcpy(buffer, a.data_, a.size_);
     }
     if (b.size_ > 0) {
-        memcpy(str.data_ + a.size_, b.data_, b.size_);
+        memcpy(buffer + a.size_, b.data_, b.size_);
     }
-    str.data_[str.size_] = '\0';
+    buffer[str.size_] = '\0';
     return str;
 }
 __attribute__((unused)) static std::ostream& operator<<(std::ostream& os,
@@ -477,6 +478,7 @@ struct hash<fesql::codec::StringRef> {
         return std::hash<std::string>()(t.ToString());
     }
 };
+
 }  // namespace std
 
 #endif  // SRC_CODEC_TYPE_CODEC_H_
