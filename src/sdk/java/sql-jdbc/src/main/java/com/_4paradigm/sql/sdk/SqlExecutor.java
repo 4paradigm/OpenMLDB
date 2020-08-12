@@ -16,6 +16,7 @@ public interface SqlExecutor {
     ResultSet executeSQL(String db, String sql);
     SQLRequestRow getRequestRow(String db, String sql);
     SQLInsertRow getInsertRow(String db, String sql);
+    InsertPreparedStatementImpl getInsertPrepareStmt(String db, String sql);
     SQLInsertRows getInsertRows(String db, String sql);
     ResultSet executeSQL(String db, String sql, SQLRequestRow row);
 }

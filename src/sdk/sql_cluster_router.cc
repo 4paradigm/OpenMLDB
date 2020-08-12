@@ -202,7 +202,7 @@ bool SQLClusterRouter::GetInsertInfo(
         bool find_flag = false;
         for (int i = 0; i < (*table_info)->column_desc_v1_size(); ++i) {
             if (col_name == (*table_info)->column_desc_v1(i).name()) {
-                if (column_map.count(i)) {
+                if (column_map.count(i) > 0) {
                     status->msg = "duplicate column of " + col_name;
                     LOG(WARNING) << status->msg;
                     return false;
@@ -343,7 +343,7 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
         return DefaultValueMap();
     }
     for (int32_t idx = 0; idx < table_info->column_desc_v1_size(); idx++) {
-        if (!column_map.empty() && !column_map.count(idx)) {
+        if (!column_map.empty() && (column_map.count(idx) == 0)) {
             if (table_info->column_desc_v1(idx).not_null()) {
                 LOG(WARNING)
                     << "column " << table_info->column_desc_v1(idx).name()
@@ -757,8 +757,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     }
     std::shared_ptr<RouterCache> cache = GetCache(db, sql);
     if (cache) {
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
-            cache->table_info;
+        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = cache->table_info;
         std::shared_ptr<::rtidb::client::TabletClient> tablet =
             cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
         if (!tablet) {

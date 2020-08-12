@@ -1,6 +1,7 @@
 package com._4paradigm.sql.jdbc;
 
 import com._4paradigm.sql.*;
+import com._4paradigm.sql.sdk.InsertPreparedStatementImpl;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
@@ -23,6 +24,7 @@ public class SQLRouterSmokeTest {
             SqlExecutor router = new SqlClusterExecutor(option);
             String dbname = "db" + random.nextInt(100000);
             // create db
+            router.dropDB(dbname);
             boolean ok = router.createDB(dbname);
             Assert.assertTrue(ok);
             String ddl = "create table tsql1010 ( col1 bigint, col2 string, index(key=col2, ts=col1));";
@@ -39,7 +41,11 @@ public class SQLRouterSmokeTest {
             insertRow.Init(5);
             insertRow.AppendInt64(1001);
             insertRow.AppendString("world");
-            ok = router.executeInsert(dbname, insertPlaceholder, insertRow);
+            InsertPreparedStatementImpl impl = router.getInsertPrepareStmt(dbname, insertPlaceholder);
+            impl.setLong(1, 1001);
+            impl.setString(2, "world");
+            ok = impl.execute();
+            // ok = router.executeInsert(dbname, insertPlaceholder, insertRow);
             Assert.assertTrue(ok);
             // insert placeholder batch
             SQLInsertRows insertRows = router.getInsertRows(dbname, insertPlaceholder);
