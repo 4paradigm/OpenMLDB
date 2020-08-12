@@ -438,7 +438,7 @@ struct TopAvgCateWhereDef {
                 AvgCateImpl::Update(ptr, key, is_key_null, value,
                                     is_value_null);
                 auto& map = ptr->map();
-                if (map.size() > bound) {
+                if (bound >= 0 && map.size() > static_cast<size_t>(bound)) {
                     map.erase(map.begin());
                 }
             }
