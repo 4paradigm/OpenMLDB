@@ -57,7 +57,7 @@ __attribute__((unused)) static const StringRef operator+(const StringRef& a,
                                                          const StringRef& b) {
     StringRef str;
     str.size_ = a.size_ + b.size_;
-    char * buffer = static_cast<char*>(malloc(str.size_ + 1));
+    char* buffer = static_cast<char*>(malloc(str.size_ + 1));
     str.data_ = buffer;
     if (a.size_ > 0) {
         memcpy(buffer, a.data_, a.size_);

@@ -10,12 +10,12 @@
 #include <iostream>
 #include <utility>
 #include <vector>
-#include "llvm/IR/Attributes.h"
 #include "codegen/context.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/list_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
+#include "llvm/IR/Attributes.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "udf/udf.h"
@@ -430,8 +430,10 @@ Status UDFIRBuilder::BuildExternCall(
         }
     }
     if (func_ty->getReturnType() == int16_ty) {
-        if (!function->hasAttribute(::llvm::AttributeList::ReturnIndex, sext_attr)) {
-            function->addAttribute(::llvm::AttributeList::ReturnIndex, sext_attr);
+        if (!function->hasAttribute(::llvm::AttributeList::ReturnIndex,
+                                    sext_attr)) {
+            function->addAttribute(::llvm::AttributeList::ReturnIndex,
+                                   sext_attr);
         }
     }
     return BuildLLVMCall(fn, callee, args, fn->return_by_arg(), output);

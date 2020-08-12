@@ -111,8 +111,8 @@ void date_format(codec::Timestamp *timestamp, fesql::codec::StringRef *format,
     }
     date_format(timestamp, format->ToString(), output);
 }
-void date_format(const codec::Timestamp *timestamp, const char* format,
-                 char* buffer, size_t size) {
+void date_format(const codec::Timestamp *timestamp, const char *format,
+                 char *buffer, size_t size) {
     time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
     struct tm t;
     gmtime_r(&time, &t);
@@ -131,7 +131,8 @@ void date_format(codec::Timestamp *timestamp, const std::string &format,
     char buffer[80];
     date_format(timestamp, format.c_str(), buffer, 80);
     output->size_ = strlen(buffer);
-    char* target = reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
+    char *target =
+        reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
     memcpy(target, buffer, output->size_);
     output->data_ = target;
 }
@@ -144,8 +145,8 @@ void date_format(codec::Date *date, fesql::codec::StringRef *format,
     date_format(date, format->ToString(), output);
 }
 
-bool date_format(const codec::Date *date, const char* format,
-                 char* buffer, size_t size) {
+bool date_format(const codec::Date *date, const char *format, char *buffer,
+                 size_t size) {
     int32_t day, month, year;
     if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
         return false;
@@ -154,7 +155,7 @@ bool date_format(const codec::Date *date, const char* format,
     tm t = boost::gregorian::to_tm(g_date);
     strftime(buffer, size, format, &t);
     return true;
-}   
+}
 
 void date_format(codec::Date *date, const std::string &format,
                  fesql::codec::StringRef *output) {
@@ -173,7 +174,8 @@ void date_format(codec::Date *date, const std::string &format,
         return;
     }
     output->size_ = strlen(buffer);
-    char* target = reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
+    char *target =
+        reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
     memcpy(target, buffer, output->size_);
     output->data_ = target;
 }
@@ -237,32 +239,33 @@ void sub_string(fesql::codec::StringRef *str, int32_t from, int32_t len,
 }
 
 template <>
-uint32_t format_string<int16_t>(const int16_t& v, char* buffer, size_t size) {
+uint32_t format_string<int16_t>(const int16_t &v, char *buffer, size_t size) {
     return snprintf(buffer, size, "%d", v);
 }
 
 template <>
-uint32_t format_string<int32_t>(const int32_t& v, char* buffer, size_t size) {
+uint32_t format_string<int32_t>(const int32_t &v, char *buffer, size_t size) {
     return snprintf(buffer, size, "%d", v);
 }
 
 template <>
-uint32_t format_string<int64_t>(const int64_t& v, char* buffer, size_t size) {
+uint32_t format_string<int64_t>(const int64_t &v, char *buffer, size_t size) {
     return snprintf(buffer, size, "%lld", v);
 }
 
 template <>
-uint32_t format_string<float>(const float& v, char* buffer, size_t size) {
+uint32_t format_string<float>(const float &v, char *buffer, size_t size) {
     return snprintf(buffer, size, "%f", v);
 }
 
 template <>
-uint32_t format_string<double>(const double& v, char* buffer, size_t size) {
+uint32_t format_string<double>(const double &v, char *buffer, size_t size) {
     return snprintf(buffer, size, "%f", v);
 }
 
 template <>
-uint32_t format_string<codec::Date>(const codec::Date& v, char* buffer, size_t size) {
+uint32_t format_string<codec::Date>(const codec::Date &v, char *buffer,
+                                    size_t size) {
     const uint32_t len = 10;  // 1990-01-01
     if (buffer != nullptr && size >= len) {
         date_format(&v, "%Y-%m-%d", buffer, size);
@@ -271,7 +274,8 @@ uint32_t format_string<codec::Date>(const codec::Date& v, char* buffer, size_t s
 }
 
 template <>
-uint32_t format_string<codec::Timestamp>(const codec::Timestamp& v, char* buffer, size_t size) {
+uint32_t format_string<codec::Timestamp>(const codec::Timestamp &v,
+                                         char *buffer, size_t size) {
     const uint32_t len = 19;  // "%Y-%m-%d %H:%M:%S"
     if (buffer != nullptr && size >= len) {
         date_format(&v, "%Y-%m-%d %H:%M:%S", buffer, size);
@@ -280,7 +284,8 @@ uint32_t format_string<codec::Timestamp>(const codec::Timestamp& v, char* buffer
 }
 
 template <>
-uint32_t format_string<std::string>(const std::string& v, char* buffer, size_t size) {
+uint32_t format_string<std::string>(const std::string &v, char *buffer,
+                                    size_t size) {
     return snprintf(buffer, size, "%s", v.c_str());
 }
 
@@ -333,7 +338,7 @@ const codec::Row *next_row_iterator(int8_t *input) {
 }
 
 template <class V>
-void next_nullable_iterator(int8_t *input, V* v, bool* is_null) {
+void next_nullable_iterator(int8_t *input, V *v, bool *is_null) {
     ::fesql::codec::IteratorRef *iter_ref =
         (::fesql::codec::IteratorRef *)(input);
     ConstIterator<uint64_t, Nullable<V>> *iter =
@@ -474,7 +479,10 @@ void RegisterNativeUDFToModule() {
     RegisterMethod("iterator", bool_ty, {list_row_ty, iter_row_ty},
                    reinterpret_cast<void *>(v1::iterator_list<codec::Row>));
 
-    RegisterMethod("next", i16_ty, {iter_i16_ty,},
+    RegisterMethod("next", i16_ty,
+                   {
+                       iter_i16_ty,
+                   },
                    reinterpret_cast<void *>(v1::next_iterator<int16_t>));
     RegisterMethod("next", i32_ty, {iter_i32_ty},
                    reinterpret_cast<void *>(v1::next_iterator<int32_t>));
@@ -494,22 +502,26 @@ void RegisterNativeUDFToModule() {
         reinterpret_cast<void *>(v1::next_struct_iterator<codec::Date>));
     RegisterMethod(
         "next", bool_ty, {iter_string_ty, string_ty},
-        reinterpret_cast<void *>(v1::next_struct_iterator<codec::StringRef>));    
+        reinterpret_cast<void *>(v1::next_struct_iterator<codec::StringRef>));
     RegisterMethod("next", row_ty, {iter_row_ty},
                    reinterpret_cast<void *>(v1::next_row_iterator));
 
-    RegisterMethod("next_nullable", i16_ty, {iter_i16_ty},
-                   reinterpret_cast<void *>(v1::next_nullable_iterator<int16_t>));
-    RegisterMethod("next_nullable", i32_ty, {iter_i32_ty},
-                   reinterpret_cast<void *>(v1::next_nullable_iterator<int32_t>));
-    RegisterMethod("next_nullable", i64_ty, {iter_i64_ty},
-                   reinterpret_cast<void *>(v1::next_nullable_iterator<int64_t>));
+    RegisterMethod(
+        "next_nullable", i16_ty, {iter_i16_ty},
+        reinterpret_cast<void *>(v1::next_nullable_iterator<int16_t>));
+    RegisterMethod(
+        "next_nullable", i32_ty, {iter_i32_ty},
+        reinterpret_cast<void *>(v1::next_nullable_iterator<int32_t>));
+    RegisterMethod(
+        "next_nullable", i64_ty, {iter_i64_ty},
+        reinterpret_cast<void *>(v1::next_nullable_iterator<int64_t>));
     RegisterMethod("next_nullable", bool_ty, {iter_bool_ty},
                    reinterpret_cast<void *>(v1::next_nullable_iterator<bool>));
     RegisterMethod("next_nullable", float_ty, {iter_float_ty},
                    reinterpret_cast<void *>(v1::next_nullable_iterator<float>));
-    RegisterMethod("next_nullable", double_ty, {iter_double_ty},
-                   reinterpret_cast<void *>(v1::next_nullable_iterator<double>));
+    RegisterMethod(
+        "next_nullable", double_ty, {iter_double_ty},
+        reinterpret_cast<void *>(v1::next_nullable_iterator<double>));
     RegisterMethod(
         "next_nullable", bool_ty, {iter_time_ty},
         reinterpret_cast<void *>(v1::next_nullable_iterator<codec::Timestamp>));
@@ -518,7 +530,7 @@ void RegisterNativeUDFToModule() {
         reinterpret_cast<void *>(v1::next_nullable_iterator<codec::Date>));
     RegisterMethod(
         "next_nullable", bool_ty, {iter_string_ty},
-        reinterpret_cast<void *>(v1::next_nullable_iterator<codec::StringRef>));    
+        reinterpret_cast<void *>(v1::next_nullable_iterator<codec::StringRef>));
 
     RegisterMethod("has_next", bool_ty, {iter_i16_ty},
                    reinterpret_cast<void *>(v1::has_next<int16_t>));

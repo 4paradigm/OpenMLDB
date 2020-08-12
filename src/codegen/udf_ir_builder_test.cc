@@ -42,10 +42,10 @@ ExitOnError ExitOnErr;
 namespace fesql {
 namespace codegen {
 
-using udf::Nullable;
 using codec::Date;
-using codec::Timestamp;
 using codec::StringRef;
+using codec::Timestamp;
+using udf::Nullable;
 
 class UDFIRBuilderTest : public ::testing::Test {
  public:
@@ -386,92 +386,75 @@ TEST_F(UDFIRBuilderTest, ceil_udf_test) {
 
 TEST_F(UDFIRBuilderTest, substring_pos_len_udf_test) {
     CheckUDF<StringRef, StringRef, int32_t, int32_t>(
-        "substring", StringRef("12345"), StringRef("1234567890"),
-        1, 5);
+        "substring", StringRef("12345"), StringRef("1234567890"), 1, 5);
 
     CheckUDF<StringRef, StringRef, int32_t, int32_t>(
-        "substring", StringRef("23456"), StringRef("1234567890"),
-        2, 5);
+        "substring", StringRef("23456"), StringRef("1234567890"), 2, 5);
 
     CheckUDF<StringRef, StringRef, int32_t, int32_t>(
-        "substring", StringRef("23456"), StringRef("1234567890"),
-        -9, 5);
+        "substring", StringRef("23456"), StringRef("1234567890"), -9, 5);
 
     CheckUDF<StringRef, StringRef, int32_t, int32_t>(
-        "substring", StringRef("90"), StringRef("1234567890"), -2,
-        5);
+        "substring", StringRef("90"), StringRef("1234567890"), -2, 5);
 
     CheckUDF<StringRef, StringRef, int32_t, int32_t>(
-        "substring", StringRef(""), StringRef("1234567890"), 2,
-        0);
+        "substring", StringRef(""), StringRef("1234567890"), 2, 0);
 
     CheckUDF<StringRef, StringRef, int32_t, int32_t>(
-        "substring", StringRef(""), StringRef("1234567890"), 2,
-        -1);
+        "substring", StringRef(""), StringRef("1234567890"), 2, -1);
 }
 
 TEST_F(UDFIRBuilderTest, substring_pos_udf_test) {
     CheckUDF<StringRef, StringRef, int32_t>(
-        "substring", StringRef("1234567890"),
-        StringRef("1234567890"), 1);
+        "substring", StringRef("1234567890"), StringRef("1234567890"), 1);
 
-    CheckUDF<StringRef, StringRef, int32_t>(
-        "substring", StringRef("234567890"),
-        StringRef("1234567890"), 2);
+    CheckUDF<StringRef, StringRef, int32_t>("substring", StringRef("234567890"),
+                                            StringRef("1234567890"), 2);
 
-    CheckUDF<StringRef, StringRef, int32_t>(
-        "substring", StringRef("234567890"),
-        StringRef("1234567890"), -9);
+    CheckUDF<StringRef, StringRef, int32_t>("substring", StringRef("234567890"),
+                                            StringRef("1234567890"), -9);
 
-    CheckUDF<StringRef, StringRef, int32_t>(
-        "substring", StringRef("90"), StringRef("1234567890"),
-        -2);
+    CheckUDF<StringRef, StringRef, int32_t>("substring", StringRef("90"),
+                                            StringRef("1234567890"), -2);
 
-    CheckUDF<StringRef, StringRef, int32_t>(
-        "substring", StringRef(""), StringRef("1234567890"), 12);
-    CheckUDF<StringRef, StringRef, int32_t>(
-        "substring", StringRef(""), StringRef("1234567890"), -12);
+    CheckUDF<StringRef, StringRef, int32_t>("substring", StringRef(""),
+                                            StringRef("1234567890"), 12);
+    CheckUDF<StringRef, StringRef, int32_t>("substring", StringRef(""),
+                                            StringRef("1234567890"), -12);
 }
 
 TEST_F(UDFIRBuilderTest, concat_str_udf_test) {
     //    concat("12345") == "12345"
-    CheckUDF<StringRef, StringRef>(
-        "concat", StringRef("12345"),
-        StringRef(std::string("12345")));
+    CheckUDF<StringRef, StringRef>("concat", StringRef("12345"),
+                                   StringRef(std::string("12345")));
 
     // concat("12345", "67890") == "1234567890"
-    CheckUDF<StringRef, StringRef, StringRef>(
-        "concat", StringRef("1234567890"),
-        StringRef(std::string("12345")), StringRef("67890"));
+    CheckUDF<StringRef, StringRef, StringRef>("concat", StringRef("1234567890"),
+                                              StringRef(std::string("12345")),
+                                              StringRef("67890"));
 
     // concat("123", "4567890", "abcde") == "1234567890abcde"
-    CheckUDF<StringRef, StringRef, StringRef,
-             StringRef>("concat", StringRef("1234567890abcde"),
-                               StringRef(std::string("123")),
-                               StringRef("4567890"),
-                               StringRef("abcde"));
+    CheckUDF<StringRef, StringRef, StringRef, StringRef>(
+        "concat", StringRef("1234567890abcde"), StringRef(std::string("123")),
+        StringRef("4567890"), StringRef("abcde"));
 
     // concat("1", "23", "456", "7890", "abc", "de") == "1234567890abcde"
-    CheckUDF<StringRef, StringRef, StringRef,
-             StringRef>("concat", StringRef("1234567890abcde"),
-                               StringRef("1"), StringRef("23"),
-                               StringRef("456"),
-                               StringRef("7890"),
-                               StringRef("abc"), StringRef("de"));
+    CheckUDF<StringRef, StringRef, StringRef, StringRef>(
+        "concat", StringRef("1234567890abcde"), StringRef("1"), StringRef("23"),
+        StringRef("456"), StringRef("7890"), StringRef("abc"), StringRef("de"));
 
     //    concat() == ""
     CheckUDFFail<StringRef>("concat", StringRef("no result"));
 }
 TEST_F(UDFIRBuilderTest, concat_anytype_udf_test) {
-    CheckUDF<StringRef, StringRef, int32_t>(
-        "concat", StringRef("1234567890"), StringRef("12345"),
-        67890);
+    CheckUDF<StringRef, StringRef, int32_t>("concat", StringRef("1234567890"),
+                                            StringRef("12345"), 67890);
 
-    CheckUDF<StringRef, float, int32_t>(
-        "concat", StringRef("1234.567890"), 1234.5f, 67890);
+    CheckUDF<StringRef, float, int32_t>("concat", StringRef("1234.567890"),
+                                        1234.5f, 67890);
 
-    CheckUDF<StringRef, StringRef, int16_t, int32_t, int64_t,
-             float, double, Timestamp, Date>(
+    CheckUDF<StringRef, StringRef, int16_t, int32_t, int64_t, float, double,
+             Timestamp, Date>(
         "concat", StringRef("12345.67.82020-05-22 10:43:402020-06-23"),
         StringRef("1"), static_cast<int16_t>(2), 3, 4L, 5.6f, 7.8,
         Timestamp(1590115420000L), Date(2020, 06, 23));
@@ -488,66 +471,60 @@ TEST_F(UDFIRBuilderTest, concat_ws_anytype_udf_test) {
         "concat_ws", StringRef("1234.5067890"), 0, 1234.5f, 67890);
 
     // concat on string "#"
-    CheckUDF<StringRef, StringRef, StringRef, int16_t,
-             int32_t, int64_t, float, double, Timestamp, Date>(
+    CheckUDF<StringRef, StringRef, StringRef, int16_t, int32_t, int64_t, float,
+             double, Timestamp, Date>(
         "concat_ws",
 
         StringRef("1#2#3#4#5.6#7.8#2020-05-22 10:43:40#2020-06-23"),
-        StringRef("#"), StringRef("1"), static_cast<int16_t>(2),
-        3, 4L, 5.6f, 7.8, Timestamp(1590115420000L),
-        Date(2020, 06, 23));
+        StringRef("#"), StringRef("1"), static_cast<int16_t>(2), 3, 4L, 5.6f,
+        7.8, Timestamp(1590115420000L), Date(2020, 06, 23));
 }
 
 TEST_F(UDFIRBuilderTest, to_string_test) {
-    CheckUDF<StringRef, int32_t>("string", StringRef("67890"),
-                                        67890);
+    CheckUDF<StringRef, int32_t>("string", StringRef("67890"), 67890);
     CheckUDF<StringRef, int16_t>("string", StringRef("128"),
-                                        static_cast<int16_t>(128));
-    CheckUDF<StringRef, float>("string", StringRef("1.234"),
-                                      1.234f);
-    CheckUDF<StringRef, double>("string", StringRef("1.234"),
-                                       1.234);
+                                 static_cast<int16_t>(128));
+    CheckUDF<StringRef, float>("string", StringRef("1.234"), 1.234f);
+    CheckUDF<StringRef, double>("string", StringRef("1.234"), 1.234);
 
-    CheckUDF<StringRef, int64_t>(
-        "string", StringRef("1234567890"), 1234567890L);
+    CheckUDF<StringRef, int64_t>("string", StringRef("1234567890"),
+                                 1234567890L);
 
-    CheckUDF<StringRef, int64_t>(
-        "string", StringRef("1234567890"), 1234567890L);
-    CheckUDF<StringRef, Timestamp>(
-        "string", StringRef("2020-05-22 10:43:40"),
-        Timestamp(1590115420000L));
+    CheckUDF<StringRef, int64_t>("string", StringRef("1234567890"),
+                                 1234567890L);
+    CheckUDF<StringRef, Timestamp>("string", StringRef("2020-05-22 10:43:40"),
+                                   Timestamp(1590115420000L));
 
-    CheckUDF<StringRef, Date>(
-        "string", StringRef("2020-05-22"), Date(2020, 5, 22));
+    CheckUDF<StringRef, Date>("string", StringRef("2020-05-22"),
+                              Date(2020, 5, 22));
 }
 
 TEST_F(UDFIRBuilderTest, timestamp_format_test) {
     CheckUDF<StringRef, Timestamp, StringRef>(
         "date_format", StringRef("2020-05-22 10:43:40"),
-        Timestamp(1590115420000L),
-        StringRef("%Y-%m-%d %H:%M:%S"));
+        Timestamp(1590115420000L), StringRef("%Y-%m-%d %H:%M:%S"));
 
     CheckUDF<StringRef, Timestamp, StringRef>(
-        "date_format", StringRef("2020-05-22"),
-        Timestamp(1590115420000L), StringRef("%Y-%m-%d"));
+        "date_format", StringRef("2020-05-22"), Timestamp(1590115420000L),
+        StringRef("%Y-%m-%d"));
 
     CheckUDF<StringRef, Timestamp, StringRef>(
-        "date_format", StringRef("10:43:40"),
-        Timestamp(1590115420000L), StringRef("%H:%M:%S"));
+        "date_format", StringRef("10:43:40"), Timestamp(1590115420000L),
+        StringRef("%H:%M:%S"));
 }
 
 TEST_F(UDFIRBuilderTest, date_format_test) {
     CheckUDF<StringRef, Date, StringRef>(
-        "date_format", StringRef("2020-05-22 00:00:00"),
-        Date(2020, 05, 22), StringRef("%Y-%m-%d %H:%M:%S"));
+        "date_format", StringRef("2020-05-22 00:00:00"), Date(2020, 05, 22),
+        StringRef("%Y-%m-%d %H:%M:%S"));
 
-    CheckUDF<StringRef, Date, StringRef>(
-        "date_format", StringRef("2020-05-22"),
-        Date(2020, 05, 22), StringRef("%Y-%m-%d"));
+    CheckUDF<StringRef, Date, StringRef>("date_format", StringRef("2020-05-22"),
+                                         Date(2020, 05, 22),
+                                         StringRef("%Y-%m-%d"));
 
-    CheckUDF<StringRef, Date, StringRef>(
-        "date_format", StringRef("00:00:00"), Date(2020, 05, 22),
-        StringRef("%H:%M:%S"));
+    CheckUDF<StringRef, Date, StringRef>("date_format", StringRef("00:00:00"),
+                                         Date(2020, 05, 22),
+                                         StringRef("%H:%M:%S"));
 }
 
 }  // namespace codegen

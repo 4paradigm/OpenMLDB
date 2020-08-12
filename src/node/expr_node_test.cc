@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <utility>
 #include "node/expr_node.h"
-#include "node/sql_node.h"
+#include <utility>
+#include <vector>
 #include "gtest/gtest.h"
 #include "node/node_manager.h"
+#include "node/sql_node.h"
 #include "udf/literal_traits.h"
 
 namespace fesql {
@@ -32,65 +33,77 @@ class ExprNodeTest : public ::testing::Test {
     ~ExprNodeTest() { delete node_manager_; }
 
  protected:
-    NodeManager *node_manager_;
+    NodeManager* node_manager_;
 };
 
 template <typename F, size_t... I>
-ExprNode* DoBuildExpr(const F& build_expr,
-                      NodeManager* node_manager,
+ExprNode* DoBuildExpr(const F& build_expr, NodeManager* node_manager,
                       const std::vector<ExprNode*>& args,
                       const std::index_sequence<I...>&) {
     return build_expr(node_manager, args[I]...);
 }
 
 template <typename Ret, typename... T>
-void CheckInfer(const std::function<ExprNode*(NodeManager*, typename std::pair<T, ExprNode*>::second_type...)>& build_expr) {
+void CheckInfer(
+    const std::function<ExprNode*(
+        NodeManager*, typename std::pair<T, ExprNode*>::second_type...)>&
+        build_expr) {
     NodeManager nm;
-    std::vector<node::TypeNode*> arg_types = { udf::DataTypeTrait<T>::to_type_node(&nm)... };
-    std::vector<int> arg_nullable = { udf::IsNullableTrait<T>::value... };
+    std::vector<node::TypeNode*> arg_types = {
+        udf::DataTypeTrait<T>::to_type_node(&nm)...};
+    std::vector<int> arg_nullable = {udf::IsNullableTrait<T>::value...};
     std::vector<ExprNode*> args;
     for (size_t i = 0; i < sizeof...(T); ++i) {
-        auto expr_id = nm.MakeExprIdNode("arg_" + std::to_string(i), ExprIdNode::GetNewId());
+        auto expr_id = nm.MakeExprIdNode("arg_" + std::to_string(i),
+                                         ExprIdNode::GetNewId());
         expr_id->SetOutputType(arg_types[i]);
         expr_id->SetNullable(arg_nullable[i]);
         args.push_back(expr_id);
     }
 
-    ExprNode* expr = DoBuildExpr(build_expr, &nm, args, std::index_sequence_for<T...>());
-    
+    ExprNode* expr =
+        DoBuildExpr(build_expr, &nm, args, std::index_sequence_for<T...>());
+
     ExprAnalysisContext ctx(&nm, nullptr);
     auto status = expr->InferAttr(&ctx);
     LOG(INFO) << "Infer expr status: " << status.msg;
     ASSERT_TRUE(status.isOK());
 
     ASSERT_EQ(udf::IsNullableTrait<Ret>::value, expr->nullable());
-    ASSERT_TRUE(TypeEquals(udf::DataTypeTrait<Ret>::to_type_node(&nm), expr->GetOutputType()));
+    ASSERT_TRUE(TypeEquals(udf::DataTypeTrait<Ret>::to_type_node(&nm),
+                           expr->GetOutputType()));
 }
 
 template <typename Ret, typename... T>
-void CheckInferError(const std::function<ExprNode*(NodeManager*, typename std::pair<T, ExprNode*>::second_type...)>& build_expr) {
+void CheckInferError(
+    const std::function<ExprNode*(
+        NodeManager*, typename std::pair<T, ExprNode*>::second_type...)>&
+        build_expr) {
     NodeManager nm;
-    std::vector<node::TypeNode*> arg_types = { udf::DataTypeTrait<T>::to_type_node(&nm)... };
-    std::vector<int> arg_nullable = { udf::IsNullableTrait<T>::value... };
+    std::vector<node::TypeNode*> arg_types = {
+        udf::DataTypeTrait<T>::to_type_node(&nm)...};
+    std::vector<int> arg_nullable = {udf::IsNullableTrait<T>::value...};
     std::vector<ExprNode*> args;
     for (size_t i = 0; i < sizeof...(T); ++i) {
-        auto expr_id = nm.MakeExprIdNode("arg_" + std::to_string(i), ExprIdNode::GetNewId());
+        auto expr_id = nm.MakeExprIdNode("arg_" + std::to_string(i),
+                                         ExprIdNode::GetNewId());
         expr_id->SetOutputType(arg_types[i]);
         expr_id->SetNullable(arg_nullable[i]);
         args.push_back(expr_id);
     }
 
-    ExprNode* expr = DoBuildExpr(build_expr, &nm, args, std::index_sequence_for<T...>());
-    
+    ExprNode* expr =
+        DoBuildExpr(build_expr, &nm, args, std::index_sequence_for<T...>());
+
     ExprAnalysisContext ctx(&nm, nullptr);
     auto status = expr->InferAttr(&ctx);
     LOG(INFO) << "Infer expr status: " << status.msg;
     ASSERT_TRUE(!status.isOK());
 }
 
-
 TEST_F(ExprNodeTest, CondExprNodeTest) {
-    auto do_build = [](NodeManager* nm, ExprNode* cond, ExprNode* left, ExprNode* right) {
+    auto do_build = [](NodeManager* nm, ExprNode* cond, ExprNode* left,
+                       ExprNode* right) {
         return nm->MakeCondExpr(cond, left, right);
     };
 
@@ -105,7 +118,7 @@ TEST_F(ExprNodeTest, CondExprNodeTest) {
 }  // namespace node
 }  // namespace fesql
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

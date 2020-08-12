@@ -293,8 +293,8 @@ struct DataTypeTrait<codec::ListRef<T>> {
     }
     static node::DataType to_type_enum() { return node::kList; }
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
-        auto list_type = nm->MakeTypeNode(node::kList,
-                                DataTypeTrait<T>::to_type_node(nm));
+        auto list_type =
+            nm->MakeTypeNode(node::kList, DataTypeTrait<T>::to_type_node(nm));
         list_type->generics_nullable_[0] = IsNullableTrait<T>::value;
         return list_type;
     }

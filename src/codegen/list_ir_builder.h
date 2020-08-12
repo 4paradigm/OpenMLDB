@@ -35,8 +35,8 @@ class ListIRBuilder {
                                 const node::TypeNode* elem_type,
                                 ::llvm::Value** output);
     Status BuildIteratorNext(::llvm::Value* iterator,
-                             const node::TypeNode* elem_type, bool elem_nullable,
-                             NativeValue* output);
+                             const node::TypeNode* elem_type,
+                             bool elem_nullable, NativeValue* output);
     Status BuildIteratorDelete(::llvm::Value* iterator,
                                const node::TypeNode* elem_type,
                                ::llvm::Value** output);

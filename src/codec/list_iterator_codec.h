@@ -156,11 +156,11 @@ class StringColumnImpl : public ColumnImpl<StringRef> {
     const StringRef GetFieldUnsafe(const Row &row) const override {
         int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
         StringRef value;
-        int8_t* buffer;
-        v1::GetStrFieldUnsafe(
-            row.buf(row_idx_), str_field_offset_, next_str_field_offset_,
-            str_start_offset_, addr_space, &buffer, &(value.size_));
-        value.data_ = reinterpret_cast<char*>(buffer);
+        int8_t *buffer;
+        v1::GetStrFieldUnsafe(row.buf(row_idx_), str_field_offset_,
+                              next_str_field_offset_, str_start_offset_,
+                              addr_space, &buffer, &(value.size_));
+        value.data_ = reinterpret_cast<char *>(buffer);
         return value;
     }
 
@@ -172,11 +172,11 @@ class StringColumnImpl : public ColumnImpl<StringRef> {
         } else {
             int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
             StringRef value;
-            int8_t* buffer;
-            v1::GetStrFieldUnsafe(
-                buf, str_field_offset_, next_str_field_offset_,
-                str_start_offset_, addr_space, &buffer, &(value.size_));
-            value.data_ = reinterpret_cast<char*>(buffer);
+            int8_t *buffer;
+            v1::GetStrFieldUnsafe(buf, str_field_offset_,
+                                  next_str_field_offset_, str_start_offset_,
+                                  addr_space, &buffer, &(value.size_));
+            value.data_ = reinterpret_cast<char *>(buffer);
             *res = value;
         }
     }

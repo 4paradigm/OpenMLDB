@@ -475,6 +475,7 @@ class LLVMUDFGenBase {
     }
 
     virtual ~LLVMUDFGenBase() {}
+
  private:
     node::TypeNode* fixed_ret_type_ = nullptr;
 };
@@ -1290,9 +1291,7 @@ class ExternalTemplateFuncRegistryHelper {
 
     template <typename T, typename... CArgs>
     struct FTemplateInst {
-        static auto fcompute(CArgs... args) {
-            return FTemplate<T>()(args...);
-        }
+        static auto fcompute(CArgs... args) { return FTemplate<T>()(args...); }
     };
 
     template <typename T, typename>
@@ -1515,7 +1514,8 @@ class UDAFRegistryHelperImpl {
         return *this;
     }
 
-    UDAFRegistryHelperImpl& update(const std::string& fname, void* fn_ptr, bool return_by_arg = false) {
+    UDAFRegistryHelperImpl& update(const std::string& fname, void* fn_ptr,
+                                   bool return_by_arg = false) {
         auto fn = dynamic_cast<node::ExternalFnDefNode*>(
             library_->node_manager()->MakeExternalFnDefNode(
                 fname, fn_ptr, state_ty_, state_nullable_, update_tys_,
@@ -1582,7 +1582,8 @@ class UDAFRegistryHelperImpl {
         return *this;
     }
 
-    UDAFRegistryHelperImpl& output(const std::string& fname, void* fn_ptr, bool return_by_arg = false) {
+    UDAFRegistryHelperImpl& output(const std::string& fname, void* fn_ptr,
+                                   bool return_by_arg = false) {
         auto fn = dynamic_cast<node::ExternalFnDefNode*>(
             library_->node_manager()->MakeExternalFnDefNode(
                 fname, fn_ptr, output_ty_, output_nullable_, {state_ty_},

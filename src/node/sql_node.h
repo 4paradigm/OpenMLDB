@@ -1266,7 +1266,8 @@ class UnaryExpr : public ExprNode {
 
 class CondExpr : public ExprNode {
  public:
-    CondExpr(ExprNode* condition, ExprNode* left, ExprNode* right) : ExprNode(kExprCond) {
+    CondExpr(ExprNode *condition, ExprNode *left, ExprNode *right)
+        : ExprNode(kExprCond) {
         AddChild(condition);
         AddChild(left);
         AddChild(right);
@@ -1275,9 +1276,9 @@ class CondExpr : public ExprNode {
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *node) const;
 
-    ExprNode* GetCondition() const;
-    ExprNode* GetLeft() const;
-    ExprNode* GetRight() const;
+    ExprNode *GetCondition() const;
+    ExprNode *GetLeft() const;
+    ExprNode *GetRight() const;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 };

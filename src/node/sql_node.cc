@@ -1698,7 +1698,8 @@ void UDAFDefNode::Print(std::ostream &output,
 }
 
 void CondExpr::Print(std::ostream &output, const std::string &org_tab) const {
-    output << org_tab << "[kCondExpr]" << "\n";
+    output << org_tab << "[kCondExpr]"
+           << "\n";
     const std::string tab = org_tab + INDENT;
     PrintSQLNode(output, tab, GetCondition(), "condition", false);
     output << "\n";
@@ -1720,14 +1721,14 @@ const std::string CondExpr::GetExprString() const {
 }
 
 bool CondExpr::Equals(const ExprNode *node) const {
-    auto other = dynamic_cast<const CondExpr*>(node);
+    auto other = dynamic_cast<const CondExpr *>(node);
     return other != nullptr &&
-        ExprEquals(other->GetCondition(), this->GetCondition()) &&
-        ExprEquals(other->GetLeft(), this->GetLeft()) &&
-        ExprEquals(other->GetRight(), this->GetRight());
+           ExprEquals(other->GetCondition(), this->GetCondition()) &&
+           ExprEquals(other->GetLeft(), this->GetLeft()) &&
+           ExprEquals(other->GetRight(), this->GetRight());
 }
 
-ExprNode* CondExpr::GetCondition() const {
+ExprNode *CondExpr::GetCondition() const {
     if (GetChildNum() > 0) {
         return GetChild(0);
     } else {
@@ -1735,7 +1736,7 @@ ExprNode* CondExpr::GetCondition() const {
     }
 }
 
-ExprNode* CondExpr::GetLeft() const {
+ExprNode *CondExpr::GetLeft() const {
     if (GetChildNum() > 1) {
         return GetChild(1);
     } else {
@@ -1743,7 +1744,7 @@ ExprNode* CondExpr::GetLeft() const {
     }
 }
 
-ExprNode* CondExpr::GetRight() const {
+ExprNode *CondExpr::GetRight() const {
     if (GetChildNum() > 2) {
         return GetChild(2);
     } else {

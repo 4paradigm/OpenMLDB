@@ -225,7 +225,8 @@ class ModuleTestFunction {
         this->fn_ptr = reinterpret_cast<void*>(load_fn.getAddress());
 
         auto load_proxy_fn = ExitOnErr(jit->lookup(proxy_fn_name));
-        this->proxy_fn_ptr = reinterpret_cast<void*>(load_proxy_fn.getAddress());
+        this->proxy_fn_ptr =
+            reinterpret_cast<void*>(load_proxy_fn.getAddress());
     }
 
     std::unique_ptr<vm::FeSQLJIT> jit = nullptr;
@@ -507,8 +508,9 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
     builder.CreateCall(callee, llvm_apply_args);
     builder.CreateRetVoid();
 
-    return ModuleTestFunction<Ret, Args...>(
-        fn_name, proxy_fn_name, state->library, std::move(module), std::move(llvm_ctx));
+    return ModuleTestFunction<Ret, Args...>(fn_name, proxy_fn_name,
+                                            state->library, std::move(module),
+                                            std::move(llvm_ctx));
 }
 
 static inline NativeValue BindValueFromLLVMFunction(

@@ -161,7 +161,8 @@ class NodeManager {
                                    const std::string &relation_name);
     GetFieldExpr *MakeGetFieldExpr(ExprNode *input, size_t idx);
 
-    CondExpr* MakeCondExpr(ExprNode* condition, ExprNode* left, ExprNode* right);
+    CondExpr *MakeCondExpr(ExprNode *condition, ExprNode *left,
+                           ExprNode *right);
 
     ExprNode *MakeBetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right);
     ExprNode *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
