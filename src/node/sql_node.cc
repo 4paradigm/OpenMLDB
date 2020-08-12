@@ -534,6 +534,64 @@ bool CastExprNode::Equals(const ExprNode *node) const {
     return this->cast_type_ == that->cast_type_ &&
            ExprEquals(expr(), that->expr());
 }
+
+void WhenExprNode::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, when_expr(), "when", false);
+    output << "\n";
+    PrintSQLNode(output, tab, then_expr(), "then", true);
+}
+const std::string WhenExprNode::GetExprString() const {
+    std::string str = "";
+    str.append("when ")
+        .append(ExprString(when_expr()))
+        .append("then ")
+        .append(ExprString(then_expr()));
+    return str;
+}
+bool WhenExprNode::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    const WhenExprNode *that = dynamic_cast<const WhenExprNode *>(node);
+    return ExprEquals(when_expr(), that->when_expr()) &&
+           ExprEquals(then_expr(), that->then_expr());
+}
+void CaseWhenExprNode::Print(std::ostream &output,
+                             const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLNode(output, tab, when_expr_list(), "when_expr_list", false);
+    output << "\n";
+    PrintSQLNode(output, tab, else_expr(), "else_expr", true);
+}
+const std::string CaseWhenExprNode::GetExprString() const {
+    std::string str = "";
+    str.append("case ")
+        .append(ExprString(when_expr_list()))
+        .append(" ")
+        .append("else ")
+        .append(ExprString(else_expr()));
+    return str;
+}
+bool CaseWhenExprNode::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    const CaseWhenExprNode *that = dynamic_cast<const CaseWhenExprNode *>(node);
+    return ExprEquals(when_expr_list(), that->when_expr_list()) &&
+           ExprEquals(else_expr(), that->else_expr());
+}
 void CallExprNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);

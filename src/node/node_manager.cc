@@ -364,7 +364,35 @@ ExprNode *NodeManager::MakeCastNode(const node::DataType cast_type,
     CastExprNode *node_ptr = new CastExprNode(cast_type, expr);
     return RegisterNode(node_ptr);
 }
+ExprNode *NodeManager::MakeWhenNode(ExprNode *when_expr, ExprNode *then_expr) {
+    WhenExprNode *node_ptr = new WhenExprNode(when_expr, then_expr);
+    return RegisterNode(node_ptr);
+}
+ExprNode *NodeManager::MakeSimpleCaseWhenNode(ExprNode *case_expr,
+                                              ExprListNode *when_list_expr,
+                                              ExprNode *else_expr) {
+    if (nullptr == when_list_expr || when_list_expr->GetChildNum() == 0) {
+        return nullptr;
+    }
+    ExprListNode *bool_when_expr = MakeExprList();
+    for (auto expr : when_list_expr->children_) {
+        if (nullptr == expr || kExprWhen != expr->expr_type_) {
+            return nullptr;
+        }
+        auto when_expr = dynamic_cast<WhenExprNode *>(expr);
 
+        bool_when_expr->AddChild(MakeWhenNode(
+            MakeBinaryExprNode(case_expr, when_expr->when_expr(), kFnOpEq),
+            when_expr->then_expr()));
+    }
+    return MakeSearchedCaseWhenNode(bool_when_expr, else_expr);
+}
+ExprNode *NodeManager::MakeSearchedCaseWhenNode(ExprListNode *when_list_expr,
+                                                ExprNode *else_expr) {
+    CaseWhenExprNode *node_ptr =
+        new CaseWhenExprNode(when_list_expr, else_expr);
+    return RegisterNode(node_ptr);
+}
 ExprNode *NodeManager::MakeTimeFuncNode(const TimeUnit time_unit,
                                         ExprListNode *list_ptr) {
     std::string fn_name = TimeUnitName(time_unit);
