@@ -292,12 +292,7 @@ deploy-fedb:
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/deploy_package_fedb.sh
   dependencies:
-    - build/bin/rtidb
-    - build/src/sdk/libsql_jsdk.so
-    - build/sql_pysdk/dist/*.whl
-    - build/bin/rtidb_mac
-    - build/src/sdk/libsql_jsdk.dylib
-    - build/sql_pysdk/dist/*.whl
+    - build
   only:
     variables:
       - $ENV_BUILD == "daily"
