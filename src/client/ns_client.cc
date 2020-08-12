@@ -1320,7 +1320,7 @@ bool NsClient::TransformToTableDef(
         }
     }
     if (!partition_meta_list.empty()) {
-        if (replica_num != partition_meta_list.size()) {
+        if (replica_num != (int32_t)partition_meta_list.size()) {
             status->msg = "CREATE common: "
                 "replica_num should equal to partition meta size";
             status->code = fesql::common::kSQLError;

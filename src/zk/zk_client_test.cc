@@ -21,7 +21,7 @@ namespace rtidb {
 namespace zk {
 
 static bool call_invoked = false;
-static int32_t endpoint_size = 2;
+static uint32_t endpoint_size = 2;
 class ZkClientTest : public ::testing::Test {
  public:
     ZkClientTest() {}
