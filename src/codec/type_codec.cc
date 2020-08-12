@@ -109,8 +109,26 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t field_offset,
     if (next_str_field_offset <= 0) {
         uint32_t total_length =
             *(reinterpret_cast<const uint32_t*>(row + VERSION_LENGTH));
+        if (total_length < str_offset) {
+            LOG(WARNING) << "fail to get str field, total lenght < str_offset, "
+                            "pls check row encode. total lenght "
+                         << total_length << ", str_offset " << str_offset
+                         << ", *(reinterpret_cast<const uint32_t*>(row + "
+                            "VERSION_LENGTH)) "
+                         << *(reinterpret_cast<const uint32_t*>(
+                                row + VERSION_LENGTH));
+            *size = 0;
+            return -3;
+        }
         *size = total_length - str_offset;
     } else {
+        if (next_str_offset < str_offset) {
+            LOG(WARNING) << "fail to get str field, next_str_offset < "
+                            "str_offset, pls check row encode. next_str_offset "
+                         << next_str_offset << "str_offset " << str_offset;
+            *size = 0;
+            return -3;
+        }
         *size = next_str_offset - str_offset;
     }
     return 0;
