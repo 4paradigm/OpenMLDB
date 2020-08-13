@@ -1488,9 +1488,9 @@ class CreateStmt : public SQLNode {
 
     int GetReplicaNum() const { return replica_num_; }
 
-    NodePointVector &GetPartitionMetaList() { return partition_meta_list_; }
-    const NodePointVector &GetPartitionMetaList() const {
-        return partition_meta_list_;
+    NodePointVector &GetDistributionList() { return distribution_list_; }
+    const NodePointVector &GetDistributionList() const {
+        return distribution_list_;
     }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
@@ -1500,7 +1500,7 @@ class CreateStmt : public SQLNode {
     bool op_if_not_exist_;
     NodePointVector column_desc_list_;
     int replica_num_;
-    NodePointVector partition_meta_list_;
+    NodePointVector distribution_list_;
 };
 class IndexKeyNode : public SQLNode {
  public:

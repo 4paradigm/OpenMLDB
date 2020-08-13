@@ -436,7 +436,7 @@ typedef void* yyscan_t;
 %type <node>  create_stmt column_desc column_index_item column_index_key option distribution
 %type <node>  cmd_stmt
 %type <flag>  op_not_null op_if_not_exist opt_distinct_clause opt_instance_not_in_window
-%type <list>  column_desc_list column_index_item_list table_option distribution_list
+%type <list>  column_desc_list column_index_item_list table_options distribution_list
 
 %type <list> opt_target_list
             select_projection_list
@@ -805,7 +805,7 @@ opt_from_clause: FROM table_references {
 				$$ = NULL;
 			}
 
-create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list ')' table_option
+create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list ')' table_options
                 {
                     $$ = node_manager->MakeCreateTableNode($3, $4, $6, $8);
                     free($4);
@@ -1050,11 +1050,11 @@ opt_distinct_clause:
         }
     ;
 
-table_option:   option
+table_options:   option
                 {
                     $$ = node_manager->MakeNodeList($1);
                 }
-                | table_option ',' option
+                | table_options ',' option
                 {
                     $$ = $1;
                     $$->PushBack($3);

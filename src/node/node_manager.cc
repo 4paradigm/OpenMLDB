@@ -580,7 +580,7 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
             table_name, op_if_not_exist, replica_num);
     FillSQLNodeList2NodeVector(column_desc_list, node_ptr->GetColumnDefList());
     FillSQLNodeList2NodeVector(
-            &partition_meta_list, node_ptr->GetPartitionMetaList());
+            &partition_meta_list, node_ptr->GetDistributionList());
     return RegisterNode(node_ptr);
 }
 

@@ -900,7 +900,7 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, std::to_string(replica_num_), "replica_num", false);
     output << "\n";
     PrintSQLVector(
-            output, tab, partition_meta_list_, "partition_meta_list", true);
+            output, tab, distribution_list_, "distribution_list", true);
 }
 
 void ColumnDefNode::Print(std::ostream &output,
