@@ -239,6 +239,7 @@ bool ClusterSDK::InitTabletClient() {
         }
         if (!is_alive) {
             dead_tablets.push_back(it->first);
+            LOG(WARNING) << "tablet " << it-first << " is dead";
         }
     }
 
@@ -272,7 +273,6 @@ bool ClusterSDK::InitCatalog() {
     return RefreshCatalog(table_datas);
 }
 
-
 std::shared_ptr<::rtidb::client::TabletClient>
 ClusterSDK::GetLeaderTabletByTable(const std::string& db,
                                    const std::string& name) {
@@ -303,6 +303,7 @@ ClusterSDK::GetLeaderTabletByTable(const std::string& db,
     }
     return std::shared_ptr<::rtidb::client::TabletClient>();
 }
+
 std::shared_ptr<::rtidb::client::TabletClient> ClusterSDK::PickOneTablet() {
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
 
@@ -316,6 +317,7 @@ std::shared_ptr<::rtidb::client::TabletClient> ClusterSDK::PickOneTablet() {
     }
     return std::shared_ptr<::rtidb::client::TabletClient>();
 }
+
 bool ClusterSDK::GetTabletByTable(
     const std::string& db, const std::string& name,
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets) {

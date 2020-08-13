@@ -291,8 +291,6 @@ deploy-fedb:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/deploy_package_fedb.sh
-  dependencies:
-    - build
   only:
     variables:
       - $ENV_BUILD == "daily"
