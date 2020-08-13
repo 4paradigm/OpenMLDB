@@ -25,8 +25,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     private List<Object> datas = null;
     private List<DataType> datasType = null;
     private Schema schema = null;
-    private int remain = 0;
     private String db;
+    private List<Boolean> hasSet;
     private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
 
     public InsertPreparedStatementImpl(String db, SQLInsertRow row, String sql, SQLRouter router) {
@@ -36,14 +36,15 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         this.schema = row.GetSchema();
         this.db = db;
         VectorUint32 idxs = row.GetHoleIdx();
-        this.remain = idxs.size();
         datas = new ArrayList<>(idxs.size());
         datasType = new ArrayList<>(idxs.size());
-        for (int i = 0; i < remain ; i++) {
+        hasSet = new ArrayList<>(idxs.size());
+        for (int i = 0; i < idxs.size(); i++) {
             long idx = idxs.get(i);
             DataType type = schema.GetColumnType(idx);
             datasType.add(type);
             datas.add(null);
+            hasSet.add(false);
         }
     }
 
@@ -76,9 +77,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (!this.schema.IsColumnNotNull(i)) {
             throw new SQLException("column not allow null");
         }
-        if (this.remain > 0) {
-            this.remain--;
-        }
+        hasSet.set(i - 1, true);
         datas.set(i - 1, null);
     }
 
@@ -86,9 +85,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     public void setBoolean(int i, boolean b) throws SQLException {
         checkIdx(i);
         checkType(i, DataType.kTypeBool);
-        if (this.remain > 0) {
-            this.remain--;
-        }
+        hasSet.set(i - 1, true);
         datas.set(i - 1, b);
     }
 
@@ -111,9 +108,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     public void setLong(int i, long l) throws SQLException {
         checkIdx(i);
         checkType(i, DataType.kTypeInt64);
-        if (this.remain > 0) {
-            this.remain--;
-        }
+        hasSet.set(i - 1, true);
         datas.set(i - 1, l);
     }
 
@@ -136,9 +131,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     public void setString(int i, String s) throws SQLException {
         checkIdx(i);
         checkType(i, DataType.kTypeString);
-        if (this.remain > 0) {
-            this.remain--;
-        }
+        hasSet.set(i - 1, true);
         datas.set(i - 1, s);
     }
 
@@ -151,9 +144,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     public void setDate(int i, Date date) throws SQLException {
         checkIdx(i);
         checkType(i, DataType.kTypeDate);
-        if (this.remain > 0) {
-            this.remain--;
-        }
+        hasSet.set(i - 1, true);
         int year = date.getYear();
         int month = date.getMonth();
         int day = date.getDate();
@@ -173,9 +164,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     public void setTimestamp(int i, Timestamp timestamp) throws SQLException {
         checkIdx(i);
         checkType(i, DataType.kTypeTimestamp);
-        if (this.remain > 0) {
-            this.remain--;
-        }
+        hasSet.set(i - 1, true);
         long ts = timestamp.getTime();
         datas.set(i - 1, ts);
     }
@@ -212,8 +201,10 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
 
     @Override
     public boolean execute() throws SQLException {
-        if (this.remain > 0) {
-            throw new SQLException("data not enough");
+        for (int i = 0; i < hasSet.size(); i++) {
+            if (!hasSet.get(i)) {
+                throw new SQLException("data not enough");
+            }
         }
         int strLen = 0;
         for (int i = 0; i < datasType.size(); i++) {
@@ -225,7 +216,9 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         row.Init(strLen);
         for (int i = 0; i < datasType.size(); i++) {
             Object data = datas.get(i);
-            if (DataType.kTypeBool.equals(datasType.get(i))) {
+            if (data == null) {
+                row.AppendNULL();
+            } else if (DataType.kTypeBool.equals(datasType.get(i))) {
                 row.AppendBool((boolean) data);
             } else if (DataType.kTypeDate.equals(datasType.get(i))) {
                 row.AppendDate((int) data);
