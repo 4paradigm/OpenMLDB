@@ -612,7 +612,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     }
     uint32_t idx = rand_.Uniform(tablets.size());
     ok = tablets[idx]->Query(db, sql, row->GetRow(), cntl.get(), response.get(),
-                             options_.enbale_debug);
+                             options_.enable_debug);
     if (!ok) {
         status->msg = "request server error";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
@@ -643,7 +643,7 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     }
     DLOG(INFO) << " send query to tablet " << tablets[0]->GetEndpoint();
     ok = tablets[0]->Query(db, sql, cntl.get(), response.get(),
-                           options_.enbale_debug);
+                           options_.enable_debug);
     if (!ok) {
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
