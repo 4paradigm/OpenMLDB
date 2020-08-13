@@ -372,7 +372,7 @@ bool NsClient::HandleSQLCreateTable(
                 request.mutable_table_info();
             table_info->set_db(db);
             TransformToTableDef(create->GetTableName(), create->GetReplicaNum(),
-                    create->GetColumnDescList(), create->GetPartitionMetaList(),
+                    create->GetColumnDescList(), create->GetDistributionList(),
                     table_info, sql_status);
             if (0 != sql_status->code) {
                 return false;
@@ -1119,7 +1119,7 @@ bool NsClient::TransformToTableDef(
     const std::string& table_name,
     int replica_num,
     const fesql::node::NodePointVector& column_desc_list,
-    const fesql::node::NodePointVector& partition_meta_list,
+    const fesql::node::NodePointVector& distribution_list,
     ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status) {
     if (table == NULL || status == NULL) return false;
     std::set<std::string> index_names;
@@ -1319,8 +1319,8 @@ bool NsClient::TransformToTableDef(
             }
         }
     }
-    if (!partition_meta_list.empty()) {
-        if (replica_num != (int32_t)partition_meta_list.size()) {
+    if (!distribution_list.empty()) {
+        if (replica_num != (int32_t)distribution_list.size()) {
             status->msg = "CREATE common: "
                 "replica_num should equal to partition meta size";
             status->code = fesql::common::kSQLError;
@@ -1330,7 +1330,7 @@ bool NsClient::TransformToTableDef(
             table->add_table_partition();
         table_partition->set_pid(0);
         std::vector<std::string> ep_vec;
-        for (auto partition_meta : partition_meta_list) {
+        for (auto partition_meta : distribution_list) {
             switch (partition_meta->GetType()) {
                 case fesql::node::kPartitionMeta: {
                     fesql::node::PartitionMetaNode* p_meta_node =
