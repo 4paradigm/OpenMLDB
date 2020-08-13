@@ -354,3 +354,39 @@ cases:
       index(key=__c1, ts=__ts));
     expect:
       columns: ["__c1 string","__c3 int", "__ts bigint"]
+  -
+    id: 38
+    desc: create with replica num
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3), ts=c4)) replicanum=2;
+    expect:
+      success: true
+  -
+    id: 39
+    desc: create with replica num and distribution
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3),ts=c4)) replicanum=2, distribution(leader="{tb_endpoint_0}", follower="{tb_endpoint_1}");
+    expect:
+      success: true
+  -
+    id: 40
+    desc: create with replica num and distribution
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3),ts=c4)) replicanum=3, distribution(leader="{tb_endpoint_0}", follower="{tb_endpoint_1}");
+    expect:
+      success: false
+  -
+    id: 41
+    desc: create with replica num and distribution
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3),ts=c4)) replicanum=2, distribution(leader="{tb_endpoint_0}", follower="{tb_endpoint_0}");
+    expect:
+      success: false
