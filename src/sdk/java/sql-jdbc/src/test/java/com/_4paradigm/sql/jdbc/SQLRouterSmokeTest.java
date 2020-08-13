@@ -5,11 +5,10 @@ import com._4paradigm.sql.sdk.InsertPreparedStatementImpl;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
-import com.sun.xml.internal.ws.policy.AssertionSet;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.Objects;
+import java.sql.PreparedStatement;
 import java.util.Random;
 
 public class SQLRouterSmokeTest {
@@ -43,7 +42,7 @@ public class SQLRouterSmokeTest {
             insertRow.Init(5);
             insertRow.AppendInt64(1001);
             insertRow.AppendString("world");
-            InsertPreparedStatementImpl impl = router.getInsertPrepareStmt(dbname, insertPlaceholder);
+            PreparedStatement impl = router.getInsertPrepareStmt(dbname, insertPlaceholder);
             impl.setLong(1, 1001);
             impl.setString(2, "world");
             ok = impl.execute();
@@ -133,7 +132,7 @@ public class SQLRouterSmokeTest {
             Assert.assertTrue(ok);
             // insert placeholder
             String insertPlaceholder = "insert into tsql1010 values(?, 2, 'taiyuan', 2.0);";
-            InsertPreparedStatementImpl impl = router.getInsertPrepareStmt(dbname, insertPlaceholder);
+            PreparedStatement impl = router.getInsertPrepareStmt(dbname, insertPlaceholder);
             impl.setLong(1, 1001);
             try {
                 impl.setInt(2, 1002);
@@ -143,7 +142,7 @@ public class SQLRouterSmokeTest {
             ok = impl.execute();
             Assert.assertTrue(ok);
             String insertPlaceholder2 = "insert into tsql1010 values(1002, ?, 'shengyang', 3.0);";
-            InsertPreparedStatementImpl impl2 = router.getInsertPrepareStmt(dbname, insertPlaceholder2);
+            PreparedStatement impl2 = router.getInsertPrepareStmt(dbname, insertPlaceholder2);
             try {
                 impl2.execute();
             } catch (Exception e) {
@@ -160,7 +159,7 @@ public class SQLRouterSmokeTest {
 
             String insertPlaceholder3 = "insert into tsql1010 values(?, ?, ?, ?);";
             SQLInsertRow insertRow = router.getInsertRow(dbname, insertPlaceholder);
-            InsertPreparedStatementImpl impl3 = router.getInsertPrepareStmt(dbname, insertPlaceholder3);
+            PreparedStatement impl3 = router.getInsertPrepareStmt(dbname, insertPlaceholder3);
             impl3.setLong(1, 1003);
             impl3.setString(3, "hangzhouxxxxxx");
             impl3.setString(3, "hangzhou");
@@ -175,7 +174,7 @@ public class SQLRouterSmokeTest {
                 Assert.assertEquals("preparedstatement closed", e.getMessage());
             }
             Assert.assertTrue(ok);
-            InsertPreparedStatementImpl impl4 = router.getInsertPrepareStmt(dbname, insertPlaceholder3);
+            PreparedStatement impl4 = router.getInsertPrepareStmt(dbname, insertPlaceholder3);
             impl4.close();
             Assert.assertTrue(impl4.isClosed());
             // select

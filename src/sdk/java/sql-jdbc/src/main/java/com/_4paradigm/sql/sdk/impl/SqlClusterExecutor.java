@@ -9,6 +9,8 @@ import com._4paradigm.sql.sdk.SqlExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.PreparedStatement;
+
 public class SqlClusterExecutor implements SqlExecutor {
     static {
         String libname = "sql_jsdk";
@@ -110,13 +112,13 @@ public class SqlClusterExecutor implements SqlExecutor {
         return row;
     }
 
-    public InsertPreparedStatementImpl getInsertPrepareStmt(String db, String sql) {
-        SQLInsertRow row = getInsertRow(db, sql);
-        if (row == null) {
+    public PreparedStatement getInsertPrepareStmt(String db, String sql) {
+        try {
+            InsertPreparedStatementImpl impl = new InsertPreparedStatementImpl(db, sql, this.sqlRouter);
+            return impl;
+        } catch (Exception e) {
             return null;
         }
-        InsertPreparedStatementImpl impl = new InsertPreparedStatementImpl(db, row, sql, this.sqlRouter);
-        return impl;
     }
 
     @Override

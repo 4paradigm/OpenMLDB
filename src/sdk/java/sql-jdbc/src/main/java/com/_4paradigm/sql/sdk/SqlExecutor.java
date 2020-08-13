@@ -4,7 +4,8 @@ import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.SQLRequestRow;
 import com._4paradigm.sql.SQLInsertRow;
 import com._4paradigm.sql.SQLInsertRows;
-import com._4paradigm.sql.Status;
+
+import java.sql.PreparedStatement;
 
 public interface SqlExecutor {
     boolean createDB(String db);
@@ -16,7 +17,7 @@ public interface SqlExecutor {
     ResultSet executeSQL(String db, String sql);
     SQLRequestRow getRequestRow(String db, String sql);
     SQLInsertRow getInsertRow(String db, String sql);
-    InsertPreparedStatementImpl getInsertPrepareStmt(String db, String sql);
+    PreparedStatement getInsertPrepareStmt(String db, String sql);
     SQLInsertRows getInsertRows(String db, String sql);
     ResultSet executeSQL(String db, String sql, SQLRequestRow row);
 }
