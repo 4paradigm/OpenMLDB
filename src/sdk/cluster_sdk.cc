@@ -239,7 +239,7 @@ bool ClusterSDK::InitTabletClient() {
         }
         if (!is_alive) {
             dead_tablets.push_back(it->first);
-            LOG(WARNING) << "tablet " << it-first << " is dead";
+            LOG(WARNING) << "tablet " << it->first << " is dead";
         }
     }
 
