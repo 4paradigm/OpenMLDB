@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <vector>
 
 #include "base/file_util.h"
 #include "base/glog_wapper.h"  // NOLINT
@@ -59,14 +60,14 @@ class MiniCluster {
     explicit MiniCluster(int32_t zk_port)
         : zk_port_(zk_port),
           ns_(NULL),
-          ts_(NULL),
           zk_cluster_(),
           zk_path_(),
           ns_client_(NULL) {}
     ~MiniCluster() {}
     bool SetUp() {
         ns_ = new brpc::Server();
-        ts_ = new brpc::Server();
+        brpc::Server* tb1 = new brpc::Server();
+        brpc::Server* tb2 = new brpc::Server();
         srand(time(NULL));
         FLAGS_db_root_path = "/tmp/mini_cluster" + GenRand();
         zk_cluster_ = "127.0.0.1:" + std::to_string(zk_port_);
@@ -93,37 +94,32 @@ class MiniCluster {
         if (ns_client_->Init() != 0) {
             return false;
         }
-        std::string ts_endpoint = "127.0.0.1:" + GenRand();
-        ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-        ok = tablet->Init(zk_cluster_, zk_path_, ts_endpoint, "");
-        if (!ok) {
-            return false;
+        if (!StartTablet(tb1)) {
+           return false;
         }
-        brpc::ServerOptions ts_opt;
-        if (ts_->AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-            LOG(WARNING) << "fail to start ns";
-            return false;
-        }
-        if (ts_->Start(ts_endpoint.c_str(), &ts_opt) != 0) {
-            return false;
-        }
-        ok = tablet->RegisterZK();
-        if (!ok) {
-            return false;
+        sleep(2);
+        if (!StartTablet(tb2)) {
+           return false;
         }
         sleep(2);
         LOG(INFO) << "start mini cluster with zk cluster " << zk_cluster_
                   << " and zk path " << zk_path_;
         LOG(INFO) << "----- ns " << ns_endpoint;
-        LOG(INFO) << "----- ts " << ts_endpoint;
+        for (auto tb_endpoint : tb_endpoints_) {
+            LOG(INFO) << "----- tb " << tb_endpoint;
+        }
         return true;
     }
 
     void Close() {
         ns_->Stop(10);
-        ts_->Stop(10);
+        for (auto tb : tb_servers_) {
+            tb->Stop(10);
+        }
         delete ns_;
-        delete ts_;
+        for (auto tb : tb_servers_) {
+            delete tb;
+        }
     }
 
     std::string GetZkCluster() { return zk_cluster_; }
@@ -136,10 +132,39 @@ class MiniCluster {
         return std::to_string(rand() % 1000 + 10000);  // NOLINT
     }
 
+    const std::vector<std::string>& GetTbEndpoint() const {
+        return tb_endpoints_;
+    }
+
  private:
+    bool StartTablet(brpc::Server* tb_server) {
+        std::string tb_endpoint = "127.0.0.1:" + GenRand();
+        tb_endpoints_.push_back(tb_endpoint);
+        ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+        bool ok = tablet->Init(zk_cluster_, zk_path_, tb_endpoint, "");
+        if (!ok) {
+            return false;
+        }
+        brpc::ServerOptions ts_opt;
+        if (tb_server->AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
+            LOG(WARNING) << "fail to start tablet";
+            return false;
+        }
+        if (tb_server->Start(tb_endpoint.c_str(), &ts_opt) != 0) {
+            return false;
+        }
+        ok = tablet->RegisterZK();
+        if (!ok) {
+            return false;
+        }
+        tb_servers_.push_back(tb_server);
+        return true;
+    }
+
     int32_t zk_port_;
     brpc::Server* ns_;
-    brpc::Server* ts_;
+    std::vector<brpc::Server*> tb_servers_;
+    std::vector<std::string> tb_endpoints_;
     std::string zk_cluster_;
     std::string zk_path_;
     ::rtidb::client::NsClient* ns_client_;
