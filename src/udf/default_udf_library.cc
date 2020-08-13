@@ -1107,12 +1107,11 @@ void DefaultUDFLibrary::Init() {
             y|3
             x|4
             @code{.sql}
-                # cat
                 SELECT avg_cate(catagory, value) OVER w;
                 -- output "x:2,y:2"
             @endcode
             )")
-        .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
+        .args_in<int16_t, int32_t, int64_t, Date, Timestamp,
                  StringRef>();
 
     RegisterUDAFTemplate<AvgCateWhereDef>("avg_cate_where")
@@ -1134,12 +1133,11 @@ void DefaultUDFLibrary::Init() {
             y|3|true
             x|4|true
             @code{.sql}
-                # cat
                 SELECT avg_cate_where(catagory, value, condition) OVER w;
                 -- output "x:2,y:3"
             @endcode
             )")
-        .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
+        .args_in<int16_t, int32_t, int64_t, Date, Timestamp,
                  StringRef>();
 
     RegisterUDAFTemplate<TopAvgCateWhereDef>("top_n_avg_cate_where")
@@ -1164,12 +1162,11 @@ void DefaultUDFLibrary::Init() {
             z|5|true
             z|6|false
             @code{.sql}
-                # cat
-                SELECT avg_cate_where(catagory, value, condition, 2) OVER w;
+                SELECT top_n_avg_cate_where(catagory, value, condition, 2) OVER w;
                 -- output "z:5,y:3"
             @endcode
             )")
-        .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
+        .args_in<int16_t, int32_t, int64_t, Date, Timestamp,
                  StringRef>();
 
     IniMathUDF();

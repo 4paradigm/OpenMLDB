@@ -479,10 +479,7 @@ void RegisterNativeUDFToModule() {
     RegisterMethod("iterator", bool_ty, {list_row_ty, iter_row_ty},
                    reinterpret_cast<void *>(v1::iterator_list<codec::Row>));
 
-    RegisterMethod("next", i16_ty,
-                   {
-                       iter_i16_ty,
-                   },
+    RegisterMethod("next", i16_ty, {iter_i16_ty},
                    reinterpret_cast<void *>(v1::next_iterator<int16_t>));
     RegisterMethod("next", i32_ty, {iter_i32_ty},
                    reinterpret_cast<void *>(v1::next_iterator<int32_t>));

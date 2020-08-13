@@ -1039,19 +1039,6 @@ Status ExprIRBuilder::BuildCondExpr(const ::fesql::node::CondExpr* node,
             raw_cond, builder.CreateNot(cond_value.GetIsNull(&builder)));
     }
 
-    ::llvm::Value* output_is_null = nullptr;
-    if (left_value.HasFlag()) {
-        output_is_null = left_value.GetIsNull(&builder);
-    }
-    if (right_value.HasFlag()) {
-        if (output_is_null == nullptr) {
-            output_is_null = right_value.GetIsNull(&builder);
-        } else {
-            output_is_null = builder.CreateOr(output_is_null,
-                                              right_value.GetIsNull(&builder));
-        }
-    }
-
     if (left_value.IsTuple()) {
         CHECK_TRUE(right_value.IsTuple() &&
                    left_value.GetFieldNum() == right_value.GetFieldNum());
@@ -1062,11 +1049,16 @@ Status ExprIRBuilder::BuildCondExpr(const ::fesql::node::CondExpr* node,
             ::llvm::Value* raw_value =
                 builder.CreateSelect(raw_cond, sub_left.GetValue(&builder),
                                      sub_right.GetValue(&builder));
-            if (output_is_null == nullptr) {
-                result_tuple.push_back(NativeValue::Create(raw_value));
-            } else {
+
+            bool output_nullable = sub_left.HasFlag() || sub_right.HasFlag();
+            if (output_nullable) {
+                ::llvm::Value* output_is_null =
+                    builder.CreateSelect(raw_cond, sub_left.GetIsNull(&builder),
+                                         sub_right.GetIsNull(&builder));
                 result_tuple.push_back(*output = NativeValue::CreateWithFlag(
                                            raw_value, output_is_null));
+            } else {
+                result_tuple.push_back(NativeValue::Create(raw_value));
             }
         }
         *output = NativeValue::CreateTuple(result_tuple);
@@ -1074,10 +1066,15 @@ Status ExprIRBuilder::BuildCondExpr(const ::fesql::node::CondExpr* node,
         ::llvm::Value* raw_value =
             builder.CreateSelect(raw_cond, left_value.GetValue(&builder),
                                  right_value.GetValue(&builder));
-        if (output_is_null == nullptr) {
-            *output = NativeValue::Create(raw_value);
-        } else {
+
+        bool output_nullable = left_value.HasFlag() || right_value.HasFlag();
+        if (output_nullable) {
+            ::llvm::Value* output_is_null =
+                builder.CreateSelect(raw_cond, left_value.GetIsNull(&builder),
+                                     right_value.GetIsNull(&builder));
             *output = NativeValue::CreateWithFlag(raw_value, output_is_null);
+        } else {
+            *output = NativeValue::Create(raw_value);
         }
     }
     return Status::OK();
