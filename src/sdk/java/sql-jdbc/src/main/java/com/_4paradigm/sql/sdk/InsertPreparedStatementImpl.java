@@ -5,7 +5,6 @@ import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.crypto.Data;
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
@@ -28,6 +27,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     private String db;
     private List<Boolean> hasSet;
     private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
+    private boolean closed = false;
+    private boolean closeOnComplete = false;
 
     public InsertPreparedStatementImpl(String db, SQLInsertRow row, String sql, SQLRouter router) {
         this.row = row;
@@ -46,19 +47,25 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             datas.add(null);
             hasSet.add(false);
         }
+        idxs.delete();
     }
 
     @Override
+    @Deprecated
     public ResultSet executeQuery() throws SQLException {
-        return null;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public int executeUpdate() throws SQLException {
-        return 0;
+        throw new SQLException("current do not support this method");
     }
 
     private void checkIdx(int i) throws SQLException {
+        if (closed) {
+            throw new SQLException("preparedstatement closed");
+        }
         if (i > datasType.size()) {
             throw new SQLException("out of data range");
         }
@@ -90,17 +97,25 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
+    @Deprecated
     public void setByte(int i, byte b) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
     public void setShort(int i, short i1) throws SQLException {
-
+        checkIdx(i);
+        checkType(i, DataType.kTypeInt16);
+        hasSet.set(i - 1, true);
+        datas.set(i - 1, i1);
     }
 
     @Override
     public void setInt(int i, int i1) throws SQLException {
+        checkIdx(i);
+        checkType(i, DataType.kTypeInt32);
+        hasSet.set(i - 1, true);
+        datas.set(i - 1, i1);
 
     }
 
@@ -114,17 +129,24 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
 
     @Override
     public void setFloat(int i, float v) throws SQLException {
-
+        checkIdx(i);
+        checkType(i, DataType.kTypeFloat);
+        hasSet.set(i - 1, true);
+        datas.set(i - 1, v);
     }
 
     @Override
     public void setDouble(int i, double v) throws SQLException {
-
+        checkIdx(i);
+        checkType(i, DataType.kTypeDouble);
+        hasSet.set(i - 1, true);
+        datas.set(i - 1, v);
     }
 
     @Override
+    @Deprecated
     public void setBigDecimal(int i, BigDecimal bigDecimal) throws SQLException {
-
+        throw new SQLException("current do not support this type");
     }
 
     @Override
@@ -136,8 +158,9 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
+    @Deprecated
     public void setBytes(int i, byte[] bytes) throws SQLException {
-
+        throw new SQLException("current do not support this type");
     }
 
     @Override
@@ -156,8 +179,9 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
+    @Deprecated
     public void setTime(int i, Time time) throws SQLException {
-
+        throw new SQLException("current do not support this type");
     }
 
     @Override
@@ -170,37 +194,48 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
+    @Deprecated
     public void setAsciiStream(int i, InputStream inputStream, int i1) throws SQLException {
-
+        throw new SQLException("current do not support this type");
     }
 
     @Override
+    @Deprecated
     public void setUnicodeStream(int i, InputStream inputStream, int i1) throws SQLException {
-
+        throw new SQLException("current do not support this type");
     }
 
     @Override
+    @Deprecated
     public void setBinaryStream(int i, InputStream inputStream, int i1) throws SQLException {
-
+        throw new SQLException("current do not support this type");
     }
 
     @Override
     public void clearParameters() throws SQLException {
-
+        for (int i = 0; i < hasSet.size(); i++) {
+            hasSet.set(i, false);
+            datas.set(i, null);
+        }
     }
 
     @Override
+    @Deprecated
     public void setObject(int i, Object o, int i1) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setObject(int i, Object o) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
     public boolean execute() throws SQLException {
+        if (closed) {
+            throw new SQLException("preparedstatement closed");
+        }
         for (int i = 0; i < hasSet.size(); i++) {
             if (!hasSet.get(i)) {
                 throw new SQLException("data not enough");
@@ -240,392 +275,477 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
                 throw new SQLException("unkown data type");
             }
         }
-        row.IsComplete();
+        boolean ok = row.IsComplete();
+        if (!ok) {
+            throw new SQLException("all data has put, but data does not enough");
+        }
         Status status = new Status();
-        boolean ok = router.ExecuteInsert(db, sql, row, status);
+        ok = router.ExecuteInsert(db, sql, row, status);
         if (!ok) {
             logger.error("getInsertRow fail: {}", status.getMsg());
+            return false;
+        }
+        if (closeOnComplete) {
+            closed = true;
         }
         return true;
     }
 
     @Override
+    @Deprecated
     public void addBatch() throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setCharacterStream(int i, Reader reader, int i1) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setRef(int i, Ref ref) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setBlob(int i, Blob blob) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setClob(int i, Clob clob) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setArray(int i, Array array) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public ResultSetMetaData getMetaData() throws SQLException {
-        return null;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setDate(int i, Date date, Calendar calendar) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setTime(int i, Time time, Calendar calendar) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setTimestamp(int i, Timestamp timestamp, Calendar calendar) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setNull(int i, int i1, String s) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setURL(int i, URL url) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public ParameterMetaData getParameterMetaData() throws SQLException {
-        return null;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setRowId(int i, RowId rowId) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setNString(int i, String s) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setNCharacterStream(int i, Reader reader, long l) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setNClob(int i, NClob nClob) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setClob(int i, Reader reader, long l) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setBlob(int i, InputStream inputStream, long l) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setNClob(int i, Reader reader, long l) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setSQLXML(int i, SQLXML sqlxml) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setObject(int i, Object o, int i1, int i2) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setAsciiStream(int i, InputStream inputStream, long l) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setBinaryStream(int i, InputStream inputStream, long l) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setCharacterStream(int i, Reader reader, long l) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setAsciiStream(int i, InputStream inputStream) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setBinaryStream(int i, InputStream inputStream) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setCharacterStream(int i, Reader reader) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setNCharacterStream(int i, Reader reader) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setClob(int i, Reader reader) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setBlob(int i, InputStream inputStream) throws SQLException {
 
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setNClob(int i, Reader reader) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public ResultSet executeQuery(String s) throws SQLException {
-        return null;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public int executeUpdate(String s) throws SQLException {
-        return 0;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
     public void close() throws SQLException {
-
+        if (closed) {
+            return;
+        }
+        this.row.delete();
+        closed = true;
     }
 
     @Override
+    @Deprecated
     public int getMaxFieldSize() throws SQLException {
-        return 0;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setMaxFieldSize(int i) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public int getMaxRows() throws SQLException {
-        return 0;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setMaxRows(int i) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setEscapeProcessing(boolean b) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public int getQueryTimeout() throws SQLException {
-        return 0;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setQueryTimeout(int i) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void cancel() throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public SQLWarning getWarnings() throws SQLException {
-        return null;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void clearWarnings() throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setCursorName(String s) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public boolean execute(String s) throws SQLException {
-        return false;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public ResultSet getResultSet() throws SQLException {
-        return null;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public int getUpdateCount() throws SQLException {
-        return 0;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public boolean getMoreResults() throws SQLException {
-        return false;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setFetchDirection(int i) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
+    @Deprecated
     @Override
     public int getFetchDirection() throws SQLException {
-        return 0;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void setFetchSize(int i) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public int getFetchSize() throws SQLException {
-        return 0;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public int getResultSetConcurrency() throws SQLException {
-        return 0;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public int getResultSetType() throws SQLException {
-        return 0;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void addBatch(String s) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void clearBatch() throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public int[] executeBatch() throws SQLException {
-        return new int[0];
+        //return new int[0];
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public Connection getConnection() throws SQLException {
-        return null;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public boolean getMoreResults(int i) throws SQLException {
-        return false;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public ResultSet getGeneratedKeys() throws SQLException {
-        return null;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public int executeUpdate(String s, int i) throws SQLException {
-        return 0;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public int executeUpdate(String s, int[] ints) throws SQLException {
-        return 0;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public int executeUpdate(String s, String[] strings) throws SQLException {
-        return 0;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public boolean execute(String s, int i) throws SQLException {
-        return false;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public boolean execute(String s, int[] ints) throws SQLException {
-        return false;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public boolean execute(String s, String[] strings) throws SQLException {
-        return false;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public int getResultSetHoldability() throws SQLException {
-        return 0;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
     public boolean isClosed() throws SQLException {
-        return false;
+        return closed;
     }
 
     @Override
+    @Deprecated
     public void setPoolable(boolean b) throws SQLException {
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public boolean isPoolable() throws SQLException {
-        return false;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
     public void closeOnCompletion() throws SQLException {
-
+        this.closeOnComplete = true;
     }
 
     @Override
     public boolean isCloseOnCompletion() throws SQLException {
-        return false;
+        return this.closeOnComplete;
     }
 
     @Override
+    @Deprecated
     public <T> T unwrap(Class<T> aClass) throws SQLException {
-        return null;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public boolean isWrapperFor(Class<?> aClass) throws SQLException {
-        return false;
+        throw new SQLException("current do not support this method");
     }
 }
