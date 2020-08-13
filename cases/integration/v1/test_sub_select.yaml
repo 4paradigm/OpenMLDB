@@ -110,3 +110,44 @@ cases:
     sql: select v5 from (select c1,c2+1 as v2,c3+1 as v3,1 as v4 from {0});
     expect:
       success: false
+  -
+    id: 7
+    desc: last join 子查询和副表, 子查询包含window
+    inputs:
+      -
+        columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
+
+        indexs: ["index1:card_no:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa",1, 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa",1, 1590738990000, 2.2]
+          - [3, "bb",10, 1590738990000, 3.3]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "crd_nbr string"]
+        indexs: ["index2:crd_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, "aaaaaaaaaa"]
+          - [1590738990000, "aaaaaaaaaa"]
+          - [1590738989000, "cc"]
+          - [1590738992000, "cc"]
+    sql: select * from
+      (select
+      id,
+      card_no,
+      trx_time,
+      substr(card_no, 1, 6) as card_no_prefix,
+      sum(trx_amt) over w30d,
+      count(merchant_id) over w10d
+      from  {0}
+      window w30d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW),
+      w10d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)) as trx_fe
+      last join {1} order by {1}.crd_lst_isu_dte on trx_fe.card_no = {1}.crd_nbr and trx_fe.trx_time >= {1}.crd_lst_isu_dte;
+    expect:
+      columns: ["id int", "card_no string", "trx_time timestamp", "card_no_prefix string",
+                "sum(trx_amt)over w30d float", "count(merchant_id)over w10d int64", "crd_lst_isu_dte timestamp",
+                "crd_nbr string"]
+      order: id
+      rows:
+        - [1, "aaaaaaaaaa", 1590738989000, "aaaaaa", 1.1, 1, 1590738988000, "aaaaaaaaaa"]
+        - [2, "aaaaaaaaaa", 1590738990000, "aaaaaa", 3.3, 2, 1590738990000, "aaaaaaaaaa"]
+        - [3, "bb", 1590738990000, "bb", 3.3, 1, null, null]
