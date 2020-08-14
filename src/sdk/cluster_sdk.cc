@@ -271,6 +271,7 @@ ClusterSDK::GetLeaderTabletByTable(const std::string& db,
             }
         }
     }
+    return std::shared_ptr<::rtidb::client::TabletClient>();
 }
 
 std::shared_ptr<::rtidb::client::TabletClient> ClusterSDK::PickOneTablet() {
