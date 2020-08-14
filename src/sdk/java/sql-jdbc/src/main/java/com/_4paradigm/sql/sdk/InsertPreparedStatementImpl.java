@@ -15,15 +15,15 @@ import java.sql.ResultSet;
 import java.util.*;
 
 public class InsertPreparedStatementImpl implements PreparedStatement {
-    private String currentSql;
+    private String currentSql = null;
     private SQLInsertRow currentRow = null;
     private SQLInsertRows currentRows = null;
     private SQLRouter router = null;
     private List<Object> currentDatas = null;
     private List<DataType> currentDatasType = null;
     private Schema currentSchema = null;
-    private String db;
-    private List<Boolean> hasSet;
+    private String db = null;
+    private List<Boolean> hasSet = null;
     private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
     private boolean closed = false;
     private boolean closeOnComplete = false;
@@ -40,7 +40,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         status.delete();
         this.currentRows = rows;
         this.currentRow = rows.NewRow();
-        this.currentSql = sql;
         this.router = router;
         this.currentSql = sql;
         currentSchema = this.currentRow.GetSchema();
@@ -294,7 +293,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (closed) {
             throw new SQLException("preparedstatement closed");
         }
-        if (!sqlRowsMap.isEmpty()) {
+        if (!sqlRowsMap.isEmpty() || this.currentRows.GetCnt() > 1) {
             throw new SQLException("please use executeBatch");
         }
         for (int i = 0; i < hasSet.size(); i++) {
