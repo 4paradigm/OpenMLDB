@@ -256,10 +256,7 @@ ClusterSDK::GetLeaderTabletByTable(const std::string& db,
     auto table_info = sit->second;
     for (const auto& part : table_info->table_partition()) {
         for (const auto& meta : part.partition_meta()) {
-            if (!meta.is_leader()) {
-                continue;
-            }
-            if (!meta.is_alive()) {
+            if (!meta.is_leader() && !meta.is_alive()) {
                 continue;
             }
             const std::string& ep = meta.endpoint();

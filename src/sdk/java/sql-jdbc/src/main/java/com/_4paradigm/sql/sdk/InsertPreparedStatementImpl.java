@@ -28,6 +28,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     private boolean closed = false;
     private boolean closeOnComplete = false;
     private Map<String, SQLInsertRows> sqlRowsMap = new HashMap<>();
+    private List<Integer> scehmaIdxs = null;
+    private Map<Integer, Integer> stringsLen = new HashMap<>();
 
     public InsertPreparedStatementImpl(String db, String sql, SQLRouter router) throws SqlException {
         Status status = new Status();
@@ -37,7 +39,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             logger.error("getInsertRows fail: {}", msg);
             throw new SqlException("get insertrows fail " + msg + " in construction preparedstatement");
         }
-        status.delete();
         this.currentRows = rows;
         this.currentRow = rows.NewRow();
         this.router = router;
@@ -48,14 +49,15 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         currentDatas = new ArrayList<>(idxs.size());
         currentDatasType = new ArrayList<>(idxs.size());
         hasSet = new ArrayList<>(idxs.size());
+        scehmaIdxs = new ArrayList<>(idxs.size());
         for (int i = 0; i < idxs.size(); i++) {
             long idx = idxs.get(i);
             DataType type = currentSchema.GetColumnType(idx);
             currentDatasType.add(type);
             currentDatas.add(null);
             hasSet.add(false);
+            scehmaIdxs.add(i);
         }
-        idxs.delete();
     }
 
     @Override
@@ -74,6 +76,9 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (closed) {
             throw new SQLException("preparedstatement closed");
         }
+        if (i <= 0) {
+            throw new SQLException("error sqe number");
+        }
         if (i > currentDatasType.size()) {
             throw new SQLException("out of data range");
         }
@@ -85,15 +90,19 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         }
     }
 
-    @Override
-    public void setNull(int i, int i1) throws SQLException {
+    private void setNull(int i) throws SQLException {
         checkIdx(i);
-        checkType(i, DataType.kTypeBool);
-        if (!this.currentSchema.IsColumnNotNull(i)) {
-            throw new SQLException("column not allow null");
+        boolean notAllowNull = checkNotAllowNull(i);
+        if (notAllowNull) {
+            throw new SQLException("this column not allow null");
         }
         hasSet.set(i - 1, true);
         currentDatas.set(i - 1, null);
+    }
+
+    @Override
+    public void setNull(int i, int i1) throws SQLException {
+        setNull(i);
     }
 
     @Override
@@ -157,10 +166,20 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         throw new SQLException("current do not support this type");
     }
 
+    private boolean checkNotAllowNull(int i) {
+        int idx = this.scehmaIdxs.get(i - 1);
+        return this.currentSchema.IsColumnNotNull(idx);
+    }
+
     @Override
     public void setString(int i, String s) throws SQLException {
         checkIdx(i);
         checkType(i, DataType.kTypeString);
+        if (s == null) {
+            setNull(i);
+            return;
+        }
+        stringsLen.put(i, s.length());
         hasSet.set(i - 1, true);
         currentDatas.set(i - 1, s);
     }
@@ -175,14 +194,12 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     public void setDate(int i, Date date) throws SQLException {
         checkIdx(i);
         checkType(i, DataType.kTypeDate);
+        if (date == null) {
+            setNull(i);
+            return;
+        }
         hasSet.set(i - 1, true);
-        int year = date.getYear();
-        int month = date.getMonth();
-        int day = date.getDate();
-        int data = year << 16;
-        data = data | (month << 8);
-        data = data | day;
-        currentDatas.set(i - 1, data);
+        currentDatas.set(i - 1, date);
 
     }
 
@@ -196,6 +213,10 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     public void setTimestamp(int i, Timestamp timestamp) throws SQLException {
         checkIdx(i);
         checkType(i, DataType.kTypeTimestamp);
+        if (timestamp == null) {
+            setNull(i);
+            return;
+        }
         hasSet.set(i - 1, true);
         long ts = timestamp.getTime();
         currentDatas.set(i - 1, ts);
@@ -225,6 +246,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             hasSet.set(i, false);
             currentDatas.set(i, null);
         }
+        stringsLen.clear();
     }
 
     @Override
@@ -234,6 +256,11 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     private void dataBuild() throws SQLException {
+        for (int i = 0; i < hasSet.size(); i++) {
+            if (!hasSet.get(i)) {
+                throw new SQLException("data not enough");
+            }
+        }
         if (currentRows == null) {
             throw new SQLException("null rows");
         }
@@ -241,42 +268,55 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             currentRow = currentRows.NewRow();
         }
         int strLen = 0;
+        if (!stringsLen.isEmpty()) {
+            for (Integer k : stringsLen.keySet()) {
+                Integer len = stringsLen.get(k);
+                strLen += len;
+            }
+        }
         for (int i = 0; i < currentDatasType.size(); i++) {
             if (currentDatasType.get(i) != DataType.kTypeString) {
                 continue;
             }
-            strLen = ((String)currentDatas.get(i)).length();
+            Object data = currentDatas.get(i);
+            if (data == null) {
+                continue;
+            }
+            strLen += ((String)data).length();
         }
-        currentRow.Init(strLen);
+        boolean ok = currentRow.Init(strLen);
+        if (!ok) {
+            throw new SQLException("build data row failed");
+        }
         for (int i = 0; i < currentDatasType.size(); i++) {
             Object data = currentDatas.get(i);
             if (data == null) {
-                currentRow.AppendNULL();
+                ok = currentRow.AppendNULL();
             } else if (DataType.kTypeBool.equals(currentDatasType.get(i))) {
-                currentRow.AppendBool((boolean) data);
+                ok = currentRow.AppendBool((boolean) data);
             } else if (DataType.kTypeDate.equals(currentDatasType.get(i))) {
-                currentRow.AppendDate((int) data);
+                java.sql.Date date = (java.sql.Date)data;
+                ok = currentRow.AppendDate(date.getYear() + 1900, date.getMonth(), date.getDate());
             } else if (DataType.kTypeDouble.equals(currentDatasType.get(i))) {
-                currentRow.AppendDouble((double) data);
+                ok = currentRow.AppendDouble((double) data);
             } else if (DataType.kTypeFloat.equals(currentDatasType.get(i))) {
-                currentRow.AppendFloat((float) data);
+                ok = currentRow.AppendFloat((float) data);
             } else if (DataType.kTypeInt16.equals(currentDatasType.get(i))) {
-                currentRow.AppendInt16((short) data);
+                ok = currentRow.AppendInt16((short) data);
             } else if (DataType.kTypeInt32.equals(currentDatasType.get(i))) {
-                currentRow.AppendInt32((int) data);
+                ok = currentRow.AppendInt32((int) data);
             } else if (DataType.kTypeInt64.equals(currentDatasType.get(i))) {
-                currentRow.AppendInt64((long) data);
+                ok = currentRow.AppendInt64((long) data);
             } else if (DataType.kTypeString.equals(currentDatasType.get(i))) {
-                currentRow.AppendString((String) data);
+                ok = currentRow.AppendString((String) data);
             } else if (DataType.kTypeTimestamp.equals(currentDatasType.get(i))) {
-                currentRow.AppendTimestamp((long) data);
+                ok = currentRow.AppendTimestamp((long) data);
             } else {
                 throw new SQLException("unkown data type");
             }
-        }
-        boolean ok = currentRow.IsComplete();
-        if (!ok) {
-            throw new SQLException("all data has put, but data does not enough");
+            if (!ok) {
+                throw new SQLException("put data faile idx is " + i);
+            }
         }
         currentRow = null;
         clearParameters();
@@ -296,11 +336,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (!sqlRowsMap.isEmpty() || this.currentRows.GetCnt() > 1) {
             throw new SQLException("please use executeBatch");
         }
-        for (int i = 0; i < hasSet.size(); i++) {
-            if (!hasSet.get(i)) {
-                throw new SQLException("data not enough");
-            }
-        }
         dataBuild();
         Status status = new Status();
         boolean ok = router.ExecuteInsert(db, currentSql, currentRows, status);
@@ -315,18 +350,11 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
-    @Deprecated
     public void addBatch() throws SQLException {
         if (closed) {
             throw new SQLException("preparedstatement closed");
         }
-        for (int i = 0; i < hasSet.size(); i++) {
-            if (!hasSet.get(i)) {
-                throw new SQLException("data not enough");
-            }
-        }
         dataBuild();
-        clearParameters();
     }
 
     @Override
@@ -533,7 +561,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (closed) {
             return;
         }
-        this.currentRow.delete();
         closed = true;
     }
 
@@ -664,46 +691,50 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
-    @Deprecated
     public void addBatch(String s) throws SQLException {
-        if (s.equals(this.currentSql) && currentDatas.size() > 0) {
+        if (currentDatas.size() > 0 && s.equals(this.currentSql)) {
             throw new SQLException("data not enough");
         }
         if (sqlRowsMap.get(s) != null) {
             return;
-        }
-        if (s.contains("?")) {
-            throw new SQLException("this sql can not direct into batch, because that contains ?");
         }
         Status status = new Status();
         SQLInsertRows rows = router.GetInsertRows(db, s, status);
         if (status.getCode() != 0) {
             String msg = status.getMsg();
             logger.error("getInsertRows fail: {}", msg);
-            status.delete();
             throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
         }
-        status.delete();
+        SQLInsertRow row = rows.NewRow();
+        if (row.GetHoleIdx().size() > 0) {
+            throw new SQLException("this sql need data");
+        }
         sqlRowsMap.put(s, rows);
     }
 
     @Override
-    @Deprecated
     public void clearBatch() throws SQLException {
         for (String key : sqlRowsMap.keySet()) {
             SQLInsertRows rows = sqlRowsMap.get(key);
             rows.delete();
         }
         sqlRowsMap.clear();
-        currentRow.delete();
-        currentRows.delete();
+        currentSchema = null;
+        currentSchema = null;
         currentRow = null;
+        currentRows = null;
+        Status status = new Status();
+        currentRows = router.GetInsertRows(db, currentSql, status);
+        if (status.getCode() != 0) {
+            String msg = status.getMsg();
+            logger.error("getInsertRows fail: {}", msg);
+            throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
+        }
+
     }
 
     @Override
-    @Deprecated
     public int[] executeBatch() throws SQLException {
-        //return new int[0];
         if (closed) {
             throw new SQLException("preparedstatement closed");
         }
