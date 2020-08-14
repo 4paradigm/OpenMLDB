@@ -215,8 +215,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                     }
                 }
             }
-            HashMap<String, String> realEpMap = new HashMap<>();
-            getRealEpMap(realEpMap);
+            HashMap<String, String> realEpMap = getRealEpMap();
 
             for (TableInfo table : newTableList) {
                 try {
@@ -333,8 +332,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 logger.warn("path {} does not exist", config.getZkNodeRootPath());
                 return true;
             }
-            HashMap<String, String> realEpMap = new HashMap<>();
-            getRealEpMap(realEpMap);
+            HashMap<String, String> realEpMap = getRealEpMap();
             Set<EndPoint> endpoinSet = new HashSet<EndPoint>();
             List<String> children = zookeeper.getChildren(config.getZkNodeRootPath(), false);
             for (String path : children) {
@@ -409,7 +407,8 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
         }
     }
 
-    private void getRealEpMap(HashMap<String, String> realEpMap) throws KeeperException, InterruptedException {
+    private HashMap<String, String> getRealEpMap() throws KeeperException, InterruptedException {
+        HashMap<String, String> realEpMap = new HashMap<>();
         // get sdkendpoint
         if (zookeeper.exists(config.getZkSdkEndpointPath(), false) != null) {
             List<String> sdkEndpoints = zookeeper.getChildren(config.getZkSdkEndpointPath(), false);
@@ -438,6 +437,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 }
             }
         }
+        return realEpMap;
     }
 
     @Override
