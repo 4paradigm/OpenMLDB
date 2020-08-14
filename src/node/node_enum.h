@@ -71,6 +71,9 @@ enum SQLNodeType {
     kUDFByCodeGenDef,
     kUDAFDef,
     kLambdaDef,
+    kPartitionMeta,
+    kReplicaNum,
+    kDistributions,
     kUnknow
 };
 
@@ -229,6 +232,11 @@ enum PlanType {
 
 // batch plan node type
 enum BatchPlanNodeType { kBatchDataset, kBatchPartition, kBatchMap };
+
+enum RoleType {
+    kLeader,
+    kFollower
+};
 
 }  // namespace node
 }  // namespace fesql
