@@ -371,9 +371,9 @@ bool NsClient::HandleSQLCreateTable(
             ::rtidb::nameserver::TableInfo* table_info =
                 request.mutable_table_info();
             table_info->set_db(db);
-            TransformToTableDef(create->GetTableName(),
-                    create->GetColumnDescList(), table_info,
-                    sql_status);
+            TransformToTableDef(create->GetTableName(), create->GetReplicaNum(),
+                    create->GetColumnDescList(), create->GetDistributionList(),
+                    table_info, sql_status);
             if (0 != sql_status->code) {
                 return false;
             }
@@ -1117,7 +1117,9 @@ bool NsClient::DeleteIndex(const std::string& table_name,
 
 bool NsClient::TransformToTableDef(
     const std::string& table_name,
+    int replica_num,
     const fesql::node::NodePointVector& column_desc_list,
+    const fesql::node::NodePointVector& distribution_list,
     ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status) {
     if (table == NULL || status == NULL) return false;
     std::set<std::string> index_names;
@@ -1125,7 +1127,12 @@ bool NsClient::TransformToTableDef(
     table->set_name(table_name);
     // todo: change default setting
     table->set_partition_num(1);
-    table->set_replica_num(1);
+    if (replica_num <= 0) {
+        status->msg = "CREATE common: replica_num should be bigger than 0";
+        status->code = fesql::common::kSQLError;
+        return false;
+    }
+    table->set_replica_num((uint32_t)replica_num);
     table->set_format_version(1);
     ::rtidb::api::TTLDesc* ttl_desc = table->mutable_ttl_desc();
     ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
@@ -1309,6 +1316,58 @@ bool NsClient::TransformToTableDef(
                     " when CREATE TABLE";
                 status->code = fesql::common::kSQLError;
                 return false;
+            }
+        }
+    }
+    if (!distribution_list.empty()) {
+        if (replica_num != (int32_t)distribution_list.size()) {
+            status->msg = "CREATE common: "
+                "replica_num should equal to partition meta size";
+            status->code = fesql::common::kSQLError;
+            return false;
+        }
+        ::rtidb::nameserver::TablePartition* table_partition =
+            table->add_table_partition();
+        table_partition->set_pid(0);
+        std::vector<std::string> ep_vec;
+        for (auto partition_meta : distribution_list) {
+            switch (partition_meta->GetType()) {
+                case fesql::node::kPartitionMeta: {
+                    fesql::node::PartitionMetaNode* p_meta_node =
+                        (fesql::node::PartitionMetaNode*)partition_meta;
+                    const std::string& ep = p_meta_node->GetEndpoint();
+                    if (std::find(ep_vec.begin(), ep_vec.end(), ep) !=
+                        ep_vec.end()) {
+                        status->msg = "CREATE common: "
+                            "partition meta endpoint duplicate";
+                        status->code = fesql::common::kSQLError;
+                        return false;
+                    }
+                    ep_vec.push_back(ep);
+                    ::rtidb::nameserver::PartitionMeta* meta =
+                        table_partition->add_partition_meta();
+                    meta->set_endpoint(ep);
+                    if (p_meta_node->GetRoleType() == fesql::node::kLeader) {
+                        meta->set_is_leader(true);
+                    } else if (p_meta_node->GetRoleType() ==
+                            fesql::node::kFollower) {
+                        meta->set_is_leader(false);
+                    } else {
+                        status->msg = "CREATE common: role_type " +
+                            fesql::node::RoleTypeName(p_meta_node->GetRoleType()) +
+                            " not support";
+                        status->code = fesql::common::kSQLError;
+                        return false;
+                    }
+                    break;
+                }
+                default: {
+                    status->msg = "can not support " +
+                        fesql::node::NameOfSQLNodeType(partition_meta->GetType()) +
+                        " when CREATE TABLE 2";
+                    status->code = fesql::common::kSQLError;
+                    return false;
+                }
             }
         }
     }
