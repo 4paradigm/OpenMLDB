@@ -249,7 +249,7 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
         combine_it.SeekToFirst();
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
-        ASSERT_EQ(ts, 1900);
+        ASSERT_EQ((int64_t)ts, 1900);
         ASSERT_EQ(value, "value900");
     }
 
@@ -264,7 +264,7 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
         combine_it.SeekToFirst();
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
-        ASSERT_EQ(ts, 1100);
+        ASSERT_EQ((int64_t)ts, 1100);
         ASSERT_EQ(value, "value100");
     }
 
@@ -305,7 +305,7 @@ void RunGetLatestIndexAssert(std::vector<QueryIt>* q_its) {
         combine_it.SeekToFirst();
         code = tablet_impl.GetIndex(&request, meta, vers_schema, &combine_it, &value, &ts);
         ASSERT_EQ(0, code);
-        ASSERT_EQ(ts, 1200);
+        ASSERT_EQ((signed)ts, 1200);
         ASSERT_EQ(value, "value200");
     }
 }

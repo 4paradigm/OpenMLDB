@@ -116,7 +116,7 @@ TEST_F(ClusterSDKTest, smoketest) {
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablet;
     ok = sdk.GetTabletByTable(db, name, &tablet);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(1u, tablet.size());
+    ASSERT_EQ(2u, tablet.size());
     auto leader_tablet = sdk.GetLeaderTabletByTable(db, name);
     if (!leader_tablet) {
         ASSERT_TRUE(false);

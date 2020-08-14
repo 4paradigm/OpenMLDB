@@ -37,7 +37,7 @@ TEST_F(KvIteratorTest, Iterator_ONE) {
     ::rtidb::codec::Encode(9527, db1, data, 0);
     KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
-    ASSERT_EQ(9527, kv_it.GetKey());
+    ASSERT_EQ(9527, (int64_t)(kv_it.GetKey()));
     ASSERT_EQ("hello", kv_it.GetValue().ToString());
     kv_it.Next();
     ASSERT_FALSE(kv_it.Valid());
@@ -57,11 +57,11 @@ TEST_F(KvIteratorTest, Iterator) {
     ::rtidb::codec::Encode(9528, db2, data, 17);
     KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
-    ASSERT_EQ(9527, kv_it.GetKey());
+    ASSERT_EQ(9527, (signed)kv_it.GetKey());
     ASSERT_EQ("hello", kv_it.GetValue().ToString());
     kv_it.Next();
     ASSERT_TRUE(kv_it.Valid());
-    ASSERT_EQ(9528, kv_it.GetKey());
+    ASSERT_EQ(9528, (signed)kv_it.GetKey());
     ASSERT_EQ("hell1", kv_it.GetValue().ToString());
     kv_it.Next();
     ASSERT_FALSE(kv_it.Valid());
@@ -83,12 +83,12 @@ TEST_F(KvIteratorTest, HasPK) {
     KvIterator kv_it(response);
     ASSERT_TRUE(kv_it.Valid());
     ASSERT_STREQ("test1", kv_it.GetPK().c_str());
-    ASSERT_EQ(9527, kv_it.GetKey());
+    ASSERT_EQ(9527, (signed)kv_it.GetKey());
     ASSERT_STREQ("hello", kv_it.GetValue().ToString().c_str());
     kv_it.Next();
     ASSERT_TRUE(kv_it.Valid());
     ASSERT_STREQ("test2", kv_it.GetPK().c_str());
-    ASSERT_EQ(9528, kv_it.GetKey());
+    ASSERT_EQ(9528, (signed)kv_it.GetKey());
     ASSERT_STREQ("hell1", kv_it.GetValue().ToString().c_str());
     kv_it.Next();
     ASSERT_FALSE(kv_it.Valid());

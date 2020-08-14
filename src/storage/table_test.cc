@@ -31,12 +31,12 @@ TEST_F(TableTest, Put) {
                                    ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
     table->Put("test", 9537, "test", 4);
-    ASSERT_EQ(1, table->GetRecordCnt());
+    ASSERT_EQ(1, (int64_t)table->GetRecordCnt());
     Ticket ticket;
     TableIterator* it = table->NewIterator("test", ticket);
     it->SeekToFirst();
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(9537, it->GetKey());
+    ASSERT_EQ(9537, (int64_t)it->GetKey());
     std::string value_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("test", value_str);
     it->Next();
@@ -80,9 +80,9 @@ TEST_F(TableTest, MultiDimissionPut0) {
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
                                    ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
-    ASSERT_EQ(3, table->GetIdxCnt());
-    ASSERT_EQ(0, table->GetRecordIdxCnt());
-    ASSERT_EQ(0, table->GetRecordCnt());
+    ASSERT_EQ(3, (int64_t)table->GetIdxCnt());
+    ASSERT_EQ(0, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(0, (int64_t)table->GetRecordCnt());
     Dimensions dimensions;
     ::rtidb::api::Dimension* d0 = dimensions.Add();
     d0->set_key("d0");
@@ -97,8 +97,8 @@ TEST_F(TableTest, MultiDimissionPut0) {
     d2->set_idx(2);
     bool ok = table->Put(1, "test", dimensions);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(3, table->GetRecordIdxCnt());
-    ASSERT_EQ(1, table->GetRecordCnt());
+    ASSERT_EQ(3, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(1, (int64_t)table->GetRecordCnt());
 }
 
 TEST_F(TableTest, MultiDimissionPut1) {
@@ -109,7 +109,7 @@ TEST_F(TableTest, MultiDimissionPut1) {
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 10,
                                    ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
-    ASSERT_EQ(3, table->GetIdxCnt());
+    ASSERT_EQ(3, (int64_t)table->GetIdxCnt());
     DataBlock* db = new DataBlock(3, "helloworld", 10);
     std::string d1 = "d1";
     ASSERT_FALSE(table->Put(d1, 9527, db, 3));
@@ -128,7 +128,7 @@ TEST_F(TableTest, Release) {
     table->Init();
     table->Put("test", 9537, "test", 4);
     table->Put("test2", 9537, "test", 4);
-    uint64_t cnt = table->Release();
+    int64_t cnt = table->Release();
     ASSERT_EQ(cnt, 2);
     delete table;
 }
@@ -219,7 +219,7 @@ TEST_F(TableTest, SchedGcForMultiDimissionTable) {
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
                                    ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
-    ASSERT_EQ(3, table->GetIdxCnt());
+    ASSERT_EQ(3, (int64_t)table->GetIdxCnt());
     DataBlock* db = new DataBlock(3, "helloworld", 10);
     std::string d1 = "d1";
     ASSERT_FALSE(table->Put(d1, 9527, db, 3));
@@ -229,10 +229,10 @@ TEST_F(TableTest, SchedGcForMultiDimissionTable) {
     std::string d3 = "d3";
     ASSERT_TRUE(table->Put(d3, 9527, db, 2));
     table->RecordCntIncr(1);
-    ASSERT_EQ(3, table->GetRecordIdxCnt());
+    ASSERT_EQ(3, (int64_t)table->GetRecordIdxCnt());
     table->SchedGc();
-    ASSERT_EQ(0, table->GetRecordCnt());
-    ASSERT_EQ(0, table->GetRecordIdxCnt());
+    ASSERT_EQ(0, (int64_t)table->GetRecordCnt());
+    ASSERT_EQ(0, (int64_t)table->GetRecordIdxCnt());
 }
 
 TEST_F(TableTest, SchedGcHead) {
@@ -245,9 +245,9 @@ TEST_F(TableTest, SchedGcHead) {
     uint64_t bytes = table->GetRecordByteSize();
     uint64_t record_idx_bytes = table->GetRecordIdxByteSize();
     table->Put("test", 1, "test2", 5);
-    ASSERT_EQ(2, table->GetRecordCnt());
-    ASSERT_EQ(2, table->GetRecordIdxCnt());
-    ASSERT_EQ(1, table->GetRecordPkCnt());
+    ASSERT_EQ(2, (int64_t)table->GetRecordCnt());
+    ASSERT_EQ(2, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(1, (int64_t)table->GetRecordPkCnt());
     table->SchedGc();
     {
         ::rtidb::api::LogEntry entry;
@@ -265,8 +265,8 @@ TEST_F(TableTest, SchedGcHead) {
         entry.set_value("test1");
         ASSERT_FALSE(table->IsExpire(entry));
     }
-    ASSERT_EQ(1, table->GetRecordCnt());
-    ASSERT_EQ(1, table->GetRecordIdxCnt());
+    ASSERT_EQ(1, (int64_t)table->GetRecordCnt());
+    ASSERT_EQ(1, (int64_t)table->GetRecordIdxCnt());
     ASSERT_EQ(bytes, table->GetRecordByteSize());
     ASSERT_EQ(record_idx_bytes, table->GetRecordIdxByteSize());
 }
@@ -321,13 +321,13 @@ TEST_F(TableTest, SchedGc) {
     uint64_t bytes = table->GetRecordByteSize();
     uint64_t record_idx_bytes = table->GetRecordIdxByteSize();
     table->Put("test", 9527, "test", 4);
-    ASSERT_EQ(2, table->GetRecordCnt());
-    ASSERT_EQ(2, table->GetRecordIdxCnt());
-    ASSERT_EQ(1, table->GetRecordPkCnt());
+    ASSERT_EQ(2, (int64_t)table->GetRecordCnt());
+    ASSERT_EQ(2, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(1, (int64_t)table->GetRecordPkCnt());
 
     table->SchedGc();
-    ASSERT_EQ(1, table->GetRecordCnt());
-    ASSERT_EQ(1, table->GetRecordIdxCnt());
+    ASSERT_EQ(1, (int64_t)table->GetRecordCnt());
+    ASSERT_EQ(1, (int64_t)table->GetRecordIdxCnt());
     ASSERT_EQ(bytes, table->GetRecordByteSize());
     ASSERT_EQ(record_idx_bytes, table->GetRecordIdxByteSize());
 
@@ -373,12 +373,12 @@ TEST_F(TableTest, OffSet) {
         delete it;
     }
 
-    ASSERT_EQ(table->GetRecordCnt(), 2);
-    ASSERT_EQ(table->GetRecordIdxCnt(), 2);
+    ASSERT_EQ((int64_t)table->GetRecordCnt(), 2);
+    ASSERT_EQ((int64_t)table->GetRecordIdxCnt(), 2);
     table->SetTimeOffset(120);
     table->SchedGc();
-    ASSERT_EQ(table->GetRecordCnt(), 1);
-    ASSERT_EQ(table->GetRecordIdxCnt(), 1);
+    ASSERT_EQ((int64_t)table->GetRecordCnt(), 1);
+    ASSERT_EQ((int64_t)table->GetRecordIdxCnt(), 1);
     delete table;
 }
 
@@ -388,12 +388,12 @@ TEST_F(TableTest, TableDataCnt) {
     MemTable* table = new MemTable("tx_log", 1, 1, 8, mapping, 1,
                                    ::rtidb::api::TTLType::kAbsoluteTime);
     table->Init();
-    ASSERT_EQ(table->GetRecordCnt(), 0);
+    ASSERT_EQ((int64_t)table->GetRecordCnt(), 0);
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     table->Put("test", 9527, "test", 4);
     table->Put("test", now, "tes2", 4);
-    ASSERT_EQ(table->GetRecordCnt(), 2);
-    ASSERT_EQ(table->GetRecordIdxCnt(), 2);
+    ASSERT_EQ((int64_t)table->GetRecordCnt(), 2);
+    ASSERT_EQ((int64_t)table->GetRecordIdxCnt(), 2);
     table->SchedGc();
     {
         ::rtidb::api::LogEntry entry;
@@ -411,8 +411,8 @@ TEST_F(TableTest, TableDataCnt) {
         entry.set_value("tes2");
         ASSERT_FALSE(table->IsExpire(entry));
     }
-    ASSERT_EQ(table->GetRecordCnt(), 1);
-    ASSERT_EQ(table->GetRecordIdxCnt(), 1);
+    ASSERT_EQ((int64_t)table->GetRecordCnt(), 1);
+    ASSERT_EQ((int64_t)table->GetRecordIdxCnt(), 1);
     delete table;
 }
 
@@ -443,19 +443,19 @@ TEST_F(TableTest, TableIterator) {
     // it->Test();
     it->SeekToFirst();
     ASSERT_STREQ("pk", it->GetPK().c_str());
-    ASSERT_EQ(9528, it->GetKey());
+    ASSERT_EQ(9528, (int64_t)it->GetKey());
     it->Next();
     ASSERT_STREQ("pk", it->GetPK().c_str());
-    ASSERT_EQ(9527, it->GetKey());
+    ASSERT_EQ(9527, (int64_t)it->GetKey());
     it->Next();
     ASSERT_STREQ("test", it->GetPK().c_str());
-    ASSERT_EQ(20, it->GetKey());
+    ASSERT_EQ(20, (int64_t)it->GetKey());
     it->Next();
     ASSERT_STREQ("pk1", it->GetPK().c_str());
-    ASSERT_EQ(9527, it->GetKey());
+    ASSERT_EQ(9527, (int64_t)it->GetKey());
     it->Next();
     ASSERT_STREQ("pk1", it->GetPK().c_str());
-    ASSERT_EQ(100, it->GetKey());
+    ASSERT_EQ(100, (int64_t)it->GetKey());
     it->Next();
     ASSERT_FALSE(it->Valid());
 
@@ -465,12 +465,12 @@ TEST_F(TableTest, TableIterator) {
     it->Seek("test", 30);
     ASSERT_TRUE(it->Valid());
     ASSERT_STREQ("test", it->GetPK().c_str());
-    ASSERT_EQ(20, it->GetKey());
+    ASSERT_EQ(20, (int64_t)it->GetKey());
 
     it->Seek("test", 20);
     ASSERT_TRUE(it->Valid());
     ASSERT_STREQ("pk1", it->GetPK().c_str());
-    ASSERT_EQ(9527, it->GetKey());
+    ASSERT_EQ(9527, (int64_t)it->GetKey());
     delete it;
     delete table;
 
@@ -489,14 +489,14 @@ TEST_F(TableTest, TableIterator) {
     it1->Seek("pk", 9528);
     ASSERT_TRUE(it1->Valid());
     ASSERT_STREQ("pk", it1->GetPK().c_str());
-    ASSERT_EQ(9527, it1->GetKey());
+    ASSERT_EQ(9527, (int64_t)it1->GetKey());
     it1->Next();
     ASSERT_TRUE(it1->Valid());
     ASSERT_STREQ("test", it1->GetPK().c_str());
-    ASSERT_EQ(20, it1->GetKey());
+    ASSERT_EQ(20, (int64_t)it1->GetKey());
     it1->Next();
     ASSERT_STREQ("pk1", it1->GetPK().c_str());
-    ASSERT_EQ(9527, it1->GetKey());
+    ASSERT_EQ(9527, (int64_t)it1->GetKey());
 }
 
 TEST_F(TableTest, TableIteratorNoPk) {
@@ -516,21 +516,21 @@ TEST_F(TableTest, TableIteratorNoPk) {
     TableIterator* it = table->NewTraverseIterator(0);
     it->SeekToFirst();
     ASSERT_STREQ("pk10", it->GetPK().c_str());
-    ASSERT_EQ(9527, it->GetKey());
+    ASSERT_EQ(9527, (int64_t)it->GetKey());
     it->Next();
     ASSERT_STREQ("pk4", it->GetPK().c_str());
-    ASSERT_EQ(9524, it->GetKey());
+    ASSERT_EQ(9524, (int64_t)it->GetKey());
     it->Next();
     ASSERT_STREQ("pk8", it->GetPK().c_str());
-    ASSERT_EQ(9526, it->GetKey());
+    ASSERT_EQ(9526, (int64_t)it->GetKey());
     it->Next();
     ASSERT_STREQ("pk0", it->GetPK().c_str());
-    ASSERT_EQ(9522, it->GetKey());
+    ASSERT_EQ(9522, (int64_t)it->GetKey());
     delete it;
     it = table->NewTraverseIterator(0);
     it->Seek("pk4", 9526);
     ASSERT_STREQ("pk4", it->GetPK().c_str());
-    ASSERT_EQ(9524, it->GetKey());
+    ASSERT_EQ(9524, (int64_t)it->GetKey());
     delete it;
 
     ASSERT_TRUE(table->Delete("pk4", 0));
@@ -538,10 +538,10 @@ TEST_F(TableTest, TableIteratorNoPk) {
     it->Seek("pk4", 9526);
     ASSERT_TRUE(it->Valid());
     ASSERT_STREQ("pk8", it->GetPK().c_str());
-    ASSERT_EQ(9526, it->GetKey());
+    ASSERT_EQ(9526, (int64_t)it->GetKey());
     it->Next();
     ASSERT_STREQ("pk0", it->GetPK().c_str());
-    ASSERT_EQ(9522, it->GetKey());
+    ASSERT_EQ(9522, (int64_t)it->GetKey());
     delete it;
 }
 
@@ -570,7 +570,7 @@ TEST_F(TableTest, TableIteratorCount) {
     it = table->NewTraverseIterator(0);
     it->Seek("pk500", 9528);
     ASSERT_STREQ("pk500", it->GetPK().c_str());
-    ASSERT_EQ(9527, it->GetKey());
+    ASSERT_EQ(9527, (int64_t)it->GetKey());
     count = 0;
     while (it->Valid()) {
         count++;
@@ -769,7 +769,7 @@ TEST_F(TableTest, TraverseIteratorCount) {
         it->Next();
     }
     ASSERT_EQ(1000, count);
-    ASSERT_EQ(1100, it->GetCount());
+    ASSERT_EQ(1100, (int64_t)it->GetCount());
     delete it;
 
     it = table.NewTraverseIterator(0, 1);
@@ -780,7 +780,7 @@ TEST_F(TableTest, TraverseIteratorCount) {
         it->Next();
     }
     ASSERT_EQ(1000, count);
-    ASSERT_EQ(1100, it->GetCount());
+    ASSERT_EQ(1100, (int64_t)it->GetCount());
     delete it;
     FLAGS_max_traverse_cnt = old_max_traverse;
 }
@@ -828,14 +828,14 @@ TEST_F(TableTest, UpdateTTL) {
 
     MemTable table(table_meta);
     table.Init();
-    ASSERT_EQ(10, table.GetTTL(0, 0).abs_ttl);
-    ASSERT_EQ(5, table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL(0, 0).abs_ttl);
+    ASSERT_EQ(5, (int64_t)table.GetTTL(0, 1).abs_ttl);
     table.SetTTL(1, 20, 0);
-    ASSERT_EQ(10, table.GetTTL(0, 0).abs_ttl);
-    ASSERT_EQ(5, table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL(0, 0).abs_ttl);
+    ASSERT_EQ(5, (int64_t)table.GetTTL(0, 1).abs_ttl);
     table.SchedGc();
-    ASSERT_EQ(10, table.GetTTL(0, 0).abs_ttl);
-    ASSERT_EQ(20, table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL(0, 0).abs_ttl);
+    ASSERT_EQ(20, (int64_t)table.GetTTL(0, 1).abs_ttl);
 }
 
 ::rtidb::common::ColumnDesc* AddColumnDesc(
@@ -910,19 +910,19 @@ TEST_F(TableTest, AbsAndLatSetGet) {
         table.Put(request.dimensions(), request.ts_dimensions(), value);
     }
     // test get and set ttl
-    ASSERT_EQ(10, table.GetTTL().abs_ttl);
-    ASSERT_EQ(12, table.GetTTL().lat_ttl);
-    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
-    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL().abs_ttl);
+    ASSERT_EQ(12, (int64_t)table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, (int64_t)table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL(0, 1).lat_ttl);
     table.SetTTL(0, 1, 3);
-    ASSERT_EQ(10, table.GetTTL().abs_ttl);
-    ASSERT_EQ(12, table.GetTTL().lat_ttl);
-    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
-    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
-    ASSERT_EQ(10, table.GetTTL(1, 0).abs_ttl);
-    ASSERT_EQ(12, table.GetTTL(1, 0).lat_ttl);
-    ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
-    ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL().abs_ttl);
+    ASSERT_EQ(12, (int64_t)table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, (int64_t)table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL(0, 1).lat_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL(1, 0).abs_ttl);
+    ASSERT_EQ(12, (int64_t)table.GetTTL(1, 0).lat_ttl);
+    ASSERT_EQ(2, (int64_t)table.GetTTL(1, 1).abs_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL(1, 1).lat_ttl);
     table.SchedGc();
     {
         ::rtidb::api::LogEntry entry;
@@ -960,14 +960,14 @@ TEST_F(TableTest, AbsAndLatSetGet) {
         entry.set_value("value");
         ASSERT_TRUE(table.IsExpire(entry));
     }
-    ASSERT_EQ(1, table.GetTTL().abs_ttl);
-    ASSERT_EQ(3, table.GetTTL().lat_ttl);
-    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
-    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
-    ASSERT_EQ(1, table.GetTTL(1, 0).abs_ttl);
-    ASSERT_EQ(3, table.GetTTL(1, 0).lat_ttl);
-    ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
-    ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
+    ASSERT_EQ(1, (int64_t)table.GetTTL().abs_ttl);
+    ASSERT_EQ(3, (int64_t)table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, (int64_t)table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL(0, 1).lat_ttl);
+    ASSERT_EQ(1, (int64_t)table.GetTTL(1, 0).abs_ttl);
+    ASSERT_EQ(3, (int64_t)table.GetTTL(1, 0).lat_ttl);
+    ASSERT_EQ(2, (int64_t)table.GetTTL(1, 1).abs_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL(1, 1).lat_ttl);
 }
 
 TEST_F(TableTest, AbsOrLatSetGet) {
@@ -1007,19 +1007,19 @@ TEST_F(TableTest, AbsOrLatSetGet) {
         table.Put(request.dimensions(), request.ts_dimensions(), value);
     }
     // test get and set ttl
-    ASSERT_EQ(10, table.GetTTL().abs_ttl);
-    ASSERT_EQ(12, table.GetTTL().lat_ttl);
-    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
-    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL().abs_ttl);
+    ASSERT_EQ(12, (int64_t)table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, (int64_t)table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL(0, 1).lat_ttl);
     table.SetTTL(0, 1, 3);
-    ASSERT_EQ(10, table.GetTTL().abs_ttl);
-    ASSERT_EQ(12, table.GetTTL().lat_ttl);
-    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
-    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
-    ASSERT_EQ(10, table.GetTTL(1, 0).abs_ttl);
-    ASSERT_EQ(12, table.GetTTL(1, 0).lat_ttl);
-    ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
-    ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL().abs_ttl);
+    ASSERT_EQ(12, (int64_t)table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, (int64_t)table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL(0, 1).lat_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL(1, 0).abs_ttl);
+    ASSERT_EQ(12, (int64_t)table.GetTTL(1, 0).lat_ttl);
+    ASSERT_EQ(2, (int64_t)table.GetTTL(1, 1).abs_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL(1, 1).lat_ttl);
     table.SchedGc();
     {
         ::rtidb::api::LogEntry entry;
@@ -1057,14 +1057,14 @@ TEST_F(TableTest, AbsOrLatSetGet) {
         entry.set_value("value");
         ASSERT_TRUE(table.IsExpire(entry));
     }
-    ASSERT_EQ(1, table.GetTTL().abs_ttl);
-    ASSERT_EQ(3, table.GetTTL().lat_ttl);
-    ASSERT_EQ(2, table.GetTTL(0, 1).abs_ttl);
-    ASSERT_EQ(10, table.GetTTL(0, 1).lat_ttl);
-    ASSERT_EQ(1, table.GetTTL(1, 0).abs_ttl);
-    ASSERT_EQ(3, table.GetTTL(1, 0).lat_ttl);
-    ASSERT_EQ(2, table.GetTTL(1, 1).abs_ttl);
-    ASSERT_EQ(10, table.GetTTL(1, 1).lat_ttl);
+    ASSERT_EQ(1, (int64_t)table.GetTTL().abs_ttl);
+    ASSERT_EQ(3, (int64_t)table.GetTTL().lat_ttl);
+    ASSERT_EQ(2, (int64_t)table.GetTTL(0, 1).abs_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL(0, 1).lat_ttl);
+    ASSERT_EQ(1, (int64_t)table.GetTTL(1, 0).abs_ttl);
+    ASSERT_EQ(3, (int64_t)table.GetTTL(1, 0).lat_ttl);
+    ASSERT_EQ(2, (int64_t)table.GetTTL(1, 1).abs_ttl);
+    ASSERT_EQ(10, (int64_t)table.GetTTL(1, 1).lat_ttl);
 }
 
 TEST_F(TableTest, GcAbsOrLat) {
@@ -1084,24 +1084,24 @@ TEST_F(TableTest, GcAbsOrLat) {
     table.Put("test2", now - 4 * (60 * 1000) - 1000, "value4", 6);
     table.Put("test2", now - 2 * (60 * 1000) - 1000, "value5", 6);
     table.Put("test2", now - 1 * (60 * 1000) - 1000, "value6", 6);
-    ASSERT_EQ(7, table.GetRecordCnt());
-    ASSERT_EQ(7, table.GetRecordIdxCnt());
-    ASSERT_EQ(2, table.GetRecordPkCnt());
+    ASSERT_EQ(7, (int64_t)table.GetRecordCnt());
+    ASSERT_EQ(7, (int64_t)table.GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table.GetRecordPkCnt());
     table.SetTTL(3, 0);
     table.SchedGc();
-    ASSERT_EQ(5, table.GetRecordCnt());
-    ASSERT_EQ(5, table.GetRecordIdxCnt());
-    ASSERT_EQ(2, table.GetRecordPkCnt());
+    ASSERT_EQ(5, (int64_t)table.GetRecordCnt());
+    ASSERT_EQ(5, (int64_t)table.GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table.GetRecordPkCnt());
     table.SetTTL(0, 1);
     table.SchedGc();
-    ASSERT_EQ(4, table.GetRecordCnt());
-    ASSERT_EQ(4, table.GetRecordIdxCnt());
-    ASSERT_EQ(2, table.GetRecordPkCnt());
+    ASSERT_EQ(4, (int64_t)table.GetRecordCnt());
+    ASSERT_EQ(4, (int64_t)table.GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table.GetRecordPkCnt());
     table.SetTTL(1, 1);
     table.SchedGc();
-    ASSERT_EQ(2, table.GetRecordCnt());
-    ASSERT_EQ(2, table.GetRecordIdxCnt());
-    ASSERT_EQ(2, table.GetRecordPkCnt());
+    ASSERT_EQ(2, (int64_t)table.GetRecordCnt());
+    ASSERT_EQ(2, (int64_t)table.GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table.GetRecordPkCnt());
     {
         ::rtidb::api::LogEntry entry;
         entry.set_log_index(0);
@@ -1135,9 +1135,9 @@ TEST_F(TableTest, GcAbsOrLat) {
         ASSERT_TRUE(table.IsExpire(entry));
     }
     table.SchedGc();
-    ASSERT_EQ(0, table.GetRecordCnt());
-    ASSERT_EQ(0, table.GetRecordIdxCnt());
-    ASSERT_EQ(2, table.GetRecordPkCnt());
+    ASSERT_EQ(0, (int64_t)table.GetRecordCnt());
+    ASSERT_EQ(0, (int64_t)table.GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table.GetRecordPkCnt());
     {
         ::rtidb::api::LogEntry entry;
         entry.set_log_index(0);
@@ -1166,14 +1166,14 @@ TEST_F(TableTest, GcAbsAndLat) {
     table.Put("test2", now - 4 * (60 * 1000) - 1000, "value4", 6);
     table.Put("test2", now - 3 * (60 * 1000) - 1000, "value5", 6);
     table.Put("test2", now - 2 * (60 * 1000) - 1000, "value6", 6);
-    ASSERT_EQ(7, table.GetRecordCnt());
-    ASSERT_EQ(7, table.GetRecordIdxCnt());
-    ASSERT_EQ(2, table.GetRecordPkCnt());
+    ASSERT_EQ(7, (int64_t)table.GetRecordCnt());
+    ASSERT_EQ(7, (int64_t)table.GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table.GetRecordPkCnt());
     table.SetTTL(1, 0);
     table.SchedGc();
-    ASSERT_EQ(6, table.GetRecordCnt());
-    ASSERT_EQ(6, table.GetRecordIdxCnt());
-    ASSERT_EQ(2, table.GetRecordPkCnt());
+    ASSERT_EQ(6, (int64_t)table.GetRecordCnt());
+    ASSERT_EQ(6, (int64_t)table.GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table.GetRecordPkCnt());
     {
         ::rtidb::api::LogEntry entry;
         entry.set_log_index(0);
@@ -1200,18 +1200,18 @@ TEST_F(TableTest, GcAbsAndLat) {
     }
     table.SetTTL(0, 1);
     table.SchedGc();
-    ASSERT_EQ(6, table.GetRecordCnt());
-    ASSERT_EQ(6, table.GetRecordIdxCnt());
-    ASSERT_EQ(2, table.GetRecordPkCnt());
+    ASSERT_EQ(6, (int64_t)table.GetRecordCnt());
+    ASSERT_EQ(6, (int64_t)table.GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table.GetRecordPkCnt());
     table.SetTTL(1, 1);
     table.SchedGc();
-    ASSERT_EQ(6, table.GetRecordCnt());
-    ASSERT_EQ(6, table.GetRecordIdxCnt());
-    ASSERT_EQ(2, table.GetRecordPkCnt());
+    ASSERT_EQ(6, (int64_t)table.GetRecordCnt());
+    ASSERT_EQ(6, (int64_t)table.GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table.GetRecordPkCnt());
     table.SchedGc();
-    ASSERT_EQ(2, table.GetRecordCnt());
-    ASSERT_EQ(2, table.GetRecordIdxCnt());
-    ASSERT_EQ(2, table.GetRecordPkCnt());
+    ASSERT_EQ(2, (int64_t)table.GetRecordCnt());
+    ASSERT_EQ(2, (int64_t)table.GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table.GetRecordPkCnt());
     {
         ::rtidb::api::LogEntry entry;
         entry.set_log_index(0);

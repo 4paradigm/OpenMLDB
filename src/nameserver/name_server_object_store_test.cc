@@ -310,7 +310,7 @@ TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
         }
         ok = tablet_client.BatchQuery(tid, 0, ros, &data, &count, &err_msg);
         ASSERT_TRUE(ok);
-        ASSERT_EQ(count, 1);
+        ASSERT_EQ((int32_t)count, 1);
         rtidb::codec::RowView view(schema);
         ok = view.Reset(reinterpret_cast<int8_t*>(&data[0]+4),
                         size);

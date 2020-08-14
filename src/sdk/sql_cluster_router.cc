@@ -527,27 +527,48 @@ bool SQLClusterRouter::GetTablet(
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets) {
     if (tablets == NULL) return false;
     // TODO(wangtaize) cache compile result
-    ::fesql::vm::BatchRunSession session;
+    std::set<std::string> tables;
     ::fesql::base::Status status;
-    bool ok = engine_->Get(sql, db, session, status);
-    if (!ok || status.code != 0) {
-        LOG(WARNING) << "fail to compile sql " << sql << " in db " << db;
+    if (!engine_->GetDependentTables(sql, db, true, &tables, status)) {
+        LOG(WARNING) << "fail to get tablet: " << status.msg;
         return false;
     }
-    ::fesql::vm::PhysicalOpNode* physical_plan = session.GetPhysicalPlan();
-    std::set<std::string> tables;
-    GetTables(physical_plan, &tables);
+
+    // pick one tablet for const query sql
+    if (tables.empty()) {
+        auto tablet = cluster_sdk_->PickOneTablet();
+        if (!tablet) {
+            LOG(WARNING) << "fail to pack a tablet";
+            return false;
+        }
+        tablets->push_back(tablet);
+        return true;
+    }
     auto it = tables.begin();
     for (; it != tables.end(); ++it) {
-        ok = cluster_sdk_->GetTabletByTable(db, *it, tablets);
-        if (!ok) {
+        if (!cluster_sdk_->GetTabletByTable(db, *it, tablets)) {
             LOG(WARNING) << "fail to get table " << *it << " tablet";
             return false;
         }
     }
     return true;
 }
+bool SQLClusterRouter::IsConstQuery(::fesql::vm::PhysicalOpNode* node) {
+    if (node->type_ == ::fesql::vm::kPhysicalOpConstProject) {
+        return true;
+    }
 
+    if (node->GetProducerCnt() <= 0) {
+        return false;
+    }
+
+    for (size_t i = 0; i < node->GetProducerCnt(); i++) {
+        if (!IsConstQuery(node->GetProducer(i))) {
+            return false;
+        }
+    }
+    return true;
+}
 void SQLClusterRouter::GetTables(::fesql::vm::PhysicalOpNode* node,
                                  std::set<std::string>* tables) {
     if (node == NULL || tables == NULL) return;

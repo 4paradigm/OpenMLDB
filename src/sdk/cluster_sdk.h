@@ -62,6 +62,7 @@ class ClusterSDK {
         const std::string& db, const std::string& tname,
         std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets);
 
+    std::shared_ptr<::rtidb::client::TabletClient> PickOneTablet();
     std::shared_ptr<::rtidb::client::TabletClient> GetLeaderTabletByTable(
         const std::string& db, const std::string& name);
 

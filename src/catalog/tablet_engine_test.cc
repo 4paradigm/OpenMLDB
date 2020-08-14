@@ -345,7 +345,9 @@ TEST_P(TabletEngineTest, request_query_test) {
         TabletEngineTest::RequestModeCheck(sql_case);
     }
 }
-
+INSTANTIATE_TEST_SUITE_P(EngineConstQuery, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/query/const_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineSimpleQuery, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases(
                              "/cases/query/simple_query.yaml")));
