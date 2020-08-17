@@ -370,13 +370,113 @@ TEST_F(UDFIRBuilderTest, atan2_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, ceil_udf_test) {
-    CheckUDF<int16_t, int16_t>("ceil", 5, 5);
-    CheckUDF<int32_t, int32_t>("ceil", 32769, 32769);
+    CheckUDF<int64_t, int16_t>("ceil", 5, 5);
+    CheckUDF<int64_t, int32_t>("ceil", 32769, 32769);
     CheckUDF<int64_t, int64_t>("ceil", 2147483649, 2147483649);
-    CheckUDF<int, float>("ceil", 0, -0.1);
-    CheckUDF<int, float>("ceil", 2, 1.23);
-    CheckUDF<int, double>("ceil", -1, -1.23);
-    CheckUDF<int, double>("ceil", 0, 0);
+    CheckUDF<double, float>("ceil", 0, -0.1f);
+    CheckUDF<double, float>("ceil", 2, 1.23f);
+    CheckUDF<double, double>("ceil", -1, -1.23);
+    CheckUDF<double, double>("ceil", 0, 0);
+}
+
+TEST_F(UDFIRBuilderTest, ceiling_udf_test) {
+    CheckUDF<int64_t, int16_t>("ceiling", 5, 5);
+    CheckUDF<int64_t, int32_t>("ceiling", 32769, 32769);
+    CheckUDF<int64_t, int64_t>("ceiling", 2147483649, 2147483649);
+    CheckUDF<double, float>("ceiling", 0, -0.1f);
+    CheckUDF<double, float>("ceiling", 2, 1.23f);
+    CheckUDF<double, double>("ceiling", -1, -1.23);
+    CheckUDF<double, double>("ceiling", 0, 0);
+}
+
+TEST_F(UDFIRBuilderTest, cos_udf_test) {
+    CheckUDF<double, int16_t>("cos", cos(5), 5);
+    CheckUDF<double, int32_t>("cos", cos(65536), 65536);
+    CheckUDF<double, int64_t>("cos", cos(2147483648), 2147483648);
+    CheckUDF<float, float>("cos", cosf(0.5f), 0.5f);
+    CheckUDF<double, double>("cos", cos(0.5), 0.5);
+}
+
+TEST_F(UDFIRBuilderTest, cot_udf_test) {
+    CheckUDF<double, int16_t>("cot", cos(5)/sin(5), 5);
+    CheckUDF<double, int32_t>("cot", cos(65536)/sin(65536), 65536);
+    CheckUDF<double, int64_t>("cot", cos(2147483648)/sin(2147483648), 2147483648);
+    CheckUDF<float, float>("cot", cosf(0.5f)/sin(0.5f), 0.5f);
+    CheckUDF<double, double>("cot", cos(0.5)/sin(0.5), 0.5);
+}
+
+TEST_F(UDFIRBuilderTest, exp_udf_test) {
+    CheckUDF<double, int16_t>("exp", exp(5), 5);
+    CheckUDF<double, int32_t>("exp", exp(65536), 65536);
+    CheckUDF<double, int64_t>("exp", exp(2147483648), 2147483648);
+    CheckUDF<float, float>("exp", expf(0.5f), 0.5f);
+    CheckUDF<double, double>("exp", exp(0.5), 0.5);
+}
+
+TEST_F(UDFIRBuilderTest, floor_udf_test) {
+    CheckUDF<int64_t, int16_t>("floor", 5, 5);
+    CheckUDF<int64_t, int32_t>("floor", 32769, 32769);
+    CheckUDF<int64_t, int64_t>("floor", 2147483649, 2147483649);
+    CheckUDF<double, float>("floor", -1, -0.1f);
+    CheckUDF<double, float>("floor", 1, 1.23f);
+    CheckUDF<double, double>("floor", -2, -1.23);
+    CheckUDF<double, double>("floor", 0, 0);
+}
+
+TEST_F(UDFIRBuilderTest, pow_udf_test) {
+    CheckUDF<double, int16_t, int32_t>("pow", pow(2, 65536), 2, 65536);
+    CheckUDF<double, int64_t, int32_t>("pow", pow(2147483648, 65536), 2147483648, 65536);
+    CheckUDF<double, int64_t, float>("pow", pow(2147483648, 2.1f), 2147483648, 2.1f);
+    CheckUDF<float, float, float>("pow", powf(2147483648, 2.1f), 2147483648, 2.1f);
+    CheckUDF<double, double, int32_t>("pow", pow(2147483648, 65536), 2147483648, 65536);
+}
+
+TEST_F(UDFIRBuilderTest, power_udf_test) {
+    CheckUDF<double, int16_t, int32_t>("power", pow(2, 65536), 2, 65536);
+    CheckUDF<double, int64_t, int32_t>("power", pow(2147483648, 65536), 2147483648, 65536);
+    CheckUDF<double, int64_t, float>("power", pow(2147483648, 2.1f), 2147483648, 2.1f);
+    CheckUDF<float, float, float>("power", powf(2147483648, 2.1f), 2147483648, 2.1f);
+    CheckUDF<double, double, int32_t>("power", pow(2147483648, 65536), 2147483648, 65536);
+}
+
+TEST_F(UDFIRBuilderTest, round_udf_test) {
+    CheckUDF<int32_t, int16_t>("round", round(5), 5);
+    CheckUDF<int32_t, int32_t>("round", round(65536), 65536);
+    CheckUDF<int64_t, int64_t>("round", round(2147483648), 2147483648);
+    CheckUDF<double, float>("round", roundf(0.5f), 0.5f);
+    CheckUDF<double, double>("round", round(0.5), 0.5);
+}
+
+TEST_F(UDFIRBuilderTest, sin_udf_testsin_udf_test) {
+    CheckUDF<double, int16_t>("sin", sin(5), 5);
+    CheckUDF<double, int32_t>("sin", sin(65536), 65536);
+    CheckUDF<double, int64_t>("sin", sin(2147483648), 2147483648);
+    CheckUDF<float, float>("sin", sinf(0.5f), 0.5f);
+    CheckUDF<double, double>("sin", sin(0.5), 0.5);
+}
+
+TEST_F(UDFIRBuilderTest, sqrt_udf_test) {
+    CheckUDF<double, int16_t>("sqrt", sqrt(5), 5);
+    CheckUDF<double, int32_t>("sqrt", sqrt(65536), 65536);
+    CheckUDF<double, int64_t>("sqrt", sqrt(2147483648), 2147483648);
+    CheckUDF<float, float>("sqrt", sqrtf(0.5f), 0.5f);
+    CheckUDF<double, double>("sqrt", sqrt(0.5), 0.5);
+}
+
+TEST_F(UDFIRBuilderTest, tan_udf_test) {
+    CheckUDF<double, int16_t>("tan", tan(5), 5);
+    CheckUDF<double, int32_t>("tan", tan(65536), 65536);
+    CheckUDF<double, int64_t>("tan", tan(2147483648), 2147483648);
+    CheckUDF<float, float>("tan", tanf(0.5f), 0.5f);
+    CheckUDF<double, double>("tan", tan(0.5), 0.5);
+}
+
+TEST_F(UDFIRBuilderTest, trunc_udf_test) {
+    CheckUDF<int32_t, int16_t>("truncate", trunc(5), 5);
+    CheckUDF<int32_t, int32_t>("truncate", trunc(65536), 65536);
+    CheckUDF<int64_t, int64_t>("truncate", trunc(2147483648), 2147483648);
+    CheckUDF<double, float>("truncate", truncf(0.5f), 0.5f);
+    CheckUDF<double, double>("truncate", trunc(0.5), 0.5);
 }
 
 TEST_F(UDFIRBuilderTest, substring_pos_len_udf_test) {

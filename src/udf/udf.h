@@ -57,8 +57,93 @@ template <class V>
 struct Ceil {
     using Args = std::tuple<V>;
 
-    V operator()(V r) { return static_cast<V>(ceil(r)); }
+    int64_t operator()(V r) { return static_cast<int64_t>(ceil(r)); }
 };
+
+template <class V>
+struct Cos {
+    using Args = std::tuple<V>;
+
+    double operator()(V r) { return cos(r); }
+};
+
+template <class V>
+struct Cot {
+    using Args = std::tuple<V>;
+
+    double operator()(V r) { return cos(r)/sin(r); }
+};
+
+template <class V>
+struct Exp {
+    using Args = std::tuple<V>;
+
+    double operator()(V r) { return exp(r); }
+};
+
+template <class V>
+struct Floor {
+    using Args = std::tuple<V>;
+
+    int64_t operator()(V r) { return static_cast<int64_t>(floor(r)); }
+};
+
+template <class V>
+struct Pow {
+    using Args = std::tuple<V, V>;
+
+    double operator()(V l, V r) { return pow(l, r); }
+};
+
+template <class V>
+struct Round {
+    using Args = std::tuple<V>;
+
+    V operator()(V r) { return static_cast<V>(round(r)); }
+};
+
+template <class V>
+struct Round32 {
+    using Args = std::tuple<V>;
+
+    int32_t operator()(V r) { return static_cast<int32_t>(round(r)); }
+};
+
+template <class V>
+struct Sin {
+    using Args = std::tuple<V>;
+    
+    double operator()(V r) { return sin(r); }
+};
+
+template <class V>
+struct Tan {
+    using Args = std::tuple<V>;
+    
+    double operator()(V r) { return tan(r); }
+};
+
+template <class V>
+struct Sqrt {
+    using Args = std::tuple<V>;
+    
+    double operator()(V r) { return sqrt(r); }
+};
+
+template <class V>
+struct Truncate {
+    using Args = std::tuple<V>;
+
+    V operator()(V r) { return static_cast<V>(trunc(r)); }
+};
+
+template <class V>
+struct Truncate32 {
+    using Args = std::tuple<V>;
+
+    int32_t operator()(V r) { return static_cast<int32_t>(trunc(r)); }
+};
+
 
 template <class V>
 double avg_list(int8_t *input);
@@ -149,8 +234,7 @@ int32_t weekofyear(fesql::codec::Timestamp *ts);
 int32_t weekofyear(fesql::codec::Date *ts);
 
 int16_t abs_int16(int16_t x);
-int Ceild(double x);
-int Ceilf(float x);
+float Cotf(float x);
 
 void date_format(codec::Date *date, const std::string &format,
                  fesql::codec::StringRef *output);
