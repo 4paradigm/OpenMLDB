@@ -475,6 +475,7 @@ class LLVMUDFGenBase {
     }
 
     virtual ~LLVMUDFGenBase() {}
+
  private:
     node::TypeNode* fixed_ret_type_ = nullptr;
 };
@@ -1290,9 +1291,7 @@ class ExternalTemplateFuncRegistryHelper {
 
     template <typename T, typename... CArgs>
     struct FTemplateInst {
-        static inline auto fcompute(CArgs... args) {
-            return FTemplate<T>()(args...);
-        }
+        static auto fcompute(CArgs... args) { return FTemplate<T>()(args...); }
     };
 
     template <typename T, typename>
@@ -1515,11 +1514,12 @@ class UDAFRegistryHelperImpl {
         return *this;
     }
 
-    UDAFRegistryHelperImpl& update(const std::string& fname, void* fn_ptr) {
+    UDAFRegistryHelperImpl& update(const std::string& fname, void* fn_ptr,
+                                   bool return_by_arg = false) {
         auto fn = dynamic_cast<node::ExternalFnDefNode*>(
             library_->node_manager()->MakeExternalFnDefNode(
                 fname, fn_ptr, state_ty_, state_nullable_, update_tys_,
-                update_nullable_, -1, false));
+                update_nullable_, -1, return_by_arg));
         auto registry = std::make_shared<ExternalFuncRegistry>(fname);
         registry->Register(update_tags_, fn);
         udaf_gen_.update_gen = registry;
@@ -1545,7 +1545,7 @@ class UDAFRegistryHelperImpl {
                 << ret_type->GetName();
             return *this;
         }
-        return update(fname, fn_ptr.ptr);
+        return update(fname, fn_ptr.ptr, fn_ptr.return_by_arg);
     }
 
     UDAFRegistryHelperImpl& merge(const std::string& fname) {
@@ -1582,11 +1582,12 @@ class UDAFRegistryHelperImpl {
         return *this;
     }
 
-    UDAFRegistryHelperImpl& output(const std::string& fname, void* fn_ptr) {
+    UDAFRegistryHelperImpl& output(const std::string& fname, void* fn_ptr,
+                                   bool return_by_arg = false) {
         auto fn = dynamic_cast<node::ExternalFnDefNode*>(
             library_->node_manager()->MakeExternalFnDefNode(
                 fname, fn_ptr, output_ty_, output_nullable_, {state_ty_},
-                {state_nullable_}, -1, false));
+                {state_nullable_}, -1, return_by_arg));
         auto registry = std::make_shared<ExternalFuncRegistry>(fname);
         auto state_tag = state_ty_->GetName();
         registry->Register({state_tag}, fn);
@@ -1612,7 +1613,7 @@ class UDAFRegistryHelperImpl {
                 << ret_type->GetName();
             return *this;
         }
-        return output(fname, fn_ptr.ptr);
+        return output(fname, fn_ptr.ptr, fn_ptr.return_by_arg);
     }
 
     UDAFRegistryHelperImpl& output(

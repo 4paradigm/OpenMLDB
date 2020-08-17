@@ -270,6 +270,7 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
     }
     const fesql::node::TypeNode *elem_type_node =
         container_type_node.generics_[0];
+    const bool elem_nullable = false;
 
     llvm::Value *iterator = nullptr;
     status = list_ir_builder.BuildIterator(container_value, elem_type_node,
@@ -306,8 +307,8 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
         VariableIRBuilder var_ir_builder(builder.GetInsertBlock(), sv_);
         // loop step
         NativeValue next;
-        status =
-            list_ir_builder.BuildIteratorNext(iterator, elem_type_node, &next);
+        status = list_ir_builder.BuildIteratorNext(iterator, elem_type_node,
+                                                   elem_nullable, &next);
         if (!status.isOK()) {
             LOG(WARNING) << "fail to build iterator next expression: "
                          << status.msg;

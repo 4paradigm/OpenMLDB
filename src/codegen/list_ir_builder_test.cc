@@ -406,11 +406,11 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 CHECK_STATUS(
                     list_builder.BuildIterator(column, elem_type, &iter));
                 NativeValue next1_wrapper;
-                CHECK_STATUS(list_builder.BuildIteratorNext(iter, elem_type,
-                                                            &next1_wrapper));
+                CHECK_STATUS(list_builder.BuildIteratorNext(
+                    iter, elem_type, false, &next1_wrapper));
                 NativeValue next2_wrapper;
-                CHECK_STATUS(list_builder.BuildIteratorNext(iter, elem_type,
-                                                            &next2_wrapper));
+                CHECK_STATUS(list_builder.BuildIteratorNext(
+                    iter, elem_type, false, &next2_wrapper));
 
                 auto next1 = next1_wrapper.GetValue(&builder);
                 auto next2 = next2_wrapper.GetValue(&builder);
@@ -423,22 +423,22 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                                                               &res, status));
 
                 NativeValue next3_wrapper;
-                CHECK_STATUS(list_builder.BuildIteratorNext(iter, elem_type,
-                                                            &next3_wrapper));
+                CHECK_STATUS(list_builder.BuildIteratorNext(
+                    iter, elem_type, false, &next3_wrapper));
                 auto next3 = next3_wrapper.GetValue(&builder);
                 CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next3, &res,
                                                               status));
 
                 NativeValue next4_wrapper;
-                CHECK_STATUS(list_builder.BuildIteratorNext(iter, elem_type,
-                                                            &next4_wrapper));
+                CHECK_STATUS(list_builder.BuildIteratorNext(
+                    iter, elem_type, false, &next4_wrapper));
                 auto next4 = next4_wrapper.GetValue(&builder);
                 CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next4, &res,
                                                               status));
 
                 NativeValue next5_wrapper;
-                CHECK_STATUS(list_builder.BuildIteratorNext(iter, elem_type,
-                                                            &next5_wrapper));
+                CHECK_STATUS(list_builder.BuildIteratorNext(
+                    iter, elem_type, false, &next5_wrapper));
                 auto next5 = next5_wrapper.GetValue(&builder);
                 CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next5, &res,
                                                               status));
@@ -491,8 +491,8 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
                 CHECK_STATUS(
                     list_builder.BuildIterator(column, elem_type, &iter));
                 NativeValue next1_wrapper;
-                CHECK_STATUS(list_builder.BuildIteratorNext(iter, elem_type,
-                                                            &next1_wrapper));
+                CHECK_STATUS(list_builder.BuildIteratorNext(
+                    iter, elem_type, false, &next1_wrapper));
                 ::llvm::Value* next1 = next1_wrapper.GetValue(&builder);
                 ::llvm::Value* ret_delete = nullptr;
                 list_builder.BuildIteratorDelete(iter, elem_type, &ret_delete);

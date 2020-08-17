@@ -23,13 +23,9 @@ namespace fesql {
 namespace node {
 class NodeManager {
  public:
-    NodeManager() {}
+    NodeManager();
 
-    ~NodeManager() {
-        for (auto node : node_list_) {
-            delete node;
-        }
-    }
+    ~NodeManager();
 
     int GetNodeListSize() {
         int node_size = node_list_.size();
@@ -130,7 +126,8 @@ class NodeManager {
                                  const ExprListNode *values);
     SQLNode *MakeCreateTableNode(bool op_if_not_exist,
                                  const std::string &table_name,
-                                 SQLNodeList *column_desc_list);
+                                 SQLNodeList *column_desc_list,
+                                 SQLNodeList *partition_meta_list);
     SQLNode *MakeColumnDescNode(const std::string &column_name,
                                 const DataType data_type, bool op_not_null);
     SQLNode *MakeColumnIndexNode(SQLNodeList *keys, SQLNode *ts, SQLNode *ttl,
@@ -167,6 +164,9 @@ class NodeManager {
                                    const std::string &column_name,
                                    const std::string &relation_name);
     GetFieldExpr *MakeGetFieldExpr(ExprNode *input, size_t idx);
+
+    CondExpr *MakeCondExpr(ExprNode *condition, ExprNode *left,
+                           ExprNode *right);
 
     ExprNode *MakeBetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right);
     ExprNode *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
@@ -259,8 +259,10 @@ class NodeManager {
 
     PlanNode *MakeLimitPlanNode(PlanNode *node, int limit_cnt);
 
-    CreatePlanNode *MakeCreateTablePlanNode(std::string table_name,
-                                            const NodePointVector &column_list);
+    CreatePlanNode *MakeCreateTablePlanNode(
+        const std::string &table_name, int replica_num,
+        const NodePointVector &column_list,
+        const NodePointVector &partition_meta_list);
 
     CmdPlanNode *MakeCmdPlanNode(const CmdNode *node);
 
@@ -313,6 +315,13 @@ class NodeManager {
                                  FnDefNode *merge_func, FnDefNode *output_func);
     LambdaNode *MakeLambdaNode(const std::vector<ExprIdNode *> &args,
                                ExprNode *body);
+
+    SQLNode *MakePartitionMetaNode(RoleType role_type,
+                                   const std::string &endpoint);
+
+    SQLNode *MakeReplicaNumNode(int num);
+
+    SQLNode *MakeDistributionsNode(SQLNodeList *distribution_list);
 
     template <typename T>
     T *RegisterNode(T *node_ptr) {

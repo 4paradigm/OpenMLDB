@@ -17,9 +17,11 @@ import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.typeutils.ListTypeInfo;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.table.api.Table;
+import org.apache.flink.table.api.bridge.java.internal.StreamTableEnvironmentImpl;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
@@ -29,6 +31,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+
 
 public class StreamWindowAggPlan {
 
@@ -90,92 +93,152 @@ public class StreamWindowAggPlan {
             groupbyKeyIndexArray[i] = groupbyKeyIndexes.get(i);
         }
 
-        DataStream<Row> outputDatastream = inputDatastream.keyBy(groupbyKeyIndexArray).process(new KeyedProcessFunction<Tuple, Row, Row>() {
+        DataStream<Row> outputDatastream = null;
 
-            long functionPointer;
-            FesqlFlinkCodec inputCodec;
-            FesqlFlinkCodec outputCodec;
-            WindowInterface windowInterface;
+        // Check if event time or process time
+        TimeCharacteristic timeCharacteristic = ((StreamTableEnvironmentImpl)planContext.getStreamTableEnvironment()).execEnv().getStreamTimeCharacteristic();
 
-            private ValueState<Long> lastTriggeringTsState;
-            private MapState<Long, List<Row>> timeRowsState;
+        if(timeCharacteristic.equals(TimeCharacteristic.EventTime)) {
 
-            @Override
-            public void open(Configuration config) throws Exception {
-                super.open(config);
+            outputDatastream = inputDatastream.keyBy(groupbyKeyIndexArray).process(new KeyedProcessFunction<Tuple, Row, Row>() {
 
-                // Init non-serializable objects
-                ByteBuffer moduleByteBuffer = moduleBuffer.getBuffer();
-                JITManager.initJITModule(moduleTag, moduleByteBuffer);
-                FeSQLJITWrapper jit = JITManager.getJIT(moduleTag);
-                functionPointer = jit.FindFunction(functionName);
-                inputCodec = new FesqlFlinkCodec(inputSchemaLists);
-                outputCodec = new FesqlFlinkCodec(outputSchemaLists);
-                windowInterface = new WindowInterface(instanceNotInWindow, startOffset, 0, rowPreceding, 0);
+                long functionPointer;
+                FesqlFlinkCodec inputCodec;
+                FesqlFlinkCodec outputCodec;
+                WindowInterface windowInterface;
 
-                // Init state
-                ValueStateDescriptor<Long> lastTriggeringTsDescriptor = new ValueStateDescriptor<>("lastTriggeringTsState", Long.class);
-                lastTriggeringTsState = this.getRuntimeContext().getState(lastTriggeringTsDescriptor);
+                private ValueState<Long> lastTriggeringTsState;
+                private MapState<Long, List<Row>> timeRowsState;
 
-                TypeInformation<Long> keyTypeInformation = BasicTypeInfo.LONG_TYPE_INFO;
-                TypeInformation<List<Row>> valueTypeInformation = new ListTypeInfo<Row>(Row.class);
-                MapStateDescriptor<Long, List<Row>> mapStateDescriptor = new MapStateDescriptor<Long, List<Row>>("timeRowsState", keyTypeInformation, valueTypeInformation);
-                timeRowsState = this.getRuntimeContext().getMapState(mapStateDescriptor);
-            }
+                @Override
+                public void open(Configuration config) throws Exception {
+                    super.open(config);
 
-            @Override
-            public void processElement(Row row, Context context, Collector<Row> collector) throws Exception {
+                    // Init non-serializable objects
+                    ByteBuffer moduleByteBuffer = moduleBuffer.getBuffer();
+                    JITManager.initJITModule(moduleTag, moduleByteBuffer);
+                    FeSQLJITWrapper jit = JITManager.getJIT(moduleTag);
+                    functionPointer = jit.FindFunction(functionName);
+                    inputCodec = new FesqlFlinkCodec(inputSchemaLists);
+                    outputCodec = new FesqlFlinkCodec(outputSchemaLists);
+                    windowInterface = new WindowInterface(instanceNotInWindow, startOffset, 0, rowPreceding, 0);
 
-                // TODO: Check type or orderby column
-                LocalDateTime orderbyValue = (LocalDateTime)row.getField(orderbyKeyIndex);
-                long orderbyLongValue = orderbyValue.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                    // Init state
+                    ValueStateDescriptor<Long> lastTriggeringTsDescriptor = new ValueStateDescriptor<>("lastTriggeringTsState", Long.class);
+                    lastTriggeringTsState = this.getRuntimeContext().getState(lastTriggeringTsDescriptor);
 
-                Long lastTriggeringTs = this.lastTriggeringTsState.value();
-
-                if (lastTriggeringTs == null || orderbyLongValue > lastTriggeringTs) { // Handle if timestamp is not out-of-date
-                    List<Row> data = this.timeRowsState.get(orderbyLongValue);
-                    if (data == null) { // Register timer if the timestamp is new
-                        List<Row> rows = new ArrayList<Row>();
-                        rows.add(row);
-                        this.timeRowsState.put(orderbyLongValue, rows);
-                        // TODO: Only support for event time now
-                        context.timerService().registerEventTimeTimer(orderbyLongValue);
-                    } else { // Add the row to state
-                        data.add(row);
-                        this.timeRowsState.put(orderbyLongValue, data);
-                    }
+                    TypeInformation<Long> keyTypeInformation = BasicTypeInfo.LONG_TYPE_INFO;
+                    TypeInformation<List<Row>> valueTypeInformation = new ListTypeInfo<Row>(Row.class);
+                    MapStateDescriptor<Long, List<Row>> mapStateDescriptor = new MapStateDescriptor<Long, List<Row>>("timeRowsState", keyTypeInformation, valueTypeInformation);
+                    timeRowsState = this.getRuntimeContext().getMapState(mapStateDescriptor);
                 }
-            }
 
-            @Override
-            public void onTimer(long timestamp, KeyedProcessFunction<Tuple, Row, Row>.OnTimerContext ctx, Collector<Row> out) throws Exception {
+                @Override
+                public void processElement(Row row, Context context, Collector<Row> collector) throws Exception {
 
-                List<Row> inputs = this.timeRowsState.get(timestamp);
+                    // TODO: Check type or orderby column
+                    LocalDateTime orderbyValue = (LocalDateTime)row.getField(orderbyKeyIndex);
+                    long orderbyLongValue = orderbyValue.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
 
-                if (inputs != null) {
-                    for (Row inputRow: inputs) {
+                    Long lastTriggeringTs = this.lastTriggeringTsState.value();
 
-                        com._4paradigm.fesql.codec.Row inputFesqlRow = inputCodec.encodeFlinkRow(inputRow);
-
-                        com._4paradigm.fesql.codec.Row outputFesqlRow = CoreAPI.WindowProject(functionPointer, timestamp, inputFesqlRow, true, appendSlices, windowInterface);
-
-                        Row outputFlinkRow = outputCodec.decodeFesqlRow(outputFesqlRow);
-
-                        out.collect(outputFlinkRow);
-
+                    if (lastTriggeringTs == null || orderbyLongValue > lastTriggeringTs) { // Handle if timestamp is not out-of-date
+                        List<Row> data = this.timeRowsState.get(orderbyLongValue);
+                        if (data == null) { // Register timer if the timestamp is new
+                            List<Row> rows = new ArrayList<Row>();
+                            rows.add(row);
+                            this.timeRowsState.put(orderbyLongValue, rows);
+                            // TODO: Only support for event time now
+                            context.timerService().registerEventTimeTimer(orderbyLongValue);
+                        } else { // Add the row to state
+                            data.add(row);
+                            this.timeRowsState.put(orderbyLongValue, data);
+                        }
                     }
                 }
 
-            }
+                @Override
+                public void onTimer(long timestamp, KeyedProcessFunction<Tuple, Row, Row>.OnTimerContext ctx, Collector<Row> out) throws Exception {
+                    List<Row> inputs = this.timeRowsState.get(timestamp);
 
-            @Override
-            public void close() throws Exception {
-                super.close();
-                inputCodec.delete();
-                outputCodec.delete();
-            }
+                    if (inputs != null) {
+                        for (Row inputRow: inputs) {
+                            com._4paradigm.fesql.codec.Row inputFesqlRow = inputCodec.encodeFlinkRow(inputRow);
+                            com._4paradigm.fesql.codec.Row outputFesqlRow = CoreAPI.WindowProject(functionPointer, timestamp, inputFesqlRow, true, appendSlices, windowInterface);
+                            Row outputFlinkRow = outputCodec.decodeFesqlRow(outputFesqlRow);
+                            out.collect(outputFlinkRow);
+                        }
+                    }
 
-        }).returns(finalOutputTypeInfo);
+                    // Clear state if the data has been processed
+                    this.timeRowsState.remove(timestamp);
+                }
+
+                @Override
+                public void close() throws Exception {
+                    super.close();
+                    inputCodec.delete();
+                    outputCodec.delete();
+                }
+
+            }).returns(finalOutputTypeInfo);
+
+        } else { // Handle process time
+
+            outputDatastream = inputDatastream.keyBy(groupbyKeyIndexArray).process(new KeyedProcessFunction<Tuple, Row, Row>() {
+
+                long functionPointer;
+                FesqlFlinkCodec inputCodec;
+                FesqlFlinkCodec outputCodec;
+                WindowInterface windowInterface;
+
+                @Override
+                public void open(Configuration config) throws Exception {
+                    super.open(config);
+
+                    // Init non-serializable objects
+                    ByteBuffer moduleByteBuffer = moduleBuffer.getBuffer();
+                    JITManager.initJITModule(moduleTag, moduleByteBuffer);
+                    FeSQLJITWrapper jit = JITManager.getJIT(moduleTag);
+                    functionPointer = jit.FindFunction(functionName);
+                    inputCodec = new FesqlFlinkCodec(inputSchemaLists);
+                    outputCodec = new FesqlFlinkCodec(outputSchemaLists);
+                    windowInterface = new WindowInterface(instanceNotInWindow, startOffset, 0, rowPreceding, 0);
+
+                    // Init state
+                    TypeInformation<Long> keyTypeInformation = BasicTypeInfo.LONG_TYPE_INFO;
+                    TypeInformation<List<Row>> valueTypeInformation = new ListTypeInfo<Row>(Row.class);
+                    MapStateDescriptor<Long, List<Row>> mapStateDescriptor = new MapStateDescriptor<Long, List<Row>>("timeRowsState", keyTypeInformation, valueTypeInformation);
+                }
+
+                @Override
+                public void processElement(Row row, Context context, Collector<Row> collector) throws Exception {
+
+                    // TODO: Check type or orderby column
+                    LocalDateTime orderbyValue = (LocalDateTime)row.getField(orderbyKeyIndex);
+                    long orderbyLongValue = orderbyValue.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+
+                    com._4paradigm.fesql.codec.Row inputFesqlRow = inputCodec.encodeFlinkRow(row);
+                    com._4paradigm.fesql.codec.Row outputFesqlRow = CoreAPI.WindowProject(functionPointer, orderbyLongValue, inputFesqlRow, true, appendSlices, windowInterface);
+                    Row outputFlinkRow = outputCodec.decodeFesqlRow(outputFesqlRow);
+                    collector.collect(outputFlinkRow);
+                }
+
+                @Override
+                public void onTimer(long timestamp, KeyedProcessFunction<Tuple, Row, Row>.OnTimerContext ctx, Collector<Row> out) throws Exception {
+                    super.onTimer(timestamp, ctx, out);
+                }
+
+                @Override
+                public void close() throws Exception {
+                    super.close();
+                    inputCodec.delete();
+                    outputCodec.delete();
+                }
+
+            }).returns(finalOutputTypeInfo);
+
+        }
 
         // Convert DataStream<Row> to Table
         return planContext.getStreamTableEnvironment().fromDataStream(outputDatastream);

@@ -65,6 +65,7 @@ typedef void* yyscan_t;
 	::fesql::node::FnNodeList* fnlist;
 	::fesql::node::ExprListNode* exprlist;
 	::fesql::node::SQLNodeList* list;
+	::fesql::node::RoleType role_type;
 }
 
 /* names and literal values */
@@ -385,6 +386,10 @@ typedef void* yyscan_t;
 %token XOR
 %token YEAR
 %token ZEROFILL
+%token REPLICANUM
+%token DISTRIBUTION
+%token LEADER
+%token FOLLOWER
 
  /* functions with special syntax */
 %token FSUBSTRING
@@ -395,6 +400,7 @@ typedef void* yyscan_t;
  /* udf */
 %type <type> types
 %type <join_type> join_type
+%type <role_type> role_type
 %type <time_unit> time_unit
 %type <frame_type> frame_unit
 %type <typenode> complex_types
@@ -429,10 +435,10 @@ typedef void* yyscan_t;
 %type<expr> insert_expr where_expr having_expr sql_case_when_expr sql_when_then_expr sql_else_expr
 
  /* create table */
-%type <node>  create_stmt column_desc column_index_item column_index_key
+%type <node>  create_stmt column_desc column_index_item column_index_key option distribution
 %type <node>  cmd_stmt
 %type <flag>  op_not_null op_if_not_exist opt_distinct_clause opt_instance_not_in_window
-%type <list>  column_desc_list column_index_item_list
+%type <list>  column_desc_list column_index_item_list table_options distribution_list
 
 %type <list> opt_target_list
             select_projection_list
@@ -447,8 +453,9 @@ typedef void* yyscan_t;
                opt_existing_window_name
                database_name table_name group_name file_path
                join_outer
+               endpoint
 
-%type <intval> opt_window_exclusion_clause
+%type <intval> opt_window_exclusion_clause replica_num
 
 
 %start grammar
@@ -657,6 +664,16 @@ types:  I16
         }
         ;
 
+role_type:  LEADER
+            {
+                $$ = ::fesql::node::kLeader;
+            }
+            |FOLLOWER
+            {
+                $$ = ::fesql::node::kFollower;
+            }
+            ;
+
 complex_types:
 		LIST '<' types '>'
 		{
@@ -790,9 +807,9 @@ opt_from_clause: FROM table_references {
 				$$ = NULL;
 			}
 
-create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list ')'
+create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list ')' table_options
                 {
-                    $$ = node_manager->MakeCreateTableNode($3, $4, $6);
+                    $$ = node_manager->MakeCreateTableNode($3, $4, $6, $8);
                     free($4);
                 }
                 |CREATE INDEX column_name ON table_name '(' column_index_item_list ')'
@@ -1035,6 +1052,58 @@ opt_distinct_clause:
         }
     ;
 
+table_options:   option
+                {
+                    $$ = node_manager->MakeNodeList($1);
+                }
+                | table_options ',' option
+                {
+                    $$ = $1;
+                    $$->PushBack($3);
+                }
+                | /*EMPTY*/
+                {
+                    $$ = NULL;
+                }
+                ;
+
+option:     REPLICANUM EQUALS replica_num
+            {
+                $$ = node_manager->MakeReplicaNumNode($3);
+            }
+            | DISTRIBUTION '(' distribution_list ')'
+            {
+                $$ = node_manager->MakeDistributionsNode($3);
+            }
+            ;
+
+endpoint:
+    STRING
+  ;
+
+replica_num:   INTNUM
+            {
+                $$ = $1;
+            }
+            ;
+
+distribution_list:      distribution
+                        {
+                            $$ = node_manager->MakeNodeList($1);
+                        }
+                        | distribution_list ',' distribution
+                        {
+                            $$ = $1;
+                            $$->PushBack($3);
+                        }
+                        ;
+
+distribution:   role_type EQUALS endpoint
+                {
+                    $$ = node_manager->MakePartitionMetaNode($1, $3);
+                    free($3);
+                }
+                ;
 
 /*****************************************************************************
  *
@@ -1839,6 +1908,7 @@ opt_frame_size:
 opt_window_exclusion_clause:
              /*EMPTY*/				{ $$ = 0; }
             ;
+
 frame_extent:
 			frame_bound
 			{

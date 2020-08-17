@@ -65,6 +65,21 @@ struct Nullable {
 };
 
 template <typename T>
+struct IsNullableTrait {
+    static const bool value;
+};
+template <typename T>
+const bool IsNullableTrait<T>::value = false;
+
+template <typename T>
+struct IsNullableTrait<Nullable<T>> {
+    static const bool value;
+};
+
+template <typename T>
+const bool IsNullableTrait<Nullable<T>>::value = true;
+
+template <typename T>
 static bool operator==(const Nullable<T>& x, const Nullable<T>& y) {
     if (x.is_null()) {
         return y.is_null();
@@ -278,8 +293,10 @@ struct DataTypeTrait<codec::ListRef<T>> {
     }
     static node::DataType to_type_enum() { return node::kList; }
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
-        return nm->MakeTypeNode(node::kList,
-                                DataTypeTrait<T>::to_type_node(nm));
+        auto list_type =
+            nm->MakeTypeNode(node::kList, DataTypeTrait<T>::to_type_node(nm));
+        list_type->generics_nullable_[0] = IsNullableTrait<T>::value;
+        return list_type;
     }
     using CCallArgType = codec::ListRef<T>*;
 };
@@ -306,20 +323,6 @@ struct DataTypeTrait<Nullable<T>> {
         return DataTypeTrait<T>::to_type_node(nm);
     }
 };
-
-template <typename T>
-struct IsNullableTrait {
-    static const bool value;
-};
-template <typename T>
-const bool IsNullableTrait<T>::value = false;
-
-template <typename T>
-struct IsNullableTrait<Nullable<T>> {
-    static const bool value;
-};
-template <typename T>
-const bool IsNullableTrait<Nullable<T>>::value = true;
 
 template <typename... T>
 struct DataTypeTrait<Tuple<T...>> {

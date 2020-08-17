@@ -272,15 +272,20 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
 }
 
 bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
-    ::fesql::node::PlanNodeList trees;
-    bool ok = Parse(ctx, ctx.nm, trees, status);
+    bool ok = Parse(ctx, status);
     if (!ok) {
         return false;
     }
-    if (dump_plan_ && trees.size() > 0) {
+    if (ctx.logical_plan.empty() || nullptr == ctx.logical_plan[0]) {
+        status.msg = "error: generate empty/null logical plan";
+        status.code = common::kPlanError;
+        LOG(WARNING) << status.msg;
+        return false;
+    }
+    if (dump_plan_) {
         std::stringstream logical_plan_ss;
-        trees[0]->Print(logical_plan_ss, "\t");
-        ctx.logical_plan = logical_plan_ss.str();
+        ctx.logical_plan[0]->Print(logical_plan_ss, "\t");
+        ctx.logical_plan_str = logical_plan_ss.str();
     }
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
@@ -290,7 +295,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         vm::BatchModeTransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
                                              library);
         transformer.AddDefaultPasses();
-        if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
+        if (!transformer.TransformPhysicalPlan(ctx.logical_plan,
+                                               &ctx.physical_plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (batch mode): "
                          << status.msg << " for sql: \n"
                          << ctx.sql;
@@ -300,7 +306,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         vm::RequestModeransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
                                               library);
         transformer.AddDefaultPasses();
-        if (!transformer.TransformPhysicalPlan(trees, &ctx.plan, status)) {
+        if (!transformer.TransformPhysicalPlan(ctx.logical_plan,
+                                               &ctx.physical_plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (request mode) "
                             "for sql: \n"
                          << ctx.sql;
@@ -316,7 +323,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         ctx.request_name = transformer.request_name();
     }
 
-    if (nullptr == ctx.plan) {
+    if (nullptr == ctx.physical_plan) {
         status.msg = "error: generate null physical plan";
         status.code = common::kPlanError;
         LOG(WARNING) << status.msg;
@@ -324,8 +331,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     }
     if (dump_plan_) {
         std::stringstream physical_plan_ss;
-        ctx.plan->Print(physical_plan_ss, "\t");
-        ctx.physical_plan = physical_plan_ss.str();
+        ctx.physical_plan->Print(physical_plan_ss, "\t");
+        ctx.physical_plan_str = physical_plan_ss.str();
     }
     if (plan_only_) {
         return true;
@@ -369,10 +376,10 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     InitCodecSymbol(ctx.jit.get());
     udf::InitUDFSymbol(ctx.jit.get());
 
-    if (!ResolvePlanFnAddress(ctx.plan, ctx.jit, status)) {
+    if (!ResolvePlanFnAddress(ctx.physical_plan, ctx.jit, status)) {
         return false;
     }
-    ctx.schema = ctx.plan->output_schema_;
+    ctx.schema = ctx.physical_plan->output_schema_;
     ok = codec::SchemaCodec::Encode(ctx.schema, &ctx.encoded_schema);
     if (!ok) {
         LOG(WARNING) << "fail to encode output schema";
@@ -383,7 +390,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
 }
 bool SQLCompiler::BuildRunner(SQLContext& ctx, Status& status) {  // NOLINT
     RunnerBuilder runner_builder;
-    Runner* runner = runner_builder.Build(ctx.plan, status);
+    Runner* runner = runner_builder.Build(ctx.physical_plan, status);
     if (nullptr == runner) {
         status.msg = "fail to build runner: " + status.msg;
         status.code = common::kOpGenError;
@@ -393,26 +400,30 @@ bool SQLCompiler::BuildRunner(SQLContext& ctx, Status& status) {  // NOLINT
     return true;
 }
 
-bool SQLCompiler::Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,
-                        ::fesql::node::PlanNodeList& plan_trees,  // NOLINT
-                        ::fesql::base::Status& status) {          // NOLINT
+/**
+ * Parse SQL string and transform into logical plan
+ * @param ctx [out]
+ * @param status
+ * @return true if success to transform logical plan, store logical
+ *         plan into SQLContext
+ */
+bool SQLCompiler::Parse(SQLContext& ctx,
+                        ::fesql::base::Status& status) {  // NOLINT
     ::fesql::node::NodePointVector parser_trees;
     ::fesql::parser::FeSQLParser parser;
-    ::fesql::plan::SimplePlanner planer(&node_mgr, ctx.is_batch_mode);
+    ::fesql::plan::SimplePlanner planer(&ctx.nm, ctx.is_batch_mode);
 
-    int ret = parser.parse(ctx.sql, parser_trees, &node_mgr, status);
+    int ret = parser.parse(ctx.sql, parser_trees, &ctx.nm, status);
     if (ret != 0) {
         LOG(WARNING) << "fail to parse sql " << ctx.sql << " with error "
                      << status.msg;
         return false;
     }
-
-    ret = planer.CreatePlanTree(parser_trees, plan_trees, status);
+    ret = planer.CreatePlanTree(parser_trees, ctx.logical_plan, status);
     if (ret != 0) {
         LOG(WARNING) << "Fail create sql plan: " << status.msg;
         return false;
     }
-
     return true;
 }
 bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
