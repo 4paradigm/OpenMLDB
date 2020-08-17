@@ -137,9 +137,17 @@ class SQLBaseSuite extends SparkTestSuite {
     }
     dtype match {
       case FloatType =>
-        math.abs(toFloat(left) - toFloat(right)) < 1e-5
+        if (toFloat(left).isNaN) {
+          toFloat(right).isNaN
+        } else {
+          math.abs(toFloat(left) - toFloat(right)) < 1e-5
+        }
       case DoubleType =>
-        math.abs(toDouble(left) - toDouble(right)) < 1e-5
+        if (toDouble(left).isNaN) {
+          toDouble(right).isNaN
+        } else {
+          math.abs(toDouble(left) - toDouble(right)) < 1e-5
+        }
       case _ =>
         left == right
     }
@@ -152,6 +160,8 @@ class SQLBaseSuite extends SparkTestSuite {
   def toFloat(value: Any): Float = {
     value match {
       case f: Float => f
+      case s: String if s.toLowerCase == "nan" => Float.NaN
+      case s: String => s.trim.toFloat
       case _ => value.toString.toFloat
     }
   }
@@ -159,6 +169,8 @@ class SQLBaseSuite extends SparkTestSuite {
   def toDouble(value: Any): Double = {
     value match {
       case f: Double => f
+      case s: String if s.toLowerCase == "nan" => Double.NaN
+      case s: String => s.trim.toDouble
       case _ => value.toString.toDouble
     }
   }
@@ -245,8 +257,8 @@ class SQLBaseSuite extends SparkTestSuite {
                 case ShortType => str.trim.toShort
                 case IntegerType => str.trim.toInt
                 case LongType => str.trim.toLong
-                case FloatType => str.trim.toFloat
-                case DoubleType => str.trim.toDouble
+                case FloatType => toFloat(str)
+                case DoubleType => toDouble(str)
                 case StringType => str
                 case TimestampType => new Timestamp(str.trim.toLong)
                 case DateType =>
