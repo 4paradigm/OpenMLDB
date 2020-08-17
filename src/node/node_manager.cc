@@ -544,22 +544,22 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
             if (nullptr != node_ptr) {
                 switch (node_ptr->GetType()) {
                     case kReplicaNum: {
-                        replica_num = dynamic_cast<ReplicaNumNode*>(node_ptr)->
-                            GetReplicaNum();
+                        replica_num = dynamic_cast<ReplicaNumNode *>(node_ptr)
+                                          ->GetReplicaNum();
                         break;
                     }
                     case kDistributions: {
                         auto d_list =
-                            dynamic_cast<DistributionsNode*>(node_ptr)->
-                            GetDistributionList();
+                            dynamic_cast<DistributionsNode *>(node_ptr)
+                                ->GetDistributionList();
                         if (nullptr != d_list) {
                             for (auto meta_ptr : d_list->GetList()) {
                                 if (nullptr != meta_ptr) {
                                     if (meta_ptr->GetType() != kPartitionMeta) {
                                         LOG(WARNING) << "can not handle type "
-                                            << NameOfSQLNodeType(
-                                                    meta_ptr->GetType())
-                                            << " for table node";
+                                                     << NameOfSQLNodeType(
+                                                            meta_ptr->GetType())
+                                                     << " for table node";
                                     }
                                     partition_meta_list.PushBack(meta_ptr);
                                 }
@@ -568,7 +568,7 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
                         break;
                     }
                     default: {
-                                 LOG(WARNING) << "can not handle type "
+                        LOG(WARNING) << "can not handle type "
                                      << NameOfSQLNodeType(node_ptr->GetType())
                                      << " for table node";
                     }
@@ -576,11 +576,11 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
             }
         }
     }
-    CreateStmt *node_ptr = new CreateStmt(
-            table_name, op_if_not_exist, replica_num);
+    CreateStmt *node_ptr =
+        new CreateStmt(table_name, op_if_not_exist, replica_num);
     FillSQLNodeList2NodeVector(column_desc_list, node_ptr->GetColumnDefList());
-    FillSQLNodeList2NodeVector(
-            &partition_meta_list, node_ptr->GetDistributionList());
+    FillSQLNodeList2NodeVector(&partition_meta_list,
+                               node_ptr->GetDistributionList());
     return RegisterNode(node_ptr);
 }
 
@@ -1012,11 +1012,11 @@ ProjectNode *NodeManager::MakeProjectNode(const int32_t pos,
     return node_ptr;
 }
 CreatePlanNode *NodeManager::MakeCreateTablePlanNode(
-    const std::string& table_name, int replica_num,
+    const std::string &table_name, int replica_num,
     const NodePointVector &column_list,
     const NodePointVector &partition_meta_list) {
     node::CreatePlanNode *node_ptr = new CreatePlanNode(
-            table_name, replica_num, column_list, partition_meta_list);
+        table_name, replica_num, column_list, partition_meta_list);
     RegisterNode(node_ptr);
     return node_ptr;
 }
@@ -1283,8 +1283,13 @@ LambdaNode *NodeManager::MakeLambdaNode(const std::vector<ExprIdNode *> &args,
     return RegisterNode(new node::LambdaNode(args, body));
 }
 
+CondExpr *NodeManager::MakeCondExpr(ExprNode *condition, ExprNode *left,
+                                    ExprNode *right) {
+    return RegisterNode(new CondExpr(condition, left, right));
+}
+
 SQLNode *NodeManager::MakePartitionMetaNode(RoleType role_type,
-        const std::string &endpoint) {
+                                            const std::string &endpoint) {
     SQLNode *node_ptr = new PartitionMetaNode(endpoint, role_type);
     return RegisterNode(node_ptr);
 }
@@ -1294,7 +1299,8 @@ SQLNode *NodeManager::MakeReplicaNumNode(int num) {
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeDistributionsNode(SQLNodeList *distribution_list) {
+SQLNode *NodeManager::MakeDistributionsNode(SQLNodeList *
+                                            distribution_list) {
     DistributionsNode *index_ptr = new DistributionsNode(distribution_list);
     return RegisterNode(index_ptr);
 }

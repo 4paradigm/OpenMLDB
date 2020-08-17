@@ -138,7 +138,7 @@ TEST_F(StringIRBuilderTest, StringCopyFromTest) {
         codec::StringRef *, codec::StringRef *))load_fn_jit.getAddress();
     decode(&src, &dist);
     ASSERT_EQ("hello", dist.ToString());
-    free(src.data_);
+    free(const_cast<char *>(src.data_));
 }
 
 TEST_F(StringIRBuilderTest, StringRefOp) {
@@ -154,10 +154,10 @@ TEST_F(StringIRBuilderTest, StringRefOp) {
     ASSERT_TRUE(s1 < s2);
     ASSERT_TRUE(s1 <= s2);
 
-    free(s0.data_);
-    free(s1.data_);
-    free(s2.data_);
-    free(s1_2.data_);
+    free(const_cast<char *>(s0.data_));
+    free(const_cast<char *>(s1.data_));
+    free(const_cast<char *>(s2.data_));
+    free(const_cast<char *>(s1_2.data_));
 }
 
 }  // namespace codegen

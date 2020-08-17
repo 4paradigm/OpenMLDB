@@ -93,6 +93,9 @@ class ExprIRBuilder {
     Status BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
                              NativeValue* output);
 
+    Status BuildCondExpr(const ::fesql::node::CondExpr* node,
+                         NativeValue* output);
+
     ::llvm::Function* GetFuncion(
         const std::string& col,
         const std::vector<node::TypeNode>& generic_types,

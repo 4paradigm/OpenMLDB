@@ -475,7 +475,6 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
                   case_output_data);
     }
 
-
     /* Compare with SQLite*/
 
     // Determine whether to compare with SQLite

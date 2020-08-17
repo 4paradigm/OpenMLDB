@@ -344,7 +344,8 @@ class ProjectPlanNode : public UnaryPlanNode {
 class CreatePlanNode : public LeafPlanNode {
  public:
     CreatePlanNode(const std::string &table_name, int replica_num,
-            NodePointVector column_list, NodePointVector distribution_list)
+                   NodePointVector column_list,
+                   NodePointVector distribution_list)
         : LeafPlanNode(kPlanTypeCreate),
           database_(""),
           table_name_(table_name),
@@ -370,12 +371,10 @@ class CreatePlanNode : public LeafPlanNode {
 
     int GetReplicaNum() const { return replica_num_; }
 
-    void setReplicaNum(int replica_num) {
-        replica_num_ = replica_num;
-    }
+    void setReplicaNum(int replica_num) { replica_num_ = replica_num; }
 
     NodePointVector &GetDistributionList() { return distribution_list_; }
-    void SetDistributionList(const NodePointVector& distribution_list) {
+    void SetDistributionList(const NodePointVector &distribution_list) {
         distribution_list_ = distribution_list;
     }
 

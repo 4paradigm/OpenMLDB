@@ -202,6 +202,8 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "order";
         case kExprGetField:
             return "get field";
+        case kExprCond:
+            return "cond";
         case kExprUnknow:
             return "unknow";
         default:
@@ -1259,6 +1261,7 @@ class BinaryExpr : public ExprNode {
  private:
     FnOperator op_;
 };
+
 class UnaryExpr : public ExprNode {
  public:
     UnaryExpr() : ExprNode(kExprUnary) {}
@@ -1271,6 +1274,26 @@ class UnaryExpr : public ExprNode {
  private:
     FnOperator op_;
 };
+
+class CondExpr : public ExprNode {
+ public:
+    CondExpr(ExprNode *condition, ExprNode *left, ExprNode *right)
+        : ExprNode(kExprCond) {
+        AddChild(condition);
+        AddChild(left);
+        AddChild(right);
+    }
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *node) const;
+
+    ExprNode *GetCondition() const;
+    ExprNode *GetLeft() const;
+    ExprNode *GetRight() const;
+
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+};
+
 class ExprIdNode : public ExprNode {
  public:
     ExprIdNode() : ExprNode(kExprId) {}
@@ -1469,7 +1492,7 @@ class CreateStmt : public SQLNode {
           replica_num_(1) {}
 
     CreateStmt(const std::string &table_name, bool op_if_not_exist,
-            int replica_num)
+               int replica_num)
         : SQLNode(kCreateStmt, 0, 0),
           table_name_(table_name),
           op_if_not_exist_(op_if_not_exist),
@@ -2056,6 +2079,7 @@ class UDAFDefNode : public FnDefNode {
         const std::vector<const TypeNode *> &arg_types) const override;
 
     const TypeNode *GetElementType(size_t i) const;
+    bool IsElementNullable(size_t i) const;
 
     const TypeNode *GetStateType() const {
         if (init_expr_ != nullptr) {
@@ -2123,12 +2147,10 @@ class PartitionMetaNode : public SQLNode {
 
 class ReplicaNumNode : public SQLNode {
  public:
-    ReplicaNumNode()
-        : SQLNode(kReplicaNum, 0, 0), replica_num_(1) {}
+    ReplicaNumNode() : SQLNode(kReplicaNum, 0, 0), replica_num_(1) {}
 
     explicit ReplicaNumNode(int num)
-        : SQLNode(kReplicaNum, 0, 0),
-          replica_num_(num) {}
+        : SQLNode(kReplicaNum, 0, 0), replica_num_(num) {}
 
     ~ReplicaNumNode() {}
 
@@ -2144,7 +2166,7 @@ class DistributionsNode : public SQLNode {
  public:
     explicit DistributionsNode(SQLNodeList *distribution_list)
         : SQLNode(kDistributions, 0, 0),
-        distribution_list_(distribution_list) {}
+          distribution_list_(distribution_list) {}
 
     ~DistributionsNode() {}
 

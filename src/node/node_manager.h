@@ -158,6 +158,9 @@ class NodeManager {
                                    const std::string &relation_name);
     GetFieldExpr *MakeGetFieldExpr(ExprNode *input, size_t idx);
 
+    CondExpr *MakeCondExpr(ExprNode *condition, ExprNode *left,
+                           ExprNode *right);
+
     ExprNode *MakeBetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right);
     ExprNode *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
                                  FnOperator op);
@@ -249,9 +252,10 @@ class NodeManager {
 
     PlanNode *MakeLimitPlanNode(PlanNode *node, int limit_cnt);
 
-    CreatePlanNode *MakeCreateTablePlanNode(const std::string& table_name,
-            int replica_num, const NodePointVector &column_list,
-            const NodePointVector &partition_meta_list);
+    CreatePlanNode *MakeCreateTablePlanNode(
+        const std::string &table_name, int replica_num,
+        const NodePointVector &column_list,
+        const NodePointVector &partition_meta_list);
 
     CmdPlanNode *MakeCmdPlanNode(const CmdNode *node);
 
@@ -305,12 +309,12 @@ class NodeManager {
     LambdaNode *MakeLambdaNode(const std::vector<ExprIdNode *> &args,
                                ExprNode *body);
 
-    SQLNode* MakePartitionMetaNode(RoleType role_type,
-            const std::string &endpoint);
+    SQLNode *MakePartitionMetaNode(RoleType role_type,
+                                   const std::string &endpoint);
 
-    SQLNode* MakeReplicaNumNode(int num);
+    SQLNode *MakeReplicaNumNode(int num);
 
-    SQLNode* MakeDistributionsNode(SQLNodeList *distribution_list);
+    SQLNode *MakeDistributionsNode(SQLNodeList *distribution_list);
 
     template <typename T>
     T *RegisterNode(T *node_ptr) {

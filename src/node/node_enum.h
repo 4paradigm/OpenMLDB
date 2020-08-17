@@ -106,6 +106,7 @@ enum ExprType {
     kExprQuery,
     kExprOrder,
     kExprGetField,
+    kExprCond,
     kExprUnknow = 9999
 };
 // typedef fesql::type::Type DataType;
@@ -233,10 +234,7 @@ enum PlanType {
 // batch plan node type
 enum BatchPlanNodeType { kBatchDataset, kBatchPartition, kBatchMap };
 
-enum RoleType {
-    kLeader,
-    kFollower
-};
+enum RoleType { kLeader, kFollower };
 
 }  // namespace node
 }  // namespace fesql
