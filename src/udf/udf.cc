@@ -98,10 +98,6 @@ int32_t weekofyear(codec::Date *date) {
     return d.week_number();
 }
 
-int16_t abs_int16(int16_t x) {
-    return static_cast<int16_t>(abs(x));
-}
-
 float Cotf(float x) {
     return cosf(x)/sinf(x);
 }

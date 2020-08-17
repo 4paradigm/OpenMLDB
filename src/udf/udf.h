@@ -26,6 +26,20 @@ void ThreadLocalMemoryPoolReset();
 namespace v1 {
 
 template <class V>
+struct Abs {
+    using Args = std::tuple<V>;
+
+    V operator()(V r) { return static_cast<V>(abs(r)); }
+};
+
+template <class V>
+struct Abs32 {
+    using Args = std::tuple<V>;
+
+    int32_t operator()(V r) { return abs(r); }
+};
+
+template <class V>
 struct Acos {
     using Args = std::tuple<V>;
 
@@ -236,7 +250,6 @@ int32_t weekofyear(int64_t ts);
 int32_t weekofyear(fesql::codec::Timestamp *ts);
 int32_t weekofyear(fesql::codec::Date *ts);
 
-int16_t abs_int16(int16_t x);
 float Cotf(float x);
 
 void date_format(codec::Date *date, const std::string &format,

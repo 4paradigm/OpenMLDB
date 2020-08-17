@@ -316,14 +316,14 @@ TEST_F(UDFIRBuilderTest, log_udf_test) {
 }
 
 TEST_F(UDFIRBuilderTest, abs_udf_test) {
-    CheckUDF<int16_t, int16_t>("abs", 32767, 32767);
-    CheckUDF<int16_t, int16_t>("abs", 1, -1);
+    CheckUDF<int32_t, int16_t>("abs", 32767, 32767);
+    CheckUDF<int32_t, int16_t>("abs", 1, -1);
     CheckUDF<int32_t, int32_t>("abs", 32768, 32768);
     CheckUDF<int32_t, int32_t>("abs", 32769, -32769);
     CheckUDF<int64_t, int64_t>("abs", 2147483648, 2147483648);
     CheckUDF<int64_t, int64_t>("abs", 2147483649, -2147483649);
-    CheckUDF<float, float>("abs", 2.1f, 2.1f);
-    CheckUDF<float, float>("abs", 2.1f, -2.1f);
+    CheckUDF<double, float>("abs", 2.1f, 2.1f);
+    CheckUDF<double, float>("abs", 2.1f, -2.1f);
     CheckUDF<double, double>("abs", 2.1, 2.1);
     CheckUDF<double, double>("abs", 2.1, -2.1);
 }

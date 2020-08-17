@@ -723,7 +723,7 @@ example
             return nm->MakeFuncNode("log10", {cast}, nullptr);
         });
 
-    RegisterExternal("abs")
+    RegisterExternalTemplate<v1::Abs>("abs")
         .doc(R"(
 Return the absolute value of expr.
 
@@ -739,13 +739,20 @@ example
 
 @since 2.0.0.0
 )")
-        .args<int16_t>(static_cast<int16_t (*)(int16_t)>(v1::abs_int16))
-        .args<int32_t>(static_cast<int32_t (*)(int32_t)>(abs));
-    RegisterExternal("abs").args<int64_t>(
-        static_cast<int64_t (*)(int64_t)>(v1::abs_int64));
-    RegisterExternal("abs")
-        .args<float>(static_cast<float (*)(float)>(fabs))
-        .args<double>(static_cast<double (*)(double)>(fabs));
+        .args_in<int64_t, double>();
+   RegisterExternalTemplate<v1::Abs32>("abs")
+        .args_in<int16_t, int32_t>();
+    RegisterExprUDF("abs").args<AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("abs do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast = nm->MakeCastNode(node::kDouble, x);
+            return nm->MakeFuncNode("abs", {cast}, nullptr);
+        });
 
     RegisterExternalTemplate<v1::Acos>("acos")
         .doc(R"(
