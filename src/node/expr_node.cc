@@ -98,7 +98,6 @@ Status WhenExprNode::InferAttr(ExprAnalysisContext* ctx) {
 Status CaseWhenExprNode::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetChildNum() == 2);
     CHECK_TRUE(when_expr_list()->GetChildNum() > 0);
-    bool ok = true;
     const TypeNode* type = nullptr;
     for (auto expr : when_expr_list()->children_) {
         auto expr_type = expr->GetOutputType();
