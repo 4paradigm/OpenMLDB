@@ -172,7 +172,19 @@ Status ExternalFuncRegistry::ResolveFunction(UDFResolveContext* ctx,
     auto status =
         reg_table_.Find(ctx, &external_def, &signature, &variadic_pos);
     if (!status.isOK()) {
-        DLOG(WARNING) << "Fail to resolve fn name \"" << name() << "\"";
+        std::stringstream ss;
+        for (size_t i = 0; i < ctx->arg_size(); ++i) {
+            if (ctx->arg_type(i) == nullptr) {
+                ss << "?";
+            } else {
+                ss << ctx->arg_type(i)->GetName();
+            }
+            if (i < ctx->arg_size() - 1) {
+                ss << ", ";
+            }
+        }
+        DLOG(WARNING) << "Fail to resolve fn name \"" << name()
+                      << "\" with argument types <" << ss.str() << ">";
         return status;
     }
 

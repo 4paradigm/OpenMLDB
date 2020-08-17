@@ -47,6 +47,7 @@
 #include "vm/test_base.h"
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_CNT 20
+
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
 
@@ -85,6 +86,9 @@ int GenerateSqliteTestStringCallback(void* s, int argc, char** argv,
     sqliteStr += "\n";
     return 0;
 }
+
+bool IsNaN(float x) { return x != x; }
+bool IsNaN(double x) { return x != x; }
 
 void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema);
 void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
@@ -227,15 +231,23 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                     break;
                 }
                 case fesql::type::kFloat: {
-                    ASSERT_FLOAT_EQ(row_view.GetFloatUnsafe(i),
-                                    row_view_exp.GetFloatUnsafe(i))
-                        << " At " << i;
+                    float act = row_view.GetFloatUnsafe(i);
+                    float exp = row_view_exp.GetFloatUnsafe(i);
+                    if (IsNaN(exp)) {
+                        ASSERT_TRUE(IsNaN(act)) << " At " << i;
+                    } else {
+                        ASSERT_FLOAT_EQ(act, exp) << " At " << i;
+                    }
                     break;
                 }
                 case fesql::type::kDouble: {
-                    ASSERT_DOUBLE_EQ(row_view.GetDoubleUnsafe(i),
-                                     row_view_exp.GetDoubleUnsafe(i))
-                        << " At " << i;
+                    double act = row_view.GetDoubleUnsafe(i);
+                    double exp = row_view_exp.GetDoubleUnsafe(i);
+                    if (IsNaN(exp)) {
+                        ASSERT_TRUE(IsNaN(act)) << " At " << i;
+                    } else {
+                        ASSERT_DOUBLE_EQ(act, exp) << " At " << i;
+                    }
                     break;
                 }
                 case fesql::type::kVarchar: {

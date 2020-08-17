@@ -725,25 +725,22 @@ example
 
     RegisterExternal("abs")
         .doc(R"(
-Return the absolute value of expr.
+            Return the absolute value of expr.
 
-example
-@code{.sql}
+            example
+            @code{.sql}
 
-    SELECT ABS(-32);
-    -- output 32
+                SELECT ABS(-32);
+                -- output 32
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param **expr**
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args<int16_t>(static_cast<int16_t (*)(int16_t)>(v1::abs_int16))
-        .args<int32_t>(static_cast<int32_t (*)(int32_t)>(abs));
-    RegisterExternal("abs").args<int64_t>(
-        static_cast<int64_t (*)(int64_t)>(v1::abs_int64));
-    RegisterExternal("abs")
+        .args<int32_t>(static_cast<int32_t (*)(int32_t)>(abs))
+        .args<int64_t>(static_cast<int64_t (*)(int64_t)>(v1::abs_int64))
         .args<float>(static_cast<float (*)(float)>(fabs))
         .args<double>(static_cast<double (*)(double)>(fabs));
 

@@ -28,11 +28,14 @@ using TypeNodeVec = std::vector<const node::TypeNode*>;
 
 UDFIRBuilder::UDFIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
                            const vm::SchemasContext* schemas_context,
-                           ::llvm::Module* module)
+                           ::llvm::Module* module, node::ExprNode* frame_arg,
+                           node::FrameNode* frame)
     : block_(block),
       sv_(scope_var),
       module_(module),
-      schemas_context_(schemas_context) {}
+      schemas_context_(schemas_context),
+      frame_arg_(frame_arg),
+      frame_(frame) {}
 
 Status UDFIRBuilder::BuildCall(
     const node::FnDefNode* fn,
@@ -130,6 +133,7 @@ Status UDFIRBuilder::BuildLambdaCall(
 
     base::Status status;
     ExprIRBuilder expr_builder(block_, sv_, schemas_context_, true, module_);
+    expr_builder.set_frame(frame_arg_, frame_);
     bool ok = expr_builder.Build(fn->body(), output, status);
     // sv_->Exit();
     CHECK_TRUE(ok && status.isOK(),
@@ -481,12 +485,26 @@ Status UDFIRBuilder::BuildUDAFCall(
     subfunc_ret_type->AddGeneric(output_type, false);
     subfunc_ret_type->AddGeneric(nm.MakeTypeNode(node::kBool), false);
 
-    std::vector<int> arg_nullable(arg_types.size(), false);
+    // add global frame into sub-function closure
+    std::vector<NativeValue> sub_args = args;
+    std::vector<const node::TypeNode*> sub_arg_types = arg_types;
+    std::vector<int> sub_arg_nullable(arg_types.size(), false);
+    size_t closure_num = 0;
+    if (frame_arg_ != nullptr) {
+        closure_num = 1;
+        NativeValue frame_value;
+        if (sv_->FindVar(frame_arg_->GetExprString(), &frame_value)) {
+            sub_args.push_back(frame_value);
+            sub_arg_types.push_back(frame_arg_->GetOutputType());
+            sub_arg_nullable.push_back(false);
+        }
+    }
+
     NativeValue tuple;
     auto sub_def =
         nm.MakeExternalFnDefNode(sub_function_name, 0, subfunc_ret_type, false,
-                                 arg_types, arg_nullable, -1, true);
-    CHECK_STATUS(this->BuildExternCall(sub_def, arg_types, args, &tuple));
+                                 sub_arg_types, sub_arg_nullable, -1, true);
+    CHECK_STATUS(this->BuildExternCall(sub_def, arg_types, sub_args, &tuple));
     CHECK_TRUE(tuple.IsTuple());
 
     // extract null flag and values
@@ -502,15 +520,22 @@ Status UDFIRBuilder::BuildUDAFCall(
     // function scope
     ScopeVar sub_sv;
     sub_sv.Enter("sub_func_entry");
+    if (frame_arg_ != nullptr) {
+        ::llvm::Value* frame_raw_value = sub_fn->arg_begin() + input_num;
+        sub_sv.AddVar(frame_arg_->GetExprString(),
+                      NativeValue::Create(frame_raw_value));
+    }
+
     ScopeVar* old_sv = sv_;
     sv_ = &sub_sv;
 
     std::vector<::llvm::Value*> output_addrs;
     for (size_t i = 0; i < output_num; ++i) {
-        output_addrs.push_back(sub_fn->arg_begin() + input_num + i);
+        output_addrs.push_back(sub_fn->arg_begin() + input_num + closure_num +
+                               i);
     }
     ::llvm::Value* output_is_null_ptr =
-        sub_fn->arg_begin() + input_num + output_num;
+        sub_fn->arg_begin() + input_num + closure_num + output_num;
 
     Status status;
     ::llvm::LLVMContext& llvm_ctx = module_->getContext();
@@ -561,6 +586,7 @@ Status UDFIRBuilder::BuildUDAFCall(
     if (udaf->init_expr() != nullptr) {
         ExprIRBuilder expr_builder(head_block, sv_, schemas_context_, true,
                                    module_);
+        expr_builder.set_frame(frame_arg_, frame_);
         CHECK_TRUE(expr_builder.Build(udaf->init_expr(), &init_value, status),
                    "Build init expr ", udaf->init_expr()->GetExprString(),
                    " failed: ", status.msg);
@@ -641,7 +667,8 @@ Status UDFIRBuilder::BuildUDAFCall(
     // iter body
     builder.SetInsertPoint(body_block);
     ListIRBuilder iter_next_builder(body_block, nullptr);
-    UDFIRBuilder sub_udf_builder(body_block, sv_, schemas_context_, module_);
+    UDFIRBuilder sub_udf_builder(body_block, sv_, schemas_context_, module_,
+                                 frame_arg_, frame_);
 
     std::vector<NativeValue> cur_state_values;
     std::vector<NativeValue> update_args;
@@ -713,7 +740,7 @@ Status UDFIRBuilder::BuildUDAFCall(
     }
 
     UDFIRBuilder sub_udf_builder_exit(exit_block, sv_, schemas_context_,
-                                      module_);
+                                      module_, frame_arg_, frame_);
     NativeValue local_output;
     CHECK_STATUS(
         sub_udf_builder_exit.BuildCall(udaf->output_func(), {state_type},
