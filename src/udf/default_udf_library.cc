@@ -754,130 +754,6 @@ example
             return nm->MakeFuncNode("abs", {cast}, nullptr);
         });
 
-    RegisterExternalTemplate<v1::Acos>("acos")
-        .doc(R"(
-Return the arc cosine of expr.
-
-example
-@code{.sql}
-
-    SELECT ACOS(1);
-    -- output 0
-
-@endcode
-
-@param **expr**
-
-@since 2.0.0.0
-)")
-        .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("acos").args<float>(static_cast<float (*)(float)>(acosf));
-
-    RegisterExternalTemplate<v1::Asin>("asin")
-        .doc(R"(
-Return the arc sine of expr.
-
-example
-@code{.sql}
-
-    SELECT ASIN(0.0);
-    -- output 0.000000
-
-@endcode
-
-@param **expr**
-
-@since 2.0.0.0
-)")
-        .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("asin").args<float>(static_cast<float (*)(float)>(asinf));
-
-    RegisterExternalTemplate<v1::Atan>("atan")
-        .doc(R"(
-atan(Y, X)
-If called with one parameter, this function returns the arc tangent of expr.
-If called with two parameters X and Y, this function returns the arc tangent of Y / X.
-
-example
-@code{.sql}
-
-    SELECT ATAN(-0.0);  
-    -- output -0.000000
-
-    SELECT ATAN(0, -0);
-    -- output 3.141593
-
-@endcode
-
-@param **X**
-@param **Y**
-
-@since 2.0.0.0
-)")
-        .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("atan").args<float>(static_cast<float (*)(float)>(atanf));
-
-    RegisterExternalTemplate<v1::Atan2>("atan")
-        .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("atan").args<float, float>(
-        static_cast<float (*)(float, float)>(atan2f));
-    RegisterExprUDF("atan").args<AnyArg, AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
-            if (!x->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("atan do not support type " +
-                              x->GetOutputType()->GetName());
-                return nullptr;
-            }
-            if (!y->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("atan do not support type " +
-                              y->GetOutputType()->GetName());
-                return nullptr;
-            }
-            auto nm = ctx->node_manager();
-            auto cast1 = nm->MakeCastNode(node::kDouble, x);
-            auto cast2 = nm->MakeCastNode(node::kDouble, y);
-            return nm->MakeFuncNode("atan", {cast1, cast2}, nullptr);
-        });
-
-    RegisterExternalTemplate<v1::Atan2>("atan2")
-        .doc(R"(
-atan2(Y, X)
-Return the arc tangent of Y / X..
-
-example
-@code{.sql}
-
-    SELECT ATAN2(0, -0);
-    -- output 3.141593
-
-@endcode
-
-@param **X**
-@param **Y**
-
-@since 2.0.0.0
-)")
-        .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("atan2").args<float, float>(
-        static_cast<float (*)(float, float)>(atan2f));
-    RegisterExprUDF("atan2").args<AnyArg, AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
-            if (!x->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("atan2 do not support type " +
-                              x->GetOutputType()->GetName());
-                return nullptr;
-            }
-            if (!y->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("atan2 do not support type " +
-                              y->GetOutputType()->GetName());
-                return nullptr;
-            }
-            auto nm = ctx->node_manager();
-            auto cast1 = nm->MakeCastNode(node::kDouble, x);
-            auto cast2 = nm->MakeCastNode(node::kDouble, y);
-            return nm->MakeFuncNode("atan2", {cast1, cast2}, nullptr);
-        });
-
     RegisterExternalTemplate<v1::Ceil>("ceil")
         .doc(R"(
 Return the smallest integer value not less than the expr
@@ -910,48 +786,6 @@ example
         });
 
     RegisterAlias("ceiling", "ceil");
-
-    RegisterExternalTemplate<v1::Cos>("cos")
-.doc(R"(
-Return the cosine of expr.
-
-example
-@code{.sql}
-
-    SELECT COS(0);
-    -- output 1.000000
-
-@endcode
-
-@param **expr**: It is a single argument in radians.
-
-- The value returned by cos() is always in the range: -1 to 1.
-
-@since 2.0.0.0
-)")
-        .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("cos")
-        .args<float>(static_cast<float (*)(float)>(cosf));
-
-    RegisterExternalTemplate<v1::Cot>("cot")
-        .doc(R"(
-Return the cotangent of expr.
-
-example
-@code{.sql}
-
-    SELECT COT(1);  
-    -- output 0.6420926159343306
-
-@endcode
-
-@param **expr**
-
-@since 2.0.0.0
-)")
-        .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("cot")
-        .args<float>(static_cast<float (*)(float)>(v1::Cotf));
 
     RegisterExternalTemplate<v1::Exp>("exp")
         .doc(R"(
@@ -1076,28 +910,6 @@ example
             return nm->MakeFuncNode("round", {cast}, nullptr);
         });
 
-    RegisterExternalTemplate<v1::Sin>("sin")
-.doc(R"(
-Return the sine of expr.
-
-example
-@code{.sql}
-
-    SELECT SIN(0);
-    -- output 0.000000
-
-@endcode
-
-@param **expr**: It is a single argument in radians.
-
-- The value returned by sin() is always in the range: -1 to 1.
-
-@since 2.0.0.0
-)")
-        .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("sin")
-        .args<float>(static_cast<float (*)(float)>(sinf));
-
     RegisterExternalTemplate<v1::Sqrt>("sqrt")
 .doc(R"(
 Return square root of expr.
@@ -1117,26 +929,6 @@ example
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("sqrt")
         .args<float>(static_cast<float (*)(float)>(sqrtf));
-
-    RegisterExternalTemplate<v1::Tan>("tan")
-.doc(R"(
-Return the tangent of expr.
-
-example
-@code{.sql}
-
-    SELECT TAN(0);
-    -- output 0.000000
-
-@endcode
-
-@param **expr**: It is a single argument in radians.
-
-@since 2.0.0.0
-)")
-        .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("tan")
-        .args<float>(static_cast<float (*)(float)>(tanf));
 
     RegisterExternalTemplate<v1::Truncate>("truncate")
 .doc(R"(
@@ -1170,6 +962,215 @@ example
         });
 }
 
+void DefaultUDFLibrary::InitTrigonometricUDF() {
+    RegisterExternalTemplate<v1::Acos>("acos")
+        .doc(R"(
+Return the arc cosine of expr.
+
+example
+@code{.sql}
+
+    SELECT ACOS(1);
+    -- output 0
+
+@endcode
+
+@param **expr**
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("acos").args<float>(static_cast<float (*)(float)>(acosf));
+
+    RegisterExternalTemplate<v1::Asin>("asin")
+        .doc(R"(
+Return the arc sine of expr.
+
+example
+@code{.sql}
+
+    SELECT ASIN(0.0);
+    -- output 0.000000
+
+@endcode
+
+@param **expr**
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("asin").args<float>(static_cast<float (*)(float)>(asinf));
+
+    RegisterExternalTemplate<v1::Atan>("atan")
+        .doc(R"(
+atan(Y, X)
+If called with one parameter, this function returns the arc tangent of expr.
+If called with two parameters X and Y, this function returns the arc tangent of Y / X.
+
+example
+@code{.sql}
+
+    SELECT ATAN(-0.0);  
+    -- output -0.000000
+
+    SELECT ATAN(0, -0);
+    -- output 3.141593
+
+@endcode
+
+@param **X**
+@param **Y**
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("atan").args<float>(static_cast<float (*)(float)>(atanf));
+
+    RegisterExternalTemplate<v1::Atan2>("atan")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("atan").args<float, float>(
+        static_cast<float (*)(float, float)>(atan2f));
+    RegisterExprUDF("atan").args<AnyArg, AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("atan do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            if (!y->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("atan do not support type " +
+                              y->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast1 = nm->MakeCastNode(node::kDouble, x);
+            auto cast2 = nm->MakeCastNode(node::kDouble, y);
+            return nm->MakeFuncNode("atan", {cast1, cast2}, nullptr);
+        });
+
+    RegisterExternalTemplate<v1::Atan2>("atan2")
+        .doc(R"(
+atan2(Y, X)
+Return the arc tangent of Y / X..
+
+example
+@code{.sql}
+
+    SELECT ATAN2(0, -0);
+    -- output 3.141593
+
+@endcode
+
+@param **X**
+@param **Y**
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("atan2").args<float, float>(
+        static_cast<float (*)(float, float)>(atan2f));
+    RegisterExprUDF("atan2").args<AnyArg, AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("atan2 do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            if (!y->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("atan2 do not support type " +
+                              y->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast1 = nm->MakeCastNode(node::kDouble, x);
+            auto cast2 = nm->MakeCastNode(node::kDouble, y);
+            return nm->MakeFuncNode("atan2", {cast1, cast2}, nullptr);
+        });
+
+    RegisterExternalTemplate<v1::Cos>("cos")
+.doc(R"(
+Return the cosine of expr.
+
+example
+@code{.sql}
+
+    SELECT COS(0);
+    -- output 1.000000
+
+@endcode
+
+@param **expr**: It is a single argument in radians.
+
+- The value returned by cos() is always in the range: -1 to 1.
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("cos")
+        .args<float>(static_cast<float (*)(float)>(cosf));
+
+    RegisterExternalTemplate<v1::Cot>("cot")
+        .doc(R"(
+Return the cotangent of expr.
+
+example
+@code{.sql}
+
+    SELECT COT(1);  
+    -- output 0.6420926159343306
+
+@endcode
+
+@param **expr**
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("cot")
+        .args<float>(static_cast<float (*)(float)>(v1::Cotf));
+
+    RegisterExternalTemplate<v1::Sin>("sin")
+.doc(R"(
+Return the sine of expr.
+
+example
+@code{.sql}
+
+    SELECT SIN(0);
+    -- output 0.000000
+
+@endcode
+
+@param **expr**: It is a single argument in radians.
+
+- The value returned by sin() is always in the range: -1 to 1.
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("sin")
+        .args<float>(static_cast<float (*)(float)>(sinf));
+
+    RegisterExternalTemplate<v1::Tan>("tan")
+.doc(R"(
+Return the tangent of expr.
+
+example
+@code{.sql}
+
+    SELECT TAN(0);
+    -- output 0.000000
+
+@endcode
+
+@param **expr**: It is a single argument in radians.
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("tan")
+        .args<float>(static_cast<float (*)(float)>(tanf));
+}
 
 void DefaultUDFLibrary::Init() {
     udf::RegisterNativeUDFToModule();
