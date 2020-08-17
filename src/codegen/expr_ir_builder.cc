@@ -265,6 +265,15 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
             }
             return true;
         }
+        case ::fesql::node::kExprCond: {
+            status = BuildCondExpr(
+                dynamic_cast<const ::fesql::node::CondExpr*>(node), output);
+            if (!status.isOK()) {
+                LOG(WARNING) << "Build cond expr failed: " << status.msg;
+                return false;
+            }
+            return true;
+        }
         default: {
             LOG(WARNING) << "Expression Type "
                          << node::ExprTypeName(node->GetExprType())
@@ -1003,6 +1012,70 @@ Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
     } else {
         return Status(common::kCodegenError,
                       "Get field's input is neither tuple nor row");
+    }
+    return Status::OK();
+}
+
+Status ExprIRBuilder::BuildCondExpr(const ::fesql::node::CondExpr* node,
+                                    NativeValue* output) {
+    // build condition
+    ::llvm::IRBuilder<> builder(block_);
+    Status status;
+    NativeValue cond_value;
+    CHECK_TRUE(this->Build(node->GetCondition(), &cond_value, status),
+               status.msg);
+
+    // build left
+    NativeValue left_value;
+    CHECK_TRUE(this->Build(node->GetLeft(), &left_value, status), status.msg);
+
+    // build right
+    NativeValue right_value;
+    CHECK_TRUE(this->Build(node->GetRight(), &right_value, status), status.msg);
+
+    auto raw_cond = cond_value.GetValue(&builder);
+    if (cond_value.HasFlag()) {
+        raw_cond = builder.CreateAnd(
+            raw_cond, builder.CreateNot(cond_value.GetIsNull(&builder)));
+    }
+
+    if (left_value.IsTuple()) {
+        CHECK_TRUE(right_value.IsTuple() &&
+                   left_value.GetFieldNum() == right_value.GetFieldNum());
+        std::vector<NativeValue> result_tuple;
+        for (size_t i = 0; i < left_value.GetFieldNum(); ++i) {
+            NativeValue sub_left = left_value.GetField(i);
+            NativeValue sub_right = right_value.GetField(i);
+            ::llvm::Value* raw_value =
+                builder.CreateSelect(raw_cond, sub_left.GetValue(&builder),
+                                     sub_right.GetValue(&builder));
+
+            bool output_nullable = sub_left.HasFlag() || sub_right.HasFlag();
+            if (output_nullable) {
+                ::llvm::Value* output_is_null =
+                    builder.CreateSelect(raw_cond, sub_left.GetIsNull(&builder),
+                                         sub_right.GetIsNull(&builder));
+                result_tuple.push_back(*output = NativeValue::CreateWithFlag(
+                                           raw_value, output_is_null));
+            } else {
+                result_tuple.push_back(NativeValue::Create(raw_value));
+            }
+        }
+        *output = NativeValue::CreateTuple(result_tuple);
+    } else {
+        ::llvm::Value* raw_value =
+            builder.CreateSelect(raw_cond, left_value.GetValue(&builder),
+                                 right_value.GetValue(&builder));
+
+        bool output_nullable = left_value.HasFlag() || right_value.HasFlag();
+        if (output_nullable) {
+            ::llvm::Value* output_is_null =
+                builder.CreateSelect(raw_cond, left_value.GetIsNull(&builder),
+                                     right_value.GetIsNull(&builder));
+            *output = NativeValue::CreateWithFlag(raw_value, output_is_null);
+        } else {
+            *output = NativeValue::Create(raw_value);
+        }
     }
     return Status::OK();
 }

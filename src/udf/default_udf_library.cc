@@ -11,10 +11,13 @@
 #include <string>
 #include <tuple>
 #include <unordered_set>
+#include <utility>
 #include <vector>
+
 #include "codegen/date_ir_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
+#include "udf/containers.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
 
@@ -137,44 +140,6 @@ struct CountUDAFDef {
 };
 
 template <typename T>
-struct CountWhereDef {
-    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
-        helper.templates<int64_t, int64_t, T, bool>()
-            .const_init(0)
-            .update(/* inferr */
-                    [](UDFResolveContext* ctx, const ExprAttrNode* st,
-                       const ExprAttrNode*, const ExprAttrNode*,
-                       ExprAttrNode* out) {
-                        out->SetType(st->type());
-                        out->SetNullable(false);
-                        return Status::OK();
-                    },
-                    /* gen */
-                    [](CodeGenContext* ctx, NativeValue cnt, NativeValue elem,
-                       NativeValue cond, NativeValue* out) {
-                        auto builder = ctx->GetBuilder();
-                        ::llvm::Value* keep;
-                        if (cond.HasFlag()) {
-                            keep = builder->CreateAnd(
-                                builder->CreateNot(cond.GetIsNull(ctx)),
-                                cond.GetValue(ctx));
-                        } else {
-                            keep = cond.GetValue(ctx);
-                        }
-                        ::llvm::Value* old_value = cnt.GetValue(ctx);
-                        ::llvm::Value* new_value = builder->CreateSelect(
-                            keep,
-                            builder->CreateAdd(old_value, builder->getInt64(1)),
-                            old_value);
-                        *out = NativeValue::Create(new_value);
-                        return Status::OK();
-                    })
-            .merge("add")
-            .output("identity");
-    }
-};
-
-template <typename T>
 struct AvgUDAFDef {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
         helper.templates<double, Tuple<int64_t, double>, T>()
@@ -241,6 +206,262 @@ struct DistinctCountDef {
         static SetT* update_set(SetT* set, V* value) {
             set->insert(*value);
             return set;
+        }
+    };
+};
+
+template <typename T>
+struct CountWhereDef {
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        helper.templates<int64_t, int64_t, T, bool>()
+            .const_init(0)
+            .update([](UDFResolveContext* ctx, ExprNode* cnt, ExprNode* elem,
+                       ExprNode* cond) {
+                auto nm = ctx->node_manager();
+                auto new_cnt = nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(1),
+                                                      node::kFnOpAdd);
+                ExprNode* update = nm->MakeCondExpr(cond, new_cnt, cnt);
+                return update;
+            })
+            .merge("add")
+            .output("identity");
+    }
+};
+
+template <typename T>
+struct AvgWhereDef {
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        helper.templates<int64_t, Tuple<int64_t, double>, T, bool>()
+            .const_init(MakeTuple((int64_t)0, 0.0))
+            .update([](UDFResolveContext* ctx, ExprNode* state, ExprNode* elem,
+                       ExprNode* cond) {
+                auto nm = ctx->node_manager();
+                auto cnt = nm->MakeGetFieldExpr(state, 0);
+                auto sum = nm->MakeGetFieldExpr(state, 1);
+                auto cnt_ty = state->GetOutputType()->GetGenericType(0);
+                auto sum_ty = state->GetOutputType()->GetGenericType(1);
+                auto new_cnt = nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(1),
+                                                      node::kFnOpAdd);
+                if (elem->GetOutputType()->base() == node::kTimestamp) {
+                    elem = nm->MakeCastNode(node::kInt64, elem);
+                }
+                auto new_sum =
+                    nm->MakeBinaryExprNode(sum, elem, node::kFnOpAdd);
+                new_cnt->SetOutputType(cnt_ty);
+                new_sum->SetOutputType(sum_ty);
+                auto new_state =
+                    nm->MakeFuncNode("make_tuple", {new_cnt, new_sum}, nullptr);
+                return nm->MakeCondExpr(cond, new_state, state);
+            })
+            .merge("add")
+            .output([](UDFResolveContext* ctx, ExprNode* state) {
+                auto nm = ctx->node_manager();
+                ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
+                ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
+                ExprNode* avg =
+                    nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv);
+                avg->SetOutputType(state->GetOutputType()->GetGenericType(1));
+                return avg;
+            });
+    }
+};
+
+template <typename T>
+struct TopKDef {
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        // register for i32 and i64 bound
+        DoRegister<int32_t>(helper);
+        DoRegister<int64_t>(helper);
+    }
+
+    template <typename BoundT>
+    void DoRegister(UDAFRegistryHelper& helper) {  // NOLINT
+        using ContainerT = udf::container::TopKContainer<T, BoundT>;
+        std::string suffix = ".opaque_" + DataTypeTrait<BoundT>::to_string() +
+                             "_bound_" + DataTypeTrait<T>::to_string();
+        helper.templates<StringRef, Opaque<ContainerT>, Nullable<T>, BoundT>()
+            .init("topk_init" + suffix, ContainerT::Init)
+            .update("topk_update" + suffix, ContainerT::Push)
+            .output("topk_output" + suffix, ContainerT::Output);
+    }
+};
+
+template <typename K>
+struct AvgCateDef {
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        helper.library()
+            ->RegisterUDAFTemplate<Impl>("avg_cate")
+            .doc(helper.registry()->doc())
+            .template args_in<int16_t, int32_t, int64_t, float, double>();
+    }
+
+    template <typename V>
+    struct Impl {
+        using ContainerT =
+            udf::container::BoundedGroupByDict<K, V,
+                                               std::pair<int64_t, double>>;
+        using InputK = typename ContainerT::InputK;
+        using InputV = typename ContainerT::InputV;
+
+        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+            std::string suffix = ".opaque_dict_" +
+                                 DataTypeTrait<K>::to_string() + "_" +
+                                 DataTypeTrait<V>::to_string();
+            helper
+                .templates<StringRef, Opaque<ContainerT>, Nullable<K>,
+                           Nullable<V>>()
+                .init("avg_cate_init" + suffix, ContainerT::Init)
+                .update("avg_cate_update" + suffix, Update)
+                .output("avg_cate_output" + suffix, Output);
+        }
+
+        static ContainerT* Update(ContainerT* ptr, InputK key, bool is_key_null,
+                                  InputV value, bool is_value_null) {
+            if (is_key_null || is_value_null) {
+                return ptr;
+            }
+            auto& map = ptr->map();
+            auto stored_key = ContainerT::to_stored_key(key);
+            auto iter = map.find(stored_key);
+            if (iter == map.end()) {
+                map.insert(iter, {stored_key,
+                                  {1, ContainerT::to_stored_value(value)}});
+            } else {
+                auto& pair = iter->second;
+                pair.first += 1;
+                pair.second += ContainerT::to_stored_value(value);
+            }
+            return ptr;
+        }
+
+        static void Output(ContainerT* ptr, codec::StringRef* output) {
+            ContainerT::OutputString(
+                ptr, false, output,
+                [](const std::pair<int64_t, double>& value, char* buf,
+                   size_t size) {
+                    double avg = value.second / value.first;
+                    return v1::format_string(avg, buf, size);
+                });
+            ContainerT::Destroy(ptr);
+        }
+    };
+};
+
+template <typename K>
+struct AvgCateWhereDef {
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        helper.library()
+            ->RegisterUDAFTemplate<Impl>("avg_cate_where")
+            .doc(helper.registry()->doc())
+            .template args_in<int16_t, int32_t, int64_t, float, double>();
+    }
+
+    template <typename V>
+    struct Impl {
+        using ContainerT =
+            udf::container::BoundedGroupByDict<K, V,
+                                               std::pair<int64_t, double>>;
+        using InputK = typename ContainerT::InputK;
+        using InputV = typename ContainerT::InputV;
+
+        using AvgCateImpl = typename AvgCateDef<K>::template Impl<V>;
+
+        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+            std::string suffix = ".opaque_dict_" +
+                                 DataTypeTrait<K>::to_string() + "_" +
+                                 DataTypeTrait<V>::to_string();
+            helper
+                .templates<StringRef, Opaque<ContainerT>, Nullable<K>,
+                           Nullable<V>, Nullable<bool>>()
+                .init("avg_cate_where_init" + suffix, ContainerT::Init)
+                .update("avg_cate_where_update" + suffix, Update)
+                .output("avg_cate_where_output" + suffix, AvgCateImpl::Output);
+        }
+
+        static ContainerT* Update(ContainerT* ptr, InputK key, bool is_key_null,
+                                  InputV value, bool is_value_null, bool cond,
+                                  bool is_cond_null) {
+            if (cond && !is_cond_null) {
+                AvgCateImpl::Update(ptr, key, is_key_null, value,
+                                    is_value_null);
+            }
+            return ptr;
+        }
+    };
+};
+
+template <typename K>
+struct TopAvgCateWhereDef {
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        helper.library()
+            ->RegisterUDAFTemplate<Impl>("top_n_avg_cate_where")
+            .doc(helper.registry()->doc())
+            .template args_in<int16_t, int32_t, int64_t, float, double>();
+    }
+
+    template <typename V>
+    struct Impl {
+        using ContainerT =
+            udf::container::BoundedGroupByDict<K, V,
+                                               std::pair<int64_t, double>>;
+        using InputK = typename ContainerT::InputK;
+        using InputV = typename ContainerT::InputV;
+
+        using AvgCateImpl = typename AvgCateDef<K>::template Impl<V>;
+
+        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+            std::string suffix;
+
+            suffix = ".i32_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
+                     "_" + DataTypeTrait<V>::to_string();
+            helper
+                .templates<StringRef, Opaque<ContainerT>, Nullable<K>,
+                           Nullable<V>, Nullable<bool>, int32_t>()
+                .init("top_n_avg_cate_where_init" + suffix, ContainerT::Init)
+                .update("top_n_avg_cate_where_update" + suffix, UpdateI32Bound)
+                .output("top_n_avg_cate_where_output" + suffix, Output);
+
+            suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
+                     "_" + DataTypeTrait<V>::to_string();
+            helper
+                .templates<StringRef, Opaque<ContainerT>, Nullable<K>,
+                           Nullable<V>, Nullable<bool>, int64_t>()
+                .init("top_n_avg_cate_where_init" + suffix, ContainerT::Init)
+                .update("top_n_avg_cate_where_update" + suffix, Update)
+                .output("top_n_avg_cate_where_output" + suffix, Output);
+        }
+
+        static ContainerT* Update(ContainerT* ptr, InputK key, bool is_key_null,
+                                  InputV value, bool is_value_null, bool cond,
+                                  bool is_cond_null, int64_t bound) {
+            if (cond && !is_cond_null) {
+                AvgCateImpl::Update(ptr, key, is_key_null, value,
+                                    is_value_null);
+                auto& map = ptr->map();
+                if (bound >= 0 && map.size() > static_cast<size_t>(bound)) {
+                    map.erase(map.begin());
+                }
+            }
+            return ptr;
+        }
+
+        static ContainerT* UpdateI32Bound(ContainerT* ptr, InputK key,
+                                          bool is_key_null, InputV value,
+                                          bool is_value_null, bool cond,
+                                          bool is_cond_null, int32_t bound) {
+            return Update(ptr, key, is_key_null, value, is_value_null, cond,
+                          is_cond_null, bound);
+        }
+
+        static void Output(ContainerT* ptr, codec::StringRef* output) {
+            ContainerT::OutputString(
+                ptr, true, output,
+                [](const std::pair<int64_t, double>& value, char* buf,
+                   size_t size) {
+                    double avg = value.second / value.first;
+                    return v1::format_string(avg, buf, size);
+                });
+            ContainerT::Destroy(ptr);
         }
     };
 };
@@ -397,8 +618,7 @@ example
             auto cast = nm->MakeCastNode(node::kDouble, x);
             return nm->MakeFuncNode("log", {cast}, nullptr);
         });
-    RegisterExprUDF("log")
-        .args<AnyArg, AnyArg>(
+    RegisterExprUDF("log").args<AnyArg, AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
                 ctx->SetError("log do not support type " +
@@ -414,7 +634,7 @@ example
         });
 
     RegisterExternal("ln")
-.doc(R"(
+        .doc(R"(
 Return the natural logarithm of expr.
 
 example
@@ -444,7 +664,7 @@ example
         });
 
     RegisterExternal("log2")
-.doc(R"(
+        .doc(R"(
 Return the base-2 logarithm of expr.
 
 example
@@ -474,7 +694,7 @@ example
         });
 
     RegisterExternal("log10")
-.doc(R"(
+        .doc(R"(
 Return the base-10 logarithm of expr.
 
 example
@@ -504,7 +724,7 @@ example
         });
 
     RegisterExternal("abs")
-.doc(R"(
+        .doc(R"(
 Return the absolute value of expr.
 
 example
@@ -521,14 +741,14 @@ example
 )")
         .args<int16_t>(static_cast<int16_t (*)(int16_t)>(v1::abs_int16))
         .args<int32_t>(static_cast<int32_t (*)(int32_t)>(abs));
-    RegisterExternal("abs")
-        .args<int64_t>(static_cast<int64_t (*)(int64_t)>(labs));
+    RegisterExternal("abs").args<int64_t>(
+        static_cast<int64_t (*)(int64_t)>(v1::abs_int64));
     RegisterExternal("abs")
         .args<float>(static_cast<float (*)(float)>(fabs))
         .args<double>(static_cast<double (*)(double)>(fabs));
 
     RegisterExternalTemplate<v1::Acos>("acos")
-.doc(R"(
+        .doc(R"(
 Return the arc cosine of expr.
 
 example
@@ -544,11 +764,10 @@ example
 @since 2.0.0.0
 )")
         .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("acos")
-        .args<float>(static_cast<float (*)(float)>(acosf));
+    RegisterExternal("acos").args<float>(static_cast<float (*)(float)>(acosf));
 
     RegisterExternalTemplate<v1::Asin>("asin")
-.doc(R"(
+        .doc(R"(
 Return the arc sine of expr.
 
 example
@@ -564,11 +783,10 @@ example
 @since 2.0.0.0
 )")
         .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("asin")
-        .args<float>(static_cast<float (*)(float)>(asinf));
+    RegisterExternal("asin").args<float>(static_cast<float (*)(float)>(asinf));
 
     RegisterExternalTemplate<v1::Atan>("atan")
-.doc(R"(
+        .doc(R"(
 atan(Y, X)
 If called with one parameter, this function returns the arc tangent of expr.
 If called with two parameters X and Y, this function returns the arc tangent of Y / X.
@@ -590,13 +808,12 @@ example
 @since 2.0.0.0
 )")
         .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("atan")
-        .args<float>(static_cast<float (*)(float)>(atanf));
+    RegisterExternal("atan").args<float>(static_cast<float (*)(float)>(atanf));
 
     RegisterExternalTemplate<v1::Atan2>("atan")
         .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("atan")
-        .args<float, float>(static_cast<float (*)(float, float)>(atan2f));
+    RegisterExternal("atan").args<float, float>(
+        static_cast<float (*)(float, float)>(atan2f));
     RegisterExprUDF("atan").args<AnyArg, AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
@@ -616,7 +833,7 @@ example
         });
 
     RegisterExternalTemplate<v1::Atan2>("atan2")
-.doc(R"(
+        .doc(R"(
 atan2(Y, X)
 Return the arc tangent of Y / X..
 
@@ -634,8 +851,8 @@ example
 @since 2.0.0.0
 )")
         .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("atan2")
-        .args<float, float>(static_cast<float (*)(float, float)>(atan2f));
+    RegisterExternal("atan2").args<float, float>(
+        static_cast<float (*)(float, float)>(atan2f));
     RegisterExprUDF("atan2").args<AnyArg, AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
@@ -655,7 +872,7 @@ example
         });
 
     RegisterExternalTemplate<v1::Ceil>("ceil")
-.doc(R"(
+        .doc(R"(
 Return the smallest integer value not less than the expr
 
 example
@@ -949,6 +1166,7 @@ example
 
 
 void DefaultUDFLibrary::Init() {
+    udf::RegisterNativeUDFToModule();
     RegisterExternal("year")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::year))
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::year));
@@ -1129,6 +1347,94 @@ void DefaultUDFLibrary::Init() {
         .doc("Compute number of values match specified condition")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef>();
+
+    RegisterUDAFTemplate<AvgWhereDef>("avg_where")
+        .doc("Compute average of values match specified condition")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
+    RegisterUDAFTemplate<TopKDef>("top")
+        .doc(
+            "Compute top k of values and output string separated by comma. "
+            "The outputs are sorted in desc order")
+        .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
+                 StringRef>();
+
+    RegisterUDAFTemplate<AvgCateDef>("avg_cate")
+        .doc(R"(
+            Compute average of values grouped by category key and output string.
+            Each group is represented as 'K:V' and separated by comma in outputs
+            and are sorted by key in ascend order.
+
+            @param **catagory**  Specify catagory column to group by. 
+            @param **value**  Specify value column to aggregate on.
+
+            Example:
+            catagory|value
+            --|--
+            x|0
+            y|1
+            x|2
+            y|3
+            x|4
+            @code{.sql}
+                SELECT avg_cate(catagory, value) OVER w;
+                -- output "x:2,y:2"
+            @endcode
+            )")
+        .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
+
+    RegisterUDAFTemplate<AvgCateWhereDef>("avg_cate_where")
+        .doc(R"(
+            Compute average of values matching specified condition grouped by category key
+            and output string. Each group is represented as 'K:V' and separated by comma in 
+            outputs and are sorted by key in ascend order.
+
+            @param **catagory**  Specify catagory column to group by. 
+            @param **value**  Specify value column to aggregate on.
+            @param **condition**  Specify condition column.
+
+            Example:
+            catagory|value|condition
+            --|--|--
+            x|0|true
+            y|1|false
+            x|2|false
+            y|3|true
+            x|4|true
+            @code{.sql}
+                SELECT avg_cate_where(catagory, value, condition) OVER w;
+                -- output "x:2,y:3"
+            @endcode
+            )")
+        .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
+
+    RegisterUDAFTemplate<TopAvgCateWhereDef>("top_n_avg_cate_where")
+        .doc(R"(
+            Compute average of values matching specified condition grouped by category key.
+            Output string for top N keys in descend order. Each group is represented as 'K:V'
+            and separated by comma.
+
+            @param **catagory**  Specify catagory column to group by. 
+            @param **value**  Specify value column to aggregate on.
+            @param **condition**  Specify condition column.
+            @param **n**  Fetch top n keys.
+
+            Example:
+            catagory|value|condition
+            --|--|--
+            x|0|true
+            y|1|false
+            x|2|false
+            y|3|true
+            x|4|true
+            z|5|true
+            z|6|false
+            @code{.sql}
+                SELECT top_n_avg_cate_where(catagory, value, condition, 2) OVER w;
+                -- output "z:5,y:3"
+            @endcode
+            )")
+        .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
     IniMathUDF();
     InitStringUDF();

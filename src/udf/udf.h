@@ -205,6 +205,9 @@ template <class V>
 V next_iterator(int8_t *input);
 
 template <class V>
+void next_nullable_iterator(int8_t *input, V *v, bool *is_null);
+
+template <class V>
 void delete_iterator(int8_t *input);
 
 template <class V>
@@ -263,11 +266,16 @@ struct ToString {
         std::ostringstream ss;
         ss << v;
         output->size_ = ss.str().size();
-        output->data_ =
+        char *buffer =
             reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
-        memcpy(output->data_, ss.str().data(), output->size_);
+        memcpy(buffer, ss.str().data(), output->size_);
+        output->data_ = buffer;
     }
 };
+
+template <typename V>
+uint32_t format_string(const V &v, char *buffer, size_t size);
+
 }  // namespace v1
 
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);                // NOLINT
@@ -279,9 +287,7 @@ void InitCLibSymbol(::llvm::orc::JITDylib &jd,            // NOLINT
 bool AddSymbol(::llvm::orc::JITDylib &jd,                 // NOLINT
                ::llvm::orc::MangleAndInterner &mi,        // NOLINT
                const std::string &fn_name, void *fn_ptr);
-bool RegisterUDFToModule(::llvm::Module *m);
-void ClearNativeUDFDict();
-void RegisterNativeUDFToModule(::llvm::Module *m);
+void RegisterNativeUDFToModule();
 }  // namespace udf
 }  // namespace fesql
 

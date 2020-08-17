@@ -74,7 +74,6 @@ void CheckResult(std::string test, R exp, V1 a, V2 b) {
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("custom_fn", *ctx);
-    ::fesql::udf::RegisterUDFToModule(m.get());
     auto lib = udf::DefaultUDFLibrary::get();
     FnIRBuilder fn_ir_builder(m.get());
     node::FnNodeFnDef *fn_def = dynamic_cast<node::FnNodeFnDef *>(trees[0]);

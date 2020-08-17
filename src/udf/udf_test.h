@@ -189,6 +189,23 @@ struct EqualValChecker<double> {
     }
 };
 
+template <typename T>
+codec::ListRef<T> MakeList(const std::initializer_list<T>& vec) {
+    codec::ArrayListV<T>* list =
+        new codec::ArrayListV<T>(new std::vector<T>(vec));
+    codec::ListRef<T> list_ref;
+    list_ref.list = reinterpret_cast<int8_t*>(list);
+    return list_ref;
+}
+
+codec::ListRef<bool> MakeBoolList(const std::initializer_list<int>& vec) {
+    codec::BoolArrayListV* list =
+        new codec::BoolArrayListV(new std::vector<int>(vec));
+    codec::ListRef<bool> list_ref;
+    list_ref.list = reinterpret_cast<int8_t*>(list);
+    return list_ref;
+}
+
 }  // namespace udf
 }  // namespace fesql
 

@@ -3,6 +3,7 @@ package com._4paradigm.fesql.flink.stream.benchmark;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.utils.MultipleParameterTool;
 import org.apache.flink.core.fs.FileSystem;
+import org.apache.flink.runtime.state.memory.MemoryStateBackend;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -19,6 +20,7 @@ import org.apache.flink.types.Row;
 import javax.annotation.Nullable;
 import static org.apache.flink.table.api.Expressions.$;
 
+
 public class StandardFlinkOverWindow {
 
 	public static void main(String[] args) throws Exception {
@@ -30,6 +32,8 @@ public class StandardFlinkOverWindow {
 		StreamTableEnvironment sEnv = StreamTableEnvironment.create(bsEnv, bsSettings);
 
 		bsEnv.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+
+		bsEnv.setStateBackend(new MemoryStateBackend());
 
 		// Check params
 		if (!params.has("input") || !params.has("output")) {

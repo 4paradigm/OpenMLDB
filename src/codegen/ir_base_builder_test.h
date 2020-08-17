@@ -174,12 +174,14 @@ class ModuleTestFunction {
         Ret ret;
         FillProxyReturns<Ret>()(&ret, &proxy_arg_ptrs);
 
-        auto fn = reinterpret_cast<void (*)(int8_t**)>(fn_ptr);
+        auto fn = reinterpret_cast<void (*)(int8_t**)>(proxy_fn_ptr);
         fn(proxy_arg_ptrs.data());
         return ret;
     }
 
     bool valid() const { return jit != nullptr && fn_ptr != nullptr; }
+
+    void* GetApplyFn() const { return fn_ptr; }
 
     ModuleTestFunction(ModuleTestFunction&& inst)
         : jit(std::move(inst.jit)), fn_ptr(inst.fn_ptr) {}
@@ -189,7 +191,9 @@ class ModuleTestFunction {
 
     ModuleTestFunction() {}
 
-    ModuleTestFunction(const std::string& fn_name, udf::UDFLibrary* library,
+    ModuleTestFunction(const std::string& fn_name,
+                       const std::string& proxy_fn_name,
+                       udf::UDFLibrary* library,
                        std::unique_ptr<::llvm::Module> module,
                        std::unique_ptr<::llvm::LLVMContext> llvm_ctx) {
         llvm::InitializeNativeTarget();
@@ -212,21 +216,22 @@ class ModuleTestFunction {
             return;
         }
 
-        udf::RegisterNativeUDFToModule(module.get());
         ::fesql::vm::InitCodecSymbol(jd, mi);
         ::fesql::udf::InitUDFSymbol(jd, mi);
-
-        // module = nullptr;
-        // llvm_ctx = nullptr;
 
         ExitOnErr(jit->addIRModule(::llvm::orc::ThreadSafeModule(
             std::move(module), std::move(llvm_ctx))));
         auto load_fn = ExitOnErr(jit->lookup(fn_name));
         this->fn_ptr = reinterpret_cast<void*>(load_fn.getAddress());
+
+        auto load_proxy_fn = ExitOnErr(jit->lookup(proxy_fn_name));
+        this->proxy_fn_ptr =
+            reinterpret_cast<void*>(load_proxy_fn.getAddress());
     }
 
     std::unique_ptr<vm::FeSQLJIT> jit = nullptr;
     void* fn_ptr = nullptr;
+    void* proxy_fn_ptr = nullptr;
 };
 
 struct ModuleFunctionBuilderState {
@@ -441,7 +446,6 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
         std::unique_ptr<::llvm::LLVMContext>(new llvm::LLVMContext());
     auto module =
         std::unique_ptr<::llvm::Module>(new ::llvm::Module("Test", *llvm_ctx));
-    ::fesql::udf::RegisterUDFToModule(module.get());
 
     CodeGenContext context(module.get());
 
@@ -504,8 +508,9 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
     builder.CreateCall(callee, llvm_apply_args);
     builder.CreateRetVoid();
 
-    return ModuleTestFunction<Ret, Args...>(
-        proxy_fn_name, state->library, std::move(module), std::move(llvm_ctx));
+    return ModuleTestFunction<Ret, Args...>(fn_name, proxy_fn_name,
+                                            state->library, std::move(module),
+                                            std::move(llvm_ctx));
 }
 
 static inline NativeValue BindValueFromLLVMFunction(

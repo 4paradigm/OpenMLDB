@@ -124,6 +124,13 @@ public class BatchWindowAggPlan {
 
             }
 
+            @Override
+            public void close() throws Exception {
+                super.close();
+                inputCodec.delete();
+                outputCodec.delete();
+            }
+
         }).returns(finalOutputTypeInfo);
 
         return planContext.getBatchTableEnvironment().fromDataSet(outputDataset);

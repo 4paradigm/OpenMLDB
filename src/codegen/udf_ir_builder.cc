@@ -15,6 +15,7 @@
 #include "codegen/fn_ir_builder.h"
 #include "codegen/list_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
+#include "llvm/IR/Attributes.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "udf/udf.h"
@@ -414,6 +415,27 @@ Status UDFIRBuilder::BuildExternCall(
     CHECK_STATUS(GetLLVMFunctionType(fn, &func_ty));
 
     auto callee = module_->getOrInsertFunction(fn->function_name(), func_ty);
+
+    // set i16 signext attr for extern call
+    // https://releases.llvm.org/9.0.0/docs/LangRef.html#parameter-attributes
+    auto function = module_->getFunction(fn->function_name());
+    CHECK_TRUE(function != nullptr);
+    auto int16_ty = ::llvm::Type::getInt16Ty(function->getContext());
+    auto sext_attr = ::llvm::Attribute::AttrKind::SExt;
+    for (size_t i = 0; i < func_ty->getNumParams(); ++i) {
+        if (func_ty->getParamType(i) != int16_ty) {
+            continue;
+        } else if (!function->hasParamAttribute(i, sext_attr)) {
+            function->addParamAttr(i, sext_attr);
+        }
+    }
+    if (func_ty->getReturnType() == int16_ty) {
+        if (!function->hasAttribute(::llvm::AttributeList::ReturnIndex,
+                                    sext_attr)) {
+            function->addAttribute(::llvm::AttributeList::ReturnIndex,
+                                   sext_attr);
+        }
+    }
     return BuildLLVMCall(fn, callee, args, fn->return_by_arg(), output);
 }
 
@@ -441,8 +463,10 @@ Status UDFIRBuilder::BuildUDAFCall(
     // udaf input elements type
     size_t input_num = udaf->GetArgSize();
     std::vector<const node::TypeNode*> elem_types(input_num);
+    std::vector<int> elem_nullable(input_num);
     for (size_t i = 0; i < input_num; ++i) {
         elem_types[i] = udaf->GetElementType(i);
+        elem_nullable[i] = udaf->IsElementNullable(i);
     }
 
     // udaf output type
@@ -569,7 +593,7 @@ Status UDFIRBuilder::BuildUDAFCall(
         builder.SetInsertPoint(iter_first);
         ListIRBuilder iter_first_builder(iter_first, nullptr);
         CHECK_STATUS(iter_first_builder.BuildIteratorNext(
-            iterators[0], elem_types[0], &init_value));
+            iterators[0], elem_types[0], elem_nullable[0], &init_value));
     }
 
     // local states storage
@@ -637,7 +661,7 @@ Status UDFIRBuilder::BuildUDAFCall(
     for (size_t i = 0; i < input_num; ++i) {
         NativeValue next_val;
         CHECK_STATUS(iter_next_builder.BuildIteratorNext(
-            iterators[i], elem_types[i], &next_val));
+            iterators[i], elem_types[i], elem_nullable[i], &next_val));
         update_args.push_back(next_val);
     }
 

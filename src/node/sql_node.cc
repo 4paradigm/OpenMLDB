@@ -895,8 +895,11 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, std::to_string(op_if_not_exist_), "IF NOT EXIST",
                false);
     output << "\n";
-    PrintSQLVector(output, tab, column_desc_list_, "column_desc_list_", true);
+    PrintSQLVector(output, tab, column_desc_list_, "column_desc_list", false);
     output << "\n";
+    PrintValue(output, tab, std::to_string(replica_num_), "replica_num", false);
+    output << "\n";
+    PrintSQLVector(output, tab, distribution_list_, "distribution_list", true);
 }
 
 void ColumnDefNode::Print(std::ostream &output,
@@ -1575,6 +1578,14 @@ const TypeNode *UDAFDefNode::GetElementType(size_t i) const {
     return arg_types_[i]->generics_[0];
 }
 
+bool UDAFDefNode::IsElementNullable(size_t i) const {
+    if (i > arg_types_.size() || arg_types_[i] == nullptr ||
+        arg_types_[i]->generics_.size() < 1) {
+        return false;
+    }
+    return arg_types_[i]->generics_nullable_[0];
+}
+
 Status UDAFDefNode::Validate(
     const std::vector<const TypeNode *> &arg_types) const {
     // check non-null fields
@@ -1687,6 +1698,88 @@ void UDAFDefNode::Print(std::ostream &output,
     PrintSQLNode(output, tab, merge_, "merge", false);
     output << "\n";
     PrintSQLNode(output, tab, output_, "output", true);
+}
+
+void CondExpr::Print(std::ostream &output, const std::string &org_tab) const {
+    output << org_tab << "[kCondExpr]"
+           << "\n";
+    const std::string tab = org_tab + INDENT;
+    PrintSQLNode(output, tab, GetCondition(), "condition", false);
+    output << "\n";
+    PrintSQLNode(output, tab, GetLeft(), "left", false);
+    output << "\n";
+    PrintSQLNode(output, tab, GetRight(), "right", true);
+}
+
+const std::string CondExpr::GetExprString() const {
+    std::stringstream ss;
+    ss << "cond(";
+    ss << (GetCondition() != nullptr ? GetCondition()->GetExprString() : "");
+    ss << ", ";
+    ss << (GetLeft() != nullptr ? GetLeft()->GetExprString() : "");
+    ss << ", ";
+    ss << (GetRight() != nullptr ? GetRight()->GetExprString() : "");
+    ss << ")";
+    return ss.str();
+}
+
+bool CondExpr::Equals(const ExprNode *node) const {
+    auto other = dynamic_cast<const CondExpr *>(node);
+    return other != nullptr &&
+           ExprEquals(other->GetCondition(), this->GetCondition()) &&
+           ExprEquals(other->GetLeft(), this->GetLeft()) &&
+           ExprEquals(other->GetRight(), this->GetRight());
+}
+
+ExprNode *CondExpr::GetCondition() const {
+    if (GetChildNum() > 0) {
+        return GetChild(0);
+    } else {
+        return nullptr;
+    }
+}
+
+ExprNode *CondExpr::GetLeft() const {
+    if (GetChildNum() > 1) {
+        return GetChild(1);
+    } else {
+        return nullptr;
+    }
+}
+
+ExprNode *CondExpr::GetRight() const {
+    if (GetChildNum() > 2) {
+        return GetChild(2);
+    } else {
+        return nullptr;
+    }
+}
+
+void PartitionMetaNode::Print(std::ostream &output,
+                              const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, endpoint_, "endpoint", false);
+    output << "\n";
+    PrintValue(output, tab, RoleTypeName(role_type_), "role_type", true);
+}
+
+void ReplicaNumNode::Print(std::ostream &output,
+                           const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, std::to_string(replica_num_), "replica_num", true);
+}
+
+void DistributionsNode::Print(std::ostream &output,
+                              const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLVector(output, tab, distribution_list_->GetList(),
+                   "distribution_list", true);
 }
 
 }  // namespace node

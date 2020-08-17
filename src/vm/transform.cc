@@ -952,7 +952,8 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
         }
     }
 
-    if (has_all_project && 1 == projects.size()) {
+    if (has_all_project && 1 == projects.size() &&
+        node->GetOutputSchemaListSize() == 1) {
         // skip project
         DLOG(INFO) << "skip project node: project has only kAllExpr "
                       "expression";

@@ -65,6 +65,7 @@ typedef void* yyscan_t;
 	::fesql::node::FnNodeList* fnlist;
 	::fesql::node::ExprListNode* exprlist;
 	::fesql::node::SQLNodeList* list;
+	::fesql::node::RoleType role_type;
 }
 
 /* names and literal values */
@@ -385,6 +386,10 @@ typedef void* yyscan_t;
 %token XOR
 %token YEAR
 %token ZEROFILL
+%token REPLICANUM
+%token DISTRIBUTION
+%token LEADER
+%token FOLLOWER
 
  /* functions with special syntax */
 %token FSUBSTRING
@@ -395,6 +400,7 @@ typedef void* yyscan_t;
  /* udf */
 %type <type> types
 %type <join_type> join_type
+%type <role_type> role_type
 %type <time_unit> time_unit
 %type <frame_type> frame_unit
 %type <typenode> complex_types
@@ -427,10 +433,10 @@ typedef void* yyscan_t;
 %type<expr> insert_expr where_expr having_expr
 
  /* create table */
-%type <node>  create_stmt column_desc column_index_item column_index_key
+%type <node>  create_stmt column_desc column_index_item column_index_key option distribution
 %type <node>  cmd_stmt
 %type <flag>  op_not_null op_if_not_exist opt_distinct_clause opt_instance_not_in_window
-%type <list>  column_desc_list column_index_item_list
+%type <list>  column_desc_list column_index_item_list table_options distribution_list
 
 %type <list> opt_target_list
             select_projection_list
@@ -445,8 +451,9 @@ typedef void* yyscan_t;
                opt_existing_window_name
                database_name table_name group_name file_path
                join_outer
+               endpoint
 
-%type <intval> opt_window_exclusion_clause
+%type <intval> opt_window_exclusion_clause replica_num
 
 
 %start grammar
@@ -551,26 +558,33 @@ func_stmt:
 fn_header:
    		DEF FUN_IDENTIFIER'(' plist ')' ':' types {
 			$$ = node_manager->MakeFnHeaderNode($2, $4, node_manager->MakeTypeNode($7));
+			free($2);
    		};
    		|DEF FUN_IDENTIFIER'(' plist ')' ':' complex_types {
 			$$ = node_manager->MakeFnHeaderNode($2, $4, $7);
+			free($2);
    		};
 
 assign_stmt:
 		FUN_IDENTIFIER ASSIGN fun_expr {
             $$ = node_manager->MakeAssignNode($1, $3);
+			free($1);
         }
         |FUN_IDENTIFIER ADD_ASSIGN fun_expr {
         	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpAdd);
+			free($1);
         }
         |FUN_IDENTIFIER MINUS_ASSIGN fun_expr {
         	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpMinus);
+			free($1);
         }
         |FUN_IDENTIFIER MULTI_ASSIGN fun_expr {
         	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpMulti);
+			free($1);
         }
         |FUN_IDENTIFIER FDIV_ASSIGN fun_expr {
         	$$ = node_manager->MakeAssignNode($1, $3, ::fesql::node::kFnOpFDiv);
+			free($1);
         }
         ;
 
@@ -598,6 +612,7 @@ else_stmt:
 for_in_stmt:
 		FOR FUN_IDENTIFIER IN fun_expr {
 			$$ = node_manager->MakeForInStmtNode($2, $4);
+			free($2);
 		}
 		;
 
@@ -647,6 +662,16 @@ types:  I16
         }
         ;
 
+role_type:  LEADER
+            {
+                $$ = ::fesql::node::kLeader;
+            }
+            |FOLLOWER
+            {
+                $$ = ::fesql::node::kFollower;
+            }
+            ;
+
 complex_types:
 		LIST '<' types '>'
 		{
@@ -665,9 +690,11 @@ plist:
 para:
 	FUN_IDENTIFIER ':' types {
         $$ = node_manager->MakeFnParaNode($1, node_manager->MakeTypeNode($3));
+		free($1);
     }
     |FUN_IDENTIFIER ':' complex_types {
     	$$ = node_manager->MakeFnParaNode($1, $3);
+		free($1);
     }
     ;
 
@@ -711,6 +738,7 @@ primary_time:
 	};
 var: FUN_IDENTIFIER {
         $$ = node_manager->MakeUnresolvedExprId($1);
+		free($1);
      };
 
 sql_stmt: stmt ';' {
@@ -777,9 +805,10 @@ opt_from_clause: FROM table_references {
 				$$ = NULL;
 			}
 
-create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list ')'
+create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list ')' table_options
                 {
-                    $$ = node_manager->MakeCreateTableNode($3, $4, $6);
+                    $$ = node_manager->MakeCreateTableNode($3, $4, $6, $8);
+                    free($4);
                 }
                 |CREATE INDEX column_name ON table_name '(' column_index_item_list ')'
                 {
@@ -794,11 +823,13 @@ create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list 
 insert_stmt:	INSERT INTO table_name VALUES insert_values
 				{
 					$$ = node_manager->MakeInsertTableNode($3, NULL, $5);
+					free($3);
 				}
 				|INSERT INTO table_name '(' column_ref_list ')' VALUES insert_values
 				{
 
 					$$ = node_manager->MakeInsertTableNode($3, $5, $8);
+					free($3);
 				}
 				;
 insert_values:	insert_value
@@ -838,7 +869,7 @@ insert_expr_list:	insert_expr
 						$$->PushBack($3);
 					}
 					;
-insert_expr:	expr_const 
+insert_expr:	expr_const
 				| PLACEHOLDER
 				{
 						$$ = node_manager->MakeConstNodePlaceHolder();
@@ -915,6 +946,7 @@ column_desc_list:   column_desc
 column_desc:    column_name types op_not_null
                 {
                     $$ = node_manager->MakeColumnDescNode($1, $2, $3);
+                    free($1);
                 }
                 | INDEX '(' column_index_item_list ')'
                 {
@@ -936,6 +968,7 @@ column_index_item_list:    column_index_item
 column_index_item:  KEY EQUALS column_name
                     {
                         $$ = node_manager->MakeIndexKeyNode($3);
+                        free($3);
                     }
                     | KEY EQUALS '(' column_index_key ')'
                     {
@@ -944,6 +977,7 @@ column_index_item:  KEY EQUALS column_name
                     | TS EQUALS column_name
                     {
                         $$ = node_manager->MakeIndexTsNode($3);
+                        free($3);
                     }
                     | TTL EQUALS primary_time
                     {
@@ -952,29 +986,35 @@ column_index_item:  KEY EQUALS column_name
                     | TTL_TYPE EQUALS SQL_IDENTIFIER
                     {
                         $$ = node_manager->MakeIndexTTLTypeNode($3);
+                        free($3);
                     }
                     | VERSION EQUALS column_name
                     {
                         $$ = node_manager->MakeIndexVersionNode($3);
+                        free($3);
                     }
                     | VERSION EQUALS '(' column_name ',' INTNUM ')'
                     {
                         $$ = node_manager->MakeIndexVersionNode($4, $6);
+                        free($4);
                     }
                     | VERSION EQUALS '(' column_name ',' LONGNUM ')'
                     {
                         $$ = node_manager->MakeIndexVersionNode($4, $6);
+                        free($4);
                     }
                     ;
 
 column_index_key:   column_name
             {
                 $$ = node_manager->MakeIndexKeyNode($1);
+                free($1);
             }
             | column_index_key ',' column_name
             {
                 $$ = $1;
                 ((::fesql::node::IndexKeyNode*)$$)->AddKey($3);
+                free($3);
             }
             ;
 
@@ -1010,6 +1050,58 @@ opt_distinct_clause:
         }
     ;
 
+table_options:   option
+                {
+                    $$ = node_manager->MakeNodeList($1);
+                }
+                | table_options ',' option
+                {
+                    $$ = $1;
+                    $$->PushBack($3);
+                }
+                | /*EMPTY*/
+                {
+                    $$ = NULL;
+                }
+                ;
+
+option:     REPLICANUM EQUALS replica_num
+            {
+                $$ = node_manager->MakeReplicaNumNode($3);
+            }
+            | DISTRIBUTION '(' distribution_list ')'
+            {
+                $$ = node_manager->MakeDistributionsNode($3);
+            }
+            ;
+
+endpoint:
+    STRING
+  ;
+
+replica_num:   INTNUM
+            {
+                $$ = $1;
+            }
+            ;
+
+distribution_list:      distribution
+                        {
+                            $$ = node_manager->MakeNodeList($1);
+                        }
+                        | distribution_list ',' distribution
+                        {
+                            $$ = $1;
+                            $$->PushBack($3);
+                        }
+                        ;
+
+distribution:   role_type EQUALS endpoint
+                {
+                    $$ = node_manager->MakePartitionMetaNode($1, $3);
+                    free($3);
+                }
+                ;
 
 /*****************************************************************************
  *
@@ -1097,14 +1189,19 @@ table_factor:
   relation_factor
     {
         $$ = node_manager->MakeTableNode($1, "");
+        free($1);
     }
   | relation_factor AS relation_name
     {
         $$ = node_manager->MakeTableNode($1, $3);
+        free($1);
+        free($3);
     }
   | relation_factor relation_name
     {
         $$ = node_manager->MakeTableNode($1, $2);
+        free($1);
+        free($2);
     }
 
   ;
@@ -1121,9 +1218,11 @@ query_reference:
 		}
 		| '(' query_clause ')' relation_name {
 			$$ = node_manager->MakeQueryRefNode($2, $4);
+			free($4);
 		}
 		| '(' query_clause ')' AS relation_name {
 			$$ = node_manager->MakeQueryRefNode($2, $5);
+			free($5);
 		}
 		;
 
@@ -1135,10 +1234,12 @@ join_clause:
 		| table_reference join_type JOIN table_reference join_condition relation_name
 		{
 			$$ = node_manager->MakeJoinNode($1, $4, $2, $5, $6);
+			free($6);
 		}
 		| table_reference join_type JOIN table_reference join_condition AS relation_name
 		{
 			$$ = node_manager->MakeJoinNode($1, $4, $2, $5, $7);
+			free($7);
 		}
 		;
 last_join_clause:
@@ -1153,6 +1254,7 @@ last_join_clause:
 		| table_reference LAST JOIN table_reference sort_clause join_condition AS relation_name
 		{
 			$$ = node_manager->MakeLastJoinNode($1, $4, $5, $6, $8);
+			free($8);
 		}
 		;
 union_stmt:
@@ -1240,11 +1342,13 @@ sql_id_list:
 	SQL_IDENTIFIER
 	{
 		$$ = node_manager->MakeExprList(node_manager->MakeUnresolvedExprId($1));
+		free($1);
 	}
 	| sql_id_list ',' SQL_IDENTIFIER
 	{
 		$$ = $1;
 		$$->AddChild(node_manager->MakeUnresolvedExprId($3));
+		free($3);
 	}
 	;
 
@@ -1257,6 +1361,7 @@ fun_expr:
      }
      | function_name '(' ')'  	{
      	$$ = node_manager->MakeFuncNode($1, NULL, NULL);
+     	free($1);
      }
      | time_unit '(' fun_expr_list ')'
      {
@@ -1265,6 +1370,7 @@ fun_expr:
      | function_name '(' fun_expr_list ')'
      {
      	$$ = node_manager->MakeFuncNode($1, $3, NULL);
+     	free($1);
      }
      | fun_expr '+' fun_expr
      {
@@ -1533,17 +1639,20 @@ sql_call_expr:
     {
           if (strcasecmp($1, "count") != 0)
           {
+     		free($1);
             yyerror(&(@3), scanner, trees, node_manager, status, "Only COUNT function can be with '*' parameter!");
             YYABORT;
           }
           else
           {
             $$ = node_manager->MakeFuncNode($1, {node_manager->MakeAllNode("")}, $5);
+     		free($1);
           }
     }
     | function_name '(' sql_expr_list ')' over_clause
     {
         $$ = node_manager->MakeFuncNode($1, $3, $5);
+     	free($1);
     }
     | time_unit '(' sql_expr_list ')'
     {
@@ -1613,6 +1722,7 @@ window_specification:
 					opt_sort_clause opt_frame_clause opt_instance_not_in_window ')'
 					{
                  		$$ = node_manager->MakeWindowDefNode($3, $4, $5, $6, $7);
+                 		free($2);
                  	}
 		;
 
@@ -1756,6 +1866,7 @@ opt_frame_size:
 opt_window_exclusion_clause:
              /*EMPTY*/				{ $$ = 0; }
             ;
+
 frame_extent:
 			frame_bound
 			{
@@ -1798,15 +1909,19 @@ column_ref:
     column_name
     {
         $$ = node_manager->MakeColumnRefNode($1, "");
+		free($1);
     }
   | relation_name '.' column_name
     {
         $$ = node_manager->MakeColumnRefNode($3, $1);
+		free($3);
+		free($1);
     }
   |
     relation_name '.' '*'
     {
         $$ = node_manager->MakeColumnRefNode("*", $1);
+			free($1);
     }
   ;
 

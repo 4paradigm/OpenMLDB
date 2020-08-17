@@ -1371,6 +1371,39 @@ TEST_F(PlannerTest, WindowExpandTest) {
     ASSERT_EQ("range[-172800000,0],rows[-1000,-100]",
               w->frame_node()->GetExprString());
 }
+
+TEST_F(PlannerTest, CreatePlanLeakTest) {
+    const std::string sql =
+        "      SELECT\n"
+        "      sum(col1) OVER (PARTITION BY col1 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN 2d PRECEDING AND 1d PRECEDING) as w_col1_sum,\n"
+        "      sum(col2) OVER w1 as w1_col2_sum,\n"
+        "      sum(col3) OVER (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN "
+        "1000 PRECEDING AND 100 PRECEDING) as w_col3_sum\n"
+        "      FROM t1\n"
+        "      WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE "
+        "BETWEEN 1d PRECEDING AND 6h PRECEDING) limit 10;";
+
+    int64_t cnt = 0;
+    while (true) {
+        base::Status status;
+        NodeManager nm;
+        parser::FeSQLParser parser;
+        node::NodePointVector parser_trees;
+        int ret = parser.parse(sql, parser_trees, &nm, status);
+        ASSERT_EQ(0, ret);
+
+        SimplePlanner planner_ptr(&nm, false);
+        node::PlanNodeList plan_trees;
+        ASSERT_EQ(common::kOk,
+                  planner_ptr.CreatePlanTree(parser_trees, plan_trees, status));
+        if (cnt % 100 == 0) {
+            LOG(INFO) << "process .......... " << cnt;
+        }
+        cnt++;
+        break;
+    }
+}
 }  // namespace plan
 }  // namespace fesql
 
