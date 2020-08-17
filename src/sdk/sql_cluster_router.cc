@@ -527,16 +527,15 @@ bool SQLClusterRouter::GetTablet(
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets) {
     if (tablets == NULL) return false;
     // TODO(wangtaize) cache compile result
-    ::fesql::vm::BatchRunSession session;
+    std::set<std::string> tables;
     ::fesql::base::Status status;
-    bool ok = engine_->Get(sql, db, session, status);
-    if (!ok || status.code != 0) {
-        LOG(WARNING) << "fail to compile sql " << sql << " in db " << db;
+    if (!engine_->GetDependentTables(sql, db, true, &tables, status)) {
+        LOG(WARNING) << "fail to get tablet: " << status.msg;
         return false;
     }
-    ::fesql::vm::PhysicalOpNode* physical_plan = session.GetPhysicalPlan();
 
-    if (IsConstQuery(physical_plan)) {
+    // pick one tablet for const query sql
+    if (tables.empty()) {
         auto tablet = cluster_sdk_->PickOneTablet();
         if (!tablet) {
             LOG(WARNING) << "fail to pack a tablet";
@@ -545,12 +544,9 @@ bool SQLClusterRouter::GetTablet(
         tablets->push_back(tablet);
         return true;
     }
-    std::set<std::string> tables;
-    GetTables(physical_plan, &tables);
     auto it = tables.begin();
     for (; it != tables.end(); ++it) {
-        ok = cluster_sdk_->GetTabletByTable(db, *it, tablets);
-        if (!ok) {
+        if (!cluster_sdk_->GetTabletByTable(db, *it, tablets)) {
             LOG(WARNING) << "fail to get table " << *it << " tablet";
             return false;
         }
