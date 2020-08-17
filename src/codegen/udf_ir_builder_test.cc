@@ -405,7 +405,8 @@ TEST_F(UDFIRBuilderTest, cos_udf_test) {
 TEST_F(UDFIRBuilderTest, cot_udf_test) {
     CheckUDF<double, int16_t>("cot", cos(5)/sin(5), 5);
     CheckUDF<double, int32_t>("cot", cos(65536)/sin(65536), 65536);
-    CheckUDF<double, int64_t>("cot", cos(2147483648)/sin(2147483648), 2147483648);
+    CheckUDF<double, int64_t>("cot",
+                cos(2147483648)/sin(2147483648), 2147483648);
     CheckUDF<float, float>("cot", cosf(0.5f)/sin(0.5f), 0.5f);
     CheckUDF<double, double>("cot", cos(0.5)/sin(0.5), 0.5);
 }
@@ -430,18 +431,27 @@ TEST_F(UDFIRBuilderTest, floor_udf_test) {
 
 TEST_F(UDFIRBuilderTest, pow_udf_test) {
     CheckUDF<double, int16_t, int32_t>("pow", pow(2, 65536), 2, 65536);
-    CheckUDF<double, int64_t, int32_t>("pow", pow(2147483648, 65536), 2147483648, 65536);
-    CheckUDF<double, int64_t, float>("pow", pow(2147483648, 2.1f), 2147483648, 2.1f);
-    CheckUDF<float, float, float>("pow", powf(2147483648, 2.1f), 2147483648, 2.1f);
-    CheckUDF<double, double, int32_t>("pow", pow(2147483648, 65536), 2147483648, 65536);
+    CheckUDF<double, int64_t, int32_t>("pow",
+            pow(2147483648, 65536), 2147483648, 65536);
+    CheckUDF<double, int64_t, float>("pow",
+            pow(2147483648, 2.1f), 2147483648, 2.1f);
+    CheckUDF<float, float, float>("pow",
+            powf(2147483648, 2.1f), 2147483648, 2.1f);
+    CheckUDF<double, double, int32_t>("pow",
+            pow(2147483648, 65536), 2147483648, 65536);
 }
 
 TEST_F(UDFIRBuilderTest, power_udf_test) {
-    CheckUDF<double, int16_t, int32_t>("power", pow(2, 65536), 2, 65536);
-    CheckUDF<double, int64_t, int32_t>("power", pow(2147483648, 65536), 2147483648, 65536);
-    CheckUDF<double, int64_t, float>("power", pow(2147483648, 2.1f), 2147483648, 2.1f);
-    CheckUDF<float, float, float>("power", powf(2147483648, 2.1f), 2147483648, 2.1f);
-    CheckUDF<double, double, int32_t>("power", pow(2147483648, 65536), 2147483648, 65536);
+    CheckUDF<double, int16_t, int32_t>("power",
+            pow(2, 65536), 2, 65536);
+    CheckUDF<double, int64_t, int32_t>("power",
+            pow(2147483648, 65536), 2147483648, 65536);
+    CheckUDF<double, int64_t, float>("power",
+            pow(2147483648, 2.1f), 2147483648, 2.1f);
+    CheckUDF<float, float, float>("power",
+            powf(2147483648, 2.1f), 2147483648, 2.1f);
+    CheckUDF<double, double, int32_t>("power",
+            pow(2147483648, 65536), 2147483648, 65536);
 }
 
 TEST_F(UDFIRBuilderTest, round_udf_test) {

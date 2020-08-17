@@ -740,7 +740,7 @@ example
 @since 2.0.0.0
 )")
         .args_in<int64_t, double>();
-   RegisterExternalTemplate<v1::Abs32>("abs")
+    RegisterExternalTemplate<v1::Abs32>("abs")
         .args_in<int16_t, int32_t>();
     RegisterExprUDF("abs").args<AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
@@ -910,7 +910,7 @@ example
         });
 
     RegisterAlias("ceiling", "ceil");
-    
+
     RegisterExternalTemplate<v1::Cos>("cos")
 .doc(R"(
 Return the cosine of expr.
@@ -1003,7 +1003,7 @@ example
             auto cast = nm->MakeCastNode(node::kDouble, x);
             return nm->MakeFuncNode("floor", {cast}, nullptr);
         });
-        
+
     RegisterExternalTemplate<v1::Pow>("pow")
 .doc(R"(
 pow(expr1, expr2)
@@ -1062,7 +1062,7 @@ example
 @since 2.0.0.0
 )")
         .args_in<int64_t, double>();
-   RegisterExternalTemplate<v1::Round32>("round")
+    RegisterExternalTemplate<v1::Round32>("round")
         .args_in<int16_t, int32_t>();
     RegisterExprUDF("round").args<AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
@@ -1155,7 +1155,7 @@ example
 @since 2.0.0.0
 )")
         .args_in<int64_t, double>();
-   RegisterExternalTemplate<v1::Truncate32>("truncate")
+    RegisterExternalTemplate<v1::Truncate32>("truncate")
         .args_in<int16_t, int32_t>();
     RegisterExprUDF("truncate").args<AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
@@ -1168,7 +1168,6 @@ example
             auto cast = nm->MakeCastNode(node::kDouble, x);
             return nm->MakeFuncNode("truncate", {cast}, nullptr);
         });
-
 }
 
 

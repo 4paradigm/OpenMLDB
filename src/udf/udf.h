@@ -126,21 +126,21 @@ struct Round32 {
 template <class V>
 struct Sin {
     using Args = std::tuple<V>;
-    
+
     double operator()(V r) { return sin(r); }
 };
 
 template <class V>
 struct Tan {
     using Args = std::tuple<V>;
-    
+
     double operator()(V r) { return tan(r); }
 };
 
 template <class V>
 struct Sqrt {
     using Args = std::tuple<V>;
-    
+
     double operator()(V r) { return sqrt(r); }
 };
 
