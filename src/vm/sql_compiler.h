@@ -42,8 +42,10 @@ struct SQLContext {
     std::string sql;
     // the database
     std::string db;
+    // the logical plan
+    ::fesql::node::PlanNodeList logical_plan;
     // the physical plan
-    PhysicalOpNode* plan;
+    PhysicalOpNode* physical_plan;
     // TODO(wangtaize) add a light jit engine
     // eg using bthead to compile ir
     std::unique_ptr<FeSQLJIT> jit;
@@ -53,8 +55,8 @@ struct SQLContext {
     Runner* runner;
     uint32_t row_size;
     std::string ir;
-    std::string logical_plan;
-    std::string physical_plan;
+    std::string logical_plan_str;
+    std::string physical_plan_str;
     std::string encoded_schema;
     std::string encoded_request_schema;
     ::fesql::node::NodeManager nm;
@@ -81,15 +83,15 @@ class SQLCompiler {
 
     ~SQLCompiler();
 
-    bool Compile(SQLContext& ctx,      // NOLINT
-                 Status& status);      // NOLINT
-    bool BuildRunner(SQLContext& ctx,  // NOLINT
-                     Status& status);  // NOLINT
+    bool Compile(SQLContext& ctx,                 // NOLINT
+                 Status& status);                 // NOLINT
+    bool Parse(SQLContext& ctx, Status& status);  // NOLINT
+    bool BuildRunner(SQLContext& ctx,             // NOLINT
+                     Status& status);             // NOLINT
 
  private:
-    void KeepIR(SQLContext& ctx, llvm::Module* m);                     // NOLINT
-    bool Parse(SQLContext& ctx, ::fesql::node::NodeManager& node_mgr,  // NOLINT
-               ::fesql::node::PlanNodeList& trees, Status& status);    // NOLINT
+    void KeepIR(SQLContext& ctx, llvm::Module* m);  // NOLINT
+
     bool ResolvePlanFnAddress(PhysicalOpNode* node,
                               std::unique_ptr<FeSQLJIT>& jit,  // NOLINT
                               Status& status);                 // NOLINT

@@ -362,13 +362,6 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     session.GetRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
 
-    // Check Output Schema
-    std::vector<Row> case_output_data;
-    type::TableDef case_output_table;
-    ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
-    ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
-    CheckSchema(schema, case_output_table.columns());
-
     // Check Output Data
     auto request_table = name_table_map[request_name];
     ASSERT_TRUE(request_table->Init());
@@ -381,8 +374,21 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
         output.push_back(out_row);
     }
 
-    CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
-              case_output_data);
+    if (sql_case.expect().count_ >= 0) {
+        ASSERT_EQ(sql_case.expect().count_, output.size());
+    }
+
+    if (!sql_case.expect().columns_.empty() ||
+        !sql_case.expect().schema_.empty()) {
+        // Check Output Schema
+        std::vector<Row> case_output_data;
+        type::TableDef case_output_table;
+        ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
+        ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
+        CheckSchema(schema, case_output_table.columns());
+        CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
+                  case_output_data);
+    }
 }
 
 void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
@@ -450,18 +456,24 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     session.GetRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
 
-    // Check Output Schema
-    std::vector<Row> case_output_data;
-    type::TableDef case_output_table;
-    ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
-    ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
-    CheckSchema(schema, case_output_table.columns());
-
     // Check Output Data
     std::vector<Row> output;
     ASSERT_EQ(0, session.Run(output));
-    CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
-              case_output_data);
+
+    if (sql_case.expect().count_ >= 0) {
+        ASSERT_EQ(sql_case.expect().count_, output.size());
+    }
+    if (!sql_case.expect().schema_.empty() ||
+        !sql_case.expect().columns_.empty()) {
+        // Check Output Schema
+        std::vector<Row> case_output_data;
+        type::TableDef case_output_table;
+        ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
+        ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
+        CheckSchema(schema, case_output_table.columns());
+        CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
+                  case_output_data);
+    }
 
     /* Compare with SQLite*/
 
@@ -791,6 +803,87 @@ TEST_F(EngineTest, EngineCompileOnlyTest) {
         }
     }
 }
+
+TEST_F(EngineTest, EngineGetDependentTableTest) {
+    {
+        std::vector<std::pair<std::string, std::set<std::string>>> pairs;
+        pairs.push_back(std::make_pair("SELECT col1, col2 from t1;",
+                                       std::set<std::string>({"t1"})));
+        pairs.push_back(
+            std::make_pair("SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 "
+                           "last join t2 "
+                           "order by t2.col5 on t1.col1 = t2.col2;",
+                           std::set<std::string>({"t1", "t2"})));
+
+        pairs.push_back(
+            std::make_pair("SELECT t1.COL1, t1.COL2, t2.COL1, t2.COL2 FROM t1 "
+                           "last join t2 "
+                           "order by t2.col5 on t1.col1 = t2.col2;",
+                           std::set<std::string>({"t1", "t2"})));
+        pairs.push_back(std::make_pair(
+            "SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5,\n"
+            "      test_sum(t1.col1) OVER w1 as w1_col1_sum, sum(t1.col3) OVER "
+            "w1 as w1_col3_sum,\n"
+            "      sum(t2.col4) OVER w1 as w1_t2_col4_sum, sum(t2.col2) OVER "
+            "w1 as w1_t2_col2_sum,\n"
+            "      sum(t1.col5) OVER w1 as w1_col5_sum,\n"
+            "      str1 as t2_str1 FROM t1\n"
+            "      last join t2 order by t2.col5 on t1.col1=t2.col1 and "
+            "t1.col5 = t2.col5\n"
+            "      WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 "
+            "ROWS_RANGE BETWEEN 3 PRECEDING AND CURRENT ROW) limit 10;",
+            std::set<std::string>({"t1", "t2"})));
+
+        for (auto pair : pairs) {
+            base::Status get_status;
+            EngineOptions options;
+            Engine engine(std::shared_ptr<Catalog>(), options);
+            std::string sqlstr = pair.first;
+            boost::to_lower(sqlstr);
+            LOG(INFO) << sqlstr;
+            std::cout << sqlstr << std::endl;
+            std::set<std::string> tables;
+            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", true, &tables,
+                                                  get_status));
+            ASSERT_EQ(tables, pair.second);
+        }
+
+        for (auto pair : pairs) {
+            base::Status get_status;
+            EngineOptions options;
+            Engine engine(std::shared_ptr<Catalog>(), options);
+            std::string sqlstr = pair.first;
+            boost::to_lower(sqlstr);
+            LOG(INFO) << sqlstr;
+            std::cout << sqlstr << std::endl;
+            std::set<std::string> tables;
+            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", false, &tables,
+                                                  get_status));
+            ASSERT_EQ(tables, pair.second);
+        }
+    }
+
+    // const select
+    {
+        std::vector<std::pair<std::string, std::set<std::string>>> pairs;
+        pairs.push_back(std::make_pair("SELECT substr(\"hello world\", 3, 6);",
+                                       std::set<std::string>()));
+        for (auto pair : pairs) {
+            base::Status get_status;
+            EngineOptions options;
+            Engine engine(std::shared_ptr<Catalog>(), options);
+            std::string sqlstr = pair.first;
+            boost::to_lower(sqlstr);
+            LOG(INFO) << sqlstr;
+            std::cout << sqlstr << std::endl;
+            std::set<std::string> tables;
+            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", true, &tables,
+                                                  get_status));
+            ASSERT_EQ(tables, pair.second);
+        }
+    }
+}
+
 }  // namespace vm
 }  // namespace fesql
 

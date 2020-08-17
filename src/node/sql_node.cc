@@ -895,8 +895,11 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     PrintValue(output, tab, std::to_string(op_if_not_exist_), "IF NOT EXIST",
                false);
     output << "\n";
-    PrintSQLVector(output, tab, column_desc_list_, "column_desc_list_", true);
+    PrintSQLVector(output, tab, column_desc_list_, "column_desc_list", false);
     output << "\n";
+    PrintValue(output, tab, std::to_string(replica_num_), "replica_num", false);
+    output << "\n";
+    PrintSQLVector(output, tab, distribution_list_, "distribution_list", true);
 }
 
 void ColumnDefNode::Print(std::ostream &output,
@@ -1750,6 +1753,33 @@ ExprNode *CondExpr::GetRight() const {
     } else {
         return nullptr;
     }
+}
+
+void PartitionMetaNode::Print(std::ostream &output,
+                              const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, endpoint_, "endpoint", false);
+    output << "\n";
+    PrintValue(output, tab, RoleTypeName(role_type_), "role_type", true);
+}
+
+void ReplicaNumNode::Print(std::ostream &output,
+                           const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, std::to_string(replica_num_), "replica_num", true);
+}
+
+void DistributionsNode::Print(std::ostream &output,
+                              const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintSQLVector(output, tab, distribution_list_->GetList(),
+                   "distribution_list", true);
 }
 
 }  // namespace node

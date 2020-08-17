@@ -54,6 +54,80 @@ void Engine::InitializeGlobalLLVM() {
     LLVMInitializeNativeAsmPrinter();
     LLVM_IS_INITIALIZED = true;
 }
+
+bool Engine::GetDependentTables(const std::string& sql, const std::string& db,
+                                bool is_batch_mode,
+                                std::set<std::string>* tables,
+                                base::Status& status) {
+    std::shared_ptr<CompileInfo> info(new CompileInfo());
+    info->get_sql_context().sql = sql;
+    info->get_sql_context().db = db;
+    info->get_sql_context().is_batch_mode = is_batch_mode;
+    SQLCompiler compiler(
+        std::atomic_load_explicit(&cl_, std::memory_order_acquire),
+        options_.is_keep_ir(), false, options_.is_plan_only());
+    bool ok = compiler.Parse(info->get_sql_context(), status);
+    if (!ok || 0 != status.code) {
+        // TODO(chenjing): do clean
+        status.msg = "fail to get depend tables:" + status.msg;
+        return false;
+    }
+
+    auto& logical_plan = info->get_sql_context().logical_plan;
+
+    if (logical_plan.empty()) {
+        status.msg = "fail to get depend tables: logical plan is empty";
+        return false;
+    }
+
+    for (auto iter = logical_plan.cbegin(); iter != logical_plan.cend();
+         iter++) {
+        if (!GetDependentTables(*iter, tables, status)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * Get Dependent tables for given logical node.
+ *
+ * @param node
+ * @param tables
+ * @param status
+ * @return
+ */
+bool Engine::GetDependentTables(node::PlanNode* node,
+                                std::set<std::string>* tables,
+                                base::Status& status) {  // NOLINT
+    if (nullptr == tables) {
+        status.code = common::kNullPointer;
+        status.msg =
+            "fail to get sql depend tables, output tables vector is null";
+        return false;
+    }
+
+    if (nullptr != node) {
+        switch (node->GetType()) {
+            case node::kPlanTypeTable: {
+                const node::TablePlanNode* table_node =
+                    dynamic_cast<const node::TablePlanNode*>(node);
+                tables->insert(table_node->table_);
+                return true;
+            }
+            default: {
+                if (node->GetChildrenSize() > 0) {
+                    for (auto child : node->GetChildren()) {
+                        if (!GetDependentTables(child, tables, status)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
 bool Engine::Get(const std::string& sql, const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
@@ -138,8 +212,8 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     }
     explain_output->input_schema.CopyFrom(ctx.request_schema);
     explain_output->output_schema.CopyFrom(ctx.schema);
-    explain_output->logical_plan = ctx.logical_plan;
-    explain_output->physical_plan = ctx.physical_plan;
+    explain_output->logical_plan = ctx.logical_plan_str;
+    explain_output->physical_plan = ctx.physical_plan_str;
     explain_output->ir = ctx.ir;
     return true;
 }

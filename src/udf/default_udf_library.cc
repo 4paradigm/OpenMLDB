@@ -1111,8 +1111,7 @@ void DefaultUDFLibrary::Init() {
                 -- output "x:2,y:2"
             @endcode
             )")
-        .args_in<int16_t, int32_t, int64_t, Date, Timestamp,
-                 StringRef>();
+        .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
     RegisterUDAFTemplate<AvgCateWhereDef>("avg_cate_where")
         .doc(R"(
@@ -1137,8 +1136,7 @@ void DefaultUDFLibrary::Init() {
                 -- output "x:2,y:3"
             @endcode
             )")
-        .args_in<int16_t, int32_t, int64_t, Date, Timestamp,
-                 StringRef>();
+        .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
     RegisterUDAFTemplate<TopAvgCateWhereDef>("top_n_avg_cate_where")
         .doc(R"(
@@ -1166,8 +1164,7 @@ void DefaultUDFLibrary::Init() {
                 -- output "z:5,y:3"
             @endcode
             )")
-        .args_in<int16_t, int32_t, int64_t, Date, Timestamp,
-                 StringRef>();
+        .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
     IniMathUDF();
     InitStringUDF();

@@ -98,9 +98,9 @@ void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(sql_compiler.BuildRunner(sql_context, compile_status));
-    ASSERT_TRUE(nullptr != sql_context.plan);
+    ASSERT_TRUE(nullptr != sql_context.physical_plan);
     std::ostringstream oss;
-    sql_context.plan->Print(oss, "");
+    sql_context.physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
 
     ASSERT_TRUE(nullptr != sql_context.runner);
@@ -307,7 +307,7 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(sql_compiler.BuildRunner(sql_context, compile_status));
-    ASSERT_TRUE(nullptr != sql_context.plan);
+    ASSERT_TRUE(nullptr != sql_context.physical_plan);
 
     auto root = GetFirstRunnerOfType(sql_context.runner, kRunnerGroup);
     auto group_runner = dynamic_cast<GroupRunner*>(root);
