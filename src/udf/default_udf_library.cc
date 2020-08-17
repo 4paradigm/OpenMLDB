@@ -1445,6 +1445,7 @@ void DefaultUDFLibrary::Init() {
 
     IniMathUDF();
     InitStringUDF();
+    InitTrigonometricUDF();
 }
 
 }  // namespace udf
