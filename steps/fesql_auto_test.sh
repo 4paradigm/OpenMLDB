@@ -8,7 +8,7 @@ sh steps/gen_code.sh
 sh tools/install_fesql.sh
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. 
 if [ -z "${FEDEV}" ]; then
-    make -j5 sql_javasdk_package || { echo "compile error"; exit 1; }
+    make -j16 sql_javasdk_package || { echo "compile error"; exit 1; }
 else
     make -j16 || { echo "compile error"; exit 1; }
 fi
