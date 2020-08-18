@@ -72,10 +72,7 @@ SDKCodec::SDKCodec(const ::rtidb::nameserver::TableInfo& table_info)
             int32_t times = pair.field_count();
             std::shared_ptr<Schema> base_schema = std::make_shared<Schema>(table_info.column_desc_v1());
             int remain_size = times - table_info.column_desc_v1_size();
-            if (remain_size < 0)  {
-                continue;
-            }
-            if (remain_size > table_info.added_column_desc_size()) {
+            if (remain_size < 0 || remain_size > table_info.added_column_desc_size())  {
                 continue;
             }
             for (int i = 0; i < remain_size; i++) {
