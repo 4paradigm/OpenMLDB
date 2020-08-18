@@ -279,10 +279,12 @@ ClusterSDK::GetLeaderTabletByTable(const std::string& db,
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     auto it = table_to_tablets_.find(db);
     if (it == table_to_tablets_.end()) {
+        LOG(INFO) << "not found db " << db;
         return std::shared_ptr<::rtidb::client::TabletClient>();
     }
     auto sit = it->second.find(name);
     if (sit == it->second.end()) {
+        LOG(INFO) << "table not found " << name;
         return std::shared_ptr<::rtidb::client::TabletClient>();
     }
     auto table_info = sit->second;
