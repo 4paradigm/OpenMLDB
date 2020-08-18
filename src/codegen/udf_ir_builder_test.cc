@@ -527,6 +527,30 @@ TEST_F(UDFIRBuilderTest, date_format_test) {
                                          StringRef("%H:%M:%S"));
 }
 
+TEST_F(UDFIRBuilderTest, strcmp_udf_test) {
+    CheckUDF<int32_t, Nullable<StringRef>, Nullable<StringRef>>(
+        "strcmp", 0, StringRef("12345"), StringRef("12345"));
+    CheckUDF<int32_t, Nullable<StringRef>, Nullable<StringRef>>(
+        "strcmp", 0, StringRef(""), StringRef(""));
+    CheckUDF<int32_t, Nullable<StringRef>, Nullable<StringRef>>(
+        "strcmp", -1, StringRef("12345"), StringRef("123456"));
+    CheckUDF<int32_t, Nullable<StringRef>, Nullable<StringRef>>(
+        "strcmp", -1, StringRef(""), StringRef("123456"));
+
+    CheckUDF<int32_t, Nullable<StringRef>, Nullable<StringRef>>(
+        "strcmp", 1, StringRef("12345"), StringRef("1234"));
+    CheckUDF<int32_t, Nullable<StringRef>, Nullable<StringRef>>(
+        "strcmp", 1, StringRef("12345"), StringRef(""));
+
+    CheckUDF<int32_t, Nullable<StringRef>, Nullable<StringRef>>(
+        "strcmp", 0, nullptr, nullptr);
+    CheckUDF<int32_t, Nullable<StringRef>, Nullable<StringRef>>(
+        "strcmp", 1, StringRef("12345"), nullptr);
+    CheckUDF<int32_t, Nullable<StringRef>, Nullable<StringRef>>(
+        "strcmp", -1, nullptr, StringRef("12345"));
+    CheckUDF<int32_t, Nullable<StringRef>, Nullable<StringRef>>(
+        "strcmp", -1, nullptr, StringRef(""));
+}
 }  // namespace codegen
 }  // namespace fesql
 

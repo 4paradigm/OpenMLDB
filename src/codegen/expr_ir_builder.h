@@ -93,6 +93,8 @@ class ExprIRBuilder {
     Status BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
                              NativeValue* output);
 
+    Status BuildCaseExpr(const ::fesql::node::CaseWhenExprNode* node,
+                         NativeValue* output);
     Status BuildCondExpr(const ::fesql::node::CondExpr* node,
                          NativeValue* output);
 

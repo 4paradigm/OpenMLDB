@@ -237,7 +237,19 @@ void sub_string(fesql::codec::StringRef *str, int32_t from, int32_t len,
     output->size_ = static_cast<uint32_t>(len);
     return;
 }
+int32_t strcmp(fesql::codec::StringRef *s1, fesql::codec::StringRef *s2) {
+    if (s1 == s2) {
+        return 0;
+    }
+    if (nullptr == s1) {
+        return -1;
+    }
 
+    if (nullptr == s2) {
+        return 1;
+    }
+    return fesql::codec::StringRef::compare(*s1, *s2);
+}  // namespace v1
 template <>
 uint32_t format_string<int16_t>(const int16_t &v, char *buffer, size_t size) {
     return snprintf(buffer, size, "%d", v);

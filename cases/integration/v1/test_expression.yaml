@@ -135,3 +135,97 @@ cases:
       columns: ["flag1 bool", "flag2 bool"]
       rows:
         - [false,false]
+  - id: 12
+    desc: SIMPLE CASE WHEN 表达式
+    inputs:
+      - columns: ["col1 int","col2 string", "col4 timestamp"]
+        indexs: ["index1:col1:col4"]
+        rows:
+          - [1, "aa",1590738989000]
+          - [2, "cc",1590738989000]
+          - [3, "bb",1590738989000]
+          - [4, "dd",1590738989000]
+    sql: |
+      select col1, col2, case col2
+                        when 'aa' then 'apple'
+                        when 'bb' then 'banana'
+                        when 'cc' then 'cake'
+                        else 'nothing'
+                    end as case_f1 from {0};
+    expect:
+      columns: ["col1 int", "col2 string", "case_f1 string"]
+      rows:
+        - [1, "aa", "apple"]
+        - [2, "cc", "cake"]
+        - [3, "bb", "banana"]
+        - [4, "dd", "nothing"]
+  - id: 13
+    desc: SEARCHED CASE WHEN 表达式
+    inputs:
+      - columns: ["col1 int","col2 string", "col4 timestamp"]
+        indexs: ["index1:col1:col4"]
+        rows:
+          - [1, "aa",1590738989000]
+          - [2, "cc",1590738989000]
+          - [3, "bb",1590738989000]
+          - [4, "dd",1590738989000]
+    sql: |
+      select col1, col2, case
+                        when col2='aa' then 'apple'
+                        when col2='bb' then 'banana'
+                        when col2='cc' then 'cake'
+                        else 'nothing'
+                    end as case_f1 from {0};
+    expect:
+      columns: ["col1 int", "col2 string", "case_f1 string"]
+      rows:
+        - [1, "aa", "apple"]
+        - [2, "cc", "cake"]
+        - [3, "bb", "banana"]
+        - [4, "dd", "nothing"]
+  - id: 14
+    inputs:
+      - columns: ["col1 int","col2 string", "col4 timestamp"]
+        indexs: ["index1:col1:col4"]
+        rows:
+          - [1, "aa",1590738989000]
+          - [2, "cc",1590738989000]
+          - [3, "bb",1590738989000]
+          - [4, "dd",1590738989000]
+    desc: SIMPLE CASE WHEN 表达式 without ELSE
+    sql: |
+      select col1, col2, case col2
+                        when 'aa' then 'apple'
+                        when 'bb' then 'banana'
+                        when 'cc' then 'cake'
+                    end as case_f1 from {0};
+    expect:
+      columns: ["col1 int", "col2 string", "case_f1 string"]
+      rows:
+        - [1, "aa", "apple"]
+        - [2, "cc", "cake"]
+        - [3, "bb", "banana"]
+        - [4, "dd", null]
+  - id: 15
+    desc: SEARCHED CASE WHEN 表达式 without ELSE
+    inputs:
+      - columns: ["col1 int","col2 string", "col4 timestamp"]
+        indexs: ["index1:col1:col4"]
+        rows:
+          - [1, "aa",1590738989000]
+          - [2, "cc",1590738989000]
+          - [3, "bb",1590738989000]
+          - [4, "dd",1590738989000]
+    sql: |
+      select col1, col2, case
+                        when col2='aa' then 'apple'
+                        when col2='bb' then 'banana'
+                        when col2='cc' then 'cake'
+                    end as case_f1 from {0};
+    expect:
+      columns: ["col1 int", "col2 string", "case_f1 string"]
+      rows:
+        - [1, "aa", "apple"]
+        - [2, "cc", "cake"]
+        - [3, "bb", "banana"]
+        - [4, "dd", null]

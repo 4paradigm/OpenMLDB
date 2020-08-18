@@ -571,6 +571,26 @@ void DefaultUDFLibrary::InitStringUDF() {
 
     RegisterAlias("substr", "substring");
 
+    RegisterExternal("strcmp")
+        .args<Nullable<StringRef>, Nullable<StringRef>>(
+            static_cast<int32_t (*)(codec::StringRef*, bool, codec::StringRef*, bool)>(
+                udf::v1::strcmp))
+        .doc(R"(
+            Returns 0 if the strings are the same, -1 if the first argument is smaller than the second according to the current sort order, and 1 otherwise.
+
+            example
+            @code{.sql}
+
+                select strcmp("text", "text1");
+                -- output -1
+                select strcmp("text1", "text");
+                -- output 1
+                select strcmp("text", "text");
+                -- output 0
+
+            @endcode
+            @since 2.0.0.0
+        )");
     RegisterExternal("date_format")
         .args<Timestamp, StringRef>(
             static_cast<void (*)(codec::Timestamp*, codec::StringRef*,

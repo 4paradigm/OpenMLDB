@@ -612,6 +612,7 @@ TEST_F(ExternUDFTest, TestCompoundTypedExternalCall) {
         &library, "make_tuple", TupleResT(1, nullptr, 3), 1, nullptr, 3);
 }
 
+
 }  // namespace udf
 }  // namespace fesql
 int main(int argc, char** argv) {
