@@ -697,7 +697,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                 LOG(WARNING) << "decode data error";
                 continue;
             }
-            if (row.size() < max_idx) {
+            if (row.size() < max_idx + 1) {
                 LOG(WARNING) << "data size is " << row.size() << " less than " << max_idx;
                 continue;
             }
@@ -923,7 +923,7 @@ int MemTableSnapshot::ExtractIndexData(
                     LOG(WARNING) << "decode data error";
                     continue;
                 }
-                if (row.size() < max_idx) {
+                if (row.size() < max_idx + 1) {
                     LOG(WARNING) << "data size is " << row.size() << " less than " << max_idx;
                     continue;
                 }
@@ -1343,7 +1343,7 @@ bool MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vecto
         data.reset(entry.value().data(), entry.value().size());
     }
     if (table_meta.format_version() == 0) {
-        return rtidb::codec::RowCodec::DecodeRow(columns.size(), maxIdx + 1, data, &row);
+        return rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc_size(), maxIdx + 1, data, &row);
     }
     const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
     uint8_t version = rtidb::codec::RowView::GetSchemaVersion(raw);

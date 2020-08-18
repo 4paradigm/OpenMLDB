@@ -11422,16 +11422,19 @@ int NameServerImpl::CreateAddIndexOP(
         PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
         return -1;
     }
-    std::string partition_num_value = std::to_string(table_info->table_partition_size());
-    std::string table_sync_node = zk_op_sync_path_ + "/" + std::to_string(table_info->tid());
-    if (zk_client_->IsExistNode(table_sync_node) == 0) {
-        if (!zk_client_->SetNodeValue(table_sync_node, partition_num_value)) {
-            LOG(WARNING) << "set sync value failed. table " << name << "node " << table_sync_node;
+    // zk_op_sync_node 只需要创建一次，因为pid 从0开始，所以只判断pid==0
+    if (pid == 0) {
+        std::string partition_num_value = std::to_string(table_info->table_partition_size());
+        std::string table_sync_node = zk_op_sync_path_ + "/" + std::to_string(table_info->tid());
+        if (zk_client_->IsExistNode(table_sync_node) == 0) {
+            if (!zk_client_->SetNodeValue(table_sync_node, partition_num_value)) {
+                LOG(WARNING) << "set sync value failed. table " << name << "node " << table_sync_node;
+                return -1;
+            }
+        } else if (!zk_client_->CreateNode(table_sync_node, partition_num_value)) {
+            LOG(WARNING) << "create sync node failed. table " << name << " node " << table_sync_node;
             return -1;
         }
-    } else if (!zk_client_->CreateNode(table_sync_node, partition_num_value)) {
-        LOG(WARNING) << "create sync node failed. table " << name << " node " << table_sync_node;
-        return -1;
     }
     std::shared_ptr<OPData> op_data;
     AddIndexMeta add_index_meta;
@@ -11524,7 +11527,7 @@ int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
             op_index, ::rtidb::api::OPType::kAddIndexOP, tid, pid, endpoints,
             add_index_meta.column_key());
         if (!task) {
-            LOG(WARNING) << "create add index tasdk failed. tid[" << tid << "] pid[" << pid << "]";
+            LOG(WARNING) << "create add index task failed. tid[" << tid << "] pid[" << pid << "]";
             return -1;
         }
         op_data->task_list_.push_back(task);
