@@ -4,6 +4,7 @@
 %include std_shared_ptr.i
 %include stl.i
 %include stdint.i
+%include std_vector.i
 
 %shared_ptr(fesql::sdk::ResultSet);
 %shared_ptr(fesql::sdk::Schema);
@@ -12,6 +13,7 @@
 %shared_ptr(rtidb::sdk::SQLInsertRow);
 %shared_ptr(rtidb::sdk::SQLInsertRows);
 %shared_ptr(rtidb::sdk::ExplainInfo);
+%template(VectorUint32) std::vector<uint32_t>;
 
 %{
 #include "sdk/sql_router.h"
