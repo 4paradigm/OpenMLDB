@@ -1437,7 +1437,6 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
         ASSERT_EQ(1, response.table_info().table_partition_size());
-        ASSERT_EQ(3, (signed)response.table_info().replica_num());
     }
 }
 

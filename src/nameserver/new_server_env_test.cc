@@ -29,6 +29,7 @@ DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(request_timeout_ms);
 DECLARE_int32(request_timeout_ms);
+DECLARE_bool(binlog_notify_on_put);
 DECLARE_bool(use_name);
 
 using ::rtidb::zk::ZkClient;
@@ -67,7 +68,7 @@ void StartNameServer(brpc::Server& server, const std::string& real_ep) { //NOLIN
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    sleep(3);
+    sleep(2);
 }
 
 void StartTablet(brpc::Server& server, const std::string& real_ep) { //NOLINT
@@ -85,7 +86,7 @@ void StartTablet(brpc::Server& server, const std::string& real_ep) { //NOLINT
     }
     ok = tablet->RegisterZK();
     ASSERT_TRUE(ok);
-    sleep(3);
+    sleep(2);
 }
 
 void StartBlobServer(brpc::Server& server, const std::string& real_ep) { //NOLINT
@@ -103,7 +104,7 @@ void StartBlobServer(brpc::Server& server, const std::string& real_ep) { //NOLIN
     }
     ok = blob_server->RegisterZK();
     ASSERT_TRUE(ok);
-    sleep(3);
+    sleep(2);
 }
 
 void SetSdkEndpoint(::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_server_client, //NOLINT
@@ -270,6 +271,116 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
         status = response.tablets(3);
         ASSERT_EQ("tb2", status.endpoint());
         ASSERT_EQ(tb_sdk_ep_2, status.real_endpoint());
+    }
+}
+
+TEST_F(NewServerEnvTest, SyncMultiReplicaData) {
+    FLAGS_zk_cluster = "127.0.0.1:6181";
+    FLAGS_zk_root_path = "/rtidb4" + GenRand();
+
+    // ns1
+    FLAGS_use_name = true;
+    FLAGS_endpoint = "ns1";
+    std::string ns_real_ep = "127.0.0.1:9631";
+    brpc::Server ns_server;
+    StartNameServer(ns_server, ns_real_ep);
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
+        name_server_client(ns_real_ep);
+    name_server_client.Init();
+
+    // tablet1
+    FLAGS_binlog_notify_on_put = true;
+    FLAGS_use_name = true;
+    FLAGS_endpoint = "tb1";
+    std::string tb_real_ep_1 = "127.0.0.1:9831";
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+    brpc::Server tb_server1;
+    StartTablet(tb_server1, tb_real_ep_1);
+    ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub>
+        tb_client_1(tb_real_ep_1);
+    tb_client_1.Init();
+
+    // tablet2
+    FLAGS_use_name = true;
+    FLAGS_endpoint = "tb2";
+    std::string tb_real_ep_2 = "127.0.0.1:9931";
+    FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
+    brpc::Server tb_server2;
+    StartTablet(tb_server2, tb_real_ep_2);
+    ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub>
+        tb_client_2(tb_real_ep_2);
+    tb_client_2.Init();
+
+    bool ok = false;
+    std::string name = "test" + GenRand();
+    {
+        CreateTableRequest request;
+        GeneralResponse response;
+        TableInfo* table_info = request.mutable_table_info();
+        table_info->set_name(name);
+        TablePartition* partion = table_info->add_table_partition();
+        partion->set_pid(0);
+        PartitionMeta* meta = partion->add_partition_meta();
+        meta->set_endpoint("tb1");
+        meta->set_is_leader(true);
+        meta = partion->add_partition_meta();
+        meta->set_endpoint("tb2");
+        meta->set_is_leader(false);
+        ok = name_server_client.SendRequest(
+            &::rtidb::nameserver::NameServer_Stub::CreateTable, &request,
+            &response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, response.code());
+    }
+    uint32_t tid = 0;
+    {
+        ::rtidb::nameserver::ShowTableRequest request;
+        ::rtidb::nameserver::ShowTableResponse response;
+        request.set_name(name);
+        bool ok = name_server_client.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowTable,
+                    &request, &response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        tid = response.table_info(0).tid();
+    }
+    {
+        ::rtidb::api::PutRequest put_request;
+        ::rtidb::api::PutResponse put_response;
+        put_request.set_pk("1");
+        put_request.set_time(1);
+        put_request.set_value("a");
+        put_request.set_tid(tid);
+        put_request.set_pid(0);
+        ok = tb_client_1.SendRequest(&::rtidb::api::TabletServer_Stub::Put, &put_request,
+                &put_response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, put_response.code());
+    }
+    {
+        ::rtidb::api::TraverseRequest traverse_request;
+        ::rtidb::api::TraverseResponse traverse_response;
+        traverse_request.set_pid(0);
+        traverse_request.set_tid(tid);
+        ok = tb_client_1.SendRequest(&::rtidb::api::TabletServer_Stub::Traverse,
+                &traverse_request, &traverse_response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, traverse_response.code());
+        ASSERT_EQ(1u, traverse_response.count());
+        ASSERT_EQ("1", traverse_response.pk());
+        ASSERT_EQ(1u, traverse_response.ts());
+    }
+    sleep(3);
+    {
+        ::rtidb::api::TraverseRequest traverse_request;
+        ::rtidb::api::TraverseResponse traverse_response;
+        traverse_request.set_tid(tid);
+        traverse_request.set_pid(0);
+        ok = tb_client_2.SendRequest(&::rtidb::api::TabletServer_Stub::Traverse,
+                &traverse_request, &traverse_response, FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, traverse_response.code());
+        ASSERT_EQ(1u, traverse_response.count());
+        ASSERT_EQ("1", traverse_response.pk());
+        ASSERT_EQ(1u, traverse_response.ts());
     }
 }
 
