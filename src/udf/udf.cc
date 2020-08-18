@@ -98,11 +98,9 @@ int32_t weekofyear(codec::Date *date) {
     return d.week_number();
 }
 
-int16_t abs_int16(int16_t x) { return static_cast<int16_t>(abs((int32_t)x)); }
-int64_t abs_int64(int64_t x) { return static_cast<int64_t>(labs(x)); }
-
-int Ceild(double x) { return static_cast<int>(ceil(x)); }
-int Ceilf(float x) { return static_cast<int>(ceilf(x)); }
+float Cotf(float x) {
+    return cosf(x)/sinf(x);
+}
 
 void date_format(codec::Timestamp *timestamp, fesql::codec::StringRef *format,
                  fesql::codec::StringRef *output) {

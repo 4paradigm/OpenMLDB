@@ -723,7 +723,7 @@ example
             return nm->MakeFuncNode("log10", {cast}, nullptr);
         });
 
-    RegisterExternal("abs")
+    RegisterExternalTemplate<v1::Abs>("abs")
         .doc(R"(
             Return the absolute value of expr.
 
@@ -737,13 +737,232 @@ example
 
             @param **expr**
 
-            @since 2.0.0.0)")
-        .args<int16_t>(static_cast<int16_t (*)(int16_t)>(v1::abs_int16))
-        .args<int32_t>(static_cast<int32_t (*)(int32_t)>(abs))
-        .args<int64_t>(static_cast<int64_t (*)(int64_t)>(v1::abs_int64))
-        .args<float>(static_cast<float (*)(float)>(fabs))
-        .args<double>(static_cast<double (*)(double)>(fabs));
+@since 2.0.0.0
+)")
+        .args_in<int64_t, double>();
+    RegisterExternalTemplate<v1::Abs32>("abs")
+        .args_in<int16_t, int32_t>();
+    RegisterExprUDF("abs").args<AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("abs do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast = nm->MakeCastNode(node::kDouble, x);
+            return nm->MakeFuncNode("abs", {cast}, nullptr);
+        });
 
+    RegisterExternalTemplate<v1::Ceil>("ceil")
+        .doc(R"(
+Return the smallest integer value not less than the expr
+
+example
+@code{.sql}
+
+    SELECT CEIL(1.23);
+    -- output 2
+
+@endcode
+
+@param **expr**
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t>();
+    RegisterExternal("ceil")
+        .args<double>(static_cast<double (*)(double)>(ceil));
+    RegisterExprUDF("ceil").args<AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("ceil do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast = nm->MakeCastNode(node::kDouble, x);
+            return nm->MakeFuncNode("ceil", {cast}, nullptr);
+        });
+
+    RegisterAlias("ceiling", "ceil");
+
+    RegisterExternalTemplate<v1::Exp>("exp")
+        .doc(R"(
+Return the value of e (the base of natural logarithms) raised to the power of expr.
+
+example
+@code{.sql}
+
+    SELECT EXP(0);  
+    -- output 1
+
+@endcode
+
+@param **expr**
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("exp")
+        .args<float>(static_cast<float (*)(float)>(expf));
+
+    RegisterExternalTemplate<v1::Floor>("floor")
+.doc(R"(
+Return the largest integer value not less than the expr
+
+example
+@code{.sql}
+
+    SELECT FLOOR(1.23);
+    -- output 1
+
+@endcode
+
+@param **expr**
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t>();
+    RegisterExternal("floor")
+        .args<double>(static_cast<double (*)(double)>(floor));
+    RegisterExprUDF("floor").args<AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("floor do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast = nm->MakeCastNode(node::kDouble, x);
+            return nm->MakeFuncNode("floor", {cast}, nullptr);
+        });
+
+    RegisterExternalTemplate<v1::Pow>("pow")
+.doc(R"(
+pow(expr1, expr2)
+Return the value of expr1 to the power of expr2.
+
+example
+@code{.sql}
+
+    SELECT POW(2, 10);
+    -- output 1024.000000
+
+@endcode
+
+@param **expr1**
+@param **expr2**
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("pow")
+        .args<float, float>(static_cast<float (*)(float, float)>(powf));
+    RegisterExprUDF("pow").args<AnyArg, AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("pow do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            if (!y->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("pow do not support type " +
+                              y->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast1 = nm->MakeCastNode(node::kDouble, x);
+            auto cast2 = nm->MakeCastNode(node::kDouble, y);
+            return nm->MakeFuncNode("pow", {cast1, cast2}, nullptr);
+        });
+    RegisterAlias("power", "pow");
+
+    RegisterExternalTemplate<v1::Round>("round")
+.doc(R"(
+Return the nearest integer value to expr (in floating-point format), 
+rounding halfway cases away from zero, regardless of the current rounding mode.
+
+example
+@code{.sql}
+
+    SELECT ROUND(1.23);
+    -- output 1
+
+@endcode
+
+@param **expr**
+
+@since 2.0.0.0
+)")
+        .args_in<int64_t, double>();
+    RegisterExternalTemplate<v1::Round32>("round")
+        .args_in<int16_t, int32_t>();
+    RegisterExprUDF("round").args<AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("round do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast = nm->MakeCastNode(node::kDouble, x);
+            return nm->MakeFuncNode("round", {cast}, nullptr);
+        });
+
+    RegisterExternalTemplate<v1::Sqrt>("sqrt")
+.doc(R"(
+Return square root of expr.
+
+example
+@code{.sql}
+
+    SELECT SQRT(100);
+    -- output 10.000000
+
+@endcode
+
+@param **expr**: It is a single argument in radians.
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("sqrt")
+        .args<float>(static_cast<float (*)(float)>(sqrtf));
+
+    RegisterExternalTemplate<v1::Truncate>("truncate")
+.doc(R"(
+Return the nearest integer that is not greater in magnitude than the expr.
+
+example
+@code{.sql}
+
+    SELECT TRUNCATE(1.23);
+    -- output 1.0
+
+@endcode
+
+@param **expr**
+
+@since 2.0.0.0
+)")
+        .args_in<int64_t, double>();
+    RegisterExternalTemplate<v1::Truncate32>("truncate")
+        .args_in<int16_t, int32_t>();
+    RegisterExprUDF("truncate").args<AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("truncate do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast = nm->MakeCastNode(node::kDouble, x);
+            return nm->MakeFuncNode("truncate", {cast}, nullptr);
+        });
+}
+
+void DefaultUDFLibrary::InitTrigonometricUDF() {
     RegisterExternalTemplate<v1::Acos>("acos")
         .doc(R"(
 Return the arc cosine of expr.
@@ -853,12 +1072,12 @@ example
     RegisterExprUDF("atan2").args<AnyArg, AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("atan do not support type " +
+                ctx->SetError("atan2 do not support type " +
                               x->GetOutputType()->GetName());
                 return nullptr;
             }
             if (!y->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("atan do not support type " +
+                ctx->SetError("atan2 do not support type " +
                               y->GetOutputType()->GetName());
                 return nullptr;
             }
@@ -868,15 +1087,37 @@ example
             return nm->MakeFuncNode("atan2", {cast1, cast2}, nullptr);
         });
 
-    RegisterExternalTemplate<v1::Ceil>("ceil")
-        .doc(R"(
-Return the smallest integer value not less than the expr
+    RegisterExternalTemplate<v1::Cos>("cos")
+.doc(R"(
+Return the cosine of expr.
 
 example
 @code{.sql}
 
-    SELECT CEIL(1.23);
-    -- output 2
+    SELECT COS(0);
+    -- output 1.000000
+
+@endcode
+
+@param **expr**: It is a single argument in radians.
+
+- The value returned by cos() is always in the range: -1 to 1.
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("cos")
+        .args<float>(static_cast<float (*)(float)>(cosf));
+
+    RegisterExternalTemplate<v1::Cot>("cot")
+        .doc(R"(
+Return the cotangent of expr.
+
+example
+@code{.sql}
+
+    SELECT COT(1);  
+    -- output 0.6420926159343306
 
 @endcode
 
@@ -884,12 +1125,51 @@ example
 
 @since 2.0.0.0
 )")
-        .args_in<int16_t, int32_t, int64_t>();
-    RegisterExternal("ceil").args<double>(
-        static_cast<int (*)(double)>(v1::Ceild));
-    RegisterExternal("ceil").args<float>(
-        static_cast<int (*)(float)>(v1::Ceilf));
-    RegisterAlias("ceil", "ceiling");
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("cot")
+        .args<float>(static_cast<float (*)(float)>(v1::Cotf));
+
+    RegisterExternalTemplate<v1::Sin>("sin")
+.doc(R"(
+Return the sine of expr.
+
+example
+@code{.sql}
+
+    SELECT SIN(0);
+    -- output 0.000000
+
+@endcode
+
+@param **expr**: It is a single argument in radians.
+
+- The value returned by sin() is always in the range: -1 to 1.
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("sin")
+        .args<float>(static_cast<float (*)(float)>(sinf));
+
+    RegisterExternalTemplate<v1::Tan>("tan")
+.doc(R"(
+Return the tangent of expr.
+
+example
+@code{.sql}
+
+    SELECT TAN(0);
+    -- output 0.000000
+
+@endcode
+
+@param **expr**: It is a single argument in radians.
+
+@since 2.0.0.0
+)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("tan")
+        .args<float>(static_cast<float (*)(float)>(tanf));
 }
 
 void DefaultUDFLibrary::Init() {
@@ -1165,6 +1445,7 @@ void DefaultUDFLibrary::Init() {
 
     IniMathUDF();
     InitStringUDF();
+    InitTrigonometricUDF();
 }
 
 }  // namespace udf
