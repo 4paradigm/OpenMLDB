@@ -2,7 +2,8 @@
 
 CUR_DIR=$(cd $(dirname $0); pwd)
 
-python ${CUR_DIR}/udf_doxygen/export_udf_doc.py &>doxygen.log
+pip3 install pyyaml
+python3 ${CUR_DIR}/udf_doxygen/export_udf_doc.py &>doxygen.log
 if [[ "$?" -ne 0 ]]; then
 	cat doxygen.log
 	exit 1
@@ -20,7 +21,7 @@ for path in ${HTML_FILES}; do
 	if [[ -d "$path" ]]; then
 		continue
 	fi
-	fname=$(realpath --relative-to=${CUR_DIR}/udf_doxygen/html $path)
+	fname=$(python3 -c "import os; print(os.path.relpath(\"${path}\", \"${CUR_DIR}/udf_doxygen/html\"))")
 	# echo "Upload $fname from $path"
     curl  --user 'deploy:GlW5SRo1TC3q' \
           --upload-file "$path" \

@@ -6,7 +6,7 @@ DOXYGEN_DIR = os.path.abspath(os.path.dirname(__file__))
 HOME_DIR = os.path.join(DOXYGEN_DIR, "../../..")
 BUILD_DIR = os.path.abspath(os.path.join(HOME_DIR, "build"))
 TMP_DIR = os.path.join(BUILD_DIR, "docs/tmp")
-print(BUILD_DIR)
+
 
 def export_yaml():
 	if not os.path.exists(TMP_DIR):
