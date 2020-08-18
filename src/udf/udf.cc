@@ -246,7 +246,7 @@ uint32_t format_string<int32_t>(const int32_t &v, char *buffer, size_t size) {
 
 template <>
 uint32_t format_string<int64_t>(const int64_t &v, char *buffer, size_t size) {
-    return snprintf(buffer, size, "%lld", v);
+    return snprintf(buffer, size, "%lld", static_cast<long long int>(v));
 }
 
 template <>

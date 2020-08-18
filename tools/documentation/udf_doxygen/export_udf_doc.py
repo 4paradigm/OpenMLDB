@@ -23,7 +23,6 @@ def export_yaml():
 def process_doc(doc):
 	lines = doc.split("\n")
 	first_line_indent = -1;
-	print(first_line_indent, lines[0])
 	for i in range(0, len(lines)):
 		line = lines[i]
 		if line.strip() == "":
