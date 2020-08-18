@@ -406,7 +406,7 @@ int LogReplicator::AddReplicateNode(
         return -1;
     }
     for (const auto& kv : real_ep_map) {
-        auto endpoint = kv.first;
+        const std::string& endpoint = kv.first;
         std::vector<std::shared_ptr<ReplicateNode>>::iterator it =
             nodes_.begin();
         for (; it != nodes_.end(); ++it) {

@@ -891,6 +891,10 @@ bool NameServerImpl::Recover() {
             PDLOG(WARNING, "recover table info failed!");
             return false;
         }
+        if (!RecoverSdkEpMap()) {
+            PDLOG(WARNING, "recover sdk_endpoint_map failed!");
+            return false;
+        }
     }
     UpdateTableStatus();
     {
@@ -12184,6 +12188,32 @@ void NameServerImpl::ShowSdkEndpoint(RpcController* controller,
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
+}
+
+bool NameServerImpl::RecoverSdkEpMap() {
+    sdk_endpoint_map_.clear();
+    std::string path = FLAGS_zk_root_path + "/map/sdkendpoints";
+    if (zk_client_->IsExistNode(path) != 0) {
+        PDLOG(INFO, "/map/sdkendpoints node %s not exist", path.c_str());
+        return true;
+    } else {
+        std::vector<std::string> children;
+        if (!zk_client_->GetChildren(path, children) || children.empty()) {
+            PDLOG(WARNING, "get zk children failed");
+            return false;
+        }
+        for (const auto& child : children) {
+            std::string real_ep;
+            if (!zk_client_->GetNodeValue(path + "/" + child, real_ep)) {
+                PDLOG(WARNING, "get zk value failed");
+                return false;
+            }
+            sdk_endpoint_map_.insert(std::make_pair(child, real_ep));
+        }
+    }
+    PDLOG(INFO, "recover sdk_endpoint_map size[%d]", sdk_endpoint_map_.size());
+    NotifyTableChanged();
+    return true;
 }
 
 }  // namespace nameserver

@@ -95,7 +95,7 @@ bool NsClient::ShowTablet(std::vector<TabletInfo>& tablets, std::string& msg) {
     msg = response.msg();
     if (ok && response.code() == 0) {
         for (int32_t i = 0; i < response.tablets_size(); i++) {
-            const ::rtidb::nameserver::TabletStatus status =
+            const ::rtidb::nameserver::TabletStatus& status =
                 response.tablets(i);
             TabletInfo info;
             info.endpoint = status.endpoint();
@@ -118,7 +118,7 @@ bool NsClient::ShowBlobServer(std::vector<TabletInfo>& tablets,
     msg = response.msg();
     if (ok && response.code() == 0) {
         for (int32_t i = 0; i < response.tablets_size(); i++) {
-            const ::rtidb::nameserver::TabletStatus status =
+            const ::rtidb::nameserver::TabletStatus& status =
                 response.tablets(i);
             TabletInfo info;
             info.endpoint = status.endpoint();
@@ -141,7 +141,7 @@ bool NsClient::ShowSdkEndpoint(std::vector<TabletInfo>& tablets,
     msg = response.msg();
     if (ok && response.code() == 0) {
         for (int32_t i = 0; i < response.tablets_size(); i++) {
-            const ::rtidb::nameserver::TabletStatus status =
+            const ::rtidb::nameserver::TabletStatus& status =
                 response.tablets(i);
             TabletInfo info;
             info.endpoint = status.endpoint();

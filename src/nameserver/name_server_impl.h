@@ -429,6 +429,8 @@ class NameServerImpl : public NameServer {
 
     bool RecoverOPTask();
 
+    bool RecoverSdkEpMap();
+
     int SetPartitionInfo(TableInfo& table_info);  // NOLINT
 
     void AddDataType(std::shared_ptr<TableInfo> table_info);
