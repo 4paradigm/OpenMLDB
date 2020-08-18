@@ -1178,6 +1178,8 @@ class FnDefNode : public SQLNode {
     virtual const std::string GetName() const = 0;
     virtual base::Status Validate(
         const std::vector<const TypeNode *> &arg_types) const = 0;
+
+    const std::string GetFlatString() const;
 };
 class CastExprNode : public ExprNode {
  public:

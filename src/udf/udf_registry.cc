@@ -16,66 +16,31 @@
 namespace fesql {
 namespace udf {
 
-Status CompositeRegistry::Transform(UDFResolveContext* ctx,
-                                    node::ExprNode** result) {
-    if (sub_.size() == 1) {
-        return sub_[0]->Transform(ctx, result);
-    }
-    std::string errs;
-    std::vector<node::ExprNode*> candidates;
-    for (auto registry : sub_) {
-        node::ExprNode* cand = nullptr;
-        auto status = registry->Transform(ctx, &cand);
-        if (status.isOK()) {
-            candidates.push_back(cand);
-            break;
+const std::string UDFResolveContext::GetArgSignature() const {
+    std::stringstream ss;
+    for (size_t i = 0; i < arg_size(); ++i) {
+        auto arg = args_[i];
+        if (arg == nullptr) {
+            ss << "?";
         } else {
-            errs.append("\n --> ").append(status.msg);
+            if (arg->nullable()) {
+                ss << "nullable ";
+            }
+            if (arg->GetOutputType() != nullptr) {
+                ss << arg->GetOutputType()->GetName();
+            } else {
+                ss << "?";
+            }
+        }
+        if (i < arg_size() - 1) {
+            ss << ", ";
         }
     }
-    CHECK_TRUE(!candidates.empty(),
-               "Fail to transform udf with underlying errors: ", errs);
-    *result = candidates[0];
-    return Status::OK();
-}
-
-Status CompositeRegistry::ResolveFunction(UDFResolveContext* ctx,
-                                          node::FnDefNode** result) {
-    std::string errs;
-    std::vector<node::FnDefNode*> candidates;
-    for (auto registry : sub_) {
-        node::FnDefNode* cand = nullptr;
-        auto fn_reg = std::dynamic_pointer_cast<UDFRegistry>(registry);
-        if (fn_reg == nullptr) {
-            errs.append("\n --> not functional registry");
-            continue;
-        }
-        auto status = fn_reg->ResolveFunction(ctx, &cand);
-        if (status.isOK()) {
-            candidates.push_back(cand);
-            break;
-        } else {
-            errs.append("\n --> ").append(status.msg);
-        }
-    }
-    CHECK_TRUE(!candidates.empty(),
-               "Fail to resolve udf with underlying errors: ", errs);
-    *result = candidates[0];
-    return Status::OK();
+    return ss.str();
 }
 
 Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
                                         node::FnDefNode** result) {
-    // find generator with specified input argument types
-    int variadic_pos = -1;
-    std::shared_ptr<ExprUDFGenBase> gen_ptr;
-    std::string signature;
-    CHECK_STATUS(reg_table_.Find(ctx, &gen_ptr, &signature, &variadic_pos),
-                 "Fail to resolve fn name \"", name(), "\"");
-
-    DLOG(INFO) << "Resolve expression udf \"" << name() << "\" -> " << name()
-               << "(" << signature << ")";
-
     // construct fn def node:
     // def fn(arg0, arg1, ...argN):
     //     return gen_impl(arg0, arg1, ...argN)
@@ -98,33 +63,17 @@ Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
         arg_expr->SetOutputType(arg_type);
     }
 
-    auto ret_expr = gen_ptr->gen(ctx, func_params_to_gen);
+    auto ret_expr = gen_impl_func_->gen(ctx, func_params_to_gen);
     CHECK_TRUE(ret_expr != nullptr && !ctx->HasError(),
-               "Fail to create expr udf: ", ctx->GetError());
+               "Fail to resolve expr udf: ", ctx->GetError());
 
     auto lambda = nm->MakeLambdaNode(func_params, ret_expr);
     *result = lambda;
     return Status::OK();
 }
 
-Status ExprUDFRegistry::Register(
-    const std::vector<std::string>& args,
-    std::shared_ptr<ExprUDFGenBase> gen_impl_func) {
-    return reg_table_.Register(args, gen_impl_func);
-}
-
 Status LLVMUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
                                         node::FnDefNode** result) {
-    // find generator with specified input argument types
-    int variadic_pos = -1;
-    std::shared_ptr<LLVMUDFGenBase> gen_ptr;
-    std::string signature;
-    CHECK_STATUS(reg_table_.Find(ctx, &gen_ptr, &signature, &variadic_pos),
-                 "Fail to resolve fn name \"", name(), "\"");
-
-    DLOG(INFO) << "Resolve llvm codegen udf \"" << name() << "\" -> " << name()
-               << "(" << signature << ")";
-
     std::vector<const node::TypeNode*> arg_types;
     std::vector<int> arg_nullable;
     std::vector<const ExprAttrNode*> arg_attrs;
@@ -138,7 +87,7 @@ Status LLVMUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
         arg_attrs.push_back(new ExprAttrNode(arg_type, nullable));
     }
     ExprAttrNode out_attr(nullptr, true);
-    auto status = gen_ptr->infer(ctx, arg_attrs, &out_attr);
+    auto status = gen_impl_func_->infer(ctx, arg_attrs, &out_attr);
     for (auto ptr : arg_attrs) {
         delete const_cast<ExprAttrNode*>(ptr);
     }
@@ -152,92 +101,44 @@ Status LLVMUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
     auto udf_def = dynamic_cast<node::UDFByCodeGenDefNode*>(
         ctx->node_manager()->MakeUDFByCodeGenDefNode(
             arg_types, arg_nullable, return_type, return_nullable));
-    udf_def->SetGenImpl(gen_ptr);
+    udf_def->SetGenImpl(gen_impl_func_);
     *result = udf_def;
     return Status::OK();
-}
-
-Status LLVMUDFRegistry::Register(
-    const std::vector<std::string>& args,
-    std::shared_ptr<LLVMUDFGenBase> gen_impl_func) {
-    return reg_table_.Register(args, gen_impl_func);
 }
 
 Status ExternalFuncRegistry::ResolveFunction(UDFResolveContext* ctx,
                                              node::FnDefNode** result) {
-    // find generator with specified input argument types
-    int variadic_pos = -1;
-    node::ExternalFnDefNode* external_def = nullptr;
-    std::string signature;
-    auto status =
-        reg_table_.Find(ctx, &external_def, &signature, &variadic_pos);
-    if (!status.isOK()) {
-        std::stringstream ss;
-        for (size_t i = 0; i < ctx->arg_size(); ++i) {
-            if (ctx->arg_type(i) == nullptr) {
-                ss << "?";
-            } else {
-                ss << ctx->arg_type(i)->GetName();
-            }
-            if (i < ctx->arg_size() - 1) {
-                ss << ", ";
-            }
-        }
-        DLOG(WARNING) << "Fail to resolve fn name \"" << name()
-                      << "\" with argument types <" << ss.str() << ">";
-        return status;
-    }
-
-    CHECK_TRUE(external_def->ret_type() != nullptr,
-               "No return type specified for ", external_def->function_name());
+    CHECK_TRUE(extern_def_->ret_type() != nullptr,
+               "No return type specified for ", extern_def_->function_name());
     DLOG(INFO) << "Resolve udf \"" << name() << "\" -> "
-               << external_def->function_name() << "(" << signature << ")";
-    *result = external_def;
+               << extern_def_->GetFlatString();
+    *result = extern_def_;
     return Status::OK();
-}
-
-Status ExternalFuncRegistry::Register(const std::vector<std::string>& args,
-                                      node::ExternalFnDefNode* func) {
-    return reg_table_.Register(args, func);
 }
 
 Status SimpleUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
                                           node::FnDefNode** result) {
-    int variadic_pos = -1;
-    std::string signature;
-    node::UDFDefNode* udf_def = nullptr;
-    CHECK_STATUS(reg_table_.Find(ctx, &udf_def, &signature, &variadic_pos));
-    *result = udf_def;
+    *result = fn_def_;
     return Status::OK();
-}
-
-Status SimpleUDFRegistry::Register(const std::vector<std::string>& args,
-                                   node::UDFDefNode* udf_def) {
-    return reg_table_.Register(args, udf_def);
 }
 
 Status UDAFRegistry::ResolveFunction(UDFResolveContext* ctx,
                                      node::FnDefNode** result) {
-    auto nm = ctx->node_manager();
-    int variadic_pos = -1;
-    std::string signature;
-    UDAFDefGen udaf_gen;
-    CHECK_STATUS(reg_table_.Find(ctx, &udaf_gen, &signature, &variadic_pos));
-
     // gen init
     node::ExprNode* init_expr = nullptr;
-    if (udaf_gen.init_gen != nullptr) {
-        init_expr = udaf_gen.init_gen->gen(ctx, {});
+    if (udaf_gen_.init_gen != nullptr) {
+        init_expr = udaf_gen_.init_gen->gen(ctx, {});
         CHECK_TRUE(init_expr != nullptr);
     }
 
     // gen update
+    auto nm = ctx->node_manager();
     node::FnDefNode* update_func = nullptr;
     std::vector<const node::TypeNode*> list_types;
     std::vector<node::ExprNode*> update_args;
     auto state_arg = nm->MakeExprIdNode("state", node::ExprIdNode::GetNewId());
-    state_arg->SetOutputType(udaf_gen.state_type);
-    state_arg->SetNullable(udaf_gen.state_nullable);
+    state_arg->SetOutputType(udaf_gen_.state_type);
+    state_arg->SetNullable(udaf_gen_.state_nullable);
     update_args.push_back(state_arg);
     for (size_t i = 0; i < ctx->arg_size(); ++i) {
         auto elem_arg = nm->MakeExprIdNode("elem_" + std::to_string(i),
@@ -250,36 +151,31 @@ Status UDAFRegistry::ResolveFunction(UDFResolveContext* ctx,
         list_types.push_back(list_type);
     }
     UDFResolveContext update_ctx(update_args, nm, ctx->library());
-    CHECK_TRUE(udaf_gen.update_gen != nullptr);
+    CHECK_TRUE(udaf_gen_.update_gen != nullptr);
     CHECK_STATUS(
-        udaf_gen.update_gen->ResolveFunction(&update_ctx, &update_func),
+        udaf_gen_.update_gen->ResolveFunction(&update_ctx, &update_func),
         "Resolve update function of ", name(), " failed");
 
     // gen merge
     node::FnDefNode* merge_func = nullptr;
-    if (udaf_gen.merge_gen != nullptr) {
+    if (udaf_gen_.merge_gen != nullptr) {
         UDFResolveContext merge_ctx({state_arg, state_arg}, nm, ctx->library());
         CHECK_STATUS(
-            udaf_gen.merge_gen->ResolveFunction(&merge_ctx, &merge_func),
+            udaf_gen_.merge_gen->ResolveFunction(&merge_ctx, &merge_func),
             "Resolve merge function of ", name(), " failed");
     }
 
     // gen output
     node::FnDefNode* output_func = nullptr;
-    if (udaf_gen.output_gen != nullptr) {
+    if (udaf_gen_.output_gen != nullptr) {
         UDFResolveContext output_ctx({state_arg}, nm, ctx->library());
         CHECK_STATUS(
-            udaf_gen.output_gen->ResolveFunction(&output_ctx, &output_func),
+            udaf_gen_.output_gen->ResolveFunction(&output_ctx, &output_func),
             "Resolve output function of ", name(), " failed");
     }
     *result = nm->MakeUDAFDefNode(name(), list_types, init_expr, update_func,
                                   merge_func, output_func);
     return Status::OK();
-}
-
-Status UDAFRegistry::Register(const std::vector<std::string>& args,
-                              const UDAFDefGen& udaf_gen) {
-    return reg_table_.Register(args, udaf_gen);
 }
 
 }  // namespace udf

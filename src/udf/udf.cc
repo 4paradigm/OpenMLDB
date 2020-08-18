@@ -98,9 +98,7 @@ int32_t weekofyear(codec::Date *date) {
     return d.week_number();
 }
 
-float Cotf(float x) {
-    return cosf(x)/sinf(x);
-}
+float Cotf(float x) { return cosf(x) / sinf(x); }
 
 void date_format(codec::Timestamp *timestamp, fesql::codec::StringRef *format,
                  fesql::codec::StringRef *output) {

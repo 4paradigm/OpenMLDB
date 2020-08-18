@@ -105,7 +105,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     add_definitions(-Wno-null-dereference)
     add_definitions(-Wno-deprecated-register)
     add_definitions(-Wno-c++17-extensions)
-    add_definitions(-Wno-defaulted-function-deleted)
+    # add_definitions(-Wno-defaulted-function-deleted)
 endif ()
 
 set(boost_libs boost_graph)

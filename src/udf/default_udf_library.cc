@@ -291,7 +291,7 @@ struct AvgCateDef {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
         helper.library()
             ->RegisterUDAFTemplate<Impl>("avg_cate")
-            .doc(helper.registry()->doc())
+            .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
 
@@ -352,7 +352,7 @@ struct AvgCateWhereDef {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
         helper.library()
             ->RegisterUDAFTemplate<Impl>("avg_cate_where")
-            .doc(helper.registry()->doc())
+            .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
 
@@ -395,7 +395,7 @@ struct TopAvgCateWhereDef {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
         helper.library()
             ->RegisterUDAFTemplate<Impl>("top_n_avg_cate_where")
-            .doc(helper.registry()->doc())
+            .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
 
@@ -533,8 +533,8 @@ void DefaultUDFLibrary::InitStringUDF() {
 
             @endcode
 
-            @param **str**
-            @param **pos** define the begining of the substring.
+            @param str
+            @param pos define the begining of the substring.
 
             - If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
             - If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
@@ -550,7 +550,6 @@ void DefaultUDFLibrary::InitStringUDF() {
         .doc(R"(
             Return a substring `len` characters long from string str, starting at position `pos`.
 
-            example
             @code{.sql}
 
                 select substr("hello world", 3, 6);
@@ -558,13 +557,13 @@ void DefaultUDFLibrary::InitStringUDF() {
 
             @endcode
 
-            @param **str**
-            @param **pos**: define the begining of the substring.
+            @param str
+            @param pos: define the begining of the substring.
 
              - If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
              - If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
 
-            @param **len** length of substring. If len is less than 1, the result is the empty string.
+            @param len length of substring. If len is less than 1, the result is the empty string.
 
             @since 2.0.0.0
         )");
@@ -586,25 +585,23 @@ void DefaultUDFLibrary::InitStringUDF() {
 void DefaultUDFLibrary::IniMathUDF() {
     RegisterExternal("log")
         .doc(R"(
-log(base, expr)
-If called with one parameter, this function returns the natural logarithm of expr.
-If called with two parameters, this function returns the logarithm of expr to the base.
+            log(base, expr)
+            If called with one parameter, this function returns the natural logarithm of expr.
+            If called with two parameters, this function returns the logarithm of expr to the base.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT LOG(1);  
-    -- output 0.000000
+                SELECT LOG(1);  
+                -- output 0.000000
 
-    SELECT LOG(10,100);
-    -- output 2
-@endcode
+                SELECT LOG(10,100);
+                -- output 2
+            @endcode
 
-@param **base**
-@param **expr**
+            @param base
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args<float>(static_cast<float (*)(float)>(log))
         .args<double>(static_cast<double (*)(double)>(log));
     RegisterExprUDF("log").args<AnyArg>(
@@ -635,20 +632,18 @@ example
 
     RegisterExternal("ln")
         .doc(R"(
-Return the natural logarithm of expr.
+            Return the natural logarithm of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT LN(1);  
-    -- output 0.000000
+                SELECT LN(1);  
+                -- output 0.000000
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args<float>(static_cast<float (*)(float)>(log))
         .args<double>(static_cast<double (*)(double)>(log));
     RegisterExprUDF("ln").args<AnyArg>(
@@ -665,20 +660,18 @@ example
 
     RegisterExternal("log2")
         .doc(R"(
-Return the base-2 logarithm of expr.
+            Return the base-2 logarithm of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT LOG2(65536);  
-    -- output 16
+                SELECT LOG2(65536);  
+                -- output 16
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args<float>(static_cast<float (*)(float)>(log2))
         .args<double>(static_cast<double (*)(double)>(log2));
     RegisterExprUDF("log2").args<AnyArg>(
@@ -695,20 +688,18 @@ example
 
     RegisterExternal("log10")
         .doc(R"(
-Return the base-10 logarithm of expr.
+            Return the base-10 logarithm of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT LOG10(100);  
-    -- output 2
+                SELECT LOG10(100);  
+                -- output 2
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args<float>(static_cast<float (*)(float)>(log10))
         .args<double>(static_cast<double (*)(double)>(log10));
     RegisterExprUDF("log10").args<AnyArg>(
@@ -727,7 +718,6 @@ example
         .doc(R"(
             Return the absolute value of expr.
 
-            example
             @code{.sql}
 
                 SELECT ABS(-32);
@@ -735,13 +725,11 @@ example
 
             @endcode
 
-            @param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int64_t, double>();
-    RegisterExternalTemplate<v1::Abs32>("abs")
-        .args_in<int16_t, int32_t>();
+    RegisterExternalTemplate<v1::Abs32>("abs").args_in<int16_t, int32_t>();
     RegisterExprUDF("abs").args<AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
@@ -756,23 +744,21 @@ example
 
     RegisterExternalTemplate<v1::Ceil>("ceil")
         .doc(R"(
-Return the smallest integer value not less than the expr
+            Return the smallest integer value not less than the expr
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT CEIL(1.23);
-    -- output 2
+                SELECT CEIL(1.23);
+                -- output 2
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t>();
-    RegisterExternal("ceil")
-        .args<double>(static_cast<double (*)(double)>(ceil));
+    RegisterExternal("ceil").args<double>(
+        static_cast<double (*)(double)>(ceil));
     RegisterExprUDF("ceil").args<AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
@@ -789,43 +775,38 @@ example
 
     RegisterExternalTemplate<v1::Exp>("exp")
         .doc(R"(
-Return the value of e (the base of natural logarithms) raised to the power of expr.
+            Return the value of e (the base of natural logarithms) raised to the power of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT EXP(0);  
-    -- output 1
+                SELECT EXP(0);  
+                -- output 1
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("exp")
-        .args<float>(static_cast<float (*)(float)>(expf));
+    RegisterExternal("exp").args<float>(static_cast<float (*)(float)>(expf));
 
     RegisterExternalTemplate<v1::Floor>("floor")
-.doc(R"(
-Return the largest integer value not less than the expr
+        .doc(R"(
+            Return the largest integer value not less than the expr
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT FLOOR(1.23);
-    -- output 1
+                SELECT FLOOR(1.23);
+                -- output 1
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t>();
-    RegisterExternal("floor")
-        .args<double>(static_cast<double (*)(double)>(floor));
+    RegisterExternal("floor").args<double>(
+        static_cast<double (*)(double)>(floor));
     RegisterExprUDF("floor").args<AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
@@ -839,26 +820,24 @@ example
         });
 
     RegisterExternalTemplate<v1::Pow>("pow")
-.doc(R"(
-pow(expr1, expr2)
-Return the value of expr1 to the power of expr2.
+        .doc(R"(
+            pow(expr1, expr2)
+            Return the value of expr1 to the power of expr2.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT POW(2, 10);
-    -- output 1024.000000
+                SELECT POW(2, 10);
+                -- output 1024.000000
 
-@endcode
+            @endcode
 
-@param **expr1**
-@param **expr2**
+            @param expr1
+            @param expr2
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("pow")
-        .args<float, float>(static_cast<float (*)(float, float)>(powf));
+    RegisterExternal("pow").args<float, float>(
+        static_cast<float (*)(float, float)>(powf));
     RegisterExprUDF("pow").args<AnyArg, AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
@@ -879,25 +858,22 @@ example
     RegisterAlias("power", "pow");
 
     RegisterExternalTemplate<v1::Round>("round")
-.doc(R"(
-Return the nearest integer value to expr (in floating-point format), 
-rounding halfway cases away from zero, regardless of the current rounding mode.
+        .doc(R"(
+            Return the nearest integer value to expr (in floating-point format), 
+            rounding halfway cases away from zero, regardless of the current rounding mode.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT ROUND(1.23);
-    -- output 1
+                SELECT ROUND(1.23);
+                -- output 1
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int64_t, double>();
-    RegisterExternalTemplate<v1::Round32>("round")
-        .args_in<int16_t, int32_t>();
+    RegisterExternalTemplate<v1::Round32>("round").args_in<int16_t, int32_t>();
     RegisterExprUDF("round").args<AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
@@ -911,46 +887,41 @@ example
         });
 
     RegisterExternalTemplate<v1::Sqrt>("sqrt")
-.doc(R"(
-Return square root of expr.
+        .doc(R"(
+            Return square root of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT SQRT(100);
-    -- output 10.000000
+                SELECT SQRT(100);
+                -- output 10.000000
 
-@endcode
+            @endcode
 
-@param **expr**: It is a single argument in radians.
+            @param expr: It is a single argument in radians.
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("sqrt")
-        .args<float>(static_cast<float (*)(float)>(sqrtf));
+    RegisterExternal("sqrt").args<float>(static_cast<float (*)(float)>(sqrtf));
 
     RegisterExternalTemplate<v1::Truncate>("truncate")
-.doc(R"(
-Return the nearest integer that is not greater in magnitude than the expr.
+        .doc(R"(
+            Return the nearest integer that is not greater in magnitude than the expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT TRUNCATE(1.23);
-    -- output 1.0
+                SELECT TRUNCATE(1.23);
+                -- output 1.0
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int64_t, double>();
     RegisterExternalTemplate<v1::Truncate32>("truncate")
         .args_in<int16_t, int32_t>();
-    RegisterExprUDF("truncate").args<AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+    RegisterExprUDF("truncate")
+        .args<AnyArg>([](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
                 ctx->SetError("truncate do not support type " +
                               x->GetOutputType()->GetName());
@@ -965,64 +936,58 @@ example
 void DefaultUDFLibrary::InitTrigonometricUDF() {
     RegisterExternalTemplate<v1::Acos>("acos")
         .doc(R"(
-Return the arc cosine of expr.
+            Return the arc cosine of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT ACOS(1);
-    -- output 0
+                SELECT ACOS(1);
+                -- output 0
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("acos").args<float>(static_cast<float (*)(float)>(acosf));
 
     RegisterExternalTemplate<v1::Asin>("asin")
         .doc(R"(
-Return the arc sine of expr.
+            Return the arc sine of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT ASIN(0.0);
-    -- output 0.000000
+                SELECT ASIN(0.0);
+                -- output 0.000000
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("asin").args<float>(static_cast<float (*)(float)>(asinf));
 
     RegisterExternalTemplate<v1::Atan>("atan")
         .doc(R"(
-atan(Y, X)
-If called with one parameter, this function returns the arc tangent of expr.
-If called with two parameters X and Y, this function returns the arc tangent of Y / X.
+            atan(Y, X)
+            If called with one parameter, this function returns the arc tangent of expr.
+            If called with two parameters X and Y, this function returns the arc tangent of Y / X.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT ATAN(-0.0);  
-    -- output -0.000000
+                SELECT ATAN(-0.0);  
+                -- output -0.000000
 
-    SELECT ATAN(0, -0);
-    -- output 3.141593
+                SELECT ATAN(0, -0);
+                -- output 3.141593
 
-@endcode
+            @endcode
 
-@param **X**
-@param **Y**
+            @param X
+            @param Y
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("atan").args<float>(static_cast<float (*)(float)>(atanf));
 
@@ -1050,22 +1015,20 @@ example
 
     RegisterExternalTemplate<v1::Atan2>("atan2")
         .doc(R"(
-atan2(Y, X)
-Return the arc tangent of Y / X..
+            atan2(Y, X)
+            Return the arc tangent of Y / X..
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT ATAN2(0, -0);
-    -- output 3.141593
+                SELECT ATAN2(0, -0);
+                -- output 3.141593
 
-@endcode
+            @endcode
 
-@param **X**
-@param **Y**
+            @param X
+            @param Y
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("atan2").args<float, float>(
         static_cast<float (*)(float, float)>(atan2f));
@@ -1088,88 +1051,77 @@ example
         });
 
     RegisterExternalTemplate<v1::Cos>("cos")
-.doc(R"(
-Return the cosine of expr.
+        .doc(R"(
+            Return the cosine of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT COS(0);
-    -- output 1.000000
+                SELECT COS(0);
+                -- output 1.000000
 
-@endcode
+            @endcode
 
-@param **expr**: It is a single argument in radians.
+            @param expr: It is a single argument in radians.
 
-- The value returned by cos() is always in the range: -1 to 1.
+            - The value returned by cos() is always in the range: -1 to 1.
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("cos")
-        .args<float>(static_cast<float (*)(float)>(cosf));
+    RegisterExternal("cos").args<float>(static_cast<float (*)(float)>(cosf));
 
     RegisterExternalTemplate<v1::Cot>("cot")
         .doc(R"(
-Return the cotangent of expr.
+            Return the cotangent of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT COT(1);  
-    -- output 0.6420926159343306
+                SELECT COT(1);  
+                -- output 0.6420926159343306
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("cot")
-        .args<float>(static_cast<float (*)(float)>(v1::Cotf));
+    RegisterExternal("cot").args<float>(
+        static_cast<float (*)(float)>(v1::Cotf));
 
     RegisterExternalTemplate<v1::Sin>("sin")
-.doc(R"(
-Return the sine of expr.
+        .doc(R"(
+            Return the sine of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT SIN(0);
-    -- output 0.000000
+                SELECT SIN(0);
+                -- output 0.000000
 
-@endcode
+            @endcode
 
-@param **expr**: It is a single argument in radians.
+            @param expr: It is a single argument in radians.
 
-- The value returned by sin() is always in the range: -1 to 1.
+            - The value returned by sin() is always in the range: -1 to 1.
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("sin")
-        .args<float>(static_cast<float (*)(float)>(sinf));
+    RegisterExternal("sin").args<float>(static_cast<float (*)(float)>(sinf));
 
     RegisterExternalTemplate<v1::Tan>("tan")
-.doc(R"(
-Return the tangent of expr.
+        .doc(R"(
+            Return the tangent of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT TAN(0);
-    -- output 0.000000
+                SELECT TAN(0);
+                -- output 0.000000
 
-@endcode
+            @endcode
 
-@param **expr**: It is a single argument in radians.
+            @param expr: It is a single argument in radians.
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
-    RegisterExternal("tan")
-        .args<float>(static_cast<float (*)(float)>(tanf));
+    RegisterExternal("tan").args<float>(static_cast<float (*)(float)>(tanf));
 }
 
 void DefaultUDFLibrary::Init() {
@@ -1372,8 +1324,8 @@ void DefaultUDFLibrary::Init() {
             Each group is represented as 'K:V' and separated by comma in outputs
             and are sorted by key in ascend order.
 
-            @param **catagory**  Specify catagory column to group by. 
-            @param **value**  Specify value column to aggregate on.
+            @param catagory  Specify catagory column to group by. 
+            @param value  Specify value column to aggregate on.
 
             Example:
             catagory|value
@@ -1396,9 +1348,9 @@ void DefaultUDFLibrary::Init() {
             and output string. Each group is represented as 'K:V' and separated by comma in 
             outputs and are sorted by key in ascend order.
 
-            @param **catagory**  Specify catagory column to group by. 
-            @param **value**  Specify value column to aggregate on.
-            @param **condition**  Specify condition column.
+            @param catagory  Specify catagory column to group by. 
+            @param value  Specify value column to aggregate on.
+            @param condition  Specify condition column.
 
             Example:
             catagory|value|condition
@@ -1421,10 +1373,10 @@ void DefaultUDFLibrary::Init() {
             Output string for top N keys in descend order. Each group is represented as 'K:V'
             and separated by comma.
 
-            @param **catagory**  Specify catagory column to group by. 
-            @param **value**  Specify value column to aggregate on.
-            @param **condition**  Specify condition column.
-            @param **n**  Fetch top n keys.
+            @param catagory  Specify catagory column to group by. 
+            @param value  Specify value column to aggregate on.
+            @param condition  Specify condition column.
+            @param n  Fetch top n keys.
 
             Example:
             catagory|value|condition
