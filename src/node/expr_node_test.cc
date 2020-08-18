@@ -24,6 +24,7 @@
 namespace fesql {
 namespace node {
 
+using codec::Timestamp;
 using udf::Nullable;
 
 class ExprNodeTest : public ::testing::Test {
@@ -66,15 +67,35 @@ void CheckInfer(
 
     ExprAnalysisContext ctx(&nm, nullptr);
     auto status = expr->InferAttr(&ctx);
-    LOG(INFO) << "Infer expr status: " << status.msg;
+    if (!status.isOK()) {
+        LOG(INFO) << "Infer expr status: " << status.msg;
+    }
     ASSERT_TRUE(status.isOK());
+
+    std::stringstream ss;
+    ss << "<";
+    for (size_t i = 0; i < arg_types.size(); ++i) {
+        if (arg_nullable[i]) {
+            ss << "nullable ";
+        }
+        ss << arg_types[i]->GetName();
+        if (i < arg_types.size() - 1) {
+            ss << ", ";
+        }
+    }
+    ss << "> -> ";
+    if (expr->nullable()) {
+        ss << "nullable ";
+    }
+    ss << expr->GetOutputType()->GetName();
+    LOG(INFO) << ss.str();
 
     ASSERT_EQ(udf::IsNullableTrait<Ret>::value, expr->nullable());
     ASSERT_TRUE(TypeEquals(udf::DataTypeTrait<Ret>::to_type_node(&nm),
                            expr->GetOutputType()));
 }
 
-template <typename Ret, typename... T>
+template <typename... T>
 void CheckInferError(
     const std::function<ExprNode*(
         NodeManager*, typename std::pair<T, ExprNode*>::second_type...)>&
@@ -111,8 +132,165 @@ TEST_F(ExprNodeTest, CondExprNodeTest) {
     CheckInfer<Nullable<float>, bool, Nullable<float>, float>(do_build);
     CheckInfer<Nullable<float>, bool, float, Nullable<float>>(do_build);
 
-    CheckInferError<float, int32_t, float, float>(do_build);
-    CheckInferError<float, bool, double, float>(do_build);
+    CheckInferError<int32_t, float, float>(do_build);
+    CheckInferError<bool, double, float>(do_build);
+}
+
+void TestInferBinaryArithmetic(FnOperator op) {
+    auto do_build = [op](NodeManager* nm, ExprNode* left, ExprNode* right) {
+        return nm->MakeBinaryExprNode(left, right, op);
+    };
+    CheckInfer<bool, bool, bool>(do_build);
+    CheckInfer<int16_t, bool, int16_t>(do_build);
+    CheckInfer<int32_t, bool, int32_t>(do_build);
+    CheckInfer<int64_t, bool, int64_t>(do_build);
+    CheckInfer<float, bool, float>(do_build);
+    CheckInfer<double, bool, double>(do_build);
+    CheckInferError<bool, Timestamp>(do_build);
+
+    CheckInfer<int16_t, int16_t, int16_t>(do_build);
+    CheckInfer<int32_t, int16_t, int32_t>(do_build);
+    CheckInfer<int64_t, int16_t, int64_t>(do_build);
+    CheckInfer<float, int16_t, float>(do_build);
+    CheckInfer<double, int16_t, double>(do_build);
+    CheckInfer<Timestamp, int16_t, Timestamp>(do_build);
+    CheckInfer<int32_t, int32_t, int16_t>(do_build);
+    CheckInfer<int32_t, int32_t, int32_t>(do_build);
+    CheckInfer<int64_t, int32_t, int64_t>(do_build);
+    CheckInfer<float, int32_t, float>(do_build);
+    CheckInfer<double, int32_t, double>(do_build);
+    CheckInfer<Timestamp, int32_t, Timestamp>(do_build);
+    CheckInfer<int64_t, int64_t, int16_t>(do_build);
+    CheckInfer<int64_t, int64_t, int32_t>(do_build);
+    CheckInfer<int64_t, int64_t, int64_t>(do_build);
+    CheckInfer<float, int64_t, float>(do_build);
+    CheckInfer<double, int64_t, double>(do_build);
+    CheckInfer<Timestamp, int64_t, Timestamp>(do_build);
+    CheckInfer<float, float, int16_t>(do_build);
+    CheckInfer<float, float, int32_t>(do_build);
+    CheckInfer<float, float, int64_t>(do_build);
+    CheckInfer<float, float, float>(do_build);
+    CheckInfer<double, float, double>(do_build);
+    CheckInferError<float, Timestamp>(do_build);
+    CheckInfer<double, double, int16_t>(do_build);
+    CheckInfer<double, double, int32_t>(do_build);
+    CheckInfer<double, double, int64_t>(do_build);
+    CheckInfer<double, double, float>(do_build);
+    CheckInfer<double, double, double>(do_build);
+    CheckInferError<double, Timestamp>(do_build);
+    CheckInfer<Timestamp, Timestamp, int16_t>(do_build);
+    CheckInfer<Timestamp, Timestamp, int32_t>(do_build);
+    CheckInfer<Timestamp, Timestamp, int64_t>(do_build);
+    CheckInferError<Timestamp, float>(do_build);
+    CheckInferError<Timestamp, double>(do_build);
+    CheckInfer<Timestamp, Timestamp, Timestamp>(do_build);
+}
+
+void TestInferBinaryCompare(FnOperator op) {
+    auto do_build = [op](NodeManager* nm, ExprNode* left, ExprNode* right) {
+        return nm->MakeBinaryExprNode(left, right, op);
+    };
+    CheckInfer<bool, bool, bool>(do_build);
+    CheckInfer<bool, bool, int16_t>(do_build);
+    CheckInfer<bool, bool, int32_t>(do_build);
+    CheckInfer<bool, bool, int64_t>(do_build);
+    CheckInfer<bool, bool, float>(do_build);
+    CheckInfer<bool, bool, double>(do_build);
+    CheckInferError<bool, Timestamp>(do_build);
+
+    CheckInfer<bool, int16_t, int16_t>(do_build);
+    CheckInfer<bool, int16_t, int32_t>(do_build);
+    CheckInfer<bool, int16_t, int64_t>(do_build);
+    CheckInfer<bool, int16_t, float>(do_build);
+    CheckInfer<bool, int16_t, double>(do_build);
+    CheckInfer<bool, int16_t, Timestamp>(do_build);
+    CheckInfer<bool, int32_t, int16_t>(do_build);
+    CheckInfer<bool, int32_t, int32_t>(do_build);
+    CheckInfer<bool, int32_t, int64_t>(do_build);
+    CheckInfer<bool, int32_t, float>(do_build);
+    CheckInfer<bool, int32_t, double>(do_build);
+    CheckInfer<bool, int32_t, Timestamp>(do_build);
+    CheckInfer<bool, int64_t, int16_t>(do_build);
+    CheckInfer<bool, int64_t, int32_t>(do_build);
+    CheckInfer<bool, int64_t, int64_t>(do_build);
+    CheckInfer<bool, int64_t, float>(do_build);
+    CheckInfer<bool, int64_t, double>(do_build);
+    CheckInfer<bool, int64_t, Timestamp>(do_build);
+    CheckInfer<bool, float, int16_t>(do_build);
+    CheckInfer<bool, float, int32_t>(do_build);
+    CheckInfer<bool, float, int64_t>(do_build);
+    CheckInfer<bool, float, float>(do_build);
+    CheckInfer<bool, float, double>(do_build);
+    CheckInferError<float, Timestamp>(do_build);
+    CheckInfer<bool, double, int16_t>(do_build);
+    CheckInfer<bool, double, int32_t>(do_build);
+    CheckInfer<bool, double, int64_t>(do_build);
+    CheckInfer<bool, double, float>(do_build);
+    CheckInfer<bool, double, double>(do_build);
+    CheckInferError<double, Timestamp>(do_build);
+    CheckInfer<bool, Timestamp, int16_t>(do_build);
+    CheckInfer<bool, Timestamp, int32_t>(do_build);
+    CheckInfer<bool, Timestamp, int64_t>(do_build);
+    CheckInferError<Timestamp, float>(do_build);
+    CheckInferError<Timestamp, double>(do_build);
+    CheckInfer<bool, Timestamp, Timestamp>(do_build);
+}
+
+void TestInferBinaryLogical(FnOperator op) {
+    auto do_build = [op](NodeManager* nm, ExprNode* left, ExprNode* right) {
+        return nm->MakeBinaryExprNode(left, right, op);
+    };
+    CheckInfer<bool, bool, bool>(do_build);
+    CheckInfer<bool, bool, int32_t>(do_build);
+    CheckInfer<bool, int16_t, int64_t>(do_build);
+    CheckInfer<bool, int32_t, int32_t>(do_build);
+    CheckInfer<bool, float, bool>(do_build);
+}
+
+TEST_F(ExprNodeTest, InferBinaryArithmeticTypeTest) {
+    TestInferBinaryArithmetic(kFnOpAdd);
+    TestInferBinaryArithmetic(kFnOpMinus);
+    TestInferBinaryArithmetic(kFnOpMulti);
+    TestInferBinaryArithmetic(kFnOpDiv);
+    TestInferBinaryArithmetic(kFnOpMod);
+}
+
+TEST_F(ExprNodeTest, InferBinaryCompareTypeTest) {
+    TestInferBinaryCompare(kFnOpEq);
+    TestInferBinaryCompare(kFnOpNeq);
+    TestInferBinaryCompare(kFnOpLt);
+    TestInferBinaryCompare(kFnOpLe);
+    TestInferBinaryCompare(kFnOpGt);
+    TestInferBinaryCompare(kFnOpGe);
+}
+
+TEST_F(ExprNodeTest, InferBinaryLogicalTypeTest) {
+    TestInferBinaryLogical(kFnOpAnd);
+    TestInferBinaryLogical(kFnOpOr);
+    TestInferBinaryLogical(kFnOpXor);
+}
+
+TEST_F(ExprNodeTest, InferNotTypeTest) {
+    auto do_build = [](NodeManager* nm, ExprNode* expr) {
+        return nm->MakeUnaryExprNode(expr, kFnOpNot);
+    };
+    CheckInfer<bool, bool>(do_build);
+    CheckInfer<bool, int16_t>(do_build);
+    CheckInfer<bool, int32_t>(do_build);
+    CheckInfer<bool, int64_t>(do_build);
+    CheckInfer<bool, float>(do_build);
+    CheckInfer<bool, double>(do_build);
+}
+
+TEST_F(ExprNodeTest, InferUnaryMinusTypeTest) {
+    auto do_build = [](NodeManager* nm, ExprNode* expr) {
+        return nm->MakeUnaryExprNode(expr, kFnOpMinus);
+    };
+    CheckInfer<int16_t, int16_t>(do_build);
+    CheckInfer<int32_t, int32_t>(do_build);
+    CheckInfer<int64_t, int64_t>(do_build);
+    CheckInfer<float, float>(do_build);
+    CheckInfer<double, double>(do_build);
 }
 
 }  // namespace node

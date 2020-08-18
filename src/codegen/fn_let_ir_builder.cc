@@ -272,9 +272,10 @@ Status RowFnLetIRBuilder::BindProjectFrame(ExprIRBuilder* expr_ir_builder,
                                            ::llvm::BasicBlock* block,
                                            ScopeVar* sv) {
     Status status;
-    expr_ir_builder->set_frame(frame);
-    auto window_arg = compile_func->GetArg(1);
-    auto window_key = window_arg->GetExprString();
+    auto frame_arg = compile_func->GetArg(1);
+    expr_ir_builder->set_frame(frame_arg, frame);
+
+    auto window_key = frame_arg->GetExprString();
     NativeValue window_arg_value;
     CHECK_TRUE(expr_ir_builder->BuildWindow(&window_arg_value, status),
                "Bind window failed: ", status.msg);
@@ -284,7 +285,7 @@ Status RowFnLetIRBuilder::BindProjectFrame(ExprIRBuilder* expr_ir_builder,
     CHECK_TRUE(frame_ptr != nullptr && frame_ptr->getType()->isPointerTy());
     ::llvm::Type* row_list_ptr_ty = nullptr;
     CHECK_TRUE(
-        GetLLVMType(module_, window_arg->GetOutputType(), &row_list_ptr_ty));
+        GetLLVMType(module_, frame_arg->GetOutputType(), &row_list_ptr_ty));
     frame_ptr = builder.CreatePointerCast(frame_ptr, row_list_ptr_ty);
     window_arg_value = window_arg_value.Replace(frame_ptr);
     if (sv->ExistVar(window_key)) {

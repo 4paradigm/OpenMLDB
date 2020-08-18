@@ -1271,6 +1271,8 @@ class UnaryExpr : public ExprNode {
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *node) const;
 
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+
  private:
     FnOperator op_;
 };

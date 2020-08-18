@@ -559,7 +559,7 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
     ::llvm::IRBuilder<> builder(llvm_ctx);
     auto void_ty = llvm::Type::getVoidTy(llvm_ctx);
     auto int64_ty = llvm::Type::getInt64Ty(llvm_ctx);
-    expr_ir_builder->set_frame(frame_node_);
+    expr_ir_builder->set_frame(nullptr, frame_node_);
     base::Status status;
     NativeValue window_ptr;
     bool ok = expr_ir_builder->BuildWindow(&window_ptr, status);
