@@ -725,17 +725,17 @@ example
 
     RegisterExternalTemplate<v1::Abs>("abs")
         .doc(R"(
-Return the absolute value of expr.
+            Return the absolute value of expr.
 
-example
-@code{.sql}
+            example
+            @code{.sql}
 
-    SELECT ABS(-32);
-    -- output 32
+                SELECT ABS(-32);
+                -- output 32
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param **expr**
 
 @since 2.0.0.0
 )")

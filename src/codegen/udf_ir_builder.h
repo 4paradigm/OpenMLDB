@@ -28,7 +28,8 @@ class UDFIRBuilder {
  public:
     UDFIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
                  const vm::SchemasContext* schemas_context,
-                 ::llvm::Module* module);
+                 ::llvm::Module* module, node::ExprNode* frame_arg,
+                 node::FrameNode* frame);
 
     ~UDFIRBuilder() {}
 
@@ -97,6 +98,9 @@ class UDFIRBuilder {
     ScopeVar* sv_;
     ::llvm::Module* module_;
     const vm::SchemasContext* schemas_context_;
+
+    node::ExprNode* frame_arg_;
+    node::FrameNode* frame_;
 };
 
 }  // namespace codegen
