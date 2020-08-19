@@ -12,6 +12,8 @@ import com._4paradigm.rtidb.client.type.IndexType;
 import com._4paradigm.rtidb.client.type.TableType;
 import com._4paradigm.rtidb.ns.NS;
 import org.joda.time.DateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -27,6 +29,7 @@ public class RelationTableTest extends TestCaseBase {
 
     private static AtomicInteger id = new AtomicInteger(90000);
     private static String[] nodes = Config.NODES;
+    private final static Logger logger = LoggerFactory.getLogger(ColumnKeyTest.class);
 
     @BeforeClass
     public void setUp() {
@@ -2390,6 +2393,9 @@ public class RelationTableTest extends TestCaseBase {
     public void testRelationalTableUpdateIndex(RelationTestArgs args) {
         nsc.dropTable(args.tableDesc.getName());
         boolean ok = nsc.createTable(args.tableDesc);
+        if (!ok) {
+            logger.warn("xxxx error");
+        }
         Assert.assertTrue(ok);
         client.refreshRouteTable();
         String name = args.tableDesc.getName();
