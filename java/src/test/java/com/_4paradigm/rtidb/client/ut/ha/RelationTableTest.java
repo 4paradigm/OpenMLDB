@@ -1856,22 +1856,9 @@ public class RelationTableTest extends TestCaseBase {
         arr[0] = new HashMap<>(data);
 
         List<Object> list = new ArrayList<>();
-        {
-            Map<String, Object> conditionColumns = new HashMap<>();
-            conditionColumns.put("id", 12l);
-            list.add(conditionColumns);
-        }
-        {
-            Map<String, Object> conditionColumns = new HashMap<>();
-            conditionColumns.put("price", 11.1);
-            list.add(conditionColumns);
-        }
-        {
-            Map<String, Object> conditionColumns = new HashMap<>();
-            conditionColumns.put("id", 11l);
-            list.add(conditionColumns);
-        }
-
+        list.add(new HashMap<String, Object>() { { put("id", 12l);} });
+        list.add(new HashMap<String, Object>() { { put("price", 11.1);} });
+        list.add(new HashMap<String, Object>() { { put("id", 11l);} });
         return new Object[][]{
                 new Object[]{createRelationalArgs(arr, list, new Object[]{5, 1, 0})}
         };
@@ -2069,10 +2056,9 @@ public class RelationTableTest extends TestCaseBase {
             Map map = new HashMap((Map) (args.row[0]));
             map.put("attribute", "a0");
             Assert.assertTrue(tableSyncClient.put(name, map, wo).isSuccess());
-            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[0]), new WriteOption(true)).isSuccess());
-            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[1]), wo).isSuccess());
-            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[2]), wo).isSuccess());
-            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[3]), wo).isSuccess());
+            for (int i = 0; i < 4; i++) {
+                Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[i]), new WriteOption(true)).isSuccess());
+            }
 
             //query
             ReadOption ro;
@@ -2412,10 +2398,9 @@ public class RelationTableTest extends TestCaseBase {
             Assert.assertEquals(schema.size(), 9);
             //put
             WriteOption wo = new WriteOption();
-            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[0]), wo).isSuccess());
-            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[1]), wo).isSuccess());
-            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[2]), wo).isSuccess());
-            Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[3]), wo).isSuccess());
+            for (int i = 0; i < 4; i ++) {
+                Assert.assertTrue(tableSyncClient.put(name, (Map) (args.row[i]), wo).isSuccess());
+            }
             //query
             ReadOption ro;
             RelationalIterator it;
