@@ -711,7 +711,7 @@ class NameServerImpl : public NameServer {
     std::shared_ptr<::rtidb::api::TaskInfo> FindTask(
         uint64_t op_id, ::rtidb::api::TaskType task_type);
 
-    int CreateBlobTable(std::shared_ptr<TableInfo> table_info);
+    int CreateBlobTable(std::shared_ptr<TableInfo> table_info, std::string* msg);
 
     bool SaveTableInfo(std::shared_ptr<TableInfo> table_info);
 

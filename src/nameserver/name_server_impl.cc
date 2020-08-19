@@ -4958,14 +4958,15 @@ void NameServerImpl::CreateTable(RpcController* controller,
         cur_term = term_;
     }
     if (table_info->table_type() == ::rtidb::type::kObjectStore) {
-        int ret = CreateBlobTable(table_info);
+        std::string msg;
+        int ret = CreateBlobTable(table_info, &msg);
         if (ret != 0) {
             if (ret == 1) {
                 response->set_code(ReturnCode::kSetPartitionInfoFailed);
                 response->set_msg("not found avaiable blob server");
             } else {
                 response->set_code(ReturnCode::kCreateTableFailed);
-                response->set_msg("create table on blob server fail");
+                response->set_msg("create blob table failed" + msg);
             }
             return;
         }
@@ -5007,14 +5008,15 @@ void NameServerImpl::CreateTable(RpcController* controller,
             }
         }
         if (has_blob) {
-            int ret = CreateBlobTable(table_info);
+            std::string msg;
+            int ret = CreateBlobTable(table_info, &msg);
             if (ret != 0) {
                 if (ret == 1) {
                     response->set_code(ReturnCode::kSetPartitionInfoFailed);
                     response->set_msg("not found avaiable blob server");
                 } else {
                     response->set_code(ReturnCode::kCreateTableFailed);
-                    response->set_msg("create table on blob server fail");
+                    response->set_msg("create table on blob server fail " + msg);
                 }
                 return;
             }
@@ -5069,7 +5071,8 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
 }
 
-int NameServerImpl::CreateBlobTable(std::shared_ptr<TableInfo> table_info) {
+int NameServerImpl::CreateBlobTable(std::shared_ptr<TableInfo> table_info, 
+        std::string* msg) {
     ::rtidb::blobserver::TableMeta meta;
     meta.set_tid(table_info->tid());
     meta.set_pid(0);
@@ -5081,11 +5084,10 @@ int NameServerImpl::CreateBlobTable(std::shared_ptr<TableInfo> table_info) {
         PDLOG(WARNING, "not found available blob server");
         return 1;
     }
-    std::string msg;
-    bool ok = blob_info->client_->CreateTable(meta, &msg);
+    bool ok = blob_info->client_->CreateTable(meta, msg);
     if (!ok) {
         PDLOG(WARNING, "create table on blob server[%s] fail %s",
-              blob_info->client_->GetEndpoint().c_str(), msg.c_str());
+              blob_info->client_->GetEndpoint().c_str(), msg->c_str());
         return 2;
     }
     PDLOG(INFO, "create table %s on blob[%s] success!",
