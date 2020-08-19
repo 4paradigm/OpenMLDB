@@ -257,6 +257,8 @@ void SQLSDKTest::BatchExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
     }
     boost::replace_all(sql, "{auto}",
                        fesql::sqlcase::SQLCase::GenRand("auto_t"));
+    boost::replace_all(sql, "{tb_endpoint_0}", mc_->GetTbEndpoint().at(0));
+    boost::replace_all(sql, "{tb_endpoint_1}", mc_->GetTbEndpoint().at(1));
     LOG(INFO) << sql;
     boost::to_lower(sql);
     if (boost::algorithm::starts_with(sql, "select")) {

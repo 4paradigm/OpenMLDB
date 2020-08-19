@@ -2503,7 +2503,7 @@ void TabletImpl::GetTableStatus(
                                 record_idx_cnt += stats[i];
                             }
                         }
-                        delete stats;
+                        delete []stats;
                     }
                     status->set_idx_cnt(record_idx_cnt);
                 }

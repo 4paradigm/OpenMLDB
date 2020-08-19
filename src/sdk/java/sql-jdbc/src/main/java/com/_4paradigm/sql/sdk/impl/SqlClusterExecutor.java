@@ -2,11 +2,14 @@ package com._4paradigm.sql.sdk.impl;
 
 import com._4paradigm.sql.*;
 import com._4paradigm.sql.common.LibraryLoader;
+import com._4paradigm.sql.sdk.InsertPreparedStatementImpl;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlException;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.sql.PreparedStatement;
 
 public class SqlClusterExecutor implements SqlExecutor {
     static {
@@ -107,6 +110,15 @@ public class SqlClusterExecutor implements SqlExecutor {
             logger.error("getInsertRow fail: {}", status.getMsg());
         }
         return row;
+    }
+
+    public PreparedStatement getInsertPrepareStmt(String db, String sql) {
+        try {
+            InsertPreparedStatementImpl impl = new InsertPreparedStatementImpl(db, sql, this.sqlRouter);
+            return impl;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Override

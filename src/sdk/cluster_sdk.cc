@@ -245,27 +245,32 @@ ClusterSDK::GetLeaderTabletByTable(const std::string& db,
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     auto it = table_to_tablets_.find(db);
     if (it == table_to_tablets_.end()) {
+        LOG(INFO) << "not found db " << db;
         return std::shared_ptr<::rtidb::client::TabletClient>();
     }
     auto sit = it->second.find(name);
     if (sit == it->second.end()) {
+        LOG(INFO) << "table not found " << name;
         return std::shared_ptr<::rtidb::client::TabletClient>();
     }
     auto table_info = sit->second;
-    for (int32_t i = 0; i < table_info->table_partition_size(); i++) {
-        const ::rtidb::nameserver::TablePartition& partition =
-            table_info->table_partition(i);
-        for (int32_t j = 0; j < partition.partition_meta_size(); j++) {
-            if (!partition.partition_meta(j).is_leader()) continue;
-            std::string endpoint = partition.partition_meta(j).endpoint();
-            auto ait = alive_tablets_.find(endpoint);
-            if (ait != alive_tablets_.end()) {
-                return ait->second;
+    for (const auto& part : table_info->table_partition()) {
+        for (const auto& meta : part.partition_meta()) {
+            if (!meta.is_leader() && !meta.is_alive()) {
+                continue;
+            }
+            const std::string& ep = meta.endpoint();
+            auto it = alive_tablets_.find(ep);
+            if (it != alive_tablets_.end()) {
+                return it->second;
+            } else {
+                return std::shared_ptr<::rtidb::client::TabletClient>();
             }
         }
     }
     return std::shared_ptr<::rtidb::client::TabletClient>();
 }
+
 std::shared_ptr<::rtidb::client::TabletClient> ClusterSDK::PickOneTablet() {
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
 

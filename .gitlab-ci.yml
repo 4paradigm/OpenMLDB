@@ -4,6 +4,7 @@ services:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 stages:
+  - precheck
   - build
   - daily
   - test
@@ -11,6 +12,14 @@ stages:
   - ns_integration_test
   - deploy
 
+style_check:
+  stage: precheck
+  script:
+    - source /root/.bashrc && bash tools/style_check.sh
+  artifacts:
+    reports:
+      junit:
+        - ./reports/style.xml
 build:
   stage: build
   script:
@@ -41,14 +50,6 @@ mac_build:
       - build/src/sdk/libsql_jsdk.dylib
       - build/sql_pysdk/dist/*.whl
 
-style_check:
-  stage: build
-  script:
-    - source /root/.bashrc && bash tools/style_check.sh
-  artifacts:
-    reports:
-      junit:
-        - ./reports/style.xml
 java_ut:
   stage: test
   except:
@@ -82,6 +83,9 @@ java_ut:
 fesql_auto_test:
   stage: test
   before_script:
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc

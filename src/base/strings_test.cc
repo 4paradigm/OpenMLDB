@@ -27,7 +27,7 @@ TEST_F(StringsTest, Split) {
     std::string test1 = "xxxx,xxxxx";
     std::vector<std::string> result;
     SplitString(test1, ",", result);
-    ASSERT_EQ(2, result.size());
+    ASSERT_EQ(2u, result.size());
     ASSERT_EQ("xxxx", result[0]);
     ASSERT_EQ("xxxxx", result[1]);
 }

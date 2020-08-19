@@ -5,14 +5,29 @@ import org.testng.annotations.Test;
 
 @Slf4j
 public class ManualPerformanceTest {
-    @Test(enabled = false)
+    @Test
     public void requestAggExample8ThreadTest() {
 
-        RequestAggExample.run(RequestAggExample.ExecuteType.kRequestAgg, 8);
+        boolean enablePerformanceTest = Boolean.parseBoolean(System.getenv("ENABLE_MANUAL_TEST"));
+
+        if (enablePerformanceTest) {
+            RequestAggExample.run(RequestAggExample.ExecuteType.kRequestAgg, 8);
+        }
     }
 
-    @Test(enabled = false)
+    @Test
     public void requestInsertExample8ThreadTest() {
-        RequestAggExample.run(RequestAggExample.ExecuteType.kRequestInsert, 8);
+        boolean enablePerformanceTest = Boolean.parseBoolean(System.getenv("ENABLE_MANUAL_TEST"));
+        if (enablePerformanceTest) {
+            RequestAggExample.run(RequestAggExample.ExecuteType.kRequestInsert, 8);
+        }
+    }
+
+    @Test
+    public void MixerWorkLoadExample() {
+        boolean enablePerformanceTest = Boolean.parseBoolean(System.getenv("ENABLE_MANUAL_TEST"));
+        if (enablePerformanceTest) {
+            FESQLMixerWorkloadExample.run();
+        }
     }
 }
