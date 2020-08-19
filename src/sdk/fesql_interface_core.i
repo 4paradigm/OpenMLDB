@@ -116,6 +116,8 @@ using fesql::codec::WindowIterator;
 %ignore fesql::vm::MemWindowIterator::GetValue;
 %ignore fesql::vm::MemCatalog;
 %ignore fesql::vm::MemCatalog::~MemCatalog;
+%ignore fesql::vm::AscComparor::operator();
+%ignore fesql::vm::DescComparor::operator();
 
 %include "base/fe_status.h"
 %include "codec/row.h"
