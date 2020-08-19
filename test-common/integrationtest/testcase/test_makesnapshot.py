@@ -149,7 +149,7 @@ class TestMakeSnapshot(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertIn('Create table ok', rs1)
 
-        self.put_large_datas(1000, 8)
+        self.put_large_datas(3000, 8)
 
 
         rs = self.run_client(self.leader, 'makesnapshot {} {}'.format(self.tid, self.pid))
