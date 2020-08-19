@@ -66,6 +66,9 @@ namespace codegen {
     }
 }
 
+void NativeValue::SetType(::llvm::Type* type) {
+    type_ = type;
+}
 ::llvm::Type* NativeValue::GetType() const { return type_; }
 
 ::llvm::Value* NativeValue::GetRaw() const { return raw_; }

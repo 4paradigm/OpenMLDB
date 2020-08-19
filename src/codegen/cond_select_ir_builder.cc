@@ -25,9 +25,17 @@ CondSelectIRBuilder::~CondSelectIRBuilder() {}
  */
 base::Status CondSelectIRBuilder::Select(::llvm::BasicBlock* block,
                                          const NativeValue& cond_value,
-                                         const NativeValue& left_value,
-                                         const NativeValue& right_value,
+                                         const NativeValue& left,
+                                         const NativeValue& right,
                                          NativeValue* output) {
+    NativeValue left_value = left;
+    NativeValue right_value = right;
+    if (left.IsConstNull()) {
+        left_value.SetType(right.GetType());
+    }
+    if (right.IsConstNull()) {
+        right_value.SetType(left.GetType());
+    }
     // build condition
     ::llvm::IRBuilder<> builder(block);
     base::Status status;
