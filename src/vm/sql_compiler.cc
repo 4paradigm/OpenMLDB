@@ -342,7 +342,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         m->print(::llvm::errs(), NULL, true, true);
         return false;
     }
-    m->print(::llvm::errs(), NULL, true, true);
 
     ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(
         FeSQLJITBuilder().create());
