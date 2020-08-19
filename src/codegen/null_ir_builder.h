@@ -10,6 +10,7 @@
 #ifndef SRC_CODEGEN_NULLIRBUILDER_H_
 #define SRC_CODEGEN_NULLIRBUILDER_H_
 #include "codegen/native_value.h"
+#include "base/fe_status.h"
 namespace fesql {
 namespace codegen {
 class NullIRBuilder{

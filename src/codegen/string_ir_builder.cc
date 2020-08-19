@@ -162,13 +162,14 @@ bool StringIRBuilder::CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
     *output = dist;
     return true;
 }
+
 base::Status StringIRBuilder::Compare(::llvm::BasicBlock* block,
                                       const NativeValue& s1,
                                       const NativeValue& s2,
                                       NativeValue* output) {
     CHECK_TRUE(nullptr != output,
                "fail to compare string: output llvm value is null")
-    ::std::string fn_name = "strcmp.string.bool.string.bool";
+    ::std::string fn_name = "strcmp.string.string";
 
     CHECK_TRUE(TypeIRBuilder::IsStringPtr(s1.GetType()));
     CHECK_TRUE(TypeIRBuilder::IsStringPtr(s2.GetType()));
@@ -181,12 +182,15 @@ base::Status StringIRBuilder::Compare(::llvm::BasicBlock* block,
 
     CondSelectIRBuilder cond_select_ir_builder;
     auto func = m_->getOrInsertFunction(
-        fn_name, ::llvm::FunctionType::get(
-                     builder.getVoidTy(), {s1.GetType(), s2.GetType()}, false));
+        fn_name,
+        ::llvm::FunctionType::get(builder.getInt32Ty(),
+                                  {s1.GetType(), s2.GetType()}, false));
     return cond_select_ir_builder.Select(
         block, NativeValue::Create(should_ret_null),
         NativeValue::CreateNull(builder.getInt32Ty()),
-        builder.CreateCall(func, {s1.GetRaw(), s2.GetRaw()}), output);
+        NativeValue::Create(
+            builder.CreateCall(func, {s1.GetRaw(), s2.GetRaw()})),
+        output);
 }
 base::Status StringIRBuilder::Concat(::llvm::BasicBlock* block,
                                      const std::vector<NativeValue>& args,

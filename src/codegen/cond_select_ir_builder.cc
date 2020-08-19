@@ -22,14 +22,14 @@ CondSelectIRBuilder::~CondSelectIRBuilder() {}
  * @param output
  * @return
  */
-Status CondSelectIRBuilder::Select(::llvm::BasicBlock* block,
-                                   const NativeValue& cond,
-                                   const NativeValue& left,
-                                   const NativeValue& right,
+base::Status CondSelectIRBuilder::Select(::llvm::BasicBlock* block,
+                                   const NativeValue& cond_value,
+                                   const NativeValue& left_value,
+                                   const NativeValue& right_value,
                                    NativeValue* output) {
     // build condition
-    ::llvm::IRBuilder<> builder(block_);
-    Status status;
+    ::llvm::IRBuilder<> builder(block);
+    base::Status status;
     auto raw_cond = cond_value.GetValue(&builder);
     if (cond_value.HasFlag()) {
         raw_cond = builder.CreateAnd(
@@ -74,7 +74,7 @@ Status CondSelectIRBuilder::Select(::llvm::BasicBlock* block,
             *output = NativeValue::Create(raw_value);
         }
     }
-    return Status::OK();
+    return base::Status::OK();
 }
 }  // namespace codegen
 }  // namespace fesql

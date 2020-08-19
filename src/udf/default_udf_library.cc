@@ -572,8 +572,8 @@ void DefaultUDFLibrary::InitStringUDF() {
     RegisterAlias("substr", "substring");
 
     RegisterExternal("strcmp")
-        .args<Nullable<StringRef>, Nullable<StringRef>>(
-            static_cast<int32_t (*)(codec::StringRef*, bool, codec::StringRef*, bool)>(
+        .args<StringRef, StringRef>(
+            static_cast<int32_t (*)(codec::StringRef*, codec::StringRef*)>(
                 udf::v1::strcmp))
         .doc(R"(
             Returns 0 if the strings are the same, -1 if the first argument is smaller than the second according to the current sort order, and 1 otherwise.

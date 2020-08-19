@@ -142,7 +142,6 @@ bool PredicateIRBuilder::BuildEqExpr(::llvm::Value* left, ::llvm::Value* right,
                                      base::Status& status) {
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
-
     if (false ==
         InferBaseTypes(left, right, &casted_left, &casted_right, status)) {
         return false;
@@ -161,6 +160,19 @@ bool PredicateIRBuilder::BuildEqExpr(::llvm::Value* left, ::llvm::Value* right,
         date_ir_builder.GetDate(block_, casted_left, &left_days);
         date_ir_builder.GetDate(block_, casted_right, &right_days);
         return BuildEqExpr(left_days, right_days, output, status);
+    } else if (TypeIRBuilder::IsStringPtr(casted_left->getType()) &&
+               TypeIRBuilder::IsStringPtr(casted_right->getType())) {
+        StringIRBuilder string_ir_builder(block_->getModule());
+        NativeValue compare_value;
+        status = string_ir_builder.Compare(
+            block_, NativeValue::Create(casted_left),
+            NativeValue::Create(casted_right), &compare_value);
+        if (!status.isOK()) {
+            return false;
+        }
+        return BuildEqExpr(compare_value.GetValue(&builder),
+                           builder.getInt32(0), output, status);
+
     } else {
         status.msg = "fail to codegen == expr: value types are invalid";
         status.code = common::kCodegenError;
@@ -343,7 +355,6 @@ bool PredicateIRBuilder::IsAcceptType(::llvm::Type* type) {
     switch (fesql_type) {
         case ::fesql::node::kVoid:
         case ::fesql::node::kList:
-        case ::fesql::node::kVarchar:
             return false;
         default: {
             return true;

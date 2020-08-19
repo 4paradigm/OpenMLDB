@@ -22,10 +22,10 @@ base::Status NullIRBuilder::CheckAnyNull(::llvm::BasicBlock *block,
             *should_ret_null = value.GetIsNull(&builder);
         } else {
             *should_ret_null =
-                builder.CreateOr(*should_ret_null, s1.GetIsNull(&builder));
+                builder.CreateOr(*should_ret_null, value.GetIsNull(&builder));
         }
     }
-    return Status::OK();
+    return base::Status::OK();
 }
 base::Status NullIRBuilder::CheckAllNull(::llvm::BasicBlock *block,
                                          const NativeValue &value,
@@ -33,15 +33,15 @@ base::Status NullIRBuilder::CheckAllNull(::llvm::BasicBlock *block,
     CHECK_TRUE(nullptr != should_ret_null,
                "fail to check all null: should ret null llvm value is null");
     ::llvm::IRBuilder<> builder(block);
-    if (s1.HasFlag()) {
+    if (value.HasFlag()) {
         if (*should_ret_null == nullptr) {
-            *should_ret_null = s1.GetIsNull(&builder);
+            *should_ret_null = value.GetIsNull(&builder);
         } else {
             *should_ret_null =
-                builder.CreateAnd(*should_ret_null, s1.GetIsNull(&builder));
+                builder.CreateAnd(*should_ret_null, value.GetIsNull(&builder));
         }
     }
-    return Status::OK();
+    return base::Status::OK();
 }
 }  // namespace codegen
 }  // namespace fesql
