@@ -42,7 +42,7 @@ bool BsClient::CreateTable(const TableMeta &table_meta, std::string *msg) {
     ::rtidb::blobserver::CreateTableResponse response;
     bool ok = client_.SendRequest(&BlobServer_Stub::CreateTable, &request,
                                   &response, FLAGS_request_sleep_time, 1);
-    msg->assign(response.msg());
+    *msg = response.msg() + " code: " + std::to_string(response.code());
     if (ok && response.code() == 0) {
         return true;
     }
