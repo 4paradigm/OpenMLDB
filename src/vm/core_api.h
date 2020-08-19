@@ -17,6 +17,7 @@
 #include "codec/row.h"
 #include "vm/catalog.h"
 #include "vm/physical_op.h"
+#include "vm/simple_catalog.h"
 #include "vm/mem_catalog.h"
 
 namespace fesql {
@@ -80,7 +81,7 @@ class CoreAPI {
                                            WindowInterface* window);
 
     static fesql::codec::Row GroupbyProject(const fesql::vm::RawPtrHandle fn,
-                                           TableHandler* table);
+                                           fesql::vm::MemTableHandler* table);
 
     static bool ComputeCondition(const fesql::vm::RawPtrHandle fn,
                                  const Row& row,

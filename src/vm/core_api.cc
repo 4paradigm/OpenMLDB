@@ -89,7 +89,7 @@ fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
 }
 
 fesql::codec::Row CoreAPI::GroupbyProject(const RawPtrHandle fn,
-                                         TableHandler* table) {
+                                         fesql::vm::MemTableHandler* table) {
     return Runner::GroupbyProject(fn, table);
 }
 
@@ -126,7 +126,7 @@ RawPtrHandle CoreAPI::AppendRow(fesql::codec::Row* row, size_t bytes) {
 }
 
 fesql::vm::MemTableHandler* CoreAPI::NewMemTableHandler(const std::string& table_name, const std::string& db, const fesql::codec::Schema& schema) {
-    return new vm::MemTableHandler("t1", "temp", &schema);
+    return new vm::MemTableHandler(table_name, db, &schema);
 }
 
 void CoreAPI::AddRowToMemTable(fesql::vm::MemTableHandler* table_handler, fesql::codec::Row* row) {
