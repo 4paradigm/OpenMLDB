@@ -16,9 +16,9 @@
 #include "codec/fe_row_codec.h"
 #include "codec/row.h"
 #include "vm/catalog.h"
+#include "vm/mem_catalog.h"
 #include "vm/physical_op.h"
 #include "vm/simple_catalog.h"
-#include "vm/mem_catalog.h"
 
 namespace fesql {
 namespace vm {
@@ -61,8 +61,11 @@ class CoreAPI {
     static RawPtrHandle GetRowBuf(fesql::codec::Row*, size_t idx);
     static RawPtrHandle AppendRow(fesql::codec::Row*, size_t bytes);
 
-    static fesql::vm::MemTableHandler* NewMemTableHandler(const std::string& table_name, const std::string& db, const fesql::codec::Schema& schema);
-    static void AddRowToMemTable(fesql::vm::MemTableHandler* table_handler, fesql::codec::Row* row);
+    static fesql::vm::MemTableHandler* NewMemTableHandler(
+        const std::string& table_name, const std::string& db,
+        const fesql::codec::Schema& schema);
+    static void AddRowToMemTable(fesql::vm::MemTableHandler* table_handler,
+                                 fesql::codec::Row* row);
 
     static int ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                   fesql::node::ColumnRefNode* expr);
@@ -81,7 +84,7 @@ class CoreAPI {
                                            WindowInterface* window);
 
     static fesql::codec::Row GroupbyProject(const fesql::vm::RawPtrHandle fn,
-                                           fesql::vm::MemTableHandler* table);
+                                            fesql::vm::MemTableHandler* table);
 
     static bool ComputeCondition(const fesql::vm::RawPtrHandle fn,
                                  const Row& row,

@@ -187,7 +187,8 @@ void PhysicalGroupAggrerationNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 
-PhysicalGroupAggrerationNode* PhysicalGroupAggrerationNode::CastFrom(PhysicalOpNode* node) {
+PhysicalGroupAggrerationNode* PhysicalGroupAggrerationNode::CastFrom(
+    PhysicalOpNode* node) {
     return dynamic_cast<PhysicalGroupAggrerationNode*>(node);
 }
 
