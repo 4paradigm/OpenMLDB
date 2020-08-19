@@ -301,11 +301,12 @@ TEST_F(PredicateIRBuilderTest, test_date_compare) {
         &d4, true, ::fesql::node::kFnOpGt);
 }
 
-TEST_F(PredicateIRBuilderTest, test_string_compare) {
+TEST_F(PredicateIRBuilderTest, test_string_string_compare) {
     codec::StringRef d1("text");
     codec::StringRef d2("text");
     codec::StringRef d3("text1");
     codec::StringRef d4("");
+    codec::StringRef d5("text2");
     BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
         ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
         &d1, &d2, true, ::fesql::node::kFnOpEq);
@@ -317,6 +318,10 @@ TEST_F(PredicateIRBuilderTest, test_string_compare) {
     BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
         ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
         &d1, &d3, true, ::fesql::node::kFnOpLt);
+
+    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
+        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
+        &d3, &d5, true, ::fesql::node::kFnOpLt);
 
     BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
         ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
@@ -335,6 +340,38 @@ TEST_F(PredicateIRBuilderTest, test_string_compare) {
     BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
         ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
         &d1, &d4, true, ::fesql::node::kFnOpGt);
+}
+
+TEST_F(PredicateIRBuilderTest, test_string_anytype_compare) {
+    codec::StringRef d1("123");
+    int32_t num = 123;
+    BinaryPredicateExprCheck<codec::StringRef *, int32_t, bool>(
+        ::fesql::node::kVarchar, ::fesql::node::kInt32, ::fesql::node::kBool,
+        &d1, num, true, ::fesql::node::kFnOpEq);
+
+    BinaryPredicateExprCheck<codec::StringRef *, int64_t, bool>(
+        ::fesql::node::kVarchar, ::fesql::node::kInt64, ::fesql::node::kBool,
+        &d1, static_cast<int64_t>(123), true, ::fesql::node::kFnOpEq);
+
+    BinaryPredicateExprCheck<codec::StringRef *, double, bool>(
+        ::fesql::node::kVarchar, ::fesql::node::kDouble, ::fesql::node::kBool,
+        &d1, 123.0, true, ::fesql::node::kFnOpEq);
+
+    BinaryPredicateExprCheck<codec::StringRef *, float, bool>(
+        ::fesql::node::kVarchar, ::fesql::node::kFloat, ::fesql::node::kBool,
+        &d1, 123.0f, true, ::fesql::node::kFnOpEq);
+
+    codec::Date date(2020, 05, 30);
+    codec::StringRef d2("2020-05-30");
+    BinaryPredicateExprCheck<codec::StringRef *, codec::Date *, bool>(
+        ::fesql::node::kVarchar, ::fesql::node::kDate, ::fesql::node::kBool,
+        &d2, &date, true, ::fesql::node::kFnOpEq);
+
+    codec::StringRef d3("2020-05-22 10:43:40");
+    codec::Timestamp t1(1590115420000L);
+    BinaryPredicateExprCheck<codec::StringRef *, codec::Timestamp *, bool>(
+        ::fesql::node::kVarchar, ::fesql::node::kTimestamp,
+        ::fesql::node::kBool, &d3, &t1, true, ::fesql::node::kFnOpEq);
 }
 
 TEST_F(PredicateIRBuilderTest, test_eq_expr_false) {

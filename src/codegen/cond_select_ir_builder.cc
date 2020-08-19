@@ -7,6 +7,7 @@
  *--------------------------------------------------------------------------
  **/
 #include "codegen/cond_select_ir_builder.h"
+#include <vector>
 #include "codegen/ir_base_builder.h"
 namespace fesql {
 namespace codegen {
@@ -23,10 +24,10 @@ CondSelectIRBuilder::~CondSelectIRBuilder() {}
  * @return
  */
 base::Status CondSelectIRBuilder::Select(::llvm::BasicBlock* block,
-                                   const NativeValue& cond_value,
-                                   const NativeValue& left_value,
-                                   const NativeValue& right_value,
-                                   NativeValue* output) {
+                                         const NativeValue& cond_value,
+                                         const NativeValue& left_value,
+                                         const NativeValue& right_value,
+                                         NativeValue* output) {
     // build condition
     ::llvm::IRBuilder<> builder(block);
     base::Status status;
@@ -63,7 +64,6 @@ base::Status CondSelectIRBuilder::Select(::llvm::BasicBlock* block,
         ::llvm::Value* raw_value =
             builder.CreateSelect(raw_cond, left_value.GetValue(&builder),
                                  right_value.GetValue(&builder));
-
         bool output_nullable = left_value.HasFlag() || right_value.HasFlag();
         if (output_nullable) {
             ::llvm::Value* output_is_null =

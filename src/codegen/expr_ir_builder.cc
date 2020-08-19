@@ -143,8 +143,10 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         case ::fesql::node::kExprPrimary: {
             ::fesql::node::ConstNode* const_node =
                 (::fesql::node::ConstNode*)node;
-
             switch (const_node->GetDataType()) {
+                case ::fesql::node::kNull:
+                    *output = NativeValue::CreateNull(builder.getInt1Ty());
+                    return true;
                 case ::fesql::node::kInt16:
                     *output = NativeValue::Create(
                         builder.getInt16(const_node->GetSmallInt()));

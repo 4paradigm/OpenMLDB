@@ -28,6 +28,8 @@ namespace fesql {
 namespace codec {
 struct StringRef {
     StringRef() : size_(0), data_(nullptr) {}
+    explicit StringRef(const char* str)
+        : size_(nullptr == str ? 0 : strlen(str)), data_(str) {}
     explicit StringRef(const std::string& str)
         : size_(str.size()), data_(str.data()) {}
     StringRef(uint32_t size, const char* data) : size_(size), data_(data) {}
@@ -36,8 +38,7 @@ struct StringRef {
     const std::string ToString() const {
         return size_ == 0 ? "" : std::string(data_, size_);
     }
-    static int compare(const StringRef& a,
-                       const StringRef& b) {
+    static int compare(const StringRef& a, const StringRef& b) {
         const size_t min_len = (a.size_ < b.size_) ? a.size_ : b.size_;
         int r = memcmp(a.data_, b.data_, min_len);
         if (r == 0) {

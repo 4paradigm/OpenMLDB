@@ -104,17 +104,21 @@ Status CaseWhenExprNode::InferAttr(ExprAnalysisContext* ctx) {
         if (nullptr == type) {
             type = expr_type;
         } else {
-            CHECK_TRUE(type->Equals(expr_type),
-                       "fail infer case when expr attr: each when/else should "
-                       "return same type");
+            CHECK_TRUE(
+                type->Equals(expr_type),
+                "fail infer case when expr attr: then return types and else "
+                "return type aren't compatible");
         }
     }
 
-    if (nullptr != else_expr()) {
-        CHECK_TRUE(type->Equals(else_expr()->GetOutputType()),
-                   "fail infer case when expr attr: each when/else should "
-                   "return same type");
-    }
+    CHECK_TRUE(nullptr != else_expr(),
+               "fail infer case when expr attr: else expr is nullptr");
+
+    CHECK_TRUE(node::IsNullPrimary(else_expr()) ||
+                   type->Equals(else_expr()->GetOutputType()),
+               "fail infer case when expr attr: then return types and else "
+               "return type aren't compatible");
+
     CHECK_TRUE(nullptr != type,
                "fail infer case when expr: output type is null");
     SetOutputType(type);

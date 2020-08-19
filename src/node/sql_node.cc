@@ -548,6 +548,7 @@ const std::string WhenExprNode::GetExprString() const {
     std::string str = "";
     str.append("when ")
         .append(ExprString(when_expr()))
+        .append(" ")
         .append("then ")
         .append(ExprString(then_expr()));
     return str;
@@ -939,6 +940,10 @@ bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
 }
 std::string ExprString(const ExprNode *expr) {
     return nullptr == expr ? std::string() : expr->GetExprString();
+}
+const bool IsNullPrimary(const ExprNode *expr) {
+    return nullptr != expr && expr->expr_type_ == fesql::node::kExprPrimary &&
+           dynamic_cast<const node::ConstNode *>(expr)->IsNull();
 }
 
 bool ExprListNullOrEmpty(const ExprListNode *expr) {

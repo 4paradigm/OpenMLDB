@@ -86,9 +86,11 @@ cases:
         indexs: ["index1:c1:c4"]
         rows:
           - ["aa",2,3,1590738989000]
-    sql: select c1='aa' from {0};
+    sql: select c1='aa' as f1 from {0};
     expect:
-      success: false
+      - columns: ["f1 bool"]
+        rows:
+          - [true]
   - id: 8
     desc: 布尔表达式-日期类型
     inputs:
@@ -96,9 +98,11 @@ cases:
         indexs: ["index1:c1:c4"]
         rows:
           - ["aa",2,3,1590738989000,"2020-05-01"]
-    sql: select c5='2020-05-01' from {0};
+    sql: select c5='2020-05-01' as f1, c5 > '2020-04-01' as f2 from {0};
     expect:
-      success: false
+      columns: ["f1 bool", "f2 bool"]
+      rows:
+        - [true, true]
   - id: 9
     desc: 逻辑表达式不使用布尔表达式
     inputs:
@@ -154,6 +158,7 @@ cases:
                     end as case_f1 from {0};
     expect:
       columns: ["col1 int", "col2 string", "case_f1 string"]
+      order: col1
       rows:
         - [1, "aa", "apple"]
         - [2, "cc", "cake"]
@@ -178,6 +183,7 @@ cases:
                     end as case_f1 from {0};
     expect:
       columns: ["col1 int", "col2 string", "case_f1 string"]
+      order: col1
       rows:
         - [1, "aa", "apple"]
         - [2, "cc", "cake"]
@@ -193,21 +199,27 @@ cases:
           - [3, "bb",1590738989000]
           - [4, "dd",1590738989000]
     desc: SIMPLE CASE WHEN 表达式 without ELSE
+    tags: ["TODO", "NULL SUPPORT @chenjing @xinqi"]
     sql: |
       select col1, col2, case col2
                         when 'aa' then 'apple'
                         when 'bb' then 'banana'
                         when 'cc' then 'cake'
+                        when 'no' then NULL
+                        else NULL
                     end as case_f1 from {0};
     expect:
       columns: ["col1 int", "col2 string", "case_f1 string"]
+      order: col1
       rows:
         - [1, "aa", "apple"]
         - [2, "cc", "cake"]
         - [3, "bb", "banana"]
         - [4, "dd", null]
+        - [5, "no", null]
   - id: 15
     desc: SEARCHED CASE WHEN 表达式 without ELSE
+    tags: ["TODO", "NULL SUPPORT @chenjing @xinqi"]
     inputs:
       - columns: ["col1 int","col2 string", "col4 timestamp"]
         indexs: ["index1:col1:col4"]
@@ -224,6 +236,7 @@ cases:
                     end as case_f1 from {0};
     expect:
       columns: ["col1 int", "col2 string", "case_f1 string"]
+      order: col1
       rows:
         - [1, "aa", "apple"]
         - [2, "cc", "cake"]

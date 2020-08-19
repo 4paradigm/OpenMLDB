@@ -337,7 +337,7 @@ bool PredicateIRBuilder::BuildLtExpr(::llvm::Value* left, ::llvm::Value* right,
                casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFCmpOLT(casted_left, casted_right);
     } else if (TypeIRBuilder::IsStringPtr(casted_left->getType()) &&
-        TypeIRBuilder::IsStringPtr(casted_right->getType())) {
+               TypeIRBuilder::IsStringPtr(casted_right->getType())) {
         StringIRBuilder string_ir_builder(block_->getModule());
         NativeValue compare_value;
         status = string_ir_builder.Compare(
@@ -349,7 +349,7 @@ bool PredicateIRBuilder::BuildLtExpr(::llvm::Value* left, ::llvm::Value* right,
         return BuildEqExpr(compare_value.GetValue(&builder),
                            builder.getInt32(-1), output, status);
 
-    }else {
+    } else {
         status.msg = "fail to codegen < expr: value types are invalid";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
@@ -381,7 +381,7 @@ bool PredicateIRBuilder::BuildLeExpr(::llvm::Value* left, ::llvm::Value* right,
                casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFCmpOLE(casted_left, casted_right);
     } else if (TypeIRBuilder::IsStringPtr(casted_left->getType()) &&
-        TypeIRBuilder::IsStringPtr(casted_right->getType())) {
+               TypeIRBuilder::IsStringPtr(casted_right->getType())) {
         StringIRBuilder string_ir_builder(block_->getModule());
         NativeValue compare_value;
         status = string_ir_builder.Compare(
@@ -393,7 +393,7 @@ bool PredicateIRBuilder::BuildLeExpr(::llvm::Value* left, ::llvm::Value* right,
         return BuildLeExpr(compare_value.GetValue(&builder),
                            builder.getInt32(0), output, status);
 
-    }else {
+    } else {
         status.msg = "fail to codegen <= expr: value types are invalid";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
@@ -498,14 +498,14 @@ bool PredicateIRBuilder::InferBaseTypes(::llvm::Value* left,
         if (cast_expr_ir_builder_.IsSafeCast(left_type, right_type)) {
             if (!cast_expr_ir_builder_.SafeCast(left, right_type, casted_left,
                                                 status)) {
-                status.msg = "fail to codegen add expr: " + status.msg;
+                status.msg = "fail to codegen expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
         } else if (cast_expr_ir_builder_.IsSafeCast(right_type, left_type)) {
             if (!cast_expr_ir_builder_.SafeCast(right, left_type, casted_right,
                                                 status)) {
-                status.msg = "fail to codegen add expr: " + status.msg;
+                status.msg = "fail to codegen expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
@@ -513,7 +513,7 @@ bool PredicateIRBuilder::InferBaseTypes(::llvm::Value* left,
                                                                 right_type)) {
             if (!cast_expr_ir_builder_.UnSafeCast(left, right_type, casted_left,
                                                   status)) {
-                status.msg = "fail to codegen add expr: " + status.msg;
+                status.msg = "fail to codegen expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
@@ -521,13 +521,13 @@ bool PredicateIRBuilder::InferBaseTypes(::llvm::Value* left,
                                                                 left_type)) {
             if (!cast_expr_ir_builder_.UnSafeCast(right, left_type,
                                                   casted_right, status)) {
-                status.msg = "fail to codegen add expr: " + status.msg;
+                status.msg = "fail to codegen expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
         } else if (cast_expr_ir_builder_.IsStringCast(right_type)) {
             if (!cast_expr_ir_builder_.StringCast(left, casted_left, status)) {
-                status.msg = "fail to codegen add expr: " + status.msg;
+                status.msg = "fail to codegen expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }

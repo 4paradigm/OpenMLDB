@@ -22,9 +22,9 @@ bool StructTypeIRBuilder::StructCastFrom(::llvm::BasicBlock* block,
                                          ::llvm::Value** dist) {
     StructTypeIRBuilder* struct_builder =
         CreateStructTypeIRBuilder(block->getModule(), cast_type);
-    bool ok = struct_builder->CastFrom(block, src, dist);
+    base::Status status = struct_builder->CastFrom(block, src, dist);
     delete struct_builder;
-    return ok;
+    return status.isOK();
 }
 bool StructTypeIRBuilder::StructCopyFrom(::llvm::BasicBlock* block,
                                          ::llvm::Value* src,

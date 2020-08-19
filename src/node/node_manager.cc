@@ -397,6 +397,9 @@ ExprNode *NodeManager::MakeSimpleCaseWhenNode(ExprNode *case_expr,
 }
 ExprNode *NodeManager::MakeSearchedCaseWhenNode(ExprListNode *when_list_expr,
                                                 ExprNode *else_expr) {
+    if (nullptr == else_expr) {
+        else_expr = MakeConstNode();
+    }
     CaseWhenExprNode *node_ptr =
         new CaseWhenExprNode(when_list_expr, else_expr);
     return RegisterNode(node_ptr);
