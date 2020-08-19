@@ -2393,9 +2393,6 @@ public class RelationTableTest extends TestCaseBase {
     public void testRelationalTableUpdateIndex(RelationTestArgs args) {
         nsc.dropTable(args.tableDesc.getName());
         boolean ok = nsc.createTable(args.tableDesc);
-        if (!ok) {
-            logger.warn("xxxx error");
-        }
         Assert.assertTrue(ok);
         client.refreshRouteTable();
         String name = args.tableDesc.getName();
