@@ -5071,7 +5071,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     }
 }
 
-int NameServerImpl::CreateBlobTable(std::shared_ptr<TableInfo> table_info, 
+int NameServerImpl::CreateBlobTable(std::shared_ptr<TableInfo> table_info,
         std::string* msg) {
     ::rtidb::blobserver::TableMeta meta;
     meta.set_tid(table_info->tid());
