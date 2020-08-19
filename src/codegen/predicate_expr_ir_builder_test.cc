@@ -18,6 +18,7 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
 #include "node/node_manager.h"
+#include "udf/default_udf_library.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -89,7 +90,7 @@ void BinaryPredicateExprCheck(::fesql::node::DataType left_type,
                               fesql::node::FnOperator op) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("predicate_func", *ctx);
-
+    udf::DefaultUDFLibrary *library = udf::DefaultUDFLibrary::get();
     llvm::Type *left_llvm_type = NULL;
     llvm::Type *right_llvm_type = NULL;
     llvm::Type *dist_llvm_type = NULL;
@@ -196,6 +197,7 @@ void BinaryPredicateExprCheck(::fesql::node::DataType left_type,
     ASSERT_TRUE(ok);
     auto J = ExitOnErr(LLJITBuilder().create());
     ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
+    library->InitJITSymbols(J.get());
     auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
     void (*decode)(V1, V2, R *) =
         (void (*)(V1, V2, R *))load_fn_jit.getAddress();
@@ -299,42 +301,40 @@ TEST_F(PredicateIRBuilderTest, test_date_compare) {
         &d4, true, ::fesql::node::kFnOpGt);
 }
 
-
-
 TEST_F(PredicateIRBuilderTest, test_string_compare) {
     codec::StringRef d1("text");
     codec::StringRef d2("text");
     codec::StringRef d3("text1");
     codec::StringRef d4("");
     BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool, &d1,
-        &d2, true, ::fesql::node::kFnOpEq);
+        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
+        &d1, &d2, true, ::fesql::node::kFnOpEq);
 
-//    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-//        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool, &d1,
-//        &d3, true, ::fesql::node::kFnOpNeq);
-//
-//    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-//        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool, &d1,
-//        &d3, true, ::fesql::node::kFnOpLt);
-//
-//    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-//        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool, &d1,
-//        &d3, true, ::fesql::node::kFnOpLe);
-//
-//    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-//        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool, &d1,
-//        &d2, true, ::fesql::node::kFnOpLe);
-//
-//    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-//        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool, &d1,
-//        &d2, true, ::fesql::node::kFnOpGe);
-//    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-//        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool, &d1,
-//        &d4, true, ::fesql::node::kFnOpGe);
-//    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-//        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool, &d1,
-//        &d4, true, ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
+        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
+        &d1, &d3, true, ::fesql::node::kFnOpNeq);
+
+    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
+        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
+        &d1, &d3, true, ::fesql::node::kFnOpLt);
+
+    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
+        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
+        &d1, &d3, true, ::fesql::node::kFnOpLe);
+
+    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
+        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
+        &d1, &d2, true, ::fesql::node::kFnOpLe);
+
+    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
+        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
+        &d1, &d2, true, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
+        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
+        &d1, &d4, true, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
+        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
+        &d1, &d4, true, ::fesql::node::kFnOpGt);
 }
 
 TEST_F(PredicateIRBuilderTest, test_eq_expr_false) {

@@ -204,6 +204,19 @@ bool PredicateIRBuilder::BuildNeqExpr(::llvm::Value* left, ::llvm::Value* right,
     } else if (casted_left->getType()->isFloatTy() ||
                casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFCmpUNE(casted_left, casted_right);
+    } else if (TypeIRBuilder::IsStringPtr(casted_left->getType()) &&
+               TypeIRBuilder::IsStringPtr(casted_right->getType())) {
+        StringIRBuilder string_ir_builder(block_->getModule());
+        NativeValue compare_value;
+        status = string_ir_builder.Compare(
+            block_, NativeValue::Create(casted_left),
+            NativeValue::Create(casted_right), &compare_value);
+        if (!status.isOK()) {
+            return false;
+        }
+        return BuildNeqExpr(compare_value.GetValue(&builder),
+                            builder.getInt32(0), output, status);
+
     } else {
         status.msg = "fail to codegen neq expr: value types are invalid";
         status.code = common::kCodegenError;
@@ -235,6 +248,19 @@ bool PredicateIRBuilder::BuildGtExpr(::llvm::Value* left, ::llvm::Value* right,
     } else if (casted_left->getType()->isFloatTy() ||
                casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFCmpOGT(casted_left, casted_right);
+    } else if (TypeIRBuilder::IsStringPtr(casted_left->getType()) &&
+               TypeIRBuilder::IsStringPtr(casted_right->getType())) {
+        StringIRBuilder string_ir_builder(block_->getModule());
+        NativeValue compare_value;
+        status = string_ir_builder.Compare(
+            block_, NativeValue::Create(casted_left),
+            NativeValue::Create(casted_right), &compare_value);
+        if (!status.isOK()) {
+            return false;
+        }
+        return BuildEqExpr(compare_value.GetValue(&builder),
+                           builder.getInt32(1), output, status);
+
     } else {
         status.msg = "fail to codegen > expr: value types are invalid";
         status.code = common::kCodegenError;
@@ -266,6 +292,19 @@ bool PredicateIRBuilder::BuildGeExpr(::llvm::Value* left, ::llvm::Value* right,
     } else if (casted_left->getType()->isFloatTy() ||
                casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFCmpOGE(casted_left, casted_right);
+    } else if (TypeIRBuilder::IsStringPtr(casted_left->getType()) &&
+               TypeIRBuilder::IsStringPtr(casted_right->getType())) {
+        StringIRBuilder string_ir_builder(block_->getModule());
+        NativeValue compare_value;
+        status = string_ir_builder.Compare(
+            block_, NativeValue::Create(casted_left),
+            NativeValue::Create(casted_right), &compare_value);
+        if (!status.isOK()) {
+            return false;
+        }
+        return BuildGeExpr(compare_value.GetValue(&builder),
+                           builder.getInt32(0), output, status);
+
     } else {
         status.msg = "fail to codegen >= expr: value types are invalid";
         status.code = common::kCodegenError;
@@ -297,7 +336,20 @@ bool PredicateIRBuilder::BuildLtExpr(::llvm::Value* left, ::llvm::Value* right,
     } else if (casted_left->getType()->isFloatTy() ||
                casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFCmpOLT(casted_left, casted_right);
-    } else {
+    } else if (TypeIRBuilder::IsStringPtr(casted_left->getType()) &&
+        TypeIRBuilder::IsStringPtr(casted_right->getType())) {
+        StringIRBuilder string_ir_builder(block_->getModule());
+        NativeValue compare_value;
+        status = string_ir_builder.Compare(
+            block_, NativeValue::Create(casted_left),
+            NativeValue::Create(casted_right), &compare_value);
+        if (!status.isOK()) {
+            return false;
+        }
+        return BuildEqExpr(compare_value.GetValue(&builder),
+                           builder.getInt32(-1), output, status);
+
+    }else {
         status.msg = "fail to codegen < expr: value types are invalid";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
@@ -328,7 +380,20 @@ bool PredicateIRBuilder::BuildLeExpr(::llvm::Value* left, ::llvm::Value* right,
     } else if (casted_left->getType()->isFloatTy() ||
                casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFCmpOLE(casted_left, casted_right);
-    } else {
+    } else if (TypeIRBuilder::IsStringPtr(casted_left->getType()) &&
+        TypeIRBuilder::IsStringPtr(casted_right->getType())) {
+        StringIRBuilder string_ir_builder(block_->getModule());
+        NativeValue compare_value;
+        status = string_ir_builder.Compare(
+            block_, NativeValue::Create(casted_left),
+            NativeValue::Create(casted_right), &compare_value);
+        if (!status.isOK()) {
+            return false;
+        }
+        return BuildLeExpr(compare_value.GetValue(&builder),
+                           builder.getInt32(0), output, status);
+
+    }else {
         status.msg = "fail to codegen <= expr: value types are invalid";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
