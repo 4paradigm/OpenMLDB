@@ -5016,7 +5016,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
                     response->set_msg("not found avaiable blob server");
                 } else {
                     response->set_code(ReturnCode::kCreateTableFailed);
-                    response->set_msg("create table on blob server fail " + msg);
+                    response->set_msg("create table on blob server fail: " + msg);
                 }
                 return;
             }
