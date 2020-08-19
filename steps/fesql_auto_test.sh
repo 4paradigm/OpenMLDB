@@ -12,6 +12,7 @@ if [ -z "${FEDEV}" ]; then
 else
     make -j16 || { echo "compile error"; exit 1; }
 fi
+cd ${ROOT_DIR}
 test -d /rambuild/ut_zookeeper && rm -rf /rambuild/ut_zookeeper/*
 cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
 cd thirdsrc/zookeeper-3.4.14
