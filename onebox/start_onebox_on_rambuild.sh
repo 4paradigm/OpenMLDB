@@ -58,6 +58,7 @@ BLOB1=$IP:9720
                    --zk_cluster=${ZK_CLUSTER}\
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
+                   --request_timeout_ms=200000\
                    --zk_root_path=/onebox > ns1.log 2>&1 &
 sleep 2
 
@@ -66,6 +67,7 @@ sleep 2
                    --zk_cluster=${ZK_CLUSTER}\
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
+                   --request_timeout_ms=200000\
                    --zk_root_path=/onebox > ns2.log 2>&1 &
 sleep 2
 
@@ -74,6 +76,7 @@ sleep 2
                    --tablet_offline_check_interval=1\
                    --tablet_heartbeat_timeout=1\
                    --zk_cluster=${ZK_CLUSTER}\
+                   --request_timeout_ms=200000\
                    --zk_root_path=/onebox > ns3.log 2>&1 &
 
 sleep 5
