@@ -12,7 +12,6 @@ class CoreAPITest : public ::testing::Test {
 };
 
 TEST_F(CoreAPITest, test_create_new_row) {
-
     Schema schema;
     ::fesql::type::ColumnDef* col = schema.Add();
     col->set_name("col1");
@@ -36,7 +35,7 @@ TEST_F(CoreAPITest, test_create_new_row) {
 }  // namespace vm
 }  // namespace fesql
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
