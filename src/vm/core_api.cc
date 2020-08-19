@@ -88,6 +88,11 @@ fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
                                  window->GetWindow());
 }
 
+fesql::codec::Row CoreAPI::GroupbyProject(const RawPtrHandle fn,
+                                         TableHandler* table) {
+    return Runner::GroupbyProject(fn, table);
+}
+
 bool CoreAPI::ComputeCondition(const fesql::vm::RawPtrHandle fn, const Row& row,
                                fesql::codec::RowView* row_view,
                                size_t out_idx) {
@@ -119,6 +124,15 @@ RawPtrHandle CoreAPI::AppendRow(fesql::codec::Row* row, size_t bytes) {
     row->Append(slice);
     return buf;
 }
+
+fesql::vm::MemTableHandler* CoreAPI::NewMemTableHandler(const std::string& table_name, const std::string& db, const fesql::codec::Schema& schema) {
+    return new vm::MemTableHandler("t1", "temp", &schema);
+}
+
+void CoreAPI::AddRowToMemTable(fesql::vm::MemTableHandler* table_handler, fesql::codec::Row* row) {
+    table_handler->AddRow(*row);
+}
+
 
 }  // namespace vm
 }  // namespace fesql

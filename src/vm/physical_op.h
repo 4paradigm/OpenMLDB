@@ -617,6 +617,7 @@ class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
         fn_infos_.push_back(&group_.fn_info_);
     }
     virtual ~PhysicalGroupAggrerationNode() {}
+    static PhysicalGroupAggrerationNode *CastFrom(PhysicalOpNode *node);
     virtual void Print(std::ostream &output, const std::string &tab) const;
     Key group_;
 };
