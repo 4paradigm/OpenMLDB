@@ -1,12 +1,11 @@
 package com._4paradigm.fesql.offline.nodes
 
 import com._4paradigm.fesql.offline.nodes.RowProjectPlan.ProjectConfig
-import com._4paradigm.fesql.offline.utils.{AutoDestructibleIterator, FesqlUtil, SparkColumnUtil}
+import com._4paradigm.fesql.offline.utils.FesqlUtil
 import com._4paradigm.fesql.offline.{PlanContext, SparkInstance, SparkRowCodec}
-import com._4paradigm.fesql.vm.{PhysicalGroupAggrerationNode, PhysicalGroupNode}
-import org.apache.spark.sql.{Column, Row}
+import com._4paradigm.fesql.vm.{CoreAPI, PhysicalGroupAggrerationNode}
+import org.apache.spark.sql.Row
 import com._4paradigm.fesql.offline.JITManager
-import scala.collection.mutable
 
 
 object GroupByAggregationPlan {
@@ -21,7 +20,7 @@ object GroupByAggregationPlan {
 
     // spark closure
     val projectConfig = ProjectConfig(
-      functionName = node.GetFnName(),
+      functionName = node.project().fn_name(),
       moduleTag = ctx.getTag,
       moduleBroadcast = ctx.getModuleBufferBroadcast,
       inputSchemaSlices = inputSchemaSlices,
@@ -45,29 +44,26 @@ object GroupByAggregationPlan {
       val encoder = new SparkRowCodec(projectConfig.inputSchemaSlices)
       val decoder = new SparkRowCodec(projectConfig.outputSchemaSlices)
 
+      val memTableName = "temp_table"
+      val meTableDb = "temp_db"
+      // TODO: Get the schema from all slices
+      val schema = FesqlUtil.getFeSQLSchema(projectConfig.inputSchemaSlices(0))
 
-      val resultIter = iter.map(row => {
+      if (iter.isEmpty) {
+        Option[Row](null).toIterator
+      } else {
+        // TODO: Delete the native schema and memTableHandler pointer
+        // Create memory table and insert encoded rows
+        val memTableHandler = CoreAPI.NewMemTableHandler(memTableName, meTableDb, schema)
+        iter.foreach(row => {
+          val nativeInputRow = encoder.encode(row)
+          CoreAPI.AddRowToMemTable(memTableHandler, nativeInputRow)
+        })
 
-        val nativeInputRow = encoder.encode(row)
-
-        // call native compute
-        //val outputNativeRow = CoreAPI.RowProject(fn, nativeInputRow, false)
-
-        // call decode
-        //decoder.decode(outputNativeRow, outputArr)
-        decoder.decode(nativeInputRow, outputArr)
-
-        // release swig jni objects
-        nativeInputRow.delete()
-        //outputNativeRow.delete()
-
-        Row.fromSeq(outputArr) // can reuse backed array
-      })
-
-
-      AutoDestructibleIterator(resultIter) {
-        encoder.delete()
-        decoder.delete()
+        // Run group by aggregation
+        val outputFesqlRow = CoreAPI.GroupbyProject(fn, memTableHandler)
+        decoder.decode(outputFesqlRow, outputArr)
+        Option(Row.fromSeq(outputArr)).toIterator
       }
 
     })
@@ -75,4 +71,5 @@ object GroupByAggregationPlan {
     SparkInstance.fromRDD(outputSchema, resultRDD)
 
   }
+
 }
