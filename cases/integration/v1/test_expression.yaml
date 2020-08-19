@@ -139,7 +139,7 @@ cases:
       columns: ["flag1 bool", "flag2 bool"]
       rows:
         - [false,false]
-  - id: 12
+  - id: 12_1
     desc: SIMPLE CASE WHEN 表达式
     inputs:
       - columns: ["col1 int","col2 string", "col4 timestamp"]
@@ -152,7 +152,75 @@ cases:
     sql: |
       select col1, col2, case col2
                         when 'aa' then 'apple'
-                        when 'bb' then 'banana'
+                        else 'nothing'
+                    end as case_f1 from {0};
+    expect:
+      columns: ["col1 int", "col2 string", "case_f1 string"]
+      order: col1
+      rows:
+        - [1, "aa", "apple"]
+        - [2, "cc", "nothing"]
+        - [3, "bb", "nothing"]
+        - [4, "dd", "nothing"]
+  - id: 12_2
+    desc: SIMPLE CASE WHEN 表达式 缺省else
+    inputs:
+      - columns: ["col1 int","col2 string", "col4 timestamp"]
+        indexs: ["index1:col1:col4"]
+        rows:
+          - [1, "aa",1590738989000]
+          - [2, "cc",1590738989000]
+          - [3, "bb",1590738989000]
+          - [4, "dd",1590738989000]
+    sql: |
+      select col1, col2, case col2
+                        when 'aa' then 'apple'
+                    end as case_f1 from {0};
+    expect:
+      columns: ["col1 int", "col2 string", "case_f1 string"]
+      order: col1
+      rows:
+        - [1, "aa", "apple"]
+        - [2, "cc", null]
+        - [3, "bb", null]
+        - [4, "dd", null]
+  - id: 12_3
+    desc: SIMPLE CASE WHEN 表达式 ELSE NULL
+    inputs:
+      - columns: ["col1 int","col2 string", "col4 timestamp"]
+        indexs: ["index1:col1:col4"]
+        rows:
+          - [1, "aa",1590738989000]
+          - [2, "cc",1590738989000]
+          - [3, "bb",1590738989000]
+          - [4, "dd",1590738989000]
+    sql: |
+      select col1, col2, case col2
+                        when 'aa' then 'apple'
+                        else NULL
+                    end as case_f1 from {0};
+    expect:
+      columns: ["col1 int", "col2 string", "case_f1 string"]
+      order: col1
+      rows:
+        - [1, "aa", "apple"]
+        - [2, "cc", null]
+        - [3, "bb", null]
+        - [4, "dd", null]
+  - id: 12_4
+    desc: SIMPLE CASE WHEN 表达式 THEN NULL
+    inputs:
+      - columns: ["col1 int","col2 string", "col4 timestamp"]
+        indexs: ["index1:col1:col4"]
+        rows:
+          - [1, "aa",1590738989000]
+          - [2, "cc",1590738989000]
+          - [3, "bb",1590738989000]
+          - [4, "dd",1590738989000]
+    sql: |
+      select col1, col2, case col2
+                        when 'aa' then 'apple'
+                        when 'bb' then NULL
                         when 'cc' then 'cake'
                         else 'nothing'
                     end as case_f1 from {0};
@@ -162,9 +230,9 @@ cases:
       rows:
         - [1, "aa", "apple"]
         - [2, "cc", "cake"]
-        - [3, "bb", "banana"]
+        - [3, "bb", null]
         - [4, "dd", "nothing"]
-  - id: 13
+  - id: 13_1
     desc: SEARCHED CASE WHEN 表达式
     inputs:
       - columns: ["col1 int","col2 string", "col4 timestamp"]
@@ -189,7 +257,8 @@ cases:
         - [2, "cc", "cake"]
         - [3, "bb", "banana"]
         - [4, "dd", "nothing"]
-  - id: 14
+  - id: 14_1
+    desc: SEARCHED CASE WHEN 表达式
     inputs:
       - columns: ["col1 int","col2 string", "col4 timestamp"]
         indexs: ["index1:col1:col4"]
@@ -198,15 +267,12 @@ cases:
           - [2, "cc",1590738989000]
           - [3, "bb",1590738989000]
           - [4, "dd",1590738989000]
-    desc: SIMPLE CASE WHEN 表达式 without ELSE
-    tags: ["TODO", "NULL SUPPORT @chenjing @xinqi"]
     sql: |
-      select col1, col2, case col2
-                        when 'aa' then 'apple'
-                        when 'bb' then 'banana'
-                        when 'cc' then 'cake'
-                        when 'no' then NULL
-                        else NULL
+      select col1, col2, case
+                        when col2='aa' then 'apple'
+                        when col2='bb' then 'banana'
+                        when col2='cc' then 'cake'
+                        else 'nothing'
                     end as case_f1 from {0};
     expect:
       columns: ["col1 int", "col2 string", "case_f1 string"]
@@ -215,8 +281,8 @@ cases:
         - [1, "aa", "apple"]
         - [2, "cc", "cake"]
         - [3, "bb", "banana"]
-        - [4, "dd", null]
-        - [5, "no", null]
+        - [4, "dd", "nothing"]
+
   - id: 15
     desc: SEARCHED CASE WHEN 表达式 without ELSE
     tags: ["TODO", "NULL SUPPORT @chenjing @xinqi"]

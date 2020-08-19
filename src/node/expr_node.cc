@@ -26,7 +26,11 @@ Status ColumnRefNode::InferAttr(ExprAnalysisContext* ctx) {
 
 Status ConstNode::InferAttr(ExprAnalysisContext* ctx) {
     SetOutputType(ctx->node_manager()->MakeTypeNode(data_type_));
-    SetNullable(false);
+    if (kNull == data_type_) {
+        SetNullable(true);
+    } else {
+        SetNullable(false);
+    }
     return Status::OK();
 }
 
@@ -110,10 +114,8 @@ Status CaseWhenExprNode::InferAttr(ExprAnalysisContext* ctx) {
                 "return type aren't compatible");
         }
     }
-
     CHECK_TRUE(nullptr != else_expr(),
                "fail infer case when expr attr: else expr is nullptr");
-
     CHECK_TRUE(node::IsNullPrimary(else_expr()) ||
                    type->Equals(else_expr()->GetOutputType()),
                "fail infer case when expr attr: then return types and else "
