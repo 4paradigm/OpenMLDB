@@ -159,9 +159,9 @@ class TestMakeSnapshot(TestCaseBase):
 
         time.sleep(5)
         mf = self.get_manifest(self.leaderpath, self.tid, self.pid)
-        self.assertEqual(mf['offset'], '8000')
+        self.assertEqual(mf['offset'], '24000')
         self.assertTrue(mf['name'])
-        self.assertEqual(mf['count'], '8000')
+        self.assertEqual(mf['count'], '24000')
 
 
     def test_makesnapshot_block_drop_table(self):
