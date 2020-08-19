@@ -164,7 +164,6 @@ cases:
         - [4, "dd", "nothing"]
   - id: 12_2
     desc: SIMPLE CASE WHEN 表达式无ELSE
-    tags: ["TODO", "@chenjing, @xinqi"]
     inputs:
       - columns: ["col1 int","col2 string", "col4 timestamp"]
         indexs: ["index1:col1:col4"]
@@ -187,7 +186,6 @@ cases:
         - [4, "dd", null]
   - id: 12_3
     desc: SIMPLE CASE WHEN 表达式 ELSE NULL
-    tags: ["TODO", "@chenjing, @xinqi"]
     inputs:
       - columns: ["col1 int","col2 string", "col4 timestamp"]
         indexs: ["index1:col1:col4"]
@@ -211,7 +209,6 @@ cases:
         - [4, "dd", null]
   - id: 12_4
     desc: SIMPLE CASE WHEN 表达式 THEN NULL
-    tags: ["TODO", "@chenjing, @xinqi"]
     inputs:
       - columns: ["col1 int","col2 string", "col4 timestamp"]
         indexs: ["index1:col1:col4"]
@@ -262,7 +259,6 @@ cases:
         - [4, "dd", "nothing"]
   - id: 14_1
     desc: SEARCHED CASE WHEN 表达式无 ELSE
-    tags: ["TODO", "@chenjing, @xinqi"]
     inputs:
       - columns: ["col1 int","col2 string", "col4 timestamp"]
         indexs: ["index1:col1:col4"]

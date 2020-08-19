@@ -17,7 +17,7 @@ base::Status NullIRBuilder::CheckAnyNull(::llvm::BasicBlock *block,
     CHECK_TRUE(nullptr != should_ret_null,
               "fail to check any null: should ret null llvm value is null");
     ::llvm::IRBuilder<> builder(block);
-    if (value.HasFlag()) {
+    if (value.IsNullable()) {
         if (*should_ret_null == nullptr) {
             *should_ret_null = value.GetIsNull(&builder);
         } else {
@@ -33,7 +33,7 @@ base::Status NullIRBuilder::CheckAllNull(::llvm::BasicBlock *block,
     CHECK_TRUE(nullptr != should_ret_null,
                "fail to check all null: should ret null llvm value is null");
     ::llvm::IRBuilder<> builder(block);
-    if (value.HasFlag()) {
+    if (value.IsNullable()) {
         if (*should_ret_null == nullptr) {
             *should_ret_null = value.GetIsNull(&builder);
         } else {

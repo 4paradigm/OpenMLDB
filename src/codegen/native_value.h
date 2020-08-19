@@ -40,6 +40,8 @@ class NativeValue {
 
     bool IsReg() const;
 
+    bool IsNullable() const;
+
     bool HasFlag() const;
 
     bool IsMemFlag() const;

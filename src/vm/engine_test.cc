@@ -57,7 +57,6 @@ using fesql::codec::Row;
 using fesql::sqlcase::SQLCase;
 enum EngineRunMode { RUNBATCH, RUNONE };
 
-const bool IS_DEBUG = true;
 std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
@@ -318,7 +317,7 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
 
     Engine engine(catalog);
     RequestRunSession session;
-    if (IS_DEBUG) {
+    if (fesql::sqlcase::SQLCase::IS_DEBUG() || sql_case.debug()) {
         session.EnableDebug();
     }
 
@@ -421,7 +420,7 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
 
     Engine engine(catalog);
     BatchRunSession session;
-    if (IS_DEBUG || sql_case.debug()) {
+    if (fesql::sqlcase::SQLCase::IS_DEBUG() || sql_case.debug()) {
         session.EnableDebug();
     }
 

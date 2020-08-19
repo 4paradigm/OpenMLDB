@@ -40,7 +40,7 @@ base::Status CondSelectIRBuilder::Select(::llvm::BasicBlock* block,
     ::llvm::IRBuilder<> builder(block);
     base::Status status;
     auto raw_cond = cond_value.GetValue(&builder);
-    if (cond_value.HasFlag()) {
+    if (cond_value.IsNullable()) {
         raw_cond = builder.CreateAnd(
             raw_cond, builder.CreateNot(cond_value.GetIsNull(&builder)));
     }
@@ -56,7 +56,8 @@ base::Status CondSelectIRBuilder::Select(::llvm::BasicBlock* block,
                 builder.CreateSelect(raw_cond, sub_left.GetValue(&builder),
                                      sub_right.GetValue(&builder));
 
-            bool output_nullable = sub_left.HasFlag() || sub_right.HasFlag();
+            bool output_nullable =
+                sub_left.IsNullable() || sub_right.IsNullable();
             if (output_nullable) {
                 ::llvm::Value* output_is_null =
                     builder.CreateSelect(raw_cond, sub_left.GetIsNull(&builder),
@@ -72,7 +73,8 @@ base::Status CondSelectIRBuilder::Select(::llvm::BasicBlock* block,
         ::llvm::Value* raw_value =
             builder.CreateSelect(raw_cond, left_value.GetValue(&builder),
                                  right_value.GetValue(&builder));
-        bool output_nullable = left_value.HasFlag() || right_value.HasFlag();
+        bool output_nullable =
+            left_value.IsNullable() || right_value.IsNullable();
         if (output_nullable) {
             ::llvm::Value* output_is_null =
                 builder.CreateSelect(raw_cond, left_value.GetIsNull(&builder),

@@ -66,9 +66,7 @@ namespace codegen {
     }
 }
 
-void NativeValue::SetType(::llvm::Type* type) {
-    type_ = type;
-}
+void NativeValue::SetType(::llvm::Type* type) { type_ = type; }
 ::llvm::Type* NativeValue::GetType() const { return type_; }
 
 ::llvm::Value* NativeValue::GetRaw() const { return raw_; }
@@ -84,13 +82,14 @@ bool NativeValue::IsReg() const {
 bool NativeValue::HasFlag() const { return flag_ != nullptr; }
 
 bool NativeValue::IsMemFlag() const {
-    return HasFlag() && flag_->getType()->isPointerTy();
+    return IsNullable() && flag_->getType()->isPointerTy();
 }
 
 bool NativeValue::IsRegFlag() const {
-    return HasFlag() && !flag_->getType()->isPointerTy();
+    return IsNullable() && !flag_->getType()->isPointerTy();
 }
 
+bool NativeValue::IsNullable() const { return IsConstNull() || HasFlag(); }
 bool NativeValue::IsConstNull() const { return raw_ == nullptr; }
 
 void NativeValue::SetName(const std::string& name) {
@@ -131,7 +130,7 @@ NativeValue NativeValue::CreateMemWithFlag(::llvm::Value* raw,
 }
 
 NativeValue NativeValue::Replace(::llvm::Value* val) const {
-    if (HasFlag()) {
+    if (IsNullable()) {
         return CreateWithFlag(val, flag_);
     } else {
         return Create(val);

@@ -508,7 +508,7 @@ bool BufNativeEncoderIRBuilder::AppendPrimary(::llvm::Value* i8_ptr,
                                               uint32_t field_offset) {
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Value* offset = builder.getInt32(field_offset);
-    if (val.HasFlag()) {
+    if (val.IsNullable()) {
         ::llvm::Type* size_ty = builder.getInt32Ty();
         ::llvm::Type* bool_ty = builder.getInt1Ty();
         ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
