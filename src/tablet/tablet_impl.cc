@@ -392,13 +392,7 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
         real_et_type = ::rtidb::api::GetType::kSubKeyGe;
     }
     bool enable_project = false;
-    RepeatedPtrField<rtidb::common::ColumnDesc> columns;
-    int code = SchemaCodec::ConvertColumnDesc(meta.column_desc(), columns, meta.added_column_desc());
-    if (code != 0) {
-        LOG(WARNING) << "convert column desc failed";
-        return -1;
-    }
-    rtidb::codec::RowProject row_project(columns, request->projection());
+    rtidb::codec::RowProject row_project(vers_schema, request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
             return -1;
@@ -429,18 +423,6 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
                 int8_t* ptr = nullptr;
                 uint32_t size = 0;
                 const int8_t* row_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
-                uint8_t version = rtidb::codec::RowView::GetSchemaVersion(row_ptr);
-                if (version != 1) {
-                    auto version_it = vers_schema.find(version);
-                    if (version_it == vers_schema.end()) {
-                        LOG(WARNING) << "not found version " << unsigned(version) << " in version map";
-                        return -1;
-                    }
-                    if (row_project.GetMaxIdx() >= (uint32_t)(version_it->second->size())) {
-                        LOG(WARNING) << "projection idx is valid " << row_project.GetMaxIdx();
-                        return -1;
-                    }
-                }
                 bool ok = row_project.Project(row_ptr, it->GetValue().size(), &ptr, &size);
                 if (!ok) {
                     PDLOG(WARNING, "fail to make a projection");
@@ -1031,13 +1013,7 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
     }
 
     bool enable_project = false;
-    RepeatedPtrField<rtidb::common::ColumnDesc> columns;
-    int code = SchemaCodec::ConvertColumnDesc(meta.column_desc(), columns, meta.added_column_desc());
-    if (code != 0) {
-        LOG(WARNING) << "convert column desc failed";
-        return -1;
-    }
-    ::rtidb::codec::RowProject row_project(columns, request->projection());
+    ::rtidb::codec::RowProject row_project(vers_schema, request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
             LOG(WARNING) << "project on compress row data do not eing supported";
@@ -1113,14 +1089,17 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
             }
+            LOG(INFO) << "projection size is " << size;
             tmp.emplace_back(ts, Slice(reinterpret_cast<char*>(ptr), size, true));
             total_block_size += size;
         } else {
-            total_block_size += combine_it->GetValue().size();
-            tmp.emplace_back(ts, Slice(combine_it->GetValue()));
+            rtidb::base::Slice data = combine_it->GetValue();
+            total_block_size += data.size();
+            LOG(INFO) << "value size is " << data.size();
+            tmp.emplace_back(ts, data);
         }
         if (total_block_size > FLAGS_scan_max_bytes_size) {
-            PDLOG(WARNING, "reach the max byte size");
+            LOG(WARNING) << "reach the max byte size " << FLAGS_scan_max_bytes_size << " cur is " << total_block_size;
             return -3;
         }
         combine_it->Next();

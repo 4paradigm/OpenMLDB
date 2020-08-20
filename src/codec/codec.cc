@@ -978,119 +978,154 @@ int32_t GetStrField(const int8_t* row, uint32_t field_offset,
 
 }  // namespace v1
 
-RowProject::RowProject(const Schema& schema, const ProjectList& plist)
-    : schema_(schema),
+RowProject::RowProject(const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, const ProjectList& plist):
       plist_(plist),
       output_schema_(),
       row_builder_(NULL),
-      row_view_(NULL) {}
+      cur_rv_(nullptr),
+      max_idx_(0),
+      vers_views_(),
+      vers_schema_(vers_schema),
+      cur_ver_(1) {
+}
 
 RowProject::~RowProject() {
     delete row_builder_;
-    delete row_view_;
 }
 
 bool RowProject::Init() {
-    if (plist_.size() <= 0) return false;
+    if (plist_.size() <= 0) {
+        LOG(WARNING) << "projection list is empty";
+        return false;
+    }
     for (int32_t i = 0; i < plist_.size(); i++) {
         uint32_t idx = plist_.Get(i);
-        if (idx >= (uint32_t)schema_.size()) {
-            PDLOG(WARNING, "index %u out of schema size %d", idx,
-                  schema_.size());
-            return false;
+        if (idx >= max_idx_) {
+            max_idx_ = idx;
         }
-        const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
+    }
+    for (const auto it : vers_schema_) {
+        if (max_idx_ >= (uint32_t)it.second->size()) {
+            continue;
+        }
+        std::shared_ptr<RowView> rv = std::make_shared<RowView>(*it.second);
+        vers_views_.insert(std::make_pair(it.first, rv));
+    }
+    if (vers_views_.empty()) {
+        LOG(WARNING)  << "empty row views";
+        return false;
+    }
+    const auto it = vers_views_.begin();
+    cur_schema_ =  vers_schema_.find(it->first)->second;
+    cur_rv_ = it->second;
+    for (int32_t i = 0; i < plist_.size(); i++) {
+        uint32_t idx = plist_.Get(i);
+        const ::rtidb::common::ColumnDesc& column = cur_schema_->Get(idx);
         output_schema_.Add()->CopyFrom(column);
     }
     row_builder_ = new RowBuilder(output_schema_);
-    row_view_ = new RowView(schema_);
     return true;
 }
 
 bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
                          int8_t** output_ptr, uint32_t* out_size) {
     if (row_ptr == NULL || output_ptr == NULL || out_size == NULL) return false;
-    bool ok = row_view_->Reset(row_ptr, size);
+    uint8_t version = rtidb::codec::RowView::GetSchemaVersion(row_ptr);
+    if (version != cur_ver_) {
+        auto it = vers_views_.find(version);
+        if (it == vers_views_.end()) {
+            LOG(WARNING) << "not found valid row view for ver " << unsigned(version);
+            return false;
+        }
+        cur_rv_ = it->second;
+        cur_ver_  = version;
+        cur_schema_ =  vers_schema_.find(version)->second;
+    }
+    bool ok = cur_rv_->Reset(row_ptr, size);
     if (!ok) return false;
     uint32_t str_size = 0;
     for (int32_t i = 0; i < plist_.size(); i++) {
         uint32_t idx = plist_.Get(i);
-        const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
+        const ::rtidb::common::ColumnDesc& column = cur_schema_->Get(idx);
         if (column.data_type() == ::rtidb::type::kVarchar ||
             column.data_type() == ::rtidb::type::kString) {
-            if (row_view_->IsNULL(idx)) continue;
+            if (cur_rv_->IsNULL(idx)) continue;
             uint32_t length = 0;
             char* content = nullptr;
-            int32_t ret = row_view_->GetString(idx, &content, &length);
+            int32_t ret = cur_rv_->GetString(idx, &content, &length);
             if (ret != 0) {
                 return false;
             }
+            LOG(INFO) << "idx " << idx << " size " << length;
             str_size += length;
         }
     }
     uint32_t total_size = row_builder_->CalTotalLength(str_size);
+    if (total_size > 100) {
+        LOG(INFO) << "total size is " << total_size << " str size is " << str_size;
+    }
     char* ptr = new char[total_size];
     row_builder_->SetBuffer(reinterpret_cast<int8_t*>(ptr), total_size);
     for (int32_t i = 0; i < plist_.size(); i++) {
         uint32_t idx = plist_.Get(i);
-        const ::rtidb::common::ColumnDesc& column = schema_.Get(idx);
+        const ::rtidb::common::ColumnDesc& column = cur_schema_->Get(idx);
         int32_t ret = 0;
-        if (row_view_->IsNULL(idx)) {
+        if (cur_rv_->IsNULL(idx)) {
             row_builder_->AppendNULL();
             continue;
         }
         switch (column.data_type()) {
             case ::rtidb::type::kBool: {
                 bool val = false;
-                ret = row_view_->GetBool(idx, &val);
+                ret = cur_rv_->GetBool(idx, &val);
                 if (ret == 0) row_builder_->AppendBool(val);
                 break;
             }
             case ::rtidb::type::kSmallInt: {
                 int16_t val = 0;
-                ret = row_view_->GetInt16(idx, &val);
+                ret = cur_rv_->GetInt16(idx, &val);
                 if (ret == 0) row_builder_->AppendInt16(val);
                 break;
             }
             case ::rtidb::type::kInt: {
                 int32_t val = 0;
-                ret = row_view_->GetInt32(idx, &val);
+                ret = cur_rv_->GetInt32(idx, &val);
                 if (ret == 0) row_builder_->AppendInt32(val);
                 break;
             }
             case ::rtidb::type::kDate: {
                 int32_t val = 0;
-                ret = row_view_->GetDate(idx, &val);
+                ret = cur_rv_->GetDate(idx, &val);
                 if (ret == 0) row_builder_->AppendDate(val);
                 break;
             }
             case ::rtidb::type::kBlob: {
                 int64_t val = 0;
-                ret = row_view_->GetBlob(idx, &val);
+                ret = cur_rv_->GetBlob(idx, &val);
                 if (ret == 0) row_builder_->AppendBlob(val);
                 break;
             }
             case ::rtidb::type::kBigInt: {
                 int64_t val = 0;
-                ret = row_view_->GetInt64(idx, &val);
+                ret = cur_rv_->GetInt64(idx, &val);
                 if (ret == 0) row_builder_->AppendInt64(val);
                 break;
             }
             case ::rtidb::type::kTimestamp: {
                 int64_t val = 0;
-                ret = row_view_->GetTimestamp(idx, &val);
+                ret = cur_rv_->GetTimestamp(idx, &val);
                 if (ret == 0) row_builder_->AppendTimestamp(val);
                 break;
             }
             case ::rtidb::type::kFloat: {
                 float val = 0;
-                ret = row_view_->GetFloat(idx, &val);
+                ret = cur_rv_->GetFloat(idx, &val);
                 if (ret == 0) row_builder_->AppendFloat(val);
                 break;
             }
             case ::rtidb::type::kDouble: {
                 double val = 0;
-                ret = row_view_->GetDouble(idx, &val);
+                ret = cur_rv_->GetDouble(idx, &val);
                 if (ret == 0) row_builder_->AppendDouble(val);
                 break;
             }
@@ -1098,7 +1133,7 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
             case ::rtidb::type::kVarchar: {
                 char* val = NULL;
                 uint32_t size = 0;
-                ret = row_view_->GetString(idx, &val, &size);
+                ret = cur_rv_->GetString(idx, &val, &size);
                 if (ret == 0) row_builder_->AppendString(val, size);
                 break;
             }

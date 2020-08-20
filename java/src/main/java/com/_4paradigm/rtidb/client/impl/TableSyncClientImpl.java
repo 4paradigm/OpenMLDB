@@ -14,7 +14,6 @@ import com._4paradigm.rtidb.utils.Compress;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
-import io.netty.util.Timeout;
 import rtidb.api.TabletServer;
 import rtidb.blobserver.BlobServer;
 
@@ -508,6 +507,7 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     private Object[] get(int pid, String key, long time, GetOption getOption, TableHandler th) throws TabletException {
+        System.out.println("-******************* " + key);
         key = validateKey(key);
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());
@@ -531,7 +531,15 @@ public class TableSyncClientImpl implements TableSyncClient {
                         throw new TabletException("Cannot find column " + name);
                     }
                     builder.addProjection(idx);
-                    schema.add(th.getSchema().get(idx));
+                    if (idx >= th.getSchema().size()) {
+                        List<ColumnDesc> idxSchema = th.getSchemaMap().get(idx + 1);
+                        if (idxSchema == null) {
+                            throw new TabletException("not found idx " + idx + " schema");
+                        }
+                        schema.add(idxSchema.get(idx));
+                    } else {
+                        schema.add(th.getSchema().get(idx));
+                    }
                 }
             }
             isNewFormat = true;
@@ -1171,7 +1179,15 @@ public class TableSyncClientImpl implements TableSyncClient {
                         throw new TabletException("Cannot find column " + name);
                     }
                     builder.addProjection(idx);
-                    schema.add(th.getSchema().get(idx));
+                    if (idx >= th.getSchema().size()) {
+                        List<ColumnDesc> idxSchema = th.getSchemaMap().get(idx + 1);
+                        if (idxSchema == null) {
+                            throw new TabletException("not found idx " + idx + " schema");
+                        }
+                        schema.add(idxSchema.get(idx));
+                    } else {
+                        schema.add(th.getSchema().get(idx));
+                    }
                 }
             }
             isNewFormat = true;

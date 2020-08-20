@@ -43,7 +43,7 @@ struct RowContext {};
 
 class RowProject {
  public:
-    RowProject(const Schema& schema, const ProjectList& plist);
+    RowProject(const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, const ProjectList& plist);
 
     ~RowProject();
 
@@ -55,13 +55,16 @@ class RowProject {
     uint32_t GetMaxIdx() { return max_idx_; }
 
  private:
-    const Schema& schema_;
     const ProjectList& plist_;
     Schema output_schema_;
     // TODO(wangtaize) share the init overhead
     RowBuilder* row_builder_;
-    RowView* row_view_;
+    std::shared_ptr<Schema> cur_schema_;
+    std::shared_ptr<RowView> cur_rv_;
     uint32_t max_idx_;
+    std::map<int32_t, std::shared_ptr<RowView>> vers_views_;
+    std::map<int32_t, std::shared_ptr<Schema>> vers_schema_;
+    uint32_t cur_ver_;
 };
 
 class RowBuilder {

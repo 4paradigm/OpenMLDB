@@ -170,6 +170,9 @@ public class RowKvIterator implements KvIterator {
             byte[] data = new byte[slice.remaining()];
             slice.get(data);
             byte[] uncompressed = Compress.snappyUnCompress(data);
+            if (uncompressed == null) {
+                throw new TabletException("snappy uncompress error");
+            }
             buf = ByteBuffer.wrap(uncompressed).order(ByteOrder.LITTLE_ENDIAN);
         } else {
             buf = slice.order(ByteOrder.LITTLE_ENDIAN);
