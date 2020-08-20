@@ -1021,6 +1021,8 @@ TEST_F(TableTest, AbsOrLatSetGet) {
     ASSERT_EQ(2, (int64_t)table.GetTTL(1, 1).abs_ttl);
     ASSERT_EQ(10, (int64_t)table.GetTTL(1, 1).lat_ttl);
     table.SchedGc();
+    ASSERT_EQ(1, (int64_t)table.GetTTL(1, 0).abs_ttl);
+    ASSERT_EQ(3, (int64_t)table.GetTTL(1, 0).lat_ttl);
     {
         ::rtidb::api::LogEntry entry;
         entry.set_log_index(0);
@@ -1035,7 +1037,7 @@ TEST_F(TableTest, AbsOrLatSetGet) {
         ts->set_ts(now - 10 * (60 * 1000));
         ts = entry.add_ts_dimensions();
         ts->set_idx(1);
-        ts->set_ts(now - 2 * (60 * 1000));
+        ts->set_ts(now - 2 * (60 * 1000) + 1000);
         entry.set_value("value");
         ASSERT_FALSE(table.IsExpire(entry));
     }

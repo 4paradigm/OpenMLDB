@@ -41,7 +41,7 @@ bool BsClient::CreateTable(const TableMeta &table_meta, std::string *msg) {
     meta->CopyFrom(table_meta);
     ::rtidb::blobserver::CreateTableResponse response;
     bool ok = client_.SendRequest(&BlobServer_Stub::CreateTable, &request,
-                                  &response, FLAGS_request_sleep_time, 1);
+                                  &response, FLAGS_request_timeout_ms, 1);
     msg->swap(*response.mutable_msg());
     if (ok && response.code() == 0) {
         return true;
