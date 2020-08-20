@@ -56,7 +56,10 @@ class ExprIRBuilder {
     bool BuildWindow(NativeValue* output,
                      ::fesql::base::Status& status);  // NOLINT
     inline ::llvm::BasicBlock* block() const { return block_; }
-    inline void set_frame(node::FrameNode* frame) { this->frame_ = frame; }
+    inline void set_frame(node::ExprNode* frame_arg, node::FrameNode* frame) {
+        this->frame_arg_ = frame_arg;
+        this->frame_ = frame;
+    }
 
  private:
     bool BuildColumnIterator(const std::string& relation_name,
@@ -107,6 +110,7 @@ class ExprIRBuilder {
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
     node::FrameNode* frame_;
+    node::ExprNode* frame_arg_;
     bool row_mode_;
     VariableIRBuilder variable_ir_builder_;
     ArithmeticIRBuilder arithmetic_ir_builder_;

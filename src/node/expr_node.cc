@@ -128,29 +128,137 @@ Status CaseWhenExprNode::InferAttr(ExprAnalysisContext* ctx) {
     return Status::OK();
 }
 
+bool IsSafeCast(const TypeNode* from_type, const TypeNode* target_type) {
+    auto from_base = from_type->base();
+    auto target_base = target_type->base();
+    switch (target_base) {
+        case kBool:
+            return from_base == kBool;
+        case kInt16:
+            return from_base == kBool || from_base == kInt16;
+        case kInt32:
+            return from_base == kBool || from_base == kInt16 ||
+                   from_base == kInt32;
+        case kInt64:
+            return from_base == kBool || from_type->IsInteger();
+        case kFloat:
+            return from_base == kBool || from_type->IsInteger() ||
+                   from_base == kFloat;
+        case kDouble:
+            return from_base == kBool || from_type->IsArithmetic();
+        case kTimestamp:
+            return from_type->IsInteger();
+        default:
+            return false;
+    }
+}
+
+Status InferBinaryArithmeticType(const TypeNode* left, const TypeNode* right,
+                                 const TypeNode** output) {
+    CHECK_TRUE(left != nullptr && right != nullptr);
+    if (TypeEquals(left, right)) {
+        *output = left;
+    } else if (IsSafeCast(left, right)) {
+        *output = right;
+    } else if (IsSafeCast(right, left)) {
+        *output = left;
+    } else if (left->IsFloating() && right->IsInteger()) {
+        *output = left;
+    } else if (left->IsInteger() && right->IsFloating()) {
+        *output = right;
+    } else {
+        return Status(common::kCodegenError,
+                      "Incompatible lhs and rhs type: " + left->GetName() +
+                          ", " + right->GetName());
+    }
+    return Status::OK();
+}
+
 Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetChildNum() == 2);
     auto left_type = GetChild(0)->GetOutputType();
     auto right_type = GetChild(1)->GetOutputType();
+    CHECK_TRUE(left_type != nullptr && right_type != nullptr);
     switch (GetOp()) {
+        case kFnOpAdd:
+        case kFnOpMinus:
+        case kFnOpMulti:
+        case kFnOpMod:
+        case kFnOpDiv: {
+            const TypeNode* output_type = nullptr;
+            CHECK_STATUS(
+                InferBinaryArithmeticType(left_type, right_type, &output_type));
+            SetOutputType(output_type);
+            SetNullable(false);
+            break;
+        }
+        case kFnOpFDiv: {
+            CHECK_TRUE(left_type->IsArithmetic() && right_type->IsArithmetic(),
+                       "Invalid fdiv type: ", left_type->GetName(), " / ",
+                       right_type->GetName());
+            SetOutputType(ctx->node_manager()->MakeTypeNode(kDouble));
+            SetNullable(false);
+            break;
+        }
         case kFnOpEq:
         case kFnOpNeq:
         case kFnOpLt:
         case kFnOpLe:
         case kFnOpGt:
-        case kFnOpGe: {
+        case kFnOpGe:
+        case kFnOpOr:
+        case kFnOpXor:
+        case kFnOpAnd: {
+            const TypeNode* top_type = nullptr;
+            CHECK_STATUS(
+                InferBinaryArithmeticType(left_type, right_type, &top_type));
             SetOutputType(ctx->node_manager()->MakeTypeNode(node::kBool));
+            SetNullable(false);
             break;
         }
-        default: {
-            if (left_type != nullptr) {
-                SetOutputType(left_type);
-            } else {
-                SetOutputType(right_type);
-            }
+        case kFnOpAt: {
+            CHECK_TRUE(left_type->base() == kList,
+                       "At op should take list input");
+            CHECK_TRUE(right_type->IsInteger(), "At index should be integer");
+            SetOutputType(left_type->GetGenericType(0));
+            SetNullable(left_type->IsGenericNullable(0));
+            break;
         }
+        default:
+            return Status(common::kCodegenError,
+                          "Unknown binary op type: " + ExprOpTypeName(GetOp()));
     }
-    SetNullable(false);
+    return Status::OK();
+}
+
+Status UnaryExpr::InferAttr(ExprAnalysisContext* ctx) {
+    CHECK_TRUE(GetChildNum() == 1);
+    auto dtype = GetChild(0)->GetOutputType();
+    CHECK_TRUE(dtype != nullptr);
+    switch (GetOp()) {
+        case kFnOpNot: {
+            CHECK_TRUE(dtype->IsArithmetic() || dtype->base() == kBool,
+                       "Invalid unary predicate type: ", dtype->GetName());
+            SetOutputType(ctx->node_manager()->MakeTypeNode(node::kBool));
+            SetNullable(false);
+            break;
+        }
+        case kFnOpMinus: {
+            CHECK_TRUE(dtype->IsArithmetic(),
+                       "Invalid unary type for minus: ", dtype->GetName());
+            SetOutputType(dtype);
+            SetNullable(false);
+            break;
+        }
+        case kFnOpBracket: {
+            SetOutputType(dtype);
+            SetNullable(GetChild(0)->nullable());
+            break;
+        }
+        default:
+            return Status(common::kCodegenError,
+                          "Unknown unary op type: " + ExprOpTypeName(GetOp()));
+    }
     return Status::OK();
 }
 
@@ -162,7 +270,7 @@ Status CondExpr::InferAttr(ExprAnalysisContext* ctx) {
     auto left_type = GetLeft()->GetOutputType();
     auto right_type = GetRight()->GetOutputType();
     CHECK_TRUE(left_type != nullptr, "Unknown cond left type");
-    CHECK_TRUE(right_type != nullptr, "Unknown cond left type");
+    CHECK_TRUE(right_type != nullptr, "Unknown cond right type");
     CHECK_TRUE(TypeEquals(left_type, right_type),
                "Condition's left and right type do not match: ",
                left_type->GetName(), " : ", right_type->GetName());

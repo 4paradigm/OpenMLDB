@@ -34,10 +34,13 @@ class ExprUDFRegistryHelper;
 class LLVMUDFRegistryHelper;
 class ExternalFuncRegistryHelper;
 class UDAFRegistryHelper;
-class UDFTransformRegistry;
+class UDFRegistry;
 class UDAFRegistry;
 class CompositeRegistry;
 class UDFResolveContext;
+
+template <typename T>
+class ArgSignatureTable;
 
 template <template <typename> typename FTemplate>
 class ExternalTemplateFuncRegistryHelper;
@@ -59,20 +62,25 @@ class UDFLibrary {
  public:
     Status Transform(const std::string& name,
                      const std::vector<node::ExprNode*>& args,
-                     node::NodeManager* node_manager, ExprNode** result);
+                     node::NodeManager* node_manager, ExprNode** result) const;
 
     Status Transform(const std::string& name, UDFResolveContext* ctx,
-                     ExprNode** result);
+                     ExprNode** result) const;
 
     Status ResolveFunction(const std::string& name, UDFResolveContext* ctx,
-                           node::FnDefNode** result);
+                           node::FnDefNode** result) const;
 
     Status ResolveFunction(const std::string& name,
                            const std::vector<node::ExprNode*>& args,
                            node::NodeManager* node_manager,
-                           node::FnDefNode** result);
+                           node::FnDefNode** result) const;
 
-    std::shared_ptr<UDFTransformRegistry> Find(const std::string& name) const;
+    std::shared_ptr<UDFRegistry> Find(
+        const std::string& name,
+        const std::vector<const node::TypeNode*>& arg_types) const;
+
+    std::shared_ptr<ArgSignatureTable<std::shared_ptr<UDFRegistry>>> FindAll(
+        const std::string& name) const;
 
     bool IsUDAF(const std::string& name, size_t args);
     void SetIsUDAF(const std::string& name, size_t args);
@@ -98,8 +106,7 @@ class UDFLibrary {
 
     template <template <typename> class FTemplate>
     auto RegisterUDAFTemplate(const std::string& name) {
-        return DoStartRegister<UDAFTemplateRegistryHelper<FTemplate>,
-                               UDAFRegistry>(name);
+        return UDAFTemplateRegistryHelper<FTemplate>(name, this);
     }
 
     template <template <typename> class FTemplate>
@@ -112,23 +119,18 @@ class UDFLibrary {
 
     node::NodeManager* node_manager() { return &nm_; }
 
-    const std::unordered_map<std::string, std::shared_ptr<CompositeRegistry>>&
-    GetAllRegistries() {
-        return table_;
-    }
+    const auto& GetAllRegistries() { return table_; }
+
+    void InsertRegistry(const std::string& name,
+                        const std::vector<std::string>& signature,
+                        std::shared_ptr<UDFRegistry> registry);
 
  private:
-    template <typename Helper, typename RegistryT>
-    Helper DoStartRegister(const std::string& name) {
-        auto reg_item = std::make_shared<RegistryT>(name);
-        InsertRegistry(reg_item);
-        return Helper(reg_item, this);
-    }
-
-    void InsertRegistry(std::shared_ptr<UDFTransformRegistry> reg_item);
-
     std::unordered_map<std::string, std::unordered_set<size_t>> udaf_tags_;
-    std::unordered_map<std::string, std::shared_ptr<CompositeRegistry>> table_;
+    std::unordered_map<
+        std::string,
+        std::shared_ptr<ArgSignatureTable<std::shared_ptr<UDFRegistry>>>>
+        table_;
     std::unordered_map<std::string, void*> external_symbols_;
 
     node::NodeManager nm_;

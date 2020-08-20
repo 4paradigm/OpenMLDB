@@ -221,7 +221,9 @@ Status ResolveFnAndAttrs::VisitExpr(node::ExprNode* expr,
                 auto status = library_->Transform(external_fn->function_name(),
                                                   arg_list, nm_, &result);
                 if (status.isOK() && result != nullptr) {
-                    *output = result;
+                    node::ExprNode* resolved_result = nullptr;
+                    CHECK_STATUS(VisitExpr(result, &resolved_result));
+                    *output = resolved_result;
                 } else {
                     // fallback to legacy fn gen with warning
                     LOG(WARNING)

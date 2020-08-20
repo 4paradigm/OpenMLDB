@@ -56,6 +56,7 @@ ExprIRBuilder::ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
     : block_(block),
       sv_(scope_var),
       frame_(nullptr),
+      frame_arg_(nullptr),
       row_mode_(row_mode),
       variable_ir_builder_(block, scope_var),
       arithmetic_ir_builder_(block),
@@ -328,7 +329,7 @@ Status ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call,
         }
     }
     ExprIRBuilder sub_builder(block_, sv_, schemas_context_, !is_udaf, module_);
-    sub_builder.set_frame(this->frame_);
+    sub_builder.set_frame(this->frame_arg_, this->frame_);
     for (size_t i = 0; i < call->GetChildNum(); ++i) {
         node::ExprNode* arg_expr = call->GetChild(i);
         NativeValue arg_value;
@@ -338,8 +339,8 @@ Status ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call,
         arg_values.push_back(arg_value);
         arg_types.push_back(arg_expr->GetOutputType());
     }
-
-    UDFIRBuilder udf_builder(block_, sv_, schemas_context_, module_);
+    UDFIRBuilder udf_builder(block_, sv_, schemas_context_, module_, frame_arg_,
+                             frame_);
     return udf_builder.BuildCall(fn_def, arg_types, arg_values, output);
 }
 
@@ -771,6 +772,20 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
         LOG(WARNING) << "fail to codegen binary expression: " << status.msg;
         return false;
     }
+
+    // check llvm type and inferred type
+    if (node->GetOutputType() == nullptr) {
+        LOG(WARNING) << "Unary op type not inferred";
+    } else {
+        ::llvm::Type* expect_llvm_ty = nullptr;
+        GetLLVMType(module_, node->GetOutputType(), &expect_llvm_ty);
+        if (expect_llvm_ty != raw->getType()) {
+            LOG(WARNING) << "Inconsistent return llvm type: "
+                         << GetLLVMObjectString(raw->getType()) << ", expect "
+                         << GetLLVMObjectString(expect_llvm_ty);
+        }
+    }
+
     *output = NativeValue::Create(raw);
     return true;
 }
@@ -962,6 +977,20 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
         LOG(WARNING) << "fail to codegen binary expression: " << status.msg;
         return false;
     }
+
+    // check llvm type and inferred type
+    if (node->GetOutputType() == nullptr) {
+        LOG(WARNING) << "Binary op type not inferred";
+    } else {
+        ::llvm::Type* expect_llvm_ty = nullptr;
+        GetLLVMType(module_, node->GetOutputType(), &expect_llvm_ty);
+        if (expect_llvm_ty != raw->getType()) {
+            LOG(WARNING) << "Inconsistent return llvm type: "
+                         << GetLLVMObjectString(raw->getType()) << ", expect "
+                         << GetLLVMObjectString(expect_llvm_ty);
+        }
+    }
+
     *output = NativeValue::Create(raw);
     return true;
 }

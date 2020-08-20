@@ -75,10 +75,7 @@ if (TESTING_ENABLE)
 endif()
 
 # fesql bin
-add_library(fesql_flags STATIC flags.cc)
-add_executable(fesql cmd/fesql.cc)
-target_link_libraries(fesql fesql_core fesql_flags fesql_sdk
-    tcmalloc)
+add_subdirectory(cmd)
 
 # fesql sdk
 add_subdirectory(sdk)

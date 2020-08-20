@@ -291,7 +291,7 @@ struct AvgCateDef {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
         helper.library()
             ->RegisterUDAFTemplate<Impl>("avg_cate")
-            .doc(helper.registry()->doc())
+            .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
 
@@ -308,15 +308,16 @@ struct AvgCateDef {
                                  DataTypeTrait<K>::to_string() + "_" +
                                  DataTypeTrait<V>::to_string();
             helper
-                .templates<StringRef, Opaque<ContainerT>, Nullable<K>,
-                           Nullable<V>>()
+                .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
+                           Nullable<K>>()
                 .init("avg_cate_init" + suffix, ContainerT::Init)
                 .update("avg_cate_update" + suffix, Update)
                 .output("avg_cate_output" + suffix, Output);
         }
 
-        static ContainerT* Update(ContainerT* ptr, InputK key, bool is_key_null,
-                                  InputV value, bool is_value_null) {
+        static ContainerT* Update(ContainerT* ptr,
+                                  InputV value, bool is_value_null,
+                                  InputK key, bool is_key_null) {
             if (is_key_null || is_value_null) {
                 return ptr;
             }
@@ -352,7 +353,7 @@ struct AvgCateWhereDef {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
         helper.library()
             ->RegisterUDAFTemplate<Impl>("avg_cate_where")
-            .doc(helper.registry()->doc())
+            .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
 
@@ -371,19 +372,19 @@ struct AvgCateWhereDef {
                                  DataTypeTrait<K>::to_string() + "_" +
                                  DataTypeTrait<V>::to_string();
             helper
-                .templates<StringRef, Opaque<ContainerT>, Nullable<K>,
-                           Nullable<V>, Nullable<bool>>()
+                .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
+                            Nullable<bool>, Nullable<K>>()
                 .init("avg_cate_where_init" + suffix, ContainerT::Init)
                 .update("avg_cate_where_update" + suffix, Update)
                 .output("avg_cate_where_output" + suffix, AvgCateImpl::Output);
         }
 
-        static ContainerT* Update(ContainerT* ptr, InputK key, bool is_key_null,
-                                  InputV value, bool is_value_null, bool cond,
-                                  bool is_cond_null) {
+        static ContainerT* Update(ContainerT* ptr, InputV value,
+                    bool is_value_null, bool cond, bool is_cond_null,
+                                  InputK key, bool is_key_null) {
             if (cond && !is_cond_null) {
-                AvgCateImpl::Update(ptr, key, is_key_null, value,
-                                    is_value_null);
+                AvgCateImpl::Update(ptr, value, is_value_null,
+                                    key, is_key_null);
             }
             return ptr;
         }
@@ -395,7 +396,7 @@ struct TopAvgCateWhereDef {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
         helper.library()
             ->RegisterUDAFTemplate<Impl>("top_n_avg_cate_where")
-            .doc(helper.registry()->doc())
+            .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
 
@@ -415,8 +416,8 @@ struct TopAvgCateWhereDef {
             suffix = ".i32_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
                      "_" + DataTypeTrait<V>::to_string();
             helper
-                .templates<StringRef, Opaque<ContainerT>, Nullable<K>,
-                           Nullable<V>, Nullable<bool>, int32_t>()
+                .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
+                            Nullable<bool>, Nullable<K>, int32_t>()
                 .init("top_n_avg_cate_where_init" + suffix, ContainerT::Init)
                 .update("top_n_avg_cate_where_update" + suffix, UpdateI32Bound)
                 .output("top_n_avg_cate_where_output" + suffix, Output);
@@ -424,19 +425,19 @@ struct TopAvgCateWhereDef {
             suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
                      "_" + DataTypeTrait<V>::to_string();
             helper
-                .templates<StringRef, Opaque<ContainerT>, Nullable<K>,
-                           Nullable<V>, Nullable<bool>, int64_t>()
+                .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
+                           Nullable<bool>, Nullable<K>, int64_t>()
                 .init("top_n_avg_cate_where_init" + suffix, ContainerT::Init)
                 .update("top_n_avg_cate_where_update" + suffix, Update)
                 .output("top_n_avg_cate_where_output" + suffix, Output);
         }
 
-        static ContainerT* Update(ContainerT* ptr, InputK key, bool is_key_null,
-                                  InputV value, bool is_value_null, bool cond,
-                                  bool is_cond_null, int64_t bound) {
+        static ContainerT* Update(ContainerT* ptr, InputV value,
+                bool is_value_null, bool cond, bool is_cond_null, InputK key,
+                                  bool is_key_null, int64_t bound) {
             if (cond && !is_cond_null) {
-                AvgCateImpl::Update(ptr, key, is_key_null, value,
-                                    is_value_null);
+                AvgCateImpl::Update(ptr, value, is_value_null, key,
+                                    is_key_null);
                 auto& map = ptr->map();
                 if (bound >= 0 && map.size() > static_cast<size_t>(bound)) {
                     map.erase(map.begin());
@@ -445,12 +446,12 @@ struct TopAvgCateWhereDef {
             return ptr;
         }
 
-        static ContainerT* UpdateI32Bound(ContainerT* ptr, InputK key,
-                                          bool is_key_null, InputV value,
+        static ContainerT* UpdateI32Bound(ContainerT* ptr, InputV value,
                                           bool is_value_null, bool cond,
-                                          bool is_cond_null, int32_t bound) {
-            return Update(ptr, key, is_key_null, value, is_value_null, cond,
-                          is_cond_null, bound);
+                                          bool is_cond_null, InputK key,
+                                          bool is_key_null, int32_t bound) {
+            return Update(ptr, value, is_value_null, cond,
+                          is_cond_null, key, is_key_null,  bound);
         }
 
         static void Output(ContainerT* ptr, codec::StringRef* output) {
@@ -533,8 +534,8 @@ void DefaultUDFLibrary::InitStringUDF() {
 
             @endcode
 
-            @param **str**
-            @param **pos** define the begining of the substring.
+            @param str
+            @param pos define the begining of the substring.
 
             - If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
             - If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
@@ -550,7 +551,6 @@ void DefaultUDFLibrary::InitStringUDF() {
         .doc(R"(
             Return a substring `len` characters long from string str, starting at position `pos`.
 
-            example
             @code{.sql}
 
                 select substr("hello world", 3, 6);
@@ -558,13 +558,13 @@ void DefaultUDFLibrary::InitStringUDF() {
 
             @endcode
 
-            @param **str**
-            @param **pos**: define the begining of the substring.
+            @param str
+            @param pos: define the begining of the substring.
 
              - If `pos` is positive, the begining of the substring is `pos` charactors from the start of string.
              - If `pos` is negative, the beginning of the substring is `pos` characters from the end of the string, rather than the beginning.
 
-            @param **len** length of substring. If len is less than 1, the result is the empty string.
+            @param len length of substring. If len is less than 1, the result is the empty string.
 
             @since 2.0.0.0
         )");
@@ -606,25 +606,23 @@ void DefaultUDFLibrary::InitStringUDF() {
 void DefaultUDFLibrary::IniMathUDF() {
     RegisterExternal("log")
         .doc(R"(
-log(base, expr)
-If called with one parameter, this function returns the natural logarithm of expr.
-If called with two parameters, this function returns the logarithm of expr to the base.
+            log(base, expr)
+            If called with one parameter, this function returns the natural logarithm of expr.
+            If called with two parameters, this function returns the logarithm of expr to the base.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT LOG(1);  
-    -- output 0.000000
+                SELECT LOG(1);  
+                -- output 0.000000
 
-    SELECT LOG(10,100);
-    -- output 2
-@endcode
+                SELECT LOG(10,100);
+                -- output 2
+            @endcode
 
-@param **base**
-@param **expr**
+            @param base
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args<float>(static_cast<float (*)(float)>(log))
         .args<double>(static_cast<double (*)(double)>(log));
     RegisterExprUDF("log").args<AnyArg>(
@@ -655,20 +653,18 @@ example
 
     RegisterExternal("ln")
         .doc(R"(
-Return the natural logarithm of expr.
+            Return the natural logarithm of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT LN(1);  
-    -- output 0.000000
+                SELECT LN(1);  
+                -- output 0.000000
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args<float>(static_cast<float (*)(float)>(log))
         .args<double>(static_cast<double (*)(double)>(log));
     RegisterExprUDF("ln").args<AnyArg>(
@@ -685,20 +681,18 @@ example
 
     RegisterExternal("log2")
         .doc(R"(
-Return the base-2 logarithm of expr.
+            Return the base-2 logarithm of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT LOG2(65536);  
-    -- output 16
+                SELECT LOG2(65536);  
+                -- output 16
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args<float>(static_cast<float (*)(float)>(log2))
         .args<double>(static_cast<double (*)(double)>(log2));
     RegisterExprUDF("log2").args<AnyArg>(
@@ -715,20 +709,18 @@ example
 
     RegisterExternal("log10")
         .doc(R"(
-Return the base-10 logarithm of expr.
+            Return the base-10 logarithm of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT LOG10(100);  
-    -- output 2
+                SELECT LOG10(100);  
+                -- output 2
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args<float>(static_cast<float (*)(float)>(log10))
         .args<double>(static_cast<double (*)(double)>(log10));
     RegisterExprUDF("log10").args<AnyArg>(
@@ -743,90 +735,280 @@ example
             return nm->MakeFuncNode("log10", {cast}, nullptr);
         });
 
-    RegisterExternal("abs")
+    RegisterExternalTemplate<v1::Abs>("abs")
         .doc(R"(
-Return the absolute value of expr.
+            Return the absolute value of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT ABS(-32);
-    -- output 32
+                SELECT ABS(-32);
+                -- output 32
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
-        .args<int16_t>(static_cast<int16_t (*)(int16_t)>(v1::abs_int16))
-        .args<int32_t>(static_cast<int32_t (*)(int32_t)>(abs));
-    RegisterExternal("abs").args<int64_t>(
-        static_cast<int64_t (*)(int64_t)>(v1::abs_int64));
-    RegisterExternal("abs")
-        .args<float>(static_cast<float (*)(float)>(fabs))
-        .args<double>(static_cast<double (*)(double)>(fabs));
+            @since 2.0.0.0)")
+        .args_in<int64_t, double>();
+    RegisterExternalTemplate<v1::Abs32>("abs").args_in<int16_t, int32_t>();
+    RegisterExprUDF("abs").args<AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("abs do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast = nm->MakeCastNode(node::kDouble, x);
+            return nm->MakeFuncNode("abs", {cast}, nullptr);
+        });
 
+    RegisterExternalTemplate<v1::Ceil>("ceil")
+        .doc(R"(
+            Return the smallest integer value not less than the expr
+
+            @code{.sql}
+
+                SELECT CEIL(1.23);
+                -- output 2
+
+            @endcode
+
+            @param expr
+
+            @since 2.0.0.0)")
+        .args_in<int16_t, int32_t, int64_t>();
+    RegisterExternal("ceil").args<double>(
+        static_cast<double (*)(double)>(ceil));
+    RegisterExprUDF("ceil").args<AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("ceil do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast = nm->MakeCastNode(node::kDouble, x);
+            return nm->MakeFuncNode("ceil", {cast}, nullptr);
+        });
+
+    RegisterAlias("ceiling", "ceil");
+
+    RegisterExternalTemplate<v1::Exp>("exp")
+        .doc(R"(
+            Return the value of e (the base of natural logarithms) raised to the power of expr.
+
+            @code{.sql}
+
+                SELECT EXP(0);  
+                -- output 1
+
+            @endcode
+
+            @param expr
+
+            @since 2.0.0.0)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("exp").args<float>(static_cast<float (*)(float)>(expf));
+
+    RegisterExternalTemplate<v1::Floor>("floor")
+        .doc(R"(
+            Return the largest integer value not less than the expr
+
+            @code{.sql}
+
+                SELECT FLOOR(1.23);
+                -- output 1
+
+            @endcode
+
+            @param expr
+
+            @since 2.0.0.0)")
+        .args_in<int16_t, int32_t, int64_t>();
+    RegisterExternal("floor").args<double>(
+        static_cast<double (*)(double)>(floor));
+    RegisterExprUDF("floor").args<AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("floor do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast = nm->MakeCastNode(node::kDouble, x);
+            return nm->MakeFuncNode("floor", {cast}, nullptr);
+        });
+
+    RegisterExternalTemplate<v1::Pow>("pow")
+        .doc(R"(
+            pow(expr1, expr2)
+            Return the value of expr1 to the power of expr2.
+
+            @code{.sql}
+
+                SELECT POW(2, 10);
+                -- output 1024.000000
+
+            @endcode
+
+            @param expr1
+            @param expr2
+
+            @since 2.0.0.0)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("pow").args<float, float>(
+        static_cast<float (*)(float, float)>(powf));
+    RegisterExprUDF("pow").args<AnyArg, AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("pow do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            if (!y->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("pow do not support type " +
+                              y->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast1 = nm->MakeCastNode(node::kDouble, x);
+            auto cast2 = nm->MakeCastNode(node::kDouble, y);
+            return nm->MakeFuncNode("pow", {cast1, cast2}, nullptr);
+        });
+    RegisterAlias("power", "pow");
+
+    RegisterExternalTemplate<v1::Round>("round")
+        .doc(R"(
+            Return the nearest integer value to expr (in floating-point format), 
+            rounding halfway cases away from zero, regardless of the current rounding mode.
+
+            @code{.sql}
+
+                SELECT ROUND(1.23);
+                -- output 1
+
+            @endcode
+
+            @param expr
+
+            @since 2.0.0.0)")
+        .args_in<int64_t, double>();
+    RegisterExternalTemplate<v1::Round32>("round").args_in<int16_t, int32_t>();
+    RegisterExprUDF("round").args<AnyArg>(
+        [](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("round do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast = nm->MakeCastNode(node::kDouble, x);
+            return nm->MakeFuncNode("round", {cast}, nullptr);
+        });
+
+    RegisterExternalTemplate<v1::Sqrt>("sqrt")
+        .doc(R"(
+            Return square root of expr.
+
+            @code{.sql}
+
+                SELECT SQRT(100);
+                -- output 10.000000
+
+            @endcode
+
+            @param expr: It is a single argument in radians.
+
+            @since 2.0.0.0)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("sqrt").args<float>(static_cast<float (*)(float)>(sqrtf));
+
+    RegisterExternalTemplate<v1::Truncate>("truncate")
+        .doc(R"(
+            Return the nearest integer that is not greater in magnitude than the expr.
+
+            @code{.sql}
+
+                SELECT TRUNCATE(1.23);
+                -- output 1.0
+
+            @endcode
+
+            @param expr
+
+            @since 2.0.0.0)")
+        .args_in<int64_t, double>();
+    RegisterExternalTemplate<v1::Truncate32>("truncate")
+        .args_in<int16_t, int32_t>();
+    RegisterExprUDF("truncate")
+        .args<AnyArg>([](UDFResolveContext* ctx, ExprNode* x) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic()) {
+                ctx->SetError("truncate do not support type " +
+                              x->GetOutputType()->GetName());
+                return nullptr;
+            }
+            auto nm = ctx->node_manager();
+            auto cast = nm->MakeCastNode(node::kDouble, x);
+            return nm->MakeFuncNode("truncate", {cast}, nullptr);
+        });
+}
+
+void DefaultUDFLibrary::InitTrigonometricUDF() {
     RegisterExternalTemplate<v1::Acos>("acos")
         .doc(R"(
-Return the arc cosine of expr.
+            Return the arc cosine of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT ACOS(1);
-    -- output 0
+                SELECT ACOS(1);
+                -- output 0
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("acos").args<float>(static_cast<float (*)(float)>(acosf));
 
     RegisterExternalTemplate<v1::Asin>("asin")
         .doc(R"(
-Return the arc sine of expr.
+            Return the arc sine of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT ASIN(0.0);
-    -- output 0.000000
+                SELECT ASIN(0.0);
+                -- output 0.000000
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("asin").args<float>(static_cast<float (*)(float)>(asinf));
 
     RegisterExternalTemplate<v1::Atan>("atan")
         .doc(R"(
-atan(Y, X)
-If called with one parameter, this function returns the arc tangent of expr.
-If called with two parameters X and Y, this function returns the arc tangent of Y / X.
+            atan(Y, X)
+            If called with one parameter, this function returns the arc tangent of expr.
+            If called with two parameters X and Y, this function returns the arc tangent of Y / X.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT ATAN(-0.0);  
-    -- output -0.000000
+                SELECT ATAN(-0.0);  
+                -- output -0.000000
 
-    SELECT ATAN(0, -0);
-    -- output 3.141593
+                SELECT ATAN(0, -0);
+                -- output 3.141593
 
-@endcode
+            @endcode
 
-@param **X**
-@param **Y**
+            @param X
+            @param Y
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("atan").args<float>(static_cast<float (*)(float)>(atanf));
 
@@ -854,34 +1036,32 @@ example
 
     RegisterExternalTemplate<v1::Atan2>("atan2")
         .doc(R"(
-atan2(Y, X)
-Return the arc tangent of Y / X..
+            atan2(Y, X)
+            Return the arc tangent of Y / X..
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT ATAN2(0, -0);
-    -- output 3.141593
+                SELECT ATAN2(0, -0);
+                -- output 3.141593
 
-@endcode
+            @endcode
 
-@param **X**
-@param **Y**
+            @param X
+            @param Y
 
-@since 2.0.0.0
-)")
+            @since 2.0.0.0)")
         .args_in<int16_t, int32_t, int64_t, double>();
     RegisterExternal("atan2").args<float, float>(
         static_cast<float (*)(float, float)>(atan2f));
     RegisterExprUDF("atan2").args<AnyArg, AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("atan do not support type " +
+                ctx->SetError("atan2 do not support type " +
                               x->GetOutputType()->GetName());
                 return nullptr;
             }
             if (!y->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("atan do not support type " +
+                ctx->SetError("atan2 do not support type " +
                               y->GetOutputType()->GetName());
                 return nullptr;
             }
@@ -891,28 +1071,78 @@ example
             return nm->MakeFuncNode("atan2", {cast1, cast2}, nullptr);
         });
 
-    RegisterExternalTemplate<v1::Ceil>("ceil")
+    RegisterExternalTemplate<v1::Cos>("cos")
         .doc(R"(
-Return the smallest integer value not less than the expr
+            Return the cosine of expr.
 
-example
-@code{.sql}
+            @code{.sql}
 
-    SELECT CEIL(1.23);
-    -- output 2
+                SELECT COS(0);
+                -- output 1.000000
 
-@endcode
+            @endcode
 
-@param **expr**
+            @param expr: It is a single argument in radians.
 
-@since 2.0.0.0
-)")
-        .args_in<int16_t, int32_t, int64_t>();
-    RegisterExternal("ceil").args<double>(
-        static_cast<int (*)(double)>(v1::Ceild));
-    RegisterExternal("ceil").args<float>(
-        static_cast<int (*)(float)>(v1::Ceilf));
-    RegisterAlias("ceil", "ceiling");
+            - The value returned by cos() is always in the range: -1 to 1.
+
+            @since 2.0.0.0)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("cos").args<float>(static_cast<float (*)(float)>(cosf));
+
+    RegisterExternalTemplate<v1::Cot>("cot")
+        .doc(R"(
+            Return the cotangent of expr.
+
+            @code{.sql}
+
+                SELECT COT(1);  
+                -- output 0.6420926159343306
+
+            @endcode
+
+            @param expr
+
+            @since 2.0.0.0)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("cot").args<float>(
+        static_cast<float (*)(float)>(v1::Cotf));
+
+    RegisterExternalTemplate<v1::Sin>("sin")
+        .doc(R"(
+            Return the sine of expr.
+
+            @code{.sql}
+
+                SELECT SIN(0);
+                -- output 0.000000
+
+            @endcode
+
+            @param expr: It is a single argument in radians.
+
+            - The value returned by sin() is always in the range: -1 to 1.
+
+            @since 2.0.0.0)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("sin").args<float>(static_cast<float (*)(float)>(sinf));
+
+    RegisterExternalTemplate<v1::Tan>("tan")
+        .doc(R"(
+            Return the tangent of expr.
+
+            @code{.sql}
+
+                SELECT TAN(0);
+                -- output 0.000000
+
+            @endcode
+
+            @param expr: It is a single argument in radians.
+
+            @since 2.0.0.0)")
+        .args_in<int16_t, int32_t, int64_t, double>();
+    RegisterExternal("tan").args<float>(static_cast<float (*)(float)>(tanf));
 }
 
 void DefaultUDFLibrary::Init() {
@@ -1115,19 +1345,19 @@ void DefaultUDFLibrary::Init() {
             Each group is represented as 'K:V' and separated by comma in outputs
             and are sorted by key in ascend order.
 
-            @param **catagory**  Specify catagory column to group by. 
-            @param **value**  Specify value column to aggregate on.
+            @param value  Specify value column to aggregate on.
+            @param catagory  Specify catagory column to group by.
 
             Example:
-            catagory|value
+            value|catagory
             --|--
-            x|0
-            y|1
-            x|2
-            y|3
-            x|4
+            0|x
+            1|y
+            2|x
+            3|y
+            4|x
             @code{.sql}
-                SELECT avg_cate(catagory, value) OVER w;
+                SELECT avg_cate(value, catagory) OVER w;
                 -- output "x:2,y:2"
             @endcode
             )")
@@ -1139,18 +1369,19 @@ void DefaultUDFLibrary::Init() {
             and output string. Each group is represented as 'K:V' and separated by comma in 
             outputs and are sorted by key in ascend order.
 
-            @param **catagory**  Specify catagory column to group by. 
-            @param **value**  Specify value column to aggregate on.
-            @param **condition**  Specify condition column.
+            @param catagory  Specify catagory column to group by. 
+            @param value  Specify value column to aggregate on.
+            @param condition  Specify condition column.
 
             Example:
-            catagory|value|condition
+            value|condition|catagory
             --|--|--
-            x|0|true
-            y|1|false
-            x|2|false
-            y|3|true
-            x|4|true
+            0|true|x
+            1|false|y
+            2|false|x
+            3|true|y
+            4|true|x
+
             @code{.sql}
                 SELECT avg_cate_where(catagory, value, condition) OVER w;
                 -- output "x:2,y:3"
@@ -1164,23 +1395,23 @@ void DefaultUDFLibrary::Init() {
             Output string for top N keys in descend order. Each group is represented as 'K:V'
             and separated by comma.
 
-            @param **catagory**  Specify catagory column to group by. 
-            @param **value**  Specify value column to aggregate on.
-            @param **condition**  Specify condition column.
-            @param **n**  Fetch top n keys.
+            @param catagory  Specify catagory column to group by. 
+            @param value  Specify value column to aggregate on.
+            @param condition  Specify condition column.
+            @param n  Fetch top n keys.
 
             Example:
-            catagory|value|condition
+            value|condition|catagory
             --|--|--
-            x|0|true
-            y|1|false
-            x|2|false
-            y|3|true
-            x|4|true
-            z|5|true
-            z|6|false
+            0|true|x
+            1|false|y
+            2|false|x
+            3|true|y
+            4|true|x
+            5|true|z
+            6|false|z
             @code{.sql}
-                SELECT top_n_avg_cate_where(catagory, value, condition, 2) OVER w;
+                SELECT top_n_avg_cate_where(value, condition, catagory, 2) OVER w;
                 -- output "z:5,y:3"
             @endcode
             )")
@@ -1188,6 +1419,7 @@ void DefaultUDFLibrary::Init() {
 
     IniMathUDF();
     InitStringUDF();
+    InitTrigonometricUDF();
 }
 
 }  // namespace udf

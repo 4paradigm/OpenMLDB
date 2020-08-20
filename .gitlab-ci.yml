@@ -1,4 +1,4 @@
-image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.12
+image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.13
 variables:
     GIT_SUBMODULE_STRATEGY: normal
     CICD_RUNNER_THIRDPARTY_PATH: "/depends/thirdparty"
@@ -36,6 +36,7 @@ build_fesql_on_linux:
     script:
         - bash tools/compile_and_test.sh
         - bash tools/cicd/gen_intermediate_java_cicd_artifacts.sh linux
+        - bash tools/documentation/export_udf_doc.sh
 #        - tar cfz bm_cases.tar.gz build/src/bm/*_bm
     artifacts:
         paths:

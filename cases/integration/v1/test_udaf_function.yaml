@@ -209,3 +209,142 @@ cases:
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       success: false
+
+  - id: 11
+    desc: arithmetic_and_udf_before_udaf
+    inputs:
+      - columns: ["id int64", "c1 double", "c2 float", "c3 int"]
+        indexs: ["index1:id:id"]
+        rows:
+          - [1, 10.0, 1.0, 5]
+          - [2, 9.0, 2.0, 5]
+          - [3, 8.0, 3.0, 5]
+          - [4, 7.0, 4.0, 2]
+          - [5, 6.0, 5.0, 2]
+    sql: |
+      SELECT id, 
+        sum((c1 - c2) / c3) OVER w1 AS r1,
+        sum(log(c1 + c2) + c3) OVER w1 as r2
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int64","r1 double", "r2 double"]
+      rows:
+        - [1, 1.8, 7.3978952727983707]
+        - [2, 3.2, 14.795790545596741]
+        - [3, 4.2, 22.19368581839511]
+        - [4, 1.5, 4.3978952727983707]
+        - [5, 2.0, 8.7957905455967413]
+
+  - id: 12
+    desc: arithmetic_and_udf_after_udaf
+    tags: ["目前只能f(udaf()) over w，否则无法进入window agg节点"]
+    inputs:
+      - columns: ["id int64", "c1 double", "c2 float", "c3 int"]
+        indexs: ["index1:id:id"]
+        rows:
+          - [1, 10.0, 1.0, 5]
+          - [2, 9.0, 2.0, 5]
+          - [3, 8.0, 3.0, 5]
+          - [4, 7.0, 4.0, 2]
+          - [5, 6.0, 5.0, 2]
+    sql: |
+      SELECT id, 
+        abs(sum(c3)) OVER w1 as r1,
+        log((sum(c1) + sum(c2)) / c3) OVER w1 AS r2
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int64","r1 int", "r2 double"]
+      rows:
+        - [1, 5, 0.78845736036427028]
+        - [2, 10, 1.4816045409242156]
+        - [3, 15, 1.8870696490323797]
+        - [4, 2, 1.7047480922384253]
+        - [5, 4, 2.3978952727983707]
+
+  - id: 13
+    desc: nested udaf
+    inputs:
+      - columns: ["id int64", "c1 double", "c2 float", "c3 int"]
+        indexs: ["index1:id:id"]
+        rows:
+          - [1, 10.0, 1.0, 5]
+          - [2, 9.0, 2.0, 5]
+          - [3, 8.0, 3.0, 5]
+          - [4, 7.0, 4.0, 2]
+          - [5, 6.0, 5.0, 2]
+    sql: |
+      SELECT id, 
+        sum(c1 - count(c1)) OVER w1 AS r1,
+        abs(sum(log(c1) - log(count(c1)))) OVER w1 AS r2,
+        sum(c1 + sum(c2 * count(c3))) OVER w1 AS r3
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int64","r1 double", "r2 double", "r3 double"]
+      rows:
+        - [1, 9.0, 2.3025850929940459, 11.0]
+        - [2, 15.0, 3.1135153092103747, 31.0]
+        - [3, 18.0, 3.2834143460057721, 81.0]
+        - [4, 6.0, 1.9459101490553132, 11.0]
+        - [5, 9.0, 2.3513752571634776, 49.0]
+
+  - id: 14
+    desc: cast after udaf
+    tags: ["TODO", "@chenjing 统一支持cast语法"]
+    inputs:
+      - columns: ["id int64", "c1 double", "c2 float", "c3 int"]
+        indexs: ["index1:id:id"]
+        rows:
+          - [1, 10.0, 1.0, 5]
+          - [2, 9.0, 2.0, 5]
+          - [3, 8.0, 3.0, 5]
+          - [4, 7.0, 4.0, 2]
+          - [5, 6.0, 5.0, 2]
+    sql: |
+      SELECT id,
+        CAST(sum(c1) AS string) OVER w1 AS r1,
+        string(sum(c1)) OVER w1 AS r2,
+        `string`(sum(c1)) OVER w1 AS r3
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+    expect:
+      success: true
+
+  - id: 15
+    desc: aggregate where
+    inputs:
+      - columns: ["id int64", "c1 double", "c2 float", "c3 int"]
+        indexs: ["index1:id:id"]
+        rows:
+          - [1, 1.0, 1.1, 0]
+          - [2, 2.0, 7.7, 0]
+          - [3, 3.0, 5.5, 0]
+          - [4, 4.0, 3.3, 0]
+          - [5, 5.0, 2.2, 1]
+          - [6, 6.0, 6.6, 1]
+          - [7, 7.0, 4.4, 1]
+    sql: |
+      SELECT id, 
+        count_where(c1, c1 < c2) OVER w1 AS count_where_1,
+        avg_where(c1, c1 < c2) OVER w1 AS avg_where_1,
+        count_where(c2, c2 > 4) OVER w1 AS count_where_2,
+        avg_where(c2, c2 > 4) OVER w1 AS avg_where_2
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int64", "count_where_1 bigint", "avg_where_1 double", "count_where_2 bigint", "avg_where_2 double"]
+      rows:
+        - [1, 1, 1.0, 0, nan]
+        - [2, 2, 1.5, 1, 7.6999998092651367]
+        - [3, 3, 2.0, 2, 6.5999999046325684]
+        - [4, 3, 2.0, 2, 6.5999999046325684]
+        - [5, 0, nan, 0, nan]
+        - [6, 1, 6.0, 1, 6.5999999046325684]
+        - [7, 1, 6.0, 2, 5.5]
+

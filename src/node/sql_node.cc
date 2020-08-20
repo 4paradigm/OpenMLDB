@@ -1507,6 +1507,27 @@ bool BetweenExpr::Equals(const ExprNode *node) const {
            ExprEquals(right_, that->right_);
 }
 
+const std::string FnDefNode::GetFlatString() const {
+    std::stringstream ss;
+    ss << GetName() << "(";
+    for (size_t i = 0; i < GetArgSize(); ++i) {
+        if (IsArgNullable(i)) {
+            ss << "nullable ";
+        }
+        auto arg_type = GetArgType(i);
+        if (arg_type != nullptr) {
+            ss << arg_type->GetName();
+        } else {
+            ss << "?";
+        }
+        if (i < GetArgSize() - 1) {
+            ss << ", ";
+        }
+    }
+    ss << ")";
+    return ss.str();
+}
+
 void ExternalFnDefNode::Print(std::ostream &output,
                               const std::string &org_tab) const {
     if (!IsResolved()) {

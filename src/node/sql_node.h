@@ -1180,6 +1180,8 @@ class FnDefNode : public SQLNode {
     virtual const std::string GetName() const = 0;
     virtual base::Status Validate(
         const std::vector<const TypeNode *> &arg_types) const = 0;
+
+    const std::string GetFlatString() const;
 };
 class CastExprNode : public ExprNode {
  public:
@@ -1304,6 +1306,8 @@ class UnaryExpr : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const override;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *node) const;
+
+    Status InferAttr(ExprAnalysisContext *ctx) override;
 
  private:
     FnOperator op_;
