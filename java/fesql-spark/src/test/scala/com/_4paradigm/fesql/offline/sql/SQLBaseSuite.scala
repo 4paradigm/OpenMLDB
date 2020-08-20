@@ -34,11 +34,11 @@ class SQLBaseSuite extends SparkTestSuite {
 
   def testCases(yamlPath: String) {
     val caseFile = loadYaml[CaseFile](yamlPath)
-    caseFile.getCases.asScala.filter(c => needFilter(c)).foreach(c => testCase(c))
+    caseFile.getCases.asScala.filter(c => keepCase(c)).foreach(c => testCase(c))
   }
 
-  def needFilter(sqlCase: SQLCase): Boolean = {
-    sqlCase.getMode != ("offline-unsupport")
+  def keepCase(sqlCase: SQLCase): Boolean = {
+    !sqlCase.getMode.contains("offline-unsupport")
   }
 
   def createSQLString(sql: String, inputNames: ListBuffer[(Int, String)]): String = {
