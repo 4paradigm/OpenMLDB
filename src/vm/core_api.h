@@ -18,7 +18,6 @@
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
 #include "vm/physical_op.h"
-#include "vm/simple_catalog.h"
 
 namespace fesql {
 namespace vm {
