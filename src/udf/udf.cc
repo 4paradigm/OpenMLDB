@@ -98,9 +98,7 @@ int32_t weekofyear(codec::Date *date) {
     return d.week_number();
 }
 
-float Cotf(float x) {
-    return cosf(x)/sinf(x);
-}
+float Cotf(float x) { return cosf(x) / sinf(x); }
 
 void date_format(codec::Timestamp *timestamp, fesql::codec::StringRef *format,
                  fesql::codec::StringRef *output) {
@@ -248,7 +246,7 @@ uint32_t format_string<int32_t>(const int32_t &v, char *buffer, size_t size) {
 
 template <>
 uint32_t format_string<int64_t>(const int64_t &v, char *buffer, size_t size) {
-    return snprintf(buffer, size, "%lld", v);
+    return snprintf(buffer, size, "%lld", static_cast<long long int>(v));  // NOLINT
 }
 
 template <>

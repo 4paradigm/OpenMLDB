@@ -86,7 +86,7 @@ Status LambdafyProjects::VisitExpr(node::ExprNode* expr,
         auto fn =
             dynamic_cast<const node::ExternalFnDefNode*>(call->GetFnDef());
         if (fn != nullptr && !fn->IsResolved()) {
-            if (library_->Find(fn->function_name()) == nullptr) {
+            if (library_->FindAll(fn->function_name()) == nullptr) {
                 // not a registered udf, maybe user defined script function
                 *out = expr;
                 *has_agg = false;

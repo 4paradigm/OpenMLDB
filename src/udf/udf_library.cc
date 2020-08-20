@@ -21,8 +21,24 @@
 namespace fesql {
 namespace udf {
 
-std::shared_ptr<UDFTransformRegistry> UDFLibrary::Find(
-    const std::string& name) const {
+std::shared_ptr<UDFRegistry> UDFLibrary::Find(
+    const std::string& name,
+    const std::vector<const node::TypeNode*>& arg_types) const {
+    auto iter = table_.find(name);
+    if (iter == table_.end()) {
+        return nullptr;
+    }
+    auto signature_table = iter->second;
+    std::shared_ptr<UDFRegistry> registry = nullptr;
+    std::string signature;
+    int variadic_pos = -1;
+    auto status =
+        signature_table->Find(arg_types, &registry, &signature, &variadic_pos);
+    return registry;
+}
+
+std::shared_ptr<ArgSignatureTable<std::shared_ptr<UDFRegistry>>>
+UDFLibrary::FindAll(const std::string& name) const {
     auto iter = table_.find(name);
     if (iter == table_.end()) {
         return nullptr;
@@ -31,18 +47,22 @@ std::shared_ptr<UDFTransformRegistry> UDFLibrary::Find(
     }
 }
 
-void UDFLibrary::InsertRegistry(
-    std::shared_ptr<UDFTransformRegistry> reg_item) {
-    auto name = reg_item->name();
-    std::shared_ptr<CompositeRegistry> composite_registry;
+void UDFLibrary::InsertRegistry(const std::string& name,
+                                const std::vector<std::string>& signature,
+                                std::shared_ptr<UDFRegistry> registry) {
+    using SignatureTable = ArgSignatureTable<std::shared_ptr<UDFRegistry>>;
+    std::shared_ptr<SignatureTable> signature_table = nullptr;
     auto iter = table_.find(name);
     if (iter == table_.end()) {
-        composite_registry = std::make_shared<CompositeRegistry>(name);
-        table_.insert(iter, std::make_pair(name, composite_registry));
+        signature_table = std::make_shared<SignatureTable>();
+        table_.insert(iter, {name, signature_table});
     } else {
-        composite_registry = iter->second;
+        signature_table = iter->second;
     }
-    composite_registry->Add(reg_item);
+    auto status = signature_table->Register(signature, registry);
+    if (!status.isOK()) {
+        LOG(WARNING) << "Insert " << name << " registry failed: " << status.msg;
+    }
 }
 
 bool UDFLibrary::IsUDAF(const std::string& name, size_t args) {
@@ -59,22 +79,20 @@ void UDFLibrary::SetIsUDAF(const std::string& name, size_t args) {
 }
 
 ExprUDFRegistryHelper UDFLibrary::RegisterExprUDF(const std::string& name) {
-    return DoStartRegister<ExprUDFRegistryHelper, ExprUDFRegistry>(name);
+    return ExprUDFRegistryHelper(name, this);
 }
 
 LLVMUDFRegistryHelper UDFLibrary::RegisterCodeGenUDF(const std::string& name) {
-    return DoStartRegister<LLVMUDFRegistryHelper, LLVMUDFRegistry>(name);
+    return LLVMUDFRegistryHelper(name, this);
 }
 
 ExternalFuncRegistryHelper UDFLibrary::RegisterExternal(
     const std::string& name) {
-    return DoStartRegister<ExternalFuncRegistryHelper, ExternalFuncRegistry>(
-        name);
+    return ExternalFuncRegistryHelper(name, this);
 }
 
 UDAFRegistryHelper UDFLibrary::RegisterUDAF(const std::string& name) {
-    auto helper = DoStartRegister<UDAFRegistryHelper, UDAFRegistry>(name);
-    return helper;
+    return UDAFRegistryHelper(name, this);
 }
 
 Status UDFLibrary::RegisterAlias(const std::string& alias,
@@ -119,23 +137,16 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
                            "fn_def node is null");
 
                 auto header = func_def_plan->fn_def_->header_;
-                std::shared_ptr<SimpleUDFRegistry> registry;
-                auto iter = dict.find(header->name_);
-                if (iter == dict.end()) {
-                    registry =
-                        std::make_shared<SimpleUDFRegistry>(header->name_);
-                    dict.insert(iter, std::make_pair(header->name_, registry));
-                } else {
-                    registry = iter->second;
-                }
-
                 auto def_node = dynamic_cast<node::UDFDefNode*>(
                     node_manager()->MakeUDFDefNode(func_def_plan->fn_def_));
+                auto registry = std::make_shared<SimpleUDFRegistry>(
+                    header->name_, def_node);
+
                 std::vector<std::string> arg_types;
                 for (size_t i = 0; i < def_node->GetArgSize(); ++i) {
                     arg_types.push_back(def_node->GetArgType(i)->GetName());
                 }
-                registry->Register(arg_types, def_node);
+                InsertRegistry(header->name_, arg_types, registry);
                 break;
             }
             default:
@@ -145,41 +156,64 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
                         node::NameOfPlanNodeType(node->GetType()));
         }
     }
-    for (auto& pair : dict) {
-        InsertRegistry(pair.second);
-    }
     return Status::OK();
 }
 
 Status UDFLibrary::Transform(const std::string& name,
                              const std::vector<node::ExprNode*>& args,
                              node::NodeManager* node_manager,
-                             ExprNode** result) {
+                             ExprNode** result) const {
     UDFResolveContext ctx(args, node_manager, this);
     return this->Transform(name, &ctx, result);
 }
 
 Status UDFLibrary::Transform(const std::string& name, UDFResolveContext* ctx,
-                             ExprNode** result) {
+                             ExprNode** result) const {
     auto iter = table_.find(name);
     CHECK_TRUE(iter != table_.end(),
                "Fail to find registered function: ", name);
-    return iter->second->Transform(ctx, result);
+    auto signature_table = iter->second;
+
+    std::shared_ptr<UDFRegistry> registry = nullptr;
+    std::string signature;
+    int variadic_pos = -1;
+    CHECK_STATUS(
+        signature_table->Find(ctx, &registry, &signature, &variadic_pos),
+        "Fail to find matching argument signature for ", name, ": <",
+        ctx->GetArgSignature(), ">");
+
+    DLOG(INFO) << "Resolve '" << name << "'<" << ctx->GetArgSignature()
+               << ">to " << name << "(" << signature << ")";
+    CHECK_TRUE(registry != nullptr);
+    return registry->Transform(ctx, result);
 }
 
 Status UDFLibrary::ResolveFunction(const std::string& name,
                                    UDFResolveContext* ctx,
-                                   node::FnDefNode** result) {
+                                   node::FnDefNode** result) const {
     auto iter = table_.find(name);
     CHECK_TRUE(iter != table_.end(),
                "Fail to find registered function: ", name);
-    return iter->second->ResolveFunction(ctx, result);
+    auto signature_table = iter->second;
+
+    std::shared_ptr<UDFRegistry> registry = nullptr;
+    std::string signature;
+    int variadic_pos = -1;
+    CHECK_STATUS(
+        signature_table->Find(ctx, &registry, &signature, &variadic_pos),
+        "Fail to find matching argument signature for ", name, ": <",
+        ctx->GetArgSignature(), ">");
+
+    DLOG(INFO) << "Resolve '" << name << "'<" << ctx->GetArgSignature()
+               << ">to " << name << "(" << signature << ")";
+    CHECK_TRUE(registry != nullptr);
+    return registry->ResolveFunction(ctx, result);
 }
 
 Status UDFLibrary::ResolveFunction(const std::string& name,
                                    const std::vector<node::ExprNode*>& args,
                                    node::NodeManager* node_manager,
-                                   node::FnDefNode** result) {
+                                   node::FnDefNode** result) const {
     UDFResolveContext ctx(args, node_manager, this);
     return this->ResolveFunction(name, &ctx, result);
 }

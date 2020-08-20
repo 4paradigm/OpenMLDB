@@ -85,7 +85,7 @@ template <class V>
 struct Cot {
     using Args = std::tuple<V>;
 
-    double operator()(V r) { return cos(r)/sin(r); }
+    double operator()(V r) { return cos(r) / sin(r); }
 };
 
 template <class V>
@@ -157,7 +157,6 @@ struct Truncate32 {
 
     int32_t operator()(V r) { return static_cast<int32_t>(trunc(r)); }
 };
-
 
 template <class V>
 double avg_list(int8_t *input);
