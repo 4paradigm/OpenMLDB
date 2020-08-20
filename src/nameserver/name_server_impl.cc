@@ -12212,7 +12212,6 @@ bool NameServerImpl::RecoverSdkEpMap() {
         }
     }
     PDLOG(INFO, "recover sdk_endpoint_map size[%d]", sdk_endpoint_map_.size());
-    NotifyTableChanged();
     return true;
 }
 

@@ -883,12 +883,10 @@ void HandleNSShowNameServer(const std::vector<std::string>& parts,
         std::vector<std::string> row;
         row.push_back(endpoint_vec[i]);
         std::string real_endpoint;
-        std::string name = "/map/names/" + endpoint_vec[i];
-        if (zk_client->IsExistNode(FLAGS_zk_root_path + name) == 0) {
-            if (!zk_client->GetNodeValue(FLAGS_zk_root_path + name,
-                        real_endpoint)) {
-                std::cout << "get real_endpoint failed" << std::endl;
-                return;
+        if (!real_ep_map.empty()) {
+            auto rit = real_ep_map.find(endpoint_vec[i]);
+            if (rit != real_ep_map.end()) {
+                real_endpoint = rit->second;
             }
         }
         if (real_endpoint.empty()) {
