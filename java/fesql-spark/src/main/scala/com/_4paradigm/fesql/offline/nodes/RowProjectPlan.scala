@@ -94,6 +94,7 @@ object RowProjectPlan {
                            moduleTag: String,
                            moduleBroadcast: Broadcast[SerializableByteBuffer],
                            inputSchemaSlices: Array[StructType],
-                           outputSchemaSlices: Array[StructType])
+                           outputSchemaSlices: Array[StructType],
+                           inputSchema: StructType = null)
 
 }

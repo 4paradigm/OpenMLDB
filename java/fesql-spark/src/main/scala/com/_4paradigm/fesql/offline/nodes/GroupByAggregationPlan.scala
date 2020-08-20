@@ -15,6 +15,7 @@ object GroupByAggregationPlan {
 
     // Get schema info
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node.GetProducer(0))
+    val inputSchema = FesqlUtil.getSparkSchema(node.GetProducer(0).GetOutputSchema())
     val outputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
     val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
 
@@ -24,7 +25,8 @@ object GroupByAggregationPlan {
       moduleTag = ctx.getTag,
       moduleBroadcast = ctx.getModuleBufferBroadcast,
       inputSchemaSlices = inputSchemaSlices,
-      outputSchemaSlices = outputSchemaSlices
+      outputSchemaSlices = outputSchemaSlices,
+      inputSchema = inputSchema
     )
 
     // project implementation
@@ -46,8 +48,7 @@ object GroupByAggregationPlan {
 
       val memTableName = "temp_table"
       val meTableDb = "temp_db"
-      // TODO: Get the schema from all slices
-      val schema = FesqlUtil.getFeSQLSchema(projectConfig.inputSchemaSlices(0))
+      val schema = FesqlUtil.getFeSQLSchema(projectConfig.inputSchema)
 
       if (iter.isEmpty) {
         Option[Row](null).toIterator
