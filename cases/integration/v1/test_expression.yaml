@@ -88,9 +88,9 @@ cases:
           - ["aa",2,3,1590738989000]
     sql: select c1='aa' as f1 from {0};
     expect:
-      - columns: ["f1 bool"]
-        rows:
-          - [true]
+      columns: ["f1 bool"]
+      rows:
+        - [true]
   - id: 8
     desc: 布尔表达式-日期类型
     inputs:
