@@ -44,7 +44,7 @@ class WindowInterface {
 
 class GroupbyInterface {
  public:
-    GroupbyInterface(const fesql::codec::Schema& schema);
+    explicit GroupbyInterface(const fesql::codec::Schema& schema);
     void AddRow(fesql::codec::Row* row);
     fesql::vm::TableHandler* GetTableHandler();
 
