@@ -17,6 +17,7 @@ public class ClientBuilder {
         config.setZkRootPath(zkRootPath);
         config.setWriteTimeout(Config.WRITE_TIMEOUT);
         config.setReadTimeout(Config.READ_TIMEOUT);
+        config.setMaxRetryCnt(Config.MAX_RETRY_CNT);
         config.setGlobalReadStrategies(TableHandler.ReadStrategy.kReadLeader);
     }
 

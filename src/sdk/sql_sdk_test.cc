@@ -37,6 +37,7 @@ namespace rtidb {
 namespace sdk {
 
 MiniCluster* mc_ = nullptr;
+constexpr bool ENABLE_DEBUG = false;
 
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
     RtiDBSchema;
@@ -79,7 +80,7 @@ TEST_P(SQLSDKTest, sql_sdk_batch_test) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enbale_debug = false;
+    sql_opt.enable_debug = ENABLE_DEBUG;
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
@@ -463,7 +464,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enbale_debug = false;
+    sql_opt.enable_debug = ENABLE_DEBUG;
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
@@ -484,7 +485,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enbale_debug = true;
+    sql_opt.enable_debug = ENABLE_DEBUG;
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
@@ -530,7 +531,7 @@ TEST_F(SQLSDKQueryTest, execute_insert_loops_test) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enbale_debug = true;
+    sql_opt.enable_debug = ENABLE_DEBUG;
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
