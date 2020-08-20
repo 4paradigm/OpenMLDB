@@ -42,6 +42,17 @@ class WindowInterface {
     std::unique_ptr<Window> window_impl_;
 };
 
+class GroupbyInterface {
+ public:
+    GroupbyInterface(const fesql::codec::Schema& schema);
+    void AddRow(fesql::codec::Row* row);
+    fesql::vm::TableHandler* GetTableHandler();
+
+ private:
+    friend CoreAPI;
+    fesql::vm::MemTableHandler* mem_table_handler_;
+};
+
 class RunnerContext {
  public:
     explicit RunnerContext(const bool is_debug = false)
@@ -60,12 +71,6 @@ class CoreAPI {
     static RawPtrHandle GetRowBuf(fesql::codec::Row*, size_t idx);
     static RawPtrHandle AppendRow(fesql::codec::Row*, size_t bytes);
 
-    static fesql::vm::MemTableHandler* NewMemTableHandler(
-        const std::string& table_name, const std::string& db,
-        const fesql::codec::Schema& schema);
-    static void AddRowToMemTable(fesql::vm::MemTableHandler* table_handler,
-                                 fesql::codec::Row* row);
-
     static int ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                   fesql::node::ColumnRefNode* expr);
     static int ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
@@ -82,8 +87,9 @@ class CoreAPI {
                                            size_t append_slices,
                                            WindowInterface* window);
 
-    static fesql::codec::Row GroupbyProject(const fesql::vm::RawPtrHandle fn,
-                                            fesql::vm::MemTableHandler* table);
+    static fesql::codec::Row GroupbyProject(
+        const fesql::vm::RawPtrHandle fn,
+        fesql::vm::GroupbyInterface* groupby_interface);
 
     static bool ComputeCondition(const fesql::vm::RawPtrHandle fn,
                                  const Row& row,

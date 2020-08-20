@@ -41,6 +41,17 @@ int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                            column_expr->GetColumnName());
 }
 
+GroupbyInterface::GroupbyInterface(const fesql::codec::Schema& schema)
+    : mem_table_handler_(new vm::MemTableHandler(&schema)) {}
+
+void GroupbyInterface::AddRow(fesql::codec::Row* row) {
+    mem_table_handler_->AddRow(*row);
+}
+
+fesql::vm::TableHandler* GroupbyInterface::GetTableHandler() {
+    return mem_table_handler_;
+}
+
 fesql::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
                                            const bool need_free) {
     auto udf =
@@ -88,9 +99,9 @@ fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
                                  window->GetWindow());
 }
 
-fesql::codec::Row CoreAPI::GroupbyProject(const RawPtrHandle fn,
-                                          fesql::vm::MemTableHandler* table) {
-    return Runner::GroupbyProject(fn, table);
+fesql::codec::Row CoreAPI::GroupbyProject(
+    const RawPtrHandle fn, fesql::vm::GroupbyInterface* groupby_interface) {
+    return Runner::GroupbyProject(fn, groupby_interface->GetTableHandler());
 }
 
 bool CoreAPI::ComputeCondition(const fesql::vm::RawPtrHandle fn, const Row& row,
@@ -123,17 +134,6 @@ RawPtrHandle CoreAPI::AppendRow(fesql::codec::Row* row, size_t bytes) {
     auto slice = base::RefCountedSlice::CreateManaged(buf, bytes);
     row->Append(slice);
     return buf;
-}
-
-fesql::vm::MemTableHandler* CoreAPI::NewMemTableHandler(
-    const std::string& table_name, const std::string& db,
-    const fesql::codec::Schema& schema) {
-    return new vm::MemTableHandler(table_name, db, &schema);
-}
-
-void CoreAPI::AddRowToMemTable(fesql::vm::MemTableHandler* table_handler,
-                               fesql::codec::Row* row) {
-    table_handler->AddRow(*row);
 }
 
 }  // namespace vm

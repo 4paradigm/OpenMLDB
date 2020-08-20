@@ -3,7 +3,7 @@ package com._4paradigm.fesql.offline.nodes
 import com._4paradigm.fesql.offline.nodes.RowProjectPlan.ProjectConfig
 import com._4paradigm.fesql.offline.utils.{FesqlUtil, SparkColumnUtil}
 import com._4paradigm.fesql.offline.{PlanContext, SparkInstance, SparkRowCodec}
-import com._4paradigm.fesql.vm.{CoreAPI, PhysicalGroupAggrerationNode}
+import com._4paradigm.fesql.vm.{CoreAPI, GroupbyInterface, PhysicalGroupAggrerationNode}
 import org.apache.spark.sql.{Column, Row}
 import com._4paradigm.fesql.offline.JITManager
 
@@ -59,23 +59,21 @@ object GroupByAggregationPlan {
       val encoder = new SparkRowCodec(projectConfig.inputSchemaSlices)
       val decoder = new SparkRowCodec(projectConfig.outputSchemaSlices)
 
-      val memTableName = "temp_table"
-      val meTableDb = "temp_db"
-      val schema = FesqlUtil.getFeSQLSchema(projectConfig.inputSchema)
+      val inputSchema = FesqlUtil.getFeSQLSchema(projectConfig.inputSchema)
 
       if (iter.isEmpty) {
         Option[Row](null).toIterator
       } else {
         // TODO: Delete the native schema and memTableHandler pointer
         // Create memory table and insert encoded rows
-        val memTableHandler = CoreAPI.NewMemTableHandler(memTableName, meTableDb, schema)
+        val groupbyInterface = new GroupbyInterface(inputSchema)
         iter.foreach(row => {
           val nativeInputRow = encoder.encode(row)
-          CoreAPI.AddRowToMemTable(memTableHandler, nativeInputRow)
+          groupbyInterface.AddRow(nativeInputRow)
         })
 
         // Run group by aggregation
-        val outputFesqlRow = CoreAPI.GroupbyProject(fn, memTableHandler)
+        val outputFesqlRow = CoreAPI.GroupbyProject(fn, groupbyInterface)
         decoder.decode(outputFesqlRow, outputArr)
         Option(Row.fromSeq(outputArr)).toIterator
       }
