@@ -48,7 +48,7 @@ TEST_F(CodecTest, NULLTest) {
     {
         RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
         ASSERT_TRUE(view.IsNULL(0));
-        char* ch = NULL;
+        const char* ch = NULL;
         uint32_t length = 0;
         bool val1 = true;
         ASSERT_EQ(view.GetBool(1, &val1), 0);
@@ -201,7 +201,7 @@ TEST_F(CodecTest, Encode) {
                 ASSERT_EQ(view.GetDouble(i, &val), 0);
                 ASSERT_EQ(val, 2.3);
             } else {
-                char* ch = NULL;
+                const char* ch = NULL;
                 uint32_t length = 0;
                 ASSERT_EQ(view.GetString(i, &ch, &length), 0);
                 std::string str(ch, length);
@@ -269,7 +269,7 @@ TEST_F(CodecTest, AppendNULL) {
                 ASSERT_EQ(val, 2.3);
             }
         } else {
-            char* ch = NULL;
+            const char* ch = NULL;
             uint32_t length = 0;
             int ret = view.GetString(i, &ch, &length);
             if (i % 2 == 0) {
@@ -334,7 +334,7 @@ TEST_F(CodecTest, AppendNULLAndEmpty) {
                 ASSERT_EQ(val, i);
             }
         } else {
-            char* ch = NULL;
+            const char* ch = NULL;
             uint32_t length = 0;
             int ret = view.GetString(i, &ch, &length);
             if (i % 3 == 0) {
@@ -386,7 +386,7 @@ TEST_F(CodecTest, ManyCol) {
         }
         RowView view(def.columns(), reinterpret_cast<int8_t*>(&(row[0])), size);
         for (int idx = 0; idx < col_num; idx++) {
-            char* ch = NULL;
+            const char* ch = NULL;
             uint32_t length = 0;
             int ret = view.GetString(idx * 3, &ch, &length);
             ASSERT_EQ(ret, 0);

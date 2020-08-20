@@ -259,6 +259,13 @@ Status UDFIRBuilder::ExpandLLVMCallReturnArgs(
             ret_alloca = builder->CreateAlloca(
                 reinterpret_cast<llvm::PointerType*>(llvm_ty)
                     ->getElementType());
+            // fill empty content for string
+            if (dtype->base() == node::kVarchar) {
+                builder->CreateStore(builder->getInt32(0),
+                                     builder->CreateStructGEP(ret_alloca, 0));
+                builder->CreateStore(builder->CreateGlobalStringPtr(""),
+                                     builder->CreateStructGEP(ret_alloca, 1));
+            }
         } else {
             ret_alloca = builder->CreateAlloca(llvm_ty);
         }

@@ -59,6 +59,11 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
 
     ::llvm::IRBuilder<> builder(block_);
     switch (data_type.base_) {
+        case ::fesql::node::kBool: {
+            llvm::Type* bool_ty = builder.getInt1Ty();
+            return BuildGetPrimaryField("fesql_storage_get_bool_field", row_ptr,
+                                        col_idx, offset, bool_ty, output);
+        }
         case ::fesql::node::kInt16: {
             llvm::Type* i16_ty = builder.getInt16Ty();
             return BuildGetPrimaryField("fesql_storage_get_int16_field",

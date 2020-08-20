@@ -151,7 +151,7 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
         ASSERT_EQ(32, value);
     }
     {
-        char* buf;
+        const char* buf;
         uint32_t size;
         ASSERT_EQ(0, row_view.GetString(1, &buf, &size));
         ASSERT_EQ("1", std::string(buf, size));

@@ -164,8 +164,8 @@ TEST_F(UDAFTest, avg_cate_test) {
 
     // empty
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<int32_t>>(
-        "avg_cate", StringRef(""),
-        MakeList<int32_t>({}), MakeList<int32_t>({}));
+        "avg_cate", StringRef(""), MakeList<int32_t>({}),
+        MakeList<int32_t>({}));
 }
 
 TEST_F(UDAFTest, avg_cate_where_test) {
@@ -189,8 +189,8 @@ TEST_F(UDAFTest, avg_cate_where_test) {
                              StringRef("y"), StringRef("x"), StringRef("y")}));
 
     // null key and values
-    CheckUDF<StringRef, ListRef<Nullable<int32_t>>,
-            ListRef<Nullable<bool>>, ListRef<Nullable<StringRef>>>(
+    CheckUDF<StringRef, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>,
+             ListRef<Nullable<StringRef>>>(
         "avg_cate_where", StringRef("x:3.000000,y:4.000000"),
         MakeList<Nullable<int32_t>>({1, 2, 3, 4, 5, nullptr}),
         MakeList<Nullable<bool>>({false, nullptr, true, true, true, true}),
@@ -200,8 +200,8 @@ TEST_F(UDAFTest, avg_cate_where_test) {
 
     // empty
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>>(
-        "avg_cate_where", StringRef(""),
-        MakeList<int32_t>({}), MakeBoolList({}), MakeList<int32_t>({}));
+        "avg_cate_where", StringRef(""), MakeList<int32_t>({}),
+        MakeBoolList({}), MakeList<int32_t>({}));
 }
 
 TEST_F(UDAFTest, top_n_avg_cate_where_test) {
@@ -235,7 +235,7 @@ TEST_F(UDAFTest, top_n_avg_cate_where_test) {
 
     // null key and values
     CheckUDF<StringRef, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>,
-            ListRef<Nullable<StringRef>>, ListRef<int32_t>>(
+             ListRef<Nullable<StringRef>>, ListRef<int32_t>>(
         "top_n_avg_cate_where", StringRef("z:3.000000,y:5.000000"),
         MakeList<Nullable<int32_t>>({1, 2, 3, 4, 5, 6, nullptr}),
         MakeList<Nullable<bool>>(

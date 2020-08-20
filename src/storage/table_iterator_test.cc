@@ -93,7 +93,7 @@ TEST_F(TableIteratorTest, it_full_table) {
     FullTableIterator it(table->GetSegments(), table->GetSegCnt(), table);
     RowView view(table_def.columns());
     ASSERT_TRUE(it.Valid());
-    char* ch = nullptr;
+    const char* ch = nullptr;
     uint32_t length = 0;
     view.GetValue(it.GetValue().buf(), 2, &ch, &length);
     ASSERT_STREQ("value1", std::string(ch, length).c_str());

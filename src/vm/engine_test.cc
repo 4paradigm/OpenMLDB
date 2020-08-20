@@ -639,6 +639,10 @@ INSTANTIATE_TEST_CASE_P(
     EngineTestSubSelect, EngineTest,
     testing::ValuesIn(InitCases("/cases/integration/v1/test_sub_select.yaml")));
 
+INSTANTIATE_TEST_CASE_P(EngineTestUdfFunction, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/test_udf_function.yaml")));
+
 INSTANTIATE_TEST_CASE_P(EngineTestUdafFunction, EngineTest,
                         testing::ValuesIn(InitCases(
                             "/cases/integration/v1/test_udaf_function.yaml")));
