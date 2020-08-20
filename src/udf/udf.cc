@@ -62,7 +62,7 @@ int32_t weekofyear(int64_t ts) {
     try {
         boost::gregorian::date d = boost::gregorian::date_from_tm(t);
         return d.week_number();
-    } catch (std::out_of_range &e) {
+    } catch (...) {
         return 0;
     }
 }
@@ -90,9 +90,14 @@ int32_t dayofweek(codec::Date *date) {
         return 0;
     }
     try {
+        if (month <= 0 || month > 12) {
+            return 0;
+        } else if (day <= 0 || day > 31) {
+            return 0;
+        }
         boost::gregorian::date d(year, month, day);
         return d.day_of_week() + 1;
-    } catch (std::out_of_range &e) {
+    } catch (...) {
         return 0;
     }
 }
@@ -103,9 +108,14 @@ int32_t weekofyear(codec::Date *date) {
         return 0;
     }
     try {
+        if (month <= 0 || month > 12) {
+            return 0;
+        } else if (day <= 0 || day > 31) {
+            return 0;
+        }
         boost::gregorian::date d(year, month, day);
         return d.week_number();
-    } catch (std::out_of_range &e) {
+    } catch (...) {
         return 0;
     }
 }
@@ -160,11 +170,16 @@ bool date_format(const codec::Date *date, const char *format, char *buffer,
         return false;
     }
     try {
+        if (month <= 0 || month > 12) {
+            return 0;
+        } else if (day <= 0 || day > 31) {
+            return 0;
+        }
         boost::gregorian::date g_date(year, month, day);
         tm t = boost::gregorian::to_tm(g_date);
         strftime(buffer, size, format, &t);
         return true;
-    } catch (std::out_of_range &e) {
+    } catch (...) {
         if (size > 0) {
             *buffer = '\0';
         }
