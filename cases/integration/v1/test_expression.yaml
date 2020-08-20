@@ -217,6 +217,7 @@ cases:
           - [2, "cc",1590738989000]
           - [3, "bb",1590738989000]
           - [4, "dd",1590738989000]
+          - [5, null ,1590738989000]
     sql: |
       select col1, col2, case col2
                         when 'aa' then 'apple'
@@ -232,6 +233,7 @@ cases:
         - [2, "cc", "cake"]
         - [3, "bb", null]
         - [4, "dd", "nothing"]
+        - [5, null, "nothing"]
   - id: 13_1
     desc: SEARCHED CASE WHEN 表达式
     inputs:

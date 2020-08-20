@@ -82,11 +82,11 @@ bool NativeValue::IsReg() const {
 bool NativeValue::HasFlag() const { return flag_ != nullptr; }
 
 bool NativeValue::IsMemFlag() const {
-    return IsNullable() && flag_->getType()->isPointerTy();
+    return HasFlag() && flag_->getType()->isPointerTy();
 }
 
 bool NativeValue::IsRegFlag() const {
-    return IsNullable() && !flag_->getType()->isPointerTy();
+    return HasFlag() && !flag_->getType()->isPointerTy();
 }
 
 bool NativeValue::IsNullable() const { return IsConstNull() || HasFlag(); }
@@ -130,7 +130,7 @@ NativeValue NativeValue::CreateMemWithFlag(::llvm::Value* raw,
 }
 
 NativeValue NativeValue::Replace(::llvm::Value* val) const {
-    if (IsNullable()) {
+    if (HasFlag()) {
         return CreateWithFlag(val, flag_);
     } else {
         return Create(val);

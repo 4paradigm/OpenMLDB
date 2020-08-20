@@ -34,10 +34,17 @@ cases:
           - [1, "text","text2",1590738989000]
           - [2, "text","text",1590738989000]
           - [3, "text2","text",1590738989000]
+          - [4, null,"text",1590738989000]
+          - [5, "text",null,1590738989000]
+          - [6, null,null,1590738989000]
     sql: select id, c1, c2, strcmp(c1, c2) as cmp_c1c2 from {0};
     expect:
       columns: ["id int", "c1 string","c2 string","cmp_c1c2 int"]
+      order: id
       rows:
         - [1, "text", "text2", -1]
         - [2, "text", "text", 0]
         - [3, "text2", "text", 1]
+        - [4, null,"text",null]
+        - [5, "text",null,null]
+        - [6, null,null,null]
