@@ -38,7 +38,11 @@ class SQLBaseSuite extends SparkTestSuite {
   }
 
   def keepCase(sqlCase: SQLCase): Boolean = {
-    !sqlCase.getMode.contains("offline-unsupport")
+    if (sqlCase.getMode != null) {
+      !sqlCase.getMode.contains("offline-unsupport")
+    } else {
+      true
+    }
   }
 
   def createSQLString(sql: String, inputNames: ListBuffer[(Int, String)]): String = {
