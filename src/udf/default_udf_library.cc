@@ -308,15 +308,16 @@ struct AvgCateDef {
                                  DataTypeTrait<K>::to_string() + "_" +
                                  DataTypeTrait<V>::to_string();
             helper
-                .templates<StringRef, Opaque<ContainerT>, Nullable<K>,
-                           Nullable<V>>()
+                .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
+                           Nullable<K>>()
                 .init("avg_cate_init" + suffix, ContainerT::Init)
                 .update("avg_cate_update" + suffix, Update)
                 .output("avg_cate_output" + suffix, Output);
         }
 
-        static ContainerT* Update(ContainerT* ptr, InputK key, bool is_key_null,
-                                  InputV value, bool is_value_null) {
+        static ContainerT* Update(ContainerT* ptr,
+                                  InputV value, bool is_value_null,
+                                  InputK key, bool is_key_null) {
             if (is_key_null || is_value_null) {
                 return ptr;
             }
@@ -371,19 +372,19 @@ struct AvgCateWhereDef {
                                  DataTypeTrait<K>::to_string() + "_" +
                                  DataTypeTrait<V>::to_string();
             helper
-                .templates<StringRef, Opaque<ContainerT>, Nullable<K>,
-                           Nullable<V>, Nullable<bool>>()
+                .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
+                            Nullable<bool>, Nullable<K>>()
                 .init("avg_cate_where_init" + suffix, ContainerT::Init)
                 .update("avg_cate_where_update" + suffix, Update)
                 .output("avg_cate_where_output" + suffix, AvgCateImpl::Output);
         }
 
-        static ContainerT* Update(ContainerT* ptr, InputK key, bool is_key_null,
-                                  InputV value, bool is_value_null, bool cond,
-                                  bool is_cond_null) {
+        static ContainerT* Update(ContainerT* ptr, InputV value,
+                    bool is_value_null, bool cond, bool is_cond_null,
+                                  InputK key, bool is_key_null) {
             if (cond && !is_cond_null) {
-                AvgCateImpl::Update(ptr, key, is_key_null, value,
-                                    is_value_null);
+                AvgCateImpl::Update(ptr, value, is_value_null,
+                                    key, is_key_null);
             }
             return ptr;
         }
@@ -415,8 +416,8 @@ struct TopAvgCateWhereDef {
             suffix = ".i32_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
                      "_" + DataTypeTrait<V>::to_string();
             helper
-                .templates<StringRef, Opaque<ContainerT>, Nullable<K>,
-                           Nullable<V>, Nullable<bool>, int32_t>()
+                .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
+                            Nullable<bool>, Nullable<K>, int32_t>()
                 .init("top_n_avg_cate_where_init" + suffix, ContainerT::Init)
                 .update("top_n_avg_cate_where_update" + suffix, UpdateI32Bound)
                 .output("top_n_avg_cate_where_output" + suffix, Output);
@@ -424,19 +425,19 @@ struct TopAvgCateWhereDef {
             suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
                      "_" + DataTypeTrait<V>::to_string();
             helper
-                .templates<StringRef, Opaque<ContainerT>, Nullable<K>,
-                           Nullable<V>, Nullable<bool>, int64_t>()
+                .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
+                           Nullable<bool>, Nullable<K>, int64_t>()
                 .init("top_n_avg_cate_where_init" + suffix, ContainerT::Init)
                 .update("top_n_avg_cate_where_update" + suffix, Update)
                 .output("top_n_avg_cate_where_output" + suffix, Output);
         }
 
-        static ContainerT* Update(ContainerT* ptr, InputK key, bool is_key_null,
-                                  InputV value, bool is_value_null, bool cond,
-                                  bool is_cond_null, int64_t bound) {
+        static ContainerT* Update(ContainerT* ptr, InputV value,
+                bool is_value_null, bool cond, bool is_cond_null, InputK key,
+                                  bool is_key_null, int64_t bound) {
             if (cond && !is_cond_null) {
-                AvgCateImpl::Update(ptr, key, is_key_null, value,
-                                    is_value_null);
+                AvgCateImpl::Update(ptr, value, is_value_null, key,
+                                    is_key_null);
                 auto& map = ptr->map();
                 if (bound >= 0 && map.size() > static_cast<size_t>(bound)) {
                     map.erase(map.begin());
@@ -445,12 +446,12 @@ struct TopAvgCateWhereDef {
             return ptr;
         }
 
-        static ContainerT* UpdateI32Bound(ContainerT* ptr, InputK key,
-                                          bool is_key_null, InputV value,
+        static ContainerT* UpdateI32Bound(ContainerT* ptr, InputV value,
                                           bool is_value_null, bool cond,
-                                          bool is_cond_null, int32_t bound) {
-            return Update(ptr, key, is_key_null, value, is_value_null, cond,
-                          is_cond_null, bound);
+                                          bool is_cond_null, InputK key,
+                                          bool is_key_null, int32_t bound) {
+            return Update(ptr, value, is_value_null, cond,
+                          is_cond_null, key, is_key_null,  bound);
         }
 
         static void Output(ContainerT* ptr, codec::StringRef* output) {
@@ -1324,19 +1325,19 @@ void DefaultUDFLibrary::Init() {
             Each group is represented as 'K:V' and separated by comma in outputs
             and are sorted by key in ascend order.
 
-            @param catagory  Specify catagory column to group by. 
             @param value  Specify value column to aggregate on.
+            @param catagory  Specify catagory column to group by.
 
             Example:
-            catagory|value
+            value|catagory
             --|--
-            x|0
-            y|1
-            x|2
-            y|3
-            x|4
+            0|x
+            1|y
+            2|x
+            3|y
+            4|x
             @code{.sql}
-                SELECT avg_cate(catagory, value) OVER w;
+                SELECT avg_cate(value, catagory) OVER w;
                 -- output "x:2,y:2"
             @endcode
             )")
@@ -1353,13 +1354,14 @@ void DefaultUDFLibrary::Init() {
             @param condition  Specify condition column.
 
             Example:
-            catagory|value|condition
+            value|condition|catagory
             --|--|--
-            x|0|true
-            y|1|false
-            x|2|false
-            y|3|true
-            x|4|true
+            0|true|x
+            1|false|y
+            2|false|x
+            3|true|y
+            4|true|x
+
             @code{.sql}
                 SELECT avg_cate_where(catagory, value, condition) OVER w;
                 -- output "x:2,y:3"
@@ -1379,17 +1381,17 @@ void DefaultUDFLibrary::Init() {
             @param n  Fetch top n keys.
 
             Example:
-            catagory|value|condition
+            value|condition|catagory
             --|--|--
-            x|0|true
-            y|1|false
-            x|2|false
-            y|3|true
-            x|4|true
-            z|5|true
-            z|6|false
+            0|true|x
+            1|false|y
+            2|false|x
+            3|true|y
+            4|true|x
+            5|true|z
+            6|false|z
             @code{.sql}
-                SELECT top_n_avg_cate_where(catagory, value, condition, 2) OVER w;
+                SELECT top_n_avg_cate_where(value, condition, catagory, 2) OVER w;
                 -- output "z:5,y:3"
             @endcode
             )")
