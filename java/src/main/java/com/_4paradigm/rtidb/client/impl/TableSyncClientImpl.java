@@ -507,7 +507,6 @@ public class TableSyncClientImpl implements TableSyncClient {
     }
 
     private Object[] get(int pid, String key, long time, GetOption getOption, TableHandler th) throws TabletException {
-        System.out.println("-******************* " + key);
         key = validateKey(key);
         PartitionHandler ph = th.getHandler(pid);
         TabletServer ts = ph.getReadHandler(th.getReadStrategy());

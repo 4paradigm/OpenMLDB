@@ -1095,7 +1095,6 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
         } else {
             rtidb::base::Slice data = combine_it->GetValue();
             total_block_size += data.size();
-            LOG(INFO) << "value size is " << data.size();
             tmp.emplace_back(ts, data);
         }
         if (total_block_size > FLAGS_scan_max_bytes_size) {

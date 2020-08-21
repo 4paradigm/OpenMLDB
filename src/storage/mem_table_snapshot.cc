@@ -1059,7 +1059,6 @@ bool MemTableSnapshot::PackNewIndexEntry(
         }
     }
     std::vector<std::string> row;
-    LOG(INFO) << "info will pack new index data";
     bool ret = DecodeData(table, columns, *entry, max_idx, row);
     if (!ret) {
         return false;
@@ -1344,12 +1343,7 @@ bool MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vecto
         data.reset(entry.value().data(), entry.value().size());
     }
     if (table_meta.format_version() == 0) {
-        bool ok =rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc_size(), maxIdx + 1, data, &row);
-        LOG(INFO) << "format version 0 decode result "  << ok << " " << table->GetPid() << " " << row.size() << " " << row.size();
-        for (const auto& c : row) {
-            LOG(INFO) << "decude value is :" << c << " "<< table->GetPid();
-        }
-        return ok;
+        return rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc_size(), maxIdx + 1, data, &row);
     }
     const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
     uint8_t version = rtidb::codec::RowView::GetSchemaVersion(raw);
