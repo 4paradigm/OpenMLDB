@@ -32,7 +32,7 @@ cases:
     inputs:
       - columns: ["id int64", "c1 string", "c2 int", "c3 double",
                   "c4 date", "c5 timestamp"]
-        indexs: ["index1:id:id"]
+        indexs: ["index1:id:c5"]
         rows:
         - [1, NULL, 42, 3.14, 2020-05-20, 1590738989000]
         - [2, "hello world", NULL, NULL, NULL, NULL]
@@ -57,7 +57,7 @@ cases:
     inputs:
       - columns: ["id int64", "c1 string", "c2 int", "c3 double",
                   "c4 date", "c5 timestamp"]
-        indexs: ["index1:id:id"]
+        indexs: ["index1:id:c5"]
         rows:
         - [1, NULL, 42, 3.14, 2020-05-20, 1590738989000]
         - [2, "hello world", NULL, NULL, NULL, NULL]
