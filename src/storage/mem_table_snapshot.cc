@@ -1332,7 +1332,7 @@ bool MemTableSnapshot::DumpBinlogIndexData(
 }
 
 bool MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector<::rtidb::codec::ColumnDesc>& columns,
-                                  const rtidb::api::LogEntry& entry, uint32_t maxIdx, std::vector<std::string>& row) {
+                                  const rtidb::api::LogEntry& entry, uint32_t max_idx, std::vector<std::string>& row) {
     const ::rtidb::api::TableMeta& table_meta = table->GetTableMeta();
     std::string buff;
     rtidb::base::Slice data;
@@ -1343,21 +1343,21 @@ bool MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vecto
         data.reset(entry.value().data(), entry.value().size());
     }
     if (table_meta.format_version() == 0) {
-        return rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc_size(), maxIdx + 1, data, &row);
+        return rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc_size(), max_idx + 1, data, &row);
     }
     const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
     uint8_t version = rtidb::codec::RowView::GetSchemaVersion(raw);
     int32_t data_size = data.size();
     if (version == 1) {
         const auto& schema = table_meta.column_desc();
-        return rtidb::codec::RowCodec::DecodeRow(schema, raw, data_size, true, 0, maxIdx + 1, row);
+        return rtidb::codec::RowCodec::DecodeRow(schema, raw, data_size, true, 0, max_idx + 1, row);
     }
     std::shared_ptr<Schema> schema = table->GetVersionSchema(version);
     if (schema == nullptr) {
         LOG(WARNING) << "fail get version " << unsigned(version) << " schema";
         return false;
     }
-    return rtidb::codec::RowCodec::DecodeRow(*schema, raw, data_size, true, 0, maxIdx + 1, row);
+    return rtidb::codec::RowCodec::DecodeRow(*schema, raw, data_size, true, 0, max_idx + 1, row);
 }
 
 }  // namespace storage
