@@ -422,8 +422,9 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
             if (enable_project) {
                 int8_t* ptr = nullptr;
                 uint32_t size = 0;
-                const int8_t* row_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
-                bool ok = row_project.Project(row_ptr, it->GetValue().size(), &ptr, &size);
+                rtidb::base::Slice data = it->GetValue();
+                const int8_t* row_ptr = reinterpret_cast<const int8_t*>(data.data());
+                bool ok = row_project.Project(row_ptr, data.size(), &ptr, &size);
                 if (!ok) {
                     PDLOG(WARNING, "fail to make a projection");
                     return -4;
@@ -465,9 +466,9 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
         if (enable_project) {
             int8_t* ptr = nullptr;
             uint32_t size = 0;
-            bool ok = row_project.Project(
-                reinterpret_cast<const int8_t*>(it->GetValue().data()),
-                it->GetValue().size(), &ptr, &size);
+            rtidb::base::Slice data = it->GetValue();
+            const int8_t* row_ptr = reinterpret_cast<const int8_t*>(data.data());
+            bool ok = row_project.Project(row_ptr, data.size(), &ptr, &size);
             if (!ok) {
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
@@ -1071,25 +1072,13 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
         if (enable_project) {
             int8_t* ptr = nullptr;
             uint32_t size = 0;
-            const int8_t* row_ptr = reinterpret_cast<const int8_t*>(combine_it->GetValue().data());
-            uint8_t version = rtidb::codec::RowView::GetSchemaVersion(row_ptr);
-            if (version != 1) {
-                auto version_it = vers_schema.find(version);
-                if (version_it == vers_schema.end()) {
-                    LOG(WARNING) << "no found version " << unsigned(version) << " in version map";
-                    return -1;
-                }
-                if (row_project.GetMaxIdx() >= (uint32_t)(version_it->second->size())) {
-                    LOG(WARNING) << "projection idx is valid " << row_project.GetMaxIdx();
-                    return -1;
-                }
-            }
-            bool ok = row_project.Project(row_ptr, combine_it->GetValue().size(), &ptr, &size);
+            rtidb::base::Slice data = combine_it->GetValue();
+            const int8_t* row_ptr = reinterpret_cast<const int8_t*>(data.data());
+            bool ok = row_project.Project(row_ptr, data.size(), &ptr, &size);
             if (!ok) {
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
             }
-            LOG(INFO) << "projection size is " << size;
             tmp.emplace_back(ts, Slice(reinterpret_cast<char*>(ptr), size, true));
             total_block_size += size;
         } else {
