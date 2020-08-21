@@ -129,9 +129,9 @@ cases:
         0, 3, 3.3, 33.3, 10, 3
         1, 7, 7.7, 77.7, 110, 3
         2, 5, 5.5, 55.5, 55, 3
-  - id: 4
+  - id: 5
     desc: Group By 字符串 Limit
-    mode: request-unsupport
+    mode: request-unsupport, offline-unsupport
     db: db1
     sql: |
       %%fun
