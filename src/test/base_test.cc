@@ -362,15 +362,24 @@ void SQLCaseTest::CheckRow(fesql::codec::RowView &row_view,  // NOLINT
                 break;
             }
             case fesql::type::kFloat: {
-                ASSERT_FLOAT_EQ(row_view.GetFloatUnsafe(i),
-                                rs->GetFloatUnsafe(i))
-                    << " At " << i;
+				float act = row_view.GetFloatUnsafe(i);
+				float exp = rs->GetFloatUnsafe(i);
+				if (IsNaN(exp)) {
+					ASSERT_TRUE(IsNaN(act)) << " At " << i;
+				} else {
+					ASSERT_FLOAT_EQ(act, exp) << " At " << i;
+				}
                 break;
             }
             case fesql::type::kDouble: {
-                ASSERT_DOUBLE_EQ(row_view.GetDoubleUnsafe(i),
-                                 rs->GetDoubleUnsafe(i))
-                    << " At " << i;
+				double act = row_view.GetDoubleUnsafe(i);
+                double exp = rs->GetDoubleUnsafe(i);
+                if (IsNaN(exp)) {
+                    ASSERT_TRUE(IsNaN(act)) << " At " << i;
+                } else {
+                    ASSERT_DOUBLE_EQ(act, exp) << " At " << i;
+                }
+
                 break;
             }
             case fesql::type::kVarchar: {
