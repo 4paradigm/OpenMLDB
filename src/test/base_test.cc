@@ -463,11 +463,23 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::vector<f
                     break;
                 }
                 case fesql::type::kFloat: {
-                    ASSERT_FLOAT_EQ(row_view.GetFloatUnsafe(i), row_view_exp.GetFloatUnsafe(i)) << " At " << i;
+                    float act = row_view.GetFloatUnsafe(i);
+                    float exp = row_view_exp.GetFloatUnsafe(i);
+                    if (IsNaN(exp)) {
+                        ASSERT_TRUE(IsNaN(act)) << " At " << i;
+                    } else {
+                        ASSERT_FLOAT_EQ(act, exp) << " At " << i;
+                    }
                     break;
                 }
                 case fesql::type::kDouble: {
-                    ASSERT_DOUBLE_EQ(row_view.GetDoubleUnsafe(i), row_view_exp.GetDoubleUnsafe(i)) << " At " << i;
+                    double act = row_view.GetDoubleUnsafe(i);
+                    double exp = row_view_exp.GetDoubleUnsafe(i);
+                    if (IsNaN(exp)) {
+                        ASSERT_TRUE(IsNaN(act)) << " At " << i;
+                    } else {
+                        ASSERT_DOUBLE_EQ(act, exp) << " At " << i;
+                    }
                     break;
                 }
                 case fesql::type::kVarchar: {
