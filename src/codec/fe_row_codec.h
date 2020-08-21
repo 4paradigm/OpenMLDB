@@ -121,7 +121,7 @@ class RowView {
     int32_t GetInt16(uint32_t idx, int16_t* val);
     int32_t GetFloat(uint32_t idx, float* val);
     int32_t GetDouble(uint32_t idx, double* val);
-    int32_t GetString(uint32_t idx, char** val, uint32_t* length);
+    int32_t GetString(uint32_t idx, const char** val, uint32_t* length);
     int32_t GetDate(uint32_t idx, int32_t* year, int32_t* month, int32_t* day);
     int32_t GetDate(uint32_t idx, int32_t* date);
 
@@ -150,7 +150,7 @@ class RowView {
 
     int32_t GetInteger(const int8_t* row, uint32_t idx,
                        ::fesql::type::Type type, int64_t* val);
-    int32_t GetValue(const int8_t* row, uint32_t idx, char** val,
+    int32_t GetValue(const int8_t* row, uint32_t idx, const char** val,
                      uint32_t* length);
     std::string GetAsString(uint32_t idx);
     std::string GetRowString();

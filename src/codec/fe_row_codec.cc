@@ -398,11 +398,11 @@ std::string RowView::GetStringUnsafe(uint32_t idx) {
     if (offset_vec_.at(idx) < string_field_cnt_ - 1) {
         next_str_field_offset = field_offset + 1;
     }
-    char* val;
+    const char* val;
     uint32_t length;
     v1::GetStrFieldUnsafe(row_, field_offset, next_str_field_offset,
-                          str_field_start_offset_, str_addr_length_,
-                          reinterpret_cast<int8_t**>(&val), &length);
+                          str_field_start_offset_, str_addr_length_, &val,
+                          &length);
     return std::string(val, length);
 }
 
@@ -716,7 +716,7 @@ std::string RowView::GetAsString(uint32_t idx) {
             break;
         }
         case fesql::type::kVarchar: {
-            char* str = nullptr;
+            const char* str = nullptr;
             uint32_t str_size;
             int32_t ret = GetString(idx, &str, &str_size);
             if (0 == ret) {
@@ -769,7 +769,7 @@ std::string RowView::GetAsString(uint32_t idx) {
     return "NA";
 }
 
-int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val,
+int32_t RowView::GetValue(const int8_t* row, uint32_t idx, const char** val,
                           uint32_t* length) {
     if (schema_.size() == 0 || row == NULL || length == NULL) {
         return -1;
@@ -799,10 +799,10 @@ int32_t RowView::GetValue(const int8_t* row, uint32_t idx, char** val,
     }
     return v1::GetStrFieldUnsafe(row, field_offset, next_str_field_offset,
                                  str_field_start_offset_, GetAddrLength(size),
-                                 reinterpret_cast<int8_t**>(val), length);
+                                 val, length);
 }
 
-int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
+int32_t RowView::GetString(uint32_t idx, const char** val, uint32_t* length) {
     if (val == NULL || length == NULL) {
         LOG(WARNING) << "output val or length is null";
         return -1;
@@ -824,8 +824,8 @@ int32_t RowView::GetString(uint32_t idx, char** val, uint32_t* length) {
         next_str_field_offset = field_offset + 1;
     }
     return v1::GetStrFieldUnsafe(row_, field_offset, next_str_field_offset,
-                                 str_field_start_offset_, str_addr_length_,
-                                 reinterpret_cast<int8_t**>(val), length);
+                                 str_field_start_offset_, str_addr_length_, val,
+                                 length);
 }
 
 RowDecoder::RowDecoder(const fesql::codec::Schema& schema)

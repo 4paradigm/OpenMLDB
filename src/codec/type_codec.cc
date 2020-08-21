@@ -34,10 +34,12 @@ using fesql::codec::Row;
 
 int32_t GetStrField(const int8_t* row, uint32_t idx, uint32_t str_field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
-                    uint32_t addr_space, int8_t** data, uint32_t* size,
+                    uint32_t addr_space, const char** data, uint32_t* size,
                     int8_t* is_null) {
     if (row == nullptr || IsNullAt(row, idx)) {
         *is_null = true;
+        *data = "";
+        *size = 0;
         return 0;
     } else {
         *is_null = false;
@@ -49,7 +51,7 @@ int32_t GetStrField(const int8_t* row, uint32_t idx, uint32_t str_field_offset,
 int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t field_offset,
                           uint32_t next_str_field_offset,
                           uint32_t str_start_offset, uint32_t addr_space,
-                          int8_t** data, uint32_t* size) {
+                          const char** data, uint32_t* size) {
     if (row == NULL || data == NULL || size == NULL) return -1;
     const int8_t* row_with_offset = row + str_start_offset;
     uint32_t str_offset = 0;
@@ -105,7 +107,7 @@ int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t field_offset,
         }
     }
     const int8_t* ptr = row + str_offset;
-    *data = (int8_t*)(ptr);  // NOLINT
+    *data = reinterpret_cast<const char*>(ptr);
     if (next_str_field_offset <= 0) {
         uint32_t total_length =
             *(reinterpret_cast<const uint32_t*>(row + VERSION_LENGTH));

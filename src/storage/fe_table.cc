@@ -92,7 +92,7 @@ bool Table::DecodeKeysAndTs(const IndexSt& index, const char* row,
                 key.append("|");
             }
             if (col.first == ::fesql::type::kVarchar) {
-                char* val = NULL;
+                const char* val = NULL;
                 uint32_t length = 0;
                 row_view_.GetValue(reinterpret_cast<const int8_t*>(row),
                                    col.second, &val, &length);
@@ -110,7 +110,7 @@ bool Table::DecodeKeysAndTs(const IndexSt& index, const char* row,
         }
     } else {
         if (index.keys[0].first == ::fesql::type::kVarchar) {
-            char* buf = nullptr;
+            const char* buf = nullptr;
             uint32_t size = 0;
             key = row_view_.GetValue(reinterpret_cast<const int8_t*>(row),
                                      index.keys[0].second, &buf, &size);

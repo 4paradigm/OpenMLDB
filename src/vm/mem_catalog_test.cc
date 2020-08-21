@@ -30,7 +30,7 @@ TEST_F(MemCataLogTest, row_test) {
     std::string str = "4444";
     std::string str0 = "0";
     {
-        char* s;
+        const char* s;
         uint32_t size;
         row_view.GetString(0, &s, &size);
         ASSERT_EQ("1", std::string(s, size));
@@ -61,7 +61,7 @@ TEST_F(MemCataLogTest, row_test) {
         ASSERT_EQ(2, value);
     }
     {
-        char* s;
+        const char* s;
         uint32_t size;
         row_view.GetString(6, &s, &size);
         ASSERT_EQ("4444", std::string(s, size));

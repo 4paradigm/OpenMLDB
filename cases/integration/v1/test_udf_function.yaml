@@ -13,6 +13,7 @@ cases:
       columns: ["id int", "c1 string","c2 string", "c12 string"]
       rows:
         - [1, "aa", "bbb", "aabbb"]
+
   - id: 1
     desc: concat_ws两个字符串
     inputs:
@@ -25,7 +26,57 @@ cases:
       columns: ["id int", "c1 string","c2 string","c1_2 string"]
       rows:
         - [1, "aa", "bbb", "aa-bbb"]
+
   - id: 2
+    desc: 默认udf null处理逻辑：返回null
+    inputs:
+      - columns: ["id int64", "c1 string", "c2 int", "c3 double",
+                  "c4 date", "c5 timestamp"]
+        indexs: ["index1:id:id"]
+        rows:
+        - [1, NULL, 42, 3.14, 2020-05-20, 1590738989000]
+        - [2, "hello world", NULL, NULL, NULL, NULL]
+    sql: select id,
+        substring(c1, 1, 5) as r1,
+        substring(c1, 1, c2) as r2,
+        pow(c2, 2) as r3,
+        floor(c3) as r4,
+        dayofweek(c4) as r5,
+        dayofweek(c5) as r6
+        from {0};
+    expect:
+      order: id
+      columns: ["id int64", "r1 string", "r2 string", "r3 double", "r4 double",
+                "r5 int", "r6 int"]
+      rows:
+        - [1, NULL, NULL, 1764, 3.00, 4, 6]
+        - [2, "hello", NULL, NULL, NULL, NULL, NULL]
+
+  - id: 3
+    desc: udf使用中间结果null值
+    inputs:
+      - columns: ["id int64", "c1 string", "c2 int", "c3 double",
+                  "c4 date", "c5 timestamp"]
+        indexs: ["index1:id:id"]
+        rows:
+        - [1, NULL, 42, 3.14, 2020-05-20, 1590738989000]
+        - [2, "hello world", NULL, NULL, NULL, NULL]
+    sql: select id,
+        substring(substring(c1, 1, 5), 1, 1) as r1,
+        substring(substring(c1, 1, c2), c2, 1) as r2,
+        abs(pow(c2, 2)) as r3,
+        abs(floor(c3)) as r4,
+        abs(dayofweek(c4)) as r5,
+        abs(dayofweek(c5)) as r6
+        from {0};
+    expect:
+      order: id
+      columns: ["id int64", "r1 string", "r2 string", "r3 double", "r4 double",
+                "r5 int", "r6 int"]
+      rows:
+        - [1, NULL, NULL, 1764, 3.00, 4, 6]
+        - [2, "h", NULL, NULL, NULL, NULL, NULL]
+  - id: 4
     desc: strcmp 两个字符串
     inputs:
       - columns: ["id int", "c1 string","c2 string","c7 timestamp"]
