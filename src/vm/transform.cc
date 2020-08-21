@@ -67,6 +67,7 @@ BatchModeTransformer::BatchModeTransformer(
       catalog_(catalog),
       module_(module),
       id_(0),
+      performance_sensitive_mode_(false),
       library_(library) {}
 
 BatchModeTransformer::~BatchModeTransformer() {}
@@ -1145,6 +1146,10 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
     }
     *output = physical_plan;
 }
+bool BatchModeTransformer::ValidateIndexOptimization(
+    PhysicalOpNode* physical_plan, ::fesql::base::Status& stauts) {
+    return true;
+}
 bool BatchModeTransformer::TransformPhysicalPlan(
     const ::fesql::node::PlanNodeList& trees,
     ::fesql::vm::PhysicalOpNode** output, base::Status& status) {
@@ -1176,6 +1181,12 @@ bool BatchModeTransformer::TransformPhysicalPlan(
                     return false;
                 }
                 ApplyPasses(physical_plan, output);
+                if (performance_sensitive_mode_ &&
+                    !ValidateIndexOptimization(physical_plan, status)) {
+                    LOG(WARNING) << "fail to support physical plan in "
+                                    "performance sensitive mode";
+                    return false;
+                }
                 if (!GenPlanNode(*output, status)) {
                     LOG(WARNING) << "fail to gen plan";
                     return false;

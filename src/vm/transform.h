@@ -292,6 +292,8 @@ class BatchModeTransformer {
     bool GenSimpleProject(ColumnProject* project, PhysicalOpNode* in,
                           base::Status& status);  // NOLINT
 
+    bool ValidateIndexOptimization(PhysicalOpNode* physical_plan,
+                                   ::fesql::base::Status& stauts);  // NOLINT
  protected:
     virtual bool TransformPlanOp(const ::fesql::node::PlanNode* node,
                                  ::fesql::vm::PhysicalOpNode** ouput,
@@ -383,6 +385,10 @@ class BatchModeTransformer {
  private:
     ::llvm::Module* module_;
     uint32_t id_;
+    // window partition and order should be optimized under
+    // `index_opt_strict_mode_` join key should be optimized under
+    // `index_opt_strict_mode_`
+    bool performance_sensitive_mode_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
     udf::UDFLibrary* library_;
