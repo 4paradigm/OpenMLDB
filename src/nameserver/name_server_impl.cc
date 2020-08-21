@@ -44,7 +44,7 @@ DECLARE_uint32(get_replica_status_interval);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_bool(use_name);
-DECLARE_bool(entable_timeseries_table);
+DECLARE_bool(enable_timeseries_table);
 
 using ::rtidb::base::BLOB_PREFIX;
 using ::rtidb::base::ReturnCode;
@@ -4867,7 +4867,7 @@ void NameServerImpl::CreateTable(RpcController* controller,
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info(
         request->table_info().New());
     table_info->CopyFrom(request->table_info());
-    if (!FLAGS_entable_timeseries_table && table_info->table_type() == ::rtidb::type::kTimeSeries) {
+    if (!FLAGS_enable_timeseries_table && table_info->table_type() == ::rtidb::type::kTimeSeries) {
         response->set_code(::rtidb::base::ReturnCode::kTableTypeMismatch);
         response->set_msg("cannot create timeseries table");
         PDLOG(WARNING, "entable_timeseries_table is false, cannot create timeseries table");

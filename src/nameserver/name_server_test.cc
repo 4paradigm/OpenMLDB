@@ -32,7 +32,7 @@ DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_bool(auto_failover);
-DECLARE_bool(entable_timeseries_table);
+DECLARE_bool(enable_timeseries_table);
 DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
 
@@ -114,7 +114,7 @@ bool StartTablet(const std::string& endpoint,
 
 TEST_F(NameServerImplTest, CreateDisallowedTable) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_entable_timeseries_table = false;
+    FLAGS_enable_timeseries_table = false;
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
 
     brpc::ServerOptions options;
@@ -143,7 +143,7 @@ TEST_F(NameServerImplTest, CreateDisallowedTable) {
         FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(145, response.code());
-    FLAGS_entable_timeseries_table = true;
+    FLAGS_enable_timeseries_table = true;
 }
 
 TEST_F(NameServerImplTest, MakesnapshotTask) {
