@@ -102,10 +102,10 @@ fesql_auto_test:
         - java/target/surefire-reports/TEST-*.xml
         - java/target/failsafe-reports/junitreports/TEST-*.xml
         - java/target/failsafe-reports/TEST-*.xml
-        - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
-        - rtidb-auto-test/target/surefire-reports/TEST-*.xml
-        - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
-        - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+        - rtidb-auto-test-java/target/surefire-reports/junitreports/TEST-*.xml
+        - rtidb-auto-test-java/target/surefire-reports/TEST-*.xml
+        - rtidb-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
+        - rtidb-auto-test-java/target/failsafe-reports/TEST-*.xml
   except:
     variables:
       - $ENV_BUILD == "daily"
@@ -137,10 +137,10 @@ auto_test:
         - java/target/surefire-reports/TEST-*.xml
         - java/target/failsafe-reports/junitreports/TEST-*.xml
         - java/target/failsafe-reports/TEST-*.xml
-        - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
-        - rtidb-auto-test/target/surefire-reports/TEST-*.xml
-        - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
-        - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+        - rtidb-auto-test-java/target/surefire-reports/junitreports/TEST-*.xml
+        - rtidb-auto-test-java/target/surefire-reports/TEST-*.xml
+        - rtidb-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
+        - rtidb-auto-test-java/target/failsafe-reports/TEST-*.xml
   except:
     variables:
       - $ENV_BUILD == "daily"
@@ -198,7 +198,7 @@ tablet_one_demension:
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*.xml
+        - ./test-common/test-output/integrationtest/test-reports/*.xml
   dependencies:
     - build
   except:
@@ -219,7 +219,7 @@ tablet_multi_demension:
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*.xml
+        - ./test-common/test-output/integrationtest/test-reports/*.xml
   dependencies:
     - build
   except:
@@ -240,7 +240,7 @@ ns_one_demension:
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*.xml
+        - ./test-common/test-output/integrationtest/test-reports/*.xml
   dependencies:
     - build
   except:
@@ -261,7 +261,7 @@ ns_multi_demension:
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*.xml
+        - ./test-common/test-output/integrationtest/test-reports/*.xml
   dependencies:
     - build
   except:
@@ -282,7 +282,7 @@ disk_table:
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*.xml
+        - ./test-common/test-output/integrationtest/test-reports/*.xml
   dependencies:
     - build
   except:
