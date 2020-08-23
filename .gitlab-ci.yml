@@ -186,7 +186,7 @@ tablet_one_demension:
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*.xml
+        - ./test-output/integrationtest/test-reports/*
   dependencies:
     - build
   except:
@@ -207,7 +207,7 @@ tablet_multi_demension:
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*.xml
+        - ./test-output/integrationtest/test-reports/*
   dependencies:
     - build
   except:
@@ -228,7 +228,7 @@ ns_one_demension:
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*.xml
+        - ./test-output/integrationtest/test-reports/*
   dependencies:
     - build
   except:
@@ -249,7 +249,7 @@ ns_multi_demension:
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*.xml
+        - ./test-output/integrationtest/test-reports/*
   dependencies:
     - build
   except:
@@ -270,7 +270,7 @@ disk_table:
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*.xml
+        - ./test-output/integrationtest/test-reports/*
   dependencies:
     - build
   except:
