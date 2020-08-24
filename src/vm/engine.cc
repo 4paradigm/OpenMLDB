@@ -144,6 +144,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
     info->get_sql_context().is_batch_mode = session.IsBatchRun();
+    info->get_sql_context().is_performance_sensitive = options_.is_performance_sensitive();
     SQLCompiler compiler(
         std::atomic_load_explicit(&cl_, std::memory_order_acquire),
         options_.is_keep_ir(), false, options_.is_plan_only());

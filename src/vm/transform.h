@@ -258,6 +258,10 @@ class BatchModeTransformer {
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog,
                          ::llvm::Module* module, udf::UDFLibrary* library);
+    BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
+                         const std::shared_ptr<Catalog>& catalog,
+                         ::llvm::Module* module, udf::UDFLibrary* library,
+                         bool performance_sensitive);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
     bool TransformPhysicalPlan(const ::fesql::node::PlanNodeList& trees,
@@ -292,8 +296,13 @@ class BatchModeTransformer {
     bool GenSimpleProject(ColumnProject* project, PhysicalOpNode* in,
                           base::Status& status);  // NOLINT
 
-    bool ValidateIndexOptimization(PhysicalOpNode* physical_plan,
-                                   ::fesql::base::Status& stauts);  // NOLINT
+    base::Status ValidatePartitionDataProvider(PhysicalOpNode* physical_plan);
+    base::Status ValidateWindowIndexOptimization(const WindowOp& window,
+                                                 PhysicalOpNode* in);
+    base::Status ValidateJoinIndexOptimization(const Join& join,
+                                               PhysicalOpNode* in);
+    base::Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
+
  protected:
     virtual bool TransformPlanOp(const ::fesql::node::PlanNode* node,
                                  ::fesql::vm::PhysicalOpNode** ouput,
@@ -399,7 +408,8 @@ class RequestModeransformer : public BatchModeTransformer {
     RequestModeransformer(node::NodeManager* node_manager,
                           const std::string& db,
                           const std::shared_ptr<Catalog>& catalog,
-                          ::llvm::Module* module, udf::UDFLibrary* library);
+                          ::llvm::Module* module, udf::UDFLibrary* library,
+                          const bool performance_sensitive);
     virtual ~RequestModeransformer();
 
     const Schema& request_schema() const { return request_schema_; }

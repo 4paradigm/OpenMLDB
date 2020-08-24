@@ -41,6 +41,7 @@ public class TestParseSQL {
 
         EngineOptions options = new EngineOptions();
         options.set_keep_ir(true);
+        options.set_performance_sensitive(false);
 
         BaseStatus status = new BaseStatus();
         Engine engine = new Engine(catalog, options);
