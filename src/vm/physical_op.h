@@ -1057,6 +1057,7 @@ class PhysicalUnionNode : public PhysicalBinaryNode {
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const bool is_all_;
+    static PhysicalUnionNode *CastFrom(PhysicalOpNode *node);
 };
 
 class PhysicalRequestUnionNode : public PhysicalBinaryNode {
@@ -1145,6 +1146,7 @@ class PhysicalSortNode : public PhysicalUnaryNode {
     bool Valid() { return sort_.ValidSort(); }
     const Sort &sort() const { return sort_; }
     Sort sort_;
+    static PhysicalSortNode *CastFrom(PhysicalOpNode *node);
 };
 
 class PhysicalFliterNode : public PhysicalUnaryNode {
@@ -1161,6 +1163,7 @@ class PhysicalFliterNode : public PhysicalUnaryNode {
     bool Valid() { return filter_.ValidCondition(); }
     const ConditionFilter &filter() const { return filter_; }
     ConditionFilter filter_;
+    static PhysicalFliterNode *CastFrom(PhysicalOpNode *node);
 };
 
 class PhysicalLimitNode : public PhysicalUnaryNode {
@@ -1176,6 +1179,7 @@ class PhysicalLimitNode : public PhysicalUnaryNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
     void SetLimitOptimized(bool optimized) { limit_optimized_ = optimized; }
     const bool GetLimitOptimized() const { return limit_optimized_; }
+    static PhysicalLimitNode *CastFrom(PhysicalOpNode *node);
 
  private:
     bool limit_optimized_;
