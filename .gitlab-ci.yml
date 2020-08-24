@@ -75,10 +75,6 @@ java_ut:
         - java/target/surefire-reports/TEST-*.xml
         - java/target/failsafe-reports/junitreports/TEST-*.xml
         - java/target/failsafe-reports/TEST-*.xml
-        - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
-        - rtidb-auto-test/target/surefire-reports/TEST-*.xml
-        - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
-        - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
 
 fesql_auto_test:
   stage: test
@@ -91,21 +87,17 @@ fesql_auto_test:
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/fesql_auto_test.sh
   after_script:
-    - tar czvf $CI_COMMIT_SHA  src/sdk/java/feql-auto-test-java/target/allure-results
+    - tar czvf $CI_COMMIT_SHA  src/sdk/java/fesql-auto-test-java/target/allure-results
     - bash steps/upload-nexus.sh $CI_COMMIT_SHA
     - curl -s "http://auto.4paradigm.com/job/fesql-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&allure_path=src/sdk/java/feql-auto-test-java/target/allure-results&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
     - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
   artifacts:
     reports:
       junit:
-        - java/target/surefire-reports/junitreports/TEST-*.xml
-        - java/target/surefire-reports/TEST-*.xml
-        - java/target/failsafe-reports/junitreports/TEST-*.xml
-        - java/target/failsafe-reports/TEST-*.xml
-        - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
-        - rtidb-auto-test/target/surefire-reports/TEST-*.xml
-        - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
-        - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/surefire-reports/junitreports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/surefire-reports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/rtidb-auto-test-java/target/failsafe-reports/TEST-*.xml
   except:
     variables:
       - $ENV_BUILD == "daily"
@@ -133,14 +125,10 @@ auto_test:
   artifacts:
     reports:
       junit:
-        - java/target/surefire-reports/junitreports/TEST-*.xml
-        - java/target/surefire-reports/TEST-*.xml
-        - java/target/failsafe-reports/junitreports/TEST-*.xml
-        - java/target/failsafe-reports/TEST-*.xml
-        - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
-        - rtidb-auto-test/target/surefire-reports/TEST-*.xml
-        - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
-        - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
+        - rtidb-auto-test-java/target/surefire-reports/junitreports/TEST-*.xml
+        - rtidb-auto-test-java/target/surefire-reports/TEST-*.xml
+        - rtidb-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
+        - rtidb-auto-test-java/target/failsafe-reports/TEST-*.xml
   except:
     variables:
       - $ENV_BUILD == "daily"
@@ -198,7 +186,7 @@ tablet_one_demension:
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*.xml
+        - ./test-output/integrationtest/test-reports/*
   dependencies:
     - build
   except:
@@ -219,7 +207,7 @@ tablet_multi_demension:
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*.xml
+        - ./test-output/integrationtest/test-reports/*
   dependencies:
     - build
   except:
@@ -240,7 +228,7 @@ ns_one_demension:
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*.xml
+        - ./test-output/integrationtest/test-reports/*
   dependencies:
     - build
   except:
@@ -261,7 +249,7 @@ ns_multi_demension:
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*.xml
+        - ./test-output/integrationtest/test-reports/*
   dependencies:
     - build
   except:
@@ -282,7 +270,7 @@ disk_table:
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*.xml
+        - ./test-output/integrationtest/test-reports/*
   dependencies:
     - build
   except:
@@ -295,7 +283,6 @@ deploy-fedb:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/deploy_package_fedb.sh
-  dependencies: []
   only:
     variables:
       - $ENV_BUILD == "daily"

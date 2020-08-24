@@ -577,14 +577,14 @@ TEST_F(SQLSDKQueryTest, execute_insert_loops_test) {
 }  // namespace rtidb
 
 int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    srand(time(NULL));
     FLAGS_zk_session_timeout = 100000;
     ::rtidb::sdk::MiniCluster mc(6181);
     ::rtidb::sdk::mc_ = &mc;
     int ok = ::rtidb::sdk::mc_->SetUp();
     sleep(1);
-    ::testing::InitGoogleTest(&argc, argv);
-    srand(time(NULL));
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
     ok = RUN_ALL_TESTS();
     ::rtidb::sdk::mc_->Close();
     return ok;
