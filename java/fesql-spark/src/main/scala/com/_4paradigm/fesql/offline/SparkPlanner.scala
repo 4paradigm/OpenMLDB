@@ -70,6 +70,9 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
           case ProjectType.kWindowAggregation =>
             WindowAggPlan.gen(ctx, PhysicalWindowAggrerationNode.CastFrom(projectNode), children.head)
 
+          case ProjectType.kGroupAggregation =>
+            GroupByAggregationPlan.gen(ctx, PhysicalGroupAggrerationNode.CastFrom(projectNode), children.head)
+
           case _ => throw new FeSQLException(
             s"Project type ${projectNode.getProject_type_} not supported")
         }

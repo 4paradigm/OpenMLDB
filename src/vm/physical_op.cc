@@ -187,6 +187,11 @@ void PhysicalGroupAggrerationNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 
+PhysicalGroupAggrerationNode* PhysicalGroupAggrerationNode::CastFrom(
+    PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalGroupAggrerationNode*>(node);
+}
+
 void PhysicalWindowAggrerationNode::Print(std::ostream& output,
                                           const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);

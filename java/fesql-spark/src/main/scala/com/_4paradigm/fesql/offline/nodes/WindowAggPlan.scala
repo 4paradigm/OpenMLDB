@@ -219,20 +219,6 @@ object WindowAggPlan {
     }
   }
 
-
-  def createGroupKeyComparator(keyIdxs: Array[Int], schema: StructType): (Row, Row) => Boolean = {
-    if (keyIdxs.length == 1) {
-      val idx = keyIdxs(0)
-      (row1, row2) => {
-        row1.get(idx) != row2.get(idx)
-      }
-    } else {
-      (row1, row2) => {
-        keyIdxs.exists(i => row1.get(i) != row2.get(i))
-      }
-    }
-  }
-
   /**
    * Spark closure class for window compute information
    */
@@ -272,7 +258,7 @@ object WindowAggPlan {
     // append slices cnt = needAppendInput ? inputSchemaSlices.size : 0
     private val appendSlices = if (config.needAppendInput) config.inputSchemaSlices.size else 0
     // group key comparation
-    private val groupKeyComparator = createGroupKeyComparator(
+    private val groupKeyComparator = FesqlUtil.createGroupKeyComparator(
       config.groupIdxs, config.inputSchema)
 
     // native function handle

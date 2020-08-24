@@ -213,8 +213,8 @@ cases:
   - id: 11
     desc: arithmetic_and_udf_before_udaf
     inputs:
-      - columns: ["id int64", "c1 double", "c2 float", "c3 bigint"]
-        indexs: ["index1:id:c3"]
+      - columns: ["id int64", "c1 double", "c2 float", "c3 int"]
+        indexs: ["index1:id:id"]
         rows:
           - [1, 10.0, 1.0, 5]
           - [2, 9.0, 2.0, 5]
@@ -241,8 +241,8 @@ cases:
     desc: arithmetic_and_udf_after_udaf
     tags: ["目前只能f(udaf()) over w，否则无法进入window agg节点"]
     inputs:
-      - columns: ["id int64", "c1 double", "c2 float", "c3 bigint"]
-        indexs: ["index1:id:c3"]
+      - columns: ["id int64", "c1 double", "c2 float", "c3 int"]
+        indexs: ["index1:id:id"]
         rows:
           - [1, 10.0, 1.0, 5]
           - [2, 9.0, 2.0, 5]
@@ -257,7 +257,7 @@ cases:
       WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int64","r1 bigint", "r2 double"]
+      columns: ["id int64","r1 int", "r2 double"]
       rows:
         - [1, 5, 0.78845736036427028]
         - [2, 10, 1.4816045409242156]
@@ -268,8 +268,8 @@ cases:
   - id: 13
     desc: nested udaf
     inputs:
-      - columns: ["id int64", "c1 double", "c2 float", "c3 bigint"]
-        indexs: ["index1:id:c3"]
+      - columns: ["id int64", "c1 double", "c2 float", "c3 int"]
+        indexs: ["index1:id:id"]
         rows:
           - [1, 10.0, 1.0, 5]
           - [2, 9.0, 2.0, 5]
@@ -297,8 +297,8 @@ cases:
     desc: cast after udaf
     tags: ["TODO", "@chenjing 统一支持cast语法"]
     inputs:
-      - columns: ["id int64", "c1 double", "c2 float", "c3 bigint"]
-        indexs: ["index1:id:c3"]
+      - columns: ["id int64", "c1 double", "c2 float", "c3 int"]
+        indexs: ["index1:id:id"]
         rows:
           - [1, 10.0, 1.0, 5]
           - [2, 9.0, 2.0, 5]
@@ -318,8 +318,8 @@ cases:
   - id: 15
     desc: aggregate where
     inputs:
-      - columns: ["id int64", "c1 double", "c2 float", "c3 bigint"]
-        indexs: ["index1:id:c3"]
+      - columns: ["id int64", "c1 double", "c2 float", "c3 int"]
+        indexs: ["index1:id:id"]
         rows:
           - [1, 1.0, 1.1, 0]
           - [2, 2.0, 7.7, 0]

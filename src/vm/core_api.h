@@ -12,9 +12,11 @@
 
 #include <map>
 #include <memory>
+#include <string>
 #include "codec/fe_row_codec.h"
 #include "codec/row.h"
 #include "vm/catalog.h"
+#include "vm/mem_catalog.h"
 #include "vm/physical_op.h"
 
 namespace fesql {
@@ -38,6 +40,17 @@ class WindowInterface {
 
     Window* GetWindow() { return window_impl_.get(); }
     std::unique_ptr<Window> window_impl_;
+};
+
+class GroupbyInterface {
+ public:
+    explicit GroupbyInterface(const fesql::codec::Schema& schema);
+    void AddRow(fesql::codec::Row* row);
+    fesql::vm::TableHandler* GetTableHandler();
+
+ private:
+    friend CoreAPI;
+    fesql::vm::MemTableHandler* mem_table_handler_;
 };
 
 class RunnerContext {
@@ -73,6 +86,10 @@ class CoreAPI {
                                            const bool is_instance,
                                            size_t append_slices,
                                            WindowInterface* window);
+
+    static fesql::codec::Row GroupbyProject(
+        const fesql::vm::RawPtrHandle fn,
+        fesql::vm::GroupbyInterface* groupby_interface);
 
     static bool ComputeCondition(const fesql::vm::RawPtrHandle fn,
                                  const Row& row,

@@ -88,8 +88,8 @@ using fesql::codec::RowIterator;
 using fesql::codec::Row;
 using fesql::vm::ColumnSource;
 using fesql::node::PlanType;
+using fesql::codec::WindowIterator;
 %}
-
 
 %rename(BaseStatus) fesql::base::Status;
 %ignore MakeExprWithTable; // TODO: avoid return object with share pointer
@@ -104,6 +104,21 @@ using fesql::node::PlanType;
 %ignore fesql::vm::RequestRunSession::RunRequestPlan;
 %ignore fesql::vm::FeSQLJITWrapper::AddModule;
 
+// Ignore the unique_ptr functions
+%ignore fesql::vm::MemTableHandler::GetWindowIterator;
+%ignore fesql::vm::MemTableHandler::GetIterator;
+%ignore fesql::vm::MemTimeTableHandler::GetWindowIterator;
+%ignore fesql::vm::MemTimeTableHandler::GetIterator;
+%ignore fesql::vm::MemSegmentHandler::GetWindowIterator;
+%ignore fesql::vm::MemSegmentHandler::GetIterator;
+%ignore fesql::vm::MemPartitionHandler::GetWindowIterator;
+%ignore fesql::vm::MemPartitionHandler::GetIterator;
+%ignore fesql::vm::MemWindowIterator::GetValue;
+%ignore fesql::vm::MemCatalog;
+%ignore fesql::vm::MemCatalog::~MemCatalog;
+%ignore fesql::vm::AscComparor::operator();
+%ignore fesql::vm::DescComparor::operator();
+
 %include "base/fe_status.h"
 %include "codec/row.h"
 %include "codec/fe_row_codec.h"
@@ -116,6 +131,7 @@ using fesql::node::PlanType;
 %include "vm/physical_op.h"
 %include "vm/jit_wrapper.h"
 %include "vm/core_api.h"
+%include "vm/mem_catalog.h"
 
 // Notice that make sure this is declared after including "vm/catalog.h"
 namespace fesql {
