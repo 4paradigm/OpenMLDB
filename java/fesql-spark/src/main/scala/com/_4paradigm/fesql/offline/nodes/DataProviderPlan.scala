@@ -10,6 +10,10 @@ object DataProviderPlan {
     val df = ctx.getDataFrame(tableName).getOrElse {
       throw new FeSQLException(s"Input table $tableName not found")
     }
-    SparkInstance.fromDataFrame(df)
+
+    // If limit has been set
+    val outputDf = if (node.GetLimitCnt() >= 0) df.limit(node.GetLimitCnt()) else df
+
+    SparkInstance.fromDataFrame(outputDf)
   }
 }
