@@ -4,7 +4,7 @@ import java.util
 
 import com._4paradigm.fesql.`type`.TypeOuterClass.{ColumnDef, Database, TableDef, Type}
 import com._4paradigm.fesql.vm.PhysicalOpNode
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.types._
 
 import scala.collection.JavaConverters._
@@ -90,4 +90,18 @@ object FesqlUtil {
         s"Spark type $dtype not supported")
     }
   }
+
+  def createGroupKeyComparator(keyIdxs: Array[Int], schema: StructType): (Row, Row) => Boolean = {
+    if (keyIdxs.length == 1) {
+      val idx = keyIdxs(0)
+      (row1, row2) => {
+        row1.get(idx) != row2.get(idx)
+      }
+    } else {
+      (row1, row2) => {
+        keyIdxs.exists(i => row1.get(i) != row2.get(i))
+      }
+    }
+  }
+
 }

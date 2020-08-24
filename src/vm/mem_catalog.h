@@ -21,7 +21,6 @@
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
 #include "vm/catalog.h"
-#include "vm/core_api.h"
 
 namespace fesql {
 namespace vm {
