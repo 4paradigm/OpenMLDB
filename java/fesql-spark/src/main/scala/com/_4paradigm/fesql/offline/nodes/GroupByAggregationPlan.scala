@@ -36,6 +36,7 @@ object GroupByAggregationPlan {
     val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
 
     // Wrap spark closure
+    val limitCnt = node.GetLimitCnt
     val projectConfig = ProjectConfig(
       functionName = node.project().fn_name(),
       moduleTag = ctx.getTag,
@@ -51,6 +52,8 @@ object GroupByAggregationPlan {
       val resultRowList =  mutable.ArrayBuffer[Row]()
 
       if (!iter.isEmpty) { // Ignore the empty partition
+        var currentLimitCnt = 0
+
         // Init JIT
         val tag = projectConfig.moduleTag
         val buffer = projectConfig.moduleBroadcast.value.getBuffer
@@ -70,36 +73,40 @@ object GroupByAggregationPlan {
         val grouopNativeRows =  mutable.ArrayBuffer[NativeRow]()
 
         iter.foreach(row => {
+          if (limitCnt < 0 || currentLimitCnt < limitCnt) { // Do not set limit or not reach the limit
+            if (lastRow != null) { // Ignore the first row in partition
+              val groupChanged = groupKeyComparator.apply(row, lastRow)
+              if (groupChanged) {
+                // Run group by for the same group
+                val outputFesqlRow = CoreAPI.GroupbyProject(fn, groupbyInterface)
+                val outputArr = Array.fill[Any](outputFields)(null)
+                decoder.decode(outputFesqlRow, outputArr)
+                resultRowList += Row.fromSeq(outputArr)
+                currentLimitCnt += 1
 
-          if (lastRow != null) { // Ignore the first row in partition
-            val groupChanged = groupKeyComparator.apply(row, lastRow)
-            if (groupChanged) {
-              // Run group by for the same group
-              val outputFesqlRow = CoreAPI.GroupbyProject(fn, groupbyInterface)
-              val outputArr = Array.fill[Any](outputFields)(null)
-              decoder.decode(outputFesqlRow, outputArr)
-              resultRowList += Row.fromSeq(outputArr)
-
-              // Reset group interface and release native rows
-              groupbyInterface.delete()
-              groupbyInterface = new GroupbyInterface(inputFesqlSchema)
-              grouopNativeRows.map(nativeRow => nativeRow.delete())
-              grouopNativeRows.clear()
+                // Reset group interface and release native rows
+                groupbyInterface.delete()
+                groupbyInterface = new GroupbyInterface(inputFesqlSchema)
+                grouopNativeRows.map(nativeRow => nativeRow.delete())
+                grouopNativeRows.clear()
+              }
             }
-          }
 
-          // Buffer the row in the same group
-          lastRow = row
-          val nativeInputRow = encoder.encode(row)
-          groupbyInterface.AddRow(nativeInputRow)
-          grouopNativeRows += nativeInputRow
+            // Buffer the row in the same group
+            lastRow = row
+            val nativeInputRow = encoder.encode(row)
+            groupbyInterface.AddRow(nativeInputRow)
+            grouopNativeRows += nativeInputRow
+          }
         })
 
         // Run group by for the last group
-        val outputFesqlRow = CoreAPI.GroupbyProject(fn, groupbyInterface)
-        val outputArr = Array.fill[Any](outputFields)(null)
-        decoder.decode(outputFesqlRow, outputArr)
-        resultRowList += Row.fromSeq(outputArr)
+        if (limitCnt < 0 || currentLimitCnt < limitCnt) {
+          val outputFesqlRow = CoreAPI.GroupbyProject(fn, groupbyInterface)
+          val outputArr = Array.fill[Any](outputFields)(null)
+          decoder.decode(outputFesqlRow, outputArr)
+          resultRowList += Row.fromSeq(outputArr)
+        }
 
         groupbyInterface.delete()
         grouopNativeRows.map(nativeRow => nativeRow.delete())

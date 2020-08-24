@@ -24,6 +24,7 @@ object RowProjectPlan {
     val outputSchema = FesqlUtil.getSparkSchema(node.GetOutputSchema())
 
     // spark closure
+    val limitCnt = node.GetLimitCnt
     val projectConfig = ProjectConfig(
       functionName = node.project().fn_name(),
       moduleTag = ctx.getTag,
@@ -34,13 +35,15 @@ object RowProjectPlan {
 
     // project implementation
     val projectRDD = inputRDD.mapPartitions(iter => {
+      val limitIter = if (limitCnt >= 0) iter.take(limitCnt) else iter
+
       // ensure worker native
       val tag = projectConfig.moduleTag
       val buffer = projectConfig.moduleBroadcast.value.getBuffer
       JITManager.initJITModule(tag, buffer)
       val jit = JITManager.getJIT(tag)
 
-      projectIter(iter, jit, projectConfig)
+      projectIter(limitIter, jit, projectConfig)
     })
 
     SparkInstance.fromRDD(outputSchema, projectRDD)

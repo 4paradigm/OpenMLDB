@@ -130,7 +130,8 @@ object WindowAggPlan {
       outputSchemaSlices = outputSchemaSlices,
       unionFlagIdx = flagIdx,
       instanceNotInWindow = node.instance_not_in_window(),
-      needAppendInput = node.need_append_input()
+      needAppendInput = node.need_append_input(),
+      limitCnt = node.GetLimitCnt()
     )
   }
 
@@ -177,7 +178,10 @@ object WindowAggPlan {
     val computer = new WindowComputer(config, jit)
     var lastRow: Row = null
 
-    val resIter = inputIter.map(row => {
+    // Take the iterator if the limit has been set
+    val limitInputIter = if (config.limitCnt >= 0) inputIter.take(config.limitCnt) else inputIter
+
+    val resIter = limitInputIter.map(row => {
       if (lastRow != null) {
         computer.checkPartition(row, lastRow)
       }
@@ -234,7 +238,8 @@ object WindowAggPlan {
                              outputSchemaSlices: Array[StructType],
                              unionFlagIdx: Int,
                              instanceNotInWindow: Boolean,
-                             needAppendInput: Boolean)
+                             needAppendInput: Boolean,
+                             limitCnt: Int)
 
 
   /**
