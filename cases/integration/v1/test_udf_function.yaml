@@ -72,10 +72,10 @@ cases:
     expect:
       order: id
       columns: ["id int64", "r1 string", "r2 string", "r3 double", "r4 double",
-                "r5 int", "r6 int", "std_ts timestamp"]
+                "r5 int", "r6 int"]
       rows:
-        - [1, NULL, NULL, 1764, 3.00, 4, 6, 1590738989000]
-        - [2, "h", NULL, NULL, NULL, NULL, NULL, 1590738989000]
+        - [1, NULL, NULL, 1764, 3.00, 4, 6]
+        - [2, "h", NULL, NULL, NULL, NULL, NULL]
   - id: 4
     desc: strcmp 两个字符串
     inputs:
