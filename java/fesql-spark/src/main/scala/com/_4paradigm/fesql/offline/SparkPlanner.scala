@@ -85,7 +85,7 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
         JoinPlan.gen(ctx, PhysicalJoinNode.CastFrom(root), children.head, children.last)
 
       case PhysicalOpType.kPhysicalOpLimit =>
-        children.head
+        LimitPlan.gen(ctx, PhysicalLimitNode.CastFrom(root), children.head)
 
       case _ =>
         throw new IllegalArgumentException(s"Plan type $opType not supported")
