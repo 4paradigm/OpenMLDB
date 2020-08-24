@@ -436,7 +436,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = sql_case.debug() ||fesql::sqlcase::SQLCase::IS_DEBUG();
+    sql_opt.enable_debug = sql_case.debug() || fesql::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
