@@ -343,20 +343,19 @@ cases:
 
   - id: 16
     desc: 三值bool逻辑
-    tags: ["TODO"]
     inputs:
-      - columns: ["id int64", "c1 bool", "c2 bool"]
-        indexs: ["index1:id:id"]
+      - columns: ["id int64", "tt int64", "c1 bool", "c2 bool"]
+        indexs: ["index1:id:tt"]
         rows:
-          - [1, true, true]
-          - [2, true, false]
-          - [3, true, NULL]
-          - [4, false, true]
-          - [5, false, false]
-          - [6, false, NULL]
-          - [7, NULL, true]
-          - [8, NULL, false]
-          - [9, NULL, NULL]
+          - [1, 1, true, true]
+          - [2, 2, true, false]
+          - [3, 3, true, NULL]
+          - [4, 4, false, true]
+          - [5, 5, false, false]
+          - [6, 6, false, NULL]
+          - [7, 7, NULL, true]
+          - [8, 8, NULL, false]
+          - [9, 9, NULL, NULL]
     sql: select id, c1, c2, c1 and c2 as c_and, c1 or c2 as c_or, c1 xor c2 as c_xor, not c1 as c_not from {0};
     expect:
       order: id

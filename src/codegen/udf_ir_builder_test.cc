@@ -660,6 +660,21 @@ TEST_F(UDFIRBuilderTest, strcmp_udf_test) {
     CheckUDF<Nullable<int32_t>, Nullable<StringRef>, Nullable<StringRef>>(
         "strcmp", nullptr, nullptr, StringRef(""));
 }
+
+TEST_F(UDFIRBuilderTest, null_process_test) {
+    CheckUDF<bool, Nullable<double>>("is_null", true, nullptr);
+    CheckUDF<bool, Nullable<double>>("is_null", false, 1.0);
+
+    CheckUDF<double, Nullable<double>, Nullable<double>>("if_null", 1.0, 1.0,
+                                                         nullptr);
+    CheckUDF<double, Nullable<double>, Nullable<double>>("if_null", 1.0, 1.0,
+                                                         2.0);
+    CheckUDF<Nullable<double>, Nullable<double>, Nullable<double>>(
+        "if_null", nullptr, nullptr, nullptr);
+    CheckUDF<double, Nullable<double>, Nullable<double>>("if_null", 2.0,
+                                                         nullptr, 2.0);
+}
+
 }  // namespace codegen
 }  // namespace fesql
 
