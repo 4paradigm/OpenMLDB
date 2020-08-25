@@ -179,7 +179,7 @@ object WindowAggPlan {
     var lastRow: Row = null
 
     // Take the iterator if the limit has been set
-    val limitInputIter = if (config.limitCnt >= 0) inputIter.take(config.limitCnt) else inputIter
+    val limitInputIter = if (config.limitCnt > 0) inputIter.take(config.limitCnt) else inputIter
 
     val resIter = limitInputIter.map(row => {
       if (lastRow != null) {

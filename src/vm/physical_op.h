@@ -266,7 +266,7 @@ class PhysicalOpNode : public node::NodeBase {
           output_type_(kSchemaTypeTable),
           fn_info_({"", nullptr}),
           fn_infos_({&fn_info_}),
-          limit_cnt_(-1) {}
+          limit_cnt_(0) {}
     virtual ~PhysicalOpNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     void Print() const;

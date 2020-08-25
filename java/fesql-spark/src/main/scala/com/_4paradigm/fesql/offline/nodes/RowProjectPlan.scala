@@ -35,7 +35,7 @@ object RowProjectPlan {
 
     // project implementation
     val projectRDD = inputRDD.mapPartitions(iter => {
-      val limitIter = if (limitCnt >= 0) iter.take(limitCnt) else iter
+      val limitIter = if (limitCnt > 0) iter.take(limitCnt) else iter
 
       // ensure worker native
       val tag = projectConfig.moduleTag
