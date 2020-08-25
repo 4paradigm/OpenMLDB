@@ -8,6 +8,7 @@ import com._4paradigm.fesql.flink.common.FesqlUtil;
 import com._4paradigm.fesql.flink.common.SQLEngine;
 import com._4paradigm.fesql.flink.stream.FesqlStreamTableEnvironment;
 import com._4paradigm.fesql.flink.stream.planner.StreamDataProviderPlan;
+import com._4paradigm.fesql.flink.stream.planner.StreamLimitPlan;
 import com._4paradigm.fesql.flink.stream.planner.StreamTableProjectPlan;
 import com._4paradigm.fesql.flink.stream.planner.StreamWindowAggPlan;
 import com._4paradigm.fesql.type.TypeOuterClass;
@@ -146,7 +147,7 @@ public class FesqlFlinkPlanner {
             if (isBatch) {
                 outputTable = BatchLimitPlan.gen(planContext, physicalLimitNode, children.get(0));
             } else {
-                throw new FesqlException(String.format("Planner does not support project type %s", physicalLimitNode));
+                outputTable = StreamLimitPlan.gen(planContext, physicalLimitNode, children.get(0));
             }
         } else {
             throw new FesqlException(String.format("Planner does not support physical op %s", node));
