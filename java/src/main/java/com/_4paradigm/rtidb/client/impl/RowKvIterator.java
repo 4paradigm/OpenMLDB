@@ -29,6 +29,7 @@ public class RowKvIterator implements KvIterator {
     private Map<Integer, List<ColumnDesc>> verMap = null;
     private Map<Integer, List<ColumnDesc>> schemaMap = null;
     private int currentVersion = 1;
+    private boolean underProjection = false;
 
     public RowKvIterator(ByteString bs, List<ColumnDesc> schema, int count) {
         this.dataList.add(new ScanResultParser(bs));
@@ -37,6 +38,18 @@ public class RowKvIterator implements KvIterator {
         this.defaultSchema = schema;
         this.schema = schema;
         rv = new RowView(schema);
+    }
+
+    public RowKvIterator(ByteString bs, List<ColumnDesc> schema, int count, boolean underProjection) {
+        this.dataList.add(new ScanResultParser(bs));
+        this.count = count;
+        next();
+        this.defaultSchema = schema;
+        this.schema = schema;
+        rv = new RowView(schema);
+        if (underProjection) {
+            this.underProjection = true;
+        }
     }
 
     public RowKvIterator(List<ByteString> bsList, List<ColumnDesc> schema, int count) {
@@ -98,11 +111,13 @@ public class RowKvIterator implements KvIterator {
     }
 
     public Object[] getDecodedValue() throws TabletException {
-        if (defaultSchema == null) {
+        if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
         Object[] row = null;
-        if (schemaMap == null) {
+        if (underProjection) {
+            row = new Object[schema.size()];
+        } else if (schemaMap == null) {
             row = new Object[defaultSchema.size()];
         } else {
             row = new Object[defaultSchema.size() + schemaMap.size()];
@@ -136,7 +151,7 @@ public class RowKvIterator implements KvIterator {
     }
 
     private void checkVersion(ByteBuffer buf) throws TabletException {
-        if (this.verMap == null) {
+        if (this.verMap == null || underProjection) {
             return;
         }
         int version = RowView.getSchemaVersion(buf);

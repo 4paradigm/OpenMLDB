@@ -564,6 +564,10 @@ public class TableSyncClientImpl implements TableSyncClient {
             }
             if (isNewFormat) {
                 ByteBuffer buf = bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN);
+                if (getOption.getProjection().size() > 0) {
+                    RowView rv = new RowView(schema);
+                    return rv.read(buf);
+                }
                 int version = RowView.getSchemaVersion(buf);
                 buf.rewind();
                 schema = th.getSchemaByVer(version);
@@ -1217,7 +1221,13 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.ScanResponse response = ts.scan(request);
         if (response != null && response.getCode() == 0) {
             if (isNewFormat) {
-                RowKvIterator rit = new RowKvIterator(response.getPairs(), schema, response.getCount());
+                RowKvIterator rit;
+                if (option.getProjection().size() > 0) {
+                    rit = new RowKvIterator(response.getPairs(), schema, response.getCount());
+                } else {
+                    rit = new RowKvIterator(response.getPairs(), schema, response.getCount(), true);
+                    return rit;
+                }
                 rit.setVerMap(th.getVersions());
                 rit.setSchemaMap(th.getSchemaMap());
                 if (th.getTableInfo().hasCompressType()) {

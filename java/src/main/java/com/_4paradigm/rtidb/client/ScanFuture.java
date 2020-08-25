@@ -108,7 +108,7 @@ public class ScanFuture implements Future<KvIterator> {
     private KvIterator getNewKvIterator(ScanResponse response) {
         RowKvIterator kit = null;
         if (projectionInfo != null && projectionInfo.getProjectionSchema() != null) {
-            kit = new RowKvIterator(response.getPairs(), projectionInfo.getProjectionSchema(), response.getCount());
+            kit = new RowKvIterator(response.getPairs(), projectionInfo.getProjectionSchema(), response.getCount(), true);
         }else {
             int ver = t.getCurrentSchemaVer();
             if (ver != 1) {
