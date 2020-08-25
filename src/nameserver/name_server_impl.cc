@@ -4248,7 +4248,7 @@ bool NameServerImpl::AddFieldToTablet(const std::vector<rtidb::common::ColumnDes
         version_id = pair.id();
     }
     if (version_id >= UINT8_MAX) {
-        LOG(WARNING) << "reach max veriosn " <<  UINT8_MAX << " table " << table_info->name();
+        LOG(WARNING) << "reach max version " <<  UINT8_MAX << " table " << name;
         return false;
     }
     version_id++;
