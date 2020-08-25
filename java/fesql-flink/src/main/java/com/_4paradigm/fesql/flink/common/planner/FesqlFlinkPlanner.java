@@ -141,6 +141,13 @@ public class FesqlFlinkPlanner {
         } else if (opType.swigValue() == PhysicalOpType.kPhysicalOpGroupBy.swigValue()) {
             PhysicalGroupNode physicalGroupNode = PhysicalGroupNode.CastFrom(node);
             outputTable = MockGroupbyPlan.gen(planContext, physicalGroupNode, children.get(0));
+        } else if (opType.swigValue() == PhysicalOpType.kPhysicalOpLimit.swigValue()) {
+            PhysicalLimitNode physicalLimitNode = PhysicalLimitNode.CastFrom(node);
+            if (isBatch) {
+                outputTable = BatchLimitPlan.gen(planContext, physicalLimitNode, children.get(0));
+            } else {
+                throw new FesqlException(String.format("Planner does not support project type %s", physicalLimitNode));
+            }
         } else {
             throw new FesqlException(String.format("Planner does not support physical op %s", node));
         }
