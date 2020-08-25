@@ -81,7 +81,7 @@ public class FesqlFlinkPlanner {
 
     }
 
-    public Table visitPhysicalNode(GeneralPlanContext planContext, PhysicalOpNode node) throws FesqlException {
+    public Table visitPhysicalNode(GeneralPlanContext planContext, PhysicalOpNode node) throws FesqlException, UnsupportedFesqlException {
 
         List<Table> children = new ArrayList<Table>();
         for (int i=0; i < node.GetProducerCnt(); ++i) {
@@ -135,10 +135,10 @@ public class FesqlFlinkPlanner {
                     outputTable = BatchGroupbyAggPlan.gen(planContext, physicalGroupAggrerationNode, children.get(0));
                 } else {
                     // TODO: need to convert upsert stream to Table, refer to https://github.com/apache/flink/pull/6787
-                    throw new FesqlException(String.format("Planner does not support project type %s", projectType));
+                    throw new UnsupportedFesqlException(String.format("Planner does not support project type %s", projectType));
                 }
             } else {
-                throw new FesqlException(String.format("Planner does not support project type %s", projectType));
+                throw new UnsupportedFesqlException(String.format("Planner does not support project type %s", projectType));
             }
         } else if (opType.swigValue() == PhysicalOpType.kPhysicalOpGroupBy.swigValue()) {
             PhysicalGroupNode physicalGroupNode = PhysicalGroupNode.CastFrom(node);
@@ -151,7 +151,7 @@ public class FesqlFlinkPlanner {
                 outputTable = StreamLimitPlan.gen(planContext, physicalLimitNode, children.get(0));
             }
         } else {
-            throw new FesqlException(String.format("Planner does not support physical op %s", node));
+            throw new UnsupportedFesqlException(String.format("Planner does not support physical op %s", node));
         }
 
         return outputTable;
