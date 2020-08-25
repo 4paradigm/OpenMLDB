@@ -410,7 +410,9 @@ INSTANTIATE_TEST_SUITE_P(SQLSDKTestUDFFunction, SQLSDKQueryTest,
 TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") || boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport")) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -429,7 +431,9 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
 TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") || boost::contains(sql_case.mode(), "batch-unsupport")) {
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-batch-unsupport") ||
+        boost::contains(sql_case.mode(), "batch-unsupport")) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
