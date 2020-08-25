@@ -678,7 +678,6 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                             dimension->CopyFrom(tmp_entry.dimensions(pos));
                         }
                     }
-                    std::string tmp_buf;
                     entry.SerializeToString(&tmp_buf);
                     record.reset(tmp_buf.data(), tmp_buf.size());
                 }
