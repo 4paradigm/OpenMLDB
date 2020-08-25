@@ -2,9 +2,7 @@ package com._4paradigm.fesql.flink.common.planner;
 
 import com._4paradigm.fesql.FeSqlLibrary;
 import com._4paradigm.fesql.flink.batch.FesqlBatchTableEnvironment;
-import com._4paradigm.fesql.flink.batch.planner.BatchWindowAggPlan;
-import com._4paradigm.fesql.flink.batch.planner.BatchDataProviderPlan;
-import com._4paradigm.fesql.flink.batch.planner.BatchTableProjectPlan;
+import com._4paradigm.fesql.flink.batch.planner.*;
 import com._4paradigm.fesql.flink.common.FesqlException;
 import com._4paradigm.fesql.flink.common.FesqlUtil;
 import com._4paradigm.fesql.flink.common.SQLEngine;
@@ -102,7 +100,6 @@ public class FesqlFlinkPlanner {
             }
 
         } else if (opType.swigValue() == PhysicalOpType.kPhysicalOpSimpleProject.swigValue()) { // SimpleProjectNode
-
             PhysicalSimpleProjectNode physicalSimpleProjectNode = PhysicalSimpleProjectNode.CastFrom(node);
             // Batch and Streaming has the sample implementation
             outputTable = GeneralSimpleProjectPlan.gen(planContext, physicalSimpleProjectNode, children.get(0));
@@ -122,7 +119,6 @@ public class FesqlFlinkPlanner {
                 }
 
             } else if (projectType.swigValue() == ProjectType.kWindowAggregation.swigValue()) { // WindowAggNode
-
                 PhysicalWindowAggrerationNode physicalWindowAggrerationNode = PhysicalWindowAggrerationNode.CastFrom(projectNode);
 
                 if (isBatch) {
@@ -131,8 +127,23 @@ public class FesqlFlinkPlanner {
                     outputTable = StreamWindowAggPlan.gen(planContext, physicalWindowAggrerationNode, children.get(0));
                 }
 
+            } else if (projectType.swigValue() == ProjectType.kGroupAggregation.swigValue()) { // GroupbyAggNode
+                PhysicalGroupAggrerationNode physicalGroupAggrerationNode = PhysicalGroupAggrerationNode.CastFrom(projectNode);
+                if (isBatch) {
+                    outputTable = BatchGroupbyAggPlan.gen(planContext, physicalGroupAggrerationNode, children.get(0));
+                } else {
+                    throw new FesqlException(String.format("Planner does not support project type %s", projectType));
+                }
             } else {
                 throw new FesqlException(String.format("Planner does not support project type %s", projectType));
+            }
+        } else if (opType.swigValue() == PhysicalOpType.kPhysicalOpGroupBy.swigValue()) {
+            PhysicalGroupNode physicalGroupNode = PhysicalGroupNode.CastFrom(node);
+
+            if (isBatch) {
+                outputTable = BatchGroupbyPlan.gen(planContext, physicalGroupNode, children.get(0));
+            } else {
+                throw new FesqlException(String.format("Planner does not support physical op %s", node));
             }
         } else {
             throw new FesqlException(String.format("Planner does not support physical op %s", node));

@@ -50,6 +50,12 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
                                    (reinterpret_cast<void*>(&memcpy)));
     fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "__bzero",
                                    (reinterpret_cast<void*>(&bzero)));
+
+    fesql::vm::FeSQLJIT::AddSymbol(
+        jd, mi, "fesql_storage_get_bool_field",
+        reinterpret_cast<void*>(
+            static_cast<int8_t (*)(const int8_t*, uint32_t, uint32_t, int8_t*)>(
+                &codec::v1::GetBoolField)));
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_storage_get_int16_field",
         reinterpret_cast<void*>(
@@ -89,7 +95,7 @@ void InitCodecSymbol(::llvm::orc::JITDylib& jd,             // NOLINT
         jd, mi, "fesql_storage_get_str_field",
         reinterpret_cast<void*>(
             static_cast<int32_t (*)(const int8_t*, uint32_t, uint32_t, uint32_t,
-                                    uint32_t, uint32_t, int8_t**, uint32_t*,
+                                    uint32_t, uint32_t, const char**, uint32_t*,
                                     int8_t*)>(&codec::v1::GetStrField)));
     fesql::vm::FeSQLJIT::AddSymbol(jd, mi, "fesql_storage_get_col",
                                    reinterpret_cast<void*>(&codec::v1::GetCol));

@@ -108,3 +108,37 @@ cases:
     desc: SELECT 常量函数表达式
     mode: request-unsupport
     sql: SELECT substr("hello world", 3, 6);
+  - id: 36
+    desc: SIMPLE CASE WHEN 表达式
+    sql: |
+      select col1, case col0
+                        when 'aa' then 'apple'
+                        when 'bb' then 'banana'
+                        when 'cc' then 'cake'
+                        else 'nothing'
+                    end, col2 from t1;
+  - id: 37
+    desc: SEARCHED CASE WHEN 表达式
+    sql: |
+      select col1, case
+                        when col0='aa' then 'apple'
+                        when col0='bb' then 'banana'
+                        when col0='cc' then 'cake'
+                        else 'nothing'
+                    end, col2 from t1;
+  - id: 38
+    desc: SIMPLE CASE WHEN 表达式 without ELSE
+    sql: |
+      select col1, case col0
+                        when 'aa' then 'apple'
+                        when 'bb' then 'banana'
+                        when 'cc' then 'cake'
+                    end, col2 from t1;
+  - id: 39
+    desc: SEARCHED CASE WHEN 表达式 without ELSE
+    sql: |
+      select col1, case
+                        when col0='aa' then 'apple'
+                        when col0='bb' then 'banana'
+                        when col0='cc' then 'cake'
+                    end, col2 from t1;

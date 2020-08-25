@@ -373,6 +373,7 @@ class Runner {
     static Row WindowProject(const int8_t* fn, const uint64_t key,
                              const Row row, const bool is_instance,
                              size_t append_slices, Window* window);
+    static Row GroupbyProject(const int8_t* fn, TableHandler* table);
     static const Row RowLastJoinTable(size_t left_slices, const Row& left_row,
                                       size_t right_slices,
                                       std::shared_ptr<TableHandler> right_table,

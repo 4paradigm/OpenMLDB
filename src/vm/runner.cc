@@ -1676,7 +1676,12 @@ const Row ProjectGenerator::Gen(const Row& row) {
 const Row ConstProjectGenerator::Gen() {
     return CoreAPI::RowConstProject(fn_, false);
 }
+
 const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
+    return Runner::GroupbyProject(fn_, table.get());
+}
+
+Row Runner::GroupbyProject(const int8_t* fn, TableHandler* table) {
     auto iter = table->GetIterator();
     if (!iter) {
         LOG(WARNING) << "Agg table is empty";
@@ -1689,13 +1694,13 @@ const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
     auto& row = iter->GetValue();
     auto udf =
         reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
-            const_cast<int8_t*>(fn_));
+            const_cast<int8_t*>(fn));
     int8_t* buf = nullptr;
 
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
 
     codec::ListRef<Row> window_ref;
-    window_ref.list = reinterpret_cast<int8_t*>(table.get());
+    window_ref.list = reinterpret_cast<int8_t*>(table);
 
     auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
 
@@ -1707,6 +1712,7 @@ const Row AggGenerator::Gen(std::shared_ptr<TableHandler> table) {
     return Row(
         base::RefCountedSlice::CreateManaged(buf, RowView::GetSize(buf)));
 }
+
 
 const Row WindowProjectGenerator::Gen(const uint64_t key, const Row row,
                                       bool is_instance, size_t append_slices,

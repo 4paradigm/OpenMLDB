@@ -39,10 +39,12 @@ class StructTypeIRBuilder : public TypeIRBuilder {
 
     virtual bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
                           ::llvm::Value* dist) = 0;
-    virtual bool CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
-                          ::llvm::Value** output) {
-        LOG(WARNING) << "UnSupport Type Cast For " << TypeName(GetType());
-        return false;
+    virtual base::Status CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
+                                  ::llvm::Value** output) {
+        return base::Status(common::kCodegenError,
+                            "UnSupport Type Cast From " +
+                                TypeName(src->getType()) + "For " +
+                                TypeName(GetType()));
     }
 
  protected:

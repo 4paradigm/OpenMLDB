@@ -22,6 +22,8 @@ add_library(fesql_codegen STATIC
         struct_ir_builder.cc
         list_ir_builder.cc
         predicate_expr_ir_builder.cc
+        cond_select_ir_builder.cc
+        null_ir_builder.cc
         native_value.cc
         context.cc memery_ir_builder.h memory_ir_builder.cc)
 if (TESTING_ENABLE)

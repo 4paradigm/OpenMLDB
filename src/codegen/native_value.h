@@ -32,13 +32,15 @@ class NativeValue {
 
     ::llvm::Value* GetAddr(::llvm::IRBuilder<>*) const;
 
+    void SetType(::llvm::Type* type);
     ::llvm::Type* GetType() const;
-
     ::llvm::Value* GetRaw() const;
 
     bool IsMem() const;
 
     bool IsReg() const;
+
+    bool IsNullable() const;
 
     bool HasFlag() const;
 

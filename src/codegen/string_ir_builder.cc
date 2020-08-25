@@ -10,7 +10,9 @@
 #include <string>
 #include <vector>
 #include "codegen/arithmetic_expr_ir_builder.h"
+#include "codegen/cond_select_ir_builder.h"
 #include "codegen/memery_ir_builder.h"
+#include "codegen/null_ir_builder.h"
 namespace fesql {
 namespace codegen {
 StringIRBuilder::StringIRBuilder(::llvm::Module* m) : StructTypeIRBuilder(m) {
@@ -126,24 +128,25 @@ bool StringIRBuilder::SetData(::llvm::BasicBlock* block, ::llvm::Value* str,
                               ::llvm::Value* data) {
     return Set(block, str, 1, data);
 }
-bool StringIRBuilder::CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
-                               ::llvm::Value** output) {
+base::Status StringIRBuilder::CastFrom(::llvm::BasicBlock* block,
+                                       ::llvm::Value* src,
+                                       ::llvm::Value** output) {
     base::Status status;
     if (nullptr == src || nullptr == output) {
         status.code = common::kCodegenError;
         status.msg = "Fail to cast string: src or dist is null";
-        return false;
+        return status;
     }
     if (IsStringPtr(src->getType())) {
         *output = src;
-        return true;
+        return status;
     }
     ::llvm::IRBuilder<> builder(block);
     ::llvm::Value* dist = nullptr;
     if (!NewString(block, &dist)) {
         status.code = common::kCodegenError;
         status.msg = "Fail to cast string: create string fail";
-        return false;
+        return status;
     }
     ::std::string fn_name = "string." + TypeName(src->getType());
 
@@ -155,12 +158,41 @@ bool StringIRBuilder::CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
     if (nullptr == ret) {
         status.code = common::kCodegenError;
         status.msg = "Fail to cast string: invoke " + fn_name + "function fail";
-        return false;
+        return status;
     }
     *output = dist;
-    return true;
+    return status;
 }
 
+base::Status StringIRBuilder::Compare(::llvm::BasicBlock* block,
+                                      const NativeValue& s1,
+                                      const NativeValue& s2,
+                                      NativeValue* output) {
+    CHECK_TRUE(nullptr != output,
+               "fail to compare string: output llvm value is null")
+    ::std::string fn_name = "strcmp.string.string";
+
+    CHECK_TRUE(TypeIRBuilder::IsStringPtr(s1.GetType()));
+    CHECK_TRUE(TypeIRBuilder::IsStringPtr(s2.GetType()));
+    ::llvm::IRBuilder<> builder(block);
+    ::llvm::Value* should_ret_null = builder.getInt1(false);
+    NullIRBuilder null_ir_builder;
+
+    CHECK_STATUS(null_ir_builder.CheckAnyNull(block, s1, &should_ret_null));
+    CHECK_STATUS(null_ir_builder.CheckAnyNull(block, s2, &should_ret_null));
+
+    CondSelectIRBuilder cond_select_ir_builder;
+    auto func = m_->getOrInsertFunction(
+        fn_name,
+        ::llvm::FunctionType::get(builder.getInt32Ty(),
+                                  {s1.GetType(), s2.GetType()}, false));
+    return cond_select_ir_builder.Select(
+        block, NativeValue::Create(should_ret_null),
+        NativeValue::CreateNull(builder.getInt32Ty()),
+        NativeValue::Create(
+            builder.CreateCall(func, {s1.GetRaw(), s2.GetRaw()})),
+        output);
+}
 base::Status StringIRBuilder::Concat(::llvm::BasicBlock* block,
                                      const std::vector<NativeValue>& args,
                                      NativeValue* output) {
@@ -189,8 +221,9 @@ base::Status StringIRBuilder::ConcatWS(::llvm::BasicBlock* block,
     NativeValue concat_on;
     if (nullptr != arg.GetRaw() && !TypeIRBuilder::IsStringPtr(arg.GetType())) {
         ::llvm::Value* casted_str;
-        CHECK_TRUE(CastFrom(block, arg.GetRaw(), &casted_str),
-                   "fail to concat string: concat on arg can't cast to string");
+        CHECK_STATUS(
+            CastFrom(block, arg.GetRaw(), &casted_str),
+            "fail to concat string: concat on arg can't cast to string");
         concat_on = NativeValue::Create(casted_str);
     } else {
         concat_on = arg;
@@ -204,8 +237,9 @@ base::Status StringIRBuilder::ConcatWS(::llvm::BasicBlock* block,
             continue;
         }
         ::llvm::Value* casted_str;
-        CHECK_TRUE(CastFrom(block, args[i].GetRaw(), &casted_str),
-                   "fail to concat string: args[", i, "] can't cast to string");
+        CHECK_STATUS(CastFrom(block, args[i].GetRaw(), &casted_str),
+                     "fail to concat string: args[", i,
+                     "] can't cast to string");
         strs.push_back(NativeValue::Create(casted_str));
     }
     if (1 == strs.size()) {

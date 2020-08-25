@@ -185,14 +185,14 @@ Status UDFIRBuilder::ExpandLLVMCallArgs(const node::TypeNode* dtype,
         }
     } else if (nullable) {
         arg_vec->push_back(value.GetValue(builder));
-        if (value.HasFlag()) {
+        if (value.IsNullable()) {
             arg_vec->push_back(value.GetIsNull(builder));
         } else {
             arg_vec->push_back(
                 ::llvm::ConstantInt::getFalse(builder->getContext()));
         }
     } else {
-        if (value.HasFlag()) {
+        if (value.IsNullable()) {
             // Nullable value under non-null type specification
             if (*should_ret_null == nullptr) {
                 *should_ret_null = value.GetIsNull(builder);
@@ -220,7 +220,7 @@ Status UDFIRBuilder::ExpandLLVMCallVariadicArgs(
     const NativeValue& value, ::llvm::IRBuilder<>* builder,
     std::vector<::llvm::Value*>* arg_vec, ::llvm::Value** should_ret_null) {
     CHECK_TRUE(!value.IsTuple(), "kTuple is not allowed in variadic part");
-    if (value.HasFlag()) {
+    if (value.IsNullable()) {
         // extern variadic part can not process null
         if (*should_ret_null == nullptr) {
             *should_ret_null = value.GetIsNull(builder);
@@ -259,6 +259,13 @@ Status UDFIRBuilder::ExpandLLVMCallReturnArgs(
             ret_alloca = builder->CreateAlloca(
                 reinterpret_cast<llvm::PointerType*>(llvm_ty)
                     ->getElementType());
+            // fill empty content for string
+            if (dtype->base() == node::kVarchar) {
+                builder->CreateStore(builder->getInt32(0),
+                                     builder->CreateStructGEP(ret_alloca, 0));
+                builder->CreateStore(builder->CreateGlobalStringPtr(""),
+                                     builder->CreateStructGEP(ret_alloca, 1));
+            }
         } else {
             ret_alloca = builder->CreateAlloca(llvm_ty);
         }

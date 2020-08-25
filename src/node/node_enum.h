@@ -94,6 +94,7 @@ enum ExprType {
     kExprBetween,
     kExprCall,
     kExprCase,
+    kExprWhen,
     kExprCast,
     kExprId,
     kExprColumnRef,

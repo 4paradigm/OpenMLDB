@@ -26,7 +26,11 @@ Status ColumnRefNode::InferAttr(ExprAnalysisContext* ctx) {
 
 Status ConstNode::InferAttr(ExprAnalysisContext* ctx) {
     SetOutputType(ctx->node_manager()->MakeTypeNode(data_type_));
-    SetNullable(false);
+    if (kNull == data_type_) {
+        SetNullable(true);
+    } else {
+        SetNullable(false);
+    }
     return Status::OK();
 }
 
@@ -83,6 +87,44 @@ Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
         return Status(common::kCodegenError,
                       "Get field's input is neither tuple nor row");
     }
+    return Status::OK();
+}
+
+Status WhenExprNode::InferAttr(ExprAnalysisContext* ctx) {
+    CHECK_TRUE(GetChildNum() == 2);
+    SetOutputType(then_expr()->GetOutputType());
+    SetNullable(false);
+    return Status::OK();
+}
+
+// Case when 返回类型推断，目前要求所有的then/else的输出类型都一致
+// TODO(chenjing, xinqi): case when output type需要作类型兼容
+Status CaseWhenExprNode::InferAttr(ExprAnalysisContext* ctx) {
+    CHECK_TRUE(GetChildNum() == 2);
+    CHECK_TRUE(when_expr_list()->GetChildNum() > 0);
+    const TypeNode* type = nullptr;
+    for (auto expr : when_expr_list()->children_) {
+        auto expr_type = expr->GetOutputType();
+        if (nullptr == type) {
+            type = expr_type;
+        } else {
+            CHECK_TRUE(
+                type->Equals(expr_type),
+                "fail infer case when expr attr: then return types and else "
+                "return type aren't compatible");
+        }
+    }
+    CHECK_TRUE(nullptr != else_expr(),
+               "fail infer case when expr attr: else expr is nullptr");
+    CHECK_TRUE(node::IsNullPrimary(else_expr()) ||
+                   type->Equals(else_expr()->GetOutputType()),
+               "fail infer case when expr attr: then return types and else "
+               "return type aren't compatible");
+
+    CHECK_TRUE(nullptr != type,
+               "fail infer case when expr: output type is null");
+    SetOutputType(type);
+    SetNullable(true);
     return Status::OK();
 }
 

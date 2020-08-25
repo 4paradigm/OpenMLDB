@@ -377,7 +377,17 @@ bool ArithmeticIRBuilder::BuildSDivExpr(::llvm::Value* left,
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
-    *output = builder.CreateSDiv(casted_left, casted_right);
+
+    // TODO(someone): fully and correctly handle arithmetic exception
+    ::llvm::Type* llvm_ty = casted_right->getType();
+    ::llvm::Value* zero = ::llvm::ConstantInt::get(llvm_ty, 0);
+    ::llvm::Value* div_is_zero = builder.CreateICmpEQ(casted_right, zero);
+    casted_right = builder.CreateSelect(
+        div_is_zero, ::llvm::ConstantInt::get(llvm_ty, 1), casted_right);
+    ::llvm::Value* div_result = builder.CreateSDiv(casted_left, casted_right);
+    div_result = builder.CreateSelect(div_is_zero, zero, div_result);
+
+    *output = div_result;
     return true;
 }
 bool ArithmeticIRBuilder::BuildModExpr(llvm::Value* left, llvm::Value* right,
@@ -392,7 +402,17 @@ bool ArithmeticIRBuilder::BuildModExpr(llvm::Value* left, llvm::Value* right,
     }
     ::llvm::IRBuilder<> builder(block_);
     if (casted_left->getType()->isIntegerTy()) {
-        *output = builder.CreateSRem(casted_left, casted_right);
+        // TODO(someone): fully and correctly handle arithmetic exception
+        ::llvm::Value* zero =
+            ::llvm::ConstantInt::get(casted_right->getType(), 0);
+        ::llvm::Value* rem_is_zero = builder.CreateICmpEQ(casted_right, zero);
+        casted_right = builder.CreateSelect(
+            rem_is_zero, ::llvm::ConstantInt::get(casted_right->getType(), 1),
+            casted_right);
+        ::llvm::Value* srem_result =
+            builder.CreateSRem(casted_left, casted_right);
+        srem_result = builder.CreateSelect(rem_is_zero, zero, srem_result);
+        *output = srem_result;
     } else if (casted_left->getType()->isFloatingPointTy()) {
         *output = builder.CreateFRem(casted_left, casted_right);
     } else {
