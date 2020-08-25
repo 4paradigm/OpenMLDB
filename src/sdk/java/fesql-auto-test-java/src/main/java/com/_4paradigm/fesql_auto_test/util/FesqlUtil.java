@@ -8,7 +8,6 @@ import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.SQLRequestRow;
 import com._4paradigm.sql.Schema;
 import com._4paradigm.sql.jdbc.SQLResultSet;
-import com._4paradigm.sql.sdk.RequestPreparedStatementImpl;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
@@ -285,7 +284,7 @@ public class FesqlUtil {
                 fesqlResult.setResultSchema(rs.GetSchema());
             }
             for (int i = 0; i < rows.size(); i++) {
-                PreparedStatement rps = executor.getRequestPrepareStmt(dbName, selectSql);
+                PreparedStatement rps = executor.getRequestPreparedStmt(dbName, selectSql);
                 java.sql.ResultSet resultSet = buildRequestPreparedStatment(rps, rows.get(i));
                 if (resultSet == null) {
                     fesqlResult.setOk(false);

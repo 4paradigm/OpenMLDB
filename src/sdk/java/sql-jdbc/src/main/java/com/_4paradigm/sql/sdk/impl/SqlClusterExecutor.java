@@ -109,7 +109,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         return row;
     }
 
-    public PreparedStatement getInsertPrepareStmt(String db, String sql) {
+    public PreparedStatement getInsertPreparedStmt(String db, String sql) {
         try {
             InsertPreparedStatementImpl impl = new InsertPreparedStatementImpl(db, sql, this.sqlRouter);
             return impl;
@@ -118,7 +118,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         }
     }
 
-    public PreparedStatement getRequestPrepareStmt(String db, String sql) {
+    public PreparedStatement getRequestPreparedStmt(String db, String sql) {
         try {
             RequestPreparedStatementImpl impl = new RequestPreparedStatementImpl(db, sql, this.sqlRouter);
             return impl;
