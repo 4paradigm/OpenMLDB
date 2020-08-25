@@ -73,7 +73,7 @@ object GroupByAggregationPlan {
         val grouopNativeRows =  mutable.ArrayBuffer[NativeRow]()
 
         iter.foreach(row => {
-          if (limitCnt < 0 || currentLimitCnt < limitCnt) { // Do not set limit or not reach the limit
+          if (limitCnt <= 0 || currentLimitCnt < limitCnt) { // Do not set limit or not reach the limit
             if (lastRow != null) { // Ignore the first row in partition
               val groupChanged = groupKeyComparator.apply(row, lastRow)
               if (groupChanged) {
@@ -101,7 +101,7 @@ object GroupByAggregationPlan {
         })
 
         // Run group by for the last group
-        if (limitCnt < 0 || currentLimitCnt < limitCnt) {
+        if (limitCnt <= 0 || currentLimitCnt < limitCnt) {
           val outputFesqlRow = CoreAPI.GroupbyProject(fn, groupbyInterface)
           val outputArr = Array.fill[Any](outputFields)(null)
           decoder.decode(outputFesqlRow, outputArr)

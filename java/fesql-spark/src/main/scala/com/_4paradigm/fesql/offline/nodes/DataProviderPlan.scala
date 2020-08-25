@@ -12,7 +12,7 @@ object DataProviderPlan {
     }
 
     // If limit has been set
-    val outputDf = if (node.GetLimitCnt() >= 0) df.limit(node.GetLimitCnt()) else df
+    val outputDf = if (node.GetLimitCnt() > 0) df.limit(node.GetLimitCnt()) else df
 
     SparkInstance.fromDataFrame(outputDf)
   }
