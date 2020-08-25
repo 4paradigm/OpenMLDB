@@ -82,23 +82,23 @@ public class FESQLLastJoinBenchmark {
         }
     }
 
-    @Benchmark
-    public void lastJoinBm() {
-        String sql = "select t1.col1 as c1, t2.col2 as c2 , " +
-                "sum(t1.col3) over w  from t1 last join t2 " +
-                "order by t2.col2 on t1.col1 = t2.col1 and t1.col2 > t2.col2 " +
-                "window w as (partition by t1.col1 order by t1.col2 ROWS Between 1000 preceding and current row);";
-        SQLRequestRow row = executor.getRequestRow(db, sql);
-        String pk = "pk0";
-        row.Init(pk.length());
-        row.AppendString(pk);
-        row.AppendTimestamp(System.currentTimeMillis());
-        row.AppendFloat(1.0f);
-        row.AppendDouble(2.0d);
-        row.AppendNULL();
-        row.Build();
-        executor.executeSQL(db, sql, row);
-    }
+//    @Benchmark
+//    public void lastJoinBm() {
+//        String sql = "select t1.col1 as c1, t2.col2 as c2 , " +
+//                "sum(t1.col3) over w  from t1 last join t2 " +
+//                "order by t2.col2 on t1.col1 = t2.col1 and t1.col2 > t2.col2 " +
+//                "window w as (partition by t1.col1 order by t1.col2 ROWS Between 1000 preceding and current row);";
+//        SQLRequestRow row = executor.getRequestRow(db, sql);
+//        String pk = "pk0";
+//        row.Init(pk.length());
+//        row.AppendString(pk);
+//        row.AppendTimestamp(System.currentTimeMillis());
+//        row.AppendFloat(1.0f);
+//        row.AppendDouble(2.0d);
+//        row.AppendNULL();
+//        row.Build();
+//        executor.executeSQL(db, sql, row);
+//    }
 
     @Benchmark
     public void lastJoinBmWithPreparedStmt() {
@@ -106,7 +106,12 @@ public class FESQLLastJoinBenchmark {
                 "sum(t1.col3) over w  from t1 last join t2 " +
                 "order by t2.col2 on t1.col1 = t2.col1 and t1.col2 > t2.col2 " +
                 "window w as (partition by t1.col1 order by t1.col2 ROWS Between 1000 preceding and current row);";
-        PreparedStatement pst = executor.getRequestPreparedStmt(db, sql);
+        PreparedStatement pst = null;
+        try {
+            pst = executor.getRequestPreparedStmt(db, sql);
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
         String pk = "pk0";
         try {
             pst.setString(1, pk);
@@ -119,7 +124,6 @@ public class FESQLLastJoinBenchmark {
             throwables.printStackTrace();
         }
     }
-
 
     public static void main(String[] args) throws RunnerException {
 
