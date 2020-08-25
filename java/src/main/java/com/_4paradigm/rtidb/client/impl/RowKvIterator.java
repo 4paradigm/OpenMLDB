@@ -61,6 +61,7 @@ public class RowKvIterator implements KvIterator {
         this.count = count;
         next();
         this.schema = schema;
+        this.defaultSchema = schema;
         rv = new RowView(schema);
     }
 
