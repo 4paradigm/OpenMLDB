@@ -115,6 +115,7 @@ void RequestSchemaCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     sql_context.sql = sql;
     sql_context.db = "db";
     sql_context.is_batch_mode = false;
+    sql_context.is_performance_sensitive = false;
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);
