@@ -7,6 +7,8 @@ import com._4paradigm.sql.DataType;
 import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.SQLRequestRow;
 import com._4paradigm.sql.Schema;
+import com._4paradigm.sql.jdbc.SQLResultSet;
+import com._4paradigm.sql.sdk.RequestPreparedStatementImpl;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
@@ -14,8 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.collections.Lists;
 
-import java.sql.Date;
-import java.sql.Timestamp;
+import java.sql.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -104,10 +105,10 @@ public class FesqlUtil {
         return fesqlResult;
     }
 
-    public static FesqlResult sqlRequestMode(SqlExecutor executor, String dbName, String sql, InputDesc rows) {
+    public static FesqlResult sqlRequestMode(SqlExecutor executor, String dbName, String sql, InputDesc rows) throws SQLException {
         FesqlResult fesqlResult = null;
         if (sql.toLowerCase().startsWith("select")) {
-            fesqlResult = selectRequestMode(executor, dbName, sql, rows);
+            fesqlResult = selectRequestModeWithPreparedStatment(executor, dbName, sql, rows);
         } else {
             logger.error("unsupport sql: {}", sql);
         }
@@ -163,6 +164,20 @@ public class FesqlUtil {
         }
         return result;
     }
+
+    private static List<List<Object>> convertRestultSetToList(SQLResultSet rs) throws SQLException{
+        List<List<Object>> result = new ArrayList<>();
+        while (rs.next()) {
+            List list = new ArrayList();
+            int columnCount = rs.getMetaData().getColumnCount();
+            for (int i = 0; i < columnCount; i++) {
+                list.add(getColumnData(rs, i));
+            }
+            result.add(list);
+        }
+        return result;
+    }
+
 
     private static FesqlResult selectRequestMode(SqlExecutor executor, String dbName,
                                                  String selectSql, InputDesc input) {
@@ -225,6 +240,72 @@ public class FesqlUtil {
         return fesqlResult;
     }
 
+    private static FesqlResult selectRequestModeWithPreparedStatment(SqlExecutor executor, String dbName,
+                                                 String selectSql, InputDesc input) throws SQLException {
+        if (selectSql.isEmpty()) {
+            logger.error("fail to execute sql in request mode: select sql is empty");
+            return null;
+        }
+
+        List<List<Object>> rows = null == input ? null : input.getRows();
+        if (CollectionUtils.isEmpty(rows)) {
+            logger.error("fail to execute sql in request mode: request rows is null or empty");
+            return null;
+        }
+        List<String> inserts = input.getInserts();
+        if (CollectionUtils.isEmpty(inserts)) {
+            logger.error("fail to execute sql in request mode: fail to build insert sql for request rows");
+            return null;
+        }
+
+        if (rows.size() != inserts.size()) {
+            logger.error("fail to execute sql in request mode: rows size isn't match with inserts size");
+            return null;
+        }
+
+        log.info("select sql:{}", selectSql);
+        FesqlResult fesqlResult = new FesqlResult();
+
+        SQLRequestRow requestRow = executor.getRequestRow(dbName, selectSql);
+        if (null == requestRow) {
+            fesqlResult.setOk(false);
+        } else {
+            List<List<Object>> result = Lists.newArrayList();
+            {
+                if (!buildRequestRow(requestRow, rows.get(0))) {
+                    log.info("fail to execute sql in request mode: fail to build request row");
+                    return null;
+                }
+                ResultSet rs = executor.executeSQL(dbName, selectSql, requestRow);
+                if (null == rs) {
+                    fesqlResult.setOk(false);
+                    log.info("select result:{}", fesqlResult);
+                    return fesqlResult;
+                }
+                fesqlResult.setResultSchema(rs.GetSchema());
+            }
+            for (int i = 0; i < rows.size(); i++) {
+                PreparedStatement rps = executor.getRequestPrepareStmt(dbName, selectSql);
+                java.sql.ResultSet resultSet = buildRequestPreparedStatment(rps, rows.get(i));
+                if (resultSet == null) {
+                    fesqlResult.setOk(false);
+                    log.info("select result:{}", fesqlResult);
+                    return fesqlResult;
+                }
+                result.addAll(convertRestultSetToList((SQLResultSet) resultSet));
+                if (!executor.executeInsert(dbName, inserts.get(i))) {
+                    log.error("fail to execute sql in request mode: fail to insert request row after query");
+                    fesqlResult.setOk(false);
+                    return fesqlResult;
+                }
+            }
+            fesqlResult.setResult(result);
+            fesqlResult.setCount(result.size());
+            fesqlResult.setOk(true);
+        }
+        log.info("select result:{}", fesqlResult);
+        return fesqlResult;
+    }
 
     public static List<List<Object>> convertRows(List<List<Object>> rows, List<String> columns) throws ParseException {
         List<List<Object>> list = new ArrayList<>();
@@ -338,6 +419,7 @@ public class FesqlUtil {
                     Date date = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(obj.toString() + " 00:00:00").getTime());
                     logger.info("build request row: obj: {}, append date: {},  {}, {}, {}",
                             obj, date.toString(), date.getYear() + 1900, date.getMonth() + 1, date.getDate());
+
                     requestRow.AppendDate(date.getYear() + 1900, date.getMonth() + 1, date.getDate());
                 } catch (ParseException e) {
                     logger.error("Fail convert {} to date", obj.toString());
@@ -351,6 +433,60 @@ public class FesqlUtil {
             }
         }
         return requestRow.Build();
+    }
+
+    private static java.sql.ResultSet buildRequestPreparedStatment(PreparedStatement requestPs, List<Object> objects) throws SQLException {
+        ResultSetMetaData metaData = requestPs.getMetaData();
+        int totalSize = 0;
+        for (int i = 0; i < metaData.getColumnCount(); i++) {
+            if (null == objects.get(i)) {
+                continue;
+            }
+            if (metaData.getColumnType(i + 1) == Types.VARCHAR) {
+                totalSize += objects.get(i).toString().length();
+            }
+        }
+
+        logger.info("init request row: {}", totalSize);
+        for (int i = 0; i < metaData.getColumnCount(); i++) {
+            Object obj = objects.get(i);
+            if (null == obj) {
+                requestPs.setNull(i + 1, 0);
+                continue;
+            }
+            int columnType = metaData.getColumnType(i + 1);
+            if (columnType == Types.BOOLEAN) {
+                requestPs.setBoolean(i + 1 , (Boolean)obj);
+            } else if (columnType == Types.SMALLINT) {
+                requestPs.setShort(i + 1, (Short)obj);
+            } else if (columnType == Types.INTEGER) {
+                requestPs.setInt(i + 1, (Integer)obj);
+            } else if (columnType == Types.BIGINT) {
+                requestPs.setLong(i + 1, Long.parseLong(obj.toString()));
+            } else if (columnType == Types.FLOAT) {
+                requestPs.setFloat(i + 1, Float.parseFloat(obj.toString()));
+            } else if (columnType == Types.DOUBLE) {
+                requestPs.setDouble(i + 1, Double.parseDouble(obj.toString()));
+            } else if (columnType == Types.TIMESTAMP) {
+                requestPs.setTimestamp(i + 1, new Timestamp(Long.parseLong(obj.toString())));
+            } else if (columnType == Types.DATE) {
+                try {
+                    Date date = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(obj.toString() + " 00:00:00").getTime());
+                    logger.info("build request row: obj: {}, append date: {},  {}, {}, {}",
+                            obj, date.toString(), date.getYear() + 1900, date.getMonth() + 1, date.getDate());
+                    requestPs.setDate(i + 1, date);
+                } catch (ParseException e) {
+                    logger.error("Fail convert {} to date", obj.toString());
+                    return null;
+                }
+            } else if (columnType == Types.VARCHAR) {
+                requestPs.setString(i + 1, obj.toString());
+            } else {
+                logger.error("fail to build request row: invalid data type {]", columnType);
+                return null;
+            }
+        }
+        return requestPs.executeQuery();
     }
 
     public static FesqlResult select(SqlExecutor executor, String dbName, String selectSql) {
@@ -406,6 +542,42 @@ public class FesqlUtil {
             logger.info("conver string data {}", obj);
         } else if (dataType.equals(DataType.kTypeTimestamp)) {
             obj = new Timestamp(rs.GetTimeUnsafe(index));
+        }
+        return obj;
+    }
+
+    public static Object getColumnData(SQLResultSet rs, int index) throws SQLException{
+        Object obj = null;
+        int columnType = rs.getMetaData().getColumnType(index + 1);
+        if (rs.getNString(index + 1) == null) {
+            logger.info("rs is null");
+            return null;
+        }
+        if (columnType == Types.BOOLEAN) {
+            obj = rs.getBoolean(index + 1);
+        } else if (columnType == Types.DATE) {
+            try {
+                obj = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                        .parse(rs.getNString(index + 1) + " 00:00:00").getTime());
+            } catch (ParseException e) {
+                e.printStackTrace();
+                return null;
+            }
+        } else if (columnType == Types.DOUBLE) {
+            obj = rs.getDouble(index + 1);
+        } else if (columnType == Types.FLOAT) {
+            obj = rs.getFloat(index + 1);
+        } else if (columnType == Types.SMALLINT) {
+            obj = rs.getShort(index + 1);
+        } else if (columnType == Types.INTEGER) {
+            obj = rs.getInt(index + 1);
+        } else if (columnType == Types.BIGINT) {
+            obj = rs.getLong(index + 1);
+        } else if (columnType == Types.VARCHAR) {
+            obj = rs.getString(index + 1);
+            logger.info("conver string data {}", obj);
+        } else if (columnType == Types.TIMESTAMP) {
+            obj = rs.getTimestamp(index + 1);
         }
         return obj;
     }

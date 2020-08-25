@@ -2,10 +2,7 @@ package com._4paradigm.sql.sdk.impl;
 
 import com._4paradigm.sql.*;
 import com._4paradigm.sql.common.LibraryLoader;
-import com._4paradigm.sql.sdk.InsertPreparedStatementImpl;
-import com._4paradigm.sql.sdk.SdkOption;
-import com._4paradigm.sql.sdk.SqlException;
-import com._4paradigm.sql.sdk.SqlExecutor;
+import com._4paradigm.sql.sdk.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,6 +112,15 @@ public class SqlClusterExecutor implements SqlExecutor {
     public PreparedStatement getInsertPrepareStmt(String db, String sql) {
         try {
             InsertPreparedStatementImpl impl = new InsertPreparedStatementImpl(db, sql, this.sqlRouter);
+            return impl;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public PreparedStatement getRequestPrepareStmt(String db, String sql) {
+        try {
+            RequestPreparedStatementImpl impl = new RequestPreparedStatementImpl(db, sql, this.sqlRouter);
             return impl;
         } catch (Exception e) {
             return null;
