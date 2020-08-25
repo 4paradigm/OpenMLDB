@@ -2,6 +2,7 @@ package com._4paradigm.fesql.offline.nodes
 
 import com._4paradigm.fesql.`type`.TypeOuterClass.ColumnDef
 import com._4paradigm.fesql.codec.RowView
+import com._4paradigm.fesql.common.{JITManager, SerializableByteBuffer}
 import com._4paradigm.fesql.node.JoinType
 import com._4paradigm.fesql.offline._
 import com._4paradigm.fesql.offline.utils.{FesqlUtil, SparkColumnUtil, SparkRowUtil}

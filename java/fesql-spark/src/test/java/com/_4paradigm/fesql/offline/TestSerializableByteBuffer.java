@@ -1,5 +1,6 @@
 package com._4paradigm.fesql.offline;
 
+import com._4paradigm.fesql.common.SerializableByteBuffer;
 import org.junit.Test;
 
 import java.io.*;

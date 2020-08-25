@@ -5,8 +5,9 @@ import com._4paradigm.fesql.offline.utils.{FesqlUtil, SparkColumnUtil}
 import com._4paradigm.fesql.offline.{PlanContext, SparkInstance, SparkRowCodec}
 import com._4paradigm.fesql.vm.{CoreAPI, GroupbyInterface, PhysicalGroupAggrerationNode}
 import com._4paradigm.fesql.codec.{Row => NativeRow}
-import com._4paradigm.fesql.offline.JITManager
+import com._4paradigm.fesql.common.JITManager
 import org.apache.spark.sql.{Column, Row}
+
 import scala.collection.mutable
 
 

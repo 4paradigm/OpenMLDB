@@ -24,11 +24,7 @@
 	</properties>
 
 	<dependencies>
-		<dependency>
-			<groupId>com._4paradigm.fesql</groupId>
-			<artifactId>fesql-native</artifactId>
-			<version>${project.version}</version>
-		</dependency>
+
 		<dependency>
 			<groupId>com._4paradigm.fesql</groupId>
 			<artifactId>fesql-common</artifactId>

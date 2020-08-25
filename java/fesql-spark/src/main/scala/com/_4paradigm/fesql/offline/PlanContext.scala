@@ -3,6 +3,7 @@ package com._4paradigm.fesql.offline
 import java.nio.ByteBuffer
 
 import com._4paradigm.fesql.`type`.TypeOuterClass.Type
+import com._4paradigm.fesql.common.SerializableByteBuffer
 import com._4paradigm.fesql.offline.nodes._
 import com._4paradigm.fesql.vm._
 import org.apache.spark.broadcast.Broadcast
