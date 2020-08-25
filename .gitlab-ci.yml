@@ -79,7 +79,6 @@ java_ut:
 fesql_auto_test:
   stage: test
   before_script:
-  before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
   script:
@@ -97,7 +96,7 @@ fesql_auto_test:
         - src/sdk/java/fesql-auto-test-java/target/surefire-reports/junitreports/TEST-*.xml
         - src/sdk/java/fesql-auto-test-java/target/surefire-reports/TEST-*.xml
         - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
-        - src/sdk/java/fesql-auto-test-java/rtidb-auto-test-java/target/failsafe-reports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/TEST-*.xml
   except:
     variables:
       - $ENV_BUILD == "daily"

@@ -182,7 +182,7 @@ TEST_F(TabletCatalogTest, sql_smoke_test) {
     ASSERT_EQ(0, rv.GetInt64(1, &val));
     int64_t exp = args->ts + 1;
     ASSERT_EQ(val, exp);
-    char *data = NULL;
+    const char *data = NULL;
     uint32_t data_size = 0;
     ASSERT_EQ(0, rv.GetString(0, &data, &data_size));
     std::string pk(data, data_size);
@@ -285,7 +285,7 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
     ASSERT_TRUE(it->Valid());
     const ::fesql::codec::Row &row = it->GetValue();
     rv.Reset(row.buf(), row.size());
-    char *data = NULL;
+    const char *data = NULL;
     uint32_t data_size = 0;
     ASSERT_EQ(0, rv.GetString(0, &data, &data_size));
     std::string pk(data, data_size);
@@ -364,7 +364,7 @@ TEST_F(TabletCatalogTest, sql_window_smoke_test) {
     ASSERT_EQ(0, rv.GetInt64(0, &val));
     int64_t exp = args->ts;
     ASSERT_EQ(val, exp);
-    char *data = NULL;
+    const char *data = NULL;
     uint32_t data_size = 0;
     ASSERT_EQ(0, rv.GetString(1, &data, &data_size));
     std::string pk(data, data_size);
