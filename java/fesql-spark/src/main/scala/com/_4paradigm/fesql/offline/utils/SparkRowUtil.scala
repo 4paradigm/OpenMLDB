@@ -1,6 +1,6 @@
 package com._4paradigm.fesql.offline.utils
 
-import com._4paradigm.fesql.offline.FeSQLException
+import com._4paradigm.fesql.common.FesqlException
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 
@@ -15,7 +15,7 @@ object SparkRowUtil {
       case TimestampType => row: Row => row.getTimestamp(keyIdx).getTime
       case DateType => row: Row=>row.getDate(keyIdx).getTime
       case _ =>
-        throw new FeSQLException(s"Illegal window key type: $sparkType")
+        throw new FesqlException(s"Illegal window key type: $sparkType")
     }
   }
 }

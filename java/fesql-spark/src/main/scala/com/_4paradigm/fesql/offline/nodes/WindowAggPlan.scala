@@ -1,6 +1,6 @@
 package com._4paradigm.fesql.offline.nodes
 
-import com._4paradigm.fesql.common.{JITManager, SerializableByteBuffer}
+import com._4paradigm.fesql.common.{FesqlException, JITManager, SerializableByteBuffer}
 import com._4paradigm.fesql.offline._
 import com._4paradigm.fesql.offline.utils.{AutoDestructibleIterator, FesqlUtil, SparkColumnUtil, SparkRowUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalWindowAggrerationNode, WindowInterface}
@@ -78,7 +78,7 @@ object WindowAggPlan {
       val subNode = node.window_unions().GetUnionNode(i)
       val df = ctx.visitPhysicalNodes(subNode).getDf(sess)
       if (df.schema != source.schema) {
-        throw new FeSQLException("{$i}th Window union with inconsistent schema:\n" +
+        throw new FesqlException("{$i}th Window union with inconsistent schema:\n" +
           s"Expect ${source.schema}\nGet ${df.schema}")
       }
       df.withColumn(flagColumnName, functions.lit(false))
@@ -102,7 +102,7 @@ object WindowAggPlan {
     // process order key
     val orders = windowOp.sort().orders().order_by()
     if (orders.GetChildNum() > 1) {
-      throw new FeSQLException("Multiple window order not supported")
+      throw new FesqlException("Multiple window order not supported")
     }
     val orderIdx = SparkColumnUtil.resolveColumnIndex(orders.GetChild(0), node.GetProducer(0))
 

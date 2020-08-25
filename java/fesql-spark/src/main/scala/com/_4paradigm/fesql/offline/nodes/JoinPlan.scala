@@ -2,7 +2,7 @@ package com._4paradigm.fesql.offline.nodes
 
 import com._4paradigm.fesql.`type`.TypeOuterClass.ColumnDef
 import com._4paradigm.fesql.codec.RowView
-import com._4paradigm.fesql.common.{JITManager, SerializableByteBuffer}
+import com._4paradigm.fesql.common.{FesqlException, JITManager, SerializableByteBuffer}
 import com._4paradigm.fesql.node.JoinType
 import com._4paradigm.fesql.offline._
 import com._4paradigm.fesql.offline.utils.{FesqlUtil, SparkColumnUtil, SparkRowUtil}
@@ -20,7 +20,7 @@ object JoinPlan {
   def gen(ctx: PlanContext, node: PhysicalJoinNode, left: SparkInstance, right: SparkInstance): SparkInstance = {
     val joinType = node.join().join_type()
     if (joinType != JoinType.kJoinTypeLeft && joinType != JoinType.kJoinTypeLast) {
-      throw new FeSQLException(s"Join type $joinType not supported")
+      throw new FesqlException(s"Join type $joinType not supported")
     }
 
     val sess = ctx.getSparkSession
@@ -68,7 +68,7 @@ object JoinPlan {
     // build join condition
     val joinConditions = mutable.ArrayBuffer[Column]()
     if (leftKeyCols.lengthCompare(rightKeyCols.length) != 0) {
-      throw new FeSQLException("Illegal join key conditions")
+      throw new FesqlException("Illegal join key conditions")
     }
 
     // == key conditions
@@ -99,7 +99,7 @@ object JoinPlan {
     }
 
     if (joinConditions.isEmpty) {
-      throw new FeSQLException("No join conditions specified")
+      throw new FesqlException("No join conditions specified")
     }
 
     val joined = leftDf.join(rightDf, joinConditions.reduce(_ && _),  "left")
@@ -189,7 +189,7 @@ object JoinPlan {
 
     private val fn: Long = jit.FindFunction(functionName)
     if (fn == 0) {
-      throw new FeSQLException(s"Fail to find native jit function $functionName")
+      throw new FesqlException(s"Fail to find native jit function $functionName")
     }
 
     // TODO: these are leaked

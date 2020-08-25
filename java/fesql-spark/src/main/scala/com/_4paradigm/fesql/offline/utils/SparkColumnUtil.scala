@@ -1,7 +1,8 @@
 package com._4paradigm.fesql.offline.utils
 
+import com._4paradigm.fesql.common.FesqlException
 import com._4paradigm.fesql.node.{ColumnRefNode, ExprNode, ExprType}
-import com._4paradigm.fesql.offline.{FeSQLException, PlanContext}
+import com._4paradigm.fesql.offline.PlanContext
 import com._4paradigm.fesql.vm.{CoreAPI, PhysicalJoinNode, PhysicalOpNode}
 import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.{Column, DataFrame}
@@ -17,11 +18,11 @@ object SparkColumnUtil {
       case ExprType.kExprColumnRef =>
         val index = CoreAPI.ResolveColumnIndex(planNode, ColumnRefNode.CastFrom(expr))
         if (index < 0) {
-          throw new FeSQLException(s"Can not resolve column of left table: ${expr.GetExprString()}")
+          throw new FesqlException(s"Can not resolve column of left table: ${expr.GetExprString()}")
         }
         getCol(left, index)
 
-      case _ => throw new FeSQLException(
+      case _ => throw new FesqlException(
         s"Expr ${expr.GetExprString()} not supported")
     }
   }
@@ -35,11 +36,11 @@ object SparkColumnUtil {
         val leftSize = planNode.GetProducer(0).GetOutputSchema().size()
         val index = CoreAPI.ResolveColumnIndex(planNode, ColumnRefNode.CastFrom(expr))
         if (index < leftSize) {
-          throw new FeSQLException("Can not resolve column of left table")
+          throw new FesqlException("Can not resolve column of left table")
         }
         getCol(right, index - leftSize)
 
-      case _ => throw new FeSQLException(
+      case _ => throw new FesqlException(
         s"Expr ${expr.GetExprString()} not supported")
     }
   }
@@ -49,13 +50,13 @@ object SparkColumnUtil {
       case ExprType.kExprColumnRef =>
         val index = CoreAPI.ResolveColumnIndex(planNode, ColumnRefNode.CastFrom(expr))
         if (index < 0) {
-          throw new FeSQLException(s"Fail to resolve ${expr.GetExprString()}")
+          throw new FesqlException(s"Fail to resolve ${expr.GetExprString()}")
         } else if (index >= planNode.GetOutputSchema().size()) {
-          throw new FeSQLException(s"Column index out of bounds: $index")
+          throw new FesqlException(s"Column index out of bounds: $index")
         }
         index
 
-      case _ => throw new FeSQLException(
+      case _ => throw new FesqlException(
         s"Expr ${expr.GetExprString()} not supported")
     }
   }
@@ -63,9 +64,9 @@ object SparkColumnUtil {
   def resolveColumnIndex(schema_idx: Int, column_idx: Int, planNode: PhysicalOpNode): Int = {
     val index = CoreAPI.ResolveColumnIndex(planNode, schema_idx, column_idx)
     if (index < 0) {
-      throw new FeSQLException(s"Fail to resolve schema_idx: $schema_idx, column_idx: $column_idx")
+      throw new FesqlException(s"Fail to resolve schema_idx: $schema_idx, column_idx: $column_idx")
     } else if (index >= planNode.GetOutputSchema().size()) {
-      throw new FeSQLException(s"Column index out of bounds: $index")
+      throw new FesqlException(s"Column index out of bounds: $index")
     }
     index
   }

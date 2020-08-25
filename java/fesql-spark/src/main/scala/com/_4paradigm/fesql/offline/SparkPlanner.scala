@@ -2,7 +2,7 @@ package com._4paradigm.fesql.offline
 
 import com._4paradigm.fesql.FeSqlLibrary
 import com._4paradigm.fesql.`type`.TypeOuterClass._
-import com._4paradigm.fesql.common.SQLEngine
+import com._4paradigm.fesql.common.{SQLEngine, UnsupportedFesqlException}
 import com._4paradigm.fesql.offline.nodes._
 import com._4paradigm.fesql.offline.utils.FesqlUtil
 import com._4paradigm.fesql.vm._
@@ -74,7 +74,7 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
           case ProjectType.kGroupAggregation =>
             GroupByAggregationPlan.gen(ctx, PhysicalGroupAggrerationNode.CastFrom(projectNode), children.head)
 
-          case _ => throw new FeSQLException(
+          case _ => throw new UnsupportedFesqlException(
             s"Project type ${projectNode.getProject_type_} not supported")
         }
 
@@ -89,7 +89,7 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
         LimitPlan.gen(ctx, PhysicalLimitNode.CastFrom(root), children.head)
 
       case _ =>
-        throw new IllegalArgumentException(s"Plan type $opType not supported")
+        throw new UnsupportedFesqlException(s"Plan type $opType not supported")
     }
   }
 

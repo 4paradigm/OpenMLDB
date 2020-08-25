@@ -3,6 +3,7 @@ package com._4paradigm.fesql.offline
 import java.sql.{Date, Timestamp}
 
 import com._4paradigm.fesql.codec.{RowBuilder, RowView, Row => NativeRow}
+import com._4paradigm.fesql.common.FesqlException
 import com._4paradigm.fesql.offline.utils.FesqlUtil
 import com._4paradigm.fesql.vm.CoreAPI
 import org.apache.spark.sql.Row
@@ -103,7 +104,7 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
     val schema = sliceSchemas(sliceIndex)
 
     if (!rowView.Reset(nativeRow.buf(sliceIndex), nativeRow.size(sliceIndex))) {
-      throw new FeSQLException("Fail to setup row builder, maybe row buf is corrupted")
+      throw new FesqlException("Fail to setup row builder, maybe row buf is corrupted")
     }
 
     val fieldNum = schema.size
