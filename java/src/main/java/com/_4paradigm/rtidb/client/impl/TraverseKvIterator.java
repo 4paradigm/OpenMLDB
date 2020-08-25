@@ -45,6 +45,7 @@ public class TraverseKvIterator implements KvIterator {
     private TableHandler th = null;
     private static Charset charset = Charset.forName("utf-8");
     private RowView rv;
+    private Map<Integer, List<ColumnDesc>> verMap = null;
     private Map<Integer, List<ColumnDesc>> schemaMap = null;
     private int currentVersion = 1;
     private List<ColumnDesc> defaultSchema;
@@ -64,7 +65,8 @@ public class TraverseKvIterator implements KvIterator {
         if (th.getFormatVersion() == 1) {
             rv = new RowView(th.getSchema());
         }
-        schemaMap = th.getVersions();
+        verMap = th.getVersions();
+        schemaMap = th.getSchemaMap();
         defaultSchema = th.getSchema();
     }
 
@@ -178,14 +180,14 @@ public class TraverseKvIterator implements KvIterator {
         if (schema == null || schema.isEmpty()) {
             throw new UnsupportedOperationException("getDecodedValue is not supported");
         }
-        Object[] row = new Object[schema.size() + th.getSchemaMap().size()];
+        Object[] row = new Object[defaultSchema.size() + schemaMap.size()];
         getDecodedValue(row, 0, row.length);
         return row;
 
     }
 
     private void checkVersion(ByteBuffer buf) throws TabletException {
-        if (schemaMap == null) {
+        if (verMap == null) {
             return;
         }
         int version = RowView.getSchemaVersion(buf);
@@ -193,14 +195,8 @@ public class TraverseKvIterator implements KvIterator {
         if (version == this.currentVersion) {
             return;
         }
-        if (version == 1) {
-            schema = this.defaultSchema;
-            rv = new RowView(this.defaultSchema);
-            this.currentVersion = version;
-            return;
-        }
 
-        List<ColumnDesc> newSchema = schemaMap.get(version);
+        List<ColumnDesc> newSchema = verMap.get(version);
         if (newSchema == null) {
             throw new TabletException("unkown shcema for column count " + newSchema.size());
         }

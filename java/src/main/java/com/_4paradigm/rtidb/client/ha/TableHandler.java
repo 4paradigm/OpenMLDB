@@ -76,6 +76,7 @@ public class TableHandler {
                 }
                 schemaPos.put(cd.getName(), i);
             }
+            versions.put(1, this.schema);
         } else {
             schemaSize = tableInfo.getColumnDescCount();
             for (int i = 0; i < schemaSize; i++) {

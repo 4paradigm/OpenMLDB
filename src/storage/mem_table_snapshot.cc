@@ -692,13 +692,12 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
         if (!(entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete)) {
             // new column_key
             std::vector<std::string> row;
-            bool ret = DecodeData(table, columns, entry, max_idx, row);
-            if (!ret) {
-                LOG(WARNING) << "decode data error";
+            int ret = DecodeData(table, columns, entry, max_idx, row);
+            if (ret == 2) {
+                wh->Write(record);
                 continue;
-            }
-            if (row.size() < max_idx + 1) {
-                LOG(WARNING) << "data size is " << row.size() << " less than " << max_idx;
+            } else if (ret != 0) {
+                DLOG(INFO) << "skip current data";
                 continue;
             }
             std::string cur_key;
@@ -918,13 +917,13 @@ int MemTableSnapshot::ExtractIndexData(
             if (!(entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete)) {
                 // new column_key
                 std::vector<std::string> row;
-                bool ret = DecodeData(table, columns, entry, max_idx, row);
-                if (!ret) {
-                    LOG(WARNING) << "decode data error";
+                int ret = DecodeData(table, columns, entry, max_idx, row);
+                if (ret == 2) {
+                    wh->Write(record);
+                    write_count++;
                     continue;
-                }
-                if (row.size() < max_idx + 1) {
-                    LOG(WARNING) << "data size is " << row.size() << " less than " << max_idx;
+                } else if (ret != 0) {
+                    DLOG(INFO) << "skip current data";
                     continue;
                 }
                 std::string cur_key;
@@ -1059,8 +1058,10 @@ bool MemTableSnapshot::PackNewIndexEntry(
         }
     }
     std::vector<std::string> row;
-    bool ret = DecodeData(table, columns, *entry, max_idx, row);
-    if (!ret) {
+    LOG(INFO) << "will pack new entry";
+    int ret = DecodeData(table, columns, *entry, max_idx, row);
+    if (ret != 0 && ret != 2) {
+        LOG(INFO) << "pack fail code is " << ret;
         return false;
     }
     std::string key;
@@ -1331,7 +1332,7 @@ bool MemTableSnapshot::DumpBinlogIndexData(
     return true;
 }
 
-bool MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector<::rtidb::codec::ColumnDesc>& columns,
+int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector<::rtidb::codec::ColumnDesc>& columns,
                                   const rtidb::api::LogEntry& entry, uint32_t max_idx, std::vector<std::string>& row) {
     const ::rtidb::api::TableMeta& table_meta = table->GetTableMeta();
     std::string buff;
@@ -1343,21 +1344,32 @@ bool MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vecto
         data.reset(entry.value().data(), entry.value().size());
     }
     if (table_meta.format_version() == 0) {
-        return rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc_size(), max_idx + 1, data, &row);
+        bool ok = rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc_size(), max_idx + 1, data, &row);
+        if (ok) {
+            return 0;
+        } else {
+            return 4;
+        }
     }
     const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
     uint8_t version = rtidb::codec::RowView::GetSchemaVersion(raw);
     int32_t data_size = data.size();
-    if (version == 1) {
-        const auto& schema = table_meta.column_desc();
-        return rtidb::codec::RowCodec::DecodeRow(schema, raw, data_size, true, 0, max_idx + 1, row);
-    }
     std::shared_ptr<Schema> schema = table->GetVersionSchema(version);
     if (schema == nullptr) {
         LOG(WARNING) << "fail get version " << unsigned(version) << " schema";
-        return false;
+        return 1;
     }
-    return rtidb::codec::RowCodec::DecodeRow(*schema, raw, data_size, true, 0, max_idx + 1, row);
+
+    bool ok = rtidb::codec::RowCodec::DecodeRow(*schema, raw, data_size, true, 0, max_idx + 1, row);
+    if (!ok) {
+        LOG(WARNING) << "decode data error";
+        return 3;
+    }
+    if (schema->size() < (int64_t)(max_idx + 1)) {
+        LOG(WARNING) << "data size is " << schema->size() << " less than " << max_idx + 1;
+        return 2;
+    }
+    return 0;
 }
 
 }  // namespace storage

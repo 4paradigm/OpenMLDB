@@ -118,9 +118,8 @@ public class ScanFuture implements Future<KvIterator> {
                 kit = new RowKvIterator(response.getPairs(), t.getSchema(), response.getCount());
             }
             if (t.getSchemaMap().size() > 0) {
-                kit.setSchemaMap(t.getVersions());
-                kit.setLastSchemaVersion(t.getCurrentSchemaVer());
-                kit.setDefaultSchema(t.getSchema());
+                kit.setVerMap(t.getVersions());
+                kit.setSchemaMap(t.getSchemaMap());
             }
         }
         kit.setCount(response.getCount());

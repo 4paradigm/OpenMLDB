@@ -274,6 +274,7 @@ public class TableSyncClientImpl implements TableSyncClient {
             return null;
         }
         Object[] row = null;
+        th.getFormatVersion();
         if (th.getSchemaMap().size() > 0) {
             row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema(), th.getSchemaMap().size());
         } else {
@@ -562,9 +563,19 @@ public class TableSyncClientImpl implements TableSyncClient {
                 bs = response.getValue();
             }
             if (isNewFormat) {
+                ByteBuffer buf = bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN);
+                int version = RowView.getSchemaVersion(buf);
+                buf.rewind();
+                schema = th.getSchemaByVer(version);
+                if (schema == null) {
+                    throw new TabletException(String.format("unkown ver %d schema", version));
+                }
 
                 RowView rv = new RowView(schema);
-                return rv.read(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN));
+
+                Object[] row = new Object[th.getSchema().size() + th.getSchemaMap().size()];
+                rv.read(buf, row, 0, row.length);
+                return row;
             } else {
                 if (getOption.getProjection().size() > 0) {
                     BitSet bset = new BitSet(th.getSchema().size());
@@ -1207,6 +1218,8 @@ public class TableSyncClientImpl implements TableSyncClient {
         if (response != null && response.getCode() == 0) {
             if (isNewFormat) {
                 RowKvIterator rit = new RowKvIterator(response.getPairs(), schema, response.getCount());
+                rit.setVerMap(th.getVersions());
+                rit.setSchemaMap(th.getSchemaMap());
                 if (th.getTableInfo().hasCompressType()) {
                     rit.setCompressType(th.getTableInfo().getCompressType());
                 }

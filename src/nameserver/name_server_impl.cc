@@ -47,6 +47,7 @@ DECLARE_bool(use_name);
 
 using ::rtidb::base::BLOB_PREFIX;
 using ::rtidb::base::ReturnCode;
+using ::rtidb::api::OPType::kAddIndexOP;
 
 namespace rtidb {
 namespace nameserver {
@@ -11379,7 +11380,7 @@ void NameServerImpl::AddIndex(RpcController* controller,
         pair->CopyFrom(new_pair);
     }
     for (uint32_t pid = 0; pid < (uint32_t)table_info->table_partition_size(); pid++) {
-        if (CreateAddIndexOP(name, db, pid, request->column_key(), index_pos) < 0) {
+        if (CreateAddIndexOP(name, db, pid, add_cols, request->column_key(), index_pos) < 0) {
             LOG(WARNING) << "create AddIndexOP failed, table " << name << " pid " << pid;
             break;
         }
@@ -11415,8 +11416,8 @@ bool NameServerImpl::AddIndexToTableInfo(
 
 int NameServerImpl::CreateAddIndexOP(
     const std::string& name, const std::string& db, uint32_t pid,
-    const ::rtidb::common::ColumnKey& column_key,
-    uint32_t idx) {
+    const std::vector<rtidb::common::ColumnDesc>& new_cols,
+    const ::rtidb::common::ColumnKey& column_key, uint32_t idx) {
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
     if (!GetTableInfo(name, db, &table_info)) {
         PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
@@ -11442,11 +11443,14 @@ int NameServerImpl::CreateAddIndexOP(
     add_index_meta.set_pid(pid);
     add_index_meta.set_idx(idx);
     add_index_meta.set_db(db);
+    if (!new_cols.empty()) {
+        add_index_meta.set_skip_data(true);
+    }
     ::rtidb::common::ColumnKey* cur_column_key = add_index_meta.mutable_column_key();
     cur_column_key->CopyFrom(column_key);
     std::string value;
     add_index_meta.SerializeToString(&value);
-    if (CreateOPData(::rtidb::api::OPType::kAddIndexOP, value, op_data, name,
+    if (CreateOPData(kAddIndexOP, value, op_data, name,
                      db, pid) < 0) {
         PDLOG(WARNING, "create AddIndexOP data error. table %s pid %u",
               name.c_str(), pid);
@@ -11519,53 +11523,59 @@ int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
     }
     uint64_t op_index = op_data->op_info_.op_id();
     std::shared_ptr<Task> task;
-    task = CreateDumpIndexDataTask(
-        op_index, ::rtidb::api::OPType::kAddIndexOP, tid, pid, leader_endpoint,
-        table_info->table_partition_size(), add_index_meta.column_key(),
-        add_index_meta.idx());
+    const rtidb::common::ColumnKey& ck = add_index_meta.column_key();
+    const auto ck_idx = add_index_meta.idx();
+    if (add_index_meta.skip_data()) {
+        task = CreateAddIndexToTabletTask(op_index, kAddIndexOP, tid, pid, endpoints, ck);
+        if (!task) {
+            LOG(WARNING) << "create add index task failed. tid[" << tid << "] pid[" << pid << "]";
+            return -1;
+        }
+        op_data->task_list_.push_back(task);
+        boost::function<bool()> fun = boost::bind(&NameServerImpl::AddIndexToTableInfo, this, name, db, ck, ck_idx);
+        task = CreateTableSyncTask(op_index, kAddIndexOP, tid, fun);
+        if (!task) {
+            LOG(WARNING) << "create add index task failed. tid[" << tid << "] pid[" << pid << "]";
+        }
+        op_data->task_list_.push_back(task);
+        return 0;
+    }
+    const int part_size = table_info->table_partition_size();
+    task = CreateDumpIndexDataTask(op_index, kAddIndexOP, tid, pid, leader_endpoint, part_size, ck, ck_idx);
     if (!task) {
         LOG(WARNING) << "create dump index task failed. tid[" << tid
                      << "] pid[" << pid << "] endpoint[" << leader_endpoint << "]";
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateSendIndexDataTask(op_index, ::rtidb::api::OPType::kAddIndexOP,
-                                   tid, pid, leader_endpoint, pid_endpoint_map);
+    task = CreateSendIndexDataTask(op_index, kAddIndexOP, tid, pid, leader_endpoint, pid_endpoint_map);
     if (!task) {
         LOG(WARNING) << "create send index data task failed. tid[" << tid
                      << "] pid [" << pid << "] endpoint[" << leader_endpoint << "]";
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateAddIndexToTabletTask(
-        op_index, ::rtidb::api::OPType::kAddIndexOP, tid, pid, endpoints,
-        add_index_meta.column_key());
+    task = CreateAddIndexToTabletTask(op_index, kAddIndexOP, tid, pid, endpoints, ck);
     if (!task) {
         LOG(WARNING) << "create add index tasdk failed. tid[" << tid << "] pid[" << pid << "]";
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateExtractIndexDataTask(
-        op_index, ::rtidb::api::OPType::kAddIndexOP, tid, pid, endpoints,
-        table_info->table_partition_size(), add_index_meta.column_key(),
-        add_index_meta.idx());
+    task = CreateExtractIndexDataTask(op_index, kAddIndexOP, tid, pid, endpoints, part_size, ck, ck_idx);
     if (!task) {
         LOG(WARNING) << "Create extract index data task failed. tid[" << tid
                      << "] pid[" << pid << "]";
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateLoadIndexDataTask(op_index, ::rtidb::api::OPType::kAddIndexOP,
-                                   tid, pid, leader_endpoint,
-                                   table_info->table_partition_size());
+    task = CreateLoadIndexDataTask(op_index, kAddIndexOP, tid, pid, leader_endpoint, part_size);
     if (!task) {
         LOG(WARNING) << "create load index data task failed. tid[" << tid << "] pid["
                      << pid << "] endpoint[" << leader_endpoint << "]";
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateCheckBinlogSyncProgressTask(
-        op_index, ::rtidb::api::OPType::kAddIndexOP, name, db, pid,
+    task = CreateCheckBinlogSyncProgressTask(op_index, kAddIndexOP, name, db, pid,
         follower_endpoint, FLAGS_check_binlog_sync_progress_delta);
     if (!task) {
         LOG(WARNING) << "create CheckBinlogSyncProgressTask failed. name[" << name
@@ -11573,11 +11583,8 @@ int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
-    boost::function<bool()> fun =
-        boost::bind(&NameServerImpl::AddIndexToTableInfo, this, name, db,
-                    add_index_meta.column_key(), add_index_meta.idx());
-    task = CreateTableSyncTask(op_index, ::rtidb::api::OPType::kAddIndexOP, tid,
-                               fun);
+    boost::function<bool()> fun = boost::bind(&NameServerImpl::AddIndexToTableInfo, this, name, db, ck, ck_idx);
+    task = CreateTableSyncTask(op_index, kAddIndexOP, tid, fun);
     if (!task) {
         LOG(WARNING) << "creawte table sync task failed. name[" << name << "] pid[" << pid << "]";
         return -1;
