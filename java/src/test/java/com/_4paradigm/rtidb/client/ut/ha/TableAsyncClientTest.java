@@ -531,7 +531,6 @@ public class TableAsyncClientTest extends TestCaseBase {
             it = sf.get();
             Assert.assertTrue(it.valid());
             Assert.assertEquals(it.getCount(), 2);
-            Assert.assertEquals(it.getSchema().size(), 6);
             row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 1235);
             Assert.assertEquals(row.length, 6);
@@ -577,7 +576,6 @@ public class TableAsyncClientTest extends TestCaseBase {
 
             sf = tableAsyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
             it = sf.get();
-            Assert.assertEquals(it.getSchema().size(), 7);
 
             try {
                 data.clear();
@@ -750,7 +748,6 @@ public class TableAsyncClientTest extends TestCaseBase {
             it = sf.get();
             Assert.assertTrue(it.valid());
             Assert.assertEquals(it.getCount(), 1);
-            Assert.assertEquals(it.getSchema().size(), 6);
             row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 1235);
             Assert.assertEquals(row.length, 6);
@@ -796,7 +793,6 @@ public class TableAsyncClientTest extends TestCaseBase {
 
             sf = tableAsyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
             it = sf.get();
-            Assert.assertEquals(it.getSchema().size(), 7);
 
             try {
                 data.clear();
