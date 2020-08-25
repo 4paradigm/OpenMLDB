@@ -708,6 +708,10 @@ bool SchemaType2DataType(const ::fesql::type::Type type,
         return false;
     }
     switch (type) {
+        case ::fesql::type::kBool: {
+            *output = ::fesql::node::kBool;
+            break;
+        }
         case ::fesql::type::kInt16: {
             *output = ::fesql::node::kInt16;
             break;

@@ -66,6 +66,7 @@ namespace codegen {
     }
 }
 
+void NativeValue::SetType(::llvm::Type* type) { type_ = type; }
 ::llvm::Type* NativeValue::GetType() const { return type_; }
 
 ::llvm::Value* NativeValue::GetRaw() const { return raw_; }
@@ -88,6 +89,7 @@ bool NativeValue::IsRegFlag() const {
     return HasFlag() && !flag_->getType()->isPointerTy();
 }
 
+bool NativeValue::IsNullable() const { return IsConstNull() || HasFlag(); }
 bool NativeValue::IsConstNull() const { return raw_ == nullptr; }
 
 void NativeValue::SetName(const std::string& name) {

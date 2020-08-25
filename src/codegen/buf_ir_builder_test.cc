@@ -263,7 +263,7 @@ void LoadValue(T* result, bool* is_null,
     ASSERT_TRUE(ok);
 
     // if null
-    if (val.HasFlag()) {
+    if (val.IsNullable()) {
         llvm::BasicBlock* null_branch_block = llvm::BasicBlock::Create(*ctx);
         null_branch_block->insertInto(fn);
 

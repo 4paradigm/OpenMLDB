@@ -37,17 +37,18 @@ void TimestampIRBuilder::InitStructType() {
     struct_type_ = stype;
     return;
 }
-bool TimestampIRBuilder::CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
-                                  ::llvm::Value** output) {
+base::Status TimestampIRBuilder::CastFrom(::llvm::BasicBlock* block,
+                                          ::llvm::Value* src,
+                                          ::llvm::Value** output) {
     base::Status status;
     if (nullptr == src || nullptr == output) {
         status.code = common::kCodegenError;
         status.msg = "Fail to cast timestamp: src or dist is null";
-        return false;
+        return status;
     }
     if (IsTimestampPtr(src->getType())) {
         *output = src;
-        return true;
+        return status;
     }
     ::llvm::Value* ts = NULL;
     CastExprIRBuilder cast_builder(block);
@@ -56,17 +57,17 @@ bool TimestampIRBuilder::CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
         status.code = common::kCodegenError;
         status.msg = "Fail to cast timestamp: src type " +
                      TypeIRBuilder::TypeName(src->getType());
-        return false;
+        return status;
     }
     if (!cast_builder.SafeCast(src, builder.getInt64Ty(), &ts, status)) {
-        return false;
+        return status;
     }
     if (!NewTimestamp(block, ts, output)) {
         status.code = common::kCodegenError;
         status.msg = "Fail to cast timestamp: new timestamp fail";
-        return false;
+        return status;
     }
-    return true;
+    return status;
 }
 bool TimestampIRBuilder::CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
                                   ::llvm::Value* dist) {

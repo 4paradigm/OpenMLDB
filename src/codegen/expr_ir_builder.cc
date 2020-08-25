@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 #include "codegen/buf_ir_builder.h"
+#include "codegen/cond_select_ir_builder.h"
 #include "codegen/context.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/fn_ir_builder.h"
@@ -143,8 +144,10 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         case ::fesql::node::kExprPrimary: {
             ::fesql::node::ConstNode* const_node =
                 (::fesql::node::ConstNode*)node;
-
             switch (const_node->GetDataType()) {
+                case ::fesql::node::kNull:
+                    *output = NativeValue::CreateNull(builder.getInt1Ty());
+                    return true;
                 case ::fesql::node::kInt16:
                     *output = NativeValue::Create(
                         builder.getInt16(const_node->GetSmallInt()));
@@ -269,6 +272,16 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
         case ::fesql::node::kExprCond: {
             status = BuildCondExpr(
                 dynamic_cast<const ::fesql::node::CondExpr*>(node), output);
+            if (!status.isOK()) {
+                LOG(WARNING) << "Build cond expr failed: " << status.msg;
+                return false;
+            }
+            return true;
+        }
+        case ::fesql::node::kExprCase: {
+            status = BuildCaseExpr(
+                dynamic_cast<const ::fesql::node::CaseWhenExprNode*>(node),
+                output);
             if (!status.isOK()) {
                 LOG(WARNING) << "Build cond expr failed: " << status.msg;
                 return false;
@@ -1044,7 +1057,21 @@ Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
     }
     return Status::OK();
 }
-
+Status ExprIRBuilder::BuildCaseExpr(const ::fesql::node::CaseWhenExprNode* node,
+                                    NativeValue* output) {
+    CHECK_TRUE(nullptr != node && nullptr != node->when_expr_list() &&
+               node->when_expr_list()->GetChildNum() > 0);
+    node::NodeManager nm;
+    node::ExprNode* expr =
+        nullptr == node->else_expr() ? nm.MakeConstNode() : node->else_expr();
+    for (auto iter = node->when_expr_list()->children_.rbegin();
+         iter != node->when_expr_list()->children_.rend(); iter++) {
+        auto when_expr = dynamic_cast<::fesql::node::WhenExprNode*>(*iter);
+        expr = nm.MakeCondExpr(when_expr->when_expr(), when_expr->then_expr(),
+                               expr);
+    }
+    return BuildCondExpr(dynamic_cast<::fesql::node::CondExpr*>(expr), output);
+}
 Status ExprIRBuilder::BuildCondExpr(const ::fesql::node::CondExpr* node,
                                     NativeValue* output) {
     // build condition
@@ -1062,51 +1089,9 @@ Status ExprIRBuilder::BuildCondExpr(const ::fesql::node::CondExpr* node,
     NativeValue right_value;
     CHECK_TRUE(this->Build(node->GetRight(), &right_value, status), status.msg);
 
-    auto raw_cond = cond_value.GetValue(&builder);
-    if (cond_value.HasFlag()) {
-        raw_cond = builder.CreateAnd(
-            raw_cond, builder.CreateNot(cond_value.GetIsNull(&builder)));
-    }
-
-    if (left_value.IsTuple()) {
-        CHECK_TRUE(right_value.IsTuple() &&
-                   left_value.GetFieldNum() == right_value.GetFieldNum());
-        std::vector<NativeValue> result_tuple;
-        for (size_t i = 0; i < left_value.GetFieldNum(); ++i) {
-            NativeValue sub_left = left_value.GetField(i);
-            NativeValue sub_right = right_value.GetField(i);
-            ::llvm::Value* raw_value =
-                builder.CreateSelect(raw_cond, sub_left.GetValue(&builder),
-                                     sub_right.GetValue(&builder));
-
-            bool output_nullable = sub_left.HasFlag() || sub_right.HasFlag();
-            if (output_nullable) {
-                ::llvm::Value* output_is_null =
-                    builder.CreateSelect(raw_cond, sub_left.GetIsNull(&builder),
-                                         sub_right.GetIsNull(&builder));
-                result_tuple.push_back(*output = NativeValue::CreateWithFlag(
-                                           raw_value, output_is_null));
-            } else {
-                result_tuple.push_back(NativeValue::Create(raw_value));
-            }
-        }
-        *output = NativeValue::CreateTuple(result_tuple);
-    } else {
-        ::llvm::Value* raw_value =
-            builder.CreateSelect(raw_cond, left_value.GetValue(&builder),
-                                 right_value.GetValue(&builder));
-
-        bool output_nullable = left_value.HasFlag() || right_value.HasFlag();
-        if (output_nullable) {
-            ::llvm::Value* output_is_null =
-                builder.CreateSelect(raw_cond, left_value.GetIsNull(&builder),
-                                     right_value.GetIsNull(&builder));
-            *output = NativeValue::CreateWithFlag(raw_value, output_is_null);
-        } else {
-            *output = NativeValue::Create(raw_value);
-        }
-    }
-    return Status::OK();
+    CondSelectIRBuilder cond_select_builder;
+    return cond_select_builder.Select(block_, cond_value, left_value,
+                                      right_value, output);
 }
 
 bool ExprIRBuilder::IsUADF(std::string function_name) {

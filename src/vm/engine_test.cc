@@ -58,7 +58,6 @@ using fesql::codec::Row;
 using fesql::sqlcase::SQLCase;
 enum EngineRunMode { RUNBATCH, RUNONE };
 
-const bool IS_DEBUG = true;
 std::vector<SQLCase> InitCases(std::string yaml_path);
 void InitCases(std::string yaml_path, std::vector<SQLCase>& cases);  // NOLINT
 
@@ -330,7 +329,7 @@ void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
 
     Engine engine(catalog);
     RequestRunSession session;
-    if (IS_DEBUG) {
+    if (fesql::sqlcase::SQLCase::IS_DEBUG() || sql_case.debug()) {
         session.EnableDebug();
     }
 
@@ -433,7 +432,7 @@ void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
 
     Engine engine(catalog);
     BatchRunSession session;
-    if (IS_DEBUG || sql_case.debug()) {
+    if (fesql::sqlcase::SQLCase::IS_DEBUG() || sql_case.debug()) {
         session.EnableDebug();
     }
 
@@ -638,6 +637,10 @@ INSTANTIATE_TEST_CASE_P(EngineTestSelectSample, EngineTest,
 INSTANTIATE_TEST_CASE_P(
     EngineTestSubSelect, EngineTest,
     testing::ValuesIn(InitCases("/cases/integration/v1/test_sub_select.yaml")));
+
+INSTANTIATE_TEST_CASE_P(EngineTestUdfFunction, EngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/test_udf_function.yaml")));
 
 INSTANTIATE_TEST_CASE_P(EngineTestUdafFunction, EngineTest,
                         testing::ValuesIn(InitCases(

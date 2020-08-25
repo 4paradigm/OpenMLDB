@@ -186,6 +186,8 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "function";
         case kExprCase:
             return "case";
+        case kExprWhen:
+            return "when";
         case kExprBetween:
             return "between";
         case kExprColumnRef:
@@ -1197,6 +1199,38 @@ class CastExprNode : public ExprNode {
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 };
+class WhenExprNode : public ExprNode {
+ public:
+    WhenExprNode(node::ExprNode *when_expr, node::ExprNode *then_expr)
+        : ExprNode(kExprWhen) {
+        this->AddChild(when_expr);
+        this->AddChild(then_expr);
+    }
+    ~WhenExprNode() {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *that) const;
+    ExprNode *when_expr() const { return GetChild(0); }
+    ExprNode *then_expr() const { return GetChild(1); }
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+};
+
+class CaseWhenExprNode : public ExprNode {
+ public:
+    CaseWhenExprNode(node::ExprListNode *when_expr_list,
+                     node::ExprNode *else_expr)
+        : ExprNode(kExprCase) {
+        this->AddChild(when_expr_list);
+        this->AddChild(else_expr);
+    }
+    ~CaseWhenExprNode() {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    virtual bool Equals(const ExprNode *that) const;
+    ExprNode *when_expr_list() const { return GetChild(0); }
+    ExprNode *else_expr() const { return GetChild(1); }
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+};
 class CallExprNode : public ExprNode {
  public:
     explicit CallExprNode(FnDefNode *fn_def, ExprListNode *args,
@@ -2184,8 +2218,10 @@ class DistributionsNode : public SQLNode {
     SQLNodeList *distribution_list_;
 };
 
+
 std::string ExprString(const ExprNode *expr);
 std::string MakeExprWithTable(const ExprNode *expr, const std::string db);
+const bool IsNullPrimary(const ExprNode* expr);
 bool ExprListNullOrEmpty(const ExprListNode *expr);
 bool SQLEquals(const SQLNode *left, const SQLNode *right);
 bool SQLListEquals(const SQLNodeList *left, const SQLNodeList *right);

@@ -269,7 +269,7 @@ void sub_string(fesql::codec::StringRef *str, int32_t pos,
                 fesql::codec::StringRef *output);
 void sub_string(fesql::codec::StringRef *str, int32_t pos, int32_t len,
                 fesql::codec::StringRef *output);
-
+int32_t strcmp(fesql::codec::StringRef *s1, fesql::codec::StringRef *s2);
 template <class V>
 struct ToString {
     using Args = std::tuple<V>;

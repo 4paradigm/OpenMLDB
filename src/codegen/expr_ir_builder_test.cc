@@ -737,6 +737,74 @@ TEST_F(ExprIRBuilderTest, test_build_lambda) {
         11, 1, 10);
 }
 
+void CondExprCheck(const udf::Nullable<bool> &cond_val,
+                   const udf::Nullable<codec::StringRef> &left_val,
+                   const udf::Nullable<codec::StringRef> &right_val,
+                   const udf::Nullable<codec::StringRef> &result) {
+    ExprCheck(
+        [=](node::NodeManager *nm, node::ExprNode *cond, node::ExprNode *l,
+            node::ExprNode *r) { return nm->MakeCondExpr(cond, l, r); },
+        result, cond_val, left_val, right_val);
+}
+
+TEST_F(ExprIRBuilderTest, test_cond_expr) {
+    CondExprCheck(true, codec::StringRef("left"), codec::StringRef("right"),
+                  codec::StringRef("left"));
+    CondExprCheck(true, codec::StringRef("left"), nullptr,
+                  codec::StringRef("left"));
+    CondExprCheck(true, nullptr, codec::StringRef("right"), nullptr);
+    CondExprCheck(true, nullptr, nullptr, nullptr);
+
+    CondExprCheck(false, codec::StringRef("left"), codec::StringRef("right"),
+                  codec::StringRef("right"));
+    CondExprCheck(false, codec::StringRef("left"), nullptr, nullptr);
+    CondExprCheck(false, nullptr, codec::StringRef("right"),
+                  codec::StringRef("right"));
+    CondExprCheck(false, nullptr, nullptr, nullptr);
+
+    CondExprCheck(nullptr, codec::StringRef("left"), codec::StringRef("right"),
+                  codec::StringRef("right"));
+    CondExprCheck(nullptr, codec::StringRef("left"), nullptr, nullptr);
+    CondExprCheck(nullptr, nullptr, codec::StringRef("right"),
+                  codec::StringRef("right"));
+    CondExprCheck(nullptr, nullptr, nullptr, nullptr);
+}
+void CaseWhenExprCheck(const udf::Nullable<bool> &cond_val,
+                       const udf::Nullable<codec::StringRef> &left_val,
+                       const udf::Nullable<codec::StringRef> &right_val,
+                       const udf::Nullable<codec::StringRef> &result) {
+    ExprCheck(
+        [=](node::NodeManager *nm, node::ExprNode *cond, node::ExprNode *l,
+            node::ExprNode *r) {
+            return nm->MakeSearchedCaseWhenNode(
+                nm->MakeExprList(nm->MakeWhenNode(cond, l)), r);
+        },
+        result, cond_val, left_val, right_val);
+}
+
+TEST_F(ExprIRBuilderTest, test_case_when_expr) {
+    CaseWhenExprCheck(true, codec::StringRef("left"), codec::StringRef("right"),
+                      codec::StringRef("left"));
+    CaseWhenExprCheck(true, codec::StringRef("left"), nullptr,
+                      codec::StringRef("left"));
+    CaseWhenExprCheck(true, nullptr, codec::StringRef("right"), nullptr);
+    CaseWhenExprCheck(true, nullptr, nullptr, nullptr);
+
+    CaseWhenExprCheck(false, codec::StringRef("left"),
+                      codec::StringRef("right"), codec::StringRef("right"));
+    CaseWhenExprCheck(false, codec::StringRef("left"), nullptr, nullptr);
+    CaseWhenExprCheck(false, nullptr, codec::StringRef("right"),
+                      codec::StringRef("right"));
+    CaseWhenExprCheck(false, nullptr, nullptr, nullptr);
+
+    CaseWhenExprCheck(nullptr, codec::StringRef("left"),
+                      codec::StringRef("right"), codec::StringRef("right"));
+    CaseWhenExprCheck(nullptr, codec::StringRef("left"), nullptr, nullptr);
+    CaseWhenExprCheck(nullptr, nullptr, codec::StringRef("right"),
+                      codec::StringRef("right"));
+    CaseWhenExprCheck(nullptr, nullptr, nullptr, nullptr);
+}
+
 }  // namespace codegen
 }  // namespace fesql
 

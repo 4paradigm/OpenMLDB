@@ -226,7 +226,7 @@ TEST_P(ResultSetImplTest, test_normal) {
                     break;
                 }
                 case type::kVarchar: {
-                    char* left_ptr = NULL;
+                    const char* left_ptr = NULL;
                     std::string right;
                     uint32_t left_size = 0;
                     row_view.GetString(j, &left_ptr, &left_size);

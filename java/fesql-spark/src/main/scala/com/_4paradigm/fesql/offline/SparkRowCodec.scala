@@ -88,7 +88,7 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
             rowBuilder.AppendTimestamp(row.getTimestamp(fieldOffset).getTime)
           case DateType =>
             val date = row.getDate(fieldOffset)
-            rowBuilder.AppendDate(date.getYear+1900, date.getMonth, date.getDate)
+            rowBuilder.AppendDate(date.getYear + 1900, date.getMonth + 1, date.getDate)
           case _ => throw new IllegalArgumentException(
             s"Spark type ${field.dataType} not supported")
         }
@@ -132,8 +132,8 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
             output(fieldOffset) = new Timestamp(rowView.GetTimestampUnsafe(i))
           case DateType =>
             val days = rowView.GetDateUnsafe(i)
-            output(fieldOffset) = new Date(rowView.GetYearUnsafe(days)-1900,
-              rowView.GetMonthUnsafe(days), rowView.GetDayUnsafe(days))
+            output(fieldOffset) = new Date(rowView.GetYearUnsafe(days) - 1900,
+              rowView.GetMonthUnsafe(days) - 1, rowView.GetDayUnsafe(days))
           case _ => throw new IllegalArgumentException(
             s"Spark type ${field.dataType} not supported")
         }

@@ -59,8 +59,12 @@ int32_t weekofyear(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
     gmtime_r(&time, &t);
-    boost::gregorian::date d = boost::gregorian::date_from_tm(t);
-    return d.week_number();
+    try {
+        boost::gregorian::date d = boost::gregorian::date_from_tm(t);
+        return d.week_number();
+    } catch (...) {
+        return 0;
+    }
 }
 int32_t month(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
@@ -85,8 +89,17 @@ int32_t dayofweek(codec::Date *date) {
     if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
         return 0;
     }
-    boost::gregorian::date d(year, month, day);
-    return d.day_of_week() + 1;
+    try {
+        if (month <= 0 || month > 12) {
+            return 0;
+        } else if (day <= 0 || day > 31) {
+            return 0;
+        }
+        boost::gregorian::date d(year, month, day);
+        return d.day_of_week() + 1;
+    } catch (...) {
+        return 0;
+    }
 }
 // Return the iso 8601 week number 1..53
 int32_t weekofyear(codec::Date *date) {
@@ -94,8 +107,17 @@ int32_t weekofyear(codec::Date *date) {
     if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
         return 0;
     }
-    boost::gregorian::date d(year, month, day);
-    return d.week_number();
+    try {
+        if (month <= 0 || month > 12) {
+            return 0;
+        } else if (day <= 0 || day > 31) {
+            return 0;
+        }
+        boost::gregorian::date d(year, month, day);
+        return d.week_number();
+    } catch (...) {
+        return 0;
+    }
 }
 
 float Cotf(float x) { return cosf(x) / sinf(x); }
@@ -147,10 +169,22 @@ bool date_format(const codec::Date *date, const char *format, char *buffer,
     if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
         return false;
     }
-    boost::gregorian::date g_date(year, month, day);
-    tm t = boost::gregorian::to_tm(g_date);
-    strftime(buffer, size, format, &t);
-    return true;
+    try {
+        if (month <= 0 || month > 12) {
+            return 0;
+        } else if (day <= 0 || day > 31) {
+            return 0;
+        }
+        boost::gregorian::date g_date(year, month, day);
+        tm t = boost::gregorian::to_tm(g_date);
+        strftime(buffer, size, format, &t);
+        return true;
+    } catch (...) {
+        if (size > 0) {
+            *buffer = '\0';
+        }
+        return false;
+    }
 }
 
 void date_format(codec::Date *date, const std::string &format,
@@ -233,7 +267,19 @@ void sub_string(fesql::codec::StringRef *str, int32_t from, int32_t len,
     output->size_ = static_cast<uint32_t>(len);
     return;
 }
+int32_t strcmp(fesql::codec::StringRef *s1, fesql::codec::StringRef *s2) {
+    if (s1 == s2) {
+        return 0;
+    }
+    if (nullptr == s1) {
+        return -1;
+    }
 
+    if (nullptr == s2) {
+        return 1;
+    }
+    return fesql::codec::StringRef::compare(*s1, *s2);
+}  // namespace v1
 template <>
 uint32_t format_string<int16_t>(const int16_t &v, char *buffer, size_t size) {
     return snprintf(buffer, size, "%d", v);
@@ -246,7 +292,8 @@ uint32_t format_string<int32_t>(const int32_t &v, char *buffer, size_t size) {
 
 template <>
 uint32_t format_string<int64_t>(const int64_t &v, char *buffer, size_t size) {
-    return snprintf(buffer, size, "%lld", static_cast<long long int>(v));  // NOLINT
+    return snprintf(buffer, size, "%lld",
+                    static_cast<long long int>(v));  // NOLINT
 }
 
 template <>

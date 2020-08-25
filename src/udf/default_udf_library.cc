@@ -315,9 +315,9 @@ struct AvgCateDef {
                 .output("avg_cate_output" + suffix, Output);
         }
 
-        static ContainerT* Update(ContainerT* ptr,
-                                  InputV value, bool is_value_null,
-                                  InputK key, bool is_key_null) {
+        static ContainerT* Update(ContainerT* ptr, InputV value,
+                                  bool is_value_null, InputK key,
+                                  bool is_key_null) {
             if (is_key_null || is_value_null) {
                 return ptr;
             }
@@ -373,18 +373,19 @@ struct AvgCateWhereDef {
                                  DataTypeTrait<V>::to_string();
             helper
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
-                            Nullable<bool>, Nullable<K>>()
+                           Nullable<bool>, Nullable<K>>()
                 .init("avg_cate_where_init" + suffix, ContainerT::Init)
                 .update("avg_cate_where_update" + suffix, Update)
                 .output("avg_cate_where_output" + suffix, AvgCateImpl::Output);
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
-                    bool is_value_null, bool cond, bool is_cond_null,
-                                  InputK key, bool is_key_null) {
+                                  bool is_value_null, bool cond,
+                                  bool is_cond_null, InputK key,
+                                  bool is_key_null) {
             if (cond && !is_cond_null) {
-                AvgCateImpl::Update(ptr, value, is_value_null,
-                                    key, is_key_null);
+                AvgCateImpl::Update(ptr, value, is_value_null, key,
+                                    is_key_null);
             }
             return ptr;
         }
@@ -417,7 +418,7 @@ struct TopAvgCateWhereDef {
                      "_" + DataTypeTrait<V>::to_string();
             helper
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
-                            Nullable<bool>, Nullable<K>, int32_t>()
+                           Nullable<bool>, Nullable<K>, int32_t>()
                 .init("top_n_avg_cate_where_init" + suffix, ContainerT::Init)
                 .update("top_n_avg_cate_where_update" + suffix, UpdateI32Bound)
                 .output("top_n_avg_cate_where_output" + suffix, Output);
@@ -433,7 +434,8 @@ struct TopAvgCateWhereDef {
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
-                bool is_value_null, bool cond, bool is_cond_null, InputK key,
+                                  bool is_value_null, bool cond,
+                                  bool is_cond_null, InputK key,
                                   bool is_key_null, int64_t bound) {
             if (cond && !is_cond_null) {
                 AvgCateImpl::Update(ptr, value, is_value_null, key,
@@ -450,8 +452,8 @@ struct TopAvgCateWhereDef {
                                           bool is_value_null, bool cond,
                                           bool is_cond_null, InputK key,
                                           bool is_key_null, int32_t bound) {
-            return Update(ptr, value, is_value_null, cond,
-                          is_cond_null, key, is_key_null,  bound);
+            return Update(ptr, value, is_value_null, cond, is_cond_null, key,
+                          is_key_null, bound);
         }
 
         static void Output(ContainerT* ptr, codec::StringRef* output) {
@@ -571,6 +573,26 @@ void DefaultUDFLibrary::InitStringUDF() {
 
     RegisterAlias("substr", "substring");
 
+    RegisterExternal("strcmp")
+        .args<StringRef, StringRef>(
+            static_cast<int32_t (*)(codec::StringRef*, codec::StringRef*)>(
+                udf::v1::strcmp))
+        .doc(R"(
+            Returns 0 if the strings are the same, -1 if the first argument is smaller than the second according to the current sort order, and 1 otherwise.
+
+            example
+            @code{.sql}
+
+                select strcmp("text", "text1");
+                -- output -1
+                select strcmp("text1", "text");
+                -- output 1
+                select strcmp("text", "text");
+                -- output 0
+
+            @endcode
+            @since 2.0.0.0
+        )");
     RegisterExternal("date_format")
         .args<Timestamp, StringRef>(
             static_cast<void (*)(codec::Timestamp*, codec::StringRef*,

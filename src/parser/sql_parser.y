@@ -429,8 +429,10 @@ typedef void* yyscan_t;
 				group_expr sql_id_list
 				sql_expr_list fun_expr_list
 				insert_values insert_value
+				sql_when_then_expr_list
 
-%type<expr> insert_expr where_expr having_expr
+
+%type<expr> insert_expr where_expr having_expr sql_case_when_expr sql_when_then_expr sql_else_expr
 
  /* create table */
 %type <node>  create_stmt column_desc column_index_item column_index_key option distribution
@@ -1568,6 +1570,10 @@ sql_expr:
      {
      	$$ = node_manager->MakeBetweenExpr($1, $3, $5);
      }
+     | sql_case_when_expr
+     {
+     	$$ = $1;
+     }
      | '(' sql_expr ')'
      {
         $$ = node_manager->MakeUnaryExprNode($2, ::fesql::node::kFnOpBracket);
@@ -1576,6 +1582,42 @@ sql_expr:
      	$$ = node_manager->MakeQueryExprNode($2);
      }
      ;
+
+sql_case_when_expr:
+	CASE sql_expr sql_when_then_expr_list sql_else_expr END
+	{
+		$$ = node_manager->MakeSimpleCaseWhenNode($2, $3, $4);
+	}
+	|CASE sql_when_then_expr_list sql_else_expr END
+	{
+		$$ = node_manager->MakeSearchedCaseWhenNode($2, $3);
+	};
+sql_when_then_expr_list:
+	sql_when_then_expr
+	{
+	  $$ = node_manager->MakeExprList($1);
+	}
+	| sql_when_then_expr_list sql_when_then_expr
+	{
+		$$ = $1;
+		$$->AddChild($2);
+	};
+
+sql_when_then_expr:
+	WHEN sql_expr THEN sql_expr
+	{
+		$$ = node_manager->MakeWhenNode($2, $4);
+	};
+sql_else_expr:
+	ELSE sql_expr
+	{
+		$$ = $2;
+	}
+	|/*EMPTY*/
+	{
+		$$ = NULL;
+	};
+
 expr_const:
     STRING
         {

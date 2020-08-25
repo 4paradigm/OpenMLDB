@@ -8,6 +8,7 @@
  **/
 #include "codegen/cast_expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
 namespace fesql {
@@ -30,11 +31,14 @@ bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
     if (src == dist) {
         return true;
     }
+
     ::fesql::node::DataType src_type;
     ::fesql::node::DataType dist_type;
     ::fesql::codegen::GetBaseType(src, &src_type);
     ::fesql::codegen::GetBaseType(dist, &dist_type);
-
+    if (::fesql::node::kVarchar == dist_type) {
+        return true;
+    }
     switch (src_type) {
         case ::fesql::node::kBool: {
             return true;
@@ -147,7 +151,9 @@ bool CastExprIRBuilder::IsStringCast(llvm::Type* type) {
 bool CastExprIRBuilder::StringCast(llvm::Value* value,
                                    llvm::Value** casted_value,
                                    base::Status& status) {
-    return false;
+    StringIRBuilder string_ir_builder(block_->getModule());
+    status = string_ir_builder.CastFrom(block_, value, casted_value);
+    return status.isOK();
 }
 
 bool CastExprIRBuilder::TimestampCast(llvm::Value* value,
@@ -159,7 +165,8 @@ bool CastExprIRBuilder::TimestampCast(llvm::Value* value,
         return false;
     }
     TimestampIRBuilder builder(block_->getModule());
-    return builder.NewTimestamp(block_, ts, casted_value);
+    status = builder.CastFrom(block_, value, casted_value);
+    return status.isOK();
 }
 
 // cast fesql type to bool: compare value with 0

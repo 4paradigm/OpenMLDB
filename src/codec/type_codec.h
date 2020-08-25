@@ -28,6 +28,8 @@ namespace fesql {
 namespace codec {
 struct StringRef {
     StringRef() : size_(0), data_(nullptr) {}
+    explicit StringRef(const char* str)
+        : size_(nullptr == str ? 0 : strlen(str)), data_(str) {}
     explicit StringRef(const std::string& str)
         : size_(str.size()), data_(str.data()) {}
     StringRef(uint32_t size, const char* data) : size_(size), data_(data) {}
@@ -36,22 +38,21 @@ struct StringRef {
     const std::string ToString() const {
         return size_ == 0 ? "" : std::string(data_, size_);
     }
+    static int compare(const StringRef& a, const StringRef& b) {
+        const size_t min_len = (a.size_ < b.size_) ? a.size_ : b.size_;
+        int r = memcmp(a.data_, b.data_, min_len);
+        if (r == 0) {
+            if (a.size_ < b.size_)
+                r = -1;
+            else if (a.size_ > b.size_)
+                r = +1;
+        }
+        return r;
+    }
     uint32_t size_;
     const char* data_;
 };
 
-__attribute__((unused)) static int compare(const StringRef& a,
-                                           const StringRef& b) {
-    const size_t min_len = (a.size_ < b.size_) ? a.size_ : b.size_;
-    int r = memcmp(a.data_, b.data_, min_len);
-    if (r == 0) {
-        if (a.size_ < b.size_)
-            r = -1;
-        else if (a.size_ > b.size_)
-            r = +1;
-    }
-    return r;
-}
 __attribute__((unused)) static const StringRef operator+(const StringRef& a,
                                                          const StringRef& b) {
     StringRef str;
@@ -74,27 +75,27 @@ __attribute__((unused)) static std::ostream& operator<<(std::ostream& os,
 }
 __attribute__((unused)) static bool operator==(const StringRef& a,
                                                const StringRef& b) {
-    return 0 == compare(a, b);
+    return 0 == StringRef::compare(a, b);
 }
 __attribute__((unused)) static bool operator!=(const StringRef& a,
                                                const StringRef& b) {
-    return 0 != compare(a, b);
+    return 0 != StringRef::compare(a, b);
 }
 __attribute__((unused)) static bool operator>=(const StringRef& a,
                                                const StringRef& b) {
-    return compare(a, b) >= 0;
+    return StringRef::compare(a, b) >= 0;
 }
 __attribute__((unused)) static bool operator>(const StringRef& a,
                                               const StringRef& b) {
-    return compare(a, b) > 0;
+    return StringRef::compare(a, b) > 0;
 }
 __attribute__((unused)) static bool operator<=(const StringRef& a,
                                                const StringRef& b) {
-    return compare(a, b) <= 0;
+    return StringRef::compare(a, b) <= 0;
 }
 __attribute__((unused)) static bool operator<(const StringRef& a,
                                               const StringRef& b) {
-    return compare(a, b) < 0;
+    return StringRef::compare(a, b) < 0;
 }
 
 struct Timestamp {
@@ -433,11 +434,11 @@ inline double GetDoubleField(const int8_t* row, uint32_t idx, uint32_t offset,
 int32_t GetStrFieldUnsafe(const int8_t* row, uint32_t str_field_offset,
                           uint32_t next_str_field_offset,
                           uint32_t str_start_offset, uint32_t addr_space,
-                          int8_t** data, uint32_t* size);
+                          const char** data, uint32_t* size);
 
 int32_t GetStrField(const int8_t* row, uint32_t idx, uint32_t str_field_offset,
                     uint32_t next_str_field_offset, uint32_t str_start_offset,
-                    uint32_t addr_space, int8_t** data, uint32_t* size,
+                    uint32_t addr_space, const char** data, uint32_t* size,
                     int8_t* is_null);
 
 int32_t GetCol(int8_t* input, int32_t row_idx, uint32_t col_idx, int32_t offset,
