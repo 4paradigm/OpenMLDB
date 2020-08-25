@@ -31,7 +31,7 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
@@ -51,7 +51,8 @@ cases:
         - [5,"ee",21,34]
   -
     id: 2
-    desc: float为partition by
+    desc: float为partition by - 未命中索引
+    mode: rtidb-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -75,7 +76,8 @@ cases:
         - [5,"ee",1.2,34]
   -
     id: 3
-    desc: double为partition by
+    desc: double为partition by - 未命中索引
+    mode: rtidb-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -103,7 +105,7 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c8:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"bb",20,31,1.1,2.1,1590738991000,"2020-05-01"]
@@ -127,7 +129,7 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 timestamp"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c7:c9"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01",1590738990000]
           - [2,"bb",20,31,1.1,2.1,1590738990000,"2020-05-01",1590738991000]
@@ -151,7 +153,7 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c4:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"bb",20,30,1.1,2.1,1590738991000,"2020-05-01"]
@@ -192,7 +194,7 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c4"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"bb",20,31,1.1,2.1,1590738990000,"2020-05-01"]
@@ -212,11 +214,12 @@ cases:
         - [5,"ee",34,1]
   -
     id: 8-2
-    desc: int为order by-不加单位
+    desc: int为order by-未命中TS
+    mode: rtidb-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c8:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"bb",21,31,1.1,2.1,1590738990000,"2020-05-01"]
@@ -240,7 +243,7 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c4"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"bb",20,31,1.1,2.1,1590738990000,"2020-05-01"]
@@ -260,7 +263,8 @@ cases:
         - [5,"ee",34,1]
   -
     id: 8-4
-    desc: int为order by-加单位
+    desc: int为order by-加单位-未命中索引
+    mode: rtidb-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -285,10 +289,11 @@ cases:
   -
     id: 9
     desc: float为order by
+    mode: rtidb-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c8:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"bb",20,31,1.2,2.1,1590738990000,"2020-05-01"]
@@ -322,7 +327,7 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c7:c8"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"bb",20,31,1.2,2.2,1590738990000,"2020-05-02"]
@@ -339,7 +344,7 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c1|c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"aa",20,31,1.2,2.2,1590738991000,"2020-05-02"]
@@ -365,7 +370,7 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7","index2:c3:c7"]
+        indexs: ["index1:c1|c3:c7","index2:c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"aa",20,31,1.2,2.2,1590738991000,"2020-05-02"]
@@ -392,7 +397,7 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
@@ -415,10 +420,11 @@ cases:
   -
     id: 15
     desc: 多个window指定相不同的pk
+    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c1:c7", "index2:c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"aa",20,31,1.2,2.2,1590738991000,"2020-05-02"]
@@ -441,12 +447,11 @@ cases:
   -
     id: 16
     desc: 多个window指定不同的ts
-    tags: ["@zhaowei:order顺序和请求插入顺序矛盾,无法测试request场景"]
-    mode: request-unsupport
+    mode: rtidb-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7", "index2:c3:c4"]
         rows:
           - [1,"aa",20,33,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
@@ -469,6 +474,7 @@ cases:
   -
     id: 17
     desc: 两个window其中两个pk为索引列
+    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -495,6 +501,7 @@ cases:
   -
     id: 18
     desc: 两个window其中一个pk和两个pk
+    mode: rtidb-batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -524,7 +531,7 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
@@ -570,7 +577,7 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]

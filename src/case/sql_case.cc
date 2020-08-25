@@ -880,7 +880,7 @@ bool SQLCase::CreateTableInfoFromYaml(const std::string& cases_dir,
                                       const std::string& yaml_path,
                                       TableInfo* table_info) {
     auto resouces_path = cases_dir + "/" + yaml_path;
-    LOG(INFO) << "Resource path: " << resouces_path;
+    DLOG(INFO) << "Resource path: " << resouces_path;
     if (!boost::filesystem::is_regular_file(resouces_path)) {
         LOG(WARNING) << resouces_path << ": No such file";
         return false;
@@ -920,7 +920,7 @@ bool SQLCase::CreateSQLCasesFromYaml(
     std::vector<SQLCase>& sql_cases,
     const std::vector<std::string>& filter_modes) {
     auto sql_case_path = cases_dir + "/" + yaml_path;
-    LOG(INFO) << "SQL Cases Path: " << sql_case_path;
+    DLOG(INFO) << "SQL Cases Path: " << sql_case_path;
     if (!boost::filesystem::is_regular_file(sql_case_path)) {
         LOG(WARNING) << sql_case_path << ": No such file";
         return false;
@@ -1075,10 +1075,9 @@ bool SQLCase::CreateSQLCasesFromYaml(
                     if (!CreateTableInfoFromYaml(cases_dir, resource, &table)) {
                         return false;
                     }
-                } else {
-                    if (!CreateTableInfoFromYamlNode(schema_data, &table)) {
-                        return false;
-                    }
+                }
+                if (!CreateTableInfoFromYamlNode(schema_data, &table)) {
+                    return false;
                 }
                 sql_case.inputs_.push_back(table);
             }

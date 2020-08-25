@@ -156,15 +156,14 @@ class RowView {
     std::string GetRowString();
     int32_t GetPrimaryFieldOffset(uint32_t idx);
     const Schema* GetSchema() const { return &schema_; }
-
- private:
-    bool Init();
-    bool CheckValid(uint32_t idx, ::fesql::type::Type type);
-
     inline bool IsNULL(const int8_t* row, uint32_t idx) {
         const int8_t* ptr = row + HEADER_LENGTH + (idx >> 3);
         return *(reinterpret_cast<const uint8_t*>(ptr)) & (1 << (idx & 0x07));
     }
+
+ private:
+    bool Init();
+    bool CheckValid(uint32_t idx, ::fesql::type::Type type);
 
  private:
     uint8_t str_addr_length_;

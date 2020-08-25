@@ -284,7 +284,8 @@ cases:
         - ["bb",21,31,1590738992000]
   -
     id: 13
-    desc: 拼接条件-float
+    desc: 拼接条件-float-未命中索引
+    mode: rtidb-unsupport
     inputs:
       -
         columns : ["c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 string"]
@@ -310,6 +311,7 @@ cases:
   -
     id: 13-2
     desc: 拼接条件-double
+    mode: rtidb-unsupport
     inputs:
       -
         columns : ["c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 string"]
@@ -394,7 +396,7 @@ cases:
           - ["bb",21,31,1590738990000]
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-        indexs: ["index1:c2:c4"]
+        indexs: ["index1:c3:c4"]
         rows:
           - ["aa",2,2,1590738989000]
           - ["bb",21,21,1590738990000]
@@ -452,16 +454,17 @@ cases:
           - ["bb",21,32,1590738993000]
           - ["bb",21,31,1590738992000]
           - ["bb",21,31,1590738991000]
-    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c3<{1}.c3;
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c2 = {1}.c2 and {0}.c3 <= {1}.c3;
     expect:
       columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
       order: c1
       rows:
-        - ["aa",2,32,1590738993000]
+        - ["aa",2,3,1590738989000]
         - ["bb",21,32,1590738993000]
   -
-    id: 17
-    desc: order by 限定列的范围-常量
+    id: 17-1
+    desc: 不等值拼接-未命中索引
+    mode: rtidb-unsupport
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -472,6 +475,32 @@ cases:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c2:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["bb",21,32,1590738993000]
+          - ["bb",21,31,1590738992000]
+          - ["bb",21,31,1590738991000]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c3<{1}.c3;
+    expect:
+      columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+      order: c1
+      rows:
+        - ["aa",2,32,1590738993000]
+        - ["bb",21,32,1590738993000]
+  -
+    id: 17-2
+    desc: order by 限定列的范围-常量
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c2:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c3:c4"]
         rows:
           - ["aa",2,3,1590738989000]
           - ["bb",21,31,1590738990000]
@@ -497,7 +526,7 @@ cases:
           - ["bb",21,31,1590738990000]
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-        indexs: ["index1:c2:c4"]
+        indexs: ["index1:c3:c4"]
         rows:
           - ["aa",2,3,1590738989000]
           - ["bb",22,31,1590738990000]
@@ -540,7 +569,7 @@ cases:
   -
     id: 19
     desc: 拼接条件中有null
-    tags: ["TODO", "@chenjing", "BUG"]
+    tags: ["@chenjing", "BUG"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -623,6 +652,7 @@ cases:
   -
     id: 22
     desc: 拼接条件不是索引列
+    mode: rtidb-unsupport
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]

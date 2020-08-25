@@ -1160,30 +1160,40 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
 base::Status BatchModeTransformer::ValidatePartitionDataProvider(
     PhysicalOpNode* in) {
     PLAN_CHECK_TRUE(nullptr != in, "Invalid physical node: null");
-    PLAN_CHECK_TRUE(
-        kPhysicalOpDataProvider == in->type_ &&
-            kProviderTypePartition ==
-                dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_,
-        "Isn't partition provider");
+    if (kPhysicalOpSimpleProject == in->type_) {
+        CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)))
+    } else {
+        PLAN_CHECK_TRUE(
+            kPhysicalOpDataProvider == in->type_ &&
+                kProviderTypePartition ==
+                    dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_,
+            "Isn't partition provider");
+    }
     return base::Status::OK();
 }
 
 base::Status BatchModeTransformer::ValidateJoinIndexOptimization(
     const Join& join, PhysicalOpNode* right) {
     PLAN_CHECK_TRUE(nullptr != right, "Invalid physical node: null");
+    if (node::kJoinTypeConcat == join.join_type_) {
+        return base::Status::OK();
+    }
     // check if window's order expression has been optimized
     CHECK_STATUS(ValidatePartitionDataProvider(right),
                  "Join node hasn't been optimized");
+    return base::Status::OK();
 }
 base::Status BatchModeTransformer::ValidateWindowIndexOptimization(
     const WindowOp& window, PhysicalOpNode* in) {
     PLAN_CHECK_TRUE(nullptr != in, "Invalid physical node: null");
-    CHECK_STATUS(ValidatePartitionDataProvider(in), "Window node hasn't been optimized");
+    CHECK_STATUS(ValidatePartitionDataProvider(in),
+                 "Window node hasn't been optimized");
     // check if window's order expression has been optimized
     PLAN_CHECK_TRUE(
         !window.sort().ValidSort() ||
             node::ExprListNullOrEmpty(window.sort().orders()->order_by_),
         "Window node hasn't been optimzied")
+    return base::Status::OK();
 }
 base::Status BatchModeTransformer::ValidateIndexOptimization(
     PhysicalOpNode* in) {
@@ -1191,7 +1201,6 @@ base::Status BatchModeTransformer::ValidateIndexOptimization(
 
     switch (in->type_) {
         case kPhysicalOpGroupBy: {
-            PhysicalGroupNode* group_op = dynamic_cast<PhysicalGroupNode*>(in);
             CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)));
             break;
         }
@@ -1200,8 +1209,10 @@ base::Status BatchModeTransformer::ValidateIndexOptimization(
             if (kWindowAggregation == project_op->project_type_) {
                 PhysicalWindowAggrerationNode* union_op =
                     dynamic_cast<PhysicalWindowAggrerationNode*>(project_op);
-                CHECK_STATUS(ValidateWindowIndexOptimization(
-                    union_op->window(), union_op->GetProducer(0)));
+                if (!union_op->instance_not_in_window()) {
+                    CHECK_STATUS(ValidateWindowIndexOptimization(
+                        union_op->window(), union_op->GetProducer(0)));
+                }
                 if (!union_op->window_joins().Empty()) {
                     for (auto& window_join :
                          union_op->window_joins().window_joins()) {
@@ -1222,8 +1233,10 @@ base::Status BatchModeTransformer::ValidateIndexOptimization(
         case kPhysicalOpRequestUnoin: {
             PhysicalRequestUnionNode* union_op =
                 dynamic_cast<PhysicalRequestUnionNode*>(in);
-            CHECK_STATUS(ValidateWindowIndexOptimization(
-                union_op->window(), union_op->GetProducer(0)));
+            if (!union_op->instance_not_in_window()) {
+                CHECK_STATUS(ValidateWindowIndexOptimization(
+                    union_op->window(), union_op->GetProducer(1)));
+            }
             if (!union_op->window_unions().Empty()) {
                 for (auto& window_union :
                      union_op->window_unions().window_unions_) {
@@ -1289,10 +1302,14 @@ bool BatchModeTransformer::TransformPhysicalPlan(
                     return false;
                 }
                 ApplyPasses(physical_plan, output);
+
                 if (performance_sensitive_mode_ &&
                     !ValidateIndexOptimization(physical_plan).isOK()) {
                     LOG(WARNING) << "fail to support physical plan in "
                                     "performance sensitive mode";
+                    std::ostringstream oss;
+                    physical_plan->Print(oss, "");
+                    LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
                     return false;
                 }
                 if (!GenPlanNode(*output, status)) {
@@ -2591,7 +2608,8 @@ RequestModeransformer::RequestModeransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
     udf::UDFLibrary* library, const bool performance_sensitive)
-    : BatchModeTransformer(node_manager, db, catalog, module, library, performance_sensitive) {}
+    : BatchModeTransformer(node_manager, db, catalog, module, library,
+                           performance_sensitive) {}
 
 RequestModeransformer::~RequestModeransformer() {}
 
