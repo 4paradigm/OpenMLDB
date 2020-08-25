@@ -1056,14 +1056,10 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size,
             if (ret != 0) {
                 return false;
             }
-            LOG(INFO) << "idx " << idx << " size " << length;
             str_size += length;
         }
     }
     uint32_t total_size = row_builder_->CalTotalLength(str_size);
-    if (total_size > 100) {
-        LOG(INFO) << "total size is " << total_size << " str size is " << str_size;
-    }
     char* ptr = new char[total_size];
     row_builder_->SetBuffer(reinterpret_cast<int8_t*>(ptr), total_size);
     for (int32_t i = 0; i < plist_.size(); i++) {
