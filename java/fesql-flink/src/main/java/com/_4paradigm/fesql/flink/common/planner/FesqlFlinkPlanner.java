@@ -18,10 +18,10 @@ import org.apache.flink.table.api.bridge.java.BatchTableEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
 
 public class FesqlFlinkPlanner {
 
@@ -132,6 +132,7 @@ public class FesqlFlinkPlanner {
                 if (isBatch) {
                     outputTable = BatchGroupbyAggPlan.gen(planContext, physicalGroupAggrerationNode, children.get(0));
                 } else {
+                    // TODO: need to convert upsert stream to Table, refer to https://github.com/apache/flink/pull/6787
                     throw new FesqlException(String.format("Planner does not support project type %s", projectType));
                 }
             } else {
@@ -139,12 +140,7 @@ public class FesqlFlinkPlanner {
             }
         } else if (opType.swigValue() == PhysicalOpType.kPhysicalOpGroupBy.swigValue()) {
             PhysicalGroupNode physicalGroupNode = PhysicalGroupNode.CastFrom(node);
-
-            if (isBatch) {
-                outputTable = BatchGroupbyPlan.gen(planContext, physicalGroupNode, children.get(0));
-            } else {
-                throw new FesqlException(String.format("Planner does not support physical op %s", node));
-            }
+            outputTable = MockGroupbyPlan.gen(planContext, physicalGroupNode, children.get(0));
         } else {
             throw new FesqlException(String.format("Planner does not support physical op %s", node));
         }
