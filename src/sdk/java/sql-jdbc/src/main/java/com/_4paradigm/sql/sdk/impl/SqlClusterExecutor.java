@@ -30,7 +30,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         sqlOpt.setSession_timeout(option.getSessionTimeout());
         sqlOpt.setZk_cluster(option.getZkCluster());
         sqlOpt.setZk_path(option.getZkPath());
-        sqlOpt.setEnbale_debug(option.getEnableDebug());
+        sqlOpt.setEnable_debug(option.getEnableDebug());
         this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
         if (sqlRouter == null) {
             SqlException e = new SqlException("fail to create sql executer");

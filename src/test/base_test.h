@@ -68,7 +68,10 @@ class SQLCaseTest : public ::testing::TestWithParam<fesql::sqlcase::SQLCase> {
     static void PrintResultSet(std::shared_ptr<fesql::sdk::ResultSet> rs);
     static void PrintResultSet(
         std::vector<std::shared_ptr<fesql::sdk::ResultSet>> results);
+    static bool IsNaN(float x) { return x != x; }
+    static bool IsNaN(double x) { return x != x; }
 };
+
 }  // namespace test
 }  // namespace rtidb
 #endif  // SRC_TEST_BASE_TEST_H_

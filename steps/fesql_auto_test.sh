@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
 ROOT_DIR=`pwd`
+echo "ROOT_DIR:${ROOT_DIR}"
+sh steps/gen_code.sh
+sh tools/install_fesql.sh
+mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. && make -j16
+cd ${ROOT_DIR}
 test -d /rambuild/ut_zookeeper && rm -rf /rambuild/ut_zookeeper/*
 cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
 cd thirdsrc/zookeeper-3.4.14
@@ -9,11 +14,6 @@ netstat -anp | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs ki
 sleep 5
 cd onebox && sh start_onebox_on_rambuild.sh && cd $ROOT_DIR
 sleep 5
-echo "ROOT_DIR:${ROOT_DIR}"
-sh steps/gen_code.sh
-sh tools/install_fesql.sh
-mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. && make -j16
-
 case_xml=test_v1.xml
 cd ${ROOT_DIR}/src/sdk/java/
 mvn install -Dmaven.test.skip=true

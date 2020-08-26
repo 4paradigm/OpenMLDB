@@ -152,6 +152,9 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_executable(server_name_test base/server_name_test.cc)
     target_link_libraries(server_name_test gtest ${BIN_LIBS})
 
+    add_executable(new_server_env_test nameserver/new_server_env_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc)
+    target_link_libraries(new_server_env_test gtest ${BIN_LIBS})
+
     add_executable(parse_log tools/parse_log.cc)
     target_link_libraries(parse_log ${BIN_LIBS})
 

@@ -38,10 +38,8 @@ namespace sdk {
 
 MiniCluster* mc_ = nullptr;
 
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
-    RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>
-    RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> RtiDBIndex;
 
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
@@ -54,8 +52,7 @@ class SQLSDKTest : public rtidb::test::SQLCaseTest {
     void SetUp() { LOG(INFO) << "SQLSDKTest TearDown"; }
     void TearDown() { LOG(INFO) << "SQLSDKTest TearDown"; }
 
-    static void CreateDB(const fesql::sqlcase::SQLCase& sql_case,
-                         std::shared_ptr<SQLRouter> router);
+    static void CreateDB(const fesql::sqlcase::SQLCase& sql_case, std::shared_ptr<SQLRouter> router);
     static void CreateTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                              std::shared_ptr<SQLRouter> router);
 
@@ -64,9 +61,8 @@ class SQLSDKTest : public rtidb::test::SQLCaseTest {
     static void InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                              std::shared_ptr<SQLRouter> router, bool is_bath);
 
-    static void CovertFesqlRowToRequestRow(
-        fesql::codec::RowView* row_view,
-        std::shared_ptr<rtidb::sdk::SQLRequestRow> request_row);
+    static void CovertFesqlRowToRequestRow(fesql::codec::RowView* row_view,
+                                           std::shared_ptr<rtidb::sdk::SQLRequestRow> request_row);
     static void BatchExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                 std::shared_ptr<SQLRouter> router);
     static void RunBatchModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
@@ -79,7 +75,7 @@ TEST_P(SQLSDKTest, sql_sdk_batch_test) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enbale_debug = false;
+    sql_opt.enable_debug = sql_case.debug() || fesql::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
@@ -88,12 +84,10 @@ TEST_P(SQLSDKTest, sql_sdk_batch_test) {
     SQLSDKTest::RunBatchModeSDK(sql_case, router);
 }
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestCreate, SQLSDKTest,
-                         testing::ValuesIn(SQLSDKTest::InitCases(
-                             "/cases/integration/v1/test_create.yaml")));
+                         testing::ValuesIn(SQLSDKTest::InitCases("/cases/integration/v1/test_create.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestInsert, SQLSDKTest,
-                         testing::ValuesIn(SQLSDKTest::InitCases(
-                             "/cases/integration/v1/test_insert.yaml")));
+                         testing::ValuesIn(SQLSDKTest::InitCases("/cases/integration/v1/test_insert.yaml")));
 
 class SQLSDKQueryTest : public SQLSDKTest {
  public:
@@ -105,8 +99,7 @@ class SQLSDKQueryTest : public SQLSDKTest {
                                   std::shared_ptr<SQLRouter> router);
 };
 
-void SQLSDKTest::CreateDB(const fesql::sqlcase::SQLCase& sql_case,
-                          std::shared_ptr<SQLRouter> router) {
+void SQLSDKTest::CreateDB(const fesql::sqlcase::SQLCase& sql_case, std::shared_ptr<SQLRouter> router) {
     fesql::sdk::Status status;
     std::vector<std::string> dbs;
     ASSERT_TRUE(router->ShowDB(&dbs, &status));
@@ -125,8 +118,7 @@ void SQLSDKTest::CreateTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
     // create and insert inputs
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         if (sql_case.inputs()[i].name_.empty()) {
-            sql_case.set_input_name(fesql::sqlcase::SQLCase::GenRand("auto_t"),
-                                    i);
+            sql_case.set_input_name(fesql::sqlcase::SQLCase::GenRand("auto_t"), i);
         }
         // create table
         std::string create;
@@ -147,8 +139,7 @@ void SQLSDKTest::DropTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
     // create and insert inputs
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         if (sql_case.inputs()[i].name_.empty()) {
-            sql_case.set_input_name(fesql::sqlcase::SQLCase::GenRand("auto_t"),
-                                    i);
+            sql_case.set_input_name(fesql::sqlcase::SQLCase::GenRand("auto_t"), i);
         }
         // create table
         std::string drop = "drop table " + sql_case.inputs()[i].name_ + ";";
@@ -176,23 +167,19 @@ void SQLSDKTest::InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
             boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
             LOG(INFO) << insert;
             if (!insert.empty()) {
-                ASSERT_TRUE(
-                    router->ExecuteInsert(sql_case.db(), insert, &status));
+                ASSERT_TRUE(router->ExecuteInsert(sql_case.db(), insert, &status));
             }
         }
     }
 }
 
-void SQLSDKTest::CovertFesqlRowToRequestRow(
-    fesql::codec::RowView* row_view,
-    std::shared_ptr<rtidb::sdk::SQLRequestRow> request_row) {
-    ASSERT_EQ(row_view->GetSchema()->size(),
-              request_row->GetSchema()->GetColumnCnt());
+void SQLSDKTest::CovertFesqlRowToRequestRow(fesql::codec::RowView* row_view,
+                                            std::shared_ptr<rtidb::sdk::SQLRequestRow> request_row) {
+    ASSERT_EQ(row_view->GetSchema()->size(), request_row->GetSchema()->GetColumnCnt());
 
     int32_t init_size = 0;
     for (int i = 0; i < row_view->GetSchema()->size(); i++) {
-        if (fesql::type::Type::kVarchar ==
-            row_view->GetSchema()->Get(i).type()) {
+        if (fesql::type::Type::kVarchar == row_view->GetSchema()->Get(i).type()) {
             init_size += row_view->GetStringUnsafe(i).size();
         }
     }
@@ -205,36 +192,28 @@ void SQLSDKTest::CovertFesqlRowToRequestRow(
         }
         switch (row_view->GetSchema()->Get(i).type()) {
             case fesql::type::kInt16:
-                ASSERT_TRUE(
-                    request_row->AppendInt16(row_view->GetInt16Unsafe(i)));
+                ASSERT_TRUE(request_row->AppendInt16(row_view->GetInt16Unsafe(i)));
                 break;
             case fesql::type::kInt32:
-                ASSERT_TRUE(
-                    request_row->AppendInt32(row_view->GetInt32Unsafe(i)));
+                ASSERT_TRUE(request_row->AppendInt32(row_view->GetInt32Unsafe(i)));
                 break;
             case fesql::type::kInt64:
-                ASSERT_TRUE(
-                    request_row->AppendInt64(row_view->GetInt64Unsafe(i)));
+                ASSERT_TRUE(request_row->AppendInt64(row_view->GetInt64Unsafe(i)));
                 break;
             case fesql::type::kFloat:
-                ASSERT_TRUE(
-                    request_row->AppendFloat(row_view->GetFloatUnsafe(i)));
+                ASSERT_TRUE(request_row->AppendFloat(row_view->GetFloatUnsafe(i)));
                 break;
             case fesql::type::kDouble:
-                ASSERT_TRUE(
-                    request_row->AppendDouble(row_view->GetDoubleUnsafe(i)));
+                ASSERT_TRUE(request_row->AppendDouble(row_view->GetDoubleUnsafe(i)));
                 break;
             case fesql::type::kTimestamp:
-                ASSERT_TRUE(request_row->AppendTimestamp(
-                    row_view->GetTimestampUnsafe(i)));
+                ASSERT_TRUE(request_row->AppendTimestamp(row_view->GetTimestampUnsafe(i)));
                 break;
             case fesql::type::kDate:
-                ASSERT_TRUE(
-                    request_row->AppendDate(row_view->GetDateUnsafe(i)));
+                ASSERT_TRUE(request_row->AppendDate(row_view->GetDateUnsafe(i)));
                 break;
             case fesql::type::kVarchar:
-                ASSERT_TRUE(
-                    request_row->AppendString(row_view->GetStringUnsafe(i)));
+                ASSERT_TRUE(request_row->AppendString(row_view->GetStringUnsafe(i)));
                 break;
             default: {
                 FAIL() << "Fail conver fesql row to rtidb sdk request row";
@@ -254,8 +233,7 @@ void SQLSDKTest::BatchExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         std::string placeholder = "{" + std::to_string(i) + "}";
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
-    boost::replace_all(sql, "{auto}",
-                       fesql::sqlcase::SQLCase::GenRand("auto_t"));
+    boost::replace_all(sql, "{auto}", fesql::sqlcase::SQLCase::GenRand("auto_t"));
     boost::replace_all(sql, "{tb_endpoint_0}", mc_->GetTbEndpoint().at(0));
     boost::replace_all(sql, "{tb_endpoint_1}", mc_->GetTbEndpoint().at(1));
     LOG(INFO) << sql;
@@ -272,22 +250,18 @@ void SQLSDKTest::BatchExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         if (!rs) FAIL() << "sql case expect success == true";
         std::vector<fesql::codec::Row> rows;
         fesql::type::TableDef output_table;
-        if (!sql_case.expect().schema_.empty() ||
-            !sql_case.expect().columns_.empty()) {
+        if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
             ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
             CheckSchema(output_table.columns(), *(rs->GetSchema()));
         }
 
-        if (!sql_case.expect().data_.empty() ||
-            !sql_case.expect().rows_.empty()) {
+        if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
             ASSERT_TRUE(sql_case.ExtractOutputData(rows));
-            CheckRows(output_table.columns(), sql_case.expect().order_, rows,
-                      rs);
+            CheckRows(output_table.columns(), sql_case.expect().order_, rows, rs);
         }
 
         if (sql_case.expect().count_ > 0) {
-            ASSERT_EQ(sql_case.expect().count_,
-                      static_cast<int64_t>(rs->Size()));
+            ASSERT_EQ(sql_case.expect().count_, static_cast<int64_t>(rs->Size()));
         }
     } else if (boost::algorithm::starts_with(sql, "create")) {
         bool ok = router->ExecuteDDL(sql_case.db(), sql, &status);
@@ -309,13 +283,11 @@ void SQLSDKTest::RunBatchModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
     InsertTables(sql_case, router, true);
     BatchExecuteSQL(sql_case, router);
     DropTables(sql_case, router);
-    LOG(INFO) << "RunBatchModeSDK ID: " << sql_case.id()
-              << ", DESC: " << sql_case.desc() << " done!";
+    LOG(INFO) << "RunBatchModeSDK ID: " << sql_case.id() << ", DESC: " << sql_case.desc() << " done!";
 }
 
-void SQLSDKQueryTest::RequestExecuteSQL(
-    fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-    std::shared_ptr<SQLRouter> router) {
+void SQLSDKQueryTest::RequestExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
+                                        std::shared_ptr<SQLRouter> router) {
     fesql::sdk::Status status;
     // execute SQL
     std::string sql = sql_case.sql_str();
@@ -323,8 +295,7 @@ void SQLSDKQueryTest::RequestExecuteSQL(
         std::string placeholder = "{" + std::to_string(i) + "}";
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
-    boost::replace_all(sql, "{auto}",
-                       fesql::sqlcase::SQLCase::GenRand("auto_t"));
+    boost::replace_all(sql, "{auto}", fesql::sqlcase::SQLCase::GenRand("auto_t"));
     boost::to_lower(sql);
     LOG(INFO) << sql;
     if (boost::algorithm::starts_with(sql, "select")) {
@@ -332,8 +303,7 @@ void SQLSDKQueryTest::RequestExecuteSQL(
         auto request_row = router->GetRequestRow(sql_case.db(), sql, &status);
         LOG(INFO) << "GetRequestRow done";
         // success check
-        LOG(INFO) << "sql case success check: required success "
-                  << (sql_case.expect().success_ ? "true" : "false");
+        LOG(INFO) << "sql case success check: required success " << (sql_case.expect().success_ ? "true" : "false");
         if (!sql_case.expect().success_) {
             if ((request_row)) {
                 FAIL() << "sql case expect success == false";
@@ -364,8 +334,7 @@ void SQLSDKQueryTest::RequestExecuteSQL(
         for (size_t i = 0; i < insert_rows.size(); i++) {
             row_view.Reset(insert_rows[i].buf());
             CovertFesqlRowToRequestRow(&row_view, request_row);
-            auto rs =
-                router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
+            auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
             if (!rs) FAIL() << "sql case expect success == true";
             results.push_back(rs);
             std::string insert_request;
@@ -377,22 +346,18 @@ void SQLSDKQueryTest::RequestExecuteSQL(
         ASSERT_FALSE(results.empty());
         std::vector<fesql::codec::Row> rows;
         fesql::type::TableDef output_table;
-        if (!sql_case.expect().schema_.empty() ||
-            !sql_case.expect().columns_.empty()) {
+        if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
             ASSERT_TRUE(sql_case.ExtractOutputSchema(output_table));
             CheckSchema(output_table.columns(), *(results[0]->GetSchema()));
         }
 
-        if (!sql_case.expect().data_.empty() ||
-            !sql_case.expect().rows_.empty()) {
+        if (!sql_case.expect().data_.empty() || !sql_case.expect().rows_.empty()) {
             ASSERT_TRUE(sql_case.ExtractOutputData(rows));
-            CheckRows(output_table.columns(), sql_case.expect().order_, rows,
-                      results);
+            CheckRows(output_table.columns(), sql_case.expect().order_, rows, results);
         }
 
         if (sql_case.expect().count_ > 0) {
-            ASSERT_EQ(sql_case.expect().count_,
-                      static_cast<int64_t>(results.size()));
+            ASSERT_EQ(sql_case.expect().count_, static_cast<int64_t>(results.size()));
         }
     } else if (boost::algorithm::starts_with(sql, "create")) {
         FAIL() << "create sql not support in request mode";
@@ -403,59 +368,50 @@ void SQLSDKQueryTest::RequestExecuteSQL(
     }
 }
 
-void SQLSDKQueryTest::RunRequestModeSDK(
-    fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-    std::shared_ptr<SQLRouter> router) {
+void SQLSDKQueryTest::RunRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
+                                        std::shared_ptr<SQLRouter> router) {
     fesql::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router);
     InsertTables(sql_case, router, false);
     RequestExecuteSQL(sql_case, router);
     DropTables(sql_case, router);
-    LOG(INFO) << "RequestExecuteSQL ID: " << sql_case.id()
-              << ", DESC: " << sql_case.desc() << " done!";
+    LOG(INFO) << "RequestExecuteSQL ID: " << sql_case.id() << ", DESC: " << sql_case.desc() << " done!";
 }
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestConstsSelect, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases(
-                             "/cases/query/const_query.yaml")));
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestSelectSample, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases(
-                             "/cases/integration/v1/test_select_sample.yaml")));
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/const_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestSelectSample, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_select_sample.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestExpression, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases(
-                             "/cases/integration/v1/test_expression.yaml")));
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_expression.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestWindowRow, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases(
-                             "/cases/integration/v1/test_window_row.yaml")));
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_window_row.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestWindowRowRange, SQLSDKQueryTest,
-    testing::ValuesIn(SQLSDKQueryTest::InitCases(
-        "/cases/integration/v1/test_window_row_range.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_window_row_range.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestWindowUnion, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases(
-                             "/cases/integration/v1/test_window_union.yaml")));
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_window_union.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestLastJoin, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases(
-                             "/cases/integration/v1/test_last_join.yaml")));
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_last_join.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestSubSelect, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases(
-                             "/cases/integration/v1/test_sub_select.yaml")));
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestUDAFFunction, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases(
-                             "/cases/integration/v1/test_udaf_function.yaml")));
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_sub_select.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestUDAFFunction, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_udaf_function.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestUDFFunction, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases(
-                             "/cases/integration/v1/test_udf_function.yaml")));
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_udf_function.yaml")));
 TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
         boost::contains(sql_case.mode(), "request-unsupport")) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
@@ -463,20 +419,20 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enbale_debug = false;
+    sql_opt.enable_debug = sql_case.debug() || fesql::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
         return;
     }
     RunRequestModeSDK(sql_case, router);
-    LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id()
-              << ", DESC: " << sql_case.desc();
+    LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-batch-unsupport") ||
         boost::contains(sql_case.mode(), "batch-unsupport")) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
@@ -484,7 +440,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enbale_debug = true;
+    sql_opt.enable_debug = sql_case.debug() || fesql::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
@@ -530,7 +486,7 @@ TEST_F(SQLSDKQueryTest, execute_insert_loops_test) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enbale_debug = true;
+    sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
@@ -576,14 +532,14 @@ TEST_F(SQLSDKQueryTest, execute_insert_loops_test) {
 }  // namespace rtidb
 
 int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    srand(time(NULL));
     FLAGS_zk_session_timeout = 100000;
     ::rtidb::sdk::MiniCluster mc(6181);
     ::rtidb::sdk::mc_ = &mc;
     int ok = ::rtidb::sdk::mc_->SetUp();
     sleep(1);
-    ::testing::InitGoogleTest(&argc, argv);
-    srand(time(NULL));
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
     ok = RUN_ALL_TESTS();
     ::rtidb::sdk::mc_->Close();
     return ok;
