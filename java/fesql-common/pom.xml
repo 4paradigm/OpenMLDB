@@ -50,6 +50,12 @@
             <version>6.14.3</version>
             <scope>test</scope>
         </dependency>
+
+		<dependency>
+			<groupId>com._4paradigm.fesql</groupId>
+			<artifactId>fesql-native</artifactId>
+			<version>${project.version}</version>
+		</dependency>
     </dependencies>
 
 	<build>

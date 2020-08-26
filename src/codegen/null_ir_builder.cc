@@ -12,10 +12,10 @@ namespace codegen {
 NullIRBuilder::NullIRBuilder() {}
 NullIRBuilder::~NullIRBuilder() {}
 base::Status NullIRBuilder::CheckAnyNull(::llvm::BasicBlock *block,
-                             const NativeValue &value,
-                             ::llvm::Value **should_ret_null) {
+                                         const NativeValue &value,
+                                         ::llvm::Value **should_ret_null) {
     CHECK_TRUE(nullptr != should_ret_null,
-              "fail to check any null: should ret null llvm value is null");
+               "fail to check any null: should ret null llvm value is null");
     ::llvm::IRBuilder<> builder(block);
     if (value.IsNullable()) {
         if (*should_ret_null == nullptr) {

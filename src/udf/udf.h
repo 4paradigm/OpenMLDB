@@ -181,27 +181,6 @@ struct AtStructList {
 };
 
 template <class V>
-struct Minimum {
-    using Args = std::tuple<V, V>;
-
-    V operator()(V l, V r) { return l < r ? l : r; }
-};
-
-template <class V>
-struct Maximum {
-    using Args = std::tuple<V, V>;
-
-    V operator()(V l, V r) { return l > r ? l : r; }
-};
-
-template <class V>
-struct StructMinimum {
-    using Args = std::tuple<V, V>;
-
-    void operator()(V *l, V *r, V *res) { *res = (*l < *r) ? *l : *r; }
-};
-
-template <class V>
 struct StructMaximum {
     using Args = std::tuple<V, V>;
 

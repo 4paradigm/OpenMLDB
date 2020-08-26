@@ -1,7 +1,7 @@
 import java.io.File
 
-import com._4paradigm.fesql.offline.SparkPlanner
-import com._4paradigm.fesql.offline.api.{FesqlDataframe, FesqlSession}
+import com._4paradigm.fesql.spark.SparkPlanner
+import com._4paradigm.fesql.spark.api.{FesqlDataframe, FesqlSession}
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.slf4j.LoggerFactory
 

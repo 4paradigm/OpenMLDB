@@ -282,6 +282,10 @@ struct DataTypeTrait<codec::StringRef> {
                                     const std::string& str) {
         return nm->MakeConstNode(str);
     }
+    static node::ExprNode* to_const(node::NodeManager* nm,
+                                    const StringRef& str) {
+        return nm->MakeConstNode(str.ToString());
+    }
 
     static const std::string minimum_value() { return ""; }
 };

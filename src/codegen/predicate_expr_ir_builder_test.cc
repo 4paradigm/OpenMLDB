@@ -11,6 +11,7 @@
 #include <utility>
 #include "codegen/date_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/ir_base_builder_test.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "gtest/gtest.h"
@@ -22,6 +23,9 @@
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
+
+using fesql::udf::Nullable;
+
 ExitOnError ExitOnErr;
 namespace fesql {
 namespace codegen {
@@ -34,206 +38,52 @@ class PredicateIRBuilderTest : public ::testing::Test {
     node::NodeManager *manager_;
 };
 
-template <class V1, class R>
-void UnaryPredicateExprCheck(::fesql::node::DataType left_type,
-                             ::fesql::node::DataType dist_type, V1 value1,
-                             R result, fesql::node::FnOperator op) {
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("predicate_func", *ctx);
-    llvm::Type *left_llvm_type = NULL;
-    llvm::Type *dist_llvm_type = NULL;
-    ASSERT_TRUE(
-        ::fesql::codegen::GetLLVMType(m.get(), left_type, &left_llvm_type));
-    ASSERT_TRUE(GetLLVMType(m.get(), dist_type, &dist_llvm_type));
-
-    // Create the add1 function entry and insert this entry into module M.  The
-    // function will have a return type of "D" and take an argument of "S".
-    Function *load_fn = Function::Create(
-        FunctionType::get(dist_llvm_type, {left_llvm_type}, false),
-        Function::ExternalLinkage, "load_fn", m.get());
-    BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
-    IRBuilder<> builder(entry_block);
-    auto iter = load_fn->arg_begin();
-    Argument *arg0 = &(*iter);
-    ScopeVar scope_var;
-    scope_var.Enter("fn_base");
-    scope_var.AddVar("a", NativeValue::Create(arg0));
-    PredicateIRBuilder ir_builder(entry_block);
-    llvm::Value *output;
-    base::Status status;
-
-    bool ok;
-    switch (op) {
-        case fesql::node::kFnOpNot:
-            ok = ir_builder.BuildNotExpr(arg0, &output, status);
-            break;
-        default: {
-            FAIL();
-        }
-    }
-    builder.CreateRet(output);
-    m->print(::llvm::errs(), NULL);
-    ASSERT_TRUE(ok);
-    auto J = ExitOnErr(LLJITBuilder().create());
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
-    R (*decode)(V1) = (R(*)(V1))load_fn_jit.getAddress();
-    R ret = decode(value1);
-    ASSERT_EQ(ret, result);
+template <typename LHS, typename Ret>
+void UnaryPredicateExprCheck(LHS left_val, Ret expect,
+                             fesql::node::FnOperator op) {
+    auto compiled_func = BuildExprFunction<Ret, LHS>(
+        [op](node::NodeManager *nm, node::ExprNode *left) {
+            return nm->MakeUnaryExprNode(left, op);
+        });
+    Ret result = compiled_func(left_val);
+    ASSERT_EQ(expect, result);
 }
 
-template <class V1, class V2, class R>
-void BinaryPredicateExprCheck(::fesql::node::DataType left_type,
-                              ::fesql::node::DataType right_type,
-                              ::fesql::node::DataType dist_type, V1 value1,
-                              V2 value2, R expected,
+template <typename LHS, typename RHS, typename Ret>
+void BinaryPredicateExprCheck(LHS left_val, RHS right_val, Ret expect,
                               fesql::node::FnOperator op) {
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("predicate_func", *ctx);
-    udf::DefaultUDFLibrary *library = udf::DefaultUDFLibrary::get();
-    llvm::Type *left_llvm_type = NULL;
-    llvm::Type *right_llvm_type = NULL;
-    llvm::Type *dist_llvm_type = NULL;
-    ASSERT_TRUE(
-        ::fesql::codegen::GetLLVMType(m.get(), left_type, &left_llvm_type));
-    ASSERT_TRUE(
-        ::fesql::codegen::GetLLVMType(m.get(), right_type, &right_llvm_type));
-    ASSERT_TRUE(GetLLVMType(m.get(), dist_type, &dist_llvm_type));
-
-    if (left_llvm_type->isStructTy()) {
-        left_llvm_type = left_llvm_type->getPointerTo();
-    }
-
-    if (right_llvm_type->isStructTy()) {
-        right_llvm_type = right_llvm_type->getPointerTo();
-    }
-    // Create the add1 function entry and insert this entry into module M.  The
-    // function will have a return type of "D" and take an argument of "S".
-    Function *load_fn = Function::Create(
-        FunctionType::get(
-            ::llvm::Type::getVoidTy(*ctx),
-            {left_llvm_type, right_llvm_type, dist_llvm_type->getPointerTo()},
-            false),
-        Function::ExternalLinkage, "load_fn", m.get());
-    BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
-    IRBuilder<> builder(entry_block);
-    auto iter = load_fn->arg_begin();
-    Argument *arg0 = &(*iter);
-    iter++;
-    Argument *arg1 = &(*iter);
-    iter++;
-    Argument *arg2 = &(*iter);
-
-    ScopeVar scope_var;
-    scope_var.Enter("fn_base");
-    scope_var.AddVar("a", NativeValue::Create(arg0));
-    scope_var.AddVar("b", NativeValue::Create(arg1));
-    PredicateIRBuilder ir_builder(entry_block);
-    llvm::Value *output;
-    base::Status status;
-
-    bool ok;
-    switch (op) {
-        case fesql::node::kFnOpAnd:
-            ok = ir_builder.BuildAndExpr(arg0, arg1, &output, status);
-            break;
-        case fesql::node::kFnOpOr:
-            ok = ir_builder.BuildOrExpr(arg0, arg1, &output, status);
-            break;
-        case fesql::node::kFnOpXor:
-            ok = ir_builder.BuildXorExpr(arg0, arg1, &output, status);
-            break;
-        case fesql::node::kFnOpEq:
-            ok = ir_builder.BuildEqExpr(arg0, arg1, &output, status);
-            break;
-        case fesql::node::kFnOpLt:
-            ok = ir_builder.BuildLtExpr(arg0, arg1, &output, status);
-            break;
-        case fesql::node::kFnOpLe:
-            ok = ir_builder.BuildLeExpr(arg0, arg1, &output, status);
-            break;
-        case fesql::node::kFnOpGt:
-            ok = ir_builder.BuildGtExpr(arg0, arg1, &output, status);
-            break;
-        case fesql::node::kFnOpGe:
-            ok = ir_builder.BuildGeExpr(arg0, arg1, &output, status);
-            break;
-        case fesql::node::kFnOpNeq:
-            ok = ir_builder.BuildNeqExpr(arg0, arg1, &output, status);
-            break;
-        default: {
-            FAIL();
-        }
-    }
-    if (!ok) {
-        LOG(WARNING) << status.msg;
-    }
-    ASSERT_TRUE(ok);
-    switch (dist_type) {
-        case node::kTimestamp: {
-            codegen::TimestampIRBuilder timestamp_builder(m.get());
-            ASSERT_TRUE(timestamp_builder.CopyFrom(builder.GetInsertBlock(),
-                                                   output, arg2));
-            break;
-        }
-        case node::kDate: {
-            codegen::DateIRBuilder date_builder(m.get());
-            ASSERT_TRUE(
-                date_builder.CopyFrom(builder.GetInsertBlock(), output, arg2));
-            break;
-        }
-        case node::kVarchar: {
-            codegen::StringIRBuilder string_builder(m.get());
-            ASSERT_TRUE(string_builder.CopyFrom(builder.GetInsertBlock(),
-                                                output, arg2));
-            break;
-        }
-        default: {
-            builder.CreateStore(output, arg2);
-        }
-    }
-    builder.CreateRet(output);
-    m->print(::llvm::errs(), NULL);
-    ASSERT_TRUE(ok);
-    auto J = ExitOnErr(LLJITBuilder().create());
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    library->InitJITSymbols(J.get());
-    auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
-    void (*decode)(V1, V2, R *) =
-        (void (*)(V1, V2, R *))load_fn_jit.getAddress();
-    R result;
-    decode(value1, value2, &result);
-    ASSERT_EQ(expected, result);
+    auto compiled_func = BuildExprFunction<Ret, LHS, RHS>(
+        [op](node::NodeManager *nm, node::ExprNode *left,
+             node::ExprNode *right) {
+            return nm->MakeBinaryExprNode(left, right, op);
+        });
+    Ret result = compiled_func(left_val, right_val);
+    ASSERT_EQ(expect, result);
 }
 
 TEST_F(PredicateIRBuilderTest, test_eq_expr_true) {
-    BinaryPredicateExprCheck<int16_t, int16_t, bool>(
-        ::fesql::node::kInt16, ::fesql::node::kInt16, ::fesql::node::kBool, 1,
-        1, true, ::fesql::node::kFnOpEq);
+    BinaryPredicateExprCheck<int16_t, int16_t, bool>(1, 1, true,
+                                                     ::fesql::node::kFnOpEq);
 
-    BinaryPredicateExprCheck<int32_t, int32_t, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kInt32, ::fesql::node::kBool, 1,
-        1, true, ::fesql::node::kFnOpEq);
+    BinaryPredicateExprCheck<int32_t, int32_t, bool>(1, 1, true,
+                                                     ::fesql::node::kFnOpEq);
 
-    BinaryPredicateExprCheck<int64_t, int64_t, bool>(
-        ::fesql::node::kInt64, ::fesql::node::kInt64, ::fesql::node::kBool, 1,
-        1, true, ::fesql::node::kFnOpEq);
+    BinaryPredicateExprCheck<int64_t, int64_t, bool>(1, 1, true,
+                                                     ::fesql::node::kFnOpEq);
 
     BinaryPredicateExprCheck<float, float, bool>(
-        ::fesql::node::kFloat, ::fesql::node::kFloat, ::fesql::node::kBool,
+
         1.0f, 1.0f, true, ::fesql::node::kFnOpEq);
 
     BinaryPredicateExprCheck<double, double, bool>(
-        ::fesql::node::kDouble, ::fesql::node::kDouble, ::fesql::node::kBool,
+
         1.0, 1.0, true, ::fesql::node::kFnOpEq);
 
-    BinaryPredicateExprCheck<int32_t, float, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kFloat, ::fesql::node::kBool, 1,
-        1.0f, true, ::fesql::node::kFnOpEq);
+    BinaryPredicateExprCheck<int32_t, float, bool>(1, 1.0f, true,
+                                                   ::fesql::node::kFnOpEq);
 
-    BinaryPredicateExprCheck<int32_t, double, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kDouble, ::fesql::node::kBool, 1,
-        1.0, true, ::fesql::node::kFnOpEq);
+    BinaryPredicateExprCheck<int32_t, double, bool>(1, 1.0, true,
+                                                    ::fesql::node::kFnOpEq);
 }
 
 TEST_F(PredicateIRBuilderTest, test_timestamp_compare) {
@@ -241,28 +91,28 @@ TEST_F(PredicateIRBuilderTest, test_timestamp_compare) {
     codec::Timestamp t2(1590115420000L);
     codec::Timestamp t3(1590115430000L);
     codec::Timestamp t4(1590115410000L);
-    BinaryPredicateExprCheck<codec::Timestamp *, codec::Timestamp *, bool>(
-        ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
-        ::fesql::node::kBool, &t1, &t2, true, ::fesql::node::kFnOpEq);
+    BinaryPredicateExprCheck<codec::Timestamp, codec::Timestamp, bool>(
 
-    BinaryPredicateExprCheck<codec::Timestamp *, codec::Timestamp *, bool>(
-        ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
-        ::fesql::node::kBool, &t1, &t3, true, ::fesql::node::kFnOpNeq);
+        t1, t2, true, ::fesql::node::kFnOpEq);
 
-    BinaryPredicateExprCheck<codec::Timestamp *, codec::Timestamp *, bool>(
-        ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
-        ::fesql::node::kBool, &t1, &t3, true, ::fesql::node::kFnOpLe);
+    BinaryPredicateExprCheck<codec::Timestamp, codec::Timestamp, bool>(
 
-    BinaryPredicateExprCheck<codec::Timestamp *, codec::Timestamp *, bool>(
-        ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
-        ::fesql::node::kBool, &t1, &t3, true, ::fesql::node::kFnOpLt);
+        t1, t3, true, ::fesql::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<codec::Timestamp *, codec::Timestamp *, bool>(
-        ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
-        ::fesql::node::kBool, &t1, &t4, true, ::fesql::node::kFnOpGe);
-    BinaryPredicateExprCheck<codec::Timestamp *, codec::Timestamp *, bool>(
-        ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
-        ::fesql::node::kBool, &t1, &t4, true, ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<codec::Timestamp, codec::Timestamp, bool>(
+
+        t1, t3, true, ::fesql::node::kFnOpLe);
+
+    BinaryPredicateExprCheck<codec::Timestamp, codec::Timestamp, bool>(
+
+        t1, t3, true, ::fesql::node::kFnOpLt);
+
+    BinaryPredicateExprCheck<codec::Timestamp, codec::Timestamp, bool>(
+
+        t1, t4, true, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<codec::Timestamp, codec::Timestamp, bool>(
+
+        t1, t4, true, ::fesql::node::kFnOpGt);
 }
 
 TEST_F(PredicateIRBuilderTest, test_date_compare) {
@@ -270,35 +120,27 @@ TEST_F(PredicateIRBuilderTest, test_date_compare) {
     codec::Date d2(2020, 05, 27);
     codec::Date d3(2020, 05, 28);
     codec::Date d4(2020, 05, 26);
-    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
-        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
-        &d2, true, ::fesql::node::kFnOpEq);
+    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+        d1, d2, true, ::fesql::node::kFnOpEq);
 
-    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
-        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
-        &d3, true, ::fesql::node::kFnOpNeq);
+    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+        d1, d3, true, ::fesql::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
-        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
-        &d3, true, ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+        d1, d3, true, ::fesql::node::kFnOpLt);
 
-    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
-        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
-        &d3, true, ::fesql::node::kFnOpLe);
+    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+        d1, d3, true, ::fesql::node::kFnOpLe);
 
-    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
-        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
-        &d2, true, ::fesql::node::kFnOpLe);
+    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+        d1, d2, true, ::fesql::node::kFnOpLe);
 
-    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
-        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
-        &d2, true, ::fesql::node::kFnOpGe);
-    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
-        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
-        &d4, true, ::fesql::node::kFnOpGe);
-    BinaryPredicateExprCheck<codec::Date *, codec::Date *, bool>(
-        ::fesql::node::kDate, ::fesql::node::kDate, ::fesql::node::kBool, &d1,
-        &d4, true, ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+        d1, d2, true, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+        d1, d4, true, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<codec::Date, codec::Date, bool>(
+        d1, d4, true, ::fesql::node::kFnOpGt);
 }
 
 TEST_F(PredicateIRBuilderTest, test_string_string_compare) {
@@ -307,454 +149,382 @@ TEST_F(PredicateIRBuilderTest, test_string_string_compare) {
     codec::StringRef d3("text1");
     codec::StringRef d4("");
     codec::StringRef d5("text2");
-    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
-        &d1, &d2, true, ::fesql::node::kFnOpEq);
+    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
 
-    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
-        &d1, &d3, true, ::fesql::node::kFnOpNeq);
+        d1, d2, true, ::fesql::node::kFnOpEq);
 
-    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
-        &d1, &d3, true, ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
 
-    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
-        &d3, &d5, true, ::fesql::node::kFnOpLt);
+        d1, d3, true, ::fesql::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
-        &d1, &d3, true, ::fesql::node::kFnOpLe);
+    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
 
-    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
-        &d1, &d2, true, ::fesql::node::kFnOpLe);
+        d1, d3, true, ::fesql::node::kFnOpLt);
 
-    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
-        &d1, &d2, true, ::fesql::node::kFnOpGe);
-    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
-        &d1, &d4, true, ::fesql::node::kFnOpGe);
-    BinaryPredicateExprCheck<codec::StringRef *, codec::StringRef *, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kVarchar, ::fesql::node::kBool,
-        &d1, &d4, true, ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
+
+        d3, d5, true, ::fesql::node::kFnOpLt);
+
+    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
+
+        d1, d3, true, ::fesql::node::kFnOpLe);
+
+    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
+
+        d1, d2, true, ::fesql::node::kFnOpLe);
+
+    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
+
+        d1, d2, true, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
+
+        d1, d4, true, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<codec::StringRef, codec::StringRef, bool>(
+
+        d1, d4, true, ::fesql::node::kFnOpGt);
 }
 
 TEST_F(PredicateIRBuilderTest, test_string_anytype_compare) {
     codec::StringRef d1("123");
     int32_t num = 123;
-    BinaryPredicateExprCheck<codec::StringRef *, int32_t, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kInt32, ::fesql::node::kBool,
-        &d1, num, true, ::fesql::node::kFnOpEq);
+    BinaryPredicateExprCheck<codec::StringRef, int32_t, bool>(
 
-    BinaryPredicateExprCheck<codec::StringRef *, int64_t, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kInt64, ::fesql::node::kBool,
-        &d1, static_cast<int64_t>(123), true, ::fesql::node::kFnOpEq);
+        d1, num, true, ::fesql::node::kFnOpEq);
 
-    BinaryPredicateExprCheck<codec::StringRef *, double, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kDouble, ::fesql::node::kBool,
-        &d1, 123.0, true, ::fesql::node::kFnOpEq);
+    BinaryPredicateExprCheck<codec::StringRef, int64_t, bool>(
 
-    BinaryPredicateExprCheck<codec::StringRef *, float, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kFloat, ::fesql::node::kBool,
-        &d1, 123.0f, true, ::fesql::node::kFnOpEq);
+        d1, static_cast<int64_t>(123), true, ::fesql::node::kFnOpEq);
+
+    BinaryPredicateExprCheck<codec::StringRef, double, bool>(
+
+        d1, 123.0, true, ::fesql::node::kFnOpEq);
+
+    BinaryPredicateExprCheck<codec::StringRef, float, bool>(
+
+        d1, 123.0f, true, ::fesql::node::kFnOpEq);
 
     codec::Date date(2020, 05, 30);
     codec::StringRef d2("2020-05-30");
-    BinaryPredicateExprCheck<codec::StringRef *, codec::Date *, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kDate, ::fesql::node::kBool,
-        &d2, &date, true, ::fesql::node::kFnOpEq);
+    BinaryPredicateExprCheck<codec::StringRef, codec::Date, bool>(
+
+        d2, date, true, ::fesql::node::kFnOpEq);
 
     codec::StringRef d3("2020-05-22 10:43:40");
     codec::Timestamp t1(1590115420000L);
-    BinaryPredicateExprCheck<codec::StringRef *, codec::Timestamp *, bool>(
-        ::fesql::node::kVarchar, ::fesql::node::kTimestamp,
-        ::fesql::node::kBool, &d3, &t1, true, ::fesql::node::kFnOpEq);
+    BinaryPredicateExprCheck<codec::StringRef, codec::Timestamp, bool>(
+
+        d3, t1, true, ::fesql::node::kFnOpEq);
 }
 
 TEST_F(PredicateIRBuilderTest, test_eq_expr_false) {
-    BinaryPredicateExprCheck<int16_t, int16_t, bool>(
-        ::fesql::node::kInt16, ::fesql::node::kInt16, ::fesql::node::kBool, 1,
-        2, false, ::fesql::node::kFnOpEq);
+    BinaryPredicateExprCheck<int16_t, int16_t, bool>(1, 2, false,
+                                                     ::fesql::node::kFnOpEq);
 
-    BinaryPredicateExprCheck<int32_t, int32_t, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kInt32, ::fesql::node::kBool, 1,
-        2, false, ::fesql::node::kFnOpEq);
+    BinaryPredicateExprCheck<int32_t, int32_t, bool>(1, 2, false,
+                                                     ::fesql::node::kFnOpEq);
 
-    BinaryPredicateExprCheck<int64_t, int64_t, bool>(
-        ::fesql::node::kInt64, ::fesql::node::kInt64, ::fesql::node::kBool, 1,
-        2, false, ::fesql::node::kFnOpEq);
+    BinaryPredicateExprCheck<int64_t, int64_t, bool>(1, 2, false,
+                                                     ::fesql::node::kFnOpEq);
 
     BinaryPredicateExprCheck<float, float, bool>(
-        ::fesql::node::kFloat, ::fesql::node::kFloat, ::fesql::node::kBool,
+
         1.0f, 1.1f, false, ::fesql::node::kFnOpEq);
 
     BinaryPredicateExprCheck<double, double, bool>(
-        ::fesql::node::kDouble, ::fesql::node::kDouble, ::fesql::node::kBool,
+
         1.0, 1.1, false, ::fesql::node::kFnOpEq);
 }
 
 TEST_F(PredicateIRBuilderTest, test_neq_expr_true) {
-    BinaryPredicateExprCheck<int16_t, int16_t, bool>(
-        ::fesql::node::kInt16, ::fesql::node::kInt16, ::fesql::node::kBool, 1,
-        2, true, ::fesql::node::kFnOpNeq);
+    BinaryPredicateExprCheck<int16_t, int16_t, bool>(1, 2, true,
+                                                     ::fesql::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<int32_t, int32_t, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kInt32, ::fesql::node::kBool, 1,
-        2, true, ::fesql::node::kFnOpNeq);
+    BinaryPredicateExprCheck<int32_t, int32_t, bool>(1, 2, true,
+                                                     ::fesql::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<int64_t, int64_t, bool>(
-        ::fesql::node::kInt64, ::fesql::node::kInt64, ::fesql::node::kBool, 1,
-        2, true, ::fesql::node::kFnOpNeq);
+    BinaryPredicateExprCheck<int64_t, int64_t, bool>(1, 2, true,
+                                                     ::fesql::node::kFnOpNeq);
 
     BinaryPredicateExprCheck<float, float, bool>(
-        ::fesql::node::kFloat, ::fesql::node::kFloat, ::fesql::node::kBool,
+
         1.0f, 1.1f, true, ::fesql::node::kFnOpNeq);
 
     BinaryPredicateExprCheck<double, double, bool>(
-        ::fesql::node::kDouble, ::fesql::node::kDouble, ::fesql::node::kBool,
+
         1.0, 1.1, true, ::fesql::node::kFnOpNeq);
 }
 
 TEST_F(PredicateIRBuilderTest, test_neq_expr_false) {
-    BinaryPredicateExprCheck<int16_t, int16_t, bool>(
-        ::fesql::node::kInt16, ::fesql::node::kInt16, ::fesql::node::kBool, 1,
-        1, false, ::fesql::node::kFnOpNeq);
+    BinaryPredicateExprCheck<int16_t, int16_t, bool>(1, 1, false,
+                                                     ::fesql::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<int32_t, int32_t, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kInt32, ::fesql::node::kBool, 1,
-        1, false, ::fesql::node::kFnOpNeq);
+    BinaryPredicateExprCheck<int32_t, int32_t, bool>(1, 1, false,
+                                                     ::fesql::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<int64_t, int64_t, bool>(
-        ::fesql::node::kInt64, ::fesql::node::kInt64, ::fesql::node::kBool, 1,
-        1, false, ::fesql::node::kFnOpNeq);
+    BinaryPredicateExprCheck<int64_t, int64_t, bool>(1, 1, false,
+                                                     ::fesql::node::kFnOpNeq);
 
     BinaryPredicateExprCheck<float, float, bool>(
-        ::fesql::node::kFloat, ::fesql::node::kFloat, ::fesql::node::kBool,
+
         1.0f, 1.0f, false, ::fesql::node::kFnOpNeq);
 
     BinaryPredicateExprCheck<double, double, bool>(
-        ::fesql::node::kDouble, ::fesql::node::kDouble, ::fesql::node::kBool,
+
         1.0, 1.0, false, ::fesql::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<int32_t, float, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kFloat, ::fesql::node::kBool, 1,
-        1.0f, false, ::fesql::node::kFnOpNeq);
+    BinaryPredicateExprCheck<int32_t, float, bool>(1, 1.0f, false,
+                                                   ::fesql::node::kFnOpNeq);
 
-    BinaryPredicateExprCheck<int32_t, double, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kDouble, ::fesql::node::kBool, 1,
-        1.0, false, ::fesql::node::kFnOpNeq);
+    BinaryPredicateExprCheck<int32_t, double, bool>(1, 1.0, false,
+                                                    ::fesql::node::kFnOpNeq);
 }
 
 TEST_F(PredicateIRBuilderTest, test_gt_expr_true) {
-    BinaryPredicateExprCheck<int16_t, int16_t, bool>(
-        ::fesql::node::kInt16, ::fesql::node::kInt16, ::fesql::node::kBool, 2,
-        1, true, ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<int16_t, int16_t, bool>(2, 1, true,
+                                                     ::fesql::node::kFnOpGt);
 
-    BinaryPredicateExprCheck<int32_t, int32_t, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kInt32, ::fesql::node::kBool, 2,
-        1, true, ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<int32_t, int32_t, bool>(2, 1, true,
+                                                     ::fesql::node::kFnOpGt);
 
-    BinaryPredicateExprCheck<int64_t, int64_t, bool>(
-        ::fesql::node::kInt64, ::fesql::node::kInt64, ::fesql::node::kBool, 2,
-        1, true, ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<int64_t, int64_t, bool>(2, 1, true,
+                                                     ::fesql::node::kFnOpGt);
 
     BinaryPredicateExprCheck<float, float, bool>(
-        ::fesql::node::kFloat, ::fesql::node::kFloat, ::fesql::node::kBool,
+
         1.1f, 1.0f, true, ::fesql::node::kFnOpGt);
 
     BinaryPredicateExprCheck<double, double, bool>(
-        ::fesql::node::kDouble, ::fesql::node::kDouble, ::fesql::node::kBool,
+
         1.1, 1.0, true, ::fesql::node::kFnOpGt);
 
-    BinaryPredicateExprCheck<int32_t, float, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kFloat, ::fesql::node::kBool, 2,
-        1.9f, true, ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<int32_t, float, bool>(2, 1.9f, true,
+                                                   ::fesql::node::kFnOpGt);
 
-    BinaryPredicateExprCheck<int32_t, double, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kDouble, ::fesql::node::kBool, 2,
-        1.9, true, ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<int32_t, double, bool>(2, 1.9, true,
+                                                    ::fesql::node::kFnOpGt);
 }
 
 TEST_F(PredicateIRBuilderTest, test_gt_expr_false) {
-    BinaryPredicateExprCheck<int16_t, int16_t, bool>(
-        ::fesql::node::kInt16, ::fesql::node::kInt16, ::fesql::node::kBool, 2,
-        2, false, ::fesql::node::kFnOpGt);
-    BinaryPredicateExprCheck<int16_t, int16_t, bool>(
-        ::fesql::node::kInt16, ::fesql::node::kInt16, ::fesql::node::kBool, 2,
-        3, false, ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<int16_t, int16_t, bool>(2, 2, false,
+                                                     ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<int16_t, int16_t, bool>(2, 3, false,
+                                                     ::fesql::node::kFnOpGt);
 
-    BinaryPredicateExprCheck<int32_t, int32_t, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kInt32, ::fesql::node::kBool, 2,
-        2, false, ::fesql::node::kFnOpGt);
-    BinaryPredicateExprCheck<int32_t, int32_t, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kInt32, ::fesql::node::kBool, 2,
-        3, false, ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<int32_t, int32_t, bool>(2, 2, false,
+                                                     ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<int32_t, int32_t, bool>(2, 3, false,
+                                                     ::fesql::node::kFnOpGt);
 
-    BinaryPredicateExprCheck<int64_t, int64_t, bool>(
-        ::fesql::node::kInt64, ::fesql::node::kInt64, ::fesql::node::kBool, 2,
-        2, false, ::fesql::node::kFnOpGt);
-    BinaryPredicateExprCheck<int64_t, int64_t, bool>(
-        ::fesql::node::kInt64, ::fesql::node::kInt64, ::fesql::node::kBool, 2,
-        3, false, ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<int64_t, int64_t, bool>(2, 2, false,
+                                                     ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<int64_t, int64_t, bool>(2, 3, false,
+                                                     ::fesql::node::kFnOpGt);
 
     BinaryPredicateExprCheck<float, float, bool>(
-        ::fesql::node::kFloat, ::fesql::node::kFloat, ::fesql::node::kBool,
+
         1.1f, 1.2f, false, ::fesql::node::kFnOpGt);
 
     BinaryPredicateExprCheck<double, double, bool>(
-        ::fesql::node::kDouble, ::fesql::node::kDouble, ::fesql::node::kBool,
+
         1.1, 1.2, false, ::fesql::node::kFnOpGt);
 
-    BinaryPredicateExprCheck<int32_t, float, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kFloat, ::fesql::node::kBool, 2,
-        2.1f, false, ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<int32_t, float, bool>(2, 2.1f, false,
+                                                   ::fesql::node::kFnOpGt);
 
-    BinaryPredicateExprCheck<int32_t, double, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kDouble, ::fesql::node::kBool, 2,
-        2.1, false, ::fesql::node::kFnOpGt);
+    BinaryPredicateExprCheck<int32_t, double, bool>(2, 2.1, false,
+                                                    ::fesql::node::kFnOpGt);
 }
 TEST_F(PredicateIRBuilderTest, test_ge_expr_true) {
-    BinaryPredicateExprCheck<int16_t, int16_t, bool>(
-        ::fesql::node::kInt16, ::fesql::node::kInt16, ::fesql::node::kBool, 2,
-        1, true, ::fesql::node::kFnOpGe);
-    BinaryPredicateExprCheck<int16_t, int16_t, bool>(
-        ::fesql::node::kInt16, ::fesql::node::kInt16, ::fesql::node::kBool, 2,
-        2, true, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<int16_t, int16_t, bool>(2, 1, true,
+                                                     ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<int16_t, int16_t, bool>(2, 2, true,
+                                                     ::fesql::node::kFnOpGe);
 
-    BinaryPredicateExprCheck<int32_t, int32_t, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kInt32, ::fesql::node::kBool, 2,
-        1, true, ::fesql::node::kFnOpGe);
-    BinaryPredicateExprCheck<int32_t, int32_t, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kInt32, ::fesql::node::kBool, 2,
-        2, true, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<int32_t, int32_t, bool>(2, 1, true,
+                                                     ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<int32_t, int32_t, bool>(2, 2, true,
+                                                     ::fesql::node::kFnOpGe);
 
-    BinaryPredicateExprCheck<int64_t, int64_t, bool>(
-        ::fesql::node::kInt64, ::fesql::node::kInt64, ::fesql::node::kBool, 2,
-        1, true, ::fesql::node::kFnOpGe);
-    BinaryPredicateExprCheck<int64_t, int64_t, bool>(
-        ::fesql::node::kInt64, ::fesql::node::kInt64, ::fesql::node::kBool, 2,
-        2, true, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<int64_t, int64_t, bool>(2, 1, true,
+                                                     ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<int64_t, int64_t, bool>(2, 2, true,
+                                                     ::fesql::node::kFnOpGe);
 
     BinaryPredicateExprCheck<float, float, bool>(
-        ::fesql::node::kFloat, ::fesql::node::kFloat, ::fesql::node::kBool,
+
         1.1f, 1.0f, true, ::fesql::node::kFnOpGe);
     BinaryPredicateExprCheck<float, float, bool>(
-        ::fesql::node::kFloat, ::fesql::node::kFloat, ::fesql::node::kBool,
+
         1.1f, 1.1f, true, ::fesql::node::kFnOpGe);
 
     BinaryPredicateExprCheck<double, double, bool>(
-        ::fesql::node::kDouble, ::fesql::node::kDouble, ::fesql::node::kBool,
+
         1.1, 1.0, true, ::fesql::node::kFnOpGe);
 
     BinaryPredicateExprCheck<double, double, bool>(
-        ::fesql::node::kDouble, ::fesql::node::kDouble, ::fesql::node::kBool,
-        1.1, 1.1, true, ::fesql::node::kFnOpGe);
-    BinaryPredicateExprCheck<int32_t, float, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kFloat, ::fesql::node::kBool, 2,
-        1.9f, true, ::fesql::node::kFnOpGe);
-    BinaryPredicateExprCheck<int32_t, float, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kFloat, ::fesql::node::kBool, 2,
-        2.0f, true, ::fesql::node::kFnOpGe);
 
-    BinaryPredicateExprCheck<int32_t, double, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kDouble, ::fesql::node::kBool, 2,
-        1.9, true, ::fesql::node::kFnOpGe);
-    BinaryPredicateExprCheck<int32_t, double, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kDouble, ::fesql::node::kBool, 2,
-        2.0, true, ::fesql::node::kFnOpGe);
+        1.1, 1.1, true, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<int32_t, float, bool>(2, 1.9f, true,
+                                                   ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<int32_t, float, bool>(2, 2.0f, true,
+                                                   ::fesql::node::kFnOpGe);
+
+    BinaryPredicateExprCheck<int32_t, double, bool>(2, 1.9, true,
+                                                    ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<int32_t, double, bool>(2, 2.0, true,
+                                                    ::fesql::node::kFnOpGe);
 }
 
 TEST_F(PredicateIRBuilderTest, test_ge_expr_false) {
-    BinaryPredicateExprCheck<int16_t, int16_t, bool>(
-        ::fesql::node::kInt16, ::fesql::node::kInt16, ::fesql::node::kBool, 2,
-        3, false, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<int16_t, int16_t, bool>(2, 3, false,
+                                                     ::fesql::node::kFnOpGe);
 
-    BinaryPredicateExprCheck<int32_t, int32_t, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kInt32, ::fesql::node::kBool, 2,
-        3, false, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<int32_t, int32_t, bool>(2, 3, false,
+                                                     ::fesql::node::kFnOpGe);
 
-    BinaryPredicateExprCheck<int64_t, int64_t, bool>(
-        ::fesql::node::kInt64, ::fesql::node::kInt64, ::fesql::node::kBool, 2,
-        3, false, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<int64_t, int64_t, bool>(2, 3, false,
+                                                     ::fesql::node::kFnOpGe);
 
     BinaryPredicateExprCheck<float, float, bool>(
-        ::fesql::node::kFloat, ::fesql::node::kFloat, ::fesql::node::kBool,
+
         1.1f, 1.2f, false, ::fesql::node::kFnOpGe);
 
     BinaryPredicateExprCheck<double, double, bool>(
-        ::fesql::node::kDouble, ::fesql::node::kDouble, ::fesql::node::kBool,
+
         1.1, 1.2, false, ::fesql::node::kFnOpGe);
 
-    BinaryPredicateExprCheck<int32_t, float, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kFloat, ::fesql::node::kBool, 2,
-        2.1f, false, ::fesql::node::kFnOpGe);
+    BinaryPredicateExprCheck<int32_t, float, bool>(2, 2.1f, false,
+                                                   ::fesql::node::kFnOpGe);
 }
 
 TEST_F(PredicateIRBuilderTest, test_lt_expr_true) {
-    BinaryPredicateExprCheck<int16_t, int16_t, bool>(
-        ::fesql::node::kInt16, ::fesql::node::kInt16, ::fesql::node::kBool, 2,
-        3, true, ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<int16_t, int16_t, bool>(2, 3, true,
+                                                     ::fesql::node::kFnOpLt);
 
-    BinaryPredicateExprCheck<int32_t, int32_t, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kInt32, ::fesql::node::kBool, 2,
-        3, true, ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<int32_t, int32_t, bool>(2, 3, true,
+                                                     ::fesql::node::kFnOpLt);
 
-    BinaryPredicateExprCheck<int64_t, int64_t, bool>(
-        ::fesql::node::kInt64, ::fesql::node::kInt64, ::fesql::node::kBool, 2,
-        3, true, ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<int64_t, int64_t, bool>(2, 3, true,
+                                                     ::fesql::node::kFnOpLt);
 
     BinaryPredicateExprCheck<float, float, bool>(
-        ::fesql::node::kFloat, ::fesql::node::kFloat, ::fesql::node::kBool,
+
         1.1f, 1.2f, true, ::fesql::node::kFnOpLt);
 
     BinaryPredicateExprCheck<double, double, bool>(
-        ::fesql::node::kDouble, ::fesql::node::kDouble, ::fesql::node::kBool,
+
         1.1, 1.2, true, ::fesql::node::kFnOpLt);
 
-    BinaryPredicateExprCheck<int32_t, float, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kFloat, ::fesql::node::kBool, 2,
-        2.1f, true, ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<int32_t, float, bool>(2, 2.1f, true,
+                                                   ::fesql::node::kFnOpLt);
 }
 
 TEST_F(PredicateIRBuilderTest, test_lt_expr_false) {
-    BinaryPredicateExprCheck<int16_t, int16_t, bool>(
-        ::fesql::node::kInt16, ::fesql::node::kInt16, ::fesql::node::kBool, 2,
-        1, false, ::fesql::node::kFnOpLt);
-    BinaryPredicateExprCheck<int16_t, int16_t, bool>(
-        ::fesql::node::kInt16, ::fesql::node::kInt16, ::fesql::node::kBool, 2,
-        2, false, ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<int16_t, int16_t, bool>(2, 1, false,
+                                                     ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<int16_t, int16_t, bool>(2, 2, false,
+                                                     ::fesql::node::kFnOpLt);
 
-    BinaryPredicateExprCheck<int32_t, int32_t, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kInt32, ::fesql::node::kBool, 2,
-        1, false, ::fesql::node::kFnOpLt);
-    BinaryPredicateExprCheck<int32_t, int32_t, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kInt32, ::fesql::node::kBool, 2,
-        2, false, ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<int32_t, int32_t, bool>(2, 1, false,
+                                                     ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<int32_t, int32_t, bool>(2, 2, false,
+                                                     ::fesql::node::kFnOpLt);
 
-    BinaryPredicateExprCheck<int64_t, int64_t, bool>(
-        ::fesql::node::kInt64, ::fesql::node::kInt64, ::fesql::node::kBool, 2,
-        1, false, ::fesql::node::kFnOpLt);
-    BinaryPredicateExprCheck<int64_t, int64_t, bool>(
-        ::fesql::node::kInt64, ::fesql::node::kInt64, ::fesql::node::kBool, 2,
-        2, false, ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<int64_t, int64_t, bool>(2, 1, false,
+                                                     ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<int64_t, int64_t, bool>(2, 2, false,
+                                                     ::fesql::node::kFnOpLt);
 
     BinaryPredicateExprCheck<float, float, bool>(
-        ::fesql::node::kFloat, ::fesql::node::kFloat, ::fesql::node::kBool,
+
         1.1f, 1.0f, false, ::fesql::node::kFnOpLt);
     BinaryPredicateExprCheck<float, float, bool>(
-        ::fesql::node::kFloat, ::fesql::node::kFloat, ::fesql::node::kBool,
+
         1.1f, 1.1f, false, ::fesql::node::kFnOpLt);
 
     BinaryPredicateExprCheck<double, double, bool>(
-        ::fesql::node::kDouble, ::fesql::node::kDouble, ::fesql::node::kBool,
+
         1.1, 1.0, false, ::fesql::node::kFnOpLt);
 
     BinaryPredicateExprCheck<double, double, bool>(
-        ::fesql::node::kDouble, ::fesql::node::kDouble, ::fesql::node::kBool,
+
         1.1, 1.1, false, ::fesql::node::kFnOpLt);
-    BinaryPredicateExprCheck<int32_t, float, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kFloat, ::fesql::node::kBool, 2,
-        1.9f, false, ::fesql::node::kFnOpLt);
-    BinaryPredicateExprCheck<int32_t, float, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kFloat, ::fesql::node::kBool, 2,
-        2.0f, false, ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<int32_t, float, bool>(2, 1.9f, false,
+                                                   ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<int32_t, float, bool>(2, 2.0f, false,
+                                                   ::fesql::node::kFnOpLt);
 
-    BinaryPredicateExprCheck<int32_t, double, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kDouble, ::fesql::node::kBool, 2,
-        1.9, false, ::fesql::node::kFnOpLt);
-    BinaryPredicateExprCheck<int32_t, double, bool>(
-        ::fesql::node::kInt32, ::fesql::node::kDouble, ::fesql::node::kBool, 2,
-        2.0, false, ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<int32_t, double, bool>(2, 1.9, false,
+                                                    ::fesql::node::kFnOpLt);
+    BinaryPredicateExprCheck<int32_t, double, bool>(2, 2.0, false,
+                                                    ::fesql::node::kFnOpLt);
 }
 
-TEST_F(PredicateIRBuilderTest, test_and_expr_true) {
-    BinaryPredicateExprCheck<bool, bool, bool>(
-        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, true,
-        true, true, ::fesql::node::kFnOpAnd);
+TEST_F(PredicateIRBuilderTest, test_and_expr) {
+    auto AndExprCheck = [](Nullable<bool> left, Nullable<bool> right,
+                           Nullable<bool> expect) {
+        BinaryPredicateExprCheck(left, right, expect, ::fesql::node::kFnOpAnd);
+    };
+    AndExprCheck(true, true, true);
+    AndExprCheck(true, false, false);
+    AndExprCheck(true, nullptr, nullptr);
+    AndExprCheck(false, true, false);
+    AndExprCheck(false, false, false);
+    AndExprCheck(false, nullptr, false);
+    AndExprCheck(nullptr, true, nullptr);
+    AndExprCheck(nullptr, false, false);
+    AndExprCheck(nullptr, nullptr, nullptr);
 }
 
-TEST_F(PredicateIRBuilderTest, test_and_expr_false) {
-    BinaryPredicateExprCheck<bool, bool, bool>(
-        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, false,
-        true, false, ::fesql::node::kFnOpAnd);
-
-    BinaryPredicateExprCheck<bool, bool, bool>(
-        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, false,
-        false, false, ::fesql::node::kFnOpAnd);
-    BinaryPredicateExprCheck<bool, bool, bool>(
-        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, true,
-        false, false, ::fesql::node::kFnOpAnd);
+TEST_F(PredicateIRBuilderTest, test_or_expr) {
+    auto OrExprCheck = [](Nullable<bool> left, Nullable<bool> right,
+                          Nullable<bool> expect) {
+        BinaryPredicateExprCheck(left, right, expect, ::fesql::node::kFnOpOr);
+    };
+    OrExprCheck(true, true, true);
+    OrExprCheck(true, false, true);
+    OrExprCheck(true, nullptr, true);
+    OrExprCheck(false, true, true);
+    OrExprCheck(false, false, false);
+    OrExprCheck(false, nullptr, nullptr);
+    OrExprCheck(nullptr, true, true);
+    OrExprCheck(nullptr, false, nullptr);
+    OrExprCheck(nullptr, nullptr, nullptr);
 }
 
-TEST_F(PredicateIRBuilderTest, test_or_expr_true) {
-    BinaryPredicateExprCheck<bool, bool, bool>(
-        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, true,
-        true, true, ::fesql::node::kFnOpOr);
-    BinaryPredicateExprCheck<bool, bool, bool>(
-        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, true,
-        false, true, ::fesql::node::kFnOpOr);
-    BinaryPredicateExprCheck<bool, bool, bool>(
-        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, false,
-        true, true, ::fesql::node::kFnOpOr);
-}
-
-TEST_F(PredicateIRBuilderTest, test_or_expr_false) {
-    BinaryPredicateExprCheck<bool, bool, bool>(
-        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, false,
-        false, false, ::fesql::node::kFnOpOr);
-}
-
-TEST_F(PredicateIRBuilderTest, test_xor_expr_true) {
-    BinaryPredicateExprCheck<bool, bool, bool>(
-        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, true,
-        false, true, ::fesql::node::kFnOpXor);
-    BinaryPredicateExprCheck<bool, bool, bool>(
-        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, true,
-        false, true, ::fesql::node::kFnOpXor);
-}
-
-TEST_F(PredicateIRBuilderTest, test_xor_expr_false) {
-    BinaryPredicateExprCheck<bool, bool, bool>(
-        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, true,
-        true, false, ::fesql::node::kFnOpXor);
-    BinaryPredicateExprCheck<bool, bool, bool>(
-        ::fesql::node::kBool, ::fesql::node::kBool, ::fesql::node::kBool, false,
-        false, false, ::fesql::node::kFnOpXor);
+TEST_F(PredicateIRBuilderTest, test_xor_expr) {
+    auto XorExprCheck = [](Nullable<bool> left, Nullable<bool> right,
+                           Nullable<bool> expect) {
+        BinaryPredicateExprCheck(left, right, expect, ::fesql::node::kFnOpXor);
+    };
+    XorExprCheck(true, true, false);
+    XorExprCheck(true, false, true);
+    XorExprCheck(true, nullptr, nullptr);
+    XorExprCheck(false, true, true);
+    XorExprCheck(false, false, false);
+    XorExprCheck(false, nullptr, nullptr);
+    XorExprCheck(nullptr, true, nullptr);
+    XorExprCheck(nullptr, false, nullptr);
+    XorExprCheck(nullptr, nullptr, nullptr);
 }
 
 TEST_F(PredicateIRBuilderTest, test_not_expr_false) {
-    UnaryPredicateExprCheck<bool, bool>(::fesql::node::kBool,
-                                        ::fesql::node::kBool, true, false,
-                                        ::fesql::node::kFnOpNot);
+    UnaryPredicateExprCheck<bool, bool>(true, false, ::fesql::node::kFnOpNot);
 
-    UnaryPredicateExprCheck<int32_t, bool>(::fesql::node::kInt32,
-                                           ::fesql::node::kBool, 1, false,
-                                           ::fesql::node::kFnOpNot);
-    UnaryPredicateExprCheck<float, bool>(::fesql::node::kFloat,
-                                         ::fesql::node::kBool, 1.0, false,
-                                         ::fesql::node::kFnOpNot);
+    UnaryPredicateExprCheck<int32_t, bool>(1, false, ::fesql::node::kFnOpNot);
+    UnaryPredicateExprCheck<float, bool>(1.0, false, ::fesql::node::kFnOpNot);
 
-    UnaryPredicateExprCheck<double, bool>(::fesql::node::kDouble,
-                                          ::fesql::node::kBool, 1.0, false,
-                                          ::fesql::node::kFnOpNot);
+    UnaryPredicateExprCheck<double, bool>(1.0, false, ::fesql::node::kFnOpNot);
 
-    UnaryPredicateExprCheck<bool, bool>(::fesql::node::kBool,
-                                        ::fesql::node::kBool, false, true,
-                                        ::fesql::node::kFnOpNot);
+    UnaryPredicateExprCheck<bool, bool>(false, true, ::fesql::node::kFnOpNot);
 
-    UnaryPredicateExprCheck<int32_t, bool>(::fesql::node::kInt32,
-                                           ::fesql::node::kBool, 0, true,
-                                           ::fesql::node::kFnOpNot);
-    UnaryPredicateExprCheck<float, bool>(::fesql::node::kFloat,
-                                         ::fesql::node::kBool, 0, true,
-                                         ::fesql::node::kFnOpNot);
+    UnaryPredicateExprCheck<int32_t, bool>(0, true, ::fesql::node::kFnOpNot);
+    UnaryPredicateExprCheck<float, bool>(0, true, ::fesql::node::kFnOpNot);
 
-    UnaryPredicateExprCheck<double, bool>(::fesql::node::kDouble,
-                                          ::fesql::node::kBool, 0, true,
-                                          ::fesql::node::kFnOpNot);
+    UnaryPredicateExprCheck<double, bool>(0, true, ::fesql::node::kFnOpNot);
+
+    UnaryPredicateExprCheck<Nullable<bool>, Nullable<bool>>(
+        nullptr, nullptr, ::fesql::node::kFnOpNot);
 }
 
 }  // namespace codegen

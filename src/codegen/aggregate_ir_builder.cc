@@ -266,7 +266,7 @@ class StatisticalAggGenerator {
         }
     }
 
-    void GenSumUpdate(size_t i, ::llvm::Value* input,
+    void GenSumUpdate(size_t i, ::llvm::Value* input, ::llvm::Value* is_null,
                       ::llvm::IRBuilder<>* builder) {
         ::llvm::Value* accum = builder->CreateLoad(sum_states_[i]);
         ::llvm::Value* add;
@@ -275,10 +275,11 @@ class StatisticalAggGenerator {
         } else {
             add = builder->CreateFAdd(accum, input);
         }
+        add = builder->CreateSelect(is_null, accum, add);
         builder->CreateStore(add, sum_states_[i]);
     }
 
-    void GenAvgUpdate(size_t i, ::llvm::Value* input,
+    void GenAvgUpdate(size_t i, ::llvm::Value* input, ::llvm::Value* is_null,
                       ::llvm::IRBuilder<>* builder) {
         ::llvm::Value* accum = builder->CreateLoad(avg_states_[i]);
         if (input->getType()->isIntegerTy()) {
@@ -286,20 +287,23 @@ class StatisticalAggGenerator {
         } else {
             input = builder->CreateFPCast(input, accum->getType());
         }
-        builder->CreateStore(builder->CreateFAdd(accum, input), avg_states_[i]);
+        ::llvm::Value* sum = builder->CreateFAdd(accum, input);
+        sum = builder->CreateSelect(is_null, accum, sum);
+        builder->CreateStore(sum, avg_states_[i]);
     }
 
-    void GenCountUpdate(::llvm::IRBuilder<>* builder) {
+    void GenCountUpdate(::llvm::IRBuilder<>* builder, ::llvm::Value* is_null) {
         ::llvm::Value* one = ::llvm::ConstantInt::get(
             reinterpret_cast<::llvm::PointerType*>(count_state_->getType())
                 ->getElementType(),
             1, true);
         ::llvm::Value* cnt = builder->CreateLoad(count_state_);
-        cnt = builder->CreateAdd(cnt, one);
-        builder->CreateStore(cnt, count_state_);
+        ::llvm::Value* new_cnt = builder->CreateAdd(cnt, one);
+        new_cnt = builder->CreateSelect(is_null, cnt, new_cnt);
+        builder->CreateStore(new_cnt, count_state_);
     }
 
-    void GenMinUpdate(size_t i, ::llvm::Value* input,
+    void GenMinUpdate(size_t i, ::llvm::Value* input, ::llvm::Value* is_null,
                       ::llvm::IRBuilder<>* builder) {
         ::llvm::Value* accum = builder->CreateLoad(min_states_[i]);
         ::llvm::Type* min_ty = accum->getType();
@@ -310,10 +314,11 @@ class StatisticalAggGenerator {
             cmp = builder->CreateFCmpOLT(accum, input);
         }
         ::llvm::Value* min = builder->CreateSelect(cmp, accum, input);
+        min = builder->CreateSelect(is_null, accum, min);
         builder->CreateStore(min, min_states_[i]);
     }
 
-    void GenMaxUpdate(size_t i, ::llvm::Value* input,
+    void GenMaxUpdate(size_t i, ::llvm::Value* input, ::llvm::Value* is_null,
                       ::llvm::IRBuilder<>* builder) {
         ::llvm::Value* accum = builder->CreateLoad(max_states_[i]);
         ::llvm::Type* max_ty = accum->getType();
@@ -324,29 +329,31 @@ class StatisticalAggGenerator {
             cmp = builder->CreateFCmpOLT(accum, input);
         }
         ::llvm::Value* max = builder->CreateSelect(cmp, input, accum);
+        max = builder->CreateSelect(is_null, accum, max);
         builder->CreateStore(max, max_states_[i]);
     }
 
     void GenUpdate(::llvm::IRBuilder<>* builder,
-                   const std::vector<::llvm::Value*>& inputs) {
+                   const std::vector<::llvm::Value*>& inputs,
+                   const std::vector<::llvm::Value*>& is_null) {
         bool count_updated = false;
         for (size_t i = 0; i < col_num_; ++i) {
             if (sum_idxs_[i] >= 0 ||
                 (avg_idxs_[i] >= 0 && avg_states_[i] == nullptr)) {
-                GenSumUpdate(i, inputs[i], builder);
+                GenSumUpdate(i, inputs[i], is_null[i], builder);
             }
             if (avg_idxs_[i] >= 0 && avg_states_[i] != nullptr) {
-                GenAvgUpdate(i, inputs[i], builder);
+                GenAvgUpdate(i, inputs[i], is_null[i], builder);
             }
             if ((avg_idxs_[i] >= 0 || count_idxs_[i] >= 0) && !count_updated) {
-                GenCountUpdate(builder);
+                GenCountUpdate(builder, is_null[i]);
                 count_updated = true;
             }
             if (min_idxs_[i] >= 0) {
-                GenMinUpdate(i, inputs[i], builder);
+                GenMinUpdate(i, inputs[i], is_null[i], builder);
             }
             if (max_idxs_[i] >= 0) {
-                GenMaxUpdate(i, inputs[i], builder);
+                GenMaxUpdate(i, inputs[i], is_null[i], builder);
             }
         }
     }
@@ -663,7 +670,7 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
     }
 
     // compute row field fetches
-    std::unordered_map<std::string, ::llvm::Value*> cur_row_fields_dict;
+    std::unordered_map<std::string, NativeValue> cur_row_fields_dict;
     for (auto& pair : agg_col_infos_) {
         auto& info = pair.second;
         std::string col_key = info.GetColKey();
@@ -682,22 +689,25 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
                 LOG(ERROR) << "fail to gen fetch column";
                 return false;
             }
-            cur_row_fields_dict[col_key] = field_value.GetValue(&builder);
+            cur_row_fields_dict[col_key] = field_value;
         }
     }
 
     // compute accumulation
     for (auto& agg_generator : generators) {
         std::vector<::llvm::Value*> fields;
+        std::vector<::llvm::Value*> fields_is_null;
         for (auto& key : agg_generator.GetColKeys()) {
             auto iter = cur_row_fields_dict.find(key);
             if (iter == cur_row_fields_dict.end()) {
                 LOG(WARNING) << "Fail to find row field of " << key;
                 return false;
             }
-            fields.push_back(iter->second);
+            auto& field_value = iter->second;
+            fields.push_back(field_value.GetValue(&builder));
+            fields_is_null.push_back(field_value.GetIsNull(&builder));
         }
-        agg_generator.GenUpdate(&builder, fields);
+        agg_generator.GenUpdate(&builder, fields, fields_is_null);
     }
     auto next_func = module_->getOrInsertFunction(
         "fesql_storage_row_iter_next",

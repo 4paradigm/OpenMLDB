@@ -170,6 +170,8 @@ enum FnOperator {
     kFnOpLike,
     kFnOpIn,
     kFnOpBracket,
+    kFnOpIsNull,
+    kFnOpNonNull,
     kFnOpNone
 };
 

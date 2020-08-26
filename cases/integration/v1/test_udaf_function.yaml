@@ -12,6 +12,7 @@ cases:
           - [1,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
           - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
           - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02","b"]
+          - [4,"aa",NULL,NULL,NULL,NULL,1590738993000,NULL,NULL]
     sql: |
       SELECT id, c1, max(c3) OVER w1 as m3,max(c4) OVER w1 as m4,max(c5) OVER w1 as m5,max(c6) OVER w1 as m6,max(c7) OVER w1 as m7,max(c8) OVER w1 as m8,max(c9) OVER w1 as m9 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -22,28 +23,30 @@ cases:
         - [1,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
         - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
         - [3,"aa",4,33,1.4,2.4,1590738992000,"2020-05-03","c"]
+        - [4,"aa",4,33,1.4,2.4,1590738993000,"2020-05-03","c"]
   -
     id: 1
     desc: min
-    tags: ["TODO", "@baoxinqi:min string"]
     inputs:
       -
-        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
         indexs: ["index1:c1:c7"]
         rows:
-          - [1,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01"]
-          - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03"]
-          - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02"]
+          - [1,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+          - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
+          - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02","b"]
+          - [4,"aa",NULL,NULL,NULL,NULL,1590738993000,NULL,NULL]
     sql: |
-      SELECT id, c1, min(c3) OVER w1 as m3,min(c4) OVER w1 as m4,min(c5) OVER w1 as m5,min(c6) OVER w1 as m6,min(c7) OVER w1 as m7,min(c8) OVER w1 as m8 FROM {0} WINDOW
+      SELECT id, c1, min(c3) OVER w1 as m3,min(c4) OVER w1 as m4,min(c5) OVER w1 as m5,min(c6) OVER w1 as m6,min(c7) OVER w1 as m7,min(c8) OVER w1 as m8,min(c9) OVER w1 as m9 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int","c1 string","m3 int","m4 bigint","m5 float","m6 double","m7 timestamp","m8 date"]
+      columns: ["id int","c1 string","m3 int","m4 bigint","m5 float","m6 double","m7 timestamp","m8 date","m9 string"]
       rows:
-        - [1,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01"]
-        - [2,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01"]
-        - [3,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01"]
+        - [1,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+        - [2,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+        - [3,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+        - [4,"aa",3,32,1.3,2.3,1590738991000,"2020-05-02","b"]
   -
     id: 2
     desc: count
@@ -55,6 +58,7 @@ cases:
           - [1,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
           - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
           - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02","b"]
+          - [4,"aa",NULL,NULL,NULL,NULL,1590738993000,NULL,NULL]
     sql: |
       SELECT id, c1, count(c3) OVER w1 as m3,count(c4) OVER w1 as m4,count(c5) OVER w1 as m5,count(c6) OVER w1 as m6,count(c7) OVER w1 as m7,count(c8) OVER w1 as m8,count(c9) OVER w1 as m9 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -65,6 +69,7 @@ cases:
         - [1,"aa",1,1,1,1,1,1,1]
         - [2,"aa",2,2,2,2,2,2,2]
         - [3,"aa",3,3,3,3,3,3,3]
+        - [4,"aa",2,2,2,2,3,2,2]
   -
     id: 3
     desc: sum
@@ -76,6 +81,7 @@ cases:
           - [1,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
           - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
           - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02","b"]
+          - [4,"aa",NULL,NULL,NULL,NULL,1590738993000,NULL,NULL]
     sql: |
       SELECT id, c1, sum(c3) OVER w1 as m3,sum(c4) OVER w1 as m4,sum(c5) OVER w1 as m5,sum(c6) OVER w1 as m6 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -86,10 +92,10 @@ cases:
         - [1,"aa",1,30,1.1,2.1]
         - [2,"aa",5,63,2.5,4.5]
         - [3,"aa",8,95,3.7999997,6.799999999999999]
+        - [4,"aa",7,65,2.7,4.7]
   -
     id: 4
     desc: avg
-    tags: ["TODO", "@baoxinqi:double eq高精度下有偏差"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
@@ -98,6 +104,7 @@ cases:
           - [1,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
           - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
           - [3,"aa",1,33,1.1,2.1,1590738992000,"2020-05-02","b"]
+          - [4,"aa",NULL,NULL,NULL,NULL,1590738993000,NULL,NULL]
     sql: |
       SELECT id, c1, avg(c3) OVER w1 as m3,avg(c4) OVER w1 as m4,avg(c5) OVER w1 as m5,avg(c6) OVER w1 as m6 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -108,27 +115,30 @@ cases:
         - [1,"aa",1,30,1.100000023841858,2.1]
         - [2,"aa",2.5,31.5,1.25,2.25]
         - [3,"aa",2,32,1.200000007947286,2.1999999999999997]
+        - [4,"aa",2.5,33,1.25,2.25]
   -
     id: 5
     desc: sum-timestamp
     inputs:
       -
-        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
-        indexs: ["index1:c1:c7"]
+        columns : ["id int64","c1 string", "c2 timestamp", "c3 timestamp"]
+        indexs: ["index1:id:c2"]
         rows:
-          - [1,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
-          - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
-          - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02","b"]
+          - [1,"aa",1590738990000,1590738990000]
+          - [2,"aa",1590738991000,1590738991000]
+          - [3,"aa",1590738992000,1590738992000]
+          - [4,"aa",1590738993000,NULL]
     sql: |
-      SELECT id, c1,sum(c7) OVER w1 as m7 FROM {0} WINDOW
-      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+      SELECT id, sum(c3) OVER w1 as m2 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c2 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int","c1 string","m7 timestamp"]
+      columns: ["id int64", "m2 timestamp"]
       rows:
-        - [1,"aa",1590738990000]
-        - [2,"aa",3181477981000]
-        - [3,"aa",4772216973000]
+        - [1, 1590738990000]
+        - [2, 3181477981000]
+        - [3, 4772216973000]
+        - [4, 3181477983000]
   -
     id: 6
     desc: avg-timestamp
@@ -318,16 +328,18 @@ cases:
   - id: 15
     desc: aggregate where
     inputs:
-      - columns: ["id int64", "c1 double", "c2 float", "c3 int"]
+      - columns: ["id int64", "c1 double", "c2 float", "c3 int64"]
         indexs: ["index1:c3:id"]
         rows:
           - [1, 1.0, 1.1, 0]
           - [2, 2.0, 7.7, 0]
-          - [3, 3.0, 5.5, 0]
-          - [4, 4.0, 3.3, 0]
-          - [5, 5.0, 2.2, 1]
-          - [6, 6.0, 6.6, 1]
-          - [7, 7.0, 4.4, 1]
+          - [3, NULL, 0.1, 0]
+          - [4, 3.0, NULL, 0]
+          - [5, 4.0, 5.5, 0]
+          - [6, 5.0, 3.3, 1]
+          - [7, NULL, 2.2, 1]
+          - [8, 7.0, NULL, 1]
+          - [9, 8.0, 4.4, 1]
     sql: |
       SELECT id, 
         count_where(c1, c1 < c2) OVER w1 AS count_where_1,
@@ -342,9 +354,11 @@ cases:
       rows:
         - [1, 1, 1.0, 0, nan]
         - [2, 2, 1.5, 1, 7.6999998092651367]
-        - [3, 3, 2.0, 2, 6.5999999046325684]
-        - [4, 3, 2.0, 2, 6.5999999046325684]
-        - [5, 0, nan, 0, nan]
-        - [6, 1, 6.0, 1, 6.5999999046325684]
-        - [7, 1, 6.0, 2, 5.5]
+        - [3, 2, 1.5, 1, 7.6999998092651367]
+        - [4, 2, 1.5, 1, 7.6999998092651367]
+        - [5, 3, 2.3333333333333335, 2, 6.5999999046325684]
+        - [6, 0, nan, 0, nan]
+        - [7, 0, nan, 0, nan]
+        - [8, 0, nan, 0, nan]
+        - [9, 0, nan, 1, 4.4000000953674316]
 
