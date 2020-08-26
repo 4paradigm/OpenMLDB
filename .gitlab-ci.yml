@@ -47,32 +47,6 @@ mac_build:
       - build/src/sdk/libsql_jsdk.dylib
       - build/sql_pysdk/dist/*.whl
 
-java_ut:
-  stage: test
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
-
-  before_script:
-    - mkdir /rambuild
-    - mount -t tmpfs -o size=3G tmpfs /rambuild
-  script:
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
-  after_script:
-    - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
-    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-    - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
-    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
-  artifacts:
-    reports:
-      junit:
-        - java/target/surefire-reports/junitreports/TEST-*.xml
-        - java/target/surefire-reports/TEST-*.xml
-        - java/target/failsafe-reports/junitreports/TEST-*.xml
-        - java/target/failsafe-reports/TEST-*.xml
-
 fesql_auto_test:
   stage: test
   before_script:
