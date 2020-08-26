@@ -146,33 +146,9 @@ public class FesqlStreamTableEnvironment {
         this.registerTableSink(name, configuredSink);
     }
 
-
     public Table sqlQuery(String query) {
-        String isDisableFesql = System.getenv("DISABLE_FESQL");
-        if (isDisableFesql != null && isDisableFesql.trim().toLowerCase().equals("true")) {
-            // Force to run FlinkSQL
-            return flinksqlQuery(query);
-        } else {
-            try {
-                // Try to run FESQL
-                return runFesqlQuery(query);
-            } catch (Exception e) {
-                String isEnableFesqlFallback = System.getenv("ENABLE_FESQL_FALLBACK");
-                if (isEnableFesqlFallback != null && isEnableFesqlFallback.trim().toLowerCase().equals("true")) {
-                    // Fallback to FlinkSQL
-                    logger.warn("Fail to execute with FESQL, fallback to FlinkSQL");
-                    return flinksqlQuery(query);
-                } else {
-                    logger.error("Fail to execute with FESQL, error message: " + e.getMessage());
-                }
-            }
-        }
-        return null;
-    }
-
-    public Table fesqlQuery(String query) {
         try {
-            return runFesqlQuery(query);
+            return fesqlQuery(query);
         } catch (Exception e) {
             logger.warn("Fail to execute with FESQL, error message: " + e.getMessage());
             e.printStackTrace();
@@ -180,7 +156,7 @@ public class FesqlStreamTableEnvironment {
         }
     }
 
-    public Table runFesqlQuery(String query) throws Exception {
+    public Table fesqlQuery(String query) throws Exception {
         // Normalize SQL format
         if (!query.trim().endsWith(";")) {
             query = query.trim() + ";";

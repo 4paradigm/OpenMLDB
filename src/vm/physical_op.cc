@@ -145,14 +145,37 @@ PhysicalTableProjectNode* PhysicalTableProjectNode::CastFrom(
     PhysicalOpNode* node) {
     return dynamic_cast<PhysicalTableProjectNode*>(node);
 }
+
 PhysicalConstProjectNode* PhysicalConstProjectNode::CastFrom(
     PhysicalOpNode* node) {
     return dynamic_cast<PhysicalConstProjectNode*>(node);
 }
+
 PhysicalSimpleProjectNode* PhysicalSimpleProjectNode::CastFrom(
     PhysicalOpNode* node) {
     return dynamic_cast<PhysicalSimpleProjectNode*>(node);
 }
+
+PhysicalUnionNode* PhysicalUnionNode::CastFrom(
+    PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalUnionNode*>(node);
+}
+
+PhysicalSortNode* PhysicalSortNode::CastFrom(
+    PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalSortNode*>(node);
+}
+
+PhysicalFliterNode* PhysicalFliterNode::CastFrom(
+    PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalFliterNode*>(node);
+}
+
+PhysicalLimitNode* PhysicalLimitNode::CastFrom(
+    PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalLimitNode*>(node);
+}
+
 void PhysicalConstProjectNode::Print(std::ostream& output,
                                      const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);

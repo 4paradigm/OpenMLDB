@@ -2,6 +2,7 @@ package com._4paradigm.fesql.flink.common;
 
 import com._4paradigm.fesql.codec.RowBuilder;
 import com._4paradigm.fesql.codec.RowView;
+import com._4paradigm.fesql.common.FesqlException;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.CoreAPI;
 import org.apache.flink.types.Row;

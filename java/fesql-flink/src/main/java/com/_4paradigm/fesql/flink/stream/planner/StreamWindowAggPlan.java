@@ -1,5 +1,8 @@
 package com._4paradigm.fesql.flink.stream.planner;
 
+import com._4paradigm.fesql.common.FesqlException;
+import com._4paradigm.fesql.common.JITManager;
+import com._4paradigm.fesql.common.SerializableByteBuffer;
 import com._4paradigm.fesql.flink.common.*;
 import com._4paradigm.fesql.flink.common.planner.GeneralPlanContext;
 import com._4paradigm.fesql.node.ExprListNode;
