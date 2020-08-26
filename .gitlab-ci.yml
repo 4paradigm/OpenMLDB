@@ -6,10 +6,7 @@ variables:
 stages:
   - precheck
   - build
-  - daily
-#  - test
   - ts_integration_test
-#  - ns_integration_test
   - deploy
 
 style_check:
