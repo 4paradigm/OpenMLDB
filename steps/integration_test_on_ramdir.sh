@@ -16,3 +16,6 @@ then
     sed -i 's/^datapath\=.*/datapath\=\/rambuild/g' test-common/integrationtest/setup.sh
     sh test-common/integrationtest/runall.sh $1 $2 $3
 fi
+
+echo "run case finish"
+sleep 1h

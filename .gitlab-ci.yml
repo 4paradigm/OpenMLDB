@@ -41,23 +41,3 @@ tablet_one_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
-
-tablet_multi_demension:
-  stage: ts_integration_test
-  before_script:
-    - mkdir /rambuild
-    - mount -t tmpfs -o size=3G tmpfs /rambuild
-  script:
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - rm -rf ./test-output/integrationtest/test-reports/
-    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
-  artifacts:
-    reports:
-      junit:
-        - /rambuild/rtidb/test-output/integrationtest/test-reports/*
-  dependencies:
-    - build
-  except:
-    variables:
