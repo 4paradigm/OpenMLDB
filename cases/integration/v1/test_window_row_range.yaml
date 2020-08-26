@@ -323,11 +323,12 @@ cases:
       success: false
   -
     id: 11
-    desc: date为order by
+    desc: date为order by-未命中索引
+    mode: offline-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c7:c8"]
+        indexs: ["index1:c1:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [2,"bb",20,31,1.2,2.2,1590738990000,"2020-05-02"]
@@ -335,7 +336,7 @@ cases:
           - [4,"dd",20,33,1.4,2.4,1590738990000,"2020-05-04"]
           - [5,"ee",21,34,1.5,2.5,1590738991000,"2020-05-05"]
     sql: |
-      SELECT id, c1, c8, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c7 ORDER BY {0}.c8 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+      SELECT id, c1, c8, count(c4) OVER w1 as w1_c4_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c8 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
     expect:
       success: false
   -

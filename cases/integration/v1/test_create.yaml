@@ -290,10 +290,7 @@ cases:
   -
     id: 29
     desc: 指定的ts为int
-    inputs:
-      -
-        create: create table {0} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c2,ttl=0));
-    sql: select * from {0};
+    sql: create table {auto} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c2,ttl=0));
     expect:
       success: false
   -
