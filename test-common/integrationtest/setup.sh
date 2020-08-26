@@ -13,9 +13,6 @@ reportpath=${projectpath}/test-output/integrationtest/test-reports
 zkpath=${testpath}/../../thirdsrc/zookeeper-3.4.14
 datapath=./data
 
-echo "XXXXXXXXXXXXXXX"
-echo ${reportpath}
-
 echo export rtidbver=${rtidbver} > ${testenvpath}
 echo export testpath=${testpath} >> ${testenvpath}
 echo export projectpath=${projectpath} >> ${testenvpath}
