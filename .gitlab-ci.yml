@@ -21,22 +21,6 @@ build:
       - build/src/sdk/libsql_jsdk.so
       - build/sql_pysdk/dist/*.whl
 
-mac_build:
-  variables:
-    CICD_RUNNER_TAG: "rtidb_mac"
-  tags:
-    - rtidb_mac
-  stage: build
-  script:
-    - bash steps/simple_compile_mac.sh
-    - mv build/bin/rtidb build/bin/rtidb_mac
-  artifacts:
-    expire_in: 4h
-    paths:
-      - build/bin/rtidb_mac
-      - build/src/sdk/libsql_jsdk.dylib
-      - build/sql_pysdk/dist/*.whl
-
 tablet_one_demension:
   stage: ts_integration_test
   before_script:
