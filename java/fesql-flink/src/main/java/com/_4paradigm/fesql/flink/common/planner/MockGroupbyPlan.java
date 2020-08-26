@@ -1,7 +1,6 @@
 package com._4paradigm.fesql.flink.common.planner;
 
-import com._4paradigm.fesql.flink.common.FesqlException;
-import com._4paradigm.fesql.flink.common.planner.GeneralPlanContext;
+import com._4paradigm.fesql.common.FesqlException;
 import com._4paradigm.fesql.vm.PhysicalGroupNode;
 import org.apache.flink.table.api.Table;
 

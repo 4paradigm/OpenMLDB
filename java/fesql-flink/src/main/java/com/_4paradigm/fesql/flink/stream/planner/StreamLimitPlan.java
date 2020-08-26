@@ -1,9 +1,8 @@
 package com._4paradigm.fesql.flink.stream.planner;
 
-import com._4paradigm.fesql.flink.common.*;
+import com._4paradigm.fesql.common.FesqlException;
 import com._4paradigm.fesql.flink.common.planner.GeneralPlanContext;
 import com._4paradigm.fesql.vm.PhysicalLimitNode;
-import com._4paradigm.fesql.vm.PhysicalTableProjectNode;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.table.api.Table;

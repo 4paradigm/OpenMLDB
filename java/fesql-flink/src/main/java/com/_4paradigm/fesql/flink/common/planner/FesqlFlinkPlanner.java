@@ -1,11 +1,12 @@
 package com._4paradigm.fesql.flink.common.planner;
 
 import com._4paradigm.fesql.FeSqlLibrary;
+import com._4paradigm.fesql.common.SQLEngine;
+import com._4paradigm.fesql.common.UnsupportedFesqlException;
 import com._4paradigm.fesql.flink.batch.FesqlBatchTableEnvironment;
 import com._4paradigm.fesql.flink.batch.planner.*;
-import com._4paradigm.fesql.flink.common.FesqlException;
+import com._4paradigm.fesql.common.FesqlException;
 import com._4paradigm.fesql.flink.common.FesqlUtil;
-import com._4paradigm.fesql.flink.common.SQLEngine;
 import com._4paradigm.fesql.flink.stream.FesqlStreamTableEnvironment;
 import com._4paradigm.fesql.flink.stream.planner.StreamDataProviderPlan;
 import com._4paradigm.fesql.flink.stream.planner.StreamLimitPlan;
@@ -52,7 +53,7 @@ public class FesqlFlinkPlanner {
         this.tableSchemaMap = env.getRegisteredTableSchemaMap();
     }
 
-    public Table plan(String sqlQuery) throws FesqlException {
+    public Table plan(String sqlQuery) throws FesqlException, UnsupportedFesqlException {
 
         TypeOuterClass.Database fesqlDatabase = FesqlUtil.buildDatabase("flink_db", this.tableSchemaMap);
         SQLEngine engine = new SQLEngine(sqlQuery, fesqlDatabase);
@@ -80,7 +81,7 @@ public class FesqlFlinkPlanner {
 
     }
 
-    public Table visitPhysicalNode(GeneralPlanContext planContext, PhysicalOpNode node) throws FesqlException {
+    public Table visitPhysicalNode(GeneralPlanContext planContext, PhysicalOpNode node) throws FesqlException, UnsupportedFesqlException {
 
         List<Table> children = new ArrayList<Table>();
         for (int i=0; i < node.GetProducerCnt(); ++i) {
@@ -134,10 +135,10 @@ public class FesqlFlinkPlanner {
                     outputTable = BatchGroupbyAggPlan.gen(planContext, physicalGroupAggrerationNode, children.get(0));
                 } else {
                     // TODO: need to convert upsert stream to Table, refer to https://github.com/apache/flink/pull/6787
-                    throw new FesqlException(String.format("Planner does not support project type %s", projectType));
+                    throw new UnsupportedFesqlException(String.format("Planner does not support project type %s", projectType));
                 }
             } else {
-                throw new FesqlException(String.format("Planner does not support project type %s", projectType));
+                throw new UnsupportedFesqlException(String.format("Planner does not support project type %s", projectType));
             }
         } else if (opType.swigValue() == PhysicalOpType.kPhysicalOpGroupBy.swigValue()) {
             PhysicalGroupNode physicalGroupNode = PhysicalGroupNode.CastFrom(node);
@@ -150,7 +151,7 @@ public class FesqlFlinkPlanner {
                 outputTable = StreamLimitPlan.gen(planContext, physicalLimitNode, children.get(0));
             }
         } else {
-            throw new FesqlException(String.format("Planner does not support physical op %s", node));
+            throw new UnsupportedFesqlException(String.format("Planner does not support physical op %s", node));
         }
 
         return outputTable;

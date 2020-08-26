@@ -1,6 +1,6 @@
 package com._4paradigm.fesql.flink.batch.planner;
 
-import com._4paradigm.fesql.flink.common.*;
+import com._4paradigm.fesql.common.FesqlException;
 import com._4paradigm.fesql.flink.common.planner.GeneralPlanContext;
 import com._4paradigm.fesql.vm.PhysicalLimitNode;
 import org.apache.flink.api.common.functions.FilterFunction;

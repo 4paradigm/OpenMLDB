@@ -3,6 +3,8 @@ package com._4paradigm.fesql.flink.common;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import com._4paradigm.fesql.common.FesqlException;
 import com._4paradigm.fesql.node.ColumnRefNode;
 import com._4paradigm.fesql.node.ExprNode;
 import com._4paradigm.fesql.node.ExprType;
