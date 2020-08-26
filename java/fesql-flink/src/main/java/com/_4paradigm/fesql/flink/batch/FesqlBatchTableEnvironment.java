@@ -1,5 +1,7 @@
 package com._4paradigm.fesql.flink.batch;
 
+import com._4paradigm.fesql.common.FesqlException;
+import com._4paradigm.fesql.common.UnsupportedFesqlException;
 import com._4paradigm.fesql.flink.common.planner.FesqlFlinkPlanner;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -79,7 +81,7 @@ public class FesqlBatchTableEnvironment {
         }
     }
 
-    public Table fesqlQuery(String query) throws Exception {
+    public Table fesqlQuery(String query) throws FesqlException, UnsupportedFesqlException {
         // Normalize SQL format
         if (!query.trim().endsWith(";")) {
             query = query.trim() + ";";
