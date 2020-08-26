@@ -115,7 +115,8 @@ public class TableHandler {
                 tempList.add(ncd);
                 schemaMap.put(schemaSize + i + 1, new ArrayList<>(tempList));
                 nameTypeMap.put(ncd.getName(), ncd.getDataType());
-                schemaPos.put(ncd.getName(), schemaPos.size() + i);
+                int idx = schemaPos.size();
+                schemaPos.put(ncd.getName(), idx);
             }
         }
 

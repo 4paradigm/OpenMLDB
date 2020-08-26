@@ -1057,7 +1057,6 @@ bool MemTableSnapshot::PackNewIndexEntry(
         }
     }
     std::vector<std::string> row;
-    LOG(INFO) << "will pack new entry";
     int ret = DecodeData(table, columns, *entry, max_idx, row);
     if (ret != 0 && ret != 2) {
         LOG(INFO) << "pack fail code is " << ret;
