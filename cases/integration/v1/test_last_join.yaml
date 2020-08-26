@@ -569,8 +569,7 @@ cases:
   -
     id: 19
     desc: 拼接条件中有null
-    mode: offline-unsupport
-    tags: ["@baoxinqi"]
+    tags: ["TODO", "@chenjing, @baoxinqi"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
