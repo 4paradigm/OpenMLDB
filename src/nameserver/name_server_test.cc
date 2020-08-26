@@ -78,7 +78,6 @@ bool StartNS(const std::string& endpoint, brpc::Server* server, brpc::ServerOpti
     if (!nameserver->Init("")) {
         return false;
     }
-    sleep(4);
     if (server->AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
@@ -87,6 +86,7 @@ bool StartNS(const std::string& endpoint, brpc::Server* server, brpc::ServerOpti
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
+    sleep(2);
     return true;
 }
 
@@ -97,7 +97,6 @@ bool StartTablet(const std::string& endpoint,
     if (!tablet->Init("")) {
         return false;
     }
-    sleep(2);
     if (server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
         exit(1);
@@ -109,6 +108,7 @@ bool StartTablet(const std::string& endpoint,
     if (!tablet->RegisterZK()) {
         return false;
     }
+    sleep(2);
     return true;
 }
 

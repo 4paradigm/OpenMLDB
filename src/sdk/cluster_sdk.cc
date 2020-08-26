@@ -127,8 +127,7 @@ bool ClusterSDK::CreateNsClient() {
         return false;
     } else {
         LOG(INFO) << "init ns client with endpoint " << endpoint << " done";
-        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-        ns_client_ = ns_client;
+        std::atomic_store_explicit(&ns_client_, ns_client, std::memory_order_relaxed);
         return true;
     }
 }

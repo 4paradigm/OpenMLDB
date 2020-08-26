@@ -179,13 +179,13 @@ tablet_one_demension:
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - rm -rf ./test-output/integrationtest/test-reports/
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*
+        - ./test-reports/*
   dependencies:
     - build
   except:
@@ -200,13 +200,13 @@ tablet_multi_demension:
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - rm -rf ./test-output/integrationtest/test-reports/
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*
+        - ./test-reports/*
   dependencies:
     - build
   except:
@@ -221,13 +221,13 @@ ns_one_demension:
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - rm -rf ./test-output/integrationtest/test-reports/
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*
+        - ./test-reports/*
   dependencies:
     - build
   except:
@@ -242,19 +242,19 @@ ns_multi_demension:
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - rm -rf ./test-output/integrationtest/test-reports/
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*
+        - ./test-reports/*
   dependencies:
     - build
   except:
     variables:
       - $ENV_BUILD == "daily"
-    
+
 disk_table:
   stage: ns_integration_test
   before_script:
@@ -263,13 +263,13 @@ disk_table:
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - rm -rf ./test-output/integrationtest/test-reports/
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "disk"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./  
   artifacts:
     reports:
       junit:
-        - ./test-output/integrationtest/test-reports/*
+        - ./test-reports/*
   dependencies:
     - build
   except:
