@@ -65,6 +65,22 @@ public class RowKvIterator implements KvIterator {
         rv = new RowView(schema);
     }
 
+    public RowKvIterator(List<ByteString> bsList, List<ColumnDesc> schema, int count, boolean underProjection) {
+        for (ByteString bs : bsList) {
+            if (!bs.isEmpty()) {
+                this.dataList.add(new ScanResultParser(bs));
+            }
+        }
+        this.count = count;
+        next();
+        this.schema = schema;
+        this.defaultSchema = schema;
+        rv = new RowView(schema);
+        if (underProjection) {
+            this.underProjection = true;
+        }
+    }
+
     public int getCount() {
         return count;
     }

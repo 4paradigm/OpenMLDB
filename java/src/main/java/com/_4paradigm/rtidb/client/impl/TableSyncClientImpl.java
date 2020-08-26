@@ -147,7 +147,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         if (th.getTableInfo().getFormatVersion() == 1) {
             if (projectionInfo != null) {
-                return new RowKvIterator(byteStrings, projectionInfo.getProjectionSchema(), count);
+                return new RowKvIterator(byteStrings, projectionInfo.getProjectionSchema(), count, true);
             } else {
                 return new RowKvIterator(byteStrings, th.getSchema(), count);
             }
@@ -1223,10 +1223,10 @@ public class TableSyncClientImpl implements TableSyncClient {
             if (isNewFormat) {
                 RowKvIterator rit;
                 if (option.getProjection().size() > 0) {
-                    rit = new RowKvIterator(response.getPairs(), schema, response.getCount());
-                } else {
                     rit = new RowKvIterator(response.getPairs(), schema, response.getCount(), true);
                     return rit;
+                } else {
+                    rit = new RowKvIterator(response.getPairs(), schema, response.getCount());
                 }
                 rit.setVerMap(th.getVersions());
                 rit.setSchemaMap(th.getSchemaMap());
