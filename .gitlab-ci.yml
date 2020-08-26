@@ -7,9 +7,9 @@ stages:
   - precheck
   - build
   - daily
-    #- test
+#  - test
   - ts_integration_test
-    #- ns_integration_test
+#  - ns_integration_test
   - deploy
 
 style_check:
