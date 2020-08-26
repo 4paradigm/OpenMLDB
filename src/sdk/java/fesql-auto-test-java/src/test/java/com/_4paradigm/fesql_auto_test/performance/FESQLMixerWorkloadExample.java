@@ -284,8 +284,10 @@ public class FESQLMixerWorkloadExample extends BaseExample {
                 "last join card_info order by card_info.crd_lst_isu_dte on trx_fe.card_no = card_info.crd_nbr and trx_fe.trx_time >= card_info.crd_lst_isu_dte;\n";
         String key = cardId;
         String trans = "trans";
+        PreparedStatement pst = null;
+        java.sql.ResultSet resultSet = null;
         try {
-            PreparedStatement pst = executor.getRequestPreparedStmt(db, sql);
+            pst = executor.getRequestPreparedStmt(db, sql);
             pst.setNull(1, 0);
             pst.setString(2, key);
             pst.setNull(3, 0);
@@ -306,7 +308,7 @@ public class FESQLMixerWorkloadExample extends BaseExample {
             pst.setInt(18, 3);
             pst.setInt(19, 4);
             pst.setInt(20, 5);
-            java.sql.ResultSet resultSet = pst.executeQuery();
+            resultSet = pst.executeQuery();
             if (resultSet == null) {
                 System.out.println("no result");
             } else {
@@ -342,6 +344,17 @@ public class FESQLMixerWorkloadExample extends BaseExample {
             }
         } catch (SQLException throwables) {
             throwables.printStackTrace();
+        } finally {
+            try {
+                if (pst != null) {
+                    pst.close();
+                    if (resultSet != null) {
+                        resultSet.close();
+                    }
+                }
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
         }
     }
 

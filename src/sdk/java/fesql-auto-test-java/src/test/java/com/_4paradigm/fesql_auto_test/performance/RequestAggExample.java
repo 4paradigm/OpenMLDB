@@ -196,6 +196,7 @@ public class RequestAggExample extends BaseExample {
             return;
         }
         updateProcessInfo(resultSet != null && resultSet.getFetchSize()> 0);
+        pst.close();
         resultSet.close();
     }
 

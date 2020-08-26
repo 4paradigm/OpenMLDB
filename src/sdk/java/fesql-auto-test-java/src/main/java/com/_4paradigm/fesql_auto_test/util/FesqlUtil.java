@@ -370,6 +370,12 @@ public class FesqlUtil {
                     return fesqlResult;
                 }
             }
+            try {
+                rps.close();
+                resultSet.close();
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
         }
         fesqlResult.setResult(result);
         fesqlResult.setCount(result.size());

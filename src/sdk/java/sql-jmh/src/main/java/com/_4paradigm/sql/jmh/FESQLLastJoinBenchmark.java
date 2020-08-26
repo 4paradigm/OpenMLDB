@@ -122,6 +122,14 @@ public class FESQLLastJoinBenchmark {
             pst.executeQuery();
         } catch (SQLException throwables) {
             throwables.printStackTrace();
+        } finally {
+            if (pst != null) {
+                try {
+                    pst.close();
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
+            }
         }
     }
 

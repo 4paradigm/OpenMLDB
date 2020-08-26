@@ -35,7 +35,7 @@ public class RequestPreparedStatementImpl implements PreparedStatement {
         this.router = router;
         Status status = new Status();
         this.currentRow = router.GetRequestRow(db, sql, status);
-        if (status.getCode() != 0) {
+        if (status.getCode() != 0 || this.currentRow == null) {
             String msg = status.getMsg();
             logger.error("GetRequestRow fail: {}", msg);
             throw new SQLException("get GetRequestRow fail " + msg + " in construction preparedstatement");
@@ -84,10 +84,10 @@ public class RequestPreparedStatementImpl implements PreparedStatement {
         checkClosed();
         checkNull();
         if (i <= 0) {
-            throw new SQLException("index underflow, index: " + i + " size: " + this.currentDatas.size());
+            throw new SQLException("index underflow, index: " + i + " size: " + this.currentSchema.GetColumnCnt());
         }
         if (i > this.currentSchema.GetColumnCnt()) {
-            throw new SQLException("index overflow, index: " + i + " size: " + this.currentDatas.size());
+            throw new SQLException("index overflow, index: " + i + " size: " + this.currentSchema.GetColumnCnt());
         }
     }
 
@@ -104,8 +104,7 @@ public class RequestPreparedStatementImpl implements PreparedStatement {
         Status status = new Status();
         com._4paradigm.sql.ResultSet resultSet = router.ExecuteSQL(db, currentSql, currentRow, status);
         if (resultSet == null) {
-            logger.error("execute sql fail");
-            return null;
+            throw new SQLException("execute sql fail");
         }
         ResultSet rs = new SQLResultSet(resultSet);
         if (closeOnComplete) {
@@ -288,9 +287,6 @@ public class RequestPreparedStatementImpl implements PreparedStatement {
             if (!this.hasSet.get(i)) {
                 throw new SQLException("data not enough");
             }
-        }
-        if (this.currentDatas.size() != this.currentSchema.GetColumnCnt()) {
-            throw new SQLException("data not enough");
         }
         if (this.currentRow == null) {
             throw new SQLException("currentRow is null");
@@ -560,6 +556,14 @@ public class RequestPreparedStatementImpl implements PreparedStatement {
 
     @Override
     public void close() throws SQLException {
+        this.db = null;
+        this.currentSql = null;
+        this.router = null;
+        this.currentRow = null;
+        this.currentSchema = null;
+        this.currentDatas = null;
+        this.hasSet = null;
+        this.stringsLen = null;
         this.closed = true;
     }
 
