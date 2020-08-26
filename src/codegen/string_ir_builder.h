@@ -42,7 +42,7 @@ class StringIRBuilder : public StructTypeIRBuilder {
     bool SetData(::llvm::BasicBlock* block, ::llvm::Value* str,
                  ::llvm::Value* data);
     base::Status CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
-                  ::llvm::Value** output);
+                          ::llvm::Value** output);
     base::Status Compare(::llvm::BasicBlock* block, const NativeValue& s1,
                          const NativeValue& s2, NativeValue* output);
     base::Status Concat(::llvm::BasicBlock* block,

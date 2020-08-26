@@ -749,8 +749,8 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
     llvm::Value* raw = nullptr;
     switch (node->GetOp()) {
         case ::fesql::node::kFnOpNot: {
-            ok = predicate_ir_builder_.BuildNotExpr(left, &raw, status);
-            break;
+            status = predicate_ir_builder_.BuildNotExpr(left_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpMinus: {
             ok = arithmetic_ir_builder_.BuildSubExpr(builder.getInt16(0), left,
@@ -761,6 +761,21 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
             raw = left;
             break;
         }
+        case ::fesql::node::kFnOpIsNull: {
+            status =
+                predicate_ir_builder_.BuildIsNullExpr(left_wrapper, output);
+            if (status.isOK()) {
+                return true;
+            } else {
+                ok = false;
+                break;
+            }
+        }
+        case ::fesql::node::kFnOpNonNull: {
+            // just ignore any null flag
+            raw = left_wrapper.GetValue(&builder);
+            break;
+        }
         default: {
             ok = false;
             status.msg = "invalid op " + ExprOpTypeName(node->GetOp());
@@ -769,7 +784,7 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
         }
     }
     if (!ok || raw == nullptr) {
-        LOG(WARNING) << "fail to codegen binary expression: " << status.msg;
+        LOG(WARNING) << "fail to codegen unary expression: " << status.msg;
         return false;
     }
 
@@ -902,16 +917,19 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
             break;
         }
         case ::fesql::node::kFnOpAnd: {
-            ok = predicate_ir_builder_.BuildAndExpr(left, right, &raw, status);
-            break;
+            status = predicate_ir_builder_.BuildAndExpr(left_wrapper,
+                                                        right_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpOr: {
-            ok = predicate_ir_builder_.BuildOrExpr(left, right, &raw, status);
-            break;
+            status = predicate_ir_builder_.BuildOrExpr(left_wrapper,
+                                                       right_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpXor: {
-            ok = predicate_ir_builder_.BuildXorExpr(left, right, &raw, status);
-            break;
+            status = predicate_ir_builder_.BuildXorExpr(left_wrapper,
+                                                        right_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpEq: {
             ok = predicate_ir_builder_.BuildEqExpr(left, right, &raw, status);

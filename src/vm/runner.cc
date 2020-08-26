@@ -1712,7 +1712,6 @@ Row Runner::GroupbyProject(const int8_t* fn, TableHandler* table) {
         base::RefCountedSlice::CreateManaged(buf, RowView::GetSize(buf)));
 }
 
-
 const Row WindowProjectGenerator::Gen(const uint64_t key, const Row row,
                                       bool is_instance, size_t append_slices,
                                       Window* window) {
