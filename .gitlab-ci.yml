@@ -32,10 +32,11 @@ tablet_one_demension:
     - rm -rf ./test-output/integrationtest/test-reports/
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./  
   artifacts:
     reports:
       junit:
-        - /rambuild/rtidb/test-output/integrationtest/test-reports/*
+        - ./test-reports/*
   dependencies:
     - build
   except:
