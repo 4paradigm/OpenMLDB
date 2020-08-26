@@ -4,19 +4,10 @@ services:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 stages:
-  - precheck
   - build
   - ts_integration_test
   - deploy
 
-style_check:
-  stage: precheck
-  script:
-    - source /root/.bashrc && bash tools/style_check.sh
-  artifacts:
-    reports:
-      junit:
-        - ./reports/style.xml
 build:
   stage: build
   script:
