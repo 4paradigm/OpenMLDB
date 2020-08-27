@@ -191,6 +191,9 @@ void SQLSDKTest::CovertFesqlRowToRequestRow(fesql::codec::RowView* row_view,
             continue;
         }
         switch (row_view->GetSchema()->Get(i).type()) {
+            case fesql::type::kBool:
+                ASSERT_TRUE(request_row->AppendBool(row_view->GetBoolUnsafe(i)));
+                break;
             case fesql::type::kInt16:
                 ASSERT_TRUE(request_row->AppendInt16(row_view->GetInt16Unsafe(i)));
                 break;
