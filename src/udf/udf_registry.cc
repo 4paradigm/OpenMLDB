@@ -17,26 +17,7 @@ namespace fesql {
 namespace udf {
 
 const std::string UDFResolveContext::GetArgSignature() const {
-    std::stringstream ss;
-    for (size_t i = 0; i < arg_size(); ++i) {
-        auto arg = args_[i];
-        if (arg == nullptr) {
-            ss << "?";
-        } else {
-            if (arg->nullable()) {
-                ss << "nullable ";
-            }
-            if (arg->GetOutputType() != nullptr) {
-                ss << arg->GetOutputType()->GetName();
-            } else {
-                ss << "?";
-            }
-        }
-        if (i < arg_size() - 1) {
-            ss << ", ";
-        }
-    }
-    return ss.str();
+    return fesql::udf::GetArgSignature(args_);
 }
 
 Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,

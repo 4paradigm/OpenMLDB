@@ -156,23 +156,19 @@ PhysicalSimpleProjectNode* PhysicalSimpleProjectNode::CastFrom(
     return dynamic_cast<PhysicalSimpleProjectNode*>(node);
 }
 
-PhysicalUnionNode* PhysicalUnionNode::CastFrom(
-    PhysicalOpNode* node) {
+PhysicalUnionNode* PhysicalUnionNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalUnionNode*>(node);
 }
 
-PhysicalSortNode* PhysicalSortNode::CastFrom(
-    PhysicalOpNode* node) {
+PhysicalSortNode* PhysicalSortNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalSortNode*>(node);
 }
 
-PhysicalFliterNode* PhysicalFliterNode::CastFrom(
-    PhysicalOpNode* node) {
+PhysicalFliterNode* PhysicalFliterNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalFliterNode*>(node);
 }
 
-PhysicalLimitNode* PhysicalLimitNode::CastFrom(
-    PhysicalOpNode* node) {
+PhysicalLimitNode* PhysicalLimitNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalLimitNode*>(node);
 }
 

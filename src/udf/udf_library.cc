@@ -47,9 +47,10 @@ UDFLibrary::FindAll(const std::string& name) const {
     }
 }
 
-void UDFLibrary::InsertRegistry(const std::string& name,
-                                const std::vector<std::string>& signature,
-                                std::shared_ptr<UDFRegistry> registry) {
+void UDFLibrary::InsertRegistry(
+    const std::string& name,
+    const std::vector<const node::TypeNode*>& arg_types, bool is_variadic,
+    std::shared_ptr<UDFRegistry> registry) {
     using SignatureTable = ArgSignatureTable<std::shared_ptr<UDFRegistry>>;
     std::shared_ptr<SignatureTable> signature_table = nullptr;
     auto iter = table_.find(name);
@@ -59,7 +60,7 @@ void UDFLibrary::InsertRegistry(const std::string& name,
     } else {
         signature_table = iter->second;
     }
-    auto status = signature_table->Register(signature, registry);
+    auto status = signature_table->Register(arg_types, is_variadic, registry);
     if (!status.isOK()) {
         LOG(WARNING) << "Insert " << name << " registry failed: " << status.msg;
     }
@@ -142,11 +143,11 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
                 auto registry = std::make_shared<SimpleUDFRegistry>(
                     header->name_, def_node);
 
-                std::vector<std::string> arg_types;
+                std::vector<const node::TypeNode*> arg_types;
                 for (size_t i = 0; i < def_node->GetArgSize(); ++i) {
-                    arg_types.push_back(def_node->GetArgType(i)->GetName());
+                    arg_types.push_back(def_node->GetArgType(i));
                 }
-                InsertRegistry(header->name_, arg_types, registry);
+                InsertRegistry(header->name_, arg_types, false, registry);
                 break;
             }
             default:
@@ -229,6 +230,29 @@ void UDFLibrary::InitJITSymbols(llvm::orc::LLJIT* jit_ptr) {
         fesql::vm::FeSQLJIT::AddSymbol(jit_ptr->getMainJITDylib(), mi,
                                        pair.first, pair.second);
     }
+}
+
+const std::string GetArgSignature(const std::vector<node::ExprNode*>& args) {
+    std::stringstream ss;
+    for (size_t i = 0; i < args.size(); ++i) {
+        auto arg = args[i];
+        if (arg == nullptr) {
+            ss << "?";
+        } else {
+            if (arg->nullable()) {
+                ss << "nullable ";
+            }
+            if (arg->GetOutputType() != nullptr) {
+                ss << arg->GetOutputType()->GetName();
+            } else {
+                ss << "?";
+            }
+        }
+        if (i < args.size() - 1) {
+            ss << ", ";
+        }
+    }
+    return ss.str();
 }
 
 }  // namespace udf

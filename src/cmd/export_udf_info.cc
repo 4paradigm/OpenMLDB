@@ -21,6 +21,7 @@
 #include "glog/logging.h"
 #include "yaml-cpp/yaml.h"
 
+#include "passes/resolve_fn_and_attrs.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf_registry.h"
 
@@ -30,10 +31,90 @@ DEFINE_string(output_file, "udf_defs.yaml", "Output yaml filename");
 namespace fesql {
 namespace cmd {
 
+struct UDFTypeInfo {
+    std::vector<const node::TypeNode*> arg_types;
+    const node::TypeNode* return_type;
+    UDFTypeInfo(const std::vector<const node::TypeNode*>& arg_types,
+                const node::TypeNode* return_type)
+        : arg_types(arg_types), return_type(return_type) {}
+};
+
+class UDFTypeExtractor {
+ public:
+    UDFTypeExtractor() {
+        enum_types_.push_back(node_manager_.MakeTypeNode(node::kBool));
+        enum_types_.push_back(node_manager_.MakeTypeNode(node::kDate));
+        enum_types_.push_back(node_manager_.MakeTypeNode(node::kTimestamp));
+        enum_types_.push_back(node_manager_.MakeTypeNode(node::kVarchar));
+        enum_types_.push_back(node_manager_.MakeTypeNode(node::kInt16));
+        enum_types_.push_back(node_manager_.MakeTypeNode(node::kInt32));
+        enum_types_.push_back(node_manager_.MakeTypeNode(node::kInt64));
+        enum_types_.push_back(node_manager_.MakeTypeNode(node::kFloat));
+        enum_types_.push_back(node_manager_.MakeTypeNode(node::kDouble));
+    }
+
+    void Expand(const std::string& name, size_t idx, bool is_expansion,
+                std::vector<const node::TypeNode*>* arg_types,
+                std::vector<UDFTypeInfo>* output) {
+        if (idx == arg_types->size()) {
+            // rec end
+            auto library = udf::DefaultUDFLibrary::get();
+            node::NodeManager* nm = &node_manager_;
+            std::vector<node::ExprNode*> args;
+            for (size_t i = 0; i < arg_types->size(); ++i) {
+                auto arg_node = nm->MakeExprIdNode(
+                    "arg_" + std::to_string(i), node::ExprIdNode::GetNewId());
+                arg_node->SetOutputType((*arg_types)[i]);
+                arg_node->SetNullable(false);
+                args.push_back(arg_node);
+            }
+            node::ExprNode* call = nullptr;
+            auto status = library->Transform(name, args, nm, &call);
+            if (!status.isOK()) {
+                if (!is_expansion) {
+                    LOG(WARNING) << "Invalid registry of " << name << ": <"
+                                 << udf::GetArgSignature(args) << ">";
+                }
+                return;
+            }
+            node::ExprNode* resolved = nullptr;
+            passes::ResolveFnAndAttrs resolver(nm, library,
+                                               vm::SchemaSourceList());
+            status = resolver.VisitExpr(call, &resolved);
+            if (!status.isOK() || resolved == nullptr ||
+                resolved->GetOutputType() == nullptr) {
+                LOG(WARNING) << "Fail to resolve registry of " << name << ": <"
+                             << udf::GetArgSignature(args) << ">";
+                return;
+            }
+            UDFTypeInfo info(*arg_types, resolved->GetOutputType());
+            output->push_back(info);
+            return;
+        }
+        auto cur_type = (*arg_types)[idx];
+        if (cur_type != nullptr) {
+            Expand(name, idx + 1, is_expansion, arg_types, output);
+        } else {
+            for (auto expand_type : enum_types_) {
+                (*arg_types)[idx] = expand_type;
+                Expand(name, idx + 1, true, arg_types, output);
+                (*arg_types)[idx] = nullptr;
+            }
+        }
+    }
+
+ private:
+    node::NodeManager node_manager_;
+
+    std::vector<const node::TypeNode*> enum_types_;
+};
+
 int ExportUDFInfo(const std::string& dir, const std::string& filename) {
     auto library = udf::DefaultUDFLibrary::get();
     auto& registries = library->GetAllRegistries();
     YAML::Emitter yaml_out;
+
+    UDFTypeExtractor udf_extractor;
 
     yaml_out << YAML::BeginMap;
     for (auto& pair : registries) {
@@ -44,19 +125,38 @@ int ExportUDFInfo(const std::string& dir, const std::string& filename) {
         yaml_out << YAML::Value;
         yaml_out << YAML::BeginSeq;
 
-        for (auto& regitem : signature_table) {
-            auto registry = regitem.second.first;
-            auto arg_names = regitem.second.second;
+        for (auto& pair : signature_table) {
+            auto key = pair.first;
+            auto& regitem = pair.second;
+            auto registry = regitem.value;
+
+            std::vector<UDFTypeInfo> expand_type_infos;
+            udf_extractor.Expand(name, 0, false, &regitem.arg_types,
+                                 &expand_type_infos);
+
             yaml_out << YAML::BeginMap;
-            yaml_out << YAML::Key << "arg_types";
+            yaml_out << YAML::Key << "signatures";
             yaml_out << YAML::Value;
             yaml_out << YAML::BeginSeq;
-            for (auto n : arg_names) {
-                yaml_out << n;
+            for (auto& type_info : expand_type_infos) {
+                yaml_out << YAML::BeginMap;
+                yaml_out << YAML::Key << "arg_types";
+                yaml_out << YAML::Value;
+                yaml_out << YAML::BeginSeq;
+                for (auto ty : type_info.arg_types) {
+                    yaml_out << ty->GetName();
+                }
+                yaml_out << YAML::EndSeq;
+                yaml_out << YAML::Key << "return_type";
+                yaml_out << YAML::Value << type_info.return_type->GetName();
+                yaml_out << YAML::EndMap;
             }
             yaml_out << YAML::EndSeq;
+
             yaml_out << YAML::Key << "doc";
             yaml_out << YAML::Value << registry->doc();
+            yaml_out << YAML::Key << "is_variadic";
+            yaml_out << YAML::Value << regitem.is_variadic;
             yaml_out << YAML::EndMap;
         }
 
