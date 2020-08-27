@@ -2,14 +2,12 @@ package com._4paradigm.sql.sdk.impl;
 
 import com._4paradigm.sql.*;
 import com._4paradigm.sql.common.LibraryLoader;
-import com._4paradigm.sql.sdk.InsertPreparedStatementImpl;
-import com._4paradigm.sql.sdk.SdkOption;
-import com._4paradigm.sql.sdk.SqlException;
-import com._4paradigm.sql.sdk.SqlExecutor;
+import com._4paradigm.sql.sdk.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 public class SqlClusterExecutor implements SqlExecutor {
     static {
@@ -92,15 +90,15 @@ public class SqlClusterExecutor implements SqlExecutor {
         return rs;
     }
 
-    @Override
-    public SQLRequestRow getRequestRow(String db, String sql) {
-        Status status = new Status();
-        SQLRequestRow row = sqlRouter.GetRequestRow(db, sql, status);
-        if (status.getCode() != 0) {
-            logger.error("getRequestRow fail: {}", status.getMsg());
-        }
-        return row;
-    }
+//    @Override
+//    private SQLRequestRow getRequestRow(String db, String sql) {
+//        Status status = new Status();
+//        SQLRequestRow row = sqlRouter.GetRequestRow(db, sql, status);
+//        if (status.getCode() != 0) {
+//            logger.error("getRequestRow fail: {}", status.getMsg());
+//        }
+//        return row;
+//    }
 
     @Override
     public SQLInsertRow getInsertRow(String db, String sql) {
@@ -112,13 +110,18 @@ public class SqlClusterExecutor implements SqlExecutor {
         return row;
     }
 
-    public PreparedStatement getInsertPrepareStmt(String db, String sql) {
+    public PreparedStatement getInsertPreparedStmt(String db, String sql) {
         try {
             InsertPreparedStatementImpl impl = new InsertPreparedStatementImpl(db, sql, this.sqlRouter);
             return impl;
         } catch (Exception e) {
             return null;
         }
+    }
+
+    public PreparedStatement getRequestPreparedStmt (String db, String sql) throws SQLException {
+        RequestPreparedStatementImpl impl = new RequestPreparedStatementImpl(db, sql, this.sqlRouter);
+        return impl;
     }
 
     @Override

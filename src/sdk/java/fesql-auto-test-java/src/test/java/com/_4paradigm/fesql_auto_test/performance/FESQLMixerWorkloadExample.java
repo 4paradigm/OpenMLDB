@@ -11,6 +11,7 @@ import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.*;
 import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -125,6 +126,115 @@ public class FESQLMixerWorkloadExample extends BaseExample {
         }
     }
 
+//    public void lastJoinBm() {
+//        String sql = "select * from\n" +
+//                "(select\n" +
+//                "card_no,\n" +
+//                "trx_time,\n" +
+//                "merchant_id,\n" +
+////                "month(trx_time) as fea_month,\n" +
+////                "dayofmonth(trx_time) as fea_month,\n" +
+////                "hour(trx_time) as fea_hour,\n" +
+////                "week(trx_time) as fea_week,\n" +
+////                "substr(card_no, 1, 6) as card_no_prefix,\n" +
+////                "max(trx_amt) over w30d as w30d_trx_max ,\n" +
+////                "min(trx_amt) over w30d as w30d_trx_min,\n" +
+////                "sum(trx_amt) over w30d,\n" +
+////                "avg(trx_amt) over w30d,\n" +
+////                "max(usd_amt) over w30d,\n" +
+////                "min(usd_amt) over w30d,\n" +
+////                "sum(usd_amt) over w30d,\n" +
+////                "avg(usd_amt) over w30d,\n" +
+////                "max(org_amt) over w30d,\n" +
+////                "min(org_amt) over w30d,\n" +
+////                "sum(org_amt) over w30d,\n" +
+////                "avg(org_amt) over w30d,\n" +
+////                "distinct_count(merchant_id) over w30d,\n" +
+////                "count(merchant_id) over w30d,\n" +
+////                "distinct_count(term_city) over w30d,\n" +
+////                "count(term_city) over w30d,\n" +
+////                "max(trx_amt) over w10d,\n" +
+////                "min(trx_amt) over w10d,\n" +
+////                "sum(trx_amt) over w10d,\n" +
+////                "avg(trx_amt) over w10d,\n" +
+////                "max(usd_amt) over w10d,\n" +
+////                "min(usd_amt) over w10d,\n" +
+////                "sum(usd_amt) over w10d,\n" +
+////                "avg(usd_amt) over w10d,\n" +
+////                "max(org_amt) over w10d,\n" +
+////                "min(org_amt) over w10d,\n" +
+////                "sum(org_amt) over w10d,\n" +
+////                "avg(org_amt) over w10d,\n" +
+//                "distinct_count(merchant_id) over w10d,\n" +
+//                "count(merchant_id)  over w10d,\n" +
+//                "distinct_count(term_city)  over w10d,\n" +
+//                "count(term_city) over w10d\n" +
+//                "from  tran\n" +
+//                "window w30d as (PARTITION BY tran.card_no ORDER BY tran.trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW),\n" +
+//                "w10d as (PARTITION BY tran.card_no ORDER BY tran.trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)) as trx_fe\n" +
+//                "last join card_info order by card_info.crd_lst_isu_dte on trx_fe.card_no = card_info.crd_nbr and trx_fe.trx_time >= card_info.crd_lst_isu_dte;\n";
+//        String key = cardId;
+//        String trans = "trans";
+//        SQLRequestRow row = executor.getRequestRow(db, sql);
+//        row.Init(key.length());
+//        row.AppendNULL();
+//        row.AppendString(key);
+//        row.AppendNULL();
+//        row.AppendTimestamp(System.currentTimeMillis());
+//        row.AppendDouble(10.0);
+//        row.AppendInt32(1);
+//        row.AppendInt32(2);
+//        row.AppendInt32(3);
+//        row.AppendInt32(4);
+//        row.AppendInt32(5);
+//        row.AppendInt32(6);
+//        row.AppendInt32(7);
+//        row.AppendInt32(8);
+//        row.AppendDouble(1.0);
+//        row.AppendDouble(2.0);
+//        row.AppendInt32(1);
+//        row.AppendInt32(2);
+//        row.AppendInt32(3);
+//        row.AppendInt32(4);
+//        row.AppendInt32(5);
+//        row.Build();
+//        ResultSet rs = executor.executeSQL(db, sql, row);
+//        row.delete();
+//        if (rs == null) {
+//            System.out.println("no result");
+//        } else {
+//            System.out.println("ok");
+//        }
+//        rs.Next();
+//        Schema schema = rs.GetSchema();
+//        for (int i = 0; i < schema.GetColumnCnt(); i++) {
+//            System.out.println(schema.GetColumnName(i));
+//            if (rs.IsNULL(i)) {
+//                System.out.println("null");
+//                continue;
+//            }
+//            DataType type = schema.GetColumnType(i);
+//            if (type.swigValue() == DataType.kTypeInt16.swigValue()) {
+//                System.out.println(rs.GetInt16Unsafe(i));
+//            } else if (type.swigValue() == DataType.kTypeInt32.swigValue()) {
+//                System.out.println(rs.GetInt32Unsafe(i));
+//            } else if (type.swigValue() == DataType.kTypeInt64.swigValue()) {
+//                System.out.println(rs.GetInt64Unsafe(i));
+//            } else if (type.swigValue() == DataType.kTypeFloat.swigValue()) {
+//                System.out.println(rs.GetFloatUnsafe(i));
+//            } else if (type.swigValue() == DataType.kTypeDouble.swigValue()) {
+//                System.out.println(rs.GetDoubleUnsafe(i));
+//            } else if (type.swigValue() == DataType.kTypeString.swigValue()) {
+//                System.out.println(rs.GetStringUnsafe(i));
+//            } else if (type.swigValue() == DataType.kTypeTimestamp.swigValue()) {
+//                System.out.println(rs.GetTimeUnsafe(i));
+//            }
+//        }
+//        FesqlUtil.show(rs);
+//        schema.delete();
+//        rs.delete();
+//    }
+
     public void lastJoinBm() {
         String sql = "select * from\n" +
                 "(select\n" +
@@ -174,64 +284,78 @@ public class FESQLMixerWorkloadExample extends BaseExample {
                 "last join card_info order by card_info.crd_lst_isu_dte on trx_fe.card_no = card_info.crd_nbr and trx_fe.trx_time >= card_info.crd_lst_isu_dte;\n";
         String key = cardId;
         String trans = "trans";
-        SQLRequestRow row = executor.getRequestRow(db, sql);
-        row.Init(key.length());
-        row.AppendNULL();
-        row.AppendString(key);
-        row.AppendNULL();
-        row.AppendTimestamp(System.currentTimeMillis());
-        row.AppendDouble(10.0);
-        row.AppendInt32(1);
-        row.AppendInt32(2);
-        row.AppendInt32(3);
-        row.AppendInt32(4);
-        row.AppendInt32(5);
-        row.AppendInt32(6);
-        row.AppendInt32(7);
-        row.AppendInt32(8);
-        row.AppendDouble(1.0);
-        row.AppendDouble(2.0);
-        row.AppendInt32(1);
-        row.AppendInt32(2);
-        row.AppendInt32(3);
-        row.AppendInt32(4);
-        row.AppendInt32(5);
-        row.Build();
-        ResultSet rs = executor.executeSQL(db, sql, row);
-        row.delete();
-        if (rs == null) {
-            System.out.println("no result");
-        } else {
-            System.out.println("ok");
-        }
-        rs.Next();
-        Schema schema = rs.GetSchema();
-        for (int i = 0; i < schema.GetColumnCnt(); i++) {
-            System.out.println(schema.GetColumnName(i));
-            if (rs.IsNULL(i)) {
-                System.out.println("null");
-                continue;
+        PreparedStatement pst = null;
+        java.sql.ResultSet resultSet = null;
+        try {
+            pst = executor.getRequestPreparedStmt(db, sql);
+            pst.setNull(1, 0);
+            pst.setString(2, key);
+            pst.setNull(3, 0);
+            pst.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
+            pst.setDouble(5, 10.0);
+            pst.setInt(6, 1);
+            pst.setInt(7, 2);
+            pst.setInt(8, 3);
+            pst.setInt(9, 4);
+            pst.setInt(10, 5);
+            pst.setInt(11, 6);
+            pst.setInt(12, 7);
+            pst.setInt(13, 8);
+            pst.setDouble(14, 1.0);
+            pst.setDouble(15, 2.0);
+            pst.setInt(16, 1);
+            pst.setInt(17, 2);
+            pst.setInt(18, 3);
+            pst.setInt(19, 4);
+            pst.setInt(20, 5);
+            resultSet = pst.executeQuery();
+            if (resultSet == null) {
+                System.out.println("no result");
+            } else {
+                System.out.println("ok");
             }
-            DataType type = schema.GetColumnType(i);
-            if (type.swigValue() == DataType.kTypeInt16.swigValue()) {
-                System.out.println(rs.GetInt16Unsafe(i));
-            } else if (type.swigValue() == DataType.kTypeInt32.swigValue()) {
-                System.out.println(rs.GetInt32Unsafe(i));
-            } else if (type.swigValue() == DataType.kTypeInt64.swigValue()) {
-                System.out.println(rs.GetInt64Unsafe(i));
-            } else if (type.swigValue() == DataType.kTypeFloat.swigValue()) {
-                System.out.println(rs.GetFloatUnsafe(i));
-            } else if (type.swigValue() == DataType.kTypeDouble.swigValue()) {
-                System.out.println(rs.GetDoubleUnsafe(i));
-            } else if (type.swigValue() == DataType.kTypeString.swigValue()) {
-                System.out.println(rs.GetStringUnsafe(i));
-            } else if (type.swigValue() == DataType.kTypeTimestamp.swigValue()) {
-                System.out.println(rs.GetTimeUnsafe(i));
+            boolean next = resultSet.next();
+            if (!next) {
+                System.out.println("next failed");
+            }
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            for (int i = 0; i < metaData.getColumnCount(); i++) {
+                System.out.println(metaData.getColumnName(i + 1));
+                if (resultSet.getNString(i) == null) {
+                    System.out.println("null");
+                    continue;
+                }
+                int columnType = metaData.getColumnType(i + 1);
+                if (columnType == Types.SMALLINT) {
+                    System.out.println(resultSet.getShort(i + 1));
+                } else if (columnType == Types.INTEGER) {
+                    System.out.println(resultSet.getInt(i + 1));
+                } else if (columnType == Types.BIGINT) {
+                    System.out.println(resultSet.getLong(i + 1));
+                } else if (columnType == Types.FLOAT) {
+                    System.out.println(resultSet.getFloat(i + 1));
+                } else if (columnType == Types.DOUBLE) {
+                    System.out.println(resultSet.getDouble(i + 1));
+                } else if (columnType == Types.VARCHAR) {
+                    System.out.println(resultSet.getString(i + 1));
+                } else if (columnType == Types.TIMESTAMP) {
+                    System.out.println(resultSet.getTimestamp(i + 1).getTime());
+                }
+            }
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        } finally {
+            try {
+                if (pst != null) {
+                    pst.close();
+                    if (resultSet != null) {
+                        resultSet.close();
+                    }
+                }
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
             }
         }
-        FesqlUtil.show(rs);
-        schema.delete();
-        rs.delete();
     }
 
     public static void run() {

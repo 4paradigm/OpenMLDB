@@ -1,7 +1,6 @@
 package com._4paradigm.sql.jdbc;
 
 import com._4paradigm.sql.*;
-import com._4paradigm.sql.sdk.InsertPreparedStatementImpl;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
@@ -42,7 +41,7 @@ public class SQLRouterSmokeTest {
             insertRow.Init(5);
             insertRow.AppendInt64(1001);
             insertRow.AppendString("world");
-            PreparedStatement impl = router.getInsertPrepareStmt(dbname, insertPlaceholder);
+            PreparedStatement impl = router.getInsertPreparedStmt(dbname, insertPlaceholder);
             impl.setLong(1, 1001);
             impl.setString(2, "world");
             ok = impl.execute();
@@ -146,7 +145,7 @@ public class SQLRouterSmokeTest {
             // insert placeholder
             String date2 = String.format("%s-%s-%s", d2.getYear() + 1900, d2.getMonth(), d2.getDate());
             String insert = String.format("insert into tsql1010 values(?, '%s', 'jiangsu', 'nanjing', 2);", date2);
-            PreparedStatement impl = router.getInsertPrepareStmt(dbname, insert);
+            PreparedStatement impl = router.getInsertPreparedStmt(dbname, insert);
             impl.setLong(1, 1001);
             try {
                 impl.setInt(2, 1002);
@@ -156,7 +155,7 @@ public class SQLRouterSmokeTest {
             ok = impl.execute();
             Assert.assertTrue(ok);
             insert = "insert into tsql1010 values(1002, ?, ?, 'jinan', 3);";
-            PreparedStatement impl2 = router.getInsertPrepareStmt(dbname, insert);
+            PreparedStatement impl2 = router.getInsertPreparedStmt(dbname, insert);
             try {
                 impl2.execute();
             } catch (Exception e) {
@@ -174,7 +173,7 @@ public class SQLRouterSmokeTest {
             Assert.assertTrue(ok);
 
             insert = "insert into tsql1010 values(?, ?, ?, ?, ?);";
-            PreparedStatement impl3 = router.getInsertPrepareStmt(dbname, insert);
+            PreparedStatement impl3 = router.getInsertPreparedStmt(dbname, insert);
             impl3.setLong(1, 1003);
             impl3.setString(3, "zhejiangxx");
             impl3.setString(3, "zhejiang");
@@ -192,10 +191,10 @@ public class SQLRouterSmokeTest {
             }
             Assert.assertTrue(ok);
             insert = "insert into tsql1010 values(?, ?, ?, 'zhenzhou', 5);";
-            PreparedStatement impl4 = router.getInsertPrepareStmt(dbname, insert);
+            PreparedStatement impl4 = router.getInsertPreparedStmt(dbname, insert);
             impl4.close();
             Assert.assertTrue(impl4.isClosed());
-            PreparedStatement impl5 = router.getInsertPrepareStmt(dbname, insert);
+            PreparedStatement impl5 = router.getInsertPreparedStmt(dbname, insert);
             impl5.setLong(1, 1004);
             impl5.setDate(2, d5);
             impl5.setString(3, "henan");
@@ -286,7 +285,7 @@ public class SQLRouterSmokeTest {
             // insert normal
             int i = 0;
             String insertPlaceholder = "insert into tsql1010 values(?, 2, 'taiyuan', 2.0);";
-            PreparedStatement impl = router.getInsertPrepareStmt(dbname, (String) batchData[i][0]);
+            PreparedStatement impl = router.getInsertPreparedStmt(dbname, (String) batchData[i][0]);
             Object[][] datas1 = (Object[][]) batchData[i][1];
             for (int j = 0; j < datas1.length; j++) {
                 try {
@@ -320,7 +319,7 @@ public class SQLRouterSmokeTest {
             Assert.assertEquals(6, rs1.GetSchema().GetColumnCnt());
 
             i++;
-            PreparedStatement impl2 = router.getInsertPrepareStmt(dbname, (String) batchData[i][0]);
+            PreparedStatement impl2 = router.getInsertPreparedStmt(dbname, (String) batchData[i][0]);
             datas1 = (Object[][]) batchData[i][1];
             for (int j = 0; j < datas1.length; j++) {
                 try {

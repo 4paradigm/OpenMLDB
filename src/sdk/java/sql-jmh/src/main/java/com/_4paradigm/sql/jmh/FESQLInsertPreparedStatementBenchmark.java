@@ -12,7 +12,6 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.Throughput)
@@ -88,7 +87,7 @@ public class FESQLInsertPreparedStatementBenchmark {
         counter ++;
          */
         long idx = counter;
-        PreparedStatement impl = executor.getInsertPrepareStmt(db, format);
+        PreparedStatement impl = executor.getInsertPreparedStmt(db, format);
         for (int i = 0; i < 10; i++) {
             String s1 = "pkxxx" + idx + i;
             try {

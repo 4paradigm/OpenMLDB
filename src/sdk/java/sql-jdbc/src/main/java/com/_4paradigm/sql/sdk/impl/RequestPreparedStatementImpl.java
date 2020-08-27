@@ -1,7 +1,8 @@
-package com._4paradigm.sql.sdk;
+package com._4paradigm.sql.sdk.impl;
 
 import com._4paradigm.sql.*;
-import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
+import com._4paradigm.sql.jdbc.SQLResultSet;
+import com._4paradigm.sql.jdbc.SQLResultSetMetaData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,80 +15,107 @@ import java.sql.Date;
 import java.sql.ResultSet;
 import java.util.*;
 
-public class InsertPreparedStatementImpl implements PreparedStatement {
-    private String currentSql = null;
-    private SQLInsertRow currentRow = null;
-    private SQLInsertRows currentRows = null;
-    private SQLRouter router = null;
-    private List<Object> currentDatas = null;
-    private List<DataType> currentDatasType = null;
-    private Schema currentSchema = null;
-    private String db = null;
-    private List<Boolean> hasSet = null;
+public class RequestPreparedStatementImpl implements PreparedStatement {
     private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
+    private String db;
+    private String currentSql;
+    private SQLRouter router;
+    private SQLRequestRow currentRow;
+    private Schema currentSchema;
+    private List<Object> currentDatas;
+    private List<Boolean> hasSet;
     private boolean closed = false;
     private boolean closeOnComplete = false;
-    private Map<String, SQLInsertRows> sqlRowsMap = new HashMap<>();
-    private List<Integer> scehmaIdxs = null;
     private Map<Integer, Integer> stringsLen = new HashMap<>();
 
-    public InsertPreparedStatementImpl(String db, String sql, SQLRouter router) throws SqlException {
-        Status status = new Status();
-        SQLInsertRows rows = router.GetInsertRows(db, sql, status);
-        if (status.getCode() != 0) {
-            String msg = status.getMsg();
-            logger.error("getInsertRows fail: {}", msg);
-            throw new SqlException("get insertrows fail " + msg + " in construction preparedstatement");
-        }
-        this.currentRows = rows;
-        this.currentRow = rows.NewRow();
-        this.router = router;
-        this.currentSql = sql;
-        currentSchema = this.currentRow.GetSchema();
+    public RequestPreparedStatementImpl(String db, String sql, SQLRouter router) throws SQLException {
         this.db = db;
-        VectorUint32 idxs = this.currentRow.GetHoleIdx();
-        currentDatas = new ArrayList<>(idxs.size());
-        currentDatasType = new ArrayList<>(idxs.size());
-        hasSet = new ArrayList<>(idxs.size());
-        scehmaIdxs = new ArrayList<>(idxs.size());
-        for (int i = 0; i < idxs.size(); i++) {
-            long idx = idxs.get(i);
-            DataType type = currentSchema.GetColumnType(idx);
-            currentDatasType.add(type);
+        this.currentSql = sql;
+        this.router = router;
+        Status status = new Status();
+        this.currentRow = router.GetRequestRow(db, sql, status);
+        if (status.getCode() != 0 || this.currentRow == null) {
+            String msg = status.getMsg();
+            logger.error("GetRequestRow fail: {}", msg);
+            throw new SQLException("get GetRequestRow fail " + msg + " in construction preparedstatement");
+        }
+        this.currentSchema = this.currentRow.GetSchema();
+        int cnt = this.currentSchema.GetColumnCnt();
+        this.currentDatas = new ArrayList<>(cnt);
+        this.hasSet = new ArrayList<>(cnt);
+        for (int i = 0; i < cnt; i++) {
+            this.hasSet.add(false);
             currentDatas.add(null);
-            hasSet.add(false);
-            scehmaIdxs.add(i);
+        }
+    }
+
+    private void checkNull() throws SQLException{
+        if (db == null) {
+            throw new SQLException("db is null");
+        }
+        if (currentSql == null) {
+            throw new SQLException("sql is null");
+        }
+        if (router == null) {
+            throw new SQLException("SQLRouter is null");
+        }
+        if (currentRow == null) {
+            throw new SQLException("SQLRequestRow is null");
+        }
+        if (currentSchema == null) {
+            throw new SQLException("schema is null");
+        }
+        if (currentDatas == null) {
+            throw new SQLException("currentDatas is null");
+        }
+        if (hasSet == null) {
+            throw new SQLException("hasSet is null");
+        }
+    }
+
+    private void checkClosed() throws SQLException{
+        if (closed) {
+            throw new SQLException("preparedstatement closed");
+        }
+    }
+
+    private void checkIdx(int i) throws SQLException {
+        checkClosed();
+        checkNull();
+        if (i <= 0) {
+            throw new SQLException("index underflow, index: " + i + " size: " + this.currentSchema.GetColumnCnt());
+        }
+        if (i > this.currentSchema.GetColumnCnt()) {
+            throw new SQLException("index overflow, index: " + i + " size: " + this.currentSchema.GetColumnCnt());
+        }
+    }
+
+    private void checkType(int i, DataType type) throws SQLException {
+        if (this.currentSchema.GetColumnType(i - 1) != type) {
+            throw new SQLException("data type not match");
         }
     }
 
     @Override
-    @Deprecated
-    public ResultSet executeQuery() throws SQLException {
-        throw new SQLException("current do not support this method");
+    public java.sql.ResultSet executeQuery() throws SQLException {
+        checkClosed();
+        dataBuild();
+        Status status = new Status();
+        com._4paradigm.sql.ResultSet resultSet = router.ExecuteSQL(db, currentSql, currentRow, status);
+        if (resultSet == null) {
+            throw new SQLException("execute sql fail");
+        }
+        ResultSet rs = new SQLResultSet(resultSet);
+        if (closeOnComplete) {
+            closed = true;
+        }
+        return rs;
     }
 
     @Override
     @Deprecated
     public int executeUpdate() throws SQLException {
         throw new SQLException("current do not support this method");
-    }
-
-    private void checkIdx(int i) throws SQLException {
-        if (closed) {
-            throw new SQLException("preparedstatement closed");
-        }
-        if (i <= 0) {
-            throw new SQLException("error sqe number");
-        }
-        if (i > currentDatasType.size()) {
-            throw new SQLException("out of data range");
-        }
-    }
-
-    private void checkType(int i, DataType type) throws SQLException {
-        if (currentDatasType.get(i - 1) != type) {
-            throw new SQLException("data type not match");
-        }
     }
 
     private void setNull(int i) throws SQLException {
@@ -167,8 +195,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     private boolean checkNotAllowNull(int i) {
-        int idx = this.scehmaIdxs.get(i - 1);
-        return this.currentSchema.IsColumnNotNull(idx);
+        return this.currentSchema.IsColumnNotNull(i -1);
     }
 
     @Override
@@ -191,7 +218,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
-    public void setDate(int i, Date date) throws SQLException {
+    public void setDate(int i, java.sql.Date date) throws SQLException {
         checkIdx(i);
         checkType(i, DataType.kTypeDate);
         if (date == null) {
@@ -200,7 +227,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         }
         hasSet.set(i - 1, true);
         currentDatas.set(i - 1, date);
-
     }
 
     @Override
@@ -241,7 +267,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
-    public void clearParameters() throws SQLException {
+    public void clearParameters() {
         for (int i = 0; i < hasSet.size(); i++) {
             hasSet.set(i, false);
             currentDatas.set(i, null);
@@ -256,105 +282,76 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     private void dataBuild() throws SQLException {
-        for (int i = 0; i < hasSet.size(); i++) {
-            if (!hasSet.get(i)) {
+        for (int i = 0; i < this.hasSet.size(); i++) {
+            if (!this.hasSet.get(i)) {
                 throw new SQLException("data not enough");
             }
         }
-        if (currentRows == null) {
-            throw new SQLException("null rows");
-        }
-        if (currentRow == null) {
-            currentRow = currentRows.NewRow();
+        if (this.currentRow == null) {
+            throw new SQLException("currentRow is null");
         }
         int strLen = 0;
-        if (!stringsLen.isEmpty()) {
-            for (Integer k : stringsLen.keySet()) {
-                Integer len = stringsLen.get(k);
+        if (!this.stringsLen.isEmpty()) {
+            for (Integer k : this.stringsLen.keySet()) {
+                Integer len = this.stringsLen.get(k);
                 strLen += len;
             }
         }
-        for (int i = 0; i < currentDatasType.size(); i++) {
-            if (currentDatasType.get(i) != DataType.kTypeString) {
-                continue;
-            }
-            Object data = currentDatas.get(i);
-            if (data == null) {
-                continue;
-            }
-            strLen += ((String)data).length();
-        }
-        boolean ok = currentRow.Init(strLen);
+        boolean ok = this.currentRow.Init(strLen);
         if (!ok) {
             throw new SQLException("build data row failed");
         }
-        for (int i = 0; i < currentDatasType.size(); i++) {
-            Object data = currentDatas.get(i);
+        for (int i = 0; i < this.currentSchema.GetColumnCnt(); i++) {
+            DataType dataType = this.currentSchema.GetColumnType(i);
+            Object data = this.currentDatas.get(i);
             if (data == null) {
-                ok = currentRow.AppendNULL();
-            } else if (DataType.kTypeBool.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendBool((boolean) data);
-            } else if (DataType.kTypeDate.equals(currentDatasType.get(i))) {
+                ok = this.currentRow.AppendNULL();
+            } else if (DataType.kTypeBool.equals(dataType)) {
+                ok = this.currentRow.AppendBool((boolean) data);
+            } else if (DataType.kTypeDate.equals(dataType)) {
                 java.sql.Date date = (java.sql.Date)data;
-                ok = currentRow.AppendDate(date.getYear() + 1900, date.getMonth(), date.getDate());
-            } else if (DataType.kTypeDouble.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendDouble((double) data);
-            } else if (DataType.kTypeFloat.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendFloat((float) data);
-            } else if (DataType.kTypeInt16.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendInt16((short) data);
-            } else if (DataType.kTypeInt32.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendInt32((int) data);
-            } else if (DataType.kTypeInt64.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendInt64((long) data);
-            } else if (DataType.kTypeString.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendString((String) data);
-            } else if (DataType.kTypeTimestamp.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendTimestamp((long) data);
+                ok = this.currentRow.AppendDate(date.getYear() + 1900, date.getMonth() + 1, date.getDate());
+            } else if (DataType.kTypeDouble.equals(dataType)) {
+                ok = this.currentRow.AppendDouble((double) data);
+            } else if (DataType.kTypeFloat.equals(dataType)) {
+                ok = this.currentRow.AppendFloat((float) data);
+            } else if (DataType.kTypeInt16.equals(dataType)) {
+                ok = this.currentRow.AppendInt16((short) data);
+            } else if (DataType.kTypeInt32.equals(dataType)) {
+                ok = this.currentRow.AppendInt32((int) data);
+            } else if (DataType.kTypeInt64.equals(dataType)) {
+                ok = this.currentRow.AppendInt64((long) data);
+            } else if (DataType.kTypeString.equals(dataType)) {
+                ok = this.currentRow.AppendString((String) data);
+            } else if (DataType.kTypeTimestamp.equals(dataType)) {
+                ok = this.currentRow.AppendTimestamp((long) data);
             } else {
-                throw new SQLException("unkown data type");
+                throw new SQLException("unkown data type " + dataType.toString());
             }
             if (!ok) {
-                throw new SQLException("put data faile idx is " + i);
+                throw new SQLException("apend data failed, idx is " + i);
             }
         }
-        currentRow = null;
+        this.currentRow.Build();
         clearParameters();
     }
 
     @Override
     @Deprecated
     public void setObject(int i, Object o) throws SQLException {
+        throw new SQLException("current do not support this m¡ethod");
+    }
+
+    @Override
+    @Deprecated
+    public boolean execute() throws SQLException {
         throw new SQLException("current do not support this method");
     }
 
     @Override
-    public boolean execute() throws SQLException {
-        if (closed) {
-            throw new SQLException("preparedstatement closed");
-        }
-        if (!sqlRowsMap.isEmpty() || this.currentRows.GetCnt() > 1) {
-            throw new SQLException("please use executeBatch");
-        }
-        dataBuild();
-        Status status = new Status();
-        boolean ok = router.ExecuteInsert(db, currentSql, currentRows, status);
-        if (!ok) {
-            logger.error("getInsertRow fail: {}", status.getMsg());
-            return false;
-        }
-        if (closeOnComplete) {
-            closed = true;
-        }
-        return true;
-    }
-
-    @Override
+    @Deprecated
     public void addBatch() throws SQLException {
-        if (closed) {
-            throw new SQLException("preparedstatement closed");
-        }
-        dataBuild();
+        throw new SQLException("current do not support this method");
     }
 
     @Override
@@ -388,9 +385,10 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
-    @Deprecated
     public ResultSetMetaData getMetaData() throws SQLException {
-        throw new SQLException("current do not support this method");
+        checkClosed();
+        checkNull();
+        return new SQLResultSetMetaData(this.currentSchema);
     }
 
     @Override
@@ -534,7 +532,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     @Override
     @Deprecated
     public void setBlob(int i, InputStream inputStream) throws SQLException {
-
         throw new SQLException("current do not support this method");
     }
 
@@ -546,7 +543,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
 
     @Override
     @Deprecated
-    public ResultSet executeQuery(String s) throws SQLException {
+    public java.sql.ResultSet executeQuery(String s) throws SQLException {
         throw new SQLException("current do not support this method");
     }
 
@@ -558,10 +555,15 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
 
     @Override
     public void close() throws SQLException {
-        if (closed) {
-            return;
-        }
-        closed = true;
+        this.db = null;
+        this.currentSql = null;
+        this.router = null;
+        this.currentRow = null;
+        this.currentSchema = null;
+        this.currentDatas = null;
+        this.hasSet = null;
+        this.stringsLen = null;
+        this.closed = true;
     }
 
     @Override
@@ -638,7 +640,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
 
     @Override
     @Deprecated
-    public ResultSet getResultSet() throws SQLException {
+    public java.sql.ResultSet getResultSet() throws SQLException {
         throw new SQLException("current do not support this method");
     }
 
@@ -691,72 +693,21 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
+    @Deprecated
     public void addBatch(String s) throws SQLException {
-        if (currentDatas.size() > 0 && s.equals(this.currentSql)) {
-            throw new SQLException("data not enough");
-        }
-        if (sqlRowsMap.get(s) != null) {
-            return;
-        }
-        Status status = new Status();
-        SQLInsertRows rows = router.GetInsertRows(db, s, status);
-        if (status.getCode() != 0) {
-            String msg = status.getMsg();
-            logger.error("getInsertRows fail: {}", msg);
-            throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
-        }
-        SQLInsertRow row = rows.NewRow();
-        if (row.GetHoleIdx().size() > 0) {
-            throw new SQLException("this sql need data");
-        }
-        sqlRowsMap.put(s, rows);
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public void clearBatch() throws SQLException {
-        for (String key : sqlRowsMap.keySet()) {
-            SQLInsertRows rows = sqlRowsMap.get(key);
-            rows.delete();
-        }
-        sqlRowsMap.clear();
-        currentSchema = null;
-        currentSchema = null;
-        currentRow = null;
-        currentRows = null;
-        Status status = new Status();
-        currentRows = router.GetInsertRows(db, currentSql, status);
-        if (status.getCode() != 0) {
-            String msg = status.getMsg();
-            logger.error("getInsertRows fail: {}", msg);
-            throw new SQLException("get insertrows fail " + msg + " in construction preparedstatement");
-        }
-
+        throw new SQLException("current do not support this method");
     }
 
     @Override
+    @Deprecated
     public int[] executeBatch() throws SQLException {
-        if (closed) {
-            throw new SQLException("preparedstatement closed");
-        }
-        int result[] = new int[1+sqlRowsMap.size()];
-        Status status = new Status();
-        boolean ok = router.ExecuteInsert(db, currentSql, currentRows, status);
-        if (!ok) {
-            result[0] = -1;
-        } else {
-            result[0] = 0;
-        }
-        int i = 1;
-        for (String sql : sqlRowsMap.keySet()) {
-            ok = router.ExecuteInsert(db, sql, sqlRowsMap.get(sql), status);
-            if (!ok) {
-                result[i] = -1;
-            } else {
-                result[i] = 0;
-            }
-            i++;
-        }
-        return result;
+        throw new SQLException("current do not support this method");
     }
 
     @Override
