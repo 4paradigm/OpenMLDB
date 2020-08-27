@@ -71,8 +71,10 @@ const std::string SQLCase::TypeString(fesql::type::Type type) {
             return "timestamp";
         case type::kDate:
             return "date";
+        case type::kBool:
+            return "bool";
         default: {
-            return "";
+            return "unknow";
         }
     }
 }
@@ -399,6 +401,7 @@ bool SQLCase::BuildInsertValueStringFromRow(
             continue;
         }
         switch (it->type()) {
+            case type::kBool:
             case type::kInt16:
             case type::kInt32:
             case type::kInt64:
