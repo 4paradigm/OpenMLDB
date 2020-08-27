@@ -1,6 +1,7 @@
 cases:
   - id: 0
     desc: LAST JOIN 右表未命中索引
+    mode: rtidb-unsupport
     sql: |
       %%fun
       def test(a:i32,b:i32):i32
@@ -196,19 +197,19 @@ cases:
     db: db1
     sql: |
       SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col2 as t1_col2, t1.std_date as t1_std_date, str1 FROM t1
-      last join t2 order by t2.col5 on t1.std_date = t2.std_date;
+      last join t2 order by t2.col5 on t1.col2 = t2.col2 and t1.std_date = t2.std_date;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_date.yaml
       - name: t2
-        schema: str0:string, str1:string, col1:int32, col5:int64, std_date:date
-        index: index1:col1:col5
+        schema: str0:string, str1:string, col1:int32, col2:int16, col5:int64, std_date:date
+        index: index1:col2:col5
         data: |
-          2, EEEEE, 5, 5, 2020-05-24
-          1, DDDD, 4, 4, 2020-05-23
-          1, CCC, 3, 3, 2020-05-22
-          0, BB, 2, 2, 2020-05-21
-          0, A, 1, 1, 2020-05-20
+          2, EEEEE, 5, 55, 5, 2020-05-24
+          1, DDDD, 4, 55, 4, 2020-05-23
+          1, CCC, 3, 55, 3, 2020-05-22
+          0, BB, 2, 5, 2, 2020-05-21
+          0, A, 1, 5, 1, 2020-05-20
     expect:
       schema: id:int32, t1_col0:string, t1_col2:int16, t1_std_date:date, str1:string
       order: id

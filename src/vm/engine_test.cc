@@ -649,7 +649,8 @@ INSTANTIATE_TEST_CASE_P(EngineTestUdafFunction, EngineTest,
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (!boost::contains(sql_case.mode(), "request-unsupport")) {
+    if (!boost::contains(sql_case.mode(), "request-unsupport") &&
+        !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
         RequestModeCheck(sql_case);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
@@ -658,7 +659,9 @@ TEST_P(EngineTest, test_request_engine) {
 TEST_P(EngineTest, test_batch_engine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (!boost::contains(sql_case.mode(), "batch-unsupport")) {
+    if (!boost::contains(sql_case.mode(), "batch-unsupport") &&
+        !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "rtidb-batch-unsupport")) {
         BatchModeCheck(sql_case);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
@@ -784,6 +787,7 @@ TEST_F(EngineTest, EngineCompileOnlyTest) {
             "order by t2.col5 on t1.col1 = t2.col2;"};
         EngineOptions options;
         options.set_compile_only(true);
+        options.set_performance_sensitive(false);
         Engine engine(catalog, options);
         base::Status get_status;
         for (auto sqlstr : sql_str_list) {
@@ -806,6 +810,7 @@ TEST_F(EngineTest, EngineCompileOnlyTest) {
             "on "
             "t1.col1 = t2.col2;"};
         EngineOptions options;
+        options.set_performance_sensitive(false);
         Engine engine(catalog, options);
         base::Status get_status;
         for (auto sqlstr : sql_str_list) {

@@ -444,9 +444,9 @@ FOLLOWER { return FOLLOWER; }
 "."[0-9]+['f']    { yylval->floatval = (float)(atof(yytext)) ;
                                   return FLOATNUM; }
  /* booleans */
-TRUE	{ yylval->intval = 1; return BOOL; }
-UNKNOWN	{ yylval->intval = -1; return BOOL; }
-FALSE	{ yylval->intval = 0; return BOOL; }
+TRUE	{ yylval->intval = 1; return BOOLVALUE; }
+UNKNOWN	{ yylval->intval = -1; return BOOLVALUE; }
+FALSE	{ yylval->intval = 0; return BOOLVALUE; }
 
 
 '(\\.|''|[^'\n])*'	|
