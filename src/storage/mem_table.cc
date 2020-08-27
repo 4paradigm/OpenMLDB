@@ -700,7 +700,8 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
         }
     }
     if (segments_[index_id] != NULL) {
-        delete segments_[index_id];
+        LOG(INFO) << "delete old index " << index_id << " data";
+        delete[] segments_[index_id];
     }
     segments_[index_id] = seg_arr;
     if (!index_def) {

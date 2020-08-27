@@ -622,6 +622,9 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
     ::rtidb::api::LogEntry entry;
     bool has_error = false;
     uint64_t extract_count = 0;
+    uint64_t schame_size_less_count = 0;
+    uint64_t other_error_count = 0;
+    DLOG(INFO) << "extract index data from snapshot";
     while (true) {
         ::rtidb::base::Slice record;
         ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
@@ -693,10 +696,12 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
             std::vector<std::string> row;
             int ret = DecodeData(table, columns, entry, max_idx, row);
             if (ret == 2) {
+                schame_size_less_count++;
                 wh->Write(record);
                 continue;
             } else if (ret != 0) {
                 DLOG(INFO) << "skip current data";
+                other_error_count++;
                 continue;
             }
             std::string cur_key;
@@ -741,19 +746,21 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
     }
     delete seq_file;
     if (expired_key_num + count + deleted_key_num != manifest.count()) {
-        PDLOG(WARNING,
-              "key num not match! total key num[%lu] load key num[%lu] ttl key "
-              "num[%lu] tid[%u] pid[%u]",
-              manifest.count(), count, expired_key_num, tid, pid);
+        LOG(WARNING) << "key num not match ! total key num[" << manifest.count()
+                     << "] load key num[" << count << "] ttl key num["
+                     << expired_key_num << "] schema size less num["
+                     << schame_size_less_count << "] other error count["
+                     << other_error_count << "]" << " tid[" << tid << "] pid[" << pid "]";
         has_error = true;
     }
     if (has_error) {
         return -1;
     }
-    PDLOG(INFO,
-          "extract index from snapshot success. extract key num[%lu] load key "
-          "num[%lu] ttl key num[%lu] tid[%u] pid[%u]",
-          extract_count, count, expired_key_num, tid, pid);
+    LOG(INFO) << "extract index from snapshot success. extract key num[" << extract_count
+              << "] load key num[" << count << "] ttl key num["
+              << expired_key_num << "] schema size less num["
+              << schame_size_less_count << "] other error count["
+              << other_error_count << "]" << " tid[" << tid << "] pid[" << pid << "]";
     return 0;
 }
 
@@ -843,6 +850,7 @@ int MemTableSnapshot::ExtractIndexData(
     uint64_t cur_offset = offset_;
     std::string buffer;
     uint64_t extract_count = 0;
+    DLOG(INFO) << "extract index data from binlog";
     while (!has_error && cur_offset < collected_offset) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -936,6 +944,10 @@ int MemTableSnapshot::ExtractIndexData(
                 uint32_t index_pid = ::rtidb::base::hash64(cur_key) % partition_num;
                 // update entry and write entry into memory
                 if (index_pid == pid) {
+                    if (entry.dimensions_size() == 1 && entry.dimensions(0).idx() != 0) {
+                        DLOG(INFO) << "skip not default key " << cur_key;
+                        continue;
+                    }
                     ::rtidb::api::Dimension* dim = entry.add_dimensions();
                     dim->set_key(cur_key);
                     dim->set_idx(idx);
@@ -1089,6 +1101,10 @@ bool MemTableSnapshot::PackNewIndexEntry(
             key = cur_key;
         }
     }
+    if (key.empty()) {
+        DLOG(INFO) << "key is empty";
+        return false;
+    }
     if (pid_set.find(*index_pid) == pid_set.end()) {
         entry->clear_dimensions();
         ::rtidb::api::Dimension* dim = entry->add_dimensions();
@@ -1127,6 +1143,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
     ::rtidb::api::LogEntry entry;
     std::string buffer;
     std::string entry_buff;
+    DLOG(INFO) << "begin dump snapshot index data";
     while (true) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -1170,6 +1187,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
         }
         succ_cnt++;
     }
+    delete seq_file;
     return true;
 }
 
@@ -1260,6 +1278,7 @@ bool MemTableSnapshot::DumpBinlogIndexData(
     int last_log_index = log_reader.GetLogIndex();
     std::string buffer;
     std::string entry_buff;
+    DLOG(INFO) << "begin dump binlog index data";
     while (cur_offset < collected_offset) {
         buffer.clear();
         ::rtidb::base::Slice record;
