@@ -239,11 +239,8 @@ Status ResolveFnAndAttrs::VisitExpr(node::ExprNode* expr,
 
     // Infer attr for non-group expr
     if ((*output)->GetExprType() != node::kExprList) {
-        auto status = (*output)->InferAttr(&analysis_context_);
-        if (!status.isOK()) {
-            LOG(WARNING) << "Fail to infer " << (*output)->GetExprString()
-                         << ": " << status.msg;
-        }
+        CHECK_STATUS((*output)->InferAttr(&analysis_context_), "Fail to infer ",
+                     (*output)->GetExprString());
     }
     cache_.insert(iter, std::make_pair(expr, *output));
     return Status::OK();

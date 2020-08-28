@@ -122,7 +122,8 @@ class UDFLibrary {
     const auto& GetAllRegistries() { return table_; }
 
     void InsertRegistry(const std::string& name,
-                        const std::vector<std::string>& signature,
+                        const std::vector<const node::TypeNode*>& arg_types,
+                        bool is_variadic,
                         std::shared_ptr<UDFRegistry> registry);
 
  private:
@@ -135,6 +136,8 @@ class UDFLibrary {
 
     node::NodeManager nm_;
 };
+
+const std::string GetArgSignature(const std::vector<node::ExprNode*>& args);
 
 }  // namespace udf
 }  // namespace fesql
