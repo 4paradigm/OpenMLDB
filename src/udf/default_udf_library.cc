@@ -211,6 +211,27 @@ struct DistinctCountDef {
 };
 
 template <typename T>
+struct SumWhereDef {
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        helper.templates<T, T, T, bool>()
+            .const_init(0.0)
+            .update([](UDFResolveContext* ctx, ExprNode* sum, ExprNode* elem,
+                       ExprNode* cond) {
+                auto nm = ctx->node_manager();
+                if (elem->GetOutputType()->base() == node::kTimestamp) {
+                    elem = nm->MakeCastNode(node::kInt64, elem);
+                }
+                auto new_sum =
+                    nm->MakeBinaryExprNode(sum, elem, node::kFnOpAdd);
+                ExprNode* update = nm->MakeCondExpr(cond, new_sum, sum);
+                return update;
+            })
+            .merge("add")
+            .output("identity");
+    }
+};
+
+template <typename T>
 struct CountWhereDef {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
         helper.templates<int64_t, int64_t, T, bool>()
@@ -267,6 +288,50 @@ struct AvgWhereDef {
 };
 
 template <typename T>
+struct MinWhereDef {
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        helper.templates<T, T, T, bool>()
+            .const_init(DataTypeTrait<T>::maximum_value())
+            .update([](UDFResolveContext* ctx, ExprNode* min, ExprNode* elem,
+                       ExprNode* cond) {
+                auto nm = ctx->node_manager();
+                if (elem->GetOutputType()->base() == node::kTimestamp) {
+                    elem = nm->MakeCastNode(node::kInt64, elem);
+                }
+                auto condition =
+                    nm->MakeBinaryExprNode(min, elem, node::kFnOpGt);
+                ExprNode* new_min = nm->MakeCondExpr(condition, elem, min);
+                ExprNode* update = nm->MakeCondExpr(cond, new_min, min);
+                return update;
+            })
+            .merge("add")
+            .output("identity");
+    }
+};
+
+template <typename T>
+struct MaxWhereDef {
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        helper.templates<T, T, T, bool>()
+            .const_init(DataTypeTrait<T>::minimum_value())
+            .update([](UDFResolveContext* ctx, ExprNode* max, ExprNode* elem,
+                       ExprNode* cond) {
+                auto nm = ctx->node_manager();
+                if (elem->GetOutputType()->base() == node::kTimestamp) {
+                    elem = nm->MakeCastNode(node::kInt64, elem);
+                }
+                auto condition =
+                    nm->MakeBinaryExprNode(max, elem, node::kFnOpLt);
+                ExprNode* new_max = nm->MakeCondExpr(condition, elem, max);
+                ExprNode* update = nm->MakeCondExpr(cond, new_max, max);
+                return update;
+            })
+            .merge("add")
+            .output("identity");
+    }
+};
+
+template <typename T>
 struct TopKDef {
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
         // register for i32 and i64 bound
@@ -284,6 +349,68 @@ struct TopKDef {
             .update("topk_update" + suffix, ContainerT::Push)
             .output("topk_output" + suffix, ContainerT::Output);
     }
+};
+
+template <typename K>
+struct SumCateDef {
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        helper.library()
+            ->RegisterUDAFTemplate<Impl>("sum_cate")
+            .doc(helper.GetDoc())
+            .template args_in<int16_t, int32_t, int64_t, float, double>();
+    }
+
+    template <typename V>
+    struct Impl {
+        using ContainerT =
+            udf::container::BoundedGroupByDict<K, V,
+                                               std::pair<int64_t, double>>;
+        using InputK = typename ContainerT::InputK;
+        using InputV = typename ContainerT::InputV;
+
+        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+            std::string suffix = ".opaque_dict_" +
+                                 DataTypeTrait<K>::to_string() + "_" +
+                                 DataTypeTrait<V>::to_string();
+            helper
+                .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
+                           Nullable<K>>()
+                .init("sum_cate_init" + suffix, ContainerT::Init)
+                .update("sum_cate_update" + suffix, Update)
+                .output("sum_cate_output" + suffix, Output);
+        }
+
+        static ContainerT* Update(ContainerT* ptr, InputV value,
+                                  bool is_value_null, InputK key,
+                                  bool is_key_null) {
+            if (is_key_null || is_value_null) {
+                return ptr;
+            }
+            auto& map = ptr->map();
+            auto stored_key = ContainerT::to_stored_key(key);
+            auto iter = map.find(stored_key);
+            if (iter == map.end()) {
+                map.insert(iter, {stored_key,
+                                  {1, ContainerT::to_stored_value(value)}});
+            } else {
+                auto& pair = iter->second;
+                pair.first += 1;
+                pair.second += ContainerT::to_stored_value(value);
+            }
+            return ptr;
+        }
+
+        static void Output(ContainerT* ptr, codec::StringRef* output) {
+            ContainerT::OutputString(
+                ptr, false, output,
+                [](const std::pair<int64_t, double>& value, char* buf,
+                   size_t size) {
+                    double sum = value.second / value.first;
+                    return v1::format_string(sum, buf, size);
+                });
+            ContainerT::Destroy(ptr);
+        }
+    };
 };
 
 template <typename K>
@@ -1325,6 +1452,10 @@ void DefaultUDFLibrary::Init() {
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef>();
 
+    RegisterUDAFTemplate<SumWhereDef>("sum_where")
+        .doc("Compute sum of values match specified condition")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
     RegisterUDAFTemplate<CountWhereDef>("count_where")
         .doc("Compute number of values match specified condition")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
@@ -1334,12 +1465,44 @@ void DefaultUDFLibrary::Init() {
         .doc("Compute average of values match specified condition")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
+    RegisterUDAFTemplate<MinWhereDef>("min_where")
+        .doc("Compute minimum of values match specified condition")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
+    RegisterUDAFTemplate<MaxWhereDef>("max_where")
+        .doc("Compute maximum of values match specified condition")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
     RegisterUDAFTemplate<TopKDef>("top")
         .doc(
             "Compute top k of values and output string separated by comma. "
             "The outputs are sorted in desc order")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
+
+    RegisterUDAFTemplate<SumCateDef>("sum_cate")
+        .doc(R"(
+            Compute sum of values grouped by category key and output string.
+            Each group is represented as 'K:V' and separated by comma in outputs
+            and are sorted by key in ascend order.
+
+            @param value  Specify value column to aggregate on.
+            @param catagory  Specify catagory column to group by.
+
+            Example:
+            value|catagory
+            --|--
+            0|x
+            1|y
+            2|x
+            3|y
+            4|x
+            @code{.sql}
+                SELECT sum_cate(value, catagory) OVER w;
+                -- output "x:6,y:4"
+            @endcode
+            )")
+        .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
     RegisterUDAFTemplate<AvgCateDef>("avg_cate")
         .doc(R"(
