@@ -126,6 +126,10 @@ public class TableHandler {
             index = 0;
             Set<String> indexSet = new HashSet<String>();
             for (com._4paradigm.rtidb.common.Common.ColumnKey ck : tableInfo.getColumnKeyList()) {
+                if (ck.getFlag() == 1) {
+                    index++;
+                    continue;
+                }
                 List<Integer> indexList = new ArrayList<Integer>();
                 List<Integer> tsList = new ArrayList<Integer>();
                 List<String> nameList = new ArrayList<String>();
