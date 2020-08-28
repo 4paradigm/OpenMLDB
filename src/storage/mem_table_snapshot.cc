@@ -696,7 +696,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
             std::vector<std::string> row;
             int ret = DecodeData(table, columns, entry, max_idx, row);
             if (ret == 2) {
-                schame_size_less_count++;
+                count++;
                 wh->Write(record);
                 continue;
             } else if (ret != 0) {
