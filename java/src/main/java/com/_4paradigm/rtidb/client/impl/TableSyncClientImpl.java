@@ -274,7 +274,6 @@ public class TableSyncClientImpl implements TableSyncClient {
             return null;
         }
         Object[] row = null;
-        th.getFormatVersion();
         if (th.getSchemaMap().size() > 0) {
             row = RowCodec.decode(response.asReadOnlyByteBuffer(), th.getSchema(), th.getSchemaMap().size());
         } else {

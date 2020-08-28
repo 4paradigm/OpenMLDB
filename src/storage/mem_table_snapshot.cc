@@ -714,7 +714,6 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
             }
             if (cur_key.empty()) {
                 DLOG(INFO) << "skip empty key";
-                LOG(INFO) << "skip emptry key";
                 continue;
             }
             uint32_t index_pid = ::rtidb::base::hash64(cur_key) % partition_num;
@@ -722,11 +721,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
             if (index_pid == pid) {
                 if (entry.dimensions_size() == 1 && entry.dimensions(0).idx() == idx) {
                     DLOG(INFO) << "skip not default key " << cur_key;
-                    LOG(INFO) << "skip not default key " << cur_key << " didx " << entry.dimensions(0).idx();
                     continue;
-                }
-                for (const auto ts : entry.ts_dimensions()) {
-                    LOG(INFO) << "add key " << cur_key << " idx " << idx << " " << ts.ts();
                 }
                 ::rtidb::api::Dimension* dim = entry.add_dimensions();
                 dim->set_key(cur_key);
@@ -739,10 +734,6 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                 dim->set_idx(idx);
                 table->Put(entry);
                 extract_count++;
-            } else {
-                for (const auto ts : entry.ts_dimensions()) {
-                    LOG(INFO) << "skip key " << cur_key << " idx " << idx << " " << ts.ts();
-                }
             }
         }
         status = wh->Write(record);
@@ -754,8 +745,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
             has_error = true;
             break;
         }
-        if ((count + expired_key_num + deleted_key_num) % KEY_NUM_DISPLAY ==
-            0) {
+        if ((count + expired_key_num + deleted_key_num) % KEY_NUM_DISPLAY == 0) {
             PDLOG(INFO, "tackled key num[%lu] total[%lu] tid[%u] pid[%u]",
                   count + expired_key_num, manifest.count(), tid, pid);
         }
@@ -849,7 +839,7 @@ int MemTableSnapshot::ExtractIndexData(
 
     int result = GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
     if (result == 0) {
-        LOG(INFO) << "begin extract index data from snapshot";
+        DLOG(INFO) << "begin extract index data from snapshot";
         if (ExtractIndexFromSnapshot(table, manifest, wh, column_key, idx,
                                      partition_num, columns, max_idx,
                                      index_cols, write_count, expired_key_num,
@@ -869,7 +859,6 @@ int MemTableSnapshot::ExtractIndexData(
     std::string buffer;
     uint64_t extract_count = 0;
     DLOG(INFO) << "extract index data from binlog";
-    LOG(INFO) << "extract index data from binlog " << cur_offset << " " << collected_offset;
     while (!has_error && cur_offset < collected_offset) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -962,7 +951,6 @@ int MemTableSnapshot::ExtractIndexData(
                 }
                 if (cur_key.empty()) {
                     DLOG(INFO) << "skip empty key";
-                    LOG(INFO) << "skip emptry key " << idx;
                     continue;
                 }
                 uint32_t index_pid = ::rtidb::base::hash64(cur_key) % partition_num;
@@ -970,11 +958,7 @@ int MemTableSnapshot::ExtractIndexData(
                 if (index_pid == pid) {
                     if (entry.dimensions_size() == 1 && entry.dimensions(0).idx() == idx) {
                         DLOG(INFO) << "skip not default key " << cur_key;
-                        LOG(INFO) << "skip not default key " << cur_key << " didx " << entry.dimensions(0).idx();
                         continue;
-                    }
-                    for (const auto ts : entry.ts_dimensions()) {
-                        LOG(INFO) << "add key " << cur_key << " idx " << idx << " "  << ts.ts();
                     }
                     ::rtidb::api::Dimension* dim = entry.add_dimensions();
                     dim->set_key(cur_key);
@@ -987,10 +971,6 @@ int MemTableSnapshot::ExtractIndexData(
                     dim->set_idx(idx);
                     table->Put(entry);
                     extract_count++;
-                } else {
-                    for (const auto ts : entry.ts_dimensions()) {
-                        LOG(INFO) << "skip key " << cur_key << " idx " << idx << " " << ts.ts();
-                    }
                 }
             }
             ::rtidb::base::Status status = wh->Write(record);
@@ -1087,12 +1067,6 @@ bool MemTableSnapshot::PackNewIndexEntry(
         }
     } else {
         bool has_main_index = false;
-        for (const auto ts : entry->ts_dimensions()) {
-            LOG(INFO) << " ts " << ts.ts();
-        }
-        for (const auto ck : entry->dimensions()) {
-            LOG(INFO) << "ck " << ck.idx() << " k " << ck.key();
-        }
         for (int pos = 0; pos < entry->dimensions_size(); pos++) {
             if (entry->dimensions(pos).idx() == 0) {
                 std::string combined_key = entry->dimensions(pos).key() + "|0";
@@ -1103,21 +1077,17 @@ bool MemTableSnapshot::PackNewIndexEntry(
             }
         }
         if (!has_main_index) {
-            LOG(INFO) << "no main index";
             return false;
         }
     }
     std::vector<std::string> row;
     int ret = DecodeData(table, columns, *entry, max_idx, row);
     if (ret != 0 && ret != 2) {
-        LOG(INFO) << "pack fail code is " << ret;
+        DLOG(INFO) << "pack fail code is " << ret;
         return false;
     }
     std::string key;
     std::set<uint32_t> pid_set;
-    for (const auto ts : entry->ts_dimensions()) {
-        LOG(INFO) << "ts is " << ts.ts();
-    }
     for (uint32_t i = 0; i < index_cols.size(); ++i) {
         std::string cur_key;
         bool skip_calc = false;
@@ -1133,7 +1103,6 @@ bool MemTableSnapshot::PackNewIndexEntry(
             }
         }
         if (skip_calc) {
-            LOG(INFO) << "skip calc idx " << i;
             continue;
         }
         if (cur_key.empty()) {
@@ -1142,9 +1111,6 @@ bool MemTableSnapshot::PackNewIndexEntry(
         }
 
         uint32_t pid = ::rtidb::base::hash64(cur_key) % partition_num;
-        for (const auto ts : entry->ts_dimensions()) {
-            LOG(INFO) << "pack new key " << cur_key << " pid " << pid << " index col " << i << " ts " << ts.ts();
-        }
         if (i < index_cols.size() - 1) {
             pid_set.insert(pid);
         } else {
@@ -1152,15 +1118,12 @@ bool MemTableSnapshot::PackNewIndexEntry(
             key = cur_key;
         }
     }
-    LOG(INFO) << "pack end ";
+    DLOG(INFO) << "pack end ";
     if (key.empty()) {
         DLOG(INFO) << "key is empty";
         return false;
     }
     if (pid_set.find(*index_pid) == pid_set.end()) {
-        for (const auto ts : entry->ts_dimensions()) {
-            LOG(INFO) << "save to entry " << key << " idx " << idx << " pid " << (*index_pid) << " ts " << ts.ts();
-        }
         entry->clear_dimensions();
         ::rtidb::api::Dimension* dim = entry->add_dimensions();
         dim->set_key(key);
@@ -1199,7 +1162,6 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
     std::string buffer;
     std::string entry_buff;
     DLOG(INFO) << "begin dump snapshot index data";
-    LOG(INFO) << "begin dump snapshot index data";
     while (true) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -1227,7 +1189,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
         }
         uint32_t index_pid = 0;
         if (!PackNewIndexEntry(table, index_cols, columns, max_idx, idx, partition_num, &entry, &index_pid)) {
-            LOG(INFO) << "pack new entry fail in snapshot";
+            DLOG(INFO) << "pack new entry fail in snapshot";
             continue;
         }
         std::string entry_str;
@@ -1274,7 +1236,6 @@ bool MemTableSnapshot::DumpIndexData(
     for (const auto& ck : table->GetTableMeta().column_key()) {
         std::vector<uint32_t> cols;
         if (ck.flag()) {
-            LOG(INFO) << "skip ck " << ck.index_name();
             continue;
         }
         for (const auto& name : ck.col_name()) {
@@ -1290,7 +1251,6 @@ bool MemTableSnapshot::DumpIndexData(
                 return false;
             }
         }
-        LOG(INFO) << "will dump ck " << ck.index_name() << " idx " << index_cols.size();
         index_cols.push_back(cols);
     }
     std::vector<uint32_t> cols;
@@ -1307,7 +1267,6 @@ bool MemTableSnapshot::DumpIndexData(
             return false;
         }
     }
-    LOG(INFO) << "will dump ck " << column_key.index_name() << " idx " << index_cols.size();
     index_cols.push_back(cols);
     uint64_t collected_offset = CollectDeletedKey(0);
     uint64_t snapshot_offset = 0;
@@ -1338,7 +1297,6 @@ bool MemTableSnapshot::DumpBinlogIndexData(
     std::string buffer;
     std::string entry_buff;
     DLOG(INFO) << "begin dump binlog index data";
-    LOG(INFO) << "begin dump binlog index data";
     while (cur_offset < collected_offset) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -1441,11 +1399,11 @@ int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector
         }
         bool ok = rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc_size(), max_idx + 1, data, &row);
         if (!ok) {
-            LOG(INFO) << "0decode error";
+            LOG(WARNING) << "decode data error";
             return 4;
         }
-        LOG(WARNING) << "data size is " << row.size() << " less than " << max_idx + 1;
         if (col_cnt < (int64_t)(max_idx + 1)) {
+            DLOG(WARNING) << "data size is " << row.size() << " less than " << max_idx + 1;
             return 2;
         }
         return 0;

@@ -5549,10 +5549,6 @@ void TabletImpl::LoadIndexDataInternal(
         }
         ::rtidb::api::LogEntry entry;
         entry.ParseFromString(std::string(record.data(), record.size()));
-        LOG(INFO) << "load index data key " << entry.dimensions(0).key() << " idx " << entry.dimensions(0).idx() << " metohd " << entry.method_type();
-        for (const auto ts : entry.ts_dimensions()) {
-            LOG(INFO) << ts.idx() << " ts idx ts " << ts.ts();
-        }
         if (entry.has_method_type() &&
             entry.method_type() == ::rtidb::api::MethodType::kDelete) {
             table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
