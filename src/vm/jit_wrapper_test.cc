@@ -34,7 +34,6 @@ std::shared_ptr<SimpleCatalog> GetTestCatalog() {
         column->set_type(::fesql::type::kInt32);
         column->set_name("col_2");
     }
-
     auto catalog = std::make_shared<SimpleCatalog>();
     catalog->AddDatabase(db);
     return catalog;
@@ -44,11 +43,15 @@ std::string GetModuleString(const std::string &sql,
                             std::shared_ptr<SimpleCatalog> catalog) {
     EngineOptions options;
     options.set_keep_ir(true);
+    options.set_performance_sensitive(false);
 
     base::Status status;
     BatchRunSession session;
     Engine engine(catalog, options);
-    engine.Get(sql, "db", session, status);
+    if (!engine.Get(sql, "db", session, status)) {
+        LOG(WARNING) << "Fail to compile sql";
+        return "";
+    }
     auto compile_info = session.GetCompileInfo();
     return compile_info->get_sql_context().ir;
 }
@@ -58,6 +61,7 @@ TEST_F(JITWrapperTest, test) {
     std::string ir_str =
         GetModuleString("select col_1, col_2 from t1;", catalog);
 
+    ASSERT_FALSE(ir_str.empty());
     FeSQLJITWrapper jit;
     ASSERT_TRUE(jit.Init());
 
@@ -101,6 +105,7 @@ TEST_F(JITWrapperTest, test_window) {
     // clear this dict to ensure jit wrapper reinit all symbols
     // this should be removed by better symbol init utility
 
+    ASSERT_FALSE(ir_str.empty());
     FeSQLJITWrapper jit;
     ASSERT_TRUE(jit.Init());
 

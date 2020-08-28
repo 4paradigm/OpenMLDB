@@ -299,7 +299,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     udf::DefaultUDFLibrary* library = udf::DefaultUDFLibrary::get();
     if (ctx.is_batch_mode) {
         vm::BatchModeTransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
-                                             library);
+                                             library,
+                                             ctx.is_performance_sensitive);
         transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(ctx.logical_plan,
                                                &ctx.physical_plan, status)) {
@@ -310,7 +311,8 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         }
     } else {
         vm::RequestModeransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
-                                              library);
+                                              library,
+                                              ctx.is_performance_sensitive);
         transformer.AddDefaultPasses();
         if (!transformer.TransformPhysicalPlan(ctx.logical_plan,
                                                &ctx.physical_plan, status)) {

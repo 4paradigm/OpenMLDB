@@ -72,7 +72,7 @@ TEST_F(UDAFTest, count_where_test) {
         MakeBoolList({true, false, true}));
 
     CheckUDF<int64_t, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
-        "count_where", 2, MakeList<Nullable<int32_t>>({4, 5, 6, nullptr}),
+        "count_where", 1, MakeList<Nullable<int32_t>>({4, 5, 6, nullptr}),
         MakeList<Nullable<bool>>({true, false, nullptr, true}));
 
     CheckUDF<int64_t, ListRef<int32_t>, ListRef<bool>>(

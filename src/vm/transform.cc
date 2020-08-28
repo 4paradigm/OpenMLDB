@@ -67,8 +67,20 @@ BatchModeTransformer::BatchModeTransformer(
       catalog_(catalog),
       module_(module),
       id_(0),
+      performance_sensitive_mode_(false),
       library_(library) {}
 
+BatchModeTransformer::BatchModeTransformer(
+    node::NodeManager* node_manager, const std::string& db,
+    const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
+    udf::UDFLibrary* library, bool performance_sensitive)
+    : node_manager_(node_manager),
+      db_(db),
+      catalog_(catalog),
+      module_(module),
+      id_(0),
+      performance_sensitive_mode_(performance_sensitive),
+      library_(library) {}
 BatchModeTransformer::~BatchModeTransformer() {}
 
 bool BatchModeTransformer::TransformPlanOp(const ::fesql::node::PlanNode* node,
@@ -1145,6 +1157,120 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
     }
     *output = physical_plan;
 }
+base::Status BatchModeTransformer::ValidatePartitionDataProvider(
+    PhysicalOpNode* in) {
+    PLAN_CHECK_TRUE(nullptr != in, "Invalid physical node: null");
+    if (kPhysicalOpSimpleProject == in->type_) {
+        CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)))
+    } else {
+        PLAN_CHECK_TRUE(
+            kPhysicalOpDataProvider == in->type_ &&
+                kProviderTypePartition ==
+                    dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_,
+            "Isn't partition provider");
+    }
+    return base::Status::OK();
+}
+
+base::Status BatchModeTransformer::ValidateJoinIndexOptimization(
+    const Join& join, PhysicalOpNode* right) {
+    PLAN_CHECK_TRUE(nullptr != right, "Invalid physical node: null");
+    if (node::kJoinTypeConcat == join.join_type_) {
+        return base::Status::OK();
+    }
+    // check if window's order expression has been optimized
+    CHECK_STATUS(ValidatePartitionDataProvider(right),
+                 "Join node hasn't been optimized");
+    return base::Status::OK();
+}
+base::Status BatchModeTransformer::ValidateWindowIndexOptimization(
+    const WindowOp& window, PhysicalOpNode* in) {
+    PLAN_CHECK_TRUE(nullptr != in, "Invalid physical node: null");
+    CHECK_STATUS(ValidatePartitionDataProvider(in),
+                 "Window node hasn't been optimized");
+    // check if window's order expression has been optimized
+    PLAN_CHECK_TRUE(
+        !window.sort().ValidSort() ||
+            node::ExprListNullOrEmpty(window.sort().orders()->order_by_),
+        "Window node hasn't been optimzied")
+    return base::Status::OK();
+}
+base::Status BatchModeTransformer::ValidateIndexOptimization(
+    PhysicalOpNode* in) {
+    PLAN_CHECK_TRUE(nullptr != in, "Invalid physical node: null");
+
+    switch (in->type_) {
+        case kPhysicalOpGroupBy: {
+            CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)));
+            break;
+        }
+        case kPhysicalOpProject: {
+            auto project_op = dynamic_cast<PhysicalProjectNode*>(in);
+            if (kWindowAggregation == project_op->project_type_) {
+                PhysicalWindowAggrerationNode* union_op =
+                    dynamic_cast<PhysicalWindowAggrerationNode*>(project_op);
+                if (!union_op->instance_not_in_window()) {
+                    CHECK_STATUS(ValidateWindowIndexOptimization(
+                        union_op->window(), union_op->GetProducer(0)));
+                }
+                if (!union_op->window_joins().Empty()) {
+                    for (auto& window_join :
+                         union_op->window_joins().window_joins()) {
+                        CHECK_STATUS(ValidateJoinIndexOptimization(
+                            window_join.second, window_join.first));
+                    }
+                }
+                if (!union_op->window_unions().Empty()) {
+                    for (auto& window_union :
+                         union_op->window_unions().window_unions_) {
+                        CHECK_STATUS(ValidateWindowIndexOptimization(
+                            window_union.second, window_union.first));
+                    }
+                }
+            }
+            break;
+        }
+        case kPhysicalOpRequestUnoin: {
+            PhysicalRequestUnionNode* union_op =
+                dynamic_cast<PhysicalRequestUnionNode*>(in);
+            if (!union_op->instance_not_in_window()) {
+                CHECK_STATUS(ValidateWindowIndexOptimization(
+                    union_op->window(), union_op->GetProducer(1)));
+            }
+            if (!union_op->window_unions().Empty()) {
+                for (auto& window_union :
+                     union_op->window_unions().window_unions_) {
+                    CHECK_STATUS(ValidateWindowIndexOptimization(
+                        window_union.second, window_union.first));
+                }
+            }
+            break;
+        }
+        case kPhysicalOpRequestJoin: {
+            PhysicalRequestJoinNode* join_op =
+                dynamic_cast<PhysicalRequestJoinNode*>(in);
+            PLAN_CHECK_TRUE(nullptr != in, "Invalid join node: null");
+            CHECK_STATUS(ValidateJoinIndexOptimization(
+                join_op->join(), join_op->GetProducer(1)));
+            break;
+        }
+        case kPhysicalOpJoin: {
+            PhysicalJoinNode* join_op = dynamic_cast<PhysicalJoinNode*>(in);
+            PLAN_CHECK_TRUE(nullptr != in, "Invalid join node: null");
+            CHECK_STATUS(ValidateJoinIndexOptimization(
+                join_op->join(), join_op->GetProducer(1)));
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+
+    for (int i = 0; i < in->GetProducerCnt(); i++) {
+        CHECK_STATUS(ValidateIndexOptimization(in->GetProducer(i)));
+    }
+    return base::Status::OK();
+}
 bool BatchModeTransformer::TransformPhysicalPlan(
     const ::fesql::node::PlanNodeList& trees,
     ::fesql::vm::PhysicalOpNode** output, base::Status& status) {
@@ -1176,6 +1302,16 @@ bool BatchModeTransformer::TransformPhysicalPlan(
                     return false;
                 }
                 ApplyPasses(physical_plan, output);
+
+                if (performance_sensitive_mode_ &&
+                    !ValidateIndexOptimization(physical_plan).isOK()) {
+                    LOG(WARNING) << "fail to support physical plan in "
+                                    "performance sensitive mode";
+                    std::ostringstream oss;
+                    physical_plan->Print(oss, "");
+                    LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
+                    return false;
+                }
                 if (!GenPlanNode(*output, status)) {
                     LOG(WARNING) << "fail to gen plan";
                     return false;
@@ -2471,8 +2607,9 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
 RequestModeransformer::RequestModeransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
-    udf::UDFLibrary* library)
-    : BatchModeTransformer(node_manager, db, catalog, module, library) {}
+    udf::UDFLibrary* library, const bool performance_sensitive)
+    : BatchModeTransformer(node_manager, db, catalog, module, library,
+                           performance_sensitive) {}
 
 RequestModeransformer::~RequestModeransformer() {}
 

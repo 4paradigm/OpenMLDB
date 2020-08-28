@@ -1644,7 +1644,8 @@ const std::string KeyGenerator::Gen(const Row& row) {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = fn_schema_.Get(pos).type() == fesql::type::kDate
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN :
+            fn_schema_.Get(pos).type() == fesql::type::kDate
                               ? std::to_string(row_view.GetDateUnsafe(pos))
                               : row_view.GetAsString(pos);
         if (key == "") {
@@ -1711,7 +1712,6 @@ Row Runner::GroupbyProject(const int8_t* fn, TableHandler* table) {
     return Row(
         base::RefCountedSlice::CreateManaged(buf, RowView::GetSize(buf)));
 }
-
 
 const Row WindowProjectGenerator::Gen(const uint64_t key, const Row row,
                                       bool is_instance, size_t append_slices,

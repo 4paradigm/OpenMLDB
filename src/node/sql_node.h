@@ -140,6 +140,8 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return "IN";
         case kFnOpBracket:
             return "()";
+        case kFnOpIsNull:
+            return "IS_NULL";
         case kFnOpNone:
             return "NONE";
         default:
@@ -2218,10 +2220,9 @@ class DistributionsNode : public SQLNode {
     SQLNodeList *distribution_list_;
 };
 
-
 std::string ExprString(const ExprNode *expr);
 std::string MakeExprWithTable(const ExprNode *expr, const std::string db);
-const bool IsNullPrimary(const ExprNode* expr);
+const bool IsNullPrimary(const ExprNode *expr);
 bool ExprListNullOrEmpty(const ExprListNode *expr);
 bool SQLEquals(const SQLNode *left, const SQLNode *right);
 bool SQLListEquals(const SQLNodeList *left, const SQLNodeList *right);

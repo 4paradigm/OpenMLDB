@@ -258,6 +258,10 @@ class BatchModeTransformer {
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog,
                          ::llvm::Module* module, udf::UDFLibrary* library);
+    BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
+                         const std::shared_ptr<Catalog>& catalog,
+                         ::llvm::Module* module, udf::UDFLibrary* library,
+                         bool performance_sensitive);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
     bool TransformPhysicalPlan(const ::fesql::node::PlanNodeList& trees,
@@ -291,6 +295,13 @@ class BatchModeTransformer {
                   base::Status& status);  // NOLINT
     bool GenSimpleProject(ColumnProject* project, PhysicalOpNode* in,
                           base::Status& status);  // NOLINT
+
+    base::Status ValidatePartitionDataProvider(PhysicalOpNode* physical_plan);
+    base::Status ValidateWindowIndexOptimization(const WindowOp& window,
+                                                 PhysicalOpNode* in);
+    base::Status ValidateJoinIndexOptimization(const Join& join,
+                                               PhysicalOpNode* in);
+    base::Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
 
  protected:
     virtual bool TransformPlanOp(const ::fesql::node::PlanNode* node,
@@ -383,6 +394,10 @@ class BatchModeTransformer {
  private:
     ::llvm::Module* module_;
     uint32_t id_;
+    // window partition and order should be optimized under
+    // `index_opt_strict_mode_` join key should be optimized under
+    // `index_opt_strict_mode_`
+    bool performance_sensitive_mode_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
     udf::UDFLibrary* library_;
@@ -393,7 +408,8 @@ class RequestModeransformer : public BatchModeTransformer {
     RequestModeransformer(node::NodeManager* node_manager,
                           const std::string& db,
                           const std::shared_ptr<Catalog>& catalog,
-                          ::llvm::Module* module, udf::UDFLibrary* library);
+                          ::llvm::Module* module, udf::UDFLibrary* library,
+                          const bool performance_sensitive);
     virtual ~RequestModeransformer();
 
     const Schema& request_schema() const { return request_schema_; }

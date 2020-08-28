@@ -255,6 +255,16 @@ Status UnaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             SetNullable(GetChild(0)->nullable());
             break;
         }
+        case kFnOpIsNull: {
+            SetOutputType(ctx->node_manager()->MakeTypeNode(node::kBool));
+            SetNullable(false);
+            break;
+        }
+        case kFnOpNonNull: {
+            SetOutputType(dtype);
+            SetNullable(false);
+            break;
+        }
         default:
             return Status(common::kCodegenError,
                           "Unknown unary op type: " + ExprOpTypeName(GetOp()));

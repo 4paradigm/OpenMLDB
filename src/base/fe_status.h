@@ -48,6 +48,19 @@ std::initializer_list<int> __output_literal_args(STREAM& stream,  // NOLINT
         break;                                                                \
     }
 
+#define PLAN_CHECK_TRUE(call, ...)                                            \
+    while (true) {                                                            \
+        if (!(call)) {                                                        \
+            std::stringstream _ss;                                            \
+            fesql::base::__output_literal_args(                               \
+                _ss, "Internal api error: ", ##__VA_ARGS__, "(at ", __FILE__, \
+                ":", __LINE__, ")");                                          \
+            fesql::base::Status _status(common::kPlanError, _ss.str());    \
+            return _status;                                                   \
+        }                                                                     \
+        break;                                                                \
+    }
+
 struct Status {
     Status() : code(common::kOk), msg("ok") {}
     Status(common::StatusCode status_code, const std::string& msg_str)

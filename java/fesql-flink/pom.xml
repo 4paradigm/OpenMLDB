@@ -30,11 +30,6 @@
 	<dependencies>
 		<dependency>
 			<groupId>com._4paradigm.fesql</groupId>
-			<artifactId>fesql-native</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>com._4paradigm.fesql</groupId>
 			<artifactId>fesql-common</artifactId>
 			<version>${project.version}</version>
 		</dependency>
@@ -49,7 +44,6 @@
 			<artifactId>junit</artifactId>
 			<version>4.12</version>
 		</dependency>
-
 
 		<!-- Flink -->
 		<dependency>

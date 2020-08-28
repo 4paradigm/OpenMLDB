@@ -76,7 +76,7 @@ typedef void* yyscan_t;
 %token <intval> HOURNUM
 %token <intval> MINUTENUM
 %token <intval> SECONDNUM
-%token <intval> BOOL
+%token <intval> BOOLVALUE
 %token <floatval> FLOATNUM
 %token <doubleval> DOUBLENUM
 
@@ -136,6 +136,7 @@ typedef void* yyscan_t;
 %token BLOB
 %token BOTH
 %token BY
+%token BOOL
 %token CALL
 %token CASCADE
 %token CASE
@@ -661,6 +662,10 @@ types:  I16
         |DATE
         {
         	$$ = ::fesql::node::kDate;
+        }
+        |BOOL
+        {
+        	$$ = ::fesql::node::kBool;
         }
         ;
 
@@ -1640,7 +1645,7 @@ expr_const:
 		{ $$ = (node_manager->MakeConstNode(-1*$2)); }
 	| '-' FLOATNUM
 		{ $$ = (node_manager->MakeConstNode(-1*$2)); }
-  	| BOOL
+  	| BOOLVALUE
         { $$ = (node_manager->MakeConstNode($1)); }
   	| NULLX
         { $$ = (node_manager->MakeConstNode()); }

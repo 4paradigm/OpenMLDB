@@ -20,123 +20,153 @@ PredicateIRBuilder::PredicateIRBuilder(::llvm::BasicBlock* block)
     : block_(block), cast_expr_ir_builder_(block) {}
 PredicateIRBuilder::~PredicateIRBuilder() {}
 
-bool PredicateIRBuilder::BuildAndExpr(::llvm::Value* left, ::llvm::Value* right,
-                                      ::llvm::Value** output,
-                                      base::Status& status) {
+/**
+ * Fano graph for nullable and:
+ * - value                      - null flag
+ *     | 00 | 01 | 11 | 10 |        | 00 | 01 | 11 | 10 |
+ * ----+----+----+----+----+    ----+----+----+----+----|
+ *  00 |    |    |    |    |     00 |    |    |    |    |
+ * ----+----+----+----+----+    ----+----+----+----+----+
+ *  01 |    | 1  | *  | *  |     01 |    |    | 1  | 1  |
+ * ----+----+----+----+----+    ----+----+----+----+----+
+ *  11 |    | *  | *  | *  |     11 |    | 1  | 1  | 1  |
+ * ----+----+----+----+----+    ----+----+----+----+----+
+ *  10 |    | *  | *  | *  |     10 |    | 1  | 1  | 1  |
+ * ----+----+----+----+----+    ----+----+----+----+----+
+ */
+Status PredicateIRBuilder::BuildAndExpr(NativeValue left, NativeValue right,
+                                        NativeValue* output) {
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Value* raw_left = left.GetValue(&builder);
+    ::llvm::Value* raw_right = right.GetValue(&builder);
+    ::llvm::Value* left_is_null = left.GetIsNull(&builder);
+    ::llvm::Value* right_is_null = right.GetIsNull(&builder);
+
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
+    Status status;
+    CHECK_TRUE(InferBoolTypes(raw_left, &casted_left, status),
+               "Infer and cast lhs type of and(&&) failed: ", status.msg);
+    CHECK_TRUE(InferBoolTypes(raw_right, &casted_right, status),
+               "Infer and cast rhs type of and(&&) failed: ", status.msg);
+    CHECK_TRUE(casted_left->getType()->isIntegerTy(1) &&
+                   casted_right->getType()->isIntegerTy(1),
+               "Fail to codegen &&(and) expr: value types are invalid");
 
-    if (false == InferBoolTypes(left, &casted_left, status)) {
-        return false;
-    }
-    if (false == InferBoolTypes(right, &casted_right, status)) {
-        return false;
-    }
-    ::llvm::IRBuilder<> builder(block_);
-    if (casted_left->getType()->isIntegerTy(1)) {
-        *output = builder.CreateAnd(casted_left, casted_right);
-    } else {
-        status.msg = "fail to codegen &&(and) expr: value types are invalid";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    if (nullptr == *output) {
-        status.msg = "fail to codegen &&(and) expr";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    ::llvm::Value* result_val = builder.CreateAnd(casted_left, casted_right);
 
-    return true;
+    ::llvm::Value* result_is_null = builder.CreateAnd(
+        left_is_null, builder.CreateOr(right_is_null, casted_right));
+    result_is_null = builder.CreateOr(
+        result_is_null, builder.CreateAnd(casted_left, right_is_null));
+
+    *output = NativeValue::CreateWithFlag(result_val, result_is_null);
+    return Status::OK();
 }
-bool PredicateIRBuilder::BuildOrExpr(::llvm::Value* left, ::llvm::Value* right,
-                                     ::llvm::Value** output,
-                                     base::Status& status) {
+
+/**
+ * Fano graph for nullable or:
+ * - value                      - null flag
+ *     | 00 | 01 | 11 | 10 |        | 00 | 01 | 11 | 10 |
+ * ----+----+----+----+----+    ----+----+----+----+----|
+ *  00 |    | 1  | *  | *  |     00 |    |    | 1  | 1  |
+ * ----+----+----+----+----+    ----+----+----+----+----+
+ *  01 | 1  | 1  | 1  | 1  |     01 |    |    |    |    |
+ * ----+----+----+----+----+    ----+----+----+----+----+
+ *  11 | *  | 1  | *  | *  |     11 | 1  |    | 1  | 1  |
+ * ----+----+----+----+----+    ----+----+----+----+----+
+ *  10 | *  | 1  | *  | *  |     10 | 1  |    | 1  | 1  |
+ * ----+----+----+----+----+    ----+----+----+----+----+
+ */
+Status PredicateIRBuilder::BuildOrExpr(NativeValue left, NativeValue right,
+                                       NativeValue* output) {
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Value* raw_left = left.GetValue(&builder);
+    ::llvm::Value* raw_right = right.GetValue(&builder);
+    ::llvm::Value* left_is_null = left.GetIsNull(&builder);
+    ::llvm::Value* right_is_null = right.GetIsNull(&builder);
+
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
+    Status status;
+    CHECK_TRUE(InferBoolTypes(raw_left, &casted_left, status),
+               "Infer and cast lhs type of or(||) failed: ", status.msg);
+    CHECK_TRUE(InferBoolTypes(raw_right, &casted_right, status),
+               "Infer and cast rhs type of or(||) failed: ", status.msg);
+    CHECK_TRUE(casted_left->getType()->isIntegerTy(1) &&
+                   casted_right->getType()->isIntegerTy(1),
+               "Fail to codegen &&(and) expr: value types are invalid");
 
-    if (false == InferBoolTypes(left, &casted_left, status)) {
-        return false;
-    }
-    if (false == InferBoolTypes(right, &casted_right, status)) {
-        return false;
-    }
-    ::llvm::IRBuilder<> builder(block_);
-    if (casted_left->getType()->isIntegerTy(1)) {
-        *output = builder.CreateOr(casted_left, casted_right);
-    } else {
-        status.msg = "fail to codegen ||(or) expr: value types are invalid";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    if (nullptr == *output) {
-        status.msg = "fail to codegen ||(or) expr";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    ::llvm::Value* result_val = builder.CreateOr(casted_left, casted_right);
 
-    return true;
+    ::llvm::Value* result_is_null = builder.CreateAnd(
+        left_is_null,
+        builder.CreateOr(right_is_null, builder.CreateNot(casted_right)));
+    result_is_null = builder.CreateOr(
+        result_is_null,
+        builder.CreateAnd(builder.CreateNot(casted_left), right_is_null));
+
+    *output = NativeValue::CreateWithFlag(result_val, result_is_null);
+    return Status::OK();
 }
 
-bool PredicateIRBuilder::BuildXorExpr(::llvm::Value* left, ::llvm::Value* right,
-                                      ::llvm::Value** output,
-                                      base::Status& status) {
+/**
+ * Fano graph for nullable xor:
+ * - value                      - null flag
+ *     | 00 | 01 | 11 | 10 |        | 00 | 01 | 11 | 10 |
+ * ----+----+----+----+----+    ----+----+----+----+----|
+ *  00 |    | 1  | *  | *  |     00 |    |    | 1  | 1  |
+ * ----+----+----+----+----+    ----+----+----+----+----+
+ *  01 | 1  |    | *  | *  |     01 |    |    | 1  | 1  |
+ * ----+----+----+----+----+    ----+----+----+----+----+
+ *  11 | *  | *  | *  | *  |     11 | 1  | 1  | 1  | 1  |
+ * ----+----+----+----+----+    ----+----+----+----+----+
+ *  10 | *  | *  | *  | *  |     10 | 1  | 1  | 1  | 1  |
+ * ----+----+----+----+----+    ----+----+----+----+----+
+ */
+Status PredicateIRBuilder::BuildXorExpr(NativeValue left, NativeValue right,
+                                        NativeValue* output) {
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Value* raw_left = left.GetValue(&builder);
+    ::llvm::Value* raw_right = right.GetValue(&builder);
+    ::llvm::Value* left_is_null = left.GetIsNull(&builder);
+    ::llvm::Value* right_is_null = right.GetIsNull(&builder);
+
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
+    Status status;
+    CHECK_TRUE(InferBoolTypes(raw_left, &casted_left, status),
+               "Infer and cast lhs type of and(&&) failed: ", status.msg);
+    CHECK_TRUE(InferBoolTypes(raw_right, &casted_right, status),
+               "Infer and cast rhs type of and(&&) failed: ", status.msg);
+    CHECK_TRUE(casted_left->getType()->isIntegerTy(1) &&
+                   casted_right->getType()->isIntegerTy(1),
+               "Fail to codegen &&(and) expr: value types are invalid");
 
-    if (false == InferBoolTypes(left, &casted_left, status)) {
-        return false;
-    }
-    if (false == InferBoolTypes(right, &casted_right, status)) {
-        return false;
-    }
-    ::llvm::IRBuilder<> builder(block_);
-    if (casted_left->getType()->isIntegerTy(1)) {
-        *output = builder.CreateXor(casted_left, casted_right);
-    } else {
-        status.msg = "fail to codegen xor expr: value types are invalid";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    if (nullptr == *output) {
-        status.msg = "fail to codegen xor expr";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-
-    return true;
+    ::llvm::Value* result_val = builder.CreateXor(casted_left, casted_right);
+    ::llvm::Value* result_is_null =
+        builder.CreateOr(left_is_null, right_is_null);
+    *output = NativeValue::CreateWithFlag(result_val, result_is_null);
+    return Status::OK();
 }
-bool PredicateIRBuilder::BuildNotExpr(::llvm::Value* left,
-                                      ::llvm::Value** output,
-                                      base::Status& status) {
-    ::llvm::Value* casted_left = NULL;
 
-    if (false == InferBoolTypes(left, &casted_left, status)) {
-        return false;
-    }
+Status PredicateIRBuilder::BuildNotExpr(NativeValue input,
+                                        NativeValue* output) {
     ::llvm::IRBuilder<> builder(block_);
-    if (casted_left->getType()->isIntegerTy(1)) {
-        *output = builder.CreateNot(casted_left);
-    } else {
-        status.msg = "fail to codegen !(not) expr: value types are invalid";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-    if (nullptr == *output) {
-        status.msg = "fail to codegen !(not) expr";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
+    ::llvm::Value* raw = input.GetValue(&builder);
+    ::llvm::Value* is_null = input.GetIsNull(&builder);
 
-    return true;
+    ::llvm::Value* casted_raw = nullptr;
+    Status status;
+    CHECK_TRUE(InferBoolTypes(raw, &casted_raw, status), status.msg);
+    CHECK_TRUE(casted_raw->getType()->isIntegerTy(1),
+               "Fail to codegen !(not) expr: value types are invalid");
+
+    *output =
+        NativeValue::CreateWithFlag(builder.CreateNot(casted_raw), is_null);
+    return Status::OK();
 }
+
 bool PredicateIRBuilder::BuildEqExpr(::llvm::Value* left, ::llvm::Value* right,
                                      ::llvm::Value** output,
                                      base::Status& status) {
@@ -258,8 +288,8 @@ bool PredicateIRBuilder::BuildGtExpr(::llvm::Value* left, ::llvm::Value* right,
         if (!status.isOK()) {
             return false;
         }
-        return BuildEqExpr(compare_value.GetValue(&builder),
-                           builder.getInt32(1), output, status);
+        return BuildGtExpr(compare_value.GetValue(&builder),
+                           builder.getInt32(0), output, status);
 
     } else {
         status.msg = "fail to codegen > expr: value types are invalid";
@@ -346,8 +376,8 @@ bool PredicateIRBuilder::BuildLtExpr(::llvm::Value* left, ::llvm::Value* right,
         if (!status.isOK()) {
             return false;
         }
-        return BuildEqExpr(compare_value.GetValue(&builder),
-                           builder.getInt32(-1), output, status);
+        return BuildLtExpr(compare_value.GetValue(&builder),
+                           builder.getInt32(0), output, status);
 
     } else {
         status.msg = "fail to codegen < expr: value types are invalid";
@@ -547,5 +577,14 @@ bool PredicateIRBuilder::InferBaseTypes(::llvm::Value* left,
     }
     return true;
 }
+
+Status PredicateIRBuilder::BuildIsNullExpr(NativeValue input,
+                                           NativeValue* output) {
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Value* is_null = input.GetIsNull(&builder);
+    *output = NativeValue::Create(is_null);
+    return Status::OK();
+}
+
 }  // namespace codegen
 }  // namespace fesql

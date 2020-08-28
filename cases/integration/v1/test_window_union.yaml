@@ -7,14 +7,14 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
           - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
           - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
@@ -33,14 +33,14 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
           - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [2,"bb",20,31,1.2,2.2,1590738991000]
           - [3,"cc",20,32,1.3,2.3,1590738992000]
@@ -54,14 +54,14 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
           - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 string"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
           - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
@@ -75,14 +75,14 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
           - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c9 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
           - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
@@ -96,14 +96,14 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
           - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c9 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
           - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
@@ -120,7 +120,8 @@ cases:
         - [5,"ee",21,34]
   -
     id: 5
-    desc: 样本表使用索引
+    desc: 样本表使用索引,UNION表未命中索引
+    mode: rtidb-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -146,7 +147,8 @@ cases:
         - [5,"ee",21,34]
   -
     id: 6
-    desc: union表使用索引
+    desc: union表使用索引,样本表未命中索引
+    mode: rtidb-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -202,7 +204,7 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
@@ -210,12 +212,12 @@ cases:
           - [6,"ee",21,34,1.5,2.5,1590738995000,"2020-05-05"]
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
     sql: |
@@ -235,14 +237,14 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
           - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
           - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
@@ -261,7 +263,7 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c4:c7"]
+        indexs: ["index1:c1|c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [4,"aa",20,33,1.4,2.4,1590738993000,"2020-05-04"]
@@ -269,7 +271,7 @@ cases:
           - [6,"ee",21,33,1.4,2.4,1590738995000,"2020-05-04"]
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c4:c7"]
+        indexs: ["index1:c1|c3:c7"]
         rows:
           - [2,"aa",20,31,1.2,2.2,1590738991000,"2020-05-02"]
           - [3,"aa",20,32,1.3,2.3,1590738992000,"2020-05-03"]
@@ -289,14 +291,14 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
           - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
           - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
@@ -315,7 +317,7 @@ cases:
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
           - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
@@ -323,12 +325,12 @@ cases:
           - [6,"ee",21,34,1.5,2.5,1590738995000,"2020-05-05"]
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
     sql: |
@@ -354,7 +356,7 @@ cases:
           - [5,"ee",21,34,1.5,2.5,1590738995000,"2020-05-05"]
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c3:c7"]
         rows:
           - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
           - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]

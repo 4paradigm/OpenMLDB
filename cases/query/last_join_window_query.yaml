@@ -1,6 +1,7 @@
 cases:
   - id: 0
     desc: LAST JOIN Window, Join未命中索引
+    mode: rtidb-unsupport
     db: db1
     sql: |
       %%fun

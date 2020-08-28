@@ -769,6 +769,7 @@ TEST_F(ExprIRBuilderTest, test_cond_expr) {
                   codec::StringRef("right"));
     CondExprCheck(nullptr, nullptr, nullptr, nullptr);
 }
+
 void CaseWhenExprCheck(const udf::Nullable<bool> &cond_val,
                        const udf::Nullable<codec::StringRef> &left_val,
                        const udf::Nullable<codec::StringRef> &right_val,
@@ -803,6 +804,14 @@ TEST_F(ExprIRBuilderTest, test_case_when_expr) {
     CaseWhenExprCheck(nullptr, nullptr, codec::StringRef("right"),
                       codec::StringRef("right"));
     CaseWhenExprCheck(nullptr, nullptr, nullptr, nullptr);
+}
+
+TEST_F(ExprIRBuilderTest, test_is_null_expr) {
+    auto make_if_null = [](node::NodeManager *nm, node::ExprNode *input) {
+        return nm->MakeUnaryExprNode(input, node::kFnOpIsNull);
+    };
+    ExprCheck<bool, udf::Nullable<int32_t>>(make_if_null, false, 1);
+    ExprCheck<bool, udf::Nullable<int32_t>>(make_if_null, true, nullptr);
 }
 
 }  // namespace codegen

@@ -80,11 +80,10 @@ class NodeManager {
     ExprNode *MakeCastNode(const node::DataType cast_type, ExprNode *expr);
     ExprNode *MakeWhenNode(ExprNode *when_expr, ExprNode *then_expr);
     ExprNode *MakeSimpleCaseWhenNode(ExprNode *case_expr,
-                               ExprListNode *when_list_expr,
-                               ExprNode *else_expr);
-    ExprNode *MakeSearchedCaseWhenNode(
-                               ExprListNode *when_list_expr,
-                               ExprNode *else_expr);
+                                     ExprListNode *when_list_expr,
+                                     ExprNode *else_expr);
+    ExprNode *MakeSearchedCaseWhenNode(ExprListNode *when_list_expr,
+                                       ExprNode *else_expr);
     ExprNode *MakeTimeFuncNode(const TimeUnit time_unit, ExprListNode *args);
     ExprNode *MakeFuncNode(const std::string &name, ExprListNode *args,
                            const SQLNode *over);

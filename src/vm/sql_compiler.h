@@ -39,6 +39,7 @@ struct SQLContext {
     // mode: batch|request
     // the sql content
     bool is_batch_mode;
+    bool is_performance_sensitive;
     std::string sql;
     // the database
     std::string db;
