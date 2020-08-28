@@ -33,7 +33,15 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
     @Override
     public void run() {
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("request-unsupport")) {
-            log.info("skip case in batch mode: {}", fesqlCase.getDesc());
+            log.info("skip case in request mode: {}", fesqlCase.getDesc());
+            return;
+        }
+        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-unsupport")) {
+            log.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            return;
+        }
+        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-request-unsupport")) {
+            log.info("skip case in rtidb request mode: {}", fesqlCase.getDesc());
             return;
         }
         process();

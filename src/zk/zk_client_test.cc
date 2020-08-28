@@ -116,28 +116,28 @@ TEST_F(ZkClientTest, ZkNodeChange) {
     ZkClient client2("127.0.0.1:6181", "", 1000, "127.0.0.1:9527", "/rtidb1");
     ok = client2.Init();
     ASSERT_TRUE(ok);
-    bool detect = false;
-    ok = client2.WatchItem(node, [&detect]{ detect = true; });
+    std::atomic<bool> detect(false);
+    ok = client2.WatchItem(node, [&detect]{ detect.store(true); });
     ASSERT_TRUE(ok);
     ok = client.SetNodeValue(node, "2");
     ASSERT_TRUE(ok);
-    for (int i = 0 ; i < 10; i++) {
-        if (detect) {
+    for (int i = 0 ; i < 20; i++) {
+        if (detect.load()) {
             break;
         }
         sleep(1);
     }
-    ASSERT_TRUE(detect);
-    detect = false;
+    ASSERT_TRUE(detect.load());
+    detect.store(false);
     ok = client.SetNodeValue(node, "3");
     ASSERT_TRUE(ok);
-    for (int i = 0 ; i < 10; i++) {
-        if (detect) {
+    for (int i = 0 ; i < 20; i++) {
+        if (detect.load()) {
             break;
         }
         sleep(1);
     }
-    ASSERT_TRUE(detect);
+    ASSERT_TRUE(detect.load());
 }
 
 }  // namespace zk

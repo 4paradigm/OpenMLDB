@@ -8,10 +8,9 @@ sys.path.insert(0, dir_name + "/prometheus_client-0.6.0")
 from prometheus_client import start_http_server
 from prometheus_client import Gauge
 
-method = ["put", "get", "scan"]
+method = ["put", "get", "scan", "query"]
 monitor_key = ["count", "error", "qps", "latency", "latency_50",
                "latency_90", "latency_99", "latency_999", "latency_9999", "max_latency"]
-
 rtidb_log = {
     "tablet": [
         {

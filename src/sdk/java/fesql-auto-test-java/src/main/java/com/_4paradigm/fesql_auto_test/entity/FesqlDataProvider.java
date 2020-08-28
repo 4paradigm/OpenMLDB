@@ -25,7 +25,7 @@ public class FesqlDataProvider extends CaseFile {
             if (directory.isDirectory() && "rtidb".equals(directory.getName())) {
                 break;
             }
-            logger.info("current directory name {}", directory.getName());
+            logger.debug("current directory name {}", directory.getName());
             directory = directory.getParentFile();
         }
 
@@ -42,7 +42,7 @@ public class FesqlDataProvider extends CaseFile {
         String rtidbDir = rtidbDir().getAbsolutePath();
         Assert.assertNotNull(rtidbDir);
         String caseAbsPath = rtidbDir + "/fesql/cases/" + caseFile;
-        logger.info("fesql case absolute path: {}", caseAbsPath);
+        logger.debug("fesql case absolute path: {}", caseAbsPath);
         FileInputStream testDataStream = new FileInputStream(caseAbsPath);
         FesqlDataProvider testDateProvider = yaml.loadAs(testDataStream, FesqlDataProvider.class);
         return testDateProvider;

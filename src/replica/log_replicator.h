@@ -41,13 +41,13 @@ enum ReplicatorRole { kLeaderNode = 1, kFollowerNode };
 class LogReplicator {
  public:
     LogReplicator(const std::string& path,
-                  const std::vector<std::string>& endpoints,
-                  const ReplicatorRole& role, std::shared_ptr<Table> table,
-                  std::atomic<bool>* follower);
+            const std::map<std::string, std::string>& real_ep_map,
+            const ReplicatorRole& role, std::shared_ptr<Table> table,
+            std::atomic<bool>* follower);
 
     ~LogReplicator();
 
-    bool Init(const std::vector<std::string>& real_endpoints);
+    bool Init();
 
     bool StartSyncing();
 
@@ -68,11 +68,11 @@ class LogReplicator {
     void DeleteBinlog();
 
     // add replication
-    int AddReplicateNode(const std::vector<std::string>& endpoint_vec,
-            const std::vector<std::string>& real_endpoint_vec);
+    int AddReplicateNode(
+            const std::map<std::string, std::string>& real_ep_map);
     // add replication with tid
-    int AddReplicateNode(const std::vector<std::string>& endpoint_vec,
-            const std::vector<std::string>& real_endpoint_vec,
+    int AddReplicateNode(
+            const std::map<std::string, std::string>& real_ep_map,
             uint32_t tid);
 
     int DelReplicateNode(const std::string& endpoint);
@@ -121,7 +121,7 @@ class LogReplicator {
     LogParts* logs_;
     WriteHandle* wh_;
     ReplicatorRole role_;
-    std::vector<std::string> endpoints_;
+    std::map<std::string, std::string> real_ep_map_;
     std::vector<std::shared_ptr<ReplicateNode> > nodes_;
     std::vector<std::string> local_endpoints_;
 

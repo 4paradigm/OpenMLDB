@@ -11,6 +11,9 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
@@ -79,24 +82,56 @@ public class FESQLLastJoinBenchmark {
         }
     }
 
+//    @Benchmark
+//    public void lastJoinBm() {
+//        String sql = "select t1.col1 as c1, t2.col2 as c2 , " +
+//                "sum(t1.col3) over w  from t1 last join t2 " +
+//                "order by t2.col2 on t1.col1 = t2.col1 and t1.col2 > t2.col2 " +
+//                "window w as (partition by t1.col1 order by t1.col2 ROWS Between 1000 preceding and current row);";
+//        SQLRequestRow row = executor.getRequestRow(db, sql);
+//        String pk = "pk0";
+//        row.Init(pk.length());
+//        row.AppendString(pk);
+//        row.AppendTimestamp(System.currentTimeMillis());
+//        row.AppendFloat(1.0f);
+//        row.AppendDouble(2.0d);
+//        row.AppendNULL();
+//        row.Build();
+//        executor.executeSQL(db, sql, row);
+//    }
+
     @Benchmark
-    public void lastJoinBm() {
+    public void lastJoinBmWithPreparedStmt() {
         String sql = "select t1.col1 as c1, t2.col2 as c2 , " +
                 "sum(t1.col3) over w  from t1 last join t2 " +
                 "order by t2.col2 on t1.col1 = t2.col1 and t1.col2 > t2.col2 " +
                 "window w as (partition by t1.col1 order by t1.col2 ROWS Between 1000 preceding and current row);";
-        SQLRequestRow row = executor.getRequestRow(db, sql);
+        PreparedStatement pst = null;
+        try {
+            pst = executor.getRequestPreparedStmt(db, sql);
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
         String pk = "pk0";
-        row.Init(pk.length());
-        row.AppendString(pk);
-        row.AppendTimestamp(System.currentTimeMillis());
-        row.AppendFloat(1.0f);
-        row.AppendDouble(2.0d);
-        row.AppendNULL();
-        row.Build();
-        executor.executeSQL(db, sql, row);
+        try {
+            pst.setString(1, pk);
+            pst.setTimestamp(2, new Timestamp(System.currentTimeMillis()));
+            pst.setFloat(3, 1.0f);
+            pst.setDouble(4, 2.0d);
+            pst.setNull(5, 0);
+            pst.executeQuery();
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        } finally {
+            if (pst != null) {
+                try {
+                    pst.close();
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
+            }
+        }
     }
-
 
     public static void main(String[] args) throws RunnerException {
 
