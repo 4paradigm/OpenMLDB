@@ -193,6 +193,41 @@ bool ZkClient::RegisterName() {
     if (boost::starts_with(sname, BLOB_PREFIX)) {
         sname = sname.substr(BLOB_PREFIX.size());
     }
+    // check server name duplicate
+    std::vector<std::string> sname_vec;
+    std::string leader_path = zk_root_path_ + "/leader";
+    std::vector<std::string> children;
+    if (GetChildren(leader_path, children)) {
+        for (auto path : children) {
+            std::string endpoint;
+            std::string real_path = leader_path + "/" + path;
+            if (GetNodeValue(real_path, endpoint)) {
+                sname_vec.push_back(endpoint);
+            }
+        }
+    }
+    std::vector<std::string> endpoints;
+    if (GetNodes(endpoints)) {
+        std::vector<std::string>::const_iterator it = endpoints.begin();
+        for (; it != endpoints.end(); ++it) {
+            if (boost::starts_with(*it, BLOB_PREFIX)) {
+                sname_vec.push_back(it->substr(BLOB_PREFIX.size()));
+            } else {
+                sname_vec.push_back(*it);
+            }
+        }
+    }
+    if (std::find(sname_vec.begin(), sname_vec.end(), sname) != sname_vec.end()) {
+        std::string ep;
+        if (GetNodeValue(names_root_path_ + "/" + sname, ep) &&
+                ep == real_endpoint_) {
+            LOG(INFO) << "node:" << sname << "value:" << ep << " exist";
+            return true;
+        }
+        LOG(WARNING) << "server name:" << sname << " duplicate";
+        return false;
+    }
+
     std::string name = names_root_path_ + "/" + sname;
     std::string value = real_endpoint_.c_str();
     if (IsExistNode(name) == 0) {
