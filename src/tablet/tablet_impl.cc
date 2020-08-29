@@ -5515,13 +5515,13 @@ void TabletImpl::LoadIndexDataInternal(
         replicator->AppendEntry(entry);
         succ_cnt++;
     }
+    delete seq_file;
     if (cur_pid == partition_num - 1 ||
         (cur_pid + 1 == pid && pid == partition_num - 1)) {
         PDLOG(INFO, "load index success. tid %u pid %u", tid, pid);
         SetTaskStatus(task, ::rtidb::api::TaskStatus::kDone);
         return;
     }
-    delete seq_file;
     cur_time = ::baidu::common::timer::get_micros() / 1000;
     task_pool_.AddTask(boost::bind(&TabletImpl::LoadIndexDataInternal, this,
                                    tid, pid, cur_pid + 1, partition_num,
