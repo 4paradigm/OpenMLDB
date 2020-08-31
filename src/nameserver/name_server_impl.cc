@@ -1952,11 +1952,11 @@ bool NameServerImpl::Init(const std::string& zk_cluster,
     /**TODO(wangbao): ns
     ok = zk_client_->WatchChildren(zk_path + "/leader",
             boost::bind(&NameServerImpl::UpdateSdkEpMapLocked, this));
-    */
     if (!ok) {
         PDLOG(WARNING, "zk watch nodes failed");
         return false;
     }
+    */
     dist_lock_ =
         new DistLock(zk_path + "/leader", zk_client_,
                      boost::bind(&NameServerImpl::OnLocked, this),
