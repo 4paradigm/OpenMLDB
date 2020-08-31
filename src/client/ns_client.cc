@@ -182,7 +182,6 @@ bool NsClient::ShowTable(const std::string& name, const std::string& db,
 bool NsClient::ShowTable(const std::string& name,
                          std::vector<::rtidb::nameserver::TableInfo>& tables,
                          std::string& msg) {
-    LOG(INFO) << "db is " << GetDb();
     return ShowTable(name, GetDb(), false, tables, msg);
 }
 
