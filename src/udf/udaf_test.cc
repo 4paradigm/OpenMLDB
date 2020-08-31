@@ -182,16 +182,16 @@ TEST_F(UDAFTest, topk_test) {
 
 TEST_F(UDAFTest, sum_cate_test) {
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<int32_t>>(
-        "sum_cate", StringRef("1:4.000000,2:6.000000"),
+        "sum_cate", StringRef("1:4,2:6"),
         MakeList<int32_t>({1, 2, 3, 4}), MakeList<int32_t>({1, 2, 1, 2}));
 
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<Date>>(
-        "sum_cate", StringRef("1900-01-01:4.000000,1900-01-02:6.000000"),
+        "sum_cate", StringRef("1900-01-01:4,1900-01-02:6"),
         MakeList<int32_t>({1, 2, 3, 4}),
         MakeList<Date>({Date(1), Date(2), Date(1), Date(2)}));
 
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<StringRef>>(
-        "sum_cate", StringRef("x:4.000000,y:6.000000"),
+        "sum_cate", StringRef("x:4,y:6"),
         MakeList<int32_t>({1, 2, 3, 4}),
         MakeList<StringRef>(
             {StringRef("x"), StringRef("y"), StringRef("x"), StringRef("y")}));
@@ -199,7 +199,7 @@ TEST_F(UDAFTest, sum_cate_test) {
     // null key and values
     CheckUDF<StringRef, ListRef<Nullable<int32_t>>,
              ListRef<Nullable<StringRef>>>(
-        "sum_cate", StringRef("x:4.000000,y:6.000000"),
+        "sum_cate", StringRef("x:4,y:6"),
         MakeList<Nullable<int32_t>>({1, 2, 3, 4, 5, nullptr}),
         MakeList<Nullable<StringRef>>({StringRef("x"), StringRef("y"),
                                        StringRef("x"), StringRef("y"), nullptr,
@@ -211,9 +211,40 @@ TEST_F(UDAFTest, sum_cate_test) {
         MakeList<int32_t>({}));
 }
 
+TEST_F(UDAFTest, count_cate_test) {
+    CheckUDF<StringRef, ListRef<int32_t>, ListRef<int32_t>>(
+        "count_cate", StringRef("1:2,2:2"),
+        MakeList<int32_t>({1, 2, 3, 4}), MakeList<int32_t>({1, 2, 1, 2}));
+
+    CheckUDF<StringRef, ListRef<int32_t>, ListRef<Date>>(
+        "count_cate", StringRef("1900-01-01:2,1900-01-02:2"),
+        MakeList<int32_t>({1, 2, 3, 4}),
+        MakeList<Date>({Date(1), Date(2), Date(1), Date(2)}));
+
+    CheckUDF<StringRef, ListRef<int32_t>, ListRef<StringRef>>(
+        "count_cate", StringRef("x:1,y:3"),
+        MakeList<int32_t>({1, 2, 3, 4}),
+        MakeList<StringRef>(
+            {StringRef("x"), StringRef("y"), StringRef("y"), StringRef("y")}));
+
+    // null key and values
+    CheckUDF<StringRef, ListRef<Nullable<int32_t>>,
+             ListRef<Nullable<StringRef>>>(
+        "count_cate", StringRef("x:2,y:2"),
+        MakeList<Nullable<int32_t>>({1, 2, 3, 4, 5, nullptr}),
+        MakeList<Nullable<StringRef>>({StringRef("x"), StringRef("y"),
+                                       StringRef("x"), StringRef("y"), nullptr,
+                                       StringRef("x")}));
+
+    // empty
+    CheckUDF<StringRef, ListRef<int32_t>, ListRef<int32_t>>(
+        "count_cate", StringRef(""), MakeList<int32_t>({}),
+        MakeList<int32_t>({}));
+}
+
 TEST_F(UDAFTest, avg_cate_test) {
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<int32_t>>(
-        "avg_cate", StringRef("1:4.000000,2:6.000000"),
+        "avg_cate", StringRef("1:2.000000,2:3.000000"),
         MakeList<int32_t>({1, 2, 3, 4}), MakeList<int32_t>({1, 2, 1, 2}));
 
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<Date>>(

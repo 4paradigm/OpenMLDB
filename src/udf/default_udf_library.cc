@@ -412,8 +412,7 @@ struct SumCateDef {
     template <typename V>
     struct Impl {
         using ContainerT =
-            udf::container::BoundedGroupByDict<K, V,
-                                               std::pair<int64_t, double>>;
+            udf::container::BoundedGroupByDict<K, V, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -439,12 +438,11 @@ struct SumCateDef {
             auto stored_key = ContainerT::to_stored_key(key);
             auto iter = map.find(stored_key);
             if (iter == map.end()) {
-                map.insert(iter, {stored_key,
-                                  {1, ContainerT::to_stored_value(value)}});
+                map.insert(iter, {stored_key, 
+                                    ContainerT::to_stored_value(value)});
             } else {
-                auto& pair = iter->second;
-                pair.first += 1;
-                pair.second += ContainerT::to_stored_value(value);
+                auto& single = iter->second;
+                single += ContainerT::to_stored_value(value);
             }
             return ptr;
         }
@@ -452,10 +450,65 @@ struct SumCateDef {
         static void Output(ContainerT* ptr, codec::StringRef* output) {
             ContainerT::OutputString(
                 ptr, false, output,
-                [](const std::pair<int64_t, double>& value, char* buf,
-                   size_t size) {
-                    double sum = value.second / value.first;
+                [](const V& sum, char* buf, size_t size) {
                     return v1::format_string(sum, buf, size);
+                });
+            ContainerT::Destroy(ptr);
+        }
+    };
+};
+
+template <typename K>
+struct CountCateDef {
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        helper.library()
+            ->RegisterUDAFTemplate<Impl>("count_cate")
+            .doc(helper.GetDoc())
+            .template args_in<int16_t, int32_t, int64_t, float, double>();
+    }
+
+    template <typename V>
+    struct Impl {
+        using ContainerT =
+            udf::container::BoundedGroupByDict<K, V, int64_t>;
+        using InputK = typename ContainerT::InputK;
+        using InputV = typename ContainerT::InputV;
+
+        void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+            std::string suffix = ".opaque_dict_" +
+                                 DataTypeTrait<K>::to_string() + "_" +
+                                 DataTypeTrait<V>::to_string();
+            helper
+                .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
+                           Nullable<K>>()
+                .init("count_cate_init" + suffix, ContainerT::Init)
+                .update("count_cate_update" + suffix, Update)
+                .output("count_cate_output" + suffix, Output);
+        }
+
+        static ContainerT* Update(ContainerT* ptr, InputV value,
+                                  bool is_value_null, InputK key,
+                                  bool is_key_null) {
+            if (is_key_null || is_value_null) {
+                return ptr;
+            }
+            auto& map = ptr->map();
+            auto stored_key = ContainerT::to_stored_key(key);
+            auto iter = map.find(stored_key);
+            if (iter == map.end()) {
+                map.insert(iter, {stored_key, 1});
+            } else {
+                auto& single = iter->second;
+                single += 1;
+            }
+            return ptr;
+        }
+
+        static void Output(ContainerT* ptr, codec::StringRef* output) {
+            ContainerT::OutputString(
+                ptr, false, output,
+                [](const int64_t& count, char* buf, size_t size) {
+                    return v1::format_string(count, buf, size);
                 });
             ContainerT::Destroy(ptr);
         }
@@ -1595,6 +1648,30 @@ void DefaultUDFLibrary::Init() {
             @code{.sql}
                 SELECT sum_cate(value, catagory) OVER w;
                 -- output "x:6,y:4"
+            @endcode
+            )")
+        .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
+
+    RegisterUDAFTemplate<SumCateDef>("count_cate")
+        .doc(R"(
+            Compute count of values grouped by category key and output string.
+            Each group is represented as 'K:V' and separated by comma in outputs
+            and are sorted by key in ascend order.
+
+            @param value  Specify value column to aggregate on.
+            @param catagory  Specify catagory column to group by.
+
+            Example:
+            value|catagory
+            --|--
+            0|x
+            1|y
+            2|x
+            3|y
+            4|x
+            @code{.sql}
+                SELECT count_cate(value, catagory) OVER w;
+                -- output "x:3,y:2"
             @endcode
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
