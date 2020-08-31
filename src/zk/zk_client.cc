@@ -403,8 +403,7 @@ bool ZkClient::SetNodeValue(const std::string& node, const std::string& value) {
     return false;
 }
 
-int ZkClient::IsExistNode(const std::string& node) {
-    std::lock_guard<std::mutex> lock(mu_);
+int ZkClient::IsExistNodeUnLocked(const std::string& node) {
     if (node.empty()) {
         return -1;
     }
@@ -416,6 +415,11 @@ int ZkClient::IsExistNode(const std::string& node) {
         return 1;
     }
     return -1;
+}
+
+int ZkClient::IsExistNode(const std::string& node) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return IsExistNodeUnLocked(node);
 }
 
 bool ZkClient::WatchNodes() {
@@ -483,9 +487,8 @@ void ZkClient::WatchNodes(NodesChangedCallback callback) {
     nodes_watch_callbacks_.push_back(callback);
 }
 
-bool ZkClient::GetChildren(const std::string& path,
-                           std::vector<std::string>& children) {
-    std::lock_guard<std::mutex> lock(mu_);
+bool ZkClient::GetChildrenUnLocked(const std::string& path,
+        std::vector<std::string>& children) {
     if (zk_ == NULL || !connected_) {
         return false;
     }
@@ -504,6 +507,13 @@ bool ZkClient::GetChildren(const std::string& path,
     std::sort(children.begin(), children.end());
     return true;
 }
+
+bool ZkClient::GetChildren(const std::string& path,
+                           std::vector<std::string>& children) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return GetChildrenUnLocked(path, children);
+}
+
 bool ZkClient::GetNodes(std::vector<std::string>& endpoints) {
     std::lock_guard<std::mutex> lock(mu_);
     if (zk_ == NULL || !connected_) {
