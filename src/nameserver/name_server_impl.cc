@@ -995,10 +995,10 @@ bool NameServerImpl::RecoverTableInfo() {
     if (!zk_client_->GetChildren(zk_table_data_path_, table_vec)) {
         if (zk_client_->IsExistNode(zk_table_data_path_) > 0) {
             PDLOG(WARNING, "table data node is not exist");
-            return true;
+        }else {
+            PDLOG(WARNING, "get table name failed!");
+            return false;
         }
-        PDLOG(WARNING, "get table name failed!");
-        return false;
     }
     PDLOG(INFO, "need to recover default table num[%d]", table_vec.size());
     for (const auto& table_name : table_vec) {
@@ -1023,10 +1023,10 @@ bool NameServerImpl::RecoverTableInfo() {
     if (!zk_client_->GetChildren(zk_db_table_data_path_, db_table_vec)) {
         if (zk_client_->IsExistNode(zk_db_table_data_path_) > 0) {
             PDLOG(WARNING, "db table data node is not exist");
-            return true;
+        }else {
+            PDLOG(WARNING, "get db table id failed!");
+            return false;
         }
-        PDLOG(WARNING, "get db table id failed!");
-        return false;
     }
     PDLOG(INFO, "need to recover db table num[%d]", db_table_vec.size());
     for (const auto& tid : db_table_vec) {
@@ -1048,11 +1048,11 @@ bool NameServerImpl::RecoverTableInfo() {
         if (databases_.find(table_info->db()) != databases_.end()) {
             db_table_info_[table_info->db()].insert(
                 std::make_pair(table_info->name(), table_info));
-            PDLOG(INFO, "recover table tid[%s] name[%s] success", tid.c_str(),
-                  table_info->name().c_str());
+            LOG(INFO) << "recover table tid " << tid << " with name " <<
+                  table_info->name() << " in db " << table_info->db();
         } else {
-            PDLOG(WARNING, "db [%s] not exist when recover tid [%s]",
-                  table_info->db().c_str(), tid.c_str());
+            LOG(WARNING) << "table "<< table_info->name()
+                << " exist on recovering in db  " << table_info->db();
         }
     }
     return true;
