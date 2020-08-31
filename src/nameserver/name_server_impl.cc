@@ -1572,9 +1572,15 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                                 tit->first.c_str());
                         continue;
                     }
+                    std::string real_ep;
+                    if (!zk_client_->GetNodeValue(
+                                FLAGS_zk_root_path + "/map/names/" + *it, real_ep)) {
+                        PDLOG(WARNING, "get tablet names value failed");
+                        continue;
+                    }
+                    r_it->second = real_ep;
                     tit->second->client_ = std::make_shared<
-                        ::rtidb::client::TabletClient>(tit->first,
-                                r_it->second, true);
+                        ::rtidb::client::TabletClient>(tit->first, real_ep, true);
                     if (tit->second->client_->Init() != 0) {
                         PDLOG(WARNING, "tablet client init error. endpoint[%s]",
                                 tit->first.c_str());
