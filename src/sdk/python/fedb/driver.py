@@ -6,7 +6,6 @@
 """
 """
 import sys,os
-sys.path.append("/rtidb/build/sql_pysdk")
 import logging
 from fedb import sql_router_sdk
 logger = logging.getLogger("fedb_driver")

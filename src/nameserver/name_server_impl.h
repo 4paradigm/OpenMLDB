@@ -805,10 +805,8 @@ class NameServerImpl : public NameServer {
             FLAGS_name_server_task_concurrency_for_replica_cluster);
 
     int CreateAddIndexOP(const std::string& name, const std::string& db,
-                         uint32_t pid,
-                         const ::rtidb::common::ColumnKey& column_key,
-                         const std::vector<rtidb::common::ColumnDesc>& new_cols,
-                         uint32_t idx);
+                         uint32_t pid, const std::vector<rtidb::common::ColumnDesc>& new_cols,
+                         const ::rtidb::common::ColumnKey& column_key, uint32_t idx);
 
     int CreateAddIndexOPTask(std::shared_ptr<OPData> op_data);
 

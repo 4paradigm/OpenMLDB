@@ -401,7 +401,9 @@ void CompareRow(RowView* left, RowView* right,
 
 TEST_P(ProjectCodecTest, common_case) {
     auto args = GetParam();
-    RowProject rp(args->schema, args->plist);
+    std::map<int32_t, std::shared_ptr<Schema>> vers_schema;
+    vers_schema.insert(std::make_pair(1, std::make_shared<Schema>(args->schema)));
+    RowProject rp(vers_schema, args->plist);
     ASSERT_TRUE(rp.Init());
     int8_t* output = NULL;
     uint32_t output_size = 0;
