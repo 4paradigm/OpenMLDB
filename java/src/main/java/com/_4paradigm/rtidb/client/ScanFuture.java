@@ -108,19 +108,12 @@ public class ScanFuture implements Future<KvIterator> {
     private KvIterator getNewKvIterator(ScanResponse response) {
         RowKvIterator kit = null;
         if (projectionInfo != null && projectionInfo.getProjectionSchema() != null) {
-            kit = new RowKvIterator(response.getPairs(), projectionInfo.getProjectionSchema(), response.getCount());
+            kit = new RowKvIterator(response.getPairs(), projectionInfo.getProjectionSchema(), response.getCount(), true);
         }else {
-            int ver = t.getCurrentSchemaVer();
-            if (ver != 1) {
-                List<ColumnDesc> schema = t.getSchemaByVer(ver);
-                kit = new RowKvIterator(response.getPairs(), schema, response.getCount());
-            } else {
-                kit = new RowKvIterator(response.getPairs(), t.getSchema(), response.getCount());
-            }
+            kit = new RowKvIterator(response.getPairs(), t.getSchema(), response.getCount());
             if (t.getSchemaMap().size() > 0) {
-                kit.setSchemaMap(t.getVersions());
-                kit.setLastSchemaVersion(t.getCurrentSchemaVer());
-                kit.setDefaultSchema(t.getSchema());
+                kit.setVerMap(t.getVersions());
+                kit.setSchemaMap(t.getSchemaMap());
             }
         }
         kit.setCount(response.getCount());

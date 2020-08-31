@@ -531,7 +531,6 @@ public class TableAsyncClientTest extends TestCaseBase {
             it = sf.get();
             Assert.assertTrue(it.valid());
             Assert.assertEquals(it.getCount(), 2);
-            Assert.assertEquals(it.getSchema().size(), 6);
             row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 1235);
             Assert.assertEquals(row.length, 6);
@@ -577,7 +576,6 @@ public class TableAsyncClientTest extends TestCaseBase {
 
             sf = tableAsyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
             it = sf.get();
-            Assert.assertEquals(it.getSchema().size(), 7);
 
             try {
                 data.clear();
@@ -620,15 +618,15 @@ public class TableAsyncClientTest extends TestCaseBase {
                 .setName(name).setTtl(0).setFormatVersion(1)
                 .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3).addColumnDescV1(col4)
                 .addColumnKey(colKey1).addColumnKey(colKey2)
-                .setPartitionNum(1).setReplicaNum(1)
+                .setPartitionNum(3).setReplicaNum(1)
                 .build();
         boolean ok = nsc.createTable(table);
         Assert.assertTrue(ok);
         client.refreshRouteTable();
         try {
             Map<String, Object> data = new HashMap<String, Object>();
-            data.put("card", "card0");
-            data.put("mcc", "mcc0");
+            data.put("card", "card10");
+            data.put("mcc", "mcc10");
             data.put("amt", 1.5);
             data.put("ts", 1234l);
             data.put("ts_1", 222l);
@@ -672,7 +670,7 @@ public class TableAsyncClientTest extends TestCaseBase {
             Assert.assertEquals(row[4], 111l);
             Assert.assertTrue(pf.get());
 
-            ScanFuture sf = tableAsyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
+            ScanFuture sf = tableAsyncClient.scan(name, "card10", "card", 1235l, 0l, "ts", 0);
             KvIterator it = sf.get();
             Assert.assertTrue(it.valid());
             Assert.assertEquals(it.getSchema().size(), 5);
@@ -682,7 +680,7 @@ public class TableAsyncClientTest extends TestCaseBase {
             Map<String, String> newCols = new HashMap<>();
             newCols.put("aa", "string");
             ok = nsc.addIndex(name, "newindex", tss, newCols);
-            Thread.currentThread().sleep(6000);
+            Thread.currentThread().sleep(22000);
             Assert.assertTrue(ok);
             client.refreshRouteTable();
 
@@ -724,6 +722,7 @@ public class TableAsyncClientTest extends TestCaseBase {
             Assert.assertEquals(row[2], 1.5);
             Assert.assertEquals(row[3], 1111l);
             Assert.assertEquals(row[4], 111l);
+            Assert.assertEquals(row[5], "aa0");
             pf = tableAsyncClient.put(name, new Object[]{"card02", "mcc02", 1.5, 1111l, 111l, "aa", 111});
             Assert.assertTrue(pf.get());
             gf = tableAsyncClient.get(name, "card02", "card", 1111l, "ts", null);
@@ -733,21 +732,22 @@ public class TableAsyncClientTest extends TestCaseBase {
             Assert.assertEquals(row[2], 1.5);
             Assert.assertEquals(row[3], 1111l);
             Assert.assertEquals(row[4], 111l);
+            Assert.assertEquals(row[5], "aa");
             pf = tableAsyncClient.put(name, new Object[]{"card01", "mcc01", 1.5, 1111l, 111l, "aa", 111});
             Assert.assertTrue(pf.get());
-            gf = tableAsyncClient.get(name, "card01", "card", 1111l, "ts", null);
+            gf = tableAsyncClient.get(name, "card10", "card", 1234l, "ts", null);
             row = gf.getRow();
-            Assert.assertEquals(row[0], "card01");
-            Assert.assertEquals(row[1], "mcc01");
+            Assert.assertEquals(row[0], "card10");
+            Assert.assertEquals(row[1], "mcc10");
             Assert.assertEquals(row[2], 1.5);
-            Assert.assertEquals(row[3], 1111l);
-            Assert.assertEquals(row[4], 111l);
+            Assert.assertEquals(row[3], 1234l);
+            Assert.assertEquals(row[4], 222l);
+            Assert.assertEquals(row[5], null);
 
             sf = tableAsyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
             it = sf.get();
             Assert.assertTrue(it.valid());
-            Assert.assertEquals(it.getCount(), 2);
-            Assert.assertEquals(it.getSchema().size(), 6);
+            Assert.assertEquals(it.getCount(), 1);
             row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 1235);
             Assert.assertEquals(row.length, 6);
@@ -759,7 +759,7 @@ public class TableAsyncClientTest extends TestCaseBase {
             Assert.assertEquals(row[5], "aa1");
             sf = tableAsyncClient.scan(name, "card0", "card", 1235l, 0l, "ts_1", 0);
             it = sf.get();
-            Assert.assertEquals(it.getCount(), 2);
+            Assert.assertEquals(it.getCount(), 1);
             row = it.getDecodedValue();
             Assert.assertEquals(it.getKey(), 333);
             Assert.assertEquals(row.length, 6);
@@ -793,7 +793,6 @@ public class TableAsyncClientTest extends TestCaseBase {
 
             sf = tableAsyncClient.scan(name, "card0", "card", 1235l, 0l, "ts", 0);
             it = sf.get();
-            Assert.assertEquals(it.getSchema().size(), 7);
 
             try {
                 data.clear();
@@ -817,10 +816,10 @@ public class TableAsyncClientTest extends TestCaseBase {
             newCols.clear();
             newCols.put("mcc", "string");
             ok = nsc.addIndex(name, "newindex2", tss, newCols);
-            Thread.currentThread().sleep(8000);
+            Thread.currentThread().sleep(26000);
             Assert.assertTrue(ok);
             client.refreshRouteTable();
-            Thread.currentThread().sleep(15);
+            Thread.currentThread().sleep(1500);
 
             gf = tableAsyncClient.get(name, "mcc01", "newindex2", 111, "ts_1", null);
             row = gf.getRow();
@@ -831,10 +830,10 @@ public class TableAsyncClientTest extends TestCaseBase {
             Assert.assertEquals(row[4], 111l);
             Assert.assertEquals(row[5], "aa");
 
-            gf = tableAsyncClient.get(name, "mcc0", "newindex2", 222, "ts_1", null);
+            gf = tableAsyncClient.get(name, "mcc10", "newindex2", 222, "ts_1", null);
             row = gf.getRow();
-            Assert.assertEquals(row[0], "card0");
-            Assert.assertEquals(row[1], "mcc0");
+            Assert.assertEquals(row[0], "card10");
+            Assert.assertEquals(row[1], "mcc10");
             Assert.assertEquals(row[2], 1.5);
             Assert.assertEquals(row[3], 1234l);
             Assert.assertEquals(row[4], 222l);
