@@ -6410,7 +6410,6 @@ void StartNsClient() {
         return;
     }
     ::rtidb::client::NsClient client(endpoint, real_endpoint);
-
     if (client.Init() < 0) {
         std::cout << "client init failed" << std::endl;
         return;
@@ -6423,6 +6422,9 @@ void StartNsClient() {
     bool multi_line = false;
     while (true) {
         std::string buffer;
+        display_prefix = endpoint + " " + client.GetDb() + "> ";
+        multi_line_perfix =
+        std::string(display_prefix.length() - 3, ' ') + "-> ";
         if (!FLAGS_interactive) {
             buffer = FLAGS_cmd;
         } else {
@@ -6432,6 +6434,7 @@ void StartNsClient() {
             if (line == NULL) {
                 return;
             }
+
             if (line[0] != '\0' && line[0] != '/') {
                 buffer.assign(line);
                 boost::trim(buffer);
