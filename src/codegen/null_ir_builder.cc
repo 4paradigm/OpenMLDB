@@ -11,6 +11,7 @@ namespace fesql {
 namespace codegen {
 NullIRBuilder::NullIRBuilder() {}
 NullIRBuilder::~NullIRBuilder() {}
+
 base::Status NullIRBuilder::CheckAnyNull(::llvm::BasicBlock *block,
                                          const NativeValue &value,
                                          ::llvm::Value **should_ret_null) {

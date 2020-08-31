@@ -122,13 +122,13 @@ bool TimestampIRBuilder::Minute(::llvm::BasicBlock* block, ::llvm::Value* value,
     }
     ::llvm::IRBuilder<> builder(block);
     ArithmeticIRBuilder arithmetic_builder(block);
-    if (!arithmetic_builder.BuildModExpr(ts, builder.getInt64(1000 * 60 * 60),
-                                         &ts, status)) {
+    if (!arithmetic_builder.BuildModExpr(
+            block, ts, builder.getInt64(1000 * 60 * 60), &ts, status)) {
         LOG(WARNING) << "Fail Get Minute " << status.msg;
         return false;
     }
-    if (!arithmetic_builder.BuildSDivExpr(ts, builder.getInt64(1000 * 60),
-                                          output, status)) {
+    if (!arithmetic_builder.BuildSDivExpr(
+            block, ts, builder.getInt64(1000 * 60), output, status)) {
         LOG(WARNING) << "Fail Get Minute " << status.msg;
         return false;
     }
@@ -157,13 +157,13 @@ bool TimestampIRBuilder::Second(::llvm::BasicBlock* block, ::llvm::Value* value,
     }
     ::llvm::IRBuilder<> builder(block);
     ArithmeticIRBuilder arithmetic_builder(block);
-    if (!arithmetic_builder.BuildModExpr(ts, builder.getInt64(1000 * 60), &ts,
-                                         status)) {
+    if (!arithmetic_builder.BuildModExpr(block, ts, builder.getInt64(1000 * 60),
+                                         &ts, status)) {
         LOG(WARNING) << "Fail Get Second " << status.msg;
         return false;
     }
-    if (!arithmetic_builder.BuildSDivExpr(ts, builder.getInt64(1000), output,
-                                          status)) {
+    if (!arithmetic_builder.BuildSDivExpr(block, ts, builder.getInt64(1000),
+                                          output, status)) {
         LOG(WARNING) << "Fail Get Second " << status.msg;
         return false;
     }
@@ -193,19 +193,21 @@ bool TimestampIRBuilder::Hour(::llvm::BasicBlock* block, ::llvm::Value* value,
     ::llvm::IRBuilder<> builder(block);
     ::llvm::Value* day_ms = nullptr;
     ArithmeticIRBuilder arithmetic_builder(block);
-    if (TIME_ZONE > 0 && !arithmetic_builder.BuildAddExpr(
-                             ts, builder.getInt64(1000 * 60 * 60 * TIME_ZONE),
-                             &day_ms, status)) {
+    if (TIME_ZONE > 0 &&
+        !arithmetic_builder.BuildAddExpr(
+            block, ts, builder.getInt64(1000 * 60 * 60 * TIME_ZONE), &day_ms,
+            status)) {
         LOG(WARNING) << "Fail Get Hour " << status.msg;
         return false;
     }
-    if (!arithmetic_builder.BuildModExpr(
-            day_ms, builder.getInt64(1000 * 60 * 60 * 24), &day_ms, status)) {
+    if (!arithmetic_builder.BuildModExpr(block, day_ms,
+                                         builder.getInt64(1000 * 60 * 60 * 24),
+                                         &day_ms, status)) {
         LOG(WARNING) << "Fail Get Hour " << status.msg;
         return false;
     }
     if (!arithmetic_builder.BuildSDivExpr(
-            day_ms, builder.getInt64(1000 * 60 * 60), output, status)) {
+            block, day_ms, builder.getInt64(1000 * 60 * 60), output, status)) {
         LOG(WARNING) << "Fail Get Hour " << status.msg;
         return false;
     }

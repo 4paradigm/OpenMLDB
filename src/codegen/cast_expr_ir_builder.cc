@@ -72,7 +72,27 @@ bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
         }
     }
 }
-
+Status CastExprIRBuilder::SafeCast(const NativeValue& value, ::llvm::Type* type,
+                                   NativeValue* output) {
+    ::llvm::IRBuilder<> builder(block_);
+    CHECK_TRUE(IsSafeCast(value.GetType(), type),
+               "Safe cast fail: unsafe cast");
+    if (value.IsConstNull()) {
+        *output = NativeValue::CreateNull(type);
+    } else {
+        Status status;
+        ::llvm::Value* output_value = nullptr;
+        CHECK_TRUE(
+            SafeCast(value.GetValue(&builder), type, &output_value, status))
+        if (value.IsNullable()) {
+            *output = NativeValue::CreateWithFlag(output_value,
+                                                  value.GetIsNull(&builder));
+        } else {
+            *output = NativeValue::Create(output_value);
+        }
+    }
+    return Status::OK();
+}
 bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
                                  ::llvm::Value** output, base::Status& status) {
     ::llvm::IRBuilder<> builder(block_);

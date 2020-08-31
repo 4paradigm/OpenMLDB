@@ -274,13 +274,14 @@ base::Status StringIRBuilder::ConcatWS(::llvm::BasicBlock* block,
 
         if (nullptr != concat_on_size) {
             CHECK_TRUE(
-                arithmetic_ir_builder.BuildAddExpr(
-                    concat_str_size, concat_on_size, &concat_str_size, status),
+                arithmetic_ir_builder.BuildAddExpr(block, concat_str_size,
+                                                   concat_on_size,
+                                                   &concat_str_size, status),
                 "fail to concat string: fail to compute concat string total "
                 "size")
         }
         CHECK_TRUE(
-            arithmetic_ir_builder.BuildAddExpr(concat_str_size, size_i,
+            arithmetic_ir_builder.BuildAddExpr(block, concat_str_size, size_i,
                                                &concat_str_size, status),
             "fail to concat string: fail to compute concat string total size")
     }

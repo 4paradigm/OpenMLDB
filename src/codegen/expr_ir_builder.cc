@@ -753,9 +753,9 @@ bool ExprIRBuilder::BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
             return status.isOK();
         }
         case ::fesql::node::kFnOpMinus: {
-            ok = arithmetic_ir_builder_.BuildSubExpr(builder.getInt16(0), left,
-                                                     &raw, status);
-            break;
+            status = arithmetic_ir_builder_.BuildSubExpr(
+                NativeValue::Create(builder.getInt16(0)), left_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpBracket: {
             raw = left;
@@ -890,31 +890,34 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
     llvm::Value* raw = nullptr;
     switch (node->GetOp()) {
         case ::fesql::node::kFnOpAdd: {
-            ok = arithmetic_ir_builder_.BuildAddExpr(left, right, &raw, status);
-            break;
+            status = arithmetic_ir_builder_.BuildAddExpr(left_wrapper,
+                                                         right_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpMulti: {
-            ok = arithmetic_ir_builder_.BuildMultiExpr(left, right, &raw,
-                                                       status);
-            break;
+            status = arithmetic_ir_builder_.BuildMultiExpr(
+                left_wrapper, right_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpFDiv: {
-            ok =
-                arithmetic_ir_builder_.BuildFDivExpr(left, right, &raw, status);
-            break;
+            status = arithmetic_ir_builder_.BuildFDivExpr(
+                left_wrapper, right_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpDiv: {
-            ok =
-                arithmetic_ir_builder_.BuildSDivExpr(left, right, &raw, status);
-            break;
+            status = arithmetic_ir_builder_.BuildSDivExpr(
+                left_wrapper, right_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpMinus: {
-            ok = arithmetic_ir_builder_.BuildSubExpr(left, right, &raw, status);
-            break;
+            status = arithmetic_ir_builder_.BuildSubExpr(left_wrapper,
+                                                         right_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpMod: {
-            ok = arithmetic_ir_builder_.BuildModExpr(left, right, &raw, status);
-            break;
+            status = arithmetic_ir_builder_.BuildModExpr(left_wrapper,
+                                                         right_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpAnd: {
             status = predicate_ir_builder_.BuildAndExpr(left_wrapper,

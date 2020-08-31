@@ -13,12 +13,17 @@
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
+#include "codegen/cond_select_ir_builder.h"
+using fesql::base::Status;
 namespace fesql {
 namespace codegen {
 class CastExprIRBuilder {
  public:
     explicit CastExprIRBuilder(::llvm::BasicBlock* block);
     ~CastExprIRBuilder();
+
+    Status SafeCast(const NativeValue& value, ::llvm::Type* type,
+                  NativeValue* output);  // NOLINT
 
     bool SafeCast(::llvm::Value* value, ::llvm::Type* type,
                   ::llvm::Value** output, base::Status& status);  // NOLINT
@@ -43,6 +48,7 @@ class CastExprIRBuilder {
 
  private:
     ::llvm::BasicBlock* block_;
+    CondSelectIRBuilder cond_select_ir_builder_;
 };
 }  // namespace codegen
 }  // namespace fesql

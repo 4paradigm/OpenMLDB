@@ -14,6 +14,7 @@
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
+using fesql::base::Status;
 namespace fesql {
 namespace codegen {
 class ArithmeticIRBuilder {
@@ -21,44 +22,78 @@ class ArithmeticIRBuilder {
     explicit ArithmeticIRBuilder(::llvm::BasicBlock* block);
     ~ArithmeticIRBuilder();
 
-    bool BuildAnd(::llvm::Value* left, ::llvm::Value* right,
-                  ::llvm::Value** output, base::Status& status);  // NOLINT
-    bool BuildLShiftLeft(::llvm::Value* left, ::llvm::Value* right,
-                         ::llvm::Value** output,
+    static bool BuildAnd(::llvm::BasicBlock* block, ::llvm::Value* left,
+                         ::llvm::Value* right, ::llvm::Value** output,
                          base::Status& status);  // NOLINT
-    bool BuildLShiftRight(::llvm::Value* left, ::llvm::Value* right,
-                          ::llvm::Value** output,
-                          base::Status& status);  // NOLINT
-    bool BuildAddExpr(::llvm::Value* left, ::llvm::Value* right,
-                      ::llvm::Value** output, base::Status& status);  // NOLINT
-    bool BuildSubExpr(::llvm::Value* left, ::llvm::Value* right,
-                      ::llvm::Value** output, base::Status& status);  // NOLINT
-    bool BuildMultiExpr(::llvm::Value* left, ::llvm::Value* right,
-                        ::llvm::Value** output,
-                        base::Status& status);  // NOLINT
-    bool BuildFDivExpr(::llvm::Value* left, ::llvm::Value* right,
-                       ::llvm::Value** output, base::Status& status);  // NOLINT
-    bool BuildSDivExpr(::llvm::Value* left, ::llvm::Value* right,
-                       ::llvm::Value** output, base::Status& status);  // NOLINT
+    static bool BuildLShiftLeft(::llvm::BasicBlock* block, ::llvm::Value* left,
+                                ::llvm::Value* right, ::llvm::Value** output,
+                                base::Status& status);  // NOLINT
+    static bool BuildLShiftRight(::llvm::BasicBlock* block, ::llvm::Value* left,
+                                 ::llvm::Value* right, ::llvm::Value** output,
+                                 base::Status& status);  // NOLINT
+    Status BuildAnd(const NativeValue& left, const NativeValue& right,
+                    NativeValue* output);  // NOLINT
+    Status BuildLShiftLeft(const NativeValue& left, const NativeValue& right,
+                           NativeValue* output);  // NOLINT
+    Status BuildLShiftRight(const NativeValue& left, const NativeValue& right,
+                            NativeValue* output);  // NOLINT
+    Status BuildAddExpr(const NativeValue& left, const NativeValue& right,
+                        NativeValue* output);  // NOLINT
+    Status BuildSubExpr(const NativeValue& left, const NativeValue& right,
+                        NativeValue* output);  // NOLINT
+    Status BuildMultiExpr(const NativeValue& left, const NativeValue& right,
+                          NativeValue* output);  // NOLINT
+    Status BuildFDivExpr(const NativeValue& left, const NativeValue& right,
+                         NativeValue* output);  // NOLINT
+    Status BuildSDivExpr(const NativeValue& left, const NativeValue& right,
+                         NativeValue* output);  // NOLINT
+    Status BuildModExpr(const NativeValue& left, const NativeValue& right,
+                        NativeValue* output);  // NOLINT
 
-    bool BuildModExpr(llvm::Value* left, llvm::Value* right,
-                      llvm::Value** output, base::Status status);
+    static bool BuildAddExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
+                             ::llvm::Value* right, ::llvm::Value** output,
+                             ::fesql::base::Status& status); //NOLINT
+    static bool BuildSubExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
+                             ::llvm::Value* right, ::llvm::Value** output,
+                             base::Status& status);  // NOLINT
+    static bool BuildMultiExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
+                               ::llvm::Value* right, ::llvm::Value** output,
+                               base::Status& status);  // NOLINT
+    static bool BuildFDivExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
+                              ::llvm::Value* right, ::llvm::Value** output,
+                              base::Status& status);  // NOLINT
+    static bool BuildSDivExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
+                              ::llvm::Value* right, ::llvm::Value** output,
+                              base::Status& status);  // NOLINT
+
+    static bool BuildModExpr(::llvm::BasicBlock* block, llvm::Value* left,
+                             llvm::Value* right, llvm::Value** output,
+                             base::Status status);
 
  private:
-    bool IsAcceptType(::llvm::Type* type);
-    bool InferBaseTypes(::llvm::Value* left, ::llvm::Value* right,
-                        ::llvm::Value** casted_left,
-                        ::llvm::Value** casted_right,
-                        ::fesql::base::Status& status);  // NOLINT
-
-    bool InferBaseIntegerTypes(::llvm::Value* left, ::llvm::Value* right,
+    static Status SafeBuildBinaryExpr(
+        ::llvm::BasicBlock* block, const NativeValue& left,
+        const NativeValue& right,
+        const std::function<bool(::llvm::BasicBlock*, ::llvm::Value*,
+                                 ::llvm::Value*, ::llvm::Value**, Status&)>,
+        NativeValue* output);
+    static bool IsAcceptType(::llvm::Type* type);
+    static bool InferBaseTypes(::llvm::BasicBlock* block, ::llvm::Value* left,
+                               ::llvm::Value* right,
                                ::llvm::Value** casted_left,
                                ::llvm::Value** casted_right,
                                ::fesql::base::Status& status);  // NOLINT
-    bool InferBaseDoubleTypes(::llvm::Value* left, ::llvm::Value* right,
-                              ::llvm::Value** casted_left,
-                              ::llvm::Value** casted_right,
-                              ::fesql::base::Status& status);  // NOLINT
+
+    static bool InferBaseIntegerTypes(::llvm::BasicBlock* block,
+                                      ::llvm::Value* left, ::llvm::Value* right,
+                                      ::llvm::Value** casted_left,
+                                      ::llvm::Value** casted_right,
+                                      ::fesql::base::Status& status);  // NOLINT
+    static bool InferBaseDoubleTypes(::llvm::BasicBlock* block,
+                                     ::llvm::Value* left, ::llvm::Value* right,
+                                     ::llvm::Value** casted_left,
+                                     ::llvm::Value** casted_right,
+                                     ::fesql::base::Status& status);  // NOLINT
     ::llvm::BasicBlock* block_;
     CastExprIRBuilder cast_expr_ir_builder_;
 };
