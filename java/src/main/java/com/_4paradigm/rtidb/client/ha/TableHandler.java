@@ -76,6 +76,7 @@ public class TableHandler {
                 }
                 schemaPos.put(cd.getName(), i);
             }
+            versions.put(1, this.schema);
         } else {
             schemaSize = tableInfo.getColumnDescCount();
             for (int i = 0; i < schemaSize; i++) {
@@ -114,7 +115,8 @@ public class TableHandler {
                 tempList.add(ncd);
                 schemaMap.put(schemaSize + i + 1, new ArrayList<>(tempList));
                 nameTypeMap.put(ncd.getName(), ncd.getDataType());
-                schemaPos.put(ncd.getName(), schemaPos.size() + i);
+                int idx = schemaPos.size();
+                schemaPos.put(ncd.getName(), idx);
             }
         }
 
@@ -124,6 +126,10 @@ public class TableHandler {
             index = 0;
             Set<String> indexSet = new HashSet<String>();
             for (com._4paradigm.rtidb.common.Common.ColumnKey ck : tableInfo.getColumnKeyList()) {
+                if (ck.getFlag() == 1) {
+                    index++;
+                    continue;
+                }
                 List<Integer> indexList = new ArrayList<Integer>();
                 List<Integer> tsList = new ArrayList<Integer>();
                 List<String> nameList = new ArrayList<String>();

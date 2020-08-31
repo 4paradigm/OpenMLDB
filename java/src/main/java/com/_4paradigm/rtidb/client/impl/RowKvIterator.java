@@ -20,21 +20,36 @@ public class RowKvIterator implements KvIterator {
     private ByteBuffer slice = null;
     private int length;
     private List<ColumnDesc> schema;
+    private List<ColumnDesc> defaultSchema;
     private int count = 0;
     private int iter_count = 0;
     private long key;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
     private RowView rv;
+    private Map<Integer, List<ColumnDesc>> verMap = null;
     private Map<Integer, List<ColumnDesc>> schemaMap = null;
     private int currentVersion = 1;
-    private List<ColumnDesc> defaultSchema;
+    private boolean underProjection = false;
 
     public RowKvIterator(ByteString bs, List<ColumnDesc> schema, int count) {
         this.dataList.add(new ScanResultParser(bs));
         this.count = count;
         next();
+        this.defaultSchema = schema;
         this.schema = schema;
         rv = new RowView(schema);
+    }
+
+    public RowKvIterator(ByteString bs, List<ColumnDesc> schema, int count, boolean underProjection) {
+        this.dataList.add(new ScanResultParser(bs));
+        this.count = count;
+        next();
+        this.defaultSchema = schema;
+        this.schema = schema;
+        rv = new RowView(schema);
+        if (underProjection) {
+            this.underProjection = true;
+        }
     }
 
     public RowKvIterator(List<ByteString> bsList, List<ColumnDesc> schema, int count) {
@@ -46,16 +61,33 @@ public class RowKvIterator implements KvIterator {
         this.count = count;
         next();
         this.schema = schema;
+        this.defaultSchema = schema;
         rv = new RowView(schema);
+    }
+
+    public RowKvIterator(List<ByteString> bsList, List<ColumnDesc> schema, int count, boolean underProjection) {
+        for (ByteString bs : bsList) {
+            if (!bs.isEmpty()) {
+                this.dataList.add(new ScanResultParser(bs));
+            }
+        }
+        this.count = count;
+        next();
+        this.schema = schema;
+        this.defaultSchema = schema;
+        rv = new RowView(schema);
+        if (underProjection) {
+            this.underProjection = true;
+        }
     }
 
     public int getCount() {
         return count;
     }
 
-    public void setSchemaMap(Map<Integer, List<ColumnDesc>> schemas) {
-        this.schemaMap = schemas;
-    }
+    public void setSchemaMap(Map<Integer, List<ColumnDesc>> schemas) { this.schemaMap = schemas; }
+
+    public void setVerMap(Map<Integer, List<ColumnDesc>> schemas) { this.verMap = schemas; }
 
     public void setLastSchemaVersion(int ver) {
         this.currentVersion = ver;
@@ -85,10 +117,6 @@ public class RowKvIterator implements KvIterator {
         return key;
     }
 
-    public void setDefaultSchema(List<ColumnDesc> defaultSchema) {
-        this.defaultSchema = defaultSchema;
-    }
-
     @Override
     public String getPK() {
         return null;
@@ -103,7 +131,14 @@ public class RowKvIterator implements KvIterator {
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
-        Object[] row = new Object[schema.size()];
+        Object[] row = null;
+        if (underProjection) {
+            row = new Object[schema.size()];
+        } else if (schemaMap == null) {
+            row = new Object[defaultSchema.size()];
+        } else {
+            row = new Object[defaultSchema.size() + schemaMap.size()];
+        }
         getDecodedValue(row, 0, row.length);
         return row;
     }
@@ -133,7 +168,7 @@ public class RowKvIterator implements KvIterator {
     }
 
     private void checkVersion(ByteBuffer buf) throws TabletException {
-        if (this.schemaMap == null) {
+        if (this.verMap == null || underProjection) {
             return;
         }
         int version = RowView.getSchemaVersion(buf);
@@ -141,16 +176,9 @@ public class RowKvIterator implements KvIterator {
         if (version == this.currentVersion) {
             return;
         }
-        if (version == 1) {
-            schema = this.defaultSchema;
-            rv= new RowView(this.defaultSchema);
-            this.currentVersion = version;
-            return;
-        }
-
-        List<ColumnDesc> newSchema = schemaMap.get(version);
+        List<ColumnDesc> newSchema = verMap.get(version);
         if (newSchema == null) {
-            throw new TabletException("unkown shcema for column count " + newSchema.size());
+            throw new TabletException("unkown shcema version " + version);
         }
         if (rv.getSchema().size() == newSchema.size()) {
             return;
@@ -170,6 +198,9 @@ public class RowKvIterator implements KvIterator {
             byte[] data = new byte[slice.remaining()];
             slice.get(data);
             byte[] uncompressed = Compress.snappyUnCompress(data);
+            if (uncompressed == null) {
+                throw new TabletException("snappy uncompress error");
+            }
             buf = ByteBuffer.wrap(uncompressed).order(ByteOrder.LITTLE_ENDIAN);
         } else {
             buf = slice.order(ByteOrder.LITTLE_ENDIAN);

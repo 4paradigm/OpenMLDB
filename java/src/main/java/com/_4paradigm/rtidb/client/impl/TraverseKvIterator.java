@@ -18,6 +18,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 public class TraverseKvIterator implements KvIterator {
@@ -44,6 +45,10 @@ public class TraverseKvIterator implements KvIterator {
     private TableHandler th = null;
     private static Charset charset = Charset.forName("utf-8");
     private RowView rv;
+    private Map<Integer, List<ColumnDesc>> verMap = null;
+    private Map<Integer, List<ColumnDesc>> schemaMap = null;
+    private int currentVersion = 1;
+    private List<ColumnDesc> defaultSchema;
 
     public TraverseKvIterator(RTIDBClient client, TableHandler th, String idxName, String tsName) {
         this.offset = 0;
@@ -60,6 +65,9 @@ public class TraverseKvIterator implements KvIterator {
         if (th.getFormatVersion() == 1) {
             rv = new RowView(th.getSchema());
         }
+        verMap = th.getVersions();
+        schemaMap = th.getSchemaMap();
+        defaultSchema = th.getSchema();
     }
 
     private void getData() throws TimeoutException, TabletException {
@@ -172,21 +180,32 @@ public class TraverseKvIterator implements KvIterator {
         if (schema == null || schema.isEmpty()) {
             throw new UnsupportedOperationException("getDecodedValue is not supported");
         }
-        switch (th.getFormatVersion()) {
-            case 1:
-            {
-                Object[] row = new Object[schema.size()];
-                getDecodedValue(row, 0, row.length);
-                return row;
-            }
-            default:
-            {
-                Object[] row = new Object[schema.size() + th.getSchemaMap().size()];
-                getDecodedValue(row, 0, row.length);
-                return row;
-            }
+        Object[] row = new Object[defaultSchema.size() + schemaMap.size()];
+        getDecodedValue(row, 0, row.length);
+        return row;
+
+    }
+
+    private void checkVersion(ByteBuffer buf) throws TabletException {
+        if (verMap == null) {
+            return;
+        }
+        int version = RowView.getSchemaVersion(buf);
+        buf.rewind();
+        if (version == this.currentVersion) {
+            return;
         }
 
+        List<ColumnDesc> newSchema = verMap.get(version);
+        if (newSchema == null) {
+            throw new TabletException("unkown shcema for column count " + newSchema.size());
+        }
+        if (rv.getSchema().size() == newSchema.size()) {
+            return;
+        }
+        schema = newSchema;
+        rv = new RowView(schema);
+        this.currentVersion = version;
     }
 
     @Override
@@ -194,6 +213,7 @@ public class TraverseKvIterator implements KvIterator {
         if (schema == null || schema.isEmpty()) {
             throw new UnsupportedOperationException("getDecodedValue is not supported");
         }
+        ByteBuffer buf;
         if (compressType == NS.CompressType.kSnappy) {
             byte[] data = new byte[slice.remaining()];
             slice.get(data);
@@ -201,21 +221,17 @@ public class TraverseKvIterator implements KvIterator {
             if (uncompressed == null) {
                 throw new TabletException("snappy uncompress error");
             }
-            switch (th.getFormatVersion()) {
-                case 1:
-                    rv.read(ByteBuffer.wrap(uncompressed).order(ByteOrder.LITTLE_ENDIAN), row, 0, length);
-                    break;
-                default:
-                    RowCodec.decode(ByteBuffer.wrap(uncompressed).order(ByteOrder.LITTLE_ENDIAN), schema, row, 0, length);
-            }
+            buf = ByteBuffer.wrap(uncompressed).order(ByteOrder.LITTLE_ENDIAN);
         } else {
-            switch (th.getFormatVersion()) {
-                case 1:
-                    rv.read(slice.order(ByteOrder.LITTLE_ENDIAN), row, 0, length);
-                    break;
-                default:
-                    RowCodec.decode(slice.order(ByteOrder.LITTLE_ENDIAN), schema, row, start, length);
-            }
+            buf = slice.order(ByteOrder.LITTLE_ENDIAN);
+        }
+        switch (th.getFormatVersion()) {
+            case 1:
+                checkVersion(buf);
+                rv.read(buf, row, 0, length);
+                break;
+            default:
+                RowCodec.decode(buf, schema, row, start, length);
         }
     }
 
