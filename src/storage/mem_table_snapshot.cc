@@ -713,6 +713,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                 }
             }
             if (cur_key.empty()) {
+                other_error_count++;
                 DLOG(INFO) << "skip empty key";
                 continue;
             }
@@ -720,6 +721,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
             // update entry and write entry into memory
             if (index_pid == pid) {
                 if (entry.dimensions_size() == 1 && entry.dimensions(0).idx() == idx) {
+                    other_error_count++;
                     DLOG(INFO) << "skip not default key " << cur_key;
                     continue;
                 }
@@ -1197,6 +1199,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
         ::rtidb::base::Slice new_record(entry_str);
         status = whs[index_pid]->Write(new_record);
         if (!status.ok()) {
+            delete seq_file;
             PDLOG(WARNING,
                   "fail to dump index entrylog in snapshot to pid[%u]. tid "
                   "%u pid %u",
@@ -1399,8 +1402,8 @@ int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector
         }
         bool ok = rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc_size(), max_idx + 1, data, &row);
         if (!ok) {
-            LOG(WARNING) << "decode data error";
-            return 4;
+            DLOG(WARNING) << "decode data error";
+            return 3;
         }
         if (col_cnt < (int64_t)(max_idx + 1)) {
             DLOG(WARNING) << "data size is " << row.size() << " less than " << max_idx + 1;
@@ -1419,11 +1422,11 @@ int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector
 
     bool ok = rtidb::codec::RowCodec::DecodeRow(*schema, raw, data_size, true, 0, max_idx + 1, row);
     if (!ok) {
-        LOG(WARNING) << "decode data error";
+        DLOG(WARNING) << "decode data error";
         return 3;
     }
     if (schema->size() < (int64_t)(max_idx + 1)) {
-        LOG(WARNING) << "data size is " << schema->size() << " less than " << max_idx + 1;
+        DLOG(WARNING) << "data size is " << schema->size() << " less than " << max_idx + 1;
         return 2;
     }
     return 0;
