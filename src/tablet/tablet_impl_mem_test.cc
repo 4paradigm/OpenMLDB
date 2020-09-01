@@ -96,7 +96,7 @@ TEST_F(TabletImplMemTest, TestMem) {
         sr.set_et(0);
         ::rtidb::api::ScanResponse srp;
         tablet->Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(100, srp.count());
+        ASSERT_EQ(100, (int32_t)srp.count());
     }
 
     // drop table

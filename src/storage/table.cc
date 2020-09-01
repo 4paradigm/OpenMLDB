@@ -47,7 +47,8 @@ Table::Table(::rtidb::common::StorageMode storage_mode, const std::string &name,
 
 void Table::AddVersionSchema() {
     auto new_versions = std::make_shared<std::map<int32_t, std::shared_ptr<Schema>>>();
-    for (const auto ver : table_meta_.schema_versions()) {
+    new_versions->insert(std::make_pair(1, std::make_shared<Schema>(table_meta_.column_desc())));
+    for (const auto& ver : table_meta_.schema_versions()) {
         int remain_size = ver.field_count() - table_meta_.column_desc_size();
         if (remain_size < 0)  {
             LOG(INFO) << "do not need add ver " << ver.id() << " because remain size less than 0";

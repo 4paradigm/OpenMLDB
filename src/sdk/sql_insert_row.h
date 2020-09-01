@@ -88,6 +88,16 @@ class SQLInsertRow {
         return schema_;
     }
 
+    const std::vector<uint32_t> GetHoleIdx() {
+        std::vector<uint32_t> result;
+        for (uint32_t i = 0; i < (int64_t)schema_->GetColumnCnt(); ++i) {
+            if (default_map_->count(i) == 0) {
+                result.push_back(i);
+            }
+        }
+        return result;
+    }
+
  private:
     bool DateToString(uint32_t year, uint32_t month, uint32_t day,
                       std::string* date);

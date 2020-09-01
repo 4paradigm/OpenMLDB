@@ -32,6 +32,14 @@ public class SQLExecutor extends BaseExecutor {
             log.info("skip case in batch mode: {}", fesqlCase.getDesc());
             return;
         }
+        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-batch-unsupport")) {
+            log.info("skip case in rtidb batch mode: {}", fesqlCase.getDesc());
+            return;
+        }
+        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-unsupport")) {
+            log.info("skip case in rtidb mode: {}", fesqlCase.getDesc());
+            return;
+        }
         process();
     }
 

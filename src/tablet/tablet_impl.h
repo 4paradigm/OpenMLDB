@@ -465,6 +465,9 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     void SchedDelRecycle();
 
+    bool GetRealEp(uint64_t tid, uint64_t pid,
+            std::map<std::string, std::string>* real_ep_map);
+
  private:
     RelationalTables relational_tables_;
     Tables tables_;

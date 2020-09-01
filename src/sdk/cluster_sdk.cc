@@ -86,8 +86,6 @@ bool ClusterSDK::Init() {
                  << zk_client_->GetSessionTerm();
     ok = InitCatalog();
     if (!ok) return false;
-    ok = InitTabletClient();
-    if (!ok) return false;
     CheckZk();
     return true;
 }
@@ -129,8 +127,7 @@ bool ClusterSDK::CreateNsClient() {
         return false;
     } else {
         LOG(INFO) << "init ns client with endpoint " << endpoint << " done";
-        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-        ns_client_ = ns_client;
+        std::atomic_store_explicit(&ns_client_, ns_client, std::memory_order_relaxed);
         return true;
     }
 }
@@ -197,16 +194,27 @@ bool ClusterSDK::InitTabletClient() {
         LOG(WARNING) << "fail to get tablet";
         return false;
     }
+
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>
         tablet_clients;
+    {
+        // copy a pice of tablets
+        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+        tablet_clients = alive_tablets_;
+    }
+    std::vector<std::string> dead_tablets;
     for (uint32_t i = 0; i < tablets.size(); i++) {
         if (boost::starts_with(tablets[i], ::rtidb::base::BLOB_PREFIX))
             continue;
+
+        // reuse the exist client
+        if (tablet_clients.find(tablets[i]) != tablet_clients.end()) continue;
 
         std::string real_endpoint;
         if (!GetRealEndpoint(tablets[i], &real_endpoint)) {
             return false;
         }
+
         std::shared_ptr<::rtidb::client::TabletClient> client(
             new ::rtidb::client::TabletClient(tablets[i], real_endpoint));
         int ret = client->Init();
@@ -217,7 +225,30 @@ bool ClusterSDK::InitTabletClient() {
         LOG(INFO) << "add alive tablet " << tablets[i];
         tablet_clients.insert(std::make_pair(tablets[i], client));
     }
+
+    // find the dead tablets
+    auto it = tablet_clients.begin();
+    for (; it != tablet_clients.end(); ++it) {
+        bool is_alive = false;
+        for (uint32_t i = 0; i < tablets.size(); i++) {
+            if (it->first == tablets[i]) {
+                is_alive = true;
+                break;
+            }
+        }
+        if (!is_alive) {
+            dead_tablets.push_back(it->first);
+            LOG(WARNING) << "tablet " << it->first << " is dead";
+        }
+    }
+
+    // remove dead tablets
+    for (uint32_t i = 0;  i < dead_tablets.size(); i++) {
+        tablet_clients.erase(dead_tablets[i]);
+    }
+
     {
+        // swap the new  tablets
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         alive_tablets_ = tablet_clients;
     }
@@ -236,6 +267,8 @@ bool ClusterSDK::InitCatalog() {
     } else {
         LOG(INFO) << "no tables in db";
     }
+    bool ok = InitTabletClient();
+    if (!ok) return false;
     return RefreshCatalog(table_datas);
 }
 
@@ -245,10 +278,12 @@ ClusterSDK::GetLeaderTabletByTable(const std::string& db,
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     auto it = table_to_tablets_.find(db);
     if (it == table_to_tablets_.end()) {
+        LOG(INFO) << "not found db " << db;
         return std::shared_ptr<::rtidb::client::TabletClient>();
     }
     auto sit = it->second.find(name);
     if (sit == it->second.end()) {
+        LOG(INFO) << "table not found " << name;
         return std::shared_ptr<::rtidb::client::TabletClient>();
     }
     auto table_info = sit->second;
@@ -258,11 +293,28 @@ ClusterSDK::GetLeaderTabletByTable(const std::string& db,
         for (int32_t j = 0; j < partition.partition_meta_size(); j++) {
             if (!partition.partition_meta(j).is_leader()) continue;
             std::string endpoint = partition.partition_meta(j).endpoint();
+            if (!partition.partition_meta(j).is_alive()) {
+                return std::shared_ptr<::rtidb::client::TabletClient>();
+            }
             auto ait = alive_tablets_.find(endpoint);
             if (ait != alive_tablets_.end()) {
                 return ait->second;
             }
         }
+    }
+    return std::shared_ptr<::rtidb::client::TabletClient>();
+}
+
+std::shared_ptr<::rtidb::client::TabletClient> ClusterSDK::PickOneTablet() {
+    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+
+    if (alive_tablets_.empty()) {
+        LOG(WARNING) << "no alive tablets exist!";
+        return std::shared_ptr<::rtidb::client::TabletClient>();
+    }
+    auto ait = alive_tablets_.begin();
+    if (ait != alive_tablets_.end()) {
+        return ait->second;
     }
     return std::shared_ptr<::rtidb::client::TabletClient>();
 }
@@ -289,6 +341,9 @@ bool ClusterSDK::GetTabletByTable(
             for (int32_t j = 0; j < partition.partition_meta_size(); j++) {
                 std::string endpoint = partition.partition_meta(j).endpoint();
                 if (endpoints.find(endpoint) != endpoints.end()) continue;
+                if (!partition.partition_meta(j).is_alive()) {
+                    continue;
+                }
                 endpoints.insert(endpoint);
                 auto ait = alive_tablets_.find(endpoint);
                 if (ait != alive_tablets_.end()) {

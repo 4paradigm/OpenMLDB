@@ -34,7 +34,7 @@ bool ObjectStore::Init() {
     std::call_once(options_initialized, settings_init);
     char* path = const_cast<char*>(db_root_path_.data());
     time_t before_time = 0;
-    db_ = hs_open(path, 1, before_time, 16);
+    db_ = hs_open(path, 1, before_time, 1);
     if (db_ != NULL) {
         thread_pool_.DelayTask(1000, [this] { DoFlash(); });
         return true;

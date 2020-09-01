@@ -392,13 +392,7 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
         real_et_type = ::rtidb::api::GetType::kSubKeyGe;
     }
     bool enable_project = false;
-    RepeatedPtrField<rtidb::common::ColumnDesc> columns;
-    int code = SchemaCodec::ConvertColumnDesc(meta.column_desc(), columns, meta.added_column_desc());
-    if (code != 0) {
-        LOG(WARNING) << "convert column desc failed";
-        return -1;
-    }
-    rtidb::codec::RowProject row_project(columns, request->projection());
+    rtidb::codec::RowProject row_project(vers_schema, request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
             return -1;
@@ -428,20 +422,9 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
             if (enable_project) {
                 int8_t* ptr = nullptr;
                 uint32_t size = 0;
-                const int8_t* row_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
-                uint8_t version = rtidb::codec::RowView::GetSchemaVersion(row_ptr);
-                if (version != 1) {
-                    auto version_it = vers_schema.find(version);
-                    if (version_it == vers_schema.end()) {
-                        LOG(WARNING) << "not found version " << unsigned(version) << " in version map";
-                        return -1;
-                    }
-                    if (row_project.GetMaxIdx() >= (int64_t)version_it->second->size()) {
-                        LOG(WARNING) << "projection idx is valid " << row_project.GetMaxIdx();
-                        return -1;
-                    }
-                }
-                bool ok = row_project.Project(row_ptr, it->GetValue().size(), &ptr, &size);
+                rtidb::base::Slice data = it->GetValue();
+                const int8_t* row_ptr = reinterpret_cast<const int8_t*>(data.data());
+                bool ok = row_project.Project(row_ptr, data.size(), &ptr, &size);
                 if (!ok) {
                     PDLOG(WARNING, "fail to make a projection");
                     return -4;
@@ -483,9 +466,9 @@ int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
         if (enable_project) {
             int8_t* ptr = nullptr;
             uint32_t size = 0;
-            bool ok = row_project.Project(
-                reinterpret_cast<const int8_t*>(it->GetValue().data()),
-                it->GetValue().size(), &ptr, &size);
+            rtidb::base::Slice data = it->GetValue();
+            const int8_t* row_ptr = reinterpret_cast<const int8_t*>(data.data());
+            bool ok = row_project.Project(row_ptr, data.size(), &ptr, &size);
             if (!ok) {
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
@@ -1031,13 +1014,7 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
     }
 
     bool enable_project = false;
-    RepeatedPtrField<rtidb::common::ColumnDesc> columns;
-    int code = SchemaCodec::ConvertColumnDesc(meta.column_desc(), columns, meta.added_column_desc());
-    if (code != 0) {
-        LOG(WARNING) << "convert column desc failed";
-        return -1;
-    }
-    ::rtidb::codec::RowProject row_project(columns, request->projection());
+    ::rtidb::codec::RowProject row_project(vers_schema, request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
             LOG(WARNING) << "project on compress row data do not eing supported";
@@ -1095,20 +1072,9 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
         if (enable_project) {
             int8_t* ptr = nullptr;
             uint32_t size = 0;
-            const int8_t* row_ptr = reinterpret_cast<const int8_t*>(combine_it->GetValue().data());
-            uint8_t version = rtidb::codec::RowView::GetSchemaVersion(row_ptr);
-            if (version != 1) {
-                auto version_it = vers_schema.find(version);
-                if (version_it == vers_schema.end()) {
-                    LOG(WARNING) << "no found version " << unsigned(version) << " in version map";
-                    return -1;
-                }
-                if (row_project.GetMaxIdx() >= (int64_t)version_it->second->size()) {
-                    LOG(WARNING) << "projection idx is valid " << row_project.GetMaxIdx();
-                    return -1;
-                }
-            }
-            bool ok = row_project.Project(row_ptr, combine_it->GetValue().size(), &ptr, &size);
+            rtidb::base::Slice data = combine_it->GetValue();
+            const int8_t* row_ptr = reinterpret_cast<const int8_t*>(data.data());
+            bool ok = row_project.Project(row_ptr, data.size(), &ptr, &size);
             if (!ok) {
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
@@ -1116,11 +1082,12 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
             tmp.emplace_back(ts, Slice(reinterpret_cast<char*>(ptr), size, true));
             total_block_size += size;
         } else {
-            total_block_size += combine_it->GetValue().size();
-            tmp.emplace_back(ts, Slice(combine_it->GetValue()));
+            rtidb::base::Slice data = combine_it->GetValue();
+            total_block_size += data.size();
+            tmp.emplace_back(ts, data);
         }
         if (total_block_size > FLAGS_scan_max_bytes_size) {
-            PDLOG(WARNING, "reach the max byte size");
+            LOG(WARNING) << "reach the max byte size " << FLAGS_scan_max_bytes_size << " cur is " << total_block_size;
             return -3;
         }
         combine_it->Next();
@@ -2034,25 +2001,16 @@ void TabletImpl::ChangeRole(RpcController* controller,
     if (request->mode() == ::rtidb::api::TableMode::kTableLeader) {
         is_leader = true;
     }
-    std::vector<std::string> vec;
+    std::map<std::string, std::string> real_ep_map;
     for (int idx = 0; idx < request->replicas_size(); idx++) {
-        vec.push_back(request->replicas(idx).c_str());
+        real_ep_map.insert(std::make_pair(request->replicas(idx), ""));
     }
-    std::vector<std::string> r_vec;
     if (FLAGS_use_name) {
-        auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
-                std::memory_order_acquire);
-        for (auto& ep : vec) {
-            auto iter = tmp_map->find(ep);
-            if (iter == tmp_map->end()) {
-                PDLOG(WARNING, "name %s not found in real_ep_map."
-                        "tid[%u] pid[%u]", ep.c_str(), tid, pid);
-                response->set_code(
-                        ::rtidb::base::ReturnCode::kServerNameNotFound);
-                response->set_msg("name not found in real_ep_map");
-                return;
-            }
-            r_vec.push_back(iter->second);
+        if (!GetRealEp(tid, pid, &real_ep_map)) {
+            response->set_code(
+                ::rtidb::base::ReturnCode::kServerNameNotFound);
+            response->set_msg("name not found in real_ep_map");
+            return;
         }
     }
     if (is_leader) {
@@ -2072,29 +2030,21 @@ void TabletImpl::ChangeRole(RpcController* controller,
                 replicator->SetLeaderTerm(request->term());
             }
         }
-        if (replicator->AddReplicateNode(vec, r_vec) < 0) {
+        if (replicator->AddReplicateNode(real_ep_map) < 0) {
             PDLOG(WARNING, "add replicator failed. tid[%u] pid[%u]", tid, pid);
         }
         for (auto& e : request->endpoint_tid()) {
-            std::vector<std::string> endpoints{e.endpoint()};
-            std::vector<std::string> remote_r_vec;
+            std::map<std::string, std::string> r_real_ep_map;
+            r_real_ep_map.insert(std::make_pair(e.endpoint(), ""));
             if (FLAGS_use_name) {
-                auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
-                        std::memory_order_acquire);
-                for (auto& ep : endpoints) {
-                    auto iter = tmp_map->find(ep);
-                    if (iter == tmp_map->end()) {
-                        PDLOG(WARNING, "name %s not found in real_ep_map."
-                                "tid[%u] pid[%u]", ep.c_str(), tid, pid);
-                        response->set_code(
-                                ::rtidb::base::ReturnCode::kServerNameNotFound);
-                        response->set_msg("name not found in real_ep_map");
-                        return;
-                    }
-                    remote_r_vec.push_back(iter->second);
+                if (!GetRealEp(tid, pid, &r_real_ep_map)) {
+                    response->set_code(
+                            ::rtidb::base::ReturnCode::kServerNameNotFound);
+                    response->set_msg("name not found in r_real_ep_map");
+                    return;
                 }
             }
-            replicator->AddReplicateNode(endpoints, remote_r_vec, e.tid());
+            replicator->AddReplicateNode(r_real_ep_map, e.tid());
         }
     } else {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
@@ -2153,32 +2103,22 @@ void TabletImpl::AddReplica(RpcController* controller,
                   request->tid(), request->pid());
             break;
         }
-        std::vector<std::string> vec;
-        vec.push_back(request->endpoint());
-        std::vector<std::string> real_vec;
+        std::map<std::string, std::string> real_ep_map;
+        real_ep_map.insert(std::make_pair(request->endpoint(), ""));
         if (FLAGS_use_name) {
-            auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
-                    std::memory_order_acquire);
-            for (const auto& ep : vec) {
-                auto iter = tmp_map->find(ep);
-                if (iter == tmp_map->end()) {
-                    PDLOG(WARNING, "name %s not found in real_ep_map."
-                            "tid[%u] pid[%u]", ep.c_str(), request->tid(),
-                            request->pid());
-                    response->set_code(
-                            ::rtidb::base::ReturnCode::kServerNameNotFound);
-                    response->set_msg("name not found in real_ep_map");
-                    break;
-                }
-                real_vec.push_back(iter->second);
+            if (!GetRealEp(request->tid(), request->pid(), &real_ep_map)) {
+                response->set_code(
+                        ::rtidb::base::ReturnCode::kServerNameNotFound);
+                response->set_msg("name not found in real_ep_map");
+                break;
             }
         }
         int ret = -1;
         if (request->has_remote_tid()) {
-            ret = replicator->AddReplicateNode(vec, real_vec,
+            ret = replicator->AddReplicateNode(real_ep_map,
                     request->remote_tid());
         } else {
-            ret = replicator->AddReplicateNode(vec, real_vec);
+            ret = replicator->AddReplicateNode(real_ep_map);
         }
         if (ret == 0) {
             response->set_code(::rtidb::base::ReturnCode::kOk);
@@ -2503,7 +2443,7 @@ void TabletImpl::GetTableStatus(
                                 record_idx_cnt += stats[i];
                             }
                         }
-                        delete stats;
+                        delete []stats;
                     }
                     status->set_idx_cnt(record_idx_cnt);
                 }
@@ -4273,31 +4213,23 @@ int TabletImpl::UpdateTableMeta(const std::string& path,
 
 int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
                                     std::string& msg) {
-    std::vector<std::string> endpoints;
-    for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
-        endpoints.push_back(table_meta->replicas(i));
-    }
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
-    std::vector<std::string> real_endpoints;
+    std::map<std::string, std::string> real_ep_map;
+    for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
+        real_ep_map.insert(std::make_pair(table_meta->replicas(i), ""));
+    }
     if (FLAGS_use_name) {
-        auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
-                std::memory_order_acquire);
-        for (const auto& ep : endpoints) {
-            auto iter = tmp_map->find(ep);
-            if (iter == tmp_map->end()) {
-                PDLOG(WARNING, "name %s not found in real_ep_map."
-                        "tid[%u] pid[%u]", ep.c_str(), tid, pid);
-                msg.assign("name not found in real_ep_map");
-                return -1;
-            }
-            real_endpoints.push_back(iter->second);
+        if (!GetRealEp(tid, pid, &real_ep_map)) {
+            msg.assign("name not found in real_ep_map");
+            return -1;
         }
     }
     std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
     std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
     if (table) {
         PDLOG(WARNING, "table with tid[%u] and pid[%u] exists", tid, pid);
+        msg.assign("table exists");
         return -1;
     }
     Table* table_ptr = new MemTable(*table_meta);
@@ -4321,11 +4253,11 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
     std::shared_ptr<LogReplicator> replicator;
     if (table->IsLeader()) {
         replicator = std::make_shared<LogReplicator>(
-            table_db_path, endpoints, ReplicatorRole::kLeaderNode, table,
+            table_db_path, real_ep_map, ReplicatorRole::kLeaderNode, table,
             &follower_);
     } else {
         replicator = std::make_shared<LogReplicator>(
-            table_db_path, std::vector<std::string>(),
+            table_db_path, std::map<std::string, std::string>(),
             ReplicatorRole::kFollowerNode, table, &follower_);
     }
     if (!replicator) {
@@ -4334,7 +4266,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
         msg.assign("fail create replicator for table");
         return -1;
     }
-    ok = replicator->Init(real_endpoints);
+    ok = replicator->Init();
     if (!ok) {
         PDLOG(WARNING, "fail to init replicator for table tid %u, pid %u",
               table_meta->tid(), table_meta->pid());
@@ -4381,24 +4313,16 @@ int TabletImpl::CreateDiskTableInternal(
             "disktable doesn't support abs&&lat, abs||lat in this version");
         return -1;
     }
+    std::map<std::string, std::string> real_ep_map;
     for (int32_t i = 0; i < table_meta->replicas_size(); i++) {
-        endpoints.push_back(table_meta->replicas(i));
+        real_ep_map.insert(std::make_pair(table_meta->replicas(i), ""));
     }
     uint32_t tid = table_meta->tid();
     uint32_t pid = table_meta->pid();
-    std::vector<std::string> real_endpoints;
     if (FLAGS_use_name) {
-        auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
-                std::memory_order_acquire);
-        for (auto& ep : endpoints) {
-            auto iter = tmp_map->find(ep);
-            if (iter == tmp_map->end()) {
-                PDLOG(WARNING, "name %s not found in real_ep_map."
-                        "tid[%u] pid[%u]", ep.c_str(), tid, pid);
-                msg.assign("name not found in real_ep_map");
-                return -1;
-            }
-            real_endpoints.push_back(iter->second);
+        if (!GetRealEp(tid, pid, &real_ep_map)) {
+            msg.assign("name not found in real_ep_map");
+            return -1;
         }
     }
     std::string db_root_path;
@@ -4445,11 +4369,11 @@ int TabletImpl::CreateDiskTableInternal(
     std::shared_ptr<LogReplicator> replicator;
     if (table->IsLeader()) {
         replicator = std::make_shared<LogReplicator>(
-            table_db_path, endpoints, ReplicatorRole::kLeaderNode, table,
+            table_db_path, real_ep_map, ReplicatorRole::kLeaderNode, table,
             &follower_);
     } else {
         replicator = std::make_shared<LogReplicator>(
-            table_db_path, std::vector<std::string>(),
+            table_db_path, std::map<std::string, std::string>(),
             ReplicatorRole::kFollowerNode, table, &follower_);
     }
     if (!replicator) {
@@ -4458,7 +4382,7 @@ int TabletImpl::CreateDiskTableInternal(
         msg.assign("fail create replicator for table");
         return -1;
     }
-    ok = replicator->Init(real_endpoints);
+    ok = replicator->Init();
     if (!ok) {
         PDLOG(WARNING, "fail to init replicator for table tid %u, pid %u",
               table_meta->tid(), table_meta->pid());
@@ -5591,6 +5515,7 @@ void TabletImpl::LoadIndexDataInternal(
         replicator->AppendEntry(entry);
         succ_cnt++;
     }
+    delete seq_file;
     if (cur_pid == partition_num - 1 ||
         (cur_pid + 1 == pid && pid == partition_num - 1)) {
         PDLOG(INFO, "load index success. tid %u pid %u", tid, pid);
@@ -5804,6 +5729,26 @@ void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
             std::memory_order_release);
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
+}
+
+bool TabletImpl::GetRealEp(uint64_t tid, uint64_t pid,
+        std::map<std::string, std::string>* real_ep_map) {
+    if (real_ep_map == nullptr) {
+        return false;
+    }
+    auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+            std::memory_order_acquire);
+    for (auto rit = real_ep_map->begin();
+            rit != real_ep_map->end(); ++rit) {
+        auto iter = tmp_map->find(rit->first);
+        if (iter == tmp_map->end()) {
+            PDLOG(WARNING, "name %s not found in real_ep_map."
+                    "tid[%u] pid[%u]", rit->first.c_str(), tid, pid);
+            return false;
+        }
+        rit->second = iter->second;
+    }
+    return true;
 }
 
 }  // namespace tablet

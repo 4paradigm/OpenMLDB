@@ -82,6 +82,8 @@ DECLARE_bool(version);
 DECLARE_bool(use_name);
 DECLARE_string(data_dir);
 
+static std::map<std::string, std::string> real_ep_map;
+
 void shutdown_signal_handler(int signal) {
     std::cout << "catch signal: " << signal << std::endl;
     brpc::AskToQuit();
@@ -369,15 +371,6 @@ int PutData(
     uint32_t format_version) {
     std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>
         clients;
-    std::shared_ptr<::rtidb::zk::ZkClient> zk_client;
-    if (FLAGS_use_name) {
-        zk_client = std::make_shared<::rtidb::zk::ZkClient>(
-                FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
-        if (!zk_client->Init()) {
-            printf("zk client init failed \n");
-            return -1;
-        }
-    }
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
         uint32_t pid = iter->first;
         std::string endpoint;
@@ -403,11 +396,10 @@ int PutData(
         }
         if (clients.find(endpoint) == clients.end()) {
             std::string real_endpoint;
-            if (FLAGS_use_name) {
-                if (!zk_client->GetNodeValue(FLAGS_zk_root_path +
-                            "/map/names/" + endpoint, real_endpoint)) {
-                    printf("get real_endpoint failed \n");
-                    return -1;
+            if (!real_ep_map.empty()) {
+                auto rit = real_ep_map.find(endpoint);
+                if (rit != real_ep_map.end()) {
+                    real_endpoint = rit->second;
                 }
             }
             clients.insert(std::make_pair(endpoint, std::make_shared<
@@ -540,8 +532,8 @@ bool GetParameterMap(
 }
 
 std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
-    const ::rtidb::nameserver::TableInfo& table_info, uint32_t pid,
-    std::string& msg) {  // NOLINT
+        const ::rtidb::nameserver::TableInfo& table_info, uint32_t pid,
+        std::string& msg) {  // NOLINT
     std::string endpoint;
     for (int idx = 0; idx < table_info.table_partition_size(); idx++) {
         if (table_info.table_partition(idx).pid() != pid) {
@@ -569,18 +561,10 @@ std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
         return std::shared_ptr<::rtidb::client::TabletClient>();
     }
     std::string real_endpoint;
-    if (FLAGS_use_name) {
-        std::shared_ptr<::rtidb::zk::ZkClient> zk_client =
-            std::make_shared<::rtidb::zk::ZkClient>(
-                    FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
-        if (!zk_client->Init()) {
-            msg = "zk client init failed";
-            return std::shared_ptr<::rtidb::client::TabletClient>();
-        }
-        if (!zk_client->GetNodeValue(FLAGS_zk_root_path +
-                    "/map/names/" + endpoint, real_endpoint)) {
-            msg = "get real_endpoint failed";
-            return std::shared_ptr<::rtidb::client::TabletClient>();
+    if (!real_ep_map.empty()) {
+        auto rit = real_ep_map.find(endpoint);
+        if (rit != real_ep_map.end()) {
+            real_endpoint = rit->second;
         }
     }
     std::shared_ptr<::rtidb::client::TabletClient> tablet_client =
@@ -738,9 +722,7 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
                         ::rtidb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("endpoint");
-    if (FLAGS_use_name) {
-        row.push_back("real_endpoint");
-    }
+    row.push_back("real_endpoint");
     row.push_back("state");
     row.push_back("age");
     ::baidu::common::TPrinter tp(row.size());
@@ -755,9 +737,7 @@ void HandleNSShowTablet(const std::vector<std::string>& parts,
     for (size_t i = 0; i < tablets.size(); i++) {
         std::vector<std::string> row;
         row.push_back(tablets[i].endpoint);
-        if (FLAGS_use_name) {
-            row.push_back(tablets[i].real_endpoint);
-        }
+        row.push_back(tablets[i].real_endpoint);
         row.push_back(tablets[i].state);
         row.push_back(::rtidb::base::HumanReadableTime(tablets[i].age));
         tp.AddRow(row);
@@ -769,9 +749,7 @@ void HandleNSShowBlobServer(const std::vector<std::string>& parts,
                         ::rtidb::client::NsClient* client) {
     std::vector<std::string> row;
     row.push_back("endpoint");
-    if (FLAGS_use_name) {
-        row.push_back("real_endpoint");
-    }
+    row.push_back("real_endpoint");
     row.push_back("state");
     row.push_back("age");
     ::baidu::common::TPrinter tp(row.size());
@@ -786,9 +764,7 @@ void HandleNSShowBlobServer(const std::vector<std::string>& parts,
     for (size_t i = 0; i < tablets.size(); i++) {
         std::vector<std::string> row;
         row.push_back(tablets[i].endpoint);
-        if (FLAGS_use_name) {
-            row.push_back(tablets[i].real_endpoint);
-        }
+        row.push_back(tablets[i].real_endpoint);
         row.push_back(tablets[i].state);
         row.push_back(::rtidb::base::HumanReadableTime(tablets[i].age));
         tp.AddRow(row);
@@ -899,23 +875,23 @@ void HandleNSShowNameServer(const std::vector<std::string>& parts,
     }
     std::vector<std::string> row;
     row.push_back("endpoint");
-    if (FLAGS_use_name) {
-        row.push_back("real_endpoint");
-    }
+    row.push_back("real_endpoint");
     row.push_back("role");
     ::baidu::common::TPrinter tp(row.size());
     tp.AddRow(row);
     for (size_t i = 0; i < endpoint_vec.size(); i++) {
         std::vector<std::string> row;
         row.push_back(endpoint_vec[i]);
-        if (FLAGS_use_name) {
-            std::string real_endpoint;
-            std::string name = "/map/names/" + endpoint_vec[i];
-            if (!zk_client->GetNodeValue(FLAGS_zk_root_path + name,
-                        real_endpoint)) {
-                std::cout << "get real_endpoint failed" << std::endl;
-                return;
+        std::string real_endpoint;
+        if (!real_ep_map.empty()) {
+            auto rit = real_ep_map.find(endpoint_vec[i]);
+            if (rit != real_ep_map.end()) {
+                real_endpoint = rit->second;
             }
+        }
+        if (real_endpoint.empty()) {
+            row.push_back("-");
+        } else {
             row.push_back(real_endpoint);
         }
         if (i == 0) {
@@ -1748,15 +1724,6 @@ void HandleNsCreateDb(const std::vector<std::string>& parts,
     }
 }
 
-void HandleNsShowDb(const std::vector<std::string>& parts,
-                    ::rtidb::client::NsClient* client) {
-    std::string msg;
-    std::vector<std::string> dbs;
-    if (client->ShowDatabase(&dbs, msg)) {
-        ::rtidb::cmd::PrintDatabase(dbs);
-    }
-}
-
 void HandleNsDropDb(const std::vector<std::string>& parts,
                     ::rtidb::client::NsClient* client) {
     if (parts.size() < 2) {
@@ -1865,6 +1832,27 @@ bool GetCondAndPrintColumns(
     }
     get_type = static_cast<rtidb::api::GetType>(first_type);
     return true;
+}
+
+void HandleNSShowDB(::rtidb::client::NsClient* client) {
+    std::vector<std::string> dbs;
+    std::string error;
+    client->ShowDatabase(&dbs, error);
+    auto tp = new baidu::common::TPrinter(2,
+                        FLAGS_max_col_display_length);
+    std::vector<std::string> row;
+    row.push_back("#");
+    row.push_back("name");
+    tp->AddRow(row);
+    row.clear();
+    for (uint64_t i = 0; i < dbs.size(); i++) {
+        row.push_back(std::to_string(i + 1));
+        row.push_back(dbs[i]);
+        tp->AddRow(row);
+        row.clear();
+    }
+    tp->Print(true);
+    delete tp;
 }
 
 void HandleNSQuery(const std::vector<std::string>& parts,
@@ -3713,6 +3701,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         printf("showblobserver - show blobserver info\n");
         printf("showsdkendpoint - show sdkendpoint info\n");
         printf("showns - show nameserver info\n");
+        printf("showdb - show all databases\n");
         printf("showschema - show schema info\n");
         printf("showopstatus - show op info\n");
         printf("settablepartition - update partition info\n");
@@ -3895,6 +3884,8 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("desc: set partition info\n");
             printf("usage: settablepartition table_name partition_file_path\n");
             printf("ex: settablepartition table1 ./partition_file.txt\n");
+        } else if (parts[1] == "showdb") {
+            printf("desc: show all databases\n");
         } else if (parts[1] == "exit" || parts[1] == "quit") {
             printf("desc: exit client\n");
             printf("ex: quit\n");
@@ -3991,10 +3982,6 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("desc: use database\n");
             printf("usage: use database_name\n");
             printf("eg: use db1");
-        } else if (parts[1] == "showdb") {
-            printf("desc: show databases\n");
-            printf("usage: showdb\n");
-            printf("eg: showdb");
         } else if (parts[1] == "dropdb") {
             printf("desc: drop database\n");
             printf("usage: dropdb database_name\n");
@@ -6342,11 +6329,28 @@ void StartNsClient() {
             return;
         }
         std::cout << "ns leader: " << endpoint << std::endl;
-        if (FLAGS_use_name) {
-            if (!zk_client->GetNodeValue(FLAGS_zk_root_path +
-                        "/map/names/" + endpoint, real_endpoint)) {
+        // real endpoint part
+        std::string path = FLAGS_zk_root_path + "/map/names/" + endpoint;
+        if (zk_client->IsExistNode(path) == 0) {
+            if (!zk_client->GetNodeValue(path, real_endpoint)) {
                 std::cout << "get real_endpoint failed" << std::endl;
                 return;
+            }
+            std::string name_root_path = FLAGS_zk_root_path + "/map/names";
+            std::vector<std::string> nodes;
+            if (!zk_client->GetChildren(name_root_path, nodes)
+                    || nodes.empty()) {
+                std::cout << "get server name nodes failed" << std::endl;
+                return;
+            }
+            for (const auto& node : nodes) {
+                std::string real_ep;
+                std::string real_path = name_root_path + "/" + node;
+                if (!zk_client->GetNodeValue(real_path, real_ep)) {
+                    std::cout << "get zk server name failed" << std::endl;
+                    return;
+                }
+                real_ep_map.insert(std::make_pair(node, real_ep));
             }
         }
     } else if (!FLAGS_endpoint.empty()) {
@@ -6357,7 +6361,6 @@ void StartNsClient() {
         return;
     }
     ::rtidb::client::NsClient client(endpoint, real_endpoint);
-
     if (client.Init() < 0) {
         std::cout << "client init failed" << std::endl;
         return;
@@ -6370,6 +6373,9 @@ void StartNsClient() {
     bool multi_line = false;
     while (true) {
         std::string buffer;
+        display_prefix = endpoint + " " + client.GetDb() + "> ";
+        multi_line_perfix =
+        std::string(display_prefix.length() - 3, ' ') + "-> ";
         if (!FLAGS_interactive) {
             buffer = FLAGS_cmd;
         } else {
@@ -6379,6 +6385,7 @@ void StartNsClient() {
             if (line == NULL) {
                 return;
             }
+
             if (line[0] != '\0' && line[0] != '/') {
                 buffer.assign(line);
                 boost::trim(buffer);
@@ -6501,6 +6508,8 @@ void StartNsClient() {
             HandleNSUpdate(parts, &client);
         } else if (parts[0] == "query") {
             HandleNSQuery(parts, &client);
+        } else if (parts[0] == "showdb") {
+            HandleNSShowDB(&client);
         } else if (parts[0] == "use") {
             HandleNsUseDb(parts, &client);
         } else if (parts[0] == "sql") {

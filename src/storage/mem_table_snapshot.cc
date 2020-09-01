@@ -220,6 +220,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
     ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
 
     std::string buffer;
+    std::string tmp_buf;
     ::rtidb::api::LogEntry entry;
     bool has_error = false;
     std::set<uint32_t> deleted_index;
@@ -248,47 +249,13 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
             has_error = true;
             break;
         }
-        if (entry.dimensions_size() == 0) {
-            std::string combined_key = entry.pk() + "|0";
-            if (deleted_keys_.find(combined_key) != deleted_keys_.end()) {
-                deleted_key_num++;
-                continue;
-            }
-        } else {
-            std::set<int> deleted_pos_set;
-            for (int pos = 0; pos < entry.dimensions_size(); pos++) {
-                std::string combined_key =
-                    entry.dimensions(pos).key() + "|" +
-                    std::to_string(entry.dimensions(pos).idx());
-                if (deleted_keys_.find(combined_key) != deleted_keys_.end() ||
-                    deleted_index.count(entry.dimensions(pos).idx())) {
-                    deleted_pos_set.insert(pos);
-                }
-            }
-            if (!deleted_pos_set.empty()) {
-                if ((int)deleted_pos_set.size() ==  // NOLINT
-                    entry.dimensions_size()) {
-                    deleted_key_num++;
-                    continue;
-                } else {
-                    ::rtidb::api::LogEntry tmp_entry(entry);
-                    entry.clear_dimensions();
-                    for (int pos = 0; pos < tmp_entry.dimensions_size();
-                         pos++) {
-                        if (deleted_pos_set.find(pos) ==
-                            deleted_pos_set.end()) {
-                            ::rtidb::api::Dimension* dimension =
-                                entry.add_dimensions();
-                            dimension->CopyFrom(tmp_entry.dimensions(pos));
-                        }
-                    }
-                    std::string tmp_buf;
-                    entry.SerializeToString(&tmp_buf);
-                    record.reset(tmp_buf.data(), tmp_buf.size());
-                }
-            }
+        int ret = RemoveDeletedKey(entry, deleted_index, &tmp_buf);
+        if (ret == 1) {
+            deleted_key_num++;
+            continue;
+        } else if (ret == 2) {
+            record.reset(tmp_buf.data(), tmp_buf.size());
         }
-        // delete timeout key
         if (table->IsExpire(entry)) {
             expired_key_num++;
             continue;
@@ -459,6 +426,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
     std::string buffer;
+    std::string tmp_buf;
     while (!has_error && cur_offset < collected_offset) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -489,51 +457,12 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
             if (entry.has_term()) {
                 last_term = entry.term();
             }
-            std::string tmp_buf;
-            if (entry.dimensions_size() == 0) {
-                std::string combined_key = entry.pk() + "|0";
-                auto iter = deleted_keys_.find(combined_key);
-                if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
-                    DEBUGLOG("delete key %s  offset %lu", entry.pk().c_str(),
-                             entry.log_index());
-                    deleted_key_num++;
-                    continue;
-                }
-            } else {
-                std::set<int> deleted_pos_set;
-                for (int pos = 0; pos < entry.dimensions_size(); pos++) {
-                    std::string combined_key =
-                        entry.dimensions(pos).key() + "|" +
-                        std::to_string(entry.dimensions(pos).idx());
-                    auto iter = deleted_keys_.find(combined_key);
-                    if ((iter != deleted_keys_.end() &&
-                         cur_offset <= iter->second) ||
-                        deleted_index.count(entry.dimensions(pos).idx())) {
-                        deleted_pos_set.insert(pos);
-                    }
-                }
-                if (!deleted_pos_set.empty()) {
-                    if ((int)deleted_pos_set.size() ==  // NOLINT
-                        entry.dimensions_size()) {
-                        deleted_key_num++;
-                        continue;
-                    } else {
-                        ::rtidb::api::LogEntry tmp_entry(entry);
-                        entry.clear_dimensions();
-                        for (int pos = 0; pos < tmp_entry.dimensions_size();
-                             pos++) {
-                            if (deleted_pos_set.find(pos) ==
-                                deleted_pos_set.end()) {
-                                ::rtidb::api::Dimension* dimension =
-                                    entry.add_dimensions();
-                                dimension->CopyFrom(tmp_entry.dimensions(pos));
-                            }
-                        }
-                        std::string tmp_buf;
-                        entry.SerializeToString(&tmp_buf);
-                        record.reset(tmp_buf.data(), tmp_buf.size());
-                    }
-                }
+            int ret = RemoveDeletedKey(entry, deleted_index, &tmp_buf);
+            if (ret == 1) {
+                deleted_key_num++;
+                continue;
+            } else if (ret == 2) {
+                record.reset(tmp_buf.data(), tmp_buf.size());
             }
             if (table->IsExpire(entry)) {
                 expired_key_num++;
@@ -623,6 +552,53 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     return ret;
 }
 
+int MemTableSnapshot::RemoveDeletedKey(const ::rtidb::api::LogEntry& entry,
+                                       const std::set<uint32_t>& deleted_index,
+                                       std::string* buffer) {
+    uint64_t cur_offset = entry.log_index();
+    if (entry.dimensions_size() == 0) {
+        std::string combined_key = entry.pk() + "|0";
+        auto iter = deleted_keys_.find(combined_key);
+        if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
+            DEBUGLOG("delete key %s  offset %lu", entry.pk().c_str(),
+                     entry.log_index());
+            return 1;
+        }
+    } else {
+        std::set<int> deleted_pos_set;
+        for (int pos = 0; pos < entry.dimensions_size(); pos++) {
+            std::string combined_key =
+                entry.dimensions(pos).key() + "|" +
+                std::to_string(entry.dimensions(pos).idx());
+            auto iter = deleted_keys_.find(combined_key);
+            if ((iter != deleted_keys_.end() && cur_offset <= iter->second) ||
+                deleted_index.count(entry.dimensions(pos).idx())) {
+                deleted_pos_set.insert(pos);
+            }
+        }
+        if (!deleted_pos_set.empty()) {
+            if (static_cast<int>(deleted_pos_set.size()) ==
+                entry.dimensions_size()) {
+                return 1;
+            } else {
+                ::rtidb::api::LogEntry tmp_entry(entry);
+                tmp_entry.clear_dimensions();
+                for (int pos = 0; pos < entry.dimensions_size(); pos++) {
+                    if (deleted_pos_set.find(pos) == deleted_pos_set.end()) {
+                        ::rtidb::api::Dimension* dimension =
+                            tmp_entry.add_dimensions();
+                        dimension->CopyFrom(entry.dimensions(pos));
+                    }
+                }
+                buffer->clear();
+                tmp_entry.SerializeToString(buffer);
+                return 2;
+            }
+        }
+    }
+    return 0;
+}
+
 int MemTableSnapshot::ExtractIndexFromSnapshot(
     std::shared_ptr<Table> table, const ::rtidb::api::Manifest& manifest,
     WriteHandle* wh, const ::rtidb::common::ColumnKey& column_key, uint32_t idx,
@@ -646,6 +622,9 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
     ::rtidb::api::LogEntry entry;
     bool has_error = false;
     uint64_t extract_count = 0;
+    uint64_t schame_size_less_count = 0;
+    uint64_t other_error_count = 0;
+    DLOG(INFO) << "extract index data from snapshot";
     while (true) {
         ::rtidb::base::Slice record;
         ::rtidb::base::Status status = reader.ReadRecord(&record, &buffer);
@@ -702,7 +681,6 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                             dimension->CopyFrom(tmp_entry.dimensions(pos));
                         }
                     }
-                    std::string tmp_buf;
                     entry.SerializeToString(&tmp_buf);
                     record.reset(tmp_buf.data(), tmp_buf.size());
                 }
@@ -716,13 +694,14 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
         if (!(entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete)) {
             // new column_key
             std::vector<std::string> row;
-            bool ret = DecodeData(table, columns, entry, max_idx, row);
-            if (!ret) {
-                LOG(WARNING) << "decode data error";
+            int ret = DecodeData(table, columns, entry, max_idx, row);
+            if (ret == 2) {
+                count++;
+                wh->Write(record);
                 continue;
-            }
-            if (row.size() < max_idx) {
-                LOG(WARNING) << "data size is " << row.size() << " less than " << max_idx;
+            } else if (ret != 0) {
+                DLOG(INFO) << "skip current data";
+                other_error_count++;
                 continue;
             }
             std::string cur_key;
@@ -733,9 +712,19 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
                     cur_key += "|" + row[i];
                 }
             }
+            if (cur_key.empty()) {
+                other_error_count++;
+                DLOG(INFO) << "skip empty key";
+                continue;
+            }
             uint32_t index_pid = ::rtidb::base::hash64(cur_key) % partition_num;
             // update entry and write entry into memory
             if (index_pid == pid) {
+                if (entry.dimensions_size() == 1 && entry.dimensions(0).idx() == idx) {
+                    other_error_count++;
+                    DLOG(INFO) << "skip not default key " << cur_key;
+                    continue;
+                }
                 ::rtidb::api::Dimension* dim = entry.add_dimensions();
                 dim->set_key(cur_key);
                 dim->set_idx(idx);
@@ -758,28 +747,29 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
             has_error = true;
             break;
         }
-        if ((count + expired_key_num + deleted_key_num) % KEY_NUM_DISPLAY ==
-            0) {
+        if ((count + expired_key_num + deleted_key_num) % KEY_NUM_DISPLAY == 0) {
             PDLOG(INFO, "tackled key num[%lu] total[%lu] tid[%u] pid[%u]",
                   count + expired_key_num, manifest.count(), tid, pid);
         }
         count++;
     }
     delete seq_file;
-    if (expired_key_num + count + deleted_key_num != manifest.count()) {
-        PDLOG(WARNING,
-              "key num not match! total key num[%lu] load key num[%lu] ttl key "
-              "num[%lu] tid[%u] pid[%u]",
-              manifest.count(), count, expired_key_num, tid, pid);
+    if (expired_key_num + count + deleted_key_num + schame_size_less_count + other_error_count != manifest.count()) {
+        LOG(WARNING) << "key num not match ! total key num[" << manifest.count()
+                     << "] load key num[" << count << "] ttl key num["
+                     << expired_key_num << "] schema size less num["
+                     << schame_size_less_count << "] other error count["
+                     << other_error_count << "]" << " tid[" << tid << "] pid[" << pid << "]";
         has_error = true;
     }
     if (has_error) {
         return -1;
     }
-    PDLOG(INFO,
-          "extract index from snapshot success. extract key num[%lu] load key "
-          "num[%lu] ttl key num[%lu] tid[%u] pid[%u]",
-          extract_count, count, expired_key_num, tid, pid);
+    LOG(INFO) << "extract index from snapshot success. extract key num[" << extract_count
+              << "] load key num[" << count << "] ttl key num["
+              << expired_key_num << "] schema size less num["
+              << schame_size_less_count << "] other error count["
+              << other_error_count << "]" << " tid[" << tid << "] pid[" << pid << "]";
     return 0;
 }
 
@@ -851,6 +841,7 @@ int MemTableSnapshot::ExtractIndexData(
 
     int result = GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
     if (result == 0) {
+        DLOG(INFO) << "begin extract index data from snapshot";
         if (ExtractIndexFromSnapshot(table, manifest, wh, column_key, idx,
                                      partition_num, columns, max_idx,
                                      index_cols, write_count, expired_key_num,
@@ -869,6 +860,7 @@ int MemTableSnapshot::ExtractIndexData(
     uint64_t cur_offset = offset_;
     std::string buffer;
     uint64_t extract_count = 0;
+    DLOG(INFO) << "extract index data from binlog";
     while (!has_error && cur_offset < collected_offset) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -942,13 +934,13 @@ int MemTableSnapshot::ExtractIndexData(
             if (!(entry.has_method_type() && entry.method_type() == ::rtidb::api::MethodType::kDelete)) {
                 // new column_key
                 std::vector<std::string> row;
-                bool ret = DecodeData(table, columns, entry, max_idx, row);
-                if (!ret) {
-                    LOG(WARNING) << "decode data error";
+                int ret = DecodeData(table, columns, entry, max_idx, row);
+                if (ret == 2) {
+                    wh->Write(record);
+                    write_count++;
                     continue;
-                }
-                if (row.size() < max_idx) {
-                    LOG(WARNING) << "data size is " << row.size() << " less than " << max_idx;
+                } else if (ret != 0) {
+                    DLOG(INFO) << "skip current data";
                     continue;
                 }
                 std::string cur_key;
@@ -959,9 +951,17 @@ int MemTableSnapshot::ExtractIndexData(
                         cur_key += "|" + row[i];
                     }
                 }
+                if (cur_key.empty()) {
+                    DLOG(INFO) << "skip empty key";
+                    continue;
+                }
                 uint32_t index_pid = ::rtidb::base::hash64(cur_key) % partition_num;
                 // update entry and write entry into memory
                 if (index_pid == pid) {
+                    if (entry.dimensions_size() == 1 && entry.dimensions(0).idx() == idx) {
+                        DLOG(INFO) << "skip not default key " << cur_key;
+                        continue;
+                    }
                     ::rtidb::api::Dimension* dim = entry.add_dimensions();
                     dim->set_key(cur_key);
                     dim->set_idx(idx);
@@ -1083,8 +1083,9 @@ bool MemTableSnapshot::PackNewIndexEntry(
         }
     }
     std::vector<std::string> row;
-    bool ret = DecodeData(table, columns, *entry, max_idx, row);
-    if (!ret) {
+    int ret = DecodeData(table, columns, *entry, max_idx, row);
+    if (ret != 0 && ret != 2) {
+        DLOG(INFO) << "pack fail code is " << ret;
         return false;
     }
     std::string key;
@@ -1106,6 +1107,11 @@ bool MemTableSnapshot::PackNewIndexEntry(
         if (skip_calc) {
             continue;
         }
+        if (cur_key.empty()) {
+            DLOG(INFO) << "key is emptry";
+            continue;
+        }
+
         uint32_t pid = ::rtidb::base::hash64(cur_key) % partition_num;
         if (i < index_cols.size() - 1) {
             pid_set.insert(pid);
@@ -1113,6 +1119,11 @@ bool MemTableSnapshot::PackNewIndexEntry(
             *index_pid = pid;
             key = cur_key;
         }
+    }
+    DLOG(INFO) << "pack end ";
+    if (key.empty()) {
+        DLOG(INFO) << "key is empty";
+        return false;
     }
     if (pid_set.find(*index_pid) == pid_set.end()) {
         entry->clear_dimensions();
@@ -1152,6 +1163,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
     ::rtidb::api::LogEntry entry;
     std::string buffer;
     std::string entry_buff;
+    DLOG(INFO) << "begin dump snapshot index data";
     while (true) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -1178,8 +1190,8 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
             continue;
         }
         uint32_t index_pid = 0;
-        if (!PackNewIndexEntry(table, index_cols, columns, max_idx, idx,
-                               partition_num, &entry, &index_pid)) {
+        if (!PackNewIndexEntry(table, index_cols, columns, max_idx, idx, partition_num, &entry, &index_pid)) {
+            DLOG(INFO) << "pack new entry fail in snapshot";
             continue;
         }
         std::string entry_str;
@@ -1187,6 +1199,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
         ::rtidb::base::Slice new_record(entry_str);
         status = whs[index_pid]->Write(new_record);
         if (!status.ok()) {
+            delete seq_file;
             PDLOG(WARNING,
                   "fail to dump index entrylog in snapshot to pid[%u]. tid "
                   "%u pid %u",
@@ -1195,6 +1208,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
         }
         succ_cnt++;
     }
+    delete seq_file;
     return true;
 }
 
@@ -1285,6 +1299,7 @@ bool MemTableSnapshot::DumpBinlogIndexData(
     int last_log_index = log_reader.GetLogIndex();
     std::string buffer;
     std::string entry_buff;
+    DLOG(INFO) << "begin dump binlog index data";
     while (cur_offset < collected_offset) {
         buffer.clear();
         ::rtidb::base::Slice record;
@@ -1338,6 +1353,7 @@ bool MemTableSnapshot::DumpBinlogIndexData(
         }
         uint32_t index_pid = 0;
         if (!PackNewIndexEntry(table, index_cols, columns, max_idx, idx, partition_num, &entry, &index_pid)) {
+            LOG(INFO) << "pack new entry fail in binlog";
             continue;
         }
         std::string entry_str;
@@ -1355,8 +1371,8 @@ bool MemTableSnapshot::DumpBinlogIndexData(
     return true;
 }
 
-bool MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector<::rtidb::codec::ColumnDesc>& columns,
-                                  const rtidb::api::LogEntry& entry, uint32_t maxIdx, std::vector<std::string>& row) {
+int MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vector<::rtidb::codec::ColumnDesc>& columns,
+                                  const rtidb::api::LogEntry& entry, uint32_t max_idx, std::vector<std::string>& row) {
     const ::rtidb::api::TableMeta& table_meta = table->GetTableMeta();
     std::string buff;
     rtidb::base::Slice data;
@@ -1367,21 +1383,53 @@ bool MemTableSnapshot::DecodeData(std::shared_ptr<Table> table, const std::vecto
         data.reset(entry.value().data(), entry.value().size());
     }
     if (table_meta.format_version() == 0) {
-        return rtidb::codec::RowCodec::DecodeRow(columns.size(), maxIdx + 1, data, &row);
+        uint16_t col_cnt = 0;
+        if (table_meta.column_desc_size() < 128) {
+            if ((uint8_t)(data.data()[0] & 0x80) != 0) {
+                col_cnt = ((uint8_t)data.data()[0] & 0x7F) + table_meta.column_desc_size();
+            } else {
+                col_cnt = (uint8_t)data.data()[0];
+            }
+        } else {
+            uint16_t col_cnt_tmp = 0;
+            memcpy(static_cast<void*>(&col_cnt_tmp), data.data(), 2);
+            memrev16ifbe(static_cast<void*>(&col_cnt_tmp));
+            if ((col_cnt_tmp & 0x0080) != 0) {
+                col_cnt = (col_cnt_tmp & 0x007F) + table_meta.column_desc_size();
+            } else {
+                col_cnt = col_cnt_tmp;
+            }
+        }
+        bool ok = rtidb::codec::RowCodec::DecodeRow(table_meta.column_desc_size(), max_idx + 1, data, &row);
+        if (!ok) {
+            DLOG(WARNING) << "decode data error";
+            return 3;
+        }
+        if (col_cnt < (int64_t)(max_idx + 1)) {
+            DLOG(WARNING) << "data size is " << row.size() << " less than " << max_idx + 1;
+            return 2;
+        }
+        return 0;
     }
     const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
     uint8_t version = rtidb::codec::RowView::GetSchemaVersion(raw);
     int32_t data_size = data.size();
-    if (version == 1) {
-        const auto& schema = table_meta.column_desc();
-        return rtidb::codec::RowCodec::DecodeRow(schema, raw, data_size, true, 0, maxIdx + 1, row);
-    }
     std::shared_ptr<Schema> schema = table->GetVersionSchema(version);
     if (schema == nullptr) {
         LOG(WARNING) << "fail get version " << unsigned(version) << " schema";
-        return false;
+        return 1;
     }
-    return rtidb::codec::RowCodec::DecodeRow(*schema, raw, data_size, true, 0, maxIdx + 1, row);
+
+    bool ok = rtidb::codec::RowCodec::DecodeRow(*schema, raw, data_size, true, 0, max_idx + 1, row);
+    if (!ok) {
+        DLOG(WARNING) << "decode data error";
+        return 3;
+    }
+    if (schema->size() < (int64_t)(max_idx + 1)) {
+        DLOG(WARNING) << "data size is " << schema->size() << " less than " << max_idx + 1;
+        return 2;
+    }
+    return 0;
 }
 
 }  // namespace storage

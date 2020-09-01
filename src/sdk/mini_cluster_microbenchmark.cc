@@ -121,7 +121,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
 static void GenerateInsertSQLSample(uint32_t size, std::string name,
                                     std::vector<std::string>* sample) {
     uint64_t time = 1589780888000l;
-    for (int i = 0; i < size; ++i) {
+    for (uint64_t i = 0; i < size; ++i) {
         std::string insert_sql =
             "insert into " + name + " values('hello'," +
             std::to_string(time + i) + "," + std::to_string(i) + "," +
@@ -156,7 +156,7 @@ static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
     std::vector<std::string> sample;
     GenerateInsertSQLSample(state.range(0), name, &sample);
     for (auto _ : state) {
-        for (int i = 0; i < sample.size(); ++i) {
+        for (uint64_t i = 0; i < sample.size(); ++i) {
             benchmark::DoNotOptimize(
                 router->ExecuteInsert(db, sample[i], &status));
         }

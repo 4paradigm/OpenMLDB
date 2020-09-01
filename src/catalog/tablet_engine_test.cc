@@ -333,6 +333,7 @@ TEST_P(TabletEngineTest, batch_query_test) {
     ParamType sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "rtidb-request-unsupport") &&
         !boost::contains(sql_case.mode(), "batch-unsupport")) {
         TabletEngineTest::BatchModeCheck(sql_case);
     }
@@ -341,11 +342,14 @@ TEST_P(TabletEngineTest, request_query_test) {
     ParamType sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "rtidb-request-unsupport") &&
         !boost::contains(sql_case.mode(), "request-unsupport")) {
         TabletEngineTest::RequestModeCheck(sql_case);
     }
 }
-
+INSTANTIATE_TEST_SUITE_P(EngineConstQuery, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/query/const_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineSimpleQuery, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases(
                              "/cases/query/simple_query.yaml")));

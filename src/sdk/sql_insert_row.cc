@@ -20,7 +20,6 @@
 #include <stdint.h>
 
 #include <string>
-#include <unordered_map>
 
 #include "base/fe_strings.h"
 #include "glog/logging.h"

@@ -62,6 +62,7 @@ class ClusterSDK {
         const std::string& db, const std::string& tname,
         std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets);
 
+    std::shared_ptr<::rtidb::client::TabletClient> PickOneTablet();
     std::shared_ptr<::rtidb::client::TabletClient> GetLeaderTabletByTable(
         const std::string& db, const std::string& name);
 
@@ -73,9 +74,10 @@ class ClusterSDK {
         const std::string& db);
 
     inline std::shared_ptr<::rtidb::client::NsClient> GetNsClient() {
-        if (ns_client_) return ns_client_;
+        auto ns_client =  std::atomic_load_explicit(&ns_client_, std::memory_order_relaxed);
+        if (ns_client) return ns_client;
         CreateNsClient();
-        return ns_client_;
+        return std::atomic_load_explicit(&ns_client_, std::memory_order_relaxed);
     }
     bool GetRealEndpoint(const std::string& endpoint,
             std::string* real_endpoint);

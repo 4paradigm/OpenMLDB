@@ -39,17 +39,14 @@ std::string SQLCaseTest::FindRtidbDirPath(const std::string &dirname) {
     return std::string();
 }
 
-std::vector<fesql::sqlcase::SQLCase> SQLCaseTest::InitCases(
-    const std::string &yaml_path) {
+std::vector<fesql::sqlcase::SQLCase> SQLCaseTest::InitCases(const std::string &yaml_path) {
     std::vector<fesql::sqlcase::SQLCase> cases;
     InitCases(FindRtidbDirPath("rtidb") + "/fesql/", yaml_path, cases);
     return cases;
 }
-void SQLCaseTest::InitCases(
-    const std::string &dir_path, const std::string &yaml_path,
-    std::vector<fesql::sqlcase::SQLCase> &cases) {  // NOLINT
-    if (!fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(dir_path, yaml_path,
-                                                         cases)) {
+void SQLCaseTest::InitCases(const std::string &dir_path, const std::string &yaml_path,
+                            std::vector<fesql::sqlcase::SQLCase> &cases) {  // NOLINT
+    if (!fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(dir_path, yaml_path, cases)) {
         FAIL();
     }
 }
@@ -60,8 +57,7 @@ void SQLCaseTest::PrintSchema(const fesql::vm::Schema &schema) {
     ::fesql::base::TextTable t('-', '|', '+');
     // Add ColumnName
     for (int i = 0; i < schema.size(); i++) {
-        t.add(schema.Get(i).name() + ":" +
-              fesql::type::Type_Name(schema.Get(i).type()));
+        t.add(schema.Get(i).name() + ":" + fesql::type::Type_Name(schema.Get(i).type()));
         if (t.current_columns_size() >= MAX_DEBUG_COLUMN_CNT) {
             t.add("...");
             break;
@@ -95,8 +91,7 @@ void SQLCaseTest::PrintSdkSchema(const fesql::sdk::Schema &schema) {
     t.endOfRow();
 }
 
-void SQLCaseTest::CheckSchema(const fesql::vm::Schema &schema,
-                              const fesql::vm::Schema &exp_schema) {
+void SQLCaseTest::CheckSchema(const fesql::vm::Schema &schema, const fesql::vm::Schema &exp_schema) {
     LOG(INFO) << "expect schema:\n";
     PrintSchema(exp_schema);
     LOG(INFO) << "real schema:\n";
@@ -108,8 +103,7 @@ void SQLCaseTest::CheckSchema(const fesql::vm::Schema &schema,
     }
 }
 
-void SQLCaseTest::CheckSchema(const fesql::vm::Schema &exp_schema,
-                              const fesql::sdk::Schema &schema) {
+void SQLCaseTest::CheckSchema(const fesql::vm::Schema &exp_schema, const fesql::sdk::Schema &schema) {
     LOG(INFO) << "expect schema:\n";
     PrintSchema(exp_schema);
     LOG(INFO) << "real schema:\n";
@@ -162,8 +156,7 @@ void SQLCaseTest::CheckSchema(const fesql::vm::Schema &exp_schema,
     }
 }
 
-void SQLCaseTest::PrintRows(const fesql::vm::Schema &schema,
-                            const std::vector<fesql::codec::Row> &rows) {
+void SQLCaseTest::PrintRows(const fesql::vm::Schema &schema, const std::vector<fesql::codec::Row> &rows) {
     std::ostringstream oss;
     fesql::codec::RowView row_view(schema);
     ::fesql::base::TextTable t('-', '|', '+');
@@ -201,9 +194,9 @@ void SQLCaseTest::PrintRows(const fesql::vm::Schema &schema,
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
 
-const std::vector<fesql::codec::Row> SQLCaseTest::SortRows(
-    const fesql::vm::Schema &schema, const std::vector<fesql::codec::Row> &rows,
-    const std::string &order_col) {
+const std::vector<fesql::codec::Row> SQLCaseTest::SortRows(const fesql::vm::Schema &schema,
+                                                           const std::vector<fesql::codec::Row> &rows,
+                                                           const std::string &order_col) {
     DLOG(INFO) << "sort rows start";
     fesql::codec::RowView row_view(schema);
     int idx = -1;
@@ -225,8 +218,7 @@ const std::vector<fesql::codec::Row> SQLCaseTest::SortRows(
             sort_rows.push_back(std::make_pair(row_view.GetAsString(idx), row));
         }
         std::sort(sort_rows.begin(), sort_rows.end(),
-                  [](std::pair<std::string, fesql::codec::Row> &a,
-                     std::pair<std::string, fesql::codec::Row> &b) {
+                  [](std::pair<std::string, fesql::codec::Row> &a, std::pair<std::string, fesql::codec::Row> &b) {
                       return a.first < b.first;
                   });
         std::vector<fesql::codec::Row> output_rows;
@@ -240,12 +232,10 @@ const std::vector<fesql::codec::Row> SQLCaseTest::SortRows(
         for (auto row : rows) {
             row_view.Reset(row.buf());
             row_view.GetAsString(idx);
-            sort_rows.push_back(std::make_pair(
-                boost::lexical_cast<int64_t>(row_view.GetAsString(idx)), row));
+            sort_rows.push_back(std::make_pair(boost::lexical_cast<int64_t>(row_view.GetAsString(idx)), row));
         }
         std::sort(sort_rows.begin(), sort_rows.end(),
-                  [](std::pair<int64_t, fesql::codec::Row> &a,
-                     std::pair<int64_t, fesql::codec::Row> &b) {
+                  [](std::pair<int64_t, fesql::codec::Row> &a, std::pair<int64_t, fesql::codec::Row> &b) {
                       return a.first < b.first;
                   });
         std::vector<fesql::codec::Row> output_rows;
@@ -292,8 +282,7 @@ void SQLCaseTest::PrintResultSet(std::shared_ptr<fesql::sdk::ResultSet> rs) {
     oss << t << std::endl;
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
-void SQLCaseTest::PrintResultSet(
-    std::vector<std::shared_ptr<fesql::sdk::ResultSet>> results) {
+void SQLCaseTest::PrintResultSet(std::vector<std::shared_ptr<fesql::sdk::ResultSet>> results) {
     if (results.empty()) {
         LOG(WARNING) << "Fail to PrintResultSet: ResultSet List is Empty";
         return;
@@ -347,50 +336,52 @@ void SQLCaseTest::CheckRow(fesql::codec::RowView &row_view,  // NOLINT
         }
         switch (row_view.GetSchema()->Get(i).type()) {
             case fesql::type::kInt32: {
-                ASSERT_EQ(row_view.GetInt32Unsafe(i), rs->GetInt32Unsafe(i))
-                    << " At " << i;
+                ASSERT_EQ(row_view.GetInt32Unsafe(i), rs->GetInt32Unsafe(i)) << " At " << i;
                 break;
             }
             case fesql::type::kInt64: {
-                ASSERT_EQ(row_view.GetInt64Unsafe(i), rs->GetInt64Unsafe(i))
-                    << " At " << i;
+                ASSERT_EQ(row_view.GetInt64Unsafe(i), rs->GetInt64Unsafe(i)) << " At " << i;
                 break;
             }
             case fesql::type::kInt16: {
-                ASSERT_EQ(row_view.GetInt16Unsafe(i), rs->GetInt16Unsafe(i))
-                    << " At " << i;
+                ASSERT_EQ(row_view.GetInt16Unsafe(i), rs->GetInt16Unsafe(i)) << " At " << i;
                 break;
             }
             case fesql::type::kFloat: {
-                ASSERT_FLOAT_EQ(row_view.GetFloatUnsafe(i),
-                                rs->GetFloatUnsafe(i))
-                    << " At " << i;
+                float act = row_view.GetFloatUnsafe(i);
+                float exp = rs->GetFloatUnsafe(i);
+                if (IsNaN(exp)) {
+                    ASSERT_TRUE(IsNaN(act)) << " At " << i;
+                } else {
+                    ASSERT_FLOAT_EQ(act, exp) << " At " << i;
+                }
                 break;
             }
             case fesql::type::kDouble: {
-                ASSERT_DOUBLE_EQ(row_view.GetDoubleUnsafe(i),
-                                 rs->GetDoubleUnsafe(i))
-                    << " At " << i;
+                double act = row_view.GetDoubleUnsafe(i);
+                double exp = rs->GetDoubleUnsafe(i);
+                if (IsNaN(exp)) {
+                    ASSERT_TRUE(IsNaN(act)) << " At " << i;
+                } else {
+                    ASSERT_DOUBLE_EQ(act, exp) << " At " << i;
+                }
+
                 break;
             }
             case fesql::type::kVarchar: {
-                ASSERT_EQ(row_view.GetStringUnsafe(i), rs->GetStringUnsafe(i))
-                    << " At " << i;
+                ASSERT_EQ(row_view.GetStringUnsafe(i), rs->GetStringUnsafe(i)) << " At " << i;
                 break;
             }
             case fesql::type::kTimestamp: {
-                ASSERT_EQ(row_view.GetTimestampUnsafe(i), rs->GetTimeUnsafe(i))
-                    << " At " << i;
+                ASSERT_EQ(row_view.GetTimestampUnsafe(i), rs->GetTimeUnsafe(i)) << " At " << i;
                 break;
             }
             case fesql::type::kDate: {
-                ASSERT_EQ(row_view.GetDateUnsafe(i), rs->GetDateUnsafe(i))
-                    << " At " << i;
+                ASSERT_EQ(row_view.GetDateUnsafe(i), rs->GetDateUnsafe(i)) << " At " << i;
                 break;
             }
             case fesql::type::kBool: {
-                ASSERT_EQ(row_view.GetBoolUnsafe(i), rs->GetBoolUnsafe(i))
-                    << " At " << i;
+                ASSERT_EQ(row_view.GetBoolUnsafe(i), rs->GetBoolUnsafe(i)) << " At " << i;
                 break;
             }
             default: {
@@ -400,10 +391,8 @@ void SQLCaseTest::CheckRow(fesql::codec::RowView &row_view,  // NOLINT
         }
     }
 }
-void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema,
-                            const std::string &order_col,
-                            const std::vector<fesql::codec::Row> &rows,
-                            std::shared_ptr<fesql::sdk::ResultSet> rs) {
+void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &order_col,
+                            const std::vector<fesql::codec::Row> &rows, std::shared_ptr<fesql::sdk::ResultSet> rs) {
     ASSERT_EQ(static_cast<int32_t>(rows.size()), rs->Size());
 
     LOG(INFO) << "Expected Rows: \n";
@@ -443,8 +432,7 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema,
     }
 }
 
-void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema,
-                            const std::vector<fesql::codec::Row> &rows,
+void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::vector<fesql::codec::Row> &rows,
                             const std::vector<fesql::codec::Row> &exp_rows) {
     LOG(INFO) << "expect result:\n";
     PrintRows(schema, exp_rows);
@@ -463,57 +451,51 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema,
             }
             switch (schema.Get(i).type()) {
                 case fesql::type::kInt32: {
-                    ASSERT_EQ(row_view.GetInt32Unsafe(i),
-                              row_view_exp.GetInt32Unsafe(i))
-                        << " At " << i;
+                    ASSERT_EQ(row_view.GetInt32Unsafe(i), row_view_exp.GetInt32Unsafe(i)) << " At " << i;
                     break;
                 }
                 case fesql::type::kInt64: {
-                    ASSERT_EQ(row_view.GetInt64Unsafe(i),
-                              row_view_exp.GetInt64Unsafe(i))
-                        << " At " << i;
+                    ASSERT_EQ(row_view.GetInt64Unsafe(i), row_view_exp.GetInt64Unsafe(i)) << " At " << i;
                     break;
                 }
                 case fesql::type::kInt16: {
-                    ASSERT_EQ(row_view.GetInt16Unsafe(i),
-                              row_view_exp.GetInt16Unsafe(i))
-                        << " At " << i;
+                    ASSERT_EQ(row_view.GetInt16Unsafe(i), row_view_exp.GetInt16Unsafe(i)) << " At " << i;
                     break;
                 }
                 case fesql::type::kFloat: {
-                    ASSERT_FLOAT_EQ(row_view.GetFloatUnsafe(i),
-                                    row_view_exp.GetFloatUnsafe(i))
-                        << " At " << i;
+                    float act = row_view.GetFloatUnsafe(i);
+                    float exp = row_view_exp.GetFloatUnsafe(i);
+                    if (IsNaN(exp)) {
+                        ASSERT_TRUE(IsNaN(act)) << " At " << i;
+                    } else {
+                        ASSERT_FLOAT_EQ(act, exp) << " At " << i;
+                    }
                     break;
                 }
                 case fesql::type::kDouble: {
-                    ASSERT_DOUBLE_EQ(row_view.GetDoubleUnsafe(i),
-                                     row_view_exp.GetDoubleUnsafe(i))
-                        << " At " << i;
+                    double act = row_view.GetDoubleUnsafe(i);
+                    double exp = row_view_exp.GetDoubleUnsafe(i);
+                    if (IsNaN(exp)) {
+                        ASSERT_TRUE(IsNaN(act)) << " At " << i;
+                    } else {
+                        ASSERT_DOUBLE_EQ(act, exp) << " At " << i;
+                    }
                     break;
                 }
                 case fesql::type::kVarchar: {
-                    ASSERT_EQ(row_view.GetStringUnsafe(i),
-                              row_view_exp.GetStringUnsafe(i))
-                        << " At " << i;
+                    ASSERT_EQ(row_view.GetStringUnsafe(i), row_view_exp.GetStringUnsafe(i)) << " At " << i;
                     break;
                 }
                 case fesql::type::kDate: {
-                    ASSERT_EQ(row_view.GetDateUnsafe(i),
-                              row_view_exp.GetDateUnsafe(i))
-                        << " At " << i;
+                    ASSERT_EQ(row_view.GetDateUnsafe(i), row_view_exp.GetDateUnsafe(i)) << " At " << i;
                     break;
                 }
                 case fesql::type::kTimestamp: {
-                    ASSERT_EQ(row_view.GetTimestampUnsafe(i),
-                              row_view_exp.GetTimestampUnsafe(i))
-                        << " At " << i;
+                    ASSERT_EQ(row_view.GetTimestampUnsafe(i), row_view_exp.GetTimestampUnsafe(i)) << " At " << i;
                     break;
                 }
                 case fesql::type::kBool: {
-                    ASSERT_EQ(row_view.GetBoolUnsafe(i),
-                              row_view_exp.GetBoolUnsafe(i))
-                        << " At " << i;
+                    ASSERT_EQ(row_view.GetBoolUnsafe(i), row_view_exp.GetBoolUnsafe(i)) << " At " << i;
                     break;
                 }
                 default: {
@@ -525,10 +507,9 @@ void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema,
     }
 }
 
-void SQLCaseTest::CheckRows(
-    const fesql::vm::Schema &schema, const std::string &order_col,
-    const std::vector<fesql::codec::Row> &rows,
-    std::vector<std::shared_ptr<fesql::sdk::ResultSet>> results) {
+void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &order_col,
+                            const std::vector<fesql::codec::Row> &rows,
+                            std::vector<std::shared_ptr<fesql::sdk::ResultSet>> results) {
     ASSERT_EQ(rows.size(), results.size());
     LOG(INFO) << "Expected Rows: \n";
     PrintRows(schema, rows);

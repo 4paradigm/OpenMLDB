@@ -78,7 +78,7 @@ TEST_F(FlatArrayTest, Encode) {
     codec.Build();
     std::cout << buffer.size() << std::endl;
     std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
-    ASSERT_EQ(buffer.size(), 13);
+    ASSERT_EQ((int32_t)buffer.size(), 13);
     FlatArrayIterator it(buffer.c_str(), buffer.size(), 2);
     ASSERT_EQ(kFloat, it.GetType());
     ASSERT_TRUE(it.Valid());
@@ -163,7 +163,7 @@ TEST_F(FlatArrayTest, EncodeNullEmpty) {
     ASSERT_TRUE(ok);
     codec.Build();
     std::cout << ::rtidb::base::DebugString(buffer) << std::endl;
-    ASSERT_EQ(buffer.size(), 11);
+    ASSERT_EQ((int64_t)(buffer.size()), 11);
     FlatArrayIterator it(buffer.c_str(), buffer.size(), 3);
     ASSERT_EQ(kFloat, it.GetType());
     ASSERT_TRUE(it.Valid());

@@ -47,7 +47,12 @@ public class ResultChecker extends BaseChecker {
         String orderName = fesqlCase.getExpect().getOrder();
         if (orderName != null && orderName.length() > 0) {
             Schema schema = fesqlResult.getResultSchema();
-            int index = FesqlUtil.getIndexByColumnName(schema, orderName);
+            int index = 0;
+            if (schema != null) {
+                index = FesqlUtil.getIndexByColumnName(schema, orderName);
+            } else {
+                index = FesqlUtil.getIndexByColumnName(fesqlResult.getMetaData(), orderName);
+            }
             Collections.sort(expect, new RowsSort(index));
             Collections.sort(actual, new RowsSort(index));
         }

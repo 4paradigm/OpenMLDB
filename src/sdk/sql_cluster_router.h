@@ -135,6 +135,7 @@ class SQLClusterRouter : public SQLRouter {
     void GetTables(::fesql::vm::PhysicalOpNode* node,
                    std::set<std::string>* tables);
 
+    bool IsConstQuery(::fesql::vm::PhysicalOpNode* node);
     std::shared_ptr<RouterCache> GetCache(const std::string& db,
                                           const std::string& sql);
 

@@ -6,6 +6,8 @@ import com._4paradigm.sql.Schema;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
 
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.util.List;
 
 /**
@@ -18,19 +20,33 @@ public class FesqlResult {
     private int count;
     private List<List<Object>> result;
     private Schema resultSchema;
+    private ResultSetMetaData metaData;
 
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder("FesqlResult{ok=" + ok + ", count=" + count + "}");
         if (result != null) {
             builder.append("result=" + result.size() + ":\n");
-            int columnCount = resultSchema.GetColumnCnt();
-            for (int i = 0; i < columnCount; i++) {
-                builder.append(resultSchema.GetColumnName(i))
-                        .append(" ")
-                        .append(FesqlUtil.getColumnType(resultSchema.GetColumnType(i)));
-                if (i < columnCount - 1) {
-                    builder.append(",");
+            if (resultSchema != null) {
+                int columnCount = resultSchema.GetColumnCnt();
+                for (int i = 0; i < columnCount; i++) {
+                    builder.append(resultSchema.GetColumnName(i))
+                            .append(" ")
+                            .append(FesqlUtil.getColumnTypeString(resultSchema.GetColumnType(i)));
+                    if (i < columnCount - 1) {
+                        builder.append(",");
+                    }
+                }
+            } else {
+                try {
+                    int columnCount = metaData.getColumnCount();
+                    for (int i = 0; i < metaData.getColumnCount(); i++) {
+                        builder.append(metaData.getColumnName(i + 1))
+                                .append(" ")
+                                .append(FesqlUtil.getSQLTypeString(metaData.getColumnType(i + 1)));
+                    }
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
                 }
             }
             builder.append("\n");

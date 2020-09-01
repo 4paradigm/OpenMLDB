@@ -747,7 +747,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
         ASSERT_EQ(3, response.table_info().table_partition_size());
-        ASSERT_EQ(2, response.table_info().replica_num());
+        ASSERT_EQ(2, (int32_t)(response.table_info().replica_num()));
     }
     {
         ::rtidb::nameserver::ShowTableRequest request;
@@ -804,7 +804,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
         ASSERT_EQ(3, response.table_info().table_partition_size());
-        ASSERT_EQ(1, response.table_info().replica_num());
+        ASSERT_EQ(1, (int64_t)(response.table_info().replica_num()));
     }
     {
         ::rtidb::nameserver::ShowTableRequest request;
@@ -867,7 +867,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
         ASSERT_EQ(3, response.table_info().table_partition_size());
-        ASSERT_EQ(2, response.table_info().replica_num());
+        ASSERT_EQ(2, (signed)response.table_info().replica_num());
     }
     {
         ::rtidb::nameserver::ShowTableRequest request;
@@ -947,7 +947,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
         ASSERT_EQ(3, response.table_info().table_partition_size());
-        ASSERT_EQ(3, response.table_info().replica_num());
+        ASSERT_EQ(3, (signed)response.table_info().replica_num());
     }
     {
         ::rtidb::nameserver::ShowTableRequest request;
@@ -1013,7 +1013,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
         ASSERT_EQ(3, response.table_info().table_partition_size());
-        ASSERT_EQ(2, response.table_info().replica_num());
+        ASSERT_EQ(2, (signed)response.table_info().replica_num());
     }
     {
         ::rtidb::nameserver::ShowTableRequest request;
@@ -1064,7 +1064,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
         ASSERT_EQ(1, response.table_info().table_partition_size());
-        ASSERT_EQ(3, response.table_info().replica_num());
+        ASSERT_EQ(3, (signed)response.table_info().replica_num());
     }
     {
         ::rtidb::nameserver::ShowTableRequest request;
@@ -1215,7 +1215,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
         ASSERT_EQ(3, response.table_info().table_partition_size());
-        ASSERT_EQ(2, response.table_info().replica_num());
+        ASSERT_EQ(2, (signed)response.table_info().replica_num());
     }
 
     name = "test" + GenRand();
@@ -1253,7 +1253,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
         ASSERT_EQ(3, response.table_info().table_partition_size());
-        ASSERT_EQ(1, response.table_info().replica_num());
+        ASSERT_EQ(1, (signed)response.table_info().replica_num());
     }
 
     name = "test" + GenRand();
@@ -1297,7 +1297,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
         ASSERT_EQ(3, response.table_info().table_partition_size());
-        ASSERT_EQ(2, response.table_info().replica_num());
+        ASSERT_EQ(2, (signed)response.table_info().replica_num());
     }
 
     FLAGS_endpoint = "127.0.0.1:9952";
@@ -1358,7 +1358,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
         ASSERT_EQ(3, response.table_info().table_partition_size());
-        ASSERT_EQ(3, response.table_info().replica_num());
+        ASSERT_EQ(3, (signed)response.table_info().replica_num());
     }
 
     name = "test" + GenRand();
@@ -1405,7 +1405,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
         ASSERT_EQ(3, response.table_info().table_partition_size());
-        ASSERT_EQ(2, response.table_info().replica_num());
+        ASSERT_EQ(2, (signed)response.table_info().replica_num());
     }
 
     name = "test" + GenRand();
@@ -1437,7 +1437,6 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(name, response.table_info().name());
         ASSERT_EQ(1, response.table_info().table_partition_size());
-        ASSERT_EQ(3, response.table_info().replica_num());
     }
 }
 

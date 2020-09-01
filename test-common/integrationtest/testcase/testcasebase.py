@@ -712,7 +712,7 @@ class TestCaseBase(unittest.TestCase):
 
     def showtablet(self, endpoint):
         rs = self.run_client(endpoint, 'showtablet', 'ns_client')
-        return self.parse_tb(rs, ' ', [0], [1, 2])
+        return self.parse_tb(rs, ' ', [0], [2, 3])
 
     def showopstatus(self, endpoint, name='', pid=''):
         rs = self.run_client(endpoint, 'showopstatus {} {}'.format(name, pid), 'ns_client')

@@ -2,11 +2,12 @@ package com._4paradigm.sql.sdk.impl;
 
 import com._4paradigm.sql.*;
 import com._4paradigm.sql.common.LibraryLoader;
-import com._4paradigm.sql.sdk.SdkOption;
-import com._4paradigm.sql.sdk.SqlException;
-import com._4paradigm.sql.sdk.SqlExecutor;
+import com._4paradigm.sql.sdk.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 public class SqlClusterExecutor implements SqlExecutor {
     static {
@@ -29,7 +30,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         sqlOpt.setSession_timeout(option.getSessionTimeout());
         sqlOpt.setZk_cluster(option.getZkCluster());
         sqlOpt.setZk_path(option.getZkPath());
-        sqlOpt.setEnbale_debug(option.getEnableDebug());
+        sqlOpt.setEnable_debug(option.getEnableDebug());
         this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
         if (sqlRouter == null) {
             SqlException e = new SqlException("fail to create sql executer");
@@ -89,15 +90,15 @@ public class SqlClusterExecutor implements SqlExecutor {
         return rs;
     }
 
-    @Override
-    public SQLRequestRow getRequestRow(String db, String sql) {
-        Status status = new Status();
-        SQLRequestRow row = sqlRouter.GetRequestRow(db, sql, status);
-        if (status.getCode() != 0) {
-            logger.error("getRequestRow fail: {}", status.getMsg());
-        }
-        return row;
-    }
+//    @Override
+//    private SQLRequestRow getRequestRow(String db, String sql) {
+//        Status status = new Status();
+//        SQLRequestRow row = sqlRouter.GetRequestRow(db, sql, status);
+//        if (status.getCode() != 0) {
+//            logger.error("getRequestRow fail: {}", status.getMsg());
+//        }
+//        return row;
+//    }
 
     @Override
     public SQLInsertRow getInsertRow(String db, String sql) {
@@ -107,6 +108,20 @@ public class SqlClusterExecutor implements SqlExecutor {
             logger.error("getInsertRow fail: {}", status.getMsg());
         }
         return row;
+    }
+
+    public PreparedStatement getInsertPreparedStmt(String db, String sql) {
+        try {
+            InsertPreparedStatementImpl impl = new InsertPreparedStatementImpl(db, sql, this.sqlRouter);
+            return impl;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public PreparedStatement getRequestPreparedStmt (String db, String sql) throws SQLException {
+        RequestPreparedStatementImpl impl = new RequestPreparedStatementImpl(db, sql, this.sqlRouter);
+        return impl;
     }
 
     @Override

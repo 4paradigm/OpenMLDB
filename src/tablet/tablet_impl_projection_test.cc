@@ -617,7 +617,7 @@ TEST_P(TabletProjectTest, sql_case) {
         ::rtidb::api::QueryResponse response;
         tablet_.Query(&cntl, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        ASSERT_EQ(1, response.count());
+        ASSERT_EQ(1, (int32_t)response.count());
     }
 }
 
@@ -680,7 +680,7 @@ TEST_P(TabletProjectTest, scan_case) {
         ::rtidb::api::ScanResponse srp;
         tablet_.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(1, srp.count());
+        ASSERT_EQ(1, (int64_t)srp.count());
         ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(&srp);
         ASSERT_TRUE(kv_it->Valid());
         ASSERT_EQ(kv_it->GetValue().size(), args->out_size);

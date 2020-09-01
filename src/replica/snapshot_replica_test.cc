@@ -169,7 +169,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     sr.set_limit(10);
     ::rtidb::api::ScanResponse srp;
     tablet1->Scan(NULL, &sr, &srp, &closure);
-    ASSERT_EQ(1, srp.count());
+    ASSERT_EQ(1, (int64_t)srp.count());
     ASSERT_EQ(0, srp.code());
 
     ret = client.Put(tid, pid, "newkey", cur_time, "value2");
@@ -177,7 +177,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
     sleep(2);
     sr.set_pk("newkey");
     tablet1->Scan(NULL, &sr, &srp, &closure);
-    ASSERT_EQ(1, srp.count());
+    ASSERT_EQ(1, (int64_t)srp.count());
     ASSERT_EQ(0, srp.code());
     {
         ::rtidb::api::GetTableFollowerRequest gr;
@@ -186,11 +186,11 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollower) {
         gr.set_pid(pid);
         tablet->GetTableFollower(NULL, &gr, &grs, &closure);
         ASSERT_EQ(0, grs.code());
-        ASSERT_EQ(12, grs.offset());
+        ASSERT_EQ(12, (int64_t)grs.offset());
         ASSERT_EQ(1, grs.follower_info_size());
         ASSERT_STREQ(follower_point.c_str(),
                      grs.follower_info(0).endpoint().c_str());
-        ASSERT_EQ(12, grs.follower_info(0).offset());
+        ASSERT_EQ(12, (int64_t)grs.follower_info(0).offset());
     }
     ::rtidb::api::DropTableRequest dr;
     dr.set_tid(tid);
@@ -292,7 +292,7 @@ TEST_F(SnapshotReplicaTest, LeaderAndFollowerTS) {
     sr.set_et(0);
     ::rtidb::api::ScanResponse srp;
     tablet1->Scan(NULL, &sr, &srp, &closure);
-    ASSERT_EQ(1, srp.count());
+    ASSERT_EQ(1, (int64_t)srp.count());
     ASSERT_EQ(0, srp.code());
 
     ::rtidb::api::DropTableRequest dr;
