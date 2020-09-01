@@ -82,7 +82,6 @@ SDKCodec::SDKCodec(const ::rtidb::api::TableMeta& table_info)
                 ts_idx_.push_back(idx);
             }
         }
-        //base_schema_size_ = old_schema_.size();
         base_schema_size_ = table_info.column_desc_size();
     }
     if (table_info.column_key_size() > 0) {
@@ -124,9 +123,12 @@ void SDKCodec::ParseColumnDesc(const Schema& column_desc) {
 
 void SDKCodec::ParseAddedColumnDesc(const Schema& column_desc) {
     if (format_version_ == 1) {
+        uint32_t idx = schema_.size();
         for (const auto& col : column_desc) {
             rtidb::common::ColumnDesc* new_col = schema_.Add();
             new_col->CopyFrom(col);
+            schema_idx_map_.emplace(col.name(), idx);
+            idx++;
         }
         return;
     }
@@ -267,11 +269,10 @@ int SDKCodec::EncodeTsDimension(const std::vector<std::string>& raw_data,
 int SDKCodec::EncodeRow(const std::vector<std::string>& raw_data,
                         std::string* row) {
     if (format_version_ == 1) {
-        auto ret = RowCodec::EncodeRow(raw_data, schema_, *row);
+        auto ret = RowCodec::EncodeRow(raw_data, schema_, last_ver_, *row);
         return ret.code;
     } else {
-        auto ret =
-            RowCodec::EncodeRow(raw_data, old_schema_, modify_times_, row);
+        auto ret = RowCodec::EncodeRow(raw_data, old_schema_, modify_times_, row);
         return ret.code;
     }
 }
