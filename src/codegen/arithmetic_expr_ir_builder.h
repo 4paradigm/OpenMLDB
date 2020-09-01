@@ -71,12 +71,6 @@ class ArithmeticIRBuilder {
                              base::Status status);
 
  private:
-    static Status SafeBuildBinaryExpr(
-        ::llvm::BasicBlock* block, const NativeValue& left,
-        const NativeValue& right,
-        const std::function<bool(::llvm::BasicBlock*, ::llvm::Value*,
-                                 ::llvm::Value*, ::llvm::Value**, Status&)>,
-        NativeValue* output);
     static bool IsAcceptType(::llvm::Type* type);
     static bool InferBaseTypes(::llvm::BasicBlock* block, ::llvm::Value* left,
                                ::llvm::Value* right,

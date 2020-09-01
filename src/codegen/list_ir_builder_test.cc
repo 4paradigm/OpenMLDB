@@ -412,8 +412,6 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 CHECK_STATUS(list_builder.BuildIteratorNext(
                     iter, elem_type, false, &next2_wrapper));
 
-                auto next1 = next1_wrapper.GetValue(&builder);
-                auto next2 = next2_wrapper.GetValue(&builder);
 
                 ArithmeticIRBuilder arithmetic_ir_builder(
                     builder.GetInsertBlock());
@@ -425,7 +423,6 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 NativeValue next3_wrapper;
                 CHECK_STATUS(list_builder.BuildIteratorNext(
                     iter, elem_type, false, &next3_wrapper));
-                auto next3 = next3_wrapper.GetValue(&builder);
                 CHECK_STATUS(arithmetic_ir_builder.BuildAddExpr(
                     res, next3_wrapper, &res));
 
@@ -439,7 +436,6 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 NativeValue next5_wrapper;
                 CHECK_STATUS(list_builder.BuildIteratorNext(
                     iter, elem_type, false, &next5_wrapper));
-                auto next5 = next5_wrapper.GetValue(&builder);
                 CHECK_STATUS(arithmetic_ir_builder.BuildAddExpr(
                     res, next5_wrapper, &res));
 
@@ -447,8 +443,7 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 list_builder.BuildIteratorDelete(iter, elem_type, &ret_delete);
                 ::llvm::Value* raw_res = res.GetRaw();
                 if (codegen::TypeIRBuilder::IsStructPtr(res.GetType())) {
-                    //                    res = builder.CreateLoad(res->);
-                    raw_res = res.GetValue(&builder);
+                    raw_res = builder.CreateLoad(res.GetRaw());
                 }
                 builder.CreateStore(raw_res,
                                     fn->arg_begin() + fn->arg_size() - 1);

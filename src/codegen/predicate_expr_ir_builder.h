@@ -34,29 +34,52 @@ class PredicateIRBuilder {
                         NativeValue* output);
     Status BuildNotExpr(NativeValue left, NativeValue* output);
 
-    bool BuildEqExpr(::llvm::Value* left, ::llvm::Value* right,
-                     ::llvm::Value** output, base::Status& status);  // NOLINT
-    bool BuildNeqExpr(::llvm::Value* left, ::llvm::Value* right,
-                      ::llvm::Value** output, base::Status& status);  // NOLINT
-    bool BuildGtExpr(::llvm::Value* left, ::llvm::Value* right,
-                     ::llvm::Value** output, base::Status& status);  // NOLINT
-    bool BuildGeExpr(::llvm::Value* left, ::llvm::Value* right,
-                     ::llvm::Value** output, base::Status& status);  // NOLINT
-    bool BuildLtExpr(::llvm::Value* left, ::llvm::Value* right,
-                     ::llvm::Value** output, base::Status& status);  // NOLINT
-    bool BuildLeExpr(::llvm::Value* left, ::llvm::Value* right,
-                     ::llvm::Value** output, base::Status& status);  // NOLINT
+    Status BuildEqExpr(NativeValue left, NativeValue right,
+                       NativeValue* output);
+    Status BuildNeqExpr(NativeValue left, NativeValue right,
+                        NativeValue* output);
+    Status BuildGtExpr(NativeValue left, NativeValue right,
+                       NativeValue* output);
+    Status BuildGeExpr(NativeValue left, NativeValue right,
+                       NativeValue* output);
+    Status BuildLtExpr(NativeValue left, NativeValue right,
+                       NativeValue* output);
+    Status BuildLeExpr(NativeValue left, NativeValue right,
+                       NativeValue* output);
+    Status BuildIsNullExpr(NativeValue left, NativeValue* output);
 
-    Status BuildIsNullExpr(NativeValue input, NativeValue* output);
+    static bool BuildEqExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
+                            ::llvm::Value* right, ::llvm::Value** output,
+                            base::Status& status);  // NOLINT
+    static bool BuildNeqExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
+                             ::llvm::Value* right, ::llvm::Value** output,
+                             base::Status& status);  // NOLINT
+    static bool BuildGtExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
+                            ::llvm::Value* right, ::llvm::Value** output,
+                            base::Status& status);  // NOLINT
+    static bool BuildGeExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
+                            ::llvm::Value* right, ::llvm::Value** output,
+                            base::Status& status);  // NOLINT
+    static bool BuildLtExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
+                            ::llvm::Value* right, ::llvm::Value** output,
+                            base::Status& status);  // NOLINT
+    static bool BuildLeExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
+                            ::llvm::Value* right, ::llvm::Value** output,
+                            base::Status& status);  // NOLINT
+
+    Status BuildIsNullExpr(::llvm::BasicBlock*, NativeValue input,
+                           NativeValue* output);
 
  private:
-    bool IsAcceptType(::llvm::Type* type);
-    bool InferBoolTypes(::llvm::Value* value, ::llvm::Value** casted_value,
-                        ::fesql::base::Status& status);  // NOLINT
-    bool InferBaseTypes(::llvm::Value* left, ::llvm::Value* right,
-                        ::llvm::Value** casted_left,
-                        ::llvm::Value** casted_right,
-                        ::fesql::base::Status& status);  // NOLINT
+    static bool IsAcceptType(::llvm::Type* type);
+    static bool InferBoolTypes(::llvm::BasicBlock* block, ::llvm::Value* value,
+                               ::llvm::Value** casted_value,
+                               ::fesql::base::Status& status);  // NOLINT
+    static bool InferBaseTypes(::llvm::BasicBlock* block, ::llvm::Value* left,
+                               ::llvm::Value* right,
+                               ::llvm::Value** casted_left,
+                               ::llvm::Value** casted_right,
+                               ::fesql::base::Status& status);  // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;

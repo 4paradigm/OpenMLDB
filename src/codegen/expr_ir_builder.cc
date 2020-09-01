@@ -935,28 +935,34 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
             return status.isOK();
         }
         case ::fesql::node::kFnOpEq: {
-            ok = predicate_ir_builder_.BuildEqExpr(left, right, &raw, status);
-            break;
+            status = predicate_ir_builder_.BuildEqExpr(left_wrapper,
+                                                       right_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpNeq: {
-            ok = predicate_ir_builder_.BuildNeqExpr(left, right, &raw, status);
-            break;
+            status = predicate_ir_builder_.BuildNeqExpr(left_wrapper,
+                                                        right_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpGt: {
-            ok = predicate_ir_builder_.BuildGtExpr(left, right, &raw, status);
-            break;
+            status = predicate_ir_builder_.BuildGtExpr(left_wrapper,
+                                                        right_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpGe: {
-            ok = predicate_ir_builder_.BuildGeExpr(left, right, &raw, status);
-            break;
+            status = predicate_ir_builder_.BuildGeExpr(left_wrapper,
+                                                       right_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpLt: {
-            ok = predicate_ir_builder_.BuildLtExpr(left, right, &raw, status);
-            break;
+            status = predicate_ir_builder_.BuildLtExpr(left_wrapper,
+                                                       right_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpLe: {
-            ok = predicate_ir_builder_.BuildLeExpr(left, right, &raw, status);
-            break;
+            status = predicate_ir_builder_.BuildLeExpr(left_wrapper,
+                                                   right_wrapper, output);
+            return status.isOK();
         }
         case ::fesql::node::kFnOpAt: {
             fesql::node::DataType left_type;

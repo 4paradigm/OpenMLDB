@@ -11,10 +11,71 @@ namespace fesql {
 namespace codegen {
 NullIRBuilder::NullIRBuilder() {}
 NullIRBuilder::~NullIRBuilder() {}
+base::Status NullIRBuilder::SafeNullBinaryExpr(
+    ::llvm::BasicBlock* block, const NativeValue& value_left,
+    const NativeValue& value_right,
+    const std::function<bool(::llvm::BasicBlock* block, ::llvm::Value*,
+                             ::llvm::Value*, ::llvm::Value**, base::Status&)>
+        expr_func,
+    NativeValue* value_output) {
+    base::Status status;
+    ::llvm::IRBuilder<> builder(block);
 
-base::Status NullIRBuilder::CheckAnyNull(::llvm::BasicBlock *block,
-                                         const NativeValue &value,
-                                         ::llvm::Value **should_ret_null) {
+    NativeValue left = value_left;
+    NativeValue right = value_right;
+    if (value_left.IsConstNull()) {
+        *value_output = NativeValue::CreateNull(left.GetType());
+    }
+    if (value_right.IsConstNull()) {
+        *value_output = NativeValue::CreateNull(right.GetType());
+    }
+    ::llvm::Value* raw_left = left.GetValue(&builder);
+    ::llvm::Value* raw_right = right.GetValue(&builder);
+    ::llvm::Value* output = nullptr;
+
+    NullIRBuilder null_ir_builder;
+    ::llvm::Value* should_ret_null = nullptr;
+    CHECK_STATUS(null_ir_builder.CheckAnyNull(block, left, &should_ret_null));
+    CHECK_STATUS(null_ir_builder.CheckAnyNull(block, right, &should_ret_null));
+    CHECK_TRUE(expr_func(block, raw_left, raw_right, &output, status),
+               status.msg);
+    if (nullptr != should_ret_null) {
+        *value_output = NativeValue::CreateWithFlag(output, should_ret_null);
+    } else {
+        *value_output = NativeValue::Create(output);
+    }
+    return status;
+}
+base::Status NullIRBuilder::SafeNullUnaryExpr(
+    ::llvm::BasicBlock* block, const NativeValue& value_left,
+    const std::function<bool(::llvm::BasicBlock* block, ::llvm::Value*,
+                             ::llvm::Value**, base::Status&)>
+        expr_func,
+    NativeValue* value_output) {
+    base::Status status;
+    ::llvm::IRBuilder<> builder(block);
+
+    NativeValue left = value_left;
+    if (value_left.IsConstNull()) {
+        *value_output = NativeValue::CreateNull(left.GetType());
+    }
+    ::llvm::Value* raw_left = left.GetValue(&builder);
+    ::llvm::Value* output = nullptr;
+
+    NullIRBuilder null_ir_builder;
+    ::llvm::Value* should_ret_null = nullptr;
+    CHECK_STATUS(null_ir_builder.CheckAnyNull(block, left, &should_ret_null));
+    CHECK_TRUE(expr_func(block, raw_left, &output, status), status.msg);
+    if (nullptr != should_ret_null) {
+        *value_output = NativeValue::CreateWithFlag(output, should_ret_null);
+    } else {
+        *value_output = NativeValue::Create(output);
+    }
+    return status;
+}
+base::Status NullIRBuilder::CheckAnyNull(::llvm::BasicBlock* block,
+                                         const NativeValue& value,
+                                         ::llvm::Value** should_ret_null) {
     CHECK_TRUE(nullptr != should_ret_null,
                "fail to check any null: should ret null llvm value is null");
     ::llvm::IRBuilder<> builder(block);
@@ -28,9 +89,9 @@ base::Status NullIRBuilder::CheckAnyNull(::llvm::BasicBlock *block,
     }
     return base::Status::OK();
 }
-base::Status NullIRBuilder::CheckAllNull(::llvm::BasicBlock *block,
-                                         const NativeValue &value,
-                                         ::llvm::Value **should_ret_null) {
+base::Status NullIRBuilder::CheckAllNull(::llvm::BasicBlock* block,
+                                         const NativeValue& value,
+                                         ::llvm::Value** should_ret_null) {
     CHECK_TRUE(nullptr != should_ret_null,
                "fail to check all null: should ret null llvm value is null");
     ::llvm::IRBuilder<> builder(block);

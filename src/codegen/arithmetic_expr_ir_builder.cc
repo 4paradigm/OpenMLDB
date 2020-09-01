@@ -281,45 +281,11 @@ bool ArithmeticIRBuilder::BuildAddExpr(
     return true;
 }
 
-Status ArithmeticIRBuilder::SafeBuildBinaryExpr(
-    ::llvm::BasicBlock* block, const NativeValue& value_left,
-    const NativeValue& value_right,
-    const std::function<bool(::llvm::BasicBlock* block, ::llvm::Value*,
-                             ::llvm::Value*, ::llvm::Value**, Status&)>
-        expr_func,
-    NativeValue* value_output) {
-    Status status;
-    ::llvm::IRBuilder<> builder(block);
 
-    NativeValue left = value_left;
-    NativeValue right = value_right;
-    if (value_left.IsConstNull()) {
-        *value_output = NativeValue::CreateNull(left.GetType());
-    }
-    if (value_left.IsConstNull()) {
-        *value_output = NativeValue::CreateNull(right.GetType());
-    }
-    ::llvm::Value* raw_left = left.GetValue(&builder);
-    ::llvm::Value* raw_right = right.GetValue(&builder);
-    ::llvm::Value* output = nullptr;
-
-    NullIRBuilder null_ir_builder;
-    ::llvm::Value* should_ret_null = nullptr;
-    CHECK_STATUS(null_ir_builder.CheckAnyNull(block, left, &should_ret_null));
-    CHECK_STATUS(null_ir_builder.CheckAnyNull(block, right, &should_ret_null));
-    CHECK_TRUE(expr_func(block, raw_left, raw_right, &output, status),
-               status.msg);
-    if (nullptr != should_ret_null) {
-        *value_output = NativeValue::CreateWithFlag(output, should_ret_null);
-    } else {
-        *value_output = NativeValue::Create(output);
-    }
-    return status;
-}
 Status ArithmeticIRBuilder::BuildAnd(const NativeValue& left,
                                      const NativeValue& right,
                                      NativeValue* value_output) {  // NOLINT
-    CHECK_STATUS(SafeBuildBinaryExpr(
+    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
            ::llvm::Value** output, Status& status) {
@@ -331,7 +297,7 @@ Status ArithmeticIRBuilder::BuildAnd(const NativeValue& left,
 Status ArithmeticIRBuilder::BuildLShiftLeft(
     const NativeValue& left, const NativeValue& right,
     NativeValue* value_output) {  // NOLINT
-    CHECK_STATUS(SafeBuildBinaryExpr(
+    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
            ::llvm::Value** output, Status& status) {
@@ -343,7 +309,7 @@ Status ArithmeticIRBuilder::BuildLShiftLeft(
 Status ArithmeticIRBuilder::BuildLShiftRight(
     const NativeValue& left, const NativeValue& right,
     NativeValue* value_output) {  // NOLINT
-    CHECK_STATUS(SafeBuildBinaryExpr(
+    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
            ::llvm::Value** output, Status& status) {
@@ -355,7 +321,7 @@ Status ArithmeticIRBuilder::BuildLShiftRight(
 Status ArithmeticIRBuilder::BuildAddExpr(const NativeValue& left,
                                          const NativeValue& right,
                                          NativeValue* value_output) {  // NOLINT
-    CHECK_STATUS(SafeBuildBinaryExpr(
+    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
            ::llvm::Value** output, Status& status) {
@@ -367,7 +333,7 @@ Status ArithmeticIRBuilder::BuildAddExpr(const NativeValue& left,
 Status ArithmeticIRBuilder::BuildSubExpr(const NativeValue& left,
                                          const NativeValue& right,
                                          NativeValue* value_output) {  // NOLINT
-    CHECK_STATUS(SafeBuildBinaryExpr(
+    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
            ::llvm::Value** output, Status& status) {
@@ -379,7 +345,7 @@ Status ArithmeticIRBuilder::BuildSubExpr(const NativeValue& left,
 Status ArithmeticIRBuilder::BuildMultiExpr(
     const NativeValue& left, const NativeValue& right,
     NativeValue* value_output) {  // NOLINT
-    CHECK_STATUS(SafeBuildBinaryExpr(
+    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
            ::llvm::Value** output, Status& status) {
@@ -391,7 +357,7 @@ Status ArithmeticIRBuilder::BuildMultiExpr(
 Status ArithmeticIRBuilder::BuildFDivExpr(
     const NativeValue& left, const NativeValue& right,
     NativeValue* value_output) {  // NOLINT
-    CHECK_STATUS(SafeBuildBinaryExpr(
+    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
            ::llvm::Value** output, Status& status) {
@@ -406,7 +372,7 @@ Status ArithmeticIRBuilder::BuildFDivExpr(
 Status ArithmeticIRBuilder::BuildSDivExpr(
     const NativeValue& left, const NativeValue& right,
     NativeValue* value_output) {  // NOLINT
-    CHECK_STATUS(SafeBuildBinaryExpr(
+    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
            ::llvm::Value** output, Status& status) {
@@ -418,7 +384,7 @@ Status ArithmeticIRBuilder::BuildSDivExpr(
 Status ArithmeticIRBuilder::BuildModExpr(const NativeValue& left,
                                          const NativeValue& right,
                                          NativeValue* value_output) {  // NOLINT
-    CHECK_STATUS(SafeBuildBinaryExpr(
+    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
            ::llvm::Value** output, Status& status) {
