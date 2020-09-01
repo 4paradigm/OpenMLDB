@@ -290,7 +290,8 @@ int SDKCodec::DecodeRow(const std::string& row, std::vector<std::string>* value)
             return -1;
         }
     } else {
-        if (!RowCodec::DecodeRow(base_schema_size_, base_schema_size_ + modify_times_, ::rtidb::base::Slice(row), value)) {
+        rtidb::base::Slice data(row);
+        if (!RowCodec::DecodeRow(base_schema_size_, base_schema_size_ + modify_times_, data, value)) {
             return -1;
         }
     }
