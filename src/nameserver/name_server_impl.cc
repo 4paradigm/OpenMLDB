@@ -10434,18 +10434,18 @@ void NameServerImpl::ShowSdkEndpoint(RpcController* controller, const ShowSdkEnd
 bool NameServerImpl::UpdateSdkEpMap() {
     sdk_endpoint_map_.clear();
     std::string path = FLAGS_zk_root_path + "/map/sdkendpoints";
-    if (zk_client_->IsExistNodeUnLocked(path) != 0) {
+    if (zk_client_->IsExistNode(path) != 0) {
         PDLOG(INFO, "/map/sdkendpoints node %s not exist", path.c_str());
         return true;
     } else {
         std::vector<std::string> children;
-        if (!zk_client_->GetChildrenUnLocked(path, children) || children.empty()) {
+        if (!zk_client_->GetChildren(path, children) || children.empty()) {
             PDLOG(WARNING, "get zk children failed");
             return false;
         }
         for (const auto& child : children) {
             std::string real_ep;
-            if (!zk_client_->GetNodeValueUnLocked(path + "/" + child, real_ep)) {
+            if (!zk_client_->GetNodeValue(path + "/" + child, real_ep)) {
                 PDLOG(WARNING, "get zk value failed");
                 return false;
             }
