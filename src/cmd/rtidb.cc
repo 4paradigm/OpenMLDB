@@ -444,6 +444,7 @@ int PutData(
     std::string value;
     ::rtidb::codec::SDKCodec codec(table_info);
     std::map<uint32_t, ::rtidb::codec::Dimension> dimensions;
+    const int part_size = table_info.table_partition_size();
     if (table_info.partition_key_size() > 0) {
         if (codec.EncodeDimension(input_value, 0, &dimensions) < 0) {
             return ::rtidb::base::ResultMsg(-1, "Encode dimension error");
@@ -452,17 +453,14 @@ int PutData(
         if (codec.CombinePartitionKey(input_value, &key) < 0) {
             return ::rtidb::base::ResultMsg(-1, "combine partition key error");
         }
-        uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) %
-                                  table_info.table_partition_size());
+        uint32_t pid = (uint32_t)(::rtidb::base::hash64(key) % part_size);
         if (pid != 0) {
             auto pair = dimensions.emplace(pid, ::rtidb::codec::Dimension());
             dimensions[0].swap(pair.first->second);
             dimensions.erase(0);
         }
     } else {
-        if (codec.EncodeDimension(input_value,
-                                  table_info.table_partition_size(),
-                                  &dimensions) < 0) {
+        if (codec.EncodeDimension(input_value, part_size, &dimensions) < 0) {
             return ::rtidb::base::ResultMsg(-1, "Encode dimension error");
         }
     }
@@ -478,8 +476,10 @@ int PutData(
         ::snappy::Compress(value.c_str(), value.length(), &compressed);
         value = compressed;
     }
-    PutData(table_info.tid(), dimensions, ts_dimensions, ts, value,
-            table_info.table_partition(), table_info.format_version());
+    const int tid = table_info.tid();
+    const uint32_t fmt_ver = table_info.format_version();
+    PutData(tid, dimensions, ts_dimensions, ts, value, table_info.table_partition(), fmt_ver);
+
     return ::rtidb::base::ResultMsg(0, "ok");
 }
 
@@ -2886,19 +2886,14 @@ bool HasIsTsCol(
     return false;
 }
 
-void HandleNSPut(const std::vector<std::string>& parts,
-                 ::rtidb::client::NsClient* client) {
+void HandleNSPut(const std::vector<std::string>& parts, ::rtidb::client::NsClient* client) {
     if (parts.size() < 3) {
-        std::cout << "put format error. eg: put table_name pk ts value | put "
-                     "table_name [ts] field1 field2 ..."
-                  << std::endl;
+        std::cout << "put format error. eg: put table_name pk ts value | put table_name [ts] field1 field2 ...\n";
         return;
     }
     std::map<std::string, std::string> parameter_map;
     if (!GetParameterMap("table_name", parts, "=", parameter_map)) {
-        std::cout << "put format error. eg: put table_name=xxx col1=xxx "
-                     "col2=xxx col3=xxx ... "
-                  << std::endl;
+        std::cout << "put format error. eg: put table_name=xxx col1=xxx col2=xxx col3=xxx ...\n";
         return;
     }
     bool is_pair_format = parameter_map.empty() ? false : true;
@@ -2908,8 +2903,7 @@ void HandleNSPut(const std::vector<std::string>& parts,
         if (iter != parameter_map.end()) {
             table_name = iter->second;
         } else {
-            std::cout << "get format error: table_name does not exist!"
-                      << std::endl;
+            std::cout << "get format error: table_name does not exist!\n";
             return;
         }
     } else {
@@ -2919,22 +2913,20 @@ void HandleNSPut(const std::vector<std::string>& parts,
     std::string msg;
     bool ret = client->ShowTable(table_name, tables, msg);
     if (!ret) {
-        std::cout << "failed to get table info. error msg: " << msg
-                  << std::endl;
+        std::cout << "failed to get table info. error msg: " << msg << std::endl;
         return;
     }
     if (tables.empty()) {
-        printf("put failed! table %s is not exist\n", parts[1].c_str());
+        std::cout << "put failed! table " << parts[1] << " is not exist\n";
         return;
     }
-    if (tables[0].has_table_type() &&
-        tables[0].table_type() == ::rtidb::type::TableType::kRelational) {
+    bool is_relation = tables[0].has_table_type() && tables[0].table_type() == ::rtidb::type::TableType::kRelational;
+    if (is_relation) {
         auto iter = parameter_map.find("table_name");
         if (iter != parameter_map.end()) {
             table_name = iter->second;
         } else {
-            std::cout << "get format error: table_name does not exist!"
-                      << std::endl;
+            std::cout << "get format error: table_name does not exist!\n";
             return;
         }
     }
@@ -2942,16 +2934,14 @@ void HandleNSPut(const std::vector<std::string>& parts,
     if (tables[0].column_desc_v1_size() > 0) {
         uint64_t ts = 0;
         uint32_t start_index = 0;
-        if (tables[0].has_table_type() &&
-            tables[0].table_type() == ::rtidb::type::TableType::kRelational) {
+        if (is_relation) {
             start_index = 2;
         } else {
             if (!HasIsTsCol(tables[0].column_desc_v1())) {
                 try {
                     ts = boost::lexical_cast<uint64_t>(parts[2]);
                 } catch (std::exception const& e) {
-                    printf("Invalid args. ts %s should be unsigned int\n",
-                           parts[2].c_str());
+                    std::cout << "Invalid args. ts " << parts[2] << " should be unsigned int\n";
                     return;
                 }
                 start_index = 3;
@@ -2962,11 +2952,9 @@ void HandleNSPut(const std::vector<std::string>& parts,
         int base_size = tables[0].column_desc_v1().size();
         int add_size = tables[0].added_column_desc().size();
         int in_size = parts.size();
-        if (tables[0].has_table_type() &&
-            tables[0].table_type() == ::rtidb::type::TableType::kRelational) {
+        if (is_relation) {
             for (int i = 0; i < tables[0].column_key_size(); i++) {
-                if (tables[0].column_key(i).index_type() ==
-                    ::rtidb::type::kAutoGen) {
+                if (tables[0].column_key(i).index_type() == ::rtidb::type::kAutoGen) {
                     in_size = parts.size() + 1;
                 }
             }
@@ -2976,29 +2964,25 @@ void HandleNSPut(const std::vector<std::string>& parts,
             printf("put format error! input value does not match the schema\n");
             return;
         }
-        if (!tables[0].has_table_type() ||
-            tables[0].table_type() != ::rtidb::type::kRelational) {
-            std::vector<std::string> input_value(parts.begin() + start_index,
-                                                 parts.end());
+        if (is_relation) {
+            PutRelational(tid, parameter_map, tables[0].column_desc_v1(), tables[0]);
+        } else {
+            std::vector<std::string> input_value(parts.begin() + start_index, parts.end());
             auto ret = PutSchemaData(tables[0], ts, input_value);
             if (ret.code < 0) {
-                printf("%s\n", ret.msg.c_str());
+                std::cout << ret.msg << "\n";
             }
-        } else {
-            PutRelational(tid, parameter_map, tables[0].column_desc_v1(),
-                          tables[0]);
         }
     } else if (tables[0].column_desc_size() > 0) {
         uint64_t ts = 0;
         try {
             ts = boost::lexical_cast<uint64_t>(parts[2]);
         } catch (std::exception const& e) {
-            printf("Invalid args. ts %s should be unsigned int\n",
-                   parts[2].c_str());
+            std::cout << "Invalid args. ts " << parts[2] << " should be unsigned int\n";
             return;
         }
-        int base_size = (int)(tables[0].column_desc_size());       // NOLINT
-        int add_size = (int)(tables[0].added_column_desc_size());  // NOLINT
+        int base_size = tables[0].column_desc_size();
+        int add_size = tables[0].added_column_desc_size();
         int modify_index = parts.size() - 3 - base_size;
         if (modify_index - add_size > 0 || modify_index < 0) {
             printf("put format error! input value does not match the schema\n");

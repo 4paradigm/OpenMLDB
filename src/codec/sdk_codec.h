@@ -21,6 +21,7 @@ namespace codec {
 using Index = google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>;
 using Dimension = std::vector<std::pair<std::string, uint32_t>>;
 using Schema = google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>;
+using VerSchema = google::protobuf::RepeatedPtrField<rtidb::common::VersionPair>;
 
 class SDKCodec {
  public:
@@ -53,6 +54,7 @@ class SDKCodec {
  private:
     void ParseColumnDesc(const Schema& column_desc);
     void ParseAddedColumnDesc(const Schema& column_desc);
+    void ParseSchemaVer(const VerSchema& ver_schema, const Schema& add_schema);
 
  private:
     Schema schema_;
