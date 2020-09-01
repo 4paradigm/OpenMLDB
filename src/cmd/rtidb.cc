@@ -2639,8 +2639,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
             }
             if (tables[0].compress_type() == ::rtidb::nameserver::kSnappy) {
                 std::string uncompressed;
-                ::snappy::Uncompress(data.c_str(), data.length(),
-                                     &uncompressed);
+                ::snappy::Uncompress(data.c_str(), data.length(), &uncompressed);
                 data = uncompressed;
             }
             limit -= count;
@@ -2736,6 +2735,7 @@ void HandleNSPreview(const std::vector<std::string>& parts,
                 }
                 codec.DecodeRow(value, &row);
                 ::rtidb::cmd::TransferString(&row);
+                std::cout << "preview decode done\n";
                 uint64_t row_size = row.size();
                 for (uint64_t i = 0; i < max_size - row_size; i++) {
                     row.push_back("");

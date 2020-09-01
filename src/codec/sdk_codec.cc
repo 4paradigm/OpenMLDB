@@ -82,7 +82,8 @@ SDKCodec::SDKCodec(const ::rtidb::api::TableMeta& table_info)
                 ts_idx_.push_back(idx);
             }
         }
-        base_schema_size_ = old_schema_.size();
+        //base_schema_size_ = old_schema_.size();
+        base_schema_size_ = table_info.column_desc_size();
     }
     if (table_info.column_key_size() > 0) {
         index_.Clear();
@@ -288,7 +289,7 @@ int SDKCodec::DecodeRow(const std::string& row, std::vector<std::string>* value)
             return -1;
         }
     } else {
-        if (!RowCodec::DecodeRow(base_schema_size_, ::rtidb::base::Slice(row), value)) {
+        if (!RowCodec::DecodeRow(base_schema_size_, base_schema_size_ + modify_times_, ::rtidb::base::Slice(row), value)) {
             return -1;
         }
     }
