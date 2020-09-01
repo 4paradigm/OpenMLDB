@@ -108,14 +108,6 @@ bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
         return false;
     }
 
-    // Block entry (label_entry)
-    if (false == ::llvm::CastInst::isCastable(value->getType(), type)) {
-        status.msg = "can not safe cast";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-
     if (TypeIRBuilder::IsTimestampPtr(type)) {
         return TimestampCast(value, output, status);
     } else if (codegen::IsStringType(type)) {
@@ -125,6 +117,13 @@ bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
     } else if (value->getType()->isIntegerTy() && type->isFloatingPointTy()) {
         *output = builder.CreateUIToFP(value, type);
     } else {
+        // cast by cast op
+        if (false == ::llvm::CastInst::isCastable(value->getType(), type)) {
+            status.msg = "can not safe cast";
+            status.code = common::kCodegenError;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
         ::llvm::Instruction::CastOps cast_op =
             ::llvm::CastInst::getCastOpcode(value, true, type, true);
         *output = builder.CreateCast(cast_op, value, type);
