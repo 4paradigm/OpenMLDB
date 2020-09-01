@@ -770,6 +770,13 @@ bool TypeIRBuilder::IsInt64(::llvm::Type* type) {
     }
     return data_type == node::kInt64;
 }
+bool TypeIRBuilder::IsBool(::llvm::Type* type) {
+    ::fesql::node::DataType data_type;
+    if (!GetBaseType(type, &data_type)) {
+        return false;
+    }
+    return data_type == node::kBool;
+}
 bool TypeIRBuilder::IsInterger(::llvm::Type* type) {
     return type->isIntegerTy();
 }

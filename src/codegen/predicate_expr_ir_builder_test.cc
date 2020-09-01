@@ -60,6 +60,88 @@ void BinaryPredicateExprCheck(LHS left_val, RHS right_val, Ret expect,
     Ret result = compiled_func(left_val, right_val);
     ASSERT_EQ(expect, result);
 }
+void PredicateNullCheck(node::FnOperator op) {
+    BinaryPredicateExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                             Nullable<bool>>(1, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<int16_t>, Nullable<int32_t>,
+                             Nullable<bool>>(1, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<int16_t>, Nullable<int64_t>,
+                             Nullable<bool>>(1, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<int16_t>, Nullable<float>,
+                             Nullable<bool>>(1, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<int16_t>, Nullable<double>,
+                             Nullable<bool>>(1, nullptr, nullptr, op);
+
+    BinaryPredicateExprCheck<Nullable<int32_t>, Nullable<int16_t>,
+                             Nullable<bool>>(1, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<int32_t>, Nullable<int32_t>,
+                             Nullable<bool>>(1, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<int32_t>, Nullable<int64_t>,
+                             Nullable<bool>>(1, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<int32_t>, Nullable<float>,
+                             Nullable<bool>>(1, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<int32_t>, Nullable<double>,
+                             Nullable<bool>>(1, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<int64_t>, Nullable<int16_t>,
+                             Nullable<bool>>(1, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<int64_t>, Nullable<int32_t>,
+                             Nullable<bool>>(1, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<int64_t>, Nullable<int64_t>,
+                             Nullable<bool>>(1, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<int64_t>, Nullable<float>,
+                             Nullable<bool>>(1, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<int64_t>, Nullable<double>,
+                             Nullable<bool>>(1, nullptr, nullptr, op);
+
+    BinaryPredicateExprCheck<Nullable<float>, Nullable<int16_t>,
+                             Nullable<bool>>(1.0f, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<float>, Nullable<int32_t>,
+                             Nullable<bool>>(nullptr, 1.0f, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<float>, Nullable<int64_t>,
+                             Nullable<bool>>(1.0f, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<float>, Nullable<float>, Nullable<bool>>(
+        nullptr, 1.0f, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<float>, Nullable<double>, Nullable<bool>>(
+        nullptr, 1.0f, nullptr, op);
+
+    BinaryPredicateExprCheck<Nullable<double>, Nullable<int16_t>,
+                             Nullable<bool>>(1.0, nullptr, nullptr, op);
+
+    BinaryPredicateExprCheck<Nullable<double>, Nullable<int32_t>,
+                             Nullable<bool>>(1.0, nullptr, nullptr, op);
+
+    BinaryPredicateExprCheck<Nullable<double>, Nullable<int64_t>,
+                             Nullable<bool>>(1.0, nullptr, nullptr, op);
+
+    BinaryPredicateExprCheck<Nullable<double>, Nullable<float>, Nullable<bool>>(
+        1.0, nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<double>, Nullable<double>,
+                             Nullable<bool>>(1.0, nullptr, nullptr, op);
+
+    BinaryPredicateExprCheck<Nullable<codec::Timestamp>,
+                             Nullable<codec::Timestamp>, Nullable<bool>>(
+        codec::Timestamp(1590115420000L), nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<codec::Timestamp>,
+                             Nullable<codec::Timestamp>, Nullable<bool>>(
+        nullptr, codec::Timestamp(1590115420000L), nullptr, op);
+
+    BinaryPredicateExprCheck<Nullable<codec::Timestamp>,
+                             Nullable<codec::Timestamp>, Nullable<bool>>(
+        codec::Timestamp(1590115420000L), nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<codec::Date>, Nullable<codec::Date>,
+                             Nullable<bool>>(nullptr, codec::Date(2020, 05, 20),
+                                             nullptr, op);
+    BinaryPredicateExprCheck<Nullable<codec::Date>, Nullable<codec::Date>,
+                             Nullable<bool>>(codec::Date(2020, 05, 20), nullptr,
+                                             nullptr, op);
+
+    BinaryPredicateExprCheck<Nullable<codec::StringRef>,
+                             Nullable<codec::StringRef>, Nullable<bool>>(
+        codec::StringRef("abc"), nullptr, nullptr, op);
+    BinaryPredicateExprCheck<Nullable<codec::StringRef>,
+                             Nullable<codec::StringRef>, Nullable<bool>>(
+        nullptr, codec::StringRef("abc"), nullptr, op);
+}
 
 TEST_F(PredicateIRBuilderTest, test_eq_expr_true) {
     BinaryPredicateExprCheck<int16_t, int16_t, bool>(1, 1, true,
@@ -235,6 +317,24 @@ TEST_F(PredicateIRBuilderTest, test_eq_expr_false) {
         1.0, 1.1, false, ::fesql::node::kFnOpEq);
 }
 
+TEST_F(PredicateIRBuilderTest, test_eq_null) {
+    PredicateNullCheck(node::kFnOpEq);
+}
+TEST_F(PredicateIRBuilderTest, test_neq_null) {
+    PredicateNullCheck(node::kFnOpNeq);
+}
+TEST_F(PredicateIRBuilderTest, test_lq_null) {
+    PredicateNullCheck(node::kFnOpLe);
+}
+TEST_F(PredicateIRBuilderTest, test_lt_null) {
+    PredicateNullCheck(node::kFnOpLt);
+}
+TEST_F(PredicateIRBuilderTest, test_gt_null) {
+    PredicateNullCheck(node::kFnOpGt);
+}
+TEST_F(PredicateIRBuilderTest, test_ge_null) {
+    PredicateNullCheck(node::kFnOpGe);
+}
 TEST_F(PredicateIRBuilderTest, test_neq_expr_true) {
     BinaryPredicateExprCheck<int16_t, int16_t, bool>(1, 2, true,
                                                      ::fesql::node::kFnOpNeq);
@@ -417,6 +517,10 @@ TEST_F(PredicateIRBuilderTest, test_lt_expr_true) {
 
     BinaryPredicateExprCheck<int32_t, float, bool>(2, 2.1f, true,
                                                    ::fesql::node::kFnOpLt);
+
+    BinaryPredicateExprCheck<Nullable<int32_t>, Nullable<float>,
+                             Nullable<bool>>(2, nullptr, nullptr,
+                                             ::fesql::node::kFnOpLt);
 }
 
 TEST_F(PredicateIRBuilderTest, test_lt_expr_false) {

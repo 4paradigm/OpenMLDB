@@ -11,18 +11,8 @@
 #include <vector>
 #include <iostream>
 #include <string>
-char* memcpy_test(char* src1, char* src2, size_t l1, size_t l2) {
-    char *dist = reinterpret_cast<char* >(malloc(l1+l2));
-    memcpy(dist, src1, l1);
-    memcpy(dist+l1, src2, l2);
-    return dist;
-
-//    std::cout << std::string(dist, l1+l2);
-}
-
-
-const char* cast_to_string(int64_t x) {
-    return std::to_string(x).data();
+float bool_cast(bool flag, float value) {
+    return flag + value;
 }
 
 //

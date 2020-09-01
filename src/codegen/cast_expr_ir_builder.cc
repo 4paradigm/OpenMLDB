@@ -44,10 +44,15 @@ bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
             return true;
         }
         case ::fesql::node::kInt16: {
-            return true;
+            if (::fesql::node::kBool == dist_type) {
+                return false;
+            } else {
+                return true;
+            }
         }
         case ::fesql::node::kInt32: {
-            if (::fesql::node::kInt16 == dist_type) {
+            if (::fesql::node::kBool == dist_type ||
+                ::fesql::node::kInt16 == dist_type) {
                 return false;
             }
             return true;
@@ -103,12 +108,6 @@ bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
         return false;
     }
 
-    if (TypeIRBuilder::IsTimestampPtr(type)) {
-        return TimestampCast(value, output, status);
-    } else if (codegen::IsStringType(type)) {
-        return StringCast(value, output, status);
-    }
-
     // Block entry (label_entry)
     if (false == ::llvm::CastInst::isCastable(value->getType(), type)) {
         status.msg = "can not safe cast";
@@ -116,19 +115,29 @@ bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
         LOG(WARNING) << status.msg;
         return false;
     }
-    ::llvm::Instruction::CastOps cast_op =
-        ::llvm::CastInst::getCastOpcode(value, true, type, true);
 
-    ::llvm::Value* cast_value = builder.CreateCast(cast_op, value, type);
-    if (NULL == cast_value) {
+    if (TypeIRBuilder::IsTimestampPtr(type)) {
+        return TimestampCast(value, output, status);
+    } else if (codegen::IsStringType(type)) {
+        return StringCast(value, output, status);
+    } else if (value->getType()->isIntegerTy() && type->isIntegerTy()) {
+        *output = builder.CreateZExt(value, type);
+    } else if (value->getType()->isIntegerTy() && type->isFloatingPointTy()) {
+        *output = builder.CreateUIToFP(value, type);
+    } else {
+        ::llvm::Instruction::CastOps cast_op =
+            ::llvm::CastInst::getCastOpcode(value, true, type, true);
+        *output = builder.CreateCast(cast_op, value, type);
+    }
+    if (NULL == *output) {
         status.msg = "fail to cast";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
     }
-    *output = cast_value;
     return true;
 }
+
 bool CastExprIRBuilder::UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
                                    ::llvm::Value** output,
                                    base::Status& status) {
