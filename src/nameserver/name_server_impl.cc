@@ -9677,6 +9677,7 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
         rtidb::common::VersionPair* pair = table_info->add_schema_versions();
         pair->CopyFrom(new_pair);
     }
+    std::lock_guard<std::mutex> lock(mu_);
     for (uint32_t pid = 0; pid < (uint32_t)table_info->table_partition_size(); pid++) {
         if (CreateAddIndexOP(name, db, pid, add_cols, request->column_key(), index_pos) < 0) {
             LOG(WARNING) << "create AddIndexOP failed, table " << name << " pid " << pid;
@@ -9714,7 +9715,7 @@ int NameServerImpl::CreateAddIndexOP(
     const std::vector<rtidb::common::ColumnDesc>& new_cols,
     const ::rtidb::common::ColumnKey& column_key, uint32_t idx) {
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
-    if (!GetTableInfo(name, db, &table_info)) {
+    if (!GetTableInfoUnlock(name, db, &table_info)) {
         PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
         return -1;
     }
@@ -9773,7 +9774,7 @@ int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
     std::string db = op_data->op_info_.db();
     uint32_t pid = op_data->op_info_.pid();
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info;
-    if (!GetTableInfo(name, db, &table_info)) {
+    if (!GetTableInfoUnlock(name, db, &table_info)) {
         PDLOG(WARNING, "get table info failed! name[%s]", name.c_str());
         return -1;
     }
