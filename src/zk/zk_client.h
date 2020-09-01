@@ -78,7 +78,7 @@ class ZkClient {
     bool Mkdir(const std::string& path);
 
     bool GetNodeValue(const std::string& node, std::string& value);  // NOLINT
-    bool GetNodeValueLocked(const std::string& node,
+    bool GetNodeValueUnLocked(const std::string& node,
                             std::string& value);  // NOLINT
 
     bool SetNodeValue(const std::string& node, const std::string& value);

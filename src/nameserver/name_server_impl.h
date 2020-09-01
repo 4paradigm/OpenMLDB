@@ -431,8 +431,6 @@ class NameServerImpl : public NameServer {
 
     bool RecoverOPTask();
 
-    bool UpdateSdkEpMapLocked();
-
     bool UpdateSdkEpMap();
 
     int SetPartitionInfo(TableInfo& table_info);  // NOLINT

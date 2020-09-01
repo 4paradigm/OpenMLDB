@@ -311,7 +311,7 @@ void ZkClient::HandleChildrenChanged(const std::string& path, int type,
         std::map<std::string, NodesChangedCallback>::iterator it =
             children_callbacks_.find(path);
         if (it == children_callbacks_.end()) {
-            PDLOG(INFO, "watch for path %s exist", path.c_str());
+            PDLOG(INFO, "watch for path %s not exist", path.c_str());
             return;
         }
         callback = it->second;
@@ -369,7 +369,7 @@ bool ZkClient::SetNodeWatcher(const std::string& node, watcher_fn watcher,
     return false;
 }
 
-bool ZkClient::GetNodeValueLocked(const std::string& node, std::string& value) {
+bool ZkClient::GetNodeValueUnLocked(const std::string& node, std::string& value) {
     int buffer_len = ZK_MAX_BUFFER_SIZE;
     Stat stat;
     if (zoo_get(zk_, node.c_str(), 0, buffer_, &buffer_len, &stat) == ZOK) {
@@ -389,7 +389,7 @@ bool ZkClient::DeleteNode(const std::string& node) {
 
 bool ZkClient::GetNodeValue(const std::string& node, std::string& value) {
     std::lock_guard<std::mutex> lock(mu_);
-    return GetNodeValueLocked(node, value);
+    return GetNodeValueUnLocked(node, value);
 }
 
 bool ZkClient::SetNodeValue(const std::string& node, const std::string& value) {

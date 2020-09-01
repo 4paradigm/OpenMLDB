@@ -802,6 +802,7 @@ bool NameServerImpl::Recover() {
             PDLOG(WARNING, "recover table info failed!");
             return false;
         }
+        UpdateSdkEpMap();
     }
     UpdateTableStatus();
     {
@@ -1414,7 +1415,6 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         }
     }
     UpdateBlobServers(blobs);
-    UpdateSdkEpMap();
     thread_pool_.AddTask(
         boost::bind(&NameServerImpl::DistributeTabletMode, this));
     thread_pool_.AddTask(
@@ -1691,14 +1691,6 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
 
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval,
                            boost::bind(&NameServerImpl::CheckZkClient, this));
-    /**TODO(wangbao): ns
-    ok = zk_client_->WatchChildren(zk_path + "/leader",
-            boost::bind(&NameServerImpl::UpdateSdkEpMapLocked, this));
-    if (!ok) {
-        PDLOG(WARNING, "zk watch nodes failed");
-        return false;
-    }
-    */
     dist_lock_ =
         new DistLock(zk_path + "/leader", zk_client_,
                      boost::bind(&NameServerImpl::OnLocked, this),
@@ -10423,7 +10415,6 @@ void NameServerImpl::ShowSdkEndpoint(RpcController* controller, const ShowSdkEnd
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    UpdateSdkEpMapLocked();
     std::lock_guard<std::mutex> lock(mu_);
     if (sdk_endpoint_map_.empty()) {
         PDLOG(INFO, "sdk_endpoint_map is empty");
@@ -10440,11 +10431,6 @@ void NameServerImpl::ShowSdkEndpoint(RpcController* controller, const ShowSdkEnd
     response->set_msg("ok");
 }
 
-bool NameServerImpl::UpdateSdkEpMapLocked() {
-    std::lock_guard<std::mutex> lock(mu_);
-    return UpdateSdkEpMap();
-}
-
 bool NameServerImpl::UpdateSdkEpMap() {
     sdk_endpoint_map_.clear();
     std::string path = FLAGS_zk_root_path + "/map/sdkendpoints";
@@ -10457,45 +10443,13 @@ bool NameServerImpl::UpdateSdkEpMap() {
             PDLOG(WARNING, "get zk children failed");
             return false;
         }
-        // check alive
-        std::string leader_path = FLAGS_zk_root_path + "/leader";
-        std::vector<std::string> ns_children;
-        if (!zk_client_->GetChildrenUnLocked(leader_path, ns_children) || ns_children.empty()) {
-            PDLOG(WARNING, "get zk children failed");
-            return false;
-        }
-        std::set<std::string> endpoint_set;
-        for (const auto& path : ns_children) {
-            std::string endpoint;
-            std::string real_path = leader_path + "/" + path;
-            if (!zk_client_->GetNodeValueLocked(real_path, endpoint)) {
+        for (const auto& child : children) {
+            std::string real_ep;
+            if (!zk_client_->GetNodeValueUnLocked(path + "/" + child, real_ep)) {
                 PDLOG(WARNING, "get zk value failed");
                 return false;
             }
-            endpoint_set.insert(endpoint);
-        }
-        for (auto it = tablets_.begin(); it != tablets_.end(); ++it) {
-            if (it->second->state_ ==
-                    ::rtidb::api::TabletState::kTabletHealthy) {
-                endpoint_set.insert(it->first);
-            }
-        }
-        for (auto bit = blob_servers_.begin(); bit != blob_servers_.end(); ++bit) {
-            if (bit->second->state_ ==
-                    ::rtidb::api::TabletState::kTabletHealthy) {
-                endpoint_set.insert(bit->first);
-            }
-        }
-
-        for (const auto& child : children) {
-            if (std::find(endpoint_set.begin(), endpoint_set.end(), child) != endpoint_set.end()) {
-                std::string real_ep;
-                if (!zk_client_->GetNodeValueLocked(path + "/" + child, real_ep)) {
-                    PDLOG(WARNING, "get zk value failed");
-                    return false;
-                }
-                sdk_endpoint_map_.insert(std::make_pair(child, real_ep));
-            }
+            sdk_endpoint_map_.insert(std::make_pair(child, real_ep));
         }
     }
     PDLOG(INFO, "update sdk_endpoint_map size[%d]", sdk_endpoint_map_.size());
