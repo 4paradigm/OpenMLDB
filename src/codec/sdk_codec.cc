@@ -82,7 +82,7 @@ SDKCodec::SDKCodec(const ::rtidb::api::TableMeta& table_info)
                 ts_idx_.push_back(idx);
             }
         }
-        base_schema_size_ = table_info.column_desc_size();
+        base_schema_size_ = old_schema_.size();
     }
     if (table_info.column_key_size() > 0) {
         index_.Clear();
