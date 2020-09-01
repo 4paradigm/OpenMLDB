@@ -22,9 +22,9 @@ endif ()
 project(rtidb)
 
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
-set(RTIDB_VERSION_MAJOR 2)
-set(RTIDB_VERSION_MEDIUM 0)
-set(RTIDB_VERSION_MINOR 0)
+set(RTIDB_VERSION_MAJOR 1)
+set(RTIDB_VERSION_MEDIUM 6)
+set(RTIDB_VERSION_MINOR 2)
 set(RTIDB_VERSION_BUG 0)
 configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"

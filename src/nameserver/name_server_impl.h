@@ -415,6 +415,8 @@ class NameServerImpl : public NameServer {
         const std::string& db,
         const std::shared_ptr<::rtidb::nameserver::ClusterInfo> cluster_info);
 
+    bool RegisterName();
+
  private:
     // Recover all memory status, the steps
     // 1.recover table meta from zookeeper
@@ -429,7 +431,7 @@ class NameServerImpl : public NameServer {
 
     bool RecoverOPTask();
 
-    bool RecoverSdkEpMap();
+    bool UpdateSdkEpMap();
 
     int SetPartitionInfo(TableInfo& table_info);  // NOLINT
 

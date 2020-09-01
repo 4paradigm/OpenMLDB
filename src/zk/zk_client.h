@@ -66,6 +66,8 @@ class ZkClient {
     // get all alive nodes
     bool GetNodes(std::vector<std::string>& endpoints);  // NOLINT
 
+    bool GetChildrenUnLocked(const std::string& path,
+                     std::vector<std::string>& children);  // NOLINT
     bool GetChildren(const std::string& path,
                      std::vector<std::string>& children);  // NOLINT
 
@@ -76,7 +78,7 @@ class ZkClient {
     bool Mkdir(const std::string& path);
 
     bool GetNodeValue(const std::string& node, std::string& value);  // NOLINT
-    bool GetNodeValueLocked(const std::string& node,
+    bool GetNodeValueUnLocked(const std::string& node,
                             std::string& value);  // NOLINT
 
     bool SetNodeValue(const std::string& node, const std::string& value);
@@ -105,6 +107,7 @@ class ZkClient {
     bool WatchItem(const std::string& path, ItemChangedCallback callback);
     void CancelWatchItem(const std::string& path);
 
+    int IsExistNodeUnLocked(const std::string& node);
     int IsExistNode(const std::string& node);
 
     inline bool IsConnected() {

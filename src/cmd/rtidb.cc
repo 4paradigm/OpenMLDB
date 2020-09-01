@@ -143,6 +143,10 @@ void StartNameServer() {
         PDLOG(WARNING, "Fail to init");
         exit(1);
     }
+    if (!name_server->RegisterName()) {
+        PDLOG(WARNING, "Fail to register name");
+        exit(1);
+    }
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
     brpc::Server server;
