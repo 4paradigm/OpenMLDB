@@ -3639,12 +3639,12 @@ bool NameServerImpl::AddFieldToTablet(const std::vector<rtidb::common::ColumnDes
     if (table_info->added_column_desc_size() > 0) {
         if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(*table_info, columns, table_info->added_column_desc_size()) <
             0) {
-            LOG(WARNING) << "convert table " << name << "column desc failed";
+            LOG(WARNING) << "convert table " << name << " column desc failed";
             return false;
         }
     } else {
         if (::rtidb::codec::SchemaCodec::ConvertColumnDesc(*table_info, columns) < 0) {
-            LOG(WARNING) << "convert table " << name << "column desc failed";
+            LOG(WARNING) << "convert table " << name << " column desc failed";
             return false;
         }
     }

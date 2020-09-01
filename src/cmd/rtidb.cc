@@ -1059,14 +1059,14 @@ void HandleNSClientAddIndex(const std::vector<std::string>& parts,
                 column_key.add_col_name(type_pair[0]);
                 rtidb::common::ColumnDesc col_desc;
                 col_desc.set_name(type_pair[0]);
-                auto it = rtidb::codec::DATA_TYPE_MAP.find(type_pair[1]);
-                if (it == rtidb::codec::DATA_TYPE_MAP.end()) {
-                    std::cerr << col_name << " type " << type_pair[0] << " invalid";
+                auto type = rtidb::codec::SchemaCodec::ConvertType(type_pair[1]);
+                if (type == rtidb::codec::ColType::kUnknown) {
+                    std::cerr << col_name << " type " << type_pair[0] << " invalid\n";
                     return;
                 }
-                rtidb::type::DataType type = it->second;
+                auto it = rtidb::codec::DATA_TYPE_MAP.find(type_pair[1]);
                 col_desc.set_type(type_pair[1]);
-                col_desc.set_data_type(type);
+                col_desc.set_data_type(it->second);
                 cols.push_back(std::move(col_desc));
             } else {
                 column_key.add_col_name(col_name);
@@ -3958,6 +3958,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
             printf("ex: addindex test card\n");
             printf("ex: addindex test combine1 card,mcc\n");
             printf("ex: addindex test combine2 id,name ts1,ts2\n");
+            printf("ex: addindex test combine3 id:string,name:int32 ts1,ts2\n");
         } else if (parts[1] == "deleteindex") {
             printf("desc: delete index of specified index\n");
             printf("usage: deleteindex table_name index_name");
