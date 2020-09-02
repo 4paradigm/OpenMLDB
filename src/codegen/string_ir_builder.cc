@@ -13,8 +13,12 @@
 #include "codegen/cond_select_ir_builder.h"
 #include "codegen/memery_ir_builder.h"
 #include "codegen/null_ir_builder.h"
+
 namespace fesql {
 namespace codegen {
+
+using ::fesql::common::kCodegenError;
+
 StringIRBuilder::StringIRBuilder(::llvm::Module* m) : StructTypeIRBuilder(m) {
     InitStructType();
 }
@@ -168,12 +172,12 @@ base::Status StringIRBuilder::Compare(::llvm::BasicBlock* block,
                                       const NativeValue& s1,
                                       const NativeValue& s2,
                                       NativeValue* output) {
-    CHECK_TRUE(nullptr != output,
+    CHECK_TRUE(nullptr != output, kCodegenError,
                "fail to compare string: output llvm value is null")
     ::std::string fn_name = "strcmp.string.string";
 
-    CHECK_TRUE(TypeIRBuilder::IsStringPtr(s1.GetType()));
-    CHECK_TRUE(TypeIRBuilder::IsStringPtr(s2.GetType()));
+    CHECK_TRUE(TypeIRBuilder::IsStringPtr(s1.GetType()), kCodegenError);
+    CHECK_TRUE(TypeIRBuilder::IsStringPtr(s2.GetType()), kCodegenError);
     ::llvm::IRBuilder<> builder(block);
     ::llvm::Value* should_ret_null = builder.getInt1(false);
     NullIRBuilder null_ir_builder;
@@ -203,16 +207,17 @@ base::Status StringIRBuilder::ConcatWS(::llvm::BasicBlock* block,
                                        const NativeValue& arg,
                                        const std::vector<NativeValue>& args,
                                        NativeValue* output) {
-    CHECK_TRUE(nullptr != output,
+    CHECK_TRUE(nullptr != output, kCodegenError,
                "fail to concat string: output llvm value is null")
-    CHECK_TRUE(!args.empty(), "fail to concat string: concat args are empty");
+    CHECK_TRUE(!args.empty(), kCodegenError,
+               "fail to concat string: concat args are empty");
     codegen::MemoryIRBuilder memory_ir_builder(m_);
     codegen::ArithmeticIRBuilder arithmetic_ir_builder(block);
     base::Status status;
 
     if (args.empty()) {
         ::llvm::Value* empty_string = nullptr;
-        CHECK_TRUE(NewString(block, "", &empty_string),
+        CHECK_TRUE(NewString(block, "", &empty_string), kCodegenError,
                    "fail create empty string");
         *output = NativeValue::Create(empty_string);
         return base::Status();
@@ -251,14 +256,17 @@ base::Status StringIRBuilder::ConcatWS(::llvm::BasicBlock* block,
     ::llvm::Value* concat_on_data = nullptr;
     if (nullptr != concat_on.GetRaw()) {
         CHECK_TRUE(GetSize(block, concat_on.GetRaw(), &concat_on_size),
+                   kCodegenError,
                    "fail to concat string: fail get concat on string size");
         CHECK_TRUE(GetData(block, concat_on.GetRaw(), &concat_on_data),
+                   kCodegenError,
                    "fail to concat string: fail get concat on"
                    " string data ptr");
     }
 
     ::llvm::Value* concat_str_size = nullptr;
     CHECK_TRUE(GetSize(block, strs[0].GetRaw(), &concat_str_size),
+               kCodegenError,
                "fail to concat string: fail get 1st string size");
 
     std::vector<NativeValue> sizes;
@@ -268,7 +276,7 @@ base::Status StringIRBuilder::ConcatWS(::llvm::BasicBlock* block,
 
     for (size_t i = 1; i < strs.size(); i++) {
         ::llvm::Value* size_i = nullptr;
-        CHECK_TRUE(GetSize(block, strs[i].GetRaw(), &size_i),
+        CHECK_TRUE(GetSize(block, strs[i].GetRaw(), &size_i), kCodegenError,
                    "fail to concat string: fail get ", i + 1, " string size");
         sizes.push_back(NativeValue::Create(size_i));
 
@@ -276,12 +284,14 @@ base::Status StringIRBuilder::ConcatWS(::llvm::BasicBlock* block,
             CHECK_TRUE(
                 arithmetic_ir_builder.BuildAddExpr(
                     concat_str_size, concat_on_size, &concat_str_size, status),
+                kCodegenError,
                 "fail to concat string: fail to compute concat string total "
                 "size")
         }
         CHECK_TRUE(
             arithmetic_ir_builder.BuildAddExpr(concat_str_size, size_i,
                                                &concat_str_size, status),
+            kCodegenError,
             "fail to concat string: fail to compute concat string total size")
     }
     NativeValue concat_str_data;
@@ -303,20 +313,22 @@ base::Status StringIRBuilder::ConcatWS(::llvm::BasicBlock* block,
                 "fail to concat string")
         }
         ::llvm::Value* data_i;
-        CHECK_TRUE(GetData(block, strs[i].GetRaw(), &data_i),
+        CHECK_TRUE(GetData(block, strs[i].GetRaw(), &data_i), kCodegenError,
                    "fail to concat string: fail get ", i + 1,
                    " string data ptr");
         CHECK_STATUS(memory_ir_builder.MemoryCopy(
                          block, addr, NativeValue::Create(data_i), sizes[i]),
-                     "fail to concat string: fail copy strs[", i, "]");
+                     kCodegenError, "fail to concat string: fail copy strs[", i,
+                     "]");
         CHECK_STATUS(
             memory_ir_builder.MemoryAddrAdd(block, addr, sizes[i], &addr),
-            "fail to concat string")
+            kCodegenError, "fail to concat string")
     }
 
     ::llvm::Value* concat_str = nullptr;
     CHECK_TRUE(NewString(block, concat_str_size, concat_str_data.GetRaw(),
                          &concat_str),
+               kCodegenError,
                "fail to concat string: create concat string fail");
     *output = NativeValue::Create(concat_str);
     return base::Status();

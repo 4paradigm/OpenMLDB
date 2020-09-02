@@ -18,6 +18,8 @@
 #include "passes/lambdafy_projects.h"
 #include "passes/resolve_fn_and_attrs.h"
 
+using ::fesql::common::kPlanError;
+
 namespace fesql {
 namespace vm {
 
@@ -32,7 +34,7 @@ bool TransformLogicalTreeToLogicalGraph(
     if (nullptr == node || nullptr == graph_ptr) {
         status.msg = "node or graph_ptr is null";
         status.code = common::kOpGenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     auto& graph = *graph_ptr;
@@ -89,7 +91,7 @@ bool BatchModeTransformer::TransformPlanOp(const ::fesql::node::PlanNode* node,
     if (nullptr == node || nullptr == ouput) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     LogicalOp logical_op = LogicalOp(node);
@@ -162,14 +164,14 @@ bool BatchModeTransformer::TransformPlanOp(const ::fesql::node::PlanNode* node,
             status.msg = "fail to transform physical plan: can't handle type " +
                          node::NameOfPlanNodeType(node->type_);
             status.code = common::kPlanError;
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
     }
     if (!ok) {
         LOG(WARNING) << "fail to tranform physical plan: fail node " +
                             node::NameOfPlanNodeType(node->type_) + ": " +
-                            status.msg;
+                            status.str();
         return false;
     }
     op_map_[logical_op] = op;
@@ -182,7 +184,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
     if (nullptr == node) {
         status.msg = "input node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -301,7 +303,7 @@ bool BatchModeTransformer::TransformLimitOp(const node::LimitPlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     PhysicalOpNode* depend = nullptr;
@@ -319,7 +321,7 @@ bool BatchModeTransformer::TransformProjecPlantOp(
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     PhysicalOpNode* depend = nullptr;
@@ -332,7 +334,7 @@ bool BatchModeTransformer::TransformProjecPlantOp(
     if (node->project_list_vec_.empty()) {
         status.msg = "fail transform project op: empty projects";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -406,7 +408,7 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
     if (nullptr == depend || nullptr == w_ptr || nullptr == output) {
         status.msg = "depend node or output node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (!CheckHistoryWindowFrame(w_ptr, status)) {
@@ -458,7 +460,7 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                     status.code = common::kPlanError;
                     status.msg = "fail to transform data provider op: table " +
                                  name + "not exists";
-                    LOG(WARNING) << status.msg;
+                    LOG(WARNING) << status;
                     return false;
                 }
             }
@@ -477,14 +479,14 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                             status.msg =
                                 "fail to handle window: group "
                                 "expression should belong to left table";
-                            LOG(WARNING) << status.msg;
+                            LOG(WARNING) << status;
                             return false;
                         }
                         if (0 != info->idx_) {
                             status.msg =
                                 "fail to handle window: group "
                                 "expression should belong to left table";
-                            LOG(WARNING) << status.msg;
+                            LOG(WARNING) << status;
                             return false;
                         }
                     }
@@ -496,14 +498,14 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                             status.msg =
                                 "fail to handle window: order "
                                 "expression should belong to left table";
-                            LOG(WARNING) << status.msg;
+                            LOG(WARNING) << status;
                             return false;
                         }
                         if (0 != info->idx_) {
                             status.msg =
                                 "fail to handle window: order "
                                 "expression should belong to left table";
-                            LOG(WARNING) << status.msg;
+                            LOG(WARNING) << status;
                             return false;
                         }
                     }
@@ -547,7 +549,7 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                         status.msg =
                             "fail to transform data provider op: table " +
                             name + "not exists";
-                        LOG(WARNING) << status.msg;
+                        LOG(WARNING) << status;
                         return false;
                     }
                     break;
@@ -600,7 +602,7 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                     status.code = common::kPlanError;
                     status.msg = "fail to transform data provider op: table " +
                                  name + "not exists";
-                    LOG(WARNING) << status.msg;
+                    LOG(WARNING) << status;
                     return false;
                 }
             }
@@ -618,7 +620,7 @@ bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     PhysicalOpNode* left = nullptr;
@@ -647,7 +649,7 @@ bool BatchModeTransformer::TransformUnionOp(const node::UnionPlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     PhysicalOpNode* left = nullptr;
@@ -686,7 +688,7 @@ bool BatchModeTransformer::TransformGroupOp(const node::GroupPlanNode* node,
                 status.code = common::kPlanError;
                 status.msg = "fail to transform data provider op: table " +
                              name + "not exists";
-                LOG(WARNING) << status.msg;
+                LOG(WARNING) << status;
                 return false;
             }
         }
@@ -702,7 +704,7 @@ bool BatchModeTransformer::TransformSortOp(const node::SortPlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     PhysicalOpNode* left = nullptr;
@@ -719,7 +721,7 @@ bool BatchModeTransformer::TransformFilterOp(const node::FilterPlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     PhysicalOpNode* depend = nullptr;
@@ -737,7 +739,7 @@ bool BatchModeTransformer::TransformScanOp(const node::TablePlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     auto table = catalog_->GetTable(db_, node->table_);
@@ -748,7 +750,7 @@ bool BatchModeTransformer::TransformScanOp(const node::TablePlanNode* node,
         status.msg = "fail to transform data_provider op: table " + db_ + "." +
                      node->table_ + " not exist!";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
@@ -827,12 +829,12 @@ fesql::base::Status ResolveProjects(
                                          output_names, output_frames));
 
     // check lambdafy output
-    CHECK_TRUE(lambda->GetArgSize() == 2);
+    CHECK_TRUE(lambda->GetArgSize() == 2, kCodegenError);
     std::vector<const node::TypeNode*> global_arg_types = {
         lambda->GetArgType(0), lambda->GetArgType(1)};
     if (row_project) {
         for (size_t i = 0; i < require_agg.size(); ++i) {
-            CHECK_TRUE(require_agg[i] == false,
+            CHECK_TRUE(require_agg[i] == false, kCodegenError,
                        "Can not gen agg project in row project node, ", i,
                        "th expression is: ",
                        lambda->body()->GetChild(i)->GetExprString());
@@ -866,7 +868,7 @@ bool BatchModeTransformer::GenProjects(const SchemaSourceList& input_schemas,
                              node_manager_, library_, &project_func,
                              &project_names, &project_frames);
     if (!status.isOK()) {
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -893,7 +895,7 @@ bool BatchModeTransformer::CreatePhysicalConstProjectNode(
     if (nullptr == project_list || nullptr == output) {
         status.msg = "project list node or output node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     const node::PlanNodeList& projects = project_list->GetProjects();
@@ -934,7 +936,7 @@ bool BatchModeTransformer::CreatePhysicalProjectNode(
     if (nullptr == project_list || nullptr == output) {
         status.msg = "project list node or output node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     const node::PlanNodeList& projects = project_list->GetProjects();
@@ -1159,22 +1161,22 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
 }
 base::Status BatchModeTransformer::ValidatePartitionDataProvider(
     PhysicalOpNode* in) {
-    PLAN_CHECK_TRUE(nullptr != in, "Invalid physical node: null");
+    CHECK_TRUE(nullptr != in, kPlanError, "Invalid physical node: null");
     if (kPhysicalOpSimpleProject == in->type_) {
         CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)))
     } else {
-        PLAN_CHECK_TRUE(
+        CHECK_TRUE(
             kPhysicalOpDataProvider == in->type_ &&
                 kProviderTypePartition ==
                     dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_,
-            "Isn't partition provider");
+            kPlanError, "Isn't partition provider");
     }
     return base::Status::OK();
 }
 
 base::Status BatchModeTransformer::ValidateJoinIndexOptimization(
     const Join& join, PhysicalOpNode* right) {
-    PLAN_CHECK_TRUE(nullptr != right, "Invalid physical node: null");
+    CHECK_TRUE(nullptr != right, kPlanError, "Invalid physical node: null");
     if (node::kJoinTypeConcat == join.join_type_) {
         return base::Status::OK();
     }
@@ -1185,19 +1187,18 @@ base::Status BatchModeTransformer::ValidateJoinIndexOptimization(
 }
 base::Status BatchModeTransformer::ValidateWindowIndexOptimization(
     const WindowOp& window, PhysicalOpNode* in) {
-    PLAN_CHECK_TRUE(nullptr != in, "Invalid physical node: null");
+    CHECK_TRUE(nullptr != in, kPlanError, "Invalid physical node: null");
     CHECK_STATUS(ValidatePartitionDataProvider(in),
                  "Window node hasn't been optimized");
     // check if window's order expression has been optimized
-    PLAN_CHECK_TRUE(
-        !window.sort().ValidSort() ||
-            node::ExprListNullOrEmpty(window.sort().orders()->order_by_),
-        "Window node hasn't been optimzied")
+    CHECK_TRUE(!window.sort().ValidSort() ||
+                   node::ExprListNullOrEmpty(window.sort().orders()->order_by_),
+               kPlanError, "Window node hasn't been optimzied")
     return base::Status::OK();
 }
 base::Status BatchModeTransformer::ValidateIndexOptimization(
     PhysicalOpNode* in) {
-    PLAN_CHECK_TRUE(nullptr != in, "Invalid physical node: null");
+    CHECK_TRUE(nullptr != in, kPlanError, "Invalid physical node: null");
 
     switch (in->type_) {
         case kPhysicalOpGroupBy: {
@@ -1249,14 +1250,14 @@ base::Status BatchModeTransformer::ValidateIndexOptimization(
         case kPhysicalOpRequestJoin: {
             PhysicalRequestJoinNode* join_op =
                 dynamic_cast<PhysicalRequestJoinNode*>(in);
-            PLAN_CHECK_TRUE(nullptr != in, "Invalid join node: null");
+            CHECK_TRUE(nullptr != in, kPlanError, "Invalid join node: null");
             CHECK_STATUS(ValidateJoinIndexOptimization(
                 join_op->join(), join_op->GetProducer(1)));
             break;
         }
         case kPhysicalOpJoin: {
             PhysicalJoinNode* join_op = dynamic_cast<PhysicalJoinNode*>(in);
-            PLAN_CHECK_TRUE(nullptr != in, "Invalid join node: null");
+            CHECK_TRUE(nullptr != in, kPlanError, "Invalid join node: null");
             CHECK_STATUS(ValidateJoinIndexOptimization(
                 join_op->join(), join_op->GetProducer(1)));
             break;
@@ -1277,7 +1278,7 @@ bool BatchModeTransformer::TransformPhysicalPlan(
     if (nullptr == module_ || trees.empty()) {
         status.msg = "module or logical trees is empty";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -1332,7 +1333,7 @@ bool BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan,
         nullptr == fn_plan->fn_def_) {
         status.msg = "fail to codegen function: module or fn_def node is null";
         status.code = common::kOpGenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -1340,9 +1341,9 @@ bool BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan,
     ::llvm::Function* fn = nullptr;
     bool ok = builder.Build(fn_plan->fn_def_, &fn, status);
     if (!ok) {
-        status.msg = "fail to codegen function: " + status.msg;
+        status.msg = "fail to codegen function: " + status.str();
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
@@ -1518,8 +1519,7 @@ bool BatchModeTransformer::GenWindowUnionList(
     }
     for (auto& window_union : window_union_list->window_unions_) {
         if (!GenPlanNode(window_union.first, status)) {
-            LOG(WARNING) << "Fail Gen Window Union Sub Query Plan"
-                         << status.msg;
+            LOG(WARNING) << "Fail Gen Window Union Sub Query Plan" << status;
             return false;
         }
         if (!GenWindow(&window_union.second, in, status)) {
@@ -1537,8 +1537,7 @@ bool BatchModeTransformer::GenWindowJoinList(WindowJoinList* window_join_list,
         joined_schema.AddSchemaSources(in->GetOutputNameSchemaList());
         for (auto& window_join : window_join_list->window_joins_) {
             if (!GenPlanNode(window_join.first, status)) {
-                LOG(WARNING)
-                    << "Fail Gen Window Join Sub Query Plan" << status.msg;
+                LOG(WARNING) << "Fail Gen Window Join Sub Query Plan" << status;
                 return false;
             }
             auto right_schema = window_join.first->GetOutputNameSchemaList();
@@ -1573,7 +1572,7 @@ bool BatchModeTransformer::GenRequestWindowUnionList(
     for (auto& window_union : window_union_list->window_unions_) {
         if (!GenPlanNode(window_union.first, status)) {
             LOG(WARNING) << "Fail Gen Request Window Union Sub Query Plan"
-                         << status.msg;
+                         << status;
             return false;
         }
         if (!GenRequestWindow(&window_union.second, in, status)) {
@@ -1637,7 +1636,7 @@ bool BatchModeTransformer::CheckHistoryWindowFrame(
     if (nullptr == w_ptr) {
         status.code = common::kPlanError;
         status.msg = "Invalid Request Window: null window";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     const node::FrameNode* frame = w_ptr->frame_node();
@@ -1646,7 +1645,7 @@ bool BatchModeTransformer::CheckHistoryWindowFrame(
         status.msg =
             "Invalid Request Window: end frame can't exceed "
             "CURRENT";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (frame->GetHistoryRangeStart() > 0 || frame->GetHistoryRowsStart() > 0) {
@@ -1654,7 +1653,7 @@ bool BatchModeTransformer::CheckHistoryWindowFrame(
         status.msg =
             "Invalid Request Window: start frame can't exceed "
             "CURRENT";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
@@ -2620,7 +2619,7 @@ bool RequestModeransformer::TransformProjecPlantOp(
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     PhysicalOpNode* depend = nullptr;
@@ -2644,7 +2643,7 @@ bool RequestModeransformer::TransformProjecPlantOp(
     if (ops.empty()) {
         status.msg = "fail transform project op: empty projects";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -2707,7 +2706,7 @@ bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     PhysicalOpNode* left = nullptr;
@@ -2736,7 +2735,7 @@ bool RequestModeransformer::TransformScanOp(const node::TablePlanNode* node,
     if (nullptr == node || nullptr == output) {
         status.msg = "input node or output node is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (node->IsPrimary()) {
@@ -2751,7 +2750,7 @@ bool RequestModeransformer::TransformScanOp(const node::TablePlanNode* node,
             status.msg = "fail to transform data_provider op: table " + db_ +
                          "." + node->table_ + " not exist!";
             status.code = common::kPlanError;
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
     }

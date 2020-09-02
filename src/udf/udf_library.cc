@@ -18,6 +18,8 @@
 #include "plan/planner.h"
 #include "udf/udf_registry.h"
 
+using ::fesql::common::kCodegenError;
+
 namespace fesql {
 namespace udf {
 
@@ -62,7 +64,7 @@ void UDFLibrary::InsertRegistry(
     }
     auto status = signature_table->Register(arg_types, is_variadic, registry);
     if (!status.isOK()) {
-        LOG(WARNING) << "Insert " << name << " registry failed: " << status.msg;
+        LOG(WARNING) << "Insert " << name << " registry failed: " << status;
     }
 }
 
@@ -99,11 +101,11 @@ UDAFRegistryHelper UDFLibrary::RegisterUDAF(const std::string& name) {
 Status UDFLibrary::RegisterAlias(const std::string& alias,
                                  const std::string& name) {
     auto iter = table_.find(alias);
-    CHECK_TRUE(iter == table_.end(), "Function name '", alias,
+    CHECK_TRUE(iter == table_.end(), kCodegenError, "Function name '", alias,
                "' is duplicated");
     iter = table_.find(name);
-    CHECK_TRUE(iter != table_.end(), "Alias target Function name '", name,
-               "' not found");
+    CHECK_TRUE(iter != table_.end(), kCodegenError,
+               "Alias target Function name '", name, "' not found");
     table_[alias] = iter->second;
     return Status::OK();
 }
@@ -121,20 +123,20 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
 
     Status status;
     CHECK_TRUE(0 == parser.parse(script, parser_trees, node_manager(), status),
-               "Fail to parse script:", status.msg);
+               kCodegenError, "Fail to parse script:", status.str());
     CHECK_TRUE(0 == planer.CreatePlanTree(parser_trees, plan_trees, status),
-               "Fail to create sql plan: ", status.msg);
+               kCodegenError, "Fail to create sql plan: ", status.str());
 
     std::unordered_map<std::string, std::shared_ptr<SimpleUDFRegistry>> dict;
     auto it = plan_trees.begin();
     for (; it != plan_trees.end(); ++it) {
         const ::fesql::node::PlanNode* node = *it;
-        CHECK_TRUE(node != nullptr, "Compile null plan");
+        CHECK_TRUE(node != nullptr, kCodegenError, "Compile null plan");
         switch (node->GetType()) {
             case ::fesql::node::kPlanTypeFuncDef: {
                 auto func_def_plan =
                     dynamic_cast<const ::fesql::node::FuncDefPlanNode*>(node);
-                CHECK_TRUE(func_def_plan->fn_def_ != nullptr,
+                CHECK_TRUE(func_def_plan->fn_def_ != nullptr, kCodegenError,
                            "fn_def node is null");
 
                 auto header = func_def_plan->fn_def_->header_;
@@ -171,7 +173,7 @@ Status UDFLibrary::Transform(const std::string& name,
 Status UDFLibrary::Transform(const std::string& name, UDFResolveContext* ctx,
                              ExprNode** result) const {
     auto iter = table_.find(name);
-    CHECK_TRUE(iter != table_.end(),
+    CHECK_TRUE(iter != table_.end(), kCodegenError,
                "Fail to find registered function: ", name);
     auto signature_table = iter->second;
 
@@ -185,7 +187,7 @@ Status UDFLibrary::Transform(const std::string& name, UDFResolveContext* ctx,
 
     DLOG(INFO) << "Resolve '" << name << "'<" << ctx->GetArgSignature()
                << ">to " << name << "(" << signature << ")";
-    CHECK_TRUE(registry != nullptr);
+    CHECK_TRUE(registry != nullptr, kCodegenError);
     return registry->Transform(ctx, result);
 }
 
@@ -193,7 +195,7 @@ Status UDFLibrary::ResolveFunction(const std::string& name,
                                    UDFResolveContext* ctx,
                                    node::FnDefNode** result) const {
     auto iter = table_.find(name);
-    CHECK_TRUE(iter != table_.end(),
+    CHECK_TRUE(iter != table_.end(), kCodegenError,
                "Fail to find registered function: ", name);
     auto signature_table = iter->second;
 
@@ -207,7 +209,7 @@ Status UDFLibrary::ResolveFunction(const std::string& name,
 
     DLOG(INFO) << "Resolve '" << name << "'<" << ctx->GetArgSignature()
                << ">to " << name << "(" << signature << ")";
-    CHECK_TRUE(registry != nullptr);
+    CHECK_TRUE(registry != nullptr, kCodegenError);
     return registry->ResolveFunction(ctx, result);
 }
 

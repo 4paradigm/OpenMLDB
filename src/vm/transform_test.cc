@@ -198,7 +198,7 @@ TEST_P(TransformTest, transform_physical_plan) {
             0) {
             LOG(INFO) << *(plan_trees[0]) << std::endl;
         } else {
-            LOG(INFO) << base_status.msg;
+            LOG(INFO) << base_status.str();
         }
 
         ASSERT_EQ(0, base_status.code);
@@ -238,10 +238,10 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
         ASSERT_EQ(0, base_status.code);
         if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) ==
             0) {
-            std::cout << base_status.msg;
+            std::cout << base_status.str();
             LOG(INFO) << *(plan_trees[0]) << std::endl;
         } else {
-            std::cout << base_status.msg;
+            std::cout << base_status.str();
         }
 
         ASSERT_EQ(0, base_status.code);
@@ -259,7 +259,7 @@ void PhysicalPlanCheck(const std::shared_ptr<Catalog>& catalog, std::string sql,
 
     bool ok = transform.TransformPhysicalPlan(plan_trees, &physical_plan,
                                               base_status);
-    std::cout << base_status.msg << std::endl;
+    std::cout << base_status.str() << std::endl;
     ASSERT_TRUE(ok);
 
     std::ostringstream oos;
@@ -483,7 +483,7 @@ TEST_P(TransformTest, window_merge_opt_test) {
             0) {
             LOG(INFO) << "\n" << *(plan_trees[0]) << std::endl;
         } else {
-            LOG(INFO) << base_status.msg;
+            LOG(INFO) << base_status.str();
         }
 
         ASSERT_EQ(0, base_status.code);

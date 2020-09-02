@@ -18,61 +18,77 @@ namespace fesql {
 namespace base {
 
 template <typename STREAM, typename... Args>
-std::initializer_list<int> __output_literal_args(STREAM& stream,  // NOLINT
-                                                 Args... args) {  // NOLINT
+static inline std::initializer_list<int> __output_literal_args(
+    STREAM& stream,  // NOLINT
+    Args... args) {  // NOLINT
     return std::initializer_list<int>{(stream << args, 0)...};
 }
 
-#define CHECK_STATUS(call, ...)                                               \
-    while (true) {                                                            \
-        auto _status = (call);                                                \
-        if (!_status.isOK()) {                                                \
-            fesql::base::__output_literal_args(                               \
-                LOG(WARNING), "Internal api error: ", ##__VA_ARGS__, " (at ", \
-                __FILE__, ":", __LINE__, ")");                                \
-            return _status;                                                   \
-        }                                                                     \
-        break;                                                                \
+#define MAX_STATUS_TRACE_SIZE 4096
+
+#define CHECK_STATUS(call, ...)                                              \
+    while (true) {                                                           \
+        auto _status = (call);                                               \
+        if (!_status.isOK()) {                                               \
+            std::stringstream _msg;                                          \
+            fesql::base::__output_literal_args(_msg, ##__VA_ARGS__);         \
+            std::stringstream _trace;                                        \
+            fesql::base::__output_literal_args(_trace, "    (At ", __FILE__, \
+                                               ":", __LINE__, ")");          \
+            if (_status.trace.size() >= MAX_STATUS_TRACE_SIZE) {             \
+                LOG(WARNING) << "Internal error: " << _status.msg << "\n"    \
+                             << _status.trace;                               \
+            } else {                                                         \
+                if (!_status.msg.empty()) {                                  \
+                    _trace << "\n"                                           \
+                           << "(Caused by) " << _status.msg;                 \
+                }                                                            \
+                _trace << "\n" << _status.trace;                             \
+            }                                                                \
+            return fesql::base::Status(_status.code, _msg.str(),             \
+                                       _trace.str());                        \
+        }                                                                    \
+        break;                                                               \
     }
 
-#define CHECK_TRUE(call, ...)                                                 \
-    while (true) {                                                            \
-        if (!(call)) {                                                        \
-            std::stringstream _ss;                                            \
-            fesql::base::__output_literal_args(                               \
-                _ss, "Internal api error: ", ##__VA_ARGS__, "(at ", __FILE__, \
-                ":", __LINE__, ")");                                          \
-            fesql::base::Status _status(common::kCodegenError, _ss.str());    \
-            return _status;                                                   \
-        }                                                                     \
-        break;                                                                \
-    }
-
-#define PLAN_CHECK_TRUE(call, ...)                                            \
-    while (true) {                                                            \
-        if (!(call)) {                                                        \
-            std::stringstream _ss;                                            \
-            fesql::base::__output_literal_args(                               \
-                _ss, "Internal api error: ", ##__VA_ARGS__, "(at ", __FILE__, \
-                ":", __LINE__, ")");                                          \
-            fesql::base::Status _status(common::kPlanError, _ss.str());       \
-            return _status;                                                   \
-        }                                                                     \
-        break;                                                                \
+#define CHECK_TRUE(call, errcode, ...)                                       \
+    while (true) {                                                           \
+        if (!(call)) {                                                       \
+            std::stringstream _msg;                                          \
+            fesql::base::__output_literal_args(_msg, ##__VA_ARGS__);         \
+            std::stringstream _trace;                                        \
+            fesql::base::__output_literal_args(_trace, "    (At ", __FILE__, \
+                                               ":", __LINE__, ")");          \
+            fesql::base::Status _status(errcode, _msg.str(), _trace.str());  \
+            return _status;                                                  \
+        }                                                                    \
+        break;                                                               \
     }
 
 struct Status {
     Status() : code(common::kOk), msg("ok") {}
+
     Status(common::StatusCode status_code, const std::string& msg_str)
         : code(status_code), msg(msg_str) {}
+
+    Status(common::StatusCode status_code, const std::string& msg_str,
+           const std::string& trace_str)
+        : code(status_code), msg(msg_str), trace(trace_str) {}
 
     static Status OK() { return Status(); }
 
     inline bool isOK() const { return code == common::kOk; }
 
+    const std::string str() const { return msg + "\n" + trace; }
+
     common::StatusCode code;
+
     std::string msg;
+    std::string trace;
 };
+
+std::ostream& operator<<(std::ostream& os, const Status& status);  // NOLINT
+
 }  // namespace base
 }  // namespace fesql
 #endif  // SRC_BASE_FE_STATUS_H_

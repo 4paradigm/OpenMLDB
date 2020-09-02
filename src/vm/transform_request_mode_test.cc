@@ -92,7 +92,7 @@ void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
             oss << *(plan_trees[0]);
             LOG(INFO) << "logical plan:\n" << oss.str();
         } else {
-            std::cout << base_status.msg;
+            std::cout << base_status.str();
         }
 
         ASSERT_EQ(0, base_status.code);
@@ -239,7 +239,7 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
             oss << *(plan_trees[0]) << std::endl;
             std::cout << "logical plan:\n" << oss.str() << std::endl;
         } else {
-            std::cout << base_status.msg;
+            std::cout << base_status.str();
         }
 
         ASSERT_EQ(0, base_status.code);

@@ -45,12 +45,13 @@ Status PredicateIRBuilder::BuildAndExpr(NativeValue left, NativeValue right,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
     Status status;
-    CHECK_TRUE(InferBoolTypes(raw_left, &casted_left, status),
-               "Infer and cast lhs type of and(&&) failed: ", status.msg);
-    CHECK_TRUE(InferBoolTypes(raw_right, &casted_right, status),
-               "Infer and cast rhs type of and(&&) failed: ", status.msg);
+    CHECK_TRUE(InferBoolTypes(raw_left, &casted_left, status), kCodegenError,
+               "Infer and cast lhs type of and(&&) failed: ", status.str());
+    CHECK_TRUE(InferBoolTypes(raw_right, &casted_right, status), kCodegenError,
+               "Infer and cast rhs type of and(&&) failed: ", status.str());
     CHECK_TRUE(casted_left->getType()->isIntegerTy(1) &&
                    casted_right->getType()->isIntegerTy(1),
+               kCodegenError,
                "Fail to codegen &&(and) expr: value types are invalid");
 
     ::llvm::Value* result_val = builder.CreateAnd(casted_left, casted_right);
@@ -89,12 +90,13 @@ Status PredicateIRBuilder::BuildOrExpr(NativeValue left, NativeValue right,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
     Status status;
-    CHECK_TRUE(InferBoolTypes(raw_left, &casted_left, status),
-               "Infer and cast lhs type of or(||) failed: ", status.msg);
-    CHECK_TRUE(InferBoolTypes(raw_right, &casted_right, status),
-               "Infer and cast rhs type of or(||) failed: ", status.msg);
+    CHECK_TRUE(InferBoolTypes(raw_left, &casted_left, status), kCodegenError,
+               "Infer and cast lhs type of or(||) failed: ", status.str());
+    CHECK_TRUE(InferBoolTypes(raw_right, &casted_right, status), kCodegenError,
+               "Infer and cast rhs type of or(||) failed: ", status.str());
     CHECK_TRUE(casted_left->getType()->isIntegerTy(1) &&
                    casted_right->getType()->isIntegerTy(1),
+               kCodegenError,
                "Fail to codegen &&(and) expr: value types are invalid");
 
     ::llvm::Value* result_val = builder.CreateOr(casted_left, casted_right);
@@ -135,12 +137,13 @@ Status PredicateIRBuilder::BuildXorExpr(NativeValue left, NativeValue right,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
     Status status;
-    CHECK_TRUE(InferBoolTypes(raw_left, &casted_left, status),
-               "Infer and cast lhs type of and(&&) failed: ", status.msg);
-    CHECK_TRUE(InferBoolTypes(raw_right, &casted_right, status),
-               "Infer and cast rhs type of and(&&) failed: ", status.msg);
+    CHECK_TRUE(InferBoolTypes(raw_left, &casted_left, status), kCodegenError,
+               "Infer and cast lhs type of and(&&) failed: ", status.str());
+    CHECK_TRUE(InferBoolTypes(raw_right, &casted_right, status), kCodegenError,
+               "Infer and cast rhs type of and(&&) failed: ", status.str());
     CHECK_TRUE(casted_left->getType()->isIntegerTy(1) &&
                    casted_right->getType()->isIntegerTy(1),
+               kCodegenError,
                "Fail to codegen &&(and) expr: value types are invalid");
 
     ::llvm::Value* result_val = builder.CreateXor(casted_left, casted_right);
@@ -158,8 +161,9 @@ Status PredicateIRBuilder::BuildNotExpr(NativeValue input,
 
     ::llvm::Value* casted_raw = nullptr;
     Status status;
-    CHECK_TRUE(InferBoolTypes(raw, &casted_raw, status), status.msg);
-    CHECK_TRUE(casted_raw->getType()->isIntegerTy(1),
+    CHECK_TRUE(InferBoolTypes(raw, &casted_raw, status), kCodegenError,
+               status.str());
+    CHECK_TRUE(casted_raw->getType()->isIntegerTy(1), kCodegenError,
                "Fail to codegen !(not) expr: value types are invalid");
 
     *output =
@@ -206,13 +210,13 @@ bool PredicateIRBuilder::BuildEqExpr(::llvm::Value* left, ::llvm::Value* right,
     } else {
         status.msg = "fail to codegen == expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (nullptr == *output) {
         status.msg = "fail to codegen == expr";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -250,13 +254,13 @@ bool PredicateIRBuilder::BuildNeqExpr(::llvm::Value* left, ::llvm::Value* right,
     } else {
         status.msg = "fail to codegen neq expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (nullptr == *output) {
         status.msg = "fail to codegen == expr";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -294,13 +298,13 @@ bool PredicateIRBuilder::BuildGtExpr(::llvm::Value* left, ::llvm::Value* right,
     } else {
         status.msg = "fail to codegen > expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (nullptr == *output) {
         status.msg = "fail to codegen > expr";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -338,13 +342,13 @@ bool PredicateIRBuilder::BuildGeExpr(::llvm::Value* left, ::llvm::Value* right,
     } else {
         status.msg = "fail to codegen >= expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (nullptr == *output) {
         status.msg = "fail to codegen >= expr";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -382,13 +386,13 @@ bool PredicateIRBuilder::BuildLtExpr(::llvm::Value* left, ::llvm::Value* right,
     } else {
         status.msg = "fail to codegen < expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (nullptr == *output) {
         status.msg = "fail to codegen < expr";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -426,13 +430,13 @@ bool PredicateIRBuilder::BuildLeExpr(::llvm::Value* left, ::llvm::Value* right,
     } else {
         status.msg = "fail to codegen <= expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (nullptr == *output) {
         status.msg = "fail to codegen <= expr";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -477,8 +481,8 @@ bool PredicateIRBuilder::InferBoolTypes(::llvm::Value* value,
     ::llvm::Type* bool_ty = ::llvm::Type::getInt1Ty(block_->getContext());
     if (type != bool_ty) {
         if (!cast_expr_ir_builder_.BoolCast(value, casted_value, status)) {
-            status.msg = "fail to codegen add expr: " + status.msg;
-            LOG(WARNING) << status.msg;
+            status.msg = "fail to codegen add expr: " + status.str();
+            LOG(WARNING) << status;
             return false;
         }
     }
@@ -510,7 +514,7 @@ bool PredicateIRBuilder::InferBaseTypes(::llvm::Value* left,
     if (TypeIRBuilder::IsTimestampPtr(left_type)) {
         if (false == timestamp_builder.GetTs(block_, left, casted_left)) {
             status.msg = "fail to get ts";
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
         left_type = (*casted_left)->getType();
@@ -519,7 +523,7 @@ bool PredicateIRBuilder::InferBaseTypes(::llvm::Value* left,
     if (TypeIRBuilder::IsTimestampPtr(right_type)) {
         if (false == timestamp_builder.GetTs(block_, right, casted_right)) {
             status.msg = "fail to get ts";
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
         right_type = (*casted_right)->getType();
@@ -528,44 +532,44 @@ bool PredicateIRBuilder::InferBaseTypes(::llvm::Value* left,
         if (cast_expr_ir_builder_.IsSafeCast(left_type, right_type)) {
             if (!cast_expr_ir_builder_.SafeCast(left, right_type, casted_left,
                                                 status)) {
-                status.msg = "fail to codegen expr: " + status.msg;
-                LOG(WARNING) << status.msg;
+                status.msg = "fail to codegen expr: " + status.str();
+                LOG(WARNING) << status;
                 return false;
             }
         } else if (cast_expr_ir_builder_.IsSafeCast(right_type, left_type)) {
             if (!cast_expr_ir_builder_.SafeCast(right, left_type, casted_right,
                                                 status)) {
-                status.msg = "fail to codegen expr: " + status.msg;
-                LOG(WARNING) << status.msg;
+                status.msg = "fail to codegen expr: " + status.str();
+                LOG(WARNING) << status;
                 return false;
             }
         } else if (cast_expr_ir_builder_.IsIntFloat2PointerCast(left_type,
                                                                 right_type)) {
             if (!cast_expr_ir_builder_.UnSafeCast(left, right_type, casted_left,
                                                   status)) {
-                status.msg = "fail to codegen expr: " + status.msg;
-                LOG(WARNING) << status.msg;
+                status.msg = "fail to codegen expr: " + status.str();
+                LOG(WARNING) << status;
                 return false;
             }
         } else if (cast_expr_ir_builder_.IsIntFloat2PointerCast(right_type,
                                                                 left_type)) {
             if (!cast_expr_ir_builder_.UnSafeCast(right, left_type,
                                                   casted_right, status)) {
-                status.msg = "fail to codegen expr: " + status.msg;
-                LOG(WARNING) << status.msg;
+                status.msg = "fail to codegen expr: " + status.str();
+                LOG(WARNING) << status;
                 return false;
             }
         } else if (cast_expr_ir_builder_.IsStringCast(right_type)) {
             if (!cast_expr_ir_builder_.StringCast(left, casted_left, status)) {
-                status.msg = "fail to codegen expr: " + status.msg;
-                LOG(WARNING) << status.msg;
+                status.msg = "fail to codegen expr: " + status.str();
+                LOG(WARNING) << status;
                 return false;
             }
         } else {
             status.msg =
                 "fail to codegen add expr: value type isn't compatible";
             status.code = common::kCodegenError;
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
     }

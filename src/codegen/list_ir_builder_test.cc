@@ -120,10 +120,12 @@ void RunListAtCase(T expected, const type::TableDef& table,
                 ::llvm::Value* column = NULL;
                 ::llvm::Value* list_ptr = builder.CreatePointerCast(
                     arg0, builder.getInt8Ty()->getPointerTo());
-                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
+                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column),
+                           kCodegenError);
 
                 ::llvm::Value* val = nullptr;
-                CHECK_TRUE(list_builder.BuildAt(column, arg1, &val, status));
+                CHECK_TRUE(list_builder.BuildAt(column, arg1, &val, status),
+                           kCodegenError);
 
                 node::NodeManager nm;
                 auto elem_type = DataTypeTrait<T>::to_type_node(&nm);
@@ -132,7 +134,8 @@ void RunListAtCase(T expected, const type::TableDef& table,
                         codegen::StringIRBuilder string_builder(
                             ctx->GetModule());
                         CHECK_TRUE(string_builder.CopyFrom(
-                            builder.GetInsertBlock(), val, it + 2));
+                                       builder.GetInsertBlock(), val, it + 2),
+                                   kCodegenError);
                         builder.CreateRetVoid();
                         break;
                     }
@@ -176,7 +179,8 @@ void RunListIteratorCase(T expected, const type::TableDef& table,
                 ::llvm::Value* column = NULL;
                 ::llvm::Value* list_ptr = builder.CreatePointerCast(
                     arg0, builder.getInt8Ty()->getPointerTo());
-                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
+                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column),
+                           kCodegenError);
 
                 ::llvm::Value* iterator = nullptr;
                 node::NodeManager nm;
@@ -299,11 +303,15 @@ void RunInnerListIteratorCase(T expected, const type::TableDef& table,
                     arg0, 0);
                 ::llvm::Value* list_ptr = builder.CreateLoad(list_gep_0);
                 if (inner_range) {
-                    CHECK_TRUE(buf_builder.BuildInnerRangeList(
-                        list_ptr, start_offset, end_offset, &inner_list));
+                    CHECK_TRUE(
+                        buf_builder.BuildInnerRangeList(
+                            list_ptr, start_offset, end_offset, &inner_list),
+                        kCodegenError);
                 } else {
-                    CHECK_TRUE(buf_builder.BuildInnerRowsList(
-                        list_ptr, start_offset, end_offset, &inner_list));
+                    CHECK_TRUE(
+                        buf_builder.BuildInnerRowsList(list_ptr, start_offset,
+                                                       end_offset, &inner_list),
+                        kCodegenError);
                 }
                 // build column
                 ::llvm::Value* column = NULL;
@@ -321,7 +329,8 @@ void RunInnerListIteratorCase(T expected, const type::TableDef& table,
                 inner_list_ref =
                     builder.CreatePointerCast(inner_list_ref, i8_ptr_ty);
                 CHECK_TRUE(
-                    buf_builder.BuildGetCol(col, inner_list_ref, &column));
+                    buf_builder.BuildGetCol(col, inner_list_ref, &column),
+                    kCodegenError);
 
                 ::llvm::Value* iterator = nullptr;
                 node::NodeManager nm;
@@ -400,7 +409,8 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 ::llvm::Value* column = NULL;
                 ::llvm::Value* list_ptr = builder.CreatePointerCast(
                     arg0, builder.getInt8Ty()->getPointerTo());
-                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
+                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column),
+                           kCodegenError);
 
                 ::llvm::Value* iter = nullptr;
                 CHECK_STATUS(
@@ -420,28 +430,32 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 ::llvm::Value* res = nullptr;
                 base::Status status;
                 CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(next1, next2,
-                                                              &res, status));
+                                                              &res, status),
+                           kCodegenError);
 
                 NativeValue next3_wrapper;
                 CHECK_STATUS(list_builder.BuildIteratorNext(
                     iter, elem_type, false, &next3_wrapper));
                 auto next3 = next3_wrapper.GetValue(&builder);
                 CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next3, &res,
-                                                              status));
+                                                              status),
+                           kCodegenError);
 
                 NativeValue next4_wrapper;
                 CHECK_STATUS(list_builder.BuildIteratorNext(
                     iter, elem_type, false, &next4_wrapper));
                 auto next4 = next4_wrapper.GetValue(&builder);
                 CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next4, &res,
-                                                              status));
+                                                              status),
+                           kCodegenError);
 
                 NativeValue next5_wrapper;
                 CHECK_STATUS(list_builder.BuildIteratorNext(
                     iter, elem_type, false, &next5_wrapper));
                 auto next5 = next5_wrapper.GetValue(&builder);
                 CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next5, &res,
-                                                              status));
+                                                              status),
+                           kCodegenError);
 
                 ::llvm::Value* ret_delete = nullptr;
                 list_builder.BuildIteratorDelete(iter, elem_type, &ret_delete);
@@ -482,7 +496,8 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
                 ::llvm::Value* column = NULL;
                 ::llvm::Value* list_ptr = builder.CreatePointerCast(
                     arg0, builder.getInt8Ty()->getPointerTo());
-                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
+                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column),
+                           kCodegenError);
 
                 node::NodeManager nm;
                 auto elem_type = DataTypeTrait<T>::to_type_node(&nm);
@@ -501,8 +516,10 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
                         auto res_ptr = fn->arg_begin() + 1;
                         codegen::StringIRBuilder string_builder(
                             ctx->GetModule());
-                        CHECK_TRUE(string_builder.CopyFrom(
-                            builder.GetInsertBlock(), next1, res_ptr));
+                        CHECK_TRUE(
+                            string_builder.CopyFrom(builder.GetInsertBlock(),
+                                                    next1, res_ptr),
+                            kCodegenError);
                         builder.CreateRetVoid();
                         break;
                     }

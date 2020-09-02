@@ -26,6 +26,7 @@ using fesql::codec::StringRef;
 using fesql::codec::Timestamp;
 using fesql::codegen::CodeGenContext;
 using fesql::codegen::NativeValue;
+using fesql::common::kCodegenError;
 using fesql::node::TypeNode;
 
 namespace fesql {
@@ -44,7 +45,8 @@ struct BuildGetHourUDF {
         Status status;
         CHECK_TRUE(timestamp_ir_builder.Hour(ctx->GetCurrentBlock(),
                                              time.GetRaw(), &ret, status),
-                   "Fail to build udf hour(int64): ", status.msg);
+                   kCodegenError,
+                   "Fail to build udf hour(int64): ", status.str());
         *out = NativeValue::Create(ret);
         return status;
     }
@@ -60,7 +62,8 @@ struct BuildGetMinuteUDF {
         Status status;
         CHECK_TRUE(timestamp_ir_builder.Minute(ctx->GetCurrentBlock(),
                                                time.GetRaw(), &ret, status),
-                   "Fail to build udf hour(int64): ", status.msg);
+                   kCodegenError,
+                   "Fail to build udf hour(int64): ", status.str());
         *out = NativeValue::Create(ret);
         return status;
     }
@@ -76,7 +79,8 @@ struct BuildGetSecondUDF {
         Status status;
         CHECK_TRUE(timestamp_ir_builder.Second(ctx->GetCurrentBlock(),
                                                time.GetRaw(), &ret, status),
-                   "Fail to build udf hour(int64): ", status.msg);
+                   kCodegenError,
+                   "Fail to build udf hour(int64): ", status.str());
         *out = NativeValue::Create(ret);
         return status;
     }
@@ -1253,7 +1257,8 @@ void DefaultUDFLibrary::Init() {
                 Status status;
                 CHECK_TRUE(date_ir_builder.Year(ctx->GetCurrentBlock(),
                                                 date.GetRaw(), &ret, status),
-                           "Fail to build udf year(date): ", status.msg);
+                           kCodegenError,
+                           "Fail to build udf year(date): ", status.str());
                 *out = NativeValue::Create(ret);
                 return status;
             })
@@ -1271,7 +1276,8 @@ void DefaultUDFLibrary::Init() {
                 Status status;
                 CHECK_TRUE(date_ir_builder.Month(ctx->GetCurrentBlock(),
                                                  date.GetRaw(), &ret, status),
-                           "Fail to build udf month(date): ", status.msg);
+                           kCodegenError,
+                           "Fail to build udf month(date): ", status.str());
                 *out = NativeValue::Create(ret);
                 return status;
             })
@@ -1289,7 +1295,8 @@ void DefaultUDFLibrary::Init() {
                 Status status;
                 CHECK_TRUE(date_ir_builder.Day(ctx->GetCurrentBlock(),
                                                date.GetRaw(), &ret, status),
-                           "Fail to build udf day(date): ", status.msg);
+                           kCodegenError,
+                           "Fail to build udf day(date): ", status.str());
                 *out = NativeValue::Create(ret);
                 return status;
             })

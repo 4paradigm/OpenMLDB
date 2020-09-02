@@ -246,7 +246,7 @@ bool RegisterFeLibs(udf::UDFLibrary* library, Status& status,  // NOLINT
     fesql_libs_path.append("/").append(libs_name);
     if (!GetLibsFiles(fesql_libs_path, filepaths, status)) {
         status.msg = "fail to get libs file " + fesql_libs_path;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -259,7 +259,7 @@ bool RegisterFeLibs(udf::UDFLibrary* library, Status& status,  // NOLINT
     for (auto path_str : filepaths) {
         status = library->RegisterFromFile(path_str);
         if (!status.isOK()) {
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
     }
@@ -285,7 +285,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     if (ctx.logical_plan.empty() || nullptr == ctx.logical_plan[0]) {
         status.msg = "error: generate empty/null logical plan";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (dump_plan_) {
@@ -305,7 +305,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         if (!transformer.TransformPhysicalPlan(ctx.logical_plan,
                                                &ctx.physical_plan, status)) {
             LOG(WARNING) << "fail to generate physical plan (batch mode): "
-                         << status.msg << " for sql: \n"
+                         << status << " for sql: \n"
                          << ctx.sql;
             return false;
         }
@@ -334,7 +334,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     if (nullptr == ctx.physical_plan) {
         status.msg = "error: generate null physical plan";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (dump_plan_) {
@@ -358,7 +358,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         if (e) {
             status.msg = "fail to init jit let";
             status.code = common::kJitError;
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
     }
@@ -400,7 +400,7 @@ bool SQLCompiler::BuildRunner(SQLContext& ctx, Status& status) {  // NOLINT
     RunnerBuilder runner_builder;
     Runner* runner = runner_builder.Build(ctx.physical_plan, status);
     if (nullptr == runner) {
-        status.msg = "fail to build runner: " + status.msg;
+        status.msg = "fail to build runner: " + status.str();
         status.code = common::kOpGenError;
         return false;
     }
@@ -424,12 +424,12 @@ bool SQLCompiler::Parse(SQLContext& ctx,
     int ret = parser.parse(ctx.sql, parser_trees, &ctx.nm, status);
     if (ret != 0) {
         LOG(WARNING) << "fail to parse sql " << ctx.sql << " with error "
-                     << status.msg;
+                     << status;
         return false;
     }
     ret = planer.CreatePlanTree(parser_trees, ctx.logical_plan, status);
     if (ret != 0) {
-        LOG(WARNING) << "Fail create sql plan: " << status.msg;
+        LOG(WARNING) << "Fail create sql plan: " << status;
         return false;
     }
     return true;

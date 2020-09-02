@@ -827,16 +827,17 @@ static Status ExpandLLVMArgTypes(
     ::llvm::Module* m, const node::TypeNode* dtype, bool nullable,
     std::vector<std::pair<::llvm::Type*, bool>>* output) {
     if (dtype->base() == node::kTuple) {
-        CHECK_TRUE(!nullable, "kTuple should never be nullable");
+        CHECK_TRUE(!nullable, kCodegenError, "kTuple should never be nullable");
         for (size_t i = 0; i < dtype->GetGenericSize(); ++i) {
-            CHECK_STATUS(ExpandLLVMArgTypes(m, dtype->GetGenericType(i),
-                                            dtype->IsGenericNullable(i),
-                                            output));
+            CHECK_STATUS(
+                ExpandLLVMArgTypes(m, dtype->GetGenericType(i),
+                                   dtype->IsGenericNullable(i), output),
+                kCodegenError);
         }
     } else {
         ::llvm::Type* llvm_ty = nullptr;
-        CHECK_TRUE(GetLLVMType(m, dtype, &llvm_ty), "Fail to lower ",
-                   dtype->GetName());
+        CHECK_TRUE(GetLLVMType(m, dtype, &llvm_ty), kCodegenError,
+                   "Fail to lower ", dtype->GetName());
         output->push_back(std::make_pair(llvm_ty, nullable));
     }
     return Status::OK();
@@ -846,7 +847,7 @@ static Status ExpandLLVMReturnTypes(
     ::llvm::Module* m, const node::TypeNode* dtype, bool nullable,
     std::vector<std::pair<::llvm::Type*, bool>>* output) {
     if (dtype->base() == node::kTuple) {
-        CHECK_TRUE(!nullable, "kTuple should never be nullable");
+        CHECK_TRUE(!nullable, kCodegenError, "kTuple should never be nullable");
         for (size_t i = 0; i < dtype->GetGenericSize(); ++i) {
             CHECK_STATUS(ExpandLLVMReturnTypes(m, dtype->GetGenericType(i),
                                                dtype->IsGenericNullable(i),
@@ -854,8 +855,8 @@ static Status ExpandLLVMReturnTypes(
         }
     } else {
         ::llvm::Type* llvm_ty = nullptr;
-        CHECK_TRUE(GetLLVMType(m, dtype, &llvm_ty), "Fail to lower ",
-                   dtype->GetName());
+        CHECK_TRUE(GetLLVMType(m, dtype, &llvm_ty), kCodegenError,
+                   "Fail to lower ", dtype->GetName());
         if (dtype->base() == node::kOpaque) {
             llvm_ty = ::llvm::Type::getInt8Ty(m->getContext());
         }
@@ -883,7 +884,7 @@ Status GetLLVMFunctionType(::llvm::Module* m,
     std::vector<std::pair<::llvm::Type*, bool>> llvm_ret_types;
     CHECK_STATUS(
         ExpandLLVMReturnTypes(m, return_type, return_nullable, &llvm_ret_types))
-    CHECK_TRUE(llvm_ret_types.size() > 0);
+    CHECK_TRUE(llvm_ret_types.size() > 0, kCodegenError);
 
     if (llvm_ret_types.size() > 1 ||
         TypeIRBuilder::IsStructPtr(llvm_ret_types[0].first) ||
@@ -915,7 +916,7 @@ Status GetLLVMFunctionType(::llvm::Module* m,
             }
         }
     } else {
-        CHECK_TRUE(return_type->base() != node::kTuple);
+        CHECK_TRUE(return_type->base() != node::kTuple, kCodegenError);
         ret_llvm_ty = llvm_ret_types[0].first;
         if (return_type->base() == node::kOpaque) {
             ret_llvm_ty = ret_llvm_ty->getPointerTo();

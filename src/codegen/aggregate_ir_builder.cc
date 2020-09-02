@@ -571,7 +571,7 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
     NativeValue window_ptr;
     bool ok = expr_ir_builder->BuildWindow(&window_ptr, status);
     if (!ok || window_ptr.GetRaw() == nullptr) {
-        LOG(ERROR) << "fail to find window_ptr: " + status.msg;
+        LOG(ERROR) << "fail to find window_ptr: " + status.str();
         return false;
     }
     NativeValue output_buf_wrapper;

@@ -31,7 +31,7 @@ bool ArithmeticIRBuilder::InferBaseTypes(::llvm::Value* left,
     if (NULL == left || NULL == right) {
         status.msg = "left or right value is null";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -41,7 +41,7 @@ bool ArithmeticIRBuilder::InferBaseTypes(::llvm::Value* left,
     if (!IsAcceptType(left_type) || !IsAcceptType(right_type)) {
         status.msg = "invalid type for arithmetic expression";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -52,31 +52,31 @@ bool ArithmeticIRBuilder::InferBaseTypes(::llvm::Value* left,
         if (cast_expr_ir_builder_.IsSafeCast(left_type, right_type)) {
             if (!cast_expr_ir_builder_.SafeCast(left, right_type, casted_left,
                                                 status)) {
-                status.msg = "fail to codegen add expr: " + status.msg;
-                LOG(WARNING) << status.msg;
+                status.msg = "fail to codegen add expr: " + status.str();
+                LOG(WARNING) << status;
                 return false;
             }
         } else if (cast_expr_ir_builder_.IsSafeCast(right_type, left_type)) {
             if (!cast_expr_ir_builder_.SafeCast(right, left_type, casted_right,
                                                 status)) {
-                status.msg = "fail to codegen add expr: " + status.msg;
-                LOG(WARNING) << status.msg;
+                status.msg = "fail to codegen add expr: " + status.str();
+                LOG(WARNING) << status;
                 return false;
             }
         } else if (cast_expr_ir_builder_.IsIntFloat2PointerCast(left_type,
                                                                 right_type)) {
             if (!cast_expr_ir_builder_.UnSafeCast(left, right_type, casted_left,
                                                   status)) {
-                status.msg = "fail to codegen add expr: " + status.msg;
-                LOG(WARNING) << status.msg;
+                status.msg = "fail to codegen add expr: " + status.str();
+                LOG(WARNING) << status;
                 return false;
             }
         } else if (cast_expr_ir_builder_.IsIntFloat2PointerCast(right_type,
                                                                 left_type)) {
             if (!cast_expr_ir_builder_.UnSafeCast(right, left_type,
                                                   casted_right, status)) {
-                status.msg = "fail to codegen add expr: " + status.msg;
-                LOG(WARNING) << status.msg;
+                status.msg = "fail to codegen add expr: " + status.str();
+                LOG(WARNING) << status;
                 return false;
             }
         } else {
@@ -85,7 +85,7 @@ bool ArithmeticIRBuilder::InferBaseTypes(::llvm::Value* left,
                 TypeIRBuilder::TypeName(left_type) + " and  " +
                 TypeIRBuilder::TypeName(right_type);
             status.code = common::kCodegenError;
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
     }
@@ -117,15 +117,15 @@ bool ArithmeticIRBuilder::InferBaseIntegerTypes(::llvm::Value* left,
         if (cast_expr_ir_builder_.IsSafeCast(left_type, right_type)) {
             if (!cast_expr_ir_builder_.SafeCast(left, right_type, casted_left,
                                                 status)) {
-                status.msg = "fail to codegen add expr: " + status.msg;
-                LOG(WARNING) << status.msg;
+                status.msg = "fail to codegen add expr: " + status.str();
+                LOG(WARNING) << status;
                 return false;
             }
         } else if (cast_expr_ir_builder_.IsSafeCast(right_type, left_type)) {
             if (!cast_expr_ir_builder_.SafeCast(right, left_type, casted_right,
                                                 status)) {
-                status.msg = "fail to codegen add expr: " + status.msg;
-                LOG(WARNING) << status.msg;
+                status.msg = "fail to codegen add expr: " + status.str();
+                LOG(WARNING) << status;
                 return false;
             }
         } else {
@@ -134,7 +134,7 @@ bool ArithmeticIRBuilder::InferBaseIntegerTypes(::llvm::Value* left,
                 TypeIRBuilder::TypeName(left_type) + " and  " +
                 TypeIRBuilder::TypeName(right_type);
             status.code = common::kCodegenError;
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
     }
@@ -167,8 +167,8 @@ bool ArithmeticIRBuilder::InferBaseDoubleTypes(::llvm::Value* left,
         if (!cast_expr_ir_builder_.UnSafeCast(
                 left, ::llvm::Type::getDoubleTy(this->block_->getContext()),
                 casted_left, status)) {
-            status.msg = "fail to codegen add expr: " + status.msg;
-            LOG(WARNING) << status.msg;
+            status.msg = "fail to codegen add expr: " + status.str();
+            LOG(WARNING) << status;
             return false;
         }
     }
@@ -177,8 +177,8 @@ bool ArithmeticIRBuilder::InferBaseDoubleTypes(::llvm::Value* left,
         if (!cast_expr_ir_builder_.UnSafeCast(
                 right, ::llvm::Type::getDoubleTy(this->block_->getContext()),
                 casted_right, status)) {
-            status.msg = "fail to codegen add expr: " + status.msg;
-            LOG(WARNING) << status.msg;
+            status.msg = "fail to codegen add expr: " + status.str();
+            LOG(WARNING) << status;
             return false;
         }
     }
@@ -193,7 +193,7 @@ bool ArithmeticIRBuilder::BuildAnd(::llvm::Value* left, ::llvm::Value* right,
         status.msg =
             "fail to codegen arithmetic and expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
@@ -208,7 +208,7 @@ bool ArithmeticIRBuilder::BuildLShiftLeft(::llvm::Value* left,
         status.msg =
             "fail to codegen logical shift left expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
@@ -223,7 +223,7 @@ bool ArithmeticIRBuilder::BuildLShiftRight(::llvm::Value* left,
         status.msg =
             "fail to codegen logical shift right expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     ::llvm::IRBuilder<> builder(block_);
@@ -266,7 +266,7 @@ bool ArithmeticIRBuilder::BuildAddExpr(
     } else {
         status.msg = "fail to codegen add expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
@@ -304,7 +304,7 @@ bool ArithmeticIRBuilder::BuildSubExpr(
     } else {
         status.msg = "fail to codegen sub expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
@@ -330,7 +330,7 @@ bool ArithmeticIRBuilder::BuildMultiExpr(
     } else {
         status.msg = "fail to codegen mul expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
@@ -353,7 +353,7 @@ bool ArithmeticIRBuilder::BuildFDivExpr(::llvm::Value* left,
     } else {
         status.msg = "fail to codegen fdiv expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
@@ -366,7 +366,7 @@ bool ArithmeticIRBuilder::BuildSDivExpr(::llvm::Value* left,
         status.msg =
             "fail to codegen integer sdiv expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     ::llvm::Value* casted_left = NULL;
@@ -418,7 +418,7 @@ bool ArithmeticIRBuilder::BuildModExpr(llvm::Value* left, llvm::Value* right,
     } else {
         status.msg = "fail to codegen mul expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;

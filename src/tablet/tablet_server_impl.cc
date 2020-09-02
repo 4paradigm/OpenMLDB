@@ -162,9 +162,9 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             bool ok = engine_->Get(request->sql(), request->db(), session,
                                    base_status);
             if (!ok) {
-                status->set_msg(base_status.msg);
+                status->set_msg(base_status.str());
                 status->set_code(base_status.code);
-                LOG(WARNING) << base_status.msg;
+                LOG(WARNING) << base_status.str();
                 return;
             }
         }
@@ -208,9 +208,9 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
             bool ok = engine_->Get(request->sql(), request->db(), session,
                                    base_status);
             if (!ok) {
-                status->set_msg(base_status.msg);
+                status->set_msg(base_status.str());
                 status->set_code(base_status.code);
-                LOG(WARNING) << base_status.msg;
+                LOG(WARNING) << base_status.str();
                 return;
             }
         }
@@ -244,9 +244,9 @@ void TabletServerImpl::Explain(RpcController* ctrl,
     bool ok = engine_->Explain(request->sql(), request->db(), false, &output,
                                &base_status);
     if (!ok || base_status.code != 0) {
-        status->set_msg(base_status.msg);
+        status->set_msg(base_status.str());
         status->set_code(base_status.code);
-        LOG(WARNING) << base_status.msg;
+        LOG(WARNING) << base_status.str();
         return;
     }
     ok = codec::SchemaCodec::Encode(output.input_schema,

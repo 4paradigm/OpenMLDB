@@ -136,7 +136,7 @@ TEST_P(SqlParserTest, Parser_Select_Expr_List) {
         parser_->parse(sql_case.sql_str().c_str(), trees, manager_, status);
 
     if (0 != status.code) {
-        std::cout << status.msg << std::endl;
+        std::cout << status << std::endl;
     }
     ASSERT_EQ(0, ret);
     std::cout << *(trees.front()) << std::endl;
@@ -149,7 +149,7 @@ TEST_F(SqlParserTest, ConstExprTest) {
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
 
     if (0 != status.code) {
-        std::cout << status.msg << std::endl;
+        std::cout << status << std::endl;
     }
     ASSERT_EQ(0, ret);
     auto node_ptr = trees.front();
@@ -235,7 +235,7 @@ TEST_F(SqlParserTest, Assign_Op_Test) {
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
 
     if (0 != status.code) {
-        std::cout << status.msg << std::endl;
+        std::cout << status << std::endl;
     }
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, trees.size());
@@ -306,7 +306,7 @@ TEST_F(SqlParserTest, Parser_Insert_ALL_Stmt) {
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
 
     if (0 != ret) {
-        std::cout << status.msg << std::endl;
+        std::cout << status << std::endl;
     }
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, trees.size());
@@ -333,7 +333,7 @@ TEST_F(SqlParserTest, Parser_Insert_All_Placeholder) {
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
 
     if (0 != ret) {
-        std::cout << status.msg << std::endl;
+        std::cout << status << std::endl;
     }
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, trees.size());
@@ -361,7 +361,7 @@ TEST_F(SqlParserTest, Parser_Insert_Part_Placeholder) {
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
 
     if (0 != ret) {
-        std::cout << status.msg << std::endl;
+        std::cout << status << std::endl;
     }
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, trees.size());
@@ -390,7 +390,7 @@ TEST_F(SqlParserTest, Parser_Insert_Stmt) {
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
 
     if (0 != ret) {
-        std::cout << status.msg << std::endl;
+        std::cout << status << std::endl;
     }
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, trees.size());
@@ -421,7 +421,7 @@ TEST_F(SqlParserTest, Parser_Insert_Stmt_values) {
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
 
     if (0 != ret) {
-        std::cout << status.msg << std::endl;
+        std::cout << status << std::endl;
     }
     ASSERT_EQ(0, ret);
     ASSERT_EQ(1u, trees.size());
@@ -579,7 +579,7 @@ TEST_P(SqlParserErrorTest, ParserErrorStatusTest) {
     ASSERT_EQ(1, ret);
     ASSERT_EQ(0u, trees.size());
     ASSERT_EQ(param.first, status.code);
-    std::cout << status.msg << std::endl;
+    std::cout << status << std::endl;
 }
 
 INSTANTIATE_TEST_SUITE_P(SQLErrorParse, SqlParserErrorTest,

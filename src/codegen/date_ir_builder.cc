@@ -108,7 +108,7 @@ bool DateIRBuilder::Day(::llvm::BasicBlock* block, ::llvm::Value* date,
     codegen::ArithmeticIRBuilder arithmetic_ir_builder(block);
     if (!arithmetic_ir_builder.BuildAnd(code, builder.getInt32(255), &code,
                                         status)) {
-        LOG(WARNING) << "Fail Compute Day of Date: " << status.msg;
+        LOG(WARNING) << "Fail Compute Day of Date: " << status;
         return false;
     }
     *output = code;
@@ -132,19 +132,19 @@ bool DateIRBuilder::Month(::llvm::BasicBlock* block, ::llvm::Value* date,
 
     if (!arithmetic_ir_builder.BuildLShiftRight(code, builder.getInt32(8),
                                                 &code, status)) {
-        LOG(WARNING) << "Fail Compute Month of Date: " << status.msg;
+        LOG(WARNING) << "Fail Compute Month of Date: " << status;
         return false;
     }
 
     if (!arithmetic_ir_builder.BuildAnd(code, builder.getInt32(255), &code,
                                         status)) {
-        LOG(WARNING) << "Fail Compute Month of Date: " << status.msg;
+        LOG(WARNING) << "Fail Compute Month of Date: " << status;
         return false;
     }
 
     if (!arithmetic_ir_builder.BuildAddExpr(code, builder.getInt32(1), &code,
                                             status)) {
-        LOG(WARNING) << "Fail Compute Month of Date: " << status.msg;
+        LOG(WARNING) << "Fail Compute Month of Date: " << status;
         return false;
     }
     *output = code;
@@ -165,12 +165,12 @@ bool DateIRBuilder::Year(::llvm::BasicBlock* block, ::llvm::Value* date,
 
     if (!arithmetic_ir_builder.BuildLShiftRight(code, builder.getInt32(16),
                                                 &code, status)) {
-        LOG(WARNING) << "Fail Compute Year of Date: " << status.msg;
+        LOG(WARNING) << "Fail Compute Year of Date: " << status;
         return false;
     }
     if (!arithmetic_ir_builder.BuildAddExpr(code, builder.getInt32(1900), &code,
                                             status)) {
-        LOG(WARNING) << "Fail Compute Year of Date: " << status.msg;
+        LOG(WARNING) << "Fail Compute Year of Date: " << status;
         return false;
     }
     *output = code;

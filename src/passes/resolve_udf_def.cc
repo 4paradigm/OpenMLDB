@@ -7,6 +7,8 @@
 #include "base/fe_status.h"
 #include "node/sql_node.h"
 
+using ::fesql::common::kCodegenError;
+
 namespace fesql {
 namespace passes {
 
@@ -17,13 +19,14 @@ Status ResolveUdfDef::Visit(node::FnNodeFnDef* fn_def) {
         std::string arg_name = pnode->GetName();
         int64_t exist_arg_id = CurrentScope()->GetVar(arg_name);
         // function def should take no duplicate arg names
-        CHECK_TRUE(exist_arg_id < 0, "Duplicate argument name ", arg_name);
+        CHECK_TRUE(exist_arg_id < 0, kCodegenError, "Duplicate argument name ",
+                   arg_name);
 
         auto expr_id = pnode->GetExprId();
-        CHECK_TRUE(expr_id->IsResolved(), "Expr id of argument ", arg_name,
-                   " is not mark resolved");
-        CHECK_TRUE(expr_id->GetOutputType() != nullptr, "Argument ", arg_name,
-                   "'s type is null");
+        CHECK_TRUE(expr_id->IsResolved(), kCodegenError, "Expr id of argument ",
+                   arg_name, " is not mark resolved");
+        CHECK_TRUE(expr_id->GetOutputType() != nullptr, kCodegenError,
+                   "Argument ", arg_name, "'s type is null");
         CHECK_STATUS(CurrentScope()->AddVar(arg_name, expr_id->GetId()));
     }
     return Visit(fn_def->block_);
@@ -55,7 +58,7 @@ Status ResolveUdfDef::Visit(node::FnNodeList* block) {
             }
         }
         CHECK_STATUS(status, "Error at (", node->GetLineNum(), ":",
-                     node->GetLocation(), "): ", status.msg);
+                     node->GetLocation(), "): ", status.str());
     }
     return status;
 }
@@ -63,7 +66,7 @@ Status ResolveUdfDef::Visit(node::FnNodeList* block) {
 Status ResolveUdfDef::Visit(node::FnAssignNode* assign) {
     CHECK_STATUS(Visit(assign->expression_));
     auto var = assign->var_;
-    CHECK_TRUE(var->IsResolved(), "Unresolved LHS var");
+    CHECK_TRUE(var->IsResolved(), kCodegenError, "Unresolved LHS var");
     auto exist_var_id = GetVar(var->GetName());
     if (exist_var_id >= 0) {
         // re-assign
@@ -136,8 +139,8 @@ Status ResolveUdfDef::Visit(node::ExprNode* expr) {
             if (!expr_id->IsResolved()) {
                 auto var_name = expr_id->GetName();
                 int64_t id = this->GetVar(var_name);
-                CHECK_TRUE(id >= 0, "Fail to find var ", var_name,
-                           " in current scope");
+                CHECK_TRUE(id >= 0, kCodegenError, "Fail to find var ",
+                           var_name, " in current scope");
                 expr_id->SetId(id);
             }
         }

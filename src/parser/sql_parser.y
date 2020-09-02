@@ -30,7 +30,7 @@ void yyerror(YYLTYPE* yyllocp, yyscan_t unused, ::fesql::node::NodePointVector &
         s << "line: "<< yyllocp->last_line << ", column: "
        	<< yyllocp->first_column << ": " <<
        	msg;
-	status.msg=(s.str());
+	status.msg = (s.str());
 }
 %}
 

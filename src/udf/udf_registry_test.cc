@@ -39,7 +39,7 @@ const node::FnDefNode* GetFnDef(UDFLibrary* lib, const std::string& name,
     node::ExprNode* transformed = nullptr;
     auto status = lib->Transform(name, arg_list, nm, &transformed);
     if (!status.isOK()) {
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return nullptr;
     }
     if (transformed->GetExprType() != node::kExprCall) {

@@ -79,7 +79,7 @@ bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
     if (false == IsSafeCast(value->getType(), type)) {
         status.msg = "unsafe cast";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -93,7 +93,7 @@ bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
     if (false == ::llvm::CastInst::isCastable(value->getType(), type)) {
         status.msg = "can not safe cast";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     ::llvm::Instruction::CastOps cast_op =
@@ -103,7 +103,7 @@ bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
     if (NULL == cast_value) {
         status.msg = "fail to cast";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     *output = cast_value;
@@ -117,7 +117,7 @@ bool CastExprIRBuilder::UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
     if (false == ::llvm::CastInst::isCastable(value->getType(), type)) {
         status.msg = "can not safe cast";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     ::llvm::Instruction::CastOps cast_op =
@@ -126,7 +126,7 @@ bool CastExprIRBuilder::UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
     if (NULL == cast_value) {
         status.msg = "fail to cast";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     *output = cast_value;
@@ -189,7 +189,7 @@ bool CastExprIRBuilder::BoolCast(llvm::Value* value, llvm::Value** casted_value,
         status.msg =
             "fail to codegen cast bool expr: value type isn't compatible";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
