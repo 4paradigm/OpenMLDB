@@ -475,6 +475,7 @@ bool SQLCase::ExtractRow(const vm::Schema& schema,
             rb.AppendNULL();
             continue;
         }
+        LOG(INFO) << item_vec[index];
         switch (it->type()) {
             case type::kInt16: {
                 if (!rb.AppendInt16(
@@ -882,8 +883,13 @@ bool SQLCase::CreateSQLCasesFromYaml(const std::string& cases_dir,
 bool SQLCase::CreateTableInfoFromYaml(const std::string& cases_dir,
                                       const std::string& yaml_path,
                                       TableInfo* table_info) {
-    auto resouces_path = cases_dir + "/" + yaml_path;
-    DLOG(INFO) << "Resource path: " << resouces_path;
+    std::string resouces_path;
+    if (cases_dir != "") {
+        resouces_path = cases_dir + "/" + yaml_path;
+    } else {
+        resouces_path = yaml_path;
+    }
+    LOG(INFO) << "Resource path: " << resouces_path;
     if (!boost::filesystem::is_regular_file(resouces_path)) {
         LOG(WARNING) << resouces_path << ": No such file";
         return false;
@@ -922,8 +928,13 @@ bool SQLCase::CreateSQLCasesFromYaml(
     const std::string& cases_dir, const std::string& yaml_path,
     std::vector<SQLCase>& sql_cases,
     const std::vector<std::string>& filter_modes) {
-    auto sql_case_path = cases_dir + "/" + yaml_path;
-    DLOG(INFO) << "SQL Cases Path: " << sql_case_path;
+    std::string sql_case_path;
+    if (cases_dir != "") {
+        sql_case_path = cases_dir + "/" + yaml_path;
+    } else {
+        sql_case_path = yaml_path;
+    }
+    LOG(INFO) << "SQL Cases Path: " << sql_case_path;
     if (!boost::filesystem::is_regular_file(sql_case_path)) {
         LOG(WARNING) << sql_case_path << ": No such file";
         return false;

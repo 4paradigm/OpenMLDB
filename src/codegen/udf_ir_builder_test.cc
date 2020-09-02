@@ -93,16 +93,16 @@ void CheckUDFFail(const std::string &name, T expect, Args... args) {
 }
 
 TEST_F(UDFIRBuilderTest, dayofmonth_date_udf_test) {
-    Date date(2020, 05, 22);
-    CheckUDF<int32_t, Date>("dayofmonth", 22, date);
+    CheckUDF<int32_t, Date>("dayofmonth", 22, Date(2020, 05, 22));
+    CheckUDF<Nullable<int32_t>, Nullable<Date>>("dayofmonth", nullptr, nullptr);
 }
 TEST_F(UDFIRBuilderTest, month_date_udf_test) {
-    Date date(2020, 05, 22);
-    CheckUDF<int32_t, Date>("month", 5, date);
+    CheckUDF<int32_t, Date>("month", 5, Date(2020, 05, 22));
+    CheckUDF<Nullable<int32_t>, Nullable<Date>>("month", nullptr, nullptr);
 }
 TEST_F(UDFIRBuilderTest, year_date_udf_test) {
-    Date date(2020, 05, 22);
-    CheckUDF<int32_t, Date>("year", 2020, date);
+    CheckUDF<int32_t, Date>("year", 2020, Date(2020, 05, 22));
+    CheckUDF<Nullable<int32_t>, Nullable<Date>>("year", nullptr, nullptr);
 }
 TEST_F(UDFIRBuilderTest, dayofweek_date_udf_test) {
     Date date(2020, 05, 22);

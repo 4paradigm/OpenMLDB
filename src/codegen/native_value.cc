@@ -25,7 +25,6 @@ namespace codegen {
     } else if (IsRegFlag()) {
         is_null = flag_;
     } else {
-        LOG(WARNING) << "Get null flag from value without flag";
         is_null = ::llvm::ConstantInt::getFalse(builder->getContext());
     }
     if (is_null->getType() != bool_ty) {
@@ -40,7 +39,6 @@ namespace codegen {
 
 ::llvm::Value* NativeValue::GetValue(::llvm::IRBuilder<>* builder) const {
     if (IsConstNull()) {
-        LOG(WARNING) << "Get value from const null";
         return ::llvm::UndefValue::get(GetType());
     } else if (IsMem()) {
         return builder->CreateLoad(raw_);

@@ -626,14 +626,18 @@ struct VariadicLLVMUDFGen : public LLVMUDFGenBase {
 class LLVMUDFRegistry : public UDFRegistry {
  public:
     explicit LLVMUDFRegistry(const std::string& name,
-                             std::shared_ptr<LLVMUDFGenBase> gen_impl_func)
-        : UDFRegistry(name), gen_impl_func_(gen_impl_func) {}
+                             std::shared_ptr<LLVMUDFGenBase> gen_impl_func,
+                             const std::vector<size_t>& nullable_arg_indices)
+        : UDFRegistry(name),
+          gen_impl_func_(gen_impl_func),
+          nullable_arg_indices_(nullable_arg_indices) {}
 
     Status ResolveFunction(UDFResolveContext* ctx,
                            node::FnDefNode** result) override;
 
  private:
     std::shared_ptr<LLVMUDFGenBase> gen_impl_func_;
+    std::vector<size_t> nullable_arg_indices_;
 };
 
 class LLVMUDFRegistryHelper : public UDFRegistryHelper<LLVMUDFRegistry> {
@@ -665,8 +669,17 @@ class LLVMUDFRegistryHelper : public UDFRegistryHelper<LLVMUDFRegistry> {
     LLVMUDFRegistryHelper& args(
         const typename LLVMUDFGen<Args...>::InferFType& infer,
         const typename LLVMUDFGen<Args...>::FType& gen) {
+        // find nullable arg positions
+        std::vector<size_t> null_indices;
+        std::vector<int> arg_nullable = {IsNullableTrait<Args>::value...};
+        for (size_t i = 0; i < arg_nullable.size(); ++i) {
+            if (arg_nullable[i] > 0) {
+                null_indices.push_back(i);
+            }
+        }
         cur_def_ = std::make_shared<LLVMUDFGen<Args...>>(gen, infer);
-        auto registry = std::make_shared<LLVMUDFRegistry>(name(), cur_def_);
+        auto registry =
+            std::make_shared<LLVMUDFRegistry>(name(), cur_def_, null_indices);
         this->InsertRegistry(
             {DataTypeTrait<Args>::to_type_node(node_manager())...}, false,
             registry);
@@ -686,8 +699,17 @@ class LLVMUDFRegistryHelper : public UDFRegistryHelper<LLVMUDFRegistry> {
     LLVMUDFRegistryHelper& variadic_args(
         const typename VariadicLLVMUDFGen<Args...>::InferFType& infer,
         const typename VariadicLLVMUDFGen<Args...>::FType& gen) {  // NOLINT
+        // find nullable arg positions
+        std::vector<size_t> null_indices;
+        std::vector<int> arg_nullable = {IsNullableTrait<Args>::value...};
+        for (size_t i = 0; i < arg_nullable.size(); ++i) {
+            if (arg_nullable[i] > 0) {
+                null_indices.push_back(i);
+            }
+        }
         cur_def_ = std::make_shared<VariadicLLVMUDFGen<Args...>>(gen, infer);
-        auto registry = std::make_shared<LLVMUDFRegistry>(name(), cur_def_);
+        auto registry =
+            std::make_shared<LLVMUDFRegistry>(name(), cur_def_, null_indices);
         this->InsertRegistry(
             {DataTypeTrait<Args>::to_type_node(node_manager())...}, true,
             registry);

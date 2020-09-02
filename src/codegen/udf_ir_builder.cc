@@ -14,6 +14,7 @@
 #include "codegen/date_ir_builder.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/list_ir_builder.h"
+#include "codegen/null_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "llvm/IR/Attributes.h"
 #include "node/node_manager.h"
@@ -151,7 +152,27 @@ Status UDFIRBuilder::BuildCodeGenUDFCall(
     CodeGenContext codegen_ctx(module_);
     BlockGuard guard(block_, &codegen_ctx);
 
-    CHECK_STATUS(gen_impl->gen(&codegen_ctx, args, output));
+    ::llvm::Value* ret_null = nullptr;
+    for (size_t i = 0; i < fn->GetArgSize(); ++i) {
+        if (!fn->IsArgNullable(i) && i < args.size() && args[i].IsNullable()) {
+            NullIRBuilder null_ir_builder;
+            null_ir_builder.CheckAnyNull(block_, args[i], &ret_null);
+        }
+    }
+
+    NativeValue gen_output;
+    CHECK_STATUS(gen_impl->gen(&codegen_ctx, args, &gen_output));
+
+    if (ret_null != nullptr) {
+        if (gen_output.IsNullable()) {
+            auto builder = codegen_ctx.GetBuilder();
+            ret_null =
+                builder->CreateOr(ret_null, gen_output.GetIsNull(builder));
+        }
+        *output = gen_output.WithFlag(ret_null);
+    } else {
+        *output = gen_output;
+    }
     return Status::OK();
 }
 

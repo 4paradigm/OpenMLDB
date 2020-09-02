@@ -55,7 +55,7 @@ std::initializer_list<int> __output_literal_args(STREAM& stream,  // NOLINT
             fesql::base::__output_literal_args(                               \
                 _ss, "Internal api error: ", ##__VA_ARGS__, "(at ", __FILE__, \
                 ":", __LINE__, ")");                                          \
-            fesql::base::Status _status(common::kPlanError, _ss.str());    \
+            fesql::base::Status _status(common::kPlanError, _ss.str());       \
             return _status;                                                   \
         }                                                                     \
         break;                                                                \
