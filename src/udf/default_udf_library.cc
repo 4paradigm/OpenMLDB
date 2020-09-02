@@ -1366,7 +1366,7 @@ void DefaultUDFLibrary::Init() {
 
     RegisterUDAFTemplate<SumUDAFDef>("sum")
         .doc("Compute sum of values")
-        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date>();
+        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp>();
 
     RegisterExprUDF("minimum").args<AnyArg, AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) {

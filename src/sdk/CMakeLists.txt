@@ -51,6 +51,8 @@ else ()
 endif ()
 
 set(UseSWIG_TARGET_NAME_PREFERENCE STANDARD)
+get_property(CUR_SWIG_FLAGS SOURCE fesql_interface_complete.i PROPERTY SWIG_FLAGS)
+set_property(SOURCE fesql_interface_complete.i PROPERTY SWIG_FLAGS -interface _fesql_pysdk)
 swig_add_library(fesql_pysdk
         TYPE SHARED
         LANGUAGE python
@@ -58,6 +60,7 @@ swig_add_library(fesql_pysdk
         SOURCES fesql_interface_complete.i)
 target_include_directories(fesql_pysdk PRIVATE ${PYTHON_INCLUDE_DIRS})
 target_link_libraries(fesql_pysdk fesql_sdk ${SDK_DEPS_LIBS})
+set_property(SOURCE fesql_interface_complete.i PROPERTY SWIG_FLAGS ${CUR_SWIG_FLAGS})
 endif()
 
 if(JAVASDK_ENABLE)
