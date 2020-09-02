@@ -56,7 +56,6 @@ Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
 Status LLVMUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
                                         node::FnDefNode** result) {
     std::vector<const node::TypeNode*> arg_types;
-    std::vector<int> arg_nullable;
     std::vector<const ExprAttrNode*> arg_attrs;
     for (size_t i = 0; i < ctx->arg_size(); ++i) {
         auto arg_type = ctx->arg_type(i);
@@ -64,7 +63,6 @@ Status LLVMUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
         CHECK_TRUE(arg_type != nullptr, i,
                    "th argument node type is unknown: ", name());
         arg_types.push_back(arg_type);
-        arg_nullable.push_back(nullable);
         arg_attrs.push_back(new ExprAttrNode(arg_type, nullable));
     }
     ExprAttrNode out_attr(nullptr, true);
@@ -78,6 +76,11 @@ Status LLVMUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
     bool return_nullable = out_attr.nullable();
     CHECK_TRUE(return_type != nullptr && !ctx->HasError(),
                "Infer node return type failed: ", ctx->GetError());
+
+    std::vector<int> arg_nullable(arg_types.size(), false);
+    for (size_t pos : nullable_arg_indices_) {
+        arg_nullable[pos] = true;
+    }
 
     auto udf_def = dynamic_cast<node::UDFByCodeGenDefNode*>(
         ctx->node_manager()->MakeUDFByCodeGenDefNode(
