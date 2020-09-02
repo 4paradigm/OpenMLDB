@@ -6,6 +6,7 @@
 //
 #include "tablet/combine_iterator.h"
 #include <algorithm>
+#include <utility>
 #include "base/glog_wapper.h"
 
 namespace rtidb {
