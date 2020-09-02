@@ -22,7 +22,7 @@ class DefaultUDFLibrary : public UDFLibrary {
     void IniMathUDF();
     void InitStringUDF();
     void InitTrigonometricUDF();
-
+    void InitDateUDF();
     void InitUtilityUDF();
 
     static DefaultUDFLibrary inst_;

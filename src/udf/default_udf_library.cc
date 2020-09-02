@@ -438,7 +438,7 @@ struct SumCateDef {
             auto stored_key = ContainerT::to_stored_key(key);
             auto iter = map.find(stored_key);
             if (iter == map.end()) {
-                map.insert(iter, {stored_key, 
+                map.insert(iter, {stored_key,
                                     ContainerT::to_stored_value(value)});
             } else {
                 auto& single = iter->second;
@@ -553,10 +553,11 @@ struct MinCateDef {
             auto stored_key = ContainerT::to_stored_key(key);
             auto iter = map.find(stored_key);
             if (iter == map.end()) {
-                map.insert(iter, {stored_key, ContainerT::to_stored_value(value)});
+                map.insert(iter, {stored_key,
+                            ContainerT::to_stored_value(value)});
             } else {
                 auto& single = iter->second;
-                if (single > ContainerT::to_stored_value(value)){
+                if (single > ContainerT::to_stored_value(value)) {
                     single = ContainerT::to_stored_value(value);
                 }
             }
@@ -612,10 +613,11 @@ struct MaxCateDef {
             auto stored_key = ContainerT::to_stored_key(key);
             auto iter = map.find(stored_key);
             if (iter == map.end()) {
-                map.insert(iter, {stored_key, ContainerT::to_stored_value(value)});
+                map.insert(iter, {stored_key,
+                            ContainerT::to_stored_value(value)});
             } else {
                 auto& single = iter->second;
-                if (single < ContainerT::to_stored_value(value)){
+                if (single < ContainerT::to_stored_value(value)) {
                     single = ContainerT::to_stored_value(value);
                 }
             }
@@ -765,7 +767,8 @@ struct CountCateWhereDef {
                            Nullable<bool>, Nullable<K>>()
                 .init("count_cate_where_init" + suffix, ContainerT::Init)
                 .update("count_cate_where_update" + suffix, Update)
-                .output("count_cate_where_output" + suffix, CountCateImpl::Output);
+                .output("count_cate_where_output" + suffix,
+                                            CountCateImpl::Output);
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
@@ -808,7 +811,8 @@ struct MaxCateWhereDef {
                            Nullable<bool>, Nullable<K>>()
                 .init("max_cate_where_init" + suffix, ContainerT::Init)
                 .update("max_cate_where_update" + suffix, Update)
-                .output("max_cate_where_output" + suffix, CountCateImpl::Output);
+                .output("max_cate_where_output" + suffix,
+                                 CountCateImpl::Output);
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
@@ -851,7 +855,8 @@ struct MinCateWhereDef {
                            Nullable<bool>, Nullable<K>>()
                 .init("min_cate_where_init" + suffix, ContainerT::Init)
                 .update("min_cate_where_update" + suffix, Update)
-                .output("min_cate_where_output" + suffix, CountCateImpl::Output);
+                .output("min_cate_where_output" + suffix,
+                                             CountCateImpl::Output);
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
@@ -895,7 +900,8 @@ struct AvgCateWhereDef {
                            Nullable<bool>, Nullable<K>>()
                 .init("avg_cate_where_init" + suffix, ContainerT::Init)
                 .update("avg_cate_where_update" + suffix, Update)
-                .output("avg_cate_where_output" + suffix, AvgCateImpl::Output);
+                .output("avg_cate_where_output" + suffix,
+                                            AvgCateImpl::Output);
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
@@ -937,18 +943,24 @@ struct TopKCountCateWhereDef {
             helper
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int32_t>()
-                .init("top_n_key_count_cate_where_init" + suffix, ContainerT::Init)
-                .update("top_n_key_count_cate_where_update" + suffix, UpdateI32Bound)
-                .output("top_n_key_count_cate_where_output" + suffix, Output);
+                .init("top_n_key_count_cate_where_init" + suffix,
+                                                    ContainerT::Init)
+                .update("top_n_key_count_cate_where_update" + suffix,
+                                                    UpdateI32Bound)
+                .output("top_n_key_count_cate_where_output" + suffix,
+                                                    Output);
 
             suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
                      "_" + DataTypeTrait<V>::to_string();
             helper
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int64_t>()
-                .init("top_n_key_count_cate_where_init" + suffix, ContainerT::Init)
-                .update("top_n_key_count_cate_where_update" + suffix, Update)
-                .output("top_n_key_count_cate_where_output" + suffix, Output);
+                .init("top_n_key_count_cate_where_init" + suffix,
+                                                     ContainerT::Init)
+                .update("top_n_key_count_cate_where_update" + suffix,
+                                                     Update)
+                .output("top_n_key_count_cate_where_output" + suffix,
+                                                     Output);
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
@@ -1011,16 +1023,20 @@ struct TopKSumCateWhereDef {
             helper
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int32_t>()
-                .init("top_n_key_sum_cate_where_init" + suffix, ContainerT::Init)
-                .update("top_n_key_sum_cate_where_update" + suffix, UpdateI32Bound)
-                .output("top_n_key_sum_cate_where_output" + suffix, Output);
+                .init("top_n_key_sum_cate_where_init" + suffix,
+                                                     ContainerT::Init)
+                .update("top_n_key_sum_cate_where_update" + suffix,
+                                                     UpdateI32Bound)
+                .output("top_n_key_sum_cate_where_output" + suffix,
+                                                     Output);
 
             suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
                      "_" + DataTypeTrait<V>::to_string();
             helper
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int64_t>()
-                .init("top_n_key_sum_cate_where_init" + suffix, ContainerT::Init)
+                .init("top_n_key_sum_cate_where_init" + suffix,
+                                                         ContainerT::Init)
                 .update("top_n_key_sum_cate_where_update" + suffix, Update)
                 .output("top_n_key_sum_cate_where_output" + suffix, Output);
         }
@@ -1085,16 +1101,20 @@ struct TopKMinCateWhereDef {
             helper
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int32_t>()
-                .init("top_n_key_min_cate_where_init" + suffix, ContainerT::Init)
-                .update("top_n_key_min_cate_where_update" + suffix, UpdateI32Bound)
-                .output("top_n_key_min_cate_where_output" + suffix, Output);
+                .init("top_n_key_min_cate_where_init" + suffix,
+                                                         ContainerT::Init)
+                .update("top_n_key_min_cate_where_update" + suffix,
+                                                         UpdateI32Bound)
+                .output("top_n_key_min_cate_where_output" + suffix,
+                                                         Output);
 
             suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
                      "_" + DataTypeTrait<V>::to_string();
             helper
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int64_t>()
-                .init("top_n_key_min_cate_where_init" + suffix, ContainerT::Init)
+                .init("top_n_key_min_cate_where_init" + suffix,
+                                                         ContainerT::Init)
                 .update("top_n_key_min_cate_where_update" + suffix, Update)
                 .output("top_n_key_min_cate_where_output" + suffix, Output);
         }
@@ -1159,16 +1179,20 @@ struct TopKMaxCateWhereDef {
             helper
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int32_t>()
-                .init("top_n_key_max_cate_where_init" + suffix, ContainerT::Init)
-                .update("top_n_key_max_cate_where_update" + suffix, UpdateI32Bound)
-                .output("top_n_key_max_cate_where_output" + suffix, Output);
+                .init("top_n_key_max_cate_where_init" + suffix,
+                                                     ContainerT::Init)
+                .update("top_n_key_max_cate_where_update" + suffix,
+                                                     UpdateI32Bound)
+                .output("top_n_key_max_cate_where_output" + suffix,
+                                                     Output);
 
             suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
                      "_" + DataTypeTrait<V>::to_string();
             helper
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int64_t>()
-                .init("top_n_key_max_cate_where_init" + suffix, ContainerT::Init)
+                .init("top_n_key_max_cate_where_init" + suffix,
+                                                     ContainerT::Init)
                 .update("top_n_key_max_cate_where_update" + suffix, Update)
                 .output("top_n_key_max_cate_where_output" + suffix, Output);
         }
@@ -1234,16 +1258,20 @@ struct TopKAvgCateWhereDef {
             helper
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int32_t>()
-                .init("top_n_key_avg_cate_where_init" + suffix, ContainerT::Init)
-                .update("top_n_key_avg_cate_where_update" + suffix, UpdateI32Bound)
-                .output("top_n_key_avg_cate_where_output" + suffix, Output);
+                .init("top_n_key_avg_cate_where_init" + suffix,
+                                                             ContainerT::Init)
+                .update("top_n_key_avg_cate_where_update" + suffix,
+                                                             UpdateI32Bound)
+                .output("top_n_key_avg_cate_where_output" + suffix,
+                                                             Output);
 
             suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
                      "_" + DataTypeTrait<V>::to_string();
             helper
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int64_t>()
-                .init("top_n_key_avg_cate_where_init" + suffix, ContainerT::Init)
+                .init("top_n_key_avg_cate_where_init" + suffix,
+                                                         ContainerT::Init)
                 .update("top_n_key_avg_cate_where_update" + suffix, Update)
                 .output("top_n_key_avg_cate_where_output" + suffix, Output);
         }
@@ -2003,10 +2031,7 @@ void DefaultUDFLibrary::InitUtilityUDF() {
     RegisterAlias("ifnull", "if_null");
 }
 
-void DefaultUDFLibrary::Init() {
-    udf::RegisterNativeUDFToModule();
-    InitUtilityUDF();
-
+void DefaultUDFLibrary::InitDateUDF() {
     RegisterExternal("year")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::year))
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::year));
@@ -2129,6 +2154,12 @@ void DefaultUDFLibrary::Init() {
                 *out = NativeValue::CreateTuple(args);
                 return Status::OK();
             });
+}
+
+void DefaultUDFLibrary::Init() {
+    udf::RegisterNativeUDFToModule();
+    InitUtilityUDF();
+    InitDateUDF();
 
     RegisterUDAFTemplate<SumUDAFDef>("sum")
         .doc("Compute sum of values")
