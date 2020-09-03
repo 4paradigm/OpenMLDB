@@ -45,14 +45,20 @@ bool StringIRBuilder::NewString(::llvm::BasicBlock* block,
     ::llvm::Value* size = builder.getInt32(val.size());
     return NewString(block, size, str_val, output);
 }
+
+bool StringIRBuilder::CreateDefault(::llvm::BasicBlock* block,
+                                    ::llvm::Value** output) {
+    return NewString(block, output);
+}
 bool StringIRBuilder::NewString(::llvm::BasicBlock* block,
                                 ::llvm::Value** output) {
     if (!Create(block, output)) {
         LOG(WARNING) << "Fail to Create Default String";
         return false;
     }
+    ::llvm::StringRef val_ref("");
     ::llvm::IRBuilder<> builder(block);
-    ::llvm::Value* str_val = builder.CreateGlobalStringPtr("");
+    ::llvm::Value* str_val = builder.CreateGlobalStringPtr(val_ref);
     if (!SetData(block, *output, str_val)) {
         LOG(WARNING) << "Fail to Init String Data";
         return false;

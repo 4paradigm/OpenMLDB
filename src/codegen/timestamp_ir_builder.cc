@@ -214,6 +214,10 @@ bool TimestampIRBuilder::Hour(::llvm::BasicBlock* block, ::llvm::Value* value,
     return cast_builder.UnSafeCast(*output, builder.getInt32Ty(), output,
                                    status);
 }
+bool TimestampIRBuilder::CreateDefault(::llvm::BasicBlock* block,
+                                       ::llvm::Value** output) {
+    return NewTimestamp(block, output);
+}
 bool TimestampIRBuilder::NewTimestamp(::llvm::BasicBlock* block,
                                       ::llvm::Value** output) {
     if (block == NULL || output == NULL) {

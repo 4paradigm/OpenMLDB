@@ -313,7 +313,16 @@ TEST_F(PredicateIRBuilderTest, test_eq_expr_false) {
 
         1.0, 1.1, false, ::fesql::node::kFnOpEq);
 }
-
+TEST_F(PredicateIRBuilderTest, test_eq_null_0) {
+    BinaryPredicateExprCheck<Nullable<codec::StringRef>,
+                             Nullable<codec::StringRef>, Nullable<bool>>(
+        codec::StringRef("abc"), nullptr, nullptr, node::kFnOpEq);
+}
+TEST_F(PredicateIRBuilderTest, test_eq_null_1) {
+    BinaryPredicateExprCheck<Nullable<codec::StringRef>,
+                             Nullable<codec::StringRef>, Nullable<bool>>(
+        nullptr, codec::StringRef("abc"), nullptr, node::kFnOpEq);
+}
 TEST_F(PredicateIRBuilderTest, test_eq_null) {
     PredicateNullCheck(node::kFnOpEq);
 }

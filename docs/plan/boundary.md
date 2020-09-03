@@ -28,17 +28,5 @@ FeSQL在性能/资源敏感的环境（如rtidb）下对查询语句有严格对
 |              | last join的order列为ts列                              |
 | GROUP边界    | group by的keys至少有一个命中索引                      |
 
-
-
-| src\|dist | bool   | smallint | int    | float  | int64  | double | timestamp | date   | string |
-| :-------- | :----- | :------- | :----- | :----- | :----- | :----- | :-------- | :----- | :----- |
-| bool      | Safe   | Safe     | Safe   | Safe   | Safe   | Safe   |           |        | Safe   |
-| smallint  | UnSafe | Safe     | Safe   | Safe   | Safe   | Safe   |           |        | Safe   |
-| int       | UnSafe | UnSafe   | Safe   | Safe   | Safe   | Safe   |           |        | Safe   |
-| float     | UnSafe | UnSafe   | UnSafe | Safe   | Safe   | Safe   |           |        | Safe   |
-| bigint    | UnSafe | UnSafe   | UnSafe | UnSafe | Safe   | UnSafe | Y         |        | Safe   |
-| double    | UnSafe | UnSafe   | UnSafe | UnSafe | UnSafe | Safe   |           |        | Safe   |
-| timestamp |        | UnSafe   | UnSafe | UnSafe | Safe   | UnSafe | Safe      | UnSafe | Safe   |
-| date      |        |          |        |        |        |        | UnSafe    | Safe   | Safe   |
-| string    |        |          |        |        |        |        | UnSafe    | UnSafe | Safe   |
+1. 
 

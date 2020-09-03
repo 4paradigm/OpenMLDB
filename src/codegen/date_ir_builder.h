@@ -25,6 +25,7 @@ class DateIRBuilder : public StructTypeIRBuilder {
     explicit DateIRBuilder(::llvm::Module* m);
     ~DateIRBuilder();
     void InitStructType();
+    bool CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** output);
     bool NewDate(::llvm::BasicBlock* block, ::llvm::Value** output);
     bool NewDate(::llvm::BasicBlock* block, ::llvm::Value* date,
                  ::llvm::Value** output);

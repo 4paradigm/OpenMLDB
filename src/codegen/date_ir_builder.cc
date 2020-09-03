@@ -33,6 +33,10 @@ void DateIRBuilder::InitStructType() {
     struct_type_ = stype;
     return;
 }
+bool DateIRBuilder::CreateDefault(::llvm::BasicBlock* block,
+                                  ::llvm::Value** output) {
+    return NewDate(block, output);
+}
 bool DateIRBuilder::NewDate(::llvm::BasicBlock* block, ::llvm::Value** output) {
     if (block == NULL || output == NULL) {
         LOG(WARNING) << "the output ptr or block is NULL ";

@@ -24,6 +24,7 @@ class TimestampIRBuilder : public StructTypeIRBuilder {
     explicit TimestampIRBuilder(::llvm::Module* m);
     ~TimestampIRBuilder();
     void InitStructType();
+    bool CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** output);
     bool NewTimestamp(::llvm::BasicBlock* block, ::llvm::Value** output);
     bool NewTimestamp(::llvm::BasicBlock* block, ::llvm::Value* ts,
                       ::llvm::Value** output);
