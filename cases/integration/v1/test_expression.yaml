@@ -307,7 +307,7 @@ cases:
         - [3, "bb", "banana"]
         - [4, "dd", "nothing"]
 
-  - id: 15
+  - id: 15_1
     desc: 算数表达式操作数为null时返回null
     inputs:
       - columns: ["c1 int16","c2 int32","c3 bigint",
@@ -333,6 +333,40 @@ cases:
                 "r25 double", "r26 double", "r27 double", "r28 double", "r29 double",
                 "r31 int32", "r32 int32", "r33 int32", "r34 double", "r35 int32", "r36 int32", "r37 int32",
                 "r38 int32", "r39 int32", "r40 int32","r41 double","r42 int32"]
+      rows:
+        - [NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL]
+  - id: 15_2
+    desc: 算数表达式操作数为const null时返回null-left
+    inputs:
+      - columns: ["c1 int16","c2 int32","c3 bigint",
+                  "c4 float","c5 double", "c6 timestamp", "c7 bool", "NULL int32"]
+        indexs: ["index1:c3:c6"]
+        rows:
+          - [1, 911, 1024, 3.14, 0.99, 1590738989000, true, NULL]
+    sql: select
+      NULL + c1 as r1, NULL - c1 as r2, NULL * c1 as r3, NULL / c1 as r4, NULL % c1 as r5, NULL DIV c1 as r6,
+      NULL + c2 as r7, NULL - c2 as r8, NULL * c2 as r9, NULL / c2 as r10, NULL % c2 as r11, NULL DIV c2 as r12,
+      NULL + c3 as r13, NULL - c3 as r14, NULL * c3 as r15, NULL / c3 as r16, NULL % c3 as r17, NULL DIV c3 as r18,
+      NULL + c4 as r19, NULL - c4 as r20, NULL * c4 as r21, NULL / c4 as r22, NULL % c4 as r23,
+      NULL + c5 as r25, NULL - c5 as r26, NULL * c5 as r27, NULL / c5 as r28, NULL % c5 as r29,
+      year(c6) + NULL as r31, year(c6) - NULL as r32, year(c6) * NULL as r33, year(c6) / NULL as r34, year(c6) % NULL as r35, year(c6) DIV NULL as r36,
+      NULL as r37,
+      c7 + NULL as r38, c7 - NULL as r39, c7 * NULL as r40, c7 / NULL as r41, c7 % NULL as r42
+      from {0};
+    expect:
+      columns: ["r1 int16", "r2 int16", "r3 int16", "r4 double", "r5 int16", "r6 int16",
+                "r7 int32", "r8 int32", "r9 int32", "r10 double", "r11 int32", "r12 int32",
+                "r13 bigint", "r14 bigint", "r15 bigint", "r16 double", "r17 bigint", "r18 bigint",
+                "r19 float", "r20 float", "r21 float", "r22 double", "r23 float",
+                "r25 double", "r26 double", "r27 double", "r28 double", "r29 double",
+                "r31 int32", "r32 int32", "r33 int32", "r34 double", "r35 int32", "r36 int32", "r37 bool",
+                "r38 bool", "r39 bool", "r40 bool","r41 double","r42 bool"]
       rows:
         - [NULL, NULL, NULL, NULL, NULL, NULL,
            NULL, NULL, NULL, NULL, NULL, NULL,
@@ -372,7 +406,7 @@ cases:
         - [8, NULL, false,  false, NULL, NULL, NULL]
         - [9, NULL, NULL,  NULL, NULL, NULL, NULL]
 
-  - id: 17
+  - id: 17-1
     desc: 直接和NULL比较返回NULL
     inputs:
       - columns: ["c1 int16","c2 int32","c3 bigint",
@@ -408,7 +442,42 @@ cases:
            NULL, NULL, NULL, NULL, NULL, NULL,
            NULL, NULL, NULL, NULL, NULL, NULL,
            NULL, NULL, NULL, NULL, NULL, NULL]
-
+  - id: 17-2
+    desc: 直接和Const NULL比较返回NULL
+    inputs:
+      - columns: ["c1 int16","c2 int32","c3 bigint",
+                  "c4 float","c5 double", "c6 timestamp", "c7 string",
+                  "nullcol int32", "nulltime timestamp", "nullstr string"]
+        indexs: ["index1:c3:c6"]
+        rows:
+          - [1, 911, 1024, 3.14, 0.99, 1590738989000, "str", NULL, NULL, NULL]
+    sql: select
+      c1 > NULL as r1, c1 >= NULL as r2, c1 < NULL as r3, c1 <= NULL as r4, c1 = NULL as r5, c1 != NULL as r6,
+      c2 > NULL as r7, c2 >= NULL as r8, c2 < NULL as r9, c2 <= NULL as r10, c2 = NULL as r11, c2 != NULL as r12,
+      c3 > NULL as r13, c3 >= NULL as r14, c3 < NULL as r15, c3 <= NULL as r16, c3 = NULL as r17, c3 != NULL as r18,
+      c4 > NULL as r19, c4 >= NULL as r20, c4 < NULL as r21, c4 <= NULL as r22, c4 = NULL as r23, c4 != NULL as r24,
+      c5 > NULL as r25, c5 >= NULL as r26, c5 < NULL as r27, c5 <= NULL as r28, c5 = NULL as r29, c5 != NULL as r30,
+      c6 > NULL as r31, c6 >= NULL as r32, c6 < NULL as r33, c6 <= NULL as r34, c6 = NULL as r35, c6 != NULL as r36,
+      c7 > NULL as r37, c7 >= NULL as r38, c7 < NULL as r39, c7 <= NULL as r40, c7 = NULL as r41, c7 != NULL as r42,
+      NULL > NULL as r43, NULL >= NULL as r44, NULL < NULL as r45,
+      NULL <= NULL as r46, NULL = NULL as r47, NULL != NULL as r48
+      from {0};
+    expect:
+      columns: ["r1 bool", "r2 bool", "r3 bool", "r4 bool", "r5 bool", "r6 bool", "r7 bool", "r8 bool",
+                "r9 bool", "r10 bool", "r11 bool", "r12 bool", "r13 bool", "r14 bool", "r15 bool", "r16 bool",
+                "r17 bool", "r18 bool", "r19 bool", "r20 bool", "r21 bool", "r22 bool", "r23 bool", "r24 bool",
+                "r25 bool", "r26 bool", "r27 bool", "r28 bool", "r29 bool", "r30 bool", "r31 bool", "r32 bool",
+                "r33 bool", "r34 bool", "r35 bool", "r36 bool", "r37 bool", "r38 bool", "r39 bool", "r40 bool",
+                "r41 bool", "r42 bool", "r43 bool", "r44 bool", "r45 bool", "r46 bool", "r47 bool", "r48 bool"]
+      rows:
+        - [NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL]
   - id: 18
     desc: 条件表达式null测试
     inputs:
