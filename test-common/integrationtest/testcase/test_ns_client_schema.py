@@ -406,7 +406,8 @@ class TestSchema(TestCaseBase):
             self.assertEqual(rs[0]['add2'], "2add{}".format(i))
         rs = self.ns_deleteindex(self.ns_leader, name, "loc")
         self.assertIn('delete index ok', rs)
-        self.wait_op_done(name)
+        time.sleep(2)
+
         rs = self.ns_addindex(self.ns_leader, name, "loc2", "loc")
         self.assertIn('addindex ok', rs)
 
