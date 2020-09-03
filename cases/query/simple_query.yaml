@@ -82,8 +82,28 @@ cases:
         3, 1, 7, 55, 333
         4, 1, 9, 55, 4444
         5, 2, 11, 55, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-  - id: 4
-    desc: SELECT简单timestamp表达式
+  - id: 4-1
+    desc: SELECT简单timestamp加减表达式
+    mode: request
+    db: db1
+    sql: |
+      select col1 as id, std_ts, std_ts+1000 as inc_sec_ts,
+      (1 + std_ts) > cast(1590115422000 as timestamp) as flag from t1;
+    standard_sql: false
+    inputs:
+      - name: t1
+        resource: cases/resource/simple_t1_ts.yaml
+    expect:
+      schema: id:int32, std_ts:timestamp, inc_sec_ts:timestamp, flag:bool
+      order: id
+      data: |
+        1, 1590115420000, 1590115421000, false
+        2, 1590115421000, 1590115422000, false
+        3, 1590115422000, 1590115423000, true
+        4, 1590115423000, 1590115424000, true
+        5, 1590115424000, 1590115425000, true
+  - id: 4-2
+    desc: SELECT timestampadd函数
     tags: ["TODO", "@chenjing, support timestampadd"]
     mode: request
     db: db1

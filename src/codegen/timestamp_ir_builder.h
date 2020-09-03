@@ -44,8 +44,9 @@ class TimestampIRBuilder : public StructTypeIRBuilder {
                 ::llvm::Value** output, base::Status& status);  // NOLINT
     base::Status FDiv(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
                       ::llvm::Value* right, ::llvm::Value** output);
-    base::Status TimestampAdd(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
-                      ::llvm::Value* right, ::llvm::Value** output);
+    base::Status TimestampAdd(::llvm::BasicBlock* block,
+                              ::llvm::Value* timestamp, ::llvm::Value* right,
+                              ::llvm::Value** output);
     static int32_t TIME_ZONE;
 };
 }  // namespace codegen

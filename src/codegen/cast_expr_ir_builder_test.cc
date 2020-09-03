@@ -9,7 +9,10 @@
 #include "codegen/cast_expr_ir_builder.h"
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
+#include <vector>
+#include "case/sql_case.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/ir_base_builder_test.h"
 #include "gtest/gtest.h"
@@ -17,7 +20,6 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
 #include "node/node_manager.h"
-#include "case/sql_case.h"
 
 using namespace llvm;       // NOLINT
 using namespace llvm::orc;  // NOLINT
@@ -274,7 +276,6 @@ TEST_F(CastExprIrBuilderTest, bool_cast_test) {
     BoolCastCheck<double>(::fesql::node::kDouble, 0.0, false);
 }
 
-
 template <typename Ret, typename... Args>
 void ExprCheck(
     const std::function<node::ExprNode *(
@@ -283,8 +284,8 @@ void ExprCheck(
     Ret expect, Args... args) {
     auto compiled_func = BuildExprFunction<Ret, Args...>(expr_func);
     ASSERT_TRUE(compiled_func.valid())
-                        << "Fail Expr Check: "
-                        << "Ret: " << DataTypeTrait<Ret>::to_string << "Args: ...";
+        << "Fail Expr Check: "
+        << "Ret: " << DataTypeTrait<Ret>::to_string << "Args: ...";
 
     std::ostringstream oss;
     Ret result = compiled_func(args...);
@@ -295,14 +296,14 @@ void ExprErrorCheck(
     const std::function<node::ExprNode *(
         node::NodeManager *,
         typename std::pair<Args, node::ExprNode *>::second_type...)>
-    &expr_func) {
+        &expr_func) {
     auto compiled_func = BuildExprFunction<Ret, Args...>(expr_func);
     ASSERT_FALSE(compiled_func.valid());
 }
 
 class CastExprTest
     : public ::testing::TestWithParam<
-        std::tuple<std::string, std::string, std::string, std::string>> {
+          std::tuple<std::string, std::string, std::string, std::string>> {
  public:
     CastExprTest() { manager_ = new node::NodeManager(); }
     ~CastExprTest() { delete manager_; }
@@ -315,8 +316,8 @@ template <typename CASTTYPE>
 void CastExprCheck(CASTTYPE exp_value, std::string src_type_str,
                    std::string src_value_str) {
     auto cast_func = [](node::NodeManager *nm, node::ExprNode *input) {
-      return nm->MakeCastNode(
-          DataTypeTrait<CASTTYPE>::to_type_node(nm)->base_, input);
+        return nm->MakeCastNode(
+            DataTypeTrait<CASTTYPE>::to_type_node(nm)->base_, input);
     };
 
     fesql::type::Type src_type;
@@ -538,8 +539,8 @@ void CastExprCheck(std::string cast_type_str, std::string cast_value_str,
         }
         case type::kVarchar: {
             if ("null" == cast_value_str) {
-                CastExprCheck<udf::Nullable<codec::StringRef>>(nullptr, src_type_str,
-                                                               src_value_str);
+                CastExprCheck<udf::Nullable<codec::StringRef>>(
+                    nullptr, src_type_str, src_value_str);
             } else {
                 CastExprCheck<codec::StringRef>(
                     codec::StringRef(cast_value_str), src_type_str,
@@ -591,9 +592,7 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("bool", "null", "int32", "null"),
                     std::make_tuple("bool", "null", "int64", "null"),
                     std::make_tuple("bool", "null", "float", "null"),
-                    std::make_tuple("bool", "null", "double", "null")
-        // ...
-    ));
+                    std::make_tuple("bool", "null", "double", "null")));
 // SafeCast: bool, int16, int32
 // UnSafeCst: int64, float, double
 INSTANTIATE_TEST_SUITE_P(
@@ -627,9 +626,8 @@ INSTANTIATE_TEST_SUITE_P(CastExprTestInt64, CastExprTest,
                              std::make_tuple("int64", "null", "int32", "null"),
                              std::make_tuple("int64", "null", "int64", "null"),
                              std::make_tuple("int64", "null", "float", "null"),
-                             std::make_tuple("int64", "null", "double", "null")
-                             // ...
-                         ));
+                             std::make_tuple("int64", "null", "double",
+                                             "null")));
 INSTANTIATE_TEST_SUITE_P(
     CastExprTestFloat, CastExprTest,
     testing::Values(std::make_tuple("float", "1", "bool", "true"),
@@ -643,9 +641,7 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("float", "null", "int32", "null"),
                     std::make_tuple("float", "null", "int64", "null"),
                     std::make_tuple("float", "null", "float", "null"),
-                    std::make_tuple("float", "null", "double", "null")
-        // ...
-    ));
+                    std::make_tuple("float", "null", "double", "null")));
 
 INSTANTIATE_TEST_SUITE_P(
     CastExprTestDouble, CastExprTest,
@@ -666,9 +662,7 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple("double", "null", "int64", "null"),
         std::make_tuple("double", "null", "float", "null"),
         std::make_tuple("double", "null", "double", "null"),
-        std::make_tuple("double", "null", "timestamp", "null")
-        // ...
-    ));
+        std::make_tuple("double", "null", "timestamp", "null")));
 
 INSTANTIATE_TEST_SUITE_P(
     CastExprTestTimestamp, CastExprTest,
@@ -678,25 +672,26 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("timestamp", "1", "int32", "1")));
 INSTANTIATE_TEST_SUITE_P(
     CastExprTestString, CastExprTest,
-    testing::Values(
-        std::make_tuple("string", "1", "bool", "true"),
-        std::make_tuple("string", "1", "int16", "1"),
-        std::make_tuple("string", "1", "int32", "1"),
-        std::make_tuple("string", "1", "int64", "1"),
-        std::make_tuple("string", "1", "float", "1"),
-        std::make_tuple("string", "1", "double", "1"),
-        std::make_tuple("string", "2020-05-22 10:43:40", "timestamp", "1590115420000"),
-        std::make_tuple("string", "2020-05-20", "date", "2020-05-20"),
-        std::make_tuple("string", "abc", "string", "abc"),
-        std::make_tuple("string", "null", "bool", "null"),
-        std::make_tuple("string", "null", "int16", "null"),
-        std::make_tuple("string", "null", "int32", "null"),
-        std::make_tuple("string", "null", "int64", "null"),
-        std::make_tuple("string", "null", "float", "null"),
-        std::make_tuple("string", "null", "double", "null"),
-        std::make_tuple("string", "null", "timestamp", "null"),
-        std::make_tuple("string", "null", "date", "null"),
-        std::make_tuple("string", "null", "string", "null")));
+    testing::Values(std::make_tuple("string", "1", "bool", "true"),
+                    std::make_tuple("string", "1", "int16", "1"),
+                    std::make_tuple("string", "1", "int32", "1"),
+                    std::make_tuple("string", "1", "int64", "1"),
+                    std::make_tuple("string", "1", "float", "1"),
+                    std::make_tuple("string", "1", "double", "1"),
+                    std::make_tuple("string", "2020-05-22 10:43:40",
+                                    "timestamp", "1590115420000"),
+                    std::make_tuple("string", "2020-05-20", "date",
+                                    "2020-05-20"),
+                    std::make_tuple("string", "abc", "string", "abc"),
+                    std::make_tuple("string", "null", "bool", "null"),
+                    std::make_tuple("string", "null", "int16", "null"),
+                    std::make_tuple("string", "null", "int32", "null"),
+                    std::make_tuple("string", "null", "int64", "null"),
+                    std::make_tuple("string", "null", "float", "null"),
+                    std::make_tuple("string", "null", "double", "null"),
+                    std::make_tuple("string", "null", "timestamp", "null"),
+                    std::make_tuple("string", "null", "date", "null"),
+                    std::make_tuple("string", "null", "string", "null")));
 INSTANTIATE_TEST_SUITE_P(
     CastExprTestInt16, CastExprTest,
     testing::Values(std::make_tuple("int16", "1", "bool", "true"),
@@ -710,12 +705,11 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("int16", "null", "int32", "null"),
                     std::make_tuple("int16", "null", "int64", "null"),
                     std::make_tuple("int16", "null", "float", "null"),
-                    std::make_tuple("int16", "null", "double", "null")
-        // ...
-    ));
+                    std::make_tuple("int16", "null", "double", "null")));
+
 TEST_P(CastExprTest, cast_check) {
-    auto [cast_type_str, cast_value_str, src_type_str, src_value_str] =
-    GetParam();
+    auto [cast_type_str, cast_value_str, src_type_str,  // NOLINT
+          src_value_str] = GetParam();
     LOG(INFO) << "GetParam() = (" << cast_type_str << ", " << cast_value_str
               << ", " << src_type_str << ", " << src_value_str << ")";
     CastExprCheck(cast_type_str, cast_value_str, src_type_str, src_value_str);
@@ -733,8 +727,8 @@ class CastErrorExprTest
 template <typename CASTTYPE>
 void CastErrorExprCheck(std::string src_type_str) {
     auto cast_func = [](node::NodeManager *nm, node::ExprNode *input) {
-      return nm->MakeCastNode(
-          DataTypeTrait<CASTTYPE>::to_type_node(nm)->base_, input);
+        return nm->MakeCastNode(
+            DataTypeTrait<CASTTYPE>::to_type_node(nm)->base_, input);
     };
 
     fesql::type::Type src_type;
@@ -865,20 +859,18 @@ INSTANTIATE_TEST_SUITE_P(CastExprErrorTestTimestamp, CastErrorExprTest,
                              std::make_tuple("timestamp", "string"),
                              // TODO(chenjing): support date -> timestamp
                              std::make_tuple("timestamp", "date")));
-INSTANTIATE_TEST_SUITE_P(CastExprErrorTestDate, CastErrorExprTest,
-                         testing::Values(
-                             // cast_type, src_type
-                             std::make_tuple("date", "bool"),
-                             std::make_tuple("date", "int16"),
-                             std::make_tuple("date", "int32"),
-                             std::make_tuple("date", "float"),
-                             std::make_tuple("date", "double"),
-                             // TODO(chenjing): support timestamp -> date
-                             std::make_tuple("date", "timestamp"),
-                             std::make_tuple("date", "string")));
+// TODO(chenjing): support timestamp -> date
+INSTANTIATE_TEST_SUITE_P(
+    CastExprErrorTestDate, CastErrorExprTest,
+    testing::Values(
+        // cast_type, src_type
+        std::make_tuple("date", "bool"), std::make_tuple("date", "int16"),
+        std::make_tuple("date", "int32"), std::make_tuple("date", "float"),
+        std::make_tuple("date", "double"), std::make_tuple("date", "timestamp"),
+        std::make_tuple("date", "string")));
 
 TEST_P(CastErrorExprTest, cast_error_check) {
-    auto [cast_type_str, src_type_str] = GetParam();
+    auto [cast_type_str, src_type_str] = GetParam();  // NOLINT
     LOG(INFO) << "GetParam() = (" << cast_type_str << ", " << src_type_str
               << ")";
     CastErrorExprCheck(cast_type_str, src_type_str);
