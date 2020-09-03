@@ -83,12 +83,18 @@ __attribute__((unused)) static int GetIterator(
     std::shared_ptr<::rtidb::storage::Table> table, const std::string& pk,
     int index, int ts_index,
     std::shared_ptr<::rtidb::storage::TableIterator>* it,
-    ::rtidb::storage::Ticket* ticket) {
+    std::shared_ptr<::rtidb::storage::Ticket>* ticket) {
+    if (it == NULL || ticket == NULL) {
+        return -1;
+    }
+    if (!(*ticket)) {
+        *ticket = std::make_shared<::rtidb::storage::Ticket>();
+    }
     ::rtidb::storage::TableIterator* cur_it = NULL;
     if (ts_index >= 0) {
-        cur_it = table->NewIterator(index, ts_index, pk, *ticket);
+        cur_it = table->NewIterator(index, ts_index, pk, *(ticket->get()));
     } else {
-        cur_it = table->NewIterator(index, pk, *ticket);
+        cur_it = table->NewIterator(index, pk, *(ticket->get()));
     }
     if (cur_it == NULL) {
         return -1;
@@ -100,7 +106,7 @@ __attribute__((unused)) static int GetIterator(
 struct QueryIt {
     std::shared_ptr<::rtidb::storage::Table> table;
     std::shared_ptr<::rtidb::storage::TableIterator> it;
-    ::rtidb::storage::Ticket ticket;
+    std::shared_ptr<::rtidb::storage::Ticket> ticket;
     uint32_t iter_pos = 0;
 };
 

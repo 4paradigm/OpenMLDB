@@ -6,6 +6,7 @@
 //
 #include "tablet/combine_iterator.h"
 #include <algorithm>
+#include <utility>
 #include "base/glog_wapper.h"
 
 namespace rtidb {
@@ -15,7 +16,7 @@ CombineIterator::CombineIterator(std::vector<QueryIt> q_its,
                                  uint64_t start_time,
                                  ::rtidb::api::GetType st_type,
                                  uint64_t expire_time, uint32_t expire_cnt)
-    : q_its_(q_its),
+    : q_its_(std::move(q_its)),
       st_(start_time),
       st_type_(st_type),
       ttl_type_(::rtidb::api::TTLType::kAbsoluteTime),
