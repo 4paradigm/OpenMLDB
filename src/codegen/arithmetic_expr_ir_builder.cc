@@ -24,7 +24,67 @@ bool ArithmeticIRBuilder::IsAcceptType(::llvm::Type* type) {
            (type->isIntegerTy() || type->isFloatTy() || type->isDoubleTy() ||
             TypeIRBuilder::IsTimestampPtr(type));
 }
-
+Status ArithmeticIRBuilder::FDivTypeAccept(::llvm::Type* lhs,
+                                           ::llvm::Type* rhs) {
+    CHECK_TRUE(IsAcceptType(lhs) && TypeIRBuilder::IsNumber(rhs),
+               "Invalid FDiv type: lhs ", TypeIRBuilder::TypeName(lhs), " rhs ",
+               TypeIRBuilder::TypeName(rhs))
+    return Status::OK();
+}
+Status ArithmeticIRBuilder::SDivTypeAccept(::llvm::Type* lhs,
+                                           ::llvm::Type* rhs) {
+    CHECK_TRUE(TypeIRBuilder::IsNumber(lhs) && TypeIRBuilder::IsNumber(rhs),
+               "Invalid SDiv Op type: lhs ", TypeIRBuilder::TypeName(lhs),
+               " rhs ", TypeIRBuilder::TypeName(rhs))
+    return Status::OK();
+}
+Status ArithmeticIRBuilder::ModTypeAccept(::llvm::Type* lhs,
+                                          ::llvm::Type* rhs) {
+    CHECK_TRUE(TypeIRBuilder::IsNumber(lhs) && TypeIRBuilder::IsNumber(rhs),
+               "Invalid Mod Op type: lhs ", TypeIRBuilder::TypeName(lhs),
+               " rhs ", TypeIRBuilder::TypeName(rhs))
+    return Status::OK();
+}
+Status ArithmeticIRBuilder::AddTypeAccept(::llvm::Type* lhs,
+                                          ::llvm::Type* rhs) {
+    CHECK_TRUE(
+        (TypeIRBuilder::IsTimestampPtr(lhs) &&
+         TypeIRBuilder::IsTimestampPtr(rhs)) ||
+            (TypeIRBuilder::IsTimestampPtr(lhs) &&
+             TypeIRBuilder::IsInterger(rhs)) ||
+            (TypeIRBuilder::IsInterger(lhs) &&
+             TypeIRBuilder::IsTimestampPtr(rhs)) ||
+            (TypeIRBuilder::IsNumber(lhs) && TypeIRBuilder::IsNumber(rhs)),
+        "Invalid Add Op type: lhs ", TypeIRBuilder::TypeName(lhs), " rhs ",
+        TypeIRBuilder::TypeName(rhs))
+    return Status::OK();
+}
+Status ArithmeticIRBuilder::SubTypeAccept(::llvm::Type* lhs,
+                                          ::llvm::Type* rhs) {
+    CHECK_TRUE(TypeIRBuilder::IsNumber(lhs) && TypeIRBuilder::IsNumber(rhs),
+               "Invalid Sub Op type: lhs ", TypeIRBuilder::TypeName(lhs),
+               " rhs ", TypeIRBuilder::TypeName(rhs))
+    return Status::OK();
+}
+Status ArithmeticIRBuilder::MultiTypeAccept(::llvm::Type* lhs,
+                                            ::llvm::Type* rhs) {
+    CHECK_TRUE(TypeIRBuilder::IsNumber(lhs) && TypeIRBuilder::IsNumber(rhs),
+               "Invalid Multi Op type: lhs ", TypeIRBuilder::TypeName(lhs),
+               " rhs ", TypeIRBuilder::TypeName(rhs))
+    return Status::OK();
+}
+Status AndTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs) {
+    CHECK_TRUE(TypeIRBuilder::IsInterger(lhs) && TypeIRBuilder::IsInterger(rhs),
+               "Invalid And Op type: lhs ", TypeIRBuilder::TypeName(lhs),
+               " rhs ", TypeIRBuilder::TypeName(rhs))
+    return Status::OK();
+}
+Status LShiftTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs) {
+    CHECK_TRUE(TypeIRBuilder::IsInterger(lhs) && TypeIRBuilder::IsInterger(rhs),
+               "Invalid Lshift Op type: lhs ", TypeIRBuilder::TypeName(lhs),
+               " rhs ", TypeIRBuilder::TypeName(rhs))
+    return Status::OK();
+}
 bool ArithmeticIRBuilder::InferBaseTypes(::llvm::BasicBlock* block,
                                          ::llvm::Value* left,
                                          ::llvm::Value* right,
@@ -160,8 +220,11 @@ bool ArithmeticIRBuilder::InferBaseDoubleTypes(::llvm::BasicBlock* block,
     ::llvm::Type* left_type = left->getType();
     ::llvm::Type* right_type = right->getType();
 
-    if (!IsAcceptType(left_type) || !IsAcceptType(right_type)) {
-        status.msg = "invalid type for arithmetic expression";
+    if (!TypeIRBuilder::IsNumber(left_type) ||
+        !TypeIRBuilder::IsNumber(right_type)) {
+        status.msg = "invalid type for arithmetic expression: " +
+                     TypeIRBuilder::TypeName(left_type) + " " +
+                     TypeIRBuilder::TypeName(right_type);
         status.code = common::kCodegenError;
         return false;
     }
@@ -243,10 +306,53 @@ bool ArithmeticIRBuilder::BuildAddExpr(
     ::llvm::Value** output,
     ::fesql::base::Status& status) {  // NOLINT
 
+    status = AddTypeAccept(left->getType(), right->getType());
+    if (!status.isOK()) {
+        return false;
+    }
+
+    TimestampIRBuilder ts_builder(block->getModule());
+    if (TypeIRBuilder::IsTimestampPtr(left->getType()) &&
+        TypeIRBuilder::IsInterger(right->getType())) {
+        status = ts_builder.TimestampAdd(block, left, right, output);
+        return status.isOK();
+    } else if (TypeIRBuilder::IsInterger(left->getType()) &&
+               TypeIRBuilder::IsTimestampPtr(right->getType())) {
+        status = ts_builder.TimestampAdd(block, right, left, output);
+        return status.isOK();
+    } else if (TypeIRBuilder::IsTimestampPtr(left->getType()) &&
+               TypeIRBuilder::IsTimestampPtr(right->getType())) {
+        ::llvm::Value* ts1;
+        ::llvm::Value* ts2;
+        ::llvm::Value* ts_add;
+        if (!ts_builder.GetTs(block, left, &ts1)) {
+            status.msg =
+                "fail to codegen timestamp + timestamp expr: get lhs ts error";
+            status.code = common::kCodegenError;
+            return false;
+        }
+        if (!ts_builder.GetTs(block, right, &ts2)) {
+            status.msg =
+                "fail to codegen timestamp + timestamp expr: get rhs ts error";
+            status.code = common::kCodegenError;
+            return false;
+        }
+        if (!BuildAddExpr(block, ts1, ts2, &ts_add, status)) {
+            return false;
+        }
+        if (!ts_builder.NewTimestamp(block, ts_add, output)) {
+            status.msg =
+                "fail to codegen timestamp + timestamp expr: new timestamp "
+                "with ts error";
+            status.code = common::kCodegenError;
+            return false;
+        }
+        return true;
+    }
+
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
-
-    if (false == InferBaseTypes(block, left, right, &casted_left, &casted_right,
+    if (!InferBaseTypes(block, left, right, &casted_left, &casted_right,
                                 status)) {
         return false;
     }
@@ -256,22 +362,6 @@ bool ArithmeticIRBuilder::BuildAddExpr(
     } else if (casted_left->getType()->isFloatTy() ||
                casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFAdd(casted_left, casted_right, "expr_add");
-    } else if (TypeIRBuilder::IsTimestampPtr(casted_left->getType()) &&
-               TypeIRBuilder::IsTimestampPtr(casted_right->getType())) {
-        ::llvm::Value* ts1;
-        ::llvm::Value* ts2;
-        ::llvm::Value* ts_add;
-        TimestampIRBuilder ts_builder(block->getModule());
-        if (!ts_builder.GetTs(block, casted_left, &ts1)) {
-            return false;
-        }
-        if (!ts_builder.GetTs(block, casted_right, &ts2)) {
-            return false;
-        }
-        BuildAddExpr(block, ts1, ts2, &ts_add, status);
-        if (!ts_builder.NewTimestamp(block, ts_add, output)) {
-            return false;
-        }
     } else {
         status.msg = "fail to codegen add expr: value types are invalid";
         status.code = common::kCodegenError;
@@ -280,7 +370,6 @@ bool ArithmeticIRBuilder::BuildAddExpr(
     }
     return true;
 }
-
 
 Status ArithmeticIRBuilder::BuildAnd(const NativeValue& left,
                                      const NativeValue& right,
@@ -321,6 +410,7 @@ Status ArithmeticIRBuilder::BuildLShiftRight(
 Status ArithmeticIRBuilder::BuildAddExpr(const NativeValue& left,
                                          const NativeValue& right,
                                          NativeValue* value_output) {  // NOLINT
+    CHECK_STATUS(AddTypeAccept(left.GetType(), right.GetType()))
     CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
@@ -333,6 +423,7 @@ Status ArithmeticIRBuilder::BuildAddExpr(const NativeValue& left,
 Status ArithmeticIRBuilder::BuildSubExpr(const NativeValue& left,
                                          const NativeValue& right,
                                          NativeValue* value_output) {  // NOLINT
+    CHECK_STATUS(SubTypeAccept(left.GetType(), right.GetType()))
     CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
@@ -345,6 +436,7 @@ Status ArithmeticIRBuilder::BuildSubExpr(const NativeValue& left,
 Status ArithmeticIRBuilder::BuildMultiExpr(
     const NativeValue& left, const NativeValue& right,
     NativeValue* value_output) {  // NOLINT
+    CHECK_STATUS(MultiTypeAccept(left.GetType(), right.GetType()))
     CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
@@ -357,6 +449,7 @@ Status ArithmeticIRBuilder::BuildMultiExpr(
 Status ArithmeticIRBuilder::BuildFDivExpr(
     const NativeValue& left, const NativeValue& right,
     NativeValue* value_output) {  // NOLINT
+    CHECK_STATUS(FDivTypeAccept(left.GetType(), right.GetType()))
     CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
@@ -372,6 +465,7 @@ Status ArithmeticIRBuilder::BuildFDivExpr(
 Status ArithmeticIRBuilder::BuildSDivExpr(
     const NativeValue& left, const NativeValue& right,
     NativeValue* value_output) {  // NOLINT
+    CHECK_STATUS(SDivTypeAccept(left.GetType(), right.GetType()))
     CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
@@ -384,6 +478,7 @@ Status ArithmeticIRBuilder::BuildSDivExpr(
 Status ArithmeticIRBuilder::BuildModExpr(const NativeValue& left,
                                          const NativeValue& right,
                                          NativeValue* value_output) {  // NOLINT
+    CHECK_STATUS(ModTypeAccept(left.GetType(), right.GetType()))
     CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
@@ -457,6 +552,10 @@ bool ArithmeticIRBuilder::BuildFDivExpr(::llvm::BasicBlock* block,
 
     if (false == InferBaseDoubleTypes(block, left, right, &casted_left,
                                       &casted_right, status)) {
+        if (TypeIRBuilder::IsTimestampPtr(left->getType())) {
+            TimestampIRBuilder timestamp_ir_builder(block->getModule());
+            timestamp_ir_builder.FDiv(block, left, right, output);
+        }
         return false;
     }
     ::llvm::IRBuilder<> builder(block);

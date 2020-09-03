@@ -24,6 +24,8 @@ class CastExprIRBuilder {
 
     Status SafeCast(const NativeValue& value, ::llvm::Type* type,
                     NativeValue* output);  // NOLINT
+    Status UnSafeCast(const NativeValue& value, ::llvm::Type* type,
+                    NativeValue* output);  // NOLINT
 
     bool SafeCast(::llvm::Value* value, ::llvm::Type* type,
                   ::llvm::Value** output, base::Status& status);  // NOLINT

@@ -777,8 +777,15 @@ bool TypeIRBuilder::IsBool(::llvm::Type* type) {
     }
     return data_type == node::kBool;
 }
+
+bool TypeIRBuilder::IsNull(::llvm::Type* type) {
+    return type->isIntegerTy(1);
+}
 bool TypeIRBuilder::IsInterger(::llvm::Type* type) {
     return type->isIntegerTy();
+}
+bool TypeIRBuilder::IsNumber(::llvm::Type* type) {
+    return type->isIntegerTy() || type->isFloatingPointTy();
 }
 bool TypeIRBuilder::isFloatPoint(::llvm::Type* type) {
     return type->isFloatingPointTy();

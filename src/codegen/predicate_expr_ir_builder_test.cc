@@ -57,6 +57,7 @@ void BinaryPredicateExprCheck(LHS left_val, RHS right_val, Ret expect,
              node::ExprNode *right) {
             return nm->MakeBinaryExprNode(left, right, op);
         });
+    ASSERT_TRUE(compiled_func.valid());
     Ret result = compiled_func(left_val, right_val);
     ASSERT_EQ(expect, result);
 }
@@ -266,36 +267,32 @@ TEST_F(PredicateIRBuilderTest, test_string_string_compare) {
         d1, d4, true, ::fesql::node::kFnOpGt);
 }
 
-TEST_F(PredicateIRBuilderTest, test_string_anytype_compare) {
-    codec::StringRef d1("123");
-    int32_t num = 123;
+TEST_F(PredicateIRBuilderTest, test_string_anytype_compare_0) {
     BinaryPredicateExprCheck<codec::StringRef, int32_t, bool>(
-
-        d1, num, true, ::fesql::node::kFnOpEq);
-
+        codec::StringRef("123"), 123, true, ::fesql::node::kFnOpEq);
+}
+TEST_F(PredicateIRBuilderTest, test_string_anytype_compare_1) {
     BinaryPredicateExprCheck<codec::StringRef, int64_t, bool>(
-
-        d1, static_cast<int64_t>(123), true, ::fesql::node::kFnOpEq);
-
+        codec::StringRef("123"), static_cast<int64_t>(123), true,
+        ::fesql::node::kFnOpEq);
+}
+TEST_F(PredicateIRBuilderTest, test_string_anytype_compare_2) {
     BinaryPredicateExprCheck<codec::StringRef, double, bool>(
-
-        d1, 123.0, true, ::fesql::node::kFnOpEq);
-
+        codec::StringRef("123"), 123.0, true, ::fesql::node::kFnOpEq);
+}
+TEST_F(PredicateIRBuilderTest, test_string_anytype_compare_3) {
     BinaryPredicateExprCheck<codec::StringRef, float, bool>(
-
-        d1, 123.0f, true, ::fesql::node::kFnOpEq);
-
-    codec::Date date(2020, 05, 30);
-    codec::StringRef d2("2020-05-30");
+        codec::StringRef("123"), 123.0f, true, ::fesql::node::kFnOpEq);
+}
+TEST_F(PredicateIRBuilderTest, test_string_anytype_compare_4) {
     BinaryPredicateExprCheck<codec::StringRef, codec::Date, bool>(
-
-        d2, date, true, ::fesql::node::kFnOpEq);
-
-    codec::StringRef d3("2020-05-22 10:43:40");
-    codec::Timestamp t1(1590115420000L);
+        codec::StringRef("2020-05-30"), codec::Date(2020, 05, 30), true,
+        ::fesql::node::kFnOpEq);
+}
+TEST_F(PredicateIRBuilderTest, test_string_anytype_compare_5) {
     BinaryPredicateExprCheck<codec::StringRef, codec::Timestamp, bool>(
-
-        d3, t1, true, ::fesql::node::kFnOpEq);
+        codec::StringRef("2020-05-22 10:43:40"),
+        codec::Timestamp(1590115420000L), true, ::fesql::node::kFnOpEq);
 }
 
 TEST_F(PredicateIRBuilderTest, test_eq_expr_false) {

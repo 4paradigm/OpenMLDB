@@ -831,24 +831,14 @@ bool ExprIRBuilder::BuildCastExpr(const ::fesql::node::CastExprNode* node,
         LOG(WARNING) << status.msg;
         return false;
     }
+    if (cast_builder.IsSafeCast(left->getType(), cast_type)) {
+        status = cast_builder.SafeCast(left_wrapper, cast_type, output);
+        return status.isOK();
+    } else {
+        status  = cast_builder.UnSafeCast(left_wrapper, cast_type, output);
 
-    ::llvm::Value* dist = NULL;
-    if (TypeIRBuilder::IsStructPtr(cast_type)) {
-        if (!StructTypeIRBuilder::StructCastFrom(block_, left, cast_type,
-                                                 &dist)) {
-            status.code = common::kCodegenError;
-            status.msg = "fail to cast expr";
-            LOG(WARNING) << status.msg;
-            return false;
-        } else {
-            *output = NativeValue::Create(dist);
-            return true;
-        }
+        return status.isOK();
     }
-    if (!cast_builder.UnSafeCast(left, cast_type, &dist, status)) {
-        return false;
-    }
-    *output = NativeValue::Create(dist);
     return true;
 }
 bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
@@ -946,7 +936,7 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
         }
         case ::fesql::node::kFnOpGt: {
             status = predicate_ir_builder_.BuildGtExpr(left_wrapper,
-                                                        right_wrapper, output);
+                                                       right_wrapper, output);
             return status.isOK();
         }
         case ::fesql::node::kFnOpGe: {
@@ -961,7 +951,7 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
         }
         case ::fesql::node::kFnOpLe: {
             status = predicate_ir_builder_.BuildLeExpr(left_wrapper,
-                                                   right_wrapper, output);
+                                                       right_wrapper, output);
             return status.isOK();
         }
         case ::fesql::node::kFnOpAt: {

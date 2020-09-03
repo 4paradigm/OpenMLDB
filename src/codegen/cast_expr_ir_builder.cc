@@ -58,10 +58,10 @@ bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
             return true;
         }
         case ::fesql::node::kInt64: {
-            return ::fesql::node::kTimestamp == dist_type;
+            return false;
         }
         case ::fesql::node::kTimestamp: {
-            return false;
+            return ::fesql::node::kInt64 == dist_type;
         }
         case ::fesql::node::kFloat: {
             if (::fesql::node::kDouble == dist_type) {
@@ -76,6 +76,7 @@ bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
             return false;
         }
     }
+    return false;
 }
 Status CastExprIRBuilder::SafeCast(const NativeValue& value, ::llvm::Type* type,
                                    NativeValue* output) {
@@ -98,35 +99,60 @@ Status CastExprIRBuilder::SafeCast(const NativeValue& value, ::llvm::Type* type,
     }
     return Status::OK();
 }
+Status CastExprIRBuilder::UnSafeCast(const NativeValue& value,
+                                     ::llvm::Type* type, NativeValue* output) {
+    ::llvm::IRBuilder<> builder(block_);
+    if (value.IsConstNull()) {
+        *output = NativeValue::CreateNull(type);
+    } else {
+        Status status;
+        ::llvm::Value* output_value = nullptr;
+        CHECK_TRUE(
+            UnSafeCast(value.GetValue(&builder), type, &output_value, status),
+            status.msg);
+        if (value.IsNullable()) {
+            *output = NativeValue::CreateWithFlag(output_value,
+                                                  value.GetIsNull(&builder));
+        } else {
+            *output = NativeValue::Create(output_value);
+        }
+    }
+    return Status::OK();
+}
 bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
                                  ::llvm::Value** output, base::Status& status) {
     ::llvm::IRBuilder<> builder(block_);
-    if (false == IsSafeCast(value->getType(), type)) {
-        status.msg = "unsafe cast";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
-        return false;
-    }
-
     if (TypeIRBuilder::IsTimestampPtr(type)) {
         return TimestampCast(value, output, status);
-    } else if (codegen::IsStringType(type)) {
+    } else if (TypeIRBuilder::IsStringPtr(type)) {
         return StringCast(value, output, status);
     } else if (value->getType()->isIntegerTy() && type->isIntegerTy()) {
         *output = builder.CreateZExt(value, type);
-    } else if (value->getType()->isIntegerTy() && type->isFloatingPointTy()) {
+    } else if (value->getType()->isFloatingPointTy() &&
+               type->isFloatingPointTy()) {
+        *output = builder.CreateFPExt(value, type);
+    } else if (value->getType()->isIntegerTy(1) && type->isFloatingPointTy()) {
         *output = builder.CreateUIToFP(value, type);
-    } else {
-        // cast by cast op
-        if (false == ::llvm::CastInst::isCastable(value->getType(), type)) {
-            status.msg = "can not safe cast";
+    } else if (value->getType()->isIntegerTy() && type->isFloatingPointTy()) {
+        *output = builder.CreateSIToFP(value, type);
+    } else if (TypeIRBuilder::IsTimestampPtr(value->getType())) {
+        ::llvm::Value* ts = nullptr;
+        TimestampIRBuilder timestamp_ir_builder(block_->getModule());
+        if (!timestamp_ir_builder.GetTs(block_, value, &ts)) {
+            status.msg = "fail to codegen cast expr: extract timestamp error";
             status.code = common::kCodegenError;
             LOG(WARNING) << status.msg;
             return false;
         }
-        ::llvm::Instruction::CastOps cast_op =
-            ::llvm::CastInst::getCastOpcode(value, true, type, true);
-        *output = builder.CreateCast(cast_op, value, type);
+        return SafeCast(ts, type, output, status);
+    } else {
+        status.msg =
+            "fail to codegen cast expr: value type isn't compatible: from " +
+            TypeIRBuilder::TypeName(value->getType()) + " to " +
+            TypeIRBuilder::TypeName(type);
+        status.code = common::kCodegenError;
+        LOG(WARNING) << status.msg;
+        return false;
     }
     if (NULL == *output) {
         status.msg = "fail to cast";
@@ -140,24 +166,54 @@ bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
 bool CastExprIRBuilder::UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
                                    ::llvm::Value** output,
                                    base::Status& status) {
+    if (IsSafeCast(value->getType(), type)) {
+        return SafeCast(value, type, output, status);
+    }
     ::llvm::IRBuilder<> builder(block_);
-    // Block entry (label_entry)
-    if (false == ::llvm::CastInst::isCastable(value->getType(), type)) {
-        status.msg = "can not safe cast";
+    if (TypeIRBuilder::IsTimestampPtr(type) &&
+        TypeIRBuilder::IsInt64(value->getType())) {
+        return TimestampCast(value, output, status);
+    }
+    if (TypeIRBuilder::IsTimestampPtr(value->getType()) && type->isDoubleTy()) {
+        ::llvm::Value* ts = nullptr;
+        TimestampIRBuilder timestamp_ir_builder(block_->getModule());
+        if (!timestamp_ir_builder.GetTs(block_, value, &ts)) {
+            status.msg = "fail to codegen cast expr: extract timestamp error";
+            status.code = common::kCodegenError;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+        return UnSafeCast(ts, type, output, status);
+    } else if (value->getType()->isIntegerTy() && type->isIntegerTy()) {
+        *output = builder.CreateTrunc(value, type);
+    } else if (value->getType()->isFloatingPointTy() &&
+               type->isFloatingPointTy()) {
+        *output = builder.CreateFPTrunc(value, type);
+    } else if (value->getType()->isIntegerTy(1) && type->isFloatingPointTy()) {
+        // bool -> float/double
+        *output = builder.CreateUIToFP(value, type);
+    } else if (value->getType()->isIntegerTy() && type->isFloatTy()) {
+        if (value->getType()->getIntegerBitWidth() > 4) {
+            value = builder.CreateTrunc(value, builder.getInt32Ty());
+        }
+        *output = builder.CreateSIToFP(value, builder.getFloatTy());
+    } else if (value->getType()->isIntegerTy() && type->isDoubleTy()) {
+        *output = builder.CreateSIToFP(value, builder.getDoubleTy());
+    } else if (value->getType()->isFloatingPointTy() && type->isIntegerTy()) {
+        *output = builder.CreateFPToSI(value, type);
+    } else {
+        status.msg = "Can't cast from " +
+                     TypeIRBuilder::TypeName(value->getType()) + " to " +
+                     TypeIRBuilder::TypeName(type);
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
         return false;
     }
-    ::llvm::Instruction::CastOps cast_op =
-        ::llvm::CastInst::getCastOpcode(value, true, type, true);
-    ::llvm::Value* cast_value = builder.CreateCast(cast_op, value, type);
-    if (NULL == cast_value) {
+    if (NULL == *output) {
         status.msg = "fail to cast";
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
     }
-    *output = cast_value;
     return true;
 }
 

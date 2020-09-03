@@ -72,6 +72,14 @@ class ArithmeticIRBuilder {
 
  private:
     static bool IsAcceptType(::llvm::Type* type);
+    static Status FDivTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
+    static Status SDivTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
+    static Status ModTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
+    static Status AddTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
+    static Status SubTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
+    static Status MultiTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
+    static Status AndTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
+    static Status OrTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
     static bool InferBaseTypes(::llvm::BasicBlock* block, ::llvm::Value* left,
                                ::llvm::Value* right,
                                ::llvm::Value** casted_left,

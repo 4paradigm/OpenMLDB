@@ -46,6 +46,36 @@ base::Status NullIRBuilder::SafeNullBinaryExpr(
     }
     return status;
 }
+base::Status NullIRBuilder::SafeNullCastExpr(
+    ::llvm::BasicBlock* block, const NativeValue& value_left,
+    ::llvm::Type* cast_type,
+    const std::function<bool(::llvm::BasicBlock*, ::llvm::Value*,
+                             ::llvm::Type* type, ::llvm::Value**,
+                             base::Status&)>
+        expr_func,
+    NativeValue* value_output) {
+    base::Status status;
+    ::llvm::IRBuilder<> builder(block);
+
+    NativeValue left = value_left;
+    if (value_left.IsConstNull()) {
+        *value_output = NativeValue::CreateNull(left.GetType());
+    }
+    ::llvm::Value* raw_left = left.GetValue(&builder);
+    ::llvm::Value* output = nullptr;
+
+    NullIRBuilder null_ir_builder;
+    ::llvm::Value* should_ret_null = nullptr;
+    CHECK_STATUS(null_ir_builder.CheckAnyNull(block, left, &should_ret_null));
+    CHECK_TRUE(expr_func(block, raw_left, cast_type, &output, status),
+               status.msg);
+    if (nullptr != should_ret_null) {
+        *value_output = NativeValue::CreateWithFlag(output, should_ret_null);
+    } else {
+        *value_output = NativeValue::Create(output);
+    }
+    return status;
+}
 base::Status NullIRBuilder::SafeNullUnaryExpr(
     ::llvm::BasicBlock* block, const NativeValue& value_left,
     const std::function<bool(::llvm::BasicBlock* block, ::llvm::Value*,

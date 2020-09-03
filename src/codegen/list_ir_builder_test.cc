@@ -429,7 +429,6 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 NativeValue next4_wrapper;
                 CHECK_STATUS(list_builder.BuildIteratorNext(
                     iter, elem_type, false, &next4_wrapper));
-                auto next4 = next4_wrapper.GetValue(&builder);
                 CHECK_STATUS(arithmetic_ir_builder.BuildAddExpr(
                     res, next4_wrapper, &res));
 

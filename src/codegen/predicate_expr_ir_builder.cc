@@ -168,6 +168,7 @@ Status PredicateIRBuilder::BuildNotExpr(NativeValue input,
 }
 Status PredicateIRBuilder::BuildEqExpr(NativeValue left, NativeValue right,
                                        NativeValue* output) {
+    CHECK_STATUS(CompareTypeAccept(left.GetType(), right.GetType()))
     CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
@@ -179,6 +180,7 @@ Status PredicateIRBuilder::BuildEqExpr(NativeValue left, NativeValue right,
 }
 Status PredicateIRBuilder::BuildNeqExpr(NativeValue left, NativeValue right,
                                         NativeValue* output) {
+    CHECK_STATUS(CompareTypeAccept(left.GetType(), right.GetType()))
     CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
@@ -190,6 +192,7 @@ Status PredicateIRBuilder::BuildNeqExpr(NativeValue left, NativeValue right,
 }
 Status PredicateIRBuilder::BuildGtExpr(NativeValue left, NativeValue right,
                                        NativeValue* output) {
+    CHECK_STATUS(CompareTypeAccept(left.GetType(), right.GetType()))
     CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
@@ -201,6 +204,7 @@ Status PredicateIRBuilder::BuildGtExpr(NativeValue left, NativeValue right,
 }
 Status PredicateIRBuilder::BuildGeExpr(NativeValue left, NativeValue right,
                                        NativeValue* output) {
+    CHECK_STATUS(CompareTypeAccept(left.GetType(), right.GetType()))
     CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
@@ -212,6 +216,7 @@ Status PredicateIRBuilder::BuildGeExpr(NativeValue left, NativeValue right,
 }
 Status PredicateIRBuilder::BuildLeExpr(NativeValue left, NativeValue right,
                                        NativeValue* output) {
+    CHECK_STATUS(CompareTypeAccept(left.GetType(), right.GetType()))
     CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
@@ -223,6 +228,7 @@ Status PredicateIRBuilder::BuildLeExpr(NativeValue left, NativeValue right,
 }
 Status PredicateIRBuilder::BuildLtExpr(NativeValue left, NativeValue right,
                                        NativeValue* output) {
+    CHECK_STATUS(CompareTypeAccept(left.GetType(), right.GetType()))
     CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
@@ -528,7 +534,16 @@ bool PredicateIRBuilder::IsAcceptType(::llvm::Type* type) {
         }
     }
 }
-
+Status PredicateIRBuilder::CompareTypeAccept(::llvm::Type* lhs,
+                                             ::llvm::Type* rhs) {
+    CHECK_TRUE((TypeIRBuilder::IsNull(lhs) || TypeIRBuilder::IsNull(rhs) ||
+                TypeIRBuilder::IsStringPtr(lhs) ||
+                TypeIRBuilder::IsStringPtr(rhs) || lhs == rhs ||
+                (TypeIRBuilder::IsNumber(lhs) && TypeIRBuilder::IsNumber(rhs))),
+               "Invalid Compare Op type: lhs ", TypeIRBuilder::TypeName(lhs),
+               " rhs ", TypeIRBuilder::TypeName(rhs))
+    return Status::OK();
+}
 bool PredicateIRBuilder::InferBoolTypes(::llvm::BasicBlock* block,
                                         ::llvm::Value* value,
                                         ::llvm::Value** casted_value,

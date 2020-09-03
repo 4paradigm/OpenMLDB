@@ -352,25 +352,43 @@ TEST_F(UDFIRBuilderTest, asin_udf_test) {
     // CheckUDF<double, double>("asin", nan, -2.1);
 }
 
-TEST_F(UDFIRBuilderTest, atan_udf_test) {
+TEST_F(UDFIRBuilderTest, atan_udf_test_0) {
     CheckUDF<double, int16_t>("atan", 0, 0);
+}
+TEST_F(UDFIRBuilderTest, atan_udf_test_1) {
     CheckUDF<double, int16_t>("atan", 1.1071487177940904, 2);
+}
+TEST_F(UDFIRBuilderTest, atan_udf_test_2) {
     CheckUDF<double, int32_t>("atan", -1.1071487177940904, -2);
+}
+TEST_F(UDFIRBuilderTest, atan_udf_test_3) {
     CheckUDF<double, int32_t>("atan", 1.1071487177940904, 2);
+}
+TEST_F(UDFIRBuilderTest, atan_udf_test_4) {
     CheckUDF<double, int64_t>("atan", 0, 0);
+}
+TEST_F(UDFIRBuilderTest, atan_udf_test_5) {
     CheckUDF<double, int64_t>("atan", -1.1071487177940904, -2);
+}
+TEST_F(UDFIRBuilderTest, atan_udf_test_6) {
     CheckUDF<float, float>("atan", atan(-45.01f), -45.01f);
+}
+TEST_F(UDFIRBuilderTest, atan_udf_test_7) {
     CheckUDF<double, double>("atan", 0.1462226769376524, 0.1472738);
+}
+TEST_F(UDFIRBuilderTest, atan_udf_test_8) {
     CheckUDF<double, int16_t, int32_t>("atan", 2.3561944901923448, 2, -2);
+}
+TEST_F(UDFIRBuilderTest, atan_udf_test_9) {
     CheckUDF<double, int64_t, int32_t>("atan", 2.3561944901923448, 2, -2);
+}
+TEST_F(UDFIRBuilderTest, atan_udf_test_10) {
     CheckUDF<double, int64_t, float>("atan", 2.3561944901923448, 2, -2);
-    CheckUDF<double, double, int32_t>("atan", 2.3561944901923448, 2, -2);
 }
 
-TEST_F(UDFIRBuilderTest, atan2_udf_test) {
-    CheckUDF<double, int16_t, int32_t>("atan2", 2.3561944901923448, 2, -2);
-    CheckUDF<double, int64_t, int32_t>("atan2", 2.3561944901923448, 2, -2);
-    CheckUDF<double, int64_t, float>("atan2", 2.3561944901923448, 2, -2);
+
+
+TEST_F(UDFIRBuilderTest, atan2_udf_test_15) {
     CheckUDF<double, double, int32_t>("atan2", 2.3561944901923448, 2, -2);
 }
 

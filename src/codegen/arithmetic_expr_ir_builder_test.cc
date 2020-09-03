@@ -9,6 +9,7 @@
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include <memory>
 #include <utility>
+#include "case/sql_case.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/ir_base_builder_test.h"
 #include "codegen/string_ir_builder.h"
@@ -50,7 +51,10 @@ void BinaryArithmeticErrorCheck(fesql::node::FnOperator op) {
              node::ExprNode *right) {
             return nm->MakeBinaryExprNode(left, right, op);
         });
-    ASSERT_FALSE(compiled_func.valid());
+    ASSERT_FALSE(compiled_func.valid())
+        << DataTypeTrait<LHS>::to_string() << " "
+        << DataTypeTrait<RHS>::to_string() << " "
+        << DataTypeTrait<Ret>::to_string();
 }
 template <typename LHS, typename RHS, typename Ret>
 void BinaryArithmeticExprCheck(LHS left_val, RHS right_val, Ret expect,
@@ -62,9 +66,8 @@ void BinaryArithmeticExprCheck(LHS left_val, RHS right_val, Ret expect,
         });
     ASSERT_TRUE(compiled_func.valid())
         << "BinaryArithmeticExprCheck fail: " << DataTypeTrait<LHS>::to_string
-        << " " << DataTypeTrait<RHS>::to_string()
-        << " " << DataTypeTrait<Ret>::to_string()
-        << " " << node::ExprOpTypeName(op);
+        << " " << DataTypeTrait<RHS>::to_string() << " "
+        << DataTypeTrait<Ret>::to_string() << " " << node::ExprOpTypeName(op);
     Ret result = compiled_func(left_val, right_val);
     ASSERT_EQ(expect, result);
 }
@@ -417,58 +420,84 @@ TEST_F(ArithmeticIRBuilderTest, test_mod_null) {
                               Nullable<double>>(nullptr, 1.0, nullptr,
                                                 ::fesql::node::kFnOpMod);
 }
-TEST_F(ArithmeticIRBuilderTest, test_error_expr_op) {
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_1) {
     BinaryArithmeticErrorCheck<Nullable<codec::StringRef>,
                                Nullable<codec::StringRef>,
                                Nullable<codec::StringRef>>(
         ::fesql::node::kFnOpAdd);
-
-    BinaryArithmeticErrorCheck<Nullable<bool>,
-                               Nullable<codec::StringRef>,
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_2) {
+    BinaryArithmeticErrorCheck<Nullable<bool>, Nullable<codec::StringRef>,
                                Nullable<codec::StringRef>>(
         ::fesql::node::kFnOpAdd);
-
-
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_3) {
     BinaryArithmeticErrorCheck<Nullable<Timestamp>, Nullable<Timestamp>,
                                Nullable<Timestamp>>(::fesql::node::kFnOpMinus);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_4) {
     BinaryArithmeticErrorCheck<Nullable<codec::StringRef>,
                                Nullable<codec::StringRef>,
                                Nullable<codec::StringRef>>(
         ::fesql::node::kFnOpMinus);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_5) {
     BinaryArithmeticErrorCheck<Nullable<codec::Date>, Nullable<codec::Date>,
                                Nullable<codec::Date>>(
         ::fesql::node::kFnOpMinus);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_6) {
     BinaryArithmeticErrorCheck<Nullable<Timestamp>, Nullable<Timestamp>,
                                Nullable<Timestamp>>(::fesql::node::kFnOpMulti);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_7) {
     BinaryArithmeticErrorCheck<Nullable<codec::StringRef>,
                                Nullable<codec::StringRef>,
                                Nullable<codec::StringRef>>(
         ::fesql::node::kFnOpMulti);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_8) {
     BinaryArithmeticErrorCheck<Nullable<codec::Date>, Nullable<codec::Date>,
                                Nullable<codec::Date>>(
         ::fesql::node::kFnOpMulti);
-
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_9) {
     BinaryArithmeticErrorCheck<Nullable<Timestamp>, Nullable<Timestamp>,
                                Nullable<Timestamp>>(::fesql::node::kFnOpFDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_10) {
     BinaryArithmeticErrorCheck<Nullable<codec::StringRef>,
                                Nullable<codec::StringRef>,
                                Nullable<codec::StringRef>>(
         ::fesql::node::kFnOpFDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_11) {
     BinaryArithmeticErrorCheck<Nullable<codec::Date>, Nullable<codec::Date>,
                                Nullable<codec::Date>>(::fesql::node::kFnOpFDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_12) {
     BinaryArithmeticErrorCheck<Nullable<Timestamp>, Nullable<Timestamp>,
                                Nullable<Timestamp>>(::fesql::node::kFnOpDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_13) {
     BinaryArithmeticErrorCheck<Nullable<codec::StringRef>,
                                Nullable<codec::StringRef>,
                                Nullable<codec::StringRef>>(
         ::fesql::node::kFnOpDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_14) {
     BinaryArithmeticErrorCheck<Nullable<codec::Date>, Nullable<codec::Date>,
                                Nullable<codec::Date>>(::fesql::node::kFnOpDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_15) {
     BinaryArithmeticErrorCheck<Nullable<int16_t>, Nullable<float>,
                                Nullable<int16_t>>(::fesql::node::kFnOpDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_16) {
     BinaryArithmeticErrorCheck<Nullable<int16_t>, Nullable<double>,
                                Nullable<int16_t>>(::fesql::node::kFnOpDiv);
 }
+
 TEST_F(ArithmeticIRBuilderTest, test_add_int16_x_expr) {
     BinaryArithmeticExprCheck<int16_t, int16_t, int16_t>(
         1, 1, 2, ::fesql::node::kFnOpAdd);
@@ -485,11 +514,11 @@ TEST_F(ArithmeticIRBuilderTest, test_add_int16_x_expr) {
         1, 12345678.5, 12345678.5 + 1.0, ::fesql::node::kFnOpAdd);
 }
 TEST_F(ArithmeticIRBuilderTest, test_add_bool_x_expr) {
-    BinaryArithmeticExprCheck<bool, int16_t, int16_t>(
-        true, 1, 2, ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<bool, int16_t, int16_t>(true, 1, 2,
+                                                      ::fesql::node::kFnOpAdd);
 
-    BinaryArithmeticExprCheck<bool, int32_t, int32_t>(
-        true, 1, 2, ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<bool, int32_t, int32_t>(true, 1, 2,
+                                                      ::fesql::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<bool, int64_t, int64_t>(
         true, 8000000000L, 8000000001L, ::fesql::node::kFnOpAdd);
@@ -541,22 +570,23 @@ TEST_F(ArithmeticIRBuilderTest, test_add_int64_x_expr) {
         1, 12345678.5, 12345678.5 + 1.0, ::fesql::node::kFnOpAdd);
 }
 
-TEST_F(ArithmeticIRBuilderTest, test_add_timestamp_expr) {
-    Timestamp t1(8000000000L);
-    Timestamp t2(1L);
+TEST_F(ArithmeticIRBuilderTest, test_add_timestamp_expr_0) {
     BinaryArithmeticExprCheck<Timestamp, Timestamp, Timestamp>(
         ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
-        ::fesql::node::kTimestamp, t1, t2, Timestamp(8000000001L),
-        ::fesql::node::kFnOpAdd);
-
+        ::fesql::node::kTimestamp, Timestamp(8000000000L), Timestamp(1L),
+        Timestamp(8000000001L), ::fesql::node::kFnOpAdd);
+}
+TEST_F(ArithmeticIRBuilderTest, test_add_timestamp_expr_1) {
     BinaryArithmeticExprCheck<Timestamp, int64_t, Timestamp>(
         ::fesql::node::kTimestamp, ::fesql::node::kInt64,
-        ::fesql::node::kTimestamp, t1, 1L, Timestamp(8000000001L),
-        ::fesql::node::kFnOpAdd);
+        ::fesql::node::kTimestamp, Timestamp(8000000000L), 1L,
+        Timestamp(8000000001L), ::fesql::node::kFnOpAdd);
+}
+TEST_F(ArithmeticIRBuilderTest, test_add_timestamp_expr_2) {
     BinaryArithmeticExprCheck<Timestamp, int32_t, Timestamp>(
         ::fesql::node::kTimestamp, ::fesql::node::kInt32,
-        ::fesql::node::kTimestamp, t1, 1, Timestamp(8000000001L),
-        ::fesql::node::kFnOpAdd);
+        ::fesql::node::kTimestamp, Timestamp(8000000000L), 1,
+        Timestamp(8000000001L), ::fesql::node::kFnOpAdd);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_add_float_x_expr) {

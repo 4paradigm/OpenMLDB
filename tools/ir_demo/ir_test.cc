@@ -11,8 +11,8 @@
 #include <vector>
 #include <iostream>
 #include <string>
-float bool_cast(bool flag, float value) {
-    return flag + value;
+double cast(int32_t value) {
+    return static_cast<float>(value);
 }
 
 //
