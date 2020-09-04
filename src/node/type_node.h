@@ -80,6 +80,7 @@ class TypeNode : public SQLNode {
 
     bool IsArithmetic() const;
     bool IsInteger() const;
+    bool IsNull() const;
     bool IsFloating() const;
 };
 
