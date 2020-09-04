@@ -22,5 +22,7 @@ bool TypeNode::IsFloating() const {
     return base_ == node::kFloat || base_ == node::kDouble;
 }
 
+bool TypeNode::IsGeneric() const { return !generics_.empty(); }
+
 }  // namespace node
 }  // namespace fesql

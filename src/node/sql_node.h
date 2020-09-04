@@ -444,6 +444,19 @@ class ExprNode : public SQLNode {
                       "Not implemented: " + GetExprString());
     }
 
+    /**
+     * Determinie whether expression require iterative input
+     * at specified position. This will affect lambdafy
+     * process on the expression.
+     */
+    virtual bool RequireListAt(ExprAnalysisContext *ctx, size_t index) const {
+        return false;
+    }
+    /**
+     * Determinie whether expression will return list type.
+     */
+    virtual bool IsListReturn(ExprAnalysisContext *ctx) const { return false; }
+
  private:
     const TypeNode *output_type_ = nullptr;
     bool nullable_ = true;
@@ -1184,7 +1197,11 @@ class FnDefNode : public SQLNode {
         const std::vector<const TypeNode *> &arg_types) const = 0;
 
     const std::string GetFlatString() const;
+
+    virtual bool RequireListAt(ExprAnalysisContext *ctx, size_t index) const;
+    virtual bool IsListReturn(ExprAnalysisContext *ctx) const;
 };
+
 class CastExprNode : public ExprNode {
  public:
     explicit CastExprNode(const node::DataType cast_type, node::ExprNode *expr)
@@ -1233,6 +1250,7 @@ class CaseWhenExprNode : public ExprNode {
     ExprNode *else_expr() const { return GetChild(1); }
     Status InferAttr(ExprAnalysisContext *ctx) override;
 };
+
 class CallExprNode : public ExprNode {
  public:
     explicit CallExprNode(FnDefNode *fn_def, ExprListNode *args,
@@ -1263,6 +1281,8 @@ class CallExprNode : public ExprNode {
     void SetFnDef(FnDefNode *fn_def) { fn_def_ = fn_def; }
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
+    bool RequireListAt(ExprAnalysisContext *ctx, size_t index) const override;
+    bool IsListReturn(ExprAnalysisContext *ctx) const override;
 
  private:
     // bool is_agg_;
@@ -1352,6 +1372,8 @@ class ExprIdNode : public ExprNode {
 
     bool IsResolved() const { return id_ >= 0; }
 
+    bool IsListReturn(ExprAnalysisContext *ctx) const;
+
  private:
     std::string name_;
     int64_t id_;
@@ -1406,6 +1428,8 @@ class ColumnRefNode : public ExprNode {
     virtual bool Equals(const ExprNode *node) const;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
+
+    bool IsListReturn(ExprAnalysisContext *ctx) const override { return true; }
 
  private:
     std::string column_name_;
@@ -1964,6 +1988,9 @@ class ExternalFnDefNode : public FnDefNode {
     }
     bool IsArgNullable(size_t i) const override { return arg_nullable_[i] > 0; }
     bool IsReturnNullable() const override { return ret_nullable_; }
+
+    bool RequireListAt(ExprAnalysisContext *ctx, size_t index) const override;
+    bool IsListReturn(ExprAnalysisContext *ctx) const override;
 
  private:
     std::string function_name_;

@@ -81,6 +81,7 @@ class TypeNode : public SQLNode {
     bool IsArithmetic() const;
     bool IsInteger() const;
     bool IsFloating() const;
+    bool IsGeneric() const;
 };
 
 class OpaqueTypeNode : public TypeNode {

@@ -475,7 +475,6 @@ bool SQLCase::ExtractRow(const vm::Schema& schema,
             rb.AppendNULL();
             continue;
         }
-        LOG(INFO) << item_vec[index];
         switch (it->type()) {
             case type::kInt16: {
                 if (!rb.AppendInt16(

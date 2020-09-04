@@ -624,7 +624,7 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
             // type infer
             vm::SchemaSourceList empty;
             vm::SchemasContext empty_context(empty);
-            passes::ResolveFnAndAttrs resolver(&nm, library, empty);
+            passes::ResolveFnAndAttrs resolver(&nm, library, empty_context);
             node::ExprNode* resolved_body = nullptr;
             auto status = resolver.VisitExpr(body, &resolved_body);
             if (!status.isOK()) {

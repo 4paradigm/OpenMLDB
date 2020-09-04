@@ -35,6 +35,7 @@ TEST_F(LambdafyProjectsTest, Test) {
         "    sum(col_0), "
         "    count_where(col_1, col_2 > 2), "
         "    count(col_0) + g(sum(col_1 + 1 + f(max(col_2)))) + 1,"
+        "    avg(col_0 - at(col_0, 3)),"
         "    *, count(*) "
         "from t1;";
     node::NodePointVector list1;
@@ -58,8 +59,6 @@ TEST_F(LambdafyProjectsTest, Test) {
     ASSERT_TRUE(project_list_node != nullptr);
 
     auto lib = udf::DefaultUDFLibrary::get();
-    lib->SetIsUDAF("count_where", 2);
-    lib->SetIsUDAF("slice", 3);
     LambdafyProjects transformer(&nm, lib, input_schemas, false);
 
     std::vector<int> is_agg_vec;
@@ -68,8 +67,9 @@ TEST_F(LambdafyProjectsTest, Test) {
     node::LambdaNode *lambda;
     status = transformer.Transform(project_list_node->GetProjects(), &lambda,
                                    &is_agg_vec, &names, &frames);
+    LOG(WARNING) << status;
     ASSERT_TRUE(status.isOK());
-    std::vector<int> expect_is_agg = {0, 0, 0, 1, 1, 1, 0, 0, 0, 1};
+    std::vector<int> expect_is_agg = {0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1};
     ASSERT_TRUE(is_agg_vec.size() == expect_is_agg.size());
     for (size_t i = 0; i < expect_is_agg.size(); ++i) {
         ASSERT_EQ(expect_is_agg[i], is_agg_vec[i]);

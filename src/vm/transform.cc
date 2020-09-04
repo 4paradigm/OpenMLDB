@@ -844,7 +844,7 @@ fesql::base::Status ResolveProjects(
     // type inference and udf function resolve
     node::LambdaNode* resolved_lambda = nullptr;
     passes::ResolveFnAndAttrs resolve_pass(node_manager, library,
-                                           input_schemas);
+                                           vm::SchemasContext(input_schemas));
     CHECK_STATUS(
         resolve_pass.VisitLambda(lambda, global_arg_types, &resolved_lambda));
 

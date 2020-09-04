@@ -19,6 +19,7 @@
 #include "gtest/gtest.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
+#include "udf/default_udf_library.h"
 #include "udf/literal_traits.h"
 
 namespace fesql {
@@ -65,7 +66,8 @@ void CheckInfer(
     ExprNode* expr =
         DoBuildExpr(build_expr, &nm, args, std::index_sequence_for<T...>());
 
-    ExprAnalysisContext ctx(&nm, nullptr);
+    auto library = udf::DefaultUDFLibrary::get();
+    ExprAnalysisContext ctx(&nm, library, nullptr);
     auto status = expr->InferAttr(&ctx);
     if (!status.isOK()) {
         LOG(INFO) << "Infer expr status: " << status;
@@ -116,7 +118,8 @@ void CheckInferError(
     ExprNode* expr =
         DoBuildExpr(build_expr, &nm, args, std::index_sequence_for<T...>());
 
-    ExprAnalysisContext ctx(&nm, nullptr);
+    auto library = udf::DefaultUDFLibrary::get();
+    ExprAnalysisContext ctx(&nm, library, nullptr);
     auto status = expr->InferAttr(&ctx);
     LOG(INFO) << "Infer expr status: " << status;
     ASSERT_TRUE(!status.isOK());

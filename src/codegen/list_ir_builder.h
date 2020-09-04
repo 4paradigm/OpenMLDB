@@ -27,8 +27,6 @@ class ListIRBuilder {
     ListIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
     ~ListIRBuilder();
 
-    bool BuildAt(::llvm::Value* list, ::llvm::Value* pos,
-                 ::llvm::Value** output, base::Status& status);  // NOLINT
     Status BuildIterator(::llvm::Value* list, const node::TypeNode* elem_type,
                          ::llvm::Value** output);
     Status BuildIteratorHasNext(::llvm::Value* iterator,
@@ -45,9 +43,6 @@ class ListIRBuilder {
     Status BuildStructTypeIteratorNext(::llvm::Value* iterator,
                                        const node::TypeNode* elem_type,
                                        NativeValue* output);
-    bool BuilStructTypedAt(::llvm::Value* list, ::llvm::Value* pos,
-                           ::llvm::Value** output,
-                           base::Status& status);  // NOLINT
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
 };

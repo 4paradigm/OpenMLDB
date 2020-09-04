@@ -24,6 +24,7 @@ class DefaultUDFLibrary : public UDFLibrary {
     void InitTrigonometricUDF();
 
     void InitUtilityUDF();
+    void InitWindowFunctions();
 
     static DefaultUDFLibrary inst_;
 

@@ -558,6 +558,7 @@ Status UDFIRBuilder::BuildUDAFCall(
         ::llvm::Value* frame_raw_value = sub_fn->arg_begin() + input_num;
         sub_sv.AddVar(frame_arg_->GetExprString(),
                       NativeValue::Create(frame_raw_value));
+        sub_sv.AddVar("@window", NativeValue::Create(frame_raw_value));
     }
 
     ScopeVar* old_sv = sv_;

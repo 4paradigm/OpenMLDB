@@ -162,25 +162,6 @@ template <class V>
 double avg_list(int8_t *input);
 
 template <class V>
-struct AtList {
-    using Args = std::tuple<::fesql::codec::ListRef<V>, int32_t>;
-
-    V operator()(::fesql::codec::ListRef<V> *list_ref, int32_t pos) {
-        auto list = (codec::ListV<V> *)(list_ref->list);
-        return list->At(pos);
-    }
-};
-
-template <class V>
-struct AtStructList {
-    using Args = std::tuple<::fesql::codec::ListRef<V>, int32_t>;
-
-    void operator()(::fesql::codec::ListRef<V> *list_ref, int32_t pos, V *v) {
-        *v = AtList<V>()(list_ref, pos);
-    }
-};
-
-template <class V>
 struct StructMaximum {
     using Args = std::tuple<V, V>;
 

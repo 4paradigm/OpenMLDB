@@ -11,6 +11,7 @@
 #include "codec/fe_row_codec.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
+#include "passes/resolve_fn_and_attrs.h"
 #include "vm/schemas_context.h"
 #include "vm/transform.h"
 
@@ -39,7 +40,7 @@ Status ColumnRefNode::InferAttr(ExprAnalysisContext* ctx) {
                "Fail to convert type: ", col_info.type);
 
     auto nm = ctx->node_manager();
-    SetOutputType(nm->MakeTypeNode(dtype));
+    SetOutputType(nm->MakeTypeNode(node::kList, dtype));
     return Status::OK();
 }
 
@@ -58,8 +59,18 @@ Status CallExprNode::InferAttr(ExprAnalysisContext* ctx) {
     return Status::OK();
 }
 
+bool CallExprNode::RequireListAt(ExprAnalysisContext* ctx, size_t index) const {
+    return GetFnDef()->RequireListAt(ctx, index);
+}
+
+bool CallExprNode::IsListReturn(ExprAnalysisContext* ctx) const {
+    return GetFnDef()->IsListReturn(ctx);
+}
+
 Status ExprIdNode::InferAttr(ExprAnalysisContext* ctx) {
     // var node should be bind outside
+    CHECK_TRUE(this->GetOutputType() != nullptr, kTypeError,
+               this->GetExprString(), "  should get type binding before infer");
     return Status::OK();
 }
 
@@ -270,12 +281,7 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             break;
         }
         case kFnOpAt: {
-            CHECK_TRUE(left_type->base() == kList, kTypeError,
-                       "At op should take list input");
-            CHECK_TRUE(right_type->IsInteger(), kTypeError,
-                       "At index should be integer");
-            SetOutputType(left_type->GetGenericType(0));
-            SetNullable(left_type->IsGenericNullable(0));
+            return ctx->InferAsUDF(this, "at");
             break;
         }
         default:
@@ -344,6 +350,33 @@ Status CondExpr::InferAttr(ExprAnalysisContext* ctx) {
                left_type->GetName(), " : ", right_type->GetName());
     this->SetOutputType(left_type);
     this->SetNullable(GetLeft()->nullable() || GetRight()->nullable());
+    return Status::OK();
+}
+
+Status ExprAnalysisContext::InferAsUDF(node::ExprNode* expr,
+                                       const std::string& name) {
+    node::NodeManager nm;
+    std::vector<node::ExprNode*> proxy_args;
+    for (size_t i = 0; i < expr->GetChildNum(); ++i) {
+        auto child = expr->GetChild(i);
+        auto arg = nm.MakeExprIdNode("proxy_arg_" + std::to_string(i),
+                                     node::ExprIdNode::GetNewId());
+        arg->SetOutputType(child->GetOutputType());
+        arg->SetNullable(child->nullable());
+        proxy_args.push_back(arg);
+    }
+    node::ExprNode* transformed = nullptr;
+    CHECK_STATUS(library()->Transform(name, proxy_args, &nm, &transformed),
+                 "Resolve ", expr->GetExprString(), " as \"", name,
+                 "\" failed");
+
+    node::ExprNode* target_expr = nullptr;
+    passes::ResolveFnAndAttrs resolver(&nm, library(), *schemas_context());
+    CHECK_STATUS(resolver.VisitExpr(transformed, &target_expr), "Infer ",
+                 expr->GetExprString(), " as \"", name, "\" failed");
+
+    expr->SetOutputType(target_expr->GetOutputType());
+    expr->SetNullable(target_expr->nullable());
     return Status::OK();
 }
 

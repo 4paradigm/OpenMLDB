@@ -11,135 +11,14 @@
 #include "codegen/ir_base_builder.h"
 #include "codegen/predicate_expr_ir_builder.h"
 #include "codegen/type_ir_builder.h"
+#include "codegen/udf_ir_builder.h"
 #include "glog/logging.h"
+
 namespace fesql {
 namespace codegen {
 ListIRBuilder::ListIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var)
     : block_(block), sv_(scope_var) {}
 ListIRBuilder::~ListIRBuilder() {}
-
-bool ListIRBuilder::BuilStructTypedAt(::llvm::Value* list, ::llvm::Value* pos,
-                                      ::llvm::Value** output,
-                                      base::Status& status) {
-    if (nullptr == list) {
-        status.msg = "fail to codegen list[pos]: list is null";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status;
-        return false;
-    }
-
-    CastExprIRBuilder castExprIrBuilder(block_);
-    if (!pos->getType()->isIntegerTy()) {
-        status.msg = "fail to codegen list[pos]: invalid pos type";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status;
-        return false;
-    }
-    ::llvm::Value* casted_pos = nullptr;
-    if (false == castExprIrBuilder.UnSafeCast(
-                     pos, ::llvm::Type::getInt32Ty(block_->getContext()),
-                     &casted_pos, status)) {
-        status.msg = "fail to codegen list[pos]: invalid pos type";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status;
-        return false;
-    }
-
-    fesql::node::TypeNode type_node;
-    if (false == GetFullType(list->getType(), &type_node) ||
-        fesql::node::kList != type_node.base_) {
-        status.msg = "fail to codegen list[pos]: invalid list type";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status;
-        return false;
-    }
-    ::llvm::Type* struct_type = nullptr;
-    if (false == GetLLVMType(block_, type_node.generics_[0], &struct_type)) {
-        status.msg =
-            "fail to codegen iterator.next(): invalid value type of iterator";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status;
-        return false;
-    }
-    if (!TypeIRBuilder::IsStructPtr(struct_type)) {
-        status.msg =
-            "fail to codegen struct iterator.next(), invalid struct type";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status;
-        return false;
-    }
-    ::llvm::IRBuilder<> builder(block_);
-    struct_type = struct_type->getPointerElementType();
-    ::std::string fn_name = "at." + type_node.GetName() + "." +
-                            node::TypeNode(node::kInt32).GetName();
-    ::llvm::FunctionType* fn_type = ::llvm::FunctionType::get(
-        builder.getVoidTy(),
-        {list->getType(), builder.getInt32Ty(), struct_type->getPointerTo()},
-        false);
-    ::llvm::FunctionCallee fn =
-        block_->getModule()->getOrInsertFunction(fn_name, fn_type);
-    ::llvm::Value* at_value_ptr = builder.CreateAlloca(struct_type);
-
-    builder.CreateCall(fn, {list, casted_pos, at_value_ptr});
-    *output = at_value_ptr;
-    return true;
-}
-bool ListIRBuilder::BuildAt(::llvm::Value* list, ::llvm::Value* pos,
-                            ::llvm::Value** output, base::Status& status) {
-    if (nullptr == list) {
-        status.msg = "fail to codegen list[pos]: list is null";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status;
-        return false;
-    }
-
-    CastExprIRBuilder castExprIrBuilder(block_);
-    if (!pos->getType()->isIntegerTy()) {
-        status.msg = "fail to codegen list[pos]: invalid pos type";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status;
-        return false;
-    }
-    ::llvm::Value* casted_pos = nullptr;
-    if (false == castExprIrBuilder.UnSafeCast(
-                     pos, ::llvm::Type::getInt32Ty(block_->getContext()),
-                     &casted_pos, status)) {
-        status.msg = "fail to codegen list[pos]: invalid pos type";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status;
-        return false;
-    }
-
-    fesql::node::TypeNode type_node;
-    if (false == GetFullType(list->getType(), &type_node) ||
-        fesql::node::kList != type_node.base_) {
-        status.msg = "fail to codegen list[pos]: invalid list type";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status;
-        return false;
-    }
-    ::llvm::Type* v1_type = nullptr;
-    if (false == GetLLVMType(block_, type_node.generics_[0], &v1_type)) {
-        status.msg =
-            "fail to codegen iterator.next(): invalid value type of iterator";
-        status.code = common::kCodegenError;
-        LOG(WARNING) << status;
-        return false;
-    }
-
-    if (TypeIRBuilder::IsStructPtr(v1_type)) {
-        return BuilStructTypedAt(list, pos, output, status);
-    }
-    ::llvm::IRBuilder<> builder(block_);
-    ::std::string fn_name = "at." + type_node.GetName() + "." +
-                            node::TypeNode(node::kInt32).GetName();
-    ::llvm::FunctionType* fn_type = ::llvm::FunctionType::get(
-        v1_type, {list->getType(), builder.getInt32Ty()}, false);
-    ::llvm::FunctionCallee fn =
-        block_->getModule()->getOrInsertFunction(fn_name, fn_type);
-    *output = builder.CreateCall(fn, {list, casted_pos});
-    return true;
-}
 
 Status ListIRBuilder::BuildIterator(::llvm::Value* list,
                                     const node::TypeNode* elem_type,

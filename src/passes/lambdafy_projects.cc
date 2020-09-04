@@ -88,7 +88,7 @@ Status LambdafyProjects::VisitExpr(node::ExprNode* expr,
         auto fn =
             dynamic_cast<const node::ExternalFnDefNode*>(call->GetFnDef());
         if (fn != nullptr && !fn->IsResolved()) {
-            if (library_->FindAll(fn->function_name()) == nullptr) {
+            if (!library_->HasFunction(fn->function_name())) {
                 // not a registered udf, maybe user defined script function
                 *out = expr;
                 *has_agg = false;
@@ -120,7 +120,34 @@ Status LambdafyProjects::VisitExpr(node::ExprNode* expr,
     for (size_t i = 0; i < child_num; ++i) {
         bool child_has_agg;
         bool child_is_root_agg;
-        CHECK_STATUS(VisitExpr(expr->GetChild(i), row_arg, window_arg,
+
+        auto child = expr->GetChild(i);
+        LOG(INFO) << expr->GetExprString() << " at " << i << " : "
+                  << expr->RequireListAt(&analysis_ctx_, i) << " "
+                  << (child->GetExprType() == node::kExprColumnRef);
+        if (expr->RequireListAt(&analysis_ctx_, i)) {
+            bool child_is_col = child->GetExprType() == node::kExprColumnRef;
+            if (child_is_col) {
+                transformed_children[i] = child;
+                *has_agg = true;
+                continue;
+            }
+            // Expression require list type input at current position
+            // but child can not ensure that.
+            // TODO(bxq): support map expression
+            // Visit child with new row arg, and produce new_child(row),
+            // then wrap with map(window, row => new_child(row))
+            // For example:
+            // (1) slice(x > y, 1, 3)  ->
+            //         slice(map(window, row => row.x > row.y), 1, 3)
+            // (2) at(x, 2)  ->
+            //         at(map(window, row => row.x), 2)
+            CHECK_TRUE(child->IsListReturn(&analysis_ctx_) && !child_is_col,
+                       kCodegenError, "Can not lift child at ", i,
+                       " to list for ", expr->GetExprString());
+        }
+
+        CHECK_STATUS(VisitExpr(child, row_arg, window_arg,
                                &transformed_children[i], &child_has_agg,
                                &child_is_root_agg));
         *has_agg |= child_has_agg;
@@ -165,68 +192,86 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
     auto fn = dynamic_cast<const node::ExternalFnDefNode*>(call->GetFnDef());
     CHECK_TRUE(fn != nullptr, kCodegenError);
 
-    // build update function
-    auto state_arg = nm_->MakeExprIdNode("state", node::ExprIdNode::GetNewId());
-    auto new_row_arg = nm_->MakeExprIdNode("row", node::ExprIdNode::GetNewId());
-    new_row_arg->SetOutputType(row_arg->GetOutputType());
+    // represent row argument in window iteration
+    node::ExprIdNode* iter_row = nullptr;
 
-    // update function args: [state, transform(c1), transform(c2), ...]
-    auto agg_col_num = call->GetChildNum();
-    std::vector<node::ExprNode*> update_args(1 + agg_col_num);
-    update_args[0] = state_arg;
+    auto agg_arg_num = call->GetChildNum();
+    std::vector<node::ExprNode*> transformed_child(agg_arg_num);
 
-    // original udaf argument types
+    std::vector<int> args_require_iter;
+    std::vector<int> args_require_window_iter;
+
+    // collect original udaf argument types
     std::vector<node::ExprNode*> agg_original_args;
-    std::vector<const node::TypeNode*> agg_original_list_types;
 
-    bool all_agg_child = true;
-    for (size_t i = 0; i < agg_col_num; ++i) {
+    bool has_window_iter;
+    for (size_t i = 0; i < agg_arg_num; ++i) {
+        auto child = call->GetChild(i);
+
+        // if child alway produce list results, do not transform
+        // it to window iteration form, except for column reference
+        bool child_is_list = child->IsListReturn(&analysis_ctx_) &&
+                             child->GetExprType() != node::kExprColumnRef;
+
+        bool child_require_iter = call->RequireListAt(&analysis_ctx_, i);
+        bool child_require_window_iter = child_require_iter && !child_is_list;
+        args_require_iter.push_back(child_require_iter);
+        args_require_window_iter.push_back(child_require_window_iter);
+
+        // if current argument position require list input,
+        // the child should be computed on udaf's iteration row,
+        // else it is not an iterative input.
+        node::ExprIdNode* child_row_arg;
+        if (child_require_window_iter) {
+            has_window_iter = true;
+            if (iter_row == nullptr) {
+                iter_row = nm_->MakeExprIdNode("iter_row",
+                                               node::ExprIdNode::GetNewId());
+                iter_row->SetOutputType(row_arg->GetOutputType());
+                iter_row->SetNullable(false);
+            }
+            child_row_arg = iter_row;
+        } else {
+            child_row_arg = row_arg;
+        }
+
         bool child_has_agg;
         bool child_is_root_agg;
-        CHECK_STATUS(VisitExpr(call->GetChild(i), new_row_arg, window_arg,
-                               &update_args[i + 1], &child_has_agg,
+        CHECK_STATUS(VisitExpr(child, child_row_arg, window_arg,
+                               &transformed_child[i], &child_has_agg,
                                &child_is_root_agg));
 
         // resolve update arg
         node::ExprNode* resolved_arg = nullptr;
-        ResolveFnAndAttrs resolver(nm_, library_, input_schemas_);
-        auto status = resolver.VisitExpr(update_args[i + 1], &resolved_arg);
-        if (status.isOK() && resolved_arg->GetOutputType() != nullptr) {
-            update_args[i + 1] = resolved_arg;
+        ResolveFnAndAttrs resolver(nm_, library_, schemas_ctx_);
+        CHECK_STATUS(resolver.VisitExpr(transformed_child[i], &resolved_arg),
+                     "Resolve transformed udaf argument at ", i,
+                     " failed: ", transformed_child[i]->GetTreeString());
+        CHECK_TRUE(resolved_arg->GetOutputType() != nullptr, kCodegenError);
 
-            // collect original udaf info
-            auto original_arg =
-                nm_->MakeExprIdNode("udaf_list_arg_" + std::to_string(i),
-                                    node::ExprIdNode::GetNewId());
-            auto original_type =
-                nm_->MakeTypeNode(node::kList, resolved_arg->GetOutputType());
-            original_arg->SetOutputType(original_type);
+        // collect original udaf info
+        transformed_child[i] = resolved_arg;
+        auto original_arg = nm_->MakeExprIdNode(
+            "udaf_list_arg_" + std::to_string(i), node::ExprIdNode::GetNewId());
+        auto resolved_type = resolved_arg->GetOutputType();
+        if (child_require_window_iter) {
+            original_arg->SetOutputType(
+                nm_->MakeTypeNode(node::kList, resolved_type));
             original_arg->SetNullable(false);
-            agg_original_args.push_back(original_arg);
-            agg_original_list_types.push_back(original_type);
-
         } else {
-            LOG(WARNING) << "Resolve " << i
-                         << "th udaf argument failed: " << status;
+            if (child_require_iter) {
+                CHECK_TRUE(resolved_type->base() == node::kList, kCodegenError,
+                           "UDAF require list type at position ", i,
+                           " but get ", resolved_type->GetName());
+            }
+            original_arg->SetOutputType(resolved_type);
+            original_arg->SetNullable(resolved_arg->nullable());
         }
-
-        // if all args agg
-        all_agg_child &= child_is_root_agg;
-    }
-
-    if (all_agg_child && agg_col_num == 1) {
-        // eg. sum(slice(col1), 1, 4)
-        for (size_t i = 0; i < agg_col_num; ++i) {
-            call->SetChild(i, update_args[i + 1]);
-        }
-        *out = call;
-        return Status::OK();
+        agg_original_args.push_back(original_arg);
     }
 
     // resolve original udaf
     node::FnDefNode* fn_def = nullptr;
-    vm::SchemasContext schemas_ctx(input_schemas_);
-    node::ExprAnalysisContext expr_analysis_ctx(nm_, &schemas_ctx);
     CHECK_STATUS(library_->ResolveFunction(fn->function_name(),
                                            agg_original_args, nm_, &fn_def),
                  "Resolve original udaf for ", fn->function_name(), " failed");
@@ -234,7 +279,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
     CHECK_TRUE(origin_udaf != nullptr, kCodegenError, fn->function_name(),
                " is not an udaf");
 
-    // convention to refer unresolved udaf's update function
+    // refer to original udaf's functionalities
     auto ori_update_fn = origin_udaf->update_func();
     auto ori_merge_fn = origin_udaf->merge_func();
     auto ori_output_fn = origin_udaf->output_func();
@@ -243,25 +288,70 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
         ori_init != nullptr, kCodegenError,
         "Do not support use first element as init state for lambdafy udaf");
 
-    auto update_body = nm_->MakeFuncNode(ori_update_fn, update_args, nullptr);
-    auto update_func =
-        nm_->MakeLambdaNode({state_arg, new_row_arg}, update_body);
+    // build new udaf update function
+    std::vector<node::ExprNode*> actual_update_args;
+    std::vector<node::ExprIdNode*> proxy_update_args;
+    std::vector<node::ExprNode*> proxy_udaf_args;
+    std::vector<const node::TypeNode*> proxy_udaf_arg_types;
 
-    // build new udaf call
+    // state argument is first argument of update function
+    auto state_arg = nm_->MakeExprIdNode("state", node::ExprIdNode::GetNewId());
+    actual_update_args.push_back(state_arg);
+    proxy_update_args.push_back(state_arg);
+
+    // new udaf may iterate on window rows
+    if (has_window_iter) {
+        proxy_update_args.push_back(iter_row);
+        proxy_udaf_args.push_back(window_arg);
+        proxy_udaf_arg_types.push_back(window_arg->GetOutputType());
+    }
+
+    // fill other update arguments
+    for (size_t i = 0; i < agg_arg_num; ++i) {
+        if (args_require_window_iter[i]) {
+            // use transformed child (produced by new row arg)
+            actual_update_args.push_back(transformed_child[i]);
+        } else if (args_require_iter[i]) {
+            // use proxy lambda argument
+            auto arg = nm_->MakeExprIdNode("iter_arg_" + std::to_string(i),
+                                           node::ExprIdNode::GetNewId());
+            auto child_type = transformed_child[i]->GetOutputType();
+            CHECK_TRUE(child_type->base() == node::kList, kCodegenError);
+            arg->SetOutputType(child_type->GetGenericType(0));
+            arg->SetNullable(child_type->IsGenericNullable(0));
+
+            proxy_update_args.push_back(arg);
+            actual_update_args.push_back(arg);
+            proxy_udaf_args.push_back(transformed_child[i]);
+            proxy_udaf_arg_types.push_back(
+                transformed_child[i]->GetOutputType());
+        } else {
+            // non-iter argument
+            proxy_udaf_args.push_back(transformed_child[i]);
+            proxy_udaf_arg_types.push_back(
+                transformed_child[i]->GetOutputType());
+        }
+    }
+
+    // wrap actual update call into proxy update function
+    auto update_body =
+        nm_->MakeFuncNode(ori_update_fn, actual_update_args, nullptr);
+    auto update_func = nm_->MakeLambdaNode(proxy_update_args, update_body);
+
     std::string new_udaf_name = fn->function_name();
     new_udaf_name.append("<");
-    for (size_t i = 0; i < agg_original_list_types.size(); ++i) {
-        new_udaf_name.append(agg_original_list_types[i]->GetName());
-        if (i < agg_original_list_types.size() - 1) {
+    for (size_t i = 0; i < agg_original_args.size(); ++i) {
+        new_udaf_name.append(agg_original_args[i]->GetOutputType()->GetName());
+        if (i < agg_original_args.size() - 1) {
             new_udaf_name.append(", ");
         }
     }
     new_udaf_name.append(">");
 
-    auto new_udaf = nm_->MakeUDAFDefNode(
-        new_udaf_name, {window_arg->GetOutputType()}, ori_init, update_func,
-        ori_merge_fn, ori_output_fn);
-    *out = nm_->MakeFuncNode(new_udaf, {window_arg}, nullptr);
+    auto new_udaf =
+        nm_->MakeUDAFDefNode(new_udaf_name, proxy_udaf_arg_types, ori_init,
+                             update_func, ori_merge_fn, ori_output_fn);
+    *out = nm_->MakeFuncNode(new_udaf, proxy_udaf_args, nullptr);
     return Status::OK();
 }
 

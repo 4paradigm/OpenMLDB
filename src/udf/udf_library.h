@@ -54,6 +54,8 @@ class UDAFTemplateRegistryHelper;
 template <template <typename> typename FTemplate>
 class ExprUDFTemplateRegistryHelper;
 
+struct UDFLibraryEntry;
+
 /**
  * Hold global udf registry entries.
  * "fn(arg0, arg1, ...argN)" -> some expression
@@ -79,11 +81,16 @@ class UDFLibrary {
         const std::string& name,
         const std::vector<const node::TypeNode*>& arg_types) const;
 
+    bool HasFunction(const std::string& name) const;
+
     std::shared_ptr<ArgSignatureTable<std::shared_ptr<UDFRegistry>>> FindAll(
         const std::string& name) const;
 
     bool IsUDAF(const std::string& name, size_t args);
     void SetIsUDAF(const std::string& name, size_t args);
+
+    bool RequireListAt(const std::string& name, size_t index) const;
+    bool IsListReturn(const std::string& name) const;
 
     // register interfaces
     ExprUDFRegistryHelper RegisterExprUDF(const std::string& name);
@@ -123,15 +130,15 @@ class UDFLibrary {
 
     void InsertRegistry(const std::string& name,
                         const std::vector<const node::TypeNode*>& arg_types,
-                        bool is_variadic,
+                        bool is_variadic, bool always_return_list,
+                        const std::unordered_set<size_t>& always_list_argidx,
                         std::shared_ptr<UDFRegistry> registry);
 
  private:
-    std::unordered_map<std::string, std::unordered_set<size_t>> udaf_tags_;
-    std::unordered_map<
-        std::string,
-        std::shared_ptr<ArgSignatureTable<std::shared_ptr<UDFRegistry>>>>
-        table_;
+    // argument type matching table
+    std::unordered_map<std::string, std::shared_ptr<UDFLibraryEntry>> table_;
+
+    // external symbols
     std::unordered_map<std::string, void*> external_symbols_;
 
     node::NodeManager nm_;

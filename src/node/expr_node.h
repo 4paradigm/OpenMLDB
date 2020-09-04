@@ -19,31 +19,44 @@
 
 #include "base/fe_status.h"
 
+#include <string>
+#include <vector>
+
 // fwd
 namespace fesql::vm {
 class SchemasContext;
+}
+namespace fesql::udf {
+class UDFLibrary;
 }
 
 namespace fesql {
 namespace node {
 
 class NodeManager;
+class ExprNode;
 
 using fesql::base::Status;
 
 class ExprAnalysisContext {
  public:
-    ExprAnalysisContext(node::NodeManager* nm,
+    ExprAnalysisContext(node::NodeManager* nm, const udf::UDFLibrary* library,
                         const vm::SchemasContext* schemas_context)
-        : nm_(nm), schemas_context_(schemas_context) {}
+        : nm_(nm), library_(library), schemas_context_(schemas_context) {}
 
     node::NodeManager* node_manager() { return nm_; }
+
+    const udf::UDFLibrary* library() const { return library_; }
+
     const vm::SchemasContext* schemas_context() const {
         return schemas_context_;
     }
 
+    Status InferAsUDF(node::ExprNode* expr, const std::string& name);
+
  private:
     node::NodeManager* nm_;
+    const udf::UDFLibrary* library_;
     const vm::SchemasContext* schemas_context_;
 };
 

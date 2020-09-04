@@ -29,6 +29,8 @@ class LambdafyProjects {
         : nm_(nm),
           library_(library),
           input_schemas_(input_schemas),
+          schemas_ctx_(input_schemas_),
+          analysis_ctx_(nm_, library_, &schemas_ctx_),
           legacy_agg_opt_(legacy_agg_opt) {}
 
     /**
@@ -77,6 +79,9 @@ class LambdafyProjects {
     node::NodeManager* nm_;
     udf::UDFLibrary* library_;
     vm::SchemaSourceList input_schemas_;
+
+    vm::SchemasContext schemas_ctx_;
+    node::ExprAnalysisContext analysis_ctx_;
 
     // to make compatible with legacy agg builder
     bool FallBackToLegacyAgg(node::ExprNode* expr);
