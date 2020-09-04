@@ -422,47 +422,39 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 CHECK_STATUS(list_builder.BuildIteratorNext(
                     iter, elem_type, false, &next2_wrapper));
 
-                auto next1 = next1_wrapper.GetValue(&builder);
-                auto next2 = next2_wrapper.GetValue(&builder);
-
                 ArithmeticIRBuilder arithmetic_ir_builder(
                     builder.GetInsertBlock());
-                ::llvm::Value* res = nullptr;
+                NativeValue res;
                 base::Status status;
-                CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(next1, next2,
-                                                              &res, status),
-                           kCodegenError);
+                CHECK_STATUS(arithmetic_ir_builder.BuildAddExpr(
+                    next1_wrapper, next2_wrapper, &res));
 
                 NativeValue next3_wrapper;
                 CHECK_STATUS(list_builder.BuildIteratorNext(
                     iter, elem_type, false, &next3_wrapper));
-                auto next3 = next3_wrapper.GetValue(&builder);
-                CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next3, &res,
-                                                              status),
-                           kCodegenError);
+                CHECK_STATUS(arithmetic_ir_builder.BuildAddExpr(
+                    res, next3_wrapper, &res));
 
                 NativeValue next4_wrapper;
                 CHECK_STATUS(list_builder.BuildIteratorNext(
                     iter, elem_type, false, &next4_wrapper));
-                auto next4 = next4_wrapper.GetValue(&builder);
-                CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next4, &res,
-                                                              status),
-                           kCodegenError);
+                CHECK_STATUS(arithmetic_ir_builder.BuildAddExpr(
+                    res, next4_wrapper, &res));
 
                 NativeValue next5_wrapper;
                 CHECK_STATUS(list_builder.BuildIteratorNext(
                     iter, elem_type, false, &next5_wrapper));
-                auto next5 = next5_wrapper.GetValue(&builder);
-                CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(res, next5, &res,
-                                                              status),
-                           kCodegenError);
+                CHECK_STATUS(arithmetic_ir_builder.BuildAddExpr(
+                    res, next5_wrapper, &res));
 
                 ::llvm::Value* ret_delete = nullptr;
                 list_builder.BuildIteratorDelete(iter, elem_type, &ret_delete);
-                if (codegen::TypeIRBuilder::IsStructPtr(res->getType())) {
-                    res = builder.CreateLoad(res);
+                ::llvm::Value* raw_res = res.GetRaw();
+                if (codegen::TypeIRBuilder::IsStructPtr(res.GetType())) {
+                    raw_res = builder.CreateLoad(res.GetRaw());
                 }
-                builder.CreateStore(res, fn->arg_begin() + fn->arg_size() - 1);
+                builder.CreateStore(raw_res,
+                                    fn->arg_begin() + fn->arg_size() - 1);
                 builder.CreateRetVoid();
                 return Status::OK();
             });

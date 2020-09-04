@@ -24,6 +24,7 @@ class TimestampIRBuilder : public StructTypeIRBuilder {
     explicit TimestampIRBuilder(::llvm::Module* m);
     ~TimestampIRBuilder();
     void InitStructType();
+    bool CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** output);
     bool NewTimestamp(::llvm::BasicBlock* block, ::llvm::Value** output);
     bool NewTimestamp(::llvm::BasicBlock* block, ::llvm::Value* ts,
                       ::llvm::Value** output);
@@ -42,6 +43,11 @@ class TimestampIRBuilder : public StructTypeIRBuilder {
 
     bool Second(::llvm::BasicBlock* block, ::llvm::Value* ts,
                 ::llvm::Value** output, base::Status& status);  // NOLINT
+    base::Status FDiv(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
+                      ::llvm::Value* right, ::llvm::Value** output);
+    base::Status TimestampAdd(::llvm::BasicBlock* block,
+                              ::llvm::Value* timestamp, ::llvm::Value* right,
+                              ::llvm::Value** output);
     static int32_t TIME_ZONE;
 };
 }  // namespace codegen

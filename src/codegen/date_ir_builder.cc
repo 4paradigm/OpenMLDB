@@ -33,6 +33,10 @@ void DateIRBuilder::InitStructType() {
     struct_type_ = stype;
     return;
 }
+bool DateIRBuilder::CreateDefault(::llvm::BasicBlock* block,
+                                  ::llvm::Value** output) {
+    return NewDate(block, output);
+}
 bool DateIRBuilder::NewDate(::llvm::BasicBlock* block, ::llvm::Value** output) {
     if (block == NULL || output == NULL) {
         LOG(WARNING) << "the output ptr or block is NULL ";
@@ -106,9 +110,9 @@ bool DateIRBuilder::Day(::llvm::BasicBlock* block, ::llvm::Value* date,
 
     ::llvm::IRBuilder<> builder(block);
     codegen::ArithmeticIRBuilder arithmetic_ir_builder(block);
-    if (!arithmetic_ir_builder.BuildAnd(code, builder.getInt32(255), &code,
-                                        status)) {
-        LOG(WARNING) << "Fail Compute Day of Date: " << status;
+    if (!arithmetic_ir_builder.BuildAnd(block, code, builder.getInt32(255),
+                                        &code, status)) {
+        LOG(WARNING) << "Fail Compute Day of Date: " << status.msg;
         return false;
     }
     *output = code;
@@ -130,21 +134,21 @@ bool DateIRBuilder::Month(::llvm::BasicBlock* block, ::llvm::Value* date,
     ::llvm::IRBuilder<> builder(block);
     codegen::ArithmeticIRBuilder arithmetic_ir_builder(block);
 
-    if (!arithmetic_ir_builder.BuildLShiftRight(code, builder.getInt32(8),
-                                                &code, status)) {
-        LOG(WARNING) << "Fail Compute Month of Date: " << status;
+    if (!arithmetic_ir_builder.BuildLShiftRight(
+            block, code, builder.getInt32(8), &code, status)) {
+        LOG(WARNING) << "Fail Compute Month of Date: " << status.msg;
         return false;
     }
 
-    if (!arithmetic_ir_builder.BuildAnd(code, builder.getInt32(255), &code,
-                                        status)) {
-        LOG(WARNING) << "Fail Compute Month of Date: " << status;
+    if (!arithmetic_ir_builder.BuildAnd(block, code, builder.getInt32(255),
+                                        &code, status)) {
+        LOG(WARNING) << "Fail Compute Month of Date: " << status.msg;
         return false;
     }
 
-    if (!arithmetic_ir_builder.BuildAddExpr(code, builder.getInt32(1), &code,
-                                            status)) {
-        LOG(WARNING) << "Fail Compute Month of Date: " << status;
+    if (!arithmetic_ir_builder.BuildAddExpr(block, code, builder.getInt32(1),
+                                            &code, status)) {
+        LOG(WARNING) << "Fail Compute Month of Date: " << status.msg;
         return false;
     }
     *output = code;
@@ -163,14 +167,14 @@ bool DateIRBuilder::Year(::llvm::BasicBlock* block, ::llvm::Value* date,
     ::llvm::IRBuilder<> builder(block);
     codegen::ArithmeticIRBuilder arithmetic_ir_builder(block);
 
-    if (!arithmetic_ir_builder.BuildLShiftRight(code, builder.getInt32(16),
-                                                &code, status)) {
-        LOG(WARNING) << "Fail Compute Year of Date: " << status;
+    if (!arithmetic_ir_builder.BuildLShiftRight(
+            block, code, builder.getInt32(16), &code, status)) {
+        LOG(WARNING) << "Fail Compute Year of Date: " << status.msg;
         return false;
     }
-    if (!arithmetic_ir_builder.BuildAddExpr(code, builder.getInt32(1900), &code,
-                                            status)) {
-        LOG(WARNING) << "Fail Compute Year of Date: " << status;
+    if (!arithmetic_ir_builder.BuildAddExpr(block, code, builder.getInt32(1900),
+                                            &code, status)) {
+        LOG(WARNING) << "Fail Compute Year of Date: " << status.msg;
         return false;
     }
     *output = code;

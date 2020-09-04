@@ -52,8 +52,8 @@ struct Opaque {
 
 template <typename T>
 struct Nullable {
-    Nullable(std::nullptr_t) : is_null_(true) {}         // NOLINT
-    Nullable(const T& t) : data_(t), is_null_(false) {}  // NOLINT
+    Nullable(std::nullptr_t) : data_(0), is_null_(true) {}  // NOLINT
+    Nullable(const T& t) : data_(t), is_null_(false) {}     // NOLINT
     Nullable() : is_null_(false) {}
 
     const T& value() const { return data_; }
@@ -63,7 +63,19 @@ struct Nullable {
     T data_;
     bool is_null_;
 };
+template <>
+struct Nullable<StringRef> {
+    Nullable(std::nullptr_t) : data_(""), is_null_(true) {}      // NOLINT
+    Nullable(const StringRef& t) : data_(t), is_null_(false) {}  // NOLINT
+    Nullable() : is_null_(false) {}
 
+    const StringRef& value() const { return data_; }
+    bool is_null() const { return is_null_; }
+    StringRef* ptr() { return &data_; }
+
+    StringRef data_;
+    bool is_null_;
+};
 template <typename T>
 struct IsNullableTrait {
     static const bool value;

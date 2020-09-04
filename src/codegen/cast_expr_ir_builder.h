@@ -10,15 +10,22 @@
 #ifndef SRC_CODEGEN_CAST_EXPR_IR_BUILDER_H_
 #define SRC_CODEGEN_CAST_EXPR_IR_BUILDER_H_
 #include "base/fe_status.h"
+#include "codegen/cond_select_ir_builder.h"
 #include "codegen/scope_var.h"
 #include "llvm/IR/IRBuilder.h"
 #include "proto/fe_type.pb.h"
+using fesql::base::Status;
 namespace fesql {
 namespace codegen {
 class CastExprIRBuilder {
  public:
     explicit CastExprIRBuilder(::llvm::BasicBlock* block);
     ~CastExprIRBuilder();
+
+    Status SafeCast(const NativeValue& value, ::llvm::Type* type,
+                    NativeValue* output);  // NOLINT
+    Status UnSafeCast(const NativeValue& value, ::llvm::Type* type,
+                      NativeValue* output);  // NOLINT
 
     bool SafeCast(::llvm::Value* value, ::llvm::Type* type,
                   ::llvm::Value** output, base::Status& status);  // NOLINT
@@ -37,12 +44,12 @@ class CastExprIRBuilder {
     bool IsSafeCast(::llvm::Type* src, ::llvm::Type* dist);
     bool IsIntFloat2PointerCast(::llvm::Type* src, ::llvm::Type* dist);
     bool IsStringCast(llvm::Type* type);
-
     bool BoolCast(llvm::Value* pValue, llvm::Value** pValue1,
                   base::Status& status);  // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;
+    CondSelectIRBuilder cond_select_ir_builder_;
 };
 }  // namespace codegen
 }  // namespace fesql

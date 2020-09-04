@@ -26,6 +26,7 @@ class StringIRBuilder : public StructTypeIRBuilder {
     explicit StringIRBuilder(::llvm::Module* m);
     ~StringIRBuilder();
     void InitStructType();
+    bool CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** output);
     bool NewString(::llvm::BasicBlock* block, ::llvm::Value** output);
     bool NewString(::llvm::BasicBlock* block, const std::string& str,
                    ::llvm::Value** output);

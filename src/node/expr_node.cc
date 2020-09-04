@@ -187,6 +187,10 @@ Status InferBinaryArithmeticType(const TypeNode* left, const TypeNode* right,
         *output = left;
     } else if (left->IsInteger() && right->IsFloating()) {
         *output = right;
+    } else if (left->base() == node::kNull) {
+        *output = right;
+    } else if (right->base() == node::kNull) {
+        *output = left;
     } else {
         return Status(common::kTypeError,
                       "Incompatible lhs and rhs type: " + left->GetName() +
@@ -212,6 +216,10 @@ Status InferBinaryComparisionType(const TypeNode* left, const TypeNode* right,
         *output = left;
     } else if (right->base() == node::kVarchar) {
         *output = right;
+    } else if (left->base() == node::kNull) {
+        *output = right;
+    } else if (right->base() == node::kNull) {
+        *output = left;
     } else {
         return Status(common::kTypeError,
                       "Incompatible lhs and rhs type: " + left->GetName() +
@@ -224,6 +232,7 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetChildNum() == 2, kTypeError);
     auto left_type = GetChild(0)->GetOutputType();
     auto right_type = GetChild(1)->GetOutputType();
+    bool nullable = GetChild(0)->nullable() || GetChild(1)->nullable();
     CHECK_TRUE(left_type != nullptr && right_type != nullptr, kTypeError);
     switch (GetOp()) {
         case kFnOpAdd:
@@ -235,15 +244,15 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             CHECK_STATUS(
                 InferBinaryArithmeticType(left_type, right_type, &output_type));
             SetOutputType(output_type);
-            SetNullable(false);
+            SetNullable(nullable);
             break;
         }
         case kFnOpFDiv: {
-            CHECK_TRUE(left_type->IsArithmetic() && right_type->IsArithmetic(),
-                       kTypeError, "Invalid fdiv type: ", left_type->GetName(),
-                       " / ", right_type->GetName());
+            const TypeNode* output_type = nullptr;
+            CHECK_STATUS(
+                InferBinaryArithmeticType(left_type, right_type, &output_type));
             SetOutputType(ctx->node_manager()->MakeTypeNode(kDouble));
-            SetNullable(false);
+            SetNullable(nullable);
             break;
         }
         case kFnOpEq:
@@ -256,7 +265,7 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             CHECK_STATUS(
                 InferBinaryComparisionType(left_type, right_type, &top_type));
             SetOutputType(ctx->node_manager()->MakeTypeNode(node::kBool));
-            SetNullable(false);
+            SetNullable(nullable);
             break;
         }
         case kFnOpOr:
@@ -266,7 +275,7 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             CHECK_STATUS(
                 InferBinaryArithmeticType(left_type, right_type, &top_type));
             SetOutputType(ctx->node_manager()->MakeTypeNode(node::kBool));
-            SetNullable(false);
+            SetNullable(nullable);
             break;
         }
         case kFnOpAt: {
@@ -275,7 +284,7 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             CHECK_TRUE(right_type->IsInteger(), kTypeError,
                        "At index should be integer");
             SetOutputType(left_type->GetGenericType(0));
-            SetNullable(left_type->IsGenericNullable(0));
+            SetNullable(left_type->IsGenericNullable(0) || nullable);
             break;
         }
         default:
@@ -288,6 +297,7 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
 Status UnaryExpr::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetChildNum() == 1, kTypeError);
     auto dtype = GetChild(0)->GetOutputType();
+    bool nullable = GetChild(0)->nullable();
     CHECK_TRUE(dtype != nullptr, kTypeError);
     switch (GetOp()) {
         case kFnOpNot: {
@@ -295,19 +305,19 @@ Status UnaryExpr::InferAttr(ExprAnalysisContext* ctx) {
                        kTypeError,
                        "Invalid unary predicate type: ", dtype->GetName());
             SetOutputType(ctx->node_manager()->MakeTypeNode(node::kBool));
-            SetNullable(false);
+            SetNullable(nullable);
             break;
         }
         case kFnOpMinus: {
             CHECK_TRUE(dtype->IsArithmetic(), kTypeError,
                        "Invalid unary type for minus: ", dtype->GetName());
             SetOutputType(dtype);
-            SetNullable(false);
+            SetNullable(nullable);
             break;
         }
         case kFnOpBracket: {
             SetOutputType(dtype);
-            SetNullable(GetChild(0)->nullable());
+            SetNullable(nullable);
             break;
         }
         case kFnOpIsNull: {
