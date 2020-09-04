@@ -5516,9 +5516,26 @@ void TabletImpl::LoadIndexDataInternal(
         succ_cnt++;
     }
     delete seq_file;
-    if (cur_pid == partition_num - 1 ||
-        (cur_pid + 1 == pid && pid == partition_num - 1)) {
-        PDLOG(INFO, "load index success. tid %u pid %u", tid, pid);
+    if (cur_pid == partition_num - 1 || (cur_pid + 1 == pid && pid == partition_num - 1)) {
+        if (FLAGS_recycle_bin_enabled) {
+            std::string recycle_bin_root_path;
+            ok = ChooseRecycleBinRootPath(tid, pid, table->GetStorageMode(), recycle_bin_root_path);
+            if (!ok) {
+                LOG(WARNING) << "fail to get recycle bin root path. tid " << tid << " pid " << pid;
+                rtidb::base::RemoveDirRecursive(index_path);
+            } else {
+                std::string recycle_path = recycle_bin_root_path + "/" + std::to_string(tid) + "_" +
+                                           std::to_string(pid);
+                if (!rtidb::base::IsExists(recycle_path)) {
+                    rtidb::base::Mkdir(recycle_path);
+                }
+                std::string dst = recycle_path + "/index" + rtidb::base::GetNowTime();
+                rtidb::base::Rename(index_path, dst);
+            }
+        } else {
+            rtidb::base::RemoveDirRecursive(index_path);
+        }
+        LOG(INFO) << "load index surccess. tid " << tid << " pid " << pid;
         SetTaskStatus(task, ::rtidb::api::TaskStatus::kDone);
         return;
     }
