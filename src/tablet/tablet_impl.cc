@@ -5516,8 +5516,6 @@ void TabletImpl::LoadIndexDataInternal(
         succ_cnt++;
     }
     delete seq_file;
-    std::string file_bak = index_file_path + "." + rtidb::base::GetNowTime();
-    rtidb::base::Rename(index_file_path, file_bak);
     if (cur_pid == partition_num - 1 || (cur_pid + 1 == pid && pid == partition_num - 1)) {
         if (FLAGS_recycle_bin_enabled) {
             std::string recycle_bin_root_path;
