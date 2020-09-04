@@ -20,8 +20,25 @@ namespace node {
 std::atomic<int64_t> ExprIdNode::expr_id_cnt_(0);
 
 Status ColumnRefNode::InferAttr(ExprAnalysisContext* ctx) {
-    return Status(common::kCodegenError,
-                  "ColumnRef should be transformed out before infer pass");
+    LOG(WARNING) << "ColumnRef should be transformed out before infer pass";
+
+    const vm::RowSchemaInfo* schema_info = nullptr;
+    bool ok = ctx->schemas_context()->ColumnRefResolved(
+        relation_name_, column_name_, &schema_info);
+    CHECK_TRUE(ok, "Fail to resolve column ", GetExprString());
+
+    codec::RowDecoder decoder(*schema_info->schema_);
+    codec::ColInfo col_info;
+    CHECK_TRUE(decoder.ResolveColumn(column_name_, &col_info),
+               "Fail to resolve column ", GetExprString());
+
+    node::DataType dtype;
+    CHECK_TRUE(vm::SchemaType2DataType(col_info.type, &dtype),
+               "Fail to convert type: ", col_info.type);
+
+    auto nm = ctx->node_manager();
+    SetOutputType(nm->MakeTypeNode(dtype));
+    return Status::OK();
 }
 
 Status ConstNode::InferAttr(ExprAnalysisContext* ctx) {
@@ -107,7 +124,8 @@ Status CaseWhenExprNode::InferAttr(ExprAnalysisContext* ctx) {
         auto expr_type = expr->GetOutputType();
         if (nullptr == type) {
             type = expr_type;
-        } else {
+        } else if (expr_type->base() != node::kNull &&
+                   type->base() != node::kNull) {
             CHECK_TRUE(
                 type->Equals(expr_type),
                 "fail infer case when expr attr: then return types and else "
@@ -174,6 +192,31 @@ Status InferBinaryArithmeticType(const TypeNode* left, const TypeNode* right,
     return Status::OK();
 }
 
+Status InferBinaryComparisionType(const TypeNode* left, const TypeNode* right,
+                                  const TypeNode** output) {
+    CHECK_TRUE(left != nullptr && right != nullptr);
+    if (TypeEquals(left, right)) {
+        *output = left;
+    } else if (IsSafeCast(left, right)) {
+        *output = right;
+    } else if (IsSafeCast(right, left)) {
+        *output = left;
+    } else if (left->IsFloating() && right->IsInteger()) {
+        *output = left;
+    } else if (left->IsInteger() && right->IsFloating()) {
+        *output = right;
+    } else if (left->base() == node::kVarchar) {
+        *output = left;
+    } else if (right->base() == node::kVarchar) {
+        *output = right;
+    } else {
+        return Status(common::kCodegenError,
+                      "Incompatible lhs and rhs type: " + left->GetName() +
+                          ", " + right->GetName());
+    }
+    return Status::OK();
+}
+
 Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetChildNum() == 2);
     auto left_type = GetChild(0)->GetOutputType();
@@ -205,7 +248,14 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
         case kFnOpLt:
         case kFnOpLe:
         case kFnOpGt:
-        case kFnOpGe:
+        case kFnOpGe: {
+            const TypeNode* top_type = nullptr;
+            CHECK_STATUS(
+                InferBinaryComparisionType(left_type, right_type, &top_type));
+            SetOutputType(ctx->node_manager()->MakeTypeNode(node::kBool));
+            SetNullable(false);
+            break;
+        }
         case kFnOpOr:
         case kFnOpXor:
         case kFnOpAnd: {
@@ -274,6 +324,7 @@ Status UnaryExpr::InferAttr(ExprAnalysisContext* ctx) {
 
 Status CondExpr::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetCondition() != nullptr &&
+                   GetCondition()->GetOutputType() != nullptr &&
                    GetCondition()->GetOutputType()->base() == node::kBool,
                "Condition must be boolean type");
     CHECK_TRUE(GetLeft() != nullptr && GetRight() != nullptr);

@@ -1333,27 +1333,13 @@ void DefaultUDFLibrary::Init() {
 
     RegisterAlias("lead", "at");
 
-    RegisterCodeGenUDF("identity")
-        .args<AnyArg>(
-            [](UDFResolveContext* ctx, const ExprAttrNode* in,
-               ExprAttrNode* out) {
-                out->SetType(in->type());
-                out->SetNullable(in->nullable());
-                return Status::OK();
-            },
-            [](CodeGenContext* ctx, NativeValue in, NativeValue* out) {
-                *out = in;
-                return Status::OK();
-            });
+    RegisterExprUDF("identity")
+        .args<AnyArg>([](UDFResolveContext* ctx, ExprNode* x) { return x; });
 
-    RegisterExprUDF("add").args<AnyArg, AnyArg>(
-        [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) {
-            auto res =
-                ctx->node_manager()->MakeBinaryExprNode(x, y, node::kFnOpAdd);
-            res->SetOutputType(x->GetOutputType());
-            res->SetNullable(false);
-            return res;
-        });
+    RegisterExprUDF("add").args<AnyArg, AnyArg>([](UDFResolveContext* ctx,
+                                                   ExprNode* x, ExprNode* y) {
+        return ctx->node_manager()->MakeBinaryExprNode(x, y, node::kFnOpAdd);
+    });
 
     RegisterCodeGenUDF("make_tuple")
         .variadic_args<>(
@@ -1380,7 +1366,7 @@ void DefaultUDFLibrary::Init() {
 
     RegisterUDAFTemplate<SumUDAFDef>("sum")
         .doc("Compute sum of values")
-        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date>();
+        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp>();
 
     RegisterExprUDF("minimum").args<AnyArg, AnyArg>(
         [](UDFResolveContext* ctx, ExprNode* x, ExprNode* y) {

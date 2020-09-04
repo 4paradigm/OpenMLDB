@@ -117,14 +117,11 @@ class ArgSignatureTable {
     Status Find(const std::vector<const node::TypeNode*>& arg_types, T* res,
                 std::string* signature, int* variadic_pos) {
         std::stringstream ss;
-        std::vector<std::string> input_args;
         for (size_t i = 0; i < arg_types.size(); ++i) {
             auto type_node = arg_types[i];
             if (type_node == nullptr) {
-                input_args.emplace_back("?");
                 ss << "?";
             } else {
-                input_args.emplace_back(type_node->GetName());
                 ss << type_node->GetName();
             }
             if (i < arg_types.size() - 1) {
@@ -146,21 +143,23 @@ class ArgSignatureTable {
         int variadic_placeholder_match_pos = -1;
 
         for (auto iter = table_.begin(); iter != table_.end(); ++iter) {
-            auto& def_args = iter->second.second;
-            if (def_args.size() > 0 && def_args.back() == "...") {
+            auto& def_item = iter->second;
+            auto& def_arg_types = def_item.arg_types;
+            if (def_item.is_variadic) {
                 // variadic match
                 bool match = true;
                 bool placeholder_match = false;
-                int non_variadic_arg_num = def_args.size() - 1;
-                if (input_args.size() <
+                int non_variadic_arg_num = def_arg_types.size();
+                if (arg_types.size() <
                     static_cast<size_t>(non_variadic_arg_num)) {
                     continue;
                 }
                 for (int j = 0; j < non_variadic_arg_num; ++j) {
-                    if (def_args[j] == "?") {
+                    if (def_arg_types[j] == nullptr) {  // any arg
                         placeholder_match = true;
                         match = false;
-                    } else if (def_args[j] != input_args[j]) {
+                    } else if (!node::TypeEquals(def_arg_types[j],
+                                                 arg_types[j])) {
                         placeholder_match = false;
                         match = false;
                         break;
@@ -178,15 +177,16 @@ class ArgSignatureTable {
                     }
                 }
 
-            } else if (input_args.size() == def_args.size()) {
+            } else if (arg_types.size() == def_arg_types.size()) {
                 // explicit match
                 bool match = true;
                 bool placeholder_match = false;
-                for (size_t j = 0; j < input_args.size(); ++j) {
-                    if (def_args[j] == "?") {
+                for (size_t j = 0; j < arg_types.size(); ++j) {
+                    if (def_arg_types[j] == nullptr) {
                         placeholder_match = true;
                         match = false;
-                    } else if (def_args[j] != input_args[j]) {
+                    } else if (!node::TypeEquals(def_arg_types[j],
+                                                 arg_types[j])) {
                         placeholder_match = false;
                         match = false;
                         break;
@@ -195,7 +195,7 @@ class ArgSignatureTable {
                 if (match) {
                     *variadic_pos = -1;
                     *signature = iter->first;
-                    *res = iter->second.first;
+                    *res = def_item.value;
                     return Status::OK();
                 } else if (placeholder_match) {
                     placeholder_match_iter = iter;
@@ -206,17 +206,17 @@ class ArgSignatureTable {
         if (placeholder_match_iter != table_.end()) {
             *variadic_pos = -1;
             *signature = placeholder_match_iter->first;
-            *res = placeholder_match_iter->second.first;
+            *res = placeholder_match_iter->second.value;
             return Status::OK();
         } else if (variadic_match_iter != table_.end()) {
             *variadic_pos = variadic_match_pos;
             *signature = variadic_match_iter->first;
-            *res = variadic_match_iter->second.first;
+            *res = variadic_match_iter->second.value;
             return Status::OK();
         } else if (variadic_placeholder_match_iter != table_.end()) {
             *variadic_pos = variadic_placeholder_match_pos;
             *signature = variadic_placeholder_match_iter->first;
-            *res = variadic_placeholder_match_iter->second.first;
+            *res = variadic_placeholder_match_iter->second.value;
             return Status::OK();
         } else {
             return Status(common::kCodegenError,
@@ -224,10 +224,15 @@ class ArgSignatureTable {
         }
     }
 
-    Status Register(const std::vector<std::string>& args, const T& t) {
+    Status Register(const std::vector<const node::TypeNode*>& args,
+                    bool is_variadic, const T& t) {
         std::stringstream ss;
         for (size_t i = 0; i < args.size(); ++i) {
-            ss << args[i];
+            if (args[i] == nullptr) {
+                ss << "?";
+            } else {
+                ss << args[i]->GetName();
+            }
             if (i < args.size() - 1) {
                 ss << ", ";
             }
@@ -235,12 +240,21 @@ class ArgSignatureTable {
         std::string key = ss.str();
         auto iter = table_.find(key);
         CHECK_TRUE(iter == table_.end(), "Duplicate signature: ", key);
-        table_.insert(iter, std::make_pair(key, std::make_pair(t, args)));
+        table_.insert(iter, {key, DefItem(t, args, is_variadic)});
         return Status::OK();
     }
 
-    using TableType =
-        std::unordered_map<std::string, std::pair<T, std::vector<std::string>>>;
+    struct DefItem {
+        T value;
+        std::vector<const node::TypeNode*> arg_types;
+        bool is_variadic;
+        DefItem(const T& value,
+                const std::vector<const node::TypeNode*>& arg_types,
+                bool is_variadic)
+            : value(value), arg_types(arg_types), is_variadic(is_variadic) {}
+    };
+
+    using TableType = std::unordered_map<std::string, DefItem>;
 
     const TableType& GetTable() const { return table_; }
 
@@ -334,10 +348,10 @@ class UDFRegistryHelper {
         }
     }
 
-    void InsertRegistry(const std::vector<std::string>& signature,
-                        std::shared_ptr<RegistryT> registry) {
+    void InsertRegistry(const std::vector<const node::TypeNode*>& signature,
+                        bool is_variadic, std::shared_ptr<RegistryT> registry) {
         registry->SetDoc(doc_);
-        library_->InsertRegistry(name_, signature, registry);
+        library_->InsertRegistry(name_, signature, is_variadic, registry);
         registries_.push_back(registry);
     }
 
@@ -374,7 +388,9 @@ class ExprUDFRegistryHelper : public UDFRegistryHelper<ExprUDFRegistry> {
         const typename ExprUDFGen<Args...>::FType& func) {
         auto gen_ptr = std::make_shared<ExprUDFGen<Args...>>(func);
         auto registry = std::make_shared<ExprUDFRegistry>(name(), gen_ptr);
-        this->InsertRegistry({DataTypeTrait<Args>::to_string()...}, registry);
+        this->InsertRegistry(
+            {DataTypeTrait<Args>::to_type_node(node_manager())...}, false,
+            registry);
         return *this;
     }
 
@@ -383,8 +399,9 @@ class ExprUDFRegistryHelper : public UDFRegistryHelper<ExprUDFRegistry> {
         const typename VariadicExprUDFGen<Args...>::FType& func) {
         auto gen_ptr = std::make_shared<VariadicExprUDFGen<Args...>>(func);
         auto registry = std::make_shared<ExprUDFRegistry>(name(), gen_ptr);
-        this->InsertRegistry({DataTypeTrait<Args>::to_string()..., "..."},
-                             registry);
+        this->InsertRegistry(
+            {DataTypeTrait<Args>::to_type_node(node_manager())...}, true,
+            registry);
         return *this;
     }
 
@@ -609,14 +626,18 @@ struct VariadicLLVMUDFGen : public LLVMUDFGenBase {
 class LLVMUDFRegistry : public UDFRegistry {
  public:
     explicit LLVMUDFRegistry(const std::string& name,
-                             std::shared_ptr<LLVMUDFGenBase> gen_impl_func)
-        : UDFRegistry(name), gen_impl_func_(gen_impl_func) {}
+                             std::shared_ptr<LLVMUDFGenBase> gen_impl_func,
+                             const std::vector<size_t>& nullable_arg_indices)
+        : UDFRegistry(name),
+          gen_impl_func_(gen_impl_func),
+          nullable_arg_indices_(nullable_arg_indices) {}
 
     Status ResolveFunction(UDFResolveContext* ctx,
                            node::FnDefNode** result) override;
 
  private:
     std::shared_ptr<LLVMUDFGenBase> gen_impl_func_;
+    std::vector<size_t> nullable_arg_indices_;
 };
 
 class LLVMUDFRegistryHelper : public UDFRegistryHelper<LLVMUDFRegistry> {
@@ -648,9 +669,20 @@ class LLVMUDFRegistryHelper : public UDFRegistryHelper<LLVMUDFRegistry> {
     LLVMUDFRegistryHelper& args(
         const typename LLVMUDFGen<Args...>::InferFType& infer,
         const typename LLVMUDFGen<Args...>::FType& gen) {
+        // find nullable arg positions
+        std::vector<size_t> null_indices;
+        std::vector<int> arg_nullable = {IsNullableTrait<Args>::value...};
+        for (size_t i = 0; i < arg_nullable.size(); ++i) {
+            if (arg_nullable[i] > 0) {
+                null_indices.push_back(i);
+            }
+        }
         cur_def_ = std::make_shared<LLVMUDFGen<Args...>>(gen, infer);
-        auto registry = std::make_shared<LLVMUDFRegistry>(name(), cur_def_);
-        this->InsertRegistry({DataTypeTrait<Args>::to_string()...}, registry);
+        auto registry =
+            std::make_shared<LLVMUDFRegistry>(name(), cur_def_, null_indices);
+        this->InsertRegistry(
+            {DataTypeTrait<Args>::to_type_node(node_manager())...}, false,
+            registry);
         if (fixed_ret_type_ != nullptr) {
             cur_def_->SetFixedReturnType(fixed_ret_type_);
         }
@@ -667,10 +699,20 @@ class LLVMUDFRegistryHelper : public UDFRegistryHelper<LLVMUDFRegistry> {
     LLVMUDFRegistryHelper& variadic_args(
         const typename VariadicLLVMUDFGen<Args...>::InferFType& infer,
         const typename VariadicLLVMUDFGen<Args...>::FType& gen) {  // NOLINT
+        // find nullable arg positions
+        std::vector<size_t> null_indices;
+        std::vector<int> arg_nullable = {IsNullableTrait<Args>::value...};
+        for (size_t i = 0; i < arg_nullable.size(); ++i) {
+            if (arg_nullable[i] > 0) {
+                null_indices.push_back(i);
+            }
+        }
         cur_def_ = std::make_shared<VariadicLLVMUDFGen<Args...>>(gen, infer);
-        auto registry = std::make_shared<LLVMUDFRegistry>(name(), cur_def_);
-        this->InsertRegistry({DataTypeTrait<Args>::to_string()..., "..."},
-                             registry);
+        auto registry =
+            std::make_shared<LLVMUDFRegistry>(name(), cur_def_, null_indices);
+        this->InsertRegistry(
+            {DataTypeTrait<Args>::to_type_node(node_manager())...}, true,
+            registry);
         if (fixed_ret_type_ != nullptr) {
             cur_def_->SetFixedReturnType(fixed_ret_type_);
         }
@@ -1113,7 +1155,6 @@ class ExternalFuncRegistryHelper
         args_specified_ = true;
         fn_name_ = name;
         fn_ptr_ = fn_ptr;
-        arg_tags_ = {DataTypeTrait<Args>::to_string()...};
         arg_types_ = {DataTypeTrait<Args>::to_type_node(node_manager())...};
         arg_nullable_ = {IsNullableTrait<Args>::value...};
         variadic_pos_ = -1;
@@ -1140,7 +1181,6 @@ class ExternalFuncRegistryHelper
         fn_name_ = name;
         fn_ptr_ = fn_ptr;
         args_specified_ = true;
-        arg_tags_ = {DataTypeTrait<Args>::to_string()..., "..."};
         arg_types_ = {DataTypeTrait<Args>::to_type_node(node_manager())...};
         arg_nullable_ = {IsNullableTrait<Args>::value...};
         variadic_pos_ = sizeof...(Args);
@@ -1200,7 +1240,7 @@ class ExternalFuncRegistryHelper
 
         auto registry = std::make_shared<ExternalFuncRegistry>(name(), def);
         library()->AddExternalSymbol(fn_name_, fn_ptr_);
-        this->InsertRegistry(arg_tags_, registry);
+        this->InsertRegistry(arg_types_, variadic_pos_ >= 0, registry);
         reset();
     }
 
@@ -1223,7 +1263,6 @@ class ExternalFuncRegistryHelper
         args_specified_ = false;
         arg_types_.clear();
         arg_nullable_.clear();
-        arg_tags_.clear();
         return_type_ = nullptr;
         return_nullable_ = false;
         variadic_pos_ = -1;
@@ -1234,7 +1273,6 @@ class ExternalFuncRegistryHelper
     bool args_specified_ = false;
     std::vector<const node::TypeNode*> arg_types_;
     std::vector<int> arg_nullable_;
-    std::vector<std::string> arg_tags_;
     node::TypeNode* return_type_ = nullptr;
     bool return_nullable_ = false;
     int variadic_pos_ = -1;
@@ -1646,13 +1684,8 @@ class UDAFRegistryHelperImpl : UDFRegistryHelper<UDAFRegistry> {
             input_list_types.push_back(
                 library()->node_manager()->MakeTypeNode(node::kList, elem_ty));
         }
-        std::vector<std::string> arg_keys;
-        for (auto input_ty : input_list_types) {
-            arg_keys.push_back(input_ty->GetName());
-        }
-
         auto registry = std::make_shared<UDAFRegistry>(name(), udaf_gen_);
-        this->InsertRegistry(arg_keys, registry);
+        this->InsertRegistry(input_list_types, false, registry);
         library()->SetIsUDAF(name(), sizeof...(IN));
     }
 
