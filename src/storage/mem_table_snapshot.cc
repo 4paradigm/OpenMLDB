@@ -1243,10 +1243,10 @@ bool MemTableSnapshot::DumpIndexData(
         }
         for (const auto& name : ck.col_name()) {
             if (column_desc_map.find(name) != column_desc_map.end()) {
-                uint32_t idx = column_desc_map[name];
-                cols.push_back(idx);
-                if (idx > max_idx) {
-                    max_idx = idx;
+                uint32_t col_idx = column_desc_map[name];
+                cols.push_back(col_idx);
+                if (col_idx > max_idx) {
+                    max_idx = col_idx;
                 }
             } else {
                 PDLOG(WARNING, "fail to find column_desc %s", name.c_str());
@@ -1259,10 +1259,10 @@ bool MemTableSnapshot::DumpIndexData(
     std::vector<uint32_t> cols;
     for (const auto& name : column_key.col_name()) {
         if (column_desc_map.find(name) != column_desc_map.end()) {
-            uint32_t idx = column_desc_map[name];
-            cols.push_back(idx);
-            if (idx > max_idx) {
-                max_idx = idx;
+            uint32_t col_idx = column_desc_map[name];
+            cols.push_back(col_idx);
+            if (col_idx > max_idx) {
+                max_idx = col_idx;
             }
         } else {
             PDLOG(WARNING, "fail to find column_desc %s", name.c_str());

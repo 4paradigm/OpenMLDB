@@ -7779,6 +7779,12 @@ void NameServerImpl::CheckBinlogSyncProgress(const std::string& name, const std:
         if (table_info->table_partition(idx).pid() != pid) {
             continue;
         }
+        if (table_info->table_partition(idx).partition_meta_size() == 1) {
+            task_info->set_status(rtidb::api::TaskStatus::kDone);
+            LOG(INFO) << "no follower. update task status from [kDoing] to[kDone]. op_id[" << task_info->op_id()
+                      << "], task_type[" << rtidb::api::TaskType_Name(task_info->task_type()) << "]";
+            return;
+        }
         for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
             const PartitionMeta& meta = table_info->table_partition(idx).partition_meta(meta_idx);
             if (!meta.tablet_has_partition()) {
