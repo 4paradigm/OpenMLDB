@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <memory>
 
 #include "codec/schema_codec.h"
 #include "proto/common.pb.h"
@@ -19,6 +20,8 @@ namespace codec {
 
 using Index = google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>;
 using Dimension = std::vector<std::pair<std::string, uint32_t>>;
+using Schema = google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>;
+using VerSchema = google::protobuf::RepeatedPtrField<rtidb::common::VersionPair>;
 
 class SDKCodec {
  public:
@@ -51,6 +54,7 @@ class SDKCodec {
  private:
     void ParseColumnDesc(const Schema& column_desc);
     void ParseAddedColumnDesc(const Schema& column_desc);
+    void ParseSchemaVer(const VerSchema& ver_schema, const Schema& add_schema);
 
  private:
     Schema schema_;
@@ -62,6 +66,8 @@ class SDKCodec {
     uint32_t format_version_;
     uint32_t base_schema_size_;
     int modify_times_;
+    std::map<int32_t, std::shared_ptr<Schema>> version_schema_;
+    int32_t last_ver_;
 };
 
 }  // namespace codec

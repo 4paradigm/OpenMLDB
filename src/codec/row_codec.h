@@ -75,7 +75,7 @@ class RowCodec {
     }
 
     static ::rtidb::base::ResultMsg EncodeRow(
-        const std::vector<std::string> input_value, const Schema& schema,
+        const std::vector<std::string> input_value, const Schema& schema, uint32_t version,
         std::string& row) {  // NOLINT
         if (input_value.empty() ||
             input_value.size() != (uint64_t)schema.size()) {
@@ -87,6 +87,7 @@ class RowCodec {
         }
         ::rtidb::codec::RowBuilder builder(schema);
         uint32_t size = builder.CalTotalLength(str_len);
+        builder.SetSchemaVersion(version);
         row.resize(size);
         builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
         for (int i = 0; i < schema.size(); i++) {

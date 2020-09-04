@@ -342,24 +342,29 @@ __attribute__((unused)) static void ShowTableRows(
         row.insert(row.begin(), "ts");
     }
     row.insert(row.begin(), "#");
+    uint64_t max_size = row.size();
     ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     uint32_t index = 1;
     while (it->Valid()) {
         std::vector<std::string> vrow;
-        vrow.push_back(boost::lexical_cast<std::string>(index));
-        if (!codec->HasTSCol()) {
-            vrow.push_back(std::to_string(it->GetKey()));
-        }
+        rtidb::base::Slice data = it->GetValue();
         std::string value;
         if (is_compress) {
-            ::snappy::Uncompress(it->GetValue().data(), it->GetValue().size(),
-                                 &value);
+            ::snappy::Uncompress(data.data(), data.size(), &value);
         } else {
-            value.assign(it->GetValue().data(), it->GetValue().size());
+            value.assign(data.data(), data.size());
         }
         codec->DecodeRow(value, &vrow);
+        if (!codec->HasTSCol()) {
+            vrow.insert(vrow.begin(), std::to_string(it->GetKey()));
+        }
+        vrow.insert(vrow.begin(), boost::lexical_cast<std::string>(index));
         TransferString(&vrow);
+        uint64_t remain_size = max_size - vrow.size();
+        for (uint64_t i = 0; i < remain_size; i++) {
+            vrow.push_back("");
+        }
         tp.AddRow(vrow);
         index++;
         it->Next();
@@ -381,9 +386,7 @@ __attribute__((unused)) static void ShowTableRows(
     const ::rtidb::nameserver::TableInfo& table_info,
     ::rtidb::cmd::SDKIterator* it) {
     ::rtidb::codec::SDKCodec codec(table_info);
-    bool is_compress =
-        table_info.compress_type() == ::rtidb::nameserver::kSnappy ? true
-                                                                   : false;
+    bool is_compress = table_info.compress_type() == ::rtidb::nameserver::kSnappy ? true : false;
     ShowTableRows(is_compress, &codec, it);
 }
 

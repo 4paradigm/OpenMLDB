@@ -686,7 +686,6 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
         ts_vec.push_back(ts_iter->second);
     }
     uint32_t index_id = (index_def == NULL) ? table_index_.Size() : index_def->GetId();
-    LOG(INFO) << "new index is null " << (index_def == NULL);
     Segment** seg_arr = new Segment*[seg_cnt_];
     if (!ts_vec.empty()) {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
@@ -701,7 +700,8 @@ bool MemTable::AddIndex(const ::rtidb::common::ColumnKey& column_key) {
         }
     }
     if (segments_[index_id] != NULL) {
-        delete segments_[index_id];
+        LOG(INFO) << "delete old index " << index_id << " data";
+        delete[] segments_[index_id];
     }
     segments_[index_id] = seg_arr;
     if (!index_def) {

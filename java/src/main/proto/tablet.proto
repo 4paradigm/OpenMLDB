@@ -749,6 +749,15 @@ message CancelOPRequest {
     optional uint64 op_id = 1;
 }
 
+message RealEndpointPair {
+    optional string name = 1;
+    optional string real_endpoint = 2;
+}
+
+message UpdateRealEndpointMapRequest {
+    repeated RealEndpointPair real_endpoint_map = 1; 
+}
+
 message QueryRequest {
     optional string sql = 1;
     optional string db = 2;
@@ -839,4 +848,5 @@ service TabletServer {
     rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
     rpc ExtractIndexData(ExtractIndexDataRequest) returns (GeneralResponse);
     rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
+    rpc UpdateRealEndpointMap(UpdateRealEndpointMapRequest) returns (GeneralResponse);
 }

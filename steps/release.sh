@@ -2,7 +2,7 @@
 #
 # release.sh
 #
-#set -x
+set -x
 java_vesrion_file="./java/src/main/java/com/_4paradigm/rtidb/client/Version.java"
 cmake_file="./CMakeLists.txt"
 i=1

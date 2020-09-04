@@ -26,8 +26,7 @@ namespace rtidb {
 namespace codec {
 
 using ProjectList = ::google::protobuf::RepeatedField<uint32_t>;
-using Schema =
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
@@ -43,7 +42,7 @@ struct RowContext {};
 
 class RowProject {
  public:
-    RowProject(const Schema& schema, const ProjectList& plist);
+    RowProject(const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, const ProjectList& plist);
 
     ~RowProject();
 
@@ -55,13 +54,16 @@ class RowProject {
     uint32_t GetMaxIdx() { return max_idx_; }
 
  private:
-    const Schema& schema_;
     const ProjectList& plist_;
     Schema output_schema_;
     // TODO(wangtaize) share the init overhead
     RowBuilder* row_builder_;
-    RowView* row_view_;
+    std::shared_ptr<Schema> cur_schema_;
+    std::shared_ptr<RowView> cur_rv_;
     uint32_t max_idx_;
+    std::map<int32_t, std::shared_ptr<RowView>> vers_views_;
+    std::map<int32_t, std::shared_ptr<Schema>> vers_schema_;
+    uint32_t cur_ver_;
 };
 
 class RowBuilder {

@@ -4,6 +4,7 @@ import com._4paradigm.rtidb.client.KvIterator;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.client.base.Config;
+import com._4paradigm.rtidb.client.base.TestUtil;
 import com._4paradigm.rtidb.common.Common;
 import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.tablet.Tablet;
@@ -12,6 +13,7 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TTLTest extends TestCaseBase {
@@ -377,5 +379,48 @@ public class TTLTest extends TestCaseBase {
             Assert.assertTrue(false);
         }
         nsc.dropTable(name);
+    }
+
+    @Test()
+    public void testTTLCount() {
+        String tableName = "zw003";
+        Common.ColumnDesc col0 = Common.ColumnDesc.newBuilder().setName("card").setAddTsIdx(false).setType("string").build();
+        Common.ColumnDesc col1 = Common.ColumnDesc.newBuilder().setName("mcc").setAddTsIdx(false).setType("string").build();
+        Common.ColumnDesc col2 = Common.ColumnDesc.newBuilder().setName("amt").setAddTsIdx(false).setType("double").build();
+        Common.ColumnDesc col3 = Common.ColumnDesc.newBuilder().setName("ts1").setAddTsIdx(false).setType("int64")
+                .setIsTsCol(true).build();
+        Common.ColumnKey colKey1 = Common.ColumnKey.newBuilder().setIndexName("card_mcc").addColName("card").addTsName("ts1").build();
+        NS.TableInfo table = NS.TableInfo.newBuilder()
+                .setName(tableName)
+                .setTtl(11)
+                .setTtlType("kLatestTime")
+                .setReplicaNum(1)
+                .addColumnDescV1(col0).addColumnDescV1(col1).addColumnDescV1(col2).addColumnDescV1(col3)
+                .addColumnKey(colKey1)
+                .build();
+        nsc.dropTable(tableName);
+        boolean ok = nsc.createTable(table);
+        client.refreshRouteTable();
+        long curTime = System.currentTimeMillis();
+        try {
+            for (int i = 0; i < 20; i++) {
+                Object[] row = new Object[]{"card0", "mcc0", 1.1d, curTime + i};
+                Assert.assertTrue(tableSyncClient.put(tableName, row));
+            }
+            tableSyncClient.scan(tableName,"card0","card_mcc",0L,0L);
+        } catch (Exception e) {
+            Assert.fail();
+        }
+
+        List<NS.TableInfo> tables = nsc.showTable(tableName);
+        TestUtil.ExecuteGc(tables.get(0));
+        try {
+            Thread.sleep(3000);
+        } catch (Exception e) {
+            Assert.fail();
+        }
+        tables = nsc.showTable(tableName);
+        Assert.assertEquals(TestUtil.GetTableRecordCnt(tables.get(0)), 11);
+        nsc.dropTable(tableName);
     }
 }

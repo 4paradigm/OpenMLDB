@@ -193,6 +193,41 @@ bool ZkClient::RegisterName() {
     if (boost::starts_with(sname, BLOB_PREFIX)) {
         sname = sname.substr(BLOB_PREFIX.size());
     }
+    // check server name duplicate
+    std::vector<std::string> sname_vec;
+    std::string leader_path = zk_root_path_ + "/leader";
+    std::vector<std::string> children;
+    if (GetChildren(leader_path, children)) {
+        for (auto path : children) {
+            std::string endpoint;
+            std::string real_path = leader_path + "/" + path;
+            if (GetNodeValue(real_path, endpoint)) {
+                sname_vec.push_back(endpoint);
+            }
+        }
+    }
+    std::vector<std::string> endpoints;
+    if (GetNodes(endpoints)) {
+        std::vector<std::string>::const_iterator it = endpoints.begin();
+        for (; it != endpoints.end(); ++it) {
+            if (boost::starts_with(*it, BLOB_PREFIX)) {
+                sname_vec.push_back(it->substr(BLOB_PREFIX.size()));
+            } else {
+                sname_vec.push_back(*it);
+            }
+        }
+    }
+    if (std::find(sname_vec.begin(), sname_vec.end(), sname) != sname_vec.end()) {
+        std::string ep;
+        if (GetNodeValue(names_root_path_ + "/" + sname, ep) &&
+                ep == real_endpoint_) {
+            LOG(INFO) << "node:" << sname << "value:" << ep << " exist";
+            return true;
+        }
+        LOG(WARNING) << "server name:" << sname << " duplicate";
+        return false;
+    }
+
     std::string name = names_root_path_ + "/" + sname;
     std::string value = real_endpoint_.c_str();
     if (IsExistNode(name) == 0) {
@@ -276,7 +311,7 @@ void ZkClient::HandleChildrenChanged(const std::string& path, int type,
         std::map<std::string, NodesChangedCallback>::iterator it =
             children_callbacks_.find(path);
         if (it == children_callbacks_.end()) {
-            PDLOG(INFO, "watch for path %s exist", path.c_str());
+            PDLOG(INFO, "watch for path %s not exist", path.c_str());
             return;
         }
         callback = it->second;
@@ -334,7 +369,7 @@ bool ZkClient::SetNodeWatcher(const std::string& node, watcher_fn watcher,
     return false;
 }
 
-bool ZkClient::GetNodeValueLocked(const std::string& node, std::string& value) {
+bool ZkClient::GetNodeValueUnLocked(const std::string& node, std::string& value) {
     int buffer_len = ZK_MAX_BUFFER_SIZE;
     Stat stat;
     if (zoo_get(zk_, node.c_str(), 0, buffer_, &buffer_len, &stat) == ZOK) {
@@ -354,7 +389,7 @@ bool ZkClient::DeleteNode(const std::string& node) {
 
 bool ZkClient::GetNodeValue(const std::string& node, std::string& value) {
     std::lock_guard<std::mutex> lock(mu_);
-    return GetNodeValueLocked(node, value);
+    return GetNodeValueUnLocked(node, value);
 }
 
 bool ZkClient::SetNodeValue(const std::string& node, const std::string& value) {
@@ -368,8 +403,7 @@ bool ZkClient::SetNodeValue(const std::string& node, const std::string& value) {
     return false;
 }
 
-int ZkClient::IsExistNode(const std::string& node) {
-    std::lock_guard<std::mutex> lock(mu_);
+int ZkClient::IsExistNodeUnLocked(const std::string& node) {
     if (node.empty()) {
         return -1;
     }
@@ -381,6 +415,11 @@ int ZkClient::IsExistNode(const std::string& node) {
         return 1;
     }
     return -1;
+}
+
+int ZkClient::IsExistNode(const std::string& node) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return IsExistNodeUnLocked(node);
 }
 
 bool ZkClient::WatchNodes() {
@@ -448,9 +487,8 @@ void ZkClient::WatchNodes(NodesChangedCallback callback) {
     nodes_watch_callbacks_.push_back(callback);
 }
 
-bool ZkClient::GetChildren(const std::string& path,
-                           std::vector<std::string>& children) {
-    std::lock_guard<std::mutex> lock(mu_);
+bool ZkClient::GetChildrenUnLocked(const std::string& path,
+        std::vector<std::string>& children) {
     if (zk_ == NULL || !connected_) {
         return false;
     }
@@ -469,6 +507,13 @@ bool ZkClient::GetChildren(const std::string& path,
     std::sort(children.begin(), children.end());
     return true;
 }
+
+bool ZkClient::GetChildren(const std::string& path,
+                           std::vector<std::string>& children) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return GetChildrenUnLocked(path, children);
+}
+
 bool ZkClient::GetNodes(std::vector<std::string>& endpoints) {
     std::lock_guard<std::mutex> lock(mu_);
     if (zk_ == NULL || !connected_) {

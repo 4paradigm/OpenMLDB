@@ -14,7 +14,6 @@ import com._4paradigm.rtidb.utils.Compress;
 import com.google.common.base.Charsets;
 import com.google.protobuf.ByteBufferNoCopy;
 import com.google.protobuf.ByteString;
-import io.netty.util.Timeout;
 import rtidb.api.TabletServer;
 import rtidb.blobserver.BlobServer;
 
@@ -148,7 +147,7 @@ public class TableSyncClientImpl implements TableSyncClient {
         }
         if (th.getTableInfo().getFormatVersion() == 1) {
             if (projectionInfo != null) {
-                return new RowKvIterator(byteStrings, projectionInfo.getProjectionSchema(), count);
+                return new RowKvIterator(byteStrings, projectionInfo.getProjectionSchema(), count, true);
             } else {
                 return new RowKvIterator(byteStrings, th.getSchema(), count);
             }
@@ -531,7 +530,15 @@ public class TableSyncClientImpl implements TableSyncClient {
                         throw new TabletException("Cannot find column " + name);
                     }
                     builder.addProjection(idx);
-                    schema.add(th.getSchema().get(idx));
+                    if (idx >= th.getSchema().size()) {
+                        List<ColumnDesc> idxSchema = th.getSchemaMap().get(idx + 1);
+                        if (idxSchema == null) {
+                            throw new TabletException("not found idx " + idx + " schema");
+                        }
+                        schema.add(idxSchema.get(idx));
+                    } else {
+                        schema.add(th.getSchema().get(idx));
+                    }
                 }
             }
             isNewFormat = true;
@@ -555,9 +562,23 @@ public class TableSyncClientImpl implements TableSyncClient {
                 bs = response.getValue();
             }
             if (isNewFormat) {
+                ByteBuffer buf = bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN);
+                if (getOption.getProjection().size() > 0) {
+                    RowView rv = new RowView(schema);
+                    return rv.read(buf);
+                }
+                int version = RowView.getSchemaVersion(buf);
+                buf.rewind();
+                schema = th.getSchemaByVer(version);
+                if (schema == null) {
+                    throw new TabletException(String.format("unkown ver %d schema", version));
+                }
 
                 RowView rv = new RowView(schema);
-                return rv.read(bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN));
+
+                Object[] row = new Object[th.getSchema().size() + th.getSchemaMap().size()];
+                rv.read(buf, row, 0, row.length);
+                return row;
             } else {
                 if (getOption.getProjection().size() > 0) {
                     BitSet bset = new BitSet(th.getSchema().size());
@@ -1171,7 +1192,15 @@ public class TableSyncClientImpl implements TableSyncClient {
                         throw new TabletException("Cannot find column " + name);
                     }
                     builder.addProjection(idx);
-                    schema.add(th.getSchema().get(idx));
+                    if (idx >= th.getSchema().size()) {
+                        List<ColumnDesc> idxSchema = th.getSchemaMap().get(idx + 1);
+                        if (idxSchema == null) {
+                            throw new TabletException("not found idx " + idx + " schema");
+                        }
+                        schema.add(idxSchema.get(idx));
+                    } else {
+                        schema.add(th.getSchema().get(idx));
+                    }
                 }
             }
             isNewFormat = true;
@@ -1191,7 +1220,15 @@ public class TableSyncClientImpl implements TableSyncClient {
         Tablet.ScanResponse response = ts.scan(request);
         if (response != null && response.getCode() == 0) {
             if (isNewFormat) {
-                RowKvIterator rit = new RowKvIterator(response.getPairs(), schema, response.getCount());
+                RowKvIterator rit;
+                if (option.getProjection().size() > 0) {
+                    rit = new RowKvIterator(response.getPairs(), schema, response.getCount(), true);
+                    return rit;
+                } else {
+                    rit = new RowKvIterator(response.getPairs(), schema, response.getCount());
+                }
+                rit.setVerMap(th.getVersions());
+                rit.setSchemaMap(th.getSchemaMap());
                 if (th.getTableInfo().hasCompressType()) {
                     rit.setCompressType(th.getTableInfo().getCompressType());
                 }

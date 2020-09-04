@@ -183,6 +183,7 @@ enum ReturnCode {
     kAddTypeToColumnDescFailed = 153,
     kUseNameIsFalse = 154,
     kServerNameNotFound = 155,
+    kSdkEndpointDuplicate = 156,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,

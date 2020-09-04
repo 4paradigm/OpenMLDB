@@ -238,6 +238,7 @@ message TabletStatus {
     optional string endpoint = 1;
     optional string state = 2;
     optional uint64 age = 3;
+    optional string real_endpoint = 4;
 }
 
 message ShowTabletResponse {
@@ -416,6 +417,11 @@ message SyncTableRequest {
     optional string db = 4 [default = ""];
 }
 
+message SetSdkEndpointRequest {
+    optional string server_name = 1;
+    optional string sdk_endpoint = 2;
+}
+
 message AddIndexMeta {
     optional string name = 1;
     optional uint32 pid = 2;
@@ -454,6 +460,22 @@ message ShowDatabaseResponse {
 
 message DropDatabaseRequest {
     optional string db = 1;
+}
+
+message ShowBlobServerRequest {}
+
+message ShowBlobServerResponse {
+    repeated TabletStatus tablets = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
+message ShowSdkEndpointRequest {}
+
+message ShowSdkEndpointResponse {
+    repeated TabletStatus tablets = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
 }
 
 service NameServer {
@@ -499,4 +521,7 @@ service NameServer {
     rpc UseDatabase(UseDatabaseRequest) returns (GeneralResponse);
     rpc ShowDatabase(GeneralRequest) returns (ShowDatabaseResponse);
     rpc DropDatabase(DropDatabaseRequest) returns (GeneralResponse);
+    rpc SetSdkEndpoint(SetSdkEndpointRequest) returns (GeneralResponse);
+    rpc ShowBlobServer(ShowBlobServerRequest) returns (ShowBlobServerResponse);
+    rpc ShowSdkEndpoint(ShowSdkEndpointRequest) returns (ShowSdkEndpointResponse);
 }

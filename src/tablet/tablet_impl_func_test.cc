@@ -314,8 +314,9 @@ TEST_F(TabletFuncTest, GetLatestIndex_default_iterator) {
     ::rtidb::storage::Table* table;
     CreateBaseTable(table, ::rtidb::api::TTLType::kLatestTime, 10, 1000);
     std::vector<QueryIt> query_its(1);
+    query_its[0].ticket = std::make_shared<::rtidb::storage::Ticket>();
     ::rtidb::storage::TableIterator* it =
-        table->NewIterator("card0", query_its[0].ticket);
+        table->NewIterator("card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetLatestIndexAssert(&query_its);
@@ -325,8 +326,9 @@ TEST_F(TabletFuncTest, GetLatestIndex_ts0_iterator) {
     ::rtidb::storage::Table* table = NULL;
     CreateBaseTable(table, ::rtidb::api::TTLType::kLatestTime, 10, 1000);
     std::vector<QueryIt> query_its(1);
+    query_its[0].ticket = std::make_shared<::rtidb::storage::Ticket>();
     ::rtidb::storage::TableIterator* it =
-        table->NewIterator(0, 0, "card0", query_its[0].ticket);
+        table->NewIterator(0, 0, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetLatestIndexAssert(&query_its);
@@ -336,8 +338,9 @@ TEST_F(TabletFuncTest, GetLatestIndex_ts1_iterator) {
     ::rtidb::storage::Table* table = NULL;
     CreateBaseTable(table, ::rtidb::api::TTLType::kLatestTime, 10, 1000);
     std::vector<QueryIt> query_its(1);
+    query_its[0].ticket = std::make_shared<::rtidb::storage::Ticket>();
     ::rtidb::storage::TableIterator* it =
-        table->NewIterator(0, 1, "card0", query_its[0].ticket);
+        table->NewIterator(0, 1, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetLatestIndexAssert(&query_its);
@@ -348,8 +351,9 @@ TEST_F(TabletFuncTest, GetTimeIndex_default_iterator) {
     ::rtidb::storage::Table* table = NULL;
     CreateBaseTable(table, ::rtidb::api::TTLType::kAbsoluteTime, 1000, base_ts);
     std::vector<QueryIt> query_its(1);
+    query_its[0].ticket = std::make_shared<::rtidb::storage::Ticket>();
     ::rtidb::storage::TableIterator* it =
-        table->NewIterator("card0", query_its[0].ticket);
+        table->NewIterator("card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetTimeIndexAssert(&query_its, base_ts, base_ts - 100);
@@ -360,8 +364,9 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts0_iterator) {
     ::rtidb::storage::Table* table = NULL;
     CreateBaseTable(table, ::rtidb::api::TTLType::kAbsoluteTime, 1000, base_ts);
     std::vector<QueryIt> query_its(1);
+    query_its[0].ticket = std::make_shared<::rtidb::storage::Ticket>();
     ::rtidb::storage::TableIterator* it =
-        table->NewIterator(0, 0, "card0", query_its[0].ticket);
+        table->NewIterator(0, 0, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetTimeIndexAssert(&query_its, base_ts, base_ts - 100);
@@ -372,8 +377,9 @@ TEST_F(TabletFuncTest, GetTimeIndex_ts1_iterator) {
     ::rtidb::storage::Table* table = NULL;
     CreateBaseTable(table, ::rtidb::api::TTLType::kAbsoluteTime, 1000, base_ts);
     std::vector<QueryIt> query_its(1);
+    query_its[0].ticket = std::make_shared<::rtidb::storage::Ticket>();
     ::rtidb::storage::TableIterator* it =
-        table->NewIterator(0, 1, "card0", query_its[0].ticket);
+        table->NewIterator(0, 1, "card0", *query_its[0].ticket);
     query_its[0].it.reset(it);
     query_its[0].table.reset(table);
     RunGetTimeIndexAssert(&query_its, base_ts, base_ts - 100);

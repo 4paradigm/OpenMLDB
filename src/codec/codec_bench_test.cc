@@ -76,8 +76,10 @@ TEST_F(CodecBenchmarkTest, ProjectTest) {
     *idx2 = 99;
 
     uint64_t consumed = ::baidu::common::timer::get_micros();
+    std::map<int32_t, std::shared_ptr<Schema>> vers_schema;
+    vers_schema.insert(std::make_pair(1, std::make_shared<Schema>(schema)));
     for (int64_t i = 1; i < 100; i++) {
-        RowProject rp(schema, plist);
+        RowProject rp(vers_schema, plist);
         rp.Init();
         for (int32_t j = 0; j < 1000; j++) {
             int8_t* data = NULL;
