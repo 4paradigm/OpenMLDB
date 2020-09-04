@@ -45,9 +45,9 @@ Status PredicateIRBuilder::BuildAndExpr(NativeValue left, NativeValue right,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
     Status status;
-    CHECK_TRUE(InferBoolTypes(block_, raw_left, &casted_left, status),
+    CHECK_TRUE(InferAndCastBoolTypes(block_, raw_left, &casted_left, status),
                "Infer and cast lhs type of and(&&) failed: ", status.msg);
-    CHECK_TRUE(InferBoolTypes(block_, raw_right, &casted_right, status),
+    CHECK_TRUE(InferAndCastBoolTypes(block_, raw_right, &casted_right, status),
                "Infer and cast rhs type of and(&&) failed: ", status.msg);
     CHECK_TRUE(casted_left->getType()->isIntegerTy(1) &&
                    casted_right->getType()->isIntegerTy(1),
@@ -89,9 +89,9 @@ Status PredicateIRBuilder::BuildOrExpr(NativeValue left, NativeValue right,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
     Status status;
-    CHECK_TRUE(InferBoolTypes(block_, raw_left, &casted_left, status),
+    CHECK_TRUE(InferAndCastBoolTypes(block_, raw_left, &casted_left, status),
                "Infer and cast lhs type of or(||) failed: ", status.msg);
-    CHECK_TRUE(InferBoolTypes(block_, raw_right, &casted_right, status),
+    CHECK_TRUE(InferAndCastBoolTypes(block_, raw_right, &casted_right, status),
                "Infer and cast rhs type of or(||) failed: ", status.msg);
     CHECK_TRUE(casted_left->getType()->isIntegerTy(1) &&
                    casted_right->getType()->isIntegerTy(1),
@@ -135,9 +135,9 @@ Status PredicateIRBuilder::BuildXorExpr(NativeValue left, NativeValue right,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
     Status status;
-    CHECK_TRUE(InferBoolTypes(block_, raw_left, &casted_left, status),
+    CHECK_TRUE(InferAndCastBoolTypes(block_, raw_left, &casted_left, status),
                "Infer and cast lhs type of and(&&) failed: ", status.msg);
-    CHECK_TRUE(InferBoolTypes(block_, raw_right, &casted_right, status),
+    CHECK_TRUE(InferAndCastBoolTypes(block_, raw_right, &casted_right, status),
                "Infer and cast rhs type of and(&&) failed: ", status.msg);
     CHECK_TRUE(casted_left->getType()->isIntegerTy(1) &&
                    casted_right->getType()->isIntegerTy(1),
@@ -158,7 +158,7 @@ Status PredicateIRBuilder::BuildNotExpr(NativeValue input,
 
     ::llvm::Value* casted_raw = nullptr;
     Status status;
-    CHECK_TRUE(InferBoolTypes(block_, raw, &casted_raw, status), status.msg);
+    CHECK_TRUE(InferAndCastBoolTypes(block_, raw, &casted_raw, status), status.msg);
     CHECK_TRUE(casted_raw->getType()->isIntegerTy(1),
                "Fail to codegen !(not) expr: value types are invalid");
 
@@ -245,8 +245,8 @@ bool PredicateIRBuilder::BuildEqExpr(::llvm::BasicBlock* block,
                                      base::Status& status) {
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
-    if (false == InferBaseTypes(block, left, right, &casted_left, &casted_right,
-                                status)) {
+    if (false == InferAndCastTypes(block, left, right, &casted_left,
+                                   &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
@@ -298,8 +298,8 @@ bool PredicateIRBuilder::BuildNeqExpr(::llvm::BasicBlock* block,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
 
-    if (false == InferBaseTypes(block, left, right, &casted_left, &casted_right,
-                                status)) {
+    if (false == InferAndCastTypes(block, left, right, &casted_left,
+                                   &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
@@ -343,8 +343,8 @@ bool PredicateIRBuilder::BuildGtExpr(::llvm::BasicBlock* block,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
 
-    if (false == InferBaseTypes(block, left, right, &casted_left, &casted_right,
-                                status)) {
+    if (false == InferAndCastTypes(block, left, right, &casted_left,
+                                   &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
@@ -388,8 +388,8 @@ bool PredicateIRBuilder::BuildGeExpr(::llvm::BasicBlock* block,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
 
-    if (false == InferBaseTypes(block, left, right, &casted_left, &casted_right,
-                                status)) {
+    if (false == InferAndCastTypes(block, left, right, &casted_left,
+                                   &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
@@ -433,8 +433,8 @@ bool PredicateIRBuilder::BuildLtExpr(::llvm::BasicBlock* block,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
 
-    if (false == InferBaseTypes(block, left, right, &casted_left, &casted_right,
-                                status)) {
+    if (false == InferAndCastTypes(block, left, right, &casted_left,
+                                   &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
@@ -478,8 +478,8 @@ bool PredicateIRBuilder::BuildLeExpr(::llvm::BasicBlock* block,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
 
-    if (false == InferBaseTypes(block, left, right, &casted_left, &casted_right,
-                                status)) {
+    if (false == InferAndCastTypes(block, left, right, &casted_left,
+                                   &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
@@ -544,7 +544,7 @@ Status PredicateIRBuilder::CompareTypeAccept(::llvm::Type* lhs,
                " rhs ", TypeIRBuilder::TypeName(rhs))
     return Status::OK();
 }
-bool PredicateIRBuilder::InferBoolTypes(::llvm::BasicBlock* block,
+bool PredicateIRBuilder::InferAndCastBoolTypes(::llvm::BasicBlock* block,
                                         ::llvm::Value* value,
                                         ::llvm::Value** casted_value,
                                         ::fesql::base::Status& status) {
@@ -572,7 +572,7 @@ bool PredicateIRBuilder::InferBoolTypes(::llvm::BasicBlock* block,
     }
     return true;
 }
-bool PredicateIRBuilder::InferBaseTypes(::llvm::BasicBlock* block,
+bool PredicateIRBuilder::InferAndCastTypes(::llvm::BasicBlock* block,
                                         ::llvm::Value* left,
                                         ::llvm::Value* right,
                                         ::llvm::Value** casted_left,

@@ -19,16 +19,13 @@ ArithmeticIRBuilder::ArithmeticIRBuilder(::llvm::BasicBlock* block)
     : block_(block), cast_expr_ir_builder_(block) {}
 ArithmeticIRBuilder::~ArithmeticIRBuilder() {}
 
-bool ArithmeticIRBuilder::IsAcceptType(::llvm::Type* type) {
-    return nullptr != type &&
-           (type->isIntegerTy() || type->isFloatTy() || type->isDoubleTy() ||
-            TypeIRBuilder::IsTimestampPtr(type));
-}
 Status ArithmeticIRBuilder::FDivTypeAccept(::llvm::Type* lhs,
                                            ::llvm::Type* rhs) {
-    CHECK_TRUE(IsAcceptType(lhs) && TypeIRBuilder::IsNumber(rhs),
-               "Invalid FDiv type: lhs ", TypeIRBuilder::TypeName(lhs), " rhs ",
-               TypeIRBuilder::TypeName(rhs))
+    CHECK_TRUE(
+        (TypeIRBuilder::IsNumber(lhs) || TypeIRBuilder::IsTimestampPtr(rhs)) &&
+            TypeIRBuilder::IsNumber(rhs),
+        "Invalid FDiv type: lhs ", TypeIRBuilder::TypeName(lhs), " rhs ",
+        TypeIRBuilder::TypeName(rhs))
     return Status::OK();
 }
 Status ArithmeticIRBuilder::SDivTypeAccept(::llvm::Type* lhs,
@@ -45,6 +42,11 @@ Status ArithmeticIRBuilder::ModTypeAccept(::llvm::Type* lhs,
                " rhs ", TypeIRBuilder::TypeName(rhs))
     return Status::OK();
 }
+// Accept rules:
+// 1. timestamp + timestamp
+// 2. interger + timestamp
+// 3. timestamp + integer
+// 4. number + number
 Status ArithmeticIRBuilder::AddTypeAccept(::llvm::Type* lhs,
                                           ::llvm::Type* rhs) {
     CHECK_TRUE(
@@ -59,11 +61,17 @@ Status ArithmeticIRBuilder::AddTypeAccept(::llvm::Type* lhs,
         TypeIRBuilder::TypeName(rhs))
     return Status::OK();
 }
+// Accept rules:
+// 1. timestamp - interger
+// 2. number - number
 Status ArithmeticIRBuilder::SubTypeAccept(::llvm::Type* lhs,
                                           ::llvm::Type* rhs) {
-    CHECK_TRUE(TypeIRBuilder::IsNumber(lhs) && TypeIRBuilder::IsNumber(rhs),
-               "Invalid Sub Op type: lhs ", TypeIRBuilder::TypeName(lhs),
-               " rhs ", TypeIRBuilder::TypeName(rhs))
+    CHECK_TRUE(
+        (TypeIRBuilder::IsTimestampPtr(lhs) &&
+         TypeIRBuilder::IsInterger(rhs)) ||
+            (TypeIRBuilder::IsNumber(lhs) && TypeIRBuilder::IsNumber(rhs)),
+        "Invalid Sub Op type: lhs ", TypeIRBuilder::TypeName(lhs), " rhs ",
+        TypeIRBuilder::TypeName(rhs))
     return Status::OK();
 }
 Status ArithmeticIRBuilder::MultiTypeAccept(::llvm::Type* lhs,
@@ -85,12 +93,10 @@ Status LShiftTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs) {
                " rhs ", TypeIRBuilder::TypeName(rhs))
     return Status::OK();
 }
-bool ArithmeticIRBuilder::InferBaseTypes(::llvm::BasicBlock* block,
-                                         ::llvm::Value* left,
-                                         ::llvm::Value* right,
-                                         ::llvm::Value** casted_left,
-                                         ::llvm::Value** casted_right,
-                                         ::fesql::base::Status& status) {
+bool ArithmeticIRBuilder::InferAndCastedNumberTypes(
+    ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+    ::llvm::Value** casted_left, ::llvm::Value** casted_right,
+    ::fesql::base::Status& status) {
     if (NULL == left || NULL == right) {
         status.msg = "left or right value is null";
         status.code = common::kCodegenError;
@@ -101,8 +107,11 @@ bool ArithmeticIRBuilder::InferBaseTypes(::llvm::BasicBlock* block,
     ::llvm::Type* left_type = left->getType();
     ::llvm::Type* right_type = right->getType();
 
-    if (!IsAcceptType(left_type) || !IsAcceptType(right_type)) {
-        status.msg = "invalid type for arithmetic expression";
+    if (!TypeIRBuilder::IsNumber(left_type) ||
+        !TypeIRBuilder::IsNumber(right_type)) {
+        status.msg = "invalid type for arithmetic expression: " +
+                     TypeIRBuilder::TypeName(left_type) + " and  " +
+                     TypeIRBuilder::TypeName(right_type);
         status.code = common::kCodegenError;
         LOG(WARNING) << status.msg;
         return false;
@@ -154,12 +163,10 @@ bool ArithmeticIRBuilder::InferBaseTypes(::llvm::BasicBlock* block,
     }
     return true;
 }
-bool ArithmeticIRBuilder::InferBaseIntegerTypes(::llvm::BasicBlock* block,
-                                                ::llvm::Value* left,
-                                                ::llvm::Value* right,
-                                                ::llvm::Value** casted_left,
-                                                ::llvm::Value** casted_right,
-                                                ::fesql::base::Status& status) {
+bool ArithmeticIRBuilder::InferAndCastIntegerTypes(
+    ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+    ::llvm::Value** casted_left, ::llvm::Value** casted_right,
+    ::fesql::base::Status& status) {
     if (NULL == left || NULL == right) {
         status.msg = "left or right value is null";
         status.code = common::kCodegenError;
@@ -205,12 +212,10 @@ bool ArithmeticIRBuilder::InferBaseIntegerTypes(::llvm::BasicBlock* block,
     return true;
 }
 
-bool ArithmeticIRBuilder::InferBaseDoubleTypes(::llvm::BasicBlock* block,
-                                               ::llvm::Value* left,
-                                               ::llvm::Value* right,
-                                               ::llvm::Value** casted_left,
-                                               ::llvm::Value** casted_right,
-                                               ::fesql::base::Status& status) {
+bool ArithmeticIRBuilder::InferAndCastDoubleTypes(
+    ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+    ::llvm::Value** casted_left, ::llvm::Value** casted_right,
+    ::fesql::base::Status& status) {
     if (NULL == left || NULL == right) {
         status.msg = "left or right value is null";
         status.code = common::kCodegenError;
@@ -311,6 +316,7 @@ bool ArithmeticIRBuilder::BuildAddExpr(
         return false;
     }
 
+    // Process timestamp add
     TimestampIRBuilder ts_builder(block->getModule());
     if (TypeIRBuilder::IsTimestampPtr(left->getType()) &&
         TypeIRBuilder::IsInterger(right->getType())) {
@@ -350,10 +356,11 @@ bool ArithmeticIRBuilder::BuildAddExpr(
         return true;
     }
 
+    // Process number add
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
-    if (!InferBaseTypes(block, left, right, &casted_left, &casted_right,
-                                status)) {
+    if (!InferAndCastedNumberTypes(block, left, right, &casted_left,
+                                   &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
@@ -493,14 +500,26 @@ bool ArithmeticIRBuilder::BuildSubExpr(
     ::llvm::Value** output,
     ::fesql::base::Status& status) {  // NOLINT
 
+    ::llvm::IRBuilder<> builder(block);
+    // Process timestamp add
+    TimestampIRBuilder ts_builder(block->getModule());
+    if (TypeIRBuilder::IsTimestampPtr(left->getType()) &&
+        TypeIRBuilder::IsInterger(right->getType())) {
+        ::llvm::Value* negative_value = nullptr;
+        if (!BuildMultiExpr(block, builder.getInt16(-1), right, &negative_value,
+                            status)) {
+            return false;
+        }
+        status = ts_builder.TimestampAdd(block, left, negative_value, output);
+        return status.isOK();
+    }
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
 
-    if (false == InferBaseTypes(block, left, right, &casted_left, &casted_right,
-                                status)) {
+    if (false == InferAndCastedNumberTypes(block, left, right, &casted_left,
+                                           &casted_right, status)) {
         return false;
     }
-    ::llvm::IRBuilder<> builder(block);
     if (casted_left->getType()->isIntegerTy()) {
         *output = builder.CreateSub(casted_left, casted_right);
     } else if (casted_left->getType()->isFloatTy() ||
@@ -523,8 +542,8 @@ bool ArithmeticIRBuilder::BuildMultiExpr(
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
 
-    if (false == InferBaseTypes(block, left, right, &casted_left, &casted_right,
-                                status)) {
+    if (false == InferAndCastedNumberTypes(block, left, right, &casted_left,
+                                           &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
@@ -550,8 +569,8 @@ bool ArithmeticIRBuilder::BuildFDivExpr(::llvm::BasicBlock* block,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
 
-    if (false == InferBaseDoubleTypes(block, left, right, &casted_left,
-                                      &casted_right, status)) {
+    if (false == InferAndCastDoubleTypes(block, left, right, &casted_left,
+                                         &casted_right, status)) {
         if (TypeIRBuilder::IsTimestampPtr(left->getType())) {
             TimestampIRBuilder timestamp_ir_builder(block->getModule());
             timestamp_ir_builder.FDiv(block, left, right, output);
@@ -584,8 +603,8 @@ bool ArithmeticIRBuilder::BuildSDivExpr(::llvm::BasicBlock* block,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
 
-    if (false == InferBaseIntegerTypes(block, left, right, &casted_left,
-                                       &casted_right, status)) {
+    if (false == InferAndCastIntegerTypes(block, left, right, &casted_left,
+                                          &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
@@ -609,8 +628,8 @@ bool ArithmeticIRBuilder::BuildModExpr(::llvm::BasicBlock* block,
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
 
-    if (false == InferBaseTypes(block, left, right, &casted_left, &casted_right,
-                                status)) {
+    if (false == InferAndCastedNumberTypes(block, left, right, &casted_left,
+                                           &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block);

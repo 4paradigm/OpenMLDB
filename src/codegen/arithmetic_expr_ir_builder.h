@@ -52,7 +52,7 @@ class ArithmeticIRBuilder {
 
     static bool BuildAddExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
                              ::llvm::Value* right, ::llvm::Value** output,
-                             ::fesql::base::Status& status); //NOLINT
+                             ::fesql::base::Status& status);  // NOLINT
     static bool BuildSubExpr(::llvm::BasicBlock* block, ::llvm::Value* left,
                              ::llvm::Value* right, ::llvm::Value** output,
                              base::Status& status);  // NOLINT
@@ -71,7 +71,6 @@ class ArithmeticIRBuilder {
                              base::Status status);
 
  private:
-    static bool IsAcceptType(::llvm::Type* type);
     static Status FDivTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
     static Status SDivTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
     static Status ModTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
@@ -80,22 +79,19 @@ class ArithmeticIRBuilder {
     static Status MultiTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
     static Status AndTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
     static Status OrTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
-    static bool InferBaseTypes(::llvm::BasicBlock* block, ::llvm::Value* left,
-                               ::llvm::Value* right,
-                               ::llvm::Value** casted_left,
-                               ::llvm::Value** casted_right,
-                               ::fesql::base::Status& status);  // NOLINT
+    static bool InferAndCastedNumberTypes(
+        ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+        ::llvm::Value** casted_left, ::llvm::Value** casted_right,
+        ::fesql::base::Status& status);  // NOLINT
 
-    static bool InferBaseIntegerTypes(::llvm::BasicBlock* block,
-                                      ::llvm::Value* left, ::llvm::Value* right,
-                                      ::llvm::Value** casted_left,
-                                      ::llvm::Value** casted_right,
-                                      ::fesql::base::Status& status);  // NOLINT
-    static bool InferBaseDoubleTypes(::llvm::BasicBlock* block,
-                                     ::llvm::Value* left, ::llvm::Value* right,
-                                     ::llvm::Value** casted_left,
-                                     ::llvm::Value** casted_right,
-                                     ::fesql::base::Status& status);  // NOLINT
+    static bool InferAndCastIntegerTypes(
+        ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+        ::llvm::Value** casted_left, ::llvm::Value** casted_right,
+        ::fesql::base::Status& status);  // NOLINT
+    static bool InferAndCastDoubleTypes(
+        ::llvm::BasicBlock* block, ::llvm::Value* left, ::llvm::Value* right,
+        ::llvm::Value** casted_left, ::llvm::Value** casted_right,
+        ::fesql::base::Status& status);  // NOLINT
     ::llvm::BasicBlock* block_;
     CastExprIRBuilder cast_expr_ir_builder_;
 };

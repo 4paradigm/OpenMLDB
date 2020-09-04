@@ -73,10 +73,10 @@ class PredicateIRBuilder {
  private:
     static bool IsAcceptType(::llvm::Type* type);
     static Status CompareTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
-    static bool InferBoolTypes(::llvm::BasicBlock* block, ::llvm::Value* value,
+    static bool InferAndCastBoolTypes(::llvm::BasicBlock* block, ::llvm::Value* value,
                                ::llvm::Value** casted_value,
                                ::fesql::base::Status& status);  // NOLINT
-    static bool InferBaseTypes(::llvm::BasicBlock* block, ::llvm::Value* left,
+    static bool InferAndCastTypes(::llvm::BasicBlock* block, ::llvm::Value* left,
                                ::llvm::Value* right,
                                ::llvm::Value** casted_left,
                                ::llvm::Value** casted_right,

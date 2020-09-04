@@ -127,7 +127,11 @@ bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
     } else if (TypeIRBuilder::IsStringPtr(type)) {
         return StringCast(value, output, status);
     } else if (value->getType()->isIntegerTy() && type->isIntegerTy()) {
-        *output = builder.CreateZExt(value, type);
+        if (value->getType()->isIntegerTy(1)) {
+            *output = builder.CreateZExt(value, type);
+        } else {
+            *output = builder.CreateSExt(value, type);
+        }
     } else if (value->getType()->isFloatingPointTy() &&
                type->isFloatingPointTy()) {
         *output = builder.CreateFPExt(value, type);
@@ -170,11 +174,13 @@ bool CastExprIRBuilder::UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
         return SafeCast(value, type, output, status);
     }
     ::llvm::IRBuilder<> builder(block_);
-    if (TypeIRBuilder::IsTimestampPtr(type) &&
-        TypeIRBuilder::IsInt64(value->getType())) {
+    if (TypeIRBuilder::IsBool(type)) {
+        return BoolCast(value, output, status);
+    } else if (TypeIRBuilder::IsTimestampPtr(type) &&
+               TypeIRBuilder::IsNumber(value->getType())) {
         return TimestampCast(value, output, status);
-    }
-    if (TypeIRBuilder::IsTimestampPtr(value->getType()) && type->isDoubleTy()) {
+    } else if (TypeIRBuilder::IsTimestampPtr(value->getType()) &&
+               TypeIRBuilder::IsNumber(type)) {
         ::llvm::Value* ts = nullptr;
         TimestampIRBuilder timestamp_ir_builder(block_->getModule());
         if (!timestamp_ir_builder.GetTs(block_, value, &ts)) {
@@ -244,12 +250,12 @@ bool CastExprIRBuilder::TimestampCast(llvm::Value* value,
                                       llvm::Value** casted_value,
                                       base::Status& status) {
     ::llvm::Value* ts;
-    if (!SafeCast(value, ::llvm::Type::getInt64Ty(block_->getContext()), &ts,
-                  status)) {
+    if (!UnSafeCast(value, ::llvm::Type::getInt64Ty(block_->getContext()), &ts,
+                    status)) {
         return false;
     }
     TimestampIRBuilder builder(block_->getModule());
-    status = builder.CastFrom(block_, value, casted_value);
+    status = builder.CastFrom(block_, ts, casted_value);
     return status.isOK();
 }
 
@@ -269,6 +275,16 @@ bool CastExprIRBuilder::BoolCast(llvm::Value* value, llvm::Value** casted_value,
         ::llvm::Value* double0 =
             ::llvm::ConstantFP::get(type, ::llvm::APFloat(0.0));
         *casted_value = builder.CreateFCmpUNE(value, double0);
+    } else if (TypeIRBuilder::IsTimestampPtr(type)) {
+        TimestampIRBuilder timestamp_ir_builder(block_->getModule());
+        ::llvm::Value* ts = nullptr;
+        if (!timestamp_ir_builder.GetTs(block_, value, &ts)) {
+            status.msg = "fail to codegen cast bool expr: get ts error";
+            status.code = common::kCodegenError;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+        return BoolCast(ts, casted_value, status);
     } else {
         status.msg =
             "fail to codegen cast bool expr: value type isn't compatible";
