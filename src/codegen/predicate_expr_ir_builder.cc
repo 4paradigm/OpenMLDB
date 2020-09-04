@@ -158,7 +158,8 @@ Status PredicateIRBuilder::BuildNotExpr(NativeValue input,
 
     ::llvm::Value* casted_raw = nullptr;
     Status status;
-    CHECK_TRUE(InferAndCastBoolTypes(block_, raw, &casted_raw, status), status.msg);
+    CHECK_TRUE(InferAndCastBoolTypes(block_, raw, &casted_raw, status),
+               status.msg);
     CHECK_TRUE(casted_raw->getType()->isIntegerTy(1),
                "Fail to codegen !(not) expr: value types are invalid");
 
@@ -545,9 +546,9 @@ Status PredicateIRBuilder::CompareTypeAccept(::llvm::Type* lhs,
     return Status::OK();
 }
 bool PredicateIRBuilder::InferAndCastBoolTypes(::llvm::BasicBlock* block,
-                                        ::llvm::Value* value,
-                                        ::llvm::Value** casted_value,
-                                        ::fesql::base::Status& status) {
+                                               ::llvm::Value* value,
+                                               ::llvm::Value** casted_value,
+                                               ::fesql::base::Status& status) {
     if (NULL == value) {
         status.msg = "value is null";
         status.code = common::kCodegenError;
@@ -573,11 +574,11 @@ bool PredicateIRBuilder::InferAndCastBoolTypes(::llvm::BasicBlock* block,
     return true;
 }
 bool PredicateIRBuilder::InferAndCastTypes(::llvm::BasicBlock* block,
-                                        ::llvm::Value* left,
-                                        ::llvm::Value* right,
-                                        ::llvm::Value** casted_left,
-                                        ::llvm::Value** casted_right,
-                                        ::fesql::base::Status& status) {
+                                           ::llvm::Value* left,
+                                           ::llvm::Value* right,
+                                           ::llvm::Value** casted_left,
+                                           ::llvm::Value** casted_right,
+                                           ::fesql::base::Status& status) {
     if (NULL == left || NULL == right) {
         status.msg = "left or right value is null";
         status.code = common::kCodegenError;
