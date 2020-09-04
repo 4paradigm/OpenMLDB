@@ -5525,8 +5525,12 @@ void TabletImpl::LoadIndexDataInternal(
                 rtidb::base::RemoveDirRecursive(index_path);
             } else {
                 std::string recycle_path = recycle_bin_root_path + "/" + std::to_string(tid) + "_" +
-                                           std::to_string(pid) + "/index/";
-                rtidb::base::Rename(index_path, recycle_path);
+                                           std::to_string(pid);
+                if (!rtidb::base::IsExists(recycle_path)) {
+                    rtidb::base::Mkdir(recycle_path);
+                }
+                std::string dst = recycle_path + "/index" + rtidb::base::GetNowTime();
+                rtidb::base::Rename(index_path, dst);
             }
         } else {
             rtidb::base::RemoveDirRecursive(index_path);
