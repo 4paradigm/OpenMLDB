@@ -31,6 +31,7 @@
 #include "codegen/context.h"
 #include "codegen/expr_ir_builder.h"
 #include "codegen/type_ir_builder.h"
+#include "codegen/struct_ir_builder.h"
 #include "passes/resolve_fn_and_attrs.h"
 #include "udf/default_udf_library.h"
 #include "udf/literal_traits.h"
@@ -369,9 +370,11 @@ void ModuleFunctionBuilderWithFullInfo<Ret, Args...>::ExpandApplyArg(
             ::llvm::Value* is_null = builder.CreateIsNull(arg);
             ::llvm::Value* alloca;
             if (TypeIRBuilder::IsStructPtr(expect_ty)) {
-                alloca = builder.CreateAlloca(
-                    reinterpret_cast<::llvm::PointerType*>(expect_ty)
-                        ->getElementType());
+                auto struct_builder =
+                    StructTypeIRBuilder::CreateStructTypeIRBuilder(
+                        function->getEntryBlock().getModule(), expect_ty);
+                struct_builder->CreateDefault(&function->getEntryBlock(),
+                                              &alloca);
                 arg = builder.CreateSelect(
                     is_null, alloca, builder.CreatePointerCast(arg, expect_ty));
             } else {

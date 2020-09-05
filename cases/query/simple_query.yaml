@@ -82,24 +82,47 @@ cases:
         3, 1, 7, 55, 333
         4, 1, 9, 55, 4444
         5, 2, 11, 55, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-  - id: 4
-    desc: SELECT简单timestamp表达式
+  - id: 4-1
+    desc: SELECT简单timestamp加减表达式
     mode: request
     db: db1
-    sql: select col1 as id, std_ts+1 as inc_ts, std_ts+1 > 1590115422000 as flag from t1;
+    sql: |
+      select col1 as id, std_ts, std_ts+1000 as inc_sec_ts,
+      (1 + std_ts) > cast(1590115422000 as timestamp) as flag from t1;
     standard_sql: false
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
     expect:
-      schema: id:int32, inc_ts:timestamp, flag:bool
+      schema: id:int32, std_ts:timestamp, inc_sec_ts:timestamp, flag:bool
       order: id
       data: |
-        1, 1590115420001, false
-        2, 1590115421001, false
-        3, 1590115422001, true
-        4, 1590115423001, true
-        5, 1590115424001, true
+        1, 1590115420000, 1590115421000, false
+        2, 1590115421000, 1590115422000, false
+        3, 1590115422000, 1590115423000, true
+        4, 1590115423000, 1590115424000, true
+        5, 1590115424000, 1590115425000, true
+  - id: 4-2
+    desc: SELECT timestampadd函数
+    tags: ["TODO", "@chenjing, support timestampadd"]
+    mode: request
+    db: db1
+    sql: |
+      select col1 as id, std_ts, timestampaddd(SECOND, std_ts) as inc_sec_ts,
+      timestamp_add(SECOND, 1, std_ts) > timestamp(1590115422000) as flag from t1;
+    standard_sql: false
+    inputs:
+      - name: t1
+        resource: cases/resource/simple_t1_ts.yaml
+    expect:
+      schema: id:int32, std_ts:timestamp, inc_sec_ts:timestamp, flag:bool
+      order: id
+      data: |
+        1, 1590115420000, 1590115421000, false
+        2, 1590115421000, 1590115422000, false
+        3, 1590115422000, 1590115423000, true
+        4, 1590115423000, 1590115424000, true
+        5, 1590115424000, 1590115425000, true
   - id: 5
     desc: SELECT date列
     mode: request
@@ -132,7 +155,7 @@ cases:
     inputs:
       - name: t1
         schema: id:int32, int16:int16, int32:int32, int64:int64, float:float, double:double,
-                ts:timestamp, dt:date, string:string
+          ts:timestamp, dt:date, string:string
         index: index:id:ts
         data: |
           1, NULL, NULL, NULL, 1.0, 1.0, 1590115420001, 2020-05-20, x
@@ -141,13 +164,13 @@ cases:
           4, 3, 3, 3, 3.0, 3.0, 1590115420003, 2020-05-22, NULL
     expect:
       schema: int16:int16, int32:int32, int64:int64, float:float, double:double,
-              ts:timestamp, dt:date, string:string, newid:int32
+        ts:timestamp, dt:date, string:string, newid:int32
       order: newid
       data: |
-          NULL, NULL, NULL, 1.0, 1.0, 1590115420001, 2020-05-20, x, 2
-          1, 1, 1, NULL, NULL, 1590115420002, 2020-05-21, y, 3
-          2, 2, 2, 2.0, 2.0, NULL, NULL, z, 4
-          3, 3, 3, 3.0, 3.0, 1590115420003, 2020-05-22, NULL, 5
+        NULL, NULL, NULL, 1.0, 1.0, 1590115420001, 2020-05-20, x, 2
+        1, 1, 1, NULL, NULL, 1590115420002, 2020-05-21, y, 3
+        2, 2, 2, 2.0, 2.0, NULL, NULL, z, 4
+        3, 3, 3, 3.0, 3.0, 1590115420003, 2020-05-22, NULL, 5
 
   - id: 7
     desc: SELECT多个string列
@@ -174,7 +197,7 @@ cases:
         2, NULL, yy, NULL, rr, NULL, NULL, uu, 1
         3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2
         4, xx, NULL, zz, NULL, ss, tt, NULL, 3
-        
+
   - id: 8
     desc: SELECT null列
     mode: request

@@ -28,3 +28,5 @@ FeSQL在性能/资源敏感的环境（如rtidb）下对查询语句有严格对
 |              | last join的order列为ts列                              |
 | GROUP边界    | group by的keys至少有一个命中索引                      |
 
+1. 
+
