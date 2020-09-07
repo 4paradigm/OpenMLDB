@@ -9,6 +9,7 @@
 
 #include "node/expr_node.h"
 #include "codec/fe_row_codec.h"
+#include "codegen/arithmetic_expr_ir_builder.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "vm/schemas_context.h"
@@ -177,7 +178,11 @@ bool IsSafeCast(const TypeNode* from_type, const TypeNode* target_type) {
 Status InferBinaryArithmeticType(const TypeNode* left, const TypeNode* right,
                                  const TypeNode** output) {
     CHECK_TRUE(left != nullptr && right != nullptr, kTypeError);
-    if (TypeEquals(left, right)) {
+    if (left->IsNull()) {
+        *output = right;
+    } else if (right->IsNull()) {
+        *output = left;
+    } else if (TypeEquals(left, right)) {
         *output = left;
     } else if (IsSafeCast(left, right)) {
         *output = right;
@@ -187,10 +192,6 @@ Status InferBinaryArithmeticType(const TypeNode* left, const TypeNode* right,
         *output = left;
     } else if (left->IsInteger() && right->IsFloating()) {
         *output = right;
-    } else if (left->base() == node::kNull) {
-        *output = right;
-    } else if (right->base() == node::kNull) {
-        *output = left;
     } else {
         return Status(common::kTypeError,
                       "Incompatible lhs and rhs type: " + left->GetName() +
@@ -202,7 +203,11 @@ Status InferBinaryArithmeticType(const TypeNode* left, const TypeNode* right,
 Status InferBinaryComparisionType(const TypeNode* left, const TypeNode* right,
                                   const TypeNode** output) {
     CHECK_TRUE(left != nullptr && right != nullptr, kTypeError);
-    if (TypeEquals(left, right)) {
+    if (left->IsNull()) {
+        *output = right;
+    } else if (right->IsNull()) {
+        *output = left;
+    } else if (TypeEquals(left, right)) {
         *output = left;
     } else if (IsSafeCast(left, right)) {
         *output = right;
@@ -216,10 +221,6 @@ Status InferBinaryComparisionType(const TypeNode* left, const TypeNode* right,
         *output = left;
     } else if (right->base() == node::kVarchar) {
         *output = right;
-    } else if (left->base() == node::kNull) {
-        *output = right;
-    } else if (right->base() == node::kNull) {
-        *output = left;
     } else {
         return Status(common::kTypeError,
                       "Incompatible lhs and rhs type: " + left->GetName() +
@@ -240,17 +241,18 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
         case kFnOpMulti:
         case kFnOpMod:
         case kFnOpDiv: {
-            const TypeNode* output_type = nullptr;
+            const TypeNode* top_type = nullptr;
             CHECK_STATUS(
-                InferBinaryArithmeticType(left_type, right_type, &output_type));
-            SetOutputType(output_type);
+                InferBinaryArithmeticType(left_type, right_type, &top_type));
+            SetOutputType(top_type);
             SetNullable(nullable);
             break;
         }
         case kFnOpFDiv: {
-            const TypeNode* output_type = nullptr;
-            CHECK_STATUS(
-                InferBinaryArithmeticType(left_type, right_type, &output_type));
+            CHECK_TRUE((left_type->IsNull() || left_type->IsArithmetic()) &&
+                           (right_type->IsNull() || right_type->IsArithmetic()),
+                       kTypeError, "Invalid fdiv type: ", left_type->GetName(),
+                       " / ", right_type->GetName());
             SetOutputType(ctx->node_manager()->MakeTypeNode(kDouble));
             SetNullable(nullable);
             break;

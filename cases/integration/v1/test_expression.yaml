@@ -345,7 +345,7 @@ cases:
     desc: 算数表达式操作数为const null时返回null-left
     inputs:
       - columns: ["c1 int16","c2 int32","c3 bigint",
-                  "c4 float","c5 double", "c6 timestamp", "c7 bool", "NULL int32"]
+                  "c4 float","c5 double", "c6 timestamp", "c7 bool", "colnull int32"]
         indexs: ["index1:c3:c6"]
         rows:
           - [1, 911, 1024, 3.14, 0.99, 1590738989000, true, NULL]
@@ -482,7 +482,7 @@ cases:
     desc: 条件表达式null测试
     inputs:
       - columns: ["id int64", "c1 bool", "c2 string", "c3 string"]
-        indexs: ["index1:id:id"]
+        indexs: ["index1:c1:id"]
         rows:
           - [1, true, "xxx", "aaa"]
           - [2, true, "xxx", NULL]
@@ -582,10 +582,10 @@ cases:
   - id: 19-5
     desc: SQL标准Cast语法-Cast(表达式 as type)
     inputs:
-      - columns: ["c1 int", "c2 float", "c5 bigint"]
-        indexs: ["index1:c1:c5"]
+      - columns: ["c0 string", "std_ts bigint", "c1 int", "c2 float", "c5 bigint"]
+        indexs: ["index1:c0:std_ts"]
         rows:
-          - [NULL, NULL, NULL]
+          - ["pk", 1, NULL, NULL, NULL]
     sql: |
       select cast(c2 as int) as f1, cast(c1+c2 as bigint) as f2, cast(c1 as float) as f3,
       cast(c1 as double) as f4, cast(c1 as bool) as f5, cast(c5 as timestamp) as f6,
