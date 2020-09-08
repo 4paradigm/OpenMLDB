@@ -376,10 +376,19 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
                     break;
                 } else if (codegen::TypeIRBuilder::IsTimestampPtr(
                                val.GetType())) {
-                    ::llvm::Value* ts;
-                    timestamp_builder.GetTs(block_, val.GetValue(&builder),
-                                            &ts);
-                    ok = AppendPrimary(i8_ptr, val.Replace(ts), idx, offset);
+                    if (val.IsConstNull()) {
+                        ok = AppendPrimary(
+                            i8_ptr,
+                            NativeValue::CreateWithFlag(builder.getInt64(0),
+                                                        builder.getInt1(true)),
+                            idx, offset);
+                    } else {
+                        ::llvm::Value* ts;
+                        timestamp_builder.GetTs(block_, val.GetValue(&builder),
+                                                &ts);
+                        ok =
+                            AppendPrimary(i8_ptr, val.Replace(ts), idx, offset);
+                    }
                     if (!ok) {
                         LOG(WARNING)
                             << "fail to append timestamp for output col "
@@ -388,10 +397,20 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
                     }
                     break;
                 } else if (codegen::TypeIRBuilder::IsDatePtr(val.GetType())) {
-                    ::llvm::Value* days;
-                    DateIRBuilder date_builder(block_->getModule());
-                    date_builder.GetDate(block_, val.GetValue(&builder), &days);
-                    ok = AppendPrimary(i8_ptr, val.Replace(days), idx, offset);
+                    if (val.IsConstNull()) {
+                        ok = AppendPrimary(
+                            i8_ptr,
+                            NativeValue::CreateWithFlag(builder.getInt32(0),
+                                                        builder.getInt1(true)),
+                            idx, offset);
+                    } else {
+                        ::llvm::Value* days;
+                        DateIRBuilder date_builder(block_->getModule());
+                        date_builder.GetDate(block_, val.GetValue(&builder),
+                                             &days);
+                        ok = AppendPrimary(i8_ptr, val.Replace(days), idx,
+                                           offset);
+                    }
                     if (!ok) {
                         LOG(WARNING)
                             << "fail to append timestamp for output col "
@@ -415,10 +434,22 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
                     }
                 }
                 uint32_t field_cnt = offset_vec_.at(idx);
+
                 ::llvm::Value* temp_body_size = NULL;
-                ok =
-                    AppendString(i8_ptr, row_size, idx, val, str_addr_space_val,
-                                 str_body_offset, field_cnt, &temp_body_size);
+                if (val.IsConstNull()) {
+                    StringIRBuilder string_ir_builder(block_->getModule());
+                    ::llvm::Value* empty_str = nullptr;
+                    string_ir_builder.NewString(block_, &empty_str);
+                    ok = AppendString(i8_ptr, row_size, idx,
+                                      NativeValue::CreateWithFlag(
+                                          empty_str, builder.getInt1(true)),
+                                      str_addr_space_val, str_body_offset,
+                                      field_cnt, &temp_body_size);
+                } else {
+                    ok = AppendString(i8_ptr, row_size, idx, val,
+                                      str_addr_space_val, str_body_offset,
+                                      field_cnt, &temp_body_size);
+                }
                 if (!ok) {
                     LOG(WARNING) << "fail to append string for output col "
                                  << column.name();

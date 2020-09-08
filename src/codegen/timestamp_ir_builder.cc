@@ -13,6 +13,9 @@
 #include "codegen/ir_base_builder.h"
 #include "glog/logging.h"
 #include "node/sql_node.h"
+
+using fesql::common::kCodegenError;
+
 namespace fesql {
 namespace codegen {
 int32_t TimestampIRBuilder::TIME_ZONE = 8;
@@ -50,24 +53,24 @@ base::Status TimestampIRBuilder::CastFrom(::llvm::BasicBlock* block,
         *output = src;
         return status;
     }
+
     ::llvm::Value* ts = NULL;
     CastExprIRBuilder cast_builder(block);
     ::llvm::IRBuilder<> builder(block);
-    if (!cast_builder.IsSafeCast(src->getType(), builder.getInt64Ty())) {
+
+    if (IsInterger(src->getType())) {
+        CHECK_TRUE(
+            cast_builder.SafeCast(src, builder.getInt64Ty(), &ts, status),
+            kCodegenError);
+        CHECK_TRUE(NewTimestamp(block, ts, output), kCodegenError,
+                   "Fail to cast timestamp: new timestamp fail");
+    } else {
+        status.msg =
+            "fail to codegen cast bool expr: value type isn't compatible";
         status.code = common::kCodegenError;
-        status.msg = "Fail to cast timestamp: src type " +
-                     TypeIRBuilder::TypeName(src->getType());
         return status;
     }
-    if (!cast_builder.SafeCast(src, builder.getInt64Ty(), &ts, status)) {
-        return status;
-    }
-    if (!NewTimestamp(block, ts, output)) {
-        status.code = common::kCodegenError;
-        status.msg = "Fail to cast timestamp: new timestamp fail";
-        return status;
-    }
-    return status;
+    return base::Status::OK();
 }
 bool TimestampIRBuilder::CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
                                   ::llvm::Value* dist) {
@@ -122,14 +125,14 @@ bool TimestampIRBuilder::Minute(::llvm::BasicBlock* block, ::llvm::Value* value,
     }
     ::llvm::IRBuilder<> builder(block);
     ArithmeticIRBuilder arithmetic_builder(block);
-    if (!arithmetic_builder.BuildModExpr(ts, builder.getInt64(1000 * 60 * 60),
-                                         &ts, status)) {
-        LOG(WARNING) << "Fail Get Minute " << status;
+    if (!arithmetic_builder.BuildModExpr(
+            block, ts, builder.getInt64(1000 * 60 * 60), &ts, status)) {
+        LOG(WARNING) << "Fail Get Minute " << status.msg;
         return false;
     }
-    if (!arithmetic_builder.BuildSDivExpr(ts, builder.getInt64(1000 * 60),
-                                          output, status)) {
-        LOG(WARNING) << "Fail Get Minute " << status;
+    if (!arithmetic_builder.BuildSDivExpr(
+            block, ts, builder.getInt64(1000 * 60), output, status)) {
+        LOG(WARNING) << "Fail Get Minute " << status.msg;
         return false;
     }
     CastExprIRBuilder cast_builder(block);
@@ -157,14 +160,14 @@ bool TimestampIRBuilder::Second(::llvm::BasicBlock* block, ::llvm::Value* value,
     }
     ::llvm::IRBuilder<> builder(block);
     ArithmeticIRBuilder arithmetic_builder(block);
-    if (!arithmetic_builder.BuildModExpr(ts, builder.getInt64(1000 * 60), &ts,
-                                         status)) {
-        LOG(WARNING) << "Fail Get Second " << status;
+    if (!arithmetic_builder.BuildModExpr(block, ts, builder.getInt64(1000 * 60),
+                                         &ts, status)) {
+        LOG(WARNING) << "Fail Get Second " << status.msg;
         return false;
     }
-    if (!arithmetic_builder.BuildSDivExpr(ts, builder.getInt64(1000), output,
-                                          status)) {
-        LOG(WARNING) << "Fail Get Second " << status;
+    if (!arithmetic_builder.BuildSDivExpr(block, ts, builder.getInt64(1000),
+                                          output, status)) {
+        LOG(WARNING) << "Fail Get Second " << status.msg;
         return false;
     }
     CastExprIRBuilder cast_builder(block);
@@ -193,25 +196,31 @@ bool TimestampIRBuilder::Hour(::llvm::BasicBlock* block, ::llvm::Value* value,
     ::llvm::IRBuilder<> builder(block);
     ::llvm::Value* day_ms = nullptr;
     ArithmeticIRBuilder arithmetic_builder(block);
-    if (TIME_ZONE > 0 && !arithmetic_builder.BuildAddExpr(
-                             ts, builder.getInt64(1000 * 60 * 60 * TIME_ZONE),
-                             &day_ms, status)) {
-        LOG(WARNING) << "Fail Get Hour " << status;
+    if (TIME_ZONE > 0 &&
+        !arithmetic_builder.BuildAddExpr(
+            block, ts, builder.getInt64(1000 * 60 * 60 * TIME_ZONE), &day_ms,
+            status)) {
+        LOG(WARNING) << "Fail Get Hour " << status.msg;
         return false;
     }
-    if (!arithmetic_builder.BuildModExpr(
-            day_ms, builder.getInt64(1000 * 60 * 60 * 24), &day_ms, status)) {
-        LOG(WARNING) << "Fail Get Hour " << status;
+    if (!arithmetic_builder.BuildModExpr(block, day_ms,
+                                         builder.getInt64(1000 * 60 * 60 * 24),
+                                         &day_ms, status)) {
+        LOG(WARNING) << "Fail Get Hour " << status.msg;
         return false;
     }
     if (!arithmetic_builder.BuildSDivExpr(
-            day_ms, builder.getInt64(1000 * 60 * 60), output, status)) {
-        LOG(WARNING) << "Fail Get Hour " << status;
+            block, day_ms, builder.getInt64(1000 * 60 * 60), output, status)) {
+        LOG(WARNING) << "Fail Get Hour " << status.msg;
         return false;
     }
     CastExprIRBuilder cast_builder(block);
     return cast_builder.UnSafeCast(*output, builder.getInt32Ty(), output,
                                    status);
+}
+bool TimestampIRBuilder::CreateDefault(::llvm::BasicBlock* block,
+                                       ::llvm::Value** output) {
+    return NewTimestamp(block, output);
 }
 bool TimestampIRBuilder::NewTimestamp(::llvm::BasicBlock* block,
                                       ::llvm::Value** output) {
@@ -248,6 +257,70 @@ bool TimestampIRBuilder::NewTimestamp(::llvm::BasicBlock* block,
     *output = timestamp;
     return true;
 }
+base::Status TimestampIRBuilder::FDiv(::llvm::BasicBlock* block,
+                                      ::llvm::Value* timestamp,
+                                      ::llvm::Value* right,
+                                      ::llvm::Value** output) {
+    CHECK_TRUE(nullptr != timestamp && nullptr != right, kCodegenError,
+               "Fail Timestamp FDiv: lhs or rhs is null")
+    CHECK_TRUE(TypeIRBuilder::IsTimestampPtr(timestamp->getType()),
+               kCodegenError, "Fail Timestamp FDiv: lhs type is ",
+               TypeIRBuilder::TypeName(timestamp->getType()))
+    CHECK_TRUE(TypeIRBuilder::IsNumber(right->getType()), kCodegenError,
+               "Fail Timestamp FDiv: lhs type is ",
+               TypeIRBuilder::TypeName(right->getType()))
 
+    ::llvm::IRBuilder<> builder(block);
+    CastExprIRBuilder cast_ir_builder(block);
+    ::llvm::Value* casted_right = nullptr;
+    Status status;
+    CHECK_TRUE(cast_ir_builder.UnSafeCast(right, builder.getDoubleTy(),
+                                          &casted_right, status),
+               kCodegenError, status.msg);
+    ::llvm::Value* ts = nullptr;
+    CHECK_TRUE(GetTs(block, timestamp, &ts), kCodegenError,
+               "Fail Timestamp FDiv: fail to get ts");
+
+    ArithmeticIRBuilder arithmetic_ir_builder(block);
+    CHECK_TRUE(arithmetic_ir_builder.BuildFDivExpr(block, ts, casted_right,
+                                                   output, status),
+               kCodegenError, status.msg)
+    return Status::OK();
+}
+// Adds the integer expression interval to the timestamp expression, The unit
+// for interval is millisecond
+base::Status TimestampIRBuilder::TimestampAdd(::llvm::BasicBlock* block,
+                                              ::llvm::Value* timestamp,
+                                              ::llvm::Value* duration,
+                                              ::llvm::Value** output) {
+    CHECK_TRUE(nullptr != timestamp && nullptr != duration, kCodegenError,
+               "Fail Timestamp Add: lhs or rhs is null")
+    CHECK_TRUE(TypeIRBuilder::IsTimestampPtr(timestamp->getType()),
+               kCodegenError, "Fail Timestamp Add: lhs type is ",
+               TypeIRBuilder::TypeName(timestamp->getType()))
+    CHECK_TRUE(TypeIRBuilder::IsInterger(duration->getType()), kCodegenError,
+               "Fail Timestamp Add: lhs type is ",
+               TypeIRBuilder::TypeName(duration->getType()))
+
+    ::llvm::IRBuilder<> builder(block);
+    CastExprIRBuilder cast_ir_builder(block);
+    ::llvm::Value* casted_right = nullptr;
+    Status status;
+    CHECK_TRUE(cast_ir_builder.UnSafeCast(duration, builder.getInt64Ty(),
+                                          &casted_right, status),
+               kCodegenError, status.msg);
+    ::llvm::Value* ts = nullptr;
+    CHECK_TRUE(GetTs(block, timestamp, &ts), kCodegenError,
+               "Fail Timestamp Add: fail to get ts");
+
+    ArithmeticIRBuilder arithmetic_ir_builder(block);
+    ::llvm::Value* add_ts = nullptr;
+    CHECK_TRUE(arithmetic_ir_builder.BuildAddExpr(block, ts, casted_right,
+                                                  &add_ts, status),
+               kCodegenError, status.msg)
+    CHECK_TRUE(NewTimestamp(block, add_ts, output), kCodegenError,
+               "Fail Timestamp Add: new timestamp with ts error");
+    return Status::OK();
+}
 }  // namespace codegen
 }  // namespace fesql

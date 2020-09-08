@@ -9,7 +9,9 @@
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include <memory>
 #include <utility>
+#include "case/sql_case.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/ir_base_builder_test.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "gtest/gtest.h"
@@ -23,6 +25,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Scalar.h"
 #include "node/node_manager.h"
+#include "udf/default_udf_library.h"
 #include "udf/udf.h"
 
 using namespace llvm;       // NOLINT
@@ -31,6 +34,7 @@ ExitOnError ExitOnErr;
 namespace fesql {
 namespace codegen {
 using fesql::codec::Timestamp;
+using fesql::udf::Nullable;
 class ArithmeticIRBuilderTest : public ::testing::Test {
  public:
     ArithmeticIRBuilderTest() { manager_ = new node::NodeManager(); }
@@ -40,138 +44,510 @@ class ArithmeticIRBuilderTest : public ::testing::Test {
     node::NodeManager *manager_;
 };
 
+template <typename LHS, typename RHS, typename Ret>
+void BinaryArithmeticErrorCheck(fesql::node::FnOperator op) {
+    auto compiled_func = BuildExprFunction<Ret, LHS, RHS>(
+        [op](node::NodeManager *nm, node::ExprNode *left,
+             node::ExprNode *right) {
+            return nm->MakeBinaryExprNode(left, right, op);
+        });
+    ASSERT_FALSE(compiled_func.valid())
+        << DataTypeTrait<LHS>::to_string() << " "
+        << DataTypeTrait<RHS>::to_string() << " "
+        << DataTypeTrait<Ret>::to_string();
+}
+template <typename LHS, typename RHS, typename Ret>
+void BinaryArithmeticExprCheck(LHS left_val, RHS right_val, Ret expect,
+                               fesql::node::FnOperator op) {
+    auto compiled_func = BuildExprFunction<Ret, LHS, RHS>(
+        [op](node::NodeManager *nm, node::ExprNode *left,
+             node::ExprNode *right) {
+            return nm->MakeBinaryExprNode(left, right, op);
+        });
+    ASSERT_TRUE(compiled_func.valid())
+        << "BinaryArithmeticExprCheck fail: " << DataTypeTrait<LHS>::to_string
+        << " " << DataTypeTrait<RHS>::to_string() << " "
+        << DataTypeTrait<Ret>::to_string() << " " << node::ExprOpTypeName(op);
+    Ret result = compiled_func(left_val, right_val);
+    ASSERT_EQ(expect, result);
+}
 template <class V1, class V2, class R>
 void BinaryArithmeticExprCheck(::fesql::node::DataType left_type,
                                ::fesql::node::DataType right_type,
                                ::fesql::node::DataType dist_type, V1 value1,
                                V2 value2, R expected,
                                fesql::node::FnOperator op) {
-    // Create an LLJIT instance.
-    // Create an LLJIT instance.
-    auto ctx = llvm::make_unique<LLVMContext>();
-    auto m = make_unique<Module>("arithmetic_func", *ctx);
+    return BinaryArithmeticExprCheck<V1, V2, R>(value1, value2, expected, op);
+}
 
-    llvm::Type *left_llvm_type = NULL;
-    llvm::Type *right_llvm_type = NULL;
-    llvm::Type *dist_llvm_type = NULL;
-    ASSERT_TRUE(
-        ::fesql::codegen::GetLLVMType(m.get(), left_type, &left_llvm_type));
-    ASSERT_TRUE(
-        ::fesql::codegen::GetLLVMType(m.get(), right_type, &right_llvm_type));
-    ASSERT_TRUE(GetLLVMType(m.get(), dist_type, &dist_llvm_type));
-    if (!dist_llvm_type->isPointerTy()) {
-        dist_llvm_type = dist_llvm_type->getPointerTo();
-    }
-
-    Function *load_fn = Function::Create(
-        FunctionType::get(::llvm::Type::getVoidTy(*ctx),
-                          {left_llvm_type, right_llvm_type, dist_llvm_type},
-                          false),
-        Function::ExternalLinkage, "load_fn", m.get());
-    BasicBlock *entry_block = BasicBlock::Create(*ctx, "EntryBlock", load_fn);
-    IRBuilder<> builder(entry_block);
-    auto iter = load_fn->arg_begin();
-    Argument *arg0 = &(*iter);
-    iter++;
-    Argument *arg1 = &(*iter);
-    iter++;
-    Argument *arg2 = &(*iter);
-
-    ScopeVar scope_var;
-    scope_var.Enter("fn_base");
-    scope_var.AddVar("a", NativeValue::Create(arg0));
-    scope_var.AddVar("b", NativeValue::Create(arg1));
-    ArithmeticIRBuilder arithmetic_ir_builder(entry_block);
-    llvm::Value *output;
-    base::Status status;
-
-    bool ok;
-    switch (op) {
-        case fesql::node::kFnOpAdd:
-            ok =
-                arithmetic_ir_builder.BuildAddExpr(arg0, arg1, &output, status);
-            break;
-        case fesql::node::kFnOpMinus:
-            ok =
-                arithmetic_ir_builder.BuildSubExpr(arg0, arg1, &output, status);
-            break;
-        case fesql::node::kFnOpMulti:
-            ok = arithmetic_ir_builder.BuildMultiExpr(arg0, arg1, &output,
-                                                      status);
-            break;
-        case fesql::node::kFnOpFDiv:
-            ok = arithmetic_ir_builder.BuildFDivExpr(arg0, arg1, &output,
-                                                     status);
-            break;
-        case fesql::node::kFnOpDiv:
-            ok = arithmetic_ir_builder.BuildSDivExpr(arg0, arg1, &output,
-                                                     status);
-            break;
-        case fesql::node::kFnOpMod:
-            ok =
-                arithmetic_ir_builder.BuildModExpr(arg0, arg1, &output, status);
-            break;
-        default: {
-            FAIL();
-        }
-    }
-    ASSERT_TRUE(ok);
-
-    switch (dist_type) {
-        case node::kTimestamp: {
-            codegen::TimestampIRBuilder timestamp_builder(m.get());
-            ASSERT_TRUE(timestamp_builder.CopyFrom(builder.GetInsertBlock(),
-                                                   output, arg2));
-            break;
-        }
-        case node::kVarchar: {
-            codegen::StringIRBuilder string_builder(m.get());
-            ASSERT_TRUE(string_builder.CopyFrom(builder.GetInsertBlock(),
-                                                output, arg2));
-            break;
-        }
-        default: {
-            builder.CreateStore(output, arg2);
-        }
-    }
-    builder.CreateRetVoid();
-    m->print(::llvm::errs(), NULL);
-    auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
-    auto &jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-
-    ::fesql::udf::InitCLibSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto load_fn_jit = ExitOnErr(J->lookup("load_fn"));
-    void (*decode)(V1, V2, R *) =
-        (void (*)(V1, V2, R *))load_fn_jit.getAddress();
-    R result;
-    decode(value1, value2, &result);
-    ASSERT_EQ(expected, result);
+TEST_F(ArithmeticIRBuilderTest, test_add_null) {
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int32_t>,
+                              Nullable<int32_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int64_t>,
+                              Nullable<int64_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<float>,
+                              Nullable<float>>(nullptr, nullptr, nullptr,
+                                               ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<double>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(1, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(nullptr, 1, nullptr,
+                                                 ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>,
+                              Nullable<int32_t>>(1, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>,
+                              Nullable<int32_t>>(nullptr, 1, nullptr,
+                                                 ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
+                              Nullable<int64_t>>(1, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
+                              Nullable<int64_t>>(nullptr, 1, nullptr,
+                                                 ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<float>, Nullable<float>,
+                              Nullable<float>>(1.0f, nullptr, nullptr,
+                                               ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<float>, Nullable<float>,
+                              Nullable<float>>(nullptr, 1.0f, nullptr,
+                                               ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<double>, Nullable<double>,
+                              Nullable<double>>(1.0, nullptr, nullptr,
+                                                ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<double>, Nullable<double>,
+                              Nullable<double>>(nullptr, 1.0, nullptr,
+                                                ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<Timestamp>, Nullable<Timestamp>,
+                              Nullable<Timestamp>>(
+        codec::Timestamp(1590115420000L), nullptr, nullptr,
+        ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<Nullable<Timestamp>, Nullable<Timestamp>,
+                              Nullable<Timestamp>>(
+        nullptr, codec::Timestamp(1590115420000L), nullptr,
+        ::fesql::node::kFnOpAdd);
+}
+TEST_F(ArithmeticIRBuilderTest, test_sub_null) {
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int32_t>,
+                              Nullable<int32_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int64_t>,
+                              Nullable<int64_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<float>,
+                              Nullable<float>>(nullptr, nullptr, nullptr,
+                                               ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<double>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(1, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(nullptr, 1, nullptr,
+                                                 ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>,
+                              Nullable<int32_t>>(1, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>,
+                              Nullable<int32_t>>(nullptr, 1, nullptr,
+                                                 ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
+                              Nullable<int64_t>>(1, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
+                              Nullable<int64_t>>(nullptr, 1, nullptr,
+                                                 ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Nullable<float>, Nullable<float>,
+                              Nullable<float>>(1.0f, nullptr, nullptr,
+                                               ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Nullable<float>, Nullable<float>,
+                              Nullable<float>>(nullptr, 1.0f, nullptr,
+                                               ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Nullable<double>, Nullable<double>,
+                              Nullable<double>>(1.0, nullptr, nullptr,
+                                                ::fesql::node::kFnOpMinus);
+    BinaryArithmeticExprCheck<Nullable<double>, Nullable<double>,
+                              Nullable<double>>(nullptr, 1.0, nullptr,
+                                                ::fesql::node::kFnOpMinus);
+}
+TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_null_0) {
+    BinaryArithmeticExprCheck<Nullable<Timestamp>, Nullable<int32_t>,
+                              Nullable<Timestamp>>(nullptr, 1, nullptr,
+                                                   ::fesql::node::kFnOpMinus);
+}
+TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_null_1) {
+    BinaryArithmeticExprCheck<Nullable<Timestamp>, Nullable<int64_t>,
+                              Nullable<Timestamp>>(nullptr, 1, nullptr,
+                                                   ::fesql::node::kFnOpMinus);
+}
+TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_null_2) {
+    BinaryArithmeticExprCheck<Nullable<Timestamp>, Nullable<int16_t>,
+                              Nullable<Timestamp>>(nullptr, 1, nullptr,
+                                                   ::fesql::node::kFnOpMinus);
+}
+TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_null_3) {
+    BinaryArithmeticExprCheck<Nullable<Timestamp>, Nullable<bool>,
+                              Nullable<Timestamp>>(nullptr, true, nullptr,
+                                                   ::fesql::node::kFnOpMinus);
+}
+TEST_F(ArithmeticIRBuilderTest, test_multi_null) {
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int32_t>,
+                              Nullable<int32_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int64_t>,
+                              Nullable<int64_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<float>,
+                              Nullable<float>>(nullptr, nullptr, nullptr,
+                                               ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<double>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(1, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(nullptr, 1, nullptr,
+                                                 ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>,
+                              Nullable<int32_t>>(1, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>,
+                              Nullable<int32_t>>(nullptr, 1, nullptr,
+                                                 ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
+                              Nullable<int64_t>>(1, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
+                              Nullable<int64_t>>(nullptr, 1, nullptr,
+                                                 ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<Nullable<float>, Nullable<float>,
+                              Nullable<float>>(1.0f, nullptr, nullptr,
+                                               ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<Nullable<float>, Nullable<float>,
+                              Nullable<float>>(nullptr, 1.0f, nullptr,
+                                               ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<Nullable<double>, Nullable<double>,
+                              Nullable<double>>(1.0, nullptr, nullptr,
+                                                ::fesql::node::kFnOpMulti);
+    BinaryArithmeticExprCheck<Nullable<double>, Nullable<double>,
+                              Nullable<double>>(nullptr, 1.0, nullptr,
+                                                ::fesql::node::kFnOpMulti);
+}
+TEST_F(ArithmeticIRBuilderTest, test_int_div_null) {
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int32_t>,
+                              Nullable<int32_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int64_t>,
+                              Nullable<int64_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(1, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(nullptr, 1, nullptr,
+                                                 ::fesql::node::kFnOpDiv);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>,
+                              Nullable<int32_t>>(1, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpDiv);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>,
+                              Nullable<int32_t>>(nullptr, 1, nullptr,
+                                                 ::fesql::node::kFnOpDiv);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
+                              Nullable<int64_t>>(1, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpDiv);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
+                              Nullable<int64_t>>(nullptr, 1, nullptr,
+                                                 ::fesql::node::kFnOpDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_fdiv_null) {
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int32_t>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int64_t>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<float>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<double>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<double>>(1, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<double>>(nullptr, 1, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>,
+                              Nullable<double>>(1, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>,
+                              Nullable<double>>(nullptr, 1, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
+                              Nullable<double>>(1, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
+                              Nullable<double>>(nullptr, 1, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<float>, Nullable<float>,
+                              Nullable<double>>(1.0f, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<float>, Nullable<float>,
+                              Nullable<double>>(nullptr, 1.0f, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<double>, Nullable<double>,
+                              Nullable<double>>(1.0, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<double>, Nullable<double>,
+                              Nullable<double>>(nullptr, 1.0, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_div_null) {
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int32_t>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int64_t>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<float>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<double>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<double>>(1, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<double>>(nullptr, 1, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>,
+                              Nullable<double>>(1, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>,
+                              Nullable<double>>(nullptr, 1, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
+                              Nullable<double>>(1, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
+                              Nullable<double>>(nullptr, 1, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<float>, Nullable<float>,
+                              Nullable<double>>(1.0f, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<float>, Nullable<float>,
+                              Nullable<double>>(nullptr, 1.0f, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<double>, Nullable<double>,
+                              Nullable<double>>(1.0, nullptr, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+    BinaryArithmeticExprCheck<Nullable<double>, Nullable<double>,
+                              Nullable<double>>(nullptr, 1.0, nullptr,
+                                                ::fesql::node::kFnOpFDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_mod_null) {
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int32_t>,
+                              Nullable<int32_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int64_t>,
+                              Nullable<int64_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<float>,
+                              Nullable<float>>(nullptr, nullptr, nullptr,
+                                               ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<double>,
+                              Nullable<double>>(nullptr, nullptr, nullptr,
+                                                ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(nullptr, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(1, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
+                              Nullable<int16_t>>(nullptr, 1, nullptr,
+                                                 ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>,
+                              Nullable<int32_t>>(1, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<Nullable<int32_t>, Nullable<int32_t>,
+                              Nullable<int32_t>>(nullptr, 1, nullptr,
+                                                 ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
+                              Nullable<int64_t>>(1, nullptr, nullptr,
+                                                 ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
+                              Nullable<int64_t>>(nullptr, 1, nullptr,
+                                                 ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<Nullable<float>, Nullable<float>,
+                              Nullable<float>>(1.0f, nullptr, nullptr,
+                                               ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<Nullable<float>, Nullable<float>,
+                              Nullable<float>>(nullptr, 1.0f, nullptr,
+                                               ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<Nullable<double>, Nullable<double>,
+                              Nullable<double>>(1.0, nullptr, nullptr,
+                                                ::fesql::node::kFnOpMod);
+    BinaryArithmeticExprCheck<Nullable<double>, Nullable<double>,
+                              Nullable<double>>(nullptr, 1.0, nullptr,
+                                                ::fesql::node::kFnOpMod);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_1) {
+    BinaryArithmeticErrorCheck<Nullable<codec::StringRef>,
+                               Nullable<codec::StringRef>,
+                               Nullable<codec::StringRef>>(
+        ::fesql::node::kFnOpAdd);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_2) {
+    BinaryArithmeticErrorCheck<Nullable<bool>, Nullable<codec::StringRef>,
+                               Nullable<codec::StringRef>>(
+        ::fesql::node::kFnOpAdd);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_3) {
+    BinaryArithmeticErrorCheck<Nullable<Timestamp>, Nullable<Timestamp>,
+                               Nullable<Timestamp>>(::fesql::node::kFnOpMinus);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_4) {
+    BinaryArithmeticErrorCheck<Nullable<codec::StringRef>,
+                               Nullable<codec::StringRef>,
+                               Nullable<codec::StringRef>>(
+        ::fesql::node::kFnOpMinus);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_5) {
+    BinaryArithmeticErrorCheck<Nullable<codec::Date>, Nullable<codec::Date>,
+                               Nullable<codec::Date>>(
+        ::fesql::node::kFnOpMinus);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_6) {
+    BinaryArithmeticErrorCheck<Nullable<Timestamp>, Nullable<Timestamp>,
+                               Nullable<Timestamp>>(::fesql::node::kFnOpMulti);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_7) {
+    BinaryArithmeticErrorCheck<Nullable<codec::StringRef>,
+                               Nullable<codec::StringRef>,
+                               Nullable<codec::StringRef>>(
+        ::fesql::node::kFnOpMulti);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_8) {
+    BinaryArithmeticErrorCheck<Nullable<codec::Date>, Nullable<codec::Date>,
+                               Nullable<codec::Date>>(
+        ::fesql::node::kFnOpMulti);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_9) {
+    BinaryArithmeticErrorCheck<Nullable<Timestamp>, Nullable<Timestamp>,
+                               Nullable<Timestamp>>(::fesql::node::kFnOpFDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_10) {
+    BinaryArithmeticErrorCheck<Nullable<codec::StringRef>,
+                               Nullable<codec::StringRef>,
+                               Nullable<codec::StringRef>>(
+        ::fesql::node::kFnOpFDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_11) {
+    BinaryArithmeticErrorCheck<Nullable<codec::Date>, Nullable<codec::Date>,
+                               Nullable<codec::Date>>(::fesql::node::kFnOpFDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_12) {
+    BinaryArithmeticErrorCheck<Nullable<Timestamp>, Nullable<Timestamp>,
+                               Nullable<Timestamp>>(::fesql::node::kFnOpDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_13) {
+    BinaryArithmeticErrorCheck<Nullable<codec::StringRef>,
+                               Nullable<codec::StringRef>,
+                               Nullable<codec::StringRef>>(
+        ::fesql::node::kFnOpDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_14) {
+    BinaryArithmeticErrorCheck<Nullable<codec::Date>, Nullable<codec::Date>,
+                               Nullable<codec::Date>>(::fesql::node::kFnOpDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_15) {
+    BinaryArithmeticErrorCheck<Nullable<int16_t>, Nullable<float>,
+                               Nullable<int16_t>>(::fesql::node::kFnOpDiv);
+}
+TEST_F(ArithmeticIRBuilderTest, test_error_expr_op_16) {
+    BinaryArithmeticErrorCheck<Nullable<int16_t>, Nullable<double>,
+                               Nullable<int16_t>>(::fesql::node::kFnOpDiv);
 }
 
 TEST_F(ArithmeticIRBuilderTest, test_add_int16_x_expr) {
     BinaryArithmeticExprCheck<int16_t, int16_t, int16_t>(
-        ::fesql::node::kInt16, ::fesql::node::kInt16, ::fesql::node::kInt16, 1,
-        1, 2, ::fesql::node::kFnOpAdd);
+        1, 1, 2, ::fesql::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<int16_t, int32_t, int32_t>(
-        ::fesql::node::kInt16, ::fesql::node::kInt32, ::fesql::node::kInt32, 1,
-        1, 2, ::fesql::node::kFnOpAdd);
+        1, 1, 2, ::fesql::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<int16_t, int64_t, int64_t>(
-        ::fesql::node::kInt16, ::fesql::node::kInt64, ::fesql::node::kInt64, 1,
-        8000000000L, 8000000001L, ::fesql::node::kFnOpAdd);
+        1, 8000000000L, 8000000001L, ::fesql::node::kFnOpAdd);
 
     BinaryArithmeticExprCheck<int16_t, float, float>(
-        ::fesql::node::kInt16, ::fesql::node::kFloat, ::fesql::node::kFloat, 1,
-        12345678.5f, 12345678.5f + 1.0f, ::fesql::node::kFnOpAdd);
+        1, 12345678.5f, 12345678.5f + 1.0f, ::fesql::node::kFnOpAdd);
     BinaryArithmeticExprCheck<int16_t, double, double>(
-        ::fesql::node::kInt16, ::fesql::node::kDouble, ::fesql::node::kDouble,
         1, 12345678.5, 12345678.5 + 1.0, ::fesql::node::kFnOpAdd);
 }
+TEST_F(ArithmeticIRBuilderTest, test_add_bool_x_expr) {
+    BinaryArithmeticExprCheck<bool, int16_t, int16_t>(true, 1, 2,
+                                                      ::fesql::node::kFnOpAdd);
 
+    BinaryArithmeticExprCheck<bool, int32_t, int32_t>(true, 1, 2,
+                                                      ::fesql::node::kFnOpAdd);
+
+    BinaryArithmeticExprCheck<bool, int64_t, int64_t>(
+        true, 8000000000L, 8000000001L, ::fesql::node::kFnOpAdd);
+
+    BinaryArithmeticExprCheck<bool, float, float>(
+        true, 12345678.5f, 12345678.5f + 1.0f, ::fesql::node::kFnOpAdd);
+    BinaryArithmeticExprCheck<bool, double, double>(
+        true, 12345678.5, 12345678.5 + 1.0, ::fesql::node::kFnOpAdd);
+}
 TEST_F(ArithmeticIRBuilderTest, test_add_int32_x_expr) {
     BinaryArithmeticExprCheck<int32_t, int16_t, int32_t>(
         ::fesql::node::kInt32, ::fesql::node::kInt16, ::fesql::node::kInt32, 1,
@@ -214,39 +590,37 @@ TEST_F(ArithmeticIRBuilderTest, test_add_int64_x_expr) {
         1, 12345678.5, 12345678.5 + 1.0, ::fesql::node::kFnOpAdd);
 }
 
-TEST_F(ArithmeticIRBuilderTest, test_add_timestamp_expr) {
-    Timestamp t1(8000000000L);
-    Timestamp t2(1L);
-    BinaryArithmeticExprCheck<Timestamp *, Timestamp *, Timestamp>(
+TEST_F(ArithmeticIRBuilderTest, test_add_timestamp_expr_0) {
+    BinaryArithmeticExprCheck<Timestamp, Timestamp, Timestamp>(
         ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
-        ::fesql::node::kTimestamp, &t1, &t2, Timestamp(8000000001L),
-        ::fesql::node::kFnOpAdd);
-
-    BinaryArithmeticExprCheck<Timestamp *, int64_t, Timestamp>(
+        ::fesql::node::kTimestamp, Timestamp(8000000000L), Timestamp(1L),
+        Timestamp(8000000001L), ::fesql::node::kFnOpAdd);
+}
+TEST_F(ArithmeticIRBuilderTest, test_add_timestamp_expr_1) {
+    BinaryArithmeticExprCheck<Timestamp, int64_t, Timestamp>(
         ::fesql::node::kTimestamp, ::fesql::node::kInt64,
-        ::fesql::node::kTimestamp, &t1, 1L, Timestamp(8000000001L),
-        ::fesql::node::kFnOpAdd);
-    BinaryArithmeticExprCheck<Timestamp *, int32_t, Timestamp>(
+        ::fesql::node::kTimestamp, Timestamp(8000000000L), 1L,
+        Timestamp(8000000001L), ::fesql::node::kFnOpAdd);
+}
+TEST_F(ArithmeticIRBuilderTest, test_add_timestamp_expr_2) {
+    BinaryArithmeticExprCheck<Timestamp, int32_t, Timestamp>(
         ::fesql::node::kTimestamp, ::fesql::node::kInt32,
-        ::fesql::node::kTimestamp, &t1, 1, Timestamp(8000000001L),
-        ::fesql::node::kFnOpAdd);
+        ::fesql::node::kTimestamp, Timestamp(8000000000L), 1,
+        Timestamp(8000000001L), ::fesql::node::kFnOpAdd);
+}
+TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_expr_1) {
+    BinaryArithmeticExprCheck<Timestamp, int64_t, Timestamp>(
+        ::fesql::node::kTimestamp, ::fesql::node::kInt64,
+        ::fesql::node::kTimestamp, Timestamp(8000000001L), 1L,
+        Timestamp(8000000000L), ::fesql::node::kFnOpMinus);
+}
+TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_expr_2) {
+    BinaryArithmeticExprCheck<Timestamp, int32_t, Timestamp>(
+        ::fesql::node::kTimestamp, ::fesql::node::kInt32,
+        ::fesql::node::kTimestamp, Timestamp(8000000001L), 1,
+        Timestamp(8000000000L), ::fesql::node::kFnOpMinus);
 }
 
-TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_expr) {
-    Timestamp t1(8000000000L);
-    Timestamp t2(1L);
-    BinaryArithmeticExprCheck<Timestamp *, Timestamp *, int64_t>(
-        ::fesql::node::kTimestamp, ::fesql::node::kTimestamp,
-        ::fesql::node::kInt64, &t1, &t2, 7999999999L,
-        ::fesql::node::kFnOpMinus);
-
-    BinaryArithmeticExprCheck<Timestamp *, int64_t, int64_t>(
-        ::fesql::node::kTimestamp, ::fesql::node::kInt64, ::fesql::node::kInt64,
-        &t1, 1L, 7999999999L, ::fesql::node::kFnOpMinus);
-    BinaryArithmeticExprCheck<Timestamp *, int32_t, int64_t>(
-        ::fesql::node::kTimestamp, ::fesql::node::kInt32, ::fesql::node::kInt64,
-        &t1, 1, 7999999999L, ::fesql::node::kFnOpMinus);
-}
 TEST_F(ArithmeticIRBuilderTest, test_add_float_x_expr) {
     BinaryArithmeticExprCheck<float, int16_t, float>(
         ::fesql::node::kFloat, ::fesql::node::kInt16, ::fesql::node::kFloat,

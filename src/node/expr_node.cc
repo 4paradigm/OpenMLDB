@@ -9,6 +9,7 @@
 
 #include "node/expr_node.h"
 #include "codec/fe_row_codec.h"
+#include "codegen/arithmetic_expr_ir_builder.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "passes/resolve_fn_and_attrs.h"
@@ -188,7 +189,11 @@ bool IsSafeCast(const TypeNode* from_type, const TypeNode* target_type) {
 Status InferBinaryArithmeticType(const TypeNode* left, const TypeNode* right,
                                  const TypeNode** output) {
     CHECK_TRUE(left != nullptr && right != nullptr, kTypeError);
-    if (TypeEquals(left, right)) {
+    if (left->IsNull()) {
+        *output = right;
+    } else if (right->IsNull()) {
+        *output = left;
+    } else if (TypeEquals(left, right)) {
         *output = left;
     } else if (IsSafeCast(left, right)) {
         *output = right;
@@ -209,7 +214,11 @@ Status InferBinaryArithmeticType(const TypeNode* left, const TypeNode* right,
 Status InferBinaryComparisionType(const TypeNode* left, const TypeNode* right,
                                   const TypeNode** output) {
     CHECK_TRUE(left != nullptr && right != nullptr, kTypeError);
-    if (TypeEquals(left, right)) {
+    if (left->IsNull()) {
+        *output = right;
+    } else if (right->IsNull()) {
+        *output = left;
+    } else if (TypeEquals(left, right)) {
         *output = left;
     } else if (IsSafeCast(left, right)) {
         *output = right;
@@ -235,6 +244,7 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetChildNum() == 2, kTypeError);
     auto left_type = GetChild(0)->GetOutputType();
     auto right_type = GetChild(1)->GetOutputType();
+    bool nullable = GetChild(0)->nullable() || GetChild(1)->nullable();
     CHECK_TRUE(left_type != nullptr && right_type != nullptr, kTypeError);
     switch (GetOp()) {
         case kFnOpAdd:
@@ -242,19 +252,20 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
         case kFnOpMulti:
         case kFnOpMod:
         case kFnOpDiv: {
-            const TypeNode* output_type = nullptr;
+            const TypeNode* top_type = nullptr;
             CHECK_STATUS(
-                InferBinaryArithmeticType(left_type, right_type, &output_type));
-            SetOutputType(output_type);
-            SetNullable(false);
+                InferBinaryArithmeticType(left_type, right_type, &top_type));
+            SetOutputType(top_type);
+            SetNullable(nullable);
             break;
         }
         case kFnOpFDiv: {
-            CHECK_TRUE(left_type->IsArithmetic() && right_type->IsArithmetic(),
+            CHECK_TRUE((left_type->IsNull() || left_type->IsArithmetic()) &&
+                           (right_type->IsNull() || right_type->IsArithmetic()),
                        kTypeError, "Invalid fdiv type: ", left_type->GetName(),
                        " / ", right_type->GetName());
             SetOutputType(ctx->node_manager()->MakeTypeNode(kDouble));
-            SetNullable(false);
+            SetNullable(nullable);
             break;
         }
         case kFnOpEq:
@@ -267,7 +278,7 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             CHECK_STATUS(
                 InferBinaryComparisionType(left_type, right_type, &top_type));
             SetOutputType(ctx->node_manager()->MakeTypeNode(node::kBool));
-            SetNullable(false);
+            SetNullable(nullable);
             break;
         }
         case kFnOpOr:
@@ -277,7 +288,7 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
             CHECK_STATUS(
                 InferBinaryArithmeticType(left_type, right_type, &top_type));
             SetOutputType(ctx->node_manager()->MakeTypeNode(node::kBool));
-            SetNullable(false);
+            SetNullable(nullable);
             break;
         }
         case kFnOpAt: {
@@ -294,6 +305,7 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
 Status UnaryExpr::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetChildNum() == 1, kTypeError);
     auto dtype = GetChild(0)->GetOutputType();
+    bool nullable = GetChild(0)->nullable();
     CHECK_TRUE(dtype != nullptr, kTypeError);
     switch (GetOp()) {
         case kFnOpNot: {
@@ -301,19 +313,19 @@ Status UnaryExpr::InferAttr(ExprAnalysisContext* ctx) {
                        kTypeError,
                        "Invalid unary predicate type: ", dtype->GetName());
             SetOutputType(ctx->node_manager()->MakeTypeNode(node::kBool));
-            SetNullable(false);
+            SetNullable(nullable);
             break;
         }
         case kFnOpMinus: {
             CHECK_TRUE(dtype->IsArithmetic(), kTypeError,
                        "Invalid unary type for minus: ", dtype->GetName());
             SetOutputType(dtype);
-            SetNullable(false);
+            SetNullable(nullable);
             break;
         }
         case kFnOpBracket: {
             SetOutputType(dtype);
-            SetNullable(GetChild(0)->nullable());
+            SetNullable(nullable);
             break;
         }
         case kFnOpIsNull: {

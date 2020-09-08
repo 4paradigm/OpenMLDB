@@ -57,7 +57,9 @@ class SqlParserTest : public ::testing::TestWithParam<SQLCase> {
         std::string operator()(
             const testing::TestParamInfo<ParamType> &info) const {
             auto sql_case = static_cast<SQLCase>(info.param);
-            return sql_case.id();
+            std::string desc = sql_case.id();
+            boost::replace_all(desc, "-", "_");
+            return desc;
         }
     };
 

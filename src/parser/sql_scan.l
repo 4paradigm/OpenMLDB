@@ -126,6 +126,7 @@ BY	{ return BY; }
 CALL	{ return CALL; }
 CASCADE	{ return CASCADE; }
 CASE	{ return CASE; }
+CAST	{ return CAST; }
 CHANGE	{ return CHANGE; }
 CHAR(ACTER)?	{ return CHAR; }
 CHECK	{ return CHECK; }

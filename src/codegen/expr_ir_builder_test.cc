@@ -18,6 +18,7 @@
 #include "codegen/expr_ir_builder.h"
 #include <memory>
 #include <utility>
+#include "case/sql_case.h"
 #include "codec/type_codec.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/ir_base_builder_test.h"
@@ -64,8 +65,22 @@ void ExprCheck(
         typename std::pair<Args, node::ExprNode *>::second_type...)> &expr_func,
     Ret expect, Args... args) {
     auto compiled_func = BuildExprFunction<Ret, Args...>(expr_func);
+    ASSERT_TRUE(compiled_func.valid())
+        << "Fail Expr Check: "
+        << "Ret: " << DataTypeTrait<Ret>::to_string << "Args: ...";
+
+    std::ostringstream oss;
     Ret result = compiled_func(args...);
     ASSERT_EQ(expect, result);
+}
+template <typename Ret, typename... Args>
+void ExprErrorCheck(
+    const std::function<node::ExprNode *(
+        node::NodeManager *,
+        typename std::pair<Args, node::ExprNode *>::second_type...)>
+        &expr_func) {
+    auto compiled_func = BuildExprFunction<Ret, Args...>(expr_func);
+    ASSERT_FALSE(compiled_func.valid());
 }
 
 void GenAddExpr(node::NodeManager *manager, ::fesql::node::ExprNode **expr) {
@@ -813,7 +828,6 @@ TEST_F(ExprIRBuilderTest, test_is_null_expr) {
     ExprCheck<bool, udf::Nullable<int32_t>>(make_if_null, false, 1);
     ExprCheck<bool, udf::Nullable<int32_t>>(make_if_null, true, nullptr);
 }
-
 }  // namespace codegen
 }  // namespace fesql
 

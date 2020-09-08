@@ -140,6 +140,7 @@ typedef void* yyscan_t;
 %token CALL
 %token CASCADE
 %token CASE
+%token CAST
 %token CHANGE
 %token CHAR
 %token CHECK
@@ -412,7 +413,7 @@ typedef void* yyscan_t;
                for_in_stmt
 %type<fnlist> plist stmt_block func_stmts
 
-%type <expr> 	var primary_time  expr_const
+%type <expr> 	var primary_time  expr_const sql_cast_expr
 				sql_call_expr column_ref frame_expr join_condition opt_frame_size
 				fun_expr sql_expr
 				sort_clause opt_sort_clause
@@ -1470,6 +1471,7 @@ sql_expr:
      | expr_const 	{ $$ = $1; }
      | primary_time	{ $$ = $1; }
      | sql_call_expr  	{ $$ = $1; }
+     | sql_cast_expr	{ $$ = $1; }
      | sql_expr '+' sql_expr
      {
      	$$ = node_manager->MakeBinaryExprNode($1, $3, ::fesql::node::kFnOpAdd);
@@ -1680,6 +1682,15 @@ expr_const:
     	$$ = node_manager->MakeConstNodeDOUBLEMIN();
     }
     ;
+sql_cast_expr:
+	CAST '(' sql_expr AS types ')'
+	{
+		$$ = node_manager->MakeCastNode($5, $3);
+	}
+	|types '(' sql_expr ')'
+	{
+		$$ = node_manager->MakeCastNode($1, $3);
+	};
 
 sql_call_expr:
     function_name '(' '*' ')' over_clause

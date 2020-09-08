@@ -16,15 +16,21 @@ namespace codegen {
 StructTypeIRBuilder::StructTypeIRBuilder(::llvm::Module* m)
     : TypeIRBuilder(), m_(m), struct_type_(nullptr) {}
 StructTypeIRBuilder::~StructTypeIRBuilder() {}
-bool StructTypeIRBuilder::StructCastFrom(::llvm::BasicBlock* block,
-                                         ::llvm::Value* src,
-                                         ::llvm::Type* cast_type,
-                                         ::llvm::Value** dist) {
-    StructTypeIRBuilder* struct_builder =
-        CreateStructTypeIRBuilder(block->getModule(), cast_type);
-    base::Status status = struct_builder->CastFrom(block, src, dist);
-    delete struct_builder;
-    return status.isOK();
+base::Status StructTypeIRBuilder::StructCastFrom(::llvm::BasicBlock* block,
+                                                 const NativeValue& src,
+                                                 ::llvm::Type* cast_type,
+                                                 NativeValue* dist) {
+    CHECK_STATUS(NullIRBuilder::SafeNullCastExpr(
+        block, src, cast_type,
+        [](::llvm::BasicBlock* block, ::llvm::Value* src,
+           ::llvm::Type* cast_type, ::llvm::Value** output, Status& status) {
+            StructTypeIRBuilder* struct_builder =
+                CreateStructTypeIRBuilder(block->getModule(), cast_type);
+            status = struct_builder->CastFrom(block, src, output);
+            return status.isOK();
+        },
+        dist));
+    return Status::OK();
 }
 bool StructTypeIRBuilder::StructCopyFrom(::llvm::BasicBlock* block,
                                          ::llvm::Value* src,
