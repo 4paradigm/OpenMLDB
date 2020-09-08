@@ -20,6 +20,8 @@
 #include <utility>
 #include <vector>
 #include "base/fe_strings.h"
+#include "boost/none.hpp"
+#include "boost/optional.hpp"
 #include "codec/fe_row_codec.h"
 #include "codec/fe_schema_codec.h"
 #include "codec/list_iterator_codec.h"
@@ -27,8 +29,6 @@
 #include "gflags/gflags.h"
 #include "llvm-c/Target.h"
 #include "vm/mem_catalog.h"
-#include "boost/none.hpp"
-#include "boost/optional.hpp"
 
 DECLARE_bool(logtostderr);
 DECLARE_string(log_dir);
@@ -38,7 +38,11 @@ namespace vm {
 
 static bool LLVM_IS_INITIALIZED = false;
 Engine::Engine(const std::shared_ptr<Catalog>& catalog)
-    : cl_(catalog), options_(), mu_(), batch_lru_cache_(), request_lru_cache_() {}
+    : cl_(catalog),
+      options_(),
+      mu_(),
+      batch_lru_cache_(),
+      request_lru_cache_() {}
 
 Engine::Engine(const std::shared_ptr<Catalog>& catalog,
                const EngineOptions& options)
@@ -46,7 +50,7 @@ Engine::Engine(const std::shared_ptr<Catalog>& catalog,
       options_(options),
       mu_(),
       batch_lru_cache_(),
-      request_lru_cache_(){}
+      request_lru_cache_() {}
 
 Engine::~Engine() {}
 
@@ -166,8 +170,10 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         if (session.IsBatchRun()) {
             auto it = batch_lru_cache_.find(db);
             if (it == batch_lru_cache_.end()) {
-                batch_lru_cache_.insert(std::make_pair(db, boost::compute::detail::lru_cache<std::string,
-                            std::shared_ptr<CompileInfo>>(options_.max_sql_cache_size())));
+                batch_lru_cache_.insert(std::make_pair(
+                    db, boost::compute::detail::lru_cache<
+                            std::string, std::shared_ptr<CompileInfo>>(
+                            options_.max_sql_cache_size())));
                 it = batch_lru_cache_.find(db);
             }
             auto value = it->second.get(sql);
@@ -180,8 +186,10 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         } else {
             auto it = request_lru_cache_.find(db);
             if (it == request_lru_cache_.end()) {
-                request_lru_cache_.insert(std::make_pair(db, boost::compute::detail::lru_cache<std::string,
-                            std::shared_ptr<CompileInfo>>(options_.max_sql_cache_size())));
+                request_lru_cache_.insert(std::make_pair(
+                    db, boost::compute::detail::lru_cache<
+                            std::string, std::shared_ptr<CompileInfo>>(
+                            options_.max_sql_cache_size())));
                 it = request_lru_cache_.find(db);
             }
             auto value = it->second.get(sql);
@@ -238,8 +246,7 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
         if (it == batch_lru_cache_.end()) {
             return std::shared_ptr<CompileInfo>();
         }
-        auto value =
-            it->second.get(sql);
+        auto value = it->second.get(sql);
         if (value == boost::none) {
             return std::shared_ptr<CompileInfo>();
         }
@@ -249,8 +256,7 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
         if (it == request_lru_cache_.end()) {
             return std::shared_ptr<CompileInfo>();
         }
-        auto value =
-            it->second.get(sql);
+        auto value = it->second.get(sql);
         if (value == boost::none) {
             return std::shared_ptr<CompileInfo>();
         }

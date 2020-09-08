@@ -26,6 +26,7 @@
 #include <vector>
 #include "base/raw_buffer.h"
 #include "base/spin_lock.h"
+#include "boost/compute/detail/lru_cache.hpp"
 #include "codec/fe_row_codec.h"
 #include "codec/list_iterator_codec.h"
 #include "llvm-c/Target.h"
@@ -33,7 +34,6 @@
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
-#include "boost/compute/detail/lru_cache.hpp"
 
 namespace fesql {
 namespace vm {
@@ -50,7 +50,7 @@ class EngineOptions {
           compile_only_(false),
           plan_only_(false),
           performance_sensitive_(true),
-          max_sql_cache_size_(50){}
+          max_sql_cache_size_(50) {}
     inline void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
     inline bool is_keep_ir() const { return this->keep_ir_; }
     inline void set_compile_only(bool flag) { this->compile_only_ = flag; }
@@ -60,9 +60,7 @@ class EngineOptions {
     inline bool is_performance_sensitive() const {
         return performance_sensitive_;
     }
-    inline uint32_t max_sql_cache_size() const {
-        return max_sql_cache_size_;
-    }
+    inline uint32_t max_sql_cache_size() const { return max_sql_cache_size_; }
     inline void set_performance_sensitive(bool flag) {
         performance_sensitive_ = flag;
     }
@@ -175,8 +173,9 @@ typedef std::map<std::string,
                  std::map<std::string, std::shared_ptr<CompileInfo>>>
     EngineCache;
 
-typedef std::map<std::string, 
-        boost::compute::detail::lru_cache<std::string, std::shared_ptr<CompileInfo>>> EngineLRUCache;
+typedef std::map<std::string, boost::compute::detail::lru_cache<
+                                  std::string, std::shared_ptr<CompileInfo>>>
+    EngineLRUCache;
 
 class Engine {
  public:
