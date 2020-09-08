@@ -27,11 +27,16 @@ class StructTypeIRBuilder : public TypeIRBuilder {
                                                           ::llvm::Type*);
     static bool StructCopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
                                ::llvm::Value* dist);
-    static bool StructCastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
-                               ::llvm::Type* cast_type, ::llvm::Value** dist);
+    static base::Status StructCastFrom(::llvm::BasicBlock* block,
+                                       const NativeValue& src,
+                                       ::llvm::Type* cast_type,
+                                       NativeValue* dist);
+
     virtual void InitStructType() = 0;
     ::llvm::Type* GetType();
     bool Create(::llvm::BasicBlock* block, ::llvm::Value** output);
+    virtual bool CreateDefault(::llvm::BasicBlock* block,
+                               ::llvm::Value** output) = 0;
     bool Get(::llvm::BasicBlock* block, ::llvm::Value* struct_value,
              unsigned int idx, ::llvm::Value** output);
     bool Set(::llvm::BasicBlock* block, ::llvm::Value* struct_value,

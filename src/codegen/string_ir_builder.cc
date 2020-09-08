@@ -45,14 +45,20 @@ bool StringIRBuilder::NewString(::llvm::BasicBlock* block,
     ::llvm::Value* size = builder.getInt32(val.size());
     return NewString(block, size, str_val, output);
 }
+
+bool StringIRBuilder::CreateDefault(::llvm::BasicBlock* block,
+                                    ::llvm::Value** output) {
+    return NewString(block, output);
+}
 bool StringIRBuilder::NewString(::llvm::BasicBlock* block,
                                 ::llvm::Value** output) {
     if (!Create(block, output)) {
         LOG(WARNING) << "Fail to Create Default String";
         return false;
     }
+    ::llvm::StringRef val_ref("");
     ::llvm::IRBuilder<> builder(block);
-    ::llvm::Value* str_val = builder.CreateGlobalStringPtr("");
+    ::llvm::Value* str_val = builder.CreateGlobalStringPtr(val_ref);
     if (!SetData(block, *output, str_val)) {
         LOG(WARNING) << "Fail to Init String Data";
         return false;
@@ -274,13 +280,14 @@ base::Status StringIRBuilder::ConcatWS(::llvm::BasicBlock* block,
 
         if (nullptr != concat_on_size) {
             CHECK_TRUE(
-                arithmetic_ir_builder.BuildAddExpr(
-                    concat_str_size, concat_on_size, &concat_str_size, status),
+                arithmetic_ir_builder.BuildAddExpr(block, concat_str_size,
+                                                   concat_on_size,
+                                                   &concat_str_size, status),
                 "fail to concat string: fail to compute concat string total "
                 "size")
         }
         CHECK_TRUE(
-            arithmetic_ir_builder.BuildAddExpr(concat_str_size, size_i,
+            arithmetic_ir_builder.BuildAddExpr(block, concat_str_size, size_i,
                                                &concat_str_size, status),
             "fail to concat string: fail to compute concat string total size")
     }

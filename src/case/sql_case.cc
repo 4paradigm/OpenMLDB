@@ -47,7 +47,7 @@ bool SQLCase::TypeParse(const std::string& type_str, fesql::type::Type* type) {
     } else if ("bool" == type_str) {
         *type = type::kBool;
     } else {
-        LOG(WARNING) << "Invalid Type";
+        LOG(WARNING) << "Invalid Type: " << type_str;
         return false;
     }
     return true;
