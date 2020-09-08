@@ -17,10 +17,10 @@
 #ifndef SRC_NODE_EXPR_NODE_H_
 #define SRC_NODE_EXPR_NODE_H_
 
-#include "base/fe_status.h"
-
 #include <string>
 #include <vector>
+
+#include "base/fe_status.h"
 
 // fwd
 namespace fesql::vm {

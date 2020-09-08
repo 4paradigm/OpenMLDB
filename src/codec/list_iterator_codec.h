@@ -173,6 +173,7 @@ class StringColumnImpl : public ColumnImpl<StringRef> {
         if (buf == nullptr || v1::IsNullAt(buf, col_idx_)) {
             *is_null = true;
         } else {
+            *is_null = false;
             int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
             StringRef value;
             const char *buffer;
