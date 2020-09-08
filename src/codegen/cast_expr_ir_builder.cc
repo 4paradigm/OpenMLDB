@@ -138,9 +138,9 @@ Status CastExprIRBuilder::SafeCast(const NativeValue& value, ::llvm::Type* type,
     } else if (TypeIRBuilder::IsNumber(type)) {
         Status status;
         ::llvm::Value* output_value = nullptr;
-        CHECK_TRUE(
-            SafeCastNumber(value.GetValue(&builder), type, &output_value, status),
-            kCodegenError);
+        CHECK_TRUE(SafeCastNumber(value.GetValue(&builder), type, &output_value,
+                                  status),
+                   kCodegenError);
         if (value.IsNullable()) {
             *output = NativeValue::CreateWithFlag(output_value,
                                                   value.GetIsNull(&builder));
@@ -175,9 +175,9 @@ Status CastExprIRBuilder::UnSafeCast(const NativeValue& value,
     } else {
         Status status;
         ::llvm::Value* output_value = nullptr;
-        CHECK_TRUE(
-            UnSafeCastNumber(value.GetValue(&builder), type, &output_value, status),
-            kCodegenError, status.msg);
+        CHECK_TRUE(UnSafeCastNumber(value.GetValue(&builder), type,
+                                    &output_value, status),
+                   kCodegenError, status.msg);
         if (value.IsNullable()) {
             *output = NativeValue::CreateWithFlag(output_value,
                                                   value.GetIsNull(&builder));
