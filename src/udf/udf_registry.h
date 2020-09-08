@@ -239,7 +239,8 @@ class ArgSignatureTable {
         }
         std::string key = ss.str();
         auto iter = table_.find(key);
-        CHECK_TRUE(iter == table_.end(), "Duplicate signature: ", key);
+        CHECK_TRUE(iter == table_.end(), common::kCodegenError,
+                   "Duplicate signature: ", key);
         table_.insert(iter, {key, DefItem(t, args, is_variadic)});
         return Status::OK();
     }
@@ -508,7 +509,7 @@ struct LLVMUDFGen : public LLVMUDFGenBase {
     Status gen(codegen::CodeGenContext* ctx,
                const std::vector<codegen::NativeValue>& args,
                codegen::NativeValue* result) override {
-        CHECK_TRUE(args.size() == sizeof...(Args),
+        CHECK_TRUE(args.size() == sizeof...(Args), common::kCodegenError,
                    "Fail to invoke LLVMUDFGen::gen, args size do not "
                    "match with template args)");
         return gen_internal(ctx, args, result,
@@ -568,7 +569,7 @@ struct VariadicLLVMUDFGen : public LLVMUDFGenBase {
     Status gen(codegen::CodeGenContext* ctx,
                const std::vector<codegen::NativeValue>& args,
                codegen::NativeValue* result) override {
-        CHECK_TRUE(args.size() >= sizeof...(Args),
+        CHECK_TRUE(args.size() >= sizeof...(Args), common::kCodegenError,
                    "Fail to invoke VariadicLLVMUDFGen::gen, "
                    "args size do not match with template args)");
         return gen_internal(ctx, args, result,

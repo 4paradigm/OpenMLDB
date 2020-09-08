@@ -41,14 +41,14 @@ bool FnIRBuilder::Build(::fesql::node::FnNodeFnDef *root,
     if (root == NULL || root->GetType() != ::fesql::node::kFnDef) {
         status.code = common::kCodegenError;
         status.msg = "node is null";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
     passes::ResolveUdfDef resolver;
     status = resolver.Visit(root);
     if (!status.isOK()) {
-        LOG(WARNING) << "Fail to resolve udf function: " << status.msg;
+        LOG(WARNING) << "Fail to resolve udf function: " << status;
         return false;
     }
 
@@ -91,7 +91,7 @@ bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *header,
     bool return_by_arg = TypeIRBuilder::IsStructPtr(ret_type);
 
     if (!CreateFunction(header, return_by_arg, fn, status)) {
-        LOG(WARNING) << "Fail Build Function Header: " << status.msg;
+        LOG(WARNING) << "Fail Build Function Header: " << status;
         return false;
     }
     auto fn_name = sv->Enter((*fn)->getName().str());
@@ -111,7 +111,7 @@ bool FnIRBuilder::CreateFunction(const ::fesql::node::FnNodeFnHeander *fn_def,
     if (fn_def == NULL || fn == NULL) {
         status.code = common::kCodegenError;
         status.msg = "input is null";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -149,7 +149,7 @@ bool FnIRBuilder::FillArgs(const ::fesql::node::FnNodeList *node, ScopeVar *sv,
     if (node == NULL) {
         status.code = common::kCodegenError;
         status.msg = "node is null or node type mismatch";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -165,7 +165,7 @@ bool FnIRBuilder::FillArgs(const ::fesql::node::FnNodeList *node, ScopeVar *sv,
         if (!ok) {
             status.code = common::kCodegenError;
             status.msg = "fail to define var " + pnode->GetName();
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
         index++;
@@ -176,7 +176,7 @@ bool FnIRBuilder::FillArgs(const ::fesql::node::FnNodeList *node, ScopeVar *sv,
         if (!ok) {
             status.code = common::kCodegenError;
             status.msg = "fail to define @ret_struct";
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
     }
@@ -189,7 +189,7 @@ bool FnIRBuilder::BuildParas(const ::fesql::node::FnNodeList *node,
     if (node == NULL) {
         status.code = common::kCodegenError;
         status.msg = "node is null or node type mismatch";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -202,7 +202,7 @@ bool FnIRBuilder::BuildParas(const ::fesql::node::FnNodeList *node,
             status.code = common::kCodegenError;
             status.msg =
                 "fail to get primary type for pname " + pnode->GetName();
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
         paras.push_back(type);

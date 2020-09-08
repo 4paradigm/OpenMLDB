@@ -68,7 +68,7 @@ void CheckInfer(
     ExprAnalysisContext ctx(&nm, nullptr);
     auto status = expr->InferAttr(&ctx);
     if (!status.isOK()) {
-        LOG(INFO) << "Infer expr status: " << status.msg;
+        LOG(INFO) << "Infer expr status: " << status;
     }
     ASSERT_TRUE(status.isOK());
 
@@ -118,7 +118,7 @@ void CheckInferError(
 
     ExprAnalysisContext ctx(&nm, nullptr);
     auto status = expr->InferAttr(&ctx);
-    LOG(INFO) << "Infer expr status: " << status.msg;
+    LOG(INFO) << "Infer expr status: " << status;
     ASSERT_TRUE(!status.isOK());
 }
 

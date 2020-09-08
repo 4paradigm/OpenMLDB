@@ -191,7 +191,7 @@ TEST_F(ArithmeticIRBuilderTest, test_sub_null) {
 TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_null_0) {
     BinaryArithmeticExprCheck<Nullable<Timestamp>, Nullable<int32_t>,
                               Nullable<Timestamp>>(nullptr, 1, nullptr,
-                                                ::fesql::node::kFnOpMinus);
+                                                   ::fesql::node::kFnOpMinus);
 }
 TEST_F(ArithmeticIRBuilderTest, test_sub_timestamp_null_1) {
     BinaryArithmeticExprCheck<Nullable<Timestamp>, Nullable<int64_t>,

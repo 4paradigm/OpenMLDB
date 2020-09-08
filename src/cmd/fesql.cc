@@ -314,7 +314,7 @@ void HandleSQLScript(
         parser.parse(script, parser_trees, &node_manager, sql_status);
         if (0 != sql_status.code) {
             status.code = sql_status.code;
-            status.msg = sql_status.msg;
+            status.msg = sql_status.str();
             LOG(WARNING) << status.msg;
             return;
         }

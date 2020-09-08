@@ -12,6 +12,9 @@
 #include "codegen/null_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "codegen/type_ir_builder.h"
+
+using fesql::common::kCodegenError;
+
 namespace fesql {
 namespace codegen {
 
@@ -24,22 +27,24 @@ Status ArithmeticIRBuilder::FDivTypeAccept(::llvm::Type* lhs,
     CHECK_TRUE(
         (TypeIRBuilder::IsNumber(lhs) || TypeIRBuilder::IsTimestampPtr(rhs)) &&
             TypeIRBuilder::IsNumber(rhs),
-        "Invalid FDiv type: lhs ", TypeIRBuilder::TypeName(lhs), " rhs ",
-        TypeIRBuilder::TypeName(rhs))
+        kCodegenError, "Invalid FDiv type: lhs ", TypeIRBuilder::TypeName(lhs),
+        " rhs ", TypeIRBuilder::TypeName(rhs))
     return Status::OK();
 }
 Status ArithmeticIRBuilder::SDivTypeAccept(::llvm::Type* lhs,
                                            ::llvm::Type* rhs) {
     CHECK_TRUE(TypeIRBuilder::IsNumber(lhs) && TypeIRBuilder::IsNumber(rhs),
-               "Invalid SDiv Op type: lhs ", TypeIRBuilder::TypeName(lhs),
-               " rhs ", TypeIRBuilder::TypeName(rhs))
+               kCodegenError, "Invalid SDiv Op type: lhs ",
+               TypeIRBuilder::TypeName(lhs), " rhs ",
+               TypeIRBuilder::TypeName(rhs))
     return Status::OK();
 }
 Status ArithmeticIRBuilder::ModTypeAccept(::llvm::Type* lhs,
                                           ::llvm::Type* rhs) {
     CHECK_TRUE(TypeIRBuilder::IsNumber(lhs) && TypeIRBuilder::IsNumber(rhs),
-               "Invalid Mod Op type: lhs ", TypeIRBuilder::TypeName(lhs),
-               " rhs ", TypeIRBuilder::TypeName(rhs))
+               kCodegenError, "Invalid Mod Op type: lhs ",
+               TypeIRBuilder::TypeName(lhs), " rhs ",
+               TypeIRBuilder::TypeName(rhs))
     return Status::OK();
 }
 // Accept rules:
@@ -57,8 +62,8 @@ Status ArithmeticIRBuilder::AddTypeAccept(::llvm::Type* lhs,
             (TypeIRBuilder::IsInterger(lhs) &&
              TypeIRBuilder::IsTimestampPtr(rhs)) ||
             (TypeIRBuilder::IsNumber(lhs) && TypeIRBuilder::IsNumber(rhs)),
-        "Invalid Add Op type: lhs ", TypeIRBuilder::TypeName(lhs), " rhs ",
-        TypeIRBuilder::TypeName(rhs))
+        kCodegenError, "Invalid Add Op type: lhs ",
+        TypeIRBuilder::TypeName(lhs), " rhs ", TypeIRBuilder::TypeName(rhs))
     return Status::OK();
 }
 // Accept rules:
@@ -70,27 +75,30 @@ Status ArithmeticIRBuilder::SubTypeAccept(::llvm::Type* lhs,
         (TypeIRBuilder::IsTimestampPtr(lhs) &&
          TypeIRBuilder::IsInterger(rhs)) ||
             (TypeIRBuilder::IsNumber(lhs) && TypeIRBuilder::IsNumber(rhs)),
-        "Invalid Sub Op type: lhs ", TypeIRBuilder::TypeName(lhs), " rhs ",
-        TypeIRBuilder::TypeName(rhs))
+        kCodegenError, "Invalid Sub Op type: lhs ",
+        TypeIRBuilder::TypeName(lhs), " rhs ", TypeIRBuilder::TypeName(rhs))
     return Status::OK();
 }
 Status ArithmeticIRBuilder::MultiTypeAccept(::llvm::Type* lhs,
                                             ::llvm::Type* rhs) {
     CHECK_TRUE(TypeIRBuilder::IsNumber(lhs) && TypeIRBuilder::IsNumber(rhs),
-               "Invalid Multi Op type: lhs ", TypeIRBuilder::TypeName(lhs),
-               " rhs ", TypeIRBuilder::TypeName(rhs))
+               kCodegenError, "Invalid Multi Op type: lhs ",
+               TypeIRBuilder::TypeName(lhs), " rhs ",
+               TypeIRBuilder::TypeName(rhs))
     return Status::OK();
 }
 Status AndTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs) {
     CHECK_TRUE(TypeIRBuilder::IsInterger(lhs) && TypeIRBuilder::IsInterger(rhs),
-               "Invalid And Op type: lhs ", TypeIRBuilder::TypeName(lhs),
-               " rhs ", TypeIRBuilder::TypeName(rhs))
+               kCodegenError, "Invalid And Op type: lhs ",
+               TypeIRBuilder::TypeName(lhs), " rhs ",
+               TypeIRBuilder::TypeName(rhs))
     return Status::OK();
 }
 Status LShiftTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs) {
     CHECK_TRUE(TypeIRBuilder::IsInterger(lhs) && TypeIRBuilder::IsInterger(rhs),
-               "Invalid Lshift Op type: lhs ", TypeIRBuilder::TypeName(lhs),
-               " rhs ", TypeIRBuilder::TypeName(rhs))
+               kCodegenError, "Invalid Lshift Op type: lhs ",
+               TypeIRBuilder::TypeName(lhs), " rhs ",
+               TypeIRBuilder::TypeName(rhs))
     return Status::OK();
 }
 bool ArithmeticIRBuilder::InferAndCastedNumberTypes(
@@ -100,7 +108,7 @@ bool ArithmeticIRBuilder::InferAndCastedNumberTypes(
     if (NULL == left || NULL == right) {
         status.msg = "left or right value is null";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -113,7 +121,7 @@ bool ArithmeticIRBuilder::InferAndCastedNumberTypes(
                      TypeIRBuilder::TypeName(left_type) + " and  " +
                      TypeIRBuilder::TypeName(right_type);
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -157,7 +165,7 @@ bool ArithmeticIRBuilder::InferAndCastedNumberTypes(
                 TypeIRBuilder::TypeName(left_type) + " and  " +
                 TypeIRBuilder::TypeName(right_type);
             status.code = common::kCodegenError;
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
     }
@@ -205,7 +213,7 @@ bool ArithmeticIRBuilder::InferAndCastIntegerTypes(
                 TypeIRBuilder::TypeName(left_type) + " and  " +
                 TypeIRBuilder::TypeName(right_type);
             status.code = common::kCodegenError;
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
     }
@@ -240,8 +248,8 @@ bool ArithmeticIRBuilder::InferAndCastDoubleTypes(
         if (!cast_expr_ir_builder.UnSafeCastNumber(
                 left, ::llvm::Type::getDoubleTy(block->getContext()),
                 casted_left, status)) {
-            status.msg = "fail to codegen add expr: " + status.msg;
-            LOG(WARNING) << status.msg;
+            status.msg = "fail to codegen add expr: " + status.str();
+            LOG(WARNING) << status;
             return false;
         }
     }
@@ -250,8 +258,8 @@ bool ArithmeticIRBuilder::InferAndCastDoubleTypes(
         if (!cast_expr_ir_builder.UnSafeCastNumber(
                 right, ::llvm::Type::getDoubleTy(block->getContext()),
                 casted_right, status)) {
-            status.msg = "fail to codegen add expr: " + status.msg;
-            LOG(WARNING) << status.msg;
+            status.msg = "fail to codegen add expr: " + status.str();
+            LOG(WARNING) << status;
             return false;
         }
     }
@@ -267,7 +275,7 @@ bool ArithmeticIRBuilder::BuildAnd(::llvm::BasicBlock* block,
         status.msg =
             "fail to codegen arithmetic and expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
@@ -283,7 +291,7 @@ bool ArithmeticIRBuilder::BuildLShiftLeft(::llvm::BasicBlock* block,
         status.msg =
             "fail to codegen logical shift left expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
@@ -299,7 +307,7 @@ bool ArithmeticIRBuilder::BuildLShiftRight(::llvm::BasicBlock* block,
         status.msg =
             "fail to codegen logical shift right expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
@@ -372,7 +380,7 @@ bool ArithmeticIRBuilder::BuildAddExpr(
     } else {
         status.msg = "fail to codegen add expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
@@ -528,7 +536,7 @@ bool ArithmeticIRBuilder::BuildSubExpr(
     } else {
         status.msg = "fail to codegen sub expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
@@ -555,7 +563,7 @@ bool ArithmeticIRBuilder::BuildMultiExpr(
     } else {
         status.msg = "fail to codegen mul expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
@@ -583,7 +591,7 @@ bool ArithmeticIRBuilder::BuildFDivExpr(::llvm::BasicBlock* block,
     } else {
         status.msg = "fail to codegen fdiv expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
@@ -597,7 +605,7 @@ bool ArithmeticIRBuilder::BuildSDivExpr(::llvm::BasicBlock* block,
         status.msg =
             "fail to codegen integer sdiv expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     ::llvm::Value* casted_left = NULL;
@@ -650,7 +658,7 @@ bool ArithmeticIRBuilder::BuildModExpr(::llvm::BasicBlock* block,
     } else {
         status.msg = "fail to codegen mul expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;

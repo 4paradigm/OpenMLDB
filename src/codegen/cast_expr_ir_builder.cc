@@ -12,6 +12,9 @@
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
+
+using fesql::common::kCodegenError;
+
 namespace fesql {
 namespace codegen {
 CastExprIRBuilder::CastExprIRBuilder(::llvm::BasicBlock* block)
@@ -115,7 +118,7 @@ Status CastExprIRBuilder::Cast(const NativeValue& value,
 Status CastExprIRBuilder::SafeCast(const NativeValue& value, ::llvm::Type* type,
                                    NativeValue* output) {
     ::llvm::IRBuilder<> builder(block_);
-    CHECK_TRUE(IsSafeCast(value.GetType(), type),
+    CHECK_TRUE(IsSafeCast(value.GetType(), type), kCodegenError,
                "Safe cast fail: unsafe cast");
     Status status;
     if (value.IsConstNull()) {
@@ -135,8 +138,9 @@ Status CastExprIRBuilder::SafeCast(const NativeValue& value, ::llvm::Type* type,
     } else if (TypeIRBuilder::IsNumber(type)) {
         Status status;
         ::llvm::Value* output_value = nullptr;
-        CHECK_TRUE(SafeCastNumber(value.GetValue(&builder), type, &output_value,
-                                  status))
+        CHECK_TRUE(
+            SafeCastNumber(value.GetValue(&builder), type, &output_value, status),
+            kCodegenError);
         if (value.IsNullable()) {
             *output = NativeValue::CreateWithFlag(output_value,
                                                   value.GetIsNull(&builder));
@@ -171,9 +175,9 @@ Status CastExprIRBuilder::UnSafeCast(const NativeValue& value,
     } else {
         Status status;
         ::llvm::Value* output_value = nullptr;
-        CHECK_TRUE(UnSafeCastNumber(value.GetValue(&builder), type,
-                                    &output_value, status),
-                   status.msg);
+        CHECK_TRUE(
+            UnSafeCastNumber(value.GetValue(&builder), type, &output_value, status),
+            kCodegenError, status.msg);
         if (value.IsNullable()) {
             *output = NativeValue::CreateWithFlag(output_value,
                                                   value.GetIsNull(&builder));
@@ -220,13 +224,13 @@ bool CastExprIRBuilder::SafeCastNumber(::llvm::Value* value, ::llvm::Type* type,
             TypeIRBuilder::TypeName(value->getType()) + " to " +
             TypeIRBuilder::TypeName(type);
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (NULL == *output) {
         status.msg = "fail to cast";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
@@ -280,7 +284,7 @@ bool CastExprIRBuilder::UnSafeCastNumber(::llvm::Value* value,
     if (NULL == *output) {
         status.msg = "fail to cast";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
@@ -329,7 +333,7 @@ bool CastExprIRBuilder::BoolCast(llvm::Value* value, llvm::Value** casted_value,
         status.msg =
             "fail to codegen cast bool expr: value type isn't compatible";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;

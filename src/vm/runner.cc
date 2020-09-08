@@ -25,7 +25,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     if (nullptr == node) {
         status.msg = "fail to build runner : physical node is null";
         status.code = common::kOpGenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return nullptr;
     }
 
@@ -57,7 +57,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     status.msg = "fail to support data provider type " +
                                  DataProviderTypeName(op->provider_type_);
                     status.code = common::kOpGenError;
-                    LOG(WARNING) << status.msg;
+                    LOG(WARNING) << status;
                     return nullptr;
                 }
             }
@@ -164,7 +164,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     status.msg = "fail to support project type " +
                                  ProjectTypeName(op->project_type_);
                     status.code = common::kOpGenError;
-                    LOG(WARNING) << status.msg;
+                    LOG(WARNING) << status;
                     return nullptr;
                 }
             }
@@ -232,7 +232,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     status.code = common::kOpGenError;
                     status.msg = "can't handle join type " +
                                  node::JoinTypeName(op->join().join_type());
-                    LOG(WARNING) << status.msg;
+                    LOG(WARNING) << status;
                     return nullptr;
                 }
             }
@@ -262,7 +262,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     status.code = common::kOpGenError;
                     status.msg = "can't handle join type " +
                                  node::JoinTypeName(op->join().join_type());
-                    LOG(WARNING) << status.msg;
+                    LOG(WARNING) << status;
                     return nullptr;
                 }
             }
@@ -309,7 +309,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             status.code = common::kOpGenError;
             status.msg = "can't handle node " + std::to_string(node->type_) +
                          " " + PhysicalOpTypeName(node->type_);
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return nullptr;
         }
     }

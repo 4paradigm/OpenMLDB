@@ -13,6 +13,9 @@
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "codegen/type_ir_builder.h"
+
+using fesql::common::kCodegenError;
+
 namespace fesql {
 namespace codegen {
 
@@ -46,11 +49,14 @@ Status PredicateIRBuilder::BuildAndExpr(NativeValue left, NativeValue right,
     ::llvm::Value* casted_right = NULL;
     Status status;
     CHECK_TRUE(InferAndCastBoolTypes(block_, raw_left, &casted_left, status),
+               kCodegenError,
                "Infer and cast lhs type of and(&&) failed: ", status.msg);
     CHECK_TRUE(InferAndCastBoolTypes(block_, raw_right, &casted_right, status),
+               kCodegenError,
                "Infer and cast rhs type of and(&&) failed: ", status.msg);
     CHECK_TRUE(casted_left->getType()->isIntegerTy(1) &&
                    casted_right->getType()->isIntegerTy(1),
+               kCodegenError,
                "Fail to codegen &&(and) expr: value types are invalid");
 
     ::llvm::Value* result_val = builder.CreateAnd(casted_left, casted_right);
@@ -90,11 +96,14 @@ Status PredicateIRBuilder::BuildOrExpr(NativeValue left, NativeValue right,
     ::llvm::Value* casted_right = NULL;
     Status status;
     CHECK_TRUE(InferAndCastBoolTypes(block_, raw_left, &casted_left, status),
+               kCodegenError,
                "Infer and cast lhs type of or(||) failed: ", status.msg);
     CHECK_TRUE(InferAndCastBoolTypes(block_, raw_right, &casted_right, status),
+               kCodegenError,
                "Infer and cast rhs type of or(||) failed: ", status.msg);
     CHECK_TRUE(casted_left->getType()->isIntegerTy(1) &&
                    casted_right->getType()->isIntegerTy(1),
+               kCodegenError,
                "Fail to codegen &&(and) expr: value types are invalid");
 
     ::llvm::Value* result_val = builder.CreateOr(casted_left, casted_right);
@@ -136,11 +145,14 @@ Status PredicateIRBuilder::BuildXorExpr(NativeValue left, NativeValue right,
     ::llvm::Value* casted_right = NULL;
     Status status;
     CHECK_TRUE(InferAndCastBoolTypes(block_, raw_left, &casted_left, status),
+               kCodegenError,
                "Infer and cast lhs type of and(&&) failed: ", status.msg);
     CHECK_TRUE(InferAndCastBoolTypes(block_, raw_right, &casted_right, status),
+               kCodegenError,
                "Infer and cast rhs type of and(&&) failed: ", status.msg);
     CHECK_TRUE(casted_left->getType()->isIntegerTy(1) &&
                    casted_right->getType()->isIntegerTy(1),
+               kCodegenError,
                "Fail to codegen &&(and) expr: value types are invalid");
 
     ::llvm::Value* result_val = builder.CreateXor(casted_left, casted_right);
@@ -159,8 +171,8 @@ Status PredicateIRBuilder::BuildNotExpr(NativeValue input,
     ::llvm::Value* casted_raw = nullptr;
     Status status;
     CHECK_TRUE(InferAndCastBoolTypes(block_, raw, &casted_raw, status),
-               status.msg);
-    CHECK_TRUE(casted_raw->getType()->isIntegerTy(1),
+               kCodegenError, status.msg);
+    CHECK_TRUE(casted_raw->getType()->isIntegerTy(1), kCodegenError,
                "Fail to codegen !(not) expr: value types are invalid");
 
     *output =
@@ -280,13 +292,13 @@ bool PredicateIRBuilder::BuildEqExpr(::llvm::BasicBlock* block,
     } else {
         status.msg = "fail to codegen == expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (nullptr == *output) {
         status.msg = "fail to codegen == expr";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -325,13 +337,13 @@ bool PredicateIRBuilder::BuildNeqExpr(::llvm::BasicBlock* block,
     } else {
         status.msg = "fail to codegen neq expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (nullptr == *output) {
         status.msg = "fail to codegen == expr";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -370,13 +382,13 @@ bool PredicateIRBuilder::BuildGtExpr(::llvm::BasicBlock* block,
     } else {
         status.msg = "fail to codegen > expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (nullptr == *output) {
         status.msg = "fail to codegen > expr";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -415,13 +427,13 @@ bool PredicateIRBuilder::BuildGeExpr(::llvm::BasicBlock* block,
     } else {
         status.msg = "fail to codegen >= expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (nullptr == *output) {
         status.msg = "fail to codegen >= expr";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -460,13 +472,13 @@ bool PredicateIRBuilder::BuildLtExpr(::llvm::BasicBlock* block,
     } else {
         status.msg = "fail to codegen < expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (nullptr == *output) {
         status.msg = "fail to codegen < expr";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -505,13 +517,13 @@ bool PredicateIRBuilder::BuildLeExpr(::llvm::BasicBlock* block,
     } else {
         status.msg = "fail to codegen <= expr: value types are invalid";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (nullptr == *output) {
         status.msg = "fail to codegen <= expr";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -541,8 +553,9 @@ Status PredicateIRBuilder::CompareTypeAccept(::llvm::Type* lhs,
                 TypeIRBuilder::IsStringPtr(lhs) ||
                 TypeIRBuilder::IsStringPtr(rhs) || lhs == rhs ||
                 (TypeIRBuilder::IsNumber(lhs) && TypeIRBuilder::IsNumber(rhs))),
-               "Invalid Compare Op type: lhs ", TypeIRBuilder::TypeName(lhs),
-               " rhs ", TypeIRBuilder::TypeName(rhs))
+               kCodegenError, "Invalid Compare Op type: lhs ",
+               TypeIRBuilder::TypeName(lhs), " rhs ",
+               TypeIRBuilder::TypeName(rhs))
     return Status::OK();
 }
 bool PredicateIRBuilder::InferAndCastBoolTypes(::llvm::BasicBlock* block,
@@ -613,7 +626,7 @@ bool PredicateIRBuilder::InferAndCastTypes(::llvm::BasicBlock* block,
     if (TypeIRBuilder::IsTimestampPtr(left_type)) {
         if (false == timestamp_builder.GetTs(block, left, casted_left)) {
             status.msg = "fail to get ts";
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
         left_type = (*casted_left)->getType();
@@ -622,7 +635,7 @@ bool PredicateIRBuilder::InferAndCastTypes(::llvm::BasicBlock* block,
     if (TypeIRBuilder::IsTimestampPtr(right_type)) {
         if (false == timestamp_builder.GetTs(block, right, casted_right)) {
             status.msg = "fail to get ts";
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
         right_type = (*casted_right)->getType();
@@ -664,7 +677,7 @@ bool PredicateIRBuilder::InferAndCastTypes(::llvm::BasicBlock* block,
             status.msg =
                 "fail to codegen add expr: value type isn't compatible";
             status.code = common::kCodegenError;
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
     }

@@ -7,25 +7,26 @@
 #include <utility>
 #include "passes/resolve_udf_def.h"
 
+using ::fesql::common::kCodegenError;
+using ::fesql::node::TypeEquals;
+
 namespace fesql {
 namespace passes {
 
-using node::TypeEquals;
-
 Status ResolveFnAndAttrs::CheckSignature(
     node::FnDefNode* fn, const std::vector<const node::TypeNode*>& arg_types) {
-    CHECK_TRUE(fn->GetArgSize() == arg_types.size(),
+    CHECK_TRUE(fn->GetArgSize() == arg_types.size(), kCodegenError,
                "Infer fn def failed, expect ", fn->GetArgSize(),
                " arguments but get ", arg_types.size());
 
     for (size_t i = 0; i < fn->GetArgSize(); ++i) {
-        CHECK_TRUE(arg_types[i] != nullptr, i,
+        CHECK_TRUE(arg_types[i] != nullptr, kCodegenError, i,
                    "th actual argument type must be set non-null");
         auto expect_type = fn->GetArgType(i);
         if (expect_type == nullptr) {
             continue;  // skip unknown type, it should be resolved in this pass
         }
-        CHECK_TRUE(TypeEquals(expect_type, arg_types[i]),
+        CHECK_TRUE(TypeEquals(expect_type, arg_types[i]), kCodegenError,
                    "Infer fn def failed, expect ", expect_type->GetName(),
                    " at ", i, "th argument, but get ", arg_types[i]->GetName());
     }
@@ -129,24 +130,24 @@ Status ResolveFnAndAttrs::VisitUDAFDef(
     } else {
         state_type = udaf->GetElementType(0);
     }
-    CHECK_TRUE(state_type != nullptr, "Fail to resolve state type of udaf ",
-               udaf->GetName());
+    CHECK_TRUE(state_type != nullptr, kCodegenError,
+               "Fail to resolve state type of udaf ", udaf->GetName());
 
     // visit update
     std::vector<const node::TypeNode*> update_arg_types;
     update_arg_types.push_back(state_type);
     for (auto list_type : arg_types) {
-        CHECK_TRUE(list_type->base() == node::kList);
+        CHECK_TRUE(list_type->base() == node::kList, kCodegenError);
         update_arg_types.push_back(list_type->GetGenericType(0));
     }
     node::FnDefNode* resolved_update = nullptr;
-    CHECK_TRUE(udaf->update_func() != nullptr);
+    CHECK_TRUE(udaf->update_func() != nullptr, kCodegenError);
     CHECK_STATUS(
         VisitFnDef(udaf->update_func(), update_arg_types, &resolved_update),
         "Resolve update function of ", udaf->GetName(), " failed");
     state_type = resolved_update->GetReturnType();
-    CHECK_TRUE(state_type != nullptr, "Fail to resolve state type of udaf ",
-               udaf->GetName());
+    CHECK_TRUE(state_type != nullptr, kCodegenError,
+               "Fail to resolve state type of udaf ", udaf->GetName());
 
     // visit merge
     node::FnDefNode* resolved_merge = nullptr;
@@ -228,7 +229,7 @@ Status ResolveFnAndAttrs::VisitExpr(node::ExprNode* expr,
                     // fallback to legacy fn gen with warning
                     LOG(WARNING)
                         << "Resolve function '" << external_fn->function_name()
-                        << "' failed, fallback to legacy: " << status.msg;
+                        << "' failed, fallback to legacy: " << status;
                 }
             }
             break;

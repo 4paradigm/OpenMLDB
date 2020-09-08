@@ -134,7 +134,7 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
                                  false, manager, lib, &to_compile_func,
                                  &project_names, &project_frames);
     if (!status.isOK()) {
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
     }
     ASSERT_TRUE(status.isOK());
 
@@ -145,7 +145,7 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
                                  m.get());
     status = ir_builder.Build("test_at_fn", to_compile_func, project_names,
                               project_frames, output_schema, column_sources);
-    LOG(INFO) << "fn let ir build status: " << status.msg;
+    LOG(INFO) << "fn let ir build status: " << status;
     ASSERT_TRUE(status.isOK());
     m->print(::llvm::errs(), NULL);
     ExitOnError ExitOnErr;

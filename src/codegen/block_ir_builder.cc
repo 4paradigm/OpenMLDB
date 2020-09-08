@@ -29,7 +29,7 @@ bool fesql::codegen::BlockIRBuilder::BuildBlock(
     if (statements == NULL || block == NULL || end_block == NULL) {
         status.code = common::kCodegenError;
         status.msg = "node or block is null";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -101,7 +101,7 @@ bool fesql::codegen::BlockIRBuilder::BuildBlock(
                 if (!ClearScopeValue(loop_end, status)) {
                     status.code = common::kCodegenError;
                     status.msg = "fail to clear scope value";
-                    LOG(WARNING) << status.msg;
+                    LOG(WARNING) << status;
                     return false;
                 }
                 sv_->Exit();
@@ -111,7 +111,7 @@ bool fesql::codegen::BlockIRBuilder::BuildBlock(
                 status.code = common::kCodegenError;
                 status.msg = "fail to codegen for unrecognized fn type " +
                              node::NameOfSQLNodeType(node->GetType());
-                LOG(WARNING) << status.msg;
+                LOG(WARNING) << status;
                 return false;
             }
         }
@@ -140,7 +140,7 @@ bool BlockIRBuilder::DoBuildBranchBlock(
         bool elif_ok = expr_builder.Build(elif_block->elif_node_->expression_,
                                           &elif_condition, status);
         if (!elif_ok) {
-            LOG(WARNING) << "fail to codegen else if condition: " << status.msg;
+            LOG(WARNING) << "fail to codegen else if condition: " << status;
             return false;
         }
 
@@ -149,13 +149,15 @@ bool BlockIRBuilder::DoBuildBranchBlock(
             [&]() {
                 elif_ok = BuildBlock(elif_block->block_, ctx->GetCurrentBlock(),
                                      if_else_end, status);
-                CHECK_TRUE(elif_ok, "fail to codegen block: ", status.msg);
+                CHECK_TRUE(elif_ok, kCodegenError,
+                           "fail to codegen block: ", status.str());
                 return Status::OK();
             },
             [&]() {
                 elif_ok = DoBuildBranchBlock(if_else_block, branch_idx + 1, ctx,
                                              if_else_end, status);
-                CHECK_TRUE(elif_ok, "fail to codegen block: ", status.msg);
+                CHECK_TRUE(elif_ok, kCodegenError,
+                           "fail to codegen block: ", status.str());
                 return Status::OK();
             });
 
@@ -167,7 +169,7 @@ bool BlockIRBuilder::DoBuildBranchBlock(
             bool else_ok = BuildBlock(if_else_block->else_block_->block_,
                                       cur_block, if_else_end, status);
             if (!else_ok) {
-                LOG(WARNING) << "fail to codegen else block: " << status.msg;
+                LOG(WARNING) << "fail to codegen else block: " << status;
                 return false;
             }
         }
@@ -185,7 +187,7 @@ bool BlockIRBuilder::BuildIfElseBlock(
         status.msg =
             "fail to codegen if else block: "
             "node or start block or end expr is null";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     llvm::Function *fn = if_else_start->getParent();
@@ -201,7 +203,7 @@ bool BlockIRBuilder::BuildIfElseBlock(
     NativeValue condition;
     if (!expr_builder.Build(if_else_block->if_block_->if_node->expression_,
                             &condition, status)) {
-        LOG(WARNING) << "fail to codegen condition expression: " << status.msg;
+        LOG(WARNING) << "fail to codegen condition expression: " << status;
         return false;
     }
 
@@ -210,13 +212,13 @@ bool BlockIRBuilder::BuildIfElseBlock(
         [&]() {
             CHECK_TRUE(
                 DoBuildBranchBlock(if_else_block, 0, &ctx, if_else_end, status),
-                "fail to codegen block:", status.msg);
+                kCodegenError, "fail to codegen block:", status.str());
             return Status::OK();
         },
         [&]() {
             CHECK_TRUE(
                 DoBuildBranchBlock(if_else_block, 1, &ctx, if_else_end, status),
-                "fail to codegen block:", status.msg);
+                kCodegenError, "fail to codegen block:", status.str());
             return Status::OK();
         });
 
@@ -224,7 +226,7 @@ bool BlockIRBuilder::BuildIfElseBlock(
     root_group.ReInsertTo(fn);
 
     if (!status.isOK()) {
-        LOG(WARNING) << "fail to codegen if else block: " << status.msg;
+        LOG(WARNING) << "fail to codegen if else block: " << status;
         return false;
     }
     return true;
@@ -239,7 +241,7 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
         status.msg =
             "fail to codegen for block: node or start block or end expr is "
             "null";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     llvm::Function *fn = start_block->getParent();
@@ -253,8 +255,7 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
     NativeValue container_value_wrapper;
     if (!expr_builder.Build(node->for_in_node_->in_expression_,
                             &container_value_wrapper, status)) {
-        LOG(WARNING) << "fail to build for condition expression: "
-                     << status.msg;
+        LOG(WARNING) << "fail to build for condition expression: " << status;
         return false;
     }
     llvm::Value *container_value = container_value_wrapper.GetValue(&builder);
@@ -265,7 +266,7 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
         fesql::node::kList != container_type_node.base_) {
         status.msg = "fail to codegen list[pos]: invalid list type";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     const fesql::node::TypeNode *elem_type_node =
@@ -276,7 +277,7 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
     status = list_ir_builder.BuildIterator(container_value, elem_type_node,
                                            &iterator);
     if (!status.isOK()) {
-        LOG(WARNING) << "fail to build iterator expression: " << status.msg;
+        LOG(WARNING) << "fail to build iterator expression: " << status;
         return false;
     }
     sv_->AddIteratorValue(iterator);
@@ -294,7 +295,7 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
                                                       &condition);
         if (!status.isOK()) {
             LOG(WARNING) << "fail to build iterator has next expression: "
-                         << status.msg;
+                         << status;
             return false;
         }
 
@@ -311,7 +312,7 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
                                                    elem_nullable, &next);
         if (!status.isOK()) {
             LOG(WARNING) << "fail to build iterator next expression: "
-                         << status.msg;
+                         << status;
             return false;
         }
         auto var_key = node->for_in_node_->var_->GetExprString();
@@ -320,7 +321,7 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
         }
         // loop body
         if (!BuildBlock(node->block_, loop, loop_cond, status)) {
-            LOG(WARNING) << "fail to codegen block: " << status.msg;
+            LOG(WARNING) << "fail to codegen block: " << status;
             return false;
         }
     }
@@ -332,7 +333,7 @@ bool BlockIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
     if (node == nullptr || block == nullptr || node->return_expr_ == nullptr) {
         status.code = common::kCodegenError;
         status.msg = "node or block or return expr is null";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -342,7 +343,7 @@ bool BlockIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
     NativeValue value_wrapper;
     bool ok = expr_builder.Build(node->return_expr_, &value_wrapper, status);
     if (!ok) {
-        LOG(WARNING) << "fail to codegen return expression: " << status.msg;
+        LOG(WARNING) << "fail to codegen return expression: " << status;
         return false;
     }
     ::llvm::Value *value = value_wrapper.GetValue(&builder);
@@ -363,7 +364,7 @@ bool BlockIRBuilder::BuildReturnStmt(const ::fesql::node::FnReturnStmt *node,
         value = builder.getInt1(true);
     }
     if (!ClearAllScopeValues(block, status)) {
-        LOG(WARNING) << "fail to clear all scopes values : " << status.msg;
+        LOG(WARNING) << "fail to clear all scopes values : " << status;
         return false;
     }
     builder.CreateRet(value);
@@ -376,7 +377,7 @@ bool BlockIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
     if (node == NULL || block == NULL || node->expression_ == nullptr) {
         status.code = common::kCodegenError;
         status.msg = "node or block is null";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     ExprIRBuilder builder(block, sv_);
@@ -384,7 +385,7 @@ bool BlockIRBuilder::BuildAssignStmt(const ::fesql::node::FnAssignNode *node,
     NativeValue value;
     bool ok = builder.Build(node->expression_, &value, status);
     if (!ok) {
-        LOG(WARNING) << "fail to codegen expr" << status.msg;
+        LOG(WARNING) << "fail to codegen expr" << status;
         return false;
     }
     auto var_key = node->var_->GetExprString();
@@ -405,7 +406,7 @@ bool BlockIRBuilder::ClearScopeValue(llvm::BasicBlock *block,
                 status.msg =
                     "fail to codegen iterator.delete(): invalid iterator type";
                 status.code = common::kCodegenError;
-                LOG(WARNING) << status.msg;
+                LOG(WARNING) << status;
                 return false;
             }
             const fesql::node::TypeNode *elem_type_node =
@@ -413,8 +414,8 @@ bool BlockIRBuilder::ClearScopeValue(llvm::BasicBlock *block,
             status = list_ir_builder_delete.BuildIteratorDelete(
                 *iter, elem_type_node, &ret_delete);
             if (!status.isOK()) {
-                LOG(WARNING) << "fail to build iterator delete expression: "
-                             << status.msg;
+                LOG(WARNING)
+                    << "fail to build iterator delete expression: " << status;
                 return false;
             }
         }
@@ -438,7 +439,7 @@ bool BlockIRBuilder::ClearAllScopeValues(llvm::BasicBlock *block,
                         "fail to codegen iterator.delete(): invalid iterator "
                         "type";
                     status.code = common::kCodegenError;
-                    LOG(WARNING) << status.msg;
+                    LOG(WARNING) << status;
                     return false;
                 }
                 const fesql::node::TypeNode *elem_type_node =
@@ -447,7 +448,7 @@ bool BlockIRBuilder::ClearAllScopeValues(llvm::BasicBlock *block,
                     *iter, elem_type_node, &ret_delete);
                 if (!status.isOK()) {
                     LOG(WARNING) << "fail to build iterator delete expression: "
-                                 << status.msg;
+                                 << status;
                     return false;
                 }
             }

@@ -9,6 +9,8 @@
 namespace fesql {
 namespace passes {
 
+using ::fesql::common::kCodegenError;
+
 Status LambdafyProjects::Transform(const node::PlanNodeList& projects,
                                    node::LambdaNode** out_lambda,
                                    std::vector<int>* require_agg_vec,
@@ -30,7 +32,7 @@ Status LambdafyProjects::Transform(const node::PlanNodeList& projects,
     require_agg_vec->clear();
     for (node::PlanNode* plan_node : projects) {
         auto pp_node = dynamic_cast<node::ProjectNode*>(plan_node);
-        CHECK_TRUE(pp_node != nullptr);
+        CHECK_TRUE(pp_node != nullptr, kCodegenError);
         auto expr = pp_node->GetExpression();
         if (expr->GetExprType() == node::kExprAll) {
             // expand *
@@ -161,7 +163,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
                                       node::ExprIdNode* window_arg,
                                       node::ExprNode** out) {
     auto fn = dynamic_cast<const node::ExternalFnDefNode*>(call->GetFnDef());
-    CHECK_TRUE(fn != nullptr);
+    CHECK_TRUE(fn != nullptr, kCodegenError);
 
     // build update function
     auto state_arg = nm_->MakeExprIdNode("state", node::ExprIdNode::GetNewId());
@@ -205,7 +207,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
 
         } else {
             LOG(WARNING) << "Resolve " << i
-                         << "th udaf argument failed: " << status.msg;
+                         << "th udaf argument failed: " << status;
         }
 
         // if all args agg
@@ -229,7 +231,8 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
                                            agg_original_args, nm_, &fn_def),
                  "Resolve original udaf for ", fn->function_name(), " failed");
     auto origin_udaf = dynamic_cast<node::UDAFDefNode*>(fn_def);
-    CHECK_TRUE(origin_udaf != nullptr, fn->function_name(), " is not an udaf");
+    CHECK_TRUE(origin_udaf != nullptr, kCodegenError, fn->function_name(),
+               " is not an udaf");
 
     // convention to refer unresolved udaf's update function
     auto ori_update_fn = origin_udaf->update_func();
@@ -237,7 +240,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
     auto ori_output_fn = origin_udaf->output_func();
     auto ori_init = origin_udaf->init_expr();
     CHECK_TRUE(
-        ori_init != nullptr,
+        ori_init != nullptr, kCodegenError,
         "Do not support use first element as init state for lambdafy udaf");
 
     auto update_body = nm_->MakeFuncNode(ori_update_fn, update_args, nullptr);

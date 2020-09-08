@@ -371,10 +371,10 @@ void ExtractExprListFromSimpleSQL(::fesql::node::NodeManager* nm,
     parser.parse(sql, parser_trees, nm, base_status);
     ASSERT_EQ(0, base_status.code);
     if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) == 0) {
-        std::cout << base_status.msg;
+        std::cout << base_status.str();
         std::cout << *(plan_trees[0]) << std::endl;
     } else {
-        std::cout << base_status.msg;
+        std::cout << base_status.str();
     }
     ASSERT_EQ(0, base_status.code);
     std::cout.flush();
@@ -402,10 +402,10 @@ void ExtractExprFromSimpleSQL(::fesql::node::NodeManager* nm,
     parser.parse(sql, parser_trees, nm, base_status);
     ASSERT_EQ(0, base_status.code);
     if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) == 0) {
-        std::cout << base_status.msg;
+        std::cout << base_status.str();
         std::cout << *(plan_trees[0]) << std::endl;
     } else {
-        std::cout << base_status.msg;
+        std::cout << base_status.str();
     }
     ASSERT_EQ(0, base_status.code);
     std::cout.flush();

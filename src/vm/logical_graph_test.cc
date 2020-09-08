@@ -69,7 +69,7 @@ TEST_P(LogicalGraphTest, transform_logical_graph_test) {
             0) {
             std::cout << *(plan_trees[0]) << std::endl;
         } else {
-            std::cout << base_status.msg;
+            std::cout << base_status.str();
         }
 
         ASSERT_EQ(0, base_status.code);
