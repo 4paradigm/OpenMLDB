@@ -1314,7 +1314,7 @@ struct TopKAvgCateWhereDef {
 
 void DefaultUDFLibrary::InitStringUDF() {
     RegisterExternalTemplate<v1::ToString>("string")
-        .args_in<int16_t, int32_t, int64_t, float, double>()
+        .args_in<bool, int16_t, int32_t, int64_t, float, double>()
         .return_by_arg(true);
 
     RegisterExternal("string")
