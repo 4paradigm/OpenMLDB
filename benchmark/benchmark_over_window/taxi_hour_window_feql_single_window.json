@@ -1,0 +1,73 @@
+{
+    "script": "w \u003d window(t1, \"vendor_id\", \"pickup_datetime\", 10000, 0, \"output_w\")\n\ntrip_duration \u003d column(w.trip_duration[0])\npassenger_count \u003d column(w.passenger_count[0])\nvendor_sum_pl \u003d column(sum(w.pickup_latitude))\nvendor_max_pl \u003d column(max(w.pickup_latitude))\nvendor_min_pl \u003d column(min(w.pickup_latitude))\nvendor_avg_pl \u003d column(avg(w.pickup_latitude))\nvendor_sum_pl2 \u003d column(sum(w.dropoff_latitude))\nvendor_max_pl2 \u003d column(max(w.dropoff_latitude))\nvendor_min_pl2 \u003d column(min(w.dropoff_latitude))\nvendor_avg_pl2 \u003d column(avg(w.dropoff_latitude))\nvendor_sum_pl3 \u003d column(sum(w.trip_duration))\nvendor_max_pl3 \u003d column(max(w.trip_duration))\nvendor_min_pl3 \u003d column(min(w.trip_duration))\nvendor_avg_pl3 \u003d column(avg(w.trip_duration))\n",
+    "inputs": [
+        {
+            "inputPath": "file:///Users/tobe/code/4pd/fesql/benchmark/window_offline_benchmark/taxi_tour_all/",
+            "name": "t1",
+            "schema": [
+                {
+                    "name": "id",
+                    "type": "String"
+                },
+                {
+                    "name": "vendor_id",
+                    "type": "Int"
+                },
+                {
+                    "name": "pickup_datetime",
+                    "type": "Timestamp"
+                },
+                {
+                    "name": "dropoff_datetime",
+                    "type": "Timestamp"
+                },
+                {
+                    "name": "passenger_count",
+                    "type": "Int"
+                },
+                {
+                    "name": "pickup_longitude",
+                    "type": "Double"
+                },
+                {
+                    "name": "pickup_latitude",
+                    "type": "Double"
+                },
+                {
+                    "name": "dropoff_longitude",
+                    "type": "Double"
+                },
+                {
+                    "name": "dropoff_latitude",
+                    "type": "Double"
+                },
+                {
+                    "name": "store_and_fwd_flag",
+                    "type": "String"
+                },
+                {
+                    "name": "trip_duration",
+                    "type": "Int"
+                }
+            ],
+            "uuid": "modelIDE/1-DataSplit-7d06f9.table"
+        }
+    ],
+    "outputPath": "file:///tmp/feql_output/",
+    "signValueMapPath": "file:///tmp/feql_output/signValueMap/",
+    "catchPath": "file:///tmp/feql_output/0/tmp/cache/SlotFeatureOccurenceHistogram/",
+    "metaPath": "file:///tmp/feql_output/stages/10017413/0/meta/",
+    "reportPath": "file:///tmp/feql_output/stages/10017413/0/report/",
+    "featureMapPath": "file:///tmp/feql_output/stages/10017413/0/featureMap/",
+    "instanceType": "binaryClass",
+    "instanceFormat": "parquet",
+    "partitionNum": -1,
+    "isRandomRepartition": false,
+    "isExactlyStatistics": false,
+    "isCompress": true,
+    "isOutputSignValue": false,
+    "featureJoinPartitionNum": 0,
+    "uuid": "099d1434-6d8d-40c3-a0ef-16850a35b2b0",
+    "isCollectNodeMeta": false,
+    "enableDoubleFloatNewFormat": true
+}
