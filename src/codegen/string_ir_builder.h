@@ -42,8 +42,9 @@ class StringIRBuilder : public StructTypeIRBuilder {
                  ::llvm::Value** output);
     bool SetData(::llvm::BasicBlock* block, ::llvm::Value* str,
                  ::llvm::Value* data);
-    base::Status CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
-                          ::llvm::Value** output);
+    base::Status CastFrom(::llvm::BasicBlock* block, const NativeValue& src,
+                          NativeValue* output);
+
     base::Status Compare(::llvm::BasicBlock* block, const NativeValue& s1,
                          const NativeValue& s2, NativeValue* output);
     base::Status Concat(::llvm::BasicBlock* block,
@@ -52,6 +53,9 @@ class StringIRBuilder : public StructTypeIRBuilder {
     base::Status ConcatWS(::llvm::BasicBlock* block, const NativeValue& on,
                           const std::vector<NativeValue>& strs,
                           NativeValue* output);
+
+    base::Status CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
+                          ::llvm::Value** output);
 };
 }  // namespace codegen
 }  // namespace fesql

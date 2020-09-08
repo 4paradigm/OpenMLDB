@@ -242,8 +242,16 @@ void date_format(codec::Date *date, fesql::codec::StringRef *format,
 
 void timestamp_to_string(codec::Timestamp *timestamp,
                          fesql::codec::StringRef *output);
-void date_to_string(codec::Date *date, fesql::codec::StringRef *output);
+void timestamp_to_date(codec::Timestamp *timestamp, fesql::codec::Date *output,
+                       bool *is_null);
 
+void date_to_string(codec::Date *date, fesql::codec::StringRef *output);
+void date_to_timestamp(codec::Date *date, fesql::codec::Timestamp *output,
+                       bool *is_null);
+void string_to_date(codec::StringRef *str, fesql::codec::Date *output,
+                    bool *is_null);
+void string_to_timestamp(codec::StringRef *str, fesql::codec::Timestamp *output,
+                         bool *is_null);
 void sub_string(fesql::codec::StringRef *str, int32_t pos,
                 fesql::codec::StringRef *output);
 void sub_string(fesql::codec::StringRef *str, int32_t pos, int32_t len,

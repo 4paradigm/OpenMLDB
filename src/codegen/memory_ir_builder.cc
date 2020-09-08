@@ -52,8 +52,8 @@ base::Status MemoryIRBuilder::MemoryCopy(::llvm::BasicBlock* block,
                "fail to add memory addr: size type invalid");
     ::llvm::Value* size_int64 = size.GetRaw();
     base::Status status;
-    CHECK_TRUE(cast_ir_builder.SafeCast(size.GetRaw(), builder.getInt64Ty(),
-                                        &size_int64, status),
+    CHECK_TRUE(cast_ir_builder.SafeCastNumber(
+                   size.GetRaw(), builder.getInt64Ty(), &size_int64, status),
                "fail to add memory addr: size cast int64 fail");
 
     ::llvm::Value* ret =
@@ -77,8 +77,8 @@ base::Status MemoryIRBuilder::MemoryAddrAdd(::llvm::BasicBlock* block,
                "fail to add memory addr: size type invalid");
     ::llvm::Value* size_int64 = size.GetRaw();
     base::Status status;
-    CHECK_TRUE(cast_ir_builder.SafeCast(size.GetRaw(), builder.getInt64Ty(),
-                                        &size_int64, status),
+    CHECK_TRUE(cast_ir_builder.SafeCastNumber(
+                   size.GetRaw(), builder.getInt64Ty(), &size_int64, status),
                "fail to add memory addr: size cast int64 fail");
 
     ::llvm::Value* ret = builder.CreateInBoundsGEP(builder.getInt8Ty(),

@@ -135,6 +135,22 @@ bool StringIRBuilder::SetData(::llvm::BasicBlock* block, ::llvm::Value* str,
     return Set(block, str, 1, data);
 }
 base::Status StringIRBuilder::CastFrom(::llvm::BasicBlock* block,
+                                       const NativeValue& src,
+                                       NativeValue* output) {
+    NullIRBuilder null_ir_builder;
+    ::llvm::Value* should_ret_null = nullptr;
+    CHECK_STATUS(null_ir_builder.CheckAnyNull(block, src, &should_ret_null));
+    ::llvm::IRBuilder<> builder(block);
+    ::llvm::Value* casted_value = nullptr;
+    CHECK_STATUS(CastFrom(block, src.GetValue(&builder), &casted_value))
+    if (should_ret_null) {
+        *output = NativeValue::CreateWithFlag(casted_value, should_ret_null);
+    } else {
+        *output = NativeValue::Create(casted_value);
+    }
+    return Status::OK();
+}
+base::Status StringIRBuilder::CastFrom(::llvm::BasicBlock* block,
                                        ::llvm::Value* src,
                                        ::llvm::Value** output) {
     base::Status status;

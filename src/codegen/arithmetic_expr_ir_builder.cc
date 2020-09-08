@@ -122,31 +122,31 @@ bool ArithmeticIRBuilder::InferAndCastedNumberTypes(
     CastExprIRBuilder cast_expr_ir_builder(block);
     if (left_type != right_type) {
         if (cast_expr_ir_builder.IsSafeCast(left_type, right_type)) {
-            if (!cast_expr_ir_builder.SafeCast(left, right_type, casted_left,
-                                               status)) {
+            if (!cast_expr_ir_builder.SafeCastNumber(left, right_type,
+                                                     casted_left, status)) {
                 status.msg = "fail to codegen add expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
         } else if (cast_expr_ir_builder.IsSafeCast(right_type, left_type)) {
-            if (!cast_expr_ir_builder.SafeCast(right, left_type, casted_right,
-                                               status)) {
+            if (!cast_expr_ir_builder.SafeCastNumber(right, left_type,
+                                                     casted_right, status)) {
                 status.msg = "fail to codegen add expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
         } else if (cast_expr_ir_builder.IsIntFloat2PointerCast(left_type,
                                                                right_type)) {
-            if (!cast_expr_ir_builder.UnSafeCast(left, right_type, casted_left,
-                                                 status)) {
+            if (!cast_expr_ir_builder.UnSafeCastNumber(left, right_type,
+                                                       casted_left, status)) {
                 status.msg = "fail to codegen add expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
         } else if (cast_expr_ir_builder.IsIntFloat2PointerCast(right_type,
                                                                left_type)) {
-            if (!cast_expr_ir_builder.UnSafeCast(right, left_type, casted_right,
-                                                 status)) {
+            if (!cast_expr_ir_builder.UnSafeCastNumber(right, left_type,
+                                                       casted_right, status)) {
                 status.msg = "fail to codegen add expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
@@ -186,15 +186,15 @@ bool ArithmeticIRBuilder::InferAndCastIntegerTypes(
     CastExprIRBuilder cast_expr_ir_builder(block);
     if (left_type != right_type) {
         if (cast_expr_ir_builder.IsSafeCast(left_type, right_type)) {
-            if (!cast_expr_ir_builder.SafeCast(left, right_type, casted_left,
-                                               status)) {
+            if (!cast_expr_ir_builder.SafeCastNumber(left, right_type,
+                                                     casted_left, status)) {
                 status.msg = "fail to codegen add expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
         } else if (cast_expr_ir_builder.IsSafeCast(right_type, left_type)) {
-            if (!cast_expr_ir_builder.SafeCast(right, left_type, casted_right,
-                                               status)) {
+            if (!cast_expr_ir_builder.SafeCastNumber(right, left_type,
+                                                     casted_right, status)) {
                 status.msg = "fail to codegen add expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
@@ -237,7 +237,7 @@ bool ArithmeticIRBuilder::InferAndCastDoubleTypes(
     *casted_right = right;
     CastExprIRBuilder cast_expr_ir_builder(block);
     if (!left_type->isDoubleTy()) {
-        if (!cast_expr_ir_builder.UnSafeCast(
+        if (!cast_expr_ir_builder.UnSafeCastNumber(
                 left, ::llvm::Type::getDoubleTy(block->getContext()),
                 casted_left, status)) {
             status.msg = "fail to codegen add expr: " + status.msg;
@@ -247,7 +247,7 @@ bool ArithmeticIRBuilder::InferAndCastDoubleTypes(
     }
 
     if (!right_type->isDoubleTy()) {
-        if (!cast_expr_ir_builder.UnSafeCast(
+        if (!cast_expr_ir_builder.UnSafeCastNumber(
                 right, ::llvm::Type::getDoubleTy(block->getContext()),
                 casted_right, status)) {
             status.msg = "fail to codegen add expr: " + status.msg;

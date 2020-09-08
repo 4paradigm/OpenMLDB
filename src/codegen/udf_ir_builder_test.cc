@@ -386,8 +386,6 @@ TEST_F(UDFIRBuilderTest, atan_udf_test_10) {
     CheckUDF<double, int64_t, float>("atan", 2.3561944901923448, 2, -2);
 }
 
-
-
 TEST_F(UDFIRBuilderTest, atan2_udf_test_15) {
     CheckUDF<double, double, int32_t>("atan2", 2.3561944901923448, 2, -2);
 }
@@ -691,6 +689,78 @@ TEST_F(UDFIRBuilderTest, null_process_test) {
         "if_null", nullptr, nullptr, nullptr);
     CheckUDF<double, Nullable<double>, Nullable<double>>("if_null", 2.0,
                                                          nullptr, 2.0);
+}
+
+TEST_F(UDFIRBuilderTest, date_to_timestamp_test_0) {
+    CheckUDF<Nullable<Timestamp>, Nullable<Date>>(
+        "timestamp", codec::Timestamp(1589904000000L),
+        codec::Date(2020, 05, 20));
+}
+TEST_F(UDFIRBuilderTest, date_to_timestamp_test_null_0) {
+    //    Invalid year
+    CheckUDF<Nullable<Timestamp>, Nullable<Date>>("timestamp", nullptr,
+                                                  codec::Date(1899, 05, 20));
+}
+TEST_F(UDFIRBuilderTest, date_to_timestamp_test_null_1) {
+    //    Invalid month
+    CheckUDF<Nullable<Timestamp>, Nullable<Date>>("timestamp", nullptr,
+                                                  codec::Date(2029, 13, 20));
+}
+TEST_F(UDFIRBuilderTest, date_to_timestamp_test_null_2) {
+    //    Invalid day
+    CheckUDF<Nullable<Timestamp>, Nullable<Date>>("timestamp", nullptr,
+                                                  codec::Date(2029, 05, 32));
+}
+TEST_F(UDFIRBuilderTest, date_to_timestamp_test_null_3) {
+    CheckUDF<Nullable<Timestamp>, Nullable<Date>>("timestamp", nullptr,
+                                                  nullptr);
+}
+
+TEST_F(UDFIRBuilderTest, string_to_timestamp_test_0) {
+    CheckUDF<Nullable<Timestamp>, Nullable<StringRef>>(
+        "timestamp", codec::Timestamp(1589907723000),
+        codec::StringRef("2020-05-20 01:02:03"));
+}
+TEST_F(UDFIRBuilderTest, string_to_timestamp_test_1) {
+    CheckUDF<Nullable<Timestamp>, Nullable<StringRef>>(
+        "timestamp", codec::Timestamp(1589904000000L),
+        codec::StringRef("2020-05-20"));
+}
+TEST_F(UDFIRBuilderTest, string_to_timestamp_test_2) {
+    CheckUDF<Nullable<Timestamp>, Nullable<StringRef>>(
+        "timestamp", nullptr,
+        codec::StringRef("1899-05-20"));
+}
+TEST_F(UDFIRBuilderTest, string_to_timestamp_test_3) {
+    CheckUDF<Nullable<Timestamp>, Nullable<StringRef>>(
+        "timestamp", codec::Timestamp(1589904000000L),
+        codec::StringRef("20200520"));
+}
+
+TEST_F(UDFIRBuilderTest, timestamp_to_date_test_0) {
+    CheckUDF<Nullable<Date>, Nullable<Timestamp>>(
+        "date", codec::Date(2020, 05, 20), codec::Timestamp(1589958000000L));
+}
+TEST_F(UDFIRBuilderTest, timestamp_to_date_test_null_0) {
+    CheckUDF<Nullable<Date>, Nullable<Timestamp>>("date", nullptr, nullptr);
+}
+
+TEST_F(UDFIRBuilderTest, string_to_date_test_0) {
+    CheckUDF<Nullable<Date>, Nullable<StringRef>>(
+        "date", codec::Date(2020, 05, 20),
+        codec::StringRef("2020-05-20 01:02:03"));
+}
+TEST_F(UDFIRBuilderTest, string_to_date_test_1) {
+    CheckUDF<Nullable<Date>, Nullable<StringRef>>(
+        "date", codec::Date(2020, 05, 20), codec::StringRef("2020-05-20"));
+}
+TEST_F(UDFIRBuilderTest, string_to_date_test_2) {
+    CheckUDF<Nullable<Date>, Nullable<StringRef>>(
+        "date", nullptr, codec::StringRef("1899-05-20"));
+}
+TEST_F(UDFIRBuilderTest, string_to_date_test_3) {
+    CheckUDF<Nullable<codec::Date>, Nullable<StringRef>>(
+        "date", codec::Date(2020, 05, 20), codec::StringRef("20200520"));
 }
 
 }  // namespace codegen

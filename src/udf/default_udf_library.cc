@@ -1241,6 +1241,31 @@ void DefaultUDFLibrary::Init() {
     udf::RegisterNativeUDFToModule();
     InitUtilityUDF();
 
+    RegisterExternal("date")
+        .args<codec::Timestamp>(reinterpret_cast<void*>(
+            static_cast<void (*)(Timestamp*, Date*, bool*)>(
+                v1::timestamp_to_date)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>();
+    RegisterExternal("date")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, Date*, bool*)>(
+                v1::string_to_date)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>();
+    RegisterExternal("timestamp")
+        .args<codec::Date>(reinterpret_cast<void*>(
+            static_cast<void (*)(Date*, Timestamp*, bool*)>(
+                v1::date_to_timestamp)))
+        .return_by_arg(true)
+        .returns<Nullable<Timestamp>>();
+    RegisterExternal("timestamp")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, Timestamp*, bool*)>(
+                v1::string_to_timestamp)))
+        .return_by_arg(true)
+        .returns<Nullable<Timestamp>>();
+
     RegisterExternal("year")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::year))
         .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::year));

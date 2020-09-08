@@ -596,6 +596,19 @@ bool PredicateIRBuilder::InferAndCastTypes(::llvm::BasicBlock* block,
 
     *casted_left = left;
     *casted_right = right;
+
+
+    StringIRBuilder string_builder(block->getModule());
+    if (TypeIRBuilder::IsStringPtr(left_type)) {
+        status = string_builder.CastFrom(block, right, casted_right);
+        return status.isOK();
+    }
+
+    if (TypeIRBuilder::IsStringPtr(right_type)) {
+        status = string_builder.CastFrom(block, left, casted_left);
+        return status.isOK();
+    }
+
     TimestampIRBuilder timestamp_builder(block->getModule());
     if (TypeIRBuilder::IsTimestampPtr(left_type)) {
         if (false == timestamp_builder.GetTs(block, left, casted_left)) {
@@ -614,40 +627,35 @@ bool PredicateIRBuilder::InferAndCastTypes(::llvm::BasicBlock* block,
         }
         right_type = (*casted_right)->getType();
     }
+
     CastExprIRBuilder cast_expr_ir_builder(block);
     if (left_type != right_type) {
         if (cast_expr_ir_builder.IsSafeCast(left_type, right_type)) {
-            if (!cast_expr_ir_builder.SafeCast(left, right_type, casted_left,
-                                               status)) {
+            if (!cast_expr_ir_builder.SafeCastNumber(left, right_type,
+                                                     casted_left, status)) {
                 status.msg = "fail to codegen expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
         } else if (cast_expr_ir_builder.IsSafeCast(right_type, left_type)) {
-            if (!cast_expr_ir_builder.SafeCast(right, left_type, casted_right,
-                                               status)) {
+            if (!cast_expr_ir_builder.SafeCastNumber(right, left_type,
+                                                     casted_right, status)) {
                 status.msg = "fail to codegen expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
         } else if (cast_expr_ir_builder.IsIntFloat2PointerCast(left_type,
                                                                right_type)) {
-            if (!cast_expr_ir_builder.UnSafeCast(left, right_type, casted_left,
-                                                 status)) {
+            if (!cast_expr_ir_builder.UnSafeCastNumber(left, right_type,
+                                                       casted_left, status)) {
                 status.msg = "fail to codegen expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;
             }
         } else if (cast_expr_ir_builder.IsIntFloat2PointerCast(right_type,
                                                                left_type)) {
-            if (!cast_expr_ir_builder.UnSafeCast(right, left_type, casted_right,
-                                                 status)) {
-                status.msg = "fail to codegen expr: " + status.msg;
-                LOG(WARNING) << status.msg;
-                return false;
-            }
-        } else if (cast_expr_ir_builder.IsStringCast(right_type)) {
-            if (!cast_expr_ir_builder.StringCast(left, casted_left, status)) {
+            if (!cast_expr_ir_builder.UnSafeCastNumber(right, left_type,
+                                                       casted_right, status)) {
                 status.msg = "fail to codegen expr: " + status.msg;
                 LOG(WARNING) << status.msg;
                 return false;

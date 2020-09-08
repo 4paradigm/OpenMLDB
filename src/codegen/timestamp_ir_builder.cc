@@ -11,6 +11,8 @@
 #include <vector>
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/null_ir_builder.h"
+#include "codegen/predicate_expr_ir_builder.h"
 #include "glog/logging.h"
 #include "node/sql_node.h"
 namespace fesql {
@@ -37,29 +39,60 @@ void TimestampIRBuilder::InitStructType() {
     struct_type_ = stype;
     return;
 }
+
 base::Status TimestampIRBuilder::CastFrom(::llvm::BasicBlock* block,
-                                          ::llvm::Value* src,
-                                          ::llvm::Value** output) {
+                                          const NativeValue& src,
+                                          NativeValue* output) {
     base::Status status;
-    if (nullptr == src || nullptr == output) {
-        status.code = common::kCodegenError;
-        status.msg = "Fail to cast timestamp: src or dist is null";
-        return status;
-    }
-    if (IsTimestampPtr(src->getType())) {
+    if (TypeIRBuilder::IsTimestampPtr(src.GetType())) {
         *output = src;
-        return status;
+        return Status::OK();
     }
 
-    ::llvm::Value* ts = NULL;
-    CastExprIRBuilder cast_builder(block);
+    if (src.IsConstNull()) {
+        *output = NativeValue::CreateNull(GetType());
+        return Status::OK();
+    }
     ::llvm::IRBuilder<> builder(block);
+    NativeValue ts;
+    CastExprIRBuilder cast_builder(block);
+    CondSelectIRBuilder cond_ir_builder;
+    PredicateIRBuilder predicate_ir_builder(block);
+    NullIRBuilder null_ir_builder;
+    if (IsNumber(src.GetType())) {
+        CHECK_STATUS(cast_builder.Cast(src, builder.getInt64Ty(), &ts));
+        NativeValue cond;
+        CHECK_STATUS(predicate_ir_builder.BuildGeExpr(
+            ts, NativeValue::Create(builder.getInt64(0)), &cond));
+        ::llvm::Value* timestamp;
+        CHECK_TRUE(NewTimestamp(block, ts.GetValue(&builder), &timestamp),
+                   "Fail to cast timestamp: new timestamp(ts) fail");
+        CHECK_STATUS(
+            cond_ir_builder.Select(block, cond, NativeValue::Create(timestamp),
+                                   NativeValue::CreateNull(GetType()), output));
 
-    if (IsInterger(src->getType())) {
-        CHECK_TRUE(
-            cast_builder.SafeCast(src, builder.getInt64Ty(), &ts, status));
-        CHECK_TRUE(NewTimestamp(block, ts, output),
-                   "Fail to cast timestamp: new timestamp fail");
+    } else if (IsStringPtr(src.GetType()) || IsDatePtr(src.GetType())) {
+        ::llvm::IRBuilder<> builder(block);
+        ::llvm::Value* dist = nullptr;
+        ::llvm::Value* is_null_ptr = builder.CreateAlloca(builder.getInt1Ty());
+        if (!CreateDefault(block, &dist)) {
+            status.code = common::kCodegenError;
+            status.msg = "Fail to cast date: create default date fail";
+            return status;
+        }
+        ::std::string fn_name = "timestamp." + TypeName(src.GetType());
+
+        auto cast_func = m_->getOrInsertFunction(
+            fn_name,
+            ::llvm::FunctionType::get(builder.getVoidTy(),
+                                      {src.GetType(), dist->getType(),
+                                       builder.getInt1Ty()->getPointerTo()},
+                                      false));
+        builder.CreateCall(cast_func,
+                           {src.GetValue(&builder), dist, is_null_ptr});
+        ::llvm::Value* should_return_null = builder.CreateLoad(is_null_ptr);
+        null_ir_builder.CheckAnyNull(block, src, &should_return_null);
+        *output = NativeValue::CreateWithFlag(dist, should_return_null);
     } else {
         status.msg =
             "fail to codegen cast bool expr: value type isn't compatible";
@@ -132,8 +165,8 @@ bool TimestampIRBuilder::Minute(::llvm::BasicBlock* block, ::llvm::Value* value,
         return false;
     }
     CastExprIRBuilder cast_builder(block);
-    return cast_builder.UnSafeCast(*output, builder.getInt32Ty(), output,
-                                   status);
+    return cast_builder.UnSafeCastNumber(*output, builder.getInt32Ty(), output,
+                                         status);
 }
 bool TimestampIRBuilder::Second(::llvm::BasicBlock* block, ::llvm::Value* value,
                                 ::llvm::Value** output, base::Status& status) {
@@ -167,8 +200,8 @@ bool TimestampIRBuilder::Second(::llvm::BasicBlock* block, ::llvm::Value* value,
         return false;
     }
     CastExprIRBuilder cast_builder(block);
-    return cast_builder.UnSafeCast(*output, builder.getInt32Ty(), output,
-                                   status);
+    return cast_builder.UnSafeCastNumber(*output, builder.getInt32Ty(), output,
+                                         status);
 }
 bool TimestampIRBuilder::Hour(::llvm::BasicBlock* block, ::llvm::Value* value,
                               ::llvm::Value** output, base::Status& status) {
@@ -211,8 +244,8 @@ bool TimestampIRBuilder::Hour(::llvm::BasicBlock* block, ::llvm::Value* value,
         return false;
     }
     CastExprIRBuilder cast_builder(block);
-    return cast_builder.UnSafeCast(*output, builder.getInt32Ty(), output,
-                                   status);
+    return cast_builder.UnSafeCastNumber(*output, builder.getInt32Ty(), output,
+                                         status);
 }
 bool TimestampIRBuilder::CreateDefault(::llvm::BasicBlock* block,
                                        ::llvm::Value** output) {
@@ -270,8 +303,8 @@ base::Status TimestampIRBuilder::FDiv(::llvm::BasicBlock* block,
     CastExprIRBuilder cast_ir_builder(block);
     ::llvm::Value* casted_right = nullptr;
     Status status;
-    CHECK_TRUE(cast_ir_builder.UnSafeCast(right, builder.getDoubleTy(),
-                                          &casted_right, status),
+    CHECK_TRUE(cast_ir_builder.UnSafeCastNumber(right, builder.getDoubleTy(),
+                                                &casted_right, status),
                status.msg);
     ::llvm::Value* ts = nullptr;
     CHECK_TRUE(GetTs(block, timestamp, &ts),
@@ -302,8 +335,8 @@ base::Status TimestampIRBuilder::TimestampAdd(::llvm::BasicBlock* block,
     CastExprIRBuilder cast_ir_builder(block);
     ::llvm::Value* casted_right = nullptr;
     Status status;
-    CHECK_TRUE(cast_ir_builder.UnSafeCast(duration, builder.getInt64Ty(),
-                                          &casted_right, status),
+    CHECK_TRUE(cast_ir_builder.UnSafeCastNumber(duration, builder.getInt64Ty(),
+                                                &casted_right, status),
                status.msg);
     ::llvm::Value* ts = nullptr;
     CHECK_TRUE(GetTs(block, timestamp, &ts),

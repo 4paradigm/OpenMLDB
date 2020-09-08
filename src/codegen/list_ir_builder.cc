@@ -36,7 +36,7 @@ bool ListIRBuilder::BuilStructTypedAt(::llvm::Value* list, ::llvm::Value* pos,
         return false;
     }
     ::llvm::Value* casted_pos = nullptr;
-    if (false == castExprIrBuilder.UnSafeCast(
+    if (false == castExprIrBuilder.UnSafeCastNumber(
                      pos, ::llvm::Type::getInt32Ty(block_->getContext()),
                      &casted_pos, status)) {
         status.msg = "fail to codegen list[pos]: invalid pos type";
@@ -101,7 +101,7 @@ bool ListIRBuilder::BuildAt(::llvm::Value* list, ::llvm::Value* pos,
         return false;
     }
     ::llvm::Value* casted_pos = nullptr;
-    if (false == castExprIrBuilder.UnSafeCast(
+    if (false == castExprIrBuilder.UnSafeCastNumber(
                      pos, ::llvm::Type::getInt32Ty(block_->getContext()),
                      &casted_pos, status)) {
         status.msg = "fail to codegen list[pos]: invalid pos type";

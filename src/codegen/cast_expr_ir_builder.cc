@@ -7,6 +7,7 @@
  *--------------------------------------------------------------------------
  **/
 #include "codegen/cast_expr_ir_builder.h"
+#include "codegen/date_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
@@ -22,6 +23,28 @@ bool CastExprIRBuilder::IsIntFloat2PointerCast(::llvm::Type* src,
     return src->isIntegerTy() && (dist->isFloatTy() || dist->isDoubleTy());
 }
 
+Status CastExprIRBuilder::IsCastAccept(::llvm::Type* src, ::llvm::Type* dist,
+                                       ::llvm::Type** output) {
+    if (src == dist || IsSafeCast(src, dist)) {
+        *output = dist;
+        return Status::OK();
+    }
+
+    if (TypeIRBuilder::IsDatePtr(src) && TypeIRBuilder::IsNumber(dist) &&
+        !TypeIRBuilder::IsBool(dist)) {
+        return Status(common::kCodegenError,
+                      "incastable from " + TypeIRBuilder::TypeName(src) +
+                          " to " + TypeIRBuilder::TypeName(dist));
+    }
+
+    if (TypeIRBuilder::IsNumber(src) && TypeIRBuilder::IsDatePtr(dist)) {
+        return Status(common::kCodegenError,
+                      "incastable from " + TypeIRBuilder::TypeName(src) +
+                          " to " + TypeIRBuilder::TypeName(dist));
+    }
+    *output = dist;
+    return Status::OK();
+}
 bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
     if (NULL == src || NULL == dist) {
         LOG(WARNING) << "cast type is null";
@@ -78,24 +101,53 @@ bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
     }
     return false;
 }
+Status CastExprIRBuilder::Cast(const NativeValue& value,
+                               ::llvm::Type* cast_type, NativeValue* output) {
+    ::llvm::Type* dist_type;
+    CHECK_STATUS(IsCastAccept(value.GetType(), cast_type, &dist_type))
+    if (IsSafeCast(value.GetType(), cast_type)) {
+        CHECK_STATUS(SafeCast(value, cast_type, output));
+    } else {
+        CHECK_STATUS(UnSafeCast(value, cast_type, output));
+    }
+    return Status::OK();
+}
 Status CastExprIRBuilder::SafeCast(const NativeValue& value, ::llvm::Type* type,
                                    NativeValue* output) {
     ::llvm::IRBuilder<> builder(block_);
     CHECK_TRUE(IsSafeCast(value.GetType(), type),
                "Safe cast fail: unsafe cast");
+    Status status;
     if (value.IsConstNull()) {
         *output = NativeValue::CreateNull(type);
-    } else {
+    } else if (TypeIRBuilder::IsTimestampPtr(type)) {
+        TimestampIRBuilder timestamp_ir_builder(block_->getModule());
+        CHECK_STATUS(timestamp_ir_builder.CastFrom(block_, value, output));
+        return Status::OK();
+    } else if (TypeIRBuilder::IsDatePtr(type)) {
+        DateIRBuilder date_ir_builder(block_->getModule());
+        CHECK_STATUS(date_ir_builder.CastFrom(block_, value, output));
+        return Status::OK();
+    } else if (TypeIRBuilder::IsStringPtr(type)) {
+        StringIRBuilder string_ir_builder(block_->getModule());
+        CHECK_STATUS(string_ir_builder.CastFrom(block_, value, output));
+        return Status::OK();
+    } else if (TypeIRBuilder::IsNumber(type)) {
         Status status;
         ::llvm::Value* output_value = nullptr;
-        CHECK_TRUE(
-            SafeCast(value.GetValue(&builder), type, &output_value, status))
+        CHECK_TRUE(SafeCastNumber(value.GetValue(&builder), type, &output_value,
+                                  status))
         if (value.IsNullable()) {
             *output = NativeValue::CreateWithFlag(output_value,
                                                   value.GetIsNull(&builder));
         } else {
             *output = NativeValue::Create(output_value);
         }
+    } else {
+        return Status(common::kCodegenError,
+                      "Can't cast from " +
+                          TypeIRBuilder::TypeName(value.GetType()) + " to " +
+                          TypeIRBuilder::TypeName(type));
     }
     return Status::OK();
 }
@@ -104,12 +156,24 @@ Status CastExprIRBuilder::UnSafeCast(const NativeValue& value,
     ::llvm::IRBuilder<> builder(block_);
     if (value.IsConstNull()) {
         *output = NativeValue::CreateNull(type);
+    } else if (TypeIRBuilder::IsTimestampPtr(type)) {
+        TimestampIRBuilder timestamp_ir_builder(block_->getModule());
+        CHECK_STATUS(timestamp_ir_builder.CastFrom(block_, value, output));
+        return Status::OK();
+    } else if (TypeIRBuilder::IsDatePtr(type)) {
+        DateIRBuilder date_ir_builder(block_->getModule());
+        CHECK_STATUS(date_ir_builder.CastFrom(block_, value, output));
+        return Status::OK();
+    } else if (TypeIRBuilder::IsStringPtr(type)) {
+        StringIRBuilder string_ir_builder(block_->getModule());
+        CHECK_STATUS(string_ir_builder.CastFrom(block_, value, output));
+        return Status::OK();
     } else {
         Status status;
         ::llvm::Value* output_value = nullptr;
-        CHECK_TRUE(
-            UnSafeCast(value.GetValue(&builder), type, &output_value, status),
-            status.msg);
+        CHECK_TRUE(UnSafeCastNumber(value.GetValue(&builder), type,
+                                    &output_value, status),
+                   status.msg);
         if (value.IsNullable()) {
             *output = NativeValue::CreateWithFlag(output_value,
                                                   value.GetIsNull(&builder));
@@ -119,14 +183,15 @@ Status CastExprIRBuilder::UnSafeCast(const NativeValue& value,
     }
     return Status::OK();
 }
-bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
-                                 ::llvm::Value** output, base::Status& status) {
+bool CastExprIRBuilder::SafeCastNumber(::llvm::Value* value, ::llvm::Type* type,
+                                       ::llvm::Value** output,
+                                       base::Status& status) {
+    if (value->getType() == type) {
+        *output = value;
+        return true;
+    }
     ::llvm::IRBuilder<> builder(block_);
-    if (TypeIRBuilder::IsTimestampPtr(type)) {
-        return TimestampCast(value, output, status);
-    } else if (TypeIRBuilder::IsStringPtr(type)) {
-        return StringCast(value, output, status);
-    } else if (value->getType()->isIntegerTy() && type->isIntegerTy()) {
+    if (value->getType()->isIntegerTy() && type->isIntegerTy()) {
         if (value->getType()->isIntegerTy(1)) {
             *output = builder.CreateZExt(value, type);
         } else {
@@ -148,7 +213,7 @@ bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
             LOG(WARNING) << status.msg;
             return false;
         }
-        return SafeCast(ts, type, output, status);
+        return SafeCastNumber(ts, type, output, status);
     } else {
         status.msg =
             "fail to codegen cast expr: value type isn't compatible: from " +
@@ -167,18 +232,16 @@ bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
     return true;
 }
 
-bool CastExprIRBuilder::UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
-                                   ::llvm::Value** output,
-                                   base::Status& status) {
+bool CastExprIRBuilder::UnSafeCastNumber(::llvm::Value* value,
+                                         ::llvm::Type* type,
+                                         ::llvm::Value** output,
+                                         base::Status& status) {
     if (IsSafeCast(value->getType(), type)) {
-        return SafeCast(value, type, output, status);
+        return SafeCastNumber(value, type, output, status);
     }
     ::llvm::IRBuilder<> builder(block_);
     if (TypeIRBuilder::IsBool(type)) {
         return BoolCast(value, output, status);
-    } else if (TypeIRBuilder::IsTimestampPtr(type) &&
-               TypeIRBuilder::IsNumber(value->getType())) {
-        return TimestampCast(value, output, status);
     } else if (TypeIRBuilder::IsTimestampPtr(value->getType()) &&
                TypeIRBuilder::IsNumber(type)) {
         ::llvm::Value* ts = nullptr;
@@ -189,7 +252,7 @@ bool CastExprIRBuilder::UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
             LOG(WARNING) << status.msg;
             return false;
         }
-        return UnSafeCast(ts, type, output, status);
+        return UnSafeCastNumber(ts, type, output, status);
     } else if (value->getType()->isIntegerTy() && type->isIntegerTy()) {
         *output = builder.CreateTrunc(value, type);
     } else if (value->getType()->isFloatingPointTy() &&
@@ -234,29 +297,6 @@ bool CastExprIRBuilder::IsStringCast(llvm::Type* type) {
     }
 
     return ::fesql::node::kVarchar == fesql_type;
-}
-
-// TODO(chenjing): string cast implement
-// try to cast other type of value to string type
-bool CastExprIRBuilder::StringCast(llvm::Value* value,
-                                   llvm::Value** casted_value,
-                                   base::Status& status) {
-    StringIRBuilder string_ir_builder(block_->getModule());
-    status = string_ir_builder.CastFrom(block_, value, casted_value);
-    return status.isOK();
-}
-
-bool CastExprIRBuilder::TimestampCast(llvm::Value* value,
-                                      llvm::Value** casted_value,
-                                      base::Status& status) {
-    ::llvm::Value* ts;
-    if (!UnSafeCast(value, ::llvm::Type::getInt64Ty(block_->getContext()), &ts,
-                    status)) {
-        return false;
-    }
-    TimestampIRBuilder builder(block_->getModule());
-    status = builder.CastFrom(block_, ts, casted_value);
-    return status.isOK();
 }
 
 // cast fesql type to bool: compare value with 0
