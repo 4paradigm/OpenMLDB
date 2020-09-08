@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <string>
 #include <tuple>
-
+#include "boost/lexical_cast.hpp"
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
 #include "proto/fe_type.pb.h"
@@ -257,6 +257,24 @@ void sub_string(fesql::codec::StringRef *str, int32_t pos,
 void sub_string(fesql::codec::StringRef *str, int32_t pos, int32_t len,
                 fesql::codec::StringRef *output);
 int32_t strcmp(fesql::codec::StringRef *s1, fesql::codec::StringRef *s2);
+
+template <typename V>
+void string_to(codec::StringRef *str, V *v, bool *is_null_ptr) {
+    if (nullptr == str) {
+        *is_null_ptr = true;
+        return;
+    }
+    try {
+        *v = boost::lexical_cast<V>(str->ToString());
+        *is_null_ptr = false;
+        return;
+    } catch (...) {
+        *is_null_ptr = true;
+        return;
+    }
+}
+
+
 template <class V>
 struct ToString {
     using Args = std::tuple<V>;

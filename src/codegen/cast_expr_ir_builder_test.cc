@@ -605,6 +605,7 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("int32", "1", "int64", "1"),
                     std::make_tuple("int32", "1", "float", "1"),
                     std::make_tuple("int32", "1", "double", "1"),
+                    std::make_tuple("int32", "1", "string", "1"),
                     std::make_tuple("int32", "977520480", "timestamp",
                                     "1590115420000"),
                     std::make_tuple("int32", "0", "bool", "false"),
@@ -619,33 +620,38 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("int32", "null", "int64", "null"),
                     std::make_tuple("int32", "null", "float", "null"),
                     std::make_tuple("int32", "null", "double", "null"),
+                    std::make_tuple("int32", "null", "string", "abc"),
+                    std::make_tuple("int32", "null", "string", "null"),
                     std::make_tuple("int32", "null", "timestamp", "null")));
 
 // SafeCastNumber: bool, int16, int32, int64
 // UnSafeCst: float, double
 INSTANTIATE_TEST_SUITE_P(
     CastExprTestInt64, CastExprTest,
-    testing::Values(std::make_tuple("int64", "1", "bool", "true"),
-                    std::make_tuple("int64", "1", "int16", "1"),
-                    std::make_tuple("int64", "1", "int32", "1"),
-                    std::make_tuple("int64", "1", "int64", "1"),
-                    std::make_tuple("int64", "1", "float", "1"),
-                    std::make_tuple("int64", "1", "double", "1"),
-                    std::make_tuple("int64", "1590115420000", "timestamp",
-                                    "1590115420000"),
-                    std::make_tuple("int64", "0", "bool", "false"),
-                    std::make_tuple("int64", "-1", "int16", "-1"),
-                    std::make_tuple("int64", "-1", "int32", "-1"),
-                    std::make_tuple("int64", "-1", "int64", "-1"),
-                    std::make_tuple("int64", "-1", "float", "-1"),
-                    std::make_tuple("int64", "-1", "double", "-1"),
-                    std::make_tuple("int64", "null", "bool", "null"),
-                    std::make_tuple("int64", "null", "int16", "null"),
-                    std::make_tuple("int64", "null", "int32", "null"),
-                    std::make_tuple("int64", "null", "int64", "null"),
-                    std::make_tuple("int64", "null", "float", "null"),
-                    std::make_tuple("int64", "null", "double", "null"),
-                    std::make_tuple("int64", "null", "timestamp", "null")));
+    testing::Values(
+        std::make_tuple("int64", "1", "bool", "true"),
+        std::make_tuple("int64", "1", "int16", "1"),
+        std::make_tuple("int64", "1", "int32", "1"),
+        std::make_tuple("int64", "1", "int64", "1"),
+        std::make_tuple("int64", "1", "float", "1"),
+        std::make_tuple("int64", "1", "double", "1"),
+        std::make_tuple("int64", "1590115420000", "timestamp", "1590115420000"),
+        std::make_tuple("int64", "1590115420000", "string", "1590115420000"),
+        std::make_tuple("int64", "0", "bool", "false"),
+        std::make_tuple("int64", "-1", "int16", "-1"),
+        std::make_tuple("int64", "-1", "int32", "-1"),
+        std::make_tuple("int64", "-1", "int64", "-1"),
+        std::make_tuple("int64", "-1", "float", "-1"),
+        std::make_tuple("int64", "-1", "double", "-1"),
+        std::make_tuple("int64", "null", "bool", "null"),
+        std::make_tuple("int64", "null", "int16", "null"),
+        std::make_tuple("int64", "null", "int32", "null"),
+        std::make_tuple("int64", "null", "int64", "null"),
+        std::make_tuple("int64", "null", "float", "null"),
+        std::make_tuple("int64", "null", "double", "null"),
+        std::make_tuple("int64", "null", "string", "null"),
+        std::make_tuple("int64", "null", "string", "abc"),
+        std::make_tuple("int64", "null", "timestamp", "null")));
 INSTANTIATE_TEST_SUITE_P(
     CastExprTestFloat, CastExprTest,
     testing::Values(std::make_tuple("float", "1", "bool", "true"),
@@ -655,6 +661,7 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("float", "1", "float", "1"),
                     std::make_tuple("float", "1", "double", "1"),
                     std::make_tuple("float", "1", "timestamp", "1"),
+                    std::make_tuple("float", "1", "string", "1"),
                     std::make_tuple("float", "0", "bool", "false"),
                     std::make_tuple("float", "-1", "int16", "-1"),
                     std::make_tuple("float", "-1", "int32", "-1"),
@@ -686,12 +693,15 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple("double", "1", "double", "1"),
         std::make_tuple("double", "1590115420000.0", "timestamp",
                         "1590115420000"),
+        std::make_tuple("double", "1590115420000.0", "string", "1590115420000"),
         std::make_tuple("double", "null", "bool", "null"),
         std::make_tuple("double", "null", "int16", "null"),
         std::make_tuple("double", "null", "int32", "null"),
         std::make_tuple("double", "null", "int64", "null"),
         std::make_tuple("double", "null", "float", "null"),
         std::make_tuple("double", "null", "double", "null"),
+        std::make_tuple("double", "null", "string", "null"),
+        std::make_tuple("double", "null", "string", "abc"),
         std::make_tuple("double", "null", "timestamp", "null")));
 
 INSTANTIATE_TEST_SUITE_P(
@@ -717,6 +727,7 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("timestamp", "null", "double", "null"),
                     std::make_tuple("timestamp", "null", "timestamp", "null"),
                     std::make_tuple("timestamp", "null", "date", "null"),
+                    std::make_tuple("timestamp", "null", "string", "abc"),
                     std::make_tuple("timestamp", "null", "string", "null")));
 INSTANTIATE_TEST_SUITE_P(
     CastExprTestDate, CastExprTest,
@@ -729,6 +740,7 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple("date", "2020-05-22", "string", "2020-05-22"),
         std::make_tuple("date", "null", "date", "null"),
         std::make_tuple("date", "null", "timestamp", "null"),
+        std::make_tuple("date", "null", "string", "abc"),
         std::make_tuple("date", "null", "string", "null")));
 
 INSTANTIATE_TEST_SUITE_P(
@@ -761,6 +773,7 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("int16", "1", "int64", "1"),
                     std::make_tuple("int16", "1", "float", "1"),
                     std::make_tuple("int16", "1", "double", "1"),
+                    std::make_tuple("int16", "1", "string", "1"),
                     std::make_tuple("int16", "-14496", "timestamp",
                                     "1590115420000"),
                     std::make_tuple("int16", "0", "bool", "false"),
@@ -775,6 +788,8 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("int16", "null", "int64", "null"),
                     std::make_tuple("int16", "null", "float", "null"),
                     std::make_tuple("int16", "null", "double", "null"),
+                    std::make_tuple("int16", "null", "string", "null"),
+                    std::make_tuple("int16", "null", "string", "abc"),
                     std::make_tuple("int16", "null", "timestamp", "null")));
 
 TEST_P(CastExprTest, cast_check) {
@@ -903,20 +918,15 @@ void CastErrorExprCheck(std::string cast_type_str, std::string src_type_str) {
     }
 }
 INSTANTIATE_TEST_SUITE_P(CastExprErrorTestBool, CastErrorExprTest,
-                         testing::Values(std::make_tuple("bool", "string"),
-                                         std::make_tuple("bool", "date")));
+                         testing::Values(std::make_tuple("bool", "date")));
 INSTANTIATE_TEST_SUITE_P(CastExprErrorTestInt16, CastErrorExprTest,
-                         testing::Values(std::make_tuple("int16", "string"),
-                                         std::make_tuple("int16", "date")));
+                         testing::Values(std::make_tuple("int16", "date")));
 INSTANTIATE_TEST_SUITE_P(CastExprErrorTestInt32, CastErrorExprTest,
-                         testing::Values(std::make_tuple("int32", "string"),
-                                         std::make_tuple("int32", "date")));
+                         testing::Values(std::make_tuple("int32", "date")));
 INSTANTIATE_TEST_SUITE_P(CastExprErrorTestInt64, CastErrorExprTest,
-                         testing::Values(std::make_tuple("int64", "string"),
-                                         std::make_tuple("int64", "date")));
+                         testing::Values(std::make_tuple("int64", "date")));
 INSTANTIATE_TEST_SUITE_P(CastExprErrorTestDouble, CastErrorExprTest,
-                         testing::Values(std::make_tuple("double", "string"),
-                                         std::make_tuple("double", "date")));
+                         testing::Values(std::make_tuple("double", "date")));
 
 // TODO(chenjing): support timestamp -> date
 INSTANTIATE_TEST_SUITE_P(CastExprErrorTestDate, CastErrorExprTest,

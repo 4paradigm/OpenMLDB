@@ -56,6 +56,8 @@ class StringIRBuilder : public StructTypeIRBuilder {
 
     base::Status CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
                           ::llvm::Value** output);
+    base::Status CastToNumber(::llvm::BasicBlock* block, const NativeValue& src,
+                              ::llvm::Type* type, NativeValue* output);
 };
 }  // namespace codegen
 }  // namespace fesql

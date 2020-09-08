@@ -1244,6 +1244,36 @@ void DefaultUDFLibrary::InitUtilityUDF() {
 void DefaultUDFLibrary::Init() {
     udf::RegisterNativeUDFToModule();
     InitUtilityUDF();
+    RegisterExternal("double")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, double*, bool*)>(
+                v1::string_to<double>)))
+        .return_by_arg(true)
+        .returns<Nullable<double>>();
+    RegisterExternal("float")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, float*, bool*)>(
+                v1::string_to<float>)))
+        .return_by_arg(true)
+        .returns<Nullable<float>>();
+    RegisterExternal("int32")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, int32_t*, bool*)>(
+                v1::string_to<int32_t>)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>();
+    RegisterExternal("int64")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, int64_t*, bool*)>(
+                v1::string_to<int64_t>)))
+        .return_by_arg(true)
+        .returns<Nullable<int64_t>>();
+    RegisterExternal("int16")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, int16_t*, bool*)>(
+                v1::string_to<int16_t>)))
+        .return_by_arg(true)
+        .returns<Nullable<int16_t>>();
 
     RegisterExternal("date")
         .args<codec::Timestamp>(reinterpret_cast<void*>(
@@ -1269,6 +1299,7 @@ void DefaultUDFLibrary::Init() {
                 v1::string_to_timestamp)))
         .return_by_arg(true)
         .returns<Nullable<Timestamp>>();
+
 
     RegisterExternal("year")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::year))

@@ -154,6 +154,35 @@ base::Status StringIRBuilder::CastFrom(::llvm::BasicBlock* block,
     }
     return Status::OK();
 }
+base::Status StringIRBuilder::CastToNumber(::llvm::BasicBlock* block,
+                                           const NativeValue& src,
+                                           ::llvm::Type* type,
+                                           NativeValue* output) {
+    CHECK_TRUE(nullptr != output, kCodegenError,
+               "fail to cast to number : output native value is null")
+    CHECK_TRUE(IsNumber(type), kCodegenError,
+               "fail to cast to number: dist type is ")
+    ::llvm::IRBuilder<> builder(block);
+    ::llvm::Value* dist_ptr = builder.CreateAlloca(type);
+    ::llvm::Value* is_null_ptr = builder.CreateAlloca(builder.getInt1Ty());
+    ::std::string fn_name = TypeName(type) + ".string";
+
+    auto cast_func = m_->getOrInsertFunction(
+        fn_name,
+        ::llvm::FunctionType::get(builder.getVoidTy(),
+                                  {src.GetType(), type->getPointerTo(),
+                                   builder.getInt1Ty()->getPointerTo()},
+                                  false));
+    builder.CreateCall(cast_func,
+                       {src.GetValue(&builder), dist_ptr, is_null_ptr});
+    ::llvm::Value* should_return_null = builder.CreateLoad(is_null_ptr);
+    ::llvm::Value* dist = builder.CreateLoad(dist_ptr);
+
+    NullIRBuilder null_ir_builder;
+    null_ir_builder.CheckAnyNull(block, src, &should_return_null);
+    *output = NativeValue::CreateWithFlag(dist, should_return_null);
+    return Status::OK();
+}
 base::Status StringIRBuilder::CastFrom(::llvm::BasicBlock* block,
                                        ::llvm::Value* src,
                                        ::llvm::Value** output) {

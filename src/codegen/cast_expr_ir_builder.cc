@@ -172,6 +172,12 @@ Status CastExprIRBuilder::UnSafeCast(const NativeValue& value,
         StringIRBuilder string_ir_builder(block_->getModule());
         CHECK_STATUS(string_ir_builder.CastFrom(block_, value, output));
         return Status::OK();
+    } else if (TypeIRBuilder::IsNumber(type) &&
+               TypeIRBuilder::IsStringPtr(value.GetType())) {
+        StringIRBuilder string_ir_builder(block_->getModule());
+        CHECK_STATUS(
+            string_ir_builder.CastToNumber(block_, value, type, output));
+        return Status::OK();
     } else {
         Status status;
         ::llvm::Value* output_value = nullptr;

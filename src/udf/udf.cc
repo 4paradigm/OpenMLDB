@@ -12,12 +12,12 @@
 #include <map>
 #include <set>
 #include <utility>
-#include "absl/time/civil_time.h"
 #include "absl/time/time.h"
 #include "base/iterator.h"
 #include "boost/date_time.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
+
 #include "bthread/types.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row.h"
@@ -309,8 +309,7 @@ void string_to_timestamp(codec::StringRef *str, fesql::codec::Timestamp *output,
                 *is_null = true;
                 return;
             }
-            output->ts_ =
-                (mktime(&t) + t.tm_gmtoff) * 1000 - TZ_OFFSET;
+            output->ts_ = (mktime(&t) + t.tm_gmtoff) * 1000 - TZ_OFFSET;
             *is_null = false;
         } catch (...) {
             *is_null = true;
@@ -325,8 +324,7 @@ void string_to_timestamp(codec::StringRef *str, fesql::codec::Timestamp *output,
                 *is_null = true;
                 return;
             }
-            output->ts_ =
-                (mktime(&t) + t.tm_gmtoff) * 1000 - TZ_OFFSET;
+            output->ts_ = (mktime(&t) + t.tm_gmtoff) * 1000 - TZ_OFFSET;
             *is_null = false;
         } catch (...) {
             *is_null = true;
