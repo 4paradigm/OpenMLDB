@@ -309,6 +309,8 @@ TEST_F(UDFIRBuilderTest, min_timestamp_udf_test) {
 TEST_F(UDFIRBuilderTest, log_udf_test) {
     CheckUDF<float, float>("log", log(2.0f), 2.0f);
     CheckUDF<double, double>("log", log(2.0), 2.0);
+    CheckUDF<float, float>("ln", log(2.0f), 2.0f);
+    CheckUDF<double, double>("ln", log(2.0), 2.0);
     CheckUDF<double, int32_t>("log2", log2(65536), 65536);
     CheckUDF<double, double>("log2", log2(2.0), 2.0);
     CheckUDF<double, int32_t>("log10", log10(65536), 65536);
@@ -479,7 +481,7 @@ TEST_F(UDFIRBuilderTest, round_udf_test) {
     CheckUDF<double, double>("round", round(0.5), 0.5);
 }
 
-TEST_F(UDFIRBuilderTest, sin_udf_testsin_udf_test) {
+TEST_F(UDFIRBuilderTest, sin_udf_test) {
     CheckUDF<double, int16_t>("sin", sin(5), 5);
     CheckUDF<double, int32_t>("sin", sin(65536), 65536);
     CheckUDF<double, int64_t>("sin", sin(2147483648), 2147483648);
