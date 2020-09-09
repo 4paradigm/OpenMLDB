@@ -222,6 +222,57 @@ TEST_F(EngineTest, EngineCacheTest) {
     }
 }
 
+TEST_F(EngineTest, EngineLRUCacheTest) {
+    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
+    fesql::type::TableDef table_def;
+    fesql::type::TableDef table_def2;
+    BuildTableDef(table_def);
+    BuildTableDef(table_def2);
+    table_def.set_name("t1");
+    table_def2.set_name("t2");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    std::shared_ptr<::fesql::storage::Table> table2(
+        new ::fesql::storage::Table(2, 1, table_def2));
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index12");
+    index->add_first_keys("col1");
+    index->add_first_keys("col2");
+    index->set_second_key("col5");
+    auto catalog = BuildCommonCatalog(table_def, table);
+    AddTable(catalog, table_def2, table2);
+    EngineOptions options;
+    options.set_compile_only(true);
+    options.set_max_sql_cache_size(1);
+    Engine engine(catalog, options);
+
+    std::string sql = "select col1, col2 from t1;";
+    std::string sql2 = "select col1, col2 as cl2 from t1;";
+    {
+        base::Status get_status;
+        BatchRunSession bsession1;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), bsession1, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        BatchRunSession bsession2;
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), bsession2, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_EQ(bsession1.GetCompileInfo().get(),
+                  bsession2.GetCompileInfo().get());
+        BatchRunSession bsession3;
+        ASSERT_TRUE(
+            engine.Get(sql2, table_def.catalog(), bsession3, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_TRUE(
+            engine.Get(sql, table_def.catalog(), bsession2, get_status));
+        ASSERT_EQ(get_status.code, common::kOk);
+        ASSERT_NE(bsession1.GetCompileInfo().get(),
+                  bsession2.GetCompileInfo().get());
+
+    }
+}
+
 TEST_F(EngineTest, EngineCompileOnlyTest) {
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
     fesql::type::TableDef table_def;

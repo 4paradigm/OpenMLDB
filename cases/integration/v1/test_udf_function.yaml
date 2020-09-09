@@ -105,10 +105,10 @@ cases:
     desc: 三角函数
     inputs:
       - columns: ["id int", "c0 smallint", "c1 int", "c2 bigint", "c3 float", "c4 double"]
-        indexs: ["index1:c0:c4"]
+        indexs: ["index1:c0:c2"]
         rows:
           - [1, 0, 1, 1, 1.0, 0.0]
-          - [2, NULL, NULL, NULL, NULL, NULL]
+          - [2, NULL, NULL, 1, NULL, NULL]
     sql: select id as id, 
         cos(c0) as r0, 
         cot(c1) as r1, 
@@ -119,16 +119,16 @@ cases:
       columns: ["id int", "r0 double", "r1 double", "r2 double", "r3 float"]
       rows:
         - [1, 1, 0.6420926159343306, 0.8414709848078965, 1.5574077]
-        - [2, NULL, NULL, NULL, NULL]
+        - [2, NULL, NULL, 0.8414709848078965, NULL]
 
   - id: 6
     desc: 反三角函数
     inputs:
       - columns: ["id int", "c0 smallint", "c1 int", "c2 bigint", "c3 float", "c4 double"]
-        indexs: ["index1:c0:c4"]
+        indexs: ["index1:c0:c2"]
         rows:
-          - [1, 1, 2, -2, 0.2, 0.5]
-          - [2, NULL, NULL, NULL, NULL, NULL]
+          - [1, 1, 2, 2, 0.2, 0.5]
+          - [2, NULL, NULL, 2, NULL, NULL]
     sql: select id as id, 
         acos(c4) as r0, 
         asin(c3) as r1, 
@@ -138,17 +138,17 @@ cases:
       order: id
       columns: ["id int", "r0 double", "r1 float", "r2 double", "r3 double"]
       rows:
-        - [1, 1.0471975511965979, 0.2013579207903308, 1.1071487177940904, 2.3561944901923448]
+        - [1, 1.0471975511965979, 0.2013579207903308, 1.1071487177940904, 0.78539816339744828]
         - [2, NULL, NULL, NULL, 0.000000]
   
   - id: 7
     desc: 对数函数
     inputs:
       - columns: ["id int", "c0 smallint", "c1 int", "c2 bigint", "c3 float", "c4 double"]
-        indexs: ["index1:c0:c4"]
+        indexs: ["index1:c0:c2"]
         rows:
           - [1, 1, 1, 3, 1, 1]
-          - [2, NULL, NULL, NULL, NULL, NULL]
+          - [2, NULL, NULL, 3, NULL, NULL]
     sql: select id as id, 
         log(c0) as r0, 
         log(c2, c1) as r1, 
@@ -160,16 +160,16 @@ cases:
       columns: ["id int", "r0 double", "r1 double", "r2 float", "r3 double", "r4 double"]
       rows:
         - [1, 0, 0, 0, 0, 0]
-        - [2, -inf, -nan, NULL, NULL, -inf]
+        - [2, NULL, NULL, NULL, NULL, NULL]
 
   - id: 8
     desc: 数值符号函数
     inputs:
       - columns: ["id int", "c0 smallint", "c1 int", "c2 bigint", "c3 float", "c4 double"]
-        indexs: ["index1:c0:c4"]
+        indexs: ["index1:c0:c2"]
         rows:
-          - [1, -1, 2, -2, -0.2, -0.5]
-          - [2, NULL, NULL, NULL, NULL, NULL]
+          - [1, -1, 2, 2, -0.2, -0.5]
+          - [2, NULL, NULL, 2, NULL, NULL]
     sql: select id as id,
          abs(c0) as r0,
           abs(c1) as r1,
@@ -181,16 +181,16 @@ cases:
       columns: ["id int", "r0 int", "r1 int", "r2 bigint", "r3 double", "r4 double"]
       rows:
         - [1, 1, 2, 2, 0.20000000298023224, 0.5]
-        - [2, NULL, NULL, NULL, 0.000000, NULL]
+        - [2, NULL, NULL, 2, NULL , NULL]
 
   - id: 9
     desc: 数值位数函数
     inputs:
       - columns: ["id int", "c0 smallint", "c1 int", "c2 bigint", "c3 float", "c4 double"]
-        indexs: ["index1:c0:c4"]
+        indexs: ["index1:c0:c2"]
         rows:
-          - [1, 1, 2, -2, 0.5, 0.7]
-          - [2, NULL, NULL, NULL, NULL, NULL]
+          - [1, 1, 2, 2, 0.5, 0.7]
+          - [2, NULL, NULL, 2, NULL, NULL]
     sql: select id as id,
          ceil(c0) as r0, 
          ceiling(c1) as r1, 
@@ -201,17 +201,17 @@ cases:
       order: id
       columns: ["id int", "r0 bigint", "r1 bigint", "r2 bigint", "r3 double", "r4 double"]
       rows:
-        - [1, 1, 2, -2, 1.000000, 0.000000]
-        - [2, NULL, NULL, NULL, 0.000000, NULL]
+        - [1, 1, 2, 2, 1.000000, 0.000000]
+        - [2, NULL, NULL, 2, NULL, NULL]
 
   - id: 10
     desc: 数值幂函数
     inputs:
       - columns: ["id int", "c0 smallint", "c1 int", "c2 bigint", "c3 float", "c4 double"]
-        indexs: ["index1:c0:c4"]
+        indexs: ["index1:c0:c2"]
         rows:
           - [1, 0, 2, 10, 1, 100]
-          - [2, NULL, NULL, NULL, NULL, NULL]
+          - [2, NULL, NULL, 10, NULL, NULL]
     sql: select id as id,
         exp(c0) as r0,
         pow(c1, c2) as r1,
@@ -223,5 +223,5 @@ cases:
       columns: ["id int", "r0 double", "r1 double", "r2 double", "r3 double"]
       rows:
         - [1, 1, 1024.000000, 10.000000, 10.000000]  
-        - [2, NULL, 1.000000, 1.000000, NULL]  
+        - [2, NULL, NULL, NULL, NULL]  
         

@@ -169,10 +169,6 @@ struct ExplainOutput {
     vm::Schema output_schema;
 };
 
-typedef std::map<std::string,
-                 std::map<std::string, std::shared_ptr<CompileInfo>>>
-    EngineCache;
-
 typedef std::map<std::string, boost::compute::detail::lru_cache<
                                   std::string, std::shared_ptr<CompileInfo>>>
     EngineLRUCache;
