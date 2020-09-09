@@ -269,7 +269,6 @@ TEST_F(EngineTest, EngineLRUCacheTest) {
         ASSERT_EQ(get_status.code, common::kOk);
         ASSERT_NE(bsession1.GetCompileInfo().get(),
                   bsession2.GetCompileInfo().get());
-
     }
 }
 
