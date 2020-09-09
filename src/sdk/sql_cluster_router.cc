@@ -30,6 +30,7 @@
 #include "sdk/base_impl.h"
 #include "sdk/result_set_sql.h"
 #include "timer.h"  //NOLINT
+#include "boost/none.hpp"
 
 namespace rtidb {
 namespace sdk {
@@ -69,7 +70,7 @@ SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
     : options_(options),
       cluster_sdk_(NULL),
       engine_(NULL),
-      input_cache_(),
+      input_lru_cache_(),
       mu_(),
       rand_(::baidu::common::timer::now_time()) {}
 
@@ -77,7 +78,7 @@ SQLClusterRouter::SQLClusterRouter(ClusterSDK* sdk)
     : options_(),
       cluster_sdk_(sdk),
       engine_(NULL),
-      input_cache_(),
+      input_lru_cache_(),
       mu_(),
       rand_(::baidu::common::timer::now_time()) {}
 
@@ -393,11 +394,11 @@ DefaultValueMap SQLClusterRouter::GetDefaultMap(
 std::shared_ptr<RouterCache> SQLClusterRouter::GetCache(
     const std::string& db, const std::string& sql) {
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-    auto it = input_cache_.find(db);
-    if (it != input_cache_.end()) {
-        auto iit = it->second.find(sql);
-        if (iit != it->second.end()) {
-            return iit->second;
+    auto it = input_lru_cache_.find(db);
+    if (it != input_lru_cache_.end()) {
+        auto value = it->second.get(sql);
+        if (value != boost::none) {
+            return value.value();
         }
     }
     return std::shared_ptr<RouterCache>();
@@ -406,14 +407,14 @@ std::shared_ptr<RouterCache> SQLClusterRouter::GetCache(
 void SQLClusterRouter::SetCache(const std::string& db, const std::string& sql,
                                 std::shared_ptr<RouterCache> router_cache) {
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-    auto it = input_cache_.find(db);
-    if (it == input_cache_.end()) {
-        std::map<std::string, std::shared_ptr<::rtidb::sdk::RouterCache>>
-            sql_cache;
-        sql_cache.insert(std::make_pair(sql, router_cache));
-        input_cache_.insert(std::make_pair(db, sql_cache));
+    auto it = input_lru_cache_.find(db);
+    if (it == input_lru_cache_.end()) {
+        boost::compute::detail::lru_cache<std::string, std::shared_ptr<::rtidb::sdk::RouterCache>>
+            sql_cache(options_.max_sql_cache_size);
+        sql_cache.insert(sql, router_cache);
+        input_lru_cache_.insert(std::make_pair(db, sql_cache));
     } else {
-        it->second.insert(std::make_pair(sql, router_cache));
+        it->second.insert(sql, router_cache);
     }
 }
 
@@ -696,7 +697,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     bool ok = tablet->Put(table_info->tid(), 0, row->GetDimensions(),
                           row->GetTs(), row->GetRow(), 1);
     if (!ok) {
-        status->msg = "fail to get table " + table_info->name() + " tablet";
+        status->msg = "fail to make a put request to table " + table_info->name();
         LOG(WARNING) << status->msg;
         return false;
     }

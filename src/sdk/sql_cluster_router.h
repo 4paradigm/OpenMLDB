@@ -33,6 +33,7 @@
 #include "sdk/cluster_sdk.h"
 #include "sdk/sql_router.h"
 #include "vm/engine.h"
+#include "boost/compute/detail/lru_cache.hpp"
 
 namespace rtidb {
 namespace sdk {
@@ -163,9 +164,8 @@ class SQLClusterRouter : public SQLRouter {
     SQLRouterOptions options_;
     ClusterSDK* cluster_sdk_;
     ::fesql::vm::Engine* engine_;
-    // TODO(wangtaize) add update strategy
-    std::map<std::string, std::map<std::string, std::shared_ptr<RouterCache>>>
-        input_cache_;
+    std::map<std::string, boost::compute::detail::lru_cache<std::string, std::shared_ptr<RouterCache>>>
+        input_lru_cache_;
     ::rtidb::base::SpinMutex mu_;
     ::rtidb::base::Random rand_;
 };

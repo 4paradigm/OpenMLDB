@@ -35,6 +35,7 @@ struct SQLRouterOptions {
     std::string zk_path;
     bool enable_debug = false;
     uint32_t session_timeout = 2000;
+    uint32_t max_sql_cache_size = 10;
 };
 
 class ExplainInfo {
