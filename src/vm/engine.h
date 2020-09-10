@@ -98,23 +98,23 @@ class RunSession {
 
     virtual ~RunSession();
 
-    virtual inline const Schema& GetSchema() const {
+    virtual const Schema& GetSchema() const {
         return compile_info_->get_sql_context().schema;
     }
 
-    virtual inline const std::string& GetEncodedSchema() const {
+    virtual const std::string& GetEncodedSchema() const {
         return compile_info_->get_sql_context().encoded_schema;
     }
 
-    virtual inline vm::PhysicalOpNode* GetPhysicalPlan() {
+    virtual vm::PhysicalOpNode* GetPhysicalPlan() {
         return compile_info_->get_sql_context().physical_plan;
     }
 
-    virtual inline vm::Runner* GetRunner() {
+    virtual vm::Runner* GetRunner() {
         return compile_info_->get_sql_context().runner;
     }
 
-    virtual inline std::shared_ptr<CompileInfo> GetCompileInfo() {
+    virtual std::shared_ptr<CompileInfo> GetCompileInfo() {
         return compile_info_;
     }
 
@@ -152,10 +152,10 @@ class RequestRunSession : public RunSession {
     const bool IsBatchRun() const override { return false; }
     std::shared_ptr<TableHandler> RunRequestPlan(const Row& request,
                                                  PhysicalOpNode* node);
-    virtual inline const Schema& GetRequestSchema() const {
+    virtual const Schema& GetRequestSchema() const {
         return compile_info_->get_sql_context().request_schema;
     }
-    virtual inline const std::string& GetRequestName() const {
+    virtual const std::string& GetRequestName() const {
         return compile_info_->get_sql_context().request_name;
     }
 };
