@@ -170,10 +170,11 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         if (session.IsBatchRun()) {
             auto it = batch_lru_cache_.find(db);
             if (it == batch_lru_cache_.end()) {
-                it = batch_lru_cache_.insert(std::make_pair(
+                batch_lru_cache_.insert(std::make_pair(
                     db, boost::compute::detail::lru_cache<
                             std::string, std::shared_ptr<CompileInfo>>(
                             options_.max_sql_cache_size())));
+                it = batch_lru_cache_.find(db);
             }
             auto value = it->second.get(sql);
             if (value == boost::none) {
@@ -185,10 +186,11 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         } else {
             auto it = request_lru_cache_.find(db);
             if (it == request_lru_cache_.end()) {
-                it = request_lru_cache_.insert(std::make_pair(
+                request_lru_cache_.insert(std::make_pair(
                     db, boost::compute::detail::lru_cache<
                             std::string, std::shared_ptr<CompileInfo>>(
                             options_.max_sql_cache_size())));
+                it = request_lru_cache_.find(db);
             }
             auto value = it->second.get(sql);
             if (value == boost::none) {
