@@ -83,6 +83,7 @@ TEST_P(SQLSDKTest, sql_sdk_batch_test) {
     }
     SQLSDKTest::RunBatchModeSDK(sql_case, router);
 }
+
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestCreate, SQLSDKTest,
                          testing::ValuesIn(SQLSDKTest::InitCases("/cases/integration/v1/test_create.yaml")));
 

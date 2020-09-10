@@ -411,8 +411,7 @@ void SQLClusterRouter::SetCache(const std::string& db, const std::string& sql,
     if (it == input_lru_cache_.end()) {
         boost::compute::detail::lru_cache<std::string, std::shared_ptr<::rtidb::sdk::RouterCache>>
             sql_cache(options_.max_sql_cache_size);
-        input_lru_cache_.insert(std::make_pair(db, sql_cache));
-        it = input_lru_cache_.find(db);
+        it = input_lru_cache_.insert(std::make_pair(db, sql_cache));
     }
     it->second.insert(sql, router_cache);
 }
