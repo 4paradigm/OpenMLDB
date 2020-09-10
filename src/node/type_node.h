@@ -78,10 +78,17 @@ class TypeNode : public SQLNode {
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual bool Equals(const SQLNode *node) const;
 
+    bool IsBaseType() const;
+    bool IsString() const;
+    bool IsTimestamp() const;
+    bool IsDate() const;
     bool IsArithmetic() const;
+    bool IsNumber() const;
     bool IsInteger() const;
     bool IsNull() const;
+    bool IsBool() const;
     bool IsFloating() const;
+    static Status CheckTypeNodeNotNull(const TypeNode* left_type);
 };
 
 class OpaqueTypeNode : public TypeNode {

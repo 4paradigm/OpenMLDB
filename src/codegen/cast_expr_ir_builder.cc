@@ -25,89 +25,34 @@ bool CastExprIRBuilder::IsIntFloat2PointerCast(::llvm::Type* src,
                                                ::llvm::Type* dist) {
     return src->isIntegerTy() && (dist->isFloatTy() || dist->isDoubleTy());
 }
-
-Status CastExprIRBuilder::IsCastAccept(::llvm::Type* src, ::llvm::Type* dist,
-                                       ::llvm::Type** output) {
-    if (src == dist || IsSafeCast(src, dist)) {
-        *output = dist;
-        return Status::OK();
-    }
-
-    if (TypeIRBuilder::IsDatePtr(src) && TypeIRBuilder::IsNumber(dist) &&
-        !TypeIRBuilder::IsBool(dist)) {
-        return Status(common::kCodegenError,
-                      "incastable from " + TypeIRBuilder::TypeName(src) +
-                          " to " + TypeIRBuilder::TypeName(dist));
-    }
-
-    if (TypeIRBuilder::IsNumber(src) && TypeIRBuilder::IsDatePtr(dist)) {
-        return Status(common::kCodegenError,
-                      "incastable from " + TypeIRBuilder::TypeName(src) +
-                          " to " + TypeIRBuilder::TypeName(dist));
-    }
-    *output = dist;
+Status CastExprIRBuilder::InferNumberCastTypes(::llvm::Type* lhs,
+                                               ::llvm::Type* rhs) {
+    node::TypeNode left_type;
+    node::TypeNode right_type;
+    CHECK_TRUE(TypeIRBuilder::GetTypeNode(lhs, &left_type), kCodegenError,
+               "invalid op type")
+    CHECK_TRUE(TypeIRBuilder::GetTypeNode(rhs, &right_type), kCodegenError,
+               "invalid op type")
+    node::TypeNode output_type;
+    CHECK_STATUS(node::ExprNode::InferNumberCastTypes(left_type, right_type,
+                                                      &output_type))
     return Status::OK();
 }
-bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
-    if (NULL == src || NULL == dist) {
-        LOG(WARNING) << "cast type is null";
+bool CastExprIRBuilder::IsSafeCast(::llvm::Type* lhs, ::llvm::Type* rhs) {
+    node::TypeNode left_type;
+    node::TypeNode right_type;
+    if (!TypeIRBuilder::GetTypeNode(lhs, &left_type)) {
         return false;
     }
-
-    if (src == dist) {
-        return true;
+    if (!TypeIRBuilder::GetTypeNode(rhs, &right_type)) {
+        return false;
     }
-
-    ::fesql::node::DataType src_type;
-    ::fesql::node::DataType dist_type;
-    ::fesql::codegen::GetBaseType(src, &src_type);
-    ::fesql::codegen::GetBaseType(dist, &dist_type);
-    if (::fesql::node::kVarchar == dist_type) {
-        return true;
-    }
-    switch (src_type) {
-        case ::fesql::node::kBool: {
-            return true;
-        }
-        case ::fesql::node::kInt16: {
-            if (::fesql::node::kBool == dist_type) {
-                return false;
-            } else {
-                return true;
-            }
-        }
-        case ::fesql::node::kInt32: {
-            if (::fesql::node::kBool == dist_type ||
-                ::fesql::node::kInt16 == dist_type) {
-                return false;
-            }
-            return true;
-        }
-        case ::fesql::node::kInt64: {
-            return false;
-        }
-        case ::fesql::node::kTimestamp: {
-            return ::fesql::node::kInt64 == dist_type;
-        }
-        case ::fesql::node::kFloat: {
-            if (::fesql::node::kDouble == dist_type) {
-                return true;
-            }
-            return false;
-        }
-        case ::fesql::node::kDouble: {
-            return false;
-        }
-        default: {
-            return false;
-        }
-    }
-    return false;
+    return node::ExprNode::IsSafeCast(left_type, right_type);
 }
 Status CastExprIRBuilder::Cast(const NativeValue& value,
                                ::llvm::Type* cast_type, NativeValue* output) {
-    ::llvm::Type* dist_type;
-    CHECK_STATUS(IsCastAccept(value.GetType(), cast_type, &dist_type))
+    CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(node::ExprNode::IsCastAccept,
+                                                  value.GetType(), cast_type));
     if (IsSafeCast(value.GetType(), cast_type)) {
         CHECK_STATUS(SafeCast(value, cast_type, output));
     } else {
@@ -296,20 +241,10 @@ bool CastExprIRBuilder::UnSafeCastNumber(::llvm::Value* value,
     return true;
 }
 
-bool CastExprIRBuilder::IsStringCast(llvm::Type* type) {
-    if (nullptr == type) {
-        return false;
-    }
-
-    ::fesql::node::DataType fesql_type;
-    if (false == GetBaseType(type, &fesql_type)) {
-        return false;
-    }
-
-    return ::fesql::node::kVarchar == fesql_type;
-}
-
-// cast fesql type to bool: compare value with 0
+// cast number type to bool: compare value with 0
+// cast string type to bool: compare string size with 0
+// cast timestamp type to bool: compare ts with 0
+// cast date type to bool: compare date code with 0
 bool CastExprIRBuilder::BoolCast(llvm::Value* value, llvm::Value** casted_value,
                                  base::Status& status) {
     ::llvm::IRBuilder<> builder(block_);
@@ -335,6 +270,27 @@ bool CastExprIRBuilder::BoolCast(llvm::Value* value, llvm::Value** casted_value,
             return false;
         }
         return BoolCast(ts, casted_value, status);
+    } else if (TypeIRBuilder::IsDatePtr(type)) {
+        DateIRBuilder date_ir_builder(block_->getModule());
+        ::llvm::Value* date = nullptr;
+        if (!date_ir_builder.GetDate(block_, value, &date)) {
+            status.msg = "fail to codegen cast bool expr: get date error";
+            status.code = common::kCodegenError;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+        return BoolCast(date, casted_value, status);
+    } else if (TypeIRBuilder::IsStringPtr(type)) {
+        StringIRBuilder string_ir_builder(block_->getModule());
+        ::llvm::Value* size = nullptr;
+        if (!string_ir_builder.GetSize(block_, value, &size)) {
+            status.msg =
+                "fail to codegen cast bool expr: get string size error";
+            status.code = common::kCodegenError;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+        return BoolCast(size, casted_value, status);
     } else {
         status.msg =
             "fail to codegen cast bool expr: value type isn't compatible";

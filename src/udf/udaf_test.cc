@@ -62,20 +62,26 @@ TEST_F(UDAFTest, count_where_test) {
         "count_where", 0, MakeList<int32_t>({}), MakeBoolList({}));
 }
 
-TEST_F(UDAFTest, avg_where_test) {
+TEST_F(UDAFTest, avg_where_test_0) {
     CheckUDF<double, ListRef<int32_t>, ListRef<bool>>(
         "avg_where", 5.0, MakeList<int32_t>({4, 5, 6}),
         MakeBoolList({true, false, true}));
-
+}
+TEST_F(UDAFTest, avg_where_test_1) {
+    CheckUDF<double, ListRef<int32_t>, ListRef<bool>>(
+        "avg_where", 5.0, MakeList<int32_t>({4, 5, 6}),
+        MakeBoolList({true, false, true}));
     // TODO(someone): Timestamp arithmetic
     // CheckUDF<double, ListRef<Timestamp>, ListRef<bool>>(
     //    "avg_where", 5.0, MakeList<Timestamp>({Timestamp(4), Timestamp(5),
     //    Timestamp(6)}), MakeBoolList({true, false, true}));
-
+}
+TEST_F(UDAFTest, avg_where_test_2) {
     CheckUDF<double, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>>(
         "avg_where", 5.5, MakeList<Nullable<int32_t>>({4, 5, 6, 7}),
         MakeList<Nullable<bool>>({true, false, nullptr, true}));
-
+}
+TEST_F(UDAFTest, avg_where_test_3) {
     CheckUDF<double, ListRef<int32_t>, ListRef<bool>>(
         "avg_where", 0.0 / 0, MakeList<int32_t>({}), MakeBoolList({}));
 }

@@ -444,6 +444,48 @@ class ExprNode : public SQLNode {
                       "Not implemented: " + GetExprString());
     }
 
+    static bool IsSafeCast(const TypeNode &from_type,
+                           const TypeNode &target_type);
+
+    static bool IsIntFloat2PointerCast(const TypeNode &left_type,
+                                       const TypeNode &right_type);
+    static Status InferNumberCastTypes(const TypeNode &left_type,
+                                       const TypeNode &right_type,
+                                       TypeNode *output_type);
+
+    static Status AndTypeAccept(const TypeNode &lhs, const TypeNode &rhs,
+                                TypeNode *output_type);
+    static Status LShiftTypeAccept(const TypeNode &lhs, const TypeNode &rhs,
+                                   TypeNode *output_type);
+    static Status AddTypeAccept(const TypeNode &lhs, const TypeNode &rhs,
+                                TypeNode *output_type);
+    static Status SubTypeAccept(const TypeNode &lhs, const TypeNode &rhs,
+                                TypeNode *output_type);
+    static Status IsCastAccept(const TypeNode &left_type,
+                               const TypeNode &right_type,
+                               TypeNode *output_type);
+
+    static Status MultiTypeAccept(const TypeNode &left_type,
+                                  const TypeNode &right_type,
+                                  TypeNode *output_type);
+    static Status FDivTypeAccept(const TypeNode &left_type,
+                                 const TypeNode &right_type,
+                                 TypeNode *output_type);
+    static Status SDivTypeAccept(const TypeNode &left_type,
+                                 const TypeNode &right_type,
+                                 TypeNode *output_type);
+    static Status ModTypeAccept(const TypeNode &left_type,
+                                const TypeNode &right_type,
+                                TypeNode *output_type);
+    static Status NotTypeAccept(const TypeNode &left_type,
+                                 TypeNode *output_type);
+    static Status CompareTypeAccept(const TypeNode &left_type,
+                                    const TypeNode &right_type,
+                                    TypeNode *output_type);
+    static Status LogicalOpTypeAccept(const TypeNode &left_type,
+                                      const TypeNode &right_type,
+                                      TypeNode *output_type);
+
  private:
     const TypeNode *output_type_ = nullptr;
     bool nullable_ = true;

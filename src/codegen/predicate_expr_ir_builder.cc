@@ -39,6 +39,8 @@ PredicateIRBuilder::~PredicateIRBuilder() {}
  */
 Status PredicateIRBuilder::BuildAndExpr(NativeValue left, NativeValue right,
                                         NativeValue* output) {
+    CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(
+        node::ExprNode::LogicalOpTypeAccept, left.GetType(), right.GetType()));
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Value* raw_left = left.GetValue(&builder);
     ::llvm::Value* raw_right = right.GetValue(&builder);
@@ -86,6 +88,8 @@ Status PredicateIRBuilder::BuildAndExpr(NativeValue left, NativeValue right,
  */
 Status PredicateIRBuilder::BuildOrExpr(NativeValue left, NativeValue right,
                                        NativeValue* output) {
+    CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(
+        node::ExprNode::LogicalOpTypeAccept, left.GetType(), right.GetType()));
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Value* raw_left = left.GetValue(&builder);
     ::llvm::Value* raw_right = right.GetValue(&builder);
@@ -135,6 +139,8 @@ Status PredicateIRBuilder::BuildOrExpr(NativeValue left, NativeValue right,
  */
 Status PredicateIRBuilder::BuildXorExpr(NativeValue left, NativeValue right,
                                         NativeValue* output) {
+    CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(
+        node::ExprNode::LogicalOpTypeAccept, left.GetType(), right.GetType()));
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Value* raw_left = left.GetValue(&builder);
     ::llvm::Value* raw_right = right.GetValue(&builder);
@@ -164,6 +170,8 @@ Status PredicateIRBuilder::BuildXorExpr(NativeValue left, NativeValue right,
 
 Status PredicateIRBuilder::BuildNotExpr(NativeValue input,
                                         NativeValue* output) {
+    CHECK_STATUS(TypeIRBuilder::UnaryOpTypeInfer(node::ExprNode::NotTypeAccept,
+                                                 input.GetType()));
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Value* raw = input.GetValue(&builder);
     ::llvm::Value* is_null = input.GetIsNull(&builder);
@@ -547,15 +555,11 @@ bool PredicateIRBuilder::IsAcceptType(::llvm::Type* type) {
         }
     }
 }
+
 Status PredicateIRBuilder::CompareTypeAccept(::llvm::Type* lhs,
                                              ::llvm::Type* rhs) {
-    CHECK_TRUE((TypeIRBuilder::IsNull(lhs) || TypeIRBuilder::IsNull(rhs) ||
-                TypeIRBuilder::IsStringPtr(lhs) ||
-                TypeIRBuilder::IsStringPtr(rhs) || lhs == rhs ||
-                (TypeIRBuilder::IsNumber(lhs) && TypeIRBuilder::IsNumber(rhs))),
-               kCodegenError, "Invalid Compare Op type: lhs ",
-               TypeIRBuilder::TypeName(lhs), " rhs ",
-               TypeIRBuilder::TypeName(rhs))
+    CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(
+        node::ExprNode::CompareTypeAccept, lhs, rhs));
     return Status::OK();
 }
 bool PredicateIRBuilder::InferAndCastBoolTypes(::llvm::BasicBlock* block,
@@ -609,7 +613,6 @@ bool PredicateIRBuilder::InferAndCastTypes(::llvm::BasicBlock* block,
 
     *casted_left = left;
     *casted_right = right;
-
 
     StringIRBuilder string_builder(block->getModule());
     if (TypeIRBuilder::IsStringPtr(left_type)) {

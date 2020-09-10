@@ -834,6 +834,32 @@ bool TypeIRBuilder::IsStructPtr(::llvm::Type* type) {
     }
     return false;
 }
+base::Status TypeIRBuilder::UnaryOpTypeInfer(
+    const std::function<base::Status(const node::TypeNode&, node::TypeNode*)>
+        func,
+    ::llvm::Type* lhs) {
+    node::TypeNode left_type;
+    CHECK_TRUE(TypeIRBuilder::GetTypeNode(lhs, &left_type), common::kTypeError,
+               "invalid op type")
+    node::TypeNode output_type;
+    CHECK_STATUS(func(left_type, &output_type))
+    return Status::OK();
+}
+base::Status TypeIRBuilder::BinaryOpTypeInfer(
+    const std::function<base::Status(const node::TypeNode&,
+                                     const node::TypeNode&, node::TypeNode*)>
+        func,
+    ::llvm::Type* lhs, ::llvm::Type* rhs) {
+    node::TypeNode left_type;
+    node::TypeNode right_type;
+    CHECK_TRUE(TypeIRBuilder::GetTypeNode(lhs, &left_type), common::kTypeError,
+               "invalid op type")
+    CHECK_TRUE(TypeIRBuilder::GetTypeNode(rhs, &right_type), common::kTypeError,
+               "invalid op type")
+    node::TypeNode output_type;
+    CHECK_STATUS(func(left_type, right_type, &output_type))
+    return Status::OK();
+}
 
 static Status ExpandLLVMArgTypes(
     ::llvm::Module* m, const node::TypeNode* dtype, bool nullable,

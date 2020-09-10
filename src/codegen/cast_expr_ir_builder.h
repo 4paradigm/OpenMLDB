@@ -28,11 +28,10 @@ class CastExprIRBuilder {
                     NativeValue* output);  // NOLINT
     Status UnSafeCast(const NativeValue& value, ::llvm::Type* type,
                       NativeValue* output);  // NOLINT
-    bool IsSafeCast(::llvm::Type* src, ::llvm::Type* dist);
-    Status IsCastAccept(::llvm::Type* src, ::llvm::Type* dist,
-                        ::llvm::Type** output);
-    bool IsIntFloat2PointerCast(::llvm::Type* src, ::llvm::Type* dist);
-    bool IsStringCast(llvm::Type* type);
+    static bool IsSafeCast(::llvm::Type* lhs, ::llvm::Type* rhs);
+    static Status InferNumberCastTypes(::llvm::Type* left_type,
+                                       ::llvm::Type* right_type);
+    static bool IsIntFloat2PointerCast(::llvm::Type* src, ::llvm::Type* dist);
     bool BoolCast(llvm::Value* pValue, llvm::Value** pValue1,
                   base::Status& status);  // NOLINT
     bool SafeCastNumber(::llvm::Value* value, ::llvm::Type* type,

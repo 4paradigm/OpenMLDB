@@ -10,6 +10,7 @@
 #include "node/expr_node.h"
 #include "codec/fe_row_codec.h"
 #include "codegen/arithmetic_expr_ir_builder.h"
+#include "codegen/type_ir_builder.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "vm/schemas_context.h"
@@ -150,9 +151,34 @@ Status CaseWhenExprNode::InferAttr(ExprAnalysisContext* ctx) {
     return Status::OK();
 }
 
-bool IsSafeCast(const TypeNode* from_type, const TypeNode* target_type) {
-    auto from_base = from_type->base();
-    auto target_base = target_type->base();
+Status ExprNode::IsCastAccept(const TypeNode& src, const TypeNode& dist,
+                              TypeNode* output) {
+    if (TypeEquals(&src, &dist) || IsSafeCast(src, dist)) {
+        *output = dist;
+        return Status::OK();
+    }
+
+    if (src.IsDate() && dist.IsNumber() && !dist.IsBool()) {
+        return Status(
+            common::kCodegenError,
+            "incastable from " + src.GetName() + " to " + dist.GetName());
+    }
+
+    if (src.IsNumber() && dist.IsDate()) {
+        return Status(
+            common::kCodegenError,
+            "incastable from " + src.GetName() + " to " + dist.GetName());
+    }
+    *output = dist;
+    return Status::OK();
+}
+bool ExprNode::IsSafeCast(const TypeNode& from_type,
+                          const TypeNode& target_type) {
+    if (TypeEquals(&from_type, &target_type)) {
+        return true;
+    }
+    auto from_base = from_type.base();
+    auto target_base = target_type.base();
     switch (target_base) {
         case kBool:
             return from_base == kBool;
@@ -162,70 +188,156 @@ bool IsSafeCast(const TypeNode* from_type, const TypeNode* target_type) {
             return from_base == kBool || from_base == kInt16 ||
                    from_base == kInt32;
         case kInt64:
-            return from_base == kBool || from_type->IsInteger();
+            return from_base == kBool || from_type.IsInteger();
         case kFloat:
-            return from_base == kBool || from_type->IsInteger() ||
+            return from_base == kBool || from_type.IsInteger() ||
                    from_base == kFloat;
         case kDouble:
-            return from_base == kBool || from_type->IsArithmetic();
+            return from_base == kBool || from_type.IsNumber();
         case kTimestamp:
-            return from_type->IsInteger();
+            return from_type.IsInteger();
         default:
             return false;
     }
 }
 
-Status InferBinaryArithmeticType(const TypeNode* left, const TypeNode* right,
-                                 const TypeNode** output) {
-    CHECK_TRUE(left != nullptr && right != nullptr, kTypeError);
-    if (left->IsNull()) {
-        *output = right;
-    } else if (right->IsNull()) {
-        *output = left;
-    } else if (TypeEquals(left, right)) {
-        *output = left;
-    } else if (IsSafeCast(left, right)) {
-        *output = right;
-    } else if (IsSafeCast(right, left)) {
-        *output = left;
-    } else if (left->IsFloating() && right->IsInteger()) {
-        *output = left;
-    } else if (left->IsInteger() && right->IsFloating()) {
-        *output = right;
+bool ExprNode::IsIntFloat2PointerCast(const TypeNode& lhs,
+                                      const TypeNode& rhs) {
+    return lhs.IsNumber() && rhs.IsFloating();
+}
+Status ExprNode::InferNumberCastTypes(const TypeNode& left_type,
+                                      const TypeNode& right_type,
+                                      TypeNode* output_type) {
+    CHECK_TRUE(left_type.IsNumber() && right_type.IsNumber(), kTypeError,
+               "Fail to infer number types: invalid types ",
+               left_type.GetName(), ", ", right_type.GetName())
+
+    if (IsSafeCast(left_type, right_type)) {
+        *output_type = right_type;
+    } else if (IsSafeCast(right_type, left_type)) {
+        *output_type = left_type;
+    } else if (IsIntFloat2PointerCast(left_type, right_type)) {
+        *output_type = right_type;
+    } else if (IsIntFloat2PointerCast(right_type, left_type)) {
+        *output_type = left_type;
     } else {
-        return Status(common::kTypeError,
-                      "Incompatible lhs and rhs type: " + left->GetName() +
-                          ", " + right->GetName());
+        return base::Status(
+            kTypeError, "Fail cast numbers, types aren't compatible:" +
+                            left_type.GetName() + ", " + right_type.GetName());
     }
     return Status::OK();
 }
+Status ExprNode::AndTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
+                               TypeNode* output_type) {
+    CHECK_TRUE(lhs.IsInteger() && rhs.IsInteger(), kTypeError,
+               "Invalid Bit-And type: lhs ", lhs.GetName(), " rhs ",
+               rhs.GetName())
 
-Status InferBinaryComparisionType(const TypeNode* left, const TypeNode* right,
-                                  const TypeNode** output) {
-    CHECK_TRUE(left != nullptr && right != nullptr, kTypeError);
-    if (left->IsNull()) {
-        *output = right;
-    } else if (right->IsNull()) {
-        *output = left;
-    } else if (TypeEquals(left, right)) {
-        *output = left;
-    } else if (IsSafeCast(left, right)) {
-        *output = right;
-    } else if (IsSafeCast(right, left)) {
-        *output = left;
-    } else if (left->IsFloating() && right->IsInteger()) {
-        *output = left;
-    } else if (left->IsInteger() && right->IsFloating()) {
-        *output = right;
-    } else if (left->base() == node::kVarchar) {
-        *output = left;
-    } else if (right->base() == node::kVarchar) {
-        *output = right;
-    } else {
-        return Status(common::kTypeError,
-                      "Incompatible lhs and rhs type: " + left->GetName() +
-                          ", " + right->GetName());
+    CHECK_STATUS(InferNumberCastTypes(lhs, rhs, output_type))
+    return Status::OK();
+}
+Status ExprNode::LShiftTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
+                                  TypeNode* output_type) {
+    CHECK_TRUE(lhs.IsInteger() && rhs.IsInteger(), kTypeError,
+               "Invalid lshift type: lhs ", lhs.GetName(), " rhs ",
+               rhs.GetName())
+
+    CHECK_STATUS(InferNumberCastTypes(lhs, rhs, output_type))
+    return Status::OK();
+}
+
+// Accept rules:
+// 1. timestamp + timestamp
+// 2. interger + timestamp
+// 3. timestamp + integer
+// 4. number + number
+Status ExprNode::AddTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
+                               TypeNode* output_type) {
+    if (lhs.IsTimestamp() && rhs.IsTimestamp()) {
+        *output_type = lhs;
+    } else if (lhs.IsTimestamp() && rhs.IsInteger()) {
+        *output_type = lhs;
+    } else if (lhs.IsInteger() && rhs.IsTimestamp()) {
+        *output_type = rhs;
+    } else if (lhs.IsNumber() && rhs.IsNumber()) {
+        CHECK_STATUS(InferNumberCastTypes(lhs, rhs, output_type))
     }
+    CHECK_TRUE(true, kTypeError, "Invalid Add Op type: lhs ", lhs.GetName(),
+               " rhs ", rhs.GetName())
+    return Status::OK();
+}
+// Accept rules:
+// 1. timestamp - interger
+// 2. number - number
+Status ExprNode::SubTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
+                               TypeNode* output_type) {
+    if (lhs.IsTimestamp() && rhs.IsTimestamp()) {
+        *output_type = lhs;
+    } else if (lhs.IsTimestamp() && rhs.IsInteger()) {
+        *output_type = lhs;
+    } else if (lhs.IsNumber() && rhs.IsNumber()) {
+        CHECK_STATUS(InferNumberCastTypes(lhs, rhs, output_type))
+    } else {
+        return Status(kTypeError, "Invalid Sub Op type: lhs " + lhs.GetName() +
+                                      " rhs " + rhs.GetName());
+    }
+    return Status::OK();
+}
+Status ExprNode::MultiTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
+                                 TypeNode* output_type) {
+    CHECK_TRUE(lhs.IsNumber() && rhs.IsNumber(), kTypeError,
+               "Invalid Multi type: lhs ", lhs.GetName(), " rhs ",
+               rhs.GetName())
+    CHECK_STATUS(InferNumberCastTypes(lhs, rhs, output_type))
+    return Status::OK();
+}
+Status ExprNode::FDivTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
+                                TypeNode* output_type) {
+    CHECK_TRUE((lhs.IsNumber() || lhs.IsTimestamp()) && rhs.IsNumber(),
+               kTypeError, "Invalid FDiv type: lhs ", lhs.GetName(), " rhs ",
+               rhs.GetName())
+    *output_type = TypeNode(kDouble);
+    return Status::OK();
+}
+Status ExprNode::SDivTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
+                                TypeNode* output_type) {
+    CHECK_TRUE(lhs.IsInteger() && rhs.IsInteger(), kTypeError,
+               "Invalid SDiv type: lhs ", lhs.GetName(), " rhs ", rhs.GetName())
+
+    CHECK_STATUS(InferNumberCastTypes(lhs, rhs, output_type))
+    return Status::OK();
+}
+Status ExprNode::ModTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
+                               TypeNode* output_type) {
+    CHECK_TRUE(lhs.IsNumber() && rhs.IsNumber(), kTypeError,
+               "Invalid Mod type: lhs ", lhs.GetName(), " rhs ", rhs.GetName())
+    CHECK_STATUS(InferNumberCastTypes(lhs, rhs, output_type))
+    return Status::OK();
+}
+
+Status ExprNode::NotTypeAccept(const TypeNode& lhs, TypeNode* output_type) {
+    CHECK_TRUE(lhs.IsNull() || lhs.IsBaseType(), kTypeError,
+               "Invalid Mod type: lhs ", lhs.GetName())
+    *output_type = TypeNode(kBool);
+    return Status::OK();
+}
+Status ExprNode::CompareTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
+                                   TypeNode* output_type) {
+    CHECK_TRUE(TypeEquals(&lhs, &rhs) || lhs.IsNull() || rhs.IsNull() ||
+                   lhs.IsString() || rhs.IsString() ||
+                   (lhs.IsNumber() && rhs.IsNumber()),
+               kTypeError, "Invalid Compare Op type: lhs ", lhs.GetName(),
+               " rhs ", rhs.GetName())
+    *output_type = TypeNode(kBool);
+    return Status::OK();
+}
+Status ExprNode::LogicalOpTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
+                                     TypeNode* output_type) {
+    CHECK_TRUE(TypeEquals(&lhs, &rhs) || lhs.IsNull() || rhs.IsNull() ||
+                   (lhs.IsBaseType() && rhs.IsBaseType()),
+               kTypeError, "Invalid Compare Op type: lhs ", lhs.GetName(),
+               " rhs ", rhs.GetName())
+    *output_type = TypeNode(kBool);
     return Status::OK();
 }
 
@@ -236,24 +348,45 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
     bool nullable = GetChild(0)->nullable() || GetChild(1)->nullable();
     CHECK_TRUE(left_type != nullptr && right_type != nullptr, kTypeError);
     switch (GetOp()) {
-        case kFnOpAdd:
-        case kFnOpMinus:
-        case kFnOpMulti:
-        case kFnOpMod:
+        case kFnOpAdd: {
+            TypeNode* top_type = ctx->node_manager()->MakeTypeNode(kBool);
+            CHECK_STATUS(AddTypeAccept(*left_type, *right_type, top_type))
+            SetOutputType(top_type);
+            SetNullable(nullable);
+            break;
+        }
+        case kFnOpMinus: {
+            TypeNode* top_type = ctx->node_manager()->MakeTypeNode(kBool);
+            CHECK_STATUS(SubTypeAccept(*left_type, *right_type, top_type))
+            SetOutputType(top_type);
+            SetNullable(nullable);
+            break;
+        }
+        case kFnOpMulti: {
+            TypeNode* top_type = ctx->node_manager()->MakeTypeNode(kBool);
+            CHECK_STATUS(MultiTypeAccept(*left_type, *right_type, top_type))
+            SetOutputType(top_type);
+            SetNullable(nullable);
+            break;
+        }
+        case kFnOpMod: {
+            TypeNode* top_type = ctx->node_manager()->MakeTypeNode(kBool);
+            CHECK_STATUS(ModTypeAccept(*left_type, *right_type, top_type))
+            SetOutputType(top_type);
+            SetNullable(nullable);
+            break;
+        }
         case kFnOpDiv: {
-            const TypeNode* top_type = nullptr;
-            CHECK_STATUS(
-                InferBinaryArithmeticType(left_type, right_type, &top_type));
+            TypeNode* top_type = ctx->node_manager()->MakeTypeNode(kBool);
+            CHECK_STATUS(SDivTypeAccept(*left_type, *right_type, top_type))
             SetOutputType(top_type);
             SetNullable(nullable);
             break;
         }
         case kFnOpFDiv: {
-            CHECK_TRUE((left_type->IsNull() || left_type->IsArithmetic()) &&
-                           (right_type->IsNull() || right_type->IsArithmetic()),
-                       kTypeError, "Invalid fdiv type: ", left_type->GetName(),
-                       " / ", right_type->GetName());
-            SetOutputType(ctx->node_manager()->MakeTypeNode(kDouble));
+            TypeNode* top_type = ctx->node_manager()->MakeTypeNode(kBool);
+            CHECK_STATUS(FDivTypeAccept(*left_type, *right_type, top_type))
+            SetOutputType(top_type);
             SetNullable(nullable);
             break;
         }
@@ -263,20 +396,19 @@ Status BinaryExpr::InferAttr(ExprAnalysisContext* ctx) {
         case kFnOpLe:
         case kFnOpGt:
         case kFnOpGe: {
-            const TypeNode* top_type = nullptr;
-            CHECK_STATUS(
-                InferBinaryComparisionType(left_type, right_type, &top_type));
-            SetOutputType(ctx->node_manager()->MakeTypeNode(node::kBool));
+            TypeNode* top_type = ctx->node_manager()->MakeTypeNode(kBool);
+            CHECK_STATUS(CompareTypeAccept(*left_type, *right_type, top_type))
+            SetOutputType(top_type);
             SetNullable(nullable);
             break;
         }
         case kFnOpOr:
         case kFnOpXor:
         case kFnOpAnd: {
-            const TypeNode* top_type = nullptr;
-            CHECK_STATUS(
-                InferBinaryArithmeticType(left_type, right_type, &top_type));
-            SetOutputType(ctx->node_manager()->MakeTypeNode(node::kBool));
+            // all type accept
+            TypeNode* top_type = ctx->node_manager()->MakeTypeNode(kBool);
+            CHECK_STATUS(LogicalOpTypeAccept(*left_type, *right_type, top_type))
+            SetOutputType(top_type);
             SetNullable(nullable);
             break;
         }
@@ -303,15 +435,15 @@ Status UnaryExpr::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(dtype != nullptr, kTypeError);
     switch (GetOp()) {
         case kFnOpNot: {
-            CHECK_TRUE(dtype->IsArithmetic() || dtype->base() == kBool,
-                       kTypeError,
-                       "Invalid unary predicate type: ", dtype->GetName());
-            SetOutputType(ctx->node_manager()->MakeTypeNode(node::kBool));
+            // all type accept
+            TypeNode* top_type = ctx->node_manager()->MakeTypeNode(kBool);
+            CHECK_STATUS(NotTypeAccept(*dtype, top_type))
+            SetOutputType(top_type);
             SetNullable(nullable);
             break;
         }
         case kFnOpMinus: {
-            CHECK_TRUE(dtype->IsArithmetic(), kTypeError,
+            CHECK_TRUE(dtype->IsNumber(), kTypeError,
                        "Invalid unary type for minus: ", dtype->GetName());
             SetOutputType(dtype);
             SetNullable(nullable);
