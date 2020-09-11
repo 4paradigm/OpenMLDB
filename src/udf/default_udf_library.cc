@@ -1274,6 +1274,12 @@ void DefaultUDFLibrary::Init() {
                 v1::string_to<int16_t>)))
         .return_by_arg(true)
         .returns<Nullable<int16_t>>();
+    RegisterExternal("bool")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, bool*, bool*)>(
+                v1::string_to_bool)))
+        .return_by_arg(true)
+        .returns<Nullable<int16_t>>();
 
     RegisterExternal("date")
         .args<codec::Timestamp>(reinterpret_cast<void*>(
@@ -1299,7 +1305,6 @@ void DefaultUDFLibrary::Init() {
                 v1::string_to_timestamp)))
         .return_by_arg(true)
         .returns<Nullable<Timestamp>>();
-
 
     RegisterExternal("year")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::year))

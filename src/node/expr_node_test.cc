@@ -876,6 +876,12 @@ TEST_F(ExprNodeTest, InferBinaryCompareTypeTest) {
     TestInferBinaryCompare(kFnOpGe);
 }
 
+TEST_F(ExprNodeTest, InferBinaryCompareTypeTest1) {
+    auto do_build = [](NodeManager* nm, ExprNode* left, ExprNode* right) {
+      return nm->MakeBinaryExprNode(left, right, kFnOpEq);
+    };
+    CheckInfer<bool, bool, bool>(do_build);
+}
 TEST_F(ExprNodeTest, InferBinaryLogicalTypeTest) {
     TestInferBinaryLogical(kFnOpAnd);
     TestInferBinaryLogical(kFnOpOr);

@@ -526,6 +526,10 @@ bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output) {
         return false;
     }
     switch (type->getTypeID()) {
+        case ::llvm::Type::TokenTyID: {
+            *output = ::fesql::node::kNull;
+            return true;
+        }
         case ::llvm::Type::FloatTyID: {
             *output = ::fesql::node::kFloat;
             return true;
@@ -685,6 +689,11 @@ bool DataType2SchemaType(const ::fesql::node::TypeNode& type,
             *output = ::fesql::type::kDate;
             break;
         }
+        case :: fesql::node::kNull: {
+            // Encode的时候, kNull 就是 kBool
+            *output = ::fesql::type::kBool;
+            break;
+        }
         default: {
             LOG(WARNING) << "can't convert to schema for type: "
                          << type.GetName();
@@ -778,7 +787,7 @@ bool TypeIRBuilder::IsBool(::llvm::Type* type) {
     return data_type == node::kBool;
 }
 
-bool TypeIRBuilder::IsNull(::llvm::Type* type) { return type->isIntegerTy(1); }
+bool TypeIRBuilder::IsNull(::llvm::Type* type) { return type->isTokenTy(); }
 bool TypeIRBuilder::IsInterger(::llvm::Type* type) {
     return type->isIntegerTy();
 }

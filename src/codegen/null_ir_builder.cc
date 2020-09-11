@@ -29,10 +29,12 @@ base::Status NullIRBuilder::SafeNullBinaryExpr(
     NativeValue left = value_left;
     NativeValue right = value_right;
     if (value_left.IsConstNull()) {
-        *value_output = NativeValue::CreateNull(left.GetType());
+        *value_output = NativeValue::CreateNull(right.GetType());
+        return base::Status::OK();
     }
     if (value_right.IsConstNull()) {
-        *value_output = NativeValue::CreateNull(right.GetType());
+        *value_output = NativeValue::CreateNull(left.GetType());
+        return base::Status::OK();
     }
     ::llvm::Value* raw_left = left.GetValue(&builder);
     ::llvm::Value* raw_right = right.GetValue(&builder);
@@ -65,6 +67,7 @@ base::Status NullIRBuilder::SafeNullCastExpr(
     NativeValue left = value_left;
     if (value_left.IsConstNull()) {
         *value_output = NativeValue::CreateNull(left.GetType());
+        return base::Status::OK();
     }
     ::llvm::Value* raw_left = left.GetValue(&builder);
     ::llvm::Value* output = nullptr;
@@ -93,6 +96,7 @@ base::Status NullIRBuilder::SafeNullUnaryExpr(
     NativeValue left = value_left;
     if (value_left.IsConstNull()) {
         *value_output = NativeValue::CreateNull(left.GetType());
+        return base::Status::OK();
     }
     ::llvm::Value* raw_left = left.GetValue(&builder);
     ::llvm::Value* output = nullptr;

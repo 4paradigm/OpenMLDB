@@ -230,7 +230,20 @@ void timestamp_to_date(codec::Timestamp *timestamp, fesql::codec::Date *output,
 void date_to_string(codec::Date *date, fesql::codec::StringRef *output) {
     date_format(date, "%Y-%m-%d", output);
 }
-
+void string_to_bool(codec::StringRef* str, bool* out, bool *is_null_ptr) {
+    if (nullptr == str) {
+        *is_null_ptr = true;
+        return;
+    }
+    if (0 == str->size_) {
+        *out = false;
+        *is_null_ptr = false;
+        return;
+    }
+    *out = true;
+    *is_null_ptr = false;
+    return;
+}
 void string_to_date(codec::StringRef *str, fesql::codec::Date *output,
                     bool *is_null) {
     if (19 == str->size_) {

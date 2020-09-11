@@ -418,11 +418,20 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
                         return false;
                     }
                     break;
+                } else if (TypeIRBuilder::IsNull(val.GetType())) {
+                    ok = AppendPrimary(
+                        i8_ptr,
+                        NativeValue::CreateWithFlag(builder.getInt1(true),
+                                                    builder.getInt1(true)),
+                        idx, offset);
+                    break;
                 } else {
-                    LOG(WARNING) << "number type is required but "
-                                 << val.GetType()->getTypeID();
+                    LOG(WARNING)
+                        << "number/timestamp/date type is required but "
+                        << val.GetType()->getTypeID();
                     return false;
                 }
+                break;
             }
             case ::fesql::type::kVarchar: {
                 if (str_body_offset == NULL) {

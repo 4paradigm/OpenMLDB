@@ -197,67 +197,110 @@ void BoolCastCheck(::fesql::node::DataType type, V value, bool result) {
     bool ret = decode(value);
     ASSERT_EQ(ret, result);
 }
-TEST_F(CastExprIrBuilderTest, unsafe_cast_test) {
+TEST_F(CastExprIrBuilderTest, unsafe_cast_test_1) {
     UnSafeCastCheck<int16_t, int16_t>(::fesql::node::kInt16,
                                       ::fesql::node::kInt16, 1u, 4u);
+}
+TEST_F(CastExprIrBuilderTest, unsafe_cast_test_2) {
     UnSafeCastCheck<int16_t, int32_t>(::fesql::node::kInt16,
                                       ::fesql::node::kInt32, 10000u, 40000);
+}
+TEST_F(CastExprIrBuilderTest, unsafe_cast_test_3) {
     UnSafeCastCheck<int16_t, int64_t>(::fesql::node::kInt16,
                                       ::fesql::node::kInt64, 10000u, 40000L);
+}
+TEST_F(CastExprIrBuilderTest, unsafe_cast_test_4) {
     UnSafeCastCheck<int16_t, float>(::fesql::node::kInt16,
                                     ::fesql::node::kFloat, 10000u, 40000.0f);
+}
+TEST_F(CastExprIrBuilderTest, unsafe_cast_test_5) {
     UnSafeCastCheck<int16_t, double>(::fesql::node::kInt16,
                                      ::fesql::node::kDouble, 10000u, 40000.0);
-
+}
+TEST_F(CastExprIrBuilderTest, unsafe_cast_test_6) {
     UnSafeCastCheck<int32_t, int16_t>(::fesql::node::kInt32,
                                       ::fesql::node::kInt16, 1, 4u);
+}
+TEST_F(CastExprIrBuilderTest, unsafe_cast_test_7) {
     UnSafeCastCheck<int32_t, int32_t>(::fesql::node::kInt32,
                                       ::fesql::node::kInt32, 1, 4);
+}
+TEST_F(CastExprIrBuilderTest, unsafe_cast_test_8) {
     UnSafeCastCheck<int32_t, int64_t>(
         ::fesql::node::kInt32, ::fesql::node::kInt64, 2000000000, 8000000000L);
+}
+TEST_F(CastExprIrBuilderTest, unsafe_cast_test_9) {
     UnSafeCastCheck<int32_t, float>(::fesql::node::kInt32,
                                     ::fesql::node::kFloat, 1, 4.0f);
+}
+TEST_F(CastExprIrBuilderTest, unsafe_cast_test_10) {
     UnSafeCastCheck<int32_t, double>(::fesql::node::kInt32,
                                      ::fesql::node::kDouble, 2000000000,
                                      8000000000.0);
-
+}
+TEST_F(CastExprIrBuilderTest, unsafe_cast_test_11) {
     UnSafeCastCheck<float, int16_t>(::fesql::node::kFloat,
                                     ::fesql::node::kInt16, 1.5f, 4u);
+}
+TEST_F(CastExprIrBuilderTest, unsafe_cast_test_12) {
     UnSafeCastCheck<float, int32_t>(::fesql::node::kFloat,
                                     ::fesql::node::kInt32, 10000.5f, 40000);
+}
+TEST_F(CastExprIrBuilderTest, unsafe_cast_test_13) {
     UnSafeCastCheck<float, int64_t>(::fesql::node::kFloat,
                                     ::fesql::node::kInt64, 2000000000.5f,
                                     8000000000L);
+}
+TEST_F(CastExprIrBuilderTest, unsafe_cast_test_14) {
     UnSafeCastCheck<float, double>(::fesql::node::kFloat,
                                    ::fesql::node::kDouble, 2000000000.5f,
                                    static_cast<double>(2000000000.5f) * 4.0);
 }
 
-TEST_F(CastExprIrBuilderTest, safe_cast_error_test) {
+TEST_F(CastExprIrBuilderTest, safe_cast_error_test_0) {
     SafeCastErrorCheck(::fesql::node::kInt32, ::fesql::node::kInt16, "unsafe");
-
+}
+TEST_F(CastExprIrBuilderTest, safe_cast_error_test_1) {
     SafeCastErrorCheck(::fesql::node::kInt64, ::fesql::node::kInt16,
                        "unsafe cast");
+}
+TEST_F(CastExprIrBuilderTest, safe_cast_error_test_2) {
     SafeCastErrorCheck(::fesql::node::kInt64, ::fesql::node::kInt32,
                        "unsafe cast");
+}
+TEST_F(CastExprIrBuilderTest, safe_cast_error_test_3) {
     SafeCastErrorCheck(::fesql::node::kInt64, ::fesql::node::kFloat,
                        "unsafe cast");
+}
+TEST_F(CastExprIrBuilderTest, safe_cast_error_test_4) {
     SafeCastErrorCheck(::fesql::node::kInt64, ::fesql::node::kDouble,
                        "unsafe cast");
-
+}
+TEST_F(CastExprIrBuilderTest, safe_cast_error_test_5) {
     SafeCastErrorCheck(::fesql::node::kFloat, ::fesql::node::kInt16,
                        "unsafe cast");
+}
+TEST_F(CastExprIrBuilderTest, safe_cast_error_test_6) {
     SafeCastErrorCheck(::fesql::node::kFloat, ::fesql::node::kInt32,
                        "unsafe cast");
+}
+TEST_F(CastExprIrBuilderTest, safe_cast_error_test_7) {
     SafeCastErrorCheck(::fesql::node::kFloat, ::fesql::node::kInt64,
                        "unsafe cast");
-
+}
+TEST_F(CastExprIrBuilderTest, safe_cast_error_test_8) {
     SafeCastErrorCheck(::fesql::node::kDouble, ::fesql::node::kInt16,
                        "unsafe cast");
+}
+TEST_F(CastExprIrBuilderTest, safe_cast_error_test_9) {
     SafeCastErrorCheck(::fesql::node::kDouble, ::fesql::node::kInt32,
                        "unsafe cast");
+}
+TEST_F(CastExprIrBuilderTest, safe_cast_error_test_10) {
     SafeCastErrorCheck(::fesql::node::kDouble, ::fesql::node::kInt64,
                        "unsafe cast");
+}
+TEST_F(CastExprIrBuilderTest, safe_cast_error_test_11) {
     SafeCastErrorCheck(::fesql::node::kDouble, ::fesql::node::kFloat,
                        "unsafe cast");
 }
@@ -582,6 +625,8 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("bool", "true", "float", "1"),
                     std::make_tuple("bool", "true", "double", "1"),
                     std::make_tuple("bool", "true", "timestamp", "1"),
+                    std::make_tuple("bool", "true", "date", "2020-05-20"),
+                    std::make_tuple("bool", "true", "string", "000"),
                     std::make_tuple("bool", "false", "bool", "false"),
                     std::make_tuple("bool", "false", "int16", "0"),
                     std::make_tuple("bool", "false", "int32", "0"),
@@ -589,12 +634,16 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("bool", "false", "float", "0"),
                     std::make_tuple("bool", "false", "double", "0"),
                     std::make_tuple("bool", "false", "timestamp", "0"),
+                    std::make_tuple("bool", "false", "string", ""),
                     std::make_tuple("bool", "null", "bool", "null"),
                     std::make_tuple("bool", "null", "int16", "null"),
                     std::make_tuple("bool", "null", "int32", "null"),
                     std::make_tuple("bool", "null", "int64", "null"),
                     std::make_tuple("bool", "null", "float", "null"),
-                    std::make_tuple("bool", "null", "double", "null")));
+                    std::make_tuple("bool", "null", "double", "null"),
+                    std::make_tuple("bool", "null", "date", "null"),
+                    std::make_tuple("bool", "null", "timestamp", "null"),
+                    std::make_tuple("bool", "null", "string", "null")));
 // SafeCastNumber: bool, int16, int32
 // UnSafeCst: int64, float, double
 INSTANTIATE_TEST_SUITE_P(
@@ -917,8 +966,6 @@ void CastErrorExprCheck(std::string cast_type_str, std::string src_type_str) {
         }
     }
 }
-INSTANTIATE_TEST_SUITE_P(CastExprErrorTestBool, CastErrorExprTest,
-                         testing::Values(std::make_tuple("bool", "date")));
 INSTANTIATE_TEST_SUITE_P(CastExprErrorTestInt16, CastErrorExprTest,
                          testing::Values(std::make_tuple("int16", "date")));
 INSTANTIATE_TEST_SUITE_P(CastExprErrorTestInt32, CastErrorExprTest,

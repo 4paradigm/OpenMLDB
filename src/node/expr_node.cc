@@ -190,12 +190,11 @@ bool ExprNode::IsSafeCast(const TypeNode& from_type,
         case kInt64:
             return from_base == kBool || from_type.IsInteger();
         case kFloat:
-            return from_base == kBool || from_type.IsInteger() ||
-                   from_base == kFloat;
+            return from_base == kBool || from_base == kFloat;
         case kDouble:
-            return from_base == kBool || from_type.IsNumber();
+            return from_base == kBool || from_type.IsFloating();
         case kTimestamp:
-            return from_type.IsInteger();
+            return from_base == kTimestamp || from_type.IsInteger();
         default:
             return false;
     }
@@ -251,9 +250,26 @@ Status ExprNode::LShiftTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
 // 2. interger + timestamp
 // 3. timestamp + integer
 // 4. number + number
+// 5. same tuple<number, number, ..> types can be added together
 Status ExprNode::AddTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
                                TypeNode* output_type) {
-    if (lhs.IsTimestamp() && rhs.IsTimestamp()) {
+    CHECK_TRUE(
+        (lhs.IsNull() || lhs.IsNumber() || lhs.IsTimestamp() ||
+         lhs.IsTupleNumbers()) &&
+            (rhs.IsNull() || rhs.IsNumber() || rhs.IsTimestamp() ||
+             lhs.IsTupleNumbers()),
+        kTypeError,
+        "Invalid Sub Op type: lhs " + lhs.GetName() + " rhs " + rhs.GetName())
+    if (lhs.IsTupleNumbers() || rhs.IsTupleNumbers()) {
+        CHECK_TRUE(TypeEquals(&lhs, &rhs), kTypeError,
+                   "Invalid Add Op type: lhs " + lhs.GetName() + " rhs " +
+                       rhs.GetName())
+        *output_type = lhs;
+    } else if (lhs.IsNull()) {
+        *output_type = rhs;
+    } else if (rhs.IsNull()) {
+        *output_type = lhs;
+    } else if (lhs.IsTimestamp() && rhs.IsTimestamp()) {
         *output_type = lhs;
     } else if (lhs.IsTimestamp() && rhs.IsInteger()) {
         *output_type = lhs;
@@ -261,9 +277,10 @@ Status ExprNode::AddTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
         *output_type = rhs;
     } else if (lhs.IsNumber() && rhs.IsNumber()) {
         CHECK_STATUS(InferNumberCastTypes(lhs, rhs, output_type))
+    } else {
+        return Status(kTypeError, "Invalid Add Op type: lhs " + lhs.GetName() +
+                                      " rhs " + rhs.GetName());
     }
-    CHECK_TRUE(true, kTypeError, "Invalid Add Op type: lhs ", lhs.GetName(),
-               " rhs ", rhs.GetName())
     return Status::OK();
 }
 // Accept rules:
@@ -271,7 +288,16 @@ Status ExprNode::AddTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
 // 2. number - number
 Status ExprNode::SubTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
                                TypeNode* output_type) {
-    if (lhs.IsTimestamp() && rhs.IsTimestamp()) {
+    CHECK_TRUE(
+        (lhs.IsNull() || lhs.IsNumber() || lhs.IsTimestamp()) &&
+            (rhs.IsNull() || rhs.IsNumber() || rhs.IsTimestamp()),
+        kTypeError,
+        "Invalid Sub Op type: lhs " + lhs.GetName() + " rhs " + rhs.GetName())
+    if (lhs.IsNull()) {
+        *output_type = lhs;
+    } else if (rhs.IsNull()) {
+        *output_type = lhs;
+    } else if (lhs.IsTimestamp() && rhs.IsTimestamp()) {
         *output_type = lhs;
     } else if (lhs.IsTimestamp() && rhs.IsInteger()) {
         *output_type = lhs;
@@ -285,33 +311,63 @@ Status ExprNode::SubTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
 }
 Status ExprNode::MultiTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
                                  TypeNode* output_type) {
-    CHECK_TRUE(lhs.IsNumber() && rhs.IsNumber(), kTypeError,
-               "Invalid Multi type: lhs ", lhs.GetName(), " rhs ",
-               rhs.GetName())
-    CHECK_STATUS(InferNumberCastTypes(lhs, rhs, output_type))
+    CHECK_TRUE(
+        (lhs.IsNull() || lhs.IsNumber()) && (rhs.IsNull() || rhs.IsNumber()),
+        kTypeError,
+        "Invalid Multi Op type: lhs " + lhs.GetName() + " rhs " + rhs.GetName())
+    if (lhs.IsNull()) {
+        *output_type = lhs;
+    } else if (rhs.IsNull()) {
+        *output_type = lhs;
+    } else {
+        CHECK_STATUS(InferNumberCastTypes(lhs, rhs, output_type))
+    }
     return Status::OK();
 }
 Status ExprNode::FDivTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
                                 TypeNode* output_type) {
-    CHECK_TRUE((lhs.IsNumber() || lhs.IsTimestamp()) && rhs.IsNumber(),
-               kTypeError, "Invalid FDiv type: lhs ", lhs.GetName(), " rhs ",
-               rhs.GetName())
-    *output_type = TypeNode(kDouble);
+    CHECK_TRUE(
+        (lhs.IsNull() || lhs.IsNumber() || lhs.IsTimestamp()) &&
+            (rhs.IsNull() || rhs.IsNumber()),
+        kTypeError,
+        "Invalid FDiv Op type: lhs " + lhs.GetName() + " rhs " + rhs.GetName())
+    if (lhs.IsNull()) {
+        *output_type = lhs;
+    } else if (rhs.IsNull()) {
+        *output_type = lhs;
+    } else {
+        *output_type = TypeNode(kDouble);
+    }
     return Status::OK();
 }
 Status ExprNode::SDivTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
                                 TypeNode* output_type) {
-    CHECK_TRUE(lhs.IsInteger() && rhs.IsInteger(), kTypeError,
-               "Invalid SDiv type: lhs ", lhs.GetName(), " rhs ", rhs.GetName())
-
-    CHECK_STATUS(InferNumberCastTypes(lhs, rhs, output_type))
+    CHECK_TRUE(
+        (lhs.IsNull() || lhs.IsInteger()) && (rhs.IsNull() || rhs.IsInteger()),
+        kTypeError, "Invalid SDiv type: lhs ", lhs.GetName(), " rhs ",
+        rhs.GetName())
+    if (lhs.IsNull()) {
+        *output_type = lhs;
+    } else if (rhs.IsNull()) {
+        *output_type = lhs;
+    } else {
+        CHECK_STATUS(InferNumberCastTypes(lhs, rhs, output_type))
+    }
     return Status::OK();
 }
 Status ExprNode::ModTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
                                TypeNode* output_type) {
-    CHECK_TRUE(lhs.IsNumber() && rhs.IsNumber(), kTypeError,
-               "Invalid Mod type: lhs ", lhs.GetName(), " rhs ", rhs.GetName())
-    CHECK_STATUS(InferNumberCastTypes(lhs, rhs, output_type))
+    CHECK_TRUE(
+        (lhs.IsNull() || lhs.IsNumber()) && (rhs.IsNull() || rhs.IsNumber()),
+        kTypeError, "Invalid Mod type: lhs ", lhs.GetName(), " rhs ",
+        rhs.GetName())
+    if (lhs.IsNull()) {
+        *output_type = lhs;
+    } else if (rhs.IsNull()) {
+        *output_type = lhs;
+    } else {
+        CHECK_STATUS(InferNumberCastTypes(lhs, rhs, output_type))
+    }
     return Status::OK();
 }
 
@@ -323,18 +379,29 @@ Status ExprNode::NotTypeAccept(const TypeNode& lhs, TypeNode* output_type) {
 }
 Status ExprNode::CompareTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
                                    TypeNode* output_type) {
-    CHECK_TRUE(TypeEquals(&lhs, &rhs) || lhs.IsNull() || rhs.IsNull() ||
-                   lhs.IsString() || rhs.IsString() ||
-                   (lhs.IsNumber() && rhs.IsNumber()),
+    CHECK_TRUE((lhs.IsNull() || lhs.IsBaseType()) ||
+                   lhs.IsTuple() &&
+                       (rhs.IsNull() || rhs.IsBaseType() || rhs.IsTuple()),
                kTypeError, "Invalid Compare Op type: lhs ", lhs.GetName(),
                " rhs ", rhs.GetName())
-    *output_type = TypeNode(kBool);
+    if (lhs.IsNull() || rhs.IsNull()) {
+        *output_type = TypeNode(kBool);
+    } else if (lhs.IsNumber() && rhs.IsNumber()) {
+        *output_type = TypeNode(kBool);
+    } else if (lhs.IsString() || rhs.IsString()) {
+        *output_type = TypeNode(kBool);
+    } else if (TypeEquals(&lhs, &rhs)) {
+        *output_type = TypeNode(kBool);
+    } else {
+        return Status(kTypeError, "Invalid Compare Op type: lhs " +
+                                      lhs.GetName() + " rhs " + rhs.GetName());
+    }
     return Status::OK();
 }
 Status ExprNode::LogicalOpTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
                                      TypeNode* output_type) {
-    CHECK_TRUE(TypeEquals(&lhs, &rhs) || lhs.IsNull() || rhs.IsNull() ||
-                   (lhs.IsBaseType() && rhs.IsBaseType()),
+    CHECK_TRUE((lhs.IsNull() || lhs.IsBaseType()) &&
+                   (rhs.IsNull() || rhs.IsBaseType()),
                kTypeError, "Invalid Compare Op type: lhs ", lhs.GetName(),
                " rhs ", rhs.GetName())
     *output_type = TypeNode(kBool);

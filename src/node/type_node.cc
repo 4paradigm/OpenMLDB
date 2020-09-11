@@ -15,6 +15,18 @@ bool TypeNode::IsBaseType() const {
     return IsNumber() || IsString() || IsTimestamp() || IsDate();
 }
 bool TypeNode::IsDate() const { return base_ == node::kDate; }
+bool TypeNode::IsTuple() const { return base_ == node::kTuple; }
+bool TypeNode::IsTupleNumbers() const {
+    if (!IsTuple()) {
+        return false;
+    }
+    for (auto type : generics_) {
+        if (!type->IsNumber()) {
+            return false;
+        }
+    }
+    return true;
+}
 bool TypeNode::IsTimestamp() const { return base_ == node::kTimestamp; }
 bool TypeNode::IsString() const { return base_ == node::kVarchar; }
 bool TypeNode::IsArithmetic() const { return IsInteger() || IsFloating(); }

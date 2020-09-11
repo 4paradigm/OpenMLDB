@@ -216,10 +216,10 @@ bool CastExprIRBuilder::UnSafeCastNumber(::llvm::Value* value,
     } else if (value->getType()->isIntegerTy(1) && type->isFloatingPointTy()) {
         // bool -> float/double
         *output = builder.CreateUIToFP(value, type);
+    } else if (value->getType()->isIntegerTy(8)) {
+        value = builder.CreateTrunc(value, builder.getInt32Ty());
+        *output = builder.CreateSIToFP(value, builder.getFloatTy());
     } else if (value->getType()->isIntegerTy() && type->isFloatTy()) {
-        if (value->getType()->getIntegerBitWidth() > 4) {
-            value = builder.CreateTrunc(value, builder.getInt32Ty());
-        }
         *output = builder.CreateSIToFP(value, builder.getFloatTy());
     } else if (value->getType()->isIntegerTy() && type->isDoubleTy()) {
         *output = builder.CreateSIToFP(value, builder.getDoubleTy());

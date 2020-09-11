@@ -197,6 +197,9 @@ Status PredicateIRBuilder::BuildEqExpr(NativeValue left, NativeValue right,
             return BuildEqExpr(block, lhs, rhs, output, status);
         },
         output));
+    if (output->IsConstNull()) {
+        output->SetType(BoolIRBuilder::GetType(block_->getModule()));
+    }
     return Status::OK();
 }
 Status PredicateIRBuilder::BuildNeqExpr(NativeValue left, NativeValue right,
@@ -209,6 +212,9 @@ Status PredicateIRBuilder::BuildNeqExpr(NativeValue left, NativeValue right,
             return BuildNeqExpr(block, lhs, rhs, output, status);
         },
         output));
+    if (output->IsConstNull()) {
+        output->SetType(BoolIRBuilder::GetType(block_->getModule()));
+    }
     return Status::OK();
 }
 Status PredicateIRBuilder::BuildGtExpr(NativeValue left, NativeValue right,
@@ -221,6 +227,9 @@ Status PredicateIRBuilder::BuildGtExpr(NativeValue left, NativeValue right,
             return BuildGtExpr(block, lhs, rhs, output, status);
         },
         output));
+    if (output->IsConstNull()) {
+        output->SetType(BoolIRBuilder::GetType(block_->getModule()));
+    }
     return Status::OK();
 }
 Status PredicateIRBuilder::BuildGeExpr(NativeValue left, NativeValue right,
@@ -233,6 +242,9 @@ Status PredicateIRBuilder::BuildGeExpr(NativeValue left, NativeValue right,
             return BuildGeExpr(block, lhs, rhs, output, status);
         },
         output));
+    if (output->IsConstNull()) {
+        output->SetType(BoolIRBuilder::GetType(block_->getModule()));
+    }
     return Status::OK();
 }
 Status PredicateIRBuilder::BuildLeExpr(NativeValue left, NativeValue right,
@@ -245,6 +257,9 @@ Status PredicateIRBuilder::BuildLeExpr(NativeValue left, NativeValue right,
             return BuildLeExpr(block, lhs, rhs, output, status);
         },
         output));
+    if (output->IsConstNull()) {
+        output->SetType(BoolIRBuilder::GetType(block_->getModule()));
+    }
     return Status::OK();
 }
 Status PredicateIRBuilder::BuildLtExpr(NativeValue left, NativeValue right,
@@ -257,6 +272,9 @@ Status PredicateIRBuilder::BuildLtExpr(NativeValue left, NativeValue right,
             return BuildLtExpr(block, lhs, rhs, output, status);
         },
         output));
+    if (output->IsConstNull()) {
+        output->SetType(BoolIRBuilder::GetType(block_->getModule()));
+    }
     return Status::OK();
 }
 
@@ -276,6 +294,14 @@ bool PredicateIRBuilder::BuildEqExpr(::llvm::BasicBlock* block,
     } else if (casted_left->getType()->isFloatTy() ||
                casted_left->getType()->isDoubleTy()) {
         *output = builder.CreateFCmpOEQ(casted_left, casted_right);
+    } else if (TypeIRBuilder::IsTimestampPtr(casted_left->getType()) &&
+               TypeIRBuilder::IsTimestampPtr(casted_right->getType())) {
+        llvm::Value* left_days;
+        llvm::Value* right_days;
+        TimestampIRBuilder timestamp_ir_builder(block->getModule());
+        timestamp_ir_builder.GetTs(block, casted_left, &left_days);
+        timestamp_ir_builder.GetTs(block, casted_right, &right_days);
+        return BuildEqExpr(block, left_days, right_days, output, status);
     } else if (TypeIRBuilder::IsDatePtr(casted_left->getType()) &&
                TypeIRBuilder::IsDatePtr(casted_right->getType())) {
         llvm::Value* left_days;

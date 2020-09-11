@@ -146,7 +146,8 @@ bool ExprIRBuilder::Build(const ::fesql::node::ExprNode* node,
                 (::fesql::node::ConstNode*)node;
             switch (const_node->GetDataType()) {
                 case ::fesql::node::kNull:
-                    *output = NativeValue::CreateNull(builder.getInt1Ty());
+                    *output = NativeValue::CreateNull(
+                        llvm::Type::getTokenTy(builder.getContext()));
                     return true;
                 case ::fesql::node::kInt16:
                     *output = NativeValue::Create(

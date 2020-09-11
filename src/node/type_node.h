@@ -79,6 +79,8 @@ class TypeNode : public SQLNode {
     virtual bool Equals(const SQLNode *node) const;
 
     bool IsBaseType() const;
+    bool IsTuple() const;
+    bool IsTupleNumbers() const;
     bool IsString() const;
     bool IsTimestamp() const;
     bool IsDate() const;
