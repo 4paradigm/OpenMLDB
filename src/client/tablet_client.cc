@@ -333,17 +333,13 @@ bool TabletClient::Put(
         d->set_idx(dimensions[i].second);
     }
     ::rtidb::api::PutResponse response;
-    uint64_t consumed = ::baidu::common::timer::get_micros();
     bool ok =
         client_.SendRequest(&::rtidb::api::TabletServer_Stub::Put, &request,
                             &response, FLAGS_request_timeout_ms, 1);
-    if (FLAGS_enable_show_tp) {
-        consumed = ::baidu::common::timer::get_micros() - consumed;
-        percentile_.push_back(consumed);
-    }
     if (ok && response.code() == 0) {
         return true;
     }
+    LOG(WARNING) << "fail to send write request for " << response.msg() << " and error code " << response.code();
     return false;
 }
 bool TabletClient::Put(
@@ -373,8 +369,8 @@ bool TabletClient::Put(
     if (ok && response.code() == 0) {
         return true;
     }
-    DLOG(INFO) << "put row to table " << tid << " failed with error "
-               << response.msg();
+    LOG(WARNING) << "put row to table " << tid << " failed with error "
+               << response.msg() << " and error code " << response.code();
     return false;
 }
 
