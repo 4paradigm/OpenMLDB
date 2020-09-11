@@ -4,9 +4,11 @@ import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.SQLRequestRow;
 import com._4paradigm.sql.SQLInsertRow;
 import com._4paradigm.sql.SQLInsertRows;
+import com._4paradigm.sql.jdbc.SQLResultSet;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.List;
 
 public interface SqlExecutor {
     boolean createDB(String db);
@@ -22,4 +24,7 @@ public interface SqlExecutor {
     PreparedStatement getRequestPreparedStmt(String db, String sql) throws SQLException;
     SQLInsertRows getInsertRows(String db, String sql);
     ResultSet executeSQL(String db, String sql, SQLRequestRow row);
+
+    SQLResultSet callProcedure(String db, String proName, List<List<Object>> requestRows);
+    boolean dropProcedure(String db, String proName);
 }

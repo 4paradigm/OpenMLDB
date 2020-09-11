@@ -2,12 +2,14 @@ package com._4paradigm.sql.sdk.impl;
 
 import com._4paradigm.sql.*;
 import com._4paradigm.sql.common.LibraryLoader;
+import com._4paradigm.sql.jdbc.SQLResultSet;
 import com._4paradigm.sql.sdk.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.List;
 
 public class SqlClusterExecutor implements SqlExecutor {
     static {
@@ -143,6 +145,16 @@ public class SqlClusterExecutor implements SqlExecutor {
             logger.error("getInsertRow fail: {}", status.getMsg());
         }
         return rs;
+    }
+
+    @Override
+    public SQLResultSet callProcedure(String db, String proName, List<List<Object>> requestRows) {
+        return null;
+    }
+
+    @Override
+    public boolean dropProcedure(String db, String proName) {
+        return false;
     }
 
     @Override
