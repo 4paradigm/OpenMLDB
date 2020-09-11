@@ -1,0 +1,345 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+import fedb
+
+from entity.fesql_result import FesqlResult
+from fedb.sql_router_sdk import DataTypeName
+from fedb.sql_router_sdk import SQLRequestRow
+from nb_log import LogManager
+import re
+import random
+import string
+from datetime import datetime
+
+log = LogManager('fesql-auto-test').get_logger_and_add_handlers()
+
+reg = "\\{(\\d+)\\}"
+formatSqlReg = re.compile(reg)
+
+def getRandomName():
+    tableName = ''.join(random.sample(string.ascii_letters + string.digits, 8))
+    tableName = "auto_"+tableName
+    return tableName
+
+def getCreateSql(name:str,columns:list,inexs:list):
+    createSql = "create table "+name+"("
+    for column in columns:
+        createSql+=column+","
+    for index in inexs:
+        ss = index.split(":")
+        if len(ss)>=2:
+            keyStr = ss[1]
+            if("|" in ss[1]):
+                keyStr = ",".join(ss[1].split("|"))
+        if len(ss)==3:
+            createSql+="index(key=(%s),ts=%s)," % (keyStr,ss[2])
+        elif len(ss)==4:
+            createSql += "index(key=(%s),ts=%s,ttl=%s)," % (keyStr, ss[2],ss[3])
+        elif len(ss)==5:
+            createSql += "index(key=(%s),ts=%s,ttl=%s,ttl_type=%s)," % (keyStr, ss[2], ss[3],ss[4])
+    if createSql.endswith(","):
+        createSql = createSql[0:-1]
+    createSql+=");"
+    return createSql
+
+def getIndexByColumnName(schema,columnName):
+    count = schema.GetColumnCnt()
+    for i in range(count):
+        if schema.GetColumnName(i) == columnName :
+            return i
+    return -1;
+
+def sqls(executor,dbName:str,sqls:list):
+    fesqlResult = None
+    for sql in sqls:
+        fesqlResult = sql(executor,dbName,sql)
+    return fesqlResult
+def sql(executor,dbName:str,sql:str):
+    # fesqlResult = None
+    if sql.startswith("create") or sql.startswith("drop") :
+        fesqlResult = ddl(executor,dbName,sql)
+    elif sql.startswith("insert") :
+        fesqlResult = insert(executor,dbName,sql)
+    else:
+        fesqlResult = select(executor,dbName,sql)
+    return fesqlResult
+
+def selectRequestMode(executor,dbName:str,selectSql:str,input):
+    if selectSql == None or len(selectSql)==0:
+        log.error("fail to execute sql in request mode: select sql is empty")
+        return None
+    rows = None if input == None else input.get('rows')
+    if rows==None or len(rows)==0:
+        log.error("fail to execute sql in request mode: fail to build insert sql for request rows")
+        return None
+    inserts = getInsertSqls(input)
+    if inserts==None or len(inserts)==0:
+        log.error("fail to execute sql in request mode: fail to build insert sql for request rows")
+        return None
+    if len(rows)!=len(inserts):
+        log.error("fail to execute sql in request mode: rows size isn't match with inserts size")
+        return None
+    log.info("select sql:{}".format(selectSql))
+    fesqlResult = FesqlResult()
+    ok,requestRow = executor.getRequestBuilder(dbName,selectSql)
+    if requestRow==None:
+        fesqlResult.ok = False
+    else:
+        result = []
+        schema = None
+        for index,row in enumerate(rows):
+            ok, requestRow = executor.getRequestBuilder(dbName, selectSql)
+            if not ok:
+                fesqlResult.ok = ok
+                fesqlResult.msg = requestRow
+                return fesqlResult
+            if not buildRequestRow(requestRow,row):
+                log.error("fail to execute sql in request mode: fail to build request row")
+                return None
+            ok,rs = executor.executeQuery(dbName,selectSql,requestRow)
+            if not ok:
+                fesqlResult.ok = ok
+                fesqlResult.msg = rs
+                return fesqlResult
+            if index ==0:
+                schema = rs.GetSchema()
+            result += convertRestultSetToList(rs,schema)
+            insertResult = insert(executor,dbName,inserts[index])
+            # ok,msg = executor.executeInsert(dbName,inserts[index])
+            if not insertResult.ok :
+                log.error("fail to execute sql in request mode: fail to insert request row after query")
+                return insertResult
+        fesqlResult.resultSchema=schema
+        fesqlResult.result=result
+        fesqlResult.count=len(result)
+        fesqlResult.ok = True
+        fesqlResult.rs = rs
+    log.info("select result:{}".format(fesqlResult))
+    return fesqlResult
+
+def sqlRequestMode(executor,dbName:str,sql:str,input):
+    fesqlResult = None
+    if sql.lower().startswith("select") :
+        fesqlResult = selectRequestMode(executor,dbName,sql,input)
+    else :
+        log.error("unsupport sql: {}".format(sql))
+    return fesqlResult
+
+def insert(executor,dbName:str,sql:str):
+    log.info("insert sql:" + sql)
+    fesqlResult = FesqlResult()
+    insertOk,msg = executor.executeInsert(dbName, sql)
+    fesqlResult.ok = insertOk
+    fesqlResult.msg = msg
+    log.info("insert result:" + str(fesqlResult))
+    return fesqlResult
+
+def ddl(executor, dbName: str, sql: str):
+    log.info("ddl sql:"+sql)
+    fesqlResult = FesqlResult()
+    createOk,msg = executor.executeDDL(dbName, sql)
+    fesqlResult.ok = createOk
+    fesqlResult.msg = msg
+    log.info("ddl result:"+str(fesqlResult))
+    return fesqlResult
+
+def getColumnData(rs,schema,index):
+    obj = None
+    if rs.IsNULL(index):
+        print("AA")
+        return obj
+    dataType = DataTypeName(schema.GetColumnType(index))
+    print("BB:{}".format(dataType))
+    if dataType == 'bool':
+        obj = rs.GetBoolUnsafe(index)
+    elif dataType == 'date':
+        obj = rs.GetAsString(index)
+    elif dataType == 'double':
+        obj = rs.GetDoubleUnsafe(index)
+    elif dataType == 'float':
+        obj = rs.GetFloatUnsafe(index)
+    elif dataType == 'int16':
+        obj = rs.GetInt16Unsafe(index)
+    elif dataType == 'int32':
+        obj = rs.GetInt32Unsafe(index)
+    elif dataType == 'int64':
+        obj = rs.GetInt64Unsafe(index)
+    elif dataType == 'string':
+        obj = rs.GetStringUnsafe(index)
+    elif dataType == 'timestamp':
+        obj = rs.GetTimeUnsafe(index)
+    print("cc:{}".format(obj))
+    return obj
+
+def getColumnType(dataType:str):
+    if dataType == 'bool':
+        return 'bool'
+    elif dataType == 'date':
+        return 'date'
+    elif dataType == 'double':
+        return 'double'
+    elif dataType == 'float':
+        return 'float'
+    elif dataType == 'int16':
+        return 'smallint'
+    elif dataType == 'int32':
+        return 'int'
+    elif dataType == 'int64':
+        return 'bigint'
+    elif dataType == 'string':
+        return 'string'
+    elif dataType == 'timestamp':
+        return 'timestamp'
+    return None
+
+def select(executor, dbName: str, sql: str):
+    log.info("select sql:"+sql)
+    fesqlResult = FesqlResult()
+    ok,rs = executor.executeQuery(dbName,sql)
+    if ok == False or rs == None:
+        fesqlResult.ok = False
+    else:
+        fesqlResult.ok = True
+        fesqlResult.rs = rs
+        fesqlResult.count = rs.Size()
+        schema = rs.GetSchema()
+        fesqlResult.resultSchema = schema
+        fesqlResult.result = convertRestultSetToList(rs,schema)
+    log.info("select result:"+str(fesqlResult))
+    return fesqlResult
+
+def formatSql(sql:str,tableNames:list):
+    if "{auto}" in sql:
+        sql = sql.replace("{auto}", getRandomName())
+    indexs = formatSqlReg.findall(sql)
+    for indexStr in indexs:
+         index = int(indexStr)
+         sql = sql.replace("{" + indexStr + "}",tableNames[index])
+    return sql
+
+def createAndInsert(executor,dbName,inputs,requestMode:bool=False):
+    tableNames = []
+    fesqlResult = FesqlResult()
+    if inputs!=None and len(inputs)>0:
+        for index,input in enumerate(inputs):
+            tableName = input.get('name')
+            if tableName==None:
+                tableName = getRandomName()
+                input['name'] = tableName
+            tableNames.append(tableName)
+            createSql = input.get('create')
+            if createSql==None:
+                createSql=getCreateSql(tableName,input['columns'],input['indexs'])
+            createSql = formatSql(createSql,tableNames)
+            res = ddl(executor,dbName,createSql)
+            if not res.ok :
+                log.error("fail to create table")
+                return res,tableNames
+            if index==0 and requestMode:
+                continue
+            insertSqls = getInsertSqls(input)
+            for insertSql in insertSqls:
+                insertSql = formatSql(insertSql, tableNames)
+                res = insert(executor, dbName, insertSql)
+                if not res.ok:
+                    log.error("fail to insert table")
+                    return res, tableNames
+    fesqlResult.ok = True
+    return fesqlResult,tableNames
+
+def getInsertSqls(input):
+    insertSql = input.get('insert')
+    if insertSql!=None and len(insertSql)>0 :
+        return [insertSql]
+    tableName = input.get('name')
+    rows = input.get('rows')
+    columns = input.get('columns')
+    inserts = []
+    if rows!= None and len(rows)>0:
+        for row in rows:
+            datas = []
+            datas.append(row)
+            insert = buildInsertSQLFromRows(tableName,columns,datas)
+            inserts.append(insert)
+    return inserts
+
+def buildInsertSQLFromRows(tableName:str,columns:list,datas:list):
+    if columns==None or len(columns)==0:
+        return ""
+    if datas==None or len(datas)==0:
+        return ""
+    insertSql = "insert into " + tableName + " values"
+    if datas != None:
+        for row_id,list in enumerate(datas):
+            insertSql+="\n("
+            for index, value in enumerate(list):
+                columnType = re.split("\\s+", columns[index])[1]
+                dataStr="NULL"
+                if value != None :
+                    dataStr = str(value)
+                    if columnType == 'string' or columnType == 'date':
+                        dataStr = "'" + dataStr + "'"
+                    elif columnType == 'timestamp':
+                        dataStr = dataStr + "L"
+                insertSql += dataStr + ","
+            if insertSql.endswith(","):
+                insertSql = insertSql[0:-1]
+            if row_id < len(datas)-1:
+                insertSql += "),"
+            else:
+                insertSql += ");"
+    return insertSql
+
+def buildRequestRow(requestRow:SQLRequestRow,objects:list):
+    schema = requestRow.GetSchema()
+    totalSize = 0
+    columnCount = schema.GetColumnCnt()
+    for i in range(columnCount):
+        if objects[i] == None:
+            continue
+        if DataTypeName(schema.GetColumnType(i))=='string':
+            totalSize+=len(str(objects[i]))
+    log.info("init request row: {}".format(totalSize))
+    requestRow.Init(totalSize)
+    for i in range(columnCount):
+        obj = objects[i]
+        if obj==None:
+            requestRow.AppendNULL()
+            continue
+        dataType = DataTypeName(schema.GetColumnType(i))
+        if dataType=='int16':
+            requestRow.AppendInt16(obj)
+        elif dataType =='int32':
+            requestRow.AppendInt32(obj)
+        elif dataType =='int64':
+            requestRow.AppendInt64(obj)
+        elif dataType == 'float':
+            requestRow.AppendFloat(obj)
+        elif dataType == 'double':
+            requestRow.AppendDouble(obj)
+        elif dataType == 'timestamp':
+            requestRow.AppendTimestamp(obj)
+        elif dataType == 'date':
+            date = datetime.strptime(obj,'%Y-%m-%d')
+            year = date.year
+            month = date.month
+            day = date.day
+            log.info("build request row: obj: {}, append date: {},  {}, {}, {}".format(obj,date,year,month,day))
+            requestRow.AppendDate(year,month,day)
+        elif dataType =='string':
+            requestRow.AppendString(obj)
+        else:
+            log.error("fail to build request row: invalid data type {}".format(dataType))
+            return False
+    ok = requestRow.Build()
+    return ok
+
+def convertRestultSetToList(rs,schema):
+    result = []
+    while rs.Next():
+        list = []
+        columnCount = schema.GetColumnCnt()
+        for i in range(columnCount):
+            list.append(getColumnData(rs, schema, i))
+        result.append(list)
+    return result

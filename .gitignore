@@ -69,3 +69,7 @@ src/sdk/java/sql-jmh/target/
 src/sdk/java/fesql-auto-test-java/allure-results/
 src/sdk/java/fesql-auto-test-java/logs/
 src/sdk/java/fesql-auto-test-java/target/
+
+src/sdk/python/fesql-auto-test-python/logs
+src/sdk/python/fesql-auto-test-python/report
+src/sdk/python/logs
