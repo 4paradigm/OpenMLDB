@@ -26,6 +26,7 @@
 #include <vector>
 #include "base/raw_buffer.h"
 #include "base/spin_lock.h"
+#include "boost/compute/detail/lru_cache.hpp"
 #include "codec/fe_row_codec.h"
 #include "codec/list_iterator_codec.h"
 #include "llvm-c/Target.h"
@@ -48,7 +49,8 @@ class EngineOptions {
         : keep_ir_(false),
           compile_only_(false),
           plan_only_(false),
-          performance_sensitive_(true) {}
+          performance_sensitive_(true),
+          max_sql_cache_size_(50) {}
     inline void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
     inline bool is_keep_ir() const { return this->keep_ir_; }
     inline void set_compile_only(bool flag) { this->compile_only_ = flag; }
@@ -58,8 +60,13 @@ class EngineOptions {
     inline bool is_performance_sensitive() const {
         return performance_sensitive_;
     }
+    inline uint32_t max_sql_cache_size() const { return max_sql_cache_size_; }
     inline void set_performance_sensitive(bool flag) {
         performance_sensitive_ = flag;
+    }
+
+    inline void set_max_sql_cache_size(uint32_t size) {
+        max_sql_cache_size_ = size;
     }
 
  private:
@@ -67,6 +74,7 @@ class EngineOptions {
     bool compile_only_;
     bool plan_only_;
     bool performance_sensitive_;
+    uint32_t max_sql_cache_size_;
 };
 
 class CompileInfo {
@@ -90,23 +98,23 @@ class RunSession {
 
     virtual ~RunSession();
 
-    virtual inline const Schema& GetSchema() const {
+    virtual const Schema& GetSchema() const {
         return compile_info_->get_sql_context().schema;
     }
 
-    virtual inline const std::string& GetEncodedSchema() const {
+    virtual const std::string& GetEncodedSchema() const {
         return compile_info_->get_sql_context().encoded_schema;
     }
 
-    virtual inline vm::PhysicalOpNode* GetPhysicalPlan() {
+    virtual vm::PhysicalOpNode* GetPhysicalPlan() {
         return compile_info_->get_sql_context().physical_plan;
     }
 
-    virtual inline vm::Runner* GetRunner() {
+    virtual vm::Runner* GetRunner() {
         return compile_info_->get_sql_context().runner;
     }
 
-    virtual inline std::shared_ptr<CompileInfo> GetCompileInfo() {
+    virtual std::shared_ptr<CompileInfo> GetCompileInfo() {
         return compile_info_;
     }
 
@@ -144,10 +152,10 @@ class RequestRunSession : public RunSession {
     const bool IsBatchRun() const override { return false; }
     std::shared_ptr<TableHandler> RunRequestPlan(const Row& request,
                                                  PhysicalOpNode* node);
-    virtual inline const Schema& GetRequestSchema() const {
+    virtual const Schema& GetRequestSchema() const {
         return compile_info_->get_sql_context().request_schema;
     }
-    virtual inline const std::string& GetRequestName() const {
+    virtual const std::string& GetRequestName() const {
         return compile_info_->get_sql_context().request_name;
     }
 };
@@ -161,9 +169,10 @@ struct ExplainOutput {
     vm::Schema output_schema;
 };
 
-typedef std::map<std::string,
-                 std::map<std::string, std::shared_ptr<CompileInfo>>>
-    EngineCache;
+typedef std::map<std::string, boost::compute::detail::lru_cache<
+                                  std::string, std::shared_ptr<CompileInfo>>>
+    EngineLRUCache;
+
 class Engine {
  public:
     Engine(const std::shared_ptr<Catalog>& cl, const EngineOptions& options);
@@ -198,8 +207,8 @@ class Engine {
     std::shared_ptr<Catalog> cl_;
     EngineOptions options_;
     base::SpinMutex mu_;
-    EngineCache batch_cache_;
-    EngineCache request_cache_;
+    EngineLRUCache batch_lru_cache_;
+    EngineLRUCache request_lru_cache_;
 };
 
 }  // namespace vm

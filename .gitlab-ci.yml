@@ -7,12 +7,13 @@ before_script:
     - source tools/init_env.profile.sh
 
 stages:
+    - style
     - build
     - test
     - deploy
 
 style_check:
-    stage: build
+    stage: style
     script:
         - bash tools/style_check.sh
     artifacts:
