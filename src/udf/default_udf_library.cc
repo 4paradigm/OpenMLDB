@@ -2010,9 +2010,6 @@ void DefaultUDFLibrary::InitUtilityUDF() {
 }
 
 void DefaultUDFLibrary::InitTypeUDF() {
-    udf::RegisterNativeUDFToModule();
-    InitUtilityUDF();
-    InitWindowFunctions();
     RegisterExternal("double")
         .args<codec::StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, double*, bool*)>(
@@ -2200,7 +2197,13 @@ void DefaultUDFLibrary::Init() {
     InitUtilityUDF();
     InitDateUDF();
     InitTypeUDF();
-
+    IniMathUDF();
+    InitStringUDF();
+    InitTrigonometricUDF();
+    InitWindowFunctions();
+    InitUDAF();
+}
+void DefaultUDFLibrary::InitUDAF() {
     RegisterUDAFTemplate<SumUDAFDef>("sum")
         .doc("Compute sum of values")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp>();
@@ -2661,10 +2664,6 @@ void DefaultUDFLibrary::Init() {
             @endcode
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
-
-    IniMathUDF();
-    InitStringUDF();
-    InitTrigonometricUDF();
 }
 
 }  // namespace udf

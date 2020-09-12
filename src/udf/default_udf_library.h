@@ -26,6 +26,7 @@ class DefaultUDFLibrary : public UDFLibrary {
     void InitTypeUDF();
     void InitUtilityUDF();
     void InitWindowFunctions();
+    void InitUDAF();
 
     static DefaultUDFLibrary inst_;
 

@@ -866,16 +866,12 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
         LOG(WARNING) << "fail to build left node: " << status;
         return false;
     }
-    ::llvm::Value* left = left_wrapper.GetValue(&builder);
-
     NativeValue right_wrapper;
     ok = Build(node->children_[1], &right_wrapper, status);
     if (!ok) {
         LOG(WARNING) << "fail to build right node" << status;
         return false;
     }
-    ::llvm::Value* right = right_wrapper.GetValue(&builder);
-
     // TODO(wangtaize) type check
     llvm::Value* raw = nullptr;
     switch (node->GetOp()) {
