@@ -22,7 +22,8 @@ class DefaultUDFLibrary : public UDFLibrary {
     void IniMathUDF();
     void InitStringUDF();
     void InitTrigonometricUDF();
-
+    void InitDateUDF();
+    void InitTypeUDF();
     void InitUtilityUDF();
     void InitWindowFunctions();
 

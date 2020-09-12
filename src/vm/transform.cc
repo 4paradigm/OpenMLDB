@@ -1267,7 +1267,7 @@ base::Status BatchModeTransformer::ValidateIndexOptimization(
         }
     }
 
-    for (int i = 0; i < in->GetProducerCnt(); i++) {
+    for (uint32_t i = 0; i < in->GetProducerCnt(); i++) {
         CHECK_STATUS(ValidateIndexOptimization(in->GetProducer(i)));
     }
     return base::Status::OK();
