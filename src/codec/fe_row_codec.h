@@ -62,7 +62,9 @@ inline uint8_t GetAddrLength(uint32_t size) {
         return 4;
     }
 }
-
+inline uint32_t GetBitmapSize(uint32_t column_size) {
+    return BitMapSize(column_size);
+}
 inline uint32_t GetStartOffset(int32_t column_count) {
     return HEADER_LENGTH + BitMapSize(column_count);
 }

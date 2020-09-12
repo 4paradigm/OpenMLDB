@@ -313,6 +313,7 @@ void string_to_timestamp(codec::StringRef *str, fesql::codec::Timestamp *output,
             }
             output->ts_ =
                 (mktime(&timeinfo) + timeinfo.tm_gmtoff) * 1000 - TZ_OFFSET;
+            *is_null = false;
         }
     } else if (10 == str->size_) {
         try {
