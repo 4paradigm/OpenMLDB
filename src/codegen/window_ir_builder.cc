@@ -134,6 +134,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name,
     }
     ::llvm::IRBuilder<> builder(block_);
     switch (data_type.base_) {
+        case ::fesql::node::kBool:
         case ::fesql::node::kInt16:
         case ::fesql::node::kInt32:
         case ::fesql::node::kInt64:

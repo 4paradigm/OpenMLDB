@@ -42,6 +42,9 @@ bool TypeNode::IsInteger() const {
 bool TypeNode::IsFloating() const {
     return base_ == node::kFloat || base_ == node::kDouble;
 }
+
+bool TypeNode::IsGeneric() const { return !generics_.empty(); }
+
 Status TypeNode::CheckTypeNodeNotNull(const TypeNode* left_type) {
     CHECK_TRUE(nullptr != left_type, common::kTypeError, "null type node");
     return Status::OK();

@@ -156,6 +156,10 @@ bool GetLLVMColumnSize(::fesql::node::TypeNode* v_type, uint32_t* size) {
             *size = sizeof(::fesql::codec::ColumnImpl<codec::Date>);
             break;
         }
+        case ::fesql::node::kBool: {
+            *size = sizeof(::fesql::codec::ColumnImpl<bool>);
+            break;
+        }
         default: {
             LOG(WARNING) << "not supported type " << v_type->GetName();
             return false;

@@ -78,8 +78,9 @@ class UDFTypeExtractor {
                 return;
             }
             node::ExprNode* resolved = nullptr;
-            passes::ResolveFnAndAttrs resolver(nm, library,
-                                               vm::SchemaSourceList());
+            vm::SchemaSourceList schemas_source_list;
+            vm::SchemasContext schemas_context(schemas_source_list);
+            passes::ResolveFnAndAttrs resolver(nm, library, schemas_context);
             status = resolver.VisitExpr(call, &resolved);
             if (!status.isOK() || resolved == nullptr ||
                 resolved->GetOutputType() == nullptr) {
@@ -119,7 +120,7 @@ int ExportUDFInfo(const std::string& dir, const std::string& filename) {
     yaml_out << YAML::BeginMap;
     for (auto& pair : registries) {
         std::string name = pair.first;
-        auto signature_table = pair.second->GetTable();
+        auto signature_table = pair.second->signature_table.GetTable();
 
         yaml_out << YAML::Key << name;
         yaml_out << YAML::Value;

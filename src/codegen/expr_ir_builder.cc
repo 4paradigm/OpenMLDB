@@ -840,6 +840,7 @@ bool ExprIRBuilder::BuildCastExpr(const ::fesql::node::CastExprNode* node,
     }
     return true;
 }
+
 bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
                                     NativeValue* output, base::Status& status) {
     if (node == NULL || output == NULL) {
@@ -954,32 +955,9 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
             return status.isOK();
         }
         case ::fesql::node::kFnOpAt: {
-            fesql::node::DataType left_type;
-            if (false == GetBaseType(left->getType(), &left_type)) {
-                status.code = common::kCodegenError;
-                status.msg =
-                    "fail to codegen var[pos] expression: var type invalid";
-            }
-            switch (left_type) {
-                case fesql::node::kList: {
-                    ::llvm::Value* at_value = nullptr;
-                    ListIRBuilder list_ir_builder(block_, sv_);
-                    if (false == list_ir_builder.BuildAt(left, right, &at_value,
-                                                         status)) {
-                        return false;
-                    }
-                    *output = NativeValue::Create(at_value);
-                    return true;
-                }
-                default: {
-                    status.code = common::kCodegenError;
-                    status.msg =
-                        "fail to codegen var[pos] expression: var type "
-                        "can't "
-                        "support []";
-                    return false;
-                }
-            }
+            status =
+                BuildAsUDF(node, "at", {left_wrapper, right_wrapper}, output);
+            return status.isOK();
         }
         default: {
             ok = false;
@@ -1009,6 +987,41 @@ bool ExprIRBuilder::BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
 
     *output = NativeValue::Create(raw);
     return true;
+}
+
+Status ExprIRBuilder::BuildAsUDF(const node::ExprNode* expr,
+                                 const std::string& name,
+                                 const std::vector<NativeValue>& args,
+                                 NativeValue* output) {
+    CHECK_TRUE(args.size() == expr->GetChildNum(), kCodegenError);
+    auto library = udf::DefaultUDFLibrary::get();
+    node::NodeManager nm;
+
+    std::vector<node::ExprNode*> proxy_args;
+    for (size_t i = 0; i < expr->GetChildNum(); ++i) {
+        auto child = expr->GetChild(i);
+        auto arg = nm.MakeExprIdNode("proxy_arg_" + std::to_string(i),
+                                     node::ExprIdNode::GetNewId());
+        arg->SetOutputType(child->GetOutputType());
+        arg->SetNullable(child->nullable());
+        proxy_args.push_back(arg);
+    }
+    node::ExprNode* transformed = nullptr;
+    CHECK_STATUS(library->Transform(name, proxy_args, &nm, &transformed));
+
+    node::ExprNode* target_expr = nullptr;
+    passes::ResolveFnAndAttrs resolver(&nm, library, *schemas_context_);
+    CHECK_STATUS(resolver.VisitExpr(transformed, &target_expr));
+
+    sv_->Enter("proxy_scope_" +
+               std::to_string(reinterpret_cast<int64_t>(expr)));
+    for (size_t i = 0; i < args.size(); ++i) {
+        sv_->AddVar(proxy_args[i]->GetExprString(), args[i]);
+    }
+    Status status;
+    Build(target_expr, output, status);
+    sv_->Exit();
+    return status;
 }
 
 Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,

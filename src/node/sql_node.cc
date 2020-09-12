@@ -12,6 +12,7 @@
 #include <utility>
 #include "glog/logging.h"
 #include "node/node_manager.h"
+#include "udf/udf_library.h"
 
 namespace fesql {
 namespace node {
@@ -594,6 +595,7 @@ bool CaseWhenExprNode::Equals(const ExprNode *node) const {
     return ExprEquals(when_expr_list(), that->when_expr_list()) &&
            ExprEquals(else_expr(), that->else_expr());
 }
+
 void CallExprNode::Print(std::ostream &output,
                          const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
@@ -1096,6 +1098,11 @@ bool UnaryExpr::Equals(const ExprNode *node) const {
     const UnaryExpr *that = dynamic_cast<const UnaryExpr *>(node);
     return this->op_ == that->op_ && ExprNode::Equals(node);
 }
+
+bool ExprIdNode::IsListReturn(ExprAnalysisContext *ctx) const {
+    return GetOutputType() != nullptr && GetOutputType()->base() == kList;
+}
+
 void ExprIdNode::Print(std::ostream &output, const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -1527,6 +1534,29 @@ const std::string FnDefNode::GetFlatString() const {
     }
     ss << ")";
     return ss.str();
+}
+
+bool FnDefNode::RequireListAt(ExprAnalysisContext *ctx, size_t index) const {
+    return index < GetArgSize() && GetArgType(index)->base() == kList;
+}
+bool FnDefNode::IsListReturn(ExprAnalysisContext *ctx) const {
+    return GetReturnType() != nullptr && GetReturnType()->base() == kList;
+}
+
+bool ExternalFnDefNode::RequireListAt(ExprAnalysisContext *ctx,
+                                      size_t index) const {
+    if (IsResolved()) {
+        return index < GetArgSize() && GetArgType(index)->base() == kList;
+    } else {
+        return ctx->library()->RequireListAt(GetName(), index);
+    }
+}
+bool ExternalFnDefNode::IsListReturn(ExprAnalysisContext *ctx) const {
+    if (IsResolved()) {
+        return GetReturnType() != nullptr && GetReturnType()->base() == kList;
+    } else {
+        return ctx->library()->IsListReturn(GetName());
+    }
 }
 
 void ExternalFnDefNode::Print(std::ostream &output,

@@ -91,6 +91,7 @@ class TypeNode : public SQLNode {
     bool IsBool() const;
     bool IsFloating() const;
     static Status CheckTypeNodeNotNull(const TypeNode* left_type);
+    bool IsGeneric() const;
 };
 
 class OpaqueTypeNode : public TypeNode {

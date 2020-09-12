@@ -1244,6 +1244,7 @@ void DefaultUDFLibrary::InitUtilityUDF() {
 void DefaultUDFLibrary::Init() {
     udf::RegisterNativeUDFToModule();
     InitUtilityUDF();
+    InitWindowFunctions();
     RegisterExternal("double")
         .args<codec::StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, double*, bool*)>(
@@ -1391,15 +1392,6 @@ void DefaultUDFLibrary::Init() {
     RegisterCodeGenUDFTemplate<BuildGetSecondUDF>("second")
         .args_in<int64_t, Timestamp>()
         .returns<int32_t>();
-
-    RegisterExternalTemplate<v1::AtList>("at")
-        .args_in<int16_t, int32_t, int64_t, float, double>();
-
-    RegisterExternalTemplate<v1::AtStructList>("at")
-        .return_by_arg(true)
-        .args_in<Timestamp, Date, StringRef>();
-
-    RegisterAlias("lead", "at");
 
     RegisterExprUDF("identity")
         .args<AnyArg>([](UDFResolveContext* ctx, ExprNode* x) { return x; });
