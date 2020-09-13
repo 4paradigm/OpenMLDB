@@ -146,10 +146,10 @@ def ddl(executor, dbName: str, sql: str):
 def getColumnData(rs,schema,index):
     obj = None
     if rs.IsNULL(index):
-        print("AA")
+        # print("AA")
         return obj
     dataType = DataTypeName(schema.GetColumnType(index))
-    print("BB:{}".format(dataType))
+    # print("BB:{}".format(dataType))
     if dataType == 'bool':
         obj = rs.GetBoolUnsafe(index)
     elif dataType == 'date':
@@ -168,7 +168,7 @@ def getColumnData(rs,schema,index):
         obj = rs.GetStringUnsafe(index)
     elif dataType == 'timestamp':
         obj = rs.GetTimeUnsafe(index)
-    print("cc:{}".format(obj))
+    # print("cc:{}".format(obj))
     return obj
 
 def getColumnType(dataType:str):

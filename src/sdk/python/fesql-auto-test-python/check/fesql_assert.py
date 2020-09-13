@@ -13,7 +13,7 @@ def check_list(actual:list,expect:list):
     assert len(actual) == len(expect),'actual:{},expect:{}'.format(len(actual),len(expect))
     for index,value in enumerate(actual):
         expectValue = expect[index]
-        print(str(value))
+        # print(str(value))
         if str(value) == 'nan':
             assert str(expectValue)== 'nan'
         else:
