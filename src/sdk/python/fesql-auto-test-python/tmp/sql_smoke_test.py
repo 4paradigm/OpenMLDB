@@ -2,10 +2,10 @@ import sys,os
 
 from fedb import driver
 import time
-from nb_log import LogManager
+# from nb_log import LogManager
 
 
-log = LogManager('fesql-auto-test').get_logger_and_add_handlers()
+# log = LogManager('fesql-auto-test').get_logger_and_add_handlers()
 
 def test_smoke():
     print("hello")
