@@ -30,6 +30,9 @@ mkdir report
 python3 testMain.py
 cd report
 cat TEST-test_*.xml | grep "<testsuite"
+if [ $? -ne 0 ] ;then
+  exit 1
+fi
 err_count=`cat TEST-test_* | grep "<testsuite" | sed "s/<test.*errors=\"\([0-9]\+\)\".*>/\1/" | awk 'BEGIN{n=0}{n+=$1}END{print n}'`
 echo "err_count:$err_count"
 if [ $err_count -gt 0 ];then
