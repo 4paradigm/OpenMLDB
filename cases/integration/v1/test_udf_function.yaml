@@ -126,6 +126,7 @@ cases:
 
   - id: 6
     desc: 反三角函数
+    mode: python-unsupport
     inputs:
       - columns: ["id int", "c0 smallint", "c1 int", "c2 bigint", "c3 float", "c4 double"]
         indexs: ["index1:c0:c2"]
