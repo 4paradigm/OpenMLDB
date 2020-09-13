@@ -15,6 +15,10 @@ echo "ROOT_DIR:${ROOT_DIR}"
 #mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. && make -j16 python_package
 #cd ${ROOT_DIR}/python && python3 -m pip install .
 
+cd fesql
+git checkout feat/add-mode-python-unsupport
+git pull
+
 cd ${ROOT_DIR}/build/sql_pysdk/dist/
 whl_name=`ls | grep *.whl`
 echo "whl_name:${whl_name}"
