@@ -398,7 +398,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
 }
 bool SQLCompiler::BuildRunner(SQLContext& ctx, Status& status) {  // NOLINT
     RunnerBuilder runner_builder;
-    Runner* runner = runner_builder.Build(ctx.physical_plan, status);
+    Runner* runner = runner_builder.Build(ctx.nm,ctx.physical_plan, status);
     if (nullptr == runner) {
         status.msg = "fail to build runner: " + status.str();
         status.code = common::kOpGenError;

@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 #include "base/fe_status.h"
+#include "node/node_manager.h"
 #include "codec/fe_row_codec.h"
 #include "vm/catalog.h"
 #include "vm/catalog_wrapper.h"
@@ -324,7 +325,7 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "UNKNOW";
     }
 }
-class Runner {
+class Runner : public node::NodeBase {
  public:
     explicit Runner(const int32_t id)
         : id_(id),
@@ -678,7 +679,6 @@ class RequestUnionRunner : public Runner {
         : Runner(id, kRunnerRequestUnion, schema, limit_cnt),
           range_gen_(range) {}
 
-    ~RequestUnionRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
@@ -730,7 +730,8 @@ class RunnerBuilder {
     RunnerBuilder() : id_(0) {}
     virtual ~RunnerBuilder() {}
 
-    Runner* Build(PhysicalOpNode* node, Status& status);  // NOLINT
+    Runner* Build(PhysicalOpNode* node, node::NodeManager& nm,  // NOLINT
+                  Status& status);                              // NOLINT
 
  private:
     int32_t id_;
