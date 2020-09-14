@@ -62,7 +62,7 @@ struct SQLContext {
     std::string encoded_request_schema;
     ::fesql::node::NodeManager nm;
     SQLContext() { runner = NULL; }
-    ~SQLContext() { delete runner; }
+    ~SQLContext() {}
 };
 
 void InitCodecSymbol(::llvm::orc::JITDylib& jd,            // NOLINT
