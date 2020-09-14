@@ -1092,7 +1092,6 @@ public class TableAsyncClientTest extends TestCaseBase {
                 List<NS.OPStatus> ops = nsc.showOPStatus(name);
                 boolean need_sleep = false;
                 for (NS.OPStatus op : ops) {
-                    op.getOP
                     if (!op.getStatus().equals("kDone")) {
                         need_sleep = true;
                     }
@@ -1119,7 +1118,7 @@ public class TableAsyncClientTest extends TestCaseBase {
             e.printStackTrace();
             Assert.assertTrue(false);
         } finally {
-            //nsc.dropTable(name);
+            nsc.dropTable(name);
         }
     }
 
