@@ -311,6 +311,7 @@ void string_to_timestamp(codec::StringRef *str, fesql::codec::Timestamp *output,
                 *is_null = true;
                 return;
             }
+            timeinfo.tm_isdst = -1;  // disable daylight saving for mktime()
             output->ts_ =
                 (mktime(&timeinfo) + timeinfo.tm_gmtoff) * 1000 - TZ_OFFSET;
             *is_null = false;
