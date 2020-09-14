@@ -308,7 +308,7 @@ base::Status TimestampIRBuilder::FDiv(::llvm::BasicBlock* block,
     ::llvm::Value* casted_right = nullptr;
     Status status;
     CHECK_TRUE(cast_ir_builder.UnSafeCastNumber(right, builder.getDoubleTy(),
-                                          &casted_right, status),
+                                                &casted_right, status),
                kCodegenError, status.msg);
     ::llvm::Value* ts = nullptr;
     CHECK_TRUE(GetTs(block, timestamp, &ts), kCodegenError,
@@ -340,7 +340,7 @@ base::Status TimestampIRBuilder::TimestampAdd(::llvm::BasicBlock* block,
     ::llvm::Value* casted_right = nullptr;
     Status status;
     CHECK_TRUE(cast_ir_builder.UnSafeCastNumber(duration, builder.getInt64Ty(),
-                                          &casted_right, status),
+                                                &casted_right, status),
                kCodegenError, status.msg);
     ::llvm::Value* ts = nullptr;
     CHECK_TRUE(GetTs(block, timestamp, &ts), kCodegenError,

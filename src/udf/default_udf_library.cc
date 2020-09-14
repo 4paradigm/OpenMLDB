@@ -99,7 +99,6 @@ struct SumUDAFDef {
                     nm->MakeBinaryExprNode(cur_sum, input, node::kFnOpAdd);
                 return nm->MakeCondExpr(is_null, cur_sum, new_sum);
             })
-            .merge("add")
             .output("identity");
     }
 };
@@ -117,7 +116,6 @@ struct MinUDAFDef {
                 auto new_min = nm->MakeCondExpr(lt, cur_min, input);
                 return nm->MakeCondExpr(is_null, cur_min, new_min);
             })
-            .merge("minimum")
             .output("identity");
     }
 };
@@ -146,7 +144,6 @@ struct MinUDAFDef<StringRef> {
                 return nm->MakeFuncNode("make_tuple", {new_flag, new_min},
                                         nullptr);
             })
-            .merge("minimum")
             .output([](UDFResolveContext* ctx, ExprNode* state) {
                 return ctx->node_manager()->MakeGetFieldExpr(state, 1);
             });
@@ -166,7 +163,6 @@ struct MaxUDAFDef {
                 auto new_max = nm->MakeCondExpr(gt, cur_max, input);
                 return nm->MakeCondExpr(is_null, cur_max, new_max);
             })
-            .merge("maximum")
             .output("identity");
     }
 };
@@ -184,7 +180,6 @@ struct CountUDAFDef {
                     cur_cnt, nm->MakeConstNode(1), node::kFnOpAdd);
                 return nm->MakeCondExpr(is_null, cur_cnt, new_cnt);
             })
-            .merge("add")
             .output("identity");
     }
 };
@@ -275,7 +270,6 @@ struct SumWhereDef {
                 ExprNode* update = nm->MakeCondExpr(cond, new_sum, sum);
                 return update;
             })
-            .merge("add")
             .output("identity");
     }
 };
@@ -295,7 +289,6 @@ struct CountWhereDef {
                 ExprNode* update = nm->MakeCondExpr(cond, new_cnt, cnt);
                 return update;
             })
-            .merge("add")
             .output("identity");
     }
 };
@@ -328,7 +321,6 @@ struct AvgWhereDef {
                     nm->MakeFuncNode("make_tuple", {new_cnt, new_sum}, nullptr);
                 return nm->MakeCondExpr(cond, new_state, state);
             })
-            .merge("add")
             .output([](UDFResolveContext* ctx, ExprNode* state) {
                 auto nm = ctx->node_manager();
                 ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
@@ -357,7 +349,6 @@ struct MinWhereDef {
                 ExprNode* update = nm->MakeCondExpr(cond, new_min, min);
                 return update;
             })
-            .merge("add")
             .output("identity");
     }
 };
@@ -379,7 +370,6 @@ struct MaxWhereDef {
                 ExprNode* update = nm->MakeCondExpr(cond, new_max, max);
                 return update;
             })
-            .merge("add")
             .output("identity");
     }
 };

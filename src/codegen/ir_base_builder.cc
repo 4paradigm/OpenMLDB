@@ -693,7 +693,7 @@ bool DataType2SchemaType(const ::fesql::node::TypeNode& type,
             *output = ::fesql::type::kDate;
             break;
         }
-        case :: fesql::node::kNull: {
+        case ::fesql::node::kNull: {
             // Encode的时候, kNull 就是 kBool
             *output = ::fesql::type::kBool;
             break;

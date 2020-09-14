@@ -730,8 +730,7 @@ TEST_F(UDFIRBuilderTest, string_to_timestamp_test_1) {
 }
 TEST_F(UDFIRBuilderTest, string_to_timestamp_test_2) {
     CheckUDF<Nullable<Timestamp>, Nullable<StringRef>>(
-        "timestamp", nullptr,
-        codec::StringRef("1899-05-20"));
+        "timestamp", nullptr, codec::StringRef("1899-05-20"));
 }
 TEST_F(UDFIRBuilderTest, string_to_timestamp_test_3) {
     CheckUDF<Nullable<Timestamp>, Nullable<StringRef>>(
@@ -765,28 +764,28 @@ TEST_F(UDFIRBuilderTest, string_to_date_test_3) {
         "date", codec::Date(2020, 05, 20), codec::StringRef("20200520"));
 }
 TEST_F(UDFIRBuilderTest, string_to_smallint_0) {
-    CheckUDF<Nullable<int16_t>, Nullable<StringRef>>(
-        "int16", 1, codec::StringRef("1"));
+    CheckUDF<Nullable<int16_t>, Nullable<StringRef>>("int16", 1,
+                                                     codec::StringRef("1"));
 }
 TEST_F(UDFIRBuilderTest, string_to_smallint_1) {
-    CheckUDF<Nullable<int16_t>, Nullable<StringRef>>(
-        "int16", -1, codec::StringRef("-1"));
+    CheckUDF<Nullable<int16_t>, Nullable<StringRef>>("int16", -1,
+                                                     codec::StringRef("-1"));
 }
 TEST_F(UDFIRBuilderTest, string_to_smallint_2) {
-    CheckUDF<Nullable<int16_t>, Nullable<StringRef>>(
-        "int16", nullptr, codec::StringRef("abc"));
+    CheckUDF<Nullable<int16_t>, Nullable<StringRef>>("int16", nullptr,
+                                                     codec::StringRef("abc"));
 }
 TEST_F(UDFIRBuilderTest, string_to_int_0) {
-    CheckUDF<Nullable<int32_t>, Nullable<StringRef>>(
-        "int32", 1, codec::StringRef("1"));
+    CheckUDF<Nullable<int32_t>, Nullable<StringRef>>("int32", 1,
+                                                     codec::StringRef("1"));
 }
 TEST_F(UDFIRBuilderTest, string_to_int_1) {
-    CheckUDF<Nullable<int32_t>, Nullable<StringRef>>(
-        "int32", -1, codec::StringRef("-1"));
+    CheckUDF<Nullable<int32_t>, Nullable<StringRef>>("int32", -1,
+                                                     codec::StringRef("-1"));
 }
 TEST_F(UDFIRBuilderTest, string_to_int_2) {
-    CheckUDF<Nullable<int32_t>, Nullable<StringRef>>(
-        "int32", nullptr, codec::StringRef("abc"));
+    CheckUDF<Nullable<int32_t>, Nullable<StringRef>>("int32", nullptr,
+                                                     codec::StringRef("abc"));
 }
 TEST_F(UDFIRBuilderTest, string_to_bigint_0) {
     CheckUDF<Nullable<int64_t>, Nullable<StringRef>>(
@@ -797,32 +796,32 @@ TEST_F(UDFIRBuilderTest, string_to_bigint_1) {
         "int64", -1589904000000L, codec::StringRef("-1589904000000"));
 }
 TEST_F(UDFIRBuilderTest, string_to_bigint_2) {
-    CheckUDF<Nullable<int64_t>, Nullable<StringRef>>(
-        "int64", nullptr, codec::StringRef("abc"));
+    CheckUDF<Nullable<int64_t>, Nullable<StringRef>>("int64", nullptr,
+                                                     codec::StringRef("abc"));
 }
 TEST_F(UDFIRBuilderTest, string_to_double_0) {
-    CheckUDF<Nullable<double>, Nullable<StringRef>>(
-        "double", 1.0, codec::StringRef("1.0"));
+    CheckUDF<Nullable<double>, Nullable<StringRef>>("double", 1.0,
+                                                    codec::StringRef("1.0"));
 }
 TEST_F(UDFIRBuilderTest, string_to_double_1) {
-    CheckUDF<Nullable<double>, Nullable<StringRef>>(
-        "double", -1.0, codec::StringRef("-1.0"));
+    CheckUDF<Nullable<double>, Nullable<StringRef>>("double", -1.0,
+                                                    codec::StringRef("-1.0"));
 }
 TEST_F(UDFIRBuilderTest, string_to_double_2) {
-    CheckUDF<Nullable<double>, Nullable<StringRef>>(
-        "double", nullptr, codec::StringRef("abc"));
+    CheckUDF<Nullable<double>, Nullable<StringRef>>("double", nullptr,
+                                                    codec::StringRef("abc"));
 }
 TEST_F(UDFIRBuilderTest, string_to_float_0) {
-    CheckUDF<Nullable<float>, Nullable<StringRef>>(
-        "float", 1.0f, codec::StringRef("1.0"));
+    CheckUDF<Nullable<float>, Nullable<StringRef>>("float", 1.0f,
+                                                   codec::StringRef("1.0"));
 }
 TEST_F(UDFIRBuilderTest, string_to_float_1) {
-    CheckUDF<Nullable<float>, Nullable<StringRef>>(
-        "float", -1.0f, codec::StringRef("-1.0"));
+    CheckUDF<Nullable<float>, Nullable<StringRef>>("float", -1.0f,
+                                                   codec::StringRef("-1.0"));
 }
 TEST_F(UDFIRBuilderTest, string_to_float_2) {
-    CheckUDF<Nullable<float>, Nullable<StringRef>>(
-        "float", nullptr, codec::StringRef("abc"));
+    CheckUDF<Nullable<float>, Nullable<StringRef>>("float", nullptr,
+                                                   codec::StringRef("abc"));
 }
 }  // namespace codegen
 }  // namespace fesql

@@ -264,11 +264,10 @@ Status ExprNode::LShiftTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
 // 5. same tuple<number, number, ..> types can be added together
 Status ExprNode::AddTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
                                TypeNode* output_type) {
+    CHECK_TRUE(!lhs.IsTuple() && !rhs.IsTuple(), kTypeError);
     CHECK_TRUE(
-        (lhs.IsNull() || lhs.IsNumber() || lhs.IsTimestamp() ||
-         lhs.IsTupleNumbers()) &&
-            (rhs.IsNull() || rhs.IsNumber() || rhs.IsTimestamp() ||
-             lhs.IsTupleNumbers()),
+        (lhs.IsNull() || lhs.IsNumber() || lhs.IsTimestamp()) &&
+            (rhs.IsNull() || rhs.IsNumber() || rhs.IsTimestamp()),
         kTypeError,
         "Invalid Sub Op type: lhs " + lhs.GetName() + " rhs " + rhs.GetName())
     if (lhs.IsTupleNumbers() || rhs.IsTupleNumbers()) {
@@ -390,9 +389,9 @@ Status ExprNode::NotTypeAccept(const TypeNode& lhs, TypeNode* output_type) {
 }
 Status ExprNode::CompareTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
                                    TypeNode* output_type) {
-    CHECK_TRUE((lhs.IsNull() || lhs.IsBaseType()) ||
-                   lhs.IsTuple() &&
-                       (rhs.IsNull() || rhs.IsBaseType() || rhs.IsTuple()),
+    CHECK_TRUE(!lhs.IsTuple() && !rhs.IsTuple(), kTypeError);
+    CHECK_TRUE((lhs.IsNull() || lhs.IsBaseType()) &&
+                   (rhs.IsNull() || rhs.IsBaseType()),
                kTypeError, "Invalid Compare Op type: lhs ", lhs.GetName(),
                " rhs ", rhs.GetName())
     if (lhs.IsNull() || rhs.IsNull()) {
