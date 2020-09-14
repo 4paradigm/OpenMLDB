@@ -27,4 +27,5 @@ public interface SqlExecutor {
 
     SQLResultSet callProcedure(String db, String proName, List<List<Object>> requestRows);
     boolean dropProcedure(String db, String proName);
+    ProcedureInfo showProcedure(String db, String proName);
 }

@@ -158,6 +158,11 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
+    public ProcedureInfo showProcedure(String db, String proName) {
+        return null;
+    }
+
+    @Override
     public boolean createDB(String db) {
         Status status = new Status();
         boolean ok = sqlRouter.CreateDB(db, status);
