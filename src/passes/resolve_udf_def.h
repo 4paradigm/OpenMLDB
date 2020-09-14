@@ -22,7 +22,8 @@ class FnScopeInfo {
  public:
     Status AddVar(const std::string& var, int64_t expr_id) {
         auto iter = var_id_dict_.find(var);
-        CHECK_TRUE(iter == var_id_dict_.end(), "Duplicate var def: ", var);
+        CHECK_TRUE(iter == var_id_dict_.end(), common::kCodegenError,
+                   "Duplicate var def: ", var);
         var_id_dict_.insert(iter, std::make_pair(var, expr_id));
         return Status::OK();
     }

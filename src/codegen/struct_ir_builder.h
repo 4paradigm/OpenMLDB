@@ -27,11 +27,6 @@ class StructTypeIRBuilder : public TypeIRBuilder {
                                                           ::llvm::Type*);
     static bool StructCopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
                                ::llvm::Value* dist);
-    static base::Status StructCastFrom(::llvm::BasicBlock* block,
-                                       const NativeValue& src,
-                                       ::llvm::Type* cast_type,
-                                       NativeValue* dist);
-
     virtual void InitStructType() = 0;
     ::llvm::Type* GetType();
     bool Create(::llvm::BasicBlock* block, ::llvm::Value** output);
@@ -44,13 +39,9 @@ class StructTypeIRBuilder : public TypeIRBuilder {
 
     virtual bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
                           ::llvm::Value* dist) = 0;
-    virtual base::Status CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
-                                  ::llvm::Value** output) {
-        return base::Status(common::kCodegenError,
-                            "UnSupport Type Cast From " +
-                                TypeName(src->getType()) + "For " +
-                                TypeName(GetType()));
-    }
+    virtual base::Status CastFrom(::llvm::BasicBlock* block,
+                                  const NativeValue& src,
+                                  NativeValue* output) = 0;
 
  protected:
     ::llvm::Module* m_;

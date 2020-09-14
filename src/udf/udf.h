@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <string>
 #include <tuple>
-
+#include "boost/lexical_cast.hpp"
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
 #include "proto/fe_type.pb.h"
@@ -162,25 +162,6 @@ template <class V>
 double avg_list(int8_t *input);
 
 template <class V>
-struct AtList {
-    using Args = std::tuple<::fesql::codec::ListRef<V>, int32_t>;
-
-    V operator()(::fesql::codec::ListRef<V> *list_ref, int32_t pos) {
-        auto list = (codec::ListV<V> *)(list_ref->list);
-        return list->At(pos);
-    }
-};
-
-template <class V>
-struct AtStructList {
-    using Args = std::tuple<::fesql::codec::ListRef<V>, int32_t>;
-
-    void operator()(::fesql::codec::ListRef<V> *list_ref, int32_t pos, V *v) {
-        *v = AtList<V>()(list_ref, pos);
-    }
-};
-
-template <class V>
 struct StructMaximum {
     using Args = std::tuple<V, V>;
 
@@ -242,13 +223,39 @@ void date_format(codec::Date *date, fesql::codec::StringRef *format,
 
 void timestamp_to_string(codec::Timestamp *timestamp,
                          fesql::codec::StringRef *output);
-void date_to_string(codec::Date *date, fesql::codec::StringRef *output);
+void timestamp_to_date(codec::Timestamp *timestamp, fesql::codec::Date *output,
+                       bool *is_null);
 
+void date_to_string(codec::Date *date, fesql::codec::StringRef *output);
+void date_to_timestamp(codec::Date *date, fesql::codec::Timestamp *output,
+                       bool *is_null);
+void string_to_date(codec::StringRef *str, fesql::codec::Date *output,
+                    bool *is_null);
+void string_to_timestamp(codec::StringRef *str, fesql::codec::Timestamp *output,
+                         bool *is_null);
 void sub_string(fesql::codec::StringRef *str, int32_t pos,
                 fesql::codec::StringRef *output);
 void sub_string(fesql::codec::StringRef *str, int32_t pos, int32_t len,
                 fesql::codec::StringRef *output);
 int32_t strcmp(fesql::codec::StringRef *s1, fesql::codec::StringRef *s2);
+void string_to_bool(codec::StringRef* str, bool* out, bool *is_null_ptr);
+template <typename V>
+void string_to(codec::StringRef *str, V *v, bool *is_null_ptr) {
+    if (nullptr == str) {
+        *is_null_ptr = true;
+        return;
+    }
+    try {
+        *v = boost::lexical_cast<V>(str->ToString());
+        *is_null_ptr = false;
+        return;
+    } catch (...) {
+        *is_null_ptr = true;
+        return;
+    }
+}
+
+
 template <class V>
 struct ToString {
     using Args = std::tuple<V>;

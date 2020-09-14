@@ -7,10 +7,15 @@
  *--------------------------------------------------------------------------
  **/
 #include "codegen/null_ir_builder.h"
+
+using ::fesql::common::kCodegenError;
+
 namespace fesql {
 namespace codegen {
+
 NullIRBuilder::NullIRBuilder() {}
 NullIRBuilder::~NullIRBuilder() {}
+
 base::Status NullIRBuilder::SafeNullBinaryExpr(
     ::llvm::BasicBlock* block, const NativeValue& value_left,
     const NativeValue& value_right,
@@ -24,10 +29,12 @@ base::Status NullIRBuilder::SafeNullBinaryExpr(
     NativeValue left = value_left;
     NativeValue right = value_right;
     if (value_left.IsConstNull()) {
-        *value_output = NativeValue::CreateNull(left.GetType());
+        *value_output = NativeValue::CreateNull(right.GetType());
+        return base::Status::OK();
     }
     if (value_right.IsConstNull()) {
-        *value_output = NativeValue::CreateNull(right.GetType());
+        *value_output = NativeValue::CreateNull(left.GetType());
+        return base::Status::OK();
     }
     ::llvm::Value* raw_left = left.GetValue(&builder);
     ::llvm::Value* raw_right = right.GetValue(&builder);
@@ -38,7 +45,7 @@ base::Status NullIRBuilder::SafeNullBinaryExpr(
     CHECK_STATUS(null_ir_builder.CheckAnyNull(block, left, &should_ret_null));
     CHECK_STATUS(null_ir_builder.CheckAnyNull(block, right, &should_ret_null));
     CHECK_TRUE(expr_func(block, raw_left, raw_right, &output, status),
-               status.msg);
+               kCodegenError, status.msg);
     if (nullptr != should_ret_null) {
         *value_output = NativeValue::CreateWithFlag(output, should_ret_null);
     } else {
@@ -60,6 +67,7 @@ base::Status NullIRBuilder::SafeNullCastExpr(
     NativeValue left = value_left;
     if (value_left.IsConstNull()) {
         *value_output = NativeValue::CreateNull(left.GetType());
+        return base::Status::OK();
     }
     ::llvm::Value* raw_left = left.GetValue(&builder);
     ::llvm::Value* output = nullptr;
@@ -68,7 +76,7 @@ base::Status NullIRBuilder::SafeNullCastExpr(
     ::llvm::Value* should_ret_null = nullptr;
     CHECK_STATUS(null_ir_builder.CheckAnyNull(block, left, &should_ret_null));
     CHECK_TRUE(expr_func(block, raw_left, cast_type, &output, status),
-               status.msg);
+               kCodegenError, status.msg);
     if (nullptr != should_ret_null) {
         *value_output = NativeValue::CreateWithFlag(output, should_ret_null);
     } else {
@@ -88,6 +96,7 @@ base::Status NullIRBuilder::SafeNullUnaryExpr(
     NativeValue left = value_left;
     if (value_left.IsConstNull()) {
         *value_output = NativeValue::CreateNull(left.GetType());
+        return base::Status::OK();
     }
     ::llvm::Value* raw_left = left.GetValue(&builder);
     ::llvm::Value* output = nullptr;
@@ -95,7 +104,8 @@ base::Status NullIRBuilder::SafeNullUnaryExpr(
     NullIRBuilder null_ir_builder;
     ::llvm::Value* should_ret_null = nullptr;
     CHECK_STATUS(null_ir_builder.CheckAnyNull(block, left, &should_ret_null));
-    CHECK_TRUE(expr_func(block, raw_left, &output, status), status.msg);
+    CHECK_TRUE(expr_func(block, raw_left, &output, status), kCodegenError,
+               status.msg);
     if (nullptr != should_ret_null) {
         *value_output = NativeValue::CreateWithFlag(output, should_ret_null);
     } else {
@@ -106,7 +116,7 @@ base::Status NullIRBuilder::SafeNullUnaryExpr(
 base::Status NullIRBuilder::CheckAnyNull(::llvm::BasicBlock* block,
                                          const NativeValue& value,
                                          ::llvm::Value** should_ret_null) {
-    CHECK_TRUE(nullptr != should_ret_null,
+    CHECK_TRUE(nullptr != should_ret_null, kCodegenError,
                "fail to check any null: should ret null llvm value is null");
     ::llvm::IRBuilder<> builder(block);
     if (value.IsNullable()) {
@@ -119,10 +129,11 @@ base::Status NullIRBuilder::CheckAnyNull(::llvm::BasicBlock* block,
     }
     return base::Status::OK();
 }
+
 base::Status NullIRBuilder::CheckAllNull(::llvm::BasicBlock* block,
                                          const NativeValue& value,
                                          ::llvm::Value** should_ret_null) {
-    CHECK_TRUE(nullptr != should_ret_null,
+    CHECK_TRUE(nullptr != should_ret_null, kCodegenError,
                "fail to check all null: should ret null llvm value is null");
     ::llvm::IRBuilder<> builder(block);
     if (value.IsNullable()) {

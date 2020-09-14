@@ -119,7 +119,7 @@ TEST_P(PlannerTest, PlannerSucessTest) {
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
 
     if (0 != status.code) {
-        std::cout << status.msg << std::endl;
+        std::cout << status << std::endl;
     }
     ASSERT_EQ(0, ret);
     //    ASSERT_EQ(1, trees.size());
@@ -142,7 +142,7 @@ TEST_P(PlannerTest, PlannerWindowOptTest) {
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
 
     if (0 != status.code) {
-        std::cout << status.msg << std::endl;
+        std::cout << status << std::endl;
     }
     ASSERT_EQ(0, ret);
     //    ASSERT_EQ(1, trees.size());
@@ -760,7 +760,7 @@ TEST_F(PlannerTest, FunDefPlanTest) {
 
     Planner *planner_ptr = new SimplePlanner(manager_);
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
-    std::cout << status.msg << std::endl;
+    std::cout << status << std::endl;
     ASSERT_EQ(1u, trees.size());
     PlanNode *plan_ptr = trees[0];
     ASSERT_TRUE(NULL != plan_ptr);
@@ -792,7 +792,7 @@ TEST_F(PlannerTest, FunDefAndSelectPlanTest) {
 
     Planner *planner_ptr = new SimplePlanner(manager_);
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
-    std::cout << status.msg << std::endl;
+    std::cout << status << std::endl;
     ASSERT_EQ(2u, trees.size());
     PlanNode *plan_ptr = trees[0];
     ASSERT_TRUE(NULL != plan_ptr);
@@ -851,7 +851,7 @@ TEST_F(PlannerTest, FunDefIfElsePlanTest) {
 
     Planner *planner_ptr = new SimplePlanner(manager_);
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
-    std::cout << status.msg << std::endl;
+    std::cout << status << std::endl;
     ASSERT_EQ(2u, trees.size());
     PlanNode *plan_ptr = trees[0];
     ASSERT_TRUE(NULL != plan_ptr);
@@ -923,7 +923,7 @@ TEST_F(PlannerTest, FunDefIfElseComplexPlanTest) {
 
     Planner *planner_ptr = new SimplePlanner(manager_);
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
-    std::cout << status.msg << std::endl;
+    std::cout << status << std::endl;
     ASSERT_EQ(2u, trees.size());
     PlanNode *plan_ptr = trees[0];
     ASSERT_TRUE(NULL != plan_ptr);
@@ -1055,7 +1055,7 @@ TEST_F(PlannerTest, FunDefForInPlanTest) {
 
     Planner *planner_ptr = new SimplePlanner(manager_);
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(list, trees, status));
-    std::cout << status.msg << std::endl;
+    std::cout << status << std::endl;
     ASSERT_EQ(2u, trees.size());
     PlanNode *plan_ptr = trees[0];
     ASSERT_TRUE(NULL != plan_ptr);

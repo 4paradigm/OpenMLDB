@@ -18,6 +18,8 @@
 #include "plan/planner.h"
 #include "udf/udf_registry.h"
 
+using ::fesql::common::kCodegenError;
+
 namespace fesql {
 namespace udf {
 
@@ -28,55 +30,104 @@ std::shared_ptr<UDFRegistry> UDFLibrary::Find(
     if (iter == table_.end()) {
         return nullptr;
     }
-    auto signature_table = iter->second;
+    auto& signature_table = iter->second->signature_table;
     std::shared_ptr<UDFRegistry> registry = nullptr;
     std::string signature;
     int variadic_pos = -1;
     auto status =
-        signature_table->Find(arg_types, &registry, &signature, &variadic_pos);
+        signature_table.Find(arg_types, &registry, &signature, &variadic_pos);
     return registry;
 }
 
-std::shared_ptr<ArgSignatureTable<std::shared_ptr<UDFRegistry>>>
-UDFLibrary::FindAll(const std::string& name) const {
-    auto iter = table_.find(name);
-    if (iter == table_.end()) {
-        return nullptr;
-    } else {
-        return iter->second;
-    }
+bool UDFLibrary::HasFunction(const std::string& name) const {
+    return table_.find(name) != table_.end();
 }
 
 void UDFLibrary::InsertRegistry(
     const std::string& name,
     const std::vector<const node::TypeNode*>& arg_types, bool is_variadic,
+    bool always_return_list,
+    const std::unordered_set<size_t>& always_list_argidx,
     std::shared_ptr<UDFRegistry> registry) {
-    using SignatureTable = ArgSignatureTable<std::shared_ptr<UDFRegistry>>;
-    std::shared_ptr<SignatureTable> signature_table = nullptr;
+    std::shared_ptr<UDFLibraryEntry> entry = nullptr;
     auto iter = table_.find(name);
     if (iter == table_.end()) {
-        signature_table = std::make_shared<SignatureTable>();
-        table_.insert(iter, {name, signature_table});
+        entry = std::make_shared<UDFLibraryEntry>();
+        table_.insert(iter, {name, entry});
     } else {
-        signature_table = iter->second;
+        entry = iter->second;
     }
-    auto status = signature_table->Register(arg_types, is_variadic, registry);
+    // set return list property
+    if (always_return_list) {
+        if (entry->signature_table.GetTable().size() == 0) {
+            entry->always_return_list = true;
+        }
+    } else {
+        entry->always_return_list = false;
+    }
+
+    // set list typed arg property
+    auto& is_list_dict = entry->arg_is_always_list;
+    for (size_t i : always_list_argidx) {
+        is_list_dict[i] = true;
+    }
+    for (size_t i = 0; i < arg_types.size(); ++i) {
+        if (arg_types[i] != nullptr && arg_types[i]->base() == node::kList) {
+            auto iter = is_list_dict.find(i);
+            if (iter == is_list_dict.end()) {
+                is_list_dict.insert(iter, {i, true});
+            }
+        } else {
+            if (always_list_argidx.find(i) != always_list_argidx.end()) {
+                if (arg_types[i] == nullptr) {
+                    continue;  // AnyArg
+                }
+                LOG(WARNING) << "Override argument position " << i
+                             << " to be not always list";
+            }
+            is_list_dict[i] = false;
+        }
+    }
+
+    // insert argument signature
+    auto status =
+        entry->signature_table.Register(arg_types, is_variadic, registry);
     if (!status.isOK()) {
-        LOG(WARNING) << "Insert " << name << " registry failed: " << status.msg;
+        LOG(WARNING) << "Insert " << name << " registry failed: " << status;
     }
 }
 
 bool UDFLibrary::IsUDAF(const std::string& name, size_t args) {
-    auto iter = udaf_tags_.find(name);
-    if (iter == udaf_tags_.end()) {
+    auto iter = table_.find(name);
+    if (iter == table_.end()) {
         return false;
     }
-    auto& arg_num_set = iter->second;
+    auto& arg_num_set = iter->second->udaf_arg_nums;
     return arg_num_set.find(args) != arg_num_set.end();
 }
 
 void UDFLibrary::SetIsUDAF(const std::string& name, size_t args) {
-    udaf_tags_[name].insert(args);
+    auto iter = table_.find(name);
+    if (iter == table_.end()) {
+        LOG(WARNING) << name << " is not registered, can not set as udaf";
+        return;
+    }
+    iter->second->udaf_arg_nums.insert(args);
+}
+
+bool UDFLibrary::RequireListAt(const std::string& name, size_t index) const {
+    auto entry_iter = table_.find(name);
+    if (entry_iter == table_.end()) {
+        return false;
+    }
+    auto& is_list_dict = entry_iter->second->arg_is_always_list;
+    auto iter = is_list_dict.find(index);
+    return iter != is_list_dict.end() && iter->second;
+}
+
+bool UDFLibrary::IsListReturn(const std::string& name) const {
+    auto iter = table_.find(name);
+    return iter->second->always_return_list;
 }
 
 ExprUDFRegistryHelper UDFLibrary::RegisterExprUDF(const std::string& name) {
@@ -99,11 +150,11 @@ UDAFRegistryHelper UDFLibrary::RegisterUDAF(const std::string& name) {
 Status UDFLibrary::RegisterAlias(const std::string& alias,
                                  const std::string& name) {
     auto iter = table_.find(alias);
-    CHECK_TRUE(iter == table_.end(), "Function name '", alias,
+    CHECK_TRUE(iter == table_.end(), kCodegenError, "Function name '", alias,
                "' is duplicated");
     iter = table_.find(name);
-    CHECK_TRUE(iter != table_.end(), "Alias target Function name '", name,
-               "' not found");
+    CHECK_TRUE(iter != table_.end(), kCodegenError,
+               "Alias target Function name '", name, "' not found");
     table_[alias] = iter->second;
     return Status::OK();
 }
@@ -121,20 +172,20 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
 
     Status status;
     CHECK_TRUE(0 == parser.parse(script, parser_trees, node_manager(), status),
-               "Fail to parse script:", status.msg);
+               kCodegenError, "Fail to parse script:", status.str());
     CHECK_TRUE(0 == planer.CreatePlanTree(parser_trees, plan_trees, status),
-               "Fail to create sql plan: ", status.msg);
+               kCodegenError, "Fail to create sql plan: ", status.str());
 
     std::unordered_map<std::string, std::shared_ptr<SimpleUDFRegistry>> dict;
     auto it = plan_trees.begin();
     for (; it != plan_trees.end(); ++it) {
         const ::fesql::node::PlanNode* node = *it;
-        CHECK_TRUE(node != nullptr, "Compile null plan");
+        CHECK_TRUE(node != nullptr, kCodegenError, "Compile null plan");
         switch (node->GetType()) {
             case ::fesql::node::kPlanTypeFuncDef: {
                 auto func_def_plan =
                     dynamic_cast<const ::fesql::node::FuncDefPlanNode*>(node);
-                CHECK_TRUE(func_def_plan->fn_def_ != nullptr,
+                CHECK_TRUE(func_def_plan->fn_def_ != nullptr, kCodegenError,
                            "fn_def node is null");
 
                 auto header = func_def_plan->fn_def_->header_;
@@ -147,7 +198,9 @@ Status UDFLibrary::RegisterFromFile(const std::string& path_str) {
                 for (size_t i = 0; i < def_node->GetArgSize(); ++i) {
                     arg_types.push_back(def_node->GetArgType(i));
                 }
-                InsertRegistry(header->name_, arg_types, false, registry);
+                InsertRegistry(header->name_, arg_types, false,
+                               def_node->GetReturnType()->base() == node::kList,
+                               {}, registry);
                 break;
             }
             default:
@@ -171,21 +224,21 @@ Status UDFLibrary::Transform(const std::string& name,
 Status UDFLibrary::Transform(const std::string& name, UDFResolveContext* ctx,
                              ExprNode** result) const {
     auto iter = table_.find(name);
-    CHECK_TRUE(iter != table_.end(),
+    CHECK_TRUE(iter != table_.end(), kCodegenError,
                "Fail to find registered function: ", name);
-    auto signature_table = iter->second;
+    auto& signature_table = iter->second->signature_table;
 
     std::shared_ptr<UDFRegistry> registry = nullptr;
     std::string signature;
     int variadic_pos = -1;
     CHECK_STATUS(
-        signature_table->Find(ctx, &registry, &signature, &variadic_pos),
+        signature_table.Find(ctx, &registry, &signature, &variadic_pos),
         "Fail to find matching argument signature for ", name, ": <",
         ctx->GetArgSignature(), ">");
 
     DLOG(INFO) << "Resolve '" << name << "'<" << ctx->GetArgSignature()
                << ">to " << name << "(" << signature << ")";
-    CHECK_TRUE(registry != nullptr);
+    CHECK_TRUE(registry != nullptr, kCodegenError);
     return registry->Transform(ctx, result);
 }
 
@@ -193,21 +246,21 @@ Status UDFLibrary::ResolveFunction(const std::string& name,
                                    UDFResolveContext* ctx,
                                    node::FnDefNode** result) const {
     auto iter = table_.find(name);
-    CHECK_TRUE(iter != table_.end(),
+    CHECK_TRUE(iter != table_.end(), kCodegenError,
                "Fail to find registered function: ", name);
-    auto signature_table = iter->second;
+    auto& signature_table = iter->second->signature_table;
 
     std::shared_ptr<UDFRegistry> registry = nullptr;
     std::string signature;
     int variadic_pos = -1;
     CHECK_STATUS(
-        signature_table->Find(ctx, &registry, &signature, &variadic_pos),
+        signature_table.Find(ctx, &registry, &signature, &variadic_pos),
         "Fail to find matching argument signature for ", name, ": <",
         ctx->GetArgSignature(), ">");
 
     DLOG(INFO) << "Resolve '" << name << "'<" << ctx->GetArgSignature()
                << ">to " << name << "(" << signature << ")";
-    CHECK_TRUE(registry != nullptr);
+    CHECK_TRUE(registry != nullptr, kCodegenError);
     return registry->ResolveFunction(ctx, result);
 }
 

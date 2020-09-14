@@ -490,7 +490,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     free(ptr);
 }
 
-TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
+/* TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     std::string udf_str =
         "%%fun\n"
         "def test_at(col:list<float>, pos:i32):float\n"
@@ -538,7 +538,8 @@ TEST_F(FnLetIRBuilderTest, test_col_at_udf) {
     ASSERT_EQ(11, *reinterpret_cast<int32_t*>(output + 7 + 4));
     ASSERT_EQ(3, *reinterpret_cast<int32_t*>(output + 7 + 4 + 4));
     free(ptr);
-}
+} */
+
 }  // namespace codegen
 }  // namespace fesql
 

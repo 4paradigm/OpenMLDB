@@ -23,7 +23,7 @@ bool Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree,
     if (nullptr == root) {
         status.msg = "can not create query plan node with null query node";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     switch (root->query_type_) {
@@ -160,7 +160,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
                 status.msg = "can not create project plan node with type " +
                              node::NameOfSQLNodeType(root->GetType());
                 status.code = common::kPlanError;
-                LOG(WARNING) << status.msg;
+                LOG(WARNING) << status;
                 return false;
             }
         }
@@ -283,7 +283,7 @@ bool Planner::CreateUnionQueryPlan(const node::UnionQueryNode *root,
     if (nullptr == root) {
         status.msg = "can not create query plan node with null query node";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -291,16 +291,16 @@ bool Planner::CreateUnionQueryPlan(const node::UnionQueryNode *root,
     node::PlanNode *right_plan = nullptr;
     if (!CreateQueryPlan(root->left_, &left_plan, status)) {
         status.msg =
-            "can not create union query plan left query: " + status.msg;
+            "can not create union query plan left query: " + status.str();
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (!CreateQueryPlan(root->right_, &right_plan, status)) {
         status.msg =
-            "can not create union query plan right query: " + status.msg;
+            "can not create union query plan right query: " + status.str();
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -315,7 +315,7 @@ bool Planner::CheckWindowFrame(const node::WindowDefNode *w_ptr,
         status.msg =
             "fail to create project list node: frame "
             "can't be unbound ";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -327,7 +327,7 @@ bool Planner::CheckWindowFrame(const node::WindowDefNode *w_ptr,
             extent->start()->is_time_offset()) {
             status.code = common::kPlanError;
             status.msg = "Fail Make Rows Frame Node: time offset un-support";
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
         if ((extent->end()->bound_type() == node::kPreceding ||
@@ -335,7 +335,7 @@ bool Planner::CheckWindowFrame(const node::WindowDefNode *w_ptr,
             extent->end()->is_time_offset()) {
             status.code = common::kPlanError;
             status.msg = "Fail Make Rows Frame Node: time offset un-support";
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
     }
@@ -416,7 +416,7 @@ bool Planner::ValidatePrimaryPath(node::PlanNode *node, node::PlanNode **output,
     if (nullptr == node) {
         status.msg = "primary path validate fail: node or output is null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -430,7 +430,7 @@ bool Planner::ValidatePrimaryPath(node::PlanNode *node, node::PlanNode **output,
                 status.msg =
                     "primary path validate fail: left path isn't valid";
                 status.code = common::kPlanError;
-                LOG(WARNING) << status.msg;
+                LOG(WARNING) << status;
                 return false;
             }
 
@@ -445,7 +445,7 @@ bool Planner::ValidatePrimaryPath(node::PlanNode *node, node::PlanNode **output,
                 status.msg =
                     "primary path validate fail: right path isn't valid";
                 status.code = common::kPlanError;
-                LOG(WARNING) << status.msg;
+                LOG(WARNING) << status;
                 return false;
             }
 
@@ -457,7 +457,7 @@ bool Planner::ValidatePrimaryPath(node::PlanNode *node, node::PlanNode **output,
                     "primary path validate fail: left path and right path has "
                     "different source";
                 status.code = common::kPlanError;
-                LOG(WARNING) << status.msg;
+                LOG(WARNING) << status;
                 return false;
             }
         }
@@ -474,7 +474,7 @@ bool Planner::ValidatePrimaryPath(node::PlanNode *node, node::PlanNode **output,
             status.msg =
                 "primary path validate fail: invalid node of primary path";
             status.code = common::kPlanError;
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
         default: {
@@ -490,7 +490,7 @@ int SimplePlanner::CreatePlanTree(
     if (parser_trees.empty()) {
         status.msg = "fail to create plan tree: parser trees is empty";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return status.code;
     }
 
@@ -555,7 +555,7 @@ int SimplePlanner::CreatePlanTree(
                 status.msg = "can not handle tree type " +
                              node::NameOfSQLNodeType(parser_tree->GetType());
                 status.code = common::kPlanError;
-                LOG(WARNING) << status.msg;
+                LOG(WARNING) << status;
                 return status.code;
             }
         }
@@ -580,7 +580,7 @@ bool Planner::CreateFuncDefPlan(
         status.msg =
             "fail to create func def plan node: query tree node it null";
         status.code = common::kSQLError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -590,7 +590,7 @@ bool Planner::CreateFuncDefPlan(
             "fail to create cmd plan node: query tree node it not function "
             "def "
             "type";
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     *output = node_manager_->MakeFuncPlanNode(
@@ -604,7 +604,7 @@ bool Planner::CreateInsertPlan(const node::SQLNode *root,
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
         status.code = common::kSQLError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -625,7 +625,7 @@ bool Planner::CreateCmdPlan(const SQLNode *root, node::PlanNode **output,
     if (nullptr == root) {
         status.msg = "fail to create cmd plan node: query tree node it null";
         status.code = common::kPlanError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 
@@ -727,7 +727,7 @@ bool Planner::CreateTableReferencePlanNode(const node::TableRefNode *root,
                 "fail to create table reference node, unrecognized type " +
                 node::NameOfSQLNodeType(root->GetType());
             status.code = common::kPlanError;
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
     }
@@ -843,7 +843,7 @@ bool Planner::MergeProjectMap(
         if (!merge_ok) {
             status.msg = "Fail to merge project list";
             status.code = common::kPlanError;
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
     }
@@ -895,7 +895,7 @@ bool TransformTableDef(const std::string &table_name,
                     status.msg = "CREATE common: COLUMN NAME " +
                                  column_def->GetColumnName() + " duplicate";
                     status.code = common::kSQLError;
-                    LOG(WARNING) << status.msg;
+                    LOG(WARNING) << status;
                     return false;
                 }
                 column->set_name(column_def->GetColumnName());
@@ -937,7 +937,7 @@ bool TransformTableDef(const std::string &table_name,
                             node::DataTypeName(column_def->GetColumnType()) +
                             " is not supported";
                         status.code = common::kSQLError;
-                        LOG(WARNING) << status.msg;
+                        LOG(WARNING) << status;
                         return false;
                     }
                 }
@@ -957,7 +957,7 @@ bool TransformTableDef(const std::string &table_name,
                     status.msg = "CREATE common: INDEX NAME " +
                                  column_index->GetName() + " duplicate";
                     status.code = common::kSQLError;
-                    LOG(WARNING) << status.msg;
+                    LOG(WARNING) << status;
                     return false;
                 }
                 index_names.insert(column_index->GetName());
@@ -983,7 +983,7 @@ bool TransformTableDef(const std::string &table_name,
                              node::NameOfSQLNodeType(column_desc->GetType()) +
                              " when CREATE TABLE";
                 status.code = common::kSQLError;
-                LOG(WARNING) << status.msg;
+                LOG(WARNING) << status;
                 return false;
             }
         }

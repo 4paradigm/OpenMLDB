@@ -14,6 +14,7 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -239,7 +240,8 @@ class ArgSignatureTable {
         }
         std::string key = ss.str();
         auto iter = table_.find(key);
-        CHECK_TRUE(iter == table_.end(), "Duplicate signature: ", key);
+        CHECK_TRUE(iter == table_.end(), common::kCodegenError,
+                   "Duplicate signature: ", key);
         table_.insert(iter, {key, DefItem(t, args, is_variadic)});
         return Status::OK();
     }
@@ -260,6 +262,20 @@ class ArgSignatureTable {
 
  private:
     TableType table_;
+};
+
+struct UDFLibraryEntry {
+    // argument matching table
+    ArgSignatureTable<std::shared_ptr<UDFRegistry>> signature_table;
+
+    // record whether is udaf for specified argument num
+    std::unordered_set<size_t> udaf_arg_nums;
+
+    // record whether always require list input at position
+    std::unordered_map<size_t, bool> arg_is_always_list;
+
+    // record whether always return list
+    bool always_return_list = false;
 };
 
 struct ExprUDFGenBase {
@@ -348,10 +364,22 @@ class UDFRegistryHelper {
         }
     }
 
+    void SetAlwaysReturnList(bool flag) { always_return_list_ = flag; }
+
+    void SetAlwaysListAt(size_t index, bool flag) {
+        if (flag) {
+            always_list_argidx_.insert(index);
+        } else {
+            always_list_argidx_.erase(index);
+        }
+    }
+
     void InsertRegistry(const std::vector<const node::TypeNode*>& signature,
                         bool is_variadic, std::shared_ptr<RegistryT> registry) {
         registry->SetDoc(doc_);
-        library_->InsertRegistry(name_, signature, is_variadic, registry);
+        library_->InsertRegistry(name_, signature, is_variadic,
+                                 always_return_list_, always_list_argidx_,
+                                 registry);
         registries_.push_back(registry);
     }
 
@@ -359,6 +387,8 @@ class UDFRegistryHelper {
     std::string name_;
     UDFLibrary* library_;
     std::string doc_;
+    bool always_return_list_ = false;
+    std::unordered_set<size_t> always_list_argidx_;
     std::vector<std::shared_ptr<RegistryT>> registries_;
 };
 
@@ -409,6 +439,16 @@ class ExprUDFRegistryHelper : public UDFRegistryHelper<ExprUDFRegistry> {
         SetDoc(doc);
         return *this;
     }
+
+    ExprUDFRegistryHelper& return_list() {
+        SetAlwaysReturnList(true);
+        return *this;
+    }
+
+    ExprUDFRegistryHelper& list_argument_at(size_t index) {
+        SetAlwaysListAt(index, true);
+        return *this;
+    }
 };
 
 template <template <typename> typename FTemplate>
@@ -425,6 +465,16 @@ class ExprUDFTemplateRegistryHelper {
 
     auto& doc(const std::string& str) {
         helper_.doc(str);
+        return *this;
+    }
+
+    auto& return_list() {
+        helper_.return_list();
+        return *this;
+    }
+
+    auto& list_argument_at(size_t index) {
+        helper_.list_argument_at(index);
         return *this;
     }
 
@@ -508,7 +558,7 @@ struct LLVMUDFGen : public LLVMUDFGenBase {
     Status gen(codegen::CodeGenContext* ctx,
                const std::vector<codegen::NativeValue>& args,
                codegen::NativeValue* result) override {
-        CHECK_TRUE(args.size() == sizeof...(Args),
+        CHECK_TRUE(args.size() == sizeof...(Args), common::kCodegenError,
                    "Fail to invoke LLVMUDFGen::gen, args size do not "
                    "match with template args)");
         return gen_internal(ctx, args, result,
@@ -568,7 +618,7 @@ struct VariadicLLVMUDFGen : public LLVMUDFGenBase {
     Status gen(codegen::CodeGenContext* ctx,
                const std::vector<codegen::NativeValue>& args,
                codegen::NativeValue* result) override {
-        CHECK_TRUE(args.size() >= sizeof...(Args),
+        CHECK_TRUE(args.size() >= sizeof...(Args), common::kCodegenError,
                    "Fail to invoke VariadicLLVMUDFGen::gen, "
                    "args size do not match with template args)");
         return gen_internal(ctx, args, result,
@@ -678,14 +728,17 @@ class LLVMUDFRegistryHelper : public UDFRegistryHelper<LLVMUDFRegistry> {
             }
         }
         cur_def_ = std::make_shared<LLVMUDFGen<Args...>>(gen, infer);
+        if (fixed_ret_type_ != nullptr) {
+            cur_def_->SetFixedReturnType(fixed_ret_type_);
+            if (fixed_ret_type_->base() == node::kList) {
+                return_list();
+            }
+        }
         auto registry =
             std::make_shared<LLVMUDFRegistry>(name(), cur_def_, null_indices);
         this->InsertRegistry(
             {DataTypeTrait<Args>::to_type_node(node_manager())...}, false,
             registry);
-        if (fixed_ret_type_ != nullptr) {
-            cur_def_->SetFixedReturnType(fixed_ret_type_);
-        }
         return *this;
     }
 
@@ -708,19 +761,32 @@ class LLVMUDFRegistryHelper : public UDFRegistryHelper<LLVMUDFRegistry> {
             }
         }
         cur_def_ = std::make_shared<VariadicLLVMUDFGen<Args...>>(gen, infer);
+        if (fixed_ret_type_ != nullptr) {
+            cur_def_->SetFixedReturnType(fixed_ret_type_);
+            if (fixed_ret_type_->base() == node::kList) {
+                return_list();
+            }
+        }
         auto registry =
             std::make_shared<LLVMUDFRegistry>(name(), cur_def_, null_indices);
         this->InsertRegistry(
             {DataTypeTrait<Args>::to_type_node(node_manager())...}, true,
             registry);
-        if (fixed_ret_type_ != nullptr) {
-            cur_def_->SetFixedReturnType(fixed_ret_type_);
-        }
         return *this;
     }
 
     LLVMUDFRegistryHelper& doc(const std::string& doc) {
         SetDoc(doc);
+        return *this;
+    }
+
+    LLVMUDFRegistryHelper& return_list() {
+        SetAlwaysReturnList(true);
+        return *this;
+    }
+
+    LLVMUDFRegistryHelper& list_argument_at(size_t index) {
+        SetAlwaysListAt(index, true);
         return *this;
     }
 
@@ -762,6 +828,16 @@ class CodeGenUDFTemplateRegistryHelper {
 
     auto& doc(const std::string& str) {
         helper_.doc(str);
+        return *this;
+    }
+
+    auto& return_list() {
+        helper_.return_list();
+        return *this;
+    }
+
+    auto& list_argument_at(size_t index) {
+        helper_.list_argument_at(index);
         return *this;
     }
 
@@ -1225,6 +1301,16 @@ class ExternalFuncRegistryHelper
         return *this;
     }
 
+    ExternalFuncRegistryHelper& return_list() {
+        SetAlwaysReturnList(true);
+        return *this;
+    }
+
+    ExternalFuncRegistryHelper& list_argument_at(size_t index) {
+        SetAlwaysListAt(index, true);
+        return *this;
+    }
+
     node::ExternalFnDefNode* cur_def() const { return cur_def_; }
 
     void finalize() {
@@ -1232,6 +1318,9 @@ class ExternalFuncRegistryHelper
             LOG(WARNING) << "No return type specified for "
                          << " udf registry " << name();
             return;
+        }
+        if (return_type_->base() == node::kList) {
+            return_list();
         }
         auto def = node_manager()->MakeExternalFnDefNode(
             fn_name_, fn_ptr_, return_type_, return_nullable_, arg_types_,
@@ -1313,6 +1402,16 @@ class ExternalTemplateFuncRegistryHelper {
         return *this;
     }
 
+    auto& return_list() {
+        helper_.return_list();
+        return *this;
+    }
+
+    auto& list_argument_at(size_t index) {
+        helper_.list_argument_at(index);
+        return *this;
+    }
+
  private:
     template <typename T>
     using LiteralTag = typename CCallDataTypeTrait<T>::LiteralTag;
@@ -1391,6 +1490,16 @@ class UDAFRegistryHelper : public UDFRegistryHelper<UDAFRegistry> {
 
     auto& doc(const std::string doc) {
         SetDoc(doc);
+        return *this;
+    }
+
+    auto& return_list() {
+        SetAlwaysReturnList(true);
+        return *this;
+    }
+
+    auto& list_argument_at(size_t index) {
+        SetAlwaysListAt(index, true);
         return *this;
     }
 };
@@ -1677,6 +1786,9 @@ class UDAFRegistryHelperImpl : UDFRegistryHelper<UDAFRegistry> {
                 return;
             }
         }
+        if (output_ty_ != nullptr && output_ty_->base() == node::kList) {
+            return_list();
+        }
         udaf_gen_.state_type = state_ty_;
         udaf_gen_.state_nullable = state_nullable_;
         std::vector<const node::TypeNode*> input_list_types;
@@ -1691,6 +1803,11 @@ class UDAFRegistryHelperImpl : UDFRegistryHelper<UDAFRegistry> {
 
     UDAFRegistryHelperImpl& doc(const std::string& doc) {
         SetDoc(doc);
+        return *this;
+    }
+
+    UDAFRegistryHelperImpl& return_list() {
+        SetAlwaysReturnList(true);
         return *this;
     }
 
@@ -1731,6 +1848,16 @@ class UDAFTemplateRegistryHelper : public UDFRegistryHelper<UDAFRegistry> {
 
     auto& doc(const std::string& str) {
         helper_.doc(str);
+        return *this;
+    }
+
+    auto& return_list() {
+        helper_.return_list();
+        return *this;
+    }
+
+    auto& list_argument_at(size_t index) {
+        helper_.list_argument_at(index);
         return *this;
     }
 

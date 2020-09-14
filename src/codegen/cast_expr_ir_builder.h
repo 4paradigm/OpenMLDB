@@ -22,30 +22,27 @@ class CastExprIRBuilder {
     explicit CastExprIRBuilder(::llvm::BasicBlock* block);
     ~CastExprIRBuilder();
 
+    Status Cast(const NativeValue& value, ::llvm::Type* cast_type,
+                NativeValue* output);  // NOLINT
     Status SafeCast(const NativeValue& value, ::llvm::Type* type,
                     NativeValue* output);  // NOLINT
     Status UnSafeCast(const NativeValue& value, ::llvm::Type* type,
-                    NativeValue* output);  // NOLINT
-
-    bool SafeCast(::llvm::Value* value, ::llvm::Type* type,
-                  ::llvm::Value** output, base::Status& status);  // NOLINT
-
-    bool UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
-                    ::llvm::Value** output, base::Status& status);  // NOLINT
+                      NativeValue* output);  // NOLINT
+    static bool IsSafeCast(::llvm::Type* lhs, ::llvm::Type* rhs);
+    static Status InferNumberCastTypes(::llvm::Type* left_type,
+                                       ::llvm::Type* right_type);
+    static bool IsIntFloat2PointerCast(::llvm::Type* src, ::llvm::Type* dist);
+    bool BoolCast(llvm::Value* pValue, llvm::Value** pValue1,
+                  base::Status& status);  // NOLINT
+    bool SafeCastNumber(::llvm::Value* value, ::llvm::Type* type,
+                        ::llvm::Value** output,
+                        base::Status& status);  // NOLINT
+    bool UnSafeCastNumber(::llvm::Value* value, ::llvm::Type* type,
+                          ::llvm::Value** output,
+                          base::Status& status);  // NOLINT
     bool UnSafeCastDouble(::llvm::Value* value, ::llvm::Type* type,
                           ::llvm::Value** output,
                           base::Status& status);  // NOLINT
-
-    bool StringCast(llvm::Value* value, llvm::Value** casted_value,
-                    base::Status& status);  // NOLINT
-
-    bool TimestampCast(llvm::Value* value, llvm::Value** cated_value,
-                       base::Status& status);  // NOLINT
-    bool IsSafeCast(::llvm::Type* src, ::llvm::Type* dist);
-    bool IsIntFloat2PointerCast(::llvm::Type* src, ::llvm::Type* dist);
-    bool IsStringCast(llvm::Type* type);
-    bool BoolCast(llvm::Value* pValue, llvm::Value** pValue1,
-                  base::Status& status);  // NOLINT
 
  private:
     ::llvm::BasicBlock* block_;

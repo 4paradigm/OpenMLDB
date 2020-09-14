@@ -71,12 +71,6 @@ class ArithmeticIRBuilder {
                              base::Status status);
 
  private:
-    static Status FDivTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
-    static Status SDivTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
-    static Status ModTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
-    static Status AddTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
-    static Status SubTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
-    static Status MultiTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
     static Status AndTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
     static Status OrTypeAccept(::llvm::Type* lhs, ::llvm::Type* rhs);
     static bool InferAndCastedNumberTypes(
