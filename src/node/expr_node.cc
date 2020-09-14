@@ -32,9 +32,10 @@ Status ColumnRefNode::InferAttr(ExprAnalysisContext* ctx) {
         relation_name_, column_name_, &schema_info);
     CHECK_TRUE(ok, kTypeError, "Fail to resolve column ", GetExprString());
 
-    codec::RowDecoder decoder(*schema_info->schema_);
+    const codec::RowDecoder* decoder =
+        ctx->schemas_context()->GetDecoder(schema_info->idx_);
     codec::ColInfo col_info;
-    CHECK_TRUE(decoder.ResolveColumn(column_name_, &col_info), kTypeError,
+    CHECK_TRUE(decoder->ResolveColumn(column_name_, &col_info), kTypeError,
                "Fail to resolve column ", GetExprString());
 
     node::DataType dtype;
@@ -104,9 +105,10 @@ Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
                                                     column_name_, &schema_info);
         CHECK_TRUE(ok, kTypeError, "Fail to resolve column ", GetExprString());
 
-        codec::RowDecoder decoder(*schema_info->schema_);
+        const codec::RowDecoder* decoder =
+            schemas_context.GetDecoder(schema_info->idx_);
         codec::ColInfo col_info;
-        CHECK_TRUE(decoder.ResolveColumn(column_name_, &col_info), kTypeError,
+        CHECK_TRUE(decoder->ResolveColumn(column_name_, &col_info), kTypeError,
                    "Fail to resolve column ", GetExprString());
 
         node::DataType dtype;
@@ -413,7 +415,7 @@ Status ExprNode::LogicalOpTypeAccept(const TypeNode& lhs, const TypeNode& rhs,
                                      TypeNode* output_type) {
     CHECK_TRUE((lhs.IsNull() || lhs.IsBaseType()) &&
                    (rhs.IsNull() || rhs.IsBaseType()),
-               kTypeError, "Invalid Compare Op type: lhs ", lhs.GetName(),
+               kTypeError, "Invalid Logical Op type: lhs ", lhs.GetName(),
                " rhs ", rhs.GetName())
     *output_type = TypeNode(kBool);
     return Status::OK();

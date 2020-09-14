@@ -299,7 +299,10 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     codec::ListRef<Row> list_table_ref;
     list_table_ref.list = reinterpret_cast<int8_t*>(&list_table);
 
-    codegen::MemoryWindowDecodeIRBuilder builder(table_def.columns(), nullptr);
+    vm::SchemaSourceList schema_sources;
+    schema_sources.AddSchemaSource(&table_def.columns());
+    vm::SchemasContext schemas_context(schema_sources);
+    codegen::MemoryWindowDecodeIRBuilder builder(&schemas_context, nullptr);
     codec::ColInfo info;
     node::TypeNode type;
     uint32_t col_size;
@@ -401,7 +404,10 @@ void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
     type::TableDef table_def;
     BuildData(table_def, window, data_size);
 
-    codegen::MemoryWindowDecodeIRBuilder builder(table_def.columns(), nullptr);
+    vm::SchemaSourceList schema_sources;
+    schema_sources.AddSchemaSource(&table_def.columns());
+    vm::SchemasContext schemas_context(schema_sources);
+    codegen::MemoryWindowDecodeIRBuilder builder(&schemas_context, nullptr);
     codec::ColInfo info;
     node::TypeNode type;
     uint32_t col_size;

@@ -52,33 +52,35 @@ bool FnIRBuilder::Build(::fesql::node::FnNodeFnDef *root,
         return false;
     }
 
-    ::llvm::Function *fn = NULL;
-    ::llvm::BasicBlock *block = NULL;
-    std::stack<int32_t> indent_stack;
-    ScopeVar sv;
-    sv.Enter("module");
+    vm::SchemaSourceList empty_source;
+    vm::SchemasContext empty_schema(empty_source);
+    CodeGenContext ctx(module_, &empty_schema);
 
+    ::llvm::Function *fn = NULL;
     const ::fesql::node::FnNodeFnHeander *fn_def = root->header_;
 
-    bool ok = BuildFnHead(fn_def, &sv, &fn, status);
+    bool ok = BuildFnHead(fn_def, &ctx, &fn, status);
     if (!ok) {
         return false;
     }
-    block = ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
-    llvm::BasicBlock *end_block =
-        llvm::BasicBlock::Create(module_->getContext(), "end_block");
 
-    BlockIRBuilder block_ir_builder(&sv);
-    if (false ==
-        block_ir_builder.BuildBlock(root->block_, block, end_block, status)) {
+    FunctionScopeGuard fn_guard(fn, &ctx);
+    BlockIRBuilder block_ir_builder(&ctx);
+    if (false == block_ir_builder.BuildBlock(root->block_, status)) {
         return false;
     }
+
+    // reformat scope
+    auto root_scope = ctx.GetCurrentScope();
+    root_scope->blocks()->DropEmptyBlocks();
+    root_scope->blocks()->ReInsertTo(fn);
+
     *result = fn;
     return true;
 }
 
 bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *header,
-                              ScopeVar *sv, ::llvm::Function **fn,
+                              CodeGenContext *ctx, ::llvm::Function **fn,
                               base::Status &status) {  // NOLINE
     ::llvm::Type *ret_type = NULL;
     bool ok = GetLLVMType(module_, header->ret_type_, &ret_type);
@@ -94,14 +96,15 @@ bool FnIRBuilder::BuildFnHead(const ::fesql::node::FnNodeFnHeander *header,
         LOG(WARNING) << "Fail Build Function Header: " << status;
         return false;
     }
-    auto fn_name = sv->Enter((*fn)->getName().str());
+
+    FunctionScopeGuard fn_guard(*fn, ctx);
+    ScopeVar *sv = ctx->GetCurrentScope()->sv();
     if (header->parameters_) {
         bool ok = FillArgs(header->parameters_, sv, return_by_arg, *fn, status);
         if (!ok) {
             return false;
         }
     }
-    DLOG(INFO) << "build fn " << fn_name << " header done";
     return true;
 }
 

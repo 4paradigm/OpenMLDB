@@ -828,12 +828,12 @@ int32_t RowView::GetString(uint32_t idx, const char** val, uint32_t* length) {
                                  length);
 }
 
-RowDecoder::RowDecoder(const fesql::codec::Schema& schema)
+RowDecoder::RowDecoder(const fesql::codec::Schema* schema)
     : schema_(schema), infos_(), next_str_pos_(), str_field_start_offset_(0) {
-    uint32_t offset = codec::GetStartOffset(schema_.size());
+    uint32_t offset = codec::GetStartOffset(schema_->size());
     uint32_t string_field_cnt = 0;
-    for (int32_t i = 0; i < schema_.size(); i++) {
-        const ::fesql::type::ColumnDef& column = schema_.Get(i);
+    for (int32_t i = 0; i < schema_->size(); i++) {
+        const ::fesql::type::ColumnDef& column = schema_->Get(i);
         if (column.type() == ::fesql::type::kVarchar) {
             infos_.insert(std::make_pair(
                 column.name(),
@@ -864,7 +864,7 @@ RowDecoder::RowDecoder(const fesql::codec::Schema& schema)
     str_field_start_offset_ = offset;
 }
 
-bool RowDecoder::ResolveColumn(const std::string& name, ColInfo* res) {
+bool RowDecoder::ResolveColumn(const std::string& name, ColInfo* res) const {
     if (nullptr == res) {
         LOG(WARNING) << "input args have null";
         return false;
@@ -878,7 +878,8 @@ bool RowDecoder::ResolveColumn(const std::string& name, ColInfo* res) {
     return true;
 }
 
-bool RowDecoder::ResolveStringCol(const std::string& name, StringColInfo* res) {
+bool RowDecoder::ResolveStringCol(const std::string& name,
+                                  StringColInfo* res) const {
     if (nullptr == res) {
         LOG(WARNING) << "input args have null";
         return false;

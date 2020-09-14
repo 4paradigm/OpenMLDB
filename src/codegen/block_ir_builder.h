@@ -26,40 +26,29 @@ namespace codegen {
 class BlockIRBuilder {
  public:
     // TODO(wangtaize) provide a module manager
-    explicit BlockIRBuilder(ScopeVar* scope_var);
+    explicit BlockIRBuilder(CodeGenContext* ctx);
     ~BlockIRBuilder();
 
-    bool BuildBlock(const node::FnNodeList* statements, llvm::BasicBlock* block,
-                    llvm::BasicBlock* end_block,
+    bool BuildBlock(const node::FnNodeList* statements,
                     base::Status& status);  // NOLINT
 
  private:
     bool BuildAssignStmt(const ::fesql::node::FnAssignNode* node,
-                         ::llvm::BasicBlock* block,
                          base::Status& status);  // NOLINT
 
     bool BuildReturnStmt(const ::fesql::node::FnReturnStmt* node,
-                         ::llvm::BasicBlock* block,
                          base::Status& status);  // NOLINT
 
     bool BuildIfElseBlock(const ::fesql::node::FnIfElseBlock* node,
-                          llvm::BasicBlock* block, llvm::BasicBlock* end_block,
                           base::Status& status);  // NOLINT
     bool BuildForInBlock(const ::fesql::node::FnForInBlock* node,
-                         llvm::BasicBlock* start_block,
-                         llvm::BasicBlock* end_block,
                          base::Status& status);  // NOLINT
-    bool ClearScopeValue(llvm::BasicBlock* block,
-                         base::Status& status);  // NOLINT
-    bool ClearAllScopeValues(llvm::BasicBlock* block,
-                             base::Status& status);  // NOLINT
 
     bool DoBuildBranchBlock(const ::fesql::node::FnIfElseBlock* if_else_block,
                             size_t branch_idx, CodeGenContext* ctx,
-                            ::llvm::BasicBlock* if_else_end,
                             Status& status);  // NOLINT
 
-    ScopeVar* sv_;
+    CodeGenContext* ctx_;
 };
 
 }  // namespace codegen

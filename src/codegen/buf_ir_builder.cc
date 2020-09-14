@@ -29,7 +29,7 @@
 namespace fesql {
 namespace codegen {
 
-BufNativeIRBuilder::BufNativeIRBuilder(const vm::Schema& schema,
+BufNativeIRBuilder::BufNativeIRBuilder(const vm::Schema* schema,
                                        ::llvm::BasicBlock* block,
                                        ScopeVar* scope_var)
     : block_(block),
@@ -277,7 +277,7 @@ bool BufNativeIRBuilder::ResolveFieldInfo(const std::string& name,
 }
 
 BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
-    const std::map<uint32_t, NativeValue>* outputs, const vm::Schema& schema,
+    const std::map<uint32_t, NativeValue>* outputs, const vm::Schema* schema,
     ::llvm::BasicBlock* block)
     : outputs_(outputs),
       schema_(schema),
@@ -285,9 +285,9 @@ BufNativeEncoderIRBuilder::BufNativeEncoderIRBuilder(
       offset_vec_(),
       str_field_cnt_(0),
       block_(block) {
-    str_field_start_offset_ = codec::GetStartOffset(schema_.size());
-    for (int32_t idx = 0; idx < schema_.size(); idx++) {
-        const ::fesql::type::ColumnDef& column = schema_.Get(idx);
+    str_field_start_offset_ = codec::GetStartOffset(schema_->size());
+    for (int32_t idx = 0; idx < schema_->size(); idx++) {
+        const ::fesql::type::ColumnDef& column = schema_->Get(idx);
         if (column.type() == ::fesql::type::kVarchar) {
             offset_vec_.push_back(str_field_cnt_);
             str_field_cnt_++;
@@ -339,8 +339,7 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     // append header
     ok = AppendHeader(
         i8_ptr, row_size,
-        builder.getInt32(::fesql::codec::GetBitmapSize(schema_.size())));
-
+        builder.getInt32(::fesql::codec::GetBitmapSize(schema_->size())));
     if (!ok) {
         return false;
     }
@@ -348,8 +347,8 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     ::llvm::Value* str_body_offset = NULL;
     ::llvm::Value* str_addr_space_val = NULL;
     TimestampIRBuilder timestamp_builder(block_->getModule());
-    for (int32_t idx = 0; idx < schema_.size(); idx++) {
-        const ::fesql::type::ColumnDef& column = schema_.Get(idx);
+    for (int32_t idx = 0; idx < schema_->size(); idx++) {
+        const ::fesql::type::ColumnDef& column = schema_->Get(idx);
         // TODO(wangtaize) null check
         auto output_iter = outputs_->find(idx);
         if (output_iter == outputs_->end()) {
@@ -618,7 +617,7 @@ bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr,
     }
 
     ::llvm::IRBuilder<> builder(block_);
-    if (str_field_cnt_ <= 0 || schema_.size() == 0) {
+    if (str_field_cnt_ <= 0 || schema_->size() == 0) {
         *output_ptr = builder.getInt32(str_field_start_offset_);
         return true;
     }
@@ -632,8 +631,8 @@ bool BufNativeEncoderIRBuilder::CalcTotalSize(::llvm::Value** output_ptr,
     }
     // build get string length and call native functon
     ::llvm::Type* size_ty = builder.getInt32Ty();
-    for (int32_t idx = 0; idx < schema_.size(); ++idx) {
-        const ::fesql::type::ColumnDef& column = schema_.Get(idx);
+    for (int32_t idx = 0; idx < schema_->size(); ++idx) {
+        const ::fesql::type::ColumnDef& column = schema_->Get(idx);
         DLOG(INFO) << "output column " << column.name() << " " << idx;
         if (column.type() == ::fesql::type::kVarchar) {
             const NativeValue& fe_str = outputs_->at(idx);

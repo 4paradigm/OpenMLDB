@@ -21,141 +21,86 @@
 
 namespace fesql {
 namespace codegen {
-ScopeVar::ScopeVar() {}
+
+ScopeVar::ScopeVar() : parent_(nullptr) {}
+ScopeVar::ScopeVar(ScopeVar* parent) : parent_(parent) {}
 ScopeVar::~ScopeVar() {}
 
-bool ScopeVar::Enter(const std::string& name) {
-    DLOG(INFO) << "enter scope " << name;
-    Scope scope;
-    scope.name = name;
-    if (scopes_.size() <= 0) {
-        scopes_.push_back(scope);
-        return true;
-    }
-    // TODO(wangtaize): scope redifine check all scope names
-    Scope& exist_scope = scopes_.back();
-    if (exist_scope.name.compare(name) == 0) {
-        LOG(WARNING) << "redefine scope " << name;
-        return false;
-    }
-    scopes_.push_back(scope);
-    return true;
-}
-
-bool ScopeVar::Exit() {
-    if (scopes_.size() <= 0) {
-        return false;
-    }
-    scopes_.pop_back();
-    return true;
-}
-
 bool ScopeVar::AddIteratorValue(::llvm::Value* value) {
-    if (scopes_.size() <= 0) {
-        LOG(WARNING) << "no scope exists ";
-        return false;
-    }
-    Scope& exist_scope = scopes_.back();
-    exist_scope.scope_iterators.push_back(value);
+    scope_iterators_.push_back(value);
     return true;
 }
 
 bool ScopeVar::AddVar(const std::string& name, const NativeValue& value) {
-    if (scopes_.size() <= 0) {
-        LOG(WARNING) << "no scope exists " << name;
-        return false;
-    }
-    Scope& exist_scope = scopes_.back();
-    std::map<std::string, NativeValue>::iterator it =
-        exist_scope.scope_map.find(name);
-    if (it != exist_scope.scope_map.end()) {
+    std::map<std::string, NativeValue>::iterator it = scope_map_.find(name);
+    if (it != scope_map_.end()) {
         LOG(WARNING) << "var with name " << name << " exists ";
         return false;
     }
-    exist_scope.scope_map.insert(std::make_pair(name, value));
+    scope_map_.insert(it, std::make_pair(name, value));
     DLOG(INFO) << "store var " << name;
     return true;
 }
 
 bool ScopeVar::ReplaceVar(const std::string& name, const NativeValue& value) {
-    if (scopes_.size() <= 0) {
-        LOG(WARNING) << "no scope exists " << name;
-        return false;
-    }
-
-    for (auto scope_iter = scopes_.rbegin(); scope_iter != scopes_.rend();
-         scope_iter++) {
-        Scope& exist_scope = *scope_iter;
+    ScopeVar* cur = this;
+    while (cur != nullptr) {
         std::map<std::string, NativeValue>::iterator it =
-            exist_scope.scope_map.find(name);
-        if (it != exist_scope.scope_map.end()) {
+            cur->scope_map_.find(name);
+        if (it != cur->scope_map_.end()) {
             it->second = value;
             return true;
         }
+        cur = cur->parent();
     }
     DLOG(INFO) << "var with name " << name << " does not exist ";
     return false;
 }
+
 bool ScopeVar::FindVar(const std::string& name, NativeValue* value) {
     if (value == NULL) {
         LOG(WARNING) << " input value is null";
         return false;
     }
-
-    if (scopes_.size() <= 0) {
-        LOG(WARNING) << "no scope exists " << name;
-        return false;
-    }
-
-    for (auto scope_iter = scopes_.rbegin(); scope_iter != scopes_.rend();
-         scope_iter++) {
-        Scope& exist_scope = *scope_iter;
+    ScopeVar* cur = this;
+    while (cur != nullptr) {
         std::map<std::string, NativeValue>::iterator it =
-            exist_scope.scope_map.find(name);
-        if (it != exist_scope.scope_map.end()) {
+            cur->scope_map_.find(name);
+        if (it != cur->scope_map_.end()) {
             *value = it->second;
             return true;
         }
+        cur = cur->parent();
     }
     DLOG(INFO) << "var with name " << name << " does not exist ";
     return false;
 }
-bool ScopeVar::ExistVar(const std::string& name) {
-    if (scopes_.size() <= 0) {
-        LOG(WARNING) << "no scope exists " << name;
-        return false;
-    }
-    for (auto scope_iter = scopes_.rbegin(); scope_iter != scopes_.rend();
-         scope_iter++) {
-        Scope& exist_scope = *scope_iter;
+
+bool ScopeVar::HasVar(const std::string& name) {
+    ScopeVar* cur = this;
+    while (cur != nullptr) {
         std::map<std::string, NativeValue>::iterator it =
-            exist_scope.scope_map.find(name);
-        if (it != exist_scope.scope_map.end()) {
+            cur->scope_map_.find(name);
+        if (it != cur->scope_map_.end()) {
             return true;
         }
+        cur = cur->parent();
     }
     return false;
 }
+
 std::vector<const std::vector<::llvm::Value*>*> ScopeVar::GetIteratorValues() {
     std::vector<const std::vector<::llvm::Value*>*> values;
-    if (scopes_.size() <= 0) {
-        LOG(WARNING) << "no scope exists ";
-        return values;
-    }
-    for (auto iter = scopes_.cbegin(); iter != scopes_.cend(); iter++) {
-        values.push_back(&(iter->scope_iterators));
+    ScopeVar* cur = this;
+    while (cur != nullptr) {
+        values.push_back(&(cur->scope_iterators_));
+        cur = cur->parent();
     }
     return values;
 }
-bool ScopeVar::ScopeExist() { return !scopes_.empty(); }
 
 const std::vector<::llvm::Value*>* ScopeVar::GetScopeIteratorValues() {
-    if (scopes_.size() <= 0) {
-        LOG(WARNING) << "no scope exists ";
-        return nullptr;
-    }
-    Scope& exist_scope = scopes_.back();
-    return &(exist_scope.scope_iterators);
+    return &scope_iterators_;
 }
 
 }  // namespace codegen

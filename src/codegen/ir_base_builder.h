@@ -68,6 +68,9 @@ base::Status GetLLVMFunctionType(
 
 template <typename T>
 std::string GetLLVMObjectString(T* obj) {
+    if (obj == nullptr) {
+        return "<null>";
+    }
     std::string res;
     llvm::raw_string_ostream ss(res);
     ss << *obj;

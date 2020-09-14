@@ -17,6 +17,7 @@
 
 #include "codegen/fn_let_ir_builder.h"
 #include "codegen/aggregate_ir_builder.h"
+#include "codegen/context.h"
 #include "codegen/expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/variable_ir_builder.h"
@@ -28,10 +29,9 @@ using ::fesql::base::Status;
 namespace fesql {
 namespace codegen {
 
-RowFnLetIRBuilder::RowFnLetIRBuilder(const vm::SchemaSourceList& schema_sources,
-                                     const node::FrameNode* frame,
-                                     ::llvm::Module* module)
-    : schema_context_(schema_sources), frame_(frame), module_(module) {}
+RowFnLetIRBuilder::RowFnLetIRBuilder(CodeGenContext* ctx,
+                                     const node::FrameNode* frame)
+    : ctx_(ctx), frame_(frame) {}
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
 Status RowFnLetIRBuilder::Build(
@@ -40,15 +40,17 @@ Status RowFnLetIRBuilder::Build(
     const std::vector<node::FrameNode*>& project_frames,
     vm::Schema* output_schema, vm::ColumnSourceList* output_column_sources) {
     ::llvm::Function* fn = NULL;
-    CHECK_TRUE(module_->getFunction(name) == NULL, kCodegenError, "function ",
+
+    ::llvm::Module* module = ctx_->GetModule();
+    CHECK_TRUE(module->getFunction(name) == NULL, kCodegenError, "function ",
                name, " already exists");
 
     std::vector<std::string> args;
     std::vector<::llvm::Type*> args_llvm_type;
-    args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
-    args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module_->getContext()));
+    args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module->getContext()));
+    args_llvm_type.push_back(::llvm::Type::getInt8PtrTy(module->getContext()));
     args_llvm_type.push_back(
-        ::llvm::Type::getInt8PtrTy(module_->getContext())->getPointerTo());
+        ::llvm::Type::getInt8PtrTy(module->getContext())->getPointerTo());
 
     std::string output_ptr_name = "output_ptr_name";
     args.push_back("@row_ptr");
@@ -58,23 +60,24 @@ Status RowFnLetIRBuilder::Build(
     Status status;
     bool ok =
         BuildFnHeader(name, args_llvm_type,
-                      ::llvm::Type::getInt32Ty(module_->getContext()), &fn);
+                      ::llvm::Type::getInt32Ty(module->getContext()), &fn);
     CHECK_TRUE(ok && fn != nullptr, kCodegenError,
                "Fail to build fn header for name ", name);
 
-    // bind input function argument
-    ScopeVar sv;
-    sv.Enter(name);
+    // Enter in function
+    FunctionScopeGuard fn_guard(fn, ctx_);
+
+    // Bind input function argument
+    auto sv = ctx_->GetCurrentScope()->sv();
     CHECK_TRUE(FillArgs(args, fn, sv), kCodegenError);
 
     // bind row arg
     NativeValue row_arg_value;
-    CHECK_TRUE(sv.FindVar("@row_ptr", &row_arg_value), kCodegenError);
-    sv.AddVar(compile_func->GetArg(0)->GetExprString(), row_arg_value);
+    CHECK_TRUE(sv->FindVar("@row_ptr", &row_arg_value), kCodegenError);
+    sv->AddVar(compile_func->GetArg(0)->GetExprString(), row_arg_value);
 
-    ::llvm::BasicBlock* block =
-        ::llvm::BasicBlock::Create(module_->getContext(), "entry", fn);
-    VariableIRBuilder variable_ir_builder(block, &sv);
+    ::llvm::BasicBlock* block = ctx_->GetCurrentBlock();
+    VariableIRBuilder variable_ir_builder(block, sv);
 
     NativeValue window;
     variable_ir_builder.LoadWindow("", &window, status);
@@ -82,7 +85,7 @@ Status RowFnLetIRBuilder::Build(
         nullptr == frame_ ? "" : frame_->GetExprString(), window.GetRaw(),
         status);
 
-    ExprIRBuilder expr_ir_builder(block, &sv, &schema_context_, true, module_);
+    ExprIRBuilder expr_ir_builder(ctx_);
 
     std::map<uint32_t, NativeValue> outputs;
 
@@ -110,8 +113,8 @@ Status RowFnLetIRBuilder::Build(
 
         if (agg_iter == window_agg_builder.end()) {
             window_agg_builder.insert(std::make_pair(
-                frame_str, AggregateIRBuilder(&schema_context_, module_, frame,
-                                              agg_builder_id++)));
+                frame_str, AggregateIRBuilder(ctx_->schemas_context(), module,
+                                              frame, agg_builder_id++)));
             agg_iter = window_agg_builder.find(frame_str);
         }
         if (agg_iter->second.CollectAggColumn(expr, i, &col_agg_type)) {
@@ -124,17 +127,16 @@ Status RowFnLetIRBuilder::Build(
                    "* should be resolved before codegen stage");
 
         // bind window frame
-        CHECK_STATUS(BindProjectFrame(&expr_ir_builder, frame, compile_func,
-                                      block, &sv));
+        CHECK_STATUS(
+            BindProjectFrame(&expr_ir_builder, frame, compile_func, block, sv));
 
-        CHECK_TRUE(
-            BuildProject(i, expr, project_name, &outputs, expr_ir_builder,
-                         output_schema, output_column_sources, status),
-            kCodegenError, "Build expr failed: ", status.str(), "\n",
-            expr->GetTreeString());
+        CHECK_STATUS(
+            BuildProject(&expr_ir_builder, i, expr, project_name, &outputs,
+                         output_schema, output_column_sources),
+            "Build expr failed at ", i, ":\n", expr->GetTreeString());
     }
 
-    CHECK_TRUE(EncodeBuf(&outputs, *output_schema, variable_ir_builder, block,
+    CHECK_TRUE(EncodeBuf(&outputs, output_schema, variable_ir_builder, block,
                          output_ptr_name),
                kCodegenError, "Gen encode into output buffer failed");
 
@@ -153,11 +155,16 @@ Status RowFnLetIRBuilder::Build(
     ::llvm::IRBuilder<> ir_builder(block);
     ::llvm::Value* ret = ir_builder.getInt32(0);
     ir_builder.CreateRet(ret);
+
+    // reformat scope
+    auto root_scope = ctx_->GetCurrentScope();
+    root_scope->blocks()->DropEmptyBlocks();
+    root_scope->blocks()->ReInsertTo(fn);
     return Status::OK();
 }
 
 bool RowFnLetIRBuilder::EncodeBuf(
-    const std::map<uint32_t, NativeValue>* values, const vm::Schema& schema,
+    const std::map<uint32_t, NativeValue>* values, const vm::Schema* schema,
     VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
     ::llvm::BasicBlock* block, const std::string& output_ptr_name) {
     base::Status status;
@@ -185,7 +192,7 @@ bool RowFnLetIRBuilder::BuildFnHeader(
         ::llvm::FunctionType::get(ret_type, array_ref, false);
 
     ::llvm::Function* f = ::llvm::Function::Create(
-        fnt, ::llvm::Function::ExternalLinkage, name, module_);
+        fnt, ::llvm::Function::ExternalLinkage, name, ctx_->GetModule());
     if (f == NULL) {
         LOG(WARNING) << "fail to create fn with name " << name;
         return false;
@@ -196,47 +203,46 @@ bool RowFnLetIRBuilder::BuildFnHeader(
 }
 
 bool RowFnLetIRBuilder::FillArgs(const std::vector<std::string>& args,
-                                 ::llvm::Function* fn,
-                                 ScopeVar& sv) {  // NOLINT
+                                 ::llvm::Function* fn, ScopeVar* sv) {
     if (fn == NULL || fn->arg_size() != args.size()) {
         LOG(WARNING) << "fn is null or fn arg size mismatch";
         return false;
     }
     ::llvm::Function::arg_iterator it = fn->arg_begin();
     for (auto arg : args) {
-        sv.AddVar(arg, NativeValue::Create(&*it));
+        sv->AddVar(arg, NativeValue::Create(&*it));
         ++it;
     }
     return true;
 }
 
-bool RowFnLetIRBuilder::BuildProject(
-    const uint32_t index, const node::ExprNode* expr,
-    const std::string& col_name, std::map<uint32_t, NativeValue>* outputs,
-    ExprIRBuilder& expr_ir_builder, vm::Schema* output_schema,  // NOLINT
-    vm::ColumnSourceList* output_column_sources,
-    base::Status& status) {  // NOLINT
-
+Status RowFnLetIRBuilder::BuildProject(
+    ExprIRBuilder* expr_ir_builder, const uint32_t index,
+    const node::ExprNode* expr, const std::string& col_name,
+    std::map<uint32_t, NativeValue>* outputs,
+    vm::Schema* output_schema,  // NOLINT
+    vm::ColumnSourceList* output_column_sources) {
     NativeValue expr_out_val;
-    bool ok = expr_ir_builder.Build(expr, &expr_out_val, status);
-    if (!ok) {
-        LOG(WARNING) << "fail to codegen project expression: " << status;
-        return false;
-    }
-    ::fesql::node::TypeNode data_type;
-    ok = GetFullType(expr_out_val.GetType(), &data_type);
-    if (!ok) {
-        return false;
-    }
-    ::fesql::type::Type ctype;
-    if (!DataType2SchemaType(data_type, &ctype)) {
-        return false;
-    }
-    llvm::IRBuilder<> builder(expr_ir_builder.block());
-    outputs->insert(std::make_pair(index, expr_out_val));
 
-    return AddOutputColumnInfo(col_name, ctype, expr, output_schema,
-                               output_column_sources);
+    CHECK_STATUS(expr_ir_builder->Build(expr, &expr_out_val),
+                 "Fail to codegen project expression: ", expr->GetExprString());
+
+    ::fesql::node::TypeNode data_type;
+    CHECK_TRUE(!expr_out_val.IsTuple(), kCodegenError,
+               "Output do not support tuple");
+    ::llvm::Type* llvm_ty = expr_out_val.GetType();
+    CHECK_TRUE(llvm_ty != nullptr, kCodegenError);
+    CHECK_TRUE(GetFullType(llvm_ty, &data_type), kCodegenError,
+               "Fail to get output type at ", index, ", expect ",
+               expr->GetOutputType()->GetName());
+
+    ::fesql::type::Type ctype;
+    CHECK_TRUE(DataType2SchemaType(data_type, &ctype), kCodegenError);
+
+    outputs->insert(std::make_pair(index, expr_out_val));
+    AddOutputColumnInfo(col_name, ctype, expr, output_schema,
+                        output_column_sources);
+    return Status::OK();
 }
 
 bool RowFnLetIRBuilder::AddOutputColumnInfo(
@@ -251,7 +257,7 @@ bool RowFnLetIRBuilder::AddOutputColumnInfo(
             const ::fesql::node::GetFieldExpr* column_expr =
                 (const ::fesql::node::GetFieldExpr*)expr;
             output_column_sources->push_back(
-                schema_context_.ColumnSourceResolved(
+                ctx_->schemas_context()->ColumnSourceResolved(
                     column_expr->GetRelationName(),
                     column_expr->GetColumnName()));
             break;
@@ -279,20 +285,20 @@ Status RowFnLetIRBuilder::BindProjectFrame(ExprIRBuilder* expr_ir_builder,
 
     auto window_key = frame_arg->GetExprString();
     NativeValue window_arg_value;
-    CHECK_TRUE(expr_ir_builder->BuildWindow(&window_arg_value, status),
-               kCodegenError, "Bind window failed: ", status.str());
+    CHECK_STATUS(expr_ir_builder->BuildWindow(&window_arg_value),
+                 "Bind window failed");
 
     ::llvm::IRBuilder<> builder(block);
     ::llvm::Value* frame_ptr = window_arg_value.GetValue(&builder);
     CHECK_TRUE(frame_ptr != nullptr && frame_ptr->getType()->isPointerTy(),
                kCodegenError);
     ::llvm::Type* row_list_ptr_ty = nullptr;
-    CHECK_TRUE(
-        GetLLVMType(module_, frame_arg->GetOutputType(), &row_list_ptr_ty),
-        kCodegenError);
+    CHECK_TRUE(GetLLVMType(ctx_->GetModule(), frame_arg->GetOutputType(),
+                           &row_list_ptr_ty),
+               kCodegenError);
     frame_ptr = builder.CreatePointerCast(frame_ptr, row_list_ptr_ty);
     window_arg_value = window_arg_value.Replace(frame_ptr);
-    if (sv->ExistVar(window_key)) {
+    if (sv->HasVar(window_key)) {
         sv->ReplaceVar(window_key, window_arg_value);
     } else {
         sv->AddVar(window_key, window_arg_value);
