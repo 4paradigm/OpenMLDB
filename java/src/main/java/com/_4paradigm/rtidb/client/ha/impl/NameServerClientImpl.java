@@ -470,6 +470,18 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         return tablets;
     }
 
+    @Override
+    public List<OPStatus> showOPStatus(String tname) {
+        ShowOPStatusRequest request = null;
+        if (tname == null || tname.isEmpty()) {
+            request = ShowOPStatusRequest.newBuilder().build();
+        } else {
+            request = ShowOPStatusRequest.newBuilder().setName(tname).build();
+        }
+        ShowOPStatusResponse response = ns.showOPStatus(request);
+        return response.getOpStatusList();
+    }
+
     public Map<String, String> showNs() throws Exception {
         List<String> node = zookeeper.getChildren(leaderPath, false);
         Map<String, String> nsEndpoint = new HashMap<>();

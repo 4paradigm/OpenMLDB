@@ -4,6 +4,7 @@ import com._4paradigm.rtidb.client.*;
 import com._4paradigm.rtidb.client.base.ClientBuilder;
 import com._4paradigm.rtidb.client.base.TestCaseBase;
 import com._4paradigm.rtidb.common.Common;
+import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.ns.NS.ColumnDesc;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
@@ -680,8 +681,21 @@ public class TableAsyncClientTest extends TestCaseBase {
             Map<String, String> newCols = new HashMap<>();
             newCols.put("aa", "string");
             ok = nsc.addIndex(name, "newindex", tss, newCols);
-            Thread.currentThread().sleep(22000);
             Assert.assertTrue(ok);
+            while (true) {
+                List<NS.OPStatus> ops = nsc.showOPStatus(name);
+                boolean need_sleep = false;
+                for (NS.OPStatus op : ops) {
+                    if (!op.getStatus().equals("kDone")) {
+                        need_sleep = true;
+                    }
+                }
+                if (need_sleep) {
+                    Thread.currentThread().sleep(2000);
+                } else {
+                    break;
+                }
+            }
             client.refreshRouteTable();
 
             data.clear();
@@ -816,8 +830,21 @@ public class TableAsyncClientTest extends TestCaseBase {
             newCols.clear();
             newCols.put("mcc", "string");
             ok = nsc.addIndex(name, "newindex2", tss, newCols);
-            Thread.currentThread().sleep(26000);
             Assert.assertTrue(ok);
+            while (true) {
+                List<NS.OPStatus> ops = nsc.showOPStatus(name);
+                boolean need_sleep = false;
+                for (NS.OPStatus op : ops) {
+                    if (!op.getStatus().equals("kDone")) {
+                        need_sleep = true;
+                    }
+                }
+                if (need_sleep) {
+                    Thread.currentThread().sleep(2000);
+                } else {
+                    break;
+                }
+            }
             client.refreshRouteTable();
             Thread.currentThread().sleep(1500);
 
@@ -1060,8 +1087,22 @@ public class TableAsyncClientTest extends TestCaseBase {
             newCols.clear();
             newCols.put("mcc", "string");
             ok = nsc.addIndex(name, "newindex2", tss, newCols);
-            Thread.currentThread().sleep(8000);
             Assert.assertTrue(ok);
+            while (true) {
+                List<NS.OPStatus> ops = nsc.showOPStatus(name);
+                boolean need_sleep = false;
+                for (NS.OPStatus op : ops) {
+                    op.getOP
+                    if (!op.getStatus().equals("kDone")) {
+                        need_sleep = true;
+                    }
+                }
+                if (need_sleep) {
+                    Thread.currentThread().sleep(2000);
+                } else {
+                    break;
+                }
+            }
             client.refreshRouteTable();
             Thread.currentThread().sleep(15);
 
