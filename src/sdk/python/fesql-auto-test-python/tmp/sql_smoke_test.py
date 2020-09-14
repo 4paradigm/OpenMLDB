@@ -1,15 +1,14 @@
 import sys,os
 
+from nb_log import LogManager
 from fedb import driver
 import time
-# from nb_log import LogManager
 
-
-# log = LogManager('fesql-auto-test').get_logger_and_add_handlers()
+log = LogManager('fesql-auto-test').get_logger_and_add_handlers()
 
 def test_smoke():
     print("hello")
-    options = driver.DriverOptions("172.27.128.37:16181","/fedb_0901")
+    options = driver.DriverOptions("172.27.128.37:16181","/fedb_0904")
     sdk = driver.Driver(options)
     assert sdk.init()
     db_name = "pydb" + str(time.time_ns()%100000)

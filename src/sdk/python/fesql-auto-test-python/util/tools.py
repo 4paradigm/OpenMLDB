@@ -22,5 +22,10 @@ def getAbsolutePath(path:str):
     absolutePath = rootPath+"/"+path
     return absolutePath
 
+def equalsFloat(a, b, precision=0.000001):
+    if abs(a - b) <= precision:
+        return True
+    return False
+
 if __name__ == '__main__':
     print(getRootPath())

@@ -63,8 +63,14 @@ class SQLExecutor(BaseExecutor):
         if self.fesqlCase.get('mode') !=None and "batch-unsupport" in self.fesqlCase.get('mode'):
             log.info("skip case in batch mode: {}".format(self.fesqlCase.get('desc')))
             return
+        if self.fesqlCase.get('mode') !=None and "request-unsupport" in self.fesqlCase.get('mode'):
+            log.info("skip case in request mode: {}".format(self.fesqlCase.get('desc')))
+            return
         if self.fesqlCase.get('mode') !=None and "rtidb-unsupport" in self.fesqlCase.get('mode'):
             log.info("skip case in rtidb mode: {}".format(self.fesqlCase.get('desc')))
+            return
+        if self.fesqlCase.get('mode') !=None and "rtidb-batch-unsupport" in self.fesqlCase.get('mode'):
+            log.info("skip case in rtidb batch mode: {}".format(self.fesqlCase.get('desc')))
             return
         if self.fesqlCase.get('mode') !=None and "python-unsupport" in self.fesqlCase.get('mode'):
             log.info("skip case in python mode: {}".format(self.fesqlCase.get('desc')))

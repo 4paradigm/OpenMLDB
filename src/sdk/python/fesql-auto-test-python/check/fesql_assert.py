@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import math
+import util.tools as tool
 
 def check_rows(actual:list,expect:list):
     assert len(actual) == len(expect)
@@ -16,8 +17,7 @@ def check_list(actual:list,expect:list):
         # print(str(value))
         if str(value) == 'nan':
             assert str(expectValue)== 'nan'
+        elif type(value) == float and type(expectValue) == float :
+            assert tool.equalsFloat(value,expectValue),'actual:{},expect:{}'.format(value,expectValue)
         else:
-            if(type(value) == float and type(expectValue) == float):
-                value = round(value,2)
-                expectValue = round(expectValue,2)
             assert value == expectValue,'actual:{},expect:{}'.format(value,expectValue)+";actual_type:{},expect_type:{}".format(type(actual),type(expect))
