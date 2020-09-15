@@ -45,65 +45,54 @@ using fesql::vm::RowSchemaInfo;
 
 class ExprIRBuilder {
  public:
-    ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var);
-    ExprIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                  const vm::SchemasContext* schemas_context,
-                  const bool row_mode, ::llvm::Module* module);
-
+    explicit ExprIRBuilder(CodeGenContext* ctx);
     ~ExprIRBuilder();
 
-    bool Build(const ::fesql::node::ExprNode* node, NativeValue* output,
-               ::fesql::base::Status& status);  // NOLINT
+    Status Build(const ::fesql::node::ExprNode* node, NativeValue* output);
 
     Status BuildAsUDF(const node::ExprNode* expr, const std::string& name,
                       const std::vector<NativeValue>& args,
                       NativeValue* output);
 
-    bool BuildWindow(NativeValue* output,
-                     ::fesql::base::Status& status);  // NOLINT
-    inline ::llvm::BasicBlock* block() const { return block_; }
+    Status BuildWindow(NativeValue* output);
+
     inline void set_frame(node::ExprNode* frame_arg, node::FrameNode* frame) {
         this->frame_arg_ = frame_arg;
         this->frame_ = frame;
     }
 
  private:
-    bool BuildColumnIterator(const std::string& relation_name,
-                             const std::string& col, ::llvm::Value** output,
-                             ::fesql::base::Status& status);  // NOLINT
-    bool BuildColumnItem(const std::string& relation_name,
-                         const std::string& col, NativeValue* output,
-                         ::fesql::base::Status& status);  // NOLINT
-    bool BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
-                        NativeValue* output,
-                        ::fesql::base::Status& status);  // NOLINT
+    Status BuildConstExpr(const ::fesql::node::ConstNode* node,
+                          NativeValue* output);
+
+    Status BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
+                          NativeValue* output);
 
     Status BuildCallFn(const ::fesql::node::CallExprNode* fn,
                        NativeValue* output);
-    bool BuildCallFnLegacy(const ::fesql::node::CallExprNode* fn,
+
+    bool BuildCallFnLegacy(const ::fesql::node::CallExprNode* call_fn,
                            NativeValue* output,
                            ::fesql::base::Status& status);  // NOLINT
 
-    bool BuildCastExpr(const ::fesql::node::CastExprNode* node,
-                       NativeValue* output,
-                       ::fesql::base::Status& status);  // NOLINT
-    bool BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
-                         NativeValue* output,
-                         ::fesql::base::Status& status);  // NOLINT
+    Status BuildCastExpr(const ::fesql::node::CastExprNode* node,
+                         NativeValue* output);
 
-    bool BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
-                        NativeValue* output,
-                        ::fesql::base::Status& status);  // NOLINT
+    Status BuildBinaryExpr(const ::fesql::node::BinaryExpr* node,
+                           NativeValue* output);
 
-    bool BuildStructExpr(const ::fesql::node::StructExpr* node,
-                         NativeValue* output,
-                         ::fesql::base::Status& status);  // NOLINT
+    Status BuildUnaryExpr(const ::fesql::node::UnaryExpr* node,
+                          NativeValue* output);
+
+    Status BuildStructExpr(const ::fesql::node::StructExpr* node,
+                           NativeValue* output);
 
     Status BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
                              NativeValue* output);
 
     Status BuildCaseExpr(const ::fesql::node::CaseWhenExprNode* node,
                          NativeValue* output);
+
     Status BuildCondExpr(const ::fesql::node::CondExpr* node,
                          NativeValue* output);
 
@@ -113,20 +102,10 @@ class ExprIRBuilder {
         base::Status& status);  // NOLINT
 
  private:
-    ::llvm::BasicBlock* block_;
-    ScopeVar* sv_;
-    node::FrameNode* frame_;
-    node::ExprNode* frame_arg_;
-    bool row_mode_;
-    VariableIRBuilder variable_ir_builder_;
-    ArithmeticIRBuilder arithmetic_ir_builder_;
-    PredicateIRBuilder predicate_ir_builder_;
-    ::llvm::Module* module_;
-    const vm::SchemasContext* schemas_context_;
-    std::vector<std::unique_ptr<RowDecodeIRBuilder>> row_ir_builder_list_;
-    std::unique_ptr<WindowDecodeIRBuilder> window_ir_builder_;
+    CodeGenContext* ctx_;
+    node::FrameNode* frame_ = nullptr;
+    node::ExprNode* frame_arg_ = nullptr;
 
-    bool IsUADF(std::string function_name);
     bool FindRowSchemaInfo(const std::string& relation_name,
                            const std::string& col_name,
                            const RowSchemaInfo** info);

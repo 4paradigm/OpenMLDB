@@ -92,9 +92,10 @@ bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
             }
             size_t slice_idx = info->idx_;
 
-            codec::RowDecoder decoder(*info->schema_);
+            const codec::RowDecoder* decoder =
+                schema_context_->GetDecoder(info->idx_);
             codec::ColInfo col_info;
-            if (!decoder.ResolveColumn(col_name, &col_info)) {
+            if (!decoder->ResolveColumn(col_name, &col_info)) {
                 LOG(ERROR) << "fail to resolve column "
                            << rel_name + "." + col_name;
                 return false;
@@ -569,24 +570,19 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
     expr_ir_builder->set_frame(nullptr, frame_node_);
     base::Status status;
     NativeValue window_ptr;
-    bool ok = expr_ir_builder->BuildWindow(&window_ptr, status);
-    if (!ok || window_ptr.GetRaw() == nullptr) {
+    status = expr_ir_builder->BuildWindow(&window_ptr);
+    if (!status.isOK() || window_ptr.GetRaw() == nullptr) {
         LOG(ERROR) << "fail to find window_ptr: " + status.str();
         return false;
     }
     NativeValue output_buf_wrapper;
-    ok = variable_ir_builder->LoadValue(output_ptr_name, &output_buf_wrapper,
-                                        status);
+    bool ok = variable_ir_builder->LoadValue(output_ptr_name,
+                                             &output_buf_wrapper, status);
     if (!ok) {
         LOG(ERROR) << "fail to get output row ptr";
         return false;
     }
     ::llvm::Value* output_buf = output_buf_wrapper.GetValue(&builder);
-
-    std::vector<codec::RowDecoder> decoders;
-    for (auto& info : schema_context_->row_schema_info_list_) {
-        decoders.push_back(codec::RowDecoder(*info.schema_));
-    }
 
     std::string fn_name =
         base_funcname + "_multi_column_agg_" + std::to_string(id_) + "__";
@@ -680,7 +676,7 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
 
             ScopeVar dummy_scope_var;
             BufNativeIRBuilder buf_builder(
-                *schema_context_->row_schema_info_list_[slice_idx].schema_,
+                schema_context_->row_schema_info_list_[slice_idx].schema_,
                 body_block, &dummy_scope_var);
             NativeValue field_value;
             if (!buf_builder.BuildGetField(info.col->GetColumnName(),
@@ -724,7 +720,7 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
 
     // store results to output row
     std::map<uint32_t, NativeValue> dummy_map;
-    BufNativeEncoderIRBuilder output_encoder(&dummy_map, *output_schema,
+    BufNativeEncoderIRBuilder output_encoder(&dummy_map, output_schema,
                                              exit_block);
     for (auto& agg_generator : generators) {
         std::vector<std::pair<size_t, ::llvm::Value*>> outputs;

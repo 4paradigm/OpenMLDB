@@ -255,7 +255,6 @@ void string_to(codec::StringRef *str, V *v, bool *is_null_ptr) {
     }
 }
 
-
 template <class V>
 struct ToString {
     using Args = std::tuple<V>;

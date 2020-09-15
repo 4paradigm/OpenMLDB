@@ -104,10 +104,13 @@ void RunListIteratorCase(T expected, const type::TableDef& table,
             [&](codegen::CodeGenContext* ctx) {
                 BasicBlock* entry_block = ctx->GetCurrentBlock();
                 ScopeVar sv;
-                sv.Enter("enter row scope");
 
-                MemoryWindowDecodeIRBuilder buf_builder(table.columns(),
+                vm::SchemaSourceList schema_sources;
+                schema_sources.AddSchemaSource(&table.columns());
+                vm::SchemasContext schemas_context(schema_sources);
+                MemoryWindowDecodeIRBuilder buf_builder(&schemas_context,
                                                         entry_block);
+
                 ListIRBuilder list_builder(entry_block, &sv);
 
                 auto fn = ctx->GetCurrentFunction();
@@ -165,7 +168,6 @@ void RunListIteratorByRowCase(T expected, const type::TableDef& table,
             [&](codegen::CodeGenContext* ctx) {
                 BasicBlock* entry_block = ctx->GetCurrentBlock();
                 ScopeVar sv;
-                sv.Enter("enter row scope");
 
                 ListIRBuilder list_builder(entry_block, &sv);
                 auto fn = ctx->GetCurrentFunction();
@@ -225,10 +227,13 @@ void RunInnerListIteratorCase(T expected, const type::TableDef& table,
             .build([&](codegen::CodeGenContext* ctx) {
                 BasicBlock* entry_block = ctx->GetCurrentBlock();
                 ScopeVar sv;
-                sv.Enter("enter row scope");
 
-                MemoryWindowDecodeIRBuilder buf_builder(table.columns(),
+                vm::SchemaSourceList schema_sources;
+                schema_sources.AddSchemaSource(&table.columns());
+                vm::SchemasContext schemas_context(schema_sources);
+                MemoryWindowDecodeIRBuilder buf_builder(&schemas_context,
                                                         entry_block);
+
                 ListIRBuilder list_builder(entry_block, &sv);
 
                 IRBuilder<> builder(entry_block);
@@ -331,10 +336,13 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
             .build([&](codegen::CodeGenContext* ctx) {
                 BasicBlock* entry_block = ctx->GetCurrentBlock();
                 ScopeVar sv;
-                sv.Enter("enter row scope");
 
-                MemoryWindowDecodeIRBuilder buf_builder(table.columns(),
+                vm::SchemaSourceList schema_sources;
+                schema_sources.AddSchemaSource(&table.columns());
+                vm::SchemasContext schemas_context(schema_sources);
+                MemoryWindowDecodeIRBuilder buf_builder(&schemas_context,
                                                         entry_block);
+
                 ListIRBuilder list_builder(entry_block, &sv);
 
                 IRBuilder<> builder(entry_block);
@@ -413,10 +421,13 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
             .build([&](codegen::CodeGenContext* ctx) {
                 BasicBlock* entry_block = ctx->GetCurrentBlock();
                 ScopeVar sv;
-                sv.Enter("enter row scope");
 
-                MemoryWindowDecodeIRBuilder buf_builder(table.columns(),
+                vm::SchemaSourceList schema_sources;
+                schema_sources.AddSchemaSource(&table.columns());
+                vm::SchemasContext schemas_context(schema_sources);
+                MemoryWindowDecodeIRBuilder buf_builder(&schemas_context,
                                                         entry_block);
+
                 ListIRBuilder list_builder(entry_block, &sv);
 
                 auto fn = ctx->GetCurrentFunction();

@@ -26,9 +26,7 @@ using base::Status;
 
 class UDFIRBuilder {
  public:
-    UDFIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                 const vm::SchemasContext* schemas_context,
-                 ::llvm::Module* module, node::ExprNode* frame_arg,
+    UDFIRBuilder(CodeGenContext* ctx, node::ExprNode* frame_arg,
                  node::FrameNode* frame);
 
     ~UDFIRBuilder() {}
@@ -94,11 +92,8 @@ class UDFIRBuilder {
 
     Status GetLLVMFunctionType(const node::FnDefNode* fn,
                                ::llvm::FunctionType** func_ty);
-    ::llvm::BasicBlock* block_;
-    ScopeVar* sv_;
-    ::llvm::Module* module_;
-    const vm::SchemasContext* schemas_context_;
 
+    CodeGenContext* ctx_;
     node::ExprNode* frame_arg_;
     node::FrameNode* frame_;
 };

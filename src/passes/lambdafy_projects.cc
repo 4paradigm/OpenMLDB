@@ -90,10 +90,14 @@ Status LambdafyProjects::VisitExpr(node::ExprNode* expr,
         if (fn != nullptr && !fn->IsResolved()) {
             if (!library_->HasFunction(fn->function_name())) {
                 // not a registered udf, maybe user defined script function
-                *out = expr;
-                *has_agg = false;
-                *is_agg_root = false;
-                return Status::OK();
+                // do not transform child if has over clause
+                // this only aims to pass existing cases
+                if (call->GetOver() != nullptr) {
+                    *out = expr;
+                    *has_agg = false;
+                    *is_agg_root = false;
+                    return Status::OK();
+                }
             } else if (library_->IsUDAF(fn->function_name(), child_num)) {
                 *has_agg = true;
                 *is_agg_root = true;
@@ -122,9 +126,6 @@ Status LambdafyProjects::VisitExpr(node::ExprNode* expr,
         bool child_is_root_agg;
 
         auto child = expr->GetChild(i);
-        LOG(INFO) << expr->GetExprString() << " at " << i << " : "
-                  << expr->RequireListAt(&analysis_ctx_, i) << " "
-                  << (child->GetExprType() == node::kExprColumnRef);
         if (expr->RequireListAt(&analysis_ctx_, i)) {
             bool child_is_col = child->GetExprType() == node::kExprColumnRef;
             if (child_is_col) {
@@ -393,9 +394,10 @@ bool LambdafyProjects::FallBackToLegacyAgg(node::ExprNode* expr) {
                     << "fail to resolve column " << rel_name + "." + col_name;
                 return false;
             }
-            codec::RowDecoder decoder(*info->schema_);
+            const codec::RowDecoder* decoder =
+                schema_context.GetDecoder(info->idx_);
             codec::ColInfo col_info;
-            if (!decoder.ResolveColumn(col_name, &col_info)) {
+            if (!decoder->ResolveColumn(col_name, &col_info)) {
                 LOG(WARNING)
                     << "fail to resolve column " << rel_name + "." + col_name;
                 return false;

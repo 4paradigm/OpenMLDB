@@ -156,7 +156,6 @@ void RunEncode(::fesql::type::TableDef& table, int8_t** output_ptr) {  // NOLINT
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     IRBuilder<> builder(entry_block);
     ScopeVar sv;
-    sv.Enter("enter row scope");
     std::map<uint32_t, NativeValue> outputs;
     outputs.insert(
         std::make_pair(0, NativeValue::Create(builder.getInt32(32))));
@@ -179,7 +178,7 @@ void RunEncode(::fesql::type::TableDef& table, int8_t** output_ptr) {  // NOLINT
     outputs.insert(std::make_pair(
         6, NativeValue::Create(builder.getInt64(1590115420000L))));
 
-    BufNativeEncoderIRBuilder buf_encoder_builder(&outputs, table.columns(),
+    BufNativeEncoderIRBuilder buf_encoder_builder(&outputs, &table.columns(),
                                                   entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;
@@ -248,8 +247,7 @@ void LoadValue(T* result, bool* is_null,
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
-    sv.Enter("enter row scope");
-    BufNativeIRBuilder buf_builder(table.columns(), entry_block, &sv);
+    BufNativeIRBuilder buf_builder(&table.columns(), entry_block, &sv);
     IRBuilder<> builder(entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;
@@ -372,8 +370,12 @@ void RunColCase(T expected, type::TableDef& table,  // NOLINT
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
-    sv.Enter("enter row scope");
-    MemoryWindowDecodeIRBuilder buf_builder(table.columns(), entry_block);
+
+    vm::SchemaSourceList schema_sources;
+    schema_sources.AddSchemaSource(&table.columns());
+    vm::SchemasContext schemas_context(schema_sources);
+    MemoryWindowDecodeIRBuilder buf_builder(&schemas_context, entry_block);
+
     IRBuilder<> builder(entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;

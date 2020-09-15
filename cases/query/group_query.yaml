@@ -34,6 +34,7 @@ cases:
   - id: 2
     desc: Group By Int16, Group命中索引
     mode: request-unsupport
+    tags: ["TODO", "udf脚本语义化不完善"]
     db: db1
     sql: |
       %%fun
@@ -99,6 +100,7 @@ cases:
   - id: 4
     desc: Group By 字符串, Group命中索引
     mode: request-unsupport
+    tags: ["TODO", "udf脚本语义化不完善"]
     db: db1
     sql: |
       %%fun
@@ -132,6 +134,7 @@ cases:
   - id: 5
     desc: Group By 字符串 Limit
     mode: request-unsupport, offline-unsupport
+    tags: ["TODO", "udf脚本语义化不完善"]
     db: db1
     sql: |
       %%fun

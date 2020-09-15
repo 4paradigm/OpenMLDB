@@ -420,7 +420,7 @@ TEST_F(CodecTest, RowDecoderTest) {
             }
         }
 
-        RowDecoder decoder(def.columns());
+        RowDecoder decoder(&def.columns());
         for (int i = 0; i < col_num; i++) {
             if (i % 3 == 0) {
                 codec::ColInfo info;
@@ -487,7 +487,7 @@ TEST_F(CodecTest, RowDecoderOffsetTest) {
         column->set_name("col7");
     }
 
-    RowDecoder decoder(table.columns());
+    RowDecoder decoder(&table.columns());
     {
         codec::ColInfo info;
         decoder.ResolveColumn("col1", &info);
@@ -603,7 +603,7 @@ TEST_F(CodecTest, RowDecoderOffsetLongHeaderTest) {
         column->set_name("col9");
     }
 
-    RowDecoder decoder(table.columns());
+    RowDecoder decoder(&table.columns());
     {
         codec::ColInfo info;
         decoder.ResolveColumn("col1", &info);
