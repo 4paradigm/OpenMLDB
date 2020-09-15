@@ -85,22 +85,22 @@ bool SDKTableHandler::Init() {
 }
 
 bool SDKCatalog::Init(
-    const std::vector<::rtidb::nameserver::TableInfo>& tables) {
+    const std::vector<::rtidb::nameserver::TableInfo>& tables,
+    const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients) {
     table_metas_ = tables;
     for (size_t i = 0; i < tables.size(); i++) {
         const ::rtidb::nameserver::TableInfo& table_meta = tables[i];
-        std::shared_ptr<SDKTableHandler> table(new SDKTableHandler(table_meta));
-        bool ok = table->Init();
-        if (!ok) {
+        std::shared_ptr<SDKTableHandler> table = std::make_shared<SDKTableHandler>(table_meta);
+        if (!table->Init()) {
             LOG(WARNING) << "fail to init table " << table_meta.name();
             return false;
         }
         auto db_it = tables_.find(table->GetDatabase());
         if (db_it == tables_.end()) {
-            tables_.insert(std::make_pair(
-                table->GetDatabase(),
-                std::map<std::string, std::shared_ptr<SDKTableHandler>>()));
-            db_it = tables_.find(table->GetDatabase());
+            auto result_pair = tables_.insert(std::make_pair(
+                    table->GetDatabase(),
+                    std::map<std::string, std::shared_ptr<SDKTableHandler>>()));
+            db_it = result_pair.first;
         }
         db_it->second.insert(std::make_pair(table->GetName(), table));
     }

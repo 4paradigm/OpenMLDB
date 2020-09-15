@@ -25,6 +25,7 @@
 #include <memory>
 #include <mutex>
 #include "base/spinlock.h"
+#include "client/tablet_client.h"
 #include "proto/name_server.pb.h"
 #include "vm/catalog.h"
 
@@ -109,8 +110,8 @@ class SDKCatalog : public ::fesql::vm::Catalog {
 
     ~SDKCatalog() {}
 
-    bool Init(const std::vector<::rtidb::nameserver::TableInfo>& tables);
-    //        const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients);
+    bool Init(const std::vector<::rtidb::nameserver::TableInfo>& tables,
+        const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients);
 
     std::shared_ptr<::fesql::type::Database> GetDatabase( const std::string& db) override {
         return std::shared_ptr<::fesql::type::Database>();
