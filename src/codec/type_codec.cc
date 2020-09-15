@@ -250,6 +250,10 @@ int32_t GetCol(int8_t* input, int32_t row_idx, uint32_t col_idx, int32_t offset,
             new (data) ColumnImpl<codec::Date>(w, row_idx, col_idx, offset);
             break;
         }
+        case fesql::type::kBool: {
+            new (data) ColumnImpl<bool>(w, row_idx, col_idx, offset);
+            break;
+        }
         default: {
             LOG(WARNING) << "cannot get col for type "
                          << ::fesql::type::Type_Name(type) << " type id "

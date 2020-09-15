@@ -274,7 +274,7 @@ void TabletSdkImpl::GetSqlPlan(const std::string& db, const std::string& sql,
     parser.parse(sql, parser_trees, &node_manager, sql_status);
     if (0 != sql_status.code) {
         status.code = sql_status.code;
-        status.msg = sql_status.msg;
+        status.msg = sql_status.str();
         LOG(WARNING) << status.msg;
         return;
     }
@@ -282,7 +282,7 @@ void TabletSdkImpl::GetSqlPlan(const std::string& db, const std::string& sql,
 
     if (0 != sql_status.code) {
         status.code = sql_status.code;
-        status.msg = sql_status.msg;
+        status.msg = sql_status.str();
         LOG(WARNING) << status.msg;
         return;
     }

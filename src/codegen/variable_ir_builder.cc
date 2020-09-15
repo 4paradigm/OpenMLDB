@@ -9,8 +9,12 @@
 #include "codegen/variable_ir_builder.h"
 #include <glog/logging.h>
 #include "codegen/struct_ir_builder.h"
+
+using ::fesql::common::kCodegenError;
+
 namespace fesql {
 namespace codegen {
+
 fesql::codegen::VariableIRBuilder::VariableIRBuilder(::llvm::BasicBlock* block,
                                                      ScopeVar* scope_var)
     : block_(block), sv_(scope_var) {}
@@ -94,7 +98,7 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
             status.msg =
                 "fail to store mutable value: register value exists in scope";
             status.code = common::kCodegenError;
-            LOG(WARNING) << status.msg;
+            LOG(WARNING) << status;
             return false;
         }
         // store value on address
@@ -136,8 +140,8 @@ bool VariableIRBuilder::LoadRetStruct(NativeValue* output,
 }
 base::Status VariableIRBuilder::LoadMemoryPool(NativeValue* output) {
     base::Status status;
-    CHECK_TRUE(LoadValue("@mem_pool", output, status),
-               "fail to load memory pool", status.msg);
+    CHECK_TRUE(LoadValue("@mem_pool", output, status), kCodegenError,
+               "fail to load memory pool", status.str());
     return status;
 }
 bool fesql::codegen::VariableIRBuilder::LoadWindow(
@@ -202,7 +206,7 @@ bool fesql::codegen::VariableIRBuilder::LoadArrayIndex(
     if (!LoadValue(array_ptr_name, &array_ptr_wrapper, status)) {
         status.msg = "fail load array ptr" + array_ptr_name;
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     ::llvm::Value* array_ptr = array_ptr_wrapper.GetValue(&builder);
@@ -214,7 +218,7 @@ bool fesql::codegen::VariableIRBuilder::LoadArrayIndex(
         status.msg =
             "fail load " + array_ptr_name + "[" + std::to_string(index) + "]";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
 

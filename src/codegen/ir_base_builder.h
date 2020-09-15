@@ -26,6 +26,8 @@
 #include "node/type_node.h"
 #include "proto/fe_type.pb.h"
 
+using ::fesql::common::kCodegenError;
+
 namespace fesql {
 namespace codegen {
 

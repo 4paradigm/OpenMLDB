@@ -337,7 +337,9 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     builder.CreateStore(i8_ptr, output_ptr, false);
     // encode all field to buf
     // append header
-    ok = AppendHeader(i8_ptr, row_size, builder.getInt32(schema_.size()));
+    ok = AppendHeader(
+        i8_ptr, row_size,
+        builder.getInt32(::fesql::codec::GetBitmapSize(schema_.size())));
 
     if (!ok) {
         return false;
@@ -418,11 +420,20 @@ bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
                         return false;
                     }
                     break;
+                } else if (TypeIRBuilder::IsNull(val.GetType())) {
+                    ok = AppendPrimary(
+                        i8_ptr,
+                        NativeValue::CreateWithFlag(builder.getInt1(true),
+                                                    builder.getInt1(true)),
+                        idx, offset);
+                    break;
                 } else {
-                    LOG(WARNING) << "number type is required but "
-                                 << val.GetType()->getTypeID();
+                    LOG(WARNING)
+                        << "number/timestamp/date type is required but "
+                        << val.GetType()->getTypeID();
                     return false;
                 }
+                break;
             }
             case ::fesql::type::kVarchar: {
                 if (str_body_offset == NULL) {
@@ -593,6 +604,8 @@ bool BufNativeEncoderIRBuilder::AppendHeader(::llvm::Value* i8_ptr,
         LOG(WARNING) << "fail to get ptr with offset ";
         return false;
     }
+    DLOG(INFO) << "append header: row size: " << size
+               << "bitmap_size: " << bitmap_size;
     builder.CreateMemSet(output, builder.getInt8(0), bitmap_size, 1u);
     return true;
 }

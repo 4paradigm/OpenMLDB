@@ -30,8 +30,8 @@ class TimestampIRBuilder : public StructTypeIRBuilder {
                       ::llvm::Value** output);
     bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
                   ::llvm::Value* dist);
-    base::Status CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
-                          ::llvm::Value** output);
+    base::Status CastFrom(::llvm::BasicBlock* block, const NativeValue& src,
+                          NativeValue* output);
     bool GetTs(::llvm::BasicBlock* block, ::llvm::Value* timestamp,
                ::llvm::Value** output);
     bool SetTs(::llvm::BasicBlock* block, ::llvm::Value* timestamp,

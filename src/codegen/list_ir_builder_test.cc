@@ -97,63 +97,6 @@ V IteratorSum(int8_t* input) {
 using ListOfRow = ListRef<udf::LiteralTypedRow<>>;
 
 template <class T>
-void RunListAtCase(T expected, const type::TableDef& table,
-                   const std::string& col, const ListOfRow& window,
-                   int32_t pos) {
-    auto sum_func =
-        ModuleFunctionBuilder().args<ListOfRow, int32_t>().returns<T>().build(
-            [&](codegen::CodeGenContext* ctx) {
-                BasicBlock* entry_block = ctx->GetCurrentBlock();
-                ScopeVar sv;
-                sv.Enter("enter row scope");
-                MemoryWindowDecodeIRBuilder buf_builder(table.columns(),
-                                                        entry_block);
-                ListIRBuilder list_builder(entry_block, &sv);
-                IRBuilder<> builder(entry_block);
-                auto fn = ctx->GetCurrentFunction();
-                Function::arg_iterator it = fn->arg_begin();
-                auto arg0 = it;
-                auto arg1 = it + 1;
-
-                // build column
-                base::Status status;
-                ::llvm::Value* column = NULL;
-                ::llvm::Value* list_ptr = builder.CreatePointerCast(
-                    arg0, builder.getInt8Ty()->getPointerTo());
-                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
-
-                ::llvm::Value* val = nullptr;
-                CHECK_TRUE(list_builder.BuildAt(column, arg1, &val, status));
-
-                node::NodeManager nm;
-                auto elem_type = DataTypeTrait<T>::to_type_node(&nm);
-                switch (elem_type->base_) {
-                    case node::kVarchar: {
-                        codegen::StringIRBuilder string_builder(
-                            ctx->GetModule());
-                        CHECK_TRUE(string_builder.CopyFrom(
-                            builder.GetInsertBlock(), val, it + 2));
-                        builder.CreateRetVoid();
-                        break;
-                    }
-                    default: {
-                        if (codegen::TypeIRBuilder::IsStructPtr(
-                                val->getType())) {
-                            val = builder.CreateLoad(val);
-                        }
-                        builder.CreateStore(
-                            val, fn->arg_begin() + fn->arg_size() - 1);
-                        builder.CreateRetVoid();
-                    }
-                }
-                return Status::OK();
-            });
-
-    T result = sum_func(window, pos);
-    ASSERT_EQ(expected, result);
-}
-
-template <class T>
 void RunListIteratorCase(T expected, const type::TableDef& table,
                          const std::string& col, const ListOfRow& window) {
     auto sum_func =
@@ -176,7 +119,8 @@ void RunListIteratorCase(T expected, const type::TableDef& table,
                 ::llvm::Value* column = NULL;
                 ::llvm::Value* list_ptr = builder.CreatePointerCast(
                     arg0, builder.getInt8Ty()->getPointerTo());
-                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
+                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column),
+                           kCodegenError);
 
                 ::llvm::Value* iterator = nullptr;
                 node::NodeManager nm;
@@ -299,11 +243,15 @@ void RunInnerListIteratorCase(T expected, const type::TableDef& table,
                     arg0, 0);
                 ::llvm::Value* list_ptr = builder.CreateLoad(list_gep_0);
                 if (inner_range) {
-                    CHECK_TRUE(buf_builder.BuildInnerRangeList(
-                        list_ptr, start_offset, end_offset, &inner_list));
+                    CHECK_TRUE(
+                        buf_builder.BuildInnerRangeList(
+                            list_ptr, start_offset, end_offset, &inner_list),
+                        kCodegenError);
                 } else {
-                    CHECK_TRUE(buf_builder.BuildInnerRowsList(
-                        list_ptr, start_offset, end_offset, &inner_list));
+                    CHECK_TRUE(
+                        buf_builder.BuildInnerRowsList(list_ptr, start_offset,
+                                                       end_offset, &inner_list),
+                        kCodegenError);
                 }
                 // build column
                 ::llvm::Value* column = NULL;
@@ -321,7 +269,8 @@ void RunInnerListIteratorCase(T expected, const type::TableDef& table,
                 inner_list_ref =
                     builder.CreatePointerCast(inner_list_ref, i8_ptr_ty);
                 CHECK_TRUE(
-                    buf_builder.BuildGetCol(col, inner_list_ref, &column));
+                    buf_builder.BuildGetCol(col, inner_list_ref, &column),
+                    kCodegenError);
 
                 ::llvm::Value* iterator = nullptr;
                 node::NodeManager nm;
@@ -400,7 +349,8 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 ::llvm::Value* column = NULL;
                 ::llvm::Value* list_ptr = builder.CreatePointerCast(
                     arg0, builder.getInt8Ty()->getPointerTo());
-                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
+                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column),
+                           kCodegenError);
 
                 ::llvm::Value* iter = nullptr;
                 CHECK_STATUS(
@@ -411,7 +361,6 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 NativeValue next2_wrapper;
                 CHECK_STATUS(list_builder.BuildIteratorNext(
                     iter, elem_type, false, &next2_wrapper));
-
 
                 ArithmeticIRBuilder arithmetic_ir_builder(
                     builder.GetInsertBlock());
@@ -479,7 +428,8 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
                 ::llvm::Value* column = NULL;
                 ::llvm::Value* list_ptr = builder.CreatePointerCast(
                     arg0, builder.getInt8Ty()->getPointerTo());
-                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column));
+                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column),
+                           kCodegenError);
 
                 node::NodeManager nm;
                 auto elem_type = DataTypeTrait<T>::to_type_node(&nm);
@@ -498,8 +448,10 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
                         auto res_ptr = fn->arg_begin() + 1;
                         codegen::StringIRBuilder string_builder(
                             ctx->GetModule());
-                        CHECK_TRUE(string_builder.CopyFrom(
-                            builder.GetInsertBlock(), next1, res_ptr));
+                        CHECK_TRUE(
+                            string_builder.CopyFrom(builder.GetInsertBlock(),
+                                                    next1, res_ptr),
+                            kCodegenError);
                         builder.CreateRetVoid();
                         break;
                     }
@@ -518,84 +470,6 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
 
     T result = func(window);
     ASSERT_EQ(expected, result);
-}
-
-TEST_F(ListIRBuilderTest, list_int16_at_test) {
-    ListOfRow window;
-    std::vector<Row> rows;
-    type::TableDef table;
-    BuildWindow(table, rows, &window.list);
-    RunListAtCase<int16_t>(2, table, "col2", window, 0);
-    RunListAtCase<int16_t>(22, table, "col2", window, 1);
-    RunListAtCase<int16_t>(22222, table, "col2", window, 4);
-    RunListAtCase<int16_t>(2222, table, "col2", window, 3);
-    RunListAtCase<int16_t>(222, table, "col2", window, 2);
-    free(window.list);
-}
-
-TEST_F(ListIRBuilderTest, list_int32_at_test) {
-    ListOfRow window;
-    std::vector<Row> rows;
-    type::TableDef table;
-    BuildWindow(table, rows, &window.list);
-    RunListAtCase<int32_t>(1, table, "col1", window, 0);
-    RunListAtCase<int32_t>(11, table, "col1", window, 1);
-    RunListAtCase<int32_t>(11111, table, "col1", window, 4);
-    RunListAtCase<int32_t>(1111, table, "col1", window, 3);
-    RunListAtCase<int32_t>(111, table, "col1", window, 2);
-    free(window.list);
-}
-
-TEST_F(ListIRBuilderTest, list_int64_at_test) {
-    ListOfRow window;
-    std::vector<Row> rows;
-    type::TableDef table;
-    BuildWindow(table, rows, &window.list);
-    RunListAtCase<int64_t>(5, table, "col5", window, 0);
-    RunListAtCase<int64_t>(55, table, "col5", window, 1);
-    RunListAtCase<int64_t>(55555, table, "col5", window, 4);
-    RunListAtCase<int64_t>(5555, table, "col5", window, 3);
-    RunListAtCase<int64_t>(555, table, "col5", window, 2);
-    free(window.list);
-}
-TEST_F(ListIRBuilderTest, list_float_at_test) {
-    ListOfRow window;
-    std::vector<Row> rows;
-    type::TableDef table;
-    BuildWindow(table, rows, &window.list);
-    RunListAtCase<float>(3.1f, table, "col3", window, 0);
-    RunListAtCase<float>(33.1f, table, "col3", window, 1);
-    free(window.list);
-}
-
-TEST_F(ListIRBuilderTest, list_double_at_test) {
-    ListOfRow window;
-    std::vector<Row> rows;
-    type::TableDef table;
-    BuildWindow(table, rows, &window.list);
-    RunListAtCase<double>(4.1, table, "col4", window, 0);
-    RunListAtCase<double>(44.1, table, "col4", window, 1);
-    free(window.list);
-}
-
-TEST_F(ListIRBuilderTest, list_timestamp_at_test) {
-    ListOfRow window;
-    std::vector<Row> rows;
-    type::TableDef table;
-    BuildWindow(table, rows, &window.list);
-    codec::Timestamp ts(1590115420000L);
-    RunListAtCase<codec::Timestamp>(ts, table, "std_ts", window, 0);
-    free(window.list);
-}
-
-TEST_F(ListIRBuilderTest, list_string_at_test) {
-    ListOfRow window;
-    std::vector<Row> rows;
-    type::TableDef table;
-    BuildWindow(table, rows, &window.list);
-    RunListAtCase<codec::StringRef>(codec::StringRef(strlen("1"), strdup("1")),
-                                    table, "col6", window, 0);
-    free(window.list);
 }
 
 TEST_F(ListIRBuilderTest, list_int32_iterator_sum_test) {

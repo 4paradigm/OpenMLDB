@@ -53,17 +53,31 @@
     - 规则 `transform_child`
    
         - 如果child是udaf调用： `transform_child(c) = row => transform(c)(w)`
-        - 否则： `transform_child(c) = row => transform(c)(`row)`
-          
+        - 否则： `transform_child(c) = row => transform(c)(row)`
+    
+    - 规则 `new_child`
+
+        - 如果child位置预期list，并且子表达式非list
+        ```
+        new_child(c) = map(w, window_row => transform_child(c)(window_row))
+        ```
+
+        - 否则，默认
+        ```
+        new_child(c) = transform_child(c)(row)
+        ```
+
     - 规则 `transform`
         
         - 对于非聚合udaf的普通表达式（含udf call）
         ```
+        new_child(c) = 
+
         transform(root(c1, c2, ..., cn)) = 
-            row => root.replace(c1 → transform_child(c1)(row),
-                                c2 → transform_child(c2)(row),
+            row => root.replace(c1 → new_child(c1),
+                                c2 → new_child(c2),
                                 ...,
-                                cn → transform_child(cn)(row))`
+                                cn → new_child(cn)`
         ```
 
         - 对于UDAF, 需要通过函数名和参数个数识别udaf
@@ -111,11 +125,19 @@
 
     - registry使用参数lambda的返回值类型进行类型匹配，找到匹配到的类型确定的udaf原型实现
 
-    - 从原型update函数生成最终的update函数定义
+    - children f1, f2, ... fn划分为返回list/非list: [l1, l2, ..., lk], [g1, g2, ..., gm]
+
+    - 从原型update函数生成最终的update函数定义 （假设list/非list参数按顺序排列）
        ```
        transform_update(origin_update, f1, f2, ..., fn) =
-           (state, row) => origin_update(state, f1(row), f2(row), ... fk(row))
+           (state, row, gv1, gv2, ..., gvm) => 
+                origin_update(
+                  state,
+                  gv1, gv2, ..., gvm,
+                  l1(row), l2(row), ... lk(row)
+                )       
        ```
+
     - 使用原型init, merge, output函数定义和更新的update函数创建最终的UDAFDefNode
 
     - 例子: `sum_where(x: float, y: int32 > 3)`

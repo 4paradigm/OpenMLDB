@@ -40,8 +40,8 @@ Status RowFnLetIRBuilder::Build(
     const std::vector<node::FrameNode*>& project_frames,
     vm::Schema* output_schema, vm::ColumnSourceList* output_column_sources) {
     ::llvm::Function* fn = NULL;
-    CHECK_TRUE(module_->getFunction(name) == NULL, "function ", name,
-               " already exists");
+    CHECK_TRUE(module_->getFunction(name) == NULL, kCodegenError, "function ",
+               name, " already exists");
 
     std::vector<std::string> args;
     std::vector<::llvm::Type*> args_llvm_type;
@@ -59,16 +59,17 @@ Status RowFnLetIRBuilder::Build(
     bool ok =
         BuildFnHeader(name, args_llvm_type,
                       ::llvm::Type::getInt32Ty(module_->getContext()), &fn);
-    CHECK_TRUE(ok && fn != nullptr, "Fail to build fn header for name ", name);
+    CHECK_TRUE(ok && fn != nullptr, kCodegenError,
+               "Fail to build fn header for name ", name);
 
     // bind input function argument
     ScopeVar sv;
     sv.Enter(name);
-    CHECK_TRUE(FillArgs(args, fn, sv));
+    CHECK_TRUE(FillArgs(args, fn, sv), kCodegenError);
 
     // bind row arg
     NativeValue row_arg_value;
-    CHECK_TRUE(sv.FindVar("@row_ptr", &row_arg_value));
+    CHECK_TRUE(sv.FindVar("@row_ptr", &row_arg_value), kCodegenError);
     sv.AddVar(compile_func->GetArg(0)->GetExprString(), row_arg_value);
 
     ::llvm::BasicBlock* block =
@@ -90,9 +91,9 @@ Status RowFnLetIRBuilder::Build(
     uint32_t agg_builder_id = 0;
 
     auto expr_list = compile_func->body();
-    CHECK_TRUE(project_frames.size() == expr_list->GetChildNum(),
+    CHECK_TRUE(project_frames.size() == expr_list->GetChildNum(), kCodegenError,
                "Frame num should match expr num");
-    CHECK_TRUE(project_names.size() == expr_list->GetChildNum(),
+    CHECK_TRUE(project_names.size() == expr_list->GetChildNum(), kCodegenError,
                "Output name num should match expr num");
 
     for (size_t i = 0; i < expr_list->GetChildNum(); ++i) {
@@ -119,7 +120,7 @@ Status RowFnLetIRBuilder::Build(
             continue;
         }
 
-        CHECK_TRUE(expr->GetExprType() != node::kExprAll,
+        CHECK_TRUE(expr->GetExprType() != node::kExprAll, kCodegenError,
                    "* should be resolved before codegen stage");
 
         // bind window frame
@@ -129,12 +130,13 @@ Status RowFnLetIRBuilder::Build(
         CHECK_TRUE(
             BuildProject(i, expr, project_name, &outputs, expr_ir_builder,
                          output_schema, output_column_sources, status),
-            "Build expr failed: ", status.msg, "\n", expr->GetTreeString());
+            kCodegenError, "Build expr failed: ", status.str(), "\n",
+            expr->GetTreeString());
     }
 
     CHECK_TRUE(EncodeBuf(&outputs, *output_schema, variable_ir_builder, block,
                          output_ptr_name),
-               "Gen encode into output buffer failed");
+               kCodegenError, "Gen encode into output buffer failed");
 
     if (!window_agg_builder.empty()) {
         for (auto iter = window_agg_builder.begin();
@@ -143,7 +145,7 @@ Status RowFnLetIRBuilder::Build(
                 CHECK_TRUE(iter->second.BuildMulti(
                                name, &expr_ir_builder, &variable_ir_builder,
                                block, output_ptr_name, output_schema),
-                           "Multi column sum codegen failed");
+                           kCodegenError, "Multi column sum codegen failed");
             }
         }
     }
@@ -218,7 +220,7 @@ bool RowFnLetIRBuilder::BuildProject(
     NativeValue expr_out_val;
     bool ok = expr_ir_builder.Build(expr, &expr_out_val, status);
     if (!ok) {
-        LOG(WARNING) << "fail to codegen project expression: " << status.msg;
+        LOG(WARNING) << "fail to codegen project expression: " << status;
         return false;
     }
     ::fesql::node::TypeNode data_type;
@@ -278,14 +280,16 @@ Status RowFnLetIRBuilder::BindProjectFrame(ExprIRBuilder* expr_ir_builder,
     auto window_key = frame_arg->GetExprString();
     NativeValue window_arg_value;
     CHECK_TRUE(expr_ir_builder->BuildWindow(&window_arg_value, status),
-               "Bind window failed: ", status.msg);
+               kCodegenError, "Bind window failed: ", status.str());
 
     ::llvm::IRBuilder<> builder(block);
     ::llvm::Value* frame_ptr = window_arg_value.GetValue(&builder);
-    CHECK_TRUE(frame_ptr != nullptr && frame_ptr->getType()->isPointerTy());
+    CHECK_TRUE(frame_ptr != nullptr && frame_ptr->getType()->isPointerTy(),
+               kCodegenError);
     ::llvm::Type* row_list_ptr_ty = nullptr;
     CHECK_TRUE(
-        GetLLVMType(module_, frame_arg->GetOutputType(), &row_list_ptr_ty));
+        GetLLVMType(module_, frame_arg->GetOutputType(), &row_list_ptr_ty),
+        kCodegenError);
     frame_ptr = builder.CreatePointerCast(frame_ptr, row_list_ptr_ty);
     window_arg_value = window_arg_value.Replace(frame_ptr);
     if (sv->ExistVar(window_key)) {

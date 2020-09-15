@@ -34,6 +34,7 @@
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "node/type_node.h"
+#include "passes/resolve_fn_and_attrs.h"
 #include "vm/schemas_context.h"
 
 namespace fesql {
@@ -53,6 +54,11 @@ class ExprIRBuilder {
 
     bool Build(const ::fesql::node::ExprNode* node, NativeValue* output,
                ::fesql::base::Status& status);  // NOLINT
+
+    Status BuildAsUDF(const node::ExprNode* expr, const std::string& name,
+                      const std::vector<NativeValue>& args,
+                      NativeValue* output);
+
     bool BuildWindow(NativeValue* output,
                      ::fesql::base::Status& status);  // NOLINT
     inline ::llvm::BasicBlock* block() const { return block_; }
