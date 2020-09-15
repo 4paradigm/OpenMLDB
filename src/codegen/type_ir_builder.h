@@ -20,6 +20,7 @@
 
 #include <string>
 #include <vector>
+#include "base/fe_status.h"
 #include "codec/fe_row_codec.h"
 #include "node/node_enum.h"
 #include "node/sql_node.h"
@@ -45,6 +46,14 @@ class TypeIRBuilder {
     static const std::string TypeName(::llvm::Type* type);
     static const bool GetTypeNode(::llvm::Type* type,
                                   node::TypeNode* type_node);
+    static base::Status UnaryOpTypeInfer(
+        const std::function<base::Status(
+            const node::TypeNode&, node::TypeNode*)>,
+        ::llvm::Type* lhs);
+    static base::Status BinaryOpTypeInfer(
+        const std::function<base::Status(
+            const node::TypeNode&, const node::TypeNode&, node::TypeNode*)>,
+        ::llvm::Type* lhs, ::llvm::Type* rhs);
 };
 
 class Int64IRBuilder : public TypeIRBuilder {

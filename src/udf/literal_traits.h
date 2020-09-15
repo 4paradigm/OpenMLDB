@@ -52,8 +52,8 @@ struct Opaque {
 
 template <typename T>
 struct Nullable {
-    Nullable(std::nullptr_t) : data_(0), is_null_(true) {}         // NOLINT
-    Nullable(const T& t) : data_(t), is_null_(false) {}  // NOLINT
+    Nullable(std::nullptr_t) : data_(0), is_null_(true) {}  // NOLINT
+    Nullable(const T& t) : data_(t), is_null_(false) {}     // NOLINT
     Nullable() : is_null_(false) {}
 
     const T& value() const { return data_; }
@@ -65,7 +65,7 @@ struct Nullable {
 };
 template <>
 struct Nullable<StringRef> {
-    Nullable(std::nullptr_t) : data_(""), is_null_(true) {}         // NOLINT
+    Nullable(std::nullptr_t) : data_(""), is_null_(true) {}      // NOLINT
     Nullable(const StringRef& t) : data_(t), is_null_(false) {}  // NOLINT
     Nullable() : is_null_(false) {}
 
@@ -137,6 +137,7 @@ struct DataTypeTrait<bool> {
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
         return nm->MakeTypeNode(node::kBool);
     }
+    static const bool zero_value() { return false; }
     using CCallArgType = bool;
 };
 
@@ -157,6 +158,7 @@ struct DataTypeTrait<int16_t> {
     static const int16_t maximum_value() {
         return std::numeric_limits<int16_t>::max();
     }
+    static const int16_t zero_value() { return 0; }
     using CCallArgType = int16_t;
 };
 
@@ -177,6 +179,7 @@ struct DataTypeTrait<int32_t> {
     static const int32_t maximum_value() {
         return std::numeric_limits<int32_t>::max();
     }
+    static const int32_t zero_value() { return 0; }
     using CCallArgType = int32_t;
 };
 
@@ -197,6 +200,7 @@ struct DataTypeTrait<int64_t> {
     static const int64_t maximum_value() {
         return std::numeric_limits<int64_t>::max();
     }
+    static const int64_t zero_value() { return 0; }
     using CCallArgType = int64_t;
 };
 
@@ -217,6 +221,7 @@ struct DataTypeTrait<float> {
     static const float maximum_value() {
         return std::numeric_limits<float>::max();
     }
+    static const float zero_value() { return 0; }
     using CCallArgType = float;
 };
 
@@ -237,6 +242,7 @@ struct DataTypeTrait<double> {
     static const double maximum_value() {
         return std::numeric_limits<double>::max();
     }
+    static const double zero_value() { return 0; }
     using CCallArgType = double;
 };
 
@@ -258,6 +264,7 @@ struct DataTypeTrait<codec::Timestamp> {
     static const codec::Timestamp maximum_value() {
         return codec::Timestamp(std::numeric_limits<int64_t>::max());
     }
+    static const codec::Timestamp zero_value() { return codec::Timestamp(0); }
     using CCallArgType = codec::Timestamp*;
 };
 
@@ -277,6 +284,7 @@ struct DataTypeTrait<codec::Date> {
     static const codec::Date maximum_value() {
         return codec::Date(std::numeric_limits<int32_t>::max());
     }
+    static const codec::Date zero_value() { return codec::Date(0); }
     using CCallArgType = codec::Date*;
 };
 
@@ -298,7 +306,7 @@ struct DataTypeTrait<codec::StringRef> {
                                     const StringRef& str) {
         return nm->MakeConstNode(str.ToString());
     }
-
+    static const std::string zero_value() { return ""; }
     static const std::string minimum_value() { return ""; }
 };
 

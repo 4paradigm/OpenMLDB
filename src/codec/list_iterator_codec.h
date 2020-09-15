@@ -79,8 +79,9 @@ class WrapListImpl : public ListV<V> {
     WrapListImpl() : ListV<V>() {}
     ~WrapListImpl() {}
     virtual const V GetFieldUnsafe(const R &row) const = 0;
-    virtual void GetField(const R &row, V *, int8_t *) const = 0;
+    virtual void GetField(const R &row, V *, bool *) const = 0;
     virtual const bool IsNull(const R &row) const = 0;
+    virtual ListV<Row> *root() const = 0;
 };
 
 template <class V>
@@ -103,7 +104,7 @@ class ColumnImpl : public WrapListImpl<V, Row> {
         return value;
     }
 
-    void GetField(const Row &row, V *res, int8_t *is_null) const override {
+    void GetField(const Row &row, V *res, bool *is_null) const override {
         const int8_t *buf = row.buf(row_idx_);
         if (buf == nullptr || v1::IsNullAt(buf, col_idx_)) {
             *is_null = true;
@@ -135,6 +136,8 @@ class ColumnImpl : public WrapListImpl<V, Row> {
     const uint64_t GetCount() override { return root_->GetCount(); }
     V At(uint64_t pos) override { return GetFieldUnsafe(root_->At(pos)); }
 
+    ListV<Row> *root() const override { return root_; }
+
  protected:
     ListV<Row> *root_;
     const uint32_t row_idx_;
@@ -165,11 +168,12 @@ class StringColumnImpl : public ColumnImpl<StringRef> {
     }
 
     void GetField(const Row &row, StringRef *res,
-                  int8_t *is_null) const override {
+                  bool *is_null) const override {
         const int8_t *buf = row.buf(row_idx_);
         if (buf == nullptr || v1::IsNullAt(buf, col_idx_)) {
             *is_null = true;
         } else {
+            *is_null = false;
             int32_t addr_space = v1::GetAddrSpace(row.size(row_idx_));
             StringRef value;
             const char *buffer;

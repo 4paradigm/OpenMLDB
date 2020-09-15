@@ -7,10 +7,14 @@
  *--------------------------------------------------------------------------
  **/
 #include "codegen/cast_expr_ir_builder.h"
+#include "codegen/date_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
+
+using fesql::common::kCodegenError;
+
 namespace fesql {
 namespace codegen {
 CastExprIRBuilder::CastExprIRBuilder(::llvm::BasicBlock* block)
@@ -21,81 +25,78 @@ bool CastExprIRBuilder::IsIntFloat2PointerCast(::llvm::Type* src,
                                                ::llvm::Type* dist) {
     return src->isIntegerTy() && (dist->isFloatTy() || dist->isDoubleTy());
 }
-
-bool CastExprIRBuilder::IsSafeCast(::llvm::Type* src, ::llvm::Type* dist) {
-    if (NULL == src || NULL == dist) {
-        LOG(WARNING) << "cast type is null";
+Status CastExprIRBuilder::InferNumberCastTypes(::llvm::Type* lhs,
+                                               ::llvm::Type* rhs) {
+    node::TypeNode left_type;
+    node::TypeNode right_type;
+    CHECK_TRUE(TypeIRBuilder::GetTypeNode(lhs, &left_type), kCodegenError,
+               "invalid op type")
+    CHECK_TRUE(TypeIRBuilder::GetTypeNode(rhs, &right_type), kCodegenError,
+               "invalid op type")
+    node::TypeNode output_type;
+    CHECK_STATUS(node::ExprNode::InferNumberCastTypes(left_type, right_type,
+                                                      &output_type))
+    return Status::OK();
+}
+bool CastExprIRBuilder::IsSafeCast(::llvm::Type* lhs, ::llvm::Type* rhs) {
+    node::TypeNode left_type;
+    node::TypeNode right_type;
+    if (!TypeIRBuilder::GetTypeNode(lhs, &left_type)) {
         return false;
     }
-
-    if (src == dist) {
-        return true;
+    if (!TypeIRBuilder::GetTypeNode(rhs, &right_type)) {
+        return false;
     }
-
-    ::fesql::node::DataType src_type;
-    ::fesql::node::DataType dist_type;
-    ::fesql::codegen::GetBaseType(src, &src_type);
-    ::fesql::codegen::GetBaseType(dist, &dist_type);
-    if (::fesql::node::kVarchar == dist_type) {
-        return true;
+    return node::ExprNode::IsSafeCast(left_type, right_type);
+}
+Status CastExprIRBuilder::Cast(const NativeValue& value,
+                               ::llvm::Type* cast_type, NativeValue* output) {
+    CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(node::ExprNode::IsCastAccept,
+                                                  value.GetType(), cast_type));
+    if (IsSafeCast(value.GetType(), cast_type)) {
+        CHECK_STATUS(SafeCast(value, cast_type, output));
+    } else {
+        CHECK_STATUS(UnSafeCast(value, cast_type, output));
     }
-    switch (src_type) {
-        case ::fesql::node::kBool: {
-            return true;
-        }
-        case ::fesql::node::kInt16: {
-            if (::fesql::node::kBool == dist_type) {
-                return false;
-            } else {
-                return true;
-            }
-        }
-        case ::fesql::node::kInt32: {
-            if (::fesql::node::kBool == dist_type ||
-                ::fesql::node::kInt16 == dist_type) {
-                return false;
-            }
-            return true;
-        }
-        case ::fesql::node::kInt64: {
-            return false;
-        }
-        case ::fesql::node::kTimestamp: {
-            return ::fesql::node::kInt64 == dist_type;
-        }
-        case ::fesql::node::kFloat: {
-            if (::fesql::node::kDouble == dist_type) {
-                return true;
-            }
-            return false;
-        }
-        case ::fesql::node::kDouble: {
-            return false;
-        }
-        default: {
-            return false;
-        }
-    }
-    return false;
+    return Status::OK();
 }
 Status CastExprIRBuilder::SafeCast(const NativeValue& value, ::llvm::Type* type,
                                    NativeValue* output) {
     ::llvm::IRBuilder<> builder(block_);
-    CHECK_TRUE(IsSafeCast(value.GetType(), type),
+    CHECK_TRUE(IsSafeCast(value.GetType(), type), kCodegenError,
                "Safe cast fail: unsafe cast");
+    Status status;
     if (value.IsConstNull()) {
         *output = NativeValue::CreateNull(type);
-    } else {
+    } else if (TypeIRBuilder::IsTimestampPtr(type)) {
+        TimestampIRBuilder timestamp_ir_builder(block_->getModule());
+        CHECK_STATUS(timestamp_ir_builder.CastFrom(block_, value, output));
+        return Status::OK();
+    } else if (TypeIRBuilder::IsDatePtr(type)) {
+        DateIRBuilder date_ir_builder(block_->getModule());
+        CHECK_STATUS(date_ir_builder.CastFrom(block_, value, output));
+        return Status::OK();
+    } else if (TypeIRBuilder::IsStringPtr(type)) {
+        StringIRBuilder string_ir_builder(block_->getModule());
+        CHECK_STATUS(string_ir_builder.CastFrom(block_, value, output));
+        return Status::OK();
+    } else if (TypeIRBuilder::IsNumber(type)) {
         Status status;
         ::llvm::Value* output_value = nullptr;
-        CHECK_TRUE(
-            SafeCast(value.GetValue(&builder), type, &output_value, status))
+        CHECK_TRUE(SafeCastNumber(value.GetValue(&builder), type, &output_value,
+                                  status),
+                   kCodegenError);
         if (value.IsNullable()) {
             *output = NativeValue::CreateWithFlag(output_value,
                                                   value.GetIsNull(&builder));
         } else {
             *output = NativeValue::Create(output_value);
         }
+    } else {
+        return Status(common::kCodegenError,
+                      "Can't cast from " +
+                          TypeIRBuilder::TypeName(value.GetType()) + " to " +
+                          TypeIRBuilder::TypeName(type));
     }
     return Status::OK();
 }
@@ -104,12 +105,30 @@ Status CastExprIRBuilder::UnSafeCast(const NativeValue& value,
     ::llvm::IRBuilder<> builder(block_);
     if (value.IsConstNull()) {
         *output = NativeValue::CreateNull(type);
+    } else if (TypeIRBuilder::IsTimestampPtr(type)) {
+        TimestampIRBuilder timestamp_ir_builder(block_->getModule());
+        CHECK_STATUS(timestamp_ir_builder.CastFrom(block_, value, output));
+        return Status::OK();
+    } else if (TypeIRBuilder::IsDatePtr(type)) {
+        DateIRBuilder date_ir_builder(block_->getModule());
+        CHECK_STATUS(date_ir_builder.CastFrom(block_, value, output));
+        return Status::OK();
+    } else if (TypeIRBuilder::IsStringPtr(type)) {
+        StringIRBuilder string_ir_builder(block_->getModule());
+        CHECK_STATUS(string_ir_builder.CastFrom(block_, value, output));
+        return Status::OK();
+    } else if (TypeIRBuilder::IsNumber(type) &&
+               TypeIRBuilder::IsStringPtr(value.GetType())) {
+        StringIRBuilder string_ir_builder(block_->getModule());
+        CHECK_STATUS(
+            string_ir_builder.CastToNumber(block_, value, type, output));
+        return Status::OK();
     } else {
         Status status;
         ::llvm::Value* output_value = nullptr;
-        CHECK_TRUE(
-            UnSafeCast(value.GetValue(&builder), type, &output_value, status),
-            status.msg);
+        CHECK_TRUE(UnSafeCastNumber(value.GetValue(&builder), type,
+                                    &output_value, status),
+                   kCodegenError, status.msg);
         if (value.IsNullable()) {
             *output = NativeValue::CreateWithFlag(output_value,
                                                   value.GetIsNull(&builder));
@@ -119,14 +138,15 @@ Status CastExprIRBuilder::UnSafeCast(const NativeValue& value,
     }
     return Status::OK();
 }
-bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
-                                 ::llvm::Value** output, base::Status& status) {
+bool CastExprIRBuilder::SafeCastNumber(::llvm::Value* value, ::llvm::Type* type,
+                                       ::llvm::Value** output,
+                                       base::Status& status) {
+    if (value->getType() == type) {
+        *output = value;
+        return true;
+    }
     ::llvm::IRBuilder<> builder(block_);
-    if (TypeIRBuilder::IsTimestampPtr(type)) {
-        return TimestampCast(value, output, status);
-    } else if (TypeIRBuilder::IsStringPtr(type)) {
-        return StringCast(value, output, status);
-    } else if (value->getType()->isIntegerTy() && type->isIntegerTy()) {
+    if (value->getType()->isIntegerTy() && type->isIntegerTy()) {
         if (value->getType()->isIntegerTy(1)) {
             *output = builder.CreateZExt(value, type);
         } else {
@@ -148,37 +168,35 @@ bool CastExprIRBuilder::SafeCast(::llvm::Value* value, ::llvm::Type* type,
             LOG(WARNING) << status.msg;
             return false;
         }
-        return SafeCast(ts, type, output, status);
+        return SafeCastNumber(ts, type, output, status);
     } else {
         status.msg =
             "fail to codegen cast expr: value type isn't compatible: from " +
             TypeIRBuilder::TypeName(value->getType()) + " to " +
             TypeIRBuilder::TypeName(type);
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     if (NULL == *output) {
         status.msg = "fail to cast";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
 }
 
-bool CastExprIRBuilder::UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
-                                   ::llvm::Value** output,
-                                   base::Status& status) {
+bool CastExprIRBuilder::UnSafeCastNumber(::llvm::Value* value,
+                                         ::llvm::Type* type,
+                                         ::llvm::Value** output,
+                                         base::Status& status) {
     if (IsSafeCast(value->getType(), type)) {
-        return SafeCast(value, type, output, status);
+        return SafeCastNumber(value, type, output, status);
     }
     ::llvm::IRBuilder<> builder(block_);
     if (TypeIRBuilder::IsBool(type)) {
         return BoolCast(value, output, status);
-    } else if (TypeIRBuilder::IsTimestampPtr(type) &&
-               TypeIRBuilder::IsNumber(value->getType())) {
-        return TimestampCast(value, output, status);
     } else if (TypeIRBuilder::IsTimestampPtr(value->getType()) &&
                TypeIRBuilder::IsNumber(type)) {
         ::llvm::Value* ts = nullptr;
@@ -189,7 +207,7 @@ bool CastExprIRBuilder::UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
             LOG(WARNING) << status.msg;
             return false;
         }
-        return UnSafeCast(ts, type, output, status);
+        return UnSafeCastNumber(ts, type, output, status);
     } else if (value->getType()->isIntegerTy() && type->isIntegerTy()) {
         *output = builder.CreateTrunc(value, type);
     } else if (value->getType()->isFloatingPointTy() &&
@@ -198,10 +216,10 @@ bool CastExprIRBuilder::UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
     } else if (value->getType()->isIntegerTy(1) && type->isFloatingPointTy()) {
         // bool -> float/double
         *output = builder.CreateUIToFP(value, type);
+    } else if (value->getType()->isIntegerTy(8)) {
+        value = builder.CreateTrunc(value, builder.getInt32Ty());
+        *output = builder.CreateSIToFP(value, builder.getFloatTy());
     } else if (value->getType()->isIntegerTy() && type->isFloatTy()) {
-        if (value->getType()->getIntegerBitWidth() > 4) {
-            value = builder.CreateTrunc(value, builder.getInt32Ty());
-        }
         *output = builder.CreateSIToFP(value, builder.getFloatTy());
     } else if (value->getType()->isIntegerTy() && type->isDoubleTy()) {
         *output = builder.CreateSIToFP(value, builder.getDoubleTy());
@@ -217,49 +235,16 @@ bool CastExprIRBuilder::UnSafeCast(::llvm::Value* value, ::llvm::Type* type,
     if (NULL == *output) {
         status.msg = "fail to cast";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;
 }
 
-bool CastExprIRBuilder::IsStringCast(llvm::Type* type) {
-    if (nullptr == type) {
-        return false;
-    }
-
-    ::fesql::node::DataType fesql_type;
-    if (false == GetBaseType(type, &fesql_type)) {
-        return false;
-    }
-
-    return ::fesql::node::kVarchar == fesql_type;
-}
-
-// TODO(chenjing): string cast implement
-// try to cast other type of value to string type
-bool CastExprIRBuilder::StringCast(llvm::Value* value,
-                                   llvm::Value** casted_value,
-                                   base::Status& status) {
-    StringIRBuilder string_ir_builder(block_->getModule());
-    status = string_ir_builder.CastFrom(block_, value, casted_value);
-    return status.isOK();
-}
-
-bool CastExprIRBuilder::TimestampCast(llvm::Value* value,
-                                      llvm::Value** casted_value,
-                                      base::Status& status) {
-    ::llvm::Value* ts;
-    if (!UnSafeCast(value, ::llvm::Type::getInt64Ty(block_->getContext()), &ts,
-                    status)) {
-        return false;
-    }
-    TimestampIRBuilder builder(block_->getModule());
-    status = builder.CastFrom(block_, ts, casted_value);
-    return status.isOK();
-}
-
-// cast fesql type to bool: compare value with 0
+// cast number type to bool: compare value with 0
+// cast string type to bool: compare string size with 0
+// cast timestamp type to bool: compare ts with 0
+// cast date type to bool: compare date code with 0
 bool CastExprIRBuilder::BoolCast(llvm::Value* value, llvm::Value** casted_value,
                                  base::Status& status) {
     ::llvm::IRBuilder<> builder(block_);
@@ -285,11 +270,32 @@ bool CastExprIRBuilder::BoolCast(llvm::Value* value, llvm::Value** casted_value,
             return false;
         }
         return BoolCast(ts, casted_value, status);
+    } else if (TypeIRBuilder::IsDatePtr(type)) {
+        DateIRBuilder date_ir_builder(block_->getModule());
+        ::llvm::Value* date = nullptr;
+        if (!date_ir_builder.GetDate(block_, value, &date)) {
+            status.msg = "fail to codegen cast bool expr: get date error";
+            status.code = common::kCodegenError;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+        return BoolCast(date, casted_value, status);
+    } else if (TypeIRBuilder::IsStringPtr(type)) {
+        StringIRBuilder string_ir_builder(block_->getModule());
+        ::llvm::Value* size = nullptr;
+        if (!string_ir_builder.GetSize(block_, value, &size)) {
+            status.msg =
+                "fail to codegen cast bool expr: get string size error";
+            status.code = common::kCodegenError;
+            LOG(WARNING) << status.msg;
+            return false;
+        }
+        return BoolCast(size, casted_value, status);
     } else {
         status.msg =
             "fail to codegen cast bool expr: value type isn't compatible";
         status.code = common::kCodegenError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return false;
     }
     return true;

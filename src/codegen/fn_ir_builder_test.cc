@@ -229,7 +229,8 @@ TEST_F(FnIRBuilderTest, test_if_else_mutable_var_block) {
     CheckResult(test, -2, 1, 3);
     CheckResult(test, 2, 1, 2);
 }
-TEST_F(FnIRBuilderTest, test_list_at_pos) {
+
+/* TEST_F(FnIRBuilderTest, test_list_at_pos) {
     const std::string test =
         "%%fun\n"
         "def test(l:list<i32>, pos:i32):i32\n"
@@ -250,7 +251,7 @@ TEST_F(FnIRBuilderTest, test_list_at_pos) {
                                                              3);
     CheckResult<int32_t, fesql::codec::ListRef<> *, int32_t>(test, 9, &list_ref,
                                                              4);
-}
+}*/
 
 TEST_F(FnIRBuilderTest, test_for_in_sum) {
     const std::string test =

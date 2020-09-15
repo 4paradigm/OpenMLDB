@@ -12,11 +12,12 @@
 #include <map>
 #include <set>
 #include <utility>
-#include "absl/time/civil_time.h"
 #include "absl/time/time.h"
 #include "base/iterator.h"
 #include "boost/date_time.hpp"
+#include "boost/date_time/gregorian/parsers.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
+
 #include "bthread/types.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row.h"
@@ -213,9 +214,171 @@ void date_format(codec::Date *date, const std::string &format,
 void timestamp_to_string(codec::Timestamp *v, fesql::codec::StringRef *output) {
     date_format(v, "%Y-%m-%d %H:%M:%S", output);
 }
+void timestamp_to_date(codec::Timestamp *timestamp, fesql::codec::Date *output,
+                       bool *is_null) {
+    time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
+    struct tm t;
+    if (nullptr == gmtime_r(&time, &t)) {
+        *is_null = true;
+        return;
+    }
+    *output = codec::Date(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+    *is_null = false;
+    return;
+}
 
 void date_to_string(codec::Date *date, fesql::codec::StringRef *output) {
     date_format(date, "%Y-%m-%d", output);
+}
+void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr) {
+    if (nullptr == str) {
+        *is_null_ptr = true;
+        return;
+    }
+    if (0 == str->size_) {
+        *out = false;
+        *is_null_ptr = false;
+        return;
+    }
+    *out = true;
+    *is_null_ptr = false;
+    return;
+}
+void string_to_date(codec::StringRef *str, fesql::codec::Date *output,
+                    bool *is_null) {
+    if (19 == str->size_) {
+        struct tm timeinfo;
+        if (nullptr ==
+            strptime(str->ToString().c_str(), "%Y-%m-%d %H:%M:%S", &timeinfo)) {
+            *is_null = true;
+            return;
+        } else {
+            if (timeinfo.tm_year < 0) {
+                *is_null = true;
+                return;
+            }
+            *output = fesql::codec::Date(timeinfo.tm_year + 1900,
+                                         timeinfo.tm_mon + 1, timeinfo.tm_mday);
+            *is_null = false;
+            return;
+        }
+    } else if (10 == str->size_) {
+        try {
+            auto g_date = boost::gregorian::from_simple_string(str->ToString());
+            auto ymd = g_date.year_month_day();
+            if (ymd.year < 1900) {
+                *is_null = true;
+                return;
+            }
+            *output = fesql::codec::Date(ymd.year, ymd.month, ymd.day);
+            *is_null = false;
+        } catch (...) {
+            *is_null = true;
+            return;
+        }
+    } else if (8 == str->size_) {
+        try {
+            auto g_date =
+                boost::gregorian::date_from_iso_string(str->ToString());
+            auto ymd = g_date.year_month_day();
+            if (ymd.year < 1900) {
+                *is_null = true;
+                return;
+            }
+            *output = fesql::codec::Date(ymd.year, ymd.month, ymd.day);
+            *is_null = false;
+        } catch (...) {
+            *is_null = true;
+            return;
+        }
+    } else {
+        *is_null = true;
+        return;
+    }
+    return;
+}
+// cast string to timestamp with yyyy-mm-dd or YYYY-mm-dd HH:MM:SS
+void string_to_timestamp(codec::StringRef *str, fesql::codec::Timestamp *output,
+                         bool *is_null) {
+    if (19 == str->size_) {
+        struct tm timeinfo;
+        if (nullptr ==
+            strptime(str->ToString().c_str(), "%Y-%m-%d %H:%M:%S", &timeinfo)) {
+            *is_null = true;
+            return;
+        } else {
+            if (timeinfo.tm_year < 0) {
+                *is_null = true;
+                return;
+            }
+            timeinfo.tm_isdst = -1;  // disable daylight saving for mktime()
+            output->ts_ =
+                (mktime(&timeinfo) + timeinfo.tm_gmtoff) * 1000 - TZ_OFFSET;
+            *is_null = false;
+        }
+    } else if (10 == str->size_) {
+        try {
+            auto g_date = boost::gregorian::from_simple_string(str->ToString());
+            tm t = boost::gregorian::to_tm(g_date);
+            if (t.tm_year < 0) {
+                *is_null = true;
+                return;
+            }
+            output->ts_ = (mktime(&t) + t.tm_gmtoff) * 1000 - TZ_OFFSET;
+            *is_null = false;
+        } catch (...) {
+            *is_null = true;
+            return;
+        }
+    } else if (8 == str->size_) {
+        try {
+            auto g_date =
+                boost::gregorian::date_from_iso_string(str->ToString());
+            tm t = boost::gregorian::to_tm(g_date);
+            if (t.tm_year < 0) {
+                *is_null = true;
+                return;
+            }
+            output->ts_ = (mktime(&t) + t.tm_gmtoff) * 1000 - TZ_OFFSET;
+            *is_null = false;
+        } catch (...) {
+            *is_null = true;
+            return;
+        }
+    } else {
+        *is_null = true;
+        return;
+    }
+    return;
+}
+void date_to_timestamp(codec::Date *date, fesql::codec::Timestamp *output,
+                       bool *is_null) {
+    int32_t day, month, year;
+    if (!codec::Date::Decode(date->date_, &year, &month, &day)) {
+        *is_null = true;
+        return;
+    }
+    try {
+        if (month <= 0 || month > 12) {
+            *is_null = true;
+            return;
+        } else if (day <= 0 || day > 31) {
+            *is_null = true;
+            return;
+        }
+        boost::gregorian::date g_date(year, month, day);
+        tm t = boost::gregorian::to_tm(g_date);
+        if (t.tm_year < 0) {
+            *is_null = true;
+            return;
+        }
+        output->ts_ = (mktime(&t) + t.tm_gmtoff) * 1000 - TZ_OFFSET;
+        *is_null = false;
+        return;
+    } catch (...) {
+        *is_null = true;
+        return;
+    }
 }
 void sub_string(fesql::codec::StringRef *str, int32_t from,
                 fesql::codec::StringRef *output) {

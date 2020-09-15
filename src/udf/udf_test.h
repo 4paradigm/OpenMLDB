@@ -151,7 +151,7 @@ UDFFunctionBuilderWithFullInfo<Ret, Args...>::build() {
             auto status =
                 library->Transform(state->name, arg_vec, nm, &output_expr);
             if (!status.isOK() || output_expr == nullptr) {
-                LOG(WARNING) << status.msg;
+                LOG(WARNING) << status;
                 return nullptr;
             }
             return output_expr;

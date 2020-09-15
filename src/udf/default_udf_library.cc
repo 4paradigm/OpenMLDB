@@ -26,6 +26,7 @@ using fesql::codec::StringRef;
 using fesql::codec::Timestamp;
 using fesql::codegen::CodeGenContext;
 using fesql::codegen::NativeValue;
+using fesql::common::kCodegenError;
 using fesql::node::TypeNode;
 
 namespace fesql {
@@ -44,7 +45,8 @@ struct BuildGetHourUDF {
         Status status;
         CHECK_TRUE(timestamp_ir_builder.Hour(ctx->GetCurrentBlock(),
                                              time.GetRaw(), &ret, status),
-                   "Fail to build udf hour(int64): ", status.msg);
+                   kCodegenError,
+                   "Fail to build udf hour(int64): ", status.str());
         *out = NativeValue::Create(ret);
         return status;
     }
@@ -60,7 +62,8 @@ struct BuildGetMinuteUDF {
         Status status;
         CHECK_TRUE(timestamp_ir_builder.Minute(ctx->GetCurrentBlock(),
                                                time.GetRaw(), &ret, status),
-                   "Fail to build udf hour(int64): ", status.msg);
+                   kCodegenError,
+                   "Fail to build udf hour(int64): ", status.str());
         *out = NativeValue::Create(ret);
         return status;
     }
@@ -76,7 +79,8 @@ struct BuildGetSecondUDF {
         Status status;
         CHECK_TRUE(timestamp_ir_builder.Second(ctx->GetCurrentBlock(),
                                                time.GetRaw(), &ret, status),
-                   "Fail to build udf hour(int64): ", status.msg);
+                   kCodegenError,
+                   "Fail to build udf hour(int64): ", status.str());
         *out = NativeValue::Create(ret);
         return status;
     }
@@ -95,7 +99,6 @@ struct SumUDAFDef {
                     nm->MakeBinaryExprNode(cur_sum, input, node::kFnOpAdd);
                 return nm->MakeCondExpr(is_null, cur_sum, new_sum);
             })
-            .merge("add")
             .output("identity");
     }
 };
@@ -113,7 +116,6 @@ struct MinUDAFDef {
                 auto new_min = nm->MakeCondExpr(lt, cur_min, input);
                 return nm->MakeCondExpr(is_null, cur_min, new_min);
             })
-            .merge("minimum")
             .output("identity");
     }
 };
@@ -142,7 +144,6 @@ struct MinUDAFDef<StringRef> {
                 return nm->MakeFuncNode("make_tuple", {new_flag, new_min},
                                         nullptr);
             })
-            .merge("minimum")
             .output([](UDFResolveContext* ctx, ExprNode* state) {
                 return ctx->node_manager()->MakeGetFieldExpr(state, 1);
             });
@@ -162,7 +163,6 @@ struct MaxUDAFDef {
                 auto new_max = nm->MakeCondExpr(gt, cur_max, input);
                 return nm->MakeCondExpr(is_null, cur_max, new_max);
             })
-            .merge("maximum")
             .output("identity");
     }
 };
@@ -180,7 +180,6 @@ struct CountUDAFDef {
                     cur_cnt, nm->MakeConstNode(1), node::kFnOpAdd);
                 return nm->MakeCondExpr(is_null, cur_cnt, new_cnt);
             })
-            .merge("add")
             .output("identity");
     }
 };
@@ -271,7 +270,6 @@ struct SumWhereDef {
                 ExprNode* update = nm->MakeCondExpr(cond, new_sum, sum);
                 return update;
             })
-            .merge("add")
             .output("identity");
     }
 };
@@ -291,7 +289,6 @@ struct CountWhereDef {
                 ExprNode* update = nm->MakeCondExpr(cond, new_cnt, cnt);
                 return update;
             })
-            .merge("add")
             .output("identity");
     }
 };
@@ -324,7 +321,6 @@ struct AvgWhereDef {
                     nm->MakeFuncNode("make_tuple", {new_cnt, new_sum}, nullptr);
                 return nm->MakeCondExpr(cond, new_state, state);
             })
-            .merge("add")
             .output([](UDFResolveContext* ctx, ExprNode* state) {
                 auto nm = ctx->node_manager();
                 ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
@@ -353,7 +349,6 @@ struct MinWhereDef {
                 ExprNode* update = nm->MakeCondExpr(cond, new_min, min);
                 return update;
             })
-            .merge("add")
             .output("identity");
     }
 };
@@ -375,7 +370,6 @@ struct MaxWhereDef {
                 ExprNode* update = nm->MakeCondExpr(cond, new_max, max);
                 return update;
             })
-            .merge("add")
             .output("identity");
     }
 };
@@ -411,8 +405,7 @@ struct SumCateDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT =
-            udf::container::BoundedGroupByDict<K, V, V>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -438,8 +431,8 @@ struct SumCateDef {
             auto stored_key = ContainerT::to_stored_key(key);
             auto iter = map.find(stored_key);
             if (iter == map.end()) {
-                map.insert(iter, {stored_key,
-                                    ContainerT::to_stored_value(value)});
+                map.insert(iter,
+                           {stored_key, ContainerT::to_stored_value(value)});
             } else {
                 auto& single = iter->second;
                 single += ContainerT::to_stored_value(value);
@@ -449,8 +442,7 @@ struct SumCateDef {
 
         static void Output(ContainerT* ptr, codec::StringRef* output) {
             ContainerT::OutputString(
-                ptr, false, output,
-                [](const V& sum, char* buf, size_t size) {
+                ptr, false, output, [](const V& sum, char* buf, size_t size) {
                     return v1::format_string(sum, buf, size);
                 });
             ContainerT::Destroy(ptr);
@@ -469,8 +461,7 @@ struct CountCateDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT =
-            udf::container::BoundedGroupByDict<K, V, int64_t>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V, int64_t>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -526,8 +517,7 @@ struct MinCateDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT =
-            udf::container::BoundedGroupByDict<K, V, V>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -553,8 +543,8 @@ struct MinCateDef {
             auto stored_key = ContainerT::to_stored_key(key);
             auto iter = map.find(stored_key);
             if (iter == map.end()) {
-                map.insert(iter, {stored_key,
-                            ContainerT::to_stored_value(value)});
+                map.insert(iter,
+                           {stored_key, ContainerT::to_stored_value(value)});
             } else {
                 auto& single = iter->second;
                 if (single > ContainerT::to_stored_value(value)) {
@@ -566,8 +556,7 @@ struct MinCateDef {
 
         static void Output(ContainerT* ptr, codec::StringRef* output) {
             ContainerT::OutputString(
-                ptr, false, output,
-                [](const V& min, char* buf, size_t size) {
+                ptr, false, output, [](const V& min, char* buf, size_t size) {
                     return v1::format_string(min, buf, size);
                 });
             ContainerT::Destroy(ptr);
@@ -586,8 +575,7 @@ struct MaxCateDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT =
-            udf::container::BoundedGroupByDict<K, V, V>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -613,8 +601,8 @@ struct MaxCateDef {
             auto stored_key = ContainerT::to_stored_key(key);
             auto iter = map.find(stored_key);
             if (iter == map.end()) {
-                map.insert(iter, {stored_key,
-                            ContainerT::to_stored_value(value)});
+                map.insert(iter,
+                           {stored_key, ContainerT::to_stored_value(value)});
             } else {
                 auto& single = iter->second;
                 if (single < ContainerT::to_stored_value(value)) {
@@ -626,8 +614,7 @@ struct MaxCateDef {
 
         static void Output(ContainerT* ptr, codec::StringRef* output) {
             ContainerT::OutputString(
-                ptr, false, output,
-                [](const V& max, char* buf, size_t size) {
+                ptr, false, output, [](const V& max, char* buf, size_t size) {
                     return v1::format_string(max, buf, size);
                 });
             ContainerT::Destroy(ptr);
@@ -708,8 +695,7 @@ struct SumCateWhereDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT =
-            udf::container::BoundedGroupByDict<K, V, V>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -751,8 +737,7 @@ struct CountCateWhereDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT =
-            udf::container::BoundedGroupByDict<K, V, int64_t>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V, int64_t>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -768,7 +753,7 @@ struct CountCateWhereDef {
                 .init("count_cate_where_init" + suffix, ContainerT::Init)
                 .update("count_cate_where_update" + suffix, Update)
                 .output("count_cate_where_output" + suffix,
-                                            CountCateImpl::Output);
+                        CountCateImpl::Output);
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
@@ -777,7 +762,7 @@ struct CountCateWhereDef {
                                   bool is_key_null) {
             if (cond && !is_cond_null) {
                 CountCateImpl::Update(ptr, value, is_value_null, key,
-                                    is_key_null);
+                                      is_key_null);
             }
             return ptr;
         }
@@ -795,8 +780,7 @@ struct MaxCateWhereDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT =
-            udf::container::BoundedGroupByDict<K, V, V>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -812,7 +796,7 @@ struct MaxCateWhereDef {
                 .init("max_cate_where_init" + suffix, ContainerT::Init)
                 .update("max_cate_where_update" + suffix, Update)
                 .output("max_cate_where_output" + suffix,
-                                 CountCateImpl::Output);
+                        CountCateImpl::Output);
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
@@ -821,7 +805,7 @@ struct MaxCateWhereDef {
                                   bool is_key_null) {
             if (cond && !is_cond_null) {
                 CountCateImpl::Update(ptr, value, is_value_null, key,
-                                    is_key_null);
+                                      is_key_null);
             }
             return ptr;
         }
@@ -839,8 +823,7 @@ struct MinCateWhereDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT =
-            udf::container::BoundedGroupByDict<K, V, V>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -856,7 +839,7 @@ struct MinCateWhereDef {
                 .init("min_cate_where_init" + suffix, ContainerT::Init)
                 .update("min_cate_where_update" + suffix, Update)
                 .output("min_cate_where_output" + suffix,
-                                             CountCateImpl::Output);
+                        CountCateImpl::Output);
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
@@ -865,7 +848,7 @@ struct MinCateWhereDef {
                                   bool is_key_null) {
             if (cond && !is_cond_null) {
                 CountCateImpl::Update(ptr, value, is_value_null, key,
-                                    is_key_null);
+                                      is_key_null);
             }
             return ptr;
         }
@@ -900,8 +883,7 @@ struct AvgCateWhereDef {
                            Nullable<bool>, Nullable<K>>()
                 .init("avg_cate_where_init" + suffix, ContainerT::Init)
                 .update("avg_cate_where_update" + suffix, Update)
-                .output("avg_cate_where_output" + suffix,
-                                            AvgCateImpl::Output);
+                .output("avg_cate_where_output" + suffix, AvgCateImpl::Output);
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
@@ -928,8 +910,7 @@ struct TopKCountCateWhereDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT =
-            udf::container::BoundedGroupByDict<K, V, int64_t>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V, int64_t>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -944,11 +925,10 @@ struct TopKCountCateWhereDef {
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int32_t>()
                 .init("top_n_key_count_cate_where_init" + suffix,
-                                                    ContainerT::Init)
+                      ContainerT::Init)
                 .update("top_n_key_count_cate_where_update" + suffix,
-                                                    UpdateI32Bound)
-                .output("top_n_key_count_cate_where_output" + suffix,
-                                                    Output);
+                        UpdateI32Bound)
+                .output("top_n_key_count_cate_where_output" + suffix, Output);
 
             suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
                      "_" + DataTypeTrait<V>::to_string();
@@ -956,11 +936,9 @@ struct TopKCountCateWhereDef {
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int64_t>()
                 .init("top_n_key_count_cate_where_init" + suffix,
-                                                     ContainerT::Init)
-                .update("top_n_key_count_cate_where_update" + suffix,
-                                                     Update)
-                .output("top_n_key_count_cate_where_output" + suffix,
-                                                     Output);
+                      ContainerT::Init)
+                .update("top_n_key_count_cate_where_update" + suffix, Update)
+                .output("top_n_key_count_cate_where_output" + suffix, Output);
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
@@ -1008,8 +986,7 @@ struct TopKSumCateWhereDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT =
-            udf::container::BoundedGroupByDict<K, V, V>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -1024,11 +1001,10 @@ struct TopKSumCateWhereDef {
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int32_t>()
                 .init("top_n_key_sum_cate_where_init" + suffix,
-                                                     ContainerT::Init)
+                      ContainerT::Init)
                 .update("top_n_key_sum_cate_where_update" + suffix,
-                                                     UpdateI32Bound)
-                .output("top_n_key_sum_cate_where_output" + suffix,
-                                                     Output);
+                        UpdateI32Bound)
+                .output("top_n_key_sum_cate_where_output" + suffix, Output);
 
             suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
                      "_" + DataTypeTrait<V>::to_string();
@@ -1036,7 +1012,7 @@ struct TopKSumCateWhereDef {
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int64_t>()
                 .init("top_n_key_sum_cate_where_init" + suffix,
-                                                         ContainerT::Init)
+                      ContainerT::Init)
                 .update("top_n_key_sum_cate_where_update" + suffix, Update)
                 .output("top_n_key_sum_cate_where_output" + suffix, Output);
         }
@@ -1066,8 +1042,7 @@ struct TopKSumCateWhereDef {
 
         static void Output(ContainerT* ptr, codec::StringRef* output) {
             ContainerT::OutputString(
-                ptr, true, output,
-                [](const V& sum, char* buf, size_t size) {
+                ptr, true, output, [](const V& sum, char* buf, size_t size) {
                     return v1::format_string(sum, buf, size);
                 });
             ContainerT::Destroy(ptr);
@@ -1086,8 +1061,7 @@ struct TopKMinCateWhereDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT =
-            udf::container::BoundedGroupByDict<K, V, V>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -1102,11 +1076,10 @@ struct TopKMinCateWhereDef {
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int32_t>()
                 .init("top_n_key_min_cate_where_init" + suffix,
-                                                         ContainerT::Init)
+                      ContainerT::Init)
                 .update("top_n_key_min_cate_where_update" + suffix,
-                                                         UpdateI32Bound)
-                .output("top_n_key_min_cate_where_output" + suffix,
-                                                         Output);
+                        UpdateI32Bound)
+                .output("top_n_key_min_cate_where_output" + suffix, Output);
 
             suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
                      "_" + DataTypeTrait<V>::to_string();
@@ -1114,7 +1087,7 @@ struct TopKMinCateWhereDef {
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int64_t>()
                 .init("top_n_key_min_cate_where_init" + suffix,
-                                                         ContainerT::Init)
+                      ContainerT::Init)
                 .update("top_n_key_min_cate_where_update" + suffix, Update)
                 .output("top_n_key_min_cate_where_output" + suffix, Output);
         }
@@ -1144,8 +1117,7 @@ struct TopKMinCateWhereDef {
 
         static void Output(ContainerT* ptr, codec::StringRef* output) {
             ContainerT::OutputString(
-                ptr, true, output,
-                [](const V& min, char* buf, size_t size) {
+                ptr, true, output, [](const V& min, char* buf, size_t size) {
                     return v1::format_string(min, buf, size);
                 });
             ContainerT::Destroy(ptr);
@@ -1164,8 +1136,7 @@ struct TopKMaxCateWhereDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT =
-            udf::container::BoundedGroupByDict<K, V, V>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -1180,11 +1151,10 @@ struct TopKMaxCateWhereDef {
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int32_t>()
                 .init("top_n_key_max_cate_where_init" + suffix,
-                                                     ContainerT::Init)
+                      ContainerT::Init)
                 .update("top_n_key_max_cate_where_update" + suffix,
-                                                     UpdateI32Bound)
-                .output("top_n_key_max_cate_where_output" + suffix,
-                                                     Output);
+                        UpdateI32Bound)
+                .output("top_n_key_max_cate_where_output" + suffix, Output);
 
             suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
                      "_" + DataTypeTrait<V>::to_string();
@@ -1192,7 +1162,7 @@ struct TopKMaxCateWhereDef {
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int64_t>()
                 .init("top_n_key_max_cate_where_init" + suffix,
-                                                     ContainerT::Init)
+                      ContainerT::Init)
                 .update("top_n_key_max_cate_where_update" + suffix, Update)
                 .output("top_n_key_max_cate_where_output" + suffix, Output);
         }
@@ -1222,8 +1192,7 @@ struct TopKMaxCateWhereDef {
 
         static void Output(ContainerT* ptr, codec::StringRef* output) {
             ContainerT::OutputString(
-                ptr, true, output,
-                [](const V& max, char* buf, size_t size) {
+                ptr, true, output, [](const V& max, char* buf, size_t size) {
                     return v1::format_string(max, buf, size);
                 });
             ContainerT::Destroy(ptr);
@@ -1259,11 +1228,10 @@ struct TopKAvgCateWhereDef {
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int32_t>()
                 .init("top_n_key_avg_cate_where_init" + suffix,
-                                                             ContainerT::Init)
+                      ContainerT::Init)
                 .update("top_n_key_avg_cate_where_update" + suffix,
-                                                             UpdateI32Bound)
-                .output("top_n_key_avg_cate_where_output" + suffix,
-                                                             Output);
+                        UpdateI32Bound)
+                .output("top_n_key_avg_cate_where_output" + suffix, Output);
 
             suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
                      "_" + DataTypeTrait<V>::to_string();
@@ -1271,7 +1239,7 @@ struct TopKAvgCateWhereDef {
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int64_t>()
                 .init("top_n_key_avg_cate_where_init" + suffix,
-                                                         ContainerT::Init)
+                      ContainerT::Init)
                 .update("top_n_key_avg_cate_where_update" + suffix, Update)
                 .output("top_n_key_avg_cate_where_output" + suffix, Output);
         }
@@ -2031,6 +1999,70 @@ void DefaultUDFLibrary::InitUtilityUDF() {
     RegisterAlias("ifnull", "if_null");
 }
 
+void DefaultUDFLibrary::InitTypeUDF() {
+    RegisterExternal("double")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, double*, bool*)>(
+                v1::string_to<double>)))
+        .return_by_arg(true)
+        .returns<Nullable<double>>();
+    RegisterExternal("float")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, float*, bool*)>(
+                v1::string_to<float>)))
+        .return_by_arg(true)
+        .returns<Nullable<float>>();
+    RegisterExternal("int32")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, int32_t*, bool*)>(
+                v1::string_to<int32_t>)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>();
+    RegisterExternal("int64")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, int64_t*, bool*)>(
+                v1::string_to<int64_t>)))
+        .return_by_arg(true)
+        .returns<Nullable<int64_t>>();
+    RegisterExternal("int16")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, int16_t*, bool*)>(
+                v1::string_to<int16_t>)))
+        .return_by_arg(true)
+        .returns<Nullable<int16_t>>();
+    RegisterExternal("bool")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, bool*, bool*)>(
+                v1::string_to_bool)))
+        .return_by_arg(true)
+        .returns<Nullable<int16_t>>();
+
+    RegisterExternal("date")
+        .args<codec::Timestamp>(reinterpret_cast<void*>(
+            static_cast<void (*)(Timestamp*, Date*, bool*)>(
+                v1::timestamp_to_date)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>();
+    RegisterExternal("date")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, Date*, bool*)>(
+                v1::string_to_date)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>();
+    RegisterExternal("timestamp")
+        .args<codec::Date>(reinterpret_cast<void*>(
+            static_cast<void (*)(Date*, Timestamp*, bool*)>(
+                v1::date_to_timestamp)))
+        .return_by_arg(true)
+        .returns<Nullable<Timestamp>>();
+    RegisterExternal("timestamp")
+        .args<codec::StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, Timestamp*, bool*)>(
+                v1::string_to_timestamp)))
+        .return_by_arg(true)
+        .returns<Nullable<Timestamp>>();
+}
+
 void DefaultUDFLibrary::InitDateUDF() {
     RegisterExternal("year")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::year))
@@ -2044,7 +2076,8 @@ void DefaultUDFLibrary::InitDateUDF() {
                 Status status;
                 CHECK_TRUE(date_ir_builder.Year(ctx->GetCurrentBlock(),
                                                 date.GetRaw(), &ret, status),
-                           "Fail to build udf year(date): ", status.msg);
+                           kCodegenError,
+                           "Fail to build udf year(date): ", status.str());
                 *out = NativeValue::Create(ret);
                 return status;
             })
@@ -2062,7 +2095,8 @@ void DefaultUDFLibrary::InitDateUDF() {
                 Status status;
                 CHECK_TRUE(date_ir_builder.Month(ctx->GetCurrentBlock(),
                                                  date.GetRaw(), &ret, status),
-                           "Fail to build udf month(date): ", status.msg);
+                           kCodegenError,
+                           "Fail to build udf month(date): ", status.str());
                 *out = NativeValue::Create(ret);
                 return status;
             })
@@ -2080,7 +2114,8 @@ void DefaultUDFLibrary::InitDateUDF() {
                 Status status;
                 CHECK_TRUE(date_ir_builder.Day(ctx->GetCurrentBlock(),
                                                date.GetRaw(), &ret, status),
-                           "Fail to build udf day(date): ", status.msg);
+                           kCodegenError,
+                           "Fail to build udf day(date): ", status.str());
                 *out = NativeValue::Create(ret);
                 return status;
             })
@@ -2114,15 +2149,6 @@ void DefaultUDFLibrary::InitDateUDF() {
     RegisterCodeGenUDFTemplate<BuildGetSecondUDF>("second")
         .args_in<int64_t, Timestamp>()
         .returns<int32_t>();
-
-    RegisterExternalTemplate<v1::AtList>("at")
-        .args_in<int16_t, int32_t, int64_t, float, double>();
-
-    RegisterExternalTemplate<v1::AtStructList>("at")
-        .return_by_arg(true)
-        .args_in<Timestamp, Date, StringRef>();
-
-    RegisterAlias("lead", "at");
 
     RegisterExprUDF("identity")
         .args<AnyArg>([](UDFResolveContext* ctx, ExprNode* x) { return x; });
@@ -2160,7 +2186,14 @@ void DefaultUDFLibrary::Init() {
     udf::RegisterNativeUDFToModule();
     InitUtilityUDF();
     InitDateUDF();
-
+    InitTypeUDF();
+    IniMathUDF();
+    InitStringUDF();
+    InitTrigonometricUDF();
+    InitWindowFunctions();
+    InitUDAF();
+}
+void DefaultUDFLibrary::InitUDAF() {
     RegisterUDAFTemplate<SumUDAFDef>("sum")
         .doc("Compute sum of values")
         .args_in<int16_t, int32_t, int64_t, float, double, Timestamp>();
@@ -2354,10 +2387,10 @@ void DefaultUDFLibrary::Init() {
     RegisterUDAFTemplate<SumCateWhereDef>("sum_cate_where")
         .doc(R"(
             Compute sum of values matching specified condition grouped by category key
-            and output string. Each group is represented as 'K:V' and separated by comma in 
+            and output string. Each group is represented as 'K:V' and separated by comma in
             outputs and are sorted by key in ascend order.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
 
@@ -2380,10 +2413,10 @@ void DefaultUDFLibrary::Init() {
     RegisterUDAFTemplate<CountCateWhereDef>("count_cate_where")
         .doc(R"(
             Compute count of values matching specified condition grouped by category key
-            and output string. Each group is represented as 'K:V' and separated by comma in 
+            and output string. Each group is represented as 'K:V' and separated by comma in
             outputs and are sorted by key in ascend order.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
 
@@ -2406,10 +2439,10 @@ void DefaultUDFLibrary::Init() {
     RegisterUDAFTemplate<MaxCateWhereDef>("max_cate_where")
         .doc(R"(
             Compute maximum of values matching specified condition grouped by category key
-            and output string. Each group is represented as 'K:V' and separated by comma in 
+            and output string. Each group is represented as 'K:V' and separated by comma in
             outputs and are sorted by key in ascend order.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
 
@@ -2432,10 +2465,10 @@ void DefaultUDFLibrary::Init() {
     RegisterUDAFTemplate<MinCateWhereDef>("min_cate_where")
         .doc(R"(
             Compute minimum of values matching specified condition grouped by category key
-            and output string. Each group is represented as 'K:V' and separated by comma in 
+            and output string. Each group is represented as 'K:V' and separated by comma in
             outputs and are sorted by key in ascend order.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
 
@@ -2488,7 +2521,7 @@ void DefaultUDFLibrary::Init() {
             Output string for top N keys in descend order. Each group is represented as 'K:V'
             and separated by comma.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
             @param n  Fetch top n keys.
@@ -2516,7 +2549,7 @@ void DefaultUDFLibrary::Init() {
             Output string for top N keys in descend order. Each group is represented as 'K:V'
             and separated by comma.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
             @param n  Fetch top n keys.
@@ -2544,7 +2577,7 @@ void DefaultUDFLibrary::Init() {
             Output string for top N keys in descend order. Each group is represented as 'K:V'
             and separated by comma.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
             @param n  Fetch top n keys.
@@ -2572,7 +2605,7 @@ void DefaultUDFLibrary::Init() {
             Output string for top N keys in descend order. Each group is represented as 'K:V'
             and separated by comma.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
             @param n  Fetch top n keys.
@@ -2621,10 +2654,6 @@ void DefaultUDFLibrary::Init() {
             @endcode
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
-
-    IniMathUDF();
-    InitStringUDF();
-    InitTrigonometricUDF();
 }
 
 }  // namespace udf

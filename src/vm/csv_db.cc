@@ -78,7 +78,7 @@ void Run() {
     base::Status status;
     ok = engine.Get(FLAGS_query, FLAGS_db, session, status);
     if (!ok) {
-        std::cout << "fail to compile sql for " << status.msg << std::endl;
+        std::cout << "fail to compile sql for " << status << std::endl;
         return;
     }
     std::vector<Row> buf;

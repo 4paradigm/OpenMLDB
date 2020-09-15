@@ -156,6 +156,10 @@ bool GetLLVMColumnSize(::fesql::node::TypeNode* v_type, uint32_t* size) {
             *size = sizeof(::fesql::codec::ColumnImpl<codec::Date>);
             break;
         }
+        case ::fesql::node::kBool: {
+            *size = sizeof(::fesql::codec::ColumnImpl<bool>);
+            break;
+        }
         default: {
             LOG(WARNING) << "not supported type " << v_type->GetName();
             return false;
@@ -526,6 +530,10 @@ bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output) {
         return false;
     }
     switch (type->getTypeID()) {
+        case ::llvm::Type::TokenTyID: {
+            *output = ::fesql::node::kNull;
+            return true;
+        }
         case ::llvm::Type::FloatTyID: {
             *output = ::fesql::node::kFloat;
             return true;
@@ -685,6 +693,11 @@ bool DataType2SchemaType(const ::fesql::node::TypeNode& type,
             *output = ::fesql::type::kDate;
             break;
         }
+        case ::fesql::node::kNull: {
+            // Encode的时候, kNull 就是 kBool
+            *output = ::fesql::type::kBool;
+            break;
+        }
         default: {
             LOG(WARNING) << "can't convert to schema for type: "
                          << type.GetName();
@@ -778,9 +791,7 @@ bool TypeIRBuilder::IsBool(::llvm::Type* type) {
     return data_type == node::kBool;
 }
 
-bool TypeIRBuilder::IsNull(::llvm::Type* type) {
-    return type->isIntegerTy(1);
-}
+bool TypeIRBuilder::IsNull(::llvm::Type* type) { return type->isTokenTy(); }
 bool TypeIRBuilder::IsInterger(::llvm::Type* type) {
     return type->isIntegerTy();
 }
@@ -836,21 +847,48 @@ bool TypeIRBuilder::IsStructPtr(::llvm::Type* type) {
     }
     return false;
 }
+base::Status TypeIRBuilder::UnaryOpTypeInfer(
+    const std::function<base::Status(const node::TypeNode&, node::TypeNode*)>
+        func,
+    ::llvm::Type* lhs) {
+    node::TypeNode left_type;
+    CHECK_TRUE(TypeIRBuilder::GetTypeNode(lhs, &left_type), common::kTypeError,
+               "invalid op type")
+    node::TypeNode output_type;
+    CHECK_STATUS(func(left_type, &output_type))
+    return Status::OK();
+}
+base::Status TypeIRBuilder::BinaryOpTypeInfer(
+    const std::function<base::Status(const node::TypeNode&,
+                                     const node::TypeNode&, node::TypeNode*)>
+        func,
+    ::llvm::Type* lhs, ::llvm::Type* rhs) {
+    node::TypeNode left_type;
+    node::TypeNode right_type;
+    CHECK_TRUE(TypeIRBuilder::GetTypeNode(lhs, &left_type), common::kTypeError,
+               "invalid op type")
+    CHECK_TRUE(TypeIRBuilder::GetTypeNode(rhs, &right_type), common::kTypeError,
+               "invalid op type")
+    node::TypeNode output_type;
+    CHECK_STATUS(func(left_type, right_type, &output_type))
+    return Status::OK();
+}
 
 static Status ExpandLLVMArgTypes(
     ::llvm::Module* m, const node::TypeNode* dtype, bool nullable,
     std::vector<std::pair<::llvm::Type*, bool>>* output) {
     if (dtype->base() == node::kTuple) {
-        CHECK_TRUE(!nullable, "kTuple should never be nullable");
+        CHECK_TRUE(!nullable, kCodegenError, "kTuple should never be nullable");
         for (size_t i = 0; i < dtype->GetGenericSize(); ++i) {
-            CHECK_STATUS(ExpandLLVMArgTypes(m, dtype->GetGenericType(i),
-                                            dtype->IsGenericNullable(i),
-                                            output));
+            CHECK_STATUS(
+                ExpandLLVMArgTypes(m, dtype->GetGenericType(i),
+                                   dtype->IsGenericNullable(i), output),
+                kCodegenError);
         }
     } else {
         ::llvm::Type* llvm_ty = nullptr;
-        CHECK_TRUE(GetLLVMType(m, dtype, &llvm_ty), "Fail to lower ",
-                   dtype->GetName());
+        CHECK_TRUE(GetLLVMType(m, dtype, &llvm_ty), kCodegenError,
+                   "Fail to lower ", dtype->GetName());
         output->push_back(std::make_pair(llvm_ty, nullable));
     }
     return Status::OK();
@@ -860,7 +898,7 @@ static Status ExpandLLVMReturnTypes(
     ::llvm::Module* m, const node::TypeNode* dtype, bool nullable,
     std::vector<std::pair<::llvm::Type*, bool>>* output) {
     if (dtype->base() == node::kTuple) {
-        CHECK_TRUE(!nullable, "kTuple should never be nullable");
+        CHECK_TRUE(!nullable, kCodegenError, "kTuple should never be nullable");
         for (size_t i = 0; i < dtype->GetGenericSize(); ++i) {
             CHECK_STATUS(ExpandLLVMReturnTypes(m, dtype->GetGenericType(i),
                                                dtype->IsGenericNullable(i),
@@ -868,8 +906,8 @@ static Status ExpandLLVMReturnTypes(
         }
     } else {
         ::llvm::Type* llvm_ty = nullptr;
-        CHECK_TRUE(GetLLVMType(m, dtype, &llvm_ty), "Fail to lower ",
-                   dtype->GetName());
+        CHECK_TRUE(GetLLVMType(m, dtype, &llvm_ty), kCodegenError,
+                   "Fail to lower ", dtype->GetName());
         if (dtype->base() == node::kOpaque) {
             llvm_ty = ::llvm::Type::getInt8Ty(m->getContext());
         }
@@ -897,7 +935,7 @@ Status GetLLVMFunctionType(::llvm::Module* m,
     std::vector<std::pair<::llvm::Type*, bool>> llvm_ret_types;
     CHECK_STATUS(
         ExpandLLVMReturnTypes(m, return_type, return_nullable, &llvm_ret_types))
-    CHECK_TRUE(llvm_ret_types.size() > 0);
+    CHECK_TRUE(llvm_ret_types.size() > 0, kCodegenError);
 
     if (llvm_ret_types.size() > 1 ||
         TypeIRBuilder::IsStructPtr(llvm_ret_types[0].first) ||
@@ -929,7 +967,7 @@ Status GetLLVMFunctionType(::llvm::Module* m,
             }
         }
     } else {
-        CHECK_TRUE(return_type->base() != node::kTuple);
+        CHECK_TRUE(return_type->base() != node::kTuple, kCodegenError);
         ret_llvm_ty = llvm_ret_types[0].first;
         if (return_type->base() == node::kOpaque) {
             ret_llvm_ty = ret_llvm_ty->getPointerTo();

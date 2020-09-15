@@ -227,9 +227,9 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
     node::NodePointVector parser_trees;
     parser.parse(sql, parser_trees, &node_manager, sql_status);
     if (0 != sql_status.code) {
-        LOG(WARNING) << sql_status.msg;
+        LOG(WARNING) << sql_status.str();
         status->code = sql_status.code;
-        status->msg = sql_status.msg;
+        status->msg = sql_status.str();
         return empty;
     }
     node::PlanNodeList plan_trees;
@@ -237,7 +237,7 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
 
     if (0 != sql_status.code) {
         status->code = sql_status.code;
-        status->msg = sql_status.msg;
+        status->msg = sql_status.str();
         LOG(WARNING) << status->msg;
         return empty;
     }
@@ -273,7 +273,7 @@ std::shared_ptr<ResultSet> DBMSSdkImpl::ExecuteQuery(const std::string &catalog,
                                     sql_status);
             if (0 != sql_status.code) {
                 status->code = sql_status.code;
-                status->msg = sql_status.msg;
+                status->msg = sql_status.str();
                 LOG(WARNING) << status->msg;
                 return empty;
             }

@@ -37,7 +37,7 @@ int FeSQLParser::parse(
     yylex_destroy(scanner);
 
     if (0 != status.code) {
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return ret;
     }
 
@@ -102,7 +102,7 @@ int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
     if (nullptr == block) {
         status.msg = "fail to create fn block node: block null";
         status.code = common::kSQLError;
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return -1;
     }
 
@@ -120,7 +120,7 @@ int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
             status.msg = "fail to create block: fn node indent " +
                          std::to_string(node->indent) + " not match " +
                          std::to_string(indent);
-            LOG(WARNING) << status.msg << "\n" << *node;
+            LOG(WARNING) << status << "\n" << *node;
             return -1;
         }
 
@@ -176,7 +176,7 @@ int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
                     node::kFnIfElseBlock != fn_block->GetType()) {
                     status.code = common::kFunError;
                     status.msg = "fail to create block: elif not match";
-                    LOG(WARNING) << status.msg;
+                    LOG(WARNING) << status;
                     return -1;
                 }
 
@@ -201,7 +201,7 @@ int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
                     node::kFnIfElseBlock != fn_block->GetType()) {
                     status.code = common::kFunError;
                     status.msg = "fail to create block: else not match";
-                    LOG(WARNING) << status.msg;
+                    LOG(WARNING) << status;
                     return -1;
                 }
                 node::FnNodeList *inner_block = node_manager->MakeFnListNode();
@@ -244,7 +244,7 @@ int FeSQLParser::CreateFnBlock(std::vector<node::FnNode *> statements,
                 status.msg =
                     "fail to create block, unrecognized statement type " +
                     node::NameOfSQLNodeType(node->GetType());
-                LOG(WARNING) << status.msg;
+                LOG(WARNING) << status;
                 return -1;
             }
         }

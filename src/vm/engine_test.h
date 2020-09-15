@@ -109,7 +109,8 @@ void StoreData(::fesql::storage::Table* table, const std::vector<Row>& rows);
 void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema) {
     ASSERT_EQ(schema.size(), exp_schema.size());
     for (int i = 0; i < schema.size(); i++) {
-        ASSERT_EQ(schema.Get(i).DebugString(), exp_schema.Get(i).DebugString());
+        ASSERT_EQ(schema.Get(i).DebugString(), exp_schema.Get(i).DebugString())
+            << "Fail column type at " << i;
     }
 }
 void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {

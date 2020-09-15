@@ -89,6 +89,44 @@ bool DateIRBuilder::CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
     }
     return true;
 }
+base::Status DateIRBuilder::CastFrom(::llvm::BasicBlock* block,
+                                     const NativeValue& src,
+                                     NativeValue* output) {
+    base::Status status;
+    NullIRBuilder null_ir_builder;
+
+    if (IsDatePtr(src.GetType())) {
+        *output = src;
+        return status;
+    } else if (IsTimestampPtr(src.GetType()) || IsStringPtr(src.GetType())) {
+        ::llvm::IRBuilder<> builder(block);
+        ::llvm::Value* dist = nullptr;
+        ::llvm::Value* is_null_ptr = builder.CreateAlloca(builder.getInt1Ty());
+        if (!CreateDefault(block, &dist)) {
+            status.code = common::kCodegenError;
+            status.msg = "Fail to cast date: create default date fail";
+            return status;
+        }
+        ::std::string fn_name = "date." + TypeName(src.GetType());
+
+        auto cast_func = m_->getOrInsertFunction(
+            fn_name,
+            ::llvm::FunctionType::get(builder.getVoidTy(),
+                                      {src.GetType(), dist->getType(),
+                                       builder.getInt1Ty()->getPointerTo()},
+                                      false));
+        builder.CreateCall(cast_func,
+                           {src.GetValue(&builder), dist, is_null_ptr});
+        ::llvm::Value* should_return_null = builder.CreateLoad(is_null_ptr);
+        null_ir_builder.CheckAnyNull(block, src, &should_return_null);
+        *output = NativeValue::CreateWithFlag(dist, should_return_null);
+    } else {
+        return base::Status(
+            common::kCodegenError,
+            "Fail to cast from " + TypeName(src.GetType()) + " to date");
+    }
+    return base::Status::OK();
+}
 bool DateIRBuilder::GetDate(::llvm::BasicBlock* block, ::llvm::Value* date,
                             ::llvm::Value** output) {
     return Get(block, date, 0, output);

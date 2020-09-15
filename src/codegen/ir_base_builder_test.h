@@ -30,8 +30,8 @@
 #include "base/fe_status.h"
 #include "codegen/context.h"
 #include "codegen/expr_ir_builder.h"
-#include "codegen/type_ir_builder.h"
 #include "codegen/struct_ir_builder.h"
+#include "codegen/type_ir_builder.h"
 #include "passes/resolve_fn_and_attrs.h"
 #include "udf/default_udf_library.h"
 #include "udf/literal_traits.h"
@@ -463,7 +463,7 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
         GetLLVMFunctionType(module.get(), arg_types, arg_nullable, ret_type,
                             ret_nullable, false, &return_by_arg, &function_ty);
     if (!status.isOK()) {
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return nil;
     }
 
@@ -481,7 +481,7 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
 
     status = build_module(&context);
     if (!status.isOK()) {
-        LOG(WARNING) << status.msg;
+        LOG(WARNING) << status;
         return nil;
     }
 
@@ -621,16 +621,17 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
             }
             node::ExprNode* body = ApplyExprFuncHelper(
                 &nm, arg_exprs, std::index_sequence_for<Args...>(), expr_func);
-            CHECK_TRUE(body != nullptr, "Build output expr failed");
+            CHECK_TRUE(body != nullptr, kCodegenError,
+                       "Build output expr failed");
 
             // type infer
             vm::SchemaSourceList empty;
             vm::SchemasContext empty_context(empty);
-            passes::ResolveFnAndAttrs resolver(&nm, library, empty);
+            passes::ResolveFnAndAttrs resolver(&nm, library, empty_context);
             node::ExprNode* resolved_body = nullptr;
             auto status = resolver.VisitExpr(body, &resolved_body);
             if (!status.isOK()) {
-                LOG(WARNING) << "Expr resolve err: " << status.msg;
+                LOG(WARNING) << "Expr resolve err: " << status;
             }
 
             ScopeVar sv;
@@ -650,7 +651,7 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
                                        &empty_context, false, ctx->GetModule());
             NativeValue out;
             CHECK_TRUE(expr_builder.Build(resolved_body, &out, status),
-                       status.msg);
+                       kCodegenError, status.str());
 
             auto ret_type = udf::DataTypeTrait<Ret>::to_type_node(&nm);
             bool ret_nullable = udf::IsNullableTrait<Ret>::value;
