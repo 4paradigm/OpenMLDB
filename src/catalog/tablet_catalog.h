@@ -242,12 +242,12 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
         return "TabletTableHandler";
     }
 
-    inline int32_t GetTid() const {
+    inline int32_t GetTid() {
         return meta_.tid();
     }
 
  private:
-    inline int32_t GetColumnIndex(const std::string &column) const {
+    inline int32_t GetColumnIndex(const std::string &column) {
         auto it = types_.find(column);
         if (it != types_.end()) {
             return it->second.idx;
