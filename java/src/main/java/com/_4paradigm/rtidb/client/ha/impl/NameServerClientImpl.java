@@ -374,11 +374,13 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     public boolean addIndex(String tableName, String indexName, List<String> tss, Map<String, String> cols) {
         Common.ColumnKey.Builder keyBuilder = Common.ColumnKey.newBuilder();
         keyBuilder.setIndexName(indexName);
-        if (tss != null && tss.size() > 1) {
-            return false;
-        }
-        for (String ts : tss) {
-            keyBuilder.addTsName(ts);
+        if (tss != null) {
+            if (tss.size() > 1) {
+                return false;
+            }
+            for (String ts : tss) {
+                keyBuilder.addTsName(ts);
+            }
         }
         AddIndexRequest.Builder builder = AddIndexRequest.newBuilder();
         builder.setName(tableName);
