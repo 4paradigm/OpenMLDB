@@ -28,12 +28,12 @@ bool StructTypeIRBuilder::StructCopyFrom(::llvm::BasicBlock* block,
 }
 StructTypeIRBuilder* StructTypeIRBuilder::CreateStructTypeIRBuilder(
     ::llvm::Module* m, ::llvm::Type* type) {
-    node::TypeNode type_node;
-    if (!GetTypeNode(type, &type_node)) {
+    node::DataType base_type;
+    if (!GetBaseType(type, &base_type)) {
         return nullptr;
     }
 
-    switch (type_node.base_) {
+    switch (base_type) {
         case node::kTimestamp:
             return new TimestampIRBuilder(m);
         case node::kDate:
@@ -42,7 +42,7 @@ StructTypeIRBuilder* StructTypeIRBuilder::CreateStructTypeIRBuilder(
             return new StringIRBuilder(m);
         default: {
             LOG(WARNING) << "fail to create struct type ir builder for "
-                         << type_node.GetName();
+                         << DataTypeName(base_type);
             return nullptr;
         }
     }

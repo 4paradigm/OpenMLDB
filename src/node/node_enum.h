@@ -30,6 +30,7 @@ enum SQLNodeType {
     kCreateIndexStmt,
     kExpr,
     kType,
+    kNodeList,
     kResTarget,
     kTableRef,
     kQuery,

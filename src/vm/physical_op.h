@@ -257,7 +257,7 @@ class ColumnProject {
     ColumnSourceList column_sources_;
 };
 
-class PhysicalOpNode : public node::NodeBase {
+class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
  public:
     PhysicalOpNode(PhysicalOpType type, bool is_block, bool is_lazy)
         : type_(type),
@@ -267,8 +267,16 @@ class PhysicalOpNode : public node::NodeBase {
           fn_info_({"", nullptr}),
           fn_infos_({&fn_info_}),
           limit_cnt_(0) {}
+
+    const std::string GetTypeName() const override {
+        return PhysicalOpTypeName(type_);
+    }
+    bool Equals(const PhysicalOpNode *other) const override {
+        return this == other;
+    }
+
     virtual ~PhysicalOpNode() {}
-    virtual void Print(std::ostream &output, const std::string &tab) const;
+    void Print(std::ostream &output, const std::string &tab) const override;
     void Print() const;
 
     virtual void PrintChildren(std::ostream &output,

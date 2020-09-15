@@ -238,7 +238,7 @@ void sub_string(fesql::codec::StringRef *str, int32_t pos,
 void sub_string(fesql::codec::StringRef *str, int32_t pos, int32_t len,
                 fesql::codec::StringRef *output);
 int32_t strcmp(fesql::codec::StringRef *s1, fesql::codec::StringRef *s2);
-void string_to_bool(codec::StringRef* str, bool* out, bool *is_null_ptr);
+void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr);
 template <typename V>
 void string_to(codec::StringRef *str, V *v, bool *is_null_ptr) {
     if (nullptr == str) {

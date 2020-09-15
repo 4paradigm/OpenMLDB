@@ -51,12 +51,12 @@ namespace fesql {
 namespace codegen {
 using fesql::codec::ArrayListV;
 using fesql::codec::Row;
-static node::NodeManager manager;
 
 class FnLetIRBuilderTest : public ::testing::Test {
  public:
     FnLetIRBuilderTest() {}
     ~FnLetIRBuilderTest() {}
+    node::NodeManager manager;
 };
 
 TEST_F(FnLetIRBuilderTest, test_primary) {
@@ -74,7 +74,6 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     int8_t* window_ptr = nullptr;
     vm::Schema schema;
     vm::ColumnSourceList column_sources;
-    node::NodeManager manager;
     CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
                       &column_sources, &output);
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
@@ -132,7 +131,6 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
     int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
     vm::Schema schema;
     vm::ColumnSourceList column_sources;
-    node::NodeManager manager;
 
     vm::SchemaSourceList name_schema_list;
     name_schema_list.AddSchemaSource(table1.name(), &table1.columns());
@@ -185,7 +183,6 @@ TEST_F(FnLetIRBuilderTest, test_udf) {
     int8_t* output = NULL;
     int8_t* window_ptr = nullptr;
     vm::Schema schema;
-    node::NodeManager manager;
     CheckFnLetBuilder(&manager, table1, udf_sql, sql, row_ptr, window_ptr,
                       &schema, &output);
     ASSERT_EQ(2, schema.size());
@@ -209,7 +206,6 @@ TEST_F(FnLetIRBuilderTest, test_simple_project) {
     int8_t* output = NULL;
     int8_t* window_ptr = nullptr;
     vm::Schema schema;
-    node::NodeManager manager;
     CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
                       &output);
     ASSERT_EQ(1, schema.size());
@@ -229,7 +225,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_udf_project) {
     int8_t* output = NULL;
     int8_t* window_ptr = nullptr;
     vm::Schema schema;
-    node::NodeManager manager;
     CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
                       &output);
     ASSERT_EQ(1, schema.size());
@@ -261,7 +256,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_sum_project) {
     codec::ListRef<> window_ref({ptr});
     int8_t* window_ptr = reinterpret_cast<int8_t*>(&window_ref);
     vm::Schema schema;
-    node::NodeManager manager;
     CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
                       &output);
     ASSERT_EQ(1u + 11u + 111u + 1111u + 11111u,
@@ -300,7 +294,6 @@ TEST_F(FnLetIRBuilderTest, test_simple_window_project_mix) {
     codec::ListRef<> window_ref({ptr});
     int8_t* window_ptr = reinterpret_cast<int8_t*>(&window_ref);
     vm::Schema schema;
-    node::NodeManager manager;
     CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
                       &output);
     ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));
@@ -365,7 +358,6 @@ TEST_F(FnLetIRBuilderTest, test_join_window_project_mix) {
     name_schema_list.AddSchemaSource(table2.name(), &table2.columns());
 
     vm::ColumnSourceList column_sources;
-    node::NodeManager manager;
     CheckFnLetBuilder(&manager, name_schema_list, "", sql, row_ptr, window_ptr,
                       &schema, &column_sources, &output);
 
@@ -443,7 +435,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     codec::ListRef<> window_ref({ptr});
     int8_t* window_ptr = reinterpret_cast<int8_t*>(&window_ref);
     vm::Schema schema;
-    node::NodeManager manager;
     CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
                       &output);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,
@@ -477,7 +468,6 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     codec::ListRef<> window_ref({ptr});
     int8_t* window_ptr = reinterpret_cast<int8_t*>(&window_ref);
     vm::Schema schema;
-    node::NodeManager manager;
     CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
                       &output);
     ASSERT_EQ(7u + 4u + 4u + 8u + 2u + 8u,

@@ -26,7 +26,9 @@
 namespace fesql {
 namespace node {
 
-class BatchPlanNode : public node::NodeBase {
+const std::string NameOfPlanNodeType(BatchPlanNodeType type);
+
+class BatchPlanNode : public node::NodeBase<BatchPlanNode> {
  public:
     explicit BatchPlanNode(const BatchPlanNodeType& type)
         : type_(type), children_() {}
@@ -39,6 +41,10 @@ class BatchPlanNode : public node::NodeBase {
     }
     const std::vector<const BatchPlanNode*>& GetChildren() { return children_; }
 
+    const std::string GetTypeName() const override {
+        return NameOfPlanNodeType(type_);
+    }
+
  private:
     BatchPlanNodeType type_;
     std::vector<const BatchPlanNode*> children_;
@@ -50,6 +56,8 @@ class DatasetNode : public BatchPlanNode {
         : BatchPlanNode(kBatchDataset), table_(table) {}
 
     const std::string& GetTable() const { return table_; }
+
+    bool Equals(const BatchPlanNode* other) const override;
 
  private:
     std::string table_;
@@ -68,6 +76,8 @@ class ColumnPartitionNode : public BatchPlanNode {
     ~ColumnPartitionNode() {}
     const std::vector<std::string>& GetColumns() const { return columns_; }
 
+    bool Equals(const BatchPlanNode* other) const override;
+
  private:
     std::vector<std::string> columns_;
 };
@@ -78,6 +88,8 @@ class MapNode : public BatchPlanNode {
         : BatchPlanNode(kBatchMap), nodes_(nodes) {}
     ~MapNode() {}
     const NodePointVector& GetNodes() const { return nodes_; }
+
+    bool Equals(const BatchPlanNode* other) const override;
 
  private:
     const NodePointVector nodes_;

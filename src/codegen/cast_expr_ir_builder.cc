@@ -12,6 +12,7 @@
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
+#include "node/node_manager.h"
 
 using fesql::common::kCodegenError;
 
@@ -27,24 +28,27 @@ bool CastExprIRBuilder::IsIntFloat2PointerCast(::llvm::Type* src,
 }
 Status CastExprIRBuilder::InferNumberCastTypes(::llvm::Type* lhs,
                                                ::llvm::Type* rhs) {
-    node::TypeNode left_type;
-    node::TypeNode right_type;
-    CHECK_TRUE(TypeIRBuilder::GetTypeNode(lhs, &left_type), kCodegenError,
+    const node::TypeNode* left_type = nullptr;
+    const node::TypeNode* right_type = nullptr;
+    node::NodeManager tmp_node_manager;
+    CHECK_TRUE(GetFullType(&tmp_node_manager, lhs, &left_type), kCodegenError,
                "invalid op type")
-    CHECK_TRUE(TypeIRBuilder::GetTypeNode(rhs, &right_type), kCodegenError,
+    CHECK_TRUE(GetFullType(&tmp_node_manager, rhs, &right_type), kCodegenError,
                "invalid op type")
-    node::TypeNode output_type;
-    CHECK_STATUS(node::ExprNode::InferNumberCastTypes(left_type, right_type,
-                                                      &output_type))
+    const node::TypeNode* output_type = nullptr;
+
+    CHECK_STATUS(node::ExprNode::InferNumberCastTypes(
+        &tmp_node_manager, left_type, right_type, &output_type))
     return Status::OK();
 }
 bool CastExprIRBuilder::IsSafeCast(::llvm::Type* lhs, ::llvm::Type* rhs) {
-    node::TypeNode left_type;
-    node::TypeNode right_type;
-    if (!TypeIRBuilder::GetTypeNode(lhs, &left_type)) {
+    const node::TypeNode* left_type = nullptr;
+    const node::TypeNode* right_type = nullptr;
+    node::NodeManager tmp_node_manager;
+    if (!GetFullType(&tmp_node_manager, lhs, &left_type)) {
         return false;
     }
-    if (!TypeIRBuilder::GetTypeNode(rhs, &right_type)) {
+    if (!GetFullType(&tmp_node_manager, rhs, &right_type)) {
         return false;
     }
     return node::ExprNode::IsSafeCast(left_type, right_type);

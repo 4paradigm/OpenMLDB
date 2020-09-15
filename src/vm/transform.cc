@@ -875,7 +875,8 @@ bool BatchModeTransformer::GenProjects(const SchemaSourceList& input_schemas,
 
     // TODO(wangtaize) use ops end op output schema
     vm::SchemasContext schemas_context(input_schemas);
-    codegen::CodeGenContext codegen_ctx(module_, &schemas_context);
+    codegen::CodeGenContext codegen_ctx(module_, &schemas_context,
+                                        node_manager_);
     codegen::RowFnLetIRBuilder builder(&codegen_ctx, frame);
     fn_name = "__internal_sql_codegen_" + std::to_string(id_++);
     status = builder.Build(fn_name, project_func, project_names, project_frames,

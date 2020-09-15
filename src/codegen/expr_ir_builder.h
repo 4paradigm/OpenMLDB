@@ -98,7 +98,7 @@ class ExprIRBuilder {
 
     ::llvm::Function* GetFuncion(
         const std::string& col,
-        const std::vector<node::TypeNode>& generic_types,
+        const std::vector<const node::TypeNode*>& generic_types,
         base::Status& status);  // NOLINT
 
  private:

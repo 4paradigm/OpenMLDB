@@ -158,10 +158,6 @@ void PrintValue(std::ostream &output, const std::string &org_tab,
     output << org_tab << SPACE_ST << item_name << ": " << value;
 }
 
-void SQLNode::Print(std::ostream &output, const std::string &tab) const {
-    output << tab << SPACE_ST << "node[" << NameOfSQLNodeType(type_) << "]";
-}
-
 bool SQLNode::Equals(const SQLNode *that) const {
     if (this == that) {
         return true;
@@ -783,6 +779,9 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
             break;
         case kType:
             output = "kType";
+            break;
+        case kNodeList:
+            output = "kNodeList";
             break;
         case kResTarget:
             output = "kResTarget";
@@ -1515,7 +1514,7 @@ bool BetweenExpr::Equals(const ExprNode *node) const {
            ExprEquals(right_, that->right_);
 }
 
-const std::string FnDefNode::GetFlatString() const {
+std::string FnDefNode::GetFlatString() const {
     std::stringstream ss;
     ss << GetName() << "(";
     for (size_t i = 0; i < GetArgSize(); ++i) {

@@ -198,17 +198,17 @@ bool BlockIRBuilder::BuildForInBlock(const ::fesql::node::FnForInBlock *node,
     }
     llvm::Value *container_value = container_value_wrapper.GetValue(ctx_);
 
-    fesql::node::TypeNode container_type_node;
-    if (false ==
-            GetFullType(container_value->getType(), &container_type_node) ||
-        fesql::node::kList != container_type_node.base_) {
+    const fesql::node::TypeNode *container_type_node = nullptr;
+    if (false == GetFullType(ctx_->node_manager(), container_value->getType(),
+                             &container_type_node) ||
+        fesql::node::kList != container_type_node->base()) {
         status.msg = "fail to codegen list[pos]: invalid list type";
         status.code = common::kCodegenError;
         LOG(WARNING) << status;
         return false;
     }
     const fesql::node::TypeNode *elem_type_node =
-        container_type_node.generics_[0];
+        container_type_node->generics_[0];
     const bool elem_nullable = false;
 
     llvm::Value *iterator = nullptr;

@@ -26,7 +26,6 @@ class SqlNodeTest : public ::testing::Test {
 
     ~SqlNodeTest() { delete node_manager_; }
 
- protected:
     NodeManager *node_manager_;
 };
 
@@ -63,7 +62,7 @@ TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
 }
 
 TEST_F(SqlNodeTest, MakeGetFieldExprTest) {
-    auto row = node_manager_->MakeExprIdNode("row", 0);
+    auto row = node_manager_->MakeExprIdNode("row");
     auto node = node_manager_->MakeGetFieldExpr(row, "col", "t");
     std::cout << *node << std::endl;
     ASSERT_EQ(kExprGetField, node->GetExprType());

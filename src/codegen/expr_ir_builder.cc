@@ -45,12 +45,13 @@ ExprIRBuilder::~ExprIRBuilder() {}
 
 // TODO(chenjing): 修改GetFunction, 直接根据参数生成signature
 ::llvm::Function* ExprIRBuilder::GetFuncion(
-    const std::string& name, const std::vector<node::TypeNode>& args_types,
+    const std::string& name,
+    const std::vector<const node::TypeNode*>& args_types,
     base::Status& status) {
     std::string fn_name = name;
     if (!args_types.empty()) {
-        for (node::TypeNode type_node : args_types) {
-            fn_name.append(".").append(type_node.GetName());
+        for (const node::TypeNode* type_node : args_types) {
+            fn_name.append(".").append(type_node->GetName());
         }
     }
 
@@ -60,13 +61,13 @@ ExprIRBuilder::~ExprIRBuilder() {}
         return fn;
     }
 
-    if (!args_types.empty() && !args_types[0].generics_.empty()) {
-        switch (args_types[0].generics_[0]->base_) {
+    if (!args_types.empty() && !args_types[0]->generics_.empty()) {
+        switch (args_types[0]->generics_[0]->base_) {
             case node::kTimestamp:
             case node::kVarchar:
             case node::kDate: {
                 fn_name.append(".").append(
-                    args_types[0].generics_[0]->GetName());
+                    args_types[0]->generics_[0]->GetName());
                 fn = module->getFunction(::llvm::StringRef(fn_name));
                 break;
             }
@@ -297,8 +298,8 @@ bool ExprIRBuilder::BuildCallFnLegacy(
     std::vector<::llvm::Value*> llvm_args;
     std::vector<::fesql::node::ExprNode*>::const_iterator it =
         call_fn->children_.cbegin();
-    std::vector<::fesql::node::TypeNode> generics_types;
-    std::vector<::fesql::node::TypeNode> args_types;
+    std::vector<const ::fesql::node::TypeNode*> generics_types;
+    std::vector<const ::fesql::node::TypeNode*> args_types;
 
     for (; it != call_fn->children_.cend(); ++it) {
         const ::fesql::node::ExprNode* arg = dynamic_cast<node::ExprNode*>(*it);
@@ -306,8 +307,9 @@ bool ExprIRBuilder::BuildCallFnLegacy(
         // TODO(chenjing): remove out_name
         status = Build(arg, &llvm_arg_wrapper);
         if (status.isOK()) {
-            ::fesql::node::TypeNode value_type;
-            if (false == GetFullType(llvm_arg_wrapper.GetType(), &value_type)) {
+            const ::fesql::node::TypeNode* value_type = nullptr;
+            if (false == GetFullType(ctx_->node_manager(),
+                                     llvm_arg_wrapper.GetType(), &value_type)) {
                 status.msg = "fail to handle arg type ";
                 status.code = common::kCodegenError;
                 return false;
@@ -317,8 +319,8 @@ bool ExprIRBuilder::BuildCallFnLegacy(
             // handle list type
             // 泛型类型还需要优化，目前是hard
             // code识别list或者迭代器类型，然后取generic type
-            if (fesql::node::kList == value_type.base_ ||
-                fesql::node::kIterator == value_type.base_) {
+            if (fesql::node::kList == value_type->base() ||
+                fesql::node::kIterator == value_type->base()) {
                 generics_types.push_back(value_type);
             }
             ::llvm::Value* llvm_arg = llvm_arg_wrapper.GetValue(&builder);
@@ -719,22 +721,23 @@ Status ExprIRBuilder::BuildAsUDF(const node::ExprNode* expr,
                                  NativeValue* output) {
     CHECK_TRUE(args.size() == expr->GetChildNum(), kCodegenError);
     auto library = udf::DefaultUDFLibrary::get();
-    node::NodeManager nm;
 
     std::vector<node::ExprNode*> proxy_args;
     for (size_t i = 0; i < expr->GetChildNum(); ++i) {
         auto child = expr->GetChild(i);
-        auto arg = nm.MakeExprIdNode("proxy_arg_" + std::to_string(i),
-                                     node::ExprIdNode::GetNewId());
+        auto arg = ctx_->node_manager()->MakeExprIdNode("proxy_arg_" +
+                                                        std::to_string(i));
         arg->SetOutputType(child->GetOutputType());
         arg->SetNullable(child->nullable());
         proxy_args.push_back(arg);
     }
     node::ExprNode* transformed = nullptr;
-    CHECK_STATUS(library->Transform(name, proxy_args, &nm, &transformed));
+    CHECK_STATUS(library->Transform(name, proxy_args, ctx_->node_manager(),
+                                    &transformed));
 
     node::ExprNode* target_expr = nullptr;
-    passes::ResolveFnAndAttrs resolver(&nm, library, *ctx_->schemas_context());
+    passes::ResolveFnAndAttrs resolver(ctx_->node_manager(), library,
+                                       *ctx_->schemas_context());
     CHECK_STATUS(resolver.VisitExpr(transformed, &target_expr));
 
     // Insert a transient binding scope between current scope and parent
@@ -825,14 +828,14 @@ Status ExprIRBuilder::BuildCaseExpr(const ::fesql::node::CaseWhenExprNode* node,
     CHECK_TRUE(nullptr != node && nullptr != node->when_expr_list() &&
                    node->when_expr_list()->GetChildNum() > 0,
                kCodegenError);
-    node::NodeManager nm;
+    node::NodeManager* nm = ctx_->node_manager();
     node::ExprNode* expr =
-        nullptr == node->else_expr() ? nm.MakeConstNode() : node->else_expr();
+        nullptr == node->else_expr() ? nm->MakeConstNode() : node->else_expr();
     for (auto iter = node->when_expr_list()->children_.rbegin();
          iter != node->when_expr_list()->children_.rend(); iter++) {
         auto when_expr = dynamic_cast<::fesql::node::WhenExprNode*>(*iter);
-        expr = nm.MakeCondExpr(when_expr->when_expr(), when_expr->then_expr(),
-                               expr);
+        expr = nm->MakeCondExpr(when_expr->when_expr(), when_expr->then_expr(),
+                                expr);
     }
     return BuildCondExpr(dynamic_cast<::fesql::node::CondExpr*>(expr), output);
 }
