@@ -1358,6 +1358,10 @@ bool BatchModeTransformer::CodeGenExprList(
         status.code = common::kCodegenError;
         return false;
     }
+    if (!fn_info->fn_name().empty()) {
+        DLOG(INFO) << "codegen already " << fn_info->fn_name();
+        return true;
+    }
     node::PlanNodeList projects;
     int32_t pos = 0;
     for (auto expr : expr_list->children_) {

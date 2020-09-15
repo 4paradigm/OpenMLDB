@@ -151,3 +151,43 @@ cases:
         - [1, "aaaaaaaaaa", 1590738989000, "aaaaaa", 1.1, 1, 1590738988000, "aaaaaaaaaa"]
         - [2, "aaaaaaaaaa", 1590738990000, "aaaaaa", 3.3, 2, 1590738990000, "aaaaaaaaaa"]
         - [3, "bb", 1590738990000, "bb", 3.3, 1, null, null]
+  -
+    id: 8
+    desc: window样本表和副表都作子查询
+    mode: rtidb-batch-unsupport
+    inputs:
+      -
+        columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
+
+        indexs: ["index1:card_no:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa",1, 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa",1, 1590738990000, 2.2]
+          - [3, "bb",10, 1590738990000, 3.3]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "crd_nbr string"]
+        indexs: ["index2:crd_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, "aaaaaaaaaa"]
+          - [1590738990000, "aaaaaaaaaa"]
+          - [1590738989000, "cc"]
+          - [1590738992000, "cc"]
+    sql: |
+      select
+      id,
+      card_no,
+      trx_time,
+      substr(card_no, 1, 6) as card_no_prefix,
+      sum(trx_amt) over w30d as w30d_amt_sum,
+      count(id) over w10d as w10d_id_cnt
+      from  (select id, card_no, trx_time, trx_amt from {0}) as t_instance
+      window w30d as (PARTITION BY card_no ORDER BY trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW),
+      w10d as (UNION (select 0 as id, crd_nbr as card_no, crd_lst_isu_dte as trx_time, 0.0f as trx_amt from {1}) PARTITION BY card_no ORDER BY trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW);
+    expect:
+      columns: ["id int", "card_no string", "trx_time timestamp", "card_no_prefix string",
+                "w30d_amt_sum float", "w10d_id_cnt int64"]
+      order: id
+      rows:
+        - [1, "aaaaaaaaaa", 1590738989000, "aaaaaa", 1.1, 2]
+        - [2, "aaaaaaaaaa", 1590738990000, "aaaaaa", 3.3, 4]
+        - [3, "bb", 1590738990000, "bb", 3.3, 1]
