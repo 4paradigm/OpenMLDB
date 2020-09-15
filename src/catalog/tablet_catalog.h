@@ -146,7 +146,7 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler {
         return table_handler_->GetTypes();
     }
 
-    inline const ::fesql::vm::IndexHint &GetIndex() { return index_hint_; }
+    inline const ::fesql::vm::IndexHint &GetIndex() { return table_handler_->GetIndex(); }
 
     std::unique_ptr<::fesql::vm::WindowIterator> GetWindowIterator() override {
         DLOG(INFO) << "get window it with name " << index_name_;
@@ -177,7 +177,6 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler {
  private:
     std::shared_ptr<::fesql::vm::TableHandler> table_handler_;
     std::string index_name_;
-    ::fesql::vm::IndexHint index_hint_;
 };
 
 class TabletTableHandler : public ::fesql::vm::TableHandler {

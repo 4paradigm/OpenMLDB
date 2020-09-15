@@ -109,7 +109,6 @@ bool SDKCatalog::Init(
 
 std::shared_ptr<::fesql::vm::TableHandler> SDKCatalog::GetTable(
     const std::string& db, const std::string& table_name) {
-    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
     auto db_it = tables_.find(db);
     if (db_it == tables_.end()) {
         return std::shared_ptr<::fesql::vm::TableHandler>();
