@@ -802,6 +802,10 @@ bool NameServerImpl::Recover() {
             PDLOG(WARNING, "recover table info failed!");
             return false;
         }
+        if (!RecoverProcedureInfo()) {
+            PDLOG(WARNING, "recover store procedure info failed!");
+            return false;
+        }
         UpdateSdkEpMap();
     }
     UpdateTableStatus();
@@ -944,7 +948,7 @@ bool NameServerImpl::RecoverTableInfo() {
             LOG(INFO) << "recover table tid " << tid << " with name " << table_info->name() << " in db "
                       << table_info->db();
         } else {
-            LOG(WARNING) << "table " << table_info->name() << " exist on recovering in db  " << table_info->db();
+            LOG(WARNING) << "table " << table_info->name() << " not exist on recovering in db  " << table_info->db();
         }
     }
     return true;
@@ -1637,10 +1641,12 @@ bool NameServerImpl::Init(const std::string& zk_cluster, const std::string& zk_p
     zk_root_path_ = zk_path;
     endpoint_ = endpoint;
     std::string zk_table_path = zk_path + "/table";
+    std::string zk_sp_path = zk_path + "/store_procedure";
     zk_table_index_node_ = zk_table_path + "/table_index";
     zk_table_data_path_ = zk_table_path + "/table_data";
     zk_db_path_ = zk_path + "/db";
     zk_db_table_data_path_ = zk_table_path + "/db_table_data";
+    zk_db_sp_data_path_ = zk_sp_path + "/db_sp_data";
     zk_term_node_ = zk_table_path + "/term";
     std::string zk_op_path = zk_path + "/op";
     zk_op_index_node_ = zk_op_path + "/op_index";
@@ -10471,6 +10477,113 @@ bool NameServerImpl::RegisterName() {
     if (FLAGS_use_name) {
         if (!zk_client_->RegisterName()) {
             return false;
+        }
+    }
+    return true;
+}
+
+void NameServerImpl::CreateProcedure(RpcController* controller,
+        const CreateProcedureRequest* request, GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::shared_ptr<::rtidb::nameserver::ProcedureInfo> sp_info(request->sp_info().New());
+    sp_info->CopyFrom(request->sp_info());
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (databases_.find(sp_info->db()) == databases_.end()) {
+            response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
+            response->set_msg("database not found");
+            PDLOG(WARNING, "database[%s] not found", sp_info->db().c_str());
+            return;
+        } else {
+            auto sp_infos = db_sp_info_[sp_info->db()];
+            if (sp_infos.find(sp_info->name()) != sp_infos.end()) {
+                response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
+                response->set_msg("store procedure already exists");
+                PDLOG(WARNING, "store procedure[%s] already exists", sp_info->name().c_str());
+                return;
+            }
+        }
+    }
+    do {
+        // TODO(wangbao): CreateProcedureOnTablet
+        std::string sp_value;
+        sp_info->SerializeToString(&sp_value);
+        std::string compressed;
+        ::snappy::Compress(sp_value.c_str(), sp_value.length(), &compressed);
+        std::string sp_data_path = zk_db_sp_data_path_ + "/" + sp_info->name();
+        if (zk_client_->IsExistNode(sp_data_path) != 0) {
+            if (!zk_client_->CreateNode(sp_data_path, compressed)) {
+                PDLOG(WARNING, "create db store procedure node[%s] failed! value[%s] value size[%lu]",
+                        sp_data_path.c_str(), sp_value.c_str(), compressed.length());
+                response->set_code(::rtidb::base::ReturnCode::kCreateZkFailed);
+                response->set_msg("create zk node failed");
+                break;
+            }
+        } else {
+            if (!zk_client_->SetNodeValue(sp_data_path, compressed)) {
+                PDLOG(WARNING, "set db store procedure node[%s] failed! value[%s] value size[%lu]",
+                        sp_data_path.c_str(), sp_value.c_str(), compressed.length());
+                response->set_code(::rtidb::base::ReturnCode::kSetZkFailed);
+                response->set_msg("set zk failed");
+                break;
+            }
+        }
+        PDLOG(INFO, "create db store procedure node[%s] success! value[%s] value size[%lu]",
+                sp_data_path.c_str(), sp_value.c_str(), compressed.length());
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            db_sp_info_[sp_info->db()].insert(std::make_pair(sp_info->name(), sp_info));
+        }
+        response->set_code(::rtidb::base::ReturnCode::kOk);
+        response->set_msg("ok");
+        return;
+    } while (0);
+    // TODO(wangbao): DropProcedureOnTablet
+}
+
+bool NameServerImpl::RecoverProcedureInfo() {
+    db_sp_info_.clear();
+    std::vector<std::string> db_sp_vec;
+    if (!zk_client_->GetChildren(zk_db_sp_data_path_, db_sp_vec)) {
+        if (zk_client_->IsExistNode(zk_db_sp_data_path_) > 0) {
+            PDLOG(WARNING, "db store procedure data node is not exist");
+        } else {
+            PDLOG(WARNING, "get db store procedure id failed!");
+        }
+        return false;
+    }
+    PDLOG(INFO, "need to recover db store procedure num[%d]", db_sp_vec.size());
+    for (const auto& sp_name : db_sp_vec) {
+        std::string sp_node = zk_db_sp_data_path_ + "/" + sp_name;
+        std::string value;
+        if (!zk_client_->GetNodeValue(sp_node, value)) {
+            PDLOG(WARNING, "get db store procedure info failed! sp node[%s]", sp_node.c_str());
+            continue;
+        }
+        std::string uncompressed;
+        ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
+
+        std::shared_ptr<::rtidb::nameserver::ProcedureInfo> sp_info =
+            std::make_shared<::rtidb::nameserver::ProcedureInfo>();
+        if (!sp_info->ParseFromString(uncompressed)) {
+            PDLOG(WARNING, "parse store procedure info failed! sp_name[%s] value size[%lu]",
+                    sp_name.c_str(), uncompressed.length());
+            continue;
+        }
+        if (databases_.find(sp_info->db()) != databases_.end()) {
+            db_sp_info_[sp_info->db()].insert(std::make_pair(sp_info->name(), sp_info));
+            LOG(INFO) << "recover store procedure " << sp_info->name() << " with sql " << sp_info->sql() << " in db "
+                      << sp_info->db();
+        } else {
+            LOG(WARNING) << "store procedure " << sp_info->name() << " not exist on recovering in db "
+                << sp_info->db();
         }
     }
     return true;
