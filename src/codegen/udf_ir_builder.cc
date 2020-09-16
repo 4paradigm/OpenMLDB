@@ -511,10 +511,10 @@ Status UDFIRBuilder::BuildUDAFCall(
         output_num = output_type->GetGenericSize();
     }
 
-    node::NodeManager nm;
-    auto subfunc_ret_type = nm.MakeTypeNode(node::kTuple);
+    node::NodeManager* nm = ctx_->node_manager();
+    auto subfunc_ret_type = nm->MakeTypeNode(node::kTuple);
     subfunc_ret_type->AddGeneric(output_type, false);
-    subfunc_ret_type->AddGeneric(nm.MakeTypeNode(node::kBool), false);
+    subfunc_ret_type->AddGeneric(nm->MakeTypeNode(node::kBool), false);
 
     // add global frame into sub-function closure
     std::vector<NativeValue> sub_args = args;
@@ -534,8 +534,8 @@ Status UDFIRBuilder::BuildUDAFCall(
 
     NativeValue tuple;
     auto sub_def =
-        nm.MakeExternalFnDefNode(sub_function_name, 0, subfunc_ret_type, false,
-                                 sub_arg_types, sub_arg_nullable, -1, true);
+        nm->MakeExternalFnDefNode(sub_function_name, 0, subfunc_ret_type, false,
+                                  sub_arg_types, sub_arg_nullable, -1, true);
     CHECK_STATUS(this->BuildExternCall(sub_def, arg_types, sub_args, &tuple));
     CHECK_TRUE(tuple.IsTuple(), kCodegenError);
 

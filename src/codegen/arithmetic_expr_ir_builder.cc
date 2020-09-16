@@ -7,11 +7,15 @@
  *--------------------------------------------------------------------------
  **/
 #include "codegen/arithmetic_expr_ir_builder.h"
+
+#include <functional>
+
 #include "codegen/cond_select_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/null_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "codegen/type_ir_builder.h"
+#include "node/node_manager.h"
 
 using fesql::common::kCodegenError;
 

@@ -26,6 +26,7 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/IRBuilder.h"
+#include "node/node_manager.h"
 #include "passes/resolve_udf_def.h"
 
 namespace fesql {
@@ -53,8 +54,9 @@ bool FnIRBuilder::Build(::fesql::node::FnNodeFnDef *root,
     }
 
     vm::SchemaSourceList empty_source;
+    node::NodeManager nm;
     vm::SchemasContext empty_schema(empty_source);
-    CodeGenContext ctx(module_, &empty_schema);
+    CodeGenContext ctx(module_, &empty_schema, &nm);
 
     ::llvm::Function *fn = NULL;
     const ::fesql::node::FnNodeFnHeander *fn_def = root->header_;

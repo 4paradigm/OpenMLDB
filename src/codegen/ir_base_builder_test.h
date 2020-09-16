@@ -452,7 +452,7 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
 
     vm::SchemaSourceList empty_sources;
     vm::SchemasContext schemas_context(empty_sources);
-    CodeGenContext context(module.get(), &schemas_context);
+    CodeGenContext context(module.get(), &schemas_context, &state->nm);
 
     auto arg_types = state->arg_types;
     auto arg_nullable = state->arg_nullable;
@@ -602,7 +602,7 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
         .returns<Ret>()
         .template args<Args...>()
         .build([&](CodeGenContext* ctx) {
-            node::NodeManager nm;
+            node::NodeManager& nm = *ctx->node_manager();
 
             std::vector<node::TypeNode*> arg_types = {
                 udf::DataTypeTrait<Args>::to_type_node(&nm)...};
@@ -611,8 +611,7 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
 
             std::vector<node::ExprIdNode*> arg_exprs;
             for (size_t i = 0; i < sizeof...(Args); ++i) {
-                auto arg = nm.MakeExprIdNode("arg_" + std::to_string(i),
-                                             node::ExprIdNode::GetNewId());
+                auto arg = nm.MakeExprIdNode("arg_" + std::to_string(i));
                 auto arg_type = arg_types[i];
                 arg->SetOutputType(arg_type);
                 arg->SetNullable(arg_nullable[i]);

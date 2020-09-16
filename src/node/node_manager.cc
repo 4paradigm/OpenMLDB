@@ -538,8 +538,9 @@ ExprNode *NodeManager::MakeConstNodeDOUBLEMIN() {
 ExprNode *NodeManager::MakeConstNodePlaceHolder() {
     return MakeConstNode(fesql::node::kPlaceholder);
 }
-ExprIdNode *NodeManager::MakeExprIdNode(const std::string &name, int64_t id) {
-    return RegisterNode(new ::fesql::node::ExprIdNode(name, id));
+ExprIdNode *NodeManager::MakeExprIdNode(const std::string &name) {
+    return RegisterNode(
+        new ::fesql::node::ExprIdNode(name, exprid_idx_counter_++));
 }
 ExprIdNode *NodeManager::MakeUnresolvedExprId(const std::string &name) {
     return RegisterNode(new ::fesql::node::ExprIdNode(name, -1));
@@ -766,7 +767,7 @@ FnNode *NodeManager::MakeFnDefNode(const FnNode *header, FnNodeList *block) {
 }
 FnNode *NodeManager::MakeAssignNode(const std::string &name,
                                     ExprNode *expression) {
-    auto var = MakeExprIdNode(name, ExprIdNode::GetNewId());
+    auto var = MakeExprIdNode(name);
     ::fesql::node::FnAssignNode *fn_assign =
         new fesql::node::FnAssignNode(var, expression);
     return RegisterNode(fn_assign);
@@ -774,7 +775,7 @@ FnNode *NodeManager::MakeAssignNode(const std::string &name,
 
 FnNode *NodeManager::MakeAssignNode(const std::string &name,
                                     ExprNode *expression, const FnOperator op) {
-    auto lhs_var = MakeExprIdNode(name, ExprIdNode::GetNewId());
+    auto lhs_var = MakeExprIdNode(name);
     auto rhs_var = MakeUnresolvedExprId(name);
     ::fesql::node::FnAssignNode *fn_assign = new fesql::node::FnAssignNode(
         lhs_var, MakeBinaryExprNode(rhs_var, expression, op));
@@ -837,8 +838,7 @@ FnElseBlock *NodeManager::MakeFnElseBlock(FnNodeList *block) {
 
 FnParaNode *NodeManager::MakeFnParaNode(const std::string &name,
                                         const TypeNode *para_type) {
-    auto unique_id = ExprIdNode::GetNewId();
-    auto expr_id = MakeExprIdNode(name, unique_id);
+    auto expr_id = MakeExprIdNode(name);
     expr_id->SetOutputType(para_type);
     ::fesql::node::FnParaNode *para_node =
         new ::fesql::node::FnParaNode(expr_id);
@@ -992,7 +992,7 @@ RowTypeNode *NodeManager::MakeRowType(const std::string &name,
 
 FnNode *NodeManager::MakeForInStmtNode(const std::string &var_name,
                                        ExprNode *expression) {
-    auto var = MakeExprIdNode(var_name, ExprIdNode::GetNewId());
+    auto var = MakeExprIdNode(var_name);
     FnForInNode *node_ptr = new FnForInNode(var, expression);
     return RegisterNode(node_ptr);
 }
@@ -1333,6 +1333,19 @@ SQLNode *NodeManager::MakeReplicaNumNode(int num) {
 SQLNode *NodeManager::MakeDistributionsNode(SQLNodeList *distribution_list) {
     DistributionsNode *index_ptr = new DistributionsNode(distribution_list);
     return RegisterNode(index_ptr);
+}
+
+void NodeManager::SetNodeUniqueId(ExprNode *node) {
+    node->SetNodeId(expr_idx_counter_++);
+}
+void NodeManager::SetNodeUniqueId(TypeNode *node) {
+    node->SetNodeId(type_idx_counter_++);
+}
+void NodeManager::SetNodeUniqueId(PlanNode *node) {
+    node->SetNodeId(plan_idx_counter_++);
+}
+void NodeManager::SetNodeUniqueId(vm::PhysicalOpNode *node) {
+    node->SetNodeId(physical_plan_idx_counter_++);
 }
 
 }  // namespace node

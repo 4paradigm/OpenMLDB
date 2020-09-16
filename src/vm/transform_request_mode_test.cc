@@ -68,6 +68,7 @@ class TransformRequestModeTest : public ::testing::TestWithParam<SQLCase> {
  public:
     TransformRequestModeTest() {}
     ~TransformRequestModeTest() {}
+    ::fesql::node::NodeManager manager;
 };
 
 void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
@@ -224,7 +225,6 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
             new fesql::storage::Table(1, 1, table_def));
         AddTable(catalog, table_def, table);
     }
-    ::fesql::node::NodeManager manager;
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
     {

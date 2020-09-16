@@ -146,11 +146,13 @@ FunctionScopeGuard::~FunctionScopeGuard() {
 }
 
 CodeGenContext::CodeGenContext(::llvm::Module* module,
-                               vm::SchemasContext* schemas_context)
+                               vm::SchemasContext* schemas_context,
+                               node::NodeManager* node_manager)
     : llvm_ctx_(&module->getContext()),
       llvm_module_(module),
       llvm_ir_builder_(*llvm_ctx_),
-      schemas_context_(schemas_context) {}
+      schemas_context_(schemas_context),
+      node_manager_(node_manager) {}
 
 ::llvm::Function* CodeGenContext::GetCurrentFunction() const {
     return current_llvm_function_;
@@ -176,6 +178,10 @@ void CodeGenContext::SetCurrentBlock(::llvm::BasicBlock* block) {
 
 vm::SchemasContext* CodeGenContext::schemas_context() const {
     return schemas_context_;
+}
+
+node::NodeManager* CodeGenContext::node_manager() const {
+    return node_manager_;
 }
 
 ::llvm::IRBuilder<>* CodeGenContext::GetBuilder() { return &llvm_ir_builder_; }

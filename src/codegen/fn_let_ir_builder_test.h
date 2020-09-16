@@ -140,7 +140,7 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     ASSERT_TRUE(status.isOK());
 
     vm::SchemasContext schemas_ctx(name_schemas);
-    CodeGenContext codegen_ctx(m.get(), &schemas_ctx);
+    CodeGenContext codegen_ctx(m.get(), &schemas_ctx, manager);
     RowFnLetIRBuilder ir_builder(&codegen_ctx,
                                  nullptr == pp_node_ptr->GetW()
                                      ? nullptr

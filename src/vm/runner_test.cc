@@ -88,7 +88,6 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(InitCases("cases/plan/join_query.yaml")));
 void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
                  const bool is_batch) {
-    node::NodeManager nm;
     SQLCompiler sql_compiler(catalog);
     SQLContext sql_context;
     sql_context.sql = sql;
@@ -298,7 +297,6 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     auto catalog = BuildCommonCatalog(table_def, table);
     RunnerCheck(catalog, sqlstr, true);
 
-    node::NodeManager nm;
     SQLCompiler sql_compiler(catalog);
     SQLContext sql_context;
     sql_context.sql = sqlstr;

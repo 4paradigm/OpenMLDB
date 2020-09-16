@@ -18,13 +18,12 @@ Status LambdafyProjects::Transform(const node::PlanNodeList& projects,
                                    std::vector<node::FrameNode*>* out_frames) {
     // arg1: current input row
     auto row_type = nm_->MakeRowType(input_schemas_);
-    auto row_arg = nm_->MakeExprIdNode("row", node::ExprIdNode::GetNewId());
+    auto row_arg = nm_->MakeExprIdNode("row");
     row_arg->SetOutputType(row_type);
 
     // arg2: optional row list for agg
     auto window_type = nm_->MakeTypeNode(node::kList, row_type);
-    auto window_arg =
-        nm_->MakeExprIdNode("window", node::ExprIdNode::GetNewId());
+    auto window_arg = nm_->MakeExprIdNode("window");
     window_arg->SetOutputType(window_type);
 
     // iterate project exprs
@@ -226,8 +225,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
         if (child_require_window_iter) {
             has_window_iter = true;
             if (iter_row == nullptr) {
-                iter_row = nm_->MakeExprIdNode("iter_row",
-                                               node::ExprIdNode::GetNewId());
+                iter_row = nm_->MakeExprIdNode("iter_row");
                 iter_row->SetOutputType(row_arg->GetOutputType());
                 iter_row->SetNullable(false);
             }
@@ -252,8 +250,8 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
 
         // collect original udaf info
         transformed_child[i] = resolved_arg;
-        auto original_arg = nm_->MakeExprIdNode(
-            "udaf_list_arg_" + std::to_string(i), node::ExprIdNode::GetNewId());
+        auto original_arg =
+            nm_->MakeExprIdNode("udaf_list_arg_" + std::to_string(i));
         auto resolved_type = resolved_arg->GetOutputType();
         if (child_require_window_iter) {
             original_arg->SetOutputType(
@@ -296,7 +294,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
     std::vector<const node::TypeNode*> proxy_udaf_arg_types;
 
     // state argument is first argument of update function
-    auto state_arg = nm_->MakeExprIdNode("state", node::ExprIdNode::GetNewId());
+    auto state_arg = nm_->MakeExprIdNode("state");
     actual_update_args.push_back(state_arg);
     proxy_update_args.push_back(state_arg);
 
@@ -314,8 +312,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
             actual_update_args.push_back(transformed_child[i]);
         } else if (args_require_iter[i]) {
             // use proxy lambda argument
-            auto arg = nm_->MakeExprIdNode("iter_arg_" + std::to_string(i),
-                                           node::ExprIdNode::GetNewId());
+            auto arg = nm_->MakeExprIdNode("iter_arg_" + std::to_string(i));
             auto child_type = transformed_child[i]->GetOutputType();
             CHECK_TRUE(child_type->base() == node::kList, kCodegenError);
             arg->SetOutputType(child_type->GetGenericType(0));

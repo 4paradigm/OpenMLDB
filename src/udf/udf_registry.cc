@@ -39,8 +39,7 @@ Status ExprUDFRegistry::ResolveFunction(UDFResolveContext* ctx,
                    "process");
         arg_types.push_back(arg_type);
 
-        auto arg_expr =
-            nm->MakeExprIdNode(arg_name, node::ExprIdNode::GetNewId());
+        auto arg_expr = nm->MakeExprIdNode(arg_name);
         func_params.emplace_back(arg_expr);
         func_params_to_gen.emplace_back(arg_expr);
         arg_expr->SetOutputType(arg_type);
@@ -122,13 +121,12 @@ Status UDAFRegistry::ResolveFunction(UDFResolveContext* ctx,
     node::FnDefNode* update_func = nullptr;
     std::vector<const node::TypeNode*> list_types;
     std::vector<node::ExprNode*> update_args;
-    auto state_arg = nm->MakeExprIdNode("state", node::ExprIdNode::GetNewId());
+    auto state_arg = nm->MakeExprIdNode("state");
     state_arg->SetOutputType(udaf_gen_.state_type);
     state_arg->SetNullable(udaf_gen_.state_nullable);
     update_args.push_back(state_arg);
     for (size_t i = 0; i < ctx->arg_size(); ++i) {
-        auto elem_arg = nm->MakeExprIdNode("elem_" + std::to_string(i),
-                                           node::ExprIdNode::GetNewId());
+        auto elem_arg = nm->MakeExprIdNode("elem_" + std::to_string(i));
         auto list_type = ctx->arg_type(i);
         CHECK_TRUE(list_type != nullptr && list_type->base() == node::kList,
                    kCodegenError);
