@@ -4,11 +4,13 @@ import com._4paradigm.sql.*;
 import com._4paradigm.sql.common.LibraryLoader;
 import com._4paradigm.sql.jdbc.SQLResultSet;
 import com._4paradigm.sql.sdk.*;
+import com._4paradigm.sql.sdk.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SqlClusterExecutor implements SqlExecutor {
@@ -148,17 +150,37 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
-    public SQLResultSet callProcedure(String db, String proName, List<List<Object>> requestRows) {
+    public Schema getInputSchema(String dbName, String sql) throws SQLException {
+        Status status = new Status();
+        ExplainInfo explain = sqlRouter.Explain(dbName, sql, status);
+        if (status.getCode() != 0) {
+            throw new SQLException("getInputSchema fail!", status.getMsg());
+        }
+        List<Column> columnList = new ArrayList<>();
+        com._4paradigm.sql.Schema schema = explain.GetInputSchema();
+        for (int i = 0; i < schema.GetColumnCnt(); i++) {
+            Column column = new Column();
+            column.setColumnName(schema.GetColumnName(i));
+            column.setSqlType(Common.type2SqlType(schema.GetColumnType(i)));
+            column.setNotNull(schema.IsColumnNotNull(i));
+            column.setConstant(false);
+            columnList.add(column);
+        }
+        return new Schema(columnList);
+    }
+
+    @Override
+    public SQLResultSet callProcedure(String dbName, String proName, List<List<Object>> requestRows) throws SQLException {
         return null;
     }
 
     @Override
-    public boolean dropProcedure(String db, String proName) {
+    public boolean dropProcedure(String dbName, String proName)  throws SQLException{
         return false;
     }
 
     @Override
-    public ProcedureInfo showProcedure(String db, String proName) {
+    public ProcedureInfo showProcedure(String dbName, String proName) throws SQLException{
         return null;
     }
 

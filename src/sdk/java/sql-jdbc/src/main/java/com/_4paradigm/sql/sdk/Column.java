@@ -6,6 +6,9 @@ public class Column {
     private boolean isNotNull;
     private boolean isConstant;
 
+    public Column() {
+    }
+
     public String getColumnName() {
         return columnName;
     }

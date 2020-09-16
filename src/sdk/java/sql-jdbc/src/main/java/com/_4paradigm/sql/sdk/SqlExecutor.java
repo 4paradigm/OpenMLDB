@@ -25,7 +25,8 @@ public interface SqlExecutor {
     SQLInsertRows getInsertRows(String db, String sql);
     ResultSet executeSQL(String db, String sql, SQLRequestRow row);
 
-    SQLResultSet callProcedure(String db, String proName, List<List<Object>> requestRows);
-    boolean dropProcedure(String db, String proName);
-    ProcedureInfo showProcedure(String db, String proName);
+    Schema getInputSchema(String dbName, String sql) throws SQLException;
+    SQLResultSet callProcedure(String dbName, String proName, List<List<Object>> requestRows) throws SQLException;
+    boolean dropProcedure(String dbName, String proName) throws SQLException ;
+    ProcedureInfo showProcedure(String dbName, String proName) throws SQLException;
 }
