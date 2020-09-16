@@ -74,6 +74,8 @@ enum SQLNodeType {
     kPartitionMeta,
     kReplicaNum,
     kDistributions,
+    kCreateSpStmt,
+    kInputParameter,
     kUnknow
 };
 
@@ -231,6 +233,7 @@ enum PlanType {
     kProjectList,
     kPlanTypeWindow,
     kProjectNode,
+    kPlanTypeCreateSp,
     kUnknowPlan = 100,
 };
 

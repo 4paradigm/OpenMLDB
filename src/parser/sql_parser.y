@@ -392,6 +392,8 @@ typedef void* yyscan_t;
 %token DISTRIBUTION
 %token LEADER
 %token FOLLOWER
+%token CONST
+%token BEGINTOKEN
 
  /* functions with special syntax */
 %token FSUBSTRING
@@ -459,6 +461,10 @@ typedef void* yyscan_t;
 
 %type <intval> opt_window_exclusion_clause replica_num
 
+/* create procedure */
+%type <node> create_sp_stmt input_parameter
+%type <list> input_parameters
+%type <strval> sp_name sql
 
 %start grammar
 
@@ -781,6 +787,10 @@ stmt:   query_clause
         {
         	$$ = node_manager->MakeExplainNode($2, fesql::node::kExplainPhysical);
         }
+        |create_sp_stmt
+        {
+            $$ = $1;
+        }
         ;
 
 
@@ -826,7 +836,6 @@ create_stmt:    CREATE TABLE op_if_not_exist relation_name '(' column_desc_list 
                     free($5);
                 }
                 ;
-
 
 insert_stmt:	INSERT INTO table_name VALUES insert_values
 				{
@@ -1110,6 +1119,45 @@ distribution:   role_type EQUALS endpoint
                     free($3);
                 }
                 ;
+
+create_sp_stmt:   CREATE PROCEDURE sp_name '(' input_parameters ')' BEGINTOKEN sql END
+                  {
+                      $$ = node_manager->MakeCreateProcedureNode($3, $5, $8);         
+                      free($3);
+                      free($8);
+                  }   
+                  ;
+
+input_parameters:   input_parameter
+                    {
+                        $$ = node_manager->MakeNodeList($1); 
+                    }
+                    |input_parameters ',' input_parameter
+                    {
+                        $$ = $1;
+                        $$->PushBack($3);
+                    }
+                    ;
+
+input_parameter:    column_name types
+                    {
+                        $$ = node_manager->MakeInputParameterNode(false, $1, $2);
+                        free($1);
+                    }
+                    |CONST column_name types
+                    {
+                        $$ = node_manager->MakeInputParameterNode(true, $2, $3);
+                        free($2);
+                    }
+                    ;
+
+sp_name:
+    SQL_IDENTIFIER
+    ;
+
+sql:
+    STRING
+    ;
 
 /*****************************************************************************
  *

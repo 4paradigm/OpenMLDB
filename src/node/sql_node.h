@@ -2289,6 +2289,55 @@ class DistributionsNode : public SQLNode {
     SQLNodeList *distribution_list_;
 };
 
+class CreateSpStmt : public SQLNode {
+ public:
+    CreateSpStmt(const std::string &sp_name, const std::string& sql)
+        : SQLNode(kCreateSpStmt, 0, 0),
+          sp_name_(sp_name),
+          sql_(sql) {}
+
+    ~CreateSpStmt() {}
+
+    NodePointVector &GetInputParameterList() { return input_parameter_list_; }
+    const NodePointVector &GetInputParameterList() const {
+        return input_parameter_list_;
+    }
+
+    std::string GetSpName() const { return sp_name_; }
+
+    std::string GetSql() const { return sql_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    std::string sp_name_;
+    std::string sql_;
+    NodePointVector input_parameter_list_;
+};
+
+class InputParameterNode : public SQLNode {
+ public:
+    InputParameterNode(const std::string &name, DataType data_type,
+                  bool is_constant)
+        : SQLNode(kInputParameter, 0, 0),
+          column_name_(name),
+          column_type_(data_type),
+          is_constant_(is_constant) {}
+    ~InputParameterNode() {}
+
+    std::string GetColumnName() const { return column_name_; }
+
+    DataType GetColumnType() const { return column_type_; }
+
+    bool GetIsConstant() const { return is_constant_; }
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    std::string column_name_;
+    DataType column_type_;
+    bool is_constant_;
+};
+
 std::string ExprString(const ExprNode *expr);
 std::string MakeExprWithTable(const ExprNode *expr, const std::string db);
 const bool IsNullPrimary(const ExprNode *expr);

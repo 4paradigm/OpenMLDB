@@ -97,3 +97,36 @@ cases:
           column4 string NOT NULL,
           column5 int NOT NULL,
           index(key=column1, ts=column2)) replicanum=2, distribution(leader="127.0.0.1:9927", follower="127.0.0.1:9926");
+  - id: 10
+    desc: 批量create 
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 smallint NOT NULL,
+          column3 float NOT NULL,
+          column4 double NOT NULL,
+          column5 bigint NOT NULL,
+          std_ts timestamp NOT NULL,
+          std_date date NOT NULL,
+          index(key=(column2), ts=std_ts)
+      );
+      create table test1(
+        column1 int NOT NULL,
+        column2 smallint NOT NULL,
+        column3 float NOT NULL,
+        column4 double NOT NULL,
+        column5 bigint NOT NULL,
+        std_ts timestamp NOT NULL,
+        std_date date NOT NULL,
+        index(key=(column2), ts=std_ts)
+      )123
+      create table test2(
+        column1 int NOT NULL,
+        column2 smallint NOT NULL,
+        column3 float NOT NULL,
+        column4 double NOT NULL,
+        column5 bigint NOT NULL,
+        std_ts timestamp NOT NULL,
+        std_date date NOT NULL,
+        index(key=(column2), ts=std_ts)
+      )123

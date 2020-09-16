@@ -1908,5 +1908,30 @@ void DistributionsNode::Print(std::ostream &output,
                    "distribution_list", true);
 }
 
+void CreateSpStmt::Print(std::ostream &output,
+        const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, sp_name_, "sp_name", false);
+    output << "\n";
+    PrintValue(output, tab, sql_, "sql", false);
+    output << "\n";
+    PrintSQLVector(output, tab, input_parameter_list_,
+            "input_parameter_list", true);
+}
+
+void InputParameterNode::Print(std::ostream &output,
+                          const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, column_name_, "column_name", false);
+    output << "\n";
+    PrintValue(output, tab, DataTypeName(column_type_), "column_type", false);
+    output << "\n";
+    PrintValue(output, tab, std::to_string(is_constant_), "is_constant", true);
+}
+
 }  // namespace node
 }  // namespace fesql

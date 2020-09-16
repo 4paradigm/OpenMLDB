@@ -78,6 +78,9 @@ class Planner {
     bool CreateWindowPlanNode(const node::WindowDefNode *w_ptr,
                               node::WindowPlanNode *plan_node,
                               Status &status);  // NOLINT (runtime/references)
+    bool CreateCreateProcedurePlan(const node::SQLNode *root,
+                               node::PlanNode **output,
+                               Status &status);  // NOLINT (runtime/references)
     node::NodeManager *node_manager_;
     std::string MakeTableName(const PlanNode *node) const;
     bool MergeProjectMap(
