@@ -1,8 +1,62 @@
 from . import driver
+import re
 
+apilevel = '2.0'
 paramstyle = 'qmark'
+threadsafety = 3
 
 class Error(Exception):
+
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):
+        return self.message
+
+    def msg(self):
+        return self.message
+
+class Warning(Exception):
+
+    def __init__(self, message):
+        self.message = message
+
+class InterfaceError(Error):
+
+    def __init__(self, message):
+        self.message = message
+
+class DatabaseError(Error):
+
+    def __init__(self, message):
+        self.message = message
+
+class DataError(DatabaseError):
+
+    def __init__(self, message):
+        self.message = message
+
+class OperationalError(DatabaseError):
+
+    def __init__(self, message):
+        self.message = message
+
+class IntegrityError(DatabaseError):
+
+    def __init__(self, message):
+        self.message = message
+
+class InternalError(DatabaseError):
+
+    def __init__(self, message):
+        self.message = message
+
+class ProgrammingError(DatabaseError):
+
+    def __init__(self, message):
+        self.message = message
+
+class NotSupportedError(DatabaseError):
 
     def __init__(self, message):
         self.message = message
@@ -30,6 +84,7 @@ class Cursor(object):
         self._resultSetMetadata = None
         self._resultSetStatus = None
         self.rowcount = -1
+        self.arraysize = 1
 
     def connected(func):
         def func_wrapper(self, *args, **kwargs):
@@ -46,14 +101,95 @@ class Cursor(object):
         print("cursor close")
         self._connected = False
 
+    def callproc(self, procname, parameters=()):
+        pass
+
     @connected
     def getdesc(self):
         return "fedb cursor"
 
+    def checkCmd(cmd: str) -> bool:
+        if cmd.find("select cast") == 0:
+            return false
+        return true
+
     @connected
     def execute(self, operation, parameters=()):
-        print("-----cursor execute")
-        print(operation)
+        command = operation.strip(' \t\n\r') if operation else None
+        if command is None:
+            raise Exception("None operation")
+        semicolonCount = command.count(';')
+        escapeSemicolonCount = command.count("\;")
+        if command.find("create table ") == 0:
+            if escapeSemicolonCount > 1:
+                raise Exception("invalid table name")
+            ok, error = self.connection._sdk.executeDDL(self.db, command)
+            if not ok:
+                raise DatabaseError(error)
+        elif command.find("create database ") == 0:
+            db = command.split()[-1].rstrip(";")
+            ok, error = self.connection._sdk.createDB(db)
+            if not ok:
+                raise DatabaseError(error)
+        elif command.find("insert into ") == 0:
+            questionMarkCount = command.count('?');
+            if questionMarkCount > 0:
+                if len(parameters) != questionMarkCount:
+                    raise DatabaseError("parameters is not enough")
+                ok, builder = self.connection._sdk.getInsertBuilder(self.db, command)
+                if not ok:
+                    raise DatabaseError(error)
+                schema = builder.GetSchema()
+                holdIdxs = builder.GetHoleIdx()
+                strSize = 0
+                for i in range(len(holdIdxs)):
+                    idx = holdIdxs[i];
+                    colType = schema.GetColumnType(idx)
+                    if colType != driver.sql_router_sdk.kTypeString:
+                        continue
+                    if parameters[i] == None:
+                        if schema.get(idx).IsColumnNotNull:
+                            raise DatabaseError("column seq {} not allow null".format(idx))
+                        else:
+                            continue
+                    if isinstance(parameters[i], str):
+                        strSize += len(parameters[i])
+                    else:
+                        raise DatabaseError("value {} tpye is not str".format(parameters[i]))
+                builder.Init(strSize)
+                appendMap = {
+                    driver.sql_router_sdk.kTypeBool: builder.AppendBool,
+                    driver.sql_router_sdk.kTypeInt16: builder.AppendInt16,
+                    driver.sql_router_sdk.kTypeInt32: builder.AppendInt32,
+                    driver.sql_router_sdk.kTypeInt64: builder.AppendInt64,
+                    driver.sql_router_sdk.kTypeFloat: builder.AppendFloat,
+                    driver.sql_router_sdk.kTypeDouble: builder.AppendDouble,
+                    driver.sql_router_sdk.kTypeString: builder.AppendString,
+                    driver.sql_router_sdk.kTypeDate: builder.AppendDate,
+                    driver.sql_router_sdk.kTypeTimestamp: builder.AppendTimestamp
+                    }
+                for i in range(len(holdIdxs)):
+                    if parameters[i] == None:
+                        builder.AppendNULL()
+                        continue
+                    idx = holdIdxs[i]
+                    colType = schema.GetColumnType(idx)
+                    ok = appendMap[colType](parameters[i])
+                    if not ok:
+                        raise DatabaseError("erred at append data seq {}".format(i));
+                ok, error = self.connection._sdk.executeInsert(self.db, command, builder)
+                if not ok:
+                    raise DatabaseError(err)
+            else:
+                ok, error = self.connection._sdk.executeInsert(self.db, command)
+                if not ok:
+                    raise DatabaseError(err)
+        else:
+            pass
+
+    @connected
+    def executemany(self, operation, parameters=()):
+        pass
 
     @staticmethod
     def substitute_in_query(string_query, parameters):
@@ -75,6 +211,15 @@ class Cursor(object):
     @connected
     def fetchmany(self, size=None):
         print("call fetchmany")
+
+    def nextset(self):
+        pass
+
+    def setinputsizes(self, size):
+        pass
+
+    def setoutputsize(self, size, columns=()):
+        pass
         
     @connected
     def fetchall(self):
@@ -116,6 +261,9 @@ class Connection(object):
 
     def execute(self):
         print("conn execute")
+
+    def close(self):
+        pass
 
     def cursor(self):
         print("call cursor")

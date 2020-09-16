@@ -6,6 +6,7 @@ try:
     from sqlalchemy.sql.compiler import SQLCompiler
 except ImportError:
     from sqlalchemy.sql.compiler import DefaultCompiler as SQLCompiler
+RESERVED_WORDS = set("select")
 
 class FeDBCompiler(compiler.SQLCompiler):
 
