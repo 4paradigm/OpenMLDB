@@ -1,10 +1,19 @@
 package com._4paradigm.sql.sdk;
 
 public class ProcedureInfo {
+    private String dbName;
     private String proName;
     private String proSql;
     private Schema inputSchema;
     private Schema outputSchema;
+
+    public String getDbName() {
+        return dbName;
+    }
+
+    public void setDbName(String dbName) {
+        this.dbName = dbName;
+    }
 
     public String getProName() {
         return proName;
