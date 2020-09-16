@@ -325,7 +325,7 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "UNKNOW";
     }
 }
-class Runner : public node::NodeBase {
+class Runner : public node::NodeBase<Runner> {
  public:
     explicit Runner(const int32_t id)
         : id_(id),
@@ -387,6 +387,12 @@ class Runner : public node::NodeBase {
                           std::shared_ptr<DataHandler> data);
     const vm::SchemaSourceList& output_schemas() const {
         return output_schemas_;
+    }
+    virtual const std::string GetTypeName() const override {
+        return RunnerTypeName(type_);
+    }
+    virtual bool Equals(const Runner* other) const override {
+        return this == other;
     }
 
  protected:
