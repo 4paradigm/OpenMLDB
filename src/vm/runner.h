@@ -727,14 +727,13 @@ class LimitRunner : public Runner {
 };
 class RunnerBuilder {
  public:
-    RunnerBuilder() : id_(0) {}
+    RunnerBuilder(node::NodeManager* nm) : id_(0), nm_(nm){}
     virtual ~RunnerBuilder() {}
-
-    Runner* Build(PhysicalOpNode* node, node::NodeManager& nm,  // NOLINT
+    Runner* Build(PhysicalOpNode* node,   // NOLINT
                   Status& status);                              // NOLINT
-
  private:
     int32_t id_;
+    node::NodeManager* nm_;
 };
 
 }  // namespace vm
