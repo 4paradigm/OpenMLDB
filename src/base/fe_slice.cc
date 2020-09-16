@@ -4,7 +4,9 @@
 namespace fesql {
 namespace base {
 
-RefCountedSlice::~RefCountedSlice() {
+RefCountedSlice::~RefCountedSlice() { Release(); }
+
+void RefCountedSlice::Release() {
     if (this->ref_cnt_ != nullptr) {
         auto& cnt = *this->ref_cnt_;
         cnt -= 1;
@@ -32,11 +34,19 @@ RefCountedSlice::RefCountedSlice(RefCountedSlice&& slice) {
 }
 
 RefCountedSlice& RefCountedSlice::operator=(const RefCountedSlice& slice) {
+    if (&slice == this) {
+        return *this;
+    }
+    this->Release();
     this->Update(slice);
     return *this;
 }
 
 RefCountedSlice& RefCountedSlice::operator=(RefCountedSlice&& slice) {
+    if (&slice == this) {
+        return *this;
+    }
+    this->Release();
     this->Update(slice);
     return *this;
 }

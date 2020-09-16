@@ -25,20 +25,13 @@
 
 namespace fesql {
 namespace codegen {
-MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(
-    const vm::Schema& schema, ::llvm::BasicBlock* block)
-    : block_(block), decoder_list_({codec::RowDecoder(schema)}) {}
 
 MemoryWindowDecodeIRBuilder::MemoryWindowDecodeIRBuilder(
-    const std::vector<vm::RowSchemaInfo>& schema_list,
-    ::llvm::BasicBlock* block)
-    : block_(block), decoder_list_() {
-    for (auto info : schema_list) {
-        decoder_list_.push_back(codec::RowDecoder(*info.schema_));
-    }
-}
+    vm::SchemasContext* schemas_context, ::llvm::BasicBlock* block)
+    : block_(block), schemas_context_(schemas_context) {}
 
 MemoryWindowDecodeIRBuilder::~MemoryWindowDecodeIRBuilder() {}
+
 bool MemoryWindowDecodeIRBuilder::BuildInnerRowsList(::llvm::Value* list_ptr,
                                                      int64_t start_offset,
                                                      int64_t end_offset,
@@ -148,7 +141,8 @@ bool MemoryWindowDecodeIRBuilder::BuildGetCol(const std::string& name,
         }
         case ::fesql::node::kVarchar: {
             codec::StringColInfo str_col_info;
-            if (!decoder_list_[row_idx].ResolveStringCol(name, &str_col_info)) {
+            if (!schemas_context_->GetDecoder(row_idx)->ResolveStringCol(
+                    name, &str_col_info)) {
                 LOG(WARNING)
                     << "fail to get string filed offset and next offset"
                     << name;
@@ -295,7 +289,7 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
 bool MemoryWindowDecodeIRBuilder::ResolveFieldInfo(
     const std::string& name, uint32_t row_idx, codec::ColInfo* info,
     node::TypeNode* data_type_ptr) {
-    if (!decoder_list_[row_idx].ResolveColumn(name, info)) {
+    if (!schemas_context_->GetDecoder(row_idx)->ResolveColumn(name, info)) {
         return false;
     }
     if (!SchemaType2DataType(info->type, data_type_ptr)) {

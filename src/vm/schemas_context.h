@@ -52,6 +52,8 @@ class SchemasContext {
                                     const std::string& col_name,
                                     fesql::type::Type* type);
 
+    const codec::RowDecoder* GetDecoder(size_t slice_id) const;
+
  public:
     // row ir context list
     std::vector<RowSchemaInfo> row_schema_info_list_;
@@ -65,6 +67,8 @@ class SchemasContext {
                                  const int32_t column_idx) const;
     int32_t ColumnIdxResolved(const std::string& column,
                               const Schema* schema) const;
+
+    std::vector<codec::RowDecoder> row_decoders_;
 };
 }  // namespace vm
 }  // namespace fesql

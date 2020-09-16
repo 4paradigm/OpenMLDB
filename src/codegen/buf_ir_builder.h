@@ -37,7 +37,7 @@ namespace codegen {
 class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
  public:
     BufNativeEncoderIRBuilder(const std::map<uint32_t, NativeValue>* outputs,
-                              const vm::Schema& schema,
+                              const vm::Schema* schema,
                               ::llvm::BasicBlock* block);
 
     ~BufNativeEncoderIRBuilder();
@@ -65,7 +65,7 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
 
  private:
     const std::map<uint32_t, NativeValue>* outputs_;
-    vm::Schema schema_;
+    const vm::Schema* schema_;
     uint32_t str_field_start_offset_;
     std::vector<uint32_t> offset_vec_;
     uint32_t str_field_cnt_;
@@ -74,7 +74,7 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
 
 class BufNativeIRBuilder : public RowDecodeIRBuilder {
  public:
-    BufNativeIRBuilder(const vm::Schema& schema, ::llvm::BasicBlock* block,
+    BufNativeIRBuilder(const vm::Schema* schema, ::llvm::BasicBlock* block,
                        ScopeVar* scope_var);
     ~BufNativeIRBuilder();
 

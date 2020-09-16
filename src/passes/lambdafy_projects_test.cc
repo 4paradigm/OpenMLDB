@@ -34,7 +34,7 @@ TEST_F(LambdafyProjectsTest, Test) {
         "    substring(\"hello\", 1, 3), "
         "    sum(col_0), "
         "    count_where(col_1, col_2 > 2), "
-        "    count(col_0) + g(sum(col_1 + 1 + f(max(col_2)))) + 1,"
+        "    count(col_0) + log(sum(col_1 + 1 + abs(max(col_2)))) + 1,"
         "    avg(col_0 - at(col_0, 3)),"
         "    *, count(*) "
         "from t1;";
