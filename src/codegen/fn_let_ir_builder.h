@@ -32,19 +32,21 @@
 
 namespace fesql {
 namespace codegen {
+
+using fesql::base::Status;
 using fesql::vm::RowSchemaInfo;
+
 class RowFnLetIRBuilder {
  public:
-    RowFnLetIRBuilder(const vm::SchemaSourceList& schema_sources,
-                      const node::FrameNode* frame, ::llvm::Module* module);
+    RowFnLetIRBuilder(CodeGenContext* ctx, const node::FrameNode* frame);
 
     ~RowFnLetIRBuilder();
 
-    base::Status Build(const std::string& name, node::LambdaNode* project_func,
-                       const std::vector<std::string>& project_names,
-                       const std::vector<node::FrameNode*>& project_frames,
-                       vm::Schema* output_schema,
-                       vm::ColumnSourceList* output_column_sources);
+    Status Build(const std::string& name, node::LambdaNode* project_func,
+                 const std::vector<std::string>& project_names,
+                 const std::vector<node::FrameNode*>& project_frames,
+                 vm::Schema* output_schema,
+                 vm::ColumnSourceList* output_column_sources);
 
  private:
     bool BuildFnHeader(const std::string& name,
@@ -52,19 +54,18 @@ class RowFnLetIRBuilder {
                        ::llvm::Type* ret_type, ::llvm::Function** fn);
 
     bool FillArgs(const std::vector<std::string>& args, ::llvm::Function* fn,
-                  ScopeVar& sv);  // NOLINT
+                  ScopeVar* sv);
 
     bool EncodeBuf(
-        const std::map<uint32_t, NativeValue>* values, const vm::Schema& schema,
+        const std::map<uint32_t, NativeValue>* values, const vm::Schema* schema,
         VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
         ::llvm::BasicBlock* block, const std::string& output_ptr_name);
 
-    bool BuildProject(
-        const uint32_t index, const node::ExprNode* expr,
-        const std::string& col_name, std::map<uint32_t, NativeValue>* output,
-        ExprIRBuilder& expr_ir_builder,  // NOLINT (runtime/references)
-        vm::Schema* output_schema, vm::ColumnSourceList* output_column_sources,
-        base::Status& status);  // NOLINT (runtime/references)
+    Status BuildProject(ExprIRBuilder* expr_ir_builder, const uint32_t index,
+                        const node::ExprNode* expr, const std::string& col_name,
+                        std::map<uint32_t, NativeValue>* output,
+                        vm::Schema* output_schema,
+                        vm::ColumnSourceList* output_column_sources);
 
     bool AddOutputColumnInfo(const std::string& col_name,
                              ::fesql::type::Type ctype,
@@ -78,10 +79,8 @@ class RowFnLetIRBuilder {
                             ::llvm::BasicBlock* block, ScopeVar* sv);
 
  private:
-    // input schema
-    const vm::SchemasContext schema_context_;
+    CodeGenContext* ctx_;
     const node::FrameNode* frame_;
-    ::llvm::Module* module_;
 };
 
 }  // namespace codegen

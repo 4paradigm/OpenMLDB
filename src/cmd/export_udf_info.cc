@@ -62,8 +62,7 @@ class UDFTypeExtractor {
             node::NodeManager* nm = &node_manager_;
             std::vector<node::ExprNode*> args;
             for (size_t i = 0; i < arg_types->size(); ++i) {
-                auto arg_node = nm->MakeExprIdNode(
-                    "arg_" + std::to_string(i), node::ExprIdNode::GetNewId());
+                auto arg_node = nm->MakeExprIdNode("arg_" + std::to_string(i));
                 arg_node->SetOutputType((*arg_types)[i]);
                 arg_node->SetNullable(false);
                 args.push_back(arg_node);

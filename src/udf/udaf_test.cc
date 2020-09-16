@@ -188,8 +188,8 @@ TEST_F(UDAFTest, topk_test) {
 
 TEST_F(UDAFTest, sum_cate_test) {
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<int32_t>>(
-        "sum_cate", StringRef("1:4,2:6"),
-        MakeList<int32_t>({1, 2, 3, 4}), MakeList<int32_t>({1, 2, 1, 2}));
+        "sum_cate", StringRef("1:4,2:6"), MakeList<int32_t>({1, 2, 3, 4}),
+        MakeList<int32_t>({1, 2, 1, 2}));
 
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<Date>>(
         "sum_cate", StringRef("1900-01-01:4,1900-01-02:6"),
@@ -197,8 +197,7 @@ TEST_F(UDAFTest, sum_cate_test) {
         MakeList<Date>({Date(1), Date(2), Date(1), Date(2)}));
 
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<StringRef>>(
-        "sum_cate", StringRef("x:4,y:6"),
-        MakeList<int32_t>({1, 2, 3, 4}),
+        "sum_cate", StringRef("x:4,y:6"), MakeList<int32_t>({1, 2, 3, 4}),
         MakeList<StringRef>(
             {StringRef("x"), StringRef("y"), StringRef("x"), StringRef("y")}));
 
@@ -219,8 +218,8 @@ TEST_F(UDAFTest, sum_cate_test) {
 
 TEST_F(UDAFTest, count_cate_test) {
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<int32_t>>(
-        "count_cate", StringRef("1:2,2:2"),
-        MakeList<int32_t>({1, 2, 3, 4}), MakeList<int32_t>({1, 2, 1, 2}));
+        "count_cate", StringRef("1:2,2:2"), MakeList<int32_t>({1, 2, 3, 4}),
+        MakeList<int32_t>({1, 2, 1, 2}));
 
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<Date>>(
         "count_cate", StringRef("1900-01-01:2,1900-01-02:2"),
@@ -228,8 +227,7 @@ TEST_F(UDAFTest, count_cate_test) {
         MakeList<Date>({Date(1), Date(2), Date(1), Date(2)}));
 
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<StringRef>>(
-        "count_cate", StringRef("x:1,y:3"),
-        MakeList<int32_t>({1, 2, 3, 4}),
+        "count_cate", StringRef("x:1,y:3"), MakeList<int32_t>({1, 2, 3, 4}),
         MakeList<StringRef>(
             {StringRef("x"), StringRef("y"), StringRef("y"), StringRef("y")}));
 
@@ -250,8 +248,8 @@ TEST_F(UDAFTest, count_cate_test) {
 
 TEST_F(UDAFTest, min_cate_test) {
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<int32_t>>(
-        "min_cate", StringRef("1:1,2:2"),
-        MakeList<int32_t>({1, 2, 3, 4}), MakeList<int32_t>({1, 2, 1, 2}));
+        "min_cate", StringRef("1:1,2:2"), MakeList<int32_t>({1, 2, 3, 4}),
+        MakeList<int32_t>({1, 2, 1, 2}));
 
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<Date>>(
         "min_cate", StringRef("1900-01-01:1,1900-01-02:2"),
@@ -259,8 +257,7 @@ TEST_F(UDAFTest, min_cate_test) {
         MakeList<Date>({Date(1), Date(2), Date(1), Date(2)}));
 
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<StringRef>>(
-        "min_cate", StringRef("x:1,y:2"),
-        MakeList<int32_t>({1, 2, 3, 4}),
+        "min_cate", StringRef("x:1,y:2"), MakeList<int32_t>({1, 2, 3, 4}),
         MakeList<StringRef>(
             {StringRef("x"), StringRef("y"), StringRef("x"), StringRef("y")}));
 
@@ -281,8 +278,8 @@ TEST_F(UDAFTest, min_cate_test) {
 
 TEST_F(UDAFTest, max_cate_test) {
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<int32_t>>(
-        "max_cate", StringRef("1:3,2:4"),
-        MakeList<int32_t>({1, 2, 3, 4}), MakeList<int32_t>({1, 2, 1, 2}));
+        "max_cate", StringRef("1:3,2:4"), MakeList<int32_t>({1, 2, 3, 4}),
+        MakeList<int32_t>({1, 2, 1, 2}));
 
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<Date>>(
         "max_cate", StringRef("1900-01-01:3,1900-01-02:4"),
@@ -290,8 +287,7 @@ TEST_F(UDAFTest, max_cate_test) {
         MakeList<Date>({Date(1), Date(2), Date(1), Date(2)}));
 
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<StringRef>>(
-        "max_cate", StringRef("x:3,y:4"),
-        MakeList<int32_t>({1, 2, 3, 4}),
+        "max_cate", StringRef("x:3,y:4"), MakeList<int32_t>({1, 2, 3, 4}),
         MakeList<StringRef>(
             {StringRef("x"), StringRef("y"), StringRef("x"), StringRef("y")}));
 
@@ -532,8 +528,7 @@ TEST_F(UDAFTest, top_n_key_count_cate_where_test) {
 
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<Date>,
              ListRef<int32_t>>(
-        "top_n_key_count_cate_where",
-        StringRef("1900-01-02:2,1900-01-01:2"),
+        "top_n_key_count_cate_where", StringRef("1900-01-02:2,1900-01-01:2"),
         MakeList<int32_t>({1, 2, 3, 4, 5, 6, 7, 8, 9}),
         MakeBoolList({true, true, true, true, true, true, false, false, false}),
         MakeList<Date>({Date(0), Date(1), Date(2), Date(0), Date(1), Date(2),
@@ -580,8 +575,7 @@ TEST_F(UDAFTest, top_n_key_sum_cate_where_test) {
 
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<Date>,
              ListRef<int32_t>>(
-        "top_n_key_sum_cate_where",
-        StringRef("1900-01-02:9,1900-01-01:7"),
+        "top_n_key_sum_cate_where", StringRef("1900-01-02:9,1900-01-01:7"),
         MakeList<int32_t>({1, 2, 3, 4, 5, 6, 7, 8, 9}),
         MakeBoolList({true, true, true, true, true, true, false, false, false}),
         MakeList<Date>({Date(0), Date(1), Date(2), Date(0), Date(1), Date(2),
@@ -628,8 +622,7 @@ TEST_F(UDAFTest, top_n_key_min_cate_where_test) {
 
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<Date>,
              ListRef<int32_t>>(
-        "top_n_key_min_cate_where",
-        StringRef("1900-01-02:3,1900-01-01:2"),
+        "top_n_key_min_cate_where", StringRef("1900-01-02:3,1900-01-01:2"),
         MakeList<int32_t>({1, 2, 3, 4, 5, 6, 7, 8, 9}),
         MakeBoolList({true, true, true, true, true, true, false, false, false}),
         MakeList<Date>({Date(0), Date(1), Date(2), Date(0), Date(1), Date(2),
@@ -676,8 +669,7 @@ TEST_F(UDAFTest, top_n_key_max_cate_where_test) {
 
     CheckUDF<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<Date>,
              ListRef<int32_t>>(
-        "top_n_key_max_cate_where",
-        StringRef("1900-01-02:6,1900-01-01:5"),
+        "top_n_key_max_cate_where", StringRef("1900-01-02:6,1900-01-01:5"),
         MakeList<int32_t>({1, 2, 3, 4, 5, 6, 7, 8, 9}),
         MakeBoolList({true, true, true, true, true, true, false, false, false}),
         MakeList<Date>({Date(0), Date(1), Date(2), Date(0), Date(1), Date(2),

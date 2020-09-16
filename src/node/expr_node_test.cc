@@ -56,8 +56,7 @@ void CheckInfer(
     std::vector<int> arg_nullable = {udf::IsNullableTrait<T>::value...};
     std::vector<ExprNode*> args;
     for (size_t i = 0; i < sizeof...(T); ++i) {
-        auto expr_id = nm.MakeExprIdNode("arg_" + std::to_string(i),
-                                         ExprIdNode::GetNewId());
+        auto expr_id = nm.MakeExprIdNode("arg_" + std::to_string(i));
         expr_id->SetOutputType(arg_types[i]);
         expr_id->SetNullable(arg_nullable[i]);
         args.push_back(expr_id);
@@ -108,8 +107,7 @@ void CheckInferError(
     std::vector<int> arg_nullable = {udf::IsNullableTrait<T>::value...};
     std::vector<ExprNode*> args;
     for (size_t i = 0; i < sizeof...(T); ++i) {
-        auto expr_id = nm.MakeExprIdNode("arg_" + std::to_string(i),
-                                         ExprIdNode::GetNewId());
+        auto expr_id = nm.MakeExprIdNode("arg_" + std::to_string(i));
         expr_id->SetOutputType(arg_types[i]);
         expr_id->SetNullable(arg_nullable[i]);
         args.push_back(expr_id);
@@ -881,7 +879,7 @@ TEST_F(ExprNodeTest, InferBinaryCompareTypeTest) {
 
 TEST_F(ExprNodeTest, InferBinaryCompareTypeTest1) {
     auto do_build = [](NodeManager* nm, ExprNode* left, ExprNode* right) {
-      return nm->MakeBinaryExprNode(left, right, kFnOpEq);
+        return nm->MakeBinaryExprNode(left, right, kFnOpEq);
     };
     CheckInfer<bool, bool, bool>(do_build);
 }

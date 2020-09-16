@@ -44,15 +44,15 @@ class TypeIRBuilder {
     static bool IsNumber(::llvm::Type* type);
     static bool isFloatPoint(::llvm::Type* type);
     static const std::string TypeName(::llvm::Type* type);
-    static const bool GetTypeNode(::llvm::Type* type,
-                                  node::TypeNode* type_node);
+
     static base::Status UnaryOpTypeInfer(
         const std::function<base::Status(
-            const node::TypeNode&, node::TypeNode*)>,
+            node::NodeManager*, const node::TypeNode*, const node::TypeNode**)>,
         ::llvm::Type* lhs);
     static base::Status BinaryOpTypeInfer(
-        const std::function<base::Status(
-            const node::TypeNode&, const node::TypeNode&, node::TypeNode*)>,
+        const std::function<
+            base::Status(node::NodeManager*, const node::TypeNode*,
+                         const node::TypeNode*, const node::TypeNode**)>,
         ::llvm::Type* lhs, ::llvm::Type* rhs);
 };
 

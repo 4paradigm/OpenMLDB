@@ -36,6 +36,8 @@ vm::SchemasContext::SchemasContext(
             map_iter->second.push_back(idx);
         }
         idx++;
+
+        row_decoders_.push_back(codec::RowDecoder(iter->schema_));
     }
 }
 
@@ -303,6 +305,10 @@ int32_t SchemasContext::ColumnOffsetResolved(
         offset += this->row_schema_info_list_[i].schema_->size();
     }
     return offset;
+}
+
+const codec::RowDecoder* SchemasContext::GetDecoder(size_t slice_id) const {
+    return &row_decoders_[slice_id];
 }
 
 }  // namespace vm

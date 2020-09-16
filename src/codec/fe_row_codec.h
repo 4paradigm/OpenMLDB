@@ -205,15 +205,16 @@ struct StringColInfo : public ColInfo {
 
 class RowDecoder {
  public:
-    explicit RowDecoder(const fesql::codec::Schema& schema);
+    explicit RowDecoder(const fesql::codec::Schema* schema);
     virtual ~RowDecoder() {}
 
-    virtual bool ResolveColumn(const std::string& name, ColInfo* res);
+    virtual bool ResolveColumn(const std::string& name, ColInfo* res) const;
 
-    virtual bool ResolveStringCol(const std::string& name, StringColInfo* res);
+    virtual bool ResolveStringCol(const std::string& name,
+                                  StringColInfo* res) const;
 
  private:
-    fesql::codec::Schema schema_;
+    const fesql::codec::Schema* schema_;
     std::map<std::string, ColInfo> infos_;
     std::map<uint32_t, uint32_t> next_str_pos_;
     uint32_t str_field_start_offset_;

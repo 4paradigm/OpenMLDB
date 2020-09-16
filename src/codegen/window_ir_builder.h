@@ -53,11 +53,8 @@ class WindowDecodeIRBuilder {
 
 class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
  public:
-    MemoryWindowDecodeIRBuilder(const vm::Schema& schema,
+    MemoryWindowDecodeIRBuilder(vm::SchemasContext* schemas_context,
                                 ::llvm::BasicBlock* block);
-    MemoryWindowDecodeIRBuilder(
-        const std::vector<vm::RowSchemaInfo>& schema_list,
-        ::llvm::BasicBlock* block);
 
     ~MemoryWindowDecodeIRBuilder();
     virtual bool BuildInnerRangeList(::llvm::Value* window_ptr, int64_t start,
@@ -86,7 +83,7 @@ class MemoryWindowDecodeIRBuilder : public WindowDecodeIRBuilder {
 
  private:
     ::llvm::BasicBlock* block_;
-    std::vector<::fesql::codec::RowDecoder> decoder_list_;
+    vm::SchemasContext* schemas_context_;
 };
 
 }  // namespace codegen

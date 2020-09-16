@@ -10,6 +10,7 @@
 #include <set>
 #include <stack>
 #include <unordered_map>
+#include "codegen/context.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
 #include "vm/physical_op.h"
@@ -873,7 +874,10 @@ bool BatchModeTransformer::GenProjects(const SchemaSourceList& input_schemas,
     }
 
     // TODO(wangtaize) use ops end op output schema
-    ::fesql::codegen::RowFnLetIRBuilder builder(input_schemas, frame, module_);
+    vm::SchemasContext schemas_context(input_schemas);
+    codegen::CodeGenContext codegen_ctx(module_, &schemas_context,
+                                        node_manager_);
+    codegen::RowFnLetIRBuilder builder(&codegen_ctx, frame);
     fn_name = "__internal_sql_codegen_" + std::to_string(id_++);
     status = builder.Build(fn_name, project_func, project_names, project_frames,
                            output_schema, output_column_sources);

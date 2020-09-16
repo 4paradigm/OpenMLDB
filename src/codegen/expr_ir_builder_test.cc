@@ -88,7 +88,7 @@ void GenAddExpr(node::NodeManager *manager, ::fesql::node::ExprNode **expr) {
     new ::fesql::node::BinaryExpr(::fesql::node::kFnOpAdd);
 
     ::fesql::node::ExprNode *i32_node = (manager->MakeConstNode(1));
-    ::fesql::node::ExprNode *id_node = (manager->MakeExprIdNode("a", 0));
+    ::fesql::node::ExprNode *id_node = (manager->MakeExprIdNode("a"));
     ::fesql::node::ExprNode *bexpr =
         (manager->MakeBinaryExprNode(i32_node, id_node, fesql::node::kFnOpAdd));
     *expr = bexpr;
@@ -741,8 +741,8 @@ TEST_F(ExprIRBuilderTest, test_get_field) {
 TEST_F(ExprIRBuilderTest, test_build_lambda) {
     ExprCheck(
         [](node::NodeManager *nm, ExprNode *x, ExprNode *y) {
-            auto arg1 = nm->MakeExprIdNode("x", 1001);
-            auto arg2 = nm->MakeExprIdNode("y", 1002);
+            auto arg1 = nm->MakeExprIdNode("x");
+            auto arg2 = nm->MakeExprIdNode("y");
             arg1->SetOutputType(nm->MakeTypeNode(node::kInt32));
             arg2->SetOutputType(nm->MakeTypeNode(node::kInt32));
             auto body = nm->MakeBinaryExprNode(arg1, arg2, node::kFnOpAdd);

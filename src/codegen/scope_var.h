@@ -27,36 +27,30 @@
 
 namespace fesql {
 namespace codegen {
-struct Scope {
-    std::string name;
-    ::llvm::Value* ret_addr = nullptr;
-    // the value is the pointer or  value
-    std::map<std::string, NativeValue> scope_map;
-    std::vector<::llvm::Value*> scope_iterators;
-};
-
-typedef std::vector<Scope> Scopes;
 
 class ScopeVar {
  public:
     ScopeVar();
+    explicit ScopeVar(ScopeVar* parent);
     ~ScopeVar();
 
-    bool Enter(const std::string& name);
-    bool Exit();
     bool AddVar(const std::string& name, const NativeValue& value);
     bool ReplaceVar(const std::string& name, const NativeValue& value);
     bool FindVar(const std::string& name, NativeValue* value);
-    bool ExistVar(const std::string& name);
+    bool HasVar(const std::string& name);
+
     // Register values to be destroyed before exit scope
     bool AddIteratorValue(::llvm::Value* value);
     std::vector<const std::vector<::llvm::Value*>*> GetIteratorValues();
     const std::vector<::llvm::Value*>* GetScopeIteratorValues();
 
-    bool ScopeExist();
+    ScopeVar* parent() const { return parent_; }
+    void SetParent(ScopeVar* parent) { parent_ = parent; }
 
  private:
-    Scopes scopes_;
+    ScopeVar* parent_;
+    std::map<std::string, NativeValue> scope_map_;
+    std::vector<::llvm::Value*> scope_iterators_;
 };
 
 }  // namespace codegen

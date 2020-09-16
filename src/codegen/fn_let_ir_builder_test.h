@@ -26,6 +26,7 @@
 #include "codec/fe_row_codec.h"
 #include "codec/list_iterator_codec.h"
 #include "codegen/codegen_base_test.h"
+#include "codegen/context.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
 #include "gtest/gtest.h"
@@ -138,11 +139,12 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     }
     ASSERT_TRUE(status.isOK());
 
-    RowFnLetIRBuilder ir_builder(name_schemas,
+    vm::SchemasContext schemas_ctx(name_schemas);
+    CodeGenContext codegen_ctx(m.get(), &schemas_ctx, manager);
+    RowFnLetIRBuilder ir_builder(&codegen_ctx,
                                  nullptr == pp_node_ptr->GetW()
                                      ? nullptr
-                                     : pp_node_ptr->GetW()->frame_node(),
-                                 m.get());
+                                     : pp_node_ptr->GetW()->frame_node());
     status = ir_builder.Build("test_at_fn", to_compile_func, project_names,
                               project_frames, output_schema, column_sources);
     LOG(INFO) << "fn let ir build status: " << status;

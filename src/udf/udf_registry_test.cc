@@ -21,7 +21,10 @@ using fesql::node::ExprNode;
 using fesql::node::NodeManager;
 using fesql::node::TypeNode;
 
-class UDFRegistryTest : public ::testing::Test {};
+class UDFRegistryTest : public ::testing::Test {
+ public:
+    node::NodeManager nm;
+};
 
 template <typename... LiteralArgTypes>
 const node::FnDefNode* GetFnDef(UDFLibrary* lib, const std::string& name,
@@ -32,7 +35,7 @@ const node::FnDefNode* GetFnDef(UDFLibrary* lib, const std::string& name,
     std::vector<node::ExprNode*> arg_list;
     for (size_t i = 0; i < arg_types.size(); ++i) {
         std::string arg_name = "arg_" + std::to_string(i);
-        auto expr = nm->MakeExprIdNode(arg_name, node::ExprIdNode::GetNewId());
+        auto expr = nm->MakeExprIdNode(arg_name);
         expr->SetOutputType(arg_types[i]);
         arg_list.push_back(expr);
     }
@@ -51,7 +54,6 @@ const node::FnDefNode* GetFnDef(UDFLibrary* lib, const std::string& name,
 
 TEST_F(UDFRegistryTest, test_expr_udf_register) {
     UDFLibrary library;
-    node::NodeManager nm;
     const node::FnDefNode* fn_def;
 
     // define "add"
@@ -108,7 +110,6 @@ TEST_F(UDFRegistryTest, test_expr_udf_register) {
 
 TEST_F(UDFRegistryTest, test_variadic_expr_udf_register) {
     UDFLibrary library;
-    node::NodeManager nm;
     const node::FnDefNode* fn_def;
 
     // define "join"
@@ -172,14 +173,13 @@ TEST_F(UDFRegistryTest, test_variadic_expr_udf_register) {
 
 TEST_F(UDFRegistryTest, test_variadic_expr_udf_register_order) {
     UDFLibrary library;
-    node::NodeManager nm;
     const node::FnDefNode* fn_def;
 
     // define "concat"
     library.RegisterExprUDF("concat")
         .variadic_args<>(
             [](UDFResolveContext* ctx, const std::vector<ExprNode*> other) {
-                return ctx->node_manager()->MakeExprIdNode("concat", 0);
+                return ctx->node_manager()->MakeExprIdNode("concat");
             })
 
         .variadic_args<int32_t>([](UDFResolveContext* ctx, ExprNode* x,
@@ -187,7 +187,7 @@ TEST_F(UDFRegistryTest, test_variadic_expr_udf_register_order) {
             if (other.size() > 2) {
                 ctx->SetError("Error");
             }
-            return ctx->node_manager()->MakeExprIdNode("concat", 0);
+            return ctx->node_manager()->MakeExprIdNode("concat");
         });
 
     // resolve "concat"
@@ -204,7 +204,6 @@ TEST_F(UDFRegistryTest, test_variadic_expr_udf_register_order) {
 
 TEST_F(UDFRegistryTest, test_external_udf_register) {
     UDFLibrary library;
-    node::NodeManager nm;
     const node::ExternalFnDefNode* fn_def;
 
     // define "add"
@@ -256,7 +255,6 @@ TEST_F(UDFRegistryTest, test_external_udf_register) {
 
 TEST_F(UDFRegistryTest, test_variadic_external_udf_register) {
     UDFLibrary library;
-    node::NodeManager nm;
     const node::ExternalFnDefNode* fn_def;
 
     // define "join"
@@ -302,7 +300,6 @@ TEST_F(UDFRegistryTest, test_variadic_external_udf_register) {
 
 TEST_F(UDFRegistryTest, test_variadic_external_udf_register_order) {
     UDFLibrary library;
-    node::NodeManager nm;
     const node::ExternalFnDefNode* fn_def;
 
     // define "concat"
@@ -330,7 +327,7 @@ TEST_F(UDFRegistryTest, test_variadic_external_udf_register_order) {
 
 TEST_F(UDFRegistryTest, test_simple_udaf_register) {
     UDFLibrary library;
-    node::NodeManager nm;
+
     const node::UDAFDefNode* fn_def;
 
     library.RegisterExprUDF("add").args<AnyArg, AnyArg>(
@@ -373,7 +370,6 @@ TEST_F(UDFRegistryTest, test_simple_udaf_register) {
 
 TEST_F(UDFRegistryTest, test_codegen_udf_register) {
     UDFLibrary library;
-    node::NodeManager nm;
     const node::UDFByCodeGenDefNode* fn_def;
 
     library.RegisterCodeGenUDF("add").args<AnyArg, AnyArg>(
@@ -398,7 +394,6 @@ TEST_F(UDFRegistryTest, test_codegen_udf_register) {
 
 TEST_F(UDFRegistryTest, test_variadic_codegen_udf_register) {
     UDFLibrary library;
-    node::NodeManager nm;
     const node::UDFByCodeGenDefNode* fn_def;
 
     library.RegisterCodeGenUDF("concat").variadic_args<>(

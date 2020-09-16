@@ -25,6 +25,7 @@
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
 #include "glog/logging.h"
+#include "node/node_manager.h"
 
 namespace fesql {
 namespace codegen {
@@ -398,58 +399,61 @@ bool BuildGetPtrOffset(::llvm::IRBuilder<>& builder,  // NOLINT
     *outptr = builder.CreateIntToPtr(ptr_add_offset, type);
     return true;
 }
-bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node) {
-    if (type == NULL || type_node == NULL) {
+
+bool GetFullType(node::NodeManager* nm, ::llvm::Type* type,
+                 const ::fesql::node::TypeNode** type_node) {
+    if (nm == NULL || type == NULL || type_node == NULL) {
         LOG(WARNING) << "type or output is null";
         return false;
     }
-    if (false == GetBaseType(type, &type_node->base_)) {
+    node::DataType base;
+    if (false == GetBaseType(type, &base)) {
         LOG(WARNING) << "Fail to get base type of "
                      << GetLLVMObjectString(type);
         return false;
     }
 
-    switch (type_node->base_) {
+    switch (base) {
         case fesql::node::kList: {
             if (type->getTypeID() == ::llvm::Type::PointerTyID) {
                 type = reinterpret_cast<::llvm::PointerType*>(type)
                            ->getElementType();
             }
             if (type->getStructName().equals("fe.list_ref_int16")) {
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kInt16));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kInt16));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_int32")) {
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kInt32));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kInt32));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_int64")) {
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kInt64));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kInt64));
                 return true;
-            } else if (type->getStructName().equals("fe.list_ref_timestamp")) {
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kTimestamp));
+            } else if (type->getStructName().equals("fe.list_ref_bool")) {
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kBool));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_float")) {
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kFloat));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kFloat));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_double")) {
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kDouble));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kDouble));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_string")) {
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kVarchar));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kVarchar));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_timestamp")) {
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kTimestamp));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kTimestamp));
                 return true;
             } else if (type->getStructName().equals("fe.list_ref_date")) {
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kDate));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kDate));
                 return true;
             }
             LOG(WARNING) << "fail to get type of llvm type for "
@@ -462,45 +466,47 @@ bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node) {
                            ->getElementType();
             }
             if (type->getStructName().equals("fe.iterator_ref_int16")) {
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kInt16));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kInt16));
+                return true;
+
+            } else if (type->getStructName().equals("fe.iterator_ref_bool")) {
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kBool));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_int32")) {
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kInt32));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kInt32));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_int64")) {
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kInt64));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kInt64));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_float")) {
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kFloat));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kFloat));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_double")) {
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kDouble));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kDouble));
                 return true;
 
             } else if (type->getStructName().equals("fe.iterator_ref_string")) {
-                type_node->base_ = fesql::node::kIterator;
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kVarchar));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kVarchar));
                 return true;
             } else if (type->getStructName().equals(
                            "fe.iterator_ref_timestamp")) {
-                type_node->base_ = fesql::node::kIterator;
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kTimestamp));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kTimestamp));
                 return true;
             } else if (type->getStructName().equals("fe.iterator_ref_date")) {
-                type_node->base_ = fesql::node::kIterator;
-                type_node->generics_.push_back(
-                    new node::TypeNode(fesql::node::kDate));
+                *type_node = nm->MakeTypeNode(
+                    base, nm->MakeTypeNode(fesql::node::kDate));
                 return true;
             }
             LOG(WARNING) << "fail to get type of llvm type for "
@@ -512,6 +518,7 @@ bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node) {
             return false;
         }
         default: {
+            *type_node = nm->MakeTypeNode(base);
             return true;
         }
     }
@@ -693,7 +700,7 @@ bool DataType2SchemaType(const ::fesql::node::TypeNode& type,
             *output = ::fesql::type::kDate;
             break;
         }
-        case :: fesql::node::kNull: {
+        case ::fesql::node::kNull: {
             // Encode的时候, kNull 就是 kBool
             *output = ::fesql::type::kBool;
             break;
@@ -802,16 +809,14 @@ bool TypeIRBuilder::isFloatPoint(::llvm::Type* type) {
     return type->isFloatingPointTy();
 }
 const std::string TypeIRBuilder::TypeName(::llvm::Type* type) {
-    node::TypeNode type_node;
-    if (!GetTypeNode(type, &type_node)) {
+    node::NodeManager tmp_node_manager;
+    const node::TypeNode* type_node = nullptr;
+    if (!GetFullType(&tmp_node_manager, type, &type_node)) {
         return "unknow";
     }
-    return type_node.GetName();
+    return type_node->GetName();
 }
-const bool TypeIRBuilder::GetTypeNode(::llvm::Type* type,
-                                      node::TypeNode* type_node) {
-    return GetFullType(type, type_node);
-}
+
 bool TypeIRBuilder::IsDatePtr(::llvm::Type* type) {
     ::fesql::node::DataType data_type;
     if (!IsStructPtr(type)) {
@@ -848,29 +853,33 @@ bool TypeIRBuilder::IsStructPtr(::llvm::Type* type) {
     return false;
 }
 base::Status TypeIRBuilder::UnaryOpTypeInfer(
-    const std::function<base::Status(const node::TypeNode&, node::TypeNode*)>
+    const std::function<base::Status(node::NodeManager*, const node::TypeNode*,
+                                     const node::TypeNode**)>
         func,
     ::llvm::Type* lhs) {
-    node::TypeNode left_type;
-    CHECK_TRUE(TypeIRBuilder::GetTypeNode(lhs, &left_type), common::kTypeError,
-               "invalid op type")
-    node::TypeNode output_type;
-    CHECK_STATUS(func(left_type, &output_type))
+    node::NodeManager tmp_node_manager;
+    const node::TypeNode* left_type = nullptr;
+    CHECK_TRUE(GetFullType(&tmp_node_manager, lhs, &left_type),
+               common::kTypeError, "invalid op type")
+    const node::TypeNode* output_type;
+    CHECK_STATUS(func(&tmp_node_manager, left_type, &output_type))
     return Status::OK();
 }
 base::Status TypeIRBuilder::BinaryOpTypeInfer(
-    const std::function<base::Status(const node::TypeNode&,
-                                     const node::TypeNode&, node::TypeNode*)>
+    const std::function<base::Status(node::NodeManager*, const node::TypeNode*,
+                                     const node::TypeNode*,
+                                     const node::TypeNode**)>
         func,
     ::llvm::Type* lhs, ::llvm::Type* rhs) {
-    node::TypeNode left_type;
-    node::TypeNode right_type;
-    CHECK_TRUE(TypeIRBuilder::GetTypeNode(lhs, &left_type), common::kTypeError,
-               "invalid op type")
-    CHECK_TRUE(TypeIRBuilder::GetTypeNode(rhs, &right_type), common::kTypeError,
-               "invalid op type")
-    node::TypeNode output_type;
-    CHECK_STATUS(func(left_type, right_type, &output_type))
+    const node::TypeNode* left_type = nullptr;
+    const node::TypeNode* right_type = nullptr;
+    node::NodeManager tmp_node_manager;
+    CHECK_TRUE(GetFullType(&tmp_node_manager, lhs, &left_type),
+               common::kTypeError, "invalid op type")
+    CHECK_TRUE(GetFullType(&tmp_node_manager, rhs, &right_type),
+               common::kTypeError, "invalid op type")
+    const node::TypeNode* output_type = nullptr;
+    CHECK_STATUS(func(&tmp_node_manager, left_type, right_type, &output_type))
     return Status::OK();
 }
 

@@ -29,16 +29,9 @@ namespace codegen {
 
 using TypeNodeVec = std::vector<const node::TypeNode*>;
 
-UDFIRBuilder::UDFIRBuilder(::llvm::BasicBlock* block, ScopeVar* scope_var,
-                           const vm::SchemasContext* schemas_context,
-                           ::llvm::Module* module, node::ExprNode* frame_arg,
+UDFIRBuilder::UDFIRBuilder(CodeGenContext* ctx, node::ExprNode* frame_arg,
                            node::FrameNode* frame)
-    : block_(block),
-      sv_(scope_var),
-      module_(module),
-      schemas_context_(schemas_context),
-      frame_arg_(frame_arg),
-      frame_(frame) {}
+    : ctx_(ctx), frame_arg_(frame_arg), frame_(frame) {}
 
 Status UDFIRBuilder::BuildCall(
     const node::FnDefNode* fn,
@@ -93,8 +86,9 @@ Status UDFIRBuilder::GetUDFCallee(
     ::llvm::FunctionCallee* callee, bool* return_by_arg) {
     std::string fn_name = fn->def()->header_->GeIRFunctionName();
     ::llvm::Type* llvm_ret_ty = nullptr;
-    CHECK_TRUE(GetLLVMType(module_, fn->GetReturnType(), &llvm_ret_ty),
-               kCodegenError);
+    CHECK_TRUE(
+        GetLLVMType(ctx_->GetModule(), fn->GetReturnType(), &llvm_ret_ty),
+        kCodegenError);
     if (TypeIRBuilder::IsStructPtr(llvm_ret_ty)) {
         *return_by_arg = true;
     } else {
@@ -112,15 +106,15 @@ Status UDFIRBuilder::GetUDFCallee(
                 break;
         }
     }
-    ::llvm::Function* llvm_func = module_->getFunction(fn_name);
+    ::llvm::Function* llvm_func = ctx_->GetModule()->getFunction(fn_name);
     if (llvm_func == nullptr) {
-        FnIRBuilder fn_builder(module_);
+        FnIRBuilder fn_builder(ctx_->GetModule());
         Status status;
         CHECK_TRUE(fn_builder.Build(fn->def(), &llvm_func, status),
                    kCodegenError, "Build udf failed: ", status.str());
     }
-    *callee =
-        module_->getOrInsertFunction(fn_name, llvm_func->getFunctionType());
+    *callee = ctx_->GetModule()->getOrInsertFunction(
+        fn_name, llvm_func->getFunctionType());
     return Status::OK();
 }
 
@@ -129,20 +123,23 @@ Status UDFIRBuilder::BuildLambdaCall(
     const std::vector<const node::TypeNode*>& arg_types,
     const std::vector<NativeValue>& args, NativeValue* output) {
     // bind lambda arguments
-    // sv_->Enter("Lambda"); name redef
+    auto sv = ctx_->GetCurrentScope()->sv();
+    ScopeVar inline_scope(sv->parent());
+    sv->SetParent(&inline_scope);
+
     for (size_t i = 0; i < fn->GetArgSize(); ++i) {
         auto expr_id = fn->GetArg(i);
-        sv_->AddVar(expr_id->GetExprString(), args[i]);
+        sv->AddVar(expr_id->GetExprString(), args[i]);
     }
 
     base::Status status;
-    ExprIRBuilder expr_builder(block_, sv_, schemas_context_, true, module_);
+    ExprIRBuilder expr_builder(ctx_);
     expr_builder.set_frame(frame_arg_, frame_);
-    bool ok = expr_builder.Build(fn->body(), output, status);
-    // sv_->Exit();
-    CHECK_TRUE(ok && status.isOK(), kCodegenError,
-               "Error during build lambda body: ", status.str(), "\n",
-               fn->body()->GetExprString());
+    CHECK_STATUS(expr_builder.Build(fn->body(), output),
+                 "Error during build lambda body: ", status.str(), "\n",
+                 fn->body()->GetExprString());
+
+    sv->SetParent(inline_scope.parent());
     return Status::OK();
 }
 
@@ -152,23 +149,21 @@ Status UDFIRBuilder::BuildCodeGenUDFCall(
     const std::vector<NativeValue>& args, NativeValue* output) {
     auto gen_impl = fn->GetGenImpl();
 
-    CodeGenContext codegen_ctx(module_);
-    BlockGuard guard(block_, &codegen_ctx);
-
     ::llvm::Value* ret_null = nullptr;
     for (size_t i = 0; i < fn->GetArgSize(); ++i) {
         if (!fn->IsArgNullable(i) && i < args.size() && args[i].IsNullable()) {
             NullIRBuilder null_ir_builder;
-            null_ir_builder.CheckAnyNull(block_, args[i], &ret_null);
+            null_ir_builder.CheckAnyNull(ctx_->GetCurrentBlock(), args[i],
+                                         &ret_null);
         }
     }
 
     NativeValue gen_output;
-    CHECK_STATUS(gen_impl->gen(&codegen_ctx, args, &gen_output));
+    CHECK_STATUS(gen_impl->gen(ctx_, args, &gen_output));
 
     if (ret_null != nullptr) {
         if (gen_output.IsNullable()) {
-            auto builder = codegen_ctx.GetBuilder();
+            auto builder = ctx_->GetBuilder();
             ret_null =
                 builder->CreateOr(ret_null, gen_output.GetIsNull(builder));
         }
@@ -273,7 +268,8 @@ Status UDFIRBuilder::ExpandLLVMCallReturnArgs(
         }
     } else {
         ::llvm::Type* llvm_ty = nullptr;
-        CHECK_TRUE(GetLLVMType(module_, dtype, &llvm_ty), kCodegenError);
+        CHECK_TRUE(GetLLVMType(ctx_->GetModule(), dtype, &llvm_ty),
+                   kCodegenError);
 
         ::llvm::Value* ret_alloca;
         auto opaque_ret_type = dynamic_cast<const node::OpaqueTypeNode*>(dtype);
@@ -324,7 +320,8 @@ Status UDFIRBuilder::ExtractLLVMReturnValue(
         *output = NativeValue::CreateTuple(fields);
     } else {
         ::llvm::Type* llvm_ty = nullptr;
-        CHECK_TRUE(GetLLVMType(module_, dtype, &llvm_ty), kCodegenError);
+        CHECK_TRUE(GetLLVMType(ctx_->GetModule(), dtype, &llvm_ty),
+                   kCodegenError);
 
         ::llvm::Value* raw;
         if (TypeIRBuilder::IsStructPtr(llvm_ty)) {
@@ -351,7 +348,7 @@ Status UDFIRBuilder::BuildLLVMCall(const node::FnDefNode* fn,
                                    ::llvm::FunctionCallee callee,
                                    const std::vector<NativeValue>& args,
                                    bool return_by_arg, NativeValue* output) {
-    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
     auto function_ty = callee.getFunctionType();
 
     // variadic pos, default non-variadic
@@ -439,7 +436,7 @@ Status UDFIRBuilder::GetLLVMFunctionType(const node::FnDefNode* fn,
         variadic = extern_fn->variadic_pos() >= 0;
     }
     return codegen::GetLLVMFunctionType(
-        module_, arg_types, arg_nullable, fn->GetReturnType(),
+        ctx_->GetModule(), arg_types, arg_nullable, fn->GetReturnType(),
         fn->IsReturnNullable(), variadic, &return_by_arg, func_ty);
 }
 
@@ -451,11 +448,12 @@ Status UDFIRBuilder::BuildExternCall(
     ::llvm::FunctionType* func_ty = nullptr;
     CHECK_STATUS(GetLLVMFunctionType(fn, &func_ty));
 
-    auto callee = module_->getOrInsertFunction(fn->function_name(), func_ty);
+    auto callee =
+        ctx_->GetModule()->getOrInsertFunction(fn->function_name(), func_ty);
 
     // set i16 signext attr for extern call
     // https://releases.llvm.org/9.0.0/docs/LangRef.html#parameter-attributes
-    auto function = module_->getFunction(fn->function_name());
+    auto function = ctx_->GetModule()->getFunction(fn->function_name());
     CHECK_TRUE(function != nullptr, kCodegenError);
     auto int16_ty = ::llvm::Type::getInt16Ty(function->getContext());
     auto sext_attr = ::llvm::Attribute::AttrKind::SExt;
@@ -482,9 +480,9 @@ Status UDFIRBuilder::BuildUDAFCall(
     const std::vector<NativeValue>& args, NativeValue* output) {
     // Compute udaf in sub-function
     // "void f_udaf_call_impl_(Inputs, Output*)"
-    size_t sub_function_id = module_->getFunctionList().size();
+    size_t sub_function_id = ctx_->GetModule()->getFunctionList().size();
     std::stringstream ss;
-    ss << block_->getParent()->getName().str() << "_udaf_call_impl_"
+    ss << ctx_->GetCurrentFunction()->getName().str() << "_udaf_call_impl_"
        << udaf->GetName() << "." << arg_types[0]->GetName() << "_"
        << sub_function_id;
     std::string sub_function_name = ss.str();
@@ -513,20 +511,21 @@ Status UDFIRBuilder::BuildUDAFCall(
         output_num = output_type->GetGenericSize();
     }
 
-    node::NodeManager nm;
-    auto subfunc_ret_type = nm.MakeTypeNode(node::kTuple);
+    node::NodeManager* nm = ctx_->node_manager();
+    auto subfunc_ret_type = nm->MakeTypeNode(node::kTuple);
     subfunc_ret_type->AddGeneric(output_type, false);
-    subfunc_ret_type->AddGeneric(nm.MakeTypeNode(node::kBool), false);
+    subfunc_ret_type->AddGeneric(nm->MakeTypeNode(node::kBool), false);
 
     // add global frame into sub-function closure
     std::vector<NativeValue> sub_args = args;
     std::vector<const node::TypeNode*> sub_arg_types = arg_types;
     std::vector<int> sub_arg_nullable(arg_types.size(), false);
+    ScopeVar* sv = ctx_->GetCurrentScope()->sv();
     size_t closure_num = 0;
     if (frame_arg_ != nullptr) {
         closure_num = 1;
         NativeValue frame_value;
-        if (sv_->FindVar(frame_arg_->GetExprString(), &frame_value)) {
+        if (sv->FindVar(frame_arg_->GetExprString(), &frame_value)) {
             sub_args.push_back(frame_value);
             sub_arg_types.push_back(frame_arg_->GetOutputType());
             sub_arg_nullable.push_back(false);
@@ -535,34 +534,32 @@ Status UDFIRBuilder::BuildUDAFCall(
 
     NativeValue tuple;
     auto sub_def =
-        nm.MakeExternalFnDefNode(sub_function_name, 0, subfunc_ret_type, false,
-                                 sub_arg_types, sub_arg_nullable, -1, true);
+        nm->MakeExternalFnDefNode(sub_function_name, 0, subfunc_ret_type, false,
+                                  sub_arg_types, sub_arg_nullable, -1, true);
     CHECK_STATUS(this->BuildExternCall(sub_def, arg_types, sub_args, &tuple));
     CHECK_TRUE(tuple.IsTuple(), kCodegenError);
 
     // extract null flag and values
-    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
     ::llvm::Value* is_null = tuple.GetField(1).GetValue(&builder);
     *output = NativeValue::CreateWithFlag(tuple.GetField(0).GetValue(&builder),
                                           is_null);
 
     // build sub-function
-    ::llvm::Function* sub_fn = module_->getFunction(sub_function_name);
+    ::llvm::Function* sub_fn =
+        ctx_->GetModule()->getFunction(sub_function_name);
     CHECK_TRUE(sub_fn != nullptr, kCodegenError, sub_function_name,
                " not generated");
+    FunctionScopeGuard sub_fn_guard(sub_fn, ctx_);
 
     // function scope
-    ScopeVar sub_sv;
-    sub_sv.Enter("sub_func_entry");
+    ScopeVar* sub_sv = ctx_->GetCurrentScope()->sv();
     if (frame_arg_ != nullptr) {
         ::llvm::Value* frame_raw_value = sub_fn->arg_begin() + input_num;
-        sub_sv.AddVar(frame_arg_->GetExprString(),
-                      NativeValue::Create(frame_raw_value));
-        sub_sv.AddVar("@window", NativeValue::Create(frame_raw_value));
+        sub_sv->AddVar(frame_arg_->GetExprString(),
+                       NativeValue::Create(frame_raw_value));
+        sub_sv->AddVar("@window", NativeValue::Create(frame_raw_value));
     }
-
-    ScopeVar* old_sv = sv_;
-    sv_ = &sub_sv;
 
     std::vector<::llvm::Value*> output_addrs;
     for (size_t i = 0; i < output_num; ++i) {
@@ -573,7 +570,7 @@ Status UDFIRBuilder::BuildUDAFCall(
         sub_fn->arg_begin() + input_num + closure_num + output_num;
 
     Status status;
-    ::llvm::LLVMContext& llvm_ctx = module_->getContext();
+    ::llvm::LLVMContext& llvm_ctx = ctx_->GetModule()->getContext();
 
     // infer state llvm types
     std::vector<llvm::Type*> state_llvm_tys;
@@ -581,14 +578,15 @@ Status UDFIRBuilder::BuildUDAFCall(
         // tuple state should be expanded
         for (auto field_type : state_type->generics()) {
             llvm::Type* llvm_ty = nullptr;
-            CHECK_TRUE(GetLLVMType(module_, field_type, &llvm_ty),
+            CHECK_TRUE(GetLLVMType(ctx_->GetModule(), field_type, &llvm_ty),
                        kCodegenError,
                        "Fail to get llvm type for " + field_type->GetName());
             state_llvm_tys.push_back(llvm_ty);
         }
     } else {
         llvm::Type* llvm_ty = nullptr;
-        CHECK_TRUE(GetLLVMType(module_, state_type, &llvm_ty), kCodegenError,
+        CHECK_TRUE(GetLLVMType(ctx_->GetModule(), state_type, &llvm_ty),
+                   kCodegenError,
                    "Fail to get llvm type for " + state_type->GetName());
         state_llvm_tys.push_back(llvm_ty);
     }
@@ -597,17 +595,9 @@ Status UDFIRBuilder::BuildUDAFCall(
     for (size_t i = 0; i < input_num; ++i) {
         list_ptrs.push_back(sub_fn->arg_begin() + i);
     }
-    ::llvm::BasicBlock* head_block =
-        ::llvm::BasicBlock::Create(llvm_ctx, "head", sub_fn);
-    ::llvm::BasicBlock* enter_block =
-        ::llvm::BasicBlock::Create(llvm_ctx, "enter_iter", sub_fn);
-    ::llvm::BasicBlock* body_block =
-        ::llvm::BasicBlock::Create(llvm_ctx, "iter_body", sub_fn);
-    ::llvm::BasicBlock* exit_block =
-        ::llvm::BasicBlock::Create(llvm_ctx, "exit_iter", sub_fn);
 
     // iter head
-    builder.SetInsertPoint(head_block);
+    ::llvm::BasicBlock* head_block = ctx_->GetCurrentBlock();
     ListIRBuilder iter_head_builder(head_block, nullptr);
     std::vector<::llvm::Value*> iterators;
     for (size_t i = 0; i < input_num; ++i) {
@@ -619,47 +609,15 @@ Status UDFIRBuilder::BuildUDAFCall(
 
     // build init state
     NativeValue init_value;
-    if (udaf->init_expr() != nullptr) {
-        ExprIRBuilder expr_builder(head_block, sv_, schemas_context_, true,
-                                   module_);
-        expr_builder.set_frame(frame_arg_, frame_);
-        CHECK_TRUE(expr_builder.Build(udaf->init_expr(), &init_value, status),
-                   kCodegenError, "Build init expr ",
-                   udaf->init_expr()->GetExprString(),
-                   " failed: ", status.str());
-    } else {
-        ::llvm::Value* has_first = nullptr;
-        for (size_t i = 0; i < input_num; ++i) {
-            ::llvm::Value* cur_has_first = nullptr;
-            CHECK_STATUS(iter_head_builder.BuildIteratorHasNext(
-                iterators[i], elem_types[i], &cur_has_first));
-            if (has_first == nullptr) {
-                has_first = cur_has_first;
-            } else {
-                has_first = builder.CreateAnd(has_first, cur_has_first);
-            }
-        }
-
-        ::llvm::BasicBlock* iter_first =
-            ::llvm::BasicBlock::Create(llvm_ctx, "iter_first", sub_fn);
-        ::llvm::BasicBlock* iter_empty =
-            ::llvm::BasicBlock::Create(llvm_ctx, "exit_empty", sub_fn);
-        builder.CreateCondBr(has_first, iter_first, iter_empty);
-
-        // iter empty
-        builder.SetInsertPoint(iter_empty);
-        builder.CreateStore(::llvm::ConstantInt::getTrue(llvm_ctx),
-                            output_is_null_ptr);
-        builder.CreateRetVoid();
-
-        // iter first elements
-        builder.SetInsertPoint(iter_first);
-        ListIRBuilder iter_first_builder(iter_first, nullptr);
-        CHECK_STATUS(iter_first_builder.BuildIteratorNext(
-            iterators[0], elem_types[0], elem_nullable[0], &init_value));
-    }
+    CHECK_TRUE(udaf->init_expr() != nullptr, kCodegenError);
+    ExprIRBuilder init_expr_builder(ctx_);
+    init_expr_builder.set_frame(frame_arg_, frame_);
+    CHECK_STATUS(init_expr_builder.Build(udaf->init_expr(), &init_value),
+                 "Build init expr ", udaf->init_expr()->GetExprString(),
+                 " failed: ", status.str());
 
     // local states storage
+    builder.SetInsertPoint(ctx_->GetCurrentBlock());
     std::vector<::llvm::Value*> states_storage(state_num);
     if (state_num > 1) {
         CHECK_TRUE(
@@ -683,83 +641,91 @@ Status UDFIRBuilder::BuildUDAFCall(
                                 states_storage[0]);
         }
     }
-    builder.CreateBr(enter_block);
 
-    // iter enter
-    builder.SetInsertPoint(enter_block);
-    ListIRBuilder iter_enter_builder(enter_block, nullptr);
-    ::llvm::Value* has_next = nullptr;
-    for (size_t i = 0; i < input_num; ++i) {
-        ::llvm::Value* cur_has_next = nullptr;
-        CHECK_STATUS(iter_enter_builder.BuildIteratorHasNext(
-                         iterators[i], elem_types[i], &cur_has_next),
-                     status.str());
-        if (has_next == nullptr) {
-            has_next = cur_has_next;
-        } else {
-            has_next = builder.CreateAnd(cur_has_next, has_next);
-        }
-    }
-    builder.CreateCondBr(has_next, body_block, exit_block);
-
-    // iter body
-    builder.SetInsertPoint(body_block);
-    ListIRBuilder iter_next_builder(body_block, nullptr);
-    UDFIRBuilder sub_udf_builder(body_block, sv_, schemas_context_, module_,
-                                 frame_arg_, frame_);
-
-    std::vector<NativeValue> cur_state_values;
-    std::vector<NativeValue> update_args;
-    for (size_t i = 0; i < state_num; ++i) {
-        if (TypeIRBuilder::IsStructPtr(states_storage[i]->getType())) {
-            cur_state_values.push_back(NativeValue::Create(states_storage[i]));
-        } else {
-            auto load_raw = builder.CreateLoad(states_storage[i]);
-            cur_state_values.push_back(NativeValue::Create(load_raw));
-        }
-    }
-    if (state_num > 1) {
-        update_args.push_back(NativeValue::CreateTuple(cur_state_values));
-    } else {
-        update_args.push_back(cur_state_values[0]);
-    }
-    for (size_t i = 0; i < input_num; ++i) {
-        NativeValue next_val;
-        CHECK_STATUS(iter_next_builder.BuildIteratorNext(
-            iterators[i], elem_types[i], elem_nullable[i], &next_val));
-        update_args.push_back(next_val);
-    }
-
-    NativeValue update_value;
-    std::vector<const node::TypeNode*> update_arg_types;
-    update_arg_types.push_back(state_type);
-    for (size_t i = 0; i < input_num; ++i) {
-        update_arg_types.push_back(elem_types[i]);
-    }
-    CHECK_TRUE(udaf->update_func() != nullptr, kCodegenError);
-    CHECK_STATUS(sub_udf_builder.BuildCall(
-        udaf->update_func(), update_arg_types, update_args, &update_value));
-
-    if (update_value.IsTuple()) {
-        CHECK_TRUE(update_value.GetFieldNum() == state_num, kCodegenError);
-        for (size_t i = 0; i < state_num; ++i) {
-            NativeValue sub = update_value.GetField(i);
-            ::llvm::Value* raw_update = sub.GetValue(&builder);
-            if (TypeIRBuilder::IsStructPtr(raw_update->getType())) {
-                raw_update = builder.CreateLoad(raw_update);
+    CHECK_STATUS(ctx_->CreateWhile(
+        [&](::llvm::Value** has_next) {
+            // enter
+            auto enter_block = ctx_->GetCurrentBlock();
+            builder.SetInsertPoint(enter_block);
+            ListIRBuilder iter_enter_builder(enter_block, nullptr);
+            for (size_t i = 0; i < input_num; ++i) {
+                ::llvm::Value* cur_has_next = nullptr;
+                CHECK_STATUS(iter_enter_builder.BuildIteratorHasNext(
+                                 iterators[i], elem_types[i], &cur_has_next),
+                             status.str());
+                if (*has_next == nullptr) {
+                    *has_next = cur_has_next;
+                } else {
+                    *has_next = builder.CreateAnd(cur_has_next, *has_next);
+                }
             }
-            builder.CreateStore(raw_update, states_storage[i]);
-        }
-    } else {
-        ::llvm::Value* raw_update = update_value.GetValue(&builder);
-        if (TypeIRBuilder::IsStructPtr(raw_update->getType())) {
-            raw_update = builder.CreateLoad(raw_update);
-        }
-        builder.CreateStore(raw_update, states_storage[0]);
-    }
-    builder.CreateBr(enter_block);
+            return Status::OK();
+        },
+        [&]() {
+            // iter body
+            auto body_begin_block = ctx_->GetCurrentBlock();
+            ListIRBuilder iter_next_builder(body_begin_block, nullptr);
+            UDFIRBuilder sub_udf_builder(ctx_, frame_arg_, frame_);
 
-    builder.SetInsertPoint(exit_block);
+            std::vector<NativeValue> cur_state_values;
+            std::vector<NativeValue> update_args;
+            for (size_t i = 0; i < state_num; ++i) {
+                if (TypeIRBuilder::IsStructPtr(states_storage[i]->getType())) {
+                    cur_state_values.push_back(
+                        NativeValue::Create(states_storage[i]));
+                } else {
+                    auto load_raw =
+                        ctx_->GetBuilder()->CreateLoad(states_storage[i]);
+                    cur_state_values.push_back(NativeValue::Create(load_raw));
+                }
+            }
+            if (state_num > 1) {
+                update_args.push_back(
+                    NativeValue::CreateTuple(cur_state_values));
+            } else {
+                update_args.push_back(cur_state_values[0]);
+            }
+            for (size_t i = 0; i < input_num; ++i) {
+                NativeValue next_val;
+                CHECK_STATUS(iter_next_builder.BuildIteratorNext(
+                    iterators[i], elem_types[i], elem_nullable[i], &next_val));
+                update_args.push_back(next_val);
+            }
+
+            NativeValue update_value;
+            std::vector<const node::TypeNode*> update_arg_types;
+            update_arg_types.push_back(state_type);
+            for (size_t i = 0; i < input_num; ++i) {
+                update_arg_types.push_back(elem_types[i]);
+            }
+            CHECK_TRUE(udaf->update_func() != nullptr, kCodegenError);
+            CHECK_STATUS(sub_udf_builder.BuildCall(udaf->update_func(),
+                                                   update_arg_types,
+                                                   update_args, &update_value));
+
+            builder.SetInsertPoint(ctx_->GetCurrentBlock());
+            if (update_value.IsTuple()) {
+                CHECK_TRUE(update_value.GetFieldNum() == state_num,
+                           kCodegenError);
+                for (size_t i = 0; i < state_num; ++i) {
+                    NativeValue sub = update_value.GetField(i);
+                    ::llvm::Value* raw_update = sub.GetValue(ctx_);
+                    if (TypeIRBuilder::IsStructPtr(raw_update->getType())) {
+                        raw_update = builder.CreateLoad(raw_update);
+                    }
+                    builder.CreateStore(raw_update, states_storage[i]);
+                }
+            } else {
+                ::llvm::Value* raw_update = update_value.GetValue(ctx_);
+                if (TypeIRBuilder::IsStructPtr(raw_update->getType())) {
+                    raw_update = builder.CreateLoad(raw_update);
+                }
+                builder.CreateStore(raw_update, states_storage[0]);
+            }
+            return Status::OK();
+        }));
+
+    builder.SetInsertPoint(ctx_->GetCurrentBlock());
     std::vector<NativeValue> final_state_values;
     for (size_t i = 0; i < state_num; ++i) {
         if (TypeIRBuilder::IsStructPtr(states_storage[i]->getType())) {
@@ -777,35 +743,34 @@ Status UDFIRBuilder::BuildUDAFCall(
         single_final_state = final_state_values[0];
     }
 
-    UDFIRBuilder sub_udf_builder_exit(exit_block, sv_, schemas_context_,
-                                      module_, frame_arg_, frame_);
+    UDFIRBuilder sub_udf_builder_exit(ctx_, frame_arg_, frame_);
     NativeValue local_output;
     CHECK_STATUS(
         sub_udf_builder_exit.BuildCall(udaf->output_func(), {state_type},
                                        {single_final_state}, &local_output),
         "Build output function call failed");
 
+    builder.SetInsertPoint(ctx_->GetCurrentBlock());
     if (output_num > 1) {
         CHECK_TRUE(
             local_output.IsTuple() && local_output.GetFieldNum() == output_num,
             kCodegenError);
         for (size_t i = 0; i < output_num; ++i) {
-            ::llvm::Value* raw_output =
-                local_output.GetField(i).GetValue(&builder);
+            ::llvm::Value* raw_output = local_output.GetField(i).GetValue(ctx_);
             if (!TypeIRBuilder::IsStructPtr(raw_output->getType())) {
                 raw_output = builder.CreateLoad(raw_output);
             }
             builder.CreateStore(raw_output, output_addrs[i]);
         }
     } else {
-        ::llvm::Value* raw_output = local_output.GetValue(&builder);
+        ::llvm::Value* raw_output = local_output.GetValue(ctx_);
         if (TypeIRBuilder::IsStructPtr(raw_output->getType())) {
             raw_output = builder.CreateLoad(raw_output);
         }
         builder.CreateStore(raw_output, output_addrs[0]);
     }
 
-    ListIRBuilder iter_delete_builder(exit_block, nullptr);
+    ListIRBuilder iter_delete_builder(ctx_->GetCurrentBlock(), nullptr);
     for (size_t i = 0; i < input_num; ++i) {
         ::llvm::Value* delete_iter_res;
         CHECK_STATUS(iter_delete_builder.BuildIteratorDelete(
@@ -814,8 +779,6 @@ Status UDFIRBuilder::BuildUDAFCall(
     builder.CreateStore(::llvm::ConstantInt::getFalse(llvm_ctx),
                         output_is_null_ptr);
     builder.CreateRetVoid();
-
-    sv_ = old_sv;
     return Status::OK();
 }
 

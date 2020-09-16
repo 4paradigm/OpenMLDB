@@ -450,7 +450,9 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
     auto module =
         std::unique_ptr<::llvm::Module>(new ::llvm::Module("Test", *llvm_ctx));
 
-    CodeGenContext context(module.get());
+    vm::SchemaSourceList empty_sources;
+    vm::SchemasContext schemas_context(empty_sources);
+    CodeGenContext context(module.get(), &schemas_context, &state->nm);
 
     auto arg_types = state->arg_types;
     auto arg_nullable = state->arg_nullable;
@@ -475,9 +477,6 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
     auto function = ::llvm::Function::Create(
         function_ty, llvm::Function::ExternalLinkage, fn_name, module.get());
     FunctionScopeGuard func_guard(function, &context);
-
-    BlockGroup block_group(&context);
-    BlockGroupGuard block_group_guard(&block_group);
 
     status = build_module(&context);
     if (!status.isOK()) {
@@ -603,7 +602,7 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
         .returns<Ret>()
         .template args<Args...>()
         .build([&](CodeGenContext* ctx) {
-            node::NodeManager nm;
+            node::NodeManager& nm = *ctx->node_manager();
 
             std::vector<node::TypeNode*> arg_types = {
                 udf::DataTypeTrait<Args>::to_type_node(&nm)...};
@@ -612,8 +611,7 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
 
             std::vector<node::ExprIdNode*> arg_exprs;
             for (size_t i = 0; i < sizeof...(Args); ++i) {
-                auto arg = nm.MakeExprIdNode("arg_" + std::to_string(i),
-                                             node::ExprIdNode::GetNewId());
+                auto arg = nm.MakeExprIdNode("arg_" + std::to_string(i));
                 auto arg_type = arg_types[i];
                 arg->SetOutputType(arg_type);
                 arg->SetNullable(arg_nullable[i]);
@@ -634,24 +632,18 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
                 LOG(WARNING) << "Expr resolve err: " << status;
             }
 
-            ScopeVar sv;
-            sv.Enter("entry");
-
-            ::llvm::IRBuilder<> builder(ctx->GetCurrentBlock());
-
+            ScopeVar* sv = ctx->GetCurrentScope()->sv();
             auto llvm_func = ctx->GetCurrentFunction();
             size_t llvm_arg_idx = 0;
             for (size_t i = 0; i < sizeof...(Args); ++i) {
                 auto value = BindValueFromLLVMFunction(
                     arg_types[i], arg_nullable[i], llvm_func, &llvm_arg_idx);
-                sv.AddVar(arg_exprs[i]->GetExprString(), value);
+                sv->AddVar(arg_exprs[i]->GetExprString(), value);
             }
 
-            ExprIRBuilder expr_builder(ctx->GetCurrentBlock(), &sv,
-                                       &empty_context, false, ctx->GetModule());
+            ExprIRBuilder expr_builder(ctx);
             NativeValue out;
-            CHECK_TRUE(expr_builder.Build(resolved_body, &out, status),
-                       kCodegenError, status.str());
+            CHECK_STATUS(expr_builder.Build(resolved_body, &out));
 
             auto ret_type = udf::DataTypeTrait<Ret>::to_type_node(&nm);
             bool ret_nullable = udf::IsNullableTrait<Ret>::value;

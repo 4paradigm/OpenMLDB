@@ -49,7 +49,6 @@ void MutableVariableCheck(::fesql::node::DataType type, V1 value1, V1 result) {
     auto iter = load_fn->arg_begin();
     Argument *arg0 = &(*iter);
     ScopeVar scope_var;
-    scope_var.Enter("fn_base");
     scope_var.AddVar("a", NativeValue::Create(arg0));
     VariableIRBuilder ir_builder(entry_block, &scope_var);
     NativeValue output;
@@ -90,7 +89,6 @@ void ArrayVariableCheck(node::DataType type, V1 *array, int pos, V1 exp) {
     auto iter = load_fn->arg_begin();
     Argument *arg0 = &(*iter);
     ScopeVar scope_var;
-    scope_var.Enter("fn_base");
     scope_var.AddVar("array_arg", NativeValue::Create(arg0));
     VariableIRBuilder ir_builder(entry_block, &scope_var);
     NativeValue output;
