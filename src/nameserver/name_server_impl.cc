@@ -10494,19 +10494,21 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
     }
     std::shared_ptr<::rtidb::nameserver::ProcedureInfo> sp_info(request->sp_info().New());
     sp_info->CopyFrom(request->sp_info());
+    const std::string& db_name = sp_info->db_name();
+    const std::string& sp_name = sp_info->sp_name();
     {
         std::lock_guard<std::mutex> lock(mu_);
-        if (databases_.find(sp_info->db()) == databases_.end()) {
+        if (databases_.find(db_name) == databases_.end()) {
             response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
             response->set_msg("database not found");
-            PDLOG(WARNING, "database[%s] not found", sp_info->db().c_str());
+            PDLOG(WARNING, "database[%s] not found", db_name.c_str());
             return;
         } else {
-            auto sp_infos = db_sp_info_[sp_info->db()];
-            if (sp_infos.find(sp_info->name()) != sp_infos.end()) {
+            auto sp_infos = db_sp_info_[db_name];
+            if (sp_infos.find(sp_name) != sp_infos.end()) {
                 response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
                 response->set_msg("store procedure already exists");
-                PDLOG(WARNING, "store procedure[%s] already exists", sp_info->name().c_str());
+                PDLOG(WARNING, "store procedure[%s] already exists", sp_name.c_str());
                 return;
             }
         }
@@ -10517,7 +10519,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
         sp_info->SerializeToString(&sp_value);
         std::string compressed;
         ::snappy::Compress(sp_value.c_str(), sp_value.length(), &compressed);
-        std::string sp_data_path = zk_db_sp_data_path_ + "/" + sp_info->name();
+        std::string sp_data_path = zk_db_sp_data_path_ + "/" + sp_name;
         if (zk_client_->IsExistNode(sp_data_path) != 0) {
             if (!zk_client_->CreateNode(sp_data_path, compressed)) {
                 PDLOG(WARNING, "create db store procedure node[%s] failed! value[%s] value size[%lu]",
@@ -10539,7 +10541,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
                 sp_data_path.c_str(), sp_value.c_str(), compressed.length());
         {
             std::lock_guard<std::mutex> lock(mu_);
-            db_sp_info_[sp_info->db()].insert(std::make_pair(sp_info->name(), sp_info));
+            db_sp_info_[db_name].insert(std::make_pair(sp_name, sp_info));
         }
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
@@ -10560,8 +10562,8 @@ bool NameServerImpl::RecoverProcedureInfo() {
         return false;
     }
     PDLOG(INFO, "need to recover db store procedure num[%d]", db_sp_vec.size());
-    for (const auto& sp_name : db_sp_vec) {
-        std::string sp_node = zk_db_sp_data_path_ + "/" + sp_name;
+    for (const auto& sp : db_sp_vec) {
+        std::string sp_node = zk_db_sp_data_path_ + "/" + sp;
         std::string value;
         if (!zk_client_->GetNodeValue(sp_node, value)) {
             PDLOG(WARNING, "get db store procedure info failed! sp node[%s]", sp_node.c_str());
@@ -10573,17 +10575,18 @@ bool NameServerImpl::RecoverProcedureInfo() {
         std::shared_ptr<::rtidb::nameserver::ProcedureInfo> sp_info =
             std::make_shared<::rtidb::nameserver::ProcedureInfo>();
         if (!sp_info->ParseFromString(uncompressed)) {
-            PDLOG(WARNING, "parse store procedure info failed! sp_name[%s] value size[%lu]",
-                    sp_name.c_str(), uncompressed.length());
+            PDLOG(WARNING, "parse store procedure info failed! sp[%s] value[%s] value size[%lu]",
+                    sp.c_str(), uncompressed.c_str(), uncompressed.length());
             continue;
         }
-        if (databases_.find(sp_info->db()) != databases_.end()) {
-            db_sp_info_[sp_info->db()].insert(std::make_pair(sp_info->name(), sp_info));
-            LOG(INFO) << "recover store procedure " << sp_info->name() << " with sql " << sp_info->sql() << " in db "
-                      << sp_info->db();
+        const std::string& db_name = sp_info->db_name();
+        const std::string& sp_name = sp_info->sp_name();
+        const std::string& sql = sp_info->sql();
+        if (databases_.find(db_name) != databases_.end()) {
+            db_sp_info_[db_name].insert(std::make_pair(sp_name, sp_info));
+            LOG(INFO) << "recover store procedure " << sp_name << " with sql " << sql << " in db " << db_name;
         } else {
-            LOG(WARNING) << "store procedure " << sp_info->name() << " not exist on recovering in db "
-                << sp_info->db();
+            LOG(WARNING) << "store procedure " << sp_name << " not exist on recovering in db " << db_name;
         }
     }
     return true;

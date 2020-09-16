@@ -428,8 +428,8 @@ bool NsClient::HandleSQLCreateProcedure(
             ::rtidb::nameserver::GeneralResponse response;
             ::rtidb::nameserver::ProcedureInfo* sp_info =
                 request.mutable_sp_info();
-            sp_info->set_db(db);
-            sp_info->set_name(create_sp->GetSpName());
+            sp_info->set_db_name(db);
+            sp_info->set_sp_name(create_sp->GetSpName());
             sp_info->set_sql(create_sp->GetSql());
             client_.SendRequest(
                 &::rtidb::nameserver::NameServer_Stub::CreateProcedure, &request,
