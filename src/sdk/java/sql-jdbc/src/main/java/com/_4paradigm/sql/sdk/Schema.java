@@ -1,41 +1,21 @@
 package com._4paradigm.sql.sdk;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Schema {
-    private String columnName;
-    private int sqlType;
-    private boolean isNotNull;
-    private boolean isConstant;
+    private List<Column> columnList = new ArrayList<>();
 
-    public String getColumnName() {
-        return columnName;
+    public Schema(List<Column> columnList) {
+        this.columnList = columnList;
     }
 
-    public void setColumnName(String columnName) {
-        this.columnName = columnName;
+    public List<Column> getColumnList() {
+        return columnList;
     }
 
-    public int getSqlType() {
-        return sqlType;
-    }
-
-    public void setSqlType(int sqlType) {
-        this.sqlType = sqlType;
-    }
-
-    public boolean isNotNull() {
-        return isNotNull;
-    }
-
-    public void setNotNull(boolean notNull) {
-        isNotNull = notNull;
-    }
-
-    public boolean isConstant() {
-        return isConstant;
-    }
-
-    public void setConstant(boolean constant) {
-        isConstant = constant;
+    public void setColumnList(List<Column> columnList) {
+        this.columnList = columnList;
     }
 }
 
