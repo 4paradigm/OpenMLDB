@@ -478,6 +478,16 @@ message ShowSdkEndpointResponse {
     optional string msg = 3;
 }
 
+message ProcedureInfo {
+    optional string db = 1;
+    optional string name = 2;
+    optional string sql = 3;
+}
+
+message CreateProcedureRequest {
+    optional ProcedureInfo sp_info = 1;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -524,4 +534,5 @@ service NameServer {
     rpc SetSdkEndpoint(SetSdkEndpointRequest) returns (GeneralResponse);
     rpc ShowBlobServer(ShowBlobServerRequest) returns (ShowBlobServerResponse);
     rpc ShowSdkEndpoint(ShowSdkEndpointRequest) returns (ShowSdkEndpointResponse);
+    rpc CreateProcedure(CreateProcedureRequest) returns (GeneralResponse);
 }

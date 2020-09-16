@@ -383,7 +383,8 @@ void HandleSQL(const std::string &sql) {
             std::cout << info->GetPhysicalPlan() << std::endl;
             return;
         }
-        case fesql::node::kCreateStmt: {
+        case fesql::node::kCreateStmt:
+        case fesql::node::kCreateSpStmt: {
             if (db.empty()) {
                 std::cout << "please use database first" << std::endl;
                 return;

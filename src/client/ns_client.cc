@@ -304,6 +304,14 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
             }
             return ok;
         }
+        case fesql::node::kCreateSpStmt: {
+            bool ok = HandleSQLCreateProcedure(parser_trees, db, &node_manager,
+                                           &sql_status);
+            if (!ok) {
+                msg = sql_status.msg;
+            }
+            return ok;
+        }
         default: {
             msg = "fail to execute script with unSuppurt type";
             return false;
@@ -379,6 +387,52 @@ bool NsClient::HandleSQLCreateTable(
             }
             client_.SendRequest(
                 &::rtidb::nameserver::NameServer_Stub::CreateTable, &request,
+                &response, FLAGS_request_timeout_ms, 1);
+            sql_status->msg = response.msg();
+            if (0 != response.code()) {
+                return false;
+            }
+            break;
+        }
+        default: {
+            sql_status->msg = "fail to execute script with unSuppurt type" +
+                              fesql::node::NameOfPlanNodeType(plan->GetType());
+            return false;
+        }
+    }
+    return true;
+}
+
+bool NsClient::HandleSQLCreateProcedure(
+    const fesql::node::NodePointVector& parser_trees, const std::string& db,
+    fesql::node::NodeManager* node_manager, fesql::base::Status* sql_status) {
+    fesql::plan::SimplePlanner planner(node_manager);
+    fesql::node::PlanNodeList plan_trees;
+    planner.CreatePlanTree(parser_trees, plan_trees, *sql_status);
+    if (0 != sql_status->code) {
+        return false;
+    }
+
+    fesql::node::PlanNode* plan = plan_trees[0];
+    if (nullptr == plan) {
+        sql_status->msg = "fail to execute plan : plan null";
+        return false;
+    }
+
+    switch (plan->GetType()) {
+        case fesql::node::kPlanTypeCreateSp: {
+            // TODO(wangbao) check select sql
+            fesql::node::CreateProcedurePlanNode* create_sp =
+                dynamic_cast<fesql::node::CreateProcedurePlanNode*>(plan);
+            ::rtidb::nameserver::CreateProcedureRequest request;
+            ::rtidb::nameserver::GeneralResponse response;
+            ::rtidb::nameserver::ProcedureInfo* sp_info =
+                request.mutable_sp_info();
+            sp_info->set_db(db);
+            sp_info->set_name(create_sp->GetSpName());
+            sp_info->set_sql(create_sp->GetSql());
+            client_.SendRequest(
+                &::rtidb::nameserver::NameServer_Stub::CreateProcedure, &request,
                 &response, FLAGS_request_timeout_ms, 1);
             sql_status->msg = response.msg();
             if (0 != response.code()) {
