@@ -84,7 +84,7 @@ class Cursor(object):
         self._resultSetMetadata = None
         self._resultSetStatus = None
         self.rowcount = -1
-        self.arraysize = 1
+        self._resultSet = None
 
     def connected(func):
         def func_wrapper(self, *args, **kwargs):
@@ -113,7 +113,6 @@ class Cursor(object):
             return false
         return true
 
-    @connected
     def execute(self, operation, parameters=()):
         command = operation.strip(' \t\n\r') if operation else None
         if command is None:
@@ -184,6 +183,25 @@ class Cursor(object):
                 ok, error = self.connection._sdk.executeInsert(self.db, command)
                 if not ok:
                     raise DatabaseError(err)
+        elif command.find("select ") == 0:
+            ok, rs = self.connection._sdk.executeQuery(self.db, command)
+            if not ok:
+                raise DatabaseError(err)
+            self.rowcount = rs.Size()
+            self._resultSet = rs
+            self.__schema = rs.GetSchema()
+            self.__getMap = {
+                driver.sql_router_sdk.kTypeBool: self._resultSet.GetBoolUnsafe,
+                driver.sql_router_sdk.kTypeInt16: self._resultSet.GetInt16Unsafe,
+                driver.sql_router_sdk.kTypeInt32: self._resultSet.GetInt32Unsafe,
+                driver.sql_router_sdk.kTypeInt64: self._resultSet.GetInt64Unsafe,
+                driver.sql_router_sdk.kTypeFloat: self._resultSet.GetFloatUnsafe,
+                driver.sql_router_sdk.kTypeDouble: self._resultSet.GetDoubleUnsafe,
+                driver.sql_router_sdk.kTypeString: self._resultSet.GetStringUnsafe,
+                driver.sql_router_sdk.kTypeDate: self._resultSet.GetDateUnsafe,
+                driver.sql_router_sdk.kTypeTimestamp: self._resultSet.GetTimeUnsafe
+            }
+            return self
         else:
             pass
 
@@ -204,9 +222,16 @@ class Cursor(object):
             names.append(row["column"])
             types.append(row["row"].lower())
 
-    @connected
     def fetchone(self):
-        return "call fetchone"
+        if self._resultSet is None: return "call fetchone"
+        self._resultSet.Next()
+        values = []
+        for i in range(self.__schema.GetColumnCnt()):
+            if self._resultSet.IsNULL(i):
+                values.append(None)
+            else:
+                values.append(self.__getMap[self.__schema.GetColumnType(i)](i))
+        return tuple(values)
 
     @connected
     def fetchmany(self, size=None):
