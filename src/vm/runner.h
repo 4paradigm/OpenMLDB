@@ -388,10 +388,10 @@ class Runner : public node::NodeBase<Runner> {
     const vm::SchemaSourceList& output_schemas() const {
         return output_schemas_;
     }
-    virtual const std::string GetTypeName() const override {
+    virtual const std::string GetTypeName() const {
         return RunnerTypeName(type_);
     }
-    virtual bool Equals(const Runner* other) const override {
+    virtual bool Equals(const Runner* other) const {
         return this == other;
     }
 
@@ -733,7 +733,7 @@ class LimitRunner : public Runner {
 };
 class RunnerBuilder {
  public:
-    RunnerBuilder(node::NodeManager* nm) : id_(0), nm_(nm){}
+    explicit RunnerBuilder(node::NodeManager* nm) : id_(0), nm_(nm){}
     virtual ~RunnerBuilder() {}
     Runner* Build(PhysicalOpNode* node,   // NOLINT
                   Status& status);                              // NOLINT
