@@ -1184,9 +1184,21 @@ base::Status BatchModeTransformer::ValidateJoinIndexOptimization(
     if (node::kJoinTypeConcat == join.join_type_) {
         return base::Status::OK();
     }
-    // check if window's order expression has been optimized
-    CHECK_STATUS(ValidatePartitionDataProvider(right),
-                 "Join node hasn't been optimized");
+
+    if (node::kJoinTypeLast == join.join_type_) {
+        CHECK_TRUE(
+            nullptr == join.right_sort_.orders() ||
+                node::ExprListNullOrEmpty(join.right_sort_.orders()->order_by_),
+            kPlanError, "Last Join node order by hasn't been optimized")
+    }
+    if (kSchemaTypeRow == right->output_type_) {
+        // skip index optimization check when join a row
+        return base::Status::OK();
+    } else {
+        CHECK_STATUS(ValidatePartitionDataProvider(right),
+                     "Join node hasn't been optimized");
+    }
+
     return base::Status::OK();
 }
 base::Status BatchModeTransformer::ValidateWindowIndexOptimization(

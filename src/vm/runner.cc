@@ -21,8 +21,7 @@ namespace vm {
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_MAX 20
 
-Runner* RunnerBuilder::Build(PhysicalOpNode* node,
-                             Status& status) {
+Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     if (nullptr == node) {
         status.msg = "fail to build runner : physical node is null";
         status.code = common::kOpGenError;
@@ -1023,8 +1022,15 @@ Row JoinGenerator::RowLastJoin(const Row& left_row,
             return RowLastJoinTable(
                 left_row, std::dynamic_pointer_cast<TableHandler>(right));
         }
+        case kRowHandler: {
+            auto right_table =
+                std::shared_ptr<MemTableHandler>(new MemTableHandler());
+            right_table->AddRow(
+                std::dynamic_pointer_cast<RowHandler>(right)->GetValue());
+            return RowLastJoinTable(left_row, right_table);
+        }
         default: {
-            LOG(WARNING) << "Last Join right isn't table or partition";
+            LOG(WARNING) << "Last Join right isn't row or table or partition";
             return Row(left_slices_, left_row, right_slices_, Row());
         }
     }

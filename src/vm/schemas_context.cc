@@ -180,7 +180,7 @@ bool SchemasContext::ColumnRefResolved(const std::string& relation_name,
 
     auto iter = col_context_id_map_.find(col_name);
     if (iter == col_context_id_map_.end()) {
-        LOG(WARNING) << "fail to find column";
+        LOG(WARNING) << "fail to find column " << col_name;
         return false;
     }
 
