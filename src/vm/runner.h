@@ -15,8 +15,8 @@
 #include <utility>
 #include <vector>
 #include "base/fe_status.h"
-#include "node/node_manager.h"
 #include "codec/fe_row_codec.h"
+#include "node/node_manager.h"
 #include "vm/catalog.h"
 #include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
@@ -391,9 +391,7 @@ class Runner : public node::NodeBase<Runner> {
     virtual const std::string GetTypeName() const {
         return RunnerTypeName(type_);
     }
-    virtual bool Equals(const Runner* other) const {
-        return this == other;
-    }
+    virtual bool Equals(const Runner* other) const { return this == other; }
 
  protected:
     bool need_cache_;
@@ -733,10 +731,10 @@ class LimitRunner : public Runner {
 };
 class RunnerBuilder {
  public:
-    explicit RunnerBuilder(node::NodeManager* nm) : id_(0), nm_(nm){}
+    explicit RunnerBuilder(node::NodeManager* nm) : id_(0), nm_(nm) {}
     virtual ~RunnerBuilder() {}
-    Runner* Build(PhysicalOpNode* node,   // NOLINT
-                  Status& status);                              // NOLINT
+    Runner* Build(PhysicalOpNode* node,  // NOLINT
+                  Status& status);       // NOLINT
  private:
     int32_t id_;
     node::NodeManager* nm_;
