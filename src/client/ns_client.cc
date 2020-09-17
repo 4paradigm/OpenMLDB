@@ -418,12 +418,14 @@ bool NsClient::HandleSQLCreateProcedure(
         sql_status->msg = "fail to execute plan : plan null";
         return false;
     }
-
     switch (plan->GetType()) {
         case fesql::node::kPlanTypeCreateSp: {
             // TODO(wangbao) check select sql
             fesql::node::CreateProcedurePlanNode* create_sp =
                 dynamic_cast<fesql::node::CreateProcedurePlanNode*>(plan);
+            if (create_sp == nullptr) {
+                return false;
+            }
             ::rtidb::nameserver::CreateProcedureRequest request;
             ::rtidb::nameserver::GeneralResponse response;
             ::rtidb::nameserver::ProcedureInfo* sp_info =
@@ -431,6 +433,33 @@ bool NsClient::HandleSQLCreateProcedure(
             sp_info->set_db_name(db);
             sp_info->set_sp_name(create_sp->GetSpName());
             sp_info->set_sql(create_sp->GetSql());
+
+            google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>* schema =
+                sp_info->mutable_input_schema();
+            for (auto input : create_sp->GetInputParameterList()) {
+                if (input == nullptr) {
+                    return false;
+                }
+                if (input->GetType() == fesql::node::kInputParameter) {
+                    fesql::node::InputParameterNode* input_ptr =
+                        (fesql::node::InputParameterNode*)input;
+                    if (input_ptr == nullptr) {
+                        return false;
+                    }
+                    ::rtidb::common::ColumnDesc* col_desc = schema->Add();
+                    col_desc->set_name(input_ptr->GetColumnName());
+                    auto rtidb_type = ::rtidb::catalog::SchemaAdapter::ConvertType(input_ptr->GetColumnType());
+                    if (rtidb_type == ::rtidb::type::kUnKnown) {
+                        sql_status->msg = "unknown column type";
+                        return false;
+                    }
+                    col_desc->set_data_type(rtidb_type);
+                } else {
+                    sql_status->msg = "fail to execute script with unSuppurt type" +
+                        fesql::node::NameOfSQLNodeType(input->GetType());
+                    return false;
+                }
+            }
             client_.SendRequest(
                 &::rtidb::nameserver::NameServer_Stub::CreateProcedure, &request,
                 &response, FLAGS_request_timeout_ms, 1);

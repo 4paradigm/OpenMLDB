@@ -17,6 +17,7 @@ enum DataType {
     kVarchar = 13;
     kString = 14;
     kBlob = 15;
+    kUnKnown = 100;
 }
 
 enum TableType {

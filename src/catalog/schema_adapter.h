@@ -182,6 +182,31 @@ class SchemaAdapter {
         }
         return true;
     }
+
+    static rtidb::type::DataType ConvertType(fesql::node::DataType sql_type) {
+        switch (sql_type) {
+            case fesql::node::kBool:
+                return ::rtidb::type::kBool;
+            case fesql::node::kInt16:
+                return ::rtidb::type::kSmallInt;
+            case fesql::node::kInt32:
+                return ::rtidb::type::kInt;
+            case fesql::node::kInt64:
+                return ::rtidb::type::kBigInt;
+            case fesql::node::kFloat:
+                return ::rtidb::type::kFloat;
+            case fesql::node::kDouble:
+                return ::rtidb::type::kDouble;
+            case fesql::node::kDate:
+                return ::rtidb::type::kDate;
+            case fesql::node::kTimestamp:
+                return ::rtidb::type::kTimestamp;
+            case fesql::node::kVarchar:
+                return ::rtidb::type::kVarchar;
+            default:
+                return ::rtidb::type::kUnKnown;
+        }
+    }
 };
 
 }  // namespace catalog
