@@ -262,7 +262,8 @@ class NsClient {
                               fesql::node::NodeManager* node_manager,
                               fesql::base::Status* sql_status);
     bool HandleSQLCreateProcedure(const fesql::node::NodePointVector& parser_trees,
-            const std::string& db, fesql::node::NodeManager* node_manager, fesql::base::Status* sql_status);
+            const std::string& db, const std::string& sql,
+            fesql::node::NodeManager* node_manager, fesql::base::Status* sql_status);
 
  private:
     std::string endpoint_;

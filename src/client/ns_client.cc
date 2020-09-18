@@ -305,8 +305,8 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
             return ok;
         }
         case fesql::node::kCreateSpStmt: {
-            bool ok = HandleSQLCreateProcedure(parser_trees, db, &node_manager,
-                                           &sql_status);
+            bool ok = HandleSQLCreateProcedure(parser_trees, db, script,
+                &node_manager, &sql_status);
             if (!ok) {
                 msg = sql_status.msg;
             }
@@ -403,8 +403,8 @@ bool NsClient::HandleSQLCreateTable(
     return true;
 }
 
-bool NsClient::HandleSQLCreateProcedure(
-    const fesql::node::NodePointVector& parser_trees, const std::string& db,
+bool NsClient::HandleSQLCreateProcedure(const fesql::node::NodePointVector& parser_trees,
+    const std::string& db, const std::string& sql,
     fesql::node::NodeManager* node_manager, fesql::base::Status* sql_status) {
     fesql::plan::SimplePlanner planner(node_manager);
     fesql::node::PlanNodeList plan_trees;
@@ -420,7 +420,6 @@ bool NsClient::HandleSQLCreateProcedure(
     }
     switch (plan->GetType()) {
         case fesql::node::kPlanTypeCreateSp: {
-            // TODO(wangbao) check select sql
             fesql::node::CreateProcedurePlanNode* create_sp =
                 dynamic_cast<fesql::node::CreateProcedurePlanNode*>(plan);
             if (create_sp == nullptr) {
@@ -432,7 +431,7 @@ bool NsClient::HandleSQLCreateProcedure(
                 request.mutable_sp_info();
             sp_info->set_db_name(db);
             sp_info->set_sp_name(create_sp->GetSpName());
-            sp_info->set_sql(create_sp->GetSql());
+            sp_info->set_sql(sql);
 
             google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>* schema =
                 sp_info->mutable_input_schema();

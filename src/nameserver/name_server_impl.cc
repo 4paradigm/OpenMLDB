@@ -10519,7 +10519,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
         sp_info->SerializeToString(&sp_value);
         std::string compressed;
         ::snappy::Compress(sp_value.c_str(), sp_value.length(), &compressed);
-        std::string sp_data_path = zk_db_sp_data_path_ + "/" + sp_name;
+        std::string sp_data_path = zk_db_sp_data_path_ + "/" + db_name + "_" + sp_name;
         if (zk_client_->IsExistNode(sp_data_path) != 0) {
             if (!zk_client_->CreateNode(sp_data_path, compressed)) {
                 PDLOG(WARNING, "create db store procedure node[%s] failed! value[%s] value size[%lu]",
@@ -10557,13 +10557,13 @@ bool NameServerImpl::RecoverProcedureInfo() {
         if (zk_client_->IsExistNode(zk_db_sp_data_path_) > 0) {
             PDLOG(WARNING, "db store procedure data node is not exist");
         } else {
-            PDLOG(WARNING, "get db store procedure id failed!");
+            PDLOG(WARNING, "get db store procedure data node failed!");
         }
         return false;
     }
     PDLOG(INFO, "need to recover db store procedure num[%d]", db_sp_vec.size());
-    for (const auto& sp : db_sp_vec) {
-        std::string sp_node = zk_db_sp_data_path_ + "/" + sp;
+    for (const auto& node : db_sp_vec) {
+        std::string sp_node = zk_db_sp_data_path_ + "/" + node;
         std::string value;
         if (!zk_client_->GetNodeValue(sp_node, value)) {
             PDLOG(WARNING, "get db store procedure info failed! sp node[%s]", sp_node.c_str());
@@ -10575,8 +10575,7 @@ bool NameServerImpl::RecoverProcedureInfo() {
         std::shared_ptr<::rtidb::nameserver::ProcedureInfo> sp_info =
             std::make_shared<::rtidb::nameserver::ProcedureInfo>();
         if (!sp_info->ParseFromString(uncompressed)) {
-            PDLOG(WARNING, "parse store procedure info failed! sp[%s] value[%s] value size[%lu]",
-                    sp.c_str(), uncompressed.c_str(), uncompressed.length());
+            PDLOG(WARNING, "parse store procedure info failed! node[%s]", sp_node.c_str());
             continue;
         }
         const std::string& db_name = sp_info->db_name();
@@ -10586,7 +10585,7 @@ bool NameServerImpl::RecoverProcedureInfo() {
             db_sp_info_[db_name].insert(std::make_pair(sp_name, sp_info));
             LOG(INFO) << "recover store procedure " << sp_name << " with sql " << sql << " in db " << db_name;
         } else {
-            LOG(WARNING) << "store procedure " << sp_name << " not exist on recovering in db " << db_name;
+            LOG(WARNING) << "db " << db_name << " not exist";
         }
     }
     return true;
