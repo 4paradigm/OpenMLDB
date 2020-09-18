@@ -529,8 +529,16 @@ int SimplePlanner::CreatePlanTree(
             }
             case node::kCreateSpStmt: {
                 PlanNode *create_sp_plan = nullptr;
-                if (!CreateCreateProcedurePlan(
-                            parser_tree, &create_sp_plan, status)) {
+                PlanNodeList inner_plan_node_list;
+                const node::CreateSpStmt *create_sp_tree =
+                    (const node::CreateSpStmt *)parser_tree;
+                if (CreatePlanTree(create_sp_tree->GetInnerNodeList(),
+                            inner_plan_node_list, status) !=
+                        common::StatusCode::kOk) {
+                    return status.code;
+                }
+                if (!CreateCreateProcedurePlan(parser_tree,
+                            inner_plan_node_list, &create_sp_plan, status)) {
                     return status.code;
                 }
                 plan_trees.push_back(create_sp_plan);
@@ -650,12 +658,12 @@ bool Planner::CreateCmdPlan(const SQLNode *root, node::PlanNode **output,
 }
 
 bool Planner::CreateCreateProcedurePlan(
-    const node::SQLNode *root, node::PlanNode **output,
-    Status &status) {  // NOLINT (runtime/references)
+    const node::SQLNode *root, const PlanNodeList& inner_plan_node_list,
+    node::PlanNode **output, Status &status) {  // NOLINT (runtime/references)
     const node::CreateSpStmt *create_sp_tree = (const node::CreateSpStmt *)root;
     *output = node_manager_->MakeCreateProcedurePlanNode(
-        create_sp_tree->GetSpName(), create_sp_tree->GetSql(),
-        create_sp_tree->GetInputParameterList());
+            create_sp_tree->GetSpName(),
+            create_sp_tree->GetInputParameterList(), inner_plan_node_list);
     return true;
 }
 

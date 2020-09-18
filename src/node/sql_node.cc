@@ -1915,10 +1915,11 @@ void CreateSpStmt::Print(std::ostream &output,
     output << "\n";
     PrintValue(output, tab, sp_name_, "sp_name", false);
     output << "\n";
-    PrintValue(output, tab, sql_, "sql", false);
-    output << "\n";
     PrintSQLVector(output, tab, input_parameter_list_,
-            "input_parameter_list", true);
+            "input_parameter_list", false);
+    output << "\n";
+    PrintSQLVector(output, tab, inner_node_list_,
+            "inner_node_list", true);
 }
 
 void InputParameterNode::Print(std::ostream &output,

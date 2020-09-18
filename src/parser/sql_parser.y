@@ -464,7 +464,7 @@ typedef void* yyscan_t;
 /* create procedure */
 %type <node> create_sp_stmt input_parameter
 %type <list> input_parameters
-%type <strval> sp_name sql
+%type <strval> sp_name
 
 %start grammar
 
@@ -1120,11 +1120,10 @@ distribution:   role_type EQUALS endpoint
                 }
                 ;
 
-create_sp_stmt:   CREATE PROCEDURE sp_name '(' input_parameters ')' BEGINTOKEN sql END
+create_sp_stmt:   CREATE PROCEDURE sp_name '(' input_parameters ')' BEGINTOKEN stmt END
                   {
                       $$ = node_manager->MakeCreateProcedureNode($3, $5, $8);         
                       free($3);
-                      free($8);
                   }   
                   ;
 
@@ -1153,10 +1152,6 @@ input_parameter:    column_name types
 
 sp_name:
     SQL_IDENTIFIER
-    ;
-
-sql:
-    STRING
     ;
 
 /*****************************************************************************

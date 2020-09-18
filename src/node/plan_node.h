@@ -423,39 +423,43 @@ class FuncDefPlanNode : public LeafPlanNode {
 
 class CreateProcedurePlanNode : public LeafPlanNode {
  public:
-    CreateProcedurePlanNode(const std::string &sp_name, const std::string& sql,
-                   NodePointVector input_parameter_list)
+    CreateProcedurePlanNode(const std::string &sp_name,
+                   const NodePointVector& input_parameter_list,
+                   const PlanNodeList& inner_plan_node_list)
         : LeafPlanNode(kPlanTypeCreateSp),
           database_(""),
           sp_name_(sp_name),
-          sql_(sql),
-          input_parameter_list_(input_parameter_list) {}
+          input_parameter_list_(input_parameter_list),
+          inner_plan_node_list_(inner_plan_node_list) {}
     ~CreateProcedurePlanNode() {}
 
-    std::string GetDatabase() const { return database_; }
+    const std::string& GetDatabase() const { return database_; }
 
     void setDatabase(const std::string &database) { database_ = database; }
 
-    std::string GetSpName() const { return sp_name_; }
+    const std::string& GetSpName() const { return sp_name_; }
 
     void setSpName(const std::string &sp_name) {
         sp_name_ = sp_name;
     }
-    std::string GetSql() const { return sql_; }
 
-    void setSql(const std::string &sql) {
-        sql_ = sql;
-    }
     NodePointVector &GetInputParameterList() { return input_parameter_list_; }
     void SetInputParameterList(const NodePointVector &input_parameter_list) {
         input_parameter_list_ = input_parameter_list;
     }
 
+    const PlanNodeList &GetInnerPlanNodeList() const {
+        return inner_plan_node_list_;
+    }
+    void SetInnerPlanNodeList(const PlanNodeList &inner_plan_node_list) {
+        inner_plan_node_list_ = inner_plan_node_list;
+    }
+
  private:
     std::string database_;
     std::string sp_name_;
-    std::string sql_;
     NodePointVector input_parameter_list_;
+    PlanNodeList inner_plan_node_list_;
 };
 
 bool PlanEquals(const PlanNode *left, const PlanNode *right);
