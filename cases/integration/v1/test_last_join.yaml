@@ -127,12 +127,12 @@ cases:
       success: false
   -
     id: 4-2
-    desc: Last Join 无order by, 拼表条件命中前缀索引
+    desc: Last Join 无order by, 部分拼表条件命中索引
     mode: offline-unsupport
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-        indexs: ["index1:c1:c4"]
+        indexs: ["index1:c1:c3"]
         rows:
           - ["aa",2,3,1590738989000]
           - ["aa",20,30,1590738991000]
@@ -140,7 +140,7 @@ cases:
           - ["dd",41,51,1590738990000]
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-        indexs: ["index1:c1:c4"]
+        indexs: ["index1:c1:c3"]
         rows:
           - ["aa",2,13,1590738989000]
           - ["aa",3,14,1590738990000]
@@ -155,6 +155,92 @@ cases:
         - ["aa",2,13,1590738989000]
         - ["aa",20,15,1590738991000]
         - ["bb",21,131,1590738990000]
+        - ["dd", 41, NULL, NULL]
+  -
+    id: 4-3
+    desc: Last Join 无order by, 拼表条件命中前缀索引
+    tags: ["TODO", "@chenjing, @wangtaize, @denglong如何使用前缀索引"]
+    mode: offline-unsupport
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["aa",20,30,1590738991000]
+          - ["bb",21,31,1590738990000]
+          - ["dd",41,51,1590738990000]
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1|c2:c4"]
+        rows:
+          - ["aa",2,13,1590738989000]
+          - ["aa",3,14,1590738990000]
+          - ["aa",4,15,1590738991000]
+          - ["bb",21,131,1590738990000]
+          - ["cc",41,121,1590738991000]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1 and {0}.c4={1}.c4;
+    expect:
+      columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+      order: c2
+      rows:
+        - ["aa",2,13,1590738989000]
+        - ["aa",20,15,1590738991000]
+        - ["bb",21,131,1590738990000]
+        - ["dd", 41, NULL, NULL]
+  -
+    id: 4-4
+    desc: Last Join 无order by, 拼表条件命中后缀索引
+    mode: offline-unsupport
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["aa",20,30,1590738991000]
+          - ["bb",21,31,1590738990000]
+          - ["dd",41,51,1590738990000]
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c2|c1:c4"]
+        rows:
+          - ["aa",2,13,1590738989000]
+          - ["aa",3,14,1590738990000]
+          - ["aa",4,15,1590738991000]
+          - ["bb",21,131,1590738990000]
+          - ["cc",41,121,1590738991000]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1 and {0}.c4={1}.c4;
+    expect:
+      success: false
+  -
+    id: 4-5
+    desc: Last Join 无order by, 拼表条件命中索引, 副表多条命中
+    mode: batch-unsupport
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["dd",41,51,1590738990000]
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c3"]
+        rows:
+          - ["aa",2,13,1590738989000]
+          - ["bb",21,131,1590738990000]
+          - ["bb",31,132,1590738989000]
+          - ["bb",51,130,1590738992000]
+          - ["cc",41,121,1590738991000]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1;
+    expect:
+      columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+      order: c1
+      rows:
+        - ["aa",2,13,1590738989000]
+        - ["bb",21,132,1590738989000]
         - ["dd", 41, NULL, NULL]
   -
     id: 5

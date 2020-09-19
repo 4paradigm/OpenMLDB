@@ -155,7 +155,7 @@ cases:
   -
     id: 8
     desc: window样本表和副表都作子查询
-    mode: rtidb-batch-unsupport
+    mode: rtidb-batch-unsupport, python-unsupport
     inputs:
       -
         columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
@@ -195,6 +195,7 @@ cases:
   -
     id: 9
     desc: window样本表和副表都作子查询,INSTANCE_NOT_IN_WINDOW
+    mode: python-unsupport
     inputs:
       -
         columns : ["id int", "user_id string", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
@@ -234,7 +235,7 @@ cases:
   -
     id: 10
     desc: 特征拼接
-    mode: rtidb-batch-unsupport, offline-unsupport
+    mode: rtidb-batch-unsupport, offline-unsupport, python-unsupport
     inputs:
       -
         columns : ["id int", "user_id string", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
