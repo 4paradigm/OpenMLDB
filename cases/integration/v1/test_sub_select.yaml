@@ -163,7 +163,7 @@ cases:
         indexs: ["index1:card_no:trx_time"]
         rows:
           - [1, "aaaaaaaaaa",1, 1590738989000, 1.1]
-          - [2, "aaaaaaaaaa",1, 1590738990000, 2.2]
+          - [2, "aaaaaaaaaa",1, 1590738991000, 2.2]
           - [3, "bb",10, 1590738990000, 3.3]
       -
         columns : ["crd_lst_isu_dte timestamp", "crd_nbr string"]
@@ -190,7 +190,7 @@ cases:
       order: id
       rows:
         - [1, "aaaaaaaaaa", 1590738989000, "aaaaaa", 1.1, 2]
-        - [2, "aaaaaaaaaa", 1590738990000, "aaaaaa", 3.3, 4]
+        - [2, "aaaaaaaaaa", 1590738991000, "aaaaaa", 3.3, 4]
         - [3, "bb", 1590738990000, "bb", 3.3, 1]
   -
     id: 9
