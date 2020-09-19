@@ -234,7 +234,7 @@ cases:
   -
     id: 10
     desc: 特征拼接
-    mode: rtidb-batch-unsupport
+    mode: rtidb-batch-unsupport, offline-unsupport
     inputs:
       -
         columns : ["id int", "user_id string", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]

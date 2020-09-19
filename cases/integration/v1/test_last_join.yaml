@@ -80,6 +80,7 @@ cases:
   -
     id: 4-1
     desc: Last Join 无order by, 拼表条件命中索引
+    mode: offline-unsupport
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -106,6 +107,7 @@ cases:
   -
     id: 4-2
     desc: Last Join 无order by, 拼表条件没有命中索引
+    mode: offline-unsupport
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -126,6 +128,7 @@ cases:
   -
     id: 4-2
     desc: Last Join 无order by, 拼表条件命中前缀索引
+    mode: offline-unsupport
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
