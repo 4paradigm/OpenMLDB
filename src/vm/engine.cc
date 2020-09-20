@@ -215,6 +215,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     ctx.is_batch_mode = is_batch;
     ctx.sql = sql;
     ctx.db = db;
+    ctx.is_performance_sensitive = options_.is_performance_sensitive();
     SQLCompiler compiler(
         std::atomic_load_explicit(&cl_, std::memory_order_acquire), true, true);
     bool ok = compiler.Compile(ctx, *status);
