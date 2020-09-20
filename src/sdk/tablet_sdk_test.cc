@@ -251,7 +251,7 @@ TEST_P(TabletSdkTest, test_explain) {
             "    column3 float NOT NULL,\n"
             "    column4 bigint NOT NULL,\n"
             "    column5 int NOT NULL\n,"
-            "    index(key=column1, ts=column5)\n"
+            "    index(key=column1, ts=column4)\n"
             ");";
 
         fesql::sdk::Status status;
@@ -303,7 +303,7 @@ TEST_P(TabletSdkTest, test_create_and_query) {
             "    column3 float NOT NULL,\n"
             "    column4 bigint NOT NULL,\n"
             "    column5 int NOT NULL\n,"
-            "    index(key=column1, ts=column5)\n"
+            "    index(key=column1, ts=column4)\n"
             ");";
 
         std::string name = "db_1";
@@ -463,7 +463,7 @@ TEST_P(TabletSdkTest, test_udf_query) {
             "    column4 bigint NOT NULL,\n"
             "    column5 int NOT NULL,\n"
             "    column6 string,\n"
-            "    index(key=column1, ts=column5)\n"
+            "    index(key=column1, ts=column4)\n"
             ");";
         dbms_sdk->ExecuteQuery(name, sql, &status);
         ASSERT_EQ(0, static_cast<int>(status.code));
