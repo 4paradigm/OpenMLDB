@@ -301,6 +301,8 @@ class BatchModeTransformer {
                                                  PhysicalOpNode* in);
     base::Status ValidateJoinIndexOptimization(const Join& join,
                                                PhysicalOpNode* in);
+    base::Status ValidateRequestJoinIndexOptimization(const Join& join,
+                                                      PhysicalOpNode* in);
     base::Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
 
  protected:

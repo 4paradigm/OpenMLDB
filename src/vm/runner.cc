@@ -28,7 +28,6 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         LOG(WARNING) << status;
         return nullptr;
     }
-
     switch (node->type_) {
         case kPhysicalOpDataProvider: {
             auto op = dynamic_cast<const PhysicalDataProviderNode*>(node);
@@ -36,22 +35,22 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 case kProviderTypeTable: {
                     auto provider =
                         dynamic_cast<const PhysicalTableProviderNode*>(node);
-                    return new DataRunner(id_++,
-                                          node->GetOutputNameSchemaList(),
-                                          provider->table_handler_);
+                    return nm_->RegisterNode(
+                        new DataRunner(id_++, node->GetOutputNameSchemaList(),
+                                       provider->table_handler_));
                 }
                 case kProviderTypePartition: {
                     auto provider =
                         dynamic_cast<const PhysicalPartitionProviderNode*>(
                             node);
-                    return new DataRunner(
+                    return nm_->RegisterNode(new DataRunner(
                         id_++, node->GetOutputNameSchemaList(),
                         provider->table_handler_->GetPartition(
-                            provider->table_handler_, provider->index_name_));
+                            provider->table_handler_, provider->index_name_)));
                 }
                 case kProviderTypeRequest: {
-                    return new RequestRunner(id_++,
-                                             node->GetOutputNameSchemaList());
+                    return nm_->RegisterNode(new RequestRunner(
+                        id_++, node->GetOutputNameSchemaList()));
                 }
                 default: {
                     status.msg = "fail to support data provider type " +
@@ -73,14 +72,14 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
                 op->project_.fn_info_);
             runner->AddProducer(input);
-            return runner;
+            return nm_->RegisterNode(runner);
         }
         case kPhysicalOpConstProject: {
             auto op = dynamic_cast<const PhysicalConstProjectNode*>(node);
             auto runner =
                 new ConstProjectRunner(id_++, node->GetOutputNameSchemaList(),
                                        op->GetLimitCnt(), op->project_);
-            return runner;
+            return nm_->RegisterNode(runner);
         }
         case kPhysicalOpProject: {
             auto input = Build(node->producers().at(0), status);
@@ -95,14 +94,14 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->project_);
                     runner->AddProducer(input);
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 case kAggregation: {
                     auto runner =
                         new AggRunner(id_++, node->GetOutputNameSchemaList(),
                                       op->GetLimitCnt(), op->project_);
                     runner->AddProducer(input);
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 case kGroupAggregation: {
                     auto op =
@@ -111,7 +110,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->group_, op->project_);
                     runner->AddProducer(input);
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 case kWindowAggregation: {
                     auto op =
@@ -151,14 +150,14 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                                    union_table);
                         }
                     }
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 case kRowProject: {
                     auto runner = new RowProjectRunner(
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->project_);
                     runner->AddProducer(input);
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 default: {
                     status.msg = "fail to support project type " +
@@ -197,7 +196,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     runner->AddWindowUnion(window_union.second, union_table);
                 }
             }
-            return runner;
+            return nm_->RegisterNode(runner);
         }
         case kPhysicalOpRequestJoin: {
             auto left = Build(node->producers().at(0), status);
@@ -218,7 +217,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         right->output_schemas().GetSchemaSourceListSize());
                     runner->AddProducer(left);
                     runner->AddProducer(right);
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 case node::kJoinTypeConcat: {
                     auto runner =
@@ -226,7 +225,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                          op->GetLimitCnt());
                     runner->AddProducer(left);
                     runner->AddProducer(right);
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 default: {
                     status.code = common::kOpGenError;
@@ -256,7 +255,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         right->output_schemas().GetSchemaSourceListSize());
                     runner->AddProducer(left);
                     runner->AddProducer(right);
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 default: {
                     status.code = common::kOpGenError;
@@ -277,7 +276,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 new GroupRunner(id_++, node->GetOutputNameSchemaList(),
                                 op->GetLimitCnt(), op->group());
             runner->AddProducer(input);
-            return runner;
+            return nm_->RegisterNode(runner);
         }
         case kPhysicalOpFilter: {
             auto input = Build(node->producers().at(0), status);
@@ -289,7 +288,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 new FilterRunner(id_++, node->GetOutputNameSchemaList(),
                                  op->GetLimitCnt(), op->filter_.fn_info_);
             runner->AddProducer(input);
-            return runner;
+            return nm_->RegisterNode(runner);
         }
         case kPhysicalOpLimit: {
             auto input = Build(node->producers().at(0), status);
@@ -303,7 +302,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto runner = new LimitRunner(
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt());
             runner->AddProducer(input);
-            return runner;
+            return nm_->RegisterNode(runner);
         }
         default: {
             status.code = common::kOpGenError;
@@ -1023,8 +1022,15 @@ Row JoinGenerator::RowLastJoin(const Row& left_row,
             return RowLastJoinTable(
                 left_row, std::dynamic_pointer_cast<TableHandler>(right));
         }
+        case kRowHandler: {
+            auto right_table =
+                std::shared_ptr<MemTableHandler>(new MemTableHandler());
+            right_table->AddRow(
+                std::dynamic_pointer_cast<RowHandler>(right)->GetValue());
+            return RowLastJoinTable(left_row, right_table);
+        }
         default: {
-            LOG(WARNING) << "Last Join right isn't table or partition";
+            LOG(WARNING) << "Last Join right isn't row or table or partition";
             return Row(left_slices_, left_row, right_slices_, Row());
         }
     }

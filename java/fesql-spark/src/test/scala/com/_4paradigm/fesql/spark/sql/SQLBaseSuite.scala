@@ -71,7 +71,7 @@ class SQLBaseSuite extends SparkTestSuite {
 
       val sql = sqlCase.getSql
       if (sqlCase.getExpect != null && !sqlCase.getExpect.getSuccess) {
-        assertThrows[java.lang.RuntimeException] {
+        assertThrows[com._4paradigm.fesql.common.UnsupportedFesqlException] {
           spark.sql(sql).sparkDf
         }
       } else {

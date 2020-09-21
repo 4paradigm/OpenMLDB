@@ -16,6 +16,7 @@
 #include <vector>
 #include "base/fe_status.h"
 #include "codec/fe_row_codec.h"
+#include "node/node_manager.h"
 #include "vm/catalog.h"
 #include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
@@ -324,7 +325,7 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "UNKNOW";
     }
 }
-class Runner {
+class Runner : public node::NodeBase<Runner> {
  public:
     explicit Runner(const int32_t id)
         : id_(id),
@@ -387,6 +388,10 @@ class Runner {
     const vm::SchemaSourceList& output_schemas() const {
         return output_schemas_;
     }
+    virtual const std::string GetTypeName() const {
+        return RunnerTypeName(type_);
+    }
+    virtual bool Equals(const Runner* other) const { return this == other; }
 
  protected:
     bool need_cache_;
@@ -678,7 +683,6 @@ class RequestUnionRunner : public Runner {
         : Runner(id, kRunnerRequestUnion, schema, limit_cnt),
           range_gen_(range) {}
 
-    ~RequestUnionRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
@@ -727,13 +731,13 @@ class LimitRunner : public Runner {
 };
 class RunnerBuilder {
  public:
-    RunnerBuilder() : id_(0) {}
+    explicit RunnerBuilder(node::NodeManager* nm) : id_(0), nm_(nm) {}
     virtual ~RunnerBuilder() {}
-
-    Runner* Build(PhysicalOpNode* node, Status& status);  // NOLINT
-
+    Runner* Build(PhysicalOpNode* node,  // NOLINT
+                  Status& status);       // NOLINT
  private:
     int32_t id_;
+    node::NodeManager* nm_;
 };
 
 }  // namespace vm

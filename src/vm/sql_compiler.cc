@@ -397,7 +397,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     return true;
 }
 bool SQLCompiler::BuildRunner(SQLContext& ctx, Status& status) {  // NOLINT
-    RunnerBuilder runner_builder;
+    RunnerBuilder runner_builder(&ctx.nm);
     Runner* runner = runner_builder.Build(ctx.physical_plan, status);
     if (nullptr == runner) {
         status.msg = "fail to build runner: " + status.str();

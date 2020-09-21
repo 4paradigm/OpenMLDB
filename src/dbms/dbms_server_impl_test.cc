@@ -116,7 +116,7 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
             column->set_type(fesql::type::kInt32);
             column = table->add_columns();
             column->set_name("column2");
-            column->set_type(fesql::type::kInt32);
+            column->set_type(fesql::type::kInt64);
             ::fesql::type::IndexDef* index = table->add_indexes();
             index->set_name("index1");
             index->add_first_keys("column1");
@@ -141,7 +141,7 @@ TEST_F(DBMSServerImplTest, CreateTableTest) {
             column->set_type(fesql::type::kVarchar);
             column = table->add_columns();
             column->set_name("column2");
-            column->set_type(fesql::type::kInt32);
+            column->set_type(fesql::type::kInt64);
             ::fesql::type::IndexDef* index = table->add_indexes();
             index->set_name("index1");
             index->add_first_keys("column1");
@@ -336,7 +336,7 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
             column->set_type(fesql::type::kInt32);
             column = table->add_columns();
             column->set_name("column2");
-            column->set_type(fesql::type::kInt32);
+            column->set_type(fesql::type::kInt64);
             ::fesql::type::IndexDef* index = table->add_indexes();
             index->set_name("index1");
             index->add_first_keys("column1");
@@ -384,7 +384,7 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
             column->set_type(fesql::type::kVarchar);
             column = table->add_columns();
             column->set_name("column2");
-            column->set_type(fesql::type::kInt32);
+            column->set_type(fesql::type::kInt64);
             ::fesql::type::IndexDef* index = table->add_indexes();
             index->set_name("index1");
             index->add_first_keys("column1");
@@ -408,7 +408,7 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
             column->set_type(fesql::type::kInt32);
             column = table->add_columns();
             column->set_name("column2");
-            column->set_type(fesql::type::kInt32);
+            column->set_type(fesql::type::kInt64);
             ::fesql::type::IndexDef* index = table->add_indexes();
             index->set_name("index1");
             index->add_first_keys("column1");
@@ -432,7 +432,7 @@ TEST_F(DBMSServerImplTest, GetDatabasesAndTablesTest) {
             column->set_type(fesql::type::kVarchar);
             column = table->add_columns();
             column->set_name("column2");
-            column->set_type(fesql::type::kInt32);
+            column->set_type(fesql::type::kInt64);
             ::fesql::type::IndexDef* index = table->add_indexes();
             index->set_name("index1");
             index->add_first_keys("column1");

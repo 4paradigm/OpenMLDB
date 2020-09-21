@@ -6,7 +6,7 @@ cases:
     sql: select col1, col2, col1 >2 AND col2 > 2 as flag from t1;
     inputs:
       - name: t1
-        schema: col1:int32, col2:int32
+        schema: col1:int32, col2:int64
         index: index1:col1:col2
         data: |
           1, 2
@@ -14,7 +14,7 @@ cases:
           3, 4
           4, 5
     output:
-      schema: col1:int32, col2:int32, flag:bool
+      schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
         1, 2, false
@@ -28,7 +28,7 @@ cases:
     sql: select col1, col2, (col1 >2) && (col2 > 2) as flag from t1;
     inputs:
       - name: t1
-        schema: col1:int32, col2:int32
+        schema: col1:int32, col2:int64
         index: index1:col1:col2
         data: |
           1, 2
@@ -36,7 +36,7 @@ cases:
           3, 4
           4, 5
     output:
-      schema: col1:int32, col2:int32, flag:bool
+      schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
         1, 2, false
@@ -50,7 +50,7 @@ cases:
     sql: select col1, col2, (col1 >2) OR (col2 > 2) as flag from t1;
     inputs:
       - name: t1
-        schema: col1:int32, col2:int32
+        schema: col1:int32, col2:int64
         index: index1:col1:col2
         data: |
           1, 2
@@ -58,7 +58,7 @@ cases:
           3, 4
           4, 5
     output:
-      schema: col1:int32, col2:int32, flag:bool
+      schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
         1, 2, false
@@ -72,7 +72,7 @@ cases:
     sql: select col1, col2, (col1 >2) || (col2 > 2) as flag from t1;
     inputs:
       - name: t1
-        schema: col1:int32, col2:int32
+        schema: col1:int32, col2:int64
         index: index1:col1:col2
         data: |
           1, 2
@@ -80,7 +80,7 @@ cases:
           3, 4
           4, 5
     output:
-      schema: col1:int32, col2:int32, flag:bool
+      schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
         1, 2, false
@@ -94,7 +94,7 @@ cases:
     sql: select col1, col2, NOT ((col1 >2) || (col2 > 2)) as flag from t1;
     inputs:
       - name: t1
-        schema: col1:int32, col2:int32
+        schema: col1:int32, col2:int64
         index: index1:col1:col2
         data: |
           1, 2
@@ -102,7 +102,7 @@ cases:
           3, 4
           4, 5
     output:
-      schema: col1:int32, col2:int32, flag:bool
+      schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
         1, 2, true
@@ -116,7 +116,7 @@ cases:
     sql: select col1, col2, !((col1 >2) || (col2 > 2)) as flag from t1;
     inputs:
       - name: t1
-        schema: col1:int32, col2:int32
+        schema: col1:int32, col2:int64
         index: index1:col1:col2
         data: |
           1, 2
@@ -124,7 +124,7 @@ cases:
           3, 4
           4, 5
     output:
-      schema: col1:int32, col2:int32, flag:bool
+      schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
         1, 2, true
@@ -138,7 +138,7 @@ cases:
     sql: select col1, col2, (col1 > 2) XOR (col2 > 2) as flag from t1;
     inputs:
       - name: t1
-        schema: col1:int32, col2:int32
+        schema: col1:int32, col2:int64
         index: index1:col1:col2
         data: |
           1, 2
@@ -146,7 +146,7 @@ cases:
           3, 4
           4, 5
     output:
-      schema: col1:int32, col2:int32, flag:bool
+      schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
         1, 2, false
@@ -161,7 +161,7 @@ cases:
     sql: select col1, col2, col1 <> 2 as flag from t1;
     inputs:
       - name: t1
-        schema: col1:int32, col2:int32
+        schema: col1:int32, col2:int64
         index: index1:col1:col2
         data: |
           1, 2
@@ -169,7 +169,7 @@ cases:
           3, 4
           4, 5
     output:
-      schema: col1:int32, col2:int32, flag:bool
+      schema: col1:int32, col2:int64, flag:bool
       order: col1
       data: |
         1, 2, true
@@ -184,7 +184,7 @@ cases:
     sql: select col1, col2, col2 DIV col1 as div21 from t1;
     inputs:
       - name: t1
-        schema: col1:int32, col2:int32
+        schema: col1:int32, col2:int64
         index: index1:col1:col2
         data: |
           1, 2
@@ -192,7 +192,7 @@ cases:
           3, 7
           4, 13
     output:
-      schema: col1:int32, col2:int32, div21:int32
+      schema: col1:int32, col2:int64, div21:int64
       order: col1
       data: |
         1, 2, 2
@@ -206,7 +206,7 @@ cases:
     sql: select col1, col2, col2 MOD col1 as mod21 from t1;
     inputs:
       - name: t1
-        schema: col1:int32, col2:int32
+        schema: col1:int32, col2:int64
         index: index1:col1:col2
         data: |
           1, 2
@@ -214,7 +214,7 @@ cases:
           3, 7
           4, 14
     output:
-      schema: col1:int32, col2:int32, mod21:int32
+      schema: col1:int32, col2:int64, mod21:int64
       order: col1
       data: |
         1, 2, 0

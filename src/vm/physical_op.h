@@ -937,7 +937,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::JoinType join_type)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           join_(join_type) {
-        output_type_ = kSchemaTypeTable;
+        output_type_ = left->output_type_;
         InitSchema();
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
@@ -946,7 +946,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprNode *condition)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           join_(join_type, orders, condition) {
-        output_type_ = kSchemaTypeTable;
+        output_type_ = left->output_type_;
         InitSchema();
         RegisterFunctionInfo();
     }
@@ -957,7 +957,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           join_(join_type, condition, left_keys, right_keys) {
-        output_type_ = kSchemaTypeTable;
+        output_type_ = left->output_type_;
         InitSchema();
         RegisterFunctionInfo();
     }
@@ -969,7 +969,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           join_(join_type, orders, condition, left_keys, right_keys) {
-        output_type_ = kSchemaTypeTable;
+        output_type_ = left->output_type_;
         InitSchema();
         RegisterFunctionInfo();
     }
@@ -977,7 +977,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const Join &join)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
           join_(join) {
-        output_type_ = kSchemaTypeTable;
+        output_type_ = left->output_type_;
         InitSchema();
         RegisterFunctionInfo();
     }

@@ -68,7 +68,7 @@ TableRefNode *NodeManager::MakeLastJoinNode(const TableRefNode *left,
                                             const ExprNode *orders,
                                             const ExprNode *condition,
                                             const std::string alias) {
-    if (nullptr == orders || node::kExprOrder != orders->GetExprType()) {
+    if (nullptr != orders && node::kExprOrder != orders->GetExprType()) {
         LOG(WARNING)
             << "fail to create last join node with invalid order type " +
                    NameOfSQLNodeType(orders->GetType());

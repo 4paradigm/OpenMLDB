@@ -364,7 +364,8 @@ void EngineCheck(SQLCase& sql_case, bool is_batch,  // NOLINT
             std::vector<Row> rows;
             sql_case.ExtractInputData(rows, i);
             if (!rows.empty()) {
-                StoreData(name_table_map[input.name_].get(), rows);
+                ASSERT_NO_FATAL_FAILURE(
+                    StoreData(name_table_map[input.name_].get(), rows));
             }
         }
     }
@@ -424,7 +425,8 @@ void EngineCheck(SQLCase& sql_case, bool is_batch,  // NOLINT
         ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
         std::vector<Row> case_output_data;
         ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
-        CheckSchema(schema, case_output_table.columns());
+        ASSERT_NO_FATAL_FAILURE(
+            CheckSchema(schema, case_output_table.columns()));
 
         LOG(INFO) << "Expect result:\n";
         PrintRows(schema, case_output_data);
@@ -432,7 +434,8 @@ void EngineCheck(SQLCase& sql_case, bool is_batch,  // NOLINT
         LOG(INFO) << "Real result:\n";
         PrintRows(schema, sorted_output);
 
-        CheckRows(schema, sorted_output, case_output_data);
+        ASSERT_NO_FATAL_FAILURE(
+            CheckRows(schema, sorted_output, case_output_data));
     } else {
         LOG(INFO) << "Real result:\n";
         PrintRows(schema, sorted_output);
@@ -512,9 +515,9 @@ void EngineCheck(SQLCase& sql_case, bool is_batch,  // NOLINT
         SQLCase::ExtractRows(schema, sqliteStr, sqliteRows);
 
         // Compare Fesql output with SQLite output.
-        CheckRows(schema,
-                  SortRows(schema, sqliteRows, sql_case.expect().order_),
-                  SortRows(schema, output, sql_case.expect().order_));
+        ASSERT_NO_FATAL_FAILURE(CheckRows(
+            schema, SortRows(schema, sqliteRows, sql_case.expect().order_),
+            SortRows(schema, output, sql_case.expect().order_)));
     }
 }
 
