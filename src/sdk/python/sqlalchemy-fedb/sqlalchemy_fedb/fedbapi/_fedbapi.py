@@ -5,6 +5,29 @@ apilevel = '2.0'
 paramstyle = 'qmark'
 threadsafety = 3
 
+class Type(object):
+    Bool = driver.sql_router_sdk.kTypeBool
+    Int16 = driver.sql_router_sdk.kTypeInt16
+    Int32 = driver.sql_router_sdk.kTypeInt32
+    Int64 = driver.sql_router_sdk.kTypeInt64
+    Float = driver.sql_router_sdk.kTypeFloat
+    Double = driver.sql_router_sdk.kTypeDouble
+    Date = driver.sql_router_sdk.kTypeDate
+    String = driver.sql_router_sdk.kTypeString
+    Timestamp = driver.sql_router_sdk.kTypeTimestamp
+
+fetype_to_py = {
+    driver.sql_router_sdk.kTypeBool: Type.Bool,
+    driver.sql_router_sdk.kTypeInt16: Type.Int16,
+    driver.sql_router_sdk.kTypeInt32: Type.Int32,
+    driver.sql_router_sdk.kTypeInt64: Type.Int64,
+    driver.sql_router_sdk.kTypeFloat: Type.Float,
+    driver.sql_router_sdk.kTypeDouble: Type.Double,
+    driver.sql_router_sdk.kTypeDate: Type.Date,
+    driver.sql_router_sdk.kTypeString: Type.String,
+    driver.sql_router_sdk.kTypeTimestamp: Type.Timestamp,
+}
+
 class Error(Exception):
 
     def __init__(self, message):
@@ -100,6 +123,9 @@ class Cursor(object):
     def close(self):
         print("cursor close")
         self._connected = False
+
+    def __del__(self):
+        print("del cursor")
 
     def callproc(self, procname, parameters=()):
         pass
@@ -201,6 +227,18 @@ class Cursor(object):
                 driver.sql_router_sdk.kTypeDate: self._resultSet.GetDateUnsafe,
                 driver.sql_router_sdk.kTypeTimestamp: self._resultSet.GetTimeUnsafe
             }
+            self.description = [
+                (
+                    self.__schema.GetColumnName(i),
+                    fetype_to_py[self.__schema.GetColumnType(i)],
+                    None,
+                    None,
+                    None,
+                    None,
+                    True,
+                )
+                for i in range(self.__schema.GetColumnCnt())
+            ]
             return self
         else:
             pass
@@ -224,7 +262,14 @@ class Cursor(object):
 
     def fetchone(self):
         if self._resultSet is None: return "call fetchone"
-        self._resultSet.Next()
+        ok = self._resultSet.Next()
+        if not ok:
+            self.rowcount = -1
+            self._resultSet = None
+            self.__schema = None
+            self.__getMap = None
+            self.description = None
+            return None
         values = []
         for i in range(self.__schema.GetColumnCnt()):
             if self._resultSet.IsNULL(i):
