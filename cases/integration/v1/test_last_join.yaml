@@ -249,6 +249,7 @@ cases:
     id: 4-6
     desc: Last Join 无order by, 拼表条件没有命中索引-离线支持
     mode: rtidb-unsupport
+    tags: ["TODO", "@chendihao"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
