@@ -33,6 +33,9 @@
 #include "thread_pool.h"  // NOLINT
 #include "vm/engine.h"
 #include "zk/zk_client.h"
+#include "catalog/schema_adapter.h"
+#include "sdk/base.h"
+#include "sdk/base_impl.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -301,6 +304,10 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                        ::rtidb::storage::TableIterator* it,
                        const ::rtidb::api::CountRequest* request,
                        uint32_t* count);
+
+    void GetSchema(RpcController* controller,
+            const rtidb::api::GetSchemaRequest* request,
+            rtidb::api::GetSchemaResponse* response, Closure* done);
 
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
 

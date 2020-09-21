@@ -934,6 +934,8 @@ class NameServerImpl : public NameServer {
                           std::shared_ptr<TableInfo> table_info,
                           rtidb::common::VersionPair* new_pair);
 
+    bool CheckParameter(const Schema& parameter, const Schema& input_schema);
+
  private:
     std::mutex mu_;
     Tablets tablets_;

@@ -183,6 +183,55 @@ class SchemaAdapter {
         return true;
     }
 
+    static bool ConvertSchema(const ::fesql::vm::Schema& fesql_schema,
+            RtiDBSchema* rtidb_schema) {
+        if (rtidb_schema == NULL) {
+            LOG(WARNING) << "rtidb_schema is null";
+            return false;
+        }
+        for (int32_t i = 0; i < fesql_schema.size(); i++) {
+            const fesql::type::ColumnDef& column = fesql_schema.Get(i);
+            rtidb::common::ColumnDesc* new_column = rtidb_schema->Add();
+            new_column->set_name(column.name());
+            new_column->set_not_null(column.is_not_null());
+            switch (column.type()) {
+                case fesql::type::kBool:
+                    new_column->set_data_type(::rtidb::type::kBool);
+                    break;
+                case fesql::type::kInt16:
+                    new_column->set_data_type(::rtidb::type::kSmallInt);
+                    break;
+                case fesql::type::kInt32:
+                    new_column->set_data_type(::rtidb::type::kInt);
+                    break;
+                case fesql::type::kInt64:
+                    new_column->set_data_type(::rtidb::type::kBigInt);
+                    break;
+                case fesql::type::kFloat:
+                    new_column->set_data_type(::rtidb::type::kFloat);
+                    break;
+                case fesql::type::kDouble:
+                    new_column->set_data_type(::rtidb::type::kDouble);
+                    break;
+                case fesql::type::kDate:
+                    new_column->set_data_type(::rtidb::type::kDate);
+                    break;
+                case fesql::type::kTimestamp:
+                    new_column->set_data_type(::rtidb::type::kTimestamp);
+                    break;
+                case fesql::type::kVarchar:
+                    new_column->set_data_type(::rtidb::type::kVarchar);
+                    break;
+                default:
+                    LOG(WARNING) << "type "
+                        << ::fesql::type::Type_Name(column.type())
+                        << " is not supported";
+                    return false;
+            }
+        }
+        return true;
+    }
+
     static rtidb::type::DataType ConvertType(fesql::node::DataType sql_type) {
         switch (sql_type) {
             case fesql::node::kBool:

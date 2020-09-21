@@ -320,6 +320,9 @@ class TabletClient {
 
     bool UpdateRealEndpointMap(const std::map<std::string, std::string>& map);
 
+    bool GetSchema(const std::string& db_name, const std::string& sql,
+            Schema* input_schema, Schema* output_schema);
+
  private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> client_;

@@ -10496,6 +10496,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
     sp_info->CopyFrom(request->sp_info());
     const std::string& db_name = sp_info->db_name();
     const std::string& sp_name = sp_info->sp_name();
+    const std::string& sql = sp_info->sql();
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (databases_.find(db_name) == databases_.end()) {
@@ -10515,6 +10516,41 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
     }
     do {
         // TODO(wangbao): CreateProcedureOnTablet
+        std::shared_ptr<rtidb::client::TabletClient> tb_client;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            for (const auto& kv : tablets_) {
+                // find a healthy tablet client
+                if (kv.second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
+                    tb_client = kv.second->client_;
+                    break;
+                }
+            }
+        }
+        if (!tb_client) {
+            response->set_code(::rtidb::base::ReturnCode::kTabletIsNotHealthy);
+            response->set_msg("tablet is not healthy");
+            PDLOG(WARNING, "tablet is not healthy");
+            return;
+        }
+        ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> rtidb_input_schema;
+        ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> rtidb_output_schema;
+        if (!tb_client->GetSchema(db_name, sql, &rtidb_input_schema, &rtidb_output_schema)) {
+            response->set_code(::rtidb::base::ReturnCode::kGetSchemaFailed);
+            response->set_msg("get schema from tablet failed");
+            PDLOG(WARNING, "get scheam from failed, db[%s], sp_name[%s], sql[%s]",
+                    db_name.c_str(), sp_name.c_str(), sql.c_str());
+            return;
+        }
+        if (!CheckParameter(sp_info->input_schema(), rtidb_input_schema)) {
+            response->set_code(::rtidb::base::ReturnCode::kCheckParameterFailed);
+            response->set_msg("check parameter failed");
+            PDLOG(WARNING, "check parameter failed, db[%s], sp_name[%s], sql[%s]",
+                    db_name.c_str(), sp_name.c_str(), sql.c_str());
+            return;
+        }
+
+
         std::string sp_value;
         sp_info->SerializeToString(&sp_value);
         std::string compressed;
@@ -10586,6 +10622,26 @@ bool NameServerImpl::RecoverProcedureInfo() {
             LOG(INFO) << "recover store procedure " << sp_name << " with sql " << sql << " in db " << db_name;
         } else {
             LOG(WARNING) << "db " << db_name << " not exist";
+        }
+    }
+    return true;
+}
+
+bool NameServerImpl::CheckParameter(const Schema& parameter, const Schema& input_schema) {
+    if (parameter.size() != input_schema.size()) {
+        return false;
+    }
+    for (int32_t i = 0; i < parameter.size(); i++) {
+        if (parameter.Get(i).name() != input_schema.Get(i).name()) {
+            PDLOG(WARNING, "check column name failed, expect[%s], but[%s]", input_schema.Get(i).name().c_str(),
+                    parameter.Get(i).name().c_str());
+            return false;
+        }
+        if (parameter.Get(i).data_type() != input_schema.Get(i).data_type()) {
+            PDLOG(WARNING, "check column type failed, expect[%s], but[%s]",
+                    rtidb::type::DataType_Name(input_schema.Get(i).data_type()).c_str(),
+                    rtidb::type::DataType_Name(parameter.Get(i).data_type()).c_str());
+            return false;
         }
     }
     return true;

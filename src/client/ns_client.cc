@@ -404,8 +404,8 @@ bool NsClient::HandleSQLCreateTable(
 }
 
 bool NsClient::HandleSQLCreateProcedure(const fesql::node::NodePointVector& parser_trees,
-    const std::string& db, const std::string& sql,
-    fesql::node::NodeManager* node_manager, fesql::base::Status* sql_status) {
+        const std::string& db, const std::string& sql,
+        fesql::node::NodeManager* node_manager, fesql::base::Status* sql_status) {
     fesql::plan::SimplePlanner planner(node_manager);
     fesql::node::PlanNodeList plan_trees;
     planner.CreatePlanTree(parser_trees, plan_trees, *sql_status);

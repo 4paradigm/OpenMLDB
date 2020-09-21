@@ -1588,5 +1588,24 @@ bool TabletClient::UpdateRealEndpointMap(
     return true;
 }
 
+bool TabletClient::GetSchema(const std::string& db_name, const std::string& sql,
+        Schema* input_schema, Schema* output_schema) {
+    if (input_schema == nullptr || output_schema == nullptr) {
+        return false;
+    }
+    rtidb::api::GetSchemaRequest request;
+    rtidb::api::GetSchemaResponse response;
+    request.set_db_name(db_name);
+    request.set_sql(sql);
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetSchema,
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    input_schema->CopyFrom(response.input_schema());
+    output_schema->CopyFrom(response.output_schema());
+    return true;
+}
+
 }  // namespace client
 }  // namespace rtidb
