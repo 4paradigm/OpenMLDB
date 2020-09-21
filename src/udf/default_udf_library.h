@@ -28,6 +28,7 @@ class DefaultUDFLibrary : public UDFLibrary {
     void InitWindowFunctions();
     void InitUDAF();
     void InitAggByCateUDAFs();
+    void InitFeatureZero();
 
     static DefaultUDFLibrary inst_;
 

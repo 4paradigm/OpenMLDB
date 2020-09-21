@@ -20,8 +20,6 @@
 
 namespace fesql {
 namespace udf {
-int8_t *ThreadLocalMemoryPoolAlloc(int32_t request_size);
-void ThreadLocalMemoryPoolReset();
 
 namespace v1 {
 
@@ -255,6 +253,11 @@ void string_to(codec::StringRef *str, V *v, bool *is_null_ptr) {
     }
 }
 
+/**
+ * Allocate string buffer from jit runtime.
+ */
+char *AllocManagedStringBuf(int32_t bytes);
+
 template <class V>
 struct ToString {
     using Args = std::tuple<V>;
@@ -263,8 +266,7 @@ struct ToString {
         std::ostringstream ss;
         ss << v;
         output->size_ = ss.str().size();
-        char *buffer =
-            reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
+        char *buffer = AllocManagedStringBuf(output->size_);
         memcpy(buffer, ss.str().data(), output->size_);
         output->data_ = buffer;
     }

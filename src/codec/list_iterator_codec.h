@@ -15,6 +15,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "base/fe_object.h"
 #include "base/fe_slice.h"
 #include "base/iterator.h"
 #include "codec/row.h"
@@ -329,13 +330,23 @@ class BoolArrayListIterator : public ConstIterator<uint64_t, bool> {
 
     bool Valid() const override { return iter_end_ != iter_; }
 
-    void Next() override { tmp_ = *(++iter_); }
+    void Next() override {
+        ++iter_;
+        if (Valid()) {
+            tmp_ = *iter_;
+        }
+    }
 
     const bool &GetValue() override { return tmp_; }
 
     const uint64_t &GetKey() const override { return key_; }
 
-    void SeekToFirst() { iter_ = iter_start_; }
+    void SeekToFirst() {
+        iter_ = iter_start_;
+        if (Valid()) {
+            tmp_ = *iter_;
+        }
+    }
 
     bool IsSeekable() const override { return true; }
 
