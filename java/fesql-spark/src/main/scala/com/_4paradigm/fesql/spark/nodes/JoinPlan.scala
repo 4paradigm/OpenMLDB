@@ -163,7 +163,7 @@ object JoinPlan {
         joined.dropDuplicates(indexName).drop(indexName)
       }
     } else { // Just left join, not last join
-      joined.drop(indexName)
+      joined
     }
 
     SparkInstance.fromDataFrame(result)
