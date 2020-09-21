@@ -31,7 +31,7 @@ std::shared_ptr<SimpleCatalog> GetTestCatalog() {
     }
     {
         ::fesql::type::ColumnDef *column = table->add_columns();
-        column->set_type(::fesql::type::kInt32);
+        column->set_type(::fesql::type::kInt64);
         column->set_name("col_2");
     }
     auto catalog = std::make_shared<SimpleCatalog>();
@@ -76,7 +76,7 @@ TEST_F(JITWrapperTest, test) {
     codec::RowBuilder row_builder(*schema);
     row_builder.SetBuffer(buf, 1024);
     row_builder.AppendDouble(3.14);
-    row_builder.AppendInt32(42);
+    row_builder.AppendInt64(42);
 
     fesql::codec::Row row(base::RefCountedSlice::Create(buf, 1024));
 
@@ -84,9 +84,9 @@ TEST_F(JITWrapperTest, test) {
 
     codec::RowView row_view(*schema, output.buf(), output.size());
     double c1;
-    int32_t c2;
+    int64_t c2;
     ASSERT_EQ(row_view.GetDouble(0, &c1), 0);
-    ASSERT_EQ(row_view.GetInt32(1, &c2), 0);
+    ASSERT_EQ(row_view.GetInt64(1, &c2), 0);
     ASSERT_EQ(c1, 3.14);
     ASSERT_EQ(c2, 42);
 }

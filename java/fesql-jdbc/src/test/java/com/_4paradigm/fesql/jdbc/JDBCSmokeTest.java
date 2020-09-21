@@ -29,7 +29,7 @@ public class JDBCSmokeTest {
         Status status = new Status();
         sdk.CreateDatabase(dbname, status);
         Assert.assertEquals(0, status.getCode());
-        String createTable =  "create table t1 ( col1 bigint, col2 string, index(key=col1, ts=col2));";
+        String createTable =  "create table t1 ( col1 bigint, col2 string, index(key=col2, ts=col1));";
         sdk.ExecuteQuery(dbname, createTable, status);
         Assert.assertEquals(0, status.getCode());
         TableSet ts = sdk.GetTables(dbname, status);
@@ -45,7 +45,7 @@ public class JDBCSmokeTest {
         Status status = new Status();
         sdk.CreateDatabase(dbname, status);
         Assert.assertEquals(0, status.getCode());
-        String createTable =  "create table t1 ( col1 bigint, col2 string, index(key=col1, ts=col2));";
+        String createTable =  "create table t1 ( col1 bigint, col2 string, index(key=col2, ts=col1));";
         sdk.ExecuteQuery(dbname, createTable, status);
         String insert = "insert into t1 values(1000, 'hello');";
         sdk.ExecuteQuery(dbname, insert, status);
@@ -67,7 +67,7 @@ public class JDBCSmokeTest {
         Status status = new Status();
         sdk.CreateDatabase(dbname, status);
         Assert.assertEquals(0, status.getCode());
-        String createTable =  "create table t1 ( col1 bigint, col2 string, index(key=col1, ts=col2));";
+        String createTable =  "create table t1 ( col1 bigint, col2 string, index(key=col2, ts=col1));";
         sdk.ExecuteQuery(dbname, createTable, status);
         Assert.assertEquals(0, status.getCode());
         String query = "select col1 + 1, col2 from t1;";
