@@ -109,51 +109,61 @@ object JoinPlan {
 
       // TODO: Support multiple order by columns
 
+      val hasOrderby = if (node.join.right_sort != null && node.join.right_sort.orders != null && node.join.right_sort.orders.order_by != null) {
+        true
+      } else {
+        false
+      }
+
       // Resolve order by column index
-      val orderbyExprListNode = node.join.right_sort.orders.order_by
-      val planLeftSize = node.GetProducer(0).GetOutputSchema().size()
-      val timeColIdx = SparkColumnUtil.resolveColumnIndex(orderbyExprListNode.GetChild(0), node) - planLeftSize
-      assert(timeColIdx >= 0)
+      if (hasOrderby) {
+        val orderbyExprListNode = node.join.right_sort.orders.order_by
+        val planLeftSize = node.GetProducer(0).GetOutputSchema().size()
+        val timeColIdx = SparkColumnUtil.resolveColumnIndex(orderbyExprListNode.GetChild(0), node) - planLeftSize
+        assert(timeColIdx >= 0)
 
-      val timeIdxInJoined = timeColIdx + leftDf.schema.size
-      val timeColType = rightDf.schema(timeColIdx).dataType
+        val timeIdxInJoined = timeColIdx + leftDf.schema.size
+        val timeColType = rightDf.schema(timeColIdx).dataType
 
-      val isAsc = node.join.right_sort.is_asc
+        val isAsc = node.join.right_sort.is_asc
 
-      import sess.implicits._
+        import sess.implicits._
 
-      val distinct = joined
-        .groupByKey {
-          row => row.getLong(indexColIdx)
-        }
-        .mapGroups {
-          case (_, iter) =>
-            val timeExtractor = SparkRowUtil.createOrderKeyExtractor(
-              timeIdxInJoined, timeColType, nullable=false)
+        val distinct = joined
+          .groupByKey {
+            row => row.getLong(indexColIdx)
+          }
+          .mapGroups {
+            case (_, iter) =>
+              val timeExtractor = SparkRowUtil.createOrderKeyExtractor(
+                timeIdxInJoined, timeColType, nullable=false)
 
-            if (isAsc) {
-              iter.maxBy(row => {
-                if (row.isNullAt(timeIdxInJoined)) {
-                  Long.MinValue
-                } else {
-                  timeExtractor.apply(row)
-                }
-              })
-            } else {
-              iter.minBy(row => {
-                if (row.isNullAt(timeIdxInJoined)) {
-                  Long.MaxValue
-                } else {
-                  timeExtractor.apply(row)
-                }
-              })
-            }
-        }(RowEncoder(joined.schema))
+              if (isAsc) {
+                iter.maxBy(row => {
+                  if (row.isNullAt(timeIdxInJoined)) {
+                    Long.MinValue
+                  } else {
+                    timeExtractor.apply(row)
+                  }
+                })
+              } else {
+                iter.minBy(row => {
+                  if (row.isNullAt(timeIdxInJoined)) {
+                    Long.MaxValue
+                  } else {
+                    timeExtractor.apply(row)
+                  }
+                })
+              }
+          }(RowEncoder(joined.schema))
 
-      distinct.drop(indexName)
-
-    } else {
-      joined
+        distinct.drop(indexName)
+      } else { // Does not have order by column
+        // Randomly select the first row from joined table
+        joined.dropDuplicates(indexName).drop(indexName)
+      }
+    } else { // Just left join, not last join
+      joined.drop(indexName)
     }
 
     SparkInstance.fromDataFrame(result)
