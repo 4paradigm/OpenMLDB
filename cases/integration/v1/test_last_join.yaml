@@ -80,8 +80,6 @@ cases:
   -
     id: 4-1
     desc: Last Join 无order by, 拼表条件命中索引
-    mode: offline-unsupport
-    tags: ["@chendihao, 离线需要支持这种lastjoin模式"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -129,8 +127,6 @@ cases:
   -
     id: 4-2
     desc: Last Join 无order by, 部分拼表条件命中索引
-    mode: offline-unsupport
-    tags: ["@chendihao, 离线也需要支持这个场景"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -219,7 +215,7 @@ cases:
     id: 4-5
     desc: Last Join 无order by, 拼表条件命中索引, 副表多条命中
     mode: rtidb-batch-unsupport,offline-unsupport
-    tags: ["offline需要支持@chendihao"]
+    tags: ["offline需要支持更宽广的判断条件 @chendihao"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -249,7 +245,6 @@ cases:
     id: 4-6
     desc: Last Join 无order by, 拼表条件没有命中索引-离线支持
     mode: rtidb-unsupport
-    tags: ["TODO", "@chendihao"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
