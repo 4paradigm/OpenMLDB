@@ -25,6 +25,7 @@
 #include <memory>
 #include <mutex>
 #include "base/spinlock.h"
+#include "catalog/client_manager.h"
 #include "client/tablet_client.h"
 #include "proto/name_server.pb.h"
 #include "vm/catalog.h"
@@ -34,9 +35,8 @@ namespace catalog {
 
 class SDKTableHandler : public ::fesql::vm::TableHandler {
  public:
-    explicit SDKTableHandler(const ::rtidb::nameserver::TableInfo& meta);
-
-    ~SDKTableHandler();
+    SDKTableHandler(const ::rtidb::nameserver::TableInfo& meta,
+            const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients);
 
     bool Init();
 
@@ -79,6 +79,9 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
         return "TabletTableHandler";
     }
 
+    bool GetTablets(const std::string& index_name, const std::string& pk,
+            std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets);
+
  private:
     inline int32_t GetColumnIndex(const std::string& column) {
         auto it = types_.find(column);
@@ -97,6 +100,8 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
     ::fesql::vm::IndexList index_list_;
     ::fesql::vm::IndexHint index_hint_;
     uint64_t cnt_;
+    TableClientManager table_client_manager_;
+    std::vector<std::string> partition_key_;
 };
 
 typedef std::map<std::string,

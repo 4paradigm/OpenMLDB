@@ -20,50 +20,56 @@
 #ifndef SRC_CATALOG_CLIENT_MANAGER_H_
 #define SRC_CATALOG_CLIENT_MANAGER_H_
 
-#include <atomic>
 #include <memory>
+#include <map>
+#include <string>
 #include <vector>
 
 #include "base/random.h"
+#include "client/tablet_client.h"
 
 namespace rtidb {
 namespace catalog {
 
+using TablePartitions = ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::TablePartition>;
+
 class PartitionClientManager {
  public:
-    PartitionClientManager(uint32_t pid, const std::shared_ptr<TabletClient>& leader,
-                           const std::vector<std::shared_ptr<TabletClient>>& followers);
+    PartitionClientManager(uint32_t pid,
+            const std::shared_ptr<::rtidb::client::TabletClient>& leader,
+            const std::vector<std::shared_ptr<::rtidb::client::TabletClient>>& followers);
 
-    inline std::shared_ptr<TabletClient> GetLeader() const {
-        return std::atomic_load_explicit(&leader_, std::memory_order_relaxed);
+    inline std::shared_ptr<::rtidb::client::TabletClient> GetLeader() const {
+        return leader_;
     }
 
-    void SetLeader(const std::shared_ptr<TabletClient>& leader) {
-        std::atomic_store_explicit(&leader_, leader, std::memory_order_relaxed);
-    }
-
-    std::shared_ptr<TabletClient> GetFollower();
-
-    void SetFollower(const std::vector<std::shared_ptr<TabletClient>>& followers) {
-        auto new_followers = std::make_shared<std::vector<std::shared_ptr<TabletClient>>>(followers);
-        std::atomic_store_explicit(&followers_, new_followers, std::memory_order_relaxed);
-    }
+    std::shared_ptr<::rtidb::client::TabletClient> GetFollower();
 
  private:
-    uint32_t pid;
-    std::shared_ptr<TabletClient> leader_;
-    std::shared_ptr<std::vector<std::shared_ptr<TabletClient>>> followers_;
+    uint32_t pid_;
+    std::shared_ptr<::rtidb::client::TabletClient> leader_;
+    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> followers_;
     ::rtidb::base::Random rand_;
 };
 
 class TableClientManager {
  public:
-    TableClientManager();
+    TableClientManager(const TablePartitions& partitions,
+        const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients);
+
     std::shared_ptr<PartitionClientManager> GetPartitionClientManager(uint32_t pid) const {
         if (pid < partition_managers_.size()) {
             return partition_managers_[pid];
         }
         return std::shared_ptr<PartitionClientManager>();
+    }
+
+    std::shared_ptr<::rtidb::client::TabletClient> GetTablets(uint32_t pid) const {
+        auto partition_manager = GetPartitionClientManager(pid);
+        if (partition_manager) {
+            return partition_manager->GetLeader();
+        }
+        return std::shared_ptr<::rtidb::client::TabletClient>();
     }
 
  private:

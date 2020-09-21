@@ -21,19 +21,39 @@ namespace rtidb {
 namespace catalog {
 
 PartitionClientManager::PartitionClientManager(uint32_t pid,
-        const std::shared_ptr<TabletClient>& leader,
-        const std::vector<std::shared_ptr<TabletClient>>& followers) :
-    pid_(pid), leader_(leader), followers_(), rand_(0xdeadbeef) {
-    followers_ = std::make_shared<std::vector<std::shared_ptr<TabletClient>>>(followers);
+        const std::shared_ptr<::rtidb::client::TabletClient>& leader,
+        const std::vector<std::shared_ptr<::rtidb::client::TabletClient>>& followers) :
+    pid_(pid), leader_(leader), followers_(followers), rand_(0xdeadbeef) {}
+
+std::shared_ptr<::rtidb::client::TabletClient> PartitionClientManager::GetFollower() {
+    if (!followers_.empty()) {
+        uint32_t pos = rand_.Next() % followers_.size();
+        return followers_[pos];
+    }
+    return std::shared_ptr<::rtidb::client::TabletClient>();
 }
 
-std::shared_ptr<TabletClient> PartitionClientManager::GetFollower() {
-    auto followers = std::atomic_load_explicit(&followers_, std::memory_order_relaxed);
-    if (!followers->empty()) {
-        uint32_t pos = rand_.Next() % followers.size();
-        return followers[pos];
+TableClientManager::TableClientManager(const TablePartitions& partitions,
+    const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients) {
+    for (const auto& table_partition : partitions) {
+        uint32_t pid = table_partition.pid();
+        std::shared_ptr<::rtidb::client::TabletClient> leader;
+        std::vector<std::shared_ptr<::rtidb::client::TabletClient>> follower;
+        for (const auto& meta : table_partition.partition_meta()) {
+            if (meta.is_alive()) {
+                auto iter = tablet_clients.find(meta.endpoint());
+                if (iter == tablet_clients.end()) {
+                    continue;
+                }
+                if (meta.is_leader()) {
+                    leader = iter->second;
+                } else {
+                    follower.push_back(iter->second);
+                }
+            }
+        }
+        partition_managers_.push_back(std::make_shared<PartitionClientManager>(pid, leader, follower));
     }
-    return std::shared_ptr<TabletClient>();
 }
 
 }  // namespace catalog
