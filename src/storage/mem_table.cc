@@ -763,7 +763,7 @@ bool MemTable::DeleteIndex(std::string idx_name) {
         LOG(WARNING) << "index" << index << "  not found. tid " << id_ << " pid " << pid_;
         return NULL;
     }
-    const std::vector<uint32_t> ts_vec = index_def->GetTsColumn();
+    const std::vector<uint32_t>& ts_vec = index_def->GetTsColumn();
     if (std::find(ts_vec.begin(), ts_vec.end(), ts_index) == ts_vec.end()) {
         LOG(WARNING) << "ts index " << ts_index << " is not member of index " << index << ", tid " << id_ << " pid "
                      << pid_;
