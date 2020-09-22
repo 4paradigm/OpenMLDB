@@ -34,7 +34,7 @@ fpga-build:
   artifacts:
     expire_in: 4h
     paths:
-      - build/bin/rtidb_fpga
+      - build/bin
 
 build:
   stage: build
@@ -88,7 +88,7 @@ fpga_java_ut:
     - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
     - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
   dependencies:
-    - build/bin/rtidb_fpga
+    - build
   artifacts:
     reports:
       junit:
