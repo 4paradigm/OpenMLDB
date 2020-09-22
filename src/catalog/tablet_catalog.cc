@@ -24,25 +24,22 @@
 
 #include "catalog/schema_adapter.h"
 #include "catalog/table_iterator_adapter.h"
+#include "catalog/distribute_iterator.h"
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
 
 namespace rtidb {
 namespace catalog {
 
-TabletTableHandler::TabletTableHandler(const ::rtidb::api::TableMeta& meta,
-                                       const std::string& db,
-                                       std::shared_ptr<storage::Table> table)
+TabletTableHandler::TabletTableHandler(const ::rtidb::api::TableMeta& meta)
     : meta_(meta),
       schema_(),
       name_(meta.name()),
-      db_(db),
-      table_(table),
+      db_(meta.db()),
+      tables_(std::make_shared<Tables>()),
       types_(),
       index_list_(),
       index_hint_() {}
-
-TabletTableHandler::~TabletTableHandler() {}
 
 bool TabletTableHandler::Init() {
     bool ok = SchemaAdapter::ConvertSchema(meta_.column_desc(), &schema_);
@@ -83,8 +80,7 @@ bool TabletTableHandler::Init() {
             const std::string& key = index_def.first_keys(j);
             auto it = types_.find(key);
             if (it == types_.end()) {
-                LOG(WARNING) << "column " << key << " does not exist in table "
-                             << table_;
+                LOG(WARNING) << "column " << key << " does not exist in table";
                 return false;
             }
             index_st.keys.push_back(it->second);
@@ -96,11 +92,14 @@ bool TabletTableHandler::Init() {
     return true;
 }
 
-std::unique_ptr<::fesql::codec::RowIterator> TabletTableHandler::GetIterator()
-    const {
-    std::unique_ptr<catalog::FullTableIterator> it(
-        new catalog::FullTableIterator(table_->NewTraverseIterator(0), table_));
-    return std::move(it);
+std::unique_ptr<::fesql::codec::RowIterator> TabletTableHandler::GetIterator() const {
+    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
+    if (!tables->empty()) {
+        auto table = tables->begin()->second;
+        return std::unique_ptr<catalog::FullTableIterator>(
+            new catalog::FullTableIterator(table->NewTraverseIterator(0), table));
+    }
+    return std::unique_ptr<::fesql::codec::RowIterator>();
 }
 
 std::unique_ptr<::fesql::codec::WindowIterator>
@@ -112,9 +111,7 @@ TabletTableHandler::GetWindowIterator(const std::string& idx_name) {
     }
     // TODO(wangtaize) add table ref cnt
     DLOG(INFO) << "get window it with index " << idx_name;
-    std::unique_ptr<::fesql::codec::WindowIterator> it(
-        table_->NewWindowIterator(iter->second.index));
-    return std::move(it);
+    return std::unique_ptr<::fesql::codec::WindowIterator> (new DistributeWindowIterator(tables_, iter->second.index));
 }
 
 // TODO(chenjing): 基于segment 优化Get(int pos) 操作
@@ -149,6 +146,21 @@ const uint64_t TabletTableHandler::GetCount() {
     return iter->Valid() ? iter->GetValue() : ::fesql::codec::Row();
 }
 
+void TabletTableHandler::AddTable(std::shared_ptr<::rtidb::storage::Table> table) {
+    auto old_tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
+    auto new_tables = std::make_shared<Tables>(*old_tables);
+    new_tables->emplace(table->GetPid(), table);
+    std::atomic_store_explicit(&tables_, new_tables, std::memory_order_relaxed);
+}
+
+int TabletTableHandler::DeleteTable(uint32_t pid) {
+    auto old_tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
+    auto new_tables = std::make_shared<Tables>(*old_tables);
+    new_tables->erase(pid);
+    std::atomic_store_explicit(&tables_, new_tables, std::memory_order_relaxed);
+    return new_tables->size();
+}
+
 TabletCatalog::TabletCatalog() : mu_(), tables_(), db_() {}
 
 TabletCatalog::~TabletCatalog() {}
@@ -179,25 +191,34 @@ std::shared_ptr<::fesql::vm::TableHandler> TabletCatalog::GetTable(
     return it->second;
 }
 
-bool TabletCatalog::AddTable(std::shared_ptr<TabletTableHandler> table) {
+bool TabletCatalog::AddTable(const ::rtidb::api::TableMeta& meta,
+        std::shared_ptr<::rtidb::storage::Table> table) {
     if (!table) {
         LOG(WARNING) << "input table is null";
         return false;
     }
-
+    const std::string& db_name = meta.db();
+    std::shared_ptr<TabletTableHandler> handler;
     std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
-    auto db_it = tables_.find(table->GetDatabase());
+    auto db_it = tables_.find(db_name);
     if (db_it == tables_.end()) {
-        tables_.insert(std::make_pair(
-            table->GetDatabase(),
-            std::map<std::string, std::shared_ptr<TabletTableHandler>>()));
-        db_it = tables_.find(table->GetDatabase());
+        auto result = tables_.emplace(
+            db_name, std::map<std::string, std::shared_ptr<TabletTableHandler>>());
+        db_it = result.first;
     }
-    auto it = db_it->second.find(table->GetName());
-    if (it != db_it->second.end()) {
-        return false;
+    const std::string& table_name = meta.name();
+    auto it = db_it->second.find(table_name);
+    if (it == db_it->second.end()) {
+        handler = std::make_shared<TabletTableHandler>(meta);
+        if (handler->Init()) {
+            LOG(WARNING) << "tablet handler init failed";
+            return false;
+        }
+        db_it->second.emplace(table_name, handler);
+    } else {
+        handler = it->second;
     }
-    db_it->second.insert(std::make_pair(table->GetName(), table));
+    it->second->AddTable(table);
     return true;
 }
 
@@ -214,7 +235,8 @@ bool TabletCatalog::AddDB(const ::fesql::type::Database& db) {
 }
 
 bool TabletCatalog::DeleteTable(const std::string& db,
-                                const std::string& table_name) {
+                                const std::string& table_name,
+                                uint32_t pid) {
     std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
     auto db_it = tables_.find(db);
     if (db_it == tables_.end()) {
@@ -224,7 +246,9 @@ bool TabletCatalog::DeleteTable(const std::string& db,
     if (it == db_it->second.end()) {
         return false;
     }
-    db_it->second.erase(it);
+    if (it->second->DeleteTable(pid) < 1) {
+        db_it->second.erase(it);
+    }
     return true;
 }
 

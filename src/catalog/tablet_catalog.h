@@ -21,9 +21,11 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 
 #include "base/spinlock.h"
+#include "catalog/distribute_iterator.h"
 #include "codec/row.h"
 #include "storage/table.h"
 #include "vm/catalog.h"
@@ -186,11 +188,7 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler {
 
 class TabletTableHandler : public ::fesql::vm::TableHandler {
  public:
-    TabletTableHandler(const ::rtidb::api::TableMeta &meta,
-                       const std::string &db,
-                       std::shared_ptr<::rtidb::storage::Table> table);
-
-    ~TabletTableHandler();
+    explicit TabletTableHandler(const ::rtidb::api::TableMeta &meta);
 
     bool Init();
 
@@ -205,8 +203,6 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
     const ::fesql::vm::IndexHint &GetIndex() override { return index_hint_; }
 
     const ::fesql::codec::Row Get(int32_t pos);
-
-    inline std::shared_ptr<storage::Table> GetTable() { return table_; }
 
     std::unique_ptr<::fesql::codec::RowIterator> GetIterator() const override;
 
@@ -246,6 +242,10 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
         return meta_.tid();
     }
 
+    void AddTable(std::shared_ptr<::rtidb::storage::Table> table);
+
+    int DeleteTable(uint32_t pid);
+
  private:
     inline int32_t GetColumnIndex(const std::string &column) {
         auto it = types_.find(column);
@@ -260,7 +260,7 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
     ::fesql::vm::Schema schema_;
     std::string name_;
     std::string db_;
-    std::shared_ptr<::rtidb::storage::Table> table_;
+    std::shared_ptr<std::unordered_map<uint32_t, std::shared_ptr<::rtidb::storage::Table>>> tables_;
     ::fesql::vm::Types types_;
     ::fesql::vm::IndexList index_list_;
     ::fesql::vm::IndexHint index_hint_;
@@ -282,7 +282,8 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     bool AddDB(const ::fesql::type::Database &db);
 
-    bool AddTable(std::shared_ptr<TabletTableHandler> table);
+    bool AddTable(const ::rtidb::api::TableMeta& meta,
+            std::shared_ptr<::rtidb::storage::Table> table);
 
     std::shared_ptr<::fesql::type::Database> GetDatabase(const std::string &db) override;
 
@@ -291,7 +292,7 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     bool IndexSupport() override;
 
-    bool DeleteTable(const std::string &db, const std::string &table_name);
+    bool DeleteTable(const std::string &db, const std::string &table_name, uint32_t pid);
 
     bool DeleteDB(const std::string &db);
 
