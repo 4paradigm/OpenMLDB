@@ -56,7 +56,7 @@ class NameServerImplObjectStoreTest : public ::testing::Test {
 };
 
 void StartNameServer(brpc::Server* server, NameServerImpl* nameserver) {
-    bool ok = nameserver->Init();
+    bool ok = nameserver->Init("");
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
@@ -72,7 +72,7 @@ void StartNameServer(brpc::Server* server, NameServerImpl* nameserver) {
 
 void StartNameServer(brpc::Server* server) {
     NameServerImpl* nameserver = new NameServerImpl();
-    bool ok = nameserver->Init();
+    bool ok = nameserver->Init("");
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
@@ -90,7 +90,7 @@ void StartBlob(brpc::Server* server) {
     FLAGS_hdd_root_path = "/tmp/object_store_test" + GenRand();
     ::rtidb::blobserver::BlobServerImpl* blob =
         new ::rtidb::blobserver::BlobServerImpl();
-    bool ok = blob->Init();
+    bool ok = blob->Init("");
     ASSERT_TRUE(ok);
     sleep(2);
     brpc::ServerOptions options1;
@@ -112,7 +112,7 @@ void StartTablet(brpc::Server* server, rtidb::tablet::TabletImpl** tb) {
     FLAGS_hdd_root_path = "/tmp/test" + GenRand();
     FLAGS_ssd_root_path = "/tmp/test" + GenRand();
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    bool ok = tablet->Init();
+    bool ok = tablet->Init("");
     ASSERT_TRUE(ok);
     sleep(2);
     brpc::ServerOptions options1;
@@ -141,13 +141,13 @@ TEST_F(NameServerImplObjectStoreTest, CreateTable) {
     brpc::Server server;
     StartNameServer(&server, nameserver_1);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>
-        name_server_client_1(FLAGS_endpoint);
+        name_server_client_1(FLAGS_endpoint, "");
     name_server_client_1.Init();
 
     FLAGS_endpoint = "127.0.0.1:9931";
     brpc::Server server1;
     StartBlob(&server1);
-    ::rtidb::client::BsClient blob_client(FLAGS_endpoint);
+    ::rtidb::client::BsClient blob_client(FLAGS_endpoint, "");
     ASSERT_EQ(0, blob_client.Init());
 
     sleep(6);
@@ -200,20 +200,20 @@ TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
     brpc::Server server;
     StartNameServer(&server, nameserver);
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
-        FLAGS_endpoint);
+        FLAGS_endpoint, "");
     ASSERT_EQ(0, name_server_client.Init());
 
     FLAGS_endpoint = "127.0.0.1:9731";
     brpc::Server tablet_svr;
     ::rtidb::tablet::TabletImpl* tablet;
     StartTablet(&tablet_svr, &tablet);
-    ::rtidb::client::TabletClient tablet_client(FLAGS_endpoint);
+    ::rtidb::client::TabletClient tablet_client(FLAGS_endpoint, "");
     ASSERT_EQ(0, tablet_client.Init());
 
     FLAGS_endpoint = "127.0.0.1:9931";
     brpc::Server server1;
     StartBlob(&server1);
-    ::rtidb::client::BsClient blob_client(FLAGS_endpoint);
+    ::rtidb::client::BsClient blob_client(FLAGS_endpoint, "");
     ASSERT_EQ(0, blob_client.Init());
 
     sleep(6);
@@ -235,6 +235,7 @@ TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
         ::rtidb::common::ColumnDesc* col0 = table_info->add_column_desc_v1();
         col0->set_name("card");
         col0->set_data_type(::rtidb::type::kBigInt);
+        col0->set_not_null(true);
         ::rtidb::common::ColumnDesc* col1 = table_info->add_column_desc_v1();
         col1->set_name("mcc");
         col1->set_data_type(::rtidb::type::kVarchar);
@@ -309,7 +310,7 @@ TEST_F(NameServerImplObjectStoreTest, CreateTableWithBlobField) {
         }
         ok = tablet_client.BatchQuery(tid, 0, ros, &data, &count, &err_msg);
         ASSERT_TRUE(ok);
-        ASSERT_EQ(count, 1);
+        ASSERT_EQ((int32_t)count, 1);
         rtidb::codec::RowView view(schema);
         ok = view.Reset(reinterpret_cast<int8_t*>(&data[0]+4),
                         size);

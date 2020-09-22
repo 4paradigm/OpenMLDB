@@ -25,14 +25,14 @@ class SegmentTest : public ::testing::Test {
 };
 
 TEST_F(SegmentTest, Size) {
-    ASSERT_EQ(16, sizeof(DataBlock));
-    ASSERT_EQ(40, sizeof(KeyEntry));
+    ASSERT_EQ(16, (int64_t)sizeof(DataBlock));
+    ASSERT_EQ(40, (int64_t)sizeof(KeyEntry));
 }
 
 TEST_F(SegmentTest, DataBlock) {
     const char* test = "test";
     DataBlock* db = new DataBlock(1, test, 4);
-    ASSERT_EQ(4, db->size);
+    ASSERT_EQ(4, (int64_t)db->size);
     ASSERT_EQ('t', db->data[0]);
     ASSERT_EQ('e', db->data[1]);
     ASSERT_EQ('s', db->data[2]);
@@ -49,8 +49,8 @@ TEST_F(SegmentTest, PutAndGet) {
     bool ret = segment.Get(pk, 9768, &db);
     ASSERT_TRUE(ret);
     ASSERT_TRUE(db != NULL);
-    ASSERT_EQ(4, db->size);
-    std::string t(db->data, db->size);
+    ASSERT_EQ(4, (int64_t)db->size);
+    std::string t(db->data, (int64_t)db->size);
     std::string e = "test";
     ASSERT_EQ(e, t);
 }
@@ -63,12 +63,12 @@ TEST_F(SegmentTest, PutAndScan) {
     segment.Put(pk, 9528, value.c_str(), value.size());
     segment.Put(pk, 9528, value.c_str(), value.size());
     segment.Put(pk, 9529, value.c_str(), value.size());
-    ASSERT_EQ(1, segment.GetPkCnt());
+    ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
     Ticket ticket;
     MemTableIterator* it = segment.NewIterator("test1", ticket);
     it->Seek(9530);
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(9529, it->GetKey());
+    ASSERT_EQ(9529, (int64_t)it->GetKey());
     ::rtidb::base::Slice val = it->GetValue();
     std::string result(val.data(), val.size());
     ASSERT_EQ("test0", result);
@@ -88,7 +88,7 @@ TEST_F(SegmentTest, Delete) {
     segment.Put(pk, 9528, value.c_str(), value.size());
     segment.Put(pk, 9528, value.c_str(), value.size());
     segment.Put(pk, 9529, value.c_str(), value.size());
-    ASSERT_EQ(1, segment.GetPkCnt());
+    ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
     Ticket ticket;
     MemTableIterator* it = segment.NewIterator("test1", ticket);
     int size = 0;
@@ -109,9 +109,9 @@ TEST_F(SegmentTest, Delete) {
     segment.IncrGcVersion();
     segment.IncrGcVersion();
     segment.GcFreeList(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(4, gc_idx_cnt);
-    ASSERT_EQ(4, gc_record_cnt);
-    ASSERT_EQ(84, gc_record_byte_size);
+    ASSERT_EQ(4, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(4, (int64_t)gc_record_cnt);
+    ASSERT_EQ(84, (int64_t)gc_record_byte_size);
 }
 
 TEST_F(SegmentTest, GetCount) {
@@ -123,17 +123,17 @@ TEST_F(SegmentTest, GetCount) {
     segment.Put(pk, 9528, value.c_str(), value.size());
     segment.Put(pk, 9529, value.c_str(), value.size());
     ASSERT_EQ(0, segment.GetCount(pk, count));
-    ASSERT_EQ(3, count);
+    ASSERT_EQ(3, (int64_t)count);
     segment.Put(pk, 9530, value.c_str(), value.size());
     ASSERT_EQ(0, segment.GetCount(pk, count));
-    ASSERT_EQ(4, count);
+    ASSERT_EQ(4, (int64_t)count);
 
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
     segment.Gc4TTL(9528, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
     ASSERT_EQ(0, segment.GetCount(pk, count));
-    ASSERT_EQ(2, count);
+    ASSERT_EQ(2, (int64_t)count);
 
     std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
     Segment segment1(8, ts_idx_vec);
@@ -148,9 +148,9 @@ TEST_F(SegmentTest, GetCount) {
     segment1.Put(pk1, logEntry.ts_dimensions(), &db);
     ASSERT_EQ(-1, segment1.GetCount(pk1, 0, count));
     ASSERT_EQ(0, segment1.GetCount(pk1, 1, count));
-    ASSERT_EQ(1, count);
+    ASSERT_EQ(1, (int64_t)count);
     ASSERT_EQ(0, segment1.GetCount(pk1, 3, count));
-    ASSERT_EQ(1, count);
+    ASSERT_EQ(1, (int64_t)count);
 
     logEntry.Clear();
     for (int i = 0; i < 6; i++) {
@@ -163,9 +163,9 @@ TEST_F(SegmentTest, GetCount) {
     }
     segment1.Put(pk1, logEntry.ts_dimensions(), &db);
     ASSERT_EQ(0, segment1.GetCount(pk1, 1, count));
-    ASSERT_EQ(2, count);
+    ASSERT_EQ(2, (int64_t)count);
     ASSERT_EQ(0, segment1.GetCount(pk1, 3, count));
-    ASSERT_EQ(1, count);
+    ASSERT_EQ(1, (int64_t)count);
 }
 
 TEST_F(SegmentTest, Iterator) {
@@ -175,7 +175,7 @@ TEST_F(SegmentTest, Iterator) {
     segment.Put(pk, 9768, "test1", 5);
     segment.Put(pk, 9768, "test1", 5);
     segment.Put(pk, 9769, "test2", 5);
-    ASSERT_EQ(1, segment.GetPkCnt());
+    ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
     Ticket ticket;
     MemTableIterator* it = segment.NewIterator("test1", ticket);
     it->SeekToFirst();
@@ -186,7 +186,7 @@ TEST_F(SegmentTest, Iterator) {
     }
     ASSERT_EQ(4, size);
     it->Seek(9769);
-    ASSERT_EQ(9769, it->GetKey());
+    ASSERT_EQ(9769, (int64_t)it->GetKey());
     ::rtidb::base::Slice value = it->GetValue();
     std::string result(value.data(), value.size());
     ASSERT_EQ("test2", result);
@@ -207,14 +207,14 @@ TEST_F(SegmentTest, TestGc4Head) {
     segment.Put(pk, 9768, "test1", 5);
     segment.Put(pk, 9769, "test2", 5);
     segment.Gc4Head(1, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(1, gc_idx_cnt);
-    ASSERT_EQ(1, gc_record_cnt);
-    ASSERT_EQ(GetRecordSize(5), gc_record_byte_size);
+    ASSERT_EQ(1, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(1, (int64_t)gc_record_cnt);
+    ASSERT_EQ(GetRecordSize(5), (int64_t)gc_record_byte_size);
     Ticket ticket;
     MemTableIterator* it = segment.NewIterator(pk, ticket);
     it->Seek(9769);
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(9769, it->GetKey());
+    ASSERT_EQ(9769, (int64_t)it->GetKey());
     ::rtidb::base::Slice value = it->GetValue();
     std::string result(value.data(), value.size());
     ASSERT_EQ("test2", result);
@@ -230,17 +230,17 @@ TEST_F(SegmentTest, TestGc4TTL) {
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
     segment.Gc4TTL(9765, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(0, gc_idx_cnt);
-    ASSERT_EQ(0, gc_record_cnt);
-    ASSERT_EQ(0, gc_record_byte_size);
+    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(0, (int64_t)gc_record_cnt);
+    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
     segment.Gc4TTL(9768, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(1, gc_idx_cnt);
-    ASSERT_EQ(1, gc_record_cnt);
-    ASSERT_EQ(GetRecordSize(5), gc_record_byte_size);
+    ASSERT_EQ(1, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(1, (int64_t)gc_record_cnt);
+    ASSERT_EQ(GetRecordSize(5), (int64_t)gc_record_byte_size);
     segment.Gc4TTL(9770, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(2, gc_idx_cnt);
-    ASSERT_EQ(2, gc_record_cnt);
-    ASSERT_EQ(2 * GetRecordSize(5), gc_record_byte_size);
+    ASSERT_EQ(2, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(2, (int64_t)gc_record_cnt);
+    ASSERT_EQ(2 * GetRecordSize(5), (int64_t)gc_record_byte_size);
 }
 
 TEST_F(SegmentTest, TestGc4TTLAndHead) {
@@ -256,45 +256,45 @@ TEST_F(SegmentTest, TestGc4TTLAndHead) {
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
     segment.Gc4TTLAndHead(0, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(0, gc_idx_cnt);
-    ASSERT_EQ(0, gc_record_cnt);
-    ASSERT_EQ(0, gc_record_byte_size);
+    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(0, (int64_t)gc_record_cnt);
+    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
     segment.Gc4TTLAndHead(9765, 0, gc_idx_cnt, gc_record_cnt,
                           gc_record_byte_size);
-    ASSERT_EQ(0, gc_idx_cnt);
-    ASSERT_EQ(0, gc_record_cnt);
-    ASSERT_EQ(0, gc_record_byte_size);
+    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(0, (int64_t)gc_record_cnt);
+    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
     gc_idx_cnt = 0;
     gc_record_cnt = 0;
     gc_record_byte_size = 0;
     segment.Gc4TTLAndHead(0, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(0, gc_idx_cnt);
-    ASSERT_EQ(0, gc_record_cnt);
-    ASSERT_EQ(0, gc_record_byte_size);
+    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(0, (int64_t)gc_record_cnt);
+    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
     gc_idx_cnt = 0;
     gc_record_cnt = 0;
     gc_record_byte_size = 0;
     segment.Gc4TTLAndHead(9765, 3, gc_idx_cnt, gc_record_cnt,
                           gc_record_byte_size);
-    ASSERT_EQ(0, gc_idx_cnt);
-    ASSERT_EQ(0, gc_record_cnt);
-    ASSERT_EQ(0, gc_record_byte_size);
+    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(0, (int64_t)gc_record_cnt);
+    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
     gc_idx_cnt = 0;
     gc_record_cnt = 0;
     gc_record_byte_size = 0;
     segment.Gc4TTLAndHead(9766, 2, gc_idx_cnt, gc_record_cnt,
                           gc_record_byte_size);
-    ASSERT_EQ(2, gc_idx_cnt);
-    ASSERT_EQ(2, gc_record_cnt);
-    ASSERT_EQ(2 * GetRecordSize(5), gc_record_byte_size);
+    ASSERT_EQ(2, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(2, (int64_t)gc_record_cnt);
+    ASSERT_EQ(2 * GetRecordSize(5), (int64_t)gc_record_byte_size);
     gc_idx_cnt = 0;
     gc_record_cnt = 0;
     gc_record_byte_size = 0;
     segment.Gc4TTLAndHead(9770, 1, gc_idx_cnt, gc_record_cnt,
                           gc_record_byte_size);
-    ASSERT_EQ(3, gc_idx_cnt);
-    ASSERT_EQ(3, gc_record_cnt);
-    ASSERT_EQ(3 * GetRecordSize(5), gc_record_byte_size);
+    ASSERT_EQ(3, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(3, (int64_t)gc_record_cnt);
+    ASSERT_EQ(3 * GetRecordSize(5), (int64_t)gc_record_byte_size);
 }
 
 TEST_F(SegmentTest, TestGc4TTLOrHead) {
@@ -310,45 +310,45 @@ TEST_F(SegmentTest, TestGc4TTLOrHead) {
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
     segment.Gc4TTLOrHead(0, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(0, gc_idx_cnt);
-    ASSERT_EQ(0, gc_record_cnt);
-    ASSERT_EQ(0, gc_record_byte_size);
+    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(0, (int64_t)gc_record_cnt);
+    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
     segment.Gc4TTLOrHead(9765, 0, gc_idx_cnt, gc_record_cnt,
                          gc_record_byte_size);
-    ASSERT_EQ(1, gc_idx_cnt);
-    ASSERT_EQ(1, gc_record_cnt);
-    ASSERT_EQ(GetRecordSize(5), gc_record_byte_size);
+    ASSERT_EQ(1, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(1, (int64_t)gc_record_cnt);
+    ASSERT_EQ(GetRecordSize(5), (int64_t)gc_record_byte_size);
     gc_idx_cnt = 0;
     gc_record_cnt = 0;
     gc_record_byte_size = 0;
     segment.Gc4TTLOrHead(0, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(1, gc_idx_cnt);
-    ASSERT_EQ(1, gc_record_cnt);
-    ASSERT_EQ(GetRecordSize(5), gc_record_byte_size);
+    ASSERT_EQ(1, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(1, (int64_t)gc_record_cnt);
+    ASSERT_EQ(GetRecordSize(5), (int64_t)gc_record_byte_size);
     gc_idx_cnt = 0;
     gc_record_cnt = 0;
     gc_record_byte_size = 0;
     segment.Gc4TTLOrHead(9765, 3, gc_idx_cnt, gc_record_cnt,
                          gc_record_byte_size);
-    ASSERT_EQ(0, gc_idx_cnt);
-    ASSERT_EQ(0, gc_record_cnt);
-    ASSERT_EQ(0, gc_record_byte_size);
+    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(0, (int64_t)gc_record_cnt);
+    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
     gc_idx_cnt = 0;
     gc_record_cnt = 0;
     gc_record_byte_size = 0;
     segment.Gc4TTLOrHead(9766, 2, gc_idx_cnt, gc_record_cnt,
                          gc_record_byte_size);
-    ASSERT_EQ(2, gc_idx_cnt);
-    ASSERT_EQ(2, gc_record_cnt);
-    ASSERT_EQ(2 * GetRecordSize(5), gc_record_byte_size);
+    ASSERT_EQ(2, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(2, (int64_t)gc_record_cnt);
+    ASSERT_EQ(2 * GetRecordSize(5), (int64_t)gc_record_byte_size);
     gc_idx_cnt = 0;
     gc_record_cnt = 0;
     gc_record_byte_size = 0;
     segment.Gc4TTLOrHead(9770, 1, gc_idx_cnt, gc_record_cnt,
                          gc_record_byte_size);
-    ASSERT_EQ(3, gc_idx_cnt);
-    ASSERT_EQ(3, gc_record_cnt);
-    ASSERT_EQ(3 * GetRecordSize(5), gc_record_byte_size);
+    ASSERT_EQ(3, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(3, (int64_t)gc_record_cnt);
+    ASSERT_EQ(3 * GetRecordSize(5), (int64_t)gc_record_byte_size);
 }
 
 TEST_F(SegmentTest, TestStat) {
@@ -358,32 +358,32 @@ TEST_F(SegmentTest, TestStat) {
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
-    ASSERT_EQ(2, segment.GetIdxCnt());
-    ASSERT_EQ(1, segment.GetPkCnt());
+    ASSERT_EQ(2, (int64_t)segment.GetIdxCnt());
+    ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
     segment.Gc4TTL(9765, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(0, gc_idx_cnt);
+    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
     segment.Gc4TTL(9768, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(1, segment.GetIdxCnt());
-    ASSERT_EQ(1, gc_idx_cnt);
+    ASSERT_EQ(1, (int64_t)segment.GetIdxCnt());
+    ASSERT_EQ(1, (int64_t)gc_idx_cnt);
     segment.Gc4TTL(9770, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(2, gc_idx_cnt);
-    ASSERT_EQ(0, segment.GetIdxCnt());
+    ASSERT_EQ(2, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(0, (int64_t)segment.GetIdxCnt());
 }
 
 TEST_F(SegmentTest, GetTsIdx) {
     std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
     Segment segment(8, ts_idx_vec);
-    ASSERT_EQ(3, segment.GetTsCnt());
+    ASSERT_EQ(3, (int64_t)segment.GetTsCnt());
     uint32_t real_idx = UINT32_MAX;
     ASSERT_EQ(-1, segment.GetTsIdx(0, real_idx));
     ASSERT_EQ(0, segment.GetTsIdx(1, real_idx));
-    ASSERT_EQ(0, real_idx);
+    ASSERT_EQ(0, (int64_t)real_idx);
     ASSERT_EQ(-1, segment.GetTsIdx(2, real_idx));
     ASSERT_EQ(0, segment.GetTsIdx(3, real_idx));
-    ASSERT_EQ(1, real_idx);
+    ASSERT_EQ(1, (int64_t)real_idx);
     ASSERT_EQ(-1, segment.GetTsIdx(4, real_idx));
     ASSERT_EQ(0, segment.GetTsIdx(5, real_idx));
-    ASSERT_EQ(2, real_idx);
+    ASSERT_EQ(2, (int64_t)real_idx);
 }
 
 TEST_F(SegmentTest, PutAndGetTS) {
@@ -404,7 +404,7 @@ TEST_F(SegmentTest, PutAndGetTS) {
     ret = segment.Get(pk, 1, 1101, &result);
     ASSERT_TRUE(ret);
     ASSERT_TRUE(result != NULL);
-    ASSERT_EQ(5, result->size);
+    ASSERT_EQ(5, (int64_t)result->size);
     std::string t(result->data, result->size);
     std::string e = "test1";
     ASSERT_EQ(e, t);

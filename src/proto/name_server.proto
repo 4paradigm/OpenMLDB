@@ -64,6 +64,7 @@ message UpdateTTLRequest {
     optional uint64 value = 3 [default = 0, deprecated = true];
     optional string ts_name = 4;
     optional rtidb.api.TTLDesc ttl_desc = 5;
+    optional string db = 6 [default = ""];
 }
 
 message UpdateTTLResponse {
@@ -107,7 +108,9 @@ message TableInfo {
     optional rtidb.type.TableType table_type = 17 [default = kTimeSeries];
     optional uint32 format_version = 18 [default = 0];
     optional BlobInfo blob_info = 19;
-    optional string db = 20;
+    optional string db = 20 [default = ""];
+    repeated string partition_key = 21;
+    repeated common.VersionPair schema_versions = 22;
 }
 
 message CreateTableRequest {
@@ -120,7 +123,7 @@ message DropTableRequest {
     required string name = 1;
     optional ZoneInfo zone_info = 2;
     optional rtidb.api.TaskInfo task_info = 3;
-    optional string db = 4;
+    optional string db = 4 [default = ""];
 }
 
 message LoadTableRequest {
@@ -129,6 +132,7 @@ message LoadTableRequest {
     optional uint32 pid = 3;
     optional ZoneInfo zone_info = 4;
     optional rtidb.api.TaskInfo task_info = 5;
+    optional string db = 6 [default = ""];
 }
 
 message CreateTableInfoRequest {
@@ -138,7 +142,8 @@ message CreateTableInfoRequest {
 
 message ShowTableRequest {
     optional string name = 1;
-    optional string db = 2;
+    optional string db = 2 [default = ""];
+    optional bool show_all = 3 [default = false];
 }
 
 message ShowTableResponse {
@@ -151,6 +156,7 @@ message MakeSnapshotNSRequest {
     required string name = 1;
     required uint32 pid = 2;
     optional uint64 offset = 3;
+    optional string db = 4 [default=""];
 }
 
 message AddReplicaData {
@@ -160,6 +166,7 @@ message AddReplicaData {
     optional uint32 remote_tid = 4; //for remote
     optional string alias = 5; //for remote 
     optional TablePartition table_partition = 6; //for remote
+    optional string db = 7 [default = ""];
 }
 
 message AddReplicaNSRequest {
@@ -170,6 +177,7 @@ message AddReplicaNSRequest {
     repeated string endpoint_group = 5; //for remote
     optional ZoneInfo zone_info = 6; //for remote
     optional rtidb.api.TaskInfo task_info = 7; //for remote
+    optional string db = 8 [default = ""];
 }
 
 message Pair {
@@ -193,6 +201,7 @@ message ChangeLeaderRequest {
     required string name = 1;
     required uint32 pid = 2;
     optional string candidate_leader = 3;
+    optional string db = 4 [default = ""];
 }
 
 message OfflineEndpointRequest {
@@ -222,12 +231,14 @@ message ShowTabletRequest {}
 message AddTableFieldRequest {
     optional string name = 1;
     optional rtidb.common.ColumnDesc column_desc = 2;
+    optional string db = 3 [default = ""];
 }
 
 message TabletStatus {
     optional string endpoint = 1;
     optional string state = 2;
     optional uint64 age = 3;
+    optional string real_endpoint = 4;
 }
 
 message ShowTabletResponse {
@@ -240,6 +251,7 @@ message RecoverTableRequest {
     required string name = 1;
     required uint32 pid = 2;
     required string endpoint = 3;
+    optional string db = 4 [default = ""];
 }
 
 message DelReplicaNSRequest {
@@ -247,6 +259,7 @@ message DelReplicaNSRequest {
     required uint32 pid = 2;
     required string endpoint = 3;
     repeated uint32 pid_group = 4;
+    optional string db = 5 [default = ""];
 }
 
 message MigrateRequest {
@@ -254,6 +267,7 @@ message MigrateRequest {
     required string name = 2;
     repeated uint32 pid = 3;
     required string des_endpoint = 4;
+    optional string db = 5 [default = ""];
 }
 
 message MigrateInfo {
@@ -290,6 +304,7 @@ message ChangeLeaderData {
     repeated string follower = 7;
     optional string candidate_leader = 8;
     repeated rtidb.common.EndpointAndTid remote_follower = 9;
+    optional string db = 10 [default = ""];
 }
 
 message OPStatus {
@@ -301,12 +316,14 @@ message OPStatus {
     required string task_type = 6;
     optional string name = 7;
     optional uint32 pid = 8;
-    optional int32 for_replica_cluster = 9 [default = 0];   
+    optional int32 for_replica_cluster = 9 [default = 0];
+    optional string db = 10 [default = ""];
 }
 
 message GetTablePartitionRequest {
     optional string name = 1;
     optional uint32 pid = 2;
+    optional string db = 3 [default = ""];
 }
 
 message GetTablePartitionResponse {
@@ -318,6 +335,7 @@ message GetTablePartitionResponse {
 message SetTablePartitionRequest {
     optional string name = 1;
     optional TablePartition table_partition = 2;
+    optional string db = 3 [default = ""];
 }
 
 message UpdateTableAliveRequest {
@@ -325,11 +343,13 @@ message UpdateTableAliveRequest {
     optional string endpoint = 2;
     optional uint32 pid = 3;
     optional bool is_alive = 4;
+    optional string db = 5 [default = ""];
 }
 
 message ShowOPStatusRequest{
     optional string name = 1;
     optional uint32 pid = 2;
+    optional string db = 3;
 }
 
 message ConnectZKRequest {}
@@ -394,6 +414,12 @@ message SyncTableRequest {
     optional string name = 1;
     optional string cluster_alias = 2;
     optional uint32 pid = 3;
+    optional string db = 4 [default = ""];
+}
+
+message SetSdkEndpointRequest {
+    optional string server_name = 1;
+    optional string sdk_endpoint = 2;
 }
 
 message AddIndexMeta {
@@ -401,16 +427,21 @@ message AddIndexMeta {
     optional uint32 pid = 2;
     optional rtidb.common.ColumnKey column_key = 3;
     optional uint32 idx = 4;
+    optional string db = 5 [default = ""];
+    optional bool skip_data = 6 [default = false];
 }
 
 message AddIndexRequest {
     optional string name = 1;
     optional rtidb.common.ColumnKey column_key = 2;
+    optional string db = 3 [default = ""];
+    repeated rtidb.common.ColumnDesc cols = 4;
 }
 
 message DeleteIndexRequest {
     optional string table_name = 1;
     optional string idx_name = 2;
+    optional string db_name = 3  [default = ""];
 }
 
 message CreateDatabaseRequest {
@@ -429,6 +460,22 @@ message ShowDatabaseResponse {
 
 message DropDatabaseRequest {
     optional string db = 1;
+}
+
+message ShowBlobServerRequest {}
+
+message ShowBlobServerResponse {
+    repeated TabletStatus tablets = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
+message ShowSdkEndpointRequest {}
+
+message ShowSdkEndpointResponse {
+    repeated TabletStatus tablets = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
 }
 
 service NameServer {
@@ -474,4 +521,7 @@ service NameServer {
     rpc UseDatabase(UseDatabaseRequest) returns (GeneralResponse);
     rpc ShowDatabase(GeneralRequest) returns (ShowDatabaseResponse);
     rpc DropDatabase(DropDatabaseRequest) returns (GeneralResponse);
+    rpc SetSdkEndpoint(SetSdkEndpointRequest) returns (GeneralResponse);
+    rpc ShowBlobServer(ShowBlobServerRequest) returns (ShowBlobServerResponse);
+    rpc ShowSdkEndpoint(ShowSdkEndpointRequest) returns (ShowSdkEndpointResponse);
 }

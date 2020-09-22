@@ -13,29 +13,20 @@
 
 #include <map>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
-#include <sstream>
 
 #include "base/endianconv.h"
-#include "base/glog_wapper.h" // NOLINT
 #include "base/strings.h"
-#include "boost/container/deque.hpp"
-#include "base/glog_wapper.h"  // NOLINT
-#include "storage/segment.h"
-
-using ::rtidb::storage::DataBlock;
-
-
-
+#include "proto/common.pb.h"
 
 namespace rtidb {
 namespace codec {
 
 using ProjectList = ::google::protobuf::RepeatedField<uint32_t>;
-using Schema =
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 static constexpr uint8_t VERSION_LENGTH = 2;
 static constexpr uint8_t SIZE_LENGTH = 4;
 static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
@@ -51,7 +42,7 @@ struct RowContext {};
 
 class RowProject {
  public:
-    RowProject(const Schema& schema, const ProjectList& plist);
+    RowProject(const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema, const ProjectList& plist);
 
     ~RowProject();
 
@@ -60,22 +51,28 @@ class RowProject {
     bool Project(const int8_t* row_ptr, uint32_t row_size, int8_t** out_ptr,
                  uint32_t* out_size);
 
+    uint32_t GetMaxIdx() { return max_idx_; }
+
  private:
-    const Schema& schema_;
     const ProjectList& plist_;
     Schema output_schema_;
     // TODO(wangtaize) share the init overhead
     RowBuilder* row_builder_;
-    RowView* row_view_;
+    std::shared_ptr<Schema> cur_schema_;
+    std::shared_ptr<RowView> cur_rv_;
+    uint32_t max_idx_;
+    std::map<int32_t, std::shared_ptr<RowView>> vers_views_;
+    std::map<int32_t, std::shared_ptr<Schema>> vers_schema_;
+    uint32_t cur_ver_;
 };
 
 class RowBuilder {
  public:
     explicit RowBuilder(const Schema& schema);
-    ~RowBuilder() = default;
 
     uint32_t CalTotalLength(uint32_t string_length);
     bool SetBuffer(int8_t* buf, uint32_t size);
+    bool SetBuffer(int8_t* buf, uint32_t size, bool need_clear);
     bool AppendBool(bool val);
     bool AppendInt32(int32_t val);
     bool AppendInt16(int16_t val);
@@ -89,7 +86,7 @@ class RowBuilder {
     bool AppendDate(uint32_t year, uint32_t month, uint32_t day);
     // append the date that encoded
     bool AppendDate(int32_t date);
-
+    bool AppendValue(const std::string& val);
     bool SetBool(uint32_t index, bool val);
     bool SetInt32(uint32_t index, int32_t val);
     bool SetInt16(uint32_t index, int16_t val);
@@ -98,14 +95,20 @@ class RowBuilder {
     bool SetTimestamp(uint32_t index, int64_t val);
     bool SetFloat(uint32_t index, float val);
     bool SetDouble(uint32_t index, double val);
-    bool SetString(uint32_t index, const char* val, uint32_t length);
-    bool SetNULL(uint32_t index);
     bool SetDate(uint32_t index, uint32_t year, uint32_t month, uint32_t day);
     // set the date that encoded
     bool SetDate(uint32_t index, int32_t date);
 
+    void SetSchemaVersion(uint8_t version);
+    inline bool IsComplete() { return cnt_ == (uint32_t)schema_.size(); }
+    inline uint32_t GetAppendPos() { return cnt_; }
+
  private:
     bool Check(uint32_t index, ::rtidb::type::DataType type);
+    inline void SetField(uint32_t index);
+    inline void SetStrOffset(uint32_t str_pos);
+    bool SetString(uint32_t index, const char* val, uint32_t length);
+    bool SetNULL(uint32_t index);
 
  private:
     const Schema& schema_;
@@ -116,6 +119,7 @@ class RowBuilder {
     uint32_t str_addr_length_;
     uint32_t str_field_start_offset_;
     uint32_t str_offset_;
+    uint8_t schema_version_;
     std::vector<uint32_t> offset_vec_;
 };
 
@@ -127,6 +131,10 @@ class RowView {
     bool Reset(const int8_t* row, uint32_t size);
     bool Reset(const int8_t* row);
 
+    static uint8_t GetSchemaVersion(const int8_t* row) {
+        return *(reinterpret_cast<const uint8_t*>(row + 1));
+    }
+
     int32_t GetBool(uint32_t idx, bool* val);
     int32_t GetInt32(uint32_t idx, int32_t* val);
     int32_t GetInt64(uint32_t idx, int64_t* val);
@@ -136,8 +144,7 @@ class RowView {
     int32_t GetFloat(uint32_t idx, float* val);
     int32_t GetDouble(uint32_t idx, double* val);
     int32_t GetString(uint32_t idx, char** val, uint32_t* length);
-    int32_t GetDate(uint32_t idx, uint32_t* year, uint32_t* month,
-                    uint32_t* day);
+    int32_t GetDate(uint32_t idx, uint32_t* year, uint32_t* month, uint32_t* day);
     int32_t GetDate(uint32_t idx, int32_t* date);
     bool IsNULL(uint32_t idx) { return IsNULL(row_, idx); }
     inline bool IsNULL(const int8_t* row, uint32_t idx) {
@@ -160,6 +167,7 @@ class RowView {
                      uint32_t* length);
 
     int32_t GetStrValue(const int8_t* row, uint32_t idx, std::string* val);
+    int32_t GetStrValue(uint32_t idx, std::string* val);
 
  private:
     bool Init();

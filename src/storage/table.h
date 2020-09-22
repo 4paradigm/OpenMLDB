@@ -12,17 +12,19 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "proto/tablet.pb.h"
 #include "storage/iterator.h"
 #include "storage/schema.h"
 #include "storage/ticket.h"
+#include "vm/catalog.h"
 
 namespace rtidb {
 namespace storage {
 
 typedef google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> Dimensions;
-typedef google::protobuf::RepeatedPtrField<::rtidb::api::TSDimension>
-    TSDimensions;
+typedef google::protobuf::RepeatedPtrField<::rtidb::api::TSDimension> TSDimensions;
+using Schema = google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>;
 
 enum TableStat {
     kUndefined = 0,
@@ -85,6 +87,10 @@ class Table {
     virtual TableIterator* NewTraverseIterator(uint32_t index,
                                                uint32_t ts_idx) = 0;
 
+    virtual ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t index) = 0;
+    virtual ::fesql::vm::WindowIterator* NewWindowIterator(uint32_t index,
+                                                           uint32_t ts_idx) = 0;
+
     virtual void SchedGc() = 0;
 
     virtual uint64_t GetRecordCnt() const = 0;
@@ -133,10 +139,23 @@ class Table {
         return compress_type_;
     }
 
+    void AddVersionSchema();
+
     const ::rtidb::api::TableMeta& GetTableMeta() const { return table_meta_; }
 
-    inline void SetTableMeta(::rtidb::api::TableMeta& table_meta) {  // NOLINT
-        table_meta_.CopyFrom(table_meta);
+    void SetTableMeta(::rtidb::api::TableMeta& table_meta); // NOLINT
+
+    std::shared_ptr<Schema> GetVersionSchema(int32_t ver) {
+        auto versions = std::atomic_load_explicit(&version_schema_, std::memory_order_relaxed);
+        auto it = versions->find(ver);
+        if (it == versions->end()) {
+            return nullptr;
+        }
+        return it->second;
+    }
+
+    std::map<int32_t, std::shared_ptr<Schema>> GetAllVersionSchema() {
+        return *std::atomic_load_explicit(&version_schema_, std::memory_order_relaxed);
     }
 
     std::vector<std::shared_ptr<IndexDef>> GetAllIndex() {
@@ -210,6 +229,8 @@ class Table {
 
     inline int64_t GetMakeSnapshotTime() { return last_make_snapshot_time_; }
 
+    bool CheckFieldExist(const std::string& name);
+
  protected:
     void UpdateTTL();
     bool InitFromMeta();
@@ -237,6 +258,7 @@ class Table {
     ::rtidb::api::CompressType compress_type_;
     ::rtidb::api::TableMeta table_meta_;
     int64_t last_make_snapshot_time_;
+    std::shared_ptr<std::map<int32_t, std::shared_ptr<Schema>>> version_schema_;
 };
 
 }  // namespace storage

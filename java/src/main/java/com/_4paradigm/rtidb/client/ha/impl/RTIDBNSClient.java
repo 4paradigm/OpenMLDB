@@ -6,14 +6,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com._4paradigm.rtidb.client.ha.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com._4paradigm.rtidb.client.ha.NodeManager;
-import com._4paradigm.rtidb.client.ha.PartitionHandler;
-import com._4paradigm.rtidb.client.ha.RTIDBClient;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
@@ -109,14 +105,15 @@ public class RTIDBNSClient implements RTIDBClient{
                         SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
                         client.updateEndpoint(endpoint, bcg);
                         TabletServer ts = (TabletServer) RpcProxy.getProxy(client, TabletServer.class);
+                        TabletServerWapper tabletServerWapper = new TabletServerWapper(pm.getEndpoint(), ts);
                         if (pm.getIsLeader()) {
-                            ph.setLeader(ts);
+                            ph.setLeader(tabletServerWapper);
                         } else {
-                            ph.getFollowers().add(ts);
+                            ph.getFollowers().add(tabletServerWapper);
                         }
                         if (localIpAddr.contains(endpoint.getIp().toLowerCase())) {
-                            ph.setFastTablet(ts);
-                            logger.info("find fast tablet[{}] server for table {} local read", endpoint, table.getName());
+                            ph.setFastTablet(tabletServerWapper);
+                            logger.debug("find fast tablet[{}] server for table {} local read", endpoint, table.getName());
                         }
                     }
                 }
@@ -141,7 +138,7 @@ public class RTIDBNSClient implements RTIDBClient{
                 if (path.isEmpty()) {
                     continue;
                 }
-                logger.info("alive endpoint {}", path);
+                logger.debug("alive endpoint {}", path);
                 String[] parts = path.split(":");
                 if (parts.length != 2) {
                     logger.warn("invalid endpoint {}", path);

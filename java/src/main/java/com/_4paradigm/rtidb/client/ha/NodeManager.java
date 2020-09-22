@@ -63,7 +63,7 @@ public class NodeManager {
         }
         oldEndpoints.clear();
     }
-    
+
     public void close() {
         Iterator<Map.Entry<EndPoint, BrpcChannelGroup>> it = endpoints.entrySet().iterator();
         while (it.hasNext()) {

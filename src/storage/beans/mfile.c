@@ -21,7 +21,7 @@ MFile *open_mfile(const char *path)
     int fd = open(path, O_RDONLY);
     if (fd == -1)
     {
-        printf("open mfile %s failed", path);
+        printf("open mfile %s failed\n", path);
         return NULL;
     }
 
@@ -46,7 +46,7 @@ MFile *open_mfile(const char *path)
     curr_mmap_size += mb;
     pthread_mutex_unlock(&mmap_lock);
 
-    MFile *f = (MFile*) safe_malloc(sizeof(MFile));
+    MFile *f = (MFile*) beans_safe_malloc(sizeof(MFile));
     f->fd = fd;
     f->size = sb.st_size;
 
@@ -55,7 +55,7 @@ MFile *open_mfile(const char *path)
         f->addr = (char*) mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
         if (f->addr == MAP_FAILED)
         {
-            printf("mmap failed %s", path);
+            printf("mmap failed %s\n", path);
             close(fd);
             pthread_mutex_lock(&mmap_lock);
             curr_mmap_size -= mb;
@@ -66,7 +66,7 @@ MFile *open_mfile(const char *path)
 
         if (madvise(f->addr, sb.st_size, MADV_SEQUENTIAL) < 0)
         {
-            printf("Unable to madvise() region %p", f->addr);
+            printf("Unable to madvise() region %p\n", f->addr);
         }
     }
     else

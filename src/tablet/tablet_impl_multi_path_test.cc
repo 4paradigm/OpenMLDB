@@ -338,7 +338,7 @@ TEST_F(TabletMultiPathTest, CreateWithoutDBPath) {
     FLAGS_db_root_path = "";
     FLAGS_hdd_root_path = "";
     ::rtidb::tablet::TabletImpl tablet_impl;
-    tablet_impl.Init();
+    tablet_impl.Init("");
     CreateTableWithoutDBRootPath(tablet_impl,
                                  ::rtidb::api::TTLType::kAbsoluteTime, 0, 1000,
                                  100, 0, ::rtidb::common::StorageMode::kMemory);
@@ -355,7 +355,7 @@ TEST_F(TabletMultiPathTest, CreateWithoutDBPath) {
 
 TEST_F(TabletMultiPathTest, Memory_Test_read_write_absolute) {
     ::rtidb::tablet::TabletImpl tablet_impl;
-    tablet_impl.Init();
+    tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
         CreateBaseTablet(tablet_impl, ::rtidb::api::TTLType::kAbsoluteTime, 0,
                          1000, i + 1, i % 10,
@@ -365,7 +365,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_absolute) {
 
 TEST_F(TabletMultiPathTest, Memory_Test_read_write_latest) {
     ::rtidb::tablet::TabletImpl tablet_impl;
-    tablet_impl.Init();
+    tablet_impl.Init("");
     for (uint32_t i = 100; i < 200; i++) {
         CreateBaseTablet(tablet_impl, ::rtidb::api::TTLType::kLatestTime, 10,
                          1000, i + 1, i % 10,
@@ -375,7 +375,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_latest) {
 
 TEST_F(TabletMultiPathTest, HDD_Test_read_write) {
     ::rtidb::tablet::TabletImpl tablet_impl;
-    tablet_impl.Init();
+    tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
         CreateBaseTablet(tablet_impl, ::rtidb::api::TTLType::kLatestTime, 10,
                          1000, i + 1, i % 10,
@@ -385,7 +385,7 @@ TEST_F(TabletMultiPathTest, HDD_Test_read_write) {
 
 TEST_F(TabletMultiPathTest, SSD_Test_read_write) {
     ::rtidb::tablet::TabletImpl tablet_impl;
-    tablet_impl.Init();
+    tablet_impl.Init("");
     for (uint32_t i = 0; i < 100; i++) {
         CreateBaseTablet(tablet_impl, ::rtidb::api::TTLType::kLatestTime, 10,
                          1000, i + 1, i % 10,
@@ -395,7 +395,7 @@ TEST_F(TabletMultiPathTest, SSD_Test_read_write) {
 
 TEST_F(TabletMultiPathTest, Memory_Test_read_write_abs_and_lat) {
     ::rtidb::tablet::TabletImpl tablet_impl;
-    tablet_impl.Init();
+    tablet_impl.Init("");
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     for (uint32_t i = 20; i < 30; i++) {
         CreateAdvanceTablet(tablet_impl, ::rtidb::api::TTLType::kAbsAndLat,
@@ -407,7 +407,7 @@ TEST_F(TabletMultiPathTest, Memory_Test_read_write_abs_and_lat) {
 
 TEST_F(TabletMultiPathTest, Memory_Test_read_write_abs_or_lat) {
     ::rtidb::tablet::TabletImpl tablet_impl;
-    tablet_impl.Init();
+    tablet_impl.Init("");
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     for (uint32_t i = 30; i < 40; i++) {
         CreateAdvanceTablet(tablet_impl, ::rtidb::api::TTLType::kAbsOrLat, 2000,

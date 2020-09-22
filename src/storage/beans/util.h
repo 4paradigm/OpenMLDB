@@ -44,7 +44,7 @@ _safe_malloc(size_t s, const char *file, int line, const char *func)
     void *p = malloc(s);
     if (unlikely(p == NULL))
     {
-        printf("Out of memory: %d, %zu bytes in %s (%s:%i)", errno, s, func, file, line);
+        printf("Out of memory: %d, %zu bytes in %s (%s:%i)\n", errno, s, func, file, line);
         /*
         * memset will make debug easier
         */
@@ -54,7 +54,7 @@ _safe_malloc(size_t s, const char *file, int line, const char *func)
     return p;
 }
 
-#define safe_malloc(X) _safe_malloc(X, __FILE__, __LINE__, __FUNCTION__)
+#define beans_safe_malloc(X) _safe_malloc(X, __FILE__, __LINE__, __FUNCTION__)
 
 inline static void*
 _try_malloc(size_t s, const char *file, int line, const char *func)
@@ -62,12 +62,12 @@ _try_malloc(size_t s, const char *file, int line, const char *func)
     void *p = malloc(s);
     if (unlikely(p == NULL))
     {
-        printf("Out of memory: %d, %zu bytes in %s (%s:%i) but continue working.", errno, s, func, file, line);
+        printf("Out of memory: %d, %zu bytes in %s (%s:%i) but continue working.\n", errno, s, func, file, line);
     }
     return p;
 }
 
-#define try_malloc(X) _try_malloc(X, __FILE__, __LINE__, __FUNCTION__)
+#define beans_try_malloc(X) _try_malloc(X, __FILE__, __LINE__, __FUNCTION__)
 
 inline static void*
 _safe_realloc(void *ptr, size_t s, const char *file, int line, const char *func)
@@ -76,13 +76,13 @@ _safe_realloc(void *ptr, size_t s, const char *file, int line, const char *func)
     if (unlikely(p == NULL))
     {
         free(p);
-        printf("Realloc failed: %d, %zu bytes in %s (%s:%i)", errno, s, func, file, line);
+        printf("Realloc failed: %d, %zu bytes in %s (%s:%i)\n", errno, s, func, file, line);
         exit(1);
     }
     return p;
 }
 
-#define safe_realloc(X, Y) _safe_realloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
+#define beans_safe_realloc(X, Y) _safe_realloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
 
 inline static void*
 _try_realloc(void *ptr, size_t s, const char *file, int line, const char *func)
@@ -91,12 +91,12 @@ _try_realloc(void *ptr, size_t s, const char *file, int line, const char *func)
     if (unlikely(p == NULL))
     {
         free(p);
-        printf("Realloc failed: %d, %zu bytes in %s (%s:%i), but continue working", errno, s, func, file, line);
+        printf("Realloc failed: %d, %zu bytes in %s (%s:%i), but continue working\n", errno, s, func, file, line);
     }
     return p;
 }
 
-#define try_realloc(X, Y) _try_realloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
+#define beans_try_realloc(X, Y) _try_realloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
 
 inline static void*
 _safe_calloc(size_t num, size_t size, const char *file, int line, const char *func)
@@ -104,13 +104,13 @@ _safe_calloc(size_t num, size_t size, const char *file, int line, const char *fu
     void *p = calloc(num, size);
     if (unlikely(p == NULL))
     {
-        printf("Calloc failed: %d, %zu bytes in %s (%s:%i)", errno, num * size, func, file, line);
+        printf("Calloc failed: %d, %zu bytes in %s (%s:%i)\n", errno, num * size, func, file, line);
         exit(1);
     }
     return p;
 }
 
-#define safe_calloc(X, Y) _safe_calloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
+#define beans_safe_calloc(X, Y) _safe_calloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
 
 inline static void*
 _try_calloc(size_t num, size_t size, const char *file, int line, const char *func)
@@ -118,12 +118,12 @@ _try_calloc(size_t num, size_t size, const char *file, int line, const char *fun
     void *p = calloc(num, size);
     if (unlikely(p == NULL))
     {
-        printf("Calloc failed: %d, %zu bytes in %s (%s:%i)", errno, num * size, func, file, line);
+        printf("Calloc failed: %d, %zu bytes in %s (%s:%i)\n", errno, num * size, func, file, line);
     }
     return p;
 }
 
-#define try_calloc(X, Y) _try_calloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
+#define beans_try_calloc(X, Y) _try_calloc(X, Y, __FILE__, __LINE__, __FUNCTION__)
 
 inline static size_t
 _check_snprintf(const char *file, int line, const char *func, char *s, size_t n, const char *format, ...)

@@ -9,11 +9,12 @@
 #define SRC_ZK_ZK_CLIENT_H_
 
 #include <atomic>
-#include <condition_variable> // NOLINT
+#include <condition_variable>  // NOLINT
 #include <map>
-#include <mutex> // NOLINT
-#include <vector>
+#include <mutex>  // NOLINT
 #include <string>
+#include <vector>
+
 #include "boost/function.hpp"
 
 extern "C" {
@@ -26,6 +27,8 @@ namespace zk {
 typedef boost::function<void(const std::vector<std::string>& endpoint)>
     NodesChangedCallback;
 
+typedef boost::function<void(void)> ItemChangedCallback;
+
 const uint32_t ZK_MAX_BUFFER_SIZE = 1024 * 1024;
 
 class ZkClient {
@@ -33,7 +36,8 @@ class ZkClient {
     // hosts , the zookeeper server lists eg host1:2181,host2:2181
     // session_timeout, the session timeout
     // endpoint, the client endpoint
-    ZkClient(const std::string& hosts, int32_t session_timeout,
+     ZkClient(const std::string& hosts, const std::string& real_endpoint,
+             int32_t session_timeout,
              const std::string& endpoint, const std::string& zk_root_path);
 
     ZkClient(const std::string& hosts, int32_t session_timeout,
@@ -48,6 +52,8 @@ class ZkClient {
     // eg {zk_root_path}/nodes/000000 -> endpoint
     bool Register(bool startup_flag = false);
 
+    bool RegisterName();
+
     // close zk connection
     bool CloseZK();
 
@@ -58,18 +64,22 @@ class ZkClient {
     void HandleNodesChanged(int type, int state);
 
     // get all alive nodes
-    bool GetNodes(std::vector<std::string>& endpoints); // NOLINT
+    bool GetNodes(std::vector<std::string>& endpoints);  // NOLINT
 
+    bool GetChildrenUnLocked(const std::string& path,
+                     std::vector<std::string>& children);  // NOLINT
     bool GetChildren(const std::string& path,
-                     std::vector<std::string>& children); // NOLINT
+                     std::vector<std::string>& children);  // NOLINT
 
     // log all event from zookeeper
     void LogEvent(int type, int state, const char* path);
 
+    bool MkdirNoLock(const std::string& path);
     bool Mkdir(const std::string& path);
 
-    bool GetNodeValue(const std::string& node, std::string& value); // NOLINT
-    bool GetNodeValueLocked(const std::string& node, std::string& value); // NOLINT
+    bool GetNodeValue(const std::string& node, std::string& value);  // NOLINT
+    bool GetNodeValueUnLocked(const std::string& node,
+                            std::string& value);  // NOLINT
 
     bool SetNodeValue(const std::string& node, const std::string& value);
 
@@ -88,10 +98,16 @@ class ZkClient {
     bool CreateNode(const std::string& node, const std::string& value);
 
     bool CreateNode(const std::string& node, const std::string& value,
-                    int flags, std::string& assigned_path_name); // NOLINT
+                    int flags, std::string& assigned_path_name);  // NOLINT
 
     bool WatchNodes();
 
+    void HandleItemChanged(const std::string& path, int type, int state);
+
+    bool WatchItem(const std::string& path, ItemChangedCallback callback);
+    void CancelWatchItem(const std::string& path);
+
+    int IsExistNodeUnLocked(const std::string& node);
     int IsExistNode(const std::string& node);
 
     inline bool IsConnected() {
@@ -119,10 +135,12 @@ class ZkClient {
     int32_t session_timeout_;
     std::string endpoint_;
     std::string zk_root_path_;
+    std::string real_endpoint_;
 
     // internal args
     std::string nodes_root_path_;
     std::vector<NodesChangedCallback> nodes_watch_callbacks_;
+    std::string names_root_path_;
 
     //
     std::mutex mu_;
@@ -134,6 +152,7 @@ class ZkClient {
     bool connected_;
     std::atomic<bool> registed_;
     std::map<std::string, NodesChangedCallback> children_callbacks_;
+    std::map<std::string, ItemChangedCallback> item_callbacks_;
     char buffer_[ZK_MAX_BUFFER_SIZE];
     std::atomic<uint64_t> session_term_;
 };

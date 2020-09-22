@@ -9,17 +9,18 @@
 #include <gflags/gflags.h>
 #include <sched.h>
 #include <unistd.h>
+
 #include "base/file_util.h"
+#include "base/glog_wapper.h"  // NOLINT
 #include "client/ns_client.h"
 #include "gtest/gtest.h"
-#include "base/glog_wapper.h" // NOLINT
 #include "nameserver/name_server_impl.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 #include "rpc/rpc_client.h"
 #include "tablet/tablet_impl.h"
-#include "timer.h" // NOLINT
+#include "timer.h"  // NOLINT
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -31,6 +32,7 @@ DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_bool(auto_failover);
+DECLARE_bool(enable_timeseries_table);
 DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
 
@@ -45,7 +47,9 @@ using std::vector;
 namespace rtidb {
 namespace nameserver {
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() {
+    return std::to_string(rand() % 10000000 + 1);  // NOLINT
+}
 
 class MockClosure : public ::google::protobuf::Closure {
  public:
@@ -68,51 +72,96 @@ class NameServerImplTest : public ::testing::Test {
     }
 };
 
+bool StartNS(const std::string& endpoint, brpc::Server* server, brpc::ServerOptions* options) {
+    FLAGS_endpoint = endpoint;
+    NameServerImpl* nameserver = new NameServerImpl();
+    if (!nameserver->Init("")) {
+        return false;
+    }
+    if (server->AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server->Start(endpoint.c_str(), options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    sleep(2);
+    return true;
+}
+
+bool StartTablet(const std::string& endpoint,
+        brpc::Server* server, brpc::ServerOptions* options) {
+    FLAGS_endpoint = endpoint;
+    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
+    if (!tablet->Init("")) {
+        return false;
+    }
+    if (server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+        PDLOG(WARNING, "Fail to add service");
+        exit(1);
+    }
+    if (server->Start(endpoint.c_str(), options) != 0) {
+        PDLOG(WARNING, "Fail to start server");
+        exit(1);
+    }
+    if (!tablet->RegisterZK()) {
+        return false;
+    }
+    sleep(2);
+    return true;
+}
+
+TEST_F(NameServerImplTest, CreateDisallowedTable) {
+    FLAGS_zk_cluster = "127.0.0.1:6181";
+    FLAGS_enable_timeseries_table = false;
+    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+
+    brpc::ServerOptions options;
+    brpc::Server server;
+    ASSERT_TRUE(StartNS("127.0.0.1:9631", &server, &options));
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
+        "127.0.0.1:9631", "");
+    name_server_client.Init();
+
+    brpc::ServerOptions options1;
+    brpc::Server server1;
+    ASSERT_TRUE(StartTablet("127.0.0.1:9500", &server1, &options1));
+
+    CreateTableRequest request;
+    GeneralResponse response;
+    TableInfo* table_info = request.mutable_table_info();
+    std::string name = "test" + GenRand();
+    table_info->set_name(name);
+    TablePartition* partion = table_info->add_table_partition();
+    partion->set_pid(0);
+    PartitionMeta* meta = partion->add_partition_meta();
+    meta->set_endpoint("127.0.0.1:9500");
+    meta->set_is_leader(true);
+    bool ok = name_server_client.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+        FLAGS_request_timeout_ms, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(145, response.code());
+    FLAGS_enable_timeseries_table = true;
+}
+
 TEST_F(NameServerImplTest, MakesnapshotTask) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     int32_t old_offset = FLAGS_make_snapshot_threshold_offset;
     FLAGS_make_snapshot_threshold_offset = 0;
     FLAGS_zk_root_path = "/rtidb3" + GenRand();
 
-    FLAGS_endpoint = "127.0.0.1:9631";
-    NameServerImpl* nameserver = new NameServerImpl();
-    bool ok = nameserver->Init();
-    ASSERT_TRUE(ok);
-    sleep(4);
     brpc::ServerOptions options;
     brpc::Server server;
-    if (server.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server.Start(FLAGS_endpoint.c_str(), &options) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
+    ASSERT_TRUE(StartNS("127.0.0.1:9631", &server, &options));
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
-        FLAGS_endpoint);
+        "127.0.0.1:9631", "");
     name_server_client.Init();
-
-    FLAGS_endpoint = "127.0.0.1:9530";
-    ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    ok = tablet->Init();
-    ASSERT_TRUE(ok);
-    sleep(2);
 
     brpc::ServerOptions options1;
     brpc::Server server1;
-    if (server1.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-        PDLOG(WARNING, "Fail to add service");
-        exit(1);
-    }
-    if (server1.Start(FLAGS_endpoint.c_str(), &options1) != 0) {
-        PDLOG(WARNING, "Fail to start server");
-        exit(1);
-    }
-    ok = tablet->RegisterZK();
-    ASSERT_TRUE(ok);
-
-    sleep(2);
+    ASSERT_TRUE(StartTablet("127.0.0.1:9530", &server1, &options1));
 
     CreateTableRequest request;
     GeneralResponse response;
@@ -124,7 +173,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     PartitionMeta* meta = partion->add_partition_meta();
     meta->set_endpoint("127.0.0.1:9530");
     meta->set_is_leader(true);
-    ok = name_server_client.SendRequest(
+    bool ok = name_server_client.SendRequest(
         &::rtidb::nameserver::NameServer_Stub::CreateTable, &request, &response,
         FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
@@ -140,7 +189,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
 
     sleep(5);
 
-    ZkClient zk_client(FLAGS_zk_cluster, 1000, FLAGS_endpoint,
+    ZkClient zk_client(FLAGS_zk_cluster, "", 1000, FLAGS_endpoint,
                        FLAGS_zk_root_path);
     ok = zk_client.Init();
     ASSERT_TRUE(ok);
@@ -161,7 +210,7 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     std::vector<std::string> vec;
     int cnt = ::rtidb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, cnt);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int64_t)vec.size());
 
     std::string table_data_node =
         FLAGS_zk_root_path + "/table/table_data/" + name;
@@ -184,8 +233,80 @@ TEST_F(NameServerImplTest, MakesnapshotTask) {
     ASSERT_EQ(0, response.code());
     ok = zk_client.GetNodeValue(table_data_node, value);
     ASSERT_FALSE(ok);
-    delete nameserver;
-    delete tablet;
+
+    // snapshot with db
+    std::string db = "db" + GenRand();
+    CreateDatabaseRequest db_request;
+    db_request.set_db(db);
+    ok = name_server_client.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::CreateDatabase, &db_request,
+        &response, FLAGS_request_timeout_ms, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(0, response.code());
+
+    table_info->set_db(db);
+    ok = name_server_client.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+        FLAGS_request_timeout_ms, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(0, response.code());
+
+    m_request.set_db(db);
+    ok = name_server_client.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::MakeSnapshotNS, &m_request,
+        &response, FLAGS_request_timeout_ms, 1);
+    ASSERT_TRUE(ok);
+
+    sleep(5);
+
+    ShowTableRequest sr_request;
+    ShowTableResponse sr_response;
+    sr_request.set_name(name);
+    sr_request.set_db(db);
+    ok = name_server_client.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::ShowTable, &sr_request,
+        &sr_response, FLAGS_request_timeout_ms, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(1, sr_response.table_info_size());
+    const TableInfo& table = sr_response.table_info(0);
+
+    op_index_node = FLAGS_zk_root_path + "/op/op_index";
+    value.clear();
+    ok = zk_client.GetNodeValue(op_index_node, value);
+    ASSERT_TRUE(ok);
+    op_node = FLAGS_zk_root_path + "/op/op_data/" + value;
+    ok = zk_client.GetNodeValue(op_node, value);
+    ASSERT_FALSE(ok);
+
+    value.clear();
+    table_index_node = FLAGS_zk_root_path + "/table/table_index";
+    ok = zk_client.GetNodeValue(table_index_node, value);
+    ASSERT_TRUE(ok);
+    snapshot_path = FLAGS_db_root_path + "/" + value + "_0/snapshot/";
+    vec.clear();
+    cnt = ::rtidb::base::GetFileName(snapshot_path, vec);
+    ASSERT_EQ(0, cnt);
+    ASSERT_EQ(2, (int64_t)vec.size());
+
+    table_data_node = FLAGS_zk_root_path + "/table/db_table_data/" +
+                      std::to_string(table.tid());
+    ok = zk_client.GetNodeValue(table_data_node, value);
+    ASSERT_TRUE(ok);
+    table_info1.ParseFromString(value);
+    ASSERT_STREQ(table_info->name().c_str(), table_info1.name().c_str());
+    ASSERT_EQ(table_info->table_partition_size(),
+              table_info1.table_partition_size());
+
+    drop_request.set_db(db);
+    response.Clear();
+    ok = name_server_client.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::DropTable, &drop_request,
+        &response, FLAGS_request_timeout_ms, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(0, response.code());
+    ok = zk_client.GetNodeValue(table_data_node, value);
+    ASSERT_FALSE(ok);
+
     FLAGS_make_snapshot_threshold_offset = old_offset;
 }
 
@@ -196,7 +317,7 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
     std::string endpoint = "127.0.0.1:9631";
     FLAGS_endpoint = endpoint;
     NameServerImpl* nameserver = new NameServerImpl();
-    bool ok = nameserver->Init();
+    bool ok = nameserver->Init("");
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
@@ -213,7 +334,7 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
     std::string endpoint1 = "127.0.0.1:9632";
     FLAGS_endpoint = endpoint1;
     NameServerImpl* nameserver1 = new NameServerImpl();
-    ok = nameserver1->Init();
+    ok = nameserver1->Init("");
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options1;
@@ -226,7 +347,7 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    ::rtidb::client::NsClient name_server_client(endpoint);
+    ::rtidb::client::NsClient name_server_client(endpoint, "");
     name_server_client.Init();
     std::string key = "auto_failover";
     std::string msg;
@@ -242,7 +363,7 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
     ASSERT_STREQ(conf_map[key].c_str(), "true");
     ret = name_server_client.DisConnectZK(msg);
     sleep(5);
-    ::rtidb::client::NsClient name_server_client1(endpoint1);
+    ::rtidb::client::NsClient name_server_client1(endpoint1, "");
     name_server_client1.Init();
     ret = name_server_client1.ConfGet(key, conf_map, msg);
     ASSERT_TRUE(ret);
@@ -257,7 +378,7 @@ TEST_F(NameServerImplTest, CreateTable) {
 
     FLAGS_endpoint = "127.0.0.1:9632";
     NameServerImpl* nameserver = new NameServerImpl();
-    bool ok = nameserver->Init();
+    bool ok = nameserver->Init("");
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
@@ -271,12 +392,12 @@ TEST_F(NameServerImplTest, CreateTable) {
         exit(1);
     }
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
-        FLAGS_endpoint);
+        FLAGS_endpoint, "");
     name_server_client.Init();
 
     FLAGS_endpoint = "127.0.0.1:9531";
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    ok = tablet->Init();
+    ok = tablet->Init("");
     ASSERT_TRUE(ok);
     sleep(2);
 
@@ -336,7 +457,7 @@ TEST_F(NameServerImplTest, Offline) {
     FLAGS_auto_failover = true;
     FLAGS_endpoint = "127.0.0.1:9633";
     NameServerImpl* nameserver = new NameServerImpl();
-    bool ok = nameserver->Init();
+    bool ok = nameserver->Init("");
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
@@ -350,13 +471,13 @@ TEST_F(NameServerImplTest, Offline) {
         exit(1);
     }
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
-        FLAGS_endpoint);
+        FLAGS_endpoint, "");
     name_server_client.Init();
 
     FLAGS_endpoint = "127.0.0.1:9533";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    ok = tablet->Init();
+    ok = tablet->Init("");
     ASSERT_TRUE(ok);
     sleep(2);
 
@@ -376,7 +497,7 @@ TEST_F(NameServerImplTest, Offline) {
     FLAGS_endpoint = "127.0.0.1:9534";
     FLAGS_db_root_path = "/tmp/" + ::rtidb::nameserver::GenRand();
     ::rtidb::tablet::TabletImpl* tablet2 = new ::rtidb::tablet::TabletImpl();
-    ok = tablet2->Init();
+    ok = tablet2->Init("");
     ASSERT_TRUE(ok);
     sleep(2);
 
@@ -457,7 +578,7 @@ TEST_F(NameServerImplTest, SetTablePartition) {
 
     FLAGS_endpoint = "127.0.0.1:9632";
     NameServerImpl* nameserver = new NameServerImpl();
-    bool ok = nameserver->Init();
+    bool ok = nameserver->Init("");
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
@@ -471,12 +592,12 @@ TEST_F(NameServerImplTest, SetTablePartition) {
         exit(1);
     }
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
-        FLAGS_endpoint);
+        FLAGS_endpoint, "");
     name_server_client.Init();
 
     FLAGS_endpoint = "127.0.0.1:9531";
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    ok = tablet->Init();
+    ok = tablet->Init("");
     ASSERT_TRUE(ok);
     sleep(2);
 
@@ -583,7 +704,7 @@ TEST_F(NameServerImplTest, CancelOP) {
 
     FLAGS_endpoint = "127.0.0.1:9632";
     NameServerImpl* nameserver = new NameServerImpl();
-    bool ok = nameserver->Init();
+    bool ok = nameserver->Init("");
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
@@ -664,7 +785,7 @@ void InitTablet(int port, vector<Server*> services,
         FLAGS_endpoint = "127.0.0.1:" + std::to_string(port);
 
         shared_ptr<TabletImpl> tb = std::make_shared<TabletImpl>();
-        if (!tb->Init()) {
+        if (!tb->Init("")) {
             PDLOG(WARNING, "failed to init tablet");
             exit(1);
         }
@@ -696,7 +817,7 @@ void InitNs(int port, vector<Server*> services,
     FLAGS_endpoint = "127.0.0.1:" + std::to_string(port);
     for (uint64_t i = 0; i < services.size(); i++) {
         shared_ptr<NameServerImpl> ns = std::make_shared<NameServerImpl>();
-        if (!ns->Init()) {
+        if (!ns->Init("")) {
             PDLOG(WARNING, "failed to init ns");
             exit(1);
         }
@@ -707,7 +828,8 @@ void InitNs(int port, vector<Server*> services,
         }
         *impls[i] = ns;
         *eps[i] = FLAGS_endpoint;
-        FLAGS_endpoint = "127.0.0.1:" + std::to_string(port + 100);
+        port += 100;
+        FLAGS_endpoint = "127.0.0.1:" + std::to_string(port);
     }
     return;
 }
@@ -1251,7 +1373,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
             tablet->Traverse(NULL, &traverse_request, &traverse_response,
                              &closure);
             ASSERT_EQ(0, traverse_response.code());
-            ASSERT_EQ(1, traverse_response.count());
+            ASSERT_EQ(1, (int64_t)traverse_response.count());
             traverse_response.Clear();
         }
     }
@@ -1264,7 +1386,7 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
             tablet->Traverse(NULL, &traverse_request, &traverse_response,
                              &closure);
             ASSERT_EQ(0, traverse_response.code());
-            ASSERT_EQ(1, traverse_response.count());
+            ASSERT_EQ(1, (int64_t)traverse_response.count());
             traverse_response.Clear();
         }
     }
@@ -1280,14 +1402,14 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     for (auto& tablet : tablets) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(1, scan_response->count());
+        ASSERT_EQ(1, (int64_t)scan_response->count());
         scan_response->Clear();
     }
     scan_request.set_tid(tid + 1);
     for (auto& tablet : f2_tablets) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(1, scan_response->count());
+        ASSERT_EQ(1, (int64_t)scan_response->count());
         scan_response->Clear();
     }
     {
@@ -1322,14 +1444,14 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     for (auto& tablet : tablets) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(2, scan_response->count());
+        ASSERT_EQ(2, (int64_t)scan_response->count());
         scan_response->Clear();
     }
     scan_request.set_tid(tid + 1);
     for (auto& tablet : f2_tablets) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(2, scan_response->count());
+        ASSERT_EQ(2, (int64_t)scan_response->count());
         scan_response->Clear();
     }
     for (auto& i : follower_nss) {
@@ -1386,14 +1508,14 @@ TEST_F(NameServerImplTest, DataSyncReplicaCluster) {
     for (auto& tablet : tablets) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(3, scan_response->count());
+        ASSERT_EQ(3, (int64_t)scan_response->count());
         scan_response->Clear();
     }
     scan_request.set_tid(tid + 1);
     for (auto& tablet : f2_tablets) {
         tablet->Scan(NULL, &scan_request, scan_response, &closure);
         ASSERT_EQ(0, scan_response->code());
-        ASSERT_EQ(3, scan_response->count());
+        ASSERT_EQ(3, (int64_t)scan_response->count());
         scan_response->Clear();
     }
 }
@@ -1404,7 +1526,7 @@ TEST_F(NameServerImplTest, CreateRelationalTable) {
 
     FLAGS_endpoint = "127.0.0.1:9632";
     NameServerImpl* nameserver = new NameServerImpl();
-    bool ok = nameserver->Init();
+    bool ok = nameserver->Init("");
     ASSERT_TRUE(ok);
     sleep(4);
     brpc::ServerOptions options;
@@ -1418,14 +1540,14 @@ TEST_F(NameServerImplTest, CreateRelationalTable) {
         exit(1);
     }
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
-        FLAGS_endpoint);
+        FLAGS_endpoint, "");
     name_server_client.Init();
 
     FLAGS_hdd_root_path = "/tmp/" + GenRand();
     FLAGS_ssd_root_path = "/tmp/" + GenRand();
     FLAGS_endpoint = "127.0.0.1:9531";
     ::rtidb::tablet::TabletImpl* tablet = new ::rtidb::tablet::TabletImpl();
-    ok = tablet->Init();
+    ok = tablet->Init("");
     ASSERT_TRUE(ok);
     sleep(2);
 
@@ -1467,6 +1589,7 @@ TEST_F(NameServerImplTest, CreateRelationalTable) {
 
     ::rtidb::common::ColumnDesc* col = table_info->add_column_desc_v1();
     col->set_name("card");
+    col->set_not_null(true);
     col->set_data_type(::rtidb::type::kBigInt);
     ::rtidb::common::ColumnDesc* col2 = table_info->add_column_desc_v1();
     col2->set_name("mcc");

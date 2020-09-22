@@ -103,7 +103,7 @@ static void *scan_thread(void *_args)
     pthread_cond_signal(&scan_cond);
     pthread_mutex_unlock(&scan_lock);
 
-    printf("thread %d completed", index);
+    printf("thread %d completed\n", index);
     return NULL;
 }
 
@@ -117,8 +117,8 @@ static void parallelize(HStore *store, BC_FUNC func)
     pthread_attr_init(&attr);
 
     int i, ret;
-    pthread_t *thread_ids = (pthread_t*)safe_malloc(sizeof(pthread_t) * store->scan_threads);
-    struct scan_args *args = (struct scan_args *) safe_malloc(sizeof(struct scan_args) * store->scan_threads);
+    pthread_t *thread_ids = (pthread_t*)beans_safe_malloc(sizeof(pthread_t) * store->scan_threads);
+    struct scan_args *args = (struct scan_args *) beans_safe_malloc(sizeof(struct scan_args) * store->scan_threads);
     for (i = 0; i < store->scan_threads; i++)
     {
         args[i].store = store;
@@ -126,7 +126,7 @@ static void parallelize(HStore *store, BC_FUNC func)
         args[i].func = func;
         if ((ret = pthread_create(thread_ids + i, &attr, scan_thread, args + i)) != 0)
         {
-            printf("Can't create thread: %s", strerror(ret));
+            printf("Can't create thread: %s\n", strerror(ret));
             exit(1);
         }
     }
@@ -152,19 +152,19 @@ HStore *hs_open(char *path, int height, time_t before, int scan_threads)
     if (NULL == path) return NULL;
     if (height < 0 || height > 3)
     {
-        printf("invalid db height: %d", height);
+        printf("invalid db height: %d\n", height);
         return NULL;
     }
     if (before != 0)
     {
         if (before<0)
         {
-            printf("invalid time:%ld", before);
+            printf("invalid time:%ld\n", before);
             return NULL;
         }
         else
         {
-            printf("serve data modified before %s", ctime(&before));
+            printf("serve data modified before %s\n", ctime(&before));
         }
     }
 
@@ -179,12 +179,12 @@ HStore *hs_open(char *path, int height, time_t before, int scan_threads)
         path = paths[npath];
         if (strlen(path) > MAX_HOME_PATH_LEN)
         {
-            printf("path %s logger then %d", path, MAX_HOME_PATH_LEN);
+            printf("path %s logger then %d\n", path, MAX_HOME_PATH_LEN);
             return NULL;
         }
         if (0 != access(path, F_OK) && 0 != mkdir(path, 0755))
         {
-            printf("mkdir %s failed", path);
+            printf("mkdir %s failed\n", path);
             return NULL;
         }
         if (height > 1)
@@ -203,7 +203,7 @@ HStore *hs_open(char *path, int height, time_t before, int scan_threads)
 
     int i, j, count = 1 << (height * 4);
     printf("current height %d, count is %d\n", height, count);
-    HStore *store = (HStore*) safe_malloc(sizeof(HStore) + sizeof(Bitcask*) * count);
+    HStore *store = (HStore*) beans_safe_malloc(sizeof(HStore) + sizeof(Bitcask*) * count);
     if (!store) return NULL;
     memset(store, 0, sizeof(HStore) + sizeof(Bitcask*) * count);
     store->height = height;
@@ -227,7 +227,7 @@ HStore *hs_open(char *path, int height, time_t before, int scan_threads)
     char *buf[20] = {0};
     for (i = 0; i < npath; i++)
     {
-        buf[i] = (char*)safe_malloc(MAX_PATH_LEN);
+        buf[i] = (char*)beans_safe_malloc(MAX_PATH_LEN);
     }
     for (i = 0; i<count; i++)
     {
@@ -361,7 +361,7 @@ static char *hs_list(HStore *store, char *key)
     else
     {
         int i, bsize = 1024, used = 0;
-        char *buf = (char*)try_malloc(bsize);
+        char *buf = (char*)beans_try_malloc(bsize);
         if (!buf) return NULL;
         for (i = 0; i < 16; ++i)
         {
@@ -405,7 +405,7 @@ char *hs_get(HStore *store, char *key, unsigned int *vlen, uint32_t *flag)
     char *res = NULL;
     if (info)
     {
-        res = (char*)try_malloc(META_BUF_SIZE);
+        res = (char*)beans_try_malloc(META_BUF_SIZE);
 
         uint16_t hash = 0;
         if (r->version > 0)
@@ -454,10 +454,10 @@ bool hs_append(HStore *store, char *key, char *value, unsigned int vlen)
     char *body = hs_get(store, key, &rlen, &flag);
     if (body != NULL && flag != APPEND_FLAG)
     {
-        printf("try to append %s with flag=%x", key, flag);
+        printf("try to append %s with flag=%x\n", key, flag);
         goto APPEND_END;
     }
-    body = (char*)safe_realloc(body, rlen + vlen);
+    body = (char*)beans_safe_realloc(body, rlen + vlen);
     memcpy(body + rlen, value, vlen); // safe
     suc = hs_set(store, key, body, rlen + vlen, flag, 0); // TODO: use timestamp
 
@@ -485,16 +485,16 @@ int64_t hs_incr(HStore *store, char *key, int64_t value)
     {
         if (flag != INCR_FLAG || rlen > 22)
         {
-            printf("try to incr %s but flag=0x%x, len=%u", key, flag, rlen);
+            printf("try to incr %s but flag=0x%x, len=%u\n", key, flag, rlen);
             goto INCR_END;
         }
 
-        body = safe_realloc(body, rlen + 1);
+        body = beans_safe_realloc(body, rlen + 1);
         body[rlen] = 0;
         result = strtoll(body, NULL, 10);
         if (result == 0 && errno == EINVAL)
         {
-            printf("incr %s failed: %s", key, buf);
+            printf("incr %s failed: %s\n", key, buf);
             goto INCR_END;
         }
     }
@@ -518,7 +518,7 @@ void *do_optimize(void *arg)
     pthread_detach(pthread_self());
     HStore *store = (HStore *) arg;
     time_t st = time(NULL);
-    printf("start to optimize from 0x%x to 0x%x, limit %d",
+    printf("start to optimize from 0x%x to 0x%x, limit %d\n",
             store->op_start, store->op_end - 1 , store->op_limit);
     store->op_laststat = 0;
     for (; store->op_start < store->op_end && store->op_laststat == 0; ++(store->op_start))
@@ -526,7 +526,7 @@ void *do_optimize(void *arg)
         store->op_laststat = bc_optimize(store->bitcasks[store->op_start], store->op_limit);
     }
     store->op_start = store->op_end = 0;
-    printf("optimization %s in %lld seconds",
+    printf("optimization %s in %lld seconds\n",
            store->op_laststat >=0 ?"completed":"failed",  (long long)(time(NULL) - st));
     return NULL;
 }

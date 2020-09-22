@@ -14,11 +14,22 @@ using rtidb::blobserver::BlobServer_Stub;
 namespace rtidb {
 namespace client {
 
-BsClient::BsClient(const std::string &endpoint)
-    : endpoint_(endpoint), client_(endpoint) {}
+BsClient::BsClient(const std::string &endpoint,
+        const std::string& real_endpoint)
+    : endpoint_(endpoint), client_(endpoint) {
+        if (!real_endpoint.empty()) {
+            client_ = ::rtidb::RpcClient<BlobServer_Stub>(real_endpoint);
+        }
+    }
 
-BsClient::BsClient(const std::string &endpoint, bool use_sleep_policy)
-    : endpoint_(endpoint), client_(endpoint, use_sleep_policy) {}
+BsClient::BsClient(const std::string &endpoint,
+        const std::string& real_endpoint, bool use_sleep_policy)
+    : endpoint_(endpoint), client_(endpoint, use_sleep_policy) {
+        if (!real_endpoint.empty()) {
+            client_ = ::rtidb::RpcClient<BlobServer_Stub>(
+                    real_endpoint, use_sleep_policy);
+        }
+    }
 
 int BsClient::Init() { return client_.Init(); }
 
@@ -30,7 +41,24 @@ bool BsClient::CreateTable(const TableMeta &table_meta, std::string *msg) {
     meta->CopyFrom(table_meta);
     ::rtidb::blobserver::CreateTableResponse response;
     bool ok = client_.SendRequest(&BlobServer_Stub::CreateTable, &request,
-                                  &response, FLAGS_request_sleep_time, 1);
+                                  &response, FLAGS_request_timeout_ms, 1);
+    msg->swap(*response.mutable_msg());
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool BsClient::LoadTable(uint32_t tid, uint32_t pid, std::string *msg) {
+    ::rtidb::blobserver::LoadTableRequest request;
+    ::rtidb::blobserver::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_tid(tid);
+    table_meta->set_pid(pid);
+    table_meta->set_table_type(::rtidb::type::kObjectStore);
+    ::rtidb::blobserver::LoadTableResponse response;
+    bool ok =
+        client_.SendRequest(&::rtidb::blobserver::BlobServer_Stub::LoadTable,
+                            &request, &response, FLAGS_request_timeout_ms, 1);
     msg->swap(*response.mutable_msg());
     if (ok && response.code() == 0) {
         return true;
@@ -120,7 +148,7 @@ bool BsClient::Get(uint32_t tid, uint32_t pid, int64_t key,
         &BlobServer_Stub::Get, &request, &response, FLAGS_request_timeout_ms, 1,
         buff);
     msg->swap(*response.mutable_msg());
-    if (ok || response.code() == 0) {
+    if (ok && response.code() == 0) {
         return true;
     }
     return false;

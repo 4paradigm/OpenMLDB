@@ -38,6 +38,7 @@ DEFINE_int32(name_server_task_wait_time, 1000, "config the time of task wait");
 DEFINE_uint32(name_server_op_execute_timeout, 2 * 60 * 60 * 1000,
               "config the timeout of nameserver op");
 DEFINE_bool(auto_failover, false, "enable or disable auto failover");
+DEFINE_bool(enable_timeseries_table, true, "enable or disable timeseries table");
 DEFINE_int32(max_op_num, 10000, "config the max op num");
 DEFINE_uint32(partition_num, 8, "config the default partition_num");
 DEFINE_uint32(replica_num, 3,
@@ -55,6 +56,8 @@ DEFINE_double(mem_release_rate, 5,
               "specify memory release rate, which should be in 0 ~ 10");
 DEFINE_int32(task_pool_size, 3, "the size of tablet task thread pool");
 DEFINE_int32(io_pool_size, 2, "the size of tablet io task thread pool");
+DEFINE_bool(use_name, false, "enable or disable use server name");
+DEFINE_string(data_dir, "./data", "the path of data dir");
 
 // scan configuration
 DEFINE_uint32(scan_max_bytes_size, 2 * 1024 * 1024,
@@ -133,7 +136,7 @@ DEFINE_uint32(make_snapshot_offline_interval, 60 * 60 * 24,
 DEFINE_uint32(snapshot_ttl_time, 6 * 60,
               "config relational table snapshot TTL time in minutes");
 DEFINE_uint32(snapshot_ttl_check_interval, 60,
-              "config relational table snapshot TTL time in minutes");
+              "config relational table snapshot TTL check in minutes");
 
 DEFINE_uint32(load_index_max_wait_time, 120 * 60 * 1000,
               "config the max wait time of load index");
@@ -180,3 +183,7 @@ DEFINE_uint32(load_table_queue_size, 1000, "set load tabale queue size");
 // multiple data center
 DEFINE_uint32(get_replica_status_interval, 10000,
               "config the interval to sync replica cluster status time");
+
+// object sotre
+DEFINE_uint32(oss_flush_size, 0, "set oss cache flush kilobyte size");
+DEFINE_int32(oss_flush_period, 0, "set oss cache flush period seconds");

@@ -53,7 +53,7 @@ void collect_items(Item *it, void *param)
     if (p->size - p->curr < length)
     {
         p->size *= 2;
-        p->buf = (char*)safe_realloc(p->buf, p->size);
+        p->buf = (char*)beans_safe_realloc(p->buf, p->size);
     }
 
     HintRecord *r = (HintRecord*)(p->buf + p->curr);
@@ -73,8 +73,8 @@ void write_hint_file(char *buf, int size, const char *path)
     char *dst = buf;
     if (strcmp(path + strlen(path) - 4, ".qlz") == 0)
     {
-        char *wbuf = (char*)safe_malloc(QLZ_SCRATCH_COMPRESS);
-        dst = (char*)safe_malloc(size + 400);
+        char *wbuf = (char*)beans_safe_malloc(QLZ_SCRATCH_COMPRESS);
+        dst = (char*)beans_safe_malloc(size + 400);
         size = qlz_compress(buf, dst, size, wbuf);
         free(wbuf);
     }
@@ -84,7 +84,7 @@ void write_hint_file(char *buf, int size, const char *path)
     FILE *hf = fopen(tmp, "wb");
     if (NULL == hf)
     {
-        printf("open %s failed", tmp);
+        printf("open %s failed\n", tmp);
         return;
     }
     int n = fwrite(dst, 1, size, hf);
@@ -98,7 +98,7 @@ void write_hint_file(char *buf, int size, const char *path)
     }
     else
     {
-        printf("write to %s failed", tmp);
+        printf("write to %s failed\n", tmp);
     }
 }
 
@@ -107,7 +107,7 @@ void build_hint(HTree *tree, const char *hintpath)
     struct param p;
     p.size = 1024 * 1024;
     p.curr = 0;
-    p.buf = (char*)safe_malloc(p.size);
+    p.buf = (char*)beans_safe_malloc(p.size);
 
     ht_visit(tree, collect_items, &p);
     ht_destroy(tree);
@@ -124,7 +124,7 @@ HintFile *open_hint(const char *path, const char *new_path)
         return NULL;
     }
 
-    HintFile *hint = (HintFile*) safe_malloc(sizeof(HintFile));
+    HintFile *hint = (HintFile*) beans_safe_malloc(sizeof(HintFile));
     hint->f = f;
     hint->buf = f->addr;
     hint->size = f->size;
@@ -133,7 +133,7 @@ HintFile *open_hint(const char *path, const char *new_path)
     {
         char wbuf[QLZ_SCRATCH_DECOMPRESS];
         int size = qlz_size_decompressed(hint->buf);
-        char *buf = (char*)safe_malloc(size);
+        char *buf = (char*)beans_safe_malloc(size);
         int vsize = qlz_decompress(hint->buf, buf, wbuf);
         if (vsize != size)
         {
@@ -168,7 +168,7 @@ void scanHintFile(HTree *tree, int bucket, const char *path, const char *new_pat
     HintFile *hint = open_hint(path, new_path);
     if (hint == NULL) return;
 
-    printf("scan hint: %s", path);
+    printf("scan hint: %s\n", path);
 
     char *p = hint->buf, *end = hint->buf + hint->size;
     while (p < end)
@@ -177,7 +177,7 @@ void scanHintFile(HTree *tree, int bucket, const char *path, const char *new_pat
         p += sizeof(HintRecord) - NAME_IN_RECORD + r->ksize + 1;
         if (p > end)
         {
-            printf("scan %s: unexpected end, need %ld byte", path, p - end);
+            printf("scan %s: unexpected end, need %ld byte\n", path, p - end);
             break;
         }
         uint32_t pos = (r->pos << 8) | (bucket & 0xff);
@@ -208,7 +208,7 @@ int count_deleted_record(HTree *tree, int bucket, const char *path, int *total, 
         p += sizeof(HintRecord) - NAME_IN_RECORD + r->ksize + 1;
         if (p > end)
         {
-            printf("scan %s: unexpected end, need %ld byte", path, p - end);
+            printf("scan %s: unexpected end, need %ld byte\n", path, p - end);
             break;
         }
         (*total)++;

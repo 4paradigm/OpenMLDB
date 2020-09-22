@@ -69,7 +69,7 @@ public class RowCodecCommon {
                         && column == null) {
                     throw new TabletException("col " + columnDesc.getName() + " should not be null");
                 }
-                strLength += ((String) column).length();
+                strLength += ((String)column).getBytes(RowCodecCommon.CHARSET).length;
             }
         }
         return strLength;

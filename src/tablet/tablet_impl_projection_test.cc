@@ -6,25 +6,29 @@
 //
 
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
+#include <sys/stat.h>
+
 #include <boost/lexical_cast.hpp>
-#include "timer.h" // NOLINT
+
 #include "base/file_util.h"
+#include "base/glog_wapper.h"  //NOLINT
 #include "base/kv_iterator.h"
 #include "base/strings.h"
+#include "brpc/channel.h"
 #include "codec/flat_array.h"
 #include "codec/schema_codec.h"
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
 #include "log/log_writer.h"
-#include "base/glog_wapper.h" //NOLINT
 #include "proto/tablet.pb.h"
 #include "storage/mem_table.h"
 #include "storage/ticket.h"
 #include "tablet/tablet_impl.h"
+#include "timer.h"  // NOLINT
+#include "vm/engine.h"
 
 DECLARE_string(db_root_path);
 DECLARE_string(ssd_root_path);
@@ -78,7 +82,7 @@ class TabletProjectTest : public ::testing::TestWithParam<TestArgs*> {
  public:
     TabletProjectTest() {}
     ~TabletProjectTest() {}
-    void SetUp() { tablet_.Init(); }
+    void SetUp() { tablet_.Init(""); }
 
  public:
     ::rtidb::tablet::TabletImpl tablet_;
@@ -389,10 +393,12 @@ std::vector<TestArgs*> GenCommonCase() {
     }
     return args;
 }
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
+inline std::string GenRand() {
+    return std::to_string(rand() % 10000000 + 1); // NOLINT
+}
 
 void CompareRow(codec::RowView* left, codec::RowView* right,
-        const Schema& schema) {
+                const Schema& schema) {
     for (int32_t i = 0; i < schema.size(); i++) {
         uint32_t idx = (uint32_t)i;
         const common::ColumnDesc& column = schema.Get(i);
@@ -552,12 +558,74 @@ TEST_P(TabletProjectTest, get_case) {
         CompareRow(&left, &right, args->output_schema);
     }
 }
+TEST_P(TabletProjectTest, sql_case) {
+    auto args = GetParam();
+    // create table
+    std::string name = "t" + ::rtidb::tablet::GenRand();
+    std::string db = "db" + name;
+    int tid = rand() % 10000000;  // NOLINT
+    MockClosure closure;
+    // create a table
+    {
+        ::rtidb::api::CreateTableRequest crequest;
+        ::rtidb::api::TableMeta* table_meta = crequest.mutable_table_meta();
+        table_meta->set_db(db);
+        table_meta->set_name(name);
+        table_meta->set_tid(tid);
+        table_meta->set_pid(0);
+        table_meta->set_ttl(0);
+        table_meta->set_seg_cnt(8);
+        table_meta->set_mode(::rtidb::api::TableMode::kTableLeader);
+        table_meta->set_key_entry_max_height(8);
+        table_meta->set_format_version(1);
+        table_meta->set_table_type(type::kTimeSeries);
+        Schema* schema = table_meta->mutable_column_desc();
+        schema->CopyFrom(args->schema);
+        ::rtidb::common::ColumnKey* ck = table_meta->add_column_key();
+        ck->CopyFrom(args->ckey);
+        ::rtidb::api::CreateTableResponse cresponse;
+        tablet_.CreateTable(NULL, &crequest, &cresponse, &closure);
+        ASSERT_EQ(0, cresponse.code());
+    }
+    // put a record
+    {
+        ::rtidb::api::PutRequest request;
+        request.set_tid(tid);
+        request.set_pid(0);
+        request.set_format_version(1);
+        ::rtidb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        std::string key = args->pk;
+        dim->set_key(key);
+        ::rtidb::api::TSDimension* ts = request.add_ts_dimensions();
+        ts->set_idx(0);
+        ts->set_ts(args->ts);
+        request.set_value(reinterpret_cast<char*>(args->row_ptr),
+                          args->row_size);
+        ::rtidb::api::PutResponse response;
+        tablet_.Put(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+    }
+
+    {
+        ::rtidb::api::QueryRequest request;
+        request.set_db(db);
+        std::string sql = "select col1 from " + name + ";";
+        request.set_sql(sql);
+        request.set_is_batch(true);
+        brpc::Controller cntl;
+        ::rtidb::api::QueryResponse response;
+        tablet_.Query(&cntl, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(1, (int32_t)response.count());
+    }
+}
 
 TEST_P(TabletProjectTest, scan_case) {
     auto args = GetParam();
     // create table
     std::string name = ::rtidb::tablet::GenRand();
-    int tid = rand() % 10000000; // NOLINT
+    int tid = rand() % 10000000;  // NOLINT
     MockClosure closure;
     // create a table
     {
@@ -612,7 +680,7 @@ TEST_P(TabletProjectTest, scan_case) {
         ::rtidb::api::ScanResponse srp;
         tablet_.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        ASSERT_EQ(1, srp.count());
+        ASSERT_EQ(1, (int64_t)srp.count());
         ::rtidb::base::KvIterator* kv_it = new ::rtidb::base::KvIterator(&srp);
         ASSERT_TRUE(kv_it->Valid());
         ASSERT_EQ(kv_it->GetValue().size(), args->out_size);
@@ -625,7 +693,7 @@ TEST_P(TabletProjectTest, scan_case) {
     }
 }
 
-INSTANTIATE_TEST_CASE_P(TabletProjectPrefix, TabletProjectTest,
+INSTANTIATE_TEST_SUITE_P(TabletProjectPrefix, TabletProjectTest,
                         testing::ValuesIn(GenCommonCase()));
 
 }  // namespace tablet
@@ -644,5 +712,6 @@ int main(int argc, char** argv) {
         "/tmp/ssd_recycle" + k1 + ",/tmp/ssd_recycle" + k2;
     FLAGS_recycle_hdd_bin_root_path =
         "/tmp/hdd_recycle" + k1 + ",/tmp/hdd_recycle" + k2;
+    ::fesql::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();
 }

@@ -1,81 +1,203 @@
-image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0
+image: develop-registry.4pd.io/centos6_gcc7_fesql:0.0.12
 services:
-    - docker:dind
+  - docker:dind
 variables:
-    GIT_SUBMODULE_STRATEGY: recursive
+  GIT_SUBMODULE_STRATEGY: recursive
 stages:
-    - build
-    - test
-    - ts_integration_test
-    - ns_integration_test
-    - deploy
-
-build:
-    stage: build
-    script:
-        - source /root/.bashrc && sh tools/install_fesql.sh
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - source /root/.bashrc && bash steps/simple_compile.sh
-    artifacts:
-        expire_in: 2h
-        paths:
-            - build/bin/rtidb
-    except:
-        - /^*pz-fpga*$/
+  - precheck
+  - build
+  - daily
+  - test
+  - ts_integration_test
+  - ns_integration_test
+  - deploy
 
 style_check:
-    stage: build
-    script:
-        - source /root/.bashrc && bash tools/style_check.sh
-    artifacts:
-        reports:
-            junit:
-                - ./style.xml
+  stage: precheck
+  script:
+    - source /root/.bashrc && bash tools/style_check.sh
+  artifacts:
+    reports:
+      junit:
+        - ./reports/style.xml
 
+fpga-build:
+  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
+  stage: build
+  tags:
+    - fpga
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/simple_compile_fpga.sh
+  artifacts:
+    expire_in: 4h
+    paths:
+      - build/bin/rtidb_fpga
+
+build:
+  stage: build
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/simple_compile.sh
+  artifacts:
+    expire_in: 4h
+    paths:
+      - build/bin/rtidb
+      - build/src/sdk/libsql_jsdk.so
+      - build/sql_pysdk/dist/*.whl
+
+mac_build:
+  variables:
+    CICD_RUNNER_TAG: "rtidb_mac"
+  tags:
+    - rtidb_mac
+  stage: build
+  script:
+    - bash steps/simple_compile_mac.sh
+    - mv build/bin/rtidb build/bin/rtidb_mac
+  artifacts:
+    expire_in: 4h
+    paths:
+      - build/bin/rtidb_mac
+      - build/src/sdk/libsql_jsdk.dylib
+      - build/sql_pysdk/dist/*.whl
+
+fpga_java_ut:
+  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
+  tags:
+    - fpga
+  stage: test
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - mv build/bin/rtidb_fpag build/bin/rtidb
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
+  after_script:
+    - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
+    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+    - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+  dependencies:
+    - build/bin/rtidb_fpga
+  artifacts:
+    reports:
+      junit:
+        - java/target/surefire-reports/junitreports/TEST-*.xml
+        - java/target/surefire-reports/TEST-*.xml
+        - java/target/failsafe-reports/junitreports/TEST-*.xml
+        - java/target/failsafe-reports/TEST-*.xml
 
 java_ut:
   stage: test
-  before_script:
-      - mkdir /rambuild
-      - mount -t tmpfs -o size=3G tmpfs /rambuild
-  script:
-      - ln -sf /depends/thirdparty thirdparty
-      - ln -sf /depends/thirdsrc thirdsrc
-      - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
-      - source /root/.bashrc && bash steps/auto_test.sh
-  after_script:
-      - tar czvf $CI_COMMIT_SHA  auto-test-rtidb/target/allure-results
-      - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-      - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
-      - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
-  artifacts:
-      reports:
-          junit:
-              - java/target/surefire-reports/junitreports/TEST-*.xml
-              - java/target/surefire-reports/TEST-*.xml
-              - java/target/failsafe-reports/junitreports/TEST-*.xml
-              - java/target/failsafe-reports/TEST-*.xml
-              - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
-              - rtidb-auto-test/target/surefire-reports/TEST-*.xml
-              - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
-              - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
   except:
-      - /^*pz-fpga*$/
+    variables:
+      - $ENV_BUILD == "daily"
+
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
+  after_script:
+    - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
+    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+    - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+  artifacts:
+    reports:
+      junit:
+        - java/target/surefire-reports/junitreports/TEST-*.xml
+        - java/target/surefire-reports/TEST-*.xml
+        - java/target/failsafe-reports/junitreports/TEST-*.xml
+        - java/target/failsafe-reports/TEST-*.xml
+
+fesql_auto_test:
+  stage: test
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test.sh
+  after_script:
+    - tar czvf $CI_COMMIT_SHA  src/sdk/java/fesql-auto-test-java/target/allure-results
+    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+    - curl -s "http://auto.4paradigm.com/job/fesql-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&allure_path=src/sdk/java/feql-auto-test-java/target/allure-results&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+  artifacts:
+    reports:
+      junit:
+        - src/sdk/java/fesql-auto-test-java/target/surefire-reports/junitreports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/surefire-reports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
+        - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/TEST-*.xml
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies:
+    - build
+
+
+auto_test:
+  stage: test
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=5G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/auto_test.sh
+  after_script:
+    - tar czvf $CI_COMMIT_SHA rtidb-auto-test-java/target/allure-results
+    - bash steps/upload-nexus.sh $CI_COMMIT_SHA
+    - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&allure_path=rtidb-auto-test-java/target/allure-results&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
+    - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
+  artifacts:
+    reports:
+      junit:
+        - rtidb-auto-test-java/target/surefire-reports/junitreports/TEST-*.xml
+        - rtidb-auto-test-java/target/surefire-reports/TEST-*.xml
+        - rtidb-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
+        - rtidb-auto-test-java/target/failsafe-reports/TEST-*.xml
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies:
+    - build
+
 c++_ut:
-    stage: test
-    script:
-      - source /root/.bashrc && sh tools/install_fesql.sh
-      - ln -sf /depends/thirdparty thirdparty
-      - ln -sf /depends/thirdsrc thirdsrc
-      - source /root/.bashrc && bash steps/compile.sh
-      - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
-    artifacts:
-      reports:
-          junit:
-              - reports/*.xml
-    except:
-        - /^*pz-fpga*$/
+  stage: test
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/compile.sh
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
+  artifacts:
+    reports:
+      junit:
+        - reports/*.xml
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
 
 py3_ut:
   stage: test
@@ -90,280 +212,176 @@ py3_ut:
     reports:
       junit:
         - ./python/test/*xml
-
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
 
 tablet_one_demension:
-    stage: ts_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-    except:
-        - /^*pz-fpga*$/
+  stage: ts_integration_test
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+  artifacts:
+    reports:
+      junit:
+        - ./test-reports/*
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
 
 tablet_multi_demension:
-    stage: ts_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-    except:
-        - /^*pz-fpga*$/
+  stage: ts_integration_test
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+  artifacts:
+    reports:
+      junit:
+        - ./test-reports/*
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
 
 ns_one_demension:
-    stage: ns_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-    except:
-        - /^*pz-fpga*$/
+  stage: ns_integration_test
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+  artifacts:
+    reports:
+      junit:
+        - ./test-reports/*
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
 
 ns_multi_demension:
-    stage: ns_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-    except:
-        - /^*pz-fpga*$/
+  stage: ns_integration_test
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+  artifacts:
+    reports:
+      junit:
+        - ./test-reports/*
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
 
 disk_table:
-    stage: ns_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "disk"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-    except:
-        - /^*pz-fpga*$/
+  stage: ns_integration_test
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
+    - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "disk"
+    - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
+  artifacts:
+    reports:
+      junit:
+        - ./test-reports/*
+  dependencies:
+    - build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+
+deploy-fedb:
+  stage: daily
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/deploy_package_fedb.sh
+  only:
+    variables:
+      - $ENV_BUILD == "daily"
 
 deploy-package:
-    stage: deploy
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - source /root/.bashrc && bash steps/deploy_package.sh
-    only:
-        - tags
-    except:
-        - /^*pz-fpga*$/
-        
-build_rtidb_pz:
-    image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0-glibc-2.17
-    stage: build
-    script:
-        - source /root/.bashrc && sh tools/install_fesql.sh
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - bash steps/get_pz_fpga_deps.sh
-        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
-        - echo '\n#--file_compression=pz\n' >> release/conf/tablet.flags
-        - source /root/.bashrc && bash steps/simple_compile.sh
-        - mkdir TitanSE-rtidb && cp release/* TitanSE-rtidb/ -rf && cp tools TitanSE-rtidb/ -rf && cp build/bin/rtidb TitanSE-rtidb/bin/
-        - mkdir TitanSE-rtidb/lib && cp thirdparty/lib/*.so* TitanSE-rtidb/lib/ -L
-        - tar zcf TitanSE-rtidb-${CI_COMMIT_SHA:0:8}.tar.gz TitanSE-rtidb
-        - curl -T TitanSE-rtidb-${CI_COMMIT_SHA:0:8}.tar.gz ftp://ftp.4pd.io/pub/team_hpc/pz_rtidb/
-    artifacts:
-        expire_in: 3h
-        paths:
-            - build/bin/rtidb
-    only:
-        - /^*pz-fpga*$/
+  stage: deploy
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/deploy_package.sh
+  only:
+    - tags
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies: []
 
-java_ut_pz:
-    image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0-glibc-2.17
-    stage: test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - bash steps/get_pz_fpga_deps.sh
-        - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
-        - source /root/.bashrc && bash steps/auto_test.sh
-    after_script:
-        - tar czvf $CI_COMMIT_SHA  auto-test-rtidb/target/allure-results
-        - bash steps/upload-nexus.sh $CI_COMMIT_SHA
-        - curl -s "http://auto.4paradigm.com/job/rtidb-test-report/buildWithParameters?token=gitlab&pkg=$CI_COMMIT_SHA&buildname=$CI_PIPELINE_ID"-"$CI_JOB_ID"
-        - bash steps/get-report-url.sh rtidb-test-report $CI_PIPELINE_ID"-"$CI_JOB_ID
-    artifacts:
-        reports:
-            junit:
-                - java/target/surefire-reports/junitreports/TEST-*.xml
-                - java/target/surefire-reports/TEST-*.xml
-                - java/target/failsafe-reports/junitreports/TEST-*.xml
-                - java/target/failsafe-reports/TEST-*.xml
-                - rtidb-auto-test/target/surefire-reports/junitreports/TEST-*.xml
-                - rtidb-auto-test/target/surefire-reports/TEST-*.xml
-                - rtidb-auto-test/target/failsafe-reports/junitreports/TEST-*.xml
-                - rtidb-auto-test/target/failsafe-reports/TEST-*.xml
-    only:
-        - /^*pz-fpga*$/
-c++_ut_pz:
-    image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0-glibc-2.17
-    stage: test
-    script:
-        - source /root/.bashrc && sh tools/install_fesql.sh
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - bash steps/get_pz_fpga_deps.sh
-        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
-        - echo '\n#--file_compression=pz\n' >> release/conf/tablet.flags
-        - source /root/.bashrc && bash steps/compile.sh
-        - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/ut.sh
-    artifacts:
-      reports:
-          junit:
-              - reports/*.xml
-    only:
-        - /^*pz-fpga*$/
-tablet_one_demension_pz:
-    image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0-glibc-2.17
-    stage: ts_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - bash steps/get_pz_fpga_deps.sh
-        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-    only:
-        - /^*pz-fpga*$/
+docker-image:
+  stage: deploy
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - sh steps/simple_compile.sh
+    - sh docker/copy_file.sh
+    - make blob_proxy
+    - bash docker/push_meta.sh
+  only:
+    - tags
+    - develop
+    - release/*
+    - feat/push-nexus-meta
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies: []
 
-tablet_multi_demension_pz:
-    image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0-glibc-2.17
-    stage: ts_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - bash steps/get_pz_fpga_deps.sh
-        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-    only:
-        - /^*pz-fpga*$/
-
-ns_one_demension_pz:
-    image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0-glibc-2.17
-    stage: ns_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - bash steps/get_pz_fpga_deps.sh
-        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-    only:
-        - /^*pz-fpga*$/
-
-ns_multi_demension_pz:
-    image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0-glibc-2.17
-    stage: ns_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - bash steps/get_pz_fpga_deps.sh
-        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-    only:
-        - /^*pz-fpga*$/
-
-disk_table_pz:
-    image: develop-registry.4pd.io/centos6_gcc7_build_env:0.4.0-glibc-2.17
-    stage: ns_integration_test
-    before_script:
-        - mkdir /rambuild
-        - mount -t tmpfs -o size=3G tmpfs /rambuild
-    script:
-        - ln -sf /depends/thirdparty thirdparty
-        - ln -sf /depends/thirdsrc thirdsrc
-        - rm -rf ./test-output/integrationtest/test-reports/
-        - bash steps/get_pz_fpga_deps.sh
-        - sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
-        - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
-        - source /root/.bashrc && source /opt/rh/python27/enable && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH sh steps/integration_test_on_ramdir.sh 0 "disk"
-    artifacts:
-        reports:
-            junit:
-                - ./test-output/integrationtest/test-reports/*.xml
-    only:
-        - /^*pz-fpga*$/
+fesql_auto_test_python:
+  stage: test
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test_python.sh
+  artifacts:
+    reports:
+      junit:
+        - src/sdk/python/fesql-auto-test-python/report/TEST-test_*.xml
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies:
+    - build

@@ -10,37 +10,87 @@ import com.google.protobuf.ByteString;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class RowKvIterator implements KvIterator {
-
-    private ByteString bs;
-    private int offset;
-    private ByteBuffer bb;
+    private List<ScanResultParser> dataList = new ArrayList<>();
     // no copy
-    private ByteBuffer slice;
+    private ByteBuffer slice = null;
     private int length;
-    private int totalSize;
     private List<ColumnDesc> schema;
-    private int count;
+    private List<ColumnDesc> defaultSchema;
+    private int count = 0;
+    private int iter_count = 0;
     private long key;
     private NS.CompressType compressType = NS.CompressType.kNoCompress;
     private RowView rv;
+    private Map<Integer, List<ColumnDesc>> verMap = null;
+    private Map<Integer, List<ColumnDesc>> schemaMap = null;
+    private int currentVersion = 1;
+    private boolean underProjection = false;
 
     public RowKvIterator(ByteString bs, List<ColumnDesc> schema, int count) {
-        this.bs = bs;
-        this.bb = this.bs.asReadOnlyByteBuffer().order(ByteOrder.LITTLE_ENDIAN);
-        ;
-        this.offset = 0;
-        this.totalSize = this.bs.size();
+        this.dataList.add(new ScanResultParser(bs));
         this.count = count;
         next();
+        this.defaultSchema = schema;
         this.schema = schema;
         rv = new RowView(schema);
     }
 
+    public RowKvIterator(ByteString bs, List<ColumnDesc> schema, int count, boolean underProjection) {
+        this.dataList.add(new ScanResultParser(bs));
+        this.count = count;
+        next();
+        this.defaultSchema = schema;
+        this.schema = schema;
+        rv = new RowView(schema);
+        if (underProjection) {
+            this.underProjection = true;
+        }
+    }
+
+    public RowKvIterator(List<ByteString> bsList, List<ColumnDesc> schema, int count) {
+        for (ByteString bs : bsList) {
+            if (!bs.isEmpty()) {
+                this.dataList.add(new ScanResultParser(bs));
+            }
+        }
+        this.count = count;
+        next();
+        this.schema = schema;
+        this.defaultSchema = schema;
+        rv = new RowView(schema);
+    }
+
+    public RowKvIterator(List<ByteString> bsList, List<ColumnDesc> schema, int count, boolean underProjection) {
+        for (ByteString bs : bsList) {
+            if (!bs.isEmpty()) {
+                this.dataList.add(new ScanResultParser(bs));
+            }
+        }
+        this.count = count;
+        next();
+        this.schema = schema;
+        this.defaultSchema = schema;
+        rv = new RowView(schema);
+        if (underProjection) {
+            this.underProjection = true;
+        }
+    }
+
     public int getCount() {
         return count;
+    }
+
+    public void setSchemaMap(Map<Integer, List<ColumnDesc>> schemas) { this.schemaMap = schemas; }
+
+    public void setVerMap(Map<Integer, List<ColumnDesc>> schemas) { this.verMap = schemas; }
+
+    public void setLastSchemaVersion(int ver) {
+        this.currentVersion = ver;
     }
 
     public void setCount(int count) {
@@ -60,10 +110,7 @@ public class RowKvIterator implements KvIterator {
     }
 
     public boolean valid() {
-        if (offset <= totalSize) {
-            return true;
-        }
-        return false;
+        return slice != null;
     }
 
     public long getKey() {
@@ -84,26 +131,61 @@ public class RowKvIterator implements KvIterator {
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
-        Object[] row = new Object[schema.size()];
+        Object[] row = null;
+        if (underProjection) {
+            row = new Object[schema.size()];
+        } else if (schemaMap == null) {
+            row = new Object[defaultSchema.size()];
+        } else {
+            row = new Object[defaultSchema.size() + schemaMap.size()];
+        }
         getDecodedValue(row, 0, row.length);
         return row;
     }
 
     public void next() {
-        if (offset + 4 > totalSize) {
-            offset += 4;
+        if (count <= iter_count) {
+            slice = null;
             return;
         }
-        bb.position(offset);
-        int size = bb.getInt();
-        key = bb.getLong();
-        length = size - 8;
-        if (length < 0) {
-            throw new RuntimeException("bad frame data");
+        int maxTsIndex = -1;
+        long ts = -1;
+        for (int i = 0; i < dataList.size(); i++) {
+            ScanResultParser queryResult = dataList.get(i);
+            if (queryResult.valid() && queryResult.GetTs() > ts) {
+                maxTsIndex = i;
+                ts = queryResult.GetTs();
+            }
         }
-        offset += (4 + size);
-        slice = bb.slice();
-        slice.limit(length);
+        if (maxTsIndex >= 0) {
+            ScanResultParser queryResult = dataList.get(maxTsIndex);
+            key = queryResult.GetTs();
+            slice = queryResult.fetchData().slice();
+        } else {
+            slice = null;
+        }
+        iter_count++;
+    }
+
+    private void checkVersion(ByteBuffer buf) throws TabletException {
+        if (this.verMap == null || underProjection) {
+            return;
+        }
+        int version = RowView.getSchemaVersion(buf);
+        buf.rewind();
+        if (version == this.currentVersion) {
+            return;
+        }
+        List<ColumnDesc> newSchema = verMap.get(version);
+        if (newSchema == null) {
+            throw new TabletException("unkown shcema version " + version);
+        }
+        if (rv.getSchema().size() == newSchema.size()) {
+            return;
+        }
+        schema = newSchema;
+        rv = new RowView(schema);
+        this.currentVersion = version;
     }
 
     @Override
@@ -111,14 +193,19 @@ public class RowKvIterator implements KvIterator {
         if (schema == null) {
             throw new TabletException("get decoded value is not supported");
         }
+        ByteBuffer buf;
         if (compressType == NS.CompressType.kSnappy) {
             byte[] data = new byte[slice.remaining()];
             slice.get(data);
             byte[] uncompressed = Compress.snappyUnCompress(data);
-            rv.read(ByteBuffer.wrap(uncompressed).order(ByteOrder.LITTLE_ENDIAN), row, start, length);
-        }else {
-            rv.read(slice.order(ByteOrder.LITTLE_ENDIAN), row, start, length);
+            if (uncompressed == null) {
+                throw new TabletException("snappy uncompress error");
+            }
+            buf = ByteBuffer.wrap(uncompressed).order(ByteOrder.LITTLE_ENDIAN);
+        } else {
+            buf = slice.order(ByteOrder.LITTLE_ENDIAN);
         }
-
+        checkVersion(buf);
+        rv.read(buf, row, start, length);
     }
 }

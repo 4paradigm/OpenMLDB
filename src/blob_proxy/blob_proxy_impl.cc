@@ -39,8 +39,8 @@ bool BlobProxyImpl::Init() {
         return false;
     }
     client_ = new BaseClient(FLAGS_zk_cluster, FLAGS_zk_root_path,
-                             FLAGS_endpoint, FLAGS_zk_session_timeout,
-                             FLAGS_zk_keep_alive_check_interval);
+            FLAGS_endpoint, FLAGS_zk_session_timeout,
+            FLAGS_zk_keep_alive_check_interval);
     std::string msg;
     bool ok = client_->Init(&msg);
     if (!ok) {
@@ -118,8 +118,7 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
     butil::IOBuf buff;
     bool ok = blob->Get(th->table_info->tid(), 0, blob_id, &err_msg, &buff);
     if (!ok) {
-        cntl->http_response().set_status_code(
-            brpc::HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        cntl->http_response().set_status_code(brpc::HTTP_STATUS_NOT_FOUND);
         response_writer.append(err_msg);
         return;
     }

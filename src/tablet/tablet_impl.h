@@ -20,6 +20,7 @@
 
 #include "base/set.h"
 #include "base/spinlock.h"
+#include "catalog/tablet_catalog.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
 #include "storage/disk_table.h"
@@ -27,8 +28,10 @@
 #include "storage/mem_table.h"
 #include "storage/mem_table_snapshot.h"
 #include "storage/relational_table.h"
+#include "tablet/combine_iterator.h"
 #include "tablet/file_receiver.h"
 #include "thread_pool.h"  // NOLINT
+#include "vm/engine.h"
 #include "zk/zk_client.h"
 
 using ::baidu::common::ThreadPool;
@@ -44,8 +47,7 @@ using ::rtidb::storage::RelationalTable;
 using ::rtidb::storage::Snapshot;
 using ::rtidb::storage::Table;
 using ::rtidb::zk::ZkClient;
-using Schema =
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
 
 const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
@@ -66,13 +68,15 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     ~TabletImpl();
 
-    bool Init();
+    bool Init(const std::string& real_endpoint);
+    bool Init(const std::string& zk_cluster, const std::string& zk_path,
+            const std::string& endpoint, const std::string& real_endpoint);
 
     bool RegisterZK();
 
     void Update(RpcController* controller,
                 const ::rtidb::api::UpdateRequest* request,
-                ::rtidb::api::GeneralResponse* response, Closure* done);
+                ::rtidb::api::UpdateResponse* response, Closure* done);
 
     void Put(RpcController* controller, const ::rtidb::api::PutRequest* request,
              ::rtidb::api::PutResponse* response, Closure* done);
@@ -264,26 +268,32 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                     const rtidb::api::BatchQueryRequest* request,
                     rtidb::api::BatchQueryResponse* response, Closure* done);
 
+    void Query(RpcController* controller,
+               const rtidb::api::QueryRequest* request,
+               rtidb::api::QueryResponse* response, Closure* done);
+
     void CancelOP(RpcController* controller,
                   const rtidb::api::CancelOPRequest* request,
                   rtidb::api::GeneralResponse* response, Closure* done);
 
+    void UpdateRealEndpointMap(RpcController* controller,
+            const rtidb::api::UpdateRealEndpointMapRequest* request,
+            rtidb::api::GeneralResponse* response, Closure* done);
+
     inline void SetServer(brpc::Server* server) { server_ = server; }
 
     // get on value from specified ttl type index
-    int32_t GetIndex(uint64_t expire_time, uint64_t expire_cnt,
-                     ::rtidb::api::TTLType ttl_type,
-                     ::rtidb::storage::TableIterator* it,
-                     const ::rtidb::api::GetRequest* request,
-                     const ::rtidb::api::TableMeta& meta, std::string* value,
+    int32_t GetIndex(const ::rtidb::api::GetRequest* request,
+                     const ::rtidb::api::TableMeta& meta,
+                     const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
+                     CombineIterator* combine_it, std::string* value,
                      uint64_t* ts);
 
     // scan specified ttl type index
-    int32_t ScanIndex(uint64_t expire_time, uint64_t expire_cnt,
-                      ::rtidb::api::TTLType ttl_type,
-                      ::rtidb::storage::TableIterator* it,
-                      const ::rtidb::api::ScanRequest* request,
-                      const ::rtidb::api::TableMeta& meta, std::string* pairs,
+    int32_t ScanIndex(const ::rtidb::api::ScanRequest* request,
+                      const ::rtidb::api::TableMeta& meta,
+                      const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
+                      CombineIterator* combine_it, std::string* pairs,
                       uint32_t* count);
 
     int32_t CountIndex(uint64_t expire_time, uint64_t expire_cnt,
@@ -292,10 +302,11 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                        const ::rtidb::api::CountRequest* request,
                        uint32_t* count);
 
+    std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
+
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization
-    std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
     // Get table by table id , and Need external synchronization
     std::shared_ptr<Table> GetTableUnLock(uint32_t tid, uint32_t pid);
     // std::shared_ptr<DiskTable> GetDiskTable(uint32_t tid, uint32_t pid);
@@ -307,10 +318,13 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                                                         uint32_t pid);
 
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);
+
     std::shared_ptr<LogReplicator> GetReplicatorUnLock(uint32_t tid,
                                                        uint32_t pid);
     std::shared_ptr<Snapshot> GetSnapshot(uint32_t tid, uint32_t pid);
+
     std::shared_ptr<Snapshot> GetSnapshotUnLock(uint32_t tid, uint32_t pid);
+
     void GcTable(uint32_t tid, uint32_t pid, bool execute_once);
 
     void GcTableSnapshot(uint32_t tid, uint32_t pid);
@@ -325,6 +339,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                                 bool is_load, std::string& msg);  // NOLINT
 
     int CreateRelationalTableInternal(const ::rtidb::api::TableMeta* table_meta,
+                                      bool is_load,
                                       std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
@@ -377,7 +392,9 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     int LoadDiskTableInternal(uint32_t tid, uint32_t pid,
                               const ::rtidb::api::TableMeta& table_meta,
                               std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
-
+    int LoadRelationalTableInternal(
+        const ::rtidb::api::TableMeta& table_meta,
+        std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
     int WriteTableMeta(const std::string& path,
                        const ::rtidb::api::TableMeta* table_meta);
 
@@ -444,16 +461,12 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                               std::string& msg,                   // NOLINT
                               uint64_t& term, uint64_t& offset);  // NOLINT
 
-    bool SeekWithCount(::rtidb::storage::TableIterator* it, const uint64_t time,
-                       const ::rtidb::api::GetType& type, uint32_t max_cnt,
-                       uint32_t& cnt);  // NOLINT
-
-    bool Seek(::rtidb::storage::TableIterator* it, const uint64_t time,
-              const ::rtidb::api::GetType& type);
-
     void DelRecycle(const std::string& path);
 
     void SchedDelRecycle();
+
+    bool GetRealEp(uint64_t tid, uint64_t pid,
+            std::map<std::string, std::string>* real_ep_map);
 
  private:
     RelationalTables relational_tables_;
@@ -478,6 +491,14 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::map<::rtidb::common::StorageMode, std::vector<std::string>>
         mode_recycle_root_paths_;
     std::atomic<bool> follower_;
+    std::shared_ptr<std::map<std::string, std::string>> real_ep_map_;
+    // thread safe
+    std::shared_ptr<::rtidb::catalog::TabletCatalog> catalog_;
+    // thread safe
+    ::fesql::vm::Engine engine_;
+    std::string zk_cluster_;
+    std::string zk_path_;
+    std::string endpoint_;
 };
 
 }  // namespace tablet

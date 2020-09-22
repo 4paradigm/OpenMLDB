@@ -81,7 +81,6 @@ class TestCaseBase(unittest.TestCase):
             utils.exe_shell('rm -rf {}/recycle/*'.format(cls.node_path_dict_r[edp]))
             utils.exe_shell('rm -rf {}/db/*'.format(cls.node_path_dict_r[edp]))
         infoLogger.info('\n' + '=' * 50 + ' TEST {} FINISHED '.format(cls) + '=' * 50 + '\n' * 5)
-
     def setUp(self):
         infoLogger.info('\nTEST CASE NAME: {} {} {}'.format(
             self, self._testMethodDoc, '\n' + '|' * 50 + ' SETUP STARTED ' + '|' * 50 + '\n'))
@@ -344,6 +343,18 @@ class TestCaseBase(unittest.TestCase):
         cmd = 'delete {} {} {}'.format(name, key, idx_name);
         return self.run_client(endpoint, cmd, 'ns_client')
 
+    def ns_info(self, endpoint, name):
+        cmd = 'info {}'.format(name);
+        result = self.run_client(endpoint, cmd, 'ns_client')
+        lines = result.split("\n")
+        kv = {}
+        for line_num in xrange(2, len(lines)):
+            arr = lines[line_num].strip().split(" ")
+            key = arr[0]
+            value = lines[line_num].strip().lstrip(key).strip()
+            kv[key] = value
+        return kv
+
     def ns_get_kv(self, endpoint, name, key, ts):
         cmd = 'get ' + name + ' ' + key+ ' ' + ts
         return self.run_client(endpoint, cmd, 'ns_client')
@@ -534,6 +545,11 @@ class TestCaseBase(unittest.TestCase):
         time.sleep(2)
         return rs
 
+    def load_relation_table(self, endpoint, tid, pid, storage_mode):
+        rs = self.run_client(endpoint, 'loadtable {} {} {}'.format(tid, pid, storage_mode))
+        time.sleep(2)
+        return rs
+
     def changerole(self, endpoint, tid, pid, role):
         return self.run_client(endpoint, 'changerole {} {} {}'.format(tid, pid, role))
 
@@ -696,7 +712,7 @@ class TestCaseBase(unittest.TestCase):
 
     def showtablet(self, endpoint):
         rs = self.run_client(endpoint, 'showtablet', 'ns_client')
-        return self.parse_tb(rs, ' ', [0], [1, 2])
+        return self.parse_tb(rs, ' ', [0], [2, 3])
 
     def showopstatus(self, endpoint, name='', pid=''):
         rs = self.run_client(endpoint, 'showopstatus {} {}'.format(name, pid), 'ns_client')

@@ -6,9 +6,9 @@ import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.ns.NS.PartitionMeta;
 import com._4paradigm.rtidb.ns.NS.TableInfo;
 import com._4paradigm.rtidb.ns.NS.TablePartition;
-import com._4paradigm.rtidb.type.Type;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.brpc.client.*;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
@@ -21,6 +21,7 @@ import rtidb.blobserver.BlobServer;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -47,6 +48,8 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
     private Watcher notifyWatcher;
     private AtomicBoolean watching = new AtomicBoolean(true);
     private AtomicBoolean isClose = new AtomicBoolean(false);
+    private final String blobPrefix = "blob_";
+
     public RTIDBClusterClient(RTIDBClientConfig config) {
         this.config = config;
     }
@@ -80,7 +83,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                     }
                 }
             }
-            
+
         };
         isClose.set(false);
         connectToZk();
@@ -90,13 +93,13 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             @Override
             public void run() {
                 checkWatchStatus();
-                
+
             }
         }, 1, TimeUnit.MINUTES);
-        
+
     }
-    
-    private void connectToZk() throws TabletException,IOException{
+
+    private void connectToZk() throws TabletException, IOException {
         ZooKeeper localZk = new ZooKeeper(config.getZkEndpoints(), (int) config.getZkSesstionTimeout(), this);
         int failedCountDown = 20;
         while (!localZk.getState().isConnected() && failedCountDown > 0) {
@@ -120,7 +123,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             try {
                 old.close();
                 logger.info("close old zookeeper client ok");
-            }catch(Exception e) {
+            } catch (Exception e) {
                 logger.error("fail to close old zookeeper client", e);
             }
         }
@@ -136,14 +139,14 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             logger.error("fail to handle zookeeper connected  event", e);
         }
     }
-    
+
     private void getLocalIpAddress() {
         try {
             Enumeration e = NetworkInterface.getNetworkInterfaces();
-            while(e.hasMoreElements()){
+            while (e.hasMoreElements()) {
                 NetworkInterface n = (NetworkInterface) e.nextElement();
                 Enumeration ee = n.getInetAddresses();
-                while (ee.hasMoreElements()){
+                while (ee.hasMoreElements()) {
                     InetAddress i = (InetAddress) ee.nextElement();
                     logger.info("ip {} of local host binded ", i.getHostAddress());
                     localIpAddr.add(i.getHostAddress().toLowerCase());
@@ -163,7 +166,7 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             if (zookeeper == null || !zookeeper.getState().isConnected()) {
                 connectToZk();
                 onZkConnected();
-            } 
+            }
             zookeeper.getData(config.getZkTableNotifyPath(), notifyWatcher, null);
             watching.set(true);
         } catch (Exception e) {
@@ -180,14 +183,14 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
             tryWatch();
         }
         clusterGuardThread.schedule(new Runnable() {
-            
+
             @Override
             public void run() {
                 checkWatchStatus();
             }
         }, 1, TimeUnit.MINUTES);
     }
-    
+
     public void refreshRouteTable() {
         Map<String, TableHandler> oldTables = name2tables;
         Map<String, TableHandler> newTables = new TreeMap<String, TableHandler>();
@@ -212,77 +215,105 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                     }
                 }
             }
+            HashMap<String, String> realEpMap = getRealEpMap();
 
             for (TableInfo table : newTableList) {
-                TableHandler handler = new TableHandler(table);
-                if (config.getReadStrategies().containsKey(table.getName())) {
-                    handler.setReadStrategy(config.getReadStrategies().get(table.getName()));
-                } else {
-                    handler.setReadStrategy(config.getGlobalReadStrategies());
-                }
-                PartitionHandler[] partitionHandlerGroup = new PartitionHandler[table.getTablePartitionList().size()];
-                for (TablePartition partition : table.getTablePartitionList()) {
-                    PartitionHandler ph = partitionHandlerGroup[partition.getPid()];
-                    if (ph == null) {
-                        ph = new PartitionHandler();
-                        partitionHandlerGroup[partition.getPid()] = ph;
+                try {
+                    TableHandler handler = new TableHandler(table);
+                    if (config.getReadStrategies().containsKey(table.getName())) {
+                        handler.setReadStrategy(config.getReadStrategies().get(table.getName()));
+                    } else {
+                        handler.setReadStrategy(config.getGlobalReadStrategies());
                     }
-                    for (PartitionMeta pm : partition.getPartitionMetaList()) {
-                        if (!pm.getIsAlive()) {
-                            logger.warn("table {} partition {} with endpoint {} is dead", table.getName(), partition.getPid(), pm.getEndpoint());
-                            continue;
+                    PartitionHandler[] partitionHandlerGroup = new PartitionHandler[table.getTablePartitionList().size()];
+                    for (TablePartition partition : table.getTablePartitionList()) {
+                        PartitionHandler ph = partitionHandlerGroup[partition.getPid()];
+                        if (ph == null) {
+                            ph = new PartitionHandler();
+                            partitionHandlerGroup[partition.getPid()] = ph;
                         }
-                        EndPoint endpoint = new EndPoint(pm.getEndpoint());
-                        BrpcChannelGroup bcg = nodeManager.getChannel(endpoint);
-                        if (bcg == null) {
-                            logger.warn("no alive endpoint for table {}, expect endpoint {}", table.getName(),
-                                    endpoint);
-                            continue;
-                        }
-                        SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
-                        client.updateEndpoint(endpoint, bcg);
-                        TabletServer ts = (TabletServer) RpcProxy.getProxy(client, TabletServer.class);
-                        if (pm.getIsLeader()) {
-                            ph.setLeader(ts);
-                        } else {
-                            ph.getFollowers().add(ts);
-                        }
-                        if (localIpAddr.contains(endpoint.getIp().toLowerCase())) {
-                            ph.setFastTablet(ts);
-                        }
-                    }
-                }
-                if (table.hasTableType()) {
-                    List<String> blobs = new ArrayList<String>();
-                    if (table.hasBlobInfo()) {
-                        NS.BlobInfo blobInfo = table.getBlobInfo();
-                        for (NS.BlobPartition part : blobInfo.getBlobPartitionList()) {
-                            for (NS.BlobPartitionMeta meta : part.getPartitionMetaList()) {
-                                if (!meta.getIsAlive()) {
+                        for (PartitionMeta pm : partition.getPartitionMetaList()) {
+                            String pmEndpoint = pm.getEndpoint();
+                            if (!pm.getIsAlive()) {
+                                logger.warn("table {} partition {} with endpoint {} is dead", table.getName(), partition.getPid(), pmEndpoint);
+                                continue;
+                            }
+                            EndPoint endpoint;
+                            if (realEpMap.isEmpty()) {
+                                endpoint = new EndPoint(pmEndpoint);
+                            } else {
+                                String ep = realEpMap.get(pmEndpoint);
+                                if (ep == null) {
+                                    logger.warn("not found {} in realEpMap", pmEndpoint);
                                     continue;
                                 }
-                                blobs.add(meta.getEndpoint());
+                                endpoint = new EndPoint(ep);
+                            }
+                            BrpcChannelGroup bcg = nodeManager.getChannel(endpoint);
+                            if (bcg == null) {
+                                logger.warn("no alive endpoint for table {}, expect endpoint {}", table.getName(),
+                                        endpoint);
+                                continue;
+                            }
+                            SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
+                            client.updateEndpoint(endpoint, bcg);
+                            TabletServer ts = (TabletServer) RpcProxy.getProxy(client, TabletServer.class);
+                            TabletServerWapper tabletServerWapper = new TabletServerWapper(pmEndpoint, ts);
+                            if (pm.getIsLeader()) {
+                                ph.setLeader(tabletServerWapper);
+                            } else {
+                                ph.getFollowers().add(tabletServerWapper);
+                            }
+                            if (localIpAddr.contains(endpoint.getIp().toLowerCase())) {
+                                ph.setFastTablet(tabletServerWapper);
                             }
                         }
                     }
-                    if (blobs.size() > 0) {
-                        EndPoint endPoint = new EndPoint(blobs.get(0));
-                        BrpcChannelGroup bcg = nodeManager.getChannel(endPoint);
-                        if (bcg == null) {
-                            logger.warn("no alive endpoint for table {}, expect endpoint {}", table.getName(),
-                                    endPoint);
-                        } else {
-                            SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
-                            client.updateEndpoint(endPoint, bcg);
-                            BlobServer bs = (BlobServer) RpcProxy.getProxy(client, BlobServer.class);
-                            handler.setBlobServer(bs);
+                    if (table.hasTableType()) {
+                        List<String> blobs = new ArrayList<String>();
+                        if (table.hasBlobInfo()) {
+                            NS.BlobInfo blobInfo = table.getBlobInfo();
+                            for (NS.BlobPartition part : blobInfo.getBlobPartitionList()) {
+                                for (NS.BlobPartitionMeta meta : part.getPartitionMetaList()) {
+                                    if (!meta.getIsAlive()) {
+                                        continue;
+                                    }
+                                    blobs.add(meta.getEndpoint());
+                                }
+                            }
+                        }
+                        if (blobs.size() > 0) {
+                            EndPoint endpoint;
+                            String blob = blobs.get(0);
+                            if (realEpMap.isEmpty()) {
+                                endpoint = new EndPoint(blob);
+                            } else {
+                                String ep = realEpMap.get(blob);
+                                if (ep == null) {
+                                    logger.warn("not found {} in realEpMap", blob);
+                                    continue;
+                                }
+                                endpoint = new EndPoint(ep);
+                            }
+                            BrpcChannelGroup bcg = nodeManager.getChannel(endpoint);
+                            if (bcg == null) {
+                                logger.warn("no alive endpoint for table {}, expect endpoint {}", table.getName(),
+                                        endpoint);
+                            } else {
+                                SingleEndpointRpcClient client = new SingleEndpointRpcClient(baseClient);
+                                client.updateEndpoint(endpoint, bcg);
+                                BlobServer bs = (BlobServer) RpcProxy.getProxy(client, BlobServer.class);
+                                handler.setBlobServer(bs);
+                            }
                         }
                     }
-                }
 
-                handler.setPartitions(partitionHandlerGroup);
-                newTables.put(table.getName(), handler);
-                newid2tables.put(table.getTid(), handler);
+                    handler.setPartitions(partitionHandlerGroup);
+                    newTables.put(table.getName(), handler);
+                    newid2tables.put(table.getTid(), handler);
+                } catch (Exception e) {
+                    logger.warn("refresh table {} failed", table.getName());
+                }
             }
             // swap
             name2tables = newTables;
@@ -301,40 +332,30 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 logger.warn("path {} does not exist", config.getZkNodeRootPath());
                 return true;
             }
+            HashMap<String, String> realEpMap = getRealEpMap();
             Set<EndPoint> endpoinSet = new HashSet<EndPoint>();
             List<String> children = zookeeper.getChildren(config.getZkNodeRootPath(), false);
             for (String path : children) {
                 if (path.isEmpty()) {
                     continue;
                 }
-                logger.info("alive endpoint {}", path);
-                String[] parts = path.split(":");
-                if (parts.length != 2) {
-                    logger.warn("invalid endpoint {}", path);
-                    continue;
+                if (path.startsWith(blobPrefix)) {
+                    path = path.substring(blobPrefix.length());
                 }
+                logger.debug("alive endpoint {}", path);
                 try {
-                    endpoinSet.add(new EndPoint(parts[0], Integer.parseInt(parts[1])));
+                    if (realEpMap.isEmpty()) {
+                        endpoinSet.add(new EndPoint(path));
+                    } else {
+                        String ep = realEpMap.get(path);
+                        if (ep == null) {
+                            logger.warn("not found {} in realEpMap", path);
+                            continue;
+                        }
+                        endpoinSet.add(new EndPoint(ep));
+                    }
                 } catch (Exception e) {
                     logger.error("fail to add endpoint", e);
-                }
-            }
-            children.clear();;
-            children = zookeeper.getChildren(config.getZkOssNodeRootPath(), false);
-            for (String path : children) {
-                if (path.isEmpty()) {
-                    continue;
-                }
-                logger.info("alive blob endpoint {}", path);
-                String[] parts = path.split(":");
-                if (parts.length != 2) {
-                    logger.warn("invalid blob endpoint {}", path);
-                    continue;
-                }
-                try {
-                    endpoinSet.add(new EndPoint(parts[0], Integer.parseInt(parts[1])));
-                } catch (Exception e) {
-                    logger.error("fail to add blob endpoint", e);
                 }
             }
             nodeManager.update(endpoinSet);
@@ -384,6 +405,39 @@ public class RTIDBClusterClient implements Watcher, RTIDBClient {
                 logger.error("fail to close base client", e);
             }
         }
+    }
+
+    private HashMap<String, String> getRealEpMap() throws KeeperException, InterruptedException {
+        HashMap<String, String> realEpMap = new HashMap<>();
+        // get sdkendpoint
+        if (zookeeper.exists(config.getZkSdkEndpointPath(), false) != null) {
+            List<String> sdkEndpoints = zookeeper.getChildren(config.getZkSdkEndpointPath(), false);
+            for (String path : sdkEndpoints) {
+                if (path.isEmpty()) {
+                    continue;
+                }
+                logger.debug("alive sdkendpoint {}", path);
+                byte[] data = zookeeper.getData(config.getZkSdkEndpointPath() + "/" + path, false, null);
+                if (data != null) {
+                    realEpMap.put(path, new String(data, Charset.forName("UTF-8")));
+                }
+            }
+        }
+        if (realEpMap.isEmpty() && zookeeper.exists(config.getZkServerNamePath(), false) != null) {
+            // get real endpoint
+            List<String> serverNames = zookeeper.getChildren(config.getZkServerNamePath(), false);
+            for (String path : serverNames) {
+                if (path.isEmpty()) {
+                    continue;
+                }
+                logger.debug("alive server name {}", path);
+                byte[] data = zookeeper.getData(config.getZkServerNamePath() + "/" + path, false, null);
+                if (data != null) {
+                    realEpMap.put(path, new String(data, Charset.forName("UTF-8")));
+                }
+            }
+        }
+        return realEpMap;
     }
 
     @Override

@@ -27,6 +27,7 @@ public class InitClient {
 
     private static final String ZKENDPOINTS = Constant.ZKENDPOINTS;
     private static final String ZKROOTPATH = Constant.ZKROOTPATH;
+    private static final int FORMAT_VERSION = Constant.FORMAT_VERSION;
 
     // 下面这几行变量定义不需要改
     // NameServerClientImpl要么做成单例, 要么用完之后就调用close, 否则会导致fd泄露
@@ -87,6 +88,7 @@ public class InitClient {
                 }
             }
         }
+        builder.setFormatVersion(FORMAT_VERSION);
         NS.TableInfo table = builder.build();
         logger.info("table info is:" + table);
         // 可以通过返回值判断是否创建成功
@@ -148,7 +150,7 @@ public class InitClient {
         FileReader fileReader = null;
         try {
             fileReader = new FileReader(file);
-            TextFormat.merge(fileReader, builder);
+            shade.protobuf.TextFormat.merge(fileReader, builder);
             NS.TableInfo tableInfo = builder.build();
             result = tableInfo.getColumnKeyList();
         } catch (IOException e) {

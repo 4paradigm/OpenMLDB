@@ -38,7 +38,7 @@ TEST_F(SchemaCodecTest, Encode) {
     codec.Encode(columns, buffer);
     std::vector<ColumnDesc> decoded_columns;
     codec.Decode(buffer, decoded_columns);
-    ASSERT_EQ(2, decoded_columns.size());
+    ASSERT_EQ(2, (int64_t)decoded_columns.size());
     ASSERT_EQ(::rtidb::codec::ColType::kString, decoded_columns[0].type);
     ASSERT_EQ("uname", decoded_columns[0].name);
     ASSERT_EQ(::rtidb::codec::ColType::kInt32, decoded_columns[1].type);
@@ -65,7 +65,7 @@ TEST_F(SchemaCodecTest, Timestamp) {
     std::vector<ColumnDesc> decoded_columns;
     codec.Decode(buffer, decoded_columns);
 
-    ASSERT_EQ(2, decoded_columns.size());
+    ASSERT_EQ(2, (int64_t)decoded_columns.size());
     ASSERT_EQ(::rtidb::codec::ColType::kString, decoded_columns[0].type);
     ASSERT_EQ("card", decoded_columns[0].name);
     ASSERT_EQ(::rtidb::codec::ColType::kTimestamp, decoded_columns[1].type);
@@ -84,7 +84,7 @@ TEST_F(SchemaCodecTest, Int16) {
     codec.Encode(columns, buffer);
     std::vector<ColumnDesc> decoded_columns;
     codec.Decode(buffer, decoded_columns);
-    ASSERT_EQ(1, decoded_columns.size());
+    ASSERT_EQ(1, (int64_t)decoded_columns.size());
     ASSERT_EQ(::rtidb::codec::ColType::kInt16, decoded_columns[0].type);
     ASSERT_EQ("int16", decoded_columns[0].name);
 }
@@ -101,7 +101,7 @@ TEST_F(SchemaCodecTest, UInt16) {
     codec.Encode(columns, buffer);
     std::vector<ColumnDesc> decoded_columns;
     codec.Decode(buffer, decoded_columns);
-    ASSERT_EQ(1, decoded_columns.size());
+    ASSERT_EQ(1, (int64_t)decoded_columns.size());
     ASSERT_EQ(::rtidb::codec::ColType::kUInt16, decoded_columns[0].type);
     ASSERT_EQ("uint16", decoded_columns[0].name);
 }
@@ -118,7 +118,7 @@ TEST_F(SchemaCodecTest, Bool) {
     codec.Encode(columns, buffer);
     std::vector<ColumnDesc> decoded_columns;
     codec.Decode(buffer, decoded_columns);
-    ASSERT_EQ(1, decoded_columns.size());
+    ASSERT_EQ(1, (int64_t)decoded_columns.size());
     ASSERT_EQ(::rtidb::codec::ColType::kBool, decoded_columns[0].type);
     ASSERT_EQ("bool", decoded_columns[0].name);
 }
@@ -158,7 +158,7 @@ TEST_F(SchemaCodecTest, ConvertColumnDesc1) {
     desc->set_add_ts_idx(false);
     desc->set_is_ts_col(true);
     ASSERT_EQ(0, SchemaCodec::ConvertColumnDesc(table_info, columns));
-    ASSERT_EQ(2, columns.size());
+    ASSERT_EQ(2, (int64_t)columns.size());
     ASSERT_EQ("col1", columns[0].name);
     ASSERT_EQ(::rtidb::codec::ColType::kString, columns[0].type);
     ASSERT_TRUE(columns[0].add_ts_idx);
@@ -184,7 +184,7 @@ TEST_F(SchemaCodecTest, ConvertColumnDesc2) {
     desc->set_type("uint64");
     desc->set_add_ts_idx(false);
     ASSERT_EQ(0, SchemaCodec::ConvertColumnDesc(table_info, columns));
-    ASSERT_EQ(2, columns.size());
+    ASSERT_EQ(2, (int64_t)columns.size());
     ASSERT_EQ("col1", columns[0].name);
     ASSERT_EQ(::rtidb::codec::ColType::kString, columns[0].type);
     ASSERT_TRUE(columns[0].add_ts_idx);

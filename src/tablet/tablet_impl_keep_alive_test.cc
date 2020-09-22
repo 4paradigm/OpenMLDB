@@ -29,7 +29,7 @@ namespace tablet {
 
 uint32_t counter = 10;
 static bool call_invoked = false;
-static int32_t endpoint_size = 1;
+static size_t endpoint_size = 1;
 
 inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); } // NOLINT
 
@@ -59,7 +59,7 @@ TEST_F(TabletImplTest, KeepAlive) {
     FLAGS_endpoint = "127.0.0.1:9527";
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb2";
-    ZkClient zk_client(FLAGS_zk_cluster, 1000, "test1", FLAGS_zk_root_path);
+    ZkClient zk_client(FLAGS_zk_cluster, "", 1000, "test1", FLAGS_zk_root_path);
     bool ok = zk_client.Init();
     ASSERT_TRUE(ok);
     ok = zk_client.Mkdir("/rtidb2/nodes");
@@ -68,7 +68,7 @@ TEST_F(TabletImplTest, KeepAlive) {
     ok = zk_client.WatchNodes();
     ASSERT_TRUE(ok);
     TabletImpl tablet;
-    ok = tablet.Init();
+    ok = tablet.Init("");
     ASSERT_TRUE(ok);
     ok = tablet.RegisterZK();
     ASSERT_TRUE(ok);

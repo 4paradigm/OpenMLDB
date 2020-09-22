@@ -5,14 +5,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com._4paradigm.rtidb.client.ha.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com._4paradigm.rtidb.client.ha.NodeManager;
-import com._4paradigm.rtidb.client.ha.PartitionHandler;
-import com._4paradigm.rtidb.client.ha.RTIDBClient;
-import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
-import com._4paradigm.rtidb.client.ha.TableHandler;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
 import com._4paradigm.rtidb.client.schema.SchemaCodec;
 import com._4paradigm.rtidb.tablet.Tablet;
@@ -34,7 +30,7 @@ public class RTIDBSingleNodeClient implements RTIDBClient {
     private RpcBaseClient baseClient;
     private NodeManager nodeManager;
     private RTIDBClientConfig config;
-    private TabletServer tabletServer;
+    private TabletServerWapper tabletServerWapper;
     private SingleEndpointRpcClient singleNodeClient ;
     public RTIDBSingleNodeClient(RTIDBClientConfig config, EndPoint endpoint) {
         this.config = config;
@@ -55,10 +51,11 @@ public class RTIDBSingleNodeClient implements RTIDBClient {
         nodeManager.update(nodes);
         singleNodeClient = new SingleEndpointRpcClient(baseClient);
         singleNodeClient.updateEndpoint(endpoint, nodeManager.getChannel(endpoint));
-        tabletServer = (TabletServer) RpcProxy.getProxy(singleNodeClient, TabletServer.class);
+        TabletServer tabletServer = (TabletServer) RpcProxy.getProxy(singleNodeClient, TabletServer.class);
+        tabletServerWapper = new TabletServerWapper(endpoint.getIp(), tabletServer);
         TableHandler th = new TableHandler();
         PartitionHandler ph = new PartitionHandler();
-        ph.setLeader(tabletServer);
+        ph.setLeader(tabletServerWapper);
         th.setPartitions(new PartitionHandler[] {ph});
         id2tables.putIfAbsent(0, th);
         logger.info("start single rtidb client with endpoint {} ok", endpoint);
@@ -74,16 +71,16 @@ public class RTIDBSingleNodeClient implements RTIDBClient {
         if (th == null) {
             Tablet.GetTableSchemaRequest request = Tablet.GetTableSchemaRequest.newBuilder().setTid(id).setPid(0)
                     .build();
-            Tablet.GetTableSchemaResponse response = tabletServer.getTableSchema(request);
+            Tablet.GetTableSchemaResponse response = tabletServerWapper.getServer().getTableSchema(request);
             Tablet.GetTableStatusRequest statusRequest = Tablet.GetTableStatusRequest.newBuilder().build();
-            Tablet.GetTableStatusResponse statusResponse = tabletServer.getTableStatus(statusRequest);
+            Tablet.GetTableStatusResponse statusResponse = tabletServerWapper.getServer().getTableStatus(statusRequest);
             if (response.getCode() == 0 && statusResponse.getCode() == 0) {
                 if (response.getSchema().isEmpty()) {
                     // some table maybe have no schema, eg kv table
                     th = new TableHandler();
                 } else {
                     List<ColumnDesc> schema = SchemaCodec.decode(response.getSchema().asReadOnlyByteBuffer());
-                    th = new TableHandler(schema);
+                    th = new TableHandler(schema, response.getTableMeta().getSchemaVersionsList());
                 }
                 for (Tablet.TableStatus status : statusResponse.getAllTableStatusList()) {
                     if (status.getTid() == id) {
@@ -97,7 +94,7 @@ public class RTIDBSingleNodeClient implements RTIDBClient {
                     }
                 }
                 PartitionHandler ph = new PartitionHandler();
-                ph.setLeader(tabletServer);
+                ph.setLeader(tabletServerWapper);
                 th.setPartitions(new PartitionHandler[] {ph});
                 id2tables.putIfAbsent(id, th);
                 return th;

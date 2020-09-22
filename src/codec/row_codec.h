@@ -13,17 +13,22 @@
 #include <vector>
 
 #include "base/glog_wapper.h"
+#include "boost/algorithm/string.hpp"
+#include "boost/container/deque.hpp"
 #include "codec/flat_array.h"
 #include "codec/schema_codec.h"
+#include "storage/segment.h"
 
 namespace rtidb {
 namespace codec {
 
+using ::rtidb::storage::DataBlock;
+
 class RowCodec {
  public:
     static int32_t CalStrLength(
-        const std::map<std::string, std::string>& str_map, const Schema& schema,
-        ::rtidb::base::ResultMsg& rm) {  // NOLINT
+        const std::map<std::string, std::string>& str_map,
+        const Schema& schema) {
         int32_t str_len = 0;
         for (int i = 0; i < schema.size(); i++) {
             const ::rtidb::common::ColumnDesc& col = schema.Get(i);
@@ -31,8 +36,6 @@ class RowCodec {
                 col.data_type() == ::rtidb::type::kString) {
                 auto iter = str_map.find(col.name());
                 if (iter == str_map.end()) {
-                    rm.code = -1;
-                    rm.msg = col.name() + " not in str_map";
                     return -1;
                 }
                 if (!col.not_null() &&
@@ -40,8 +43,6 @@ class RowCodec {
                     continue;
                 } else if (iter->second == "null" ||
                            iter->second == NONETOKEN) {
-                    rm.code = -1;
-                    rm.msg = col.name() + " should not be null";
                     return -1;
                 }
                 str_len += iter->second.length();
@@ -50,21 +51,78 @@ class RowCodec {
         return str_len;
     }
 
-    static ::rtidb::base::ResultMsg EncodeRow(
-        const std::map<std::string, std::string>& str_map, const Schema& schema,
-        std::string& row) {  // NOLINT
-        ::rtidb::base::ResultMsg rm;
-        if (str_map.size() == 0 || schema.size() == 0 ||
-            str_map.size() - schema.size() != 0) {
-            rm.code = -1;
-            rm.msg = "input error";
-            return rm;
+    static int32_t CalStrLength(const std::vector<std::string>& input_value,
+                                const Schema& schema) {
+        if (input_value.size() != (uint64_t)schema.size()) {
+            return -1;
         }
-        int32_t str_len = CalStrLength(str_map, schema, rm);
+        int32_t str_len = 0;
+        for (int i = 0; i < schema.size(); i++) {
+            const ::rtidb::common::ColumnDesc& col = schema.Get(i);
+            if (col.data_type() == ::rtidb::type::kVarchar ||
+                col.data_type() == ::rtidb::type::kString) {
+                if (!col.not_null() &&
+                    (input_value[i] == "null" || input_value[i] == NONETOKEN)) {
+                    continue;
+                } else if (input_value[i] == "null" ||
+                           input_value[i] == NONETOKEN) {
+                    return -1;
+                }
+                str_len += input_value[i].length();
+            }
+        }
+        return str_len;
+    }
+
+    static ::rtidb::base::ResultMsg EncodeRow(
+        const std::vector<std::string> input_value, const Schema& schema, uint32_t version,
+        std::string& row) {  // NOLINT
+        if (input_value.empty() ||
+            input_value.size() != (uint64_t)schema.size()) {
+            return ::rtidb::base::ResultMsg(-1, "input error");
+        }
+        int32_t str_len = CalStrLength(input_value, schema);
         if (str_len < 0) {
-            return rm;
+            return ::rtidb::base::ResultMsg(-1, "cal str len failed");
         }
         ::rtidb::codec::RowBuilder builder(schema);
+        uint32_t size = builder.CalTotalLength(str_len);
+        builder.SetSchemaVersion(version);
+        row.resize(size);
+        builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+        for (int i = 0; i < schema.size(); i++) {
+            const ::rtidb::common::ColumnDesc& col = schema.Get(i);
+            if (!col.not_null() &&
+                (input_value[i] == "null" || input_value[i] == NONETOKEN)) {
+                builder.AppendNULL();
+                continue;
+            } else if (input_value[i] == "null" ||
+                       input_value[i] == NONETOKEN) {
+                return ::rtidb::base::ResultMsg(
+                    -1, col.name() + " should not be null");
+            }
+            if (!builder.AppendValue(input_value[i])) {
+                std::string msg =
+                    "append " + ::rtidb::type::DataType_Name(col.data_type()) +
+                    " error";
+                return ::rtidb::base::ResultMsg(-1, msg);
+            }
+        }
+        return ::rtidb::base::ResultMsg(0, "ok");
+    }
+
+    static ::rtidb::base::ResultMsg EncodeRow(
+        const std::map<std::string, std::string>& str_map, const Schema& schema, int32_t version,
+        std::string& row) {  // NOLINT
+        if (str_map.empty() || str_map.size() != (uint64_t)schema.size()) {
+            return ::rtidb::base::ResultMsg(-1, "input error");
+        }
+        int32_t str_len = CalStrLength(str_map, schema);
+        if (str_len < 0) {
+            return ::rtidb::base::ResultMsg(-1, "cal str len error");
+        }
+        ::rtidb::codec::RowBuilder builder(schema);
+        builder.SetSchemaVersion(version);
         uint32_t size = builder.CalTotalLength(str_len);
         row.resize(size);
         builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
@@ -72,105 +130,118 @@ class RowCodec {
             const ::rtidb::common::ColumnDesc& col = schema.Get(i);
             auto iter = str_map.find(col.name());
             if (iter == str_map.end()) {
-                rm.code = -1;
-                rm.msg = col.name() + " not in str_map";
-                return rm;
+                return ::rtidb::base::ResultMsg(-1,
+                                                col.name() + " not in str_map");
             }
             if (!col.not_null() &&
                 (iter->second == "null" || iter->second == NONETOKEN)) {
                 builder.AppendNULL();
                 continue;
             } else if (iter->second == "null" || iter->second == NONETOKEN) {
-                rm.code = -1;
-                rm.msg = col.name() + " should not be null";
-                return rm;
+                return ::rtidb::base::ResultMsg(
+                    -1, col.name() + " should not be null");
             }
-            bool ok = false;
-            try {
-                switch (col.data_type()) {
-                    case rtidb::type::kString:
-                    case rtidb::type::kVarchar:
-                        ok = builder.AppendString(iter->second.c_str(),
-                                                  iter->second.length());
-                        break;
-                    case rtidb::type::kBool: {
-                        std::string b_val = iter->second;
-                        std::transform(b_val.begin(), b_val.end(),
-                                       b_val.begin(), ::tolower);
-                        if (b_val == "true") {
-                            ok = builder.AppendBool(true);
-                        } else if (b_val == "false") {
-                            ok = builder.AppendBool(false);
-                        } else {
-                            rm.code = -1;
-                            rm.msg = "bool input format error";
-                            return rm;
-                        }
-                        break;
-                    }
-                    case rtidb::type::kSmallInt:
-                        ok = builder.AppendInt16(
-                            boost::lexical_cast<int16_t>(iter->second));
-                        break;
-                    case rtidb::type::kInt:
-                        ok = builder.AppendInt32(
-                            boost::lexical_cast<int32_t>(iter->second));
-                        break;
-                    case rtidb::type::kBlob:
-                        ok = builder.AppendBlob(
-                            boost::lexical_cast<int64_t>(iter->second));
-                        break;
-                    case rtidb::type::kBigInt:
-                        ok = builder.AppendInt64(
-                            boost::lexical_cast<int64_t>(iter->second));
-                        break;
-                    case rtidb::type::kTimestamp:
-                        ok = builder.AppendTimestamp(
-                            boost::lexical_cast<int64_t>(iter->second));
-                        break;
-                    case rtidb::type::kFloat:
-                        ok = builder.AppendFloat(
-                            boost::lexical_cast<float>(iter->second));
-                        break;
-                    case rtidb::type::kDouble:
-                        ok = builder.AppendDouble(
-                            boost::lexical_cast<double>(iter->second));
-                        break;
-                    case rtidb::type::kDate: {
-                        std::vector<std::string> parts;
-                        ::rtidb::base::SplitString(iter->second, "-", parts);
-                        if (parts.size() != 3) {
-                            rm.code = -1;
-                            rm.msg = "bad data format " + iter->second;
-                            return rm;
-                        }
-                        uint32_t year = boost::lexical_cast<uint32_t>(parts[0]);
-                        uint32_t mon = boost::lexical_cast<uint32_t>(parts[1]);
-                        uint32_t day = boost::lexical_cast<uint32_t>(parts[2]);
-                        ok = builder.AppendDate(year, mon, day);
-                        break;
-                    }
-                    default:
-                        rm.code = -1;
-                        rm.msg = "unsupported data type";
-                        return rm;
-                }
-                if (!ok) {
-                    rm.code = -1;
-                    rm.msg = "append " +
-                             ::rtidb::type::DataType_Name(col.data_type()) +
-                             " error";
-                    return rm;
-                }
-            } catch (std::exception const& e) {
-                rm.code = -1;
-                rm.msg = "input format error";
-                return rm;
+            if (!builder.AppendValue(iter->second)) {
+                std::string msg =
+                    "append " + ::rtidb::type::DataType_Name(col.data_type()) +
+                    " error";
+                return ::rtidb::base::ResultMsg(-1, msg);
             }
         }
-        rm.code = 0;
-        rm.msg = "ok";
-        return rm;
+        return ::rtidb::base::ResultMsg(0, "ok");
+    }
+
+    static ::rtidb::base::ResultMsg EncodeRow(
+        const std::vector<std::string>& input_value,
+        const std::vector<::rtidb::codec::ColumnDesc>& columns,
+        int modify_times, std::string* row) {
+        if (input_value.size() != columns.size()) {
+            return ::rtidb::base::ResultMsg(-1, "input error");
+        }
+        uint16_t cnt = (uint16_t)input_value.size();
+        ::rtidb::codec::FlatArrayCodec codec(row, cnt, modify_times);
+        for (uint32_t i = 0; i < input_value.size(); i++) {
+            bool codec_ok = false;
+            try {
+                if (columns[i].type == ::rtidb::codec::ColType::kInt32) {
+                    codec_ok = codec.Append(
+                        boost::lexical_cast<int32_t>(input_value[i]));
+                } else if (columns[i].type == ::rtidb::codec::ColType::kInt64) {
+                    codec_ok = codec.Append(
+                        boost::lexical_cast<int64_t>(input_value[i]));
+                } else if (columns[i].type ==
+                           ::rtidb::codec::ColType::kUInt32) {
+                    if (!boost::algorithm::starts_with(input_value[i], "-")) {
+                        codec_ok = codec.Append(
+                            boost::lexical_cast<uint32_t>(input_value[i]));
+                    }
+                } else if (columns[i].type ==
+                           ::rtidb::codec::ColType::kUInt64) {
+                    if (!boost::algorithm::starts_with(input_value[i], "-")) {
+                        codec_ok = codec.Append(
+                            boost::lexical_cast<uint64_t>(input_value[i]));
+                    }
+                } else if (columns[i].type == ::rtidb::codec::ColType::kFloat) {
+                    codec_ok = codec.Append(
+                        boost::lexical_cast<float>(input_value[i]));
+                } else if (columns[i].type ==
+                           ::rtidb::codec::ColType::kDouble) {
+                    codec_ok = codec.Append(
+                        boost::lexical_cast<double>(input_value[i]));
+                } else if (columns[i].type ==
+                           ::rtidb::codec::ColType::kString) {
+                    codec_ok = codec.Append(input_value[i]);
+                } else if (columns[i].type ==
+                           ::rtidb::codec::ColType::kTimestamp) {
+                    codec_ok = codec.AppendTimestamp(
+                        boost::lexical_cast<uint64_t>(input_value[i]));
+                } else if (columns[i].type == ::rtidb::codec::ColType::kDate) {
+                    std::string date = input_value[i] + " 00:00:00";
+                    tm tm_s;
+                    time_t time;
+                    char buf[20] = {0};
+                    strcpy(buf, date.c_str());  // NOLINT
+                    char* result = strptime(buf, "%Y-%m-%d %H:%M:%S", &tm_s);
+                    if (result == NULL) {
+                        return ::rtidb::base::ResultMsg(-1,
+                                                        "date format error");
+                    }
+                    tm_s.tm_isdst = -1;
+                    time = mktime(&tm_s) * 1000;
+                    codec_ok = codec.AppendDate(uint64_t(time));
+                } else if (columns[i].type == ::rtidb::codec::ColType::kInt16) {
+                    codec_ok = codec.Append(
+                        boost::lexical_cast<int16_t>(input_value[i]));
+                } else if (columns[i].type ==
+                           ::rtidb::codec::ColType::kUInt16) {
+                    codec_ok = codec.Append(
+                        boost::lexical_cast<uint16_t>(input_value[i]));
+                } else if (columns[i].type == ::rtidb::codec::ColType::kBool) {
+                    bool value = false;
+                    std::string raw_value = input_value[i];
+                    std::transform(raw_value.begin(), raw_value.end(),
+                                   raw_value.begin(), ::tolower);
+                    if (raw_value == "true") {
+                        value = true;
+                    } else if (raw_value == "false") {
+                        value = false;
+                    } else {
+                        return ::rtidb::base::ResultMsg(-1,
+                                                        "bool format error");
+                    }
+                    codec_ok = codec.Append(value);
+                } else {
+                    codec_ok = codec.AppendNull();
+                }
+            } catch (std::exception const& e) {
+                return ::rtidb::base::ResultMsg(-1, e.what());
+            }
+            if (!codec_ok) {
+                return ::rtidb::base::ResultMsg(-1, "encode failed");
+            }
+        }
+        codec.Build();
+        return ::rtidb::base::ResultMsg(0, "ok");
     }
 
     static bool DecodeRow(const Schema& schema,  // NOLINT
@@ -182,15 +253,10 @@ class RowCodec {
         return DecodeRow(schema, rv, false, 0, schema.size(), &value_vec);
     }
 
-    static bool DecodeRow(const Schema& schema,  // NOLINT
-                          const ::rtidb::base::Slice& value,
-                          bool replace_empty_str, int start, int length,
-                          std::vector<std::string>& value_vec) {  // NOLINT
-        rtidb::codec::RowView rv(
-            schema, reinterpret_cast<int8_t*>(const_cast<char*>(value.data())),
-            value.size());
-        return DecodeRow(schema, rv, replace_empty_str, start, length,
-                         &value_vec);
+    static bool DecodeRow(const Schema& schema, const int8_t* data, int32_t size, bool replace_empty_str,
+                          int start, int len, std::vector<std::string>& values) { // NOLINT
+        rtidb::codec::RowView rv(schema, data, size);
+        return DecodeRow(schema, rv, replace_empty_str, start, len, &values);
     }
 
     static bool DecodeRow(const Schema& schema,                   // NOLINT
@@ -201,95 +267,105 @@ class RowCodec {
 
     static bool DecodeRow(const Schema& schema,
                           rtidb::codec::RowView& rv,  // NOLINT
-                          bool replace_empty_str, int start, int length,
-                          std::vector<std::string>* value_vec) {
+                          bool replace_empty_str, int start, int length, std::vector<std::string>* value_vec) {
         int end = start + length;
-        if (length <= 0 || end > schema.size()) {
+        if (length <= 0) {
             return false;
         }
-        for (int32_t i = 0; i < end; i++) {
+        for (int32_t i = 0; i < end && i < schema.size(); i++) {
             if (rv.IsNULL(i)) {
                 value_vec->emplace_back(NONETOKEN);
                 continue;
             }
             std::string col;
-            auto type = schema.Get(i).data_type();
-            if (type == rtidb::type::kInt) {
-                int32_t val = 0;
-                int ret = rv.GetInt32(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kTimestamp) {
-                int64_t val = 0;
-                int ret = rv.GetTimestamp(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kBigInt ||
-                       type == rtidb::type::kBlob) {
-                int64_t val = 0;
-                int ret = rv.GetInt64(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kBool) {
-                bool val = false;
-                int ret = rv.GetBool(i, &val);
-                if (ret == 0) {
-                    if (val)
-                        col = "true";
-                    else
-                        col = "false";
-                }
-            } else if (type == rtidb::type::kFloat) {
-                float val = 0.0;
-                int ret = rv.GetFloat(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kSmallInt) {
-                int16_t val = 0;
-                int ret = rv.GetInt16(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kDouble) {
-                double val = 0;
-                int ret = rv.GetDouble(i, &val);
-                if (ret == 0) {
-                    col = std::to_string(val);
-                }
-            } else if (type == rtidb::type::kVarchar ||
-                       type == rtidb::type::kString) {
-                char* ch = NULL;
-                uint32_t len = 0;
-                int ret = rv.GetString(i, &ch, &len);
-                if (ret == 0) {
-                    if (len == 0) {
-                        col = replace_empty_str ? EMPTY_STRING : "";
-                    } else {
-                        col.assign(ch, len);
-                    }
-                }
-            } else if (type == ::rtidb::type::kDate) {
-                uint32_t year = 0;
-                uint32_t month = 0;
-                uint32_t day = 0;
-                rv.GetDate(i, &year, &month, &day);
-                std::stringstream ss;
-                ss << year << "-";
-                if (month < 10) {
-                    ss << "0";
-                }
-                ss << month << "-";
-                if (day < 10) {
-                    ss << "0";
-                }
-                ss << day;
-                col = ss.str();
+            rv.GetStrValue(i, &col);
+            if (replace_empty_str && col.empty()) {
+                col = EMPTY_STRING;
             }
             value_vec->emplace_back(std::move(col));
+        }
+        return true;
+    }
+
+    static bool DecodeRow(uint32_t base_schema_size,
+                          const ::rtidb::base::Slice& value,
+                          std::vector<std::string>* vrow) {
+        return DecodeRow(base_schema_size, base_schema_size, value, vrow);
+    }
+
+    static bool DecodeRow(uint32_t base_schema_size, uint32_t get_row_num,
+                          const ::rtidb::base::Slice& value,
+                          std::vector<std::string>* vrow) {
+        rtidb::codec::FlatArrayIterator fit(value.data(), value.size(), base_schema_size);
+        while (get_row_num > 0) {
+            std::string col;
+            if (!fit.Valid()) {
+                get_row_num--;
+                vrow->emplace_back("");
+                continue;
+            }
+            ColType type = fit.GetType();
+            if (fit.IsNULL()) {
+                col = NONETOKEN;
+            } else if (type == ::rtidb::codec::ColType::kString ||
+                       type == ::rtidb::codec::ColType::kEmptyString) {
+                fit.GetString(&col);
+            } else if (type == ::rtidb::codec::ColType::kUInt16) {
+                uint16_t uint16_col = 0;
+                fit.GetUInt16(&uint16_col);
+                col = boost::lexical_cast<std::string>(uint16_col);
+            } else if (type == ::rtidb::codec::ColType::kInt16) {
+                int16_t int16_col = 0;
+                fit.GetInt16(&int16_col);
+                col = boost::lexical_cast<std::string>(int16_col);
+            } else if (type == ::rtidb::codec::ColType::kInt32) {
+                int32_t int32_col = 0;
+                fit.GetInt32(&int32_col);
+                col = boost::lexical_cast<std::string>(int32_col);
+            } else if (type == ::rtidb::codec::ColType::kInt64) {
+                int64_t int64_col = 0;
+                fit.GetInt64(&int64_col);
+                col = boost::lexical_cast<std::string>(int64_col);
+            } else if (type == ::rtidb::codec::ColType::kUInt32) {
+                uint32_t uint32_col = 0;
+                fit.GetUInt32(&uint32_col);
+                col = boost::lexical_cast<std::string>(uint32_col);
+            } else if (type == ::rtidb::codec::ColType::kUInt64) {
+                uint64_t uint64_col = 0;
+                fit.GetUInt64(&uint64_col);
+                col = boost::lexical_cast<std::string>(uint64_col);
+            } else if (type == ::rtidb::codec::ColType::kDouble) {
+                double double_col = 0.0;
+                fit.GetDouble(&double_col);
+                col = boost::lexical_cast<std::string>(double_col);
+            } else if (type == ::rtidb::codec::ColType::kFloat) {
+                float float_col = 0.0f;
+                fit.GetFloat(&float_col);
+                col = boost::lexical_cast<std::string>(float_col);
+            } else if (type == ::rtidb::codec::ColType::kTimestamp) {
+                uint64_t ts = 0;
+                fit.GetTimestamp(&ts);
+                col = boost::lexical_cast<std::string>(ts);
+            } else if (type == ::rtidb::codec::ColType::kDate) {
+                uint64_t dt = 0;
+                fit.GetDate(&dt);
+                time_t rawtime = (time_t)dt / 1000;
+                tm* timeinfo = localtime(&rawtime);  // NOLINT
+                char buf[20];
+                strftime(buf, 20, "%Y-%m-%d", timeinfo);
+                col.assign(buf);
+            } else if (type == ::rtidb::codec::ColType::kBool) {
+                bool value = false;
+                fit.GetBool(&value);
+                if (value) {
+                    col = "true";
+                } else {
+                    col = "false";
+                }
+            }
+            get_row_num--;
+            fit.Next();
+            vrow->emplace_back(std::move(col));
         }
         return true;
     }
@@ -324,89 +400,7 @@ __attribute__((unused)) static bool DecodeRows(
     }
     return true;
 }
-__attribute__((unused)) static void FillTableRow(
-    uint32_t full_schema_size,
-    const std::vector<::rtidb::codec::ColumnDesc>& base_schema, const char* row,
-    const uint32_t row_size, std::vector<std::string>& vrow) {  // NOLINT
-    rtidb::codec::FlatArrayIterator fit(row, row_size, base_schema.size());
-    while (full_schema_size > 0) {
-        std::string col;
-        if (!fit.Valid()) {
-            full_schema_size--;
-            vrow.emplace_back("");
-            continue;
-        }
-        ColType type = fit.GetType();
-        if (fit.IsNULL()) {
-            col = NONETOKEN;
-        } else if (type == ::rtidb::codec::ColType::kString ||
-                   type == ::rtidb::codec::ColType::kEmptyString) {
-            fit.GetString(&col);
-        } else if (type == ::rtidb::codec::ColType::kUInt16) {
-            uint16_t uint16_col = 0;
-            fit.GetUInt16(&uint16_col);
-            col = boost::lexical_cast<std::string>(uint16_col);
-        } else if (type == ::rtidb::codec::ColType::kInt16) {
-            int16_t int16_col = 0;
-            fit.GetInt16(&int16_col);
-            col = boost::lexical_cast<std::string>(int16_col);
-        } else if (type == ::rtidb::codec::ColType::kInt32) {
-            int32_t int32_col = 0;
-            fit.GetInt32(&int32_col);
-            col = boost::lexical_cast<std::string>(int32_col);
-        } else if (type == ::rtidb::codec::ColType::kInt64) {
-            int64_t int64_col = 0;
-            fit.GetInt64(&int64_col);
-            col = boost::lexical_cast<std::string>(int64_col);
-        } else if (type == ::rtidb::codec::ColType::kUInt32) {
-            uint32_t uint32_col = 0;
-            fit.GetUInt32(&uint32_col);
-            col = boost::lexical_cast<std::string>(uint32_col);
-        } else if (type == ::rtidb::codec::ColType::kUInt64) {
-            uint64_t uint64_col = 0;
-            fit.GetUInt64(&uint64_col);
-            col = boost::lexical_cast<std::string>(uint64_col);
-        } else if (type == ::rtidb::codec::ColType::kDouble) {
-            double double_col = 0.0;
-            fit.GetDouble(&double_col);
-            col = boost::lexical_cast<std::string>(double_col);
-        } else if (type == ::rtidb::codec::ColType::kFloat) {
-            float float_col = 0.0f;
-            fit.GetFloat(&float_col);
-            col = boost::lexical_cast<std::string>(float_col);
-        } else if (type == ::rtidb::codec::ColType::kTimestamp) {
-            uint64_t ts = 0;
-            fit.GetTimestamp(&ts);
-            col = boost::lexical_cast<std::string>(ts);
-        } else if (type == ::rtidb::codec::ColType::kDate) {
-            uint64_t dt = 0;
-            fit.GetDate(&dt);
-            time_t rawtime = (time_t)dt / 1000;
-            tm* timeinfo = localtime(&rawtime);  // NOLINT
-            char buf[20];
-            strftime(buf, 20, "%Y-%m-%d", timeinfo);
-            col.assign(buf);
-        } else if (type == ::rtidb::codec::ColType::kBool) {
-            bool value = false;
-            fit.GetBool(&value);
-            if (value) {
-                col = "true";
-            } else {
-                col = "false";
-            }
-        }
-        full_schema_size--;
-        fit.Next();
-        vrow.emplace_back(std::move(col));
-    }
-}
 
-__attribute__((unused)) static void FillTableRow(
-    const std::vector<::rtidb::codec::ColumnDesc>& schema, const char* row,
-    const uint32_t row_size,
-    std::vector<std::string>& vrow) {  // NOLINT
-    return FillTableRow(schema.size(), schema, row, row_size, vrow);
-}
 static inline void Encode(uint64_t time, const char* data, const size_t size,
                           char* buffer, uint32_t offset) {
     buffer += offset;

@@ -3,14 +3,13 @@ package com._4paradigm.rtidb.client.ha.impl;
 import com._4paradigm.rtidb.client.NameServerClient;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.RTIDBClientConfig;
+import com._4paradigm.rtidb.client.schema.*;
 import com._4paradigm.rtidb.client.schema.ColumnDesc;
-import com._4paradigm.rtidb.client.schema.ColumnType;
-import com._4paradigm.rtidb.client.schema.IndexDef;
-import com._4paradigm.rtidb.client.schema.TableDesc;
 import com._4paradigm.rtidb.client.type.DataType;
 import com._4paradigm.rtidb.client.type.IndexType;
 import com._4paradigm.rtidb.client.type.TableType;
 import com._4paradigm.rtidb.common.Common;
+import com._4paradigm.rtidb.ns.NS;
 import com._4paradigm.rtidb.ns.NS.*;
 import com._4paradigm.rtidb.type.Type;
 import io.brpc.client.*;
@@ -22,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import rtidb.nameserver.NameServer;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -33,6 +33,8 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private final static Logger logger = LoggerFactory.getLogger(NameServerClientImpl.class);
     private String zkEndpoints;
     private String leaderPath;
+    private String severNamesPath;
+    private String sdkEndpointPath;
     private volatile ZooKeeper zookeeper;
     private SingleEndpointRpcClient rpcClient;
     private volatile NameServer ns;
@@ -42,6 +44,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     private RTIDBClientConfig config;
     private RpcBaseClient bs = null;
     private static Map<String, Type.DataType> TYPE_MAPING = new HashMap<>();
+
     static {
         TYPE_MAPING.put("int16", Type.DataType.kSmallInt);
         TYPE_MAPING.put("int32", Type.DataType.kInt);
@@ -53,6 +56,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         TYPE_MAPING.put("bool", Type.DataType.kBool);
         TYPE_MAPING.put("date", Type.DataType.kDate);
     }
+
     private final static ScheduledExecutorService clusterGuardThread = Executors.newScheduledThreadPool(1, new ThreadFactory() {
         public Thread newThread(Runnable r) {
             Thread t = Executors.defaultThreadFactory().newThread(r);
@@ -64,12 +68,17 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     public NameServerClientImpl(RTIDBClientConfig config) {
         this.zkEndpoints = config.getZkEndpoints();
         this.leaderPath = config.getZkRootPath() + "/leader";
+        this.severNamesPath = config.getZkServerNamePath();
+        this.sdkEndpointPath = config.getZkSdkEndpointPath();
         this.config = config;
     }
 
     public NameServerClientImpl(String zkEndpoints, String leaderPath) {
         this.zkEndpoints = zkEndpoints;
         this.leaderPath = leaderPath;
+        int pos = leaderPath.lastIndexOf("/");
+        this.severNamesPath = leaderPath.substring(0, pos) + "/map/names";
+        this.sdkEndpointPath = leaderPath.substring(0, pos) + "/map/sdkendpoints";
         this.config = null;
     }
 
@@ -170,7 +179,23 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }
         Collections.sort(children);
         byte[] bytes = zookeeper.getData(leaderPath + "/" + children.get(0), false, null);
-        EndPoint endpoint = new EndPoint(new String(bytes));
+        String realEp = new String(bytes, Charset.forName("UTF-8"));
+
+        if (zookeeper.exists(this.sdkEndpointPath + "/" + realEp, false) != null) {
+            // get sdkendpoint
+            byte[] data1 = zookeeper.getData(this.sdkEndpointPath + "/" + realEp, false, null);
+            if (data1 != null) {
+                realEp = new String(data1, Charset.forName("UTF-8"));
+            }
+        } else if (zookeeper.exists(this.severNamesPath + "/" + realEp, false) != null) {
+            // get real endpoint
+            byte[] data2 = zookeeper.getData(this.severNamesPath + "/" + realEp, false, null);
+            if (data2 != null) {
+                realEp = new String(data2, Charset.forName("UTF-8"));
+            }
+        }
+
+        EndPoint endpoint = new EndPoint(realEp);
         if (rpcClient != null) {
             rpcClient.stop();
         }
@@ -233,6 +258,11 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             builder.addColumnDescV1(cd);
         }
         String indexName = "";
+        if (tableDesc.getIndexs() == null ||
+                tableDesc.getIndexs().isEmpty()) {
+            logger.warn("no index");
+            return false;
+        }
         for (IndexDef index : tableDesc.getIndexs()) {
             if (index.getIndexType() == IndexType.PrimaryKey ||
                     index.getIndexType() == IndexType.AutoGen ||
@@ -266,34 +296,23 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
                 }
             }
         }
-        TableInfo newTableInfo = addDataType(tableInfo);
-        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(newTableInfo).build();
+        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(tableInfo).build();
         GeneralResponse response = ns.createTable(request);
-        if (response != null && response.getCode() == 0) {
-            return true;
-        } else if (response != null) {
-            logger.warn("fail to create table for error {}", response.getMsg());
+        if (response != null) {
+            if (response.getCode() == 0) {
+                return true;
+            } else {
+                logger.warn("fail to create table for error {}", response.getMsg());
+            }
+        } else {
+            logger.warn("response is null");
         }
         return false;
     }
 
-    private TableInfo addDataType(TableInfo tableInfo) {
-        TableInfo.Builder builder = TableInfo.newBuilder(tableInfo);
-        for (int i = 0; i < tableInfo.getColumnDescV1List().size(); i++) {
-            Common.ColumnDesc desc = tableInfo.getColumnDescV1(i);
-            Type.DataType type = TYPE_MAPING.get(desc.getType().toLowerCase());
-            Common.ColumnDesc.Builder descBuilder =Common.ColumnDesc.newBuilder(desc);
-            if (type!=null)
-            descBuilder.setDataType(type);
-            builder.setColumnDescV1(i, descBuilder.build());
-        }
-        return builder.build();
-    }
-
     @Override
     public boolean createTable(TableInfo tableInfo) {
-        TableInfo newTableInfo = addDataType(tableInfo);
-        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(newTableInfo).build();
+        CreateTableRequest request = CreateTableRequest.newBuilder().setTableInfo(tableInfo).build();
         GeneralResponse response = ns.createTable(request);
         if (response != null && response.getCode() == 0) {
             return true;
@@ -337,8 +356,7 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
         }
         Common.ColumnDesc columnDesc = Common.ColumnDesc.newBuilder()
                 .setName(columnName)
-                .setType(columnType)
-                .build();
+                .setType(columnType).setDataType(TYPE_MAPING.get(columnType)).build();
         AddTableFieldRequest request = AddTableFieldRequest.newBuilder()
                 .setName(tableName)
                 .setColumnDesc(columnDesc)
@@ -348,6 +366,42 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             return true;
         } else if (response != null) {
             logger.warn("fail to add table field for error {}", response.getMsg());
+        }
+        return false;
+    }
+
+    @Override
+    public boolean addIndex(String tableName, String indexName, List<String> tss, Map<String, String> cols) {
+        Common.ColumnKey.Builder keyBuilder = Common.ColumnKey.newBuilder();
+        keyBuilder.setIndexName(indexName);
+        for (String ts : tss) {
+            keyBuilder.addTsName(ts);
+        }
+        AddIndexRequest.Builder builder = AddIndexRequest.newBuilder();
+        builder.setName(tableName);
+        for (String col : cols.keySet()) {
+            keyBuilder.addColName(col);
+            String type = cols.get(col);
+            if (type == null) {
+                continue;
+            }
+            try {
+                ColumnType.valueFrom(type);
+            } catch (Exception e) {
+                logger.warn(e.getMessage());
+                return false;
+            }
+            Common.ColumnDesc.Builder colBuilder = Common.ColumnDesc.newBuilder();
+            colBuilder.setName(col).setType(type).setDataType(TYPE_MAPING.get(type));
+            builder.addCols(colBuilder);
+        }
+        builder.setColumnKey(keyBuilder.build());
+        AddIndexRequest request = builder.build();
+        GeneralResponse response = ns.addIndex(request);
+        if (response != null && response.getCode() == 0) {
+            return true;
+        } else if (response != null) {
+            logger.warn("fail to add table index for error {}", response.getMsg());
         }
         return false;
     }

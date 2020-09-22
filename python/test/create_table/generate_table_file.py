@@ -130,7 +130,7 @@ def generate_date():
 def generate_rt_ck():
   table = "rt_ck"
   b = tableBuilder(table, "hdd", "Relational")
-  b.addCol("id", "bigint", True).addCol("name", "varchar", True).addCol("mcc", "int", True).addCol("attribute", "varchar", True).addCol("image", "blob", False).addIdx("index_1", ["id","name"], "primaryKey").addIdx("index_2", ["mcc"], "nounique")
+  b.addCol("id", "bigint", True).addCol("name", "varchar", True).addCol("mcc", "int", False).addCol("attribute", "varchar", True).addCol("image", "blob", False).addIdx("index_1", ["id","name"], "primaryKey").addIdx("index_2", ["mcc"], "nounique")
   with open("{}.txt".format(table), "w") as f:
     f.write(b.SerializeToString())
 

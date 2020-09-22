@@ -14,11 +14,13 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <memory>
 
 #include "base/status.h"
 #include "boost/lexical_cast.hpp"
 #include "codec/codec.h"
 #include "proto/name_server.pb.h"
+#include "codec/fe_row_codec.h"
 #include "codec/field_codec.h"
 
 namespace rtidb {
@@ -197,6 +199,23 @@ class SchemaCodec {
         return type;
     }
 
+    static fesql::type::Type ConvertType(rtidb::type::DataType type) {
+        switch (type) {
+            case rtidb::type::kBool: return fesql::type::kBool;
+            case rtidb::type::kSmallInt: return fesql::type::kInt16;
+            case rtidb::type::kInt: return fesql::type::kInt32;
+            case rtidb::type::kBigInt: return fesql::type::kInt64;
+            case rtidb::type::kFloat: return fesql::type::kFloat;
+            case rtidb::type::kDouble: return fesql::type::kDouble;
+            case rtidb::type::kDate: return fesql::type::kDate;
+            case rtidb::type::kTimestamp: return fesql::type::kTimestamp;
+            case rtidb::type::kVarchar: return fesql::type::kVarchar;
+            case rtidb::type::kString: return fesql::type::kVarchar;
+            case rtidb::type::kBlob: return fesql::type::kBlob;
+            default: return fesql::type::kNull;
+        }
+    }
+
     static int ConvertColumnDesc(
         const ::rtidb::nameserver::TableInfo& table_info,
         std::vector<ColumnDesc>& columns) {  // NOLINT
@@ -358,6 +377,9 @@ class SchemaCodec {
             }
             ::rtidb::api::Columns* index = cd_columns->Add();
             index->add_name(kv.first);
+            if (kv.second == NONETOKEN || kv.second == "null") {
+                continue;
+            }
             ::rtidb::type::DataType type = iter->second;
             std::string* val = index->mutable_value();
             if (!::rtidb::codec::Convert(kv.second, type, val)) {
@@ -369,6 +391,59 @@ class SchemaCodec {
         rm.code = 0;
         rm.msg = "ok";
         return rm;
+    }
+
+    static bool AddTypeToColumnDesc(
+            std::shared_ptr<::rtidb::nameserver::TableInfo> table_info) {
+        for (int i = 0; i < table_info->column_desc_v1_size(); i++) {
+            ::rtidb::common::ColumnDesc* col_desc =
+                table_info->mutable_column_desc_v1(i);
+            ::rtidb::type::DataType data_type = col_desc->data_type();
+            switch (data_type) {
+                case rtidb::type::kBool: {
+                    col_desc->set_type("bool");
+                    break;
+                }
+                case rtidb::type::kSmallInt: {
+                    col_desc->set_type("int16");
+                    break;
+                }
+                case rtidb::type::kInt: {
+                    col_desc->set_type("int32");
+                    break;
+                }
+                case rtidb::type::kBlob:
+                case rtidb::type::kBigInt: {
+                    col_desc->set_type("int64");
+                    break;
+                }
+                case rtidb::type::kDate: {
+                    col_desc->set_type("date");
+                    break;
+                }
+                case rtidb::type::kTimestamp: {
+                    col_desc->set_type("timestamp");
+                    break;
+                }
+                case rtidb::type::kFloat: {
+                    col_desc->set_type("float");
+                    break;
+                }
+                case rtidb::type::kDouble: {
+                    col_desc->set_type("double");
+                    break;
+                }
+                case rtidb::type::kVarchar:
+                case rtidb::type::kString: {
+                    col_desc->set_type("string");
+                    break;
+                }
+                default: {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
  private:

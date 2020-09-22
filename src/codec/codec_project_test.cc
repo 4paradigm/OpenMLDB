@@ -17,8 +17,9 @@
 
 #include <string>
 #include <vector>
-#include "codec/codec.h"
+#include "base/glog_wapper.h"
 #include "base/strings.h"
+#include "codec/codec.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
 
@@ -400,7 +401,9 @@ void CompareRow(RowView* left, RowView* right,
 
 TEST_P(ProjectCodecTest, common_case) {
     auto args = GetParam();
-    RowProject rp(args->schema, args->plist);
+    std::map<int32_t, std::shared_ptr<Schema>> vers_schema;
+    vers_schema.insert(std::make_pair(1, std::make_shared<Schema>(args->schema)));
+    RowProject rp(vers_schema, args->plist);
     ASSERT_TRUE(rp.Init());
     int8_t* output = NULL;
     uint32_t output_size = 0;
@@ -414,7 +417,7 @@ TEST_P(ProjectCodecTest, common_case) {
     CompareRow(&left, &right, args->output_schema);
 }
 
-INSTANTIATE_TEST_CASE_P(ProjectCodecTestPrefix, ProjectCodecTest,
+INSTANTIATE_TEST_SUITE_P(ProjectCodecTestPrefix, ProjectCodecTest,
                         testing::ValuesIn(GenCommonCase()));
 
 }  // namespace codec

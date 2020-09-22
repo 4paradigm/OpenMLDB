@@ -3,17 +3,17 @@
  * Copyright (C) 4paradigm.com 2019
  */
 
-
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
+
 #include "base/kv_iterator.h"
+#include "boost/container/deque.hpp"
 #include "codec/row_codec.h"
 #include "gtest/gtest.h"
 #include "proto/common.pb.h"
 #include "proto/tablet.pb.h"
 #include "storage/segment.h"
-#include "boost/container/deque.hpp"
 
 namespace rtidb {
 namespace codec {
@@ -25,23 +25,20 @@ class CodecTest : public ::testing::Test {
 };
 
 TEST_F(CodecTest, EncodeRows_empty) {
-    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>
-        data;
+    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>> data;
     std::string pairs;
     int32_t size = ::rtidb::codec::EncodeRows(data, 0, &pairs);
     ASSERT_EQ(size, 0);
 }
 
 TEST_F(CodecTest, EncodeRows_invalid) {
-    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>
-        data;
+    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>> data;
     int32_t size = ::rtidb::codec::EncodeRows(data, 0, NULL);
     ASSERT_EQ(size, -1);
 }
 
 TEST_F(CodecTest, EncodeRows) {
-    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>>
-        data;
+    boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>> data;
     std::string test1 = "value1";
     std::string test2 = "value2";
     std::string empty;
@@ -323,7 +320,7 @@ TEST_F(CodecTest, AppendNULLAndEmpty) {
                 ASSERT_EQ(ret, 1);
             } else if (i % 3 == 1) {
                 ASSERT_EQ(ret, 0);
-                ASSERT_EQ(length, 0);
+                ASSERT_EQ(length, 0u);
             } else {
                 ASSERT_EQ(ret, 0);
                 std::string str(ch, length);
@@ -377,13 +374,107 @@ TEST_F(CodecTest, ManyCol) {
             int64_t val = 0;
             ret = view.GetInt64(idx * 3 + 1, &val);
             ASSERT_EQ(ret, 0);
-            ASSERT_EQ(val, ts + idx);
+            ASSERT_EQ(val, static_cast<int64_t>(ts + idx));
             double d = 0.0;
             ret = view.GetDouble(idx * 3 + 2, &d);
             ASSERT_EQ(ret, 0);
             ASSERT_DOUBLE_EQ(d, 1.3);
         }
     }
+}
+
+TEST_F(CodecTest, NotAppendCol) {
+    Schema schema;
+    for (int i = 0; i < 10; i++) {
+        ::rtidb::common::ColumnDesc* col = schema.Add();
+        col->set_name("col" + std::to_string(i));
+        if (i % 3 == 0) {
+            col->set_data_type(::rtidb::type::kSmallInt);
+        } else if (i % 3 == 1) {
+            col->set_data_type(::rtidb::type::kDouble);
+        } else {
+            col->set_data_type(::rtidb::type::kVarchar);
+        }
+    }
+    RowBuilder builder(schema);
+    uint32_t size = builder.CalTotalLength(30);
+    std::string row;
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    for (int i = 0; i < 7; i++) {
+        if (i % 3 == 0) {
+            ASSERT_TRUE(builder.AppendInt16(i));
+        } else if (i % 3 == 1) {
+            ASSERT_TRUE(builder.AppendDouble(2.3));
+        } else {
+            std::string str(10, 'a' + i);
+            ASSERT_TRUE(builder.AppendString(str.c_str(), str.length()));
+        }
+    }
+    ASSERT_FALSE(builder.AppendInt16(1234));
+    RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+    for (int i = 0; i < 10; i++) {
+        if (i >= 7) {
+            ASSERT_TRUE(view.IsNULL(i));
+            continue;
+        }
+        if (i % 3 == 0) {
+            int16_t val = 0;
+            ASSERT_EQ(view.GetInt16(i, &val), 0);
+            ASSERT_EQ(val, i);
+        } else if (i % 3 == 1) {
+            double val = 0.0;
+            ASSERT_EQ(view.GetDouble(i, &val), 0);
+            ASSERT_EQ(val, 2.3);
+        } else {
+            char* ch = NULL;
+            uint32_t length = 0;
+            ASSERT_EQ(view.GetString(i, &ch, &length), 0);
+            ASSERT_EQ(10u, length);
+            std::string str(ch, length);
+            ASSERT_STREQ(str.c_str(), std::string(10, 'a' + i).c_str());
+        }
+    }
+    int16_t val = 0;
+    ASSERT_EQ(view.GetInt16(10, &val), -1);
+}
+
+TEST_F(CodecTest, NotAppendString) {
+    Schema schema;
+    for (int i = 0; i < 10; i++) {
+        ::rtidb::common::ColumnDesc* col = schema.Add();
+        col->set_name("col" + std::to_string(i));
+        col->set_data_type(::rtidb::type::kVarchar);
+    }
+    RowBuilder builder(schema);
+    uint32_t size = builder.CalTotalLength(100);
+    std::string row;
+    row.resize(size);
+    builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
+    for (int i = 0; i < 8; i++) {
+        if (i > 2 && i < 6) {
+            builder.AppendNULL();
+            continue;
+        }
+        std::string str(10, 'a' + i);
+        ASSERT_TRUE(builder.AppendString(str.c_str(), str.length()));
+    }
+    ASSERT_FALSE(builder.AppendInt16(1234));
+    RowView view(schema, reinterpret_cast<int8_t*>(&(row[0])), size);
+    for (int i = 0; i < 10; i++) {
+        if (i >= 8 || (i > 2 && i < 6)) {
+            ASSERT_TRUE(view.IsNULL(i));
+            continue;
+        }
+        char* ch = NULL;
+        uint32_t length = 0;
+        ASSERT_EQ(view.GetString(i, &ch, &length), 0);
+        ASSERT_EQ(10u, length);
+        std::string str(ch, length);
+        ASSERT_STREQ(str.c_str(), std::string(10, 'a' + i).c_str());
+    }
+    int16_t val = 0;
+    ASSERT_EQ(view.GetInt16(10, &val), -1);
 }
 
 }  // namespace codec

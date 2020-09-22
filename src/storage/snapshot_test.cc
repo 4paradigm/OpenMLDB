@@ -169,17 +169,17 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     ASSERT_TRUE(snapshot.Recover(table, snapshot_offset));
     Binlog binlog(log_part, binlog_dir);
     binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
-    ASSERT_EQ(31, latest_offset);
+    ASSERT_EQ(31u, latest_offset);
     Ticket ticket;
     TableIterator* it = table->NewIterator("key", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(1, it->GetKey());
+    ASSERT_EQ(1u, it->GetKey());
     std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value1", value2_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(0, it->GetKey());
+    ASSERT_EQ(0u, it->GetKey());
     std::string value3_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", value3_str);
     it->Next();
@@ -188,12 +188,12 @@ TEST_F(SnapshotTest, Recover_binlog_and_snapshot) {
     it = table->NewIterator("key2", ticket);
     it->Seek(11);
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(11, it->GetKey());
+    ASSERT_EQ(11u, it->GetKey());
     std::string value4_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value11", value4_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(10, it->GetKey());
+    ASSERT_EQ(10u, it->GetKey());
     std::string value5_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value10", value5_str);
     it->Next();
@@ -250,19 +250,19 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
     ASSERT_TRUE(snapshot.Recover(table, snapshot_offset));
     Binlog binlog(log_part, binlog_dir);
     binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
-    ASSERT_EQ(10, latest_offset);
+    ASSERT_EQ(10u, latest_offset);
 
     {
         Ticket ticket;
         TableIterator* it = table->NewIterator(0, "card0", ticket);
         it->Seek(1);
         ASSERT_TRUE(it->Valid());
-        ASSERT_EQ(1, it->GetKey());
+        ASSERT_EQ(1u, it->GetKey());
         std::string value2_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("value1", value2_str);
         it->Next();
         ASSERT_TRUE(it->Valid());
-        ASSERT_EQ(0, it->GetKey());
+        ASSERT_EQ(0u, it->GetKey());
         std::string value3_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("value0", value3_str);
         it->Next();
@@ -274,12 +274,12 @@ TEST_F(SnapshotTest, Recover_only_binlog_multi) {
         TableIterator* it = table->NewIterator(1, "merchant0", ticket);
         it->Seek(1);
         ASSERT_TRUE(it->Valid());
-        ASSERT_EQ(1, it->GetKey());
+        ASSERT_EQ(1u, it->GetKey());
         std::string value2_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("value1", value2_str);
         it->Next();
         ASSERT_TRUE(it->Valid());
-        ASSERT_EQ(0, it->GetKey());
+        ASSERT_EQ(0u, it->GetKey());
         std::string value3_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("value0", value3_str);
         it->Next();
@@ -323,17 +323,17 @@ TEST_F(SnapshotTest, Recover_only_binlog) {
     ASSERT_TRUE(snapshot.Recover(table, snapshot_offset));
     Binlog binlog(log_part, binlog_dir);
     binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
-    ASSERT_EQ(10, latest_offset);
+    ASSERT_EQ(10u, latest_offset);
     Ticket ticket;
     TableIterator* it = table->NewIterator("key", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(1, it->GetKey());
+    ASSERT_EQ(1u, it->GetKey());
     std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value1", value2_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(0, it->GetKey());
+    ASSERT_EQ(0u, it->GetKey());
     std::string value3_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", value3_str);
     it->Next();
@@ -435,18 +435,18 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
     ASSERT_TRUE(snapshot.Recover(table, snapshot_offset));
     Binlog binlog(log_part, binlog_dir);
     binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
-    ASSERT_EQ(2, latest_offset);
+    ASSERT_EQ(2u, latest_offset);
     {
         Ticket ticket;
         TableIterator* it = table->NewIterator(0, "card0", ticket);
         it->Seek(9528);
         ASSERT_TRUE(it->Valid());
-        ASSERT_EQ(9528, it->GetKey());
+        ASSERT_EQ(9528u, it->GetKey());
         std::string value2_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("test2", value2_str);
         it->Next();
         ASSERT_TRUE(it->Valid());
-        ASSERT_EQ(9527, it->GetKey());
+        ASSERT_EQ(9527u, it->GetKey());
         std::string value3_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("test1", value3_str);
         it->Next();
@@ -457,19 +457,19 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
         TableIterator* it = table->NewIterator(1, "merchant0", ticket);
         it->Seek(9528);
         ASSERT_TRUE(it->Valid());
-        ASSERT_EQ(9528, it->GetKey());
+        ASSERT_EQ(9528u, it->GetKey());
         std::string value2_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("test2", value2_str);
         it->Next();
         ASSERT_TRUE(it->Valid());
-        ASSERT_EQ(9527, it->GetKey());
+        ASSERT_EQ(9527u, it->GetKey());
         std::string value3_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("test1", value3_str);
         it->Next();
         ASSERT_FALSE(it->Valid());
     }
-    ASSERT_EQ(2, table->GetRecordCnt());
-    ASSERT_EQ(4, table->GetRecordIdxCnt());
+    ASSERT_EQ(2u, table->GetRecordCnt());
+    ASSERT_EQ(4u, table->GetRecordIdxCnt());
 }
 
 TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
@@ -577,18 +577,18 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
     ASSERT_TRUE(snapshot.Recover(table, snapshot_offset));
     Binlog binlog(log_part, binlog_dir);
     binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
-    ASSERT_EQ(2, latest_offset);
+    ASSERT_EQ(2u, latest_offset);
     {
         Ticket ticket;
         TableIterator* it = table->NewIterator(0, "card0", ticket);
         it->Seek(9528);
         ASSERT_TRUE(it->Valid());
-        ASSERT_EQ(9528, it->GetKey());
+        ASSERT_EQ(9528u, it->GetKey());
         std::string value2_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("test2", value2_str);
         it->Next();
         ASSERT_TRUE(it->Valid());
-        ASSERT_EQ(9527, it->GetKey());
+        ASSERT_EQ(9527u, it->GetKey());
         std::string value3_str(it->GetValue().data(), it->GetValue().size());
         ASSERT_EQ("test1", value3_str);
         it->Next();
@@ -599,8 +599,8 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
         TableIterator* it = table->NewIterator(1, "merchant0", ticket);
         ASSERT_TRUE(it == NULL);
     }
-    ASSERT_EQ(2, table->GetRecordCnt());
-    ASSERT_EQ(2, table->GetRecordIdxCnt());
+    ASSERT_EQ(2u, table->GetRecordCnt());
+    ASSERT_EQ(2u, table->GetRecordIdxCnt());
 }
 
 TEST_F(SnapshotTest, Recover_only_snapshot) {
@@ -678,17 +678,17 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
     ASSERT_EQ(0, ret);
     uint64_t offset = 0;
     ASSERT_TRUE(snapshot.Recover(table, offset));
-    ASSERT_EQ(2, offset);
+    ASSERT_EQ(2u, offset);
     Ticket ticket;
     TableIterator* it = table->NewIterator("test0", ticket);
     it->Seek(9528);
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(9528, it->GetKey());
+    ASSERT_EQ(9528u, it->GetKey());
     std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("test2", value2_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(9527, it->GetKey());
+    ASSERT_EQ(9527u, it->GetKey());
     std::string value3_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("test1", value3_str);
     it->Next();
@@ -774,10 +774,10 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     std::vector<std::string> vec;
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
     vec.clear();
     ret = ::rtidb::base::GetFileName(log_path, vec);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
 
     std::string full_path = snapshot_path + "MANIFEST";
     ::rtidb::api::Manifest manifest;
@@ -787,9 +787,9 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         fileInput.SetCloseOnDelete(true);
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
-    ASSERT_EQ(38, manifest.offset());
-    ASSERT_EQ(27, manifest.count());
-    ASSERT_EQ(6, manifest.term());
+    ASSERT_EQ(38, (int64_t)manifest.offset());
+    ASSERT_EQ(27, (int64_t)manifest.count());
+    ASSERT_EQ(6, (int64_t)manifest.term());
 
     for (; count < 50; count++) {
         ::rtidb::api::LogEntry entry;
@@ -826,10 +826,10 @@ TEST_F(SnapshotTest, MakeSnapshot) {
     vec.clear();
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
     vec.clear();
     ret = ::rtidb::base::GetFileName(log_path, vec);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
     {
         int fd = open(full_path.c_str(), O_RDONLY);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -837,9 +837,9 @@ TEST_F(SnapshotTest, MakeSnapshot) {
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
 
-    ASSERT_EQ(59, manifest.offset());
-    ASSERT_EQ(46, manifest.count());
-    ASSERT_EQ(7, manifest.term());
+    ASSERT_EQ(59, (int64_t)manifest.offset());
+    ASSERT_EQ(46, (int64_t)manifest.count());
+    ASSERT_EQ(7, (int64_t)manifest.term());
 }
 
 TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
@@ -918,10 +918,10 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
     std::vector<std::string> vec;
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
     vec.clear();
     ret = ::rtidb::base::GetFileName(log_path, vec);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
 
     std::string full_path = snapshot_path + "MANIFEST";
     ::rtidb::api::Manifest manifest;
@@ -931,9 +931,9 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
         fileInput.SetCloseOnDelete(true);
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
-    ASSERT_EQ(30, manifest.offset());
-    ASSERT_EQ(29, manifest.count());
-    ASSERT_EQ(6, manifest.term());
+    ASSERT_EQ(30, (int64_t)manifest.offset());
+    ASSERT_EQ(29, (int64_t)manifest.count());
+    ASSERT_EQ(6, (int64_t)manifest.term());
     for (; count < 50; count++) {
         ::rtidb::api::LogEntry entry;
         entry.set_log_index(offset);
@@ -974,10 +974,10 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
     vec.clear();
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
     vec.clear();
     ret = ::rtidb::base::GetFileName(log_path, vec);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
     {
         int fd = open(full_path.c_str(), O_RDONLY);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -985,9 +985,88 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
 
-    ASSERT_EQ(51, manifest.offset());
-    ASSERT_EQ(48, manifest.count());
-    ASSERT_EQ(7, manifest.term());
+    ASSERT_EQ(51, (int64_t)manifest.offset());
+    ASSERT_EQ(48, (int64_t)manifest.count());
+    ASSERT_EQ(7, (int64_t)manifest.term());
+}
+
+TEST_F(SnapshotTest, MakeSnapshotAbsOrLat) {
+    ::rtidb::api::TableMeta* table_meta = new ::rtidb::api::TableMeta();
+    table_meta->set_name("absorlat");
+    table_meta->set_tid(10);
+    table_meta->set_pid(0);
+    table_meta->set_seg_cnt(8);
+    ::rtidb::api::TTLDesc* ttl_desc = table_meta->mutable_ttl_desc();
+    ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsOrLat);
+    ttl_desc->set_abs_ttl(0);
+    ttl_desc->set_lat_ttl(1);
+
+    ::rtidb::common::ColumnDesc* desc = table_meta->add_column_desc();
+    desc->set_name("card");
+    desc->set_type("string");
+    desc = table_meta->add_column_desc();
+    desc->set_name("merchant");
+    desc->set_type("string");
+    desc = table_meta->add_column_desc();
+    desc->set_name("ts");
+    desc->set_type("timestamp");
+    desc = table_meta->add_column_desc();
+    desc->set_name("date");
+    desc->set_type("string");
+    ::rtidb::common::ColumnKey* ck = table_meta->add_column_key();
+    ck->set_index_name("index1");
+    ck->add_col_name("card");
+    ck->add_col_name("merchant");
+    std::shared_ptr<MemTable> table = std::make_shared<MemTable>(*table_meta);
+    table->Init();
+
+    LogParts* log_part = new LogParts(12, 4, scmp);
+    MemTableSnapshot snapshot(10, 0, log_part, FLAGS_db_root_path);
+    snapshot.Init();
+    uint64_t offset = 0;
+    uint32_t binlog_index = 0;
+    std::string log_path = FLAGS_db_root_path + "/10_0/binlog/";
+    std::string snapshot_path = FLAGS_db_root_path + "/10_0/snapshot/";
+    WriteHandle* wh = NULL;
+    RollWLogFile(&wh, log_part, log_path, binlog_index, offset);
+    for (uint64_t i = 0; i < 3; i++) {
+        offset++;
+        ::rtidb::api::Dimension dimensions;
+        dimensions.set_key("c0|m0");
+        dimensions.set_idx(0);
+
+        ::rtidb::api::LogEntry entry;
+        entry.set_log_index(offset);
+        ::rtidb::api::Dimension* d_ptr = entry.add_dimensions();
+        d_ptr->CopyFrom(dimensions);
+        entry.set_ts(i);
+        entry.set_value("value");
+        std::string buffer;
+        entry.SerializeToString(&buffer);
+        ::rtidb::base::Slice slice(buffer);
+        ::rtidb::base::Status status = wh->Write(slice);
+
+        google::protobuf::RepeatedPtrField<::rtidb::api::Dimension> d_list;
+        ::rtidb::api::Dimension* d_ptr2 = d_list.Add();
+        d_ptr2->CopyFrom(dimensions);
+        ASSERT_EQ(table->Put(i, "value", d_list), true);
+    }
+
+    table->SchedGc();
+    uint64_t offset_value;
+    int ret = snapshot.MakeSnapshot(table, offset_value, 0);
+    ASSERT_EQ(0, ret);
+
+    std::string full_path = snapshot_path + "MANIFEST";
+    ::rtidb::api::Manifest manifest;
+    {
+        int fd = open(full_path.c_str(), O_RDONLY);
+        google::protobuf::io::FileInputStream fileInput(fd);
+        fileInput.SetCloseOnDelete(true);
+        google::protobuf::TextFormat::Parse(&fileInput, &manifest);
+    }
+    ASSERT_EQ(1, (int64_t)manifest.count());
+    ASSERT_EQ(3, (int64_t)manifest.offset());
 }
 
 TEST_F(SnapshotTest, MakeSnapshotLatest) {
@@ -1044,10 +1123,10 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     std::vector<std::string> vec;
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
     vec.clear();
     ret = ::rtidb::base::GetFileName(log_path, vec);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
 
     std::string full_path = snapshot_path + "MANIFEST";
     ::rtidb::api::Manifest manifest;
@@ -1058,8 +1137,8 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
     ASSERT_EQ(offset - 1, manifest.offset());
-    ASSERT_EQ(16, manifest.count());
-    ASSERT_EQ(6, manifest.term());
+    ASSERT_EQ(16, (int64_t)manifest.count());
+    ASSERT_EQ(6, (int64_t)manifest.term());
 
     for (; count < 1000; count++) {
         ::rtidb::api::LogEntry entry;
@@ -1085,10 +1164,10 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     vec.clear();
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
     vec.clear();
     ret = ::rtidb::base::GetFileName(log_path, vec);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
     {
         int fd = open(full_path.c_str(), O_RDONLY);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -1097,8 +1176,8 @@ TEST_F(SnapshotTest, MakeSnapshotLatest) {
     }
 
     ASSERT_EQ(offset - 1, manifest.offset());
-    ASSERT_EQ(21, manifest.count());
-    ASSERT_EQ(7, manifest.term());
+    ASSERT_EQ(21, (int64_t)manifest.count());
+    ASSERT_EQ(7, (int64_t)manifest.term());
 }
 
 TEST_F(SnapshotTest, RecordOffset) {
@@ -1211,17 +1290,17 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     ASSERT_TRUE(snapshot.Recover(table, offset));
     Binlog binlog(log_part, binlog_dir);
     binlog.RecoverFromBinlog(table, snapshot_offset, latest_offset);
-    ASSERT_EQ(30, latest_offset);
+    ASSERT_EQ(30u, latest_offset);
     Ticket ticket;
     TableIterator* it = table->NewIterator("key_new", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(1, it->GetKey());
+    ASSERT_EQ(1, (int64_t)it->GetKey());
     std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value_new1", value2_str);
     it->Next();
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(0, it->GetKey());
+    ASSERT_EQ(0, (int64_t)it->GetKey());
     std::string value3_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value_new0", value3_str);
     it->Next();
@@ -1230,7 +1309,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     it = table->NewIterator("key_xxx", ticket);
     it->Seek(1);
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(1, it->GetKey());
+    ASSERT_EQ(1, (int64_t)it->GetKey());
     std::string value4_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value_xxx1", value4_str);
 
@@ -1241,7 +1320,7 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
     std::vector<std::string> vec;
     ret = ::rtidb::base::GetFileName(snapshot_dir, vec);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
     vec.clear();
     std::string full_path = snapshot_dir + "MANIFEST";
     ::rtidb::api::Manifest manifest;
@@ -1251,8 +1330,8 @@ TEST_F(SnapshotTest, Recover_empty_binlog) {
         fileInput.SetCloseOnDelete(true);
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
-    ASSERT_EQ(30, manifest.offset());
-    ASSERT_EQ(30, manifest.count());
+    ASSERT_EQ(30, (int64_t)manifest.offset());
+    ASSERT_EQ(30, (int64_t)manifest.count());
 }
 
 TEST_F(SnapshotTest, Recover_snapshot_ts) {
@@ -1332,12 +1411,12 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     ASSERT_EQ(0, ret);
     uint64_t offset = 0;
     ASSERT_TRUE(snapshot.Recover(table, offset));
-    ASSERT_EQ(1, offset);
+    ASSERT_EQ(1u, offset);
     Ticket ticket;
     TableIterator* it = table->NewIterator(0, 0, "card0", ticket);
     it->Seek(1122);
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(1122, it->GetKey());
+    ASSERT_EQ(1122, (int64_t)it->GetKey());
     std::string value2_str(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", value2_str);
     it->Next();
@@ -1346,7 +1425,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     it = table->NewIterator(0, 1, "card0", ticket);
     it->Seek(2233);
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(2233, it->GetKey());
+    ASSERT_EQ(2233, (int64_t)it->GetKey());
     value2_str.assign(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", value2_str);
     it->Next();
@@ -1355,7 +1434,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     it = table->NewIterator(1, 0, "mcc0", ticket);
     it->Seek(1122);
     ASSERT_TRUE(it->Valid());
-    ASSERT_EQ(1122, it->GetKey());
+    ASSERT_EQ(1122, (int64_t)it->GetKey());
     value2_str.assign(it->GetValue().data(), it->GetValue().size());
     ASSERT_EQ("value0", value2_str);
     it->Next();
@@ -1392,7 +1471,7 @@ TEST_F(SnapshotTest, DiskTableMakeSnapshot) {
     uint64_t offset = 0;
     int ret = snapshot.MakeSnapshot(table, offset, 0);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(10000, offset);
+    ASSERT_EQ(10000u, offset);
 
     std::string full_path = snapshot_path + "MANIFEST";
     ::rtidb::api::Manifest manifest;
@@ -1402,9 +1481,9 @@ TEST_F(SnapshotTest, DiskTableMakeSnapshot) {
         fileInput.SetCloseOnDelete(true);
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
-    ASSERT_EQ(10000, manifest.offset());
-    ASSERT_EQ(10000, manifest.count());
-    ASSERT_EQ(9, manifest.term());
+    ASSERT_EQ(10000, (int64_t)manifest.offset());
+    ASSERT_EQ(10000, (int64_t)manifest.count());
+    ASSERT_EQ(9, (int64_t)manifest.term());
 
     std::string path = FLAGS_hdd_root_path + "/1_1";
     RemoveData(path);
@@ -1489,10 +1568,10 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
     std::vector<std::string> vec;
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
     vec.clear();
     ret = ::rtidb::base::GetFileName(log_path, vec);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
 
     std::string full_path = snapshot_path + "MANIFEST";
     ::rtidb::api::Manifest manifest;
@@ -1502,18 +1581,18 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
         fileInput.SetCloseOnDelete(true);
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
-    ASSERT_EQ(18, manifest.offset());
-    ASSERT_EQ(8, manifest.count());
-    ASSERT_EQ(5, manifest.term());
+    ASSERT_EQ(18, (int64_t)manifest.offset());
+    ASSERT_EQ(8, (int64_t)manifest.count());
+    ASSERT_EQ(5, (int64_t)manifest.term());
 
     ret = snapshot.MakeSnapshot(table, offset_value, 0);
     ASSERT_EQ(0, ret);
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(4, vec.size());
+    ASSERT_EQ(4, (int32_t)vec.size());
     vec.clear();
     ret = ::rtidb::base::GetFileName(log_path, vec);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
 
     full_path = snapshot_path + "MANIFEST";
     manifest.Clear();
@@ -1523,9 +1602,9 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
         fileInput.SetCloseOnDelete(true);
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
-    ASSERT_EQ(38, manifest.offset());
-    ASSERT_EQ(27, manifest.count());
-    ASSERT_EQ(6, manifest.term());
+    ASSERT_EQ(38, (int64_t)manifest.offset());
+    ASSERT_EQ(27, (int64_t)manifest.count());
+    ASSERT_EQ(6, (int64_t)manifest.term());
 
     for (; count < 50; count++) {
         ::rtidb::api::LogEntry entry;
@@ -1564,10 +1643,10 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
     vec.clear();
     ret = ::rtidb::base::GetFileName(snapshot_path, vec);
     ASSERT_EQ(0, ret);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
     vec.clear();
     ret = ::rtidb::base::GetFileName(log_path, vec);
-    ASSERT_EQ(2, vec.size());
+    ASSERT_EQ(2, (int32_t)vec.size());
     {
         int fd = open(full_path.c_str(), O_RDONLY);
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -1575,9 +1654,9 @@ TEST_F(SnapshotTest, MakeSnapshotWithEndOffset) {
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
 
-    ASSERT_EQ(59, manifest.offset());
-    ASSERT_EQ(46, manifest.count());
-    ASSERT_EQ(7, manifest.term());
+    ASSERT_EQ(59, (int64_t)manifest.offset());
+    ASSERT_EQ(46, (int64_t)manifest.count());
+    ASSERT_EQ(7, (int64_t)manifest.term());
 }
 
 }  // namespace storage

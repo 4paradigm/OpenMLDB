@@ -106,6 +106,10 @@ class MemTableSnapshot : public Snapshot {
         uint32_t max_idx, uint32_t idx, uint32_t partition_num,
         ::rtidb::api::LogEntry* entry, uint32_t* index_pid);
 
+    int RemoveDeletedKey(const ::rtidb::api::LogEntry& entry,
+                         const std::set<uint32_t>& deleted_index,
+                         std::string* buffer);
+
  private:
     // load single snapshot to table
     void RecoverSingleSnapshot(const std::string& path,
@@ -114,6 +118,9 @@ class MemTableSnapshot : public Snapshot {
                                std::atomic<uint64_t>* g_failed_cnt);
 
     uint64_t CollectDeletedKey(uint64_t end_offset);
+
+    int DecodeData(std::shared_ptr<Table> table, const std::vector<::rtidb::codec::ColumnDesc>& columns,
+                    const rtidb::api::LogEntry& entry, uint32_t maxIdx, std::vector<std::string>& row); // NOLINT
 
  private:
     LogParts* log_part_;

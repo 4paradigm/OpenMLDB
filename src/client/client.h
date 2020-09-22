@@ -2,13 +2,103 @@
 // Copyright 2020 4paradigm
 //
 #pragma once
-#include "client/client_type.h"
-
-#include <set>
-#include <memory>
 #include <map>
+#include <memory>
+#include <set>
 #include <string>
 #include <vector>
+
+#include "client/client_type.h"
+#include "thread_pool.h" // NOLINT
+#include "client/tablet_client.h"
+#include "codec/codec.h"
+#include "codec/schema_codec.h"
+#include "zk/zk_client.h"
+
+struct WriteOption {
+    WriteOption() : update_if_exist(false) {
+    }
+
+    explicit WriteOption(bool flag) {
+        update_if_exist = flag;
+    }
+
+    bool update_if_exist;
+};
+
+struct ReadFilter {
+    std::string column;
+    uint8_t type;
+    std::string value;
+};
+
+struct PartitionInfo {
+    std::string leader;
+    std::vector<std::string> follower;
+};
+
+struct TableHandler {
+    std::shared_ptr<rtidb::nameserver::TableInfo> table_info;
+    std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>> columns;
+    std::vector<PartitionInfo> partition;
+    std::vector<PartitionInfo> blob_partition;
+    std::string auto_gen_pk_;
+    std::vector<int32_t> blobSuffix;
+    std::vector<std::string> blobFieldNames;
+    std::string auto_gen_pk;
+    std::map<std::string, ::rtidb::type::DataType> name_type_map;
+    std::map<uint32_t, std::shared_ptr<google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>> version_schema;
+    int32_t last_schema_version;
+};
+
+struct GeneralResult {
+    GeneralResult() : code(0), msg() {}
+
+    explicit GeneralResult(int err_num) : code(err_num), msg() {}
+
+    GeneralResult(int err_num, const std::string& error_msg)
+        : code(err_num), msg(error_msg) {}
+
+    void SetError(int err_num, const std::string& error_msg) {
+        code = err_num;
+        msg = error_msg;
+    }
+    const char* GetMsg() { return msg.data(); }
+    int code;
+    std::string msg;
+};
+
+struct PutResult : public GeneralResult {
+    void SetAutoGenPk(int64_t num) {
+        has_auto_gen_pk = true;
+        auto_gen_pk = num;
+    }
+    int64_t auto_gen_pk;
+    bool has_auto_gen_pk = false;
+};
+
+struct UpdateResult : public GeneralResult {
+    UpdateResult(): affected_count(0) {}
+    void SetAffectedCount(uint32_t num) {
+        affected_count = num;
+    }
+    uint32_t affected_count;
+};
+
+struct ReadOption {
+    explicit ReadOption(const std::map<std::string, std::string>& indexs) {
+        index.insert(indexs.begin(), indexs.end());
+    }
+
+    ReadOption() : index(), read_filter(), col_set(), limit(0) {}
+
+    ~ReadOption() = default;
+
+    std::map<std::string, std::string> index;
+    std::vector<ReadFilter> read_filter;
+    std::set<std::string> col_set;
+    uint64_t limit;
+};
 
 
 class RtidbClient;
@@ -129,26 +219,36 @@ class ViewResult {
         return result;
     }
 
-    ViewResult() : rv_(), columns_(), initialed_(false), curr_blob_key_(),
+
+    ViewResult() : rv_(), columns_(), initialed_(false), curr_blob_key_(0),
                     table_name_(), client_(nullptr) {}
 
     ~ViewResult() = default;
 
     int64_t GetInt(uint32_t idx);
 
+    const std::string& GetTableName() { return table_name_; }
+
     void SetTable(const std::string& name) { table_name_ = name; }
 
     void SetClient(RtidbClient* client) { client_ = client; }
 
+    void SetBlobIdxVec(const std::vector<int32_t>& vec) {
+        blob_idx_vec_ = vec;
+    }
+    const std::vector<int32_t>& GetBlobIdxVec() { return blob_idx_vec_; }
+
     std::shared_ptr<rtidb::codec::RowView> rv_;
 
  private:
-    std::shared_ptr<google::protobuf::RepeatedPtrField<
-        rtidb::common::ColumnDesc>> columns_;
+    std::shared_ptr<
+        google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>>
+        columns_;
     bool initialed_;
     int64_t curr_blob_key_;
     std::string table_name_;
     RtidbClient* client_;
+    std::vector<int32_t> blob_idx_vec_;
 };
 
 class TraverseResult : public ViewResult {
@@ -243,13 +343,14 @@ class BaseClient {
           zk_client_(nullptr),
           zk_cluster_(zk_cluster),
           zk_root_path_(zk_root_path),
+          table_notify_(zk_root_path + "/table/notify"),
           endpoint_(endpoint),
           zk_session_timeout_(zk_session_timeout),
           zk_keep_alive_check_(zk_keep_alive_check),
-          zk_table_data_path_() {}
-    explicit BaseClient(
-        const std::map<std::string,
-                       std::shared_ptr<rtidb::client::TabletClient>>& tablets);
+          zk_table_data_path_(),
+          task_thread_pool_(1),
+          zk_client_session_term_(0) {}
+    explicit BaseClient(const std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>>& tablets);
     ~BaseClient();
 
     bool Init(std::string* msg);
@@ -259,61 +360,58 @@ class BaseClient {
     void UpdateBlobEndpoint(const std::set<std::string>& alive_endpoints);
     void RefreshTable();
     void SetZkCheckInterval(int32_t interval);
-    void DoFresh(const std::vector<std::string>& events);
+    void DoFresh();
     bool RegisterZK(std::string* msg);
-    std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(
-        const std::string& endpoint, std::string* msg);
-    std::shared_ptr<rtidb::client::BsClient> GetBlobClient(
-        const std::string& endpoint, std::string* msg);
+
+    std::shared_ptr<rtidb::client::TabletClient> GetTabletClient(const std::string& endpoint, std::string* msg);
+
+    std::shared_ptr<rtidb::client::BsClient> GetBlobClient(const std::string& endpoint, std::string* msg);
+
     std::shared_ptr<TableHandler> GetTableHandler(const std::string& name);
+    bool GetRealEndpoint(const std::string& endpoint,
+            std::string* real_endpoint);
 
  private:
     std::mutex mu_;
-    std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>>
-        tablets_;
+    std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>> tablets_;
     std::map<std::string, std::shared_ptr<rtidb::client::BsClient>> blobs_;
     std::map<std::string, std::shared_ptr<TableHandler>> tables_;
     rtidb::zk::ZkClient* zk_client_;
     std::string zk_cluster_;
     std::string zk_root_path_;
+    std::string table_notify_;
     std::string endpoint_;
     int32_t zk_session_timeout_;
     int32_t zk_keep_alive_check_;
     std::string zk_table_data_path_;
     baidu::common::ThreadPool task_thread_pool_;
+    uint64_t zk_client_session_term_;
 };
 
 class RtidbClient {
  public:
     RtidbClient();
     ~RtidbClient();
-    GeneralResult Init(const std::string& zk_cluster,
-                       const std::string& zk_path);
-    PutResult Put(
-        const std::string& name,
-        const std::map<std::string, std::string>& value,
-        const WriteOption& wo);
-    GeneralResult Delete(const std::string& name,
-                         const std::map<std::string, std::string>& values);
-    TraverseResult Traverse(const std::string& name,
-                            const struct ReadOption& ro);
-    bool Traverse(const std::string& name, const struct ReadOption& ro,
-                  std::string* data, uint32_t* count, std::string* last_key,
-                  bool* is_finish, uint64_t* snapshot_id_);
-    BatchQueryResult BatchQuery(const std::string& name,
-                                const std::vector<ReadOption>& ros);
-    bool BatchQuery(const std::string& name,
-                    const google::protobuf::RepeatedPtrField<
-                        ::rtidb::api::ReadOption>& ros_pb,
+    GeneralResult Init(const std::string& zk_cluster, const std::string& zk_path);
+    PutResult Put(const std::string& name, const std::map<std::string, std::string>& value, const WriteOption& wo);
+
+    UpdateResult Delete(const std::string& name, const std::map<std::string, std::string>& values);
+    TraverseResult Traverse(const std::string& name, const struct ReadOption& ro);
+    bool Traverse(const std::string& name, const struct ReadOption& ro, std::string* data, uint32_t* count,
+                  std::string* last_key, bool* is_finish, uint64_t* snapshot_id_);
+
+    BatchQueryResult BatchQuery(const std::string& name, const std::vector<ReadOption>& ros);
+
+    bool BatchQuery(const std::string& name, const google::protobuf::RepeatedPtrField<::rtidb::api::ReadOption>& ros_pb,
                     std::string* data, uint32_t* count, std::string* msg);
+
     void SetZkCheckInterval(int32_t interval);
-    GeneralResult Update(
-        const std::string& table_name,
-        const std::map<std::string, std::string>& condition_map,
-        const std::map<std::string, std::string>& value_map,
-        const WriteOption& wo);
+    UpdateResult Update(const std::string& table_name, const std::map<std::string, std::string>& condition_map,
+                        const std::map<std::string, std::string>& value_map, const WriteOption& wo);
+
     std::vector<std::string>& GetBlobSchema(const std::string& name);
     BlobInfoResult GetBlobInfo(const std::string& name);
+    bool DeleteBlobs(const std::string& name, const std::vector<int64_t>& keys);
 
  private:
     BaseClient* client_;

@@ -35,19 +35,20 @@ struct TabletInfo {
     std::string endpoint;
     std::string state;
     uint64_t age;
+    std::string real_endpoint;
 };
 
 class NsClient {
  public:
-    explicit NsClient(const std::string& endpoint);
+     explicit NsClient(const std::string& endpoint,
+             const std::string& real_endpoint);
+    ~NsClient() {}
 
     int Init();
 
     std::string GetEndpoint();
 
     const std::string& GetDb();
-
-    bool HasDb();
 
     void ClearDb();
 
@@ -63,13 +64,32 @@ class NsClient {
     bool ShowTablet(std::vector<TabletInfo>& tablets,  // NOLINT
                     std::string& msg);                 // NOLINT
 
+    bool ShowBlobServer(std::vector<TabletInfo>& tablets,  // NOLINT
+                    std::string& msg);                 // NOLINT
+
+    bool ShowSdkEndpoint(std::vector<TabletInfo>& tablets,  // NOLINT
+                    std::string& msg);                 // NOLINT
+
     bool ShowTable(
         const std::string& name,
         std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT
         std::string& msg);                                    // NOLINT
 
+    bool ShowTable(
+        const std::string& name, const std::string& db, bool show_all,
+        std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT
+        std::string& msg);                                    // NOLINT
+
+    bool ShowAllTable(
+        std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT
+        std::string& msg);                                    // NOLINT
+
     bool MakeSnapshot(const std::string& name, uint32_t pid,
                       uint64_t end_offset, std::string& msg);  // NOLINT
+
+    bool MakeSnapshot(const std::string& name, const std::string& db,
+                      uint32_t pid, uint64_t end_offset,
+                      std::string& msg);  // NOLINT
 
     bool ShowOPStatus(
         ::rtidb::nameserver::ShowOPStatusResponse& response,       // NOLINT
@@ -84,14 +104,22 @@ class NsClient {
     bool CreateTable(const ::rtidb::nameserver::TableInfo& table_info,
                      std::string& msg);  // NOLINT
 
-    std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
-        const std::string& script,
-        std::string& msg);  // NOLINT
+    bool ExecuteSQL(const std::string& script,
+                    std::string& msg);  // NOLINT
+
+    bool ExecuteSQL(const std::string& db, const std::string& script,
+                    std::string& msg);  // NOLINT
 
     bool DropTable(const std::string& name, std::string& msg);  // NOLINT
 
+    bool DropTable(const std::string& db, const std::string& name,
+                   std::string& msg);  // NOLINT
+
     bool SyncTable(const std::string& name, const std::string& cluster_alias,
                    uint32_t pid, std::string& msg);  // NOLINT
+
+    bool SetSdkEndpoint(const std::string& server_name,
+        const std::string& sdk_endpoint, std::string* msg);
 
     bool DeleteOPTask(const std::vector<uint64_t>& op_id_vec);
 
@@ -99,6 +127,11 @@ class NsClient {
 
     bool LoadTable(const std::string& name, const std::string& endpoint,
                    uint32_t pid, const ::rtidb::nameserver::ZoneInfo& zone_info,
+                   const ::rtidb::api::TaskInfo& task_info);
+
+    bool LoadTable(const std::string& name, const std::string& db,
+                   const std::string& endpoint, uint32_t pid,
+                   const ::rtidb::nameserver::ZoneInfo& zone_info,
                    const ::rtidb::api::TaskInfo& task_info);
 
     bool CreateRemoteTableInfo(
@@ -112,7 +145,7 @@ class NsClient {
         std::string& msg);                           // NOLINT
 
     bool DropTableRemote(const ::rtidb::api::TaskInfo& task_info,
-                         const std::string& name,
+                         const std::string& name, const std::string& db,
                          const ::rtidb::nameserver::ZoneInfo& zone_info,
                          std::string& msg);  // NOLINT
 
@@ -204,22 +237,34 @@ class NsClient {
                     std::string& msg);  // NOLINT
 
     bool AddIndex(const std::string& table_name,
-                  const ::rtidb::common::ColumnKey& column_key,
+                  const ::rtidb::common::ColumnKey& column_key, std::vector<rtidb::common::ColumnDesc>* cols,
                   std::string& msg);  // NOLINT
 
     bool DeleteIndex(const std::string& table_name, const std::string& idx_name,
                      std::string& msg);  // NOLINT
 
+    bool DeleteIndex(const std::string& db, const std::string& table_name,
+                     const std::string& idx_name, std::string& msg);  // NOLINT
+
  private:
     bool TransformToTableDef(
         const std::string& table_name,
+        int replica_num,
         const fesql::node::NodePointVector& column_desc_list,
+        const fesql::node::NodePointVector& partition_meta_list,
         ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status);
+
+    bool HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
+                      const std::string& db, fesql::base::Status* sql_status);
+    bool HandleSQLCreateTable(const fesql::node::NodePointVector& parser_trees,
+                              const std::string& db,
+                              fesql::node::NodeManager* node_manager,
+                              fesql::base::Status* sql_status);
 
  private:
     std::string endpoint_;
-    std::string db_;
     ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> client_;
+    std::string db_;
 };
 
 }  // namespace client

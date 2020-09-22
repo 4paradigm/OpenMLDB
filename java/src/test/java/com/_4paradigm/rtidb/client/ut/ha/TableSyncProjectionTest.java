@@ -111,7 +111,7 @@ public class TableSyncProjectionTest extends TestCaseBase {
                 new Object[]{createArg(new Object[] {"card5", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("date", "card")), new Object[]{new Date(now.getYear(), now.getMonth(), now.getDate()), "card5"},
                         "card5", 10000l, 0 )},
 
-                // the new format
+                //// the new format
                 new Object[]{createArg(new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(),new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f},
                         "card0", 10000l, 1)},
                 new Object[]{createArg(new Object[] {"card0", "mcc0", 10000l, new Date(now.getYear(), now.getMonth(), now.getDate()), dt, 64.0d, 32.0f}, new ArrayList<String>(Arrays.asList("card")), new Object[]{"card0"},
@@ -150,7 +150,8 @@ public class TableSyncProjectionTest extends TestCaseBase {
         KvIterator it = tableSyncClient.scan(args.tableInfo.getName(), args.key, args.ts, 0l, option);
         Assert.assertEquals(1, it.getCount());
         Assert.assertTrue(it.valid());
-        Assert.assertEquals(args.expected, it.getDecodedValue());
+        Object[] row = it.getDecodedValue();
+        Assert.assertEquals(args.expected, row);
     }
 
     @Test(dataProvider = "projection_case")

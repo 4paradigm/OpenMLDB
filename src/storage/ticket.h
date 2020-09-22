@@ -20,6 +20,8 @@ class Ticket {
  public:
     Ticket();
     ~Ticket();
+    Ticket(const Ticket&) = delete;
+    Ticket& operator=(const Ticket& s) = delete;
 
     void Push(KeyEntry* entry);
     void Pop();

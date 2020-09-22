@@ -9,11 +9,13 @@
 
 #include <algorithm>
 #include <utility>
-#include <boost/algorithm/string.hpp>
+
+#include "base/glog_wapper.h"
+#include "boost/algorithm/string.hpp"
 #include "boost/bind.hpp"
-#include "base/glog_wapper.h" // NOLINT
+#include "base/strings.h"
 
-
+using ::rtidb::base::BLOB_PREFIX;
 
 namespace rtidb {
 namespace zk {
@@ -21,7 +23,8 @@ namespace zk {
 void LogEventWrapper(zhandle_t* zh, int type, int state, const char* path,
                      void* watcher_ctx) {
     if (zoo_get_context(zh)) {
-        ZkClient* client = (ZkClient*)zoo_get_context(zh); // NOLINT
+        ZkClient* client = const_cast<ZkClient*>(
+            reinterpret_cast<const ZkClient*>(zoo_get_context(zh)));
         client->LogEvent(type, state, path);
     }
 }
@@ -29,7 +32,8 @@ void LogEventWrapper(zhandle_t* zh, int type, int state, const char* path,
 void ChildrenWatcher(zhandle_t* zh, int type, int state, const char* path,
                      void* watcher_ctx) {
     if (zoo_get_context(zh)) {
-        ZkClient* client = (ZkClient*)zoo_get_context(zh); // NOLINT
+        ZkClient* client = const_cast<ZkClient*>(
+            reinterpret_cast<const ZkClient*>(zoo_get_context(zh)));
         std::string path_str(path);
         client->HandleChildrenChanged(path_str, type, state);
     }
@@ -39,21 +43,36 @@ void NodeWatcher(zhandle_t* zh, int type, int state, const char* path,
                  void* watcher_ctx) {
     PDLOG(INFO, "node watcher with event type %d, state %d", type, state);
     if (zoo_get_context(zh)) {
-        ZkClient* client = (ZkClient*)zoo_get_context(zh); // NOLINT
+        ZkClient* client = const_cast<ZkClient*>(
+            reinterpret_cast<const ZkClient*>(zoo_get_context(zh)));
         client->HandleNodesChanged(type, state);
         // zookeeper is just one time watching, so need to watch nodes again
         client->WatchNodes();
     }
 }
 
-ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout,
-                   const std::string& endpoint, const std::string& zk_root_path)
+void ItemWatcher(zhandle_t* zh, int type, int state, const char* path,
+                 void* watcher_ctx) {
+    PDLOG(INFO, "node watcher with event type %d, state %d", type, state);
+    if (zoo_get_context(zh)) {
+        ZkClient* client = const_cast<ZkClient*>(
+            reinterpret_cast<const ZkClient*>(zoo_get_context(zh)));
+        std::string path_str(path);
+        client->HandleItemChanged(path_str, type, state);
+    }
+}
+
+ZkClient::ZkClient(const std::string& hosts, const std::string& real_endpoint,
+        int32_t session_timeout,
+        const std::string& endpoint, const std::string& zk_root_path)
     : hosts_(hosts),
       session_timeout_(session_timeout),
       endpoint_(endpoint),
       zk_root_path_(zk_root_path),
+      real_endpoint_(real_endpoint),
       nodes_root_path_(zk_root_path_ + "/nodes"),
       nodes_watch_callbacks_(),
+      names_root_path_(zk_root_path_ + "/map/names"),
       mu_(),
       cv_(),
       zk_(NULL),
@@ -62,6 +81,7 @@ ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout,
       connected_(false),
       registed_(false),
       children_callbacks_(),
+      item_callbacks_(),
       session_term_(0) {
     data_.count = 0;
     data_.data = NULL;
@@ -84,6 +104,7 @@ ZkClient::ZkClient(const std::string& hosts, int32_t session_timeout,
       connected_(false),
       registed_(false),
       children_callbacks_(),
+      item_callbacks_(),
       session_term_(0) {
     data_.count = 0;
     data_.data = NULL;
@@ -98,7 +119,7 @@ ZkClient::~ZkClient() {
 bool ZkClient::Init() {
     std::unique_lock<std::mutex> lock(mu_);
     zk_ = zookeeper_init(hosts_.c_str(), LogEventWrapper, session_timeout_, 0,
-                         (void*)this, 0); // NOLINT
+                         (void*)this, 0);  // NOLINT
     // one second
     cv_.wait_for(lock, std::chrono::milliseconds(session_timeout_));
     if (zk_ == NULL || !connected_) {
@@ -160,10 +181,83 @@ bool ZkClient::Register(bool startup_flag) {
     return false;
 }
 
+bool ZkClient::RegisterName() {
+    bool ok = Mkdir(names_root_path_);
+    if (!ok) {
+        return false;
+    }
+    if (zk_ == NULL || !connected_) {
+        return false;
+    }
+    std::string sname = endpoint_;
+    if (boost::starts_with(sname, BLOB_PREFIX)) {
+        sname = sname.substr(BLOB_PREFIX.size());
+    }
+    // check server name duplicate
+    std::vector<std::string> sname_vec;
+    std::string leader_path = zk_root_path_ + "/leader";
+    std::vector<std::string> children;
+    if (GetChildren(leader_path, children)) {
+        for (auto path : children) {
+            std::string endpoint;
+            std::string real_path = leader_path + "/" + path;
+            if (GetNodeValue(real_path, endpoint)) {
+                sname_vec.push_back(endpoint);
+            }
+        }
+    }
+    std::vector<std::string> endpoints;
+    if (GetNodes(endpoints)) {
+        std::vector<std::string>::const_iterator it = endpoints.begin();
+        for (; it != endpoints.end(); ++it) {
+            if (boost::starts_with(*it, BLOB_PREFIX)) {
+                sname_vec.push_back(it->substr(BLOB_PREFIX.size()));
+            } else {
+                sname_vec.push_back(*it);
+            }
+        }
+    }
+    if (std::find(sname_vec.begin(), sname_vec.end(), sname) != sname_vec.end()) {
+        std::string ep;
+        if (GetNodeValue(names_root_path_ + "/" + sname, ep) &&
+                ep == real_endpoint_) {
+            LOG(INFO) << "node:" << sname << "value:" << ep << " exist";
+            return true;
+        }
+        LOG(WARNING) << "server name:" << sname << " duplicate";
+        return false;
+    }
+
+    std::string name = names_root_path_ + "/" + sname;
+    std::string value = real_endpoint_.c_str();
+    if (IsExistNode(name) == 0) {
+        if (SetNodeValue(name, value)) {
+            PDLOG(INFO, "set node with name %s value %s ok",
+                    sname.c_str(), value.c_str());
+            return true;
+        }
+        PDLOG(WARNING, "set node with name %s value %s failed",
+                sname.c_str(), value.c_str());
+    } else {
+        int ret = zoo_create(zk_, name.c_str(), value.c_str(), value.size(),
+                &ZOO_OPEN_ACL_UNSAFE, 0, NULL, 0);
+        if (ret == ZOK) {
+            PDLOG(INFO, "register with name %s value %s ok",
+                    sname.c_str(), value.c_str());
+            return true;
+        }
+        PDLOG(WARNING, "fail to register with name %s value %s, err from zk %d",
+                sname.c_str(), value.c_str(), ret);
+    }
+    return false;
+}
+
 bool ZkClient::CloseZK() {
-    std::lock_guard<std::mutex> lock(mu_);
-    connected_ = false;
-    registed_.store(false, std::memory_order_relaxed);
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        connected_ = false;
+        registed_.store(false, std::memory_order_relaxed);
+    }
     if (zk_) {
         zookeeper_close(zk_);
         zk_ = NULL;
@@ -196,7 +290,7 @@ bool ZkClient::CreateNode(const std::string& node, const std::string& value,
         return false;
     }
     uint32_t size = node.size() + 11;
-    char path_buffer[size]; // NOLINT
+    char path_buffer[size];  // NOLINT
     int ret = zoo_create(zk_, node.c_str(), value.c_str(), value.size(),
                          &ZOO_OPEN_ACL_UNSAFE, flags, path_buffer, size);
     if (ret == ZOK) {
@@ -217,7 +311,7 @@ void ZkClient::HandleChildrenChanged(const std::string& path, int type,
         std::map<std::string, NodesChangedCallback>::iterator it =
             children_callbacks_.find(path);
         if (it == children_callbacks_.end()) {
-            PDLOG(INFO, "watch for path %s exist", path.c_str());
+            PDLOG(INFO, "watch for path %s not exist", path.c_str());
             return;
         }
         callback = it->second;
@@ -275,7 +369,7 @@ bool ZkClient::SetNodeWatcher(const std::string& node, watcher_fn watcher,
     return false;
 }
 
-bool ZkClient::GetNodeValueLocked(const std::string& node, std::string& value) {
+bool ZkClient::GetNodeValueUnLocked(const std::string& node, std::string& value) {
     int buffer_len = ZK_MAX_BUFFER_SIZE;
     Stat stat;
     if (zoo_get(zk_, node.c_str(), 0, buffer_, &buffer_len, &stat) == ZOK) {
@@ -295,25 +389,24 @@ bool ZkClient::DeleteNode(const std::string& node) {
 
 bool ZkClient::GetNodeValue(const std::string& node, std::string& value) {
     std::lock_guard<std::mutex> lock(mu_);
-    return GetNodeValueLocked(node, value);
+    return GetNodeValueUnLocked(node, value);
 }
 
 bool ZkClient::SetNodeValue(const std::string& node, const std::string& value) {
+    std::lock_guard<std::mutex> lock(mu_);
     if (node.empty()) {
         return false;
     }
-    std::lock_guard<std::mutex> lock(mu_);
     if (zoo_set(zk_, node.c_str(), value.c_str(), value.length(), -1) == ZOK) {
         return true;
     }
     return false;
 }
 
-int ZkClient::IsExistNode(const std::string& node) {
+int ZkClient::IsExistNodeUnLocked(const std::string& node) {
     if (node.empty()) {
         return -1;
     }
-    std::lock_guard<std::mutex> lock(mu_);
     Stat stat;
     int ret = zoo_exists(zk_, node.c_str(), 0, &stat);
     if (ret == ZOK) {
@@ -322,6 +415,11 @@ int ZkClient::IsExistNode(const std::string& node) {
         return 1;
     }
     return -1;
+}
+
+int ZkClient::IsExistNode(const std::string& node) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return IsExistNodeUnLocked(node);
 }
 
 bool ZkClient::WatchNodes() {
@@ -340,14 +438,57 @@ bool ZkClient::WatchNodes() {
     return true;
 }
 
+void ZkClient::HandleItemChanged(const std::string& path, int type, int state) {
+    ItemChangedCallback callback;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = item_callbacks_.find(path);
+        if (it == item_callbacks_.end()) {
+            PDLOG(INFO, "watch for path %s does not exist", path.c_str());
+            return;
+        }
+        callback = it->second;
+    }
+    if (type == ZOO_CHANGED_EVENT) {
+        callback();
+    }
+    WatchItem(path, callback);
+}
+
+void ZkClient::CancelWatchItem(const std::string& path) {
+    std::lock_guard<std::mutex> lock(mu_);
+    item_callbacks_.erase(path);
+}
+
+bool ZkClient::WatchItem(const std::string& path,
+                         ItemChangedCallback callback) {
+    std::lock_guard<std::mutex> lock(mu_);
+    if (zk_ == NULL || !connected_) {
+        return false;
+    }
+    auto it = item_callbacks_.find(path);
+    if (it == item_callbacks_.end()) {
+        item_callbacks_.insert(std::make_pair(path, callback));
+    }
+    deallocate_String_vector(&data_);
+    int buffer_len = ZK_MAX_BUFFER_SIZE;
+    int ret = zoo_wget(zk_, path.data(), ItemWatcher, NULL, buffer_,
+                       &buffer_len, NULL);
+    if (ret != ZOK) {
+        PDLOG(WARNING, "fail to watch item %s errno %d",
+              nodes_root_path_.c_str(), ret);
+        return false;
+    }
+    return true;
+}
+
 void ZkClient::WatchNodes(NodesChangedCallback callback) {
     std::lock_guard<std::mutex> lock(mu_);
     nodes_watch_callbacks_.push_back(callback);
 }
 
-bool ZkClient::GetChildren(const std::string& path,
-                           std::vector<std::string>& children) {
-    std::lock_guard<std::mutex> lock(mu_);
+bool ZkClient::GetChildrenUnLocked(const std::string& path,
+        std::vector<std::string>& children) {
     if (zk_ == NULL || !connected_) {
         return false;
     }
@@ -366,6 +507,13 @@ bool ZkClient::GetChildren(const std::string& path,
     std::sort(children.begin(), children.end());
     return true;
 }
+
+bool ZkClient::GetChildren(const std::string& path,
+                           std::vector<std::string>& children) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return GetChildrenUnLocked(path, children);
+}
+
 bool ZkClient::GetNodes(std::vector<std::string>& endpoints) {
     std::lock_guard<std::mutex> lock(mu_);
     if (zk_ == NULL || !connected_) {
@@ -393,7 +541,7 @@ bool ZkClient::Reconnect() {
     }
     registed_.store(false, std::memory_order_relaxed);
     zk_ = zookeeper_init(hosts_.c_str(), LogEventWrapper, session_timeout_, 0,
-                         (void*)this, 0); // NOLINT
+                         (void*)this, 0);  // NOLINT
 
     cv_.wait_for(lock, std::chrono::milliseconds(session_timeout_));
     if (zk_ == NULL || !connected_) {
@@ -425,8 +573,7 @@ void ZkClient::Connected() {
     PDLOG(INFO, "connect success");
 }
 
-bool ZkClient::Mkdir(const std::string& path) {
-    std::lock_guard<std::mutex> lock(mu_);
+bool ZkClient::MkdirNoLock(const std::string& path) {
     if (zk_ == NULL || !connected_) {
         return false;
     }
@@ -454,6 +601,11 @@ bool ZkClient::Mkdir(const std::string& path) {
         return false;
     }
     return true;
+}
+
+bool ZkClient::Mkdir(const std::string& path) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return MkdirNoLock(path);
 }
 
 }  // namespace zk

@@ -15,6 +15,8 @@ namespace rtidb {
 namespace base {
 
 struct ResultMsg {
+    ResultMsg(int code_i, std::string msg_i) : code(code_i), msg(msg_i) {}
+    ResultMsg() : code(0), msg("ok") {}
     int code;
     std::string msg;
 };
@@ -176,7 +178,12 @@ enum ReturnCode {
     kQueryFailed = 148,
     kPutBadFormat = 149,
     kUnkownTableType = 150,
-    kGetCombinePkFailed = 151,
+    kColNameNotFound = 151,
+    kEncodeError = 152,
+    kAddTypeToColumnDescFailed = 153,
+    kUseNameIsFalse = 154,
+    kServerNameNotFound = 155,
+    kSdkEndpointDuplicate = 156,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,
@@ -244,6 +251,10 @@ enum ReturnCode {
     kOperatorNotSupport = 701,
     kDatabaseAlreadyExists = 801,
     kDatabaseNotFound = 802,
+    kDatabaseNotEmpty = 803,
+
+    kSQLCompileError = 1000,
+    kSQLRunError = 1001
 };
 
 }  // namespace base

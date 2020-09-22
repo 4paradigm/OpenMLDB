@@ -36,7 +36,7 @@ class BlobServerImplTest : public ::testing::Test {
 
 TEST_F(BlobServerImplTest, Basic_Test) {
     BlobServerImpl* server = new BlobServerImpl();
-    server->Init();
+    server->Init("");
     FLAGS_endpoint = "127.0.0.1:19572";
     brpc::Server brpc_server;
     {
@@ -48,7 +48,7 @@ TEST_F(BlobServerImplTest, Basic_Test) {
     }
 
     uint32_t tid = counter++, pid = 0;
-    ::rtidb::client::BsClient client(FLAGS_endpoint);
+    ::rtidb::client::BsClient client(FLAGS_endpoint, "");
     ASSERT_EQ(client.Init(), 0);
     std::string err_msg;
     {

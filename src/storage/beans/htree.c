@@ -100,7 +100,7 @@ static inline bool check_version(Item *oldit, Item *newit, HTree *tree, uint32_t
     {
         char key[KEY_BUF_LEN];
         dc_decode(tree->dc, key, KEY_BUF_LEN, oldit->key, oldit->ksz);
-        printf("BUG: bad version, oldv=%d, newv=%d, key=%s, keyhash = 0x%x, oldpos = %u",  oldit->ver, newit->ver, key, keyhash, oldit->pos);
+        printf("BUG: bad version, oldv=%d, newv=%d, key=%s, keyhash = 0x%x, oldpos = %u\n",  oldit->ver, newit->ver, key, keyhash, oldit->pos);
         return false;
     }
 }
@@ -171,9 +171,9 @@ static void enlarge_pool(HTree *tree)
     int old_size = g_index[tree->height];
     int new_size = g_index[tree->height + 1];
 
-    printf("enlarge pool %d -> %d, new_height = %d", old_size, new_size, tree->height + 1);
+    printf("enlarge pool %d -> %d, new_height = %d\n", old_size, new_size, tree->height + 1);
 
-    tree->root = (Node*)safe_realloc(tree->root, sizeof(Node) * new_size);
+    tree->root = (Node*)beans_safe_realloc(tree->root, sizeof(Node) * new_size);
     memset(tree->root + old_size, 0, sizeof(Node) * (new_size - old_size));
     for (i = old_size; i<new_size; i++)
         tree->root[i].depth = tree->height;
@@ -183,7 +183,7 @@ static void enlarge_pool(HTree *tree)
 
 static void clear(Node *node)
 {
-    Data *data = (Data*)safe_malloc(64);
+    Data *data = (Data*)beans_safe_malloc(64);
     init_data(data, 64);
     set_data(node, data);
 
@@ -233,7 +233,7 @@ static void add_item(HTree *tree, Node *node, Item *it, uint32_t keyhash, bool e
         if (last->used + it_len > tree->block_size)
         {
             int size = DATA_HEAD_SIZE + it_len;
-            data = (Data*)safe_malloc(size);
+            data = (Data*)beans_safe_malloc(size);
             init_data(data, size);
             last->next = data;
         }
@@ -241,7 +241,7 @@ static void add_item(HTree *tree, Node *node, Item *it, uint32_t keyhash, bool e
         {
             int size = calc_max(last->used + it_len, last->size);
             size = calc_min(size, tree->block_size);
-            data = (Data*)safe_realloc(last, size);
+            data = (Data*)beans_safe_realloc(last, size);
             data->size = size;
 
             if (llast)
@@ -481,7 +481,7 @@ static char *list_dir(HTree *tree, Node *node, const char *dir, const char *pref
     }
 
     int bsize = 4096;
-    char *buf = (char*)safe_malloc(bsize);
+    char *buf = (char*)beans_safe_malloc(bsize);
     memset(buf, 0, bsize);
     int n = 0, i;
     if (node->is_node)
@@ -507,7 +507,7 @@ static char *list_dir(HTree *tree, Node *node, const char *dir, const char *pref
                 if (bsize - n < rl)
                 {
                     bsize += rl;
-                    buf = (char*)safe_realloc(buf, bsize);
+                    buf = (char*)beans_safe_realloc(buf, bsize);
                 }
                 n += safe_snprintf(buf + n, bsize - n, "%s", r);
                 free(r);
@@ -542,7 +542,7 @@ static char *list_dir(HTree *tree, Node *node, const char *dir, const char *pref
                     if (bsize - n < KEY_BUF_LEN + 32)
                     {
                         bsize *= 2;
-                        buf = (char*)safe_realloc(buf, bsize);
+                        buf = (char*)beans_safe_realloc(buf, bsize);
                     }
 
                     n += safe_snprintf(buf + n, bsize - n, "%s %u %d\n", key, it->hash, it->ver);
@@ -591,7 +591,7 @@ static void visit_node(HTree *tree, Node *node, fun_visitor visitor, void *param
 
 HTree *ht_new(int depth, int pos, bool tmp)
 {
-    HTree *tree = (HTree*)safe_malloc(sizeof(HTree));
+    HTree *tree = (HTree*)beans_safe_malloc(sizeof(HTree));
     memset(tree, 0, sizeof(HTree));
     tree->depth = depth;
     tree->pos = pos;
@@ -604,7 +604,7 @@ HTree *ht_new(int depth, int pos, bool tmp)
     tree->updating_tree = NULL;
 
     int pool_size = g_index[tree->height];
-    Node *root = (Node*)safe_malloc(sizeof(Node) * pool_size);
+    Node *root = (Node*)beans_safe_malloc(sizeof(Node) * pool_size);
 
     memset(root, 0, sizeof(Node) * pool_size);
 
@@ -638,14 +638,14 @@ HTree *ht_open(int depth, int pos, const char *path)
     FILE *f = fopen(path, "rb");
     if (f == NULL)
     {
-        printf("open %s failed", path);
+        printf("open %s failed\n", path);
         return NULL;
     }
 
     if (fread(version, sizeof(HTREE_VERSION), 1, f) != 1
             || memcmp(version, HTREE_VERSION, sizeof(HTREE_VERSION)) != 0)
     {
-        printf("the version %s is not expected", version);
+        printf("the version %s is not expected\n", version);
         fclose(f);
         return NULL;
     }
@@ -654,7 +654,7 @@ HTree *ht_open(int depth, int pos, const char *path)
     if (fread(&fsize, sizeof(fsize), 1, f) != 1 ||
             fseeko(f, 0, 2) != 0 || ftello(f) != fsize)
     {
-        printf("the size %lld is not expected", (long long int)fsize);
+        printf("the size %lld is not expected\n", (long long int)fsize);
         fclose(f);
         return NULL;
     }
@@ -666,7 +666,7 @@ HTree *ht_open(int depth, int pos, const char *path)
     }
 #endif
 
-    tree = (HTree*)safe_malloc(sizeof(HTree));
+    tree = (HTree*)beans_safe_malloc(sizeof(HTree));
 
     memset(tree, 0, sizeof(HTree));
     tree->depth = depth;
@@ -677,13 +677,13 @@ HTree *ht_open(int depth, int pos, const char *path)
     if (fread(&tree->height, sizeof(int), 1, f) != 1 ||
             tree->height + depth < 0 || tree->height + depth > 9)
     {
-        printf("invalid height: %d", tree->height);
+        printf("invalid height: %d\n", tree->height);
         goto FAIL;
     }
 
     int pool_size = g_index[tree->height];
     int psize = sizeof(Node) * pool_size;
-    root = (Node*)safe_malloc(psize);
+    root = (Node*)beans_safe_malloc(psize);
 
     if (fread(root, psize, 1, f) != 1)
     {
@@ -702,15 +702,15 @@ HTree *ht_open(int depth, int pos, const char *path)
         }
         if (size > 0)
         {
-            data = (Data*)safe_malloc(size + sizeof(Data*));
+            data = (Data*)beans_safe_malloc(size + sizeof(Data*));
             if (fread(DATA_file_start(data), size, 1, f) != 1)
             {
-                printf("load data: size %d fail", size);
+                printf("load data: size %d fail\n", size);
                 goto FAIL;
             }
             if (data->used != size)
             {
-                printf("broken data: %d != %d", data->used, size);
+                printf("broken data: %d != %d\n", data->used, size);
                 goto FAIL;
             }
             data->used = data->size = size + sizeof(Data*);
@@ -722,7 +722,7 @@ HTree *ht_open(int depth, int pos, const char *path)
         }
         else
         {
-            printf("unexpected size: %d", size);
+            printf("unexpected size: %d\n", size);
             goto FAIL;
         }
         tree->root[i].data = data;
@@ -734,10 +734,10 @@ HTree *ht_open(int depth, int pos, const char *path)
     if (fread(&size, sizeof(int), 1, f) != 1
             || size < 0 || size > (10<<20))
     {
-        printf("bad codec size: %d", size);
+        printf("bad codec size: %d\n", size);
         goto FAIL;
     }
-    buf = (char*)safe_malloc(size);
+    buf = (char*)beans_safe_malloc(size);
     if (fread(buf, size, 1, f) != 1)
     {
         printf("read codec failed");
@@ -840,7 +840,7 @@ static int ht_save2(HTree *tree, FILE *f)
     }
 
     int s = dc_size(tree->dc);
-    char *buf = (char*)safe_malloc(s + sizeof(int));
+    char *buf = (char*)beans_safe_malloc(s + sizeof(int));
     *(int*)buf = s;
     if (dc_dump(tree->dc, buf + sizeof(int), s) != s)
     {
@@ -879,7 +879,7 @@ int ht_save(HTree *tree, const char *path)
     FILE *f = fopen(tmp, "wb");
     if (f == NULL)
     {
-        printf("open %s failed", tmp);
+        printf("open %s failed\n", tmp);
         return -1;
     }
 
@@ -907,7 +907,7 @@ int ht_save(HTree *tree, const char *path)
     {
         gettimeofday(&save_end, NULL);
         float save_secs = (save_end.tv_sec - save_start.tv_sec) + (save_end.tv_usec - save_start.tv_usec) / 1e6;
-        printf("save HTree to %s, size = %"PRIu64", in %f secs", path, file_size, save_secs);
+        printf("save HTree to %s, size = %"PRIu64", in %f secs\n", path, file_size, save_secs);
         mgr_rename(tmp, path);
     }
     else
@@ -969,7 +969,7 @@ bool check_bucket(HTree *tree, const char* key, int len)
     uint32_t h = keyhash(key, len);
     if (tree->depth > 0 && h >> ((8-tree->depth) * 4) != (unsigned int)(tree->pos))
     {
-        printf("key %s (#%x) should not in this tree (%d:%0x)", key, h >> ((8-tree->depth) * 4), tree->depth, tree->pos);
+        printf("key %s (#%x) should not in this tree (%d:%0x)\n", key, h >> ((8-tree->depth) * 4), tree->depth, tree->pos);
         return false;
     }
 
@@ -1013,7 +1013,7 @@ Item *ht_get2(HTree *tree, const char *key, int len)
     Item *r = get_item_hash(tree, tree->root, it, keyhash(key, len));
     if (r != NULL)
     {
-        Item *rr = (Item*)safe_malloc(sizeof(Item) + len);
+        Item *rr = (Item*)beans_safe_malloc(sizeof(Item) + len);
         memcpy(rr, r, sizeof(Item)); // safe
         memcpy(rr->key, key, len);  // safe
         rr->key[len] = 0; // c-str
@@ -1070,7 +1070,7 @@ void ht_visit2(HTree *tree, fun_visitor visitor, void *param)
 
 void ht_set_updating_bucket(HTree *tree, int bucket, HTree *updating_tree)
 {
-    printf("updating bucket %d for htree 0x%x", bucket, tree->pos);
+    printf("updating bucket %d for htree 0x%x\n", bucket, tree->pos);
     pthread_mutex_lock(&tree->lock);
     tree->updating_bucket = bucket;
     tree->updating_tree = updating_tree;
@@ -1112,13 +1112,13 @@ Item *ht_get_maybe_tmp(HTree *tree, const char *key, int *is_tmp, char *buf)
             pthread_mutex_lock(&tree->lock);
             if (tree->updating_bucket == bucket)
             {
-                printf("get tmp for %s", key);
+                printf("get tmp for %s\n", key);
                 *is_tmp = 1;
                 item = ht_get_withbuf(tree->updating_tree, key, strlen(key), buf, false);
             }
             else
             {
-                printf("get again for %s", key);
+                printf("get again for %s\n", key);
                 item = ht_get_withbuf(tree, key, strlen(key), buf, false);
             }
             pthread_mutex_unlock(&tree->lock);

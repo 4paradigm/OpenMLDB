@@ -146,7 +146,7 @@ public class ClusterExample {
             }
 
             // get数据, 查询指定ts的值. 如果ts设置为0, 返回最新插入的一条数据
-            ByteString bs = tableSyncClient.get(name, "key1", ts);
+            shade.protobuf.ByteString bs = tableSyncClient.get(name, "key1", ts);
             // 如果没有查询到bs就是null
             if (bs != null) {
                 String value = new String(bs.toByteArray());
@@ -283,7 +283,7 @@ public class ClusterExample {
 
             // get数据, 查询指定ts的值. 如果ts设置为0, 返回最新插入的一条数据
             GetFuture gf = tableAsyncClient.get(name, "akey1", ts);
-            ByteString bs = gf.get();
+            shade.protobuf.ByteString bs = gf.get();
             // 如果没有查询到bs就是null
             if (bs != null) {
                 String value = new String(bs.toByteArray());

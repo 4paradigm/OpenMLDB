@@ -42,7 +42,7 @@ TEST_F(TabletImplMemTest, TestMem) {
     MockClosure closure;
     HeapLeakChecker checker("test_mem");
     TabletImpl* tablet = new TabletImpl();
-    tablet->Init();
+    tablet->Init("");
     // create table
     {
         ::rtidb::api::CreateTableRequest request;
@@ -96,7 +96,7 @@ TEST_F(TabletImplMemTest, TestMem) {
         sr.set_et(0);
         ::rtidb::api::ScanResponse srp;
         tablet->Scan(NULL, &sr, &srp, &closure);
-        ASSERT_EQ(100, srp.count());
+        ASSERT_EQ(100, (int32_t)srp.count());
     }
 
     // drop table

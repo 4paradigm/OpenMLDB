@@ -1,6 +1,7 @@
 package com._4paradigm.rtidb.client.impl;
 
 import com._4paradigm.rtidb.blobserver.OSS;
+import com._4paradigm.rtidb.client.BlobData;
 import com._4paradigm.rtidb.client.ReadOption;
 import com._4paradigm.rtidb.client.TabletException;
 import com._4paradigm.rtidb.client.ha.PartitionHandler;
@@ -21,7 +22,6 @@ import rtidb.blobserver.BlobServer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
-import java.util.concurrent.TimeoutException;
 
 public class RelationalIterator {
 
@@ -80,7 +80,8 @@ public class RelationalIterator {
         next();
     }
 
-    public RelationalIterator(RTIDBClient client, TableHandler th, List<ReadOption> ros) {
+    public RelationalIterator(RTIDBClient client, TableHandler th, List<ReadOption> ros)
+            throws TabletException {
         this.offset = 0;
         this.totalSize = 0;
         this.schema = th.getSchema();
@@ -90,6 +91,14 @@ public class RelationalIterator {
         this.ros = ros;
 
         Set<String> colSet = ros.get(0).getColSet();
+        for (int i = 1; i < ros.size(); i++) {
+            Set<String> tmpColSet = ros.get(i).getColSet();
+            if (tmpColSet != null && !tmpColSet.isEmpty()) {
+                if (!tmpColSet.equals(colSet)) {
+                    throw new TabletException("colsets in ros are not equal");
+                }
+            }
+        }
         if (colSet != null && !colSet.isEmpty()) {
             for (int i = 0; i < this.getSchema().size(); i++) {
                 ColumnDesc columnDesc = this.getSchema().get(i);
@@ -120,24 +129,6 @@ public class RelationalIterator {
 
     public int getCount() {
         return count;
-    }
-
-    public Map<String, String> getUrlMap() throws TabletException {
-        // eg. "/v1/get/" + table_name + "/" + key
-        if (blobIdxList.isEmpty()) {
-            throw new TabletException("can't get url because no blob column!");
-        }
-        Map<String, String> map = new HashMap<>();
-        StringBuilder sb = new StringBuilder("/v1/get/");
-        sb.append(th.getTableInfo().getName());
-        sb.append("/");
-        String prefix = sb.toString();
-        for (int idx : blobIdxList) {
-            ColumnDesc columnDesc = th.getSchema().get(idx);
-            Object value = rowView.getValue(idx, columnDesc.getDataType());
-            map.put(columnDesc.getName(), prefix + ((Long) value).toString());
-        }
-        return map;
     }
 
     public boolean valid() {
@@ -211,17 +202,13 @@ public class RelationalIterator {
             }
         }
         for (Integer idx : blobIdxList) {
-            Object[] result = new Object[1];
             ColumnDesc colDesc = schema.get(idx);
             Object col = map.get(colDesc.getName());
             if (col == null) {
                 continue;
             }
-            boolean ok = getObjectStore(th.getTableInfo().getTid(), (long) col, result, th);
-            if (!ok) {
-                throw new TabletException("get blob data failed");
-            }
-            map.put(colDesc.getName(), result[0]);
+            BlobData blobData = new BlobData(th, (long) col);
+            map.put(colDesc.getName(), blobData);
         }
         return map;
     }
@@ -249,7 +236,7 @@ public class RelationalIterator {
         return false;
     }
 
-    private void getData() throws TimeoutException, TabletException {
+    private void getData() throws TabletException {
         if (batch_query) {
             PartitionHandler ph = th.getHandler(0);
             TabletServer ts = ph.getReadHandler(th.getReadStrategy());
@@ -294,9 +281,7 @@ public class RelationalIterator {
                 }
                 return;
             } else if (response.getCode() != 0) {
-                offset = 0;
-                totalSize = 0;
-                return;
+                throw new TabletException(response.getCode(), response.getMsg());
             }
         }
         do {

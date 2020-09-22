@@ -5,33 +5,45 @@
 
 #include "storage/object_store.h"
 
+#include <mutex>
+#include <utility>
+
 #include "codec/codec.h"
 
 namespace rtidb {
 namespace storage {
+
+static std::once_flag options_initialized;
+
 ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
-                         const std::string& db_root_path)
-    : db_(NULL),
+                         std::string db_root_path, uint32_t flush_size,
+                         int32_t flush_period)
+    : db_(nullptr),
       tid_(table_meta.tid()),
       pid_(table_meta.pid()),
       name_(table_meta.name()),
-      db_root_path_(db_root_path),
+      db_root_path_(std::move(db_root_path)),
       is_leader_(false),
       storage_mode_(table_meta.storage_mode()),
-      id_generator_() {}
+      id_generator_(),
+      thread_pool_(2),
+      flush_size_(flush_size),
+      flush_period_(flush_period) {}
 
 bool ObjectStore::Init() {
-    db_root_path_ = db_root_path_ + "/" + std::to_string(tid_) + "_" +
-                    std::to_string(pid_);
+    std::call_once(options_initialized, settings_init);
     char* path = const_cast<char*>(db_root_path_.data());
-    db_ = hs_open(path, 1, 0, 16);
+    time_t before_time = 0;
+    db_ = hs_open(path, 1, before_time, 1);
     if (db_ != NULL) {
+        thread_pool_.DelayTask(1000, [this] { DoFlash(); });
         return true;
     }
     return false;
 }
 
 ObjectStore::~ObjectStore() {
+    thread_pool_.Stop(true);
     DoFlash();
     hs_close(db_);
 }
@@ -65,7 +77,10 @@ bool ObjectStore::Delete(int64_t key) {
     return hs_delete(db_, hs_key);
 }
 
-void ObjectStore::DoFlash() { hs_flush(db_, 1024, 60 * 10); }
+void ObjectStore::DoFlash() {
+    hs_flush(db_, flush_size_, flush_period_);
+    thread_pool_.DelayTask(1000, [this] { DoFlash(); });
+}
 
 ::rtidb::common::StorageMode ObjectStore::GetStorageMode() const {
     return storage_mode_;

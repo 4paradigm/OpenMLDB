@@ -34,17 +34,17 @@ namespace replica {
 static const ::rtidb::base::DefaultComparator scmp;
 
 LogReplicator::LogReplicator(const std::string& path,
-                             const std::vector<std::string>& endpoints,
-                             const ReplicatorRole& role,
-                             std::shared_ptr<Table> table,
-                             std::atomic<bool>* follower)
+        const std::map<std::string, std::string>& real_ep_map,
+        const ReplicatorRole& role,
+        std::shared_ptr<Table> table,
+        std::atomic<bool>* follower)
     : path_(path),
       log_path_(),
       log_offset_(0),
       logs_(NULL),
       wh_(NULL),
       role_(role),
-      endpoints_(endpoints),
+      real_ep_map_(real_ep_map),
       nodes_(),
       local_endpoints_(),
       term_(0),
@@ -97,19 +97,19 @@ bool LogReplicator::Init() {
         return false;
     }
     if (role_ == kLeaderNode) {
-        std::vector<std::string>::iterator it = endpoints_.begin();
-        for (; it != endpoints_.end(); ++it) {
+        for (const auto& kv : real_ep_map_) {
             std::shared_ptr<ReplicateNode> replicate_node =
-                std::make_shared<ReplicateNode>(
-                    *it, logs_, log_path_, table_->GetId(), table_->GetPid(),
-                    &term_, &log_offset_, &mu_, &cv_, false, &follower_offset_);
+                std::make_shared<ReplicateNode>(kv.first, logs_, log_path_,
+                table_->GetId(), table_->GetPid(), &term_, &log_offset_,
+                &mu_, &cv_, false, &follower_offset_, kv.second);
             if (replicate_node->Init() < 0) {
-                PDLOG(WARNING, "init replicate node %s error", it->c_str());
+                PDLOG(WARNING, "init replicate node %s error",
+                        kv.first.c_str());
                 return false;
             }
             nodes_.push_back(replicate_node);
-            local_endpoints_.push_back(*it);
-            PDLOG(INFO, "add replica node with endpoint %s", it->c_str());
+            local_endpoints_.push_back(kv.first);
+            PDLOG(INFO, "add replica node with endpoint %s", kv.first.c_str());
         }
         PDLOG(INFO, "init leader node for path %s ok", path_.c_str());
     }
@@ -390,13 +390,14 @@ bool LogReplicator::AppendEntries(
 }
 
 int LogReplicator::AddReplicateNode(
-    const std::vector<std::string>& endpoint_vec) {
-    return AddReplicateNode(endpoint_vec, UINT32_MAX);
+    const std::map<std::string, std::string>& real_ep_map) {
+    return AddReplicateNode(real_ep_map, UINT32_MAX);
 }
 
 int LogReplicator::AddReplicateNode(
-    const std::vector<std::string>& endpoint_vec, uint32_t tid) {
-    if (endpoint_vec.empty()) {
+    const std::map<std::string, std::string>& real_ep_map,
+    uint32_t tid) {
+    if (real_ep_map.empty()) {
         return 1;
     }
     std::lock_guard<bthread::Mutex> lock(mu_);
@@ -404,7 +405,8 @@ int LogReplicator::AddReplicateNode(
         PDLOG(WARNING, "cur table is not leader, cannot add replicate");
         return -1;
     }
-    for (const auto& endpoint : endpoint_vec) {
+    for (const auto& kv : real_ep_map) {
+        const std::string& endpoint = kv.first;
         std::vector<std::shared_ptr<ReplicateNode>>::iterator it =
             nodes_.begin();
         for (; it != nodes_.end(); ++it) {
@@ -418,11 +420,12 @@ int LogReplicator::AddReplicateNode(
         if (tid == UINT32_MAX) {
             replicate_node = std::make_shared<ReplicateNode>(
                 endpoint, logs_, log_path_, table_->GetId(), table_->GetPid(),
-                &term_, &log_offset_, &mu_, &cv_, false, &follower_offset_);
+                &term_, &log_offset_, &mu_, &cv_, false, &follower_offset_,
+                kv.second);
         } else {
             replicate_node = std::make_shared<ReplicateNode>(
                 endpoint, logs_, log_path_, tid, table_->GetPid(), &term_,
-                &log_offset_, &mu_, &cv_, true, &follower_offset_);
+                &log_offset_, &mu_, &cv_, true, &follower_offset_, kv.second);
         }
         if (replicate_node->Init() < 0) {
             PDLOG(WARNING, "init replicate node %s error", endpoint.c_str());
@@ -435,7 +438,7 @@ int LogReplicator::AddReplicateNode(
             return -1;
         }
         nodes_.push_back(replicate_node);
-        endpoints_.push_back(endpoint);
+        real_ep_map_.insert(std::make_pair(endpoint, kv.second));
         if (tid == UINT32_MAX) {
             local_endpoints_.push_back(endpoint);
         }
@@ -467,9 +470,7 @@ int LogReplicator::DelReplicateNode(const std::string& endpoint) {
         }
         node = *it;
         nodes_.erase(it);
-        endpoints_.erase(
-            std::remove(endpoints_.begin(), endpoints_.end(), endpoint),
-            endpoints_.end());
+        real_ep_map_.erase(endpoint);
         local_endpoints_.erase(std::remove(local_endpoints_.begin(),
                                            local_endpoints_.end(), endpoint),
                                local_endpoints_.end());
@@ -508,7 +509,7 @@ bool LogReplicator::DelAllReplicateNode() {
         PDLOG(INFO, "delete all replica. replica num [%u] tid[%u] pid[%u]",
               nodes_.size(), table_->GetId(), table_->GetPid());
         nodes_.clear();
-        endpoints_.clear();
+        real_ep_map_.clear();
         local_endpoints_.clear();
     }
     std::vector<std::shared_ptr<ReplicateNode>>::iterator it =

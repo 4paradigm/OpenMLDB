@@ -13,13 +13,16 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "base/kv_iterator.h"
+#include "brpc/channel.h"
 #include "codec/schema_codec.h"
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 
-using Schema =
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
+using Schema = ::google::protobuf::RepeatedPtrField<rtidb::common::ColumnDesc>;
+using Cond_Column = ::google::protobuf::RepeatedPtrField<rtidb::api::Columns>;
+
 namespace rtidb {
 
 const uint32_t INVALID_TID = UINT32_MAX;
@@ -30,9 +33,11 @@ const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
 class TabletClient {
  public:
-    explicit TabletClient(const std::string& endpoint);
+    explicit TabletClient(const std::string& endpoint,
+            const std::string& real_endpoint);
 
-    TabletClient(const std::string& endpoint, bool use_sleep_policy);
+    TabletClient(const std::string& endpoint,
+            const std::string& real_endpoint, bool use_sleep_policy);
 
     ~TabletClient();
 
@@ -59,47 +64,54 @@ class TabletClient {
     bool CreateTable(const ::rtidb::api::TableMeta& table_meta);
 
     bool UpdateTableMetaForAddField(
-        uint32_t tid, const ::rtidb::common::ColumnDesc& column_desc,
-        const std::string& schema, std::string& msg);  // NOLINT
+        uint32_t tid, const std::vector<rtidb::common::ColumnDesc>& cols,
+        const rtidb::common::VersionPair& pair, const std::string& schema,
+        std::string& msg);  // NOLINT
 
-    bool Update(uint32_t tid, uint32_t pid,
-            const ::google::protobuf::RepeatedPtrField<
-            ::rtidb::api::Columns>& cd_columns,
-            const Schema& new_value_schema,
-            const std::string& value, std::string* msg);
+    bool Query(const std::string& db, const std::string& sql,
+               brpc::Controller* cntl, ::rtidb::api::QueryResponse* response,
+               const bool is_debug = false);
+
+    bool Query(const std::string& db, const std::string& sql,
+               const std::string& row, brpc::Controller* cntl,
+               ::rtidb::api::QueryResponse* response,
+               const bool is_debug = false);
+    bool Update(
+        uint32_t tid, uint32_t pid,
+        const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>&
+            cd_columns,
+        const Schema& new_value_schema, const std::string& value,
+        uint32_t* count, std::string* msg);
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& value,
-             int64_t* auto_gen_pk, std::string* msg);
+             const ::rtidb::api::WriteOption& wo, int64_t* auto_gen_pk,
+             std::vector<int64_t>* blob_keys, std::string* msg);
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
-             const std::string& value);
+             const std::string& value, uint32_t format_version = 0);
 
     bool Put(uint32_t tid, uint32_t pid, const char* pk, uint64_t time,
-             const char* value, uint32_t size);
+             const char* value, uint32_t size, uint32_t format_version = 0);
 
     bool Put(uint32_t tid, uint32_t pid, uint64_t time,
              const std::string& value,
              const std::vector<std::pair<std::string, uint32_t>>& dimensions);
 
-    bool Put(uint32_t tid,
-             uint32_t pid,
-             uint64_t time,
+    bool Put(uint32_t tid, uint32_t pid, uint64_t time,
              const std::string& value,
-             const std::vector<std::pair<std::string, uint32_t> >& dimensions,
+             const std::vector<std::pair<std::string, uint32_t>>& dimensions,
              uint32_t format_version);
 
-    bool Put(uint32_t tid,
-             uint32_t pid,
+    bool Put(uint32_t tid, uint32_t pid,
              const std::vector<std::pair<std::string, uint32_t>>& dimensions,
              const std::vector<uint64_t>& ts_dimensions,
              const std::string& value);
 
-    bool Put(uint32_t tid,
-             uint32_t pid,
+    bool Put(uint32_t tid, uint32_t pid,
              const std::vector<std::pair<std::string, uint32_t>>& dimensions,
              const std::vector<uint64_t>& ts_dimensions,
-             const std::string& value,
-             uint32_t format_version);
+             const std::string& value, uint32_t format_version);
+
     bool Get(uint32_t tid, uint32_t pid, const std::string& pk, uint64_t time,
              std::string& value, uint64_t& ts, std::string& msg);  // NOLINT
 
@@ -115,10 +127,12 @@ class TabletClient {
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk,
                 const std::string& idx_name, std::string& msg);  // NOLINT
 
-    bool Delete(uint32_t tid, uint32_t pid,
-            const ::google::protobuf::RepeatedPtrField<
-            ::rtidb::api::Columns>& cd_columns,
-            std::string* msg);
+    bool Delete(uint32_t tid, uint32_t pid, const Cond_Column& cd_columns,
+                uint32_t* count, std::string* msg);
+
+    bool Delete(uint32_t tid, uint32_t pid, const Cond_Column& cd_columns,
+                uint32_t* count, std::string* msg,
+                std::vector<int64_t>* additions);
 
     bool Count(uint32_t tid, uint32_t pid, const std::string& pk,
                const std::string& idx_name, bool filter_expired_data,
@@ -206,6 +220,8 @@ class TabletClient {
     bool LoadTable(const ::rtidb::api::TableMeta& table_meta,
                    std::shared_ptr<TaskInfo> task_info);
 
+    bool LoadTable(uint32_t tid, uint32_t pid,
+                   ::rtidb::common::StorageMode storage_mode, std::string* msg);
     bool ChangeRole(uint32_t tid, uint32_t pid, bool leader, uint64_t term);
 
     bool ChangeRole(
@@ -252,11 +268,11 @@ class TabletClient {
     bool GetAllSnapshotOffset(std::map<uint32_t, std::map<uint32_t, uint64_t>>&
                                   tid_pid_offset);  // NOLINT
 
-    bool BatchQuery(uint32_t tid, uint32_t pid,
-            const ::google::protobuf::RepeatedPtrField<
-            ::rtidb::api::ReadOption>& ros,
-            std::string* data,
-            uint32_t* count, std::string* msg);
+    bool BatchQuery(
+        uint32_t tid, uint32_t pid,
+        const ::google::protobuf::RepeatedPtrField<::rtidb::api::ReadOption>&
+            ros,
+        std::string* data, uint32_t* count, std::string* msg);
 
     bool SetExpire(uint32_t tid, uint32_t pid, bool is_expire);
     bool SetTTLClock(uint32_t tid, uint32_t pid, uint64_t timestamp);
@@ -270,10 +286,9 @@ class TabletClient {
                                         uint32_t& count);  // NOLINT
 
     bool Traverse(uint32_t tid, uint32_t pid,
-            const ::rtidb::api::ReadOption& ro,
-            uint32_t limit, std::string* pk, uint64_t* snapshot_id,
-            std::string* data, uint32_t* count,
-            bool* is_finish, std::string* msg);
+                  const ::rtidb::api::ReadOption& ro, uint32_t limit,
+                  std::string* pk, uint64_t* snapshot_id, std::string* data,
+                  uint32_t* count, bool* is_finish, std::string* msg);
 
     void ShowTp();
 
@@ -302,6 +317,8 @@ class TabletClient {
                           uint32_t idx, std::shared_ptr<TaskInfo> task_info);
 
     bool CancelOP(const uint64_t op_id);
+
+    bool UpdateRealEndpointMap(const std::map<std::string, std::string>& map);
 
  private:
     std::string endpoint_;

@@ -20,15 +20,19 @@ using ::rtidb::blobserver::TableMeta;
 
 class BsClient {
  public:
-    explicit BsClient(const std::string& endpoint);
+    explicit BsClient(const std::string& endpoint,
+            const std::string& real_endpoint);
 
-    BsClient(const std::string& endpoint, bool use_sleep_policy);
+    BsClient(const std::string& endpoint,
+            const std::string& real_endpoint, bool use_sleep_policy);
 
     int Init();
 
     std::string GetEndpoint();
 
     bool CreateTable(const TableMeta& table_meta, std::string* msg);
+
+    bool LoadTable(uint32_t tid, uint32_t pid, std::string *msg);
 
     bool Put(uint32_t tid, uint32_t pid, const std::string& value,
              int64_t* key, std::string* msg);

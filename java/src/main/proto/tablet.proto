@@ -144,6 +144,7 @@ message OPInfo {
     optional uint32 vec_idx = 11;   // the index in task_vec
     optional uint64 remote_op_id = 12;//for multi cluster
     optional int32 for_replica_cluster = 13 [default = 0];//for multi cluster, default 0. if 1, for multi cluster
+    optional string db = 14;
 }
 
 message PartSnapshotOffset {
@@ -189,12 +190,14 @@ message PutRequest {
     repeated Dimension dimensions = 6;
     repeated TSDimension ts_dimensions = 7;
     optional uint32 format_version = 8 [default = 0];
+    optional WriteOption wo = 9;
 }
 
 message PutResponse {
     optional int32 code = 1;
     optional string msg = 2;
     optional int64 auto_gen_pk = 3;
+    repeated int64 blob_keys = 4;
 }
 
 message DeleteRequest {
@@ -236,6 +239,7 @@ message GeneralResponse {
     optional int32 code = 1;
     optional string msg = 2;
     repeated int64 additional_ids = 3;
+    optional uint32 count = 4;
 }
 
 message ScanRequest {
@@ -257,6 +261,7 @@ message ScanRequest {
     optional bool enable_remove_ts = 13 [default = false];
     optional uint32 atleast = 14 [default = 0];
     repeated uint32 projection = 15;
+    repeated uint32 pid_group = 16;
 }
 
 message RpcMetric {
@@ -347,18 +352,21 @@ message TableMeta {
     optional rtidb.type.TableType table_type = 20;
     // format_version 0 , the legacy format 1 ,the new one
     optional uint32 format_version = 21 [default = 0];
-    optional string db = 22;
+    optional string db = 22 [default = ""];
+    repeated common.VersionPair schema_versions = 23;
 }
 
 message CreateTableRequest {
     optional TableMeta table_meta = 1;
 }
-
 message UpdateTableMetaForAddFieldRequest {
     optional uint32 tid = 1;
     optional rtidb.common.ColumnDesc column_desc = 2;
     optional string schema = 3;
+    repeated rtidb.common.ColumnDesc column_descs = 4;
+    optional rtidb.common.VersionPair version_pair = 5;
 }
+
 message CreateTableResponse {
     optional int32 code = 1;
     optional string msg = 2;
@@ -558,6 +566,7 @@ message GetRequest {
     optional uint64 et = 8;
     optional GetType et_type = 9 [default = kSubKeyGe];
     repeated uint32 projection = 10;
+    repeated uint32 pid_group = 11;
 }
 
 message GetResponse {
@@ -692,7 +701,7 @@ message ExtractIndexDataRequest {
 
 message Columns {
     repeated string name = 1;
-    optional bytes value = 2;
+    optional bytes value = 2 [default = ""];
     optional GetType type = 3 [default = kSubKeyEq];
 }
 
@@ -703,6 +712,12 @@ message UpdateRequest {
     optional Columns value_columns = 4;
 }
 
+message UpdateResponse {
+    optional string msg = 1;
+    optional int32 code = 2;
+    optional uint32 count = 3;
+}
+
 message ReadOption {
     repeated Columns index = 1;
     repeated Columns read_filter = 2;
@@ -710,11 +725,16 @@ message ReadOption {
     optional uint32 limit = 4;
 }
 
+message WriteOption {
+    optional bool update_if_exist = 1 [default = false];
+}
+
 message BatchQueryRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     repeated ReadOption read_option = 3;
     repeated string query_key = 4;
+    optional bool is_debug= 5 [default = false];
 }
 
 message BatchQueryResponse {
@@ -729,6 +749,46 @@ message CancelOPRequest {
     optional uint64 op_id = 1;
 }
 
+message RealEndpointPair {
+    optional string name = 1;
+    optional string real_endpoint = 2;
+}
+
+message UpdateRealEndpointMapRequest {
+    repeated RealEndpointPair real_endpoint_map = 1; 
+}
+
+message QueryRequest {
+    optional string sql = 1;
+    optional string db = 2;
+    optional bool is_batch = 3;
+    optional bytes input_row = 4;
+    optional bool is_debug= 5 [default = false];
+}
+
+message QueryResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint32 count = 3;
+    optional uint32 byte_size = 4;
+    optional bytes schema = 5;
+}
+
+message ExplainRequest {
+    optional string sql = 1;
+    optional string db = 2;
+    optional bool is_batch = 3;
+}
+
+message ExplainResponse {
+    optional bytes input_schema = 1;
+    optional string logical_plan = 3;
+    optional string physical_plan = 4;
+    optional string ir = 5;
+    optional bytes output_schema = 6;
+    optional bool is_batch = 7;
+}
+
 service TabletServer {
 
     // write and read api for client
@@ -738,8 +798,9 @@ service TabletServer {
     rpc Delete(DeleteRequest) returns (GeneralResponse);
     rpc Count(CountRequest) returns (CountResponse);
     rpc Traverse(TraverseRequest) returns (TraverseResponse);
-    rpc Update(UpdateRequest) returns (GeneralResponse);
+    rpc Update(UpdateRequest) returns (UpdateResponse);
     rpc BatchQuery(BatchQueryRequest) returns (BatchQueryResponse);
+    rpc Query(QueryRequest) returns(QueryResponse);
 
     // table api for master
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
@@ -777,7 +838,7 @@ service TabletServer {
     rpc ShowMemPool(HttpRequest) returns (HttpResponse);
     rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
     rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
-    rpc UpdateTableMetaForAddField (UpdateTableMetaForAddFieldRequest) returns (GeneralResponse);
+    rpc UpdateTableMetaForAddField(UpdateTableMetaForAddFieldRequest) returns (GeneralResponse);
     rpc SetMode(SetModeRequest) returns (GeneralResponse);
     rpc GetAllSnapshotOffset(EmptyRequest) returns(TableSnapshotOffsetResponse);
     rpc AddIndex(AddIndexRequest) returns(GeneralResponse);
@@ -787,4 +848,5 @@ service TabletServer {
     rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
     rpc ExtractIndexData(ExtractIndexDataRequest) returns (GeneralResponse);
     rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
+    rpc UpdateRealEndpointMap(UpdateRealEndpointMapRequest) returns (GeneralResponse);
 }

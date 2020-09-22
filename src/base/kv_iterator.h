@@ -140,7 +140,7 @@ class KvIterator {
 
     std::string GetPK() const { return pk_; }
 
-    Slice& GetValue() const { return *tmp_; }
+    Slice GetValue() const { return *tmp_; }
 
  private:
     ::google::protobuf::Message* response_;

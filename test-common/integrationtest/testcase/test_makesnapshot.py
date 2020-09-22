@@ -149,7 +149,7 @@ class TestMakeSnapshot(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertIn('Create table ok', rs1)
 
-        self.put_large_datas(1000, 8)
+        self.put_large_datas(3000, 8)
 
 
         rs = self.run_client(self.leader, 'makesnapshot {} {}'.format(self.tid, self.pid))
@@ -159,9 +159,9 @@ class TestMakeSnapshot(TestCaseBase):
 
         time.sleep(5)
         mf = self.get_manifest(self.leaderpath, self.tid, self.pid)
-        self.assertEqual(mf['offset'], '8000')
+        self.assertEqual(mf['offset'], '24000')
         self.assertTrue(mf['name'])
-        self.assertEqual(mf['count'], '8000')
+        self.assertEqual(mf['count'], '24000')
 
 
     def test_makesnapshot_block_drop_table(self):
@@ -172,14 +172,13 @@ class TestMakeSnapshot(TestCaseBase):
         rs1 = self.create(self.leader, 't', self.tid, self.pid)
         self.assertIn('Create table ok', rs1)
 
-        self.put_large_datas(1000, 8)
+        self.put_large_datas(3000, 8)
 
         rs2 = self.run_client(self.leader, 'makesnapshot {} {}'.format(self.tid, self.pid))
         rs3 = self.drop(self.leader, self.tid, self.pid)
 
         self.assertIn('MakeSnapshot ok' ,rs2)
         self.assertIn('Fail to drop table', rs3)
-
 
     def test_makesnapshot_when_loading_table(self):
         """

@@ -56,35 +56,43 @@ public class ParseCsvUtil {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            switch (columnType) {
-                case "int16":
-                    map.put(columnName, Short.parseShort(value));
-                    break;
-                case "int32":
-                    map.put(columnName, Integer.parseInt(value));
-                    break;
-                case "int64":
-                    map.put(columnName, Long.parseLong(value));
-                    break;
-                case "string":
-                    map.put(columnName, value);
-                    break;
-                case "float":
-                    map.put(columnName, Float.parseFloat(value));
-                    break;
-                case "double":
-                    map.put(columnName, Double.parseDouble(value));
-                    break;
-                case "boolean":
-                    map.put(columnName, Boolean.parseBoolean(value));
-                    break;
-                case "date":
-                    map.put(columnName, Date.valueOf(value));
-                    break;
-                case "timestamp":
-                    map.put(columnName, Timestamp.valueOf(value));
-                    break;
-                default:
+            try {
+                switch (columnType) {
+                    case "int16":
+                        map.put(columnName, Short.parseShort(value));
+                        break;
+                    case "int32":
+                        map.put(columnName, Integer.parseInt(value));
+                        break;
+                    case "int64":
+                        map.put(columnName, Long.parseLong(value));
+                        break;
+                    case "string":
+                        map.put(columnName, value);
+                        break;
+                    case "float":
+                        map.put(columnName, Float.parseFloat(value));
+                        break;
+                    case "double":
+                        map.put(columnName, Double.parseDouble(value));
+                        break;
+                    case "boolean":
+                        map.put(columnName, Boolean.parseBoolean(value));
+                        break;
+                    case "date":
+                        map.put(columnName, Date.valueOf(value));
+                        break;
+                    case "timestamp":
+                        map.put(columnName, Timestamp.valueOf(value));
+                        break;
+                    default:
+                }
+            } catch (Exception e) {
+                if (InitClient.contains(";", TIMESTAMP, columnName)) {
+                    logger.error("ts column is null");
+                    return new HashMap<>();
+                }
+                map.put(columnName, null);
             }
             if (!hasTs && InitClient.contains(";", TIMESTAMP, columnName)) {
                 hasTs = true;
@@ -120,6 +128,9 @@ public class ParseCsvUtil {
             while (reader.readRecord()) {
                 logger.debug("read data：{}", reader.getRawRecord());
                 HashMap<String, Object> map = read(reader);
+                if (map.size() == 0) {
+                    continue;
+                }
                 if (clientIndex == InitClient.MAX_THREAD_NUM) {
                     clientIndex = 0;
                 }

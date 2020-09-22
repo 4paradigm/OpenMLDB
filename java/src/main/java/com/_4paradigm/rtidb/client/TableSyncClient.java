@@ -67,7 +67,7 @@ public interface TableSyncClient {
 
     PutResult put(String tname, Map<String, Object> row, WriteOption wo) throws TimeoutException, TabletException;
 
-    boolean update(String tableName, Map<String, Object> conditionColumns, Map<String, Object> valueColumns, WriteOption wo)
+    UpdateResult update(String tableName, Map<String, Object> conditionColumns, Map<String, Object> valueColumns, WriteOption wo)
             throws TimeoutException, TabletException;
     List<ColumnDesc> getSchema(String tname) throws TabletException;
     ByteString get(String tname, String key) throws TimeoutException, TabletException;
@@ -157,7 +157,7 @@ public interface TableSyncClient {
     int count(int tid, int pid, String key, boolean filter_expired_data) throws TimeoutException, TabletException;
     int count(int tid, int pid, String key, String idxName, boolean filter_expired_data) throws TimeoutException, TabletException;
 
-    boolean delete(String tableName, Map<String, Object> conditionColumns) throws TimeoutException, TabletException;
+    UpdateResult delete(String tableName, Map<String, Object> conditionColumns) throws TimeoutException, TabletException;
     boolean delete(String tname, String key) throws TimeoutException, TabletException;
     boolean delete(String tname, String key, String idxName) throws TimeoutException, TabletException;
     boolean delete(int tid, int pid, String key) throws TimeoutException, TabletException;
