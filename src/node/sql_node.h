@@ -2291,7 +2291,7 @@ class DistributionsNode : public SQLNode {
 
 class CreateSpStmt : public SQLNode {
  public:
-    CreateSpStmt(const std::string &sp_name)
+    explicit CreateSpStmt(const std::string &sp_name)
         : SQLNode(kCreateSpStmt, 0, 0),
           sp_name_(sp_name) {}
 
