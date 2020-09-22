@@ -162,9 +162,17 @@ struct FZStringOpsDef {
         return ptr;
     }
 
+    static void SingleSplit(StringRef* str, bool is_null, StringRef* delimeter,
+                            ListRef<StringRef>* output) {
+        auto list = InitList();
+        UpdateSplit(list, str, is_null, delimeter);
+        output->list = reinterpret_cast<int8_t*>(list->GetListV());
+    }
+
     static StringListWrapper* UpdateSplitByKey(StringListWrapper* ptr,
                                                StringRef* str, bool is_null,
-                                               StringRef* delimeter) {
+                                               StringRef* delimeter,
+                                               StringRef* kv_delimeter) {
         if (is_null) {
             return ptr;
         }
@@ -172,9 +180,10 @@ struct FZStringOpsDef {
         std::vector<std::string> parts;
         boost::split_regex(parts, str->ToString(),
                            boost::regex(delimeter->ToString()));
+        auto kv_delim_regex = boost::regex(kv_delimeter->ToString());
         for (auto& part : parts) {
             std::vector<std::string> sub_parts;
-            boost::split(sub_parts, part, boost::is_any_of(":"));
+            boost::split_regex(sub_parts, part, kv_delim_regex);
             if (sub_parts.size() >= 2) {
                 list->Add(sub_parts[0]);
             }
@@ -182,9 +191,18 @@ struct FZStringOpsDef {
         return ptr;
     }
 
+    static void SingleSplitByKey(StringRef* str, bool is_null,
+                                 StringRef* delimeter, StringRef* kv_delimeter,
+                                 ListRef<StringRef>* output) {
+        auto list = InitList();
+        UpdateSplitByKey(list, str, is_null, delimeter, kv_delimeter);
+        output->list = reinterpret_cast<int8_t*>(list->GetListV());
+    }
+
     static StringListWrapper* UpdateSplitByValue(StringListWrapper* ptr,
                                                  StringRef* str, bool is_null,
-                                                 StringRef* delimeter) {
+                                                 StringRef* delimeter,
+                                                 StringRef* kv_delimeter) {
         if (is_null) {
             return ptr;
         }
@@ -192,14 +210,24 @@ struct FZStringOpsDef {
         std::vector<std::string> parts;
         boost::split_regex(parts, str->ToString(),
                            boost::regex(delimeter->ToString()));
+        auto kv_delim_regex = boost::regex(kv_delimeter->ToString());
         for (auto& part : parts) {
             std::vector<std::string> sub_parts;
-            boost::split(sub_parts, part, boost::is_any_of(":"));
+            boost::split_regex(sub_parts, part, kv_delim_regex);
             if (sub_parts.size() >= 2) {
                 list->Add(sub_parts[1]);
             }
         }
         return ptr;
+    }
+
+    static void SingleSplitByValue(StringRef* str, bool is_null,
+                                   StringRef* delimeter,
+                                   StringRef* kv_delimeter,
+                                   ListRef<StringRef>* output) {
+        auto list = InitList();
+        UpdateSplitByValue(list, str, is_null, delimeter, kv_delimeter);
+        output->list = reinterpret_cast<int8_t*>(list->GetListV());
     }
 
     static void StringJoin(ListRef<StringRef>* list_ref, StringRef* delimeter,
@@ -238,26 +266,73 @@ struct FZStringOpsDef {
 };
 
 void DefaultUDFLibrary::InitFeatureZero() {
-    RegisterUDAF("fz_split")
+    RegisterUDAF("fz_window_split")
         .templates<ListRef<StringRef>, Opaque<StringListWrapper>,
                    Nullable<StringRef>, StringRef>()
-        .init("fz_split_init", FZStringOpsDef::InitList)
-        .update("fz_split_update", FZStringOpsDef::UpdateSplit)
-        .output("fz_split_output", FZStringOpsDef::OutputList);
+        .init("fz_window_split_init", FZStringOpsDef::InitList)
+        .update("fz_window_split_update", FZStringOpsDef::UpdateSplit)
+        .output("fz_window_split_output", FZStringOpsDef::OutputList)
+        .doc(R"(
+            Used by feature zero, for each string value from specified 
+            column of window, split by delimeter and add segment
+            to output list. Null values are skipped.)");
 
-    RegisterUDAF("fz_split_by_key")
-        .templates<ListRef<StringRef>, Opaque<StringListWrapper>,
-                   Nullable<StringRef>, StringRef>()
-        .init("fz_split_by_key_init", FZStringOpsDef::InitList)
-        .update("fz_split_by_key_update", FZStringOpsDef::UpdateSplitByKey)
-        .output("fz_split_by_key_output", FZStringOpsDef::OutputList);
+    RegisterExternal("fz_split")
+        .returns<ListRef<StringRef>>()
+        .return_by_arg(true)
+        .args<Nullable<StringRef>, StringRef>(
+            reinterpret_cast<void*>(&FZStringOpsDef::SingleSplit))
+        .doc(R"(
+            Used by feature zero, split string to list by delimeter. 
+            Null values are skipped.)");
 
-    RegisterUDAF("fz_split_by_value")
+    RegisterUDAF("fz_window_split_by_key")
         .templates<ListRef<StringRef>, Opaque<StringListWrapper>,
-                   Nullable<StringRef>, StringRef>()
-        .init("fz_split_by_value_init", FZStringOpsDef::InitList)
-        .update("fz_split_by_value_update", FZStringOpsDef::UpdateSplitByValue)
-        .output("fz_split_by_value_output", FZStringOpsDef::OutputList);
+                   Nullable<StringRef>, StringRef, StringRef>()
+        .init("fz_window_split_by_key_init", FZStringOpsDef::InitList)
+        .update("fz_window_split_by_key_update",
+                FZStringOpsDef::UpdateSplitByKey)
+        .output("fz_window_split_by_key_output", FZStringOpsDef::OutputList)
+        .doc(R"(
+            Used by feature zero, for each string value from specified 
+            column of window, split by delimeter and then split each segment 
+            as kv pair, then add each key to output list. Null and 
+            illegal segments are skipped.)");
+
+    // single line version
+    RegisterExternal("fz_split_by_key")
+        .returns<ListRef<StringRef>>()
+        .return_by_arg(true)
+        .args<Nullable<StringRef>, StringRef, StringRef>(
+            reinterpret_cast<void*>(FZStringOpsDef::SingleSplitByKey))
+        .doc(R"(
+            Used by feature zero, split string by delimeter and then 
+            split each segment as kv pair, then add each 
+            key to output list. Null and illegal segments are skipped.)");
+
+    RegisterUDAF("fz_window_split_by_value")
+        .templates<ListRef<StringRef>, Opaque<StringListWrapper>,
+                   Nullable<StringRef>, StringRef, StringRef>()
+        .init("fz_window_split_by_value_init", FZStringOpsDef::InitList)
+        .update("fz_window_split_by_value_update",
+                FZStringOpsDef::UpdateSplitByValue)
+        .output("fz_window_split_by_value_output", FZStringOpsDef::OutputList)
+        .doc(R"(
+            Used by feature zero, for each string value from specified
+            column of window, split by delimeter and then split each segment 
+            as kv pair, then add each value to output list. Null and 
+            illegal segments are skipped.)");
+
+    // single line version
+    RegisterExternal("fz_split_by_value")
+        .returns<ListRef<StringRef>>()
+        .return_by_arg(true)
+        .args<Nullable<StringRef>, StringRef, StringRef>(
+            reinterpret_cast<void*>(FZStringOpsDef::SingleSplitByValue))
+        .doc(R"(
+            Used by feature zero, split string by delimeter and then 
+            split each segment as kv pair, then add each
+            value to output list. Null and illegal segments are skipped.)");
 
     RegisterExternal("fz_join")
         .list_argument_at(0)

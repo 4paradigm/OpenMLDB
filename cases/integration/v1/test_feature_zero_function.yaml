@@ -11,20 +11,53 @@ cases:
           - [2, 0, "k3:v3"]
           - [3, 0, "???,,k4:v4"]
           - [4, 0, NULL]
-          - [5, 0, "k5:v5,"]
+          - [5, 0, "k5:v5,k3:v3"]
     sql: |
       SELECT id,
-        fz_join(fz_split(c1, ","), " ") OVER w1 AS split_and_join,
-        fz_join(fz_split_by_key(c1, ","), " ") OVER w1 AS split_key_and_join,
-        fz_join(fz_split_by_value(c1, ","), " ") OVER w1 AS split_value_and_join
+        fz_join(fz_window_split(c1, ","), " ") OVER w1 AS split_and_join,
+        fz_join(fz_window_split_by_key(c1, ",", ":"), " ") OVER w1 AS split_key_and_join,
+        fz_join(fz_window_split_by_value(c1, ",", ":"), " ") OVER w1 AS split_value_and_join,
+        count(fz_window_split_by_key(c1, ",", ":")) OVER w1 AS split_key_and_count,
+        distinct_count(fz_window_split_by_key(c1, ",", ":")) OVER w1 AS split_key_and_distinct_count
       FROM {0}
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int64", "split_and_join string", "split_key_and_join string", "split_value_and_join string"]
+      columns: ["id int64", "split_and_join string", "split_key_and_join string", "split_value_and_join string",
+                "split_key_and_count int64", "split_key_and_distinct_count int64"]
       rows:
-        - [1, "k1:v1 k2:v2", "k1 k2", "v1 v2"]
-        - [2, "k3:v3 k1:v1 k2:v2", "k3 k1 k2", "v3 v1 v2"]
-        - [3, "???  k4:v4 k3:v3 k1:v1 k2:v2", "k4 k3 k1 k2", "v4 v3 v1 v2"]
-        - [4, "???  k4:v4 k3:v3 k1:v1 k2:v2", "k4 k3 k1 k2", "v4 v3 v1 v2"]
-        - [5, "k5:v5  ???  k4:v4 k3:v3 k1:v1 k2:v2", "k5 k4 k3 k1 k2", "v5 v4 v3 v1 v2"]
+        - [1, "k1:v1 k2:v2", "k1 k2", "v1 v2", 2, 2]
+        - [2, "k3:v3 k1:v1 k2:v2", "k3 k1 k2", "v3 v1 v2", 3, 3]
+        - [3, "???  k4:v4 k3:v3 k1:v1 k2:v2", "k4 k3 k1 k2", "v4 v3 v1 v2", 4, 4]
+        - [4, "???  k4:v4 k3:v3 k1:v1 k2:v2", "k4 k3 k1 k2", "v4 v3 v1 v2", 4, 4]
+        - [5, "k5:v5 k3:v3 ???  k4:v4 k3:v3 k1:v1 k2:v2", "k5 k3 k4 k3 k1 k2", "v5 v3 v4 v3 v1 v2", 6, 5]
+
+  - id: 2
+    desc: feature zero split utility functions on single row
+    inputs:
+      - columns: ["id int64", "pk int64", "c1 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 0, "k1:v1,k2:v2"]
+          - [2, 0, "k3:v3"]
+          - [3, 0, "???,,k4:v4"]
+          - [4, 0, NULL]
+          - [5, 0, "k5:v5,k3:v3"]
+    sql: |
+      SELECT id,
+        fz_join(fz_split(c1, ","), " ") AS split_and_join,
+        fz_join(fz_split_by_key(c1, ",", ":"), " ") AS split_key_and_join,
+        fz_join(fz_split_by_value(c1, ",", ":"), " ") AS split_value_and_join,
+        count(fz_split_by_key(c1, ",", ":")) AS split_key_and_count,
+        distinct_count(fz_split_by_key(c1, ",", ":")) AS split_key_and_distinct_count
+      FROM {0};
+    expect:
+      order: id
+      columns: ["id int64", "split_and_join string", "split_key_and_join string", "split_value_and_join string",
+                "split_key_and_count int64", "split_key_and_distinct_count int64"]
+      rows:
+        - [1, "k1:v1 k2:v2", "k1 k2", "v1 v2", 2, 2]
+        - [2, "k3:v3", "k3", "v3", 1, 1]
+        - [3, "???  k4:v4", "k4", "v4", 1, 1]
+        - [4, "", "", "", 0, 0]
+        - [5, "k5:v5 k3:v3", "k5 k3", "v5 v3", 2, 2]
