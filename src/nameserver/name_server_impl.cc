@@ -10679,5 +10679,40 @@ bool NameServerImpl::CreateProcedureOnTablet(const std::string& db_name, const s
     return true;
 }
 
+void NameServerImpl::ShowProcedure(RpcController* controller,
+        const ShowProcedureRequest* request, ShowProcedureResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    ::rtidb::nameserver::ProcedureInfo* sp_info = response->add_sp_info();
+    const std::string& db_name = request->db_name();
+    const std::string& sp_name = request->sp_name();
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (databases_.find(db_name) == databases_.end()) {
+            response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
+            response->set_msg("database not found");
+            PDLOG(WARNING, "database[%s] not found", db_name.c_str());
+            return;
+        } else {
+            auto sp_it = db_sp_info_[db_name];
+            if (sp_it.find(sp_name) == sp_it.end()) {
+                response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
+                response->set_msg("store procedure not found");
+                PDLOG(WARNING, "store procedure[%s] not in db[%s]", sp_name.c_str(), db_name.c_str());
+                return;
+            }
+            sp_info->CopyFrom(sp_it->second);
+        }
+    }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
 }  // namespace nameserver
 }  // namespace rtidb

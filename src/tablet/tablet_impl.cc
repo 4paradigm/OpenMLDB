@@ -1831,6 +1831,47 @@ void TabletImpl::Delete(RpcController* controller,
     }
 }
 
+void TabletImpl::CallProcedure(RpcController* ctrl,
+        const rtidb::api::CallProcedureRequest* request,
+        rtidb::api::CallProcedureResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    const std::string& db = request->db();
+    const std::string& sp_name = request->sp_name();
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto db_it = sp_map_.find(db_name);
+        if (db_it == sp_map_.end()) {
+            response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
+            response->set_msg("db not found");
+            PDLOG(WARNING, "db[%s] not found", db_name.c_str());
+            return;
+        }
+        auto sp_it = db_it->second.find(sp_name);
+        if (sp_it == db_it->second.end()) {
+            response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
+            response->set_msg("store procedure not found");
+            PDLOG(WARNING, "store procedure[%s] not found in db[%s]",
+                    sp_name.c_str(), db_name.c_str());
+            return;
+        }
+    }
+    rtidb::api::QueryRequest qy_request;
+    rtidb::api::QueryResponse qy_response;
+    qy_request.set_db(request->db());
+    qy_request.set_sql(sp_it->second);
+    qy_request.set_input_row(request->input_row());
+    qy_request.set_is_debug(request->is_debug());
+    qy_request.set_is_batch(false);
+    qy_request.set_is_procedure(true);
+    Query(ctrl, qy_request, qy_response, done);
+
+    response->set_schema(qy_response.schema());
+    response->set_byte_size(qy_response.byte_size());
+    response->set_count(qy_response.count());
+    response->set_code(qy_response.code());
+    response->set_msg(qy_response.msg());
+}
+
 void TabletImpl::Query(RpcController* ctrl,
                        const rtidb::api::QueryRequest* request,
                        rtidb::api::QueryResponse* response, Closure* done) {
@@ -1894,6 +1935,7 @@ void TabletImpl::Query(RpcController* ctrl,
             return;
         }
         ::fesql::vm::RequestRunSession session;
+        session.set_is_procedure(request->is_procedure());
         {
             bool ok =
                 engine_.Get(request->sql(), request->db(), session, status);

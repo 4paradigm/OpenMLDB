@@ -185,6 +185,7 @@ enum ReturnCode {
     kServerNameNotFound = 155,
     kSdkEndpointDuplicate = 156,
     kProcedureAlreadyExists = 157,
+    kProcedureNotFound = 158,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,

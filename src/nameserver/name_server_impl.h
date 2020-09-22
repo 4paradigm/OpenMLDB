@@ -425,6 +425,10 @@ class NameServerImpl : public NameServer {
     bool CreateProcedureOnTablet(const std::string& db_name, const std::string& sp_name,
             const std::string& sql);
 
+    void ShowProcedure(RpcController* controller,
+            const ShowProcedureRequest* request, ShowProcedureResponse* response,
+            Closure* done);
+
  private:
     // Recover all memory status, the steps
     // 1.recover table meta from zookeeper

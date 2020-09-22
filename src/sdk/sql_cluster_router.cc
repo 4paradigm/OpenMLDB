@@ -824,5 +824,60 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(
     return impl;
 }
 
+std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
+    const std::string& db, const std::string& sp_name,
+    std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) {
+    if (!row || status == NULL) {
+        LOG(WARNING) << "input is invalid";
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    if (!row->OK()) {
+        LOG(WARNING) << "make sure the request row is built before execute sql";
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    auto ns_ptr = cluster_sdk_->GetNsClient();
+    if (!ns_ptr) {
+        LOG(WARNING) << "no nameserver exist";
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    rtidb::nameserver::ProcedureInfo sp_info;
+    std::string err;
+    bool ok = ns_ptr->ShowProcedure(db, sp_name, sp_info, err);
+    if (!ok) {
+        status->msg = "fail to show procedure " + " for error " + err;
+        LOG(WARNING) << status->msg;
+        status->code = -1;
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    const std::string& sql = sp_info.sql();
+
+    std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
+    std::unique_ptr<::rtidb::api::CallProcedureResponse> response(
+        new ::rtidb::api::CallProcedureResponse());
+    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
+    bool ok = GetTablet(db, sql, &tablets);
+    if (!ok || tablets.size() <= 0) {
+        status->msg = "not tablet found";
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    uint32_t idx = rand_.Uniform(tablets.size());
+    ok = tablets[idx]->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(),
+                             options_.enable_debug);
+    if (!ok) {
+        status->msg = "request server error";
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    if (response->code() != ::rtidb::base::kOk) {
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs(
+        new rtidb::sdk::ResultSetSQL(std::move(response), std::move(cntl)));
+    ok = rs->Init();
+    if (!ok) {
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    return rs;
+}
+
 }  // namespace sdk
 }  // namespace rtidb

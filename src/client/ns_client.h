@@ -247,6 +247,9 @@ class NsClient {
     bool DeleteIndex(const std::string& db, const std::string& table_name,
                      const std::string& idx_name, std::string& msg);  // NOLINT
 
+    bool ShowProcedure(const std::string& db_name, const std::string& sp_name,
+            rtidb::nameserver::ProcedureInfo& sp_info, std::string& msg); // NOLINT
+
  private:
     bool TransformToTableDef(
         const std::string& table_name,
