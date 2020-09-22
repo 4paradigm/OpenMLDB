@@ -42,7 +42,8 @@ Engine::Engine(const std::shared_ptr<Catalog>& catalog)
       options_(),
       mu_(),
       batch_lru_cache_(),
-      request_lru_cache_() {}
+      request_lru_cache_(),
+      procedure_cache_() {}
 
 Engine::Engine(const std::shared_ptr<Catalog>& catalog,
                const EngineOptions& options)
@@ -50,7 +51,8 @@ Engine::Engine(const std::shared_ptr<Catalog>& catalog,
       options_(options),
       mu_(),
       batch_lru_cache_(),
-      request_lru_cache_() {}
+      request_lru_cache_(),
+      procedure_cache_() {}
 
 Engine::~Engine() {}
 
@@ -138,8 +140,8 @@ bool Engine::Get(const std::string& sql, const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
     {
-        std::shared_ptr<CompileInfo> info =
-            GetCacheLocked(db, sql, session.IsBatchRun());
+        std::shared_ptr<CompileInfo> info = GetCacheLocked(
+                db, sql, session.IsBatchRun(), session.IsProcedure());
         if (info) {
             session.SetCompileInfo(info);
             return true;
@@ -183,7 +185,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
             } else {
                 session.SetCompileInfo(value.value());
             }
-        } else {
+        } else if (!session.IsProcedure()) {
             auto it = request_lru_cache_.find(db);
             if (it == request_lru_cache_.end()) {
                 request_lru_cache_.insert(std::make_pair(
@@ -198,6 +200,19 @@ bool Engine::Get(const std::string& sql, const std::string& db,
                 session.SetCompileInfo(info);
             } else {
                 session.SetCompileInfo(value.value());
+            }
+        } else {
+            auto it = procedure_cache_.find(db);
+            if (it == procedure_cache_.end()) {
+                procedure_cache_.insert(std::make_pair(db,
+                    std::map<std::string, std::shared_ptr<CompileInfo>>()));
+            }
+            auto info_it = it->second.find(sql);
+            if (info_it == it->second.end()) {
+                it->second.insert(std::make_pair(sql, info));
+                session.SetCompileInfo(info);
+            } else {
+                session.SetCompileInfo(info_it->second);
             }
         }
     }
@@ -239,7 +254,8 @@ void Engine::ClearCacheLocked(const std::string& db) {
 
 std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
                                                     const std::string& sql,
-                                                    bool is_batch) {
+                                                    bool is_batch,
+                                                    bool is_procedure) {
     std::lock_guard<base::SpinMutex> lock(mu_);
     if (is_batch) {
         auto it = batch_lru_cache_.find(db);
@@ -251,7 +267,7 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
             return std::shared_ptr<CompileInfo>();
         }
         return value.value();
-    } else {
+    } else if (!is_procedure) {
         auto it = request_lru_cache_.find(db);
         if (it == request_lru_cache_.end()) {
             return std::shared_ptr<CompileInfo>();
@@ -261,10 +277,20 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
             return std::shared_ptr<CompileInfo>();
         }
         return value.value();
+    } else {
+        auto it = procedure_cache_.find(db);
+        if (it == procedure_cache_.end()) {
+            return std::shared_ptr<CompileInfo>();
+        }
+        auto info_it = it->second.find(sql);
+        if (info_it == it->second.end()) {
+            return std::shared_ptr<CompileInfo>();
+        }
+        return info_it->second;
     }
 }
 
-RunSession::RunSession() : is_debug_(false) {}
+RunSession::RunSession() : is_debug_(false), is_procedure_(false) {}
 RunSession::~RunSession() {}
 
 bool RunSession::SetCompileInfo(

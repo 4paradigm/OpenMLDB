@@ -122,12 +122,15 @@ class RunSession {
 
     void EnableDebug() { is_debug_ = true; }
     void DisableDebug() { is_debug_ = false; }
+    void SetIsProcedure(bool flag) { is_procedure_ = flag; }
+    bool IsProcedure() { return is_procedure_; }
 
  protected:
     bool SetCompileInfo(const std::shared_ptr<CompileInfo>& compile_info);
     std::shared_ptr<CompileInfo> compile_info_;
     bool is_debug_;
     friend Engine;
+    bool is_procedure_;
 };
 
 class BatchRunSession : public RunSession {
@@ -173,6 +176,9 @@ typedef std::map<std::string, boost::compute::detail::lru_cache<
                                   std::string, std::shared_ptr<CompileInfo>>>
     EngineLRUCache;
 
+typedef std::map<std::string, std::map<
+    std::string, std::shared_ptr<CompileInfo>>> ProcedureCache;
+
 class Engine {
  public:
     Engine(const std::shared_ptr<Catalog>& cl, const EngineOptions& options);
@@ -202,13 +208,14 @@ class Engine {
     bool GetDependentTables(node::PlanNode* node, std::set<std::string>* tables,
                             base::Status& status);  // NOLINT
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
-                                                const std::string& sql,
-                                                bool is_batch);
+            const std::string& sql,
+            bool is_batch, bool is_procedure);
     std::shared_ptr<Catalog> cl_;
     EngineOptions options_;
     base::SpinMutex mu_;
     EngineLRUCache batch_lru_cache_;
     EngineLRUCache request_lru_cache_;
+    ProcedureCache procedure_cache_;
 };
 
 }  // namespace vm
