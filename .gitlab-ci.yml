@@ -101,6 +101,7 @@ fpga_java_ut:
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && sh tools/install_fesql.sh
     - source /root/.bashrc && bash steps/simple_compile_fpga.sh
     - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/java_ut.sh
   after_script:
