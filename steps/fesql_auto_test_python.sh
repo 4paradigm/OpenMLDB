@@ -17,6 +17,7 @@ echo "ROOT_DIR:${ROOT_DIR}"
 #cd ${ROOT_DIR}/python && python3 -m pip install .
 
 cd fesql
+git fetch
 git checkout feat/fix-python-some-fail-case
 git pull
 
