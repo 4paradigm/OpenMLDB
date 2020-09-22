@@ -102,8 +102,8 @@ def selectRequestMode(executor,dbName:str,selectSql:str,input):
                 fesqlResult.ok = ok
                 fesqlResult.msg = rs
                 return fesqlResult
-            if index ==0:
-                schema = rs.GetSchema()
+            # if index ==0:
+            schema = rs.GetSchema()
             result += convertRestultSetToList(rs,schema)
             insertResult = insert(executor,dbName,inserts[index])
             # ok,msg = executor.executeInsert(dbName,inserts[index])

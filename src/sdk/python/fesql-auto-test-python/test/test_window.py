@@ -14,29 +14,29 @@ class TestWindow(unittest.TestCase):
     def setUpClass(cls):
         cls.driver = fesql_test.getDriver()
 
-    # @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_window_row_range.yaml')))
-    # def testRowRange(self, *testCases):
-    #     executor.fesql_executor.build(self.driver,testCases[0]).run()
-    #
-    # @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_window_row.yaml')))
-    # def testRow(self, *testCases):
-    #     executor.fesql_executor.build(self.driver, testCases[0]).run()
-    #
-    # @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_window_union.yaml')))
-    # def testWindowUnion(self, *testCases):
-    #     executor.fesql_executor.build(self.driver, testCases[0]).run()
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_window_row_range.yaml')))
+    def testRowRange(self, *testCases):
+        executor.fesql_executor.build(self.driver,testCases[0]).run()
 
-    # @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_window_row_range.yaml')))
-    # def testRowRangeRequestMode(self, *testCases):
-    #     executor.fesql_executor.build(self.driver, testCases[0],True).run()
-    #
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_window_row.yaml')))
+    def testRow(self, *testCases):
+        executor.fesql_executor.build(self.driver, testCases[0]).run()
+
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_window_union.yaml')))
+    def testWindowUnion(self, *testCases):
+        executor.fesql_executor.build(self.driver, testCases[0]).run()
+
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_window_row_range.yaml')))
+    def testRowRangeRequestMode(self, *testCases):
+        executor.fesql_executor.build(self.driver, testCases[0],True).run()
+
     @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_window_row.yaml')))
     def testRowRequestMode(self, *testCases):
         executor.fesql_executor.build(self.driver, testCases[0],True).run()
-    #
-    # @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_window_union.yaml')))
-    # def testWindowUnionRequestMode(self, *testCases):
-    #     executor.fesql_executor.build(self.driver, testCases[0],True).run()
+
+    @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_window_union.yaml')))
+    def testWindowUnionRequestMode(self, *testCases):
+        executor.fesql_executor.build(self.driver, testCases[0],True).run()
 
 
 if __name__ == '__main__':

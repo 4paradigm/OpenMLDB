@@ -17,7 +17,7 @@ echo "ROOT_DIR:${ROOT_DIR}"
 #cd ${ROOT_DIR}/python && python3 -m pip install .
 
 cd fesql
-git checkout feat/add-mode-python-unsupport
+git checkout feat/fix-python-some-fail-case
 git pull
 
 cd ${ROOT_DIR}/build/sql_pysdk/dist/
