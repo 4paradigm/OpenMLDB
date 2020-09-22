@@ -30,7 +30,8 @@ cd ${ROOT_DIR}
 cd src/sdk/python/fesql-auto-test-python
 python3 -m pip install -r requirements.txt
 sed -i "s/env=.*/env=cicd/" fesql.conf
-IP=`hostname -i`
+#IP=`hostname -i`
+IP=127.0.0.1
 echo "cicd_tb_endpoint_0=$IP:9520" >> fesql.conf
 echo "cicd_tb_endpoint_1=$IP:9521" >> fesql.conf
 echo "cicd_tb_endpoint_2=$IP:9522" >> fesql.conf
