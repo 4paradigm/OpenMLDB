@@ -422,6 +422,9 @@ class NameServerImpl : public NameServer {
 
     bool RegisterName();
 
+    bool CreateProcedureOnTablet(const std::string& db_name, const std::string& sp_name,
+            const std::string& sql);
+
  private:
     // Recover all memory status, the steps
     // 1.recover table meta from zookeeper

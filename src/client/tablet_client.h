@@ -323,6 +323,9 @@ class TabletClient {
     bool GetSchema(const std::string& db_name, const std::string& sql,
             Schema* input_schema, Schema* output_schema);
 
+    bool CreateProcedure(const std::string& db_name, const std::string& sp_name,
+            const std::string& sql);
+
  private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> client_;

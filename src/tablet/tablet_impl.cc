@@ -5772,12 +5772,6 @@ void TabletImpl::GetSchema(RpcController* controller,
         const rtidb::api::GetSchemaRequest* request,
         rtidb::api::GetSchemaResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    if (FLAGS_zk_cluster.empty()) {
-        response->set_code(-1);
-        response->set_msg("tablet is not run in cluster mode");
-        PDLOG(WARNING, "tablet is not run in cluster mode");
-        return;
-    }
     const std::string& db = request->db_name();
     const std::string& sql = request->sql();
     ::fesql::base::Status vm_status;
@@ -5807,6 +5801,52 @@ void TabletImpl::GetSchema(RpcController* controller,
         LOG(WARNING) << "convert output schema failed, sql:" << sql << " in db:" << db;
         return;
     }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
+void TabletImpl::CreateProcedure(RpcController* controller,
+        const rtidb::api::CreateProcedureRequest* request,
+        rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    const std::string& db_name = request->db_name();
+    const std::string& sp_name = request->sp_name();
+    const std::string& sql = request->sql();
+    // TODO(wangbao): add map<db_name, map<sp_name, sql>> to TabletCatalog
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto db_it = sp_map_.find(db_name);
+        if (db_it == sp_map_.end()) {
+            sp_map_.insert(std::make_pair(db_name, std::map<std::string, std::string>()));
+            db_it = sp_map_.find(db_name);
+        }
+        auto sp_it = db_it->second.find(sp_name);
+        if (sp_it != db_it->second.end()) {
+            response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
+            response->set_msg("store procedure already exists");
+            PDLOG(WARNING, "store procedure[%s] already exists in db[%s]",
+                    sp_name.c_str(), db_name.c_str());
+            return;
+        } else {
+            db_it->second.insert(std::make_pair(sp_name, sql));
+        }
+    }
+
+    ::fesql::base::Status status;
+    ::fesql::vm::RequestRunSession session;
+    session.SetIsProcedure(true);
+    {
+        bool ok = engine_.Get(sql, db_name, session, status);
+        if (!ok) {
+            response->set_msg(status.msg);
+            response->set_code(::rtidb::base::kSQLCompileError);
+            DLOG(WARNING) << "fail to run sql " << sql;
+            return;
+        }
+    }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
 }
 
 }  // namespace tablet

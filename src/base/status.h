@@ -217,6 +217,7 @@ enum ReturnCode {
     kConvertSchemaFailed = 329,
     kGetSchemaFailed = 330,
     kCheckParameterFailed = 331,
+    kCreateProcedureFailedOnTablet = 332,
     kReplicaClusterAliasDuplicate = 400,
     kConnectRelicaClusterZkFailed = 401,
     kNotSameReplicaName = 402,

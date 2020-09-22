@@ -311,6 +311,10 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
 
+    void CreateProcedure(RpcController* controller,
+            const rtidb::api::CreateProcedureRequest* request,
+            rtidb::api::GeneralResponse* response, Closure* done);
+
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization
@@ -506,6 +510,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::string zk_cluster_;
     std::string zk_path_;
     std::string endpoint_;
+    std::map<std::string, std::map<std::string, std::string>> sp_map_;
 };
 
 }  // namespace tablet

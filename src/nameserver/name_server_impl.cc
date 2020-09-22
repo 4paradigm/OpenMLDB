@@ -10509,32 +10509,31 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
             if (sp_infos.find(sp_name) != sp_infos.end()) {
                 response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
                 response->set_msg("store procedure already exists");
-                PDLOG(WARNING, "store procedure[%s] already exists", sp_name.c_str());
+                PDLOG(WARNING, "store procedure[%s] already exists in db[%s]", sp_name.c_str(), db_name.c_str());
                 return;
             }
         }
     }
     do {
-        // TODO(wangbao): CreateProcedureOnTablet
-        std::shared_ptr<rtidb::client::TabletClient> tb_client;
+        std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>> tb_client_map;
         {
             std::lock_guard<std::mutex> lock(mu_);
             for (const auto& kv : tablets_) {
-                // find a healthy tablet client
                 if (kv.second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
-                    tb_client = kv.second->client_;
-                    break;
+                    tb_client_map.insert(std::make_pair(kv.first, kv.second->client_));
                 }
             }
         }
-        if (!tb_client) {
+        if (tb_client_map.empty()) {
             response->set_code(::rtidb::base::ReturnCode::kTabletIsNotHealthy);
             response->set_msg("tablet is not healthy");
             PDLOG(WARNING, "tablet is not healthy");
             return;
         }
-        ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> rtidb_input_schema;
-        ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> rtidb_output_schema;
+        Schema rtidb_input_schema;
+        Schema rtidb_output_schema;
+        // TODO(wangbao): find tablet where table exist
+        std::shared_ptr<rtidb::client::TabletClient> tb_client = tb_client_map.begin()->second;
         if (!tb_client->GetSchema(db_name, sql, &rtidb_input_schema, &rtidb_output_schema)) {
             response->set_code(::rtidb::base::ReturnCode::kGetSchemaFailed);
             response->set_msg("get schema from tablet failed");
@@ -10549,9 +10548,15 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
                     db_name.c_str(), sp_name.c_str(), sql.c_str());
             return;
         }
-
+        // CreateProcedureOnTablet
+        if (!CreateProcedureOnTablet(db_name, sp_name, sql)) {
+            response->set_code(::rtidb::base::ReturnCode::kCreateProcedureFailedOnTablet);
+            response->set_msg("create procedure failed on tablet");
+            break;
+        }
 
         std::string sp_value;
+        sp_info->mutable_output_schema()->CopyFrom(rtidb_output_schema);
         sp_info->SerializeToString(&sp_value);
         std::string compressed;
         ::snappy::Compress(sp_value.c_str(), sp_value.length(), &compressed);
@@ -10643,6 +10648,33 @@ bool NameServerImpl::CheckParameter(const Schema& parameter, const Schema& input
                     rtidb::type::DataType_Name(parameter.Get(i).data_type()).c_str());
             return false;
         }
+    }
+    return true;
+}
+
+bool NameServerImpl::CreateProcedureOnTablet(const std::string& db_name, const std::string& sp_name,
+        const std::string& sql) {
+    // TODO(wangbao): find tablet that table exist
+    std::vector<std::shared_ptr<TabletClient>> tb_client_vec;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto &kv : tablets_) {
+            // check tablet healthy
+            if (kv.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                PDLOG(WARNING, "endpoint [%s] is offline", kv.first.c_str());
+                continue;
+            }
+            tb_client_vec.push_back(kv.second->client_);
+        }
+    }
+    for (auto tb_client : tb_client_vec) {
+        if (!tb_client->CreateProcedure(db_name, sp_name, sql)) {
+            PDLOG(WARNING, "create procedure on tablet failed. db_name[%s], sp_name[%s], sql[%s], endpoint[%s]",
+                    db_name.c_str(), sp_name.c_str(), sql.c_str(), tb_client->GetEndpoint().c_str());
+            return false;
+        }
+        PDLOG(INFO, "create procedure on tablet success. db_name[%s], sp_name[%s], sql[%s], endpoint[%s]",
+                db_name.c_str(), sp_name.c_str(), sql.c_str(), tb_client->GetEndpoint().c_str());
     }
     return true;
 }

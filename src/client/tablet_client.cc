@@ -1607,5 +1607,20 @@ bool TabletClient::GetSchema(const std::string& db_name, const std::string& sql,
     return true;
 }
 
+bool TabletClient::CreateProcedure(const std::string& db_name, const std::string& sp_name,
+        const std::string& sql) {
+    rtidb::api::CreateProcedureRequest request;
+    rtidb::api::GeneralResponse response;
+    request.set_db_name(db_name);
+    request.set_sp_name(sp_name);
+    request.set_sql(sql);
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateProcedure,
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
 }  // namespace client
 }  // namespace rtidb
