@@ -48,7 +48,7 @@ endif ()
 add_definitions(-DHAVE_STDBOOL_H=1)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
-option(PZFPGA_ENABLE "Enable pz compression for ssd tables" OFF)
+option(PZFPGA_ENABLE "Enable pz compression for ssd tables" ON)
 option(SQL_PYSDK_ENABLE "Enable sql pysdk" ON)
 option(SQL_JAVASDK_ENABLE "Enable sql javasdk" ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -96,13 +96,17 @@ configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h")
 
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include ${PROJECT_SOURCE_DIR}/fesql/src 
- ${PROJECT_SOURCE_DIR}/fesql/build/src)
-if (PZFPGA_ENABLE) 
-    add_definitions('-DPZFPGA')
-endif()
+    ${PROJECT_SOURCE_DIR}/fesql/build/src)
+
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib 
     ${PROJECT_SOURCE_DIR}/thirdparty/lib64
     ${PROJECT_SOURCE_DIR}/fesql/build/release/lib)
+
+if (PZFPGA_ENABLE) 
+    add_definitions('-DPZFPGA')
+    link_directories(${PROJECT_SOURCE_DIR}/thirdparty/aclrte-linux64/lib)
+endif()
+
 add_subdirectory(src)
 add_custom_target(rtidbpy
 COMMAND make

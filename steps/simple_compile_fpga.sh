@@ -5,6 +5,8 @@
 WORK_DIR=`pwd`
 curl ftp://ftp.4pd.io/pub/team_hpc/titanse/rocksdb-titanse-v0.0.1-release.tar.gz -o rocksdb.tar.gz
 tar zxf rocksdb.tar.gz -C ./thirdparty
+curl "https://nexus.4pd.io/repository/raw-hosted/fpga-rte/release/v0.2/aclrte-linux64-aclrte-19.2.0.57-v0.2-release.tar.gz" -O
+tar zxf aclrte-linux64-aclrte-19.2.0.57-v0.2-release.tar.gz -C ./thirdparty
 sed -i 's/\"Enable pz compression for ssd tables\"\ OFF/\"Enable pz compression for ssd tables\"\ ON/g' CMakeLists.txt
 sh steps/gen_code.sh
 mkdir -p $WORK_DIR/build

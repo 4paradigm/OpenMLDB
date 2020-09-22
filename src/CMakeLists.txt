@@ -34,9 +34,8 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(mem_table_iterator_test gtest ${BIN_LIBS})
 
     if (PZFPGA_ENABLE)
-        target_link_libraries(storage lz4 pz alteracl OpenCL elf z rt pthread)
+        target_link_libraries(storage lz4 pz alteracl OpenCL elf z)
     endif()
-    add_library(blob_proxy STATIC proto/blob_proxy.pb.cc blob_proxy/blob_proxy_impl.cc flags.cc client/client.cc)
     add_executable(tablet_catalog_test catalog/tablet_catalog_test.cc)
     target_link_libraries(tablet_catalog_test gtest ${BIN_LIBS})
 
