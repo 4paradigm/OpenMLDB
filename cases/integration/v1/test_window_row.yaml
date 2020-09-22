@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["date为order by"]
+debugs: []
 cases:
   -
     id: 0

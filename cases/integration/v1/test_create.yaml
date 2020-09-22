@@ -1,5 +1,5 @@
 db: test_zw
-debugs:
+debugs: []
 cases:
   -
     id: 1
@@ -18,7 +18,7 @@ cases:
   -
     id: 2
     desc: 创建两个相同时间列的索引的表
-    inputs: 
+    inputs:
       -
         create: |
             create table {0} (
@@ -33,7 +33,7 @@ cases:
     sql: select * from {0};
     expect:
       columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
-      rows: 
+      rows:
         - ["aa", 1, 1590738990000, 1590738989000]
   -
     id: 3
@@ -340,7 +340,7 @@ cases:
     desc: date为索引列
     sql: |
       create table {auto} (
-      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
       index(key=(c8),ts=c7));
     expect:
       success: true
@@ -349,7 +349,7 @@ cases:
     desc: key边界-float为索引列
     sql: |
       create table {auto} (
-      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
       index(key=(c5),ts=c7));
     expect:
       success: false
@@ -358,7 +358,7 @@ cases:
     desc: key边界-double为索引列
     sql: |
       create table {auto} (
-      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
       index(key=(c6),ts=c7));
     expect:
       success: false
@@ -367,7 +367,7 @@ cases:
     desc: key边界-key和ts为同一列
     sql: |
       create table {auto} (
-      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
       index(key=(c4),ts=c4));
     expect:
       success: false
@@ -383,7 +383,6 @@ cases:
   -
     id: 38
     desc: create with replica num
-    mode: python-unsupport
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -393,7 +392,6 @@ cases:
   -
     id: 39
     desc: create with replica num and distribution
-    mode: python-unsupport
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
