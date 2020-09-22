@@ -109,7 +109,7 @@ void DiskTable::initOptionTemplate() {
     table_options.whole_key_filtering = false;
     table_options.block_size = 256 << 10;
     table_options.use_delta_encoding = false;
-#ifdef PZFPGA
+#ifdef PZFPGA_ENABLE
     if (FLAGS_file_compression.compare("pz") == 0) {
         PDLOG(INFO, "initOptionTemplate PZ compression enabled");
         ssd_option_template.compression = rocksdb::kPZCompression;
