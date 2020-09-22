@@ -586,6 +586,7 @@ cases:
         - [1, 2, 1.0, 1.0, true, 1590115420000, "1"]
   - id: 19-5
     desc: SQL标准Cast语法-Cast(表达式 as type)
+    mode: python-unsupport
     inputs:
       - columns: ["c0 string", "std_ts bigint", "c1 int", "c2 float", "c5 bigint"]
         indexs: ["index1:c0:std_ts"]
