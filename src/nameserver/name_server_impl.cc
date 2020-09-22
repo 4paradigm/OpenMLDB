@@ -10700,14 +10700,15 @@ void NameServerImpl::ShowProcedure(RpcController* controller,
             PDLOG(WARNING, "database[%s] not found", db_name.c_str());
             return;
         } else {
-            auto sp_it = db_sp_info_[db_name];
-            if (sp_it.find(sp_name) == sp_it.end()) {
+            auto sp_infos = db_sp_info_[db_name];
+            auto sp_it = sp_infos.find(sp_name);
+            if (sp_it == sp_infos.end()) {
                 response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
                 response->set_msg("store procedure not found");
                 PDLOG(WARNING, "store procedure[%s] not in db[%s]", sp_name.c_str(), db_name.c_str());
                 return;
             }
-            sp_info->CopyFrom(sp_it->second);
+            sp_info->CopyFrom(*(sp_it->second));
         }
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);

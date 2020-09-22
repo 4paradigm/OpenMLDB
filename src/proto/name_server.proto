@@ -496,7 +496,9 @@ message ShowProcedureRequest {
 }
 
 message ShowProcedureResponse {
-    repeated ProcedureInfo sp_info = 1;
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated ProcedureInfo sp_info = 3;
 }
 
 service NameServer {

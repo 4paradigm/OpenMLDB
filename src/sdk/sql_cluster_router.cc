@@ -844,7 +844,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
     std::string err;
     bool ok = ns_ptr->ShowProcedure(db, sp_name, sp_info, err);
     if (!ok) {
-        status->msg = "fail to show procedure " + " for error " + err;
+        status->msg = "fail to show procedure for error " + err;
         LOG(WARNING) << status->msg;
         status->code = -1;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
@@ -852,10 +852,10 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
     const std::string& sql = sp_info.sql();
 
     std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
-    std::unique_ptr<::rtidb::api::CallProcedureResponse> response(
-        new ::rtidb::api::CallProcedureResponse());
+    std::unique_ptr<::rtidb::api::QueryResponse> response(
+        new ::rtidb::api::QueryResponse());
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
-    bool ok = GetTablet(db, sql, &tablets);
+    ok = GetTablet(db, sql, &tablets);
     if (!ok || tablets.size() <= 0) {
         status->msg = "not tablet found";
         return std::shared_ptr<::fesql::sdk::ResultSet>();

@@ -328,7 +328,7 @@ class TabletClient {
 
     bool CallProcedure(const std::string& db, const std::string& sp_name,
             const std::string& row, brpc::Controller* cntl,
-            rtidb::api::CreateProcedureResponse* response,
+            rtidb::api::QueryResponse* response,
             bool is_debug);
 
  private:

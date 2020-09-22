@@ -1831,47 +1831,6 @@ void TabletImpl::Delete(RpcController* controller,
     }
 }
 
-void TabletImpl::CallProcedure(RpcController* ctrl,
-        const rtidb::api::CallProcedureRequest* request,
-        rtidb::api::CallProcedureResponse* response, Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    const std::string& db = request->db();
-    const std::string& sp_name = request->sp_name();
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        auto db_it = sp_map_.find(db_name);
-        if (db_it == sp_map_.end()) {
-            response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
-            response->set_msg("db not found");
-            PDLOG(WARNING, "db[%s] not found", db_name.c_str());
-            return;
-        }
-        auto sp_it = db_it->second.find(sp_name);
-        if (sp_it == db_it->second.end()) {
-            response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
-            response->set_msg("store procedure not found");
-            PDLOG(WARNING, "store procedure[%s] not found in db[%s]",
-                    sp_name.c_str(), db_name.c_str());
-            return;
-        }
-    }
-    rtidb::api::QueryRequest qy_request;
-    rtidb::api::QueryResponse qy_response;
-    qy_request.set_db(request->db());
-    qy_request.set_sql(sp_it->second);
-    qy_request.set_input_row(request->input_row());
-    qy_request.set_is_debug(request->is_debug());
-    qy_request.set_is_batch(false);
-    qy_request.set_is_procedure(true);
-    Query(ctrl, qy_request, qy_response, done);
-
-    response->set_schema(qy_response.schema());
-    response->set_byte_size(qy_response.byte_size());
-    response->set_count(qy_response.count());
-    response->set_code(qy_response.code());
-    response->set_msg(qy_response.msg());
-}
-
 void TabletImpl::Query(RpcController* ctrl,
                        const rtidb::api::QueryRequest* request,
                        rtidb::api::QueryResponse* response, Closure* done) {
@@ -1934,15 +1893,39 @@ void TabletImpl::Query(RpcController* ctrl,
             response->set_msg("input row is empty");
             return;
         }
+        std::string sql = request->sql();
         ::fesql::vm::RequestRunSession session;
-        session.set_is_procedure(request->is_procedure());
+        if (request->is_procedure()) {
+            session.SetIsProcedure(true);
+            const std::string& db_name = request->db();
+            const std::string& sp_name = request->sp_name();
+            {
+                std::lock_guard<std::mutex> lock(mu_);
+                auto db_it = sp_map_.find(db_name);
+                if (db_it == sp_map_.end()) {
+                    response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
+                    response->set_msg("db not found");
+                    PDLOG(WARNING, "db[%s] not found", db_name.c_str());
+                    return;
+                }
+                auto sp_it = db_it->second.find(sp_name);
+                if (sp_it == db_it->second.end()) {
+                    response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
+                    response->set_msg("store procedure not found");
+                    PDLOG(WARNING, "store procedure[%s] not found in db[%s]",
+                            sp_name.c_str(), db_name.c_str());
+                    return;
+                }
+                sql = sp_it->second;
+            }
+        }
         {
             bool ok =
-                engine_.Get(request->sql(), request->db(), session, status);
+                engine_.Get(sql, request->db(), session, status);
             if (!ok) {
                 response->set_msg(status.msg);
                 response->set_code(::rtidb::base::kSQLCompileError);
-                DLOG(WARNING) << "fail to run sql " << request->sql();
+                DLOG(WARNING) << "fail to run sql " << sql;
                 return;
             }
         }
@@ -1953,7 +1936,7 @@ void TabletImpl::Query(RpcController* ctrl,
         ::fesql::codec::Row output;
         int32_t ret = session.Run(row, &output);
         if (ret != 0) {
-            DLOG(WARNING) << "fail to run sql " << request->sql();
+            DLOG(WARNING) << "fail to run sql " << sql;
             response->set_code(::rtidb::base::kSQLRunError);
             response->set_msg("fail to run sql");
             return;
@@ -1963,7 +1946,7 @@ void TabletImpl::Query(RpcController* ctrl,
         response->set_byte_size(output.size());
         response->set_count(1);
         response->set_code(::rtidb::base::kOk);
-        DLOG(INFO) << "handle request sql " << request->sql()
+        DLOG(INFO) << "handle request sql " << sql
                    << " with record cnt 1";
     }
 }
