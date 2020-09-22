@@ -63,17 +63,17 @@ class LambdafyProjects {
      *
      * Return transformed expression and fill two flags:
      *   "has_agg": Whether there exist agg expr node in output tree.
-     *   "is_agg_root": Whether output root is itself agg expr node.
      */
     Status VisitExpr(node::ExprNode* expr, node::ExprIdNode* row_arg,
                      node::ExprIdNode* window_arg, node::ExprNode** out,
-                     bool* has_agg, bool* is_agg_root);
+                     bool* has_agg);
 
     Status VisitLeafExpr(node::ExprNode* expr, node::ExprIdNode* row_arg,
                          node::ExprNode** out);
 
     Status VisitAggExpr(node::CallExprNode* call, node::ExprIdNode* row_arg,
-                        node::ExprIdNode* window_arg, node::ExprNode** out);
+                        node::ExprIdNode* window_arg, node::ExprNode** out,
+                        bool* is_window_agg);
 
  private:
     node::NodeManager* nm_;

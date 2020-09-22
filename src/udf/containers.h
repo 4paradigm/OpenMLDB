@@ -105,8 +105,7 @@ class TopKContainer {
         }
 
         // allocate string buffer
-        char* buffer =
-            reinterpret_cast<char*>(ThreadLocalMemoryPoolAlloc(str_len));
+        char* buffer = udf::v1::AllocManagedStringBuf(str_len);
 
         // fill string buffer
         char* cur = buffer;
@@ -238,8 +237,7 @@ class BoundedGroupByDict {
         }
 
         // allocate string buffer
-        char* buffer =
-            reinterpret_cast<char*>(ThreadLocalMemoryPoolAlloc(str_len));
+        char* buffer = udf::v1::AllocManagedStringBuf(str_len);
 
         // fill string buffer
         char* cur = buffer;

@@ -9,6 +9,7 @@
 #include "vm/core_api.h"
 #include "codec/fe_row_codec.h"
 #include "udf/udf.h"
+#include "vm/jit_runtime.h"
 #include "vm/mem_catalog.h"
 #include "vm/runner.h"
 #include "vm/schemas_context.h"
@@ -54,13 +55,18 @@ fesql::vm::TableHandler* GroupbyInterface::GetTableHandler() {
 
 fesql::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
                                            const bool need_free) {
+    // Init current run step runtime
+    JITRuntime::get()->InitRunStep();
+
     auto udf =
         reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
             const_cast<int8_t*>(fn));
-
     int8_t* buf = nullptr;
     uint32_t ret = udf(nullptr, nullptr, &buf);
-    fesql::udf::ThreadLocalMemoryPoolReset();
+
+    // Release current run step resources
+    JITRuntime::get()->ReleaseRunStep();
+
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return fesql::codec::Row();
@@ -68,12 +74,16 @@ fesql::codec::Row CoreAPI::RowConstProject(const RawPtrHandle fn,
     return Row(base::RefCountedSlice::CreateManaged(
         buf, fesql::codec::RowView::GetSize(buf)));
 }
+
 fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
                                       const fesql::codec::Row row,
                                       const bool need_free) {
     if (row.empty()) {
         return fesql::codec::Row();
     }
+    // Init current run step runtime
+    JITRuntime::get()->InitRunStep();
+
     auto udf =
         reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
             const_cast<int8_t*>(fn));
@@ -81,7 +91,10 @@ fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
     int8_t* buf = nullptr;
     uint32_t ret = udf(row_ptr, nullptr, &buf);
-    fesql::udf::ThreadLocalMemoryPoolReset();
+
+    // Release current run step resources
+    JITRuntime::get()->ReleaseRunStep();
+
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return fesql::codec::Row();
