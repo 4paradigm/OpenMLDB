@@ -413,8 +413,9 @@ INSTANTIATE_TEST_SUITE_P(SQLSDKTestUDFFunction, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_udf_function.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestWhere, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_where.yaml")));
-INSTANTIATE_TEST_SUITE_P(SQLSDKTestFZFunction, SQLSDKQueryTest,
-                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestFZFunction, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
 
 TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
     auto sql_case = GetParam();
