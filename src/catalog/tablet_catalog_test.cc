@@ -88,8 +88,9 @@ TestArgs *PrepareTable(const std::string &tname) {
 
 TEST_F(TabletCatalogTest, tablet_smoke_test) {
     TestArgs *args = PrepareTable("t1");
-    TabletTableHandler handler(args->meta, "db1", args->table);
+    TabletTableHandler handler(args->meta);
     ASSERT_TRUE(handler.Init());
+    handler.AddTable(args->table);
     auto it = handler.GetIterator();
     if (!it) {
         ASSERT_TRUE(false);
@@ -117,8 +118,9 @@ TEST_F(TabletCatalogTest, tablet_smoke_test) {
 TEST_F(TabletCatalogTest, segment_handler_test) {
     TestArgs *args = PrepareTable("t1");
     auto handler = std::shared_ptr<TabletTableHandler>(
-        new TabletTableHandler(args->meta, "db1", args->table));
+        new TabletTableHandler(args->meta));
     ASSERT_TRUE(handler->Init());
+    handler->AddTable(args->table);
     // Seek key not exist
     {
         auto partition = handler->GetPartition(handler, args->idx_name);
@@ -136,8 +138,9 @@ TEST_F(TabletCatalogTest, segment_handler_test) {
 TEST_F(TabletCatalogTest, segment_handler_pk_not_exist_test) {
     TestArgs *args = PrepareTable("t1");
     auto handler = std::shared_ptr<TabletTableHandler>(
-        new TabletTableHandler(args->meta, "db1", args->table));
+        new TabletTableHandler(args->meta));
     ASSERT_TRUE(handler->Init());
+    handler->AddTable(args->table);
     // Seek key not exist
     {
         auto partition = handler->GetPartition(handler, args->idx_name);
@@ -153,10 +156,7 @@ TEST_F(TabletCatalogTest, sql_smoke_test) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
-    std::shared_ptr<TabletTableHandler> handler(
-        new TabletTableHandler(args->meta, "db1", args->table));
-    ASSERT_TRUE(handler->Init());
-    ASSERT_TRUE(catalog->AddTable(handler));
+    ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
     ::fesql::vm::Engine engine(catalog);
     std::string sql = "select col1, col2 + 1 from t1;";
     ::fesql::vm::BatchRunSession session;
@@ -193,19 +193,11 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
-    {
-        std::shared_ptr<TabletTableHandler> handler(
-            new TabletTableHandler(args->meta, "db1", args->table));
-        ASSERT_TRUE(handler->Init());
-        ASSERT_TRUE(catalog->AddTable(handler));
-    }
+    ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
+
     TestArgs *args1 = PrepareTable("t2");
-    {
-        std::shared_ptr<TabletTableHandler> handler(
-            new TabletTableHandler(args1->meta, "db1", args1->table));
-        ASSERT_TRUE(handler->Init());
-        ASSERT_TRUE(catalog->AddTable(handler));
-    }
+    ASSERT_TRUE(catalog->AddTable(args1->meta, args1->table));
+
     ::fesql::vm::Engine engine(catalog);
     std::string sql =
         "select t1.col1 as c1, t1.col2 as c2 , t2.col1 as c3, t2.col2 as c4 "
@@ -242,20 +234,10 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
-    {
-        std::shared_ptr<TabletTableHandler> handler(
-            new TabletTableHandler(args->meta, "db1", args->table));
-        ASSERT_TRUE(handler->Init());
-        ASSERT_TRUE(catalog->AddTable(handler));
-    }
+    ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
 
     TestArgs *args1 = PrepareTable("t2");
-    {
-        std::shared_ptr<TabletTableHandler> handler(
-            new TabletTableHandler(args1->meta, "db1", args1->table));
-        ASSERT_TRUE(handler->Init());
-        ASSERT_TRUE(catalog->AddTable(handler));
-    }
+    ASSERT_TRUE(catalog->AddTable(args1->meta, args1->table));
 
     ::fesql::vm::Engine engine(catalog);
     std::string sql =
@@ -297,10 +279,7 @@ TEST_F(TabletCatalogTest, sql_window_smoke_500_test) {
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
 
-    std::shared_ptr<TabletTableHandler> handler(
-        new TabletTableHandler(args->meta, "db1", args->table));
-    ASSERT_TRUE(handler->Init());
-    ASSERT_TRUE(catalog->AddTable(handler));
+    ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
     ::fesql::vm::Engine engine(catalog);
     std::stringstream ss;
     ss << "select ";
@@ -332,10 +311,7 @@ TEST_F(TabletCatalogTest, sql_window_smoke_test) {
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
 
-    std::shared_ptr<TabletTableHandler> handler(
-        new TabletTableHandler(args->meta, "db1", args->table));
-    ASSERT_TRUE(handler->Init());
-    ASSERT_TRUE(catalog->AddTable(handler));
+    ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
     ::fesql::vm::Engine engine(catalog);
     std::string sql =
         "select sum(col2) over w1, t1.col1, t1.col2 from t1 window w1 "

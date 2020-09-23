@@ -58,7 +58,7 @@ TEST_F(SDKCatalogTest, sdk_smoke_test) {
     std::vector<::rtidb::nameserver::TableInfo> tables;
     tables.push_back(args->meta);
     std::shared_ptr<SDKCatalog> catalog(new SDKCatalog());
-    ASSERT_TRUE(catalog->Init(tables));
+    ASSERT_TRUE(catalog->Init(tables, std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>()));
     ::fesql::vm::EngineOptions options;
     options.set_compile_only(true);
     ::fesql::vm::Engine engine(catalog, options);
@@ -76,7 +76,7 @@ TEST_F(SDKCatalogTest, sdk_window_smoke_test) {
     std::vector<::rtidb::nameserver::TableInfo> tables;
     tables.push_back(args->meta);
     std::shared_ptr<SDKCatalog> catalog(new SDKCatalog());
-    ASSERT_TRUE(catalog->Init(tables));
+    ASSERT_TRUE(catalog->Init(tables, std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>()));
     ::fesql::vm::EngineOptions options;
     options.set_compile_only(true);
     ::fesql::vm::Engine engine(catalog, options);
@@ -99,7 +99,7 @@ TEST_F(SDKCatalogTest, sdk_lastjoin_smoke_test) {
     tables.push_back(args->meta);
     tables.push_back(args2->meta);
     std::shared_ptr<SDKCatalog> catalog(new SDKCatalog());
-    ASSERT_TRUE(catalog->Init(tables));
+    ASSERT_TRUE(catalog->Init(tables, std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>()));
     ::fesql::vm::EngineOptions options;
     options.set_compile_only(true);
     ::fesql::vm::Engine engine(catalog, options);

@@ -139,10 +139,7 @@ void TabletEngineTest::BatchModeCheck(
         if (!args) {
             FAIL() << "fail to prepare table";
         }
-        std::shared_ptr<TabletTableHandler> handler(
-            new TabletTableHandler(args->meta, sql_case.db(), args->table));
-        ASSERT_TRUE(handler->Init());
-        ASSERT_TRUE(catalog->AddTable(handler));
+        ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
         name_table_map.insert(
             std::make_pair(table_def.name(), std::make_pair(args, sql_table)));
     }
@@ -237,10 +234,7 @@ void TabletEngineTest::RequestModeCheck(
         if (!args) {
             FAIL() << "fail to prepare table";
         }
-        std::shared_ptr<TabletTableHandler> handler(
-            new TabletTableHandler(args->meta, sql_case.db(), args->table));
-        ASSERT_TRUE(handler->Init());
-        ASSERT_TRUE(catalog->AddTable(handler));
+        ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
         name_table_map.insert(
             std::make_pair(table_def.name(), std::make_pair(args, sql_table)));
     }

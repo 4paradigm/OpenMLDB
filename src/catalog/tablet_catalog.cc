@@ -95,9 +95,8 @@ bool TabletTableHandler::Init() {
 std::unique_ptr<::fesql::codec::RowIterator> TabletTableHandler::GetIterator() const {
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
     if (!tables->empty()) {
-        auto table = tables->begin()->second;
         return std::unique_ptr<catalog::FullTableIterator>(
-            new catalog::FullTableIterator(table->NewTraverseIterator(0), table));
+            new catalog::FullTableIterator(tables));
     }
     return std::unique_ptr<::fesql::codec::RowIterator>();
 }
@@ -109,7 +108,6 @@ TabletTableHandler::GetWindowIterator(const std::string& idx_name) {
         LOG(WARNING) << "index name " << idx_name << " not exist";
         return std::unique_ptr<::fesql::codec::WindowIterator>();
     }
-    // TODO(wangtaize) add table ref cnt
     DLOG(INFO) << "get window it with index " << idx_name;
     return std::unique_ptr<::fesql::codec::WindowIterator> (new DistributeWindowIterator(tables_, iter->second.index));
 }
@@ -144,6 +142,24 @@ const uint64_t TabletTableHandler::GetCount() {
         iter->Next();
     }
     return iter->Valid() ? iter->GetValue() : ::fesql::codec::Row();
+}
+
+std::shared_ptr<::fesql::vm::PartitionHandler> TabletTableHandler::GetPartition(
+        std::shared_ptr<::fesql::vm::TableHandler> table_hander,
+        const std::string &index_name) const {
+    if (!table_hander) {
+        LOG(WARNING) << "fail to get partition for tablet table handler: "
+                        "table handler is null";
+        return std::shared_ptr<::fesql::vm::PartitionHandler>();
+    }
+    if (table_hander->GetIndex().find(index_name) ==
+        table_hander->GetIndex().cend()) {
+        LOG(WARNING)
+            << "fail to get partition for tablet table handler, index name "
+            << index_name;
+        return std::shared_ptr<::fesql::vm::PartitionHandler>();
+    }
+    return std::make_shared<TabletPartitionHandler>(table_hander, index_name);
 }
 
 void TabletTableHandler::AddTable(std::shared_ptr<::rtidb::storage::Table> table) {

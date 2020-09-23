@@ -21,9 +21,7 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <utility>
-
 #include "base/spinlock.h"
 #include "catalog/distribute_iterator.h"
 #include "codec/row.h"
@@ -217,22 +215,7 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
 
     std::shared_ptr<::fesql::vm::PartitionHandler> GetPartition(
         std::shared_ptr<::fesql::vm::TableHandler> table_hander,
-        const std::string &index_name) const override {
-        if (!table_hander) {
-            LOG(WARNING) << "fail to get partition for tablet table handler: "
-                            "table handler is null";
-            return std::shared_ptr<::fesql::vm::PartitionHandler>();
-        }
-        if (table_hander->GetIndex().find(index_name) ==
-            table_hander->GetIndex().cend()) {
-            LOG(WARNING)
-                << "fail to get partition for tablet table handler, index name "
-                << index_name;
-            return std::shared_ptr<::fesql::vm::PartitionHandler>();
-        }
-        return std::shared_ptr<TabletPartitionHandler>(
-            new TabletPartitionHandler(table_hander, index_name));
-    }
+        const std::string &index_name) const override;
 
     const std::string GetHandlerTypeName() override {
         return "TabletTableHandler";
@@ -260,7 +243,7 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
     ::fesql::vm::Schema schema_;
     std::string name_;
     std::string db_;
-    std::shared_ptr<std::unordered_map<uint32_t, std::shared_ptr<::rtidb::storage::Table>>> tables_;
+    std::shared_ptr<Tables> tables_;
     ::fesql::vm::Types types_;
     ::fesql::vm::IndexList index_list_;
     ::fesql::vm::IndexHint index_hint_;

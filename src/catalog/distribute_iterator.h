@@ -20,9 +20,9 @@
 #ifndef SRC_CATALOG_DISTRIBUTE_ITERATOR_H_
 #define SRC_CATALOG_DISTRIBUTE_ITERATOR_H_
 
+#include <map>
 #include <memory>
 #include <string>
-#include <unordered_map>
 
 #include "base/hash.h"
 #include "catalog/client_manager.h"
@@ -32,7 +32,7 @@
 namespace rtidb {
 namespace catalog {
 
-using Tables = std::unordered_map<uint32_t, std::shared_ptr<::rtidb::storage::Table>>;
+using Tables = std::map<uint32_t, std::shared_ptr<::rtidb::storage::Table>>;
 
 class DistributeWindowIterator : public ::fesql::codec::WindowIterator {
  public:

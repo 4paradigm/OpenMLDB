@@ -20,6 +20,7 @@
 
 #include <memory>
 #include <string>
+#include <map>
 
 #include "base/fe_slice.h"
 #include "base/iterator.h"
@@ -30,6 +31,8 @@
 
 namespace rtidb {
 namespace catalog {
+
+using Tables = std::map<uint32_t, std::shared_ptr<::rtidb::storage::Table>>;
 
 class FullTableIterator;
 class EmptyWindowIterator;
@@ -64,37 +67,64 @@ class EmptyWindowIterator
 class FullTableIterator
     : public ::fesql::codec::ConstIterator<uint64_t, ::fesql::codec::Row> {
  public:
-    FullTableIterator() : it_(), table_() {}
+    explicit FullTableIterator(std::shared_ptr<Tables> tables) :
+        tables_(tables), cur_pid_(0), it_(), key_(0), value_() {}
 
-    explicit FullTableIterator(::rtidb::storage::TableIterator* it,
-                               std::shared_ptr<::rtidb::storage::Table> table)
-        : it_(it), table_(table), value_(), key_(0) {}
-    ~FullTableIterator() { delete it_; }
+    void Seek(const uint64_t& ts) override {}
 
-    inline void Seek(const uint64_t& ts) {}
+    void SeekToFirst() override {
+        for (const auto& kv : *tables_) {
+            it_.reset(kv.second->NewTraverseIterator(0));
+            it_->SeekToFirst();
+            if (it_->Valid()) {
+                cur_pid_ = kv.first;
+                key_ = it_->GetKey();
+                break;
+            }
+        }
+    }
 
-    inline void SeekToFirst() { it_->SeekToFirst(); }
+    bool Valid() const override { return it_ && it_->Valid(); }
 
-    inline bool Valid() const { return it_->Valid(); }
+    void Next() override {
+        it_->Next();
+        if (!it_->Valid()) {
+            it_.reset();
+            cur_pid_++;
+            for (const auto& kv : *tables_) {
+                if (kv.first < cur_pid_) {
+                    continue;
+                }
+                it_.reset(kv.second->NewTraverseIterator(0));
+                it_->SeekToFirst();
+                if (it_->Valid()) {
+                    cur_pid_ = kv.first;
+                    break;
+                }
+            }
+        }
+        if (it_->Valid()) {
+            key_ = it_->GetKey();
+        }
+    }
 
-    inline void Next() { it_->Next(); }
-
-    inline const ::fesql::codec::Row& GetValue() {
+    const ::fesql::codec::Row& GetValue() override {
         value_ = ::fesql::codec::Row(::fesql::base::RefCountedSlice::Create(
             it_->GetValue().data(), it_->GetValue().size()));
         return value_;
     }
 
-    inline bool IsSeekable() const override { return true; }
+    bool IsSeekable() const override { return true; }
 
     // the key maybe the row num
-    inline const uint64_t& GetKey() const { return key_; }
+    const uint64_t& GetKey() const override { return key_; }
 
  private:
-    ::rtidb::storage::TableIterator* it_;
-    std::shared_ptr<::rtidb::storage::Table> table_;
-    ::fesql::codec::Row value_;
+    std::shared_ptr<Tables> tables_;
+    uint32_t cur_pid_;
+    std::unique_ptr<::rtidb::storage::TableIterator> it_;
     uint64_t key_;
+    ::fesql::codec::Row value_;
 };
 
 }  // namespace catalog
