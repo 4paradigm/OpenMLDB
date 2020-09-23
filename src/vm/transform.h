@@ -213,7 +213,7 @@ class ConditionOptimized : public TransformUpPysicalPass {
     bool JoinConditionOptimized(PhysicalOpNode* in, Join* join);
     void SkipConstExpression(node::ExprListNode input,
                              node::ExprListNode* output);
-    bool FilterConditionOptimized(PhysicalFliterNode* in, Filter* filter);
+    bool FilterConditionOptimized(PhysicalOpNode* in, Filter* filter);
 };
 class LeftJoinOptimized : public TransformUpPysicalPass {
  public:

@@ -495,10 +495,10 @@ class JoinGenerator {
  public:
     explicit JoinGenerator(const Join& join, size_t left_slices,
                            size_t right_slices)
-        : condition_gen_(join.filter_.condition_.fn_info_),
-          left_key_gen_(join.filter_.left_key_.fn_info_),
-          right_group_gen_(join.filter_.right_key_),
-          index_key_gen_(join.filter_.index_key_.fn_info_),
+        : condition_gen_(join.condition_.fn_info_),
+          left_key_gen_(join.left_key_.fn_info_),
+          right_group_gen_(join.right_key_),
+          index_key_gen_(join.index_key_.fn_info_),
           right_sort_gen_(join.right_sort_),
           left_slices_(left_slices),
           right_slices_(right_slices) {}

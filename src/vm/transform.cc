@@ -1398,20 +1398,19 @@ bool BatchModeTransformer::CodeGenExprList(
 
 bool BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in,
                                    base::Status& status) {
-    auto filter = &(join->filter_);
-    if (!GenConditionFilter(&filter->condition_, in->GetOutputNameSchemaList(),
+    if (!GenConditionFilter(&join->condition_, in->GetOutputNameSchemaList(),
                             status)) {
         return false;
     }
-    if (!GenKey(&filter->left_key_,
+    if (!GenKey(&join->left_key_, in->producers()[0]->GetOutputNameSchemaList(),
+                status)) {
+        return false;
+    }
+    if (!GenKey(&join->index_key_,
                 in->producers()[0]->GetOutputNameSchemaList(), status)) {
         return false;
     }
-    if (!GenKey(&filter->index_key_,
-                in->producers()[0]->GetOutputNameSchemaList(), status)) {
-        return false;
-    }
-    if (!GenKey(&filter->right_key_,
+    if (!GenKey(&join->right_key_,
                 in->producers()[1]->GetOutputNameSchemaList(), status)) {
         return false;
     }
@@ -1587,18 +1586,17 @@ bool BatchModeTransformer::GenWindowJoinList(WindowJoinList* window_join_list,
             auto right_schema = window_join.first->GetOutputNameSchemaList();
             auto& left_schema = joined_schema;
             auto join = &window_join.second;
-            if (!GenKey(&join->filter_.left_key_, left_schema, status)) {
+            if (!GenKey(&join->left_key_, left_schema, status)) {
                 return false;
             }
-            if (!GenKey(&join->filter_.index_key_, left_schema, status)) {
+            if (!GenKey(&join->index_key_, left_schema, status)) {
                 return false;
             }
-            if (!GenKey(&join->filter_.right_key_, right_schema, status)) {
+            if (!GenKey(&join->right_key_, right_schema, status)) {
                 return false;
             }
             joined_schema.AddSchemaSources(right_schema);
-            if (!GenConditionFilter(&join->filter_.condition_, joined_schema,
-                                    status)) {
+            if (!GenConditionFilter(&join->condition_, joined_schema, status)) {
                 return false;
             }
         }
@@ -1753,7 +1751,7 @@ bool GroupAndSortOptimized::JoinKeysOptimized(
     if (nullptr == join) {
         return false;
     }
-    return FilterOptimized(column_sources, in, &join->filter_, new_in);
+    return FilterOptimized(column_sources, in, join, new_in);
 }
 bool GroupAndSortOptimized::FilterOptimized(
     const vm::SchemaSourceList& column_sources, PhysicalOpNode* in,
@@ -1774,7 +1772,7 @@ bool GroupAndSortOptimized::FilterOptimized(
             auto& index_hint = scan_op->table_handler_->GetIndex();
             const node::ExprListNode* right_partition =
                 filter->right_key_.keys();
-            if (!TransformGroupExpr(SchemaSourceList(), right_partition,
+            if (!TransformGroupExpr(column_sources, right_partition,
                                     index_hint, &index_name, &index_keys,
                                     &new_right_partition)) {
                 return false;
@@ -2185,8 +2183,12 @@ bool ConditionOptimized::JoinConditionOptimized(PhysicalOpNode* in,
             << "Fail to Join Condition Optimized: input produces size isn't 2";
         return false;
     }
+    return FilterConditionOptimized(in, join);
+}
+bool ConditionOptimized::FilterConditionOptimized(PhysicalOpNode* in,
+                                                  Filter* filter) {
     node::ExprListNode and_conditions;
-    if (!TransfromAndConditionList(join->filter_.condition_.condition_,
+    if (!TransfromAndConditionList(filter->condition_.condition_,
                                    &and_conditions)) {
         return false;
     }
@@ -2207,9 +2209,9 @@ bool ConditionOptimized::JoinConditionOptimized(PhysicalOpNode* in,
     }
     node::ExprNode* filter_condition =
         node_manager_->MakeAndExpr(&new_and_conditions);
-    join->filter_.left_key_.set_keys(left_keys);
-    join->filter_.right_key_.set_keys(right_keys);
-    join->filter_.condition_.set_condition(filter_condition);
+    filter->left_key_.set_keys(left_keys);
+    filter->right_key_.set_keys(right_keys);
+    filter->condition_.set_condition(filter_condition);
     return true;
 }
 bool ConditionOptimized::Transform(PhysicalOpNode* in,
@@ -2421,41 +2423,7 @@ void ConditionOptimized::SkipConstExpression(node::ExprListNode input,
         return;
     }
 }
-bool ConditionOptimized::FilterConditionOptimized(PhysicalFliterNode* in,
-                                                  Filter* filter) {
-    if (1 != in->producers().size()) {
-        LOG(WARNING) << "Fail to Filter Condition Optimized: input produces "
-                        "size isn't 1";
-        return false;
-    }
-    node::ExprListNode and_conditions;
-    if (!TransfromAndConditionList(filter->condition_.condition_,
-                                   &and_conditions)) {
-        return false;
-    }
 
-    node::ExprListNode new_and_conditions;
-    std::vector<ExprPair> condition_eq_pair;
-    if (!TransformEqualExprPair(in->GetOutputNameSchemaList(),
-                                in->producers()[0]->GetOutputSchemaListSize(),
-                                &and_conditions, &new_and_conditions,
-                                condition_eq_pair)) {
-        return false;
-    }
-    node::ExprListNode* left_keys = node_manager_->MakeExprList();
-    node::ExprListNode* right_keys = node_manager_->MakeExprList();
-    for (auto pair : condition_eq_pair) {
-        right_keys->AddChild(pair.right_expr_);
-        left_keys->AddChild(pair.left_expr_);
-    }
-    node::ExprNode* filter_condition =
-        node_manager_->MakeAndExpr(&new_and_conditions);
-    filter->index_key_.set_keys(left_keys);
-    filter->condition_.set_condition(filter_condition);
-    filter->left_key_.set_keys(left_keys);
-    filter->right_key_.set_keys(right_keys);
-    return true;
-}
 bool LimitOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     *output = in;
     if (kPhysicalOpLimit != in->type_) {
