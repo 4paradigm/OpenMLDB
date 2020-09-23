@@ -202,11 +202,20 @@ class ConditionOptimized : public TransformUpPysicalPass {
     static bool ExtractEqualExprPair(
         node::ExprNode* condition,
         std::pair<node::ExprNode*, node::ExprNode*>* expr_pair);
+    static bool MakeConstEqualExprPair(
+        const std::pair<node::ExprNode*, node::ExprNode*> expr_pair,
+        const vm::SchemasContext& ctx, const size_t left_schema_cnt,
+        ExprPair* output);
     static bool TransformEqualExprPair(
         const SchemaSourceList& name_schema_list, const size_t left_schema_cnt,
         node::ExprListNode* and_conditions,
         node::ExprListNode* out_condition_list,
         std::vector<ExprPair>& condition_eq_pair);  // NOLINT
+    static bool TransformConstEqualExprPair(
+        const SchemaSourceList& name_schema_list,
+        node::ExprListNode* and_conditions,
+        node::ExprListNode* out_condition_list,
+        std::vector<ExprPair>& condition_eq_pair);
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
