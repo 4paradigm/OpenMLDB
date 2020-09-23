@@ -27,6 +27,6 @@ public interface SqlExecutor {
 
     Schema getInputSchema(String dbName, String sql) throws SQLException;
     SQLResultSet callProcedure(String dbName, String proName, List<List<Object>> requestRows) throws SQLException;
-    boolean dropProcedure(String dbName, String proName) throws SQLException ;
+    boolean dropProcedure(String dbName, String proName) throws SQLException;
     ProcedureInfo showProcedure(String dbName, String proName) throws SQLException;
 }

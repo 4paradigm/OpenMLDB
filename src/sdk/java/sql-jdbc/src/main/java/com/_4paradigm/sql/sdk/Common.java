@@ -1,9 +1,12 @@
 package com._4paradigm.sql.sdk;
 
 import com._4paradigm.sql.DataType;
+import com._4paradigm.sql.Schema;
 
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Common {
     public static int type2SqlType(DataType dataType) throws SQLException {
@@ -28,5 +31,18 @@ public class Common {
         } else {
             throw new SQLException("Unexpected value: " + dataType.toString());
         }
+    }
+
+    public static com._4paradigm.sql.sdk.Schema ConvertSchema(Schema schema) throws SQLException {
+        List<Column> columnList = new ArrayList<>();
+        for (int i = 0; i < schema.GetColumnCnt(); i++) {
+            Column column = new Column();
+            column.setColumnName(schema.GetColumnName(i));
+            column.setSqlType(type2SqlType(schema.GetColumnType(i)));
+            column.setNotNull(schema.IsColumnNotNull(i));
+            column.setConstant(false);
+            columnList.add(column);
+        }
+        return new com._4paradigm.sql.sdk.Schema(columnList);
     }
 }

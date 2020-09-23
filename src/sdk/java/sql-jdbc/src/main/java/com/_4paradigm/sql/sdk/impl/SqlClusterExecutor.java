@@ -4,12 +4,15 @@ import com._4paradigm.sql.*;
 import com._4paradigm.sql.common.LibraryLoader;
 import com._4paradigm.sql.jdbc.SQLResultSet;
 import com._4paradigm.sql.sdk.*;
+import com._4paradigm.sql.sdk.ProcedureInfo;
 import com._4paradigm.sql.sdk.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -171,7 +174,55 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     @Override
     public SQLResultSet callProcedure(String dbName, String proName, List<List<Object>> requestRows) throws SQLException {
-        return null;
+        if (requestRows == null || requestRows.isEmpty()) {
+            throw new SQLException("requestRows is null or empty");
+        }
+        List<Object> requestRow = requestRows.get(0);
+        if (requestRow == null || requestRow.isEmpty()) {
+            throw new SQLException("requestRow is null or empty");
+        }
+        ProcedureInfo procedureInfo = showProcedure(dbName, proName);
+        Status status = new Status();
+        SQLRequestRow sqlRequestRow = sqlRouter.GetRequestRow(dbName, procedureInfo.getSql(), status);
+        if (status.getCode() != 0 || sqlRequestRow == null) {
+            logger.error("getRequestRow failed: {}", status.getMsg());
+            throw new SQLException("getRequestRow failed");
+        }
+        Schema inputSchema = procedureInfo.getInputSchema();
+        for (int i = 0 ; i < inputSchema.getColumnList().size(); i++) {
+            Column column = inputSchema.getColumnList().get(0);
+            switch (column.getSqlType()) {
+                case Types.BOOLEAN:
+                    sqlRequestRow.AppendBool((Boolean)requestRow.get(i));
+                    break;
+                case Types.SMALLINT:
+                    sqlRequestRow.AppendInt16((Short)requestRow.get(i));
+                    break;
+                case Types.INTEGER:
+                    sqlRequestRow.AppendInt32((Integer) requestRow.get(i));
+                    break;
+                case Types.BIGINT:
+                    sqlRequestRow.AppendInt64((Long) requestRow.get(i));
+                    break;
+                case Types.FLOAT:
+                    sqlRequestRow.AppendFloat((Float) requestRow.get(i));
+                    break;
+                case Types.DOUBLE:
+                    sqlRequestRow.AppendDouble((Double) requestRow.get(i));
+                    break;
+                case Types.DATE:
+                    java.sql.Date date = (java.sql.Date)requestRow.get(i);
+                    sqlRequestRow.AppendDate(date.getYear() + 1900, date.getMonth() + 1, date.getDate());
+                    break;
+                case Types.TIMESTAMP:
+                    sqlRequestRow.AppendTimestamp(((Timestamp)requestRow.get(i)).getTime());
+                    break;
+                default:
+                    throw new SQLException("column type not supported");
+            }
+        }
+        ResultSet resultSet = sqlRouter.CallProcedure(dbName, proName, sqlRequestRow, status);
+        return new SQLResultSet(resultSet);
     }
 
     @Override
@@ -181,6 +232,14 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     @Override
     public ProcedureInfo showProcedure(String dbName, String proName) throws SQLException{
+        Status status = new Status();
+        com._4paradigm.sql.ProcedureInfo procedureInfo = sqlRouter.ShowProcedure(dbName, proName, status);
+        ProcedureInfo spInfo = new ProcedureInfo();
+        spInfo.setDbName(procedureInfo.GetDbName());
+        spInfo.setProName(procedureInfo.GetSpName());
+        spInfo.setSql(procedureInfo.GetSql());
+        spInfo.setInputSchema(Common.ConvertSchema(procedureInfo.GetInputSchema()));
+        spInfo.setOutputSchema(Common.ConvertSchema(procedureInfo.GetOutputSchema()));
         return null;
     }
 
