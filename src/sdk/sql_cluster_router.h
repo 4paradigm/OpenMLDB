@@ -132,6 +132,9 @@ class SQLClusterRouter : public SQLRouter {
             const std::string& db, const std::string& sp_name,
             std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status);
 
+    std::shared_ptr<ProcedureInfo> ShowProcedure(
+            const std::string& db, const std::string& sp_name, fesql::sdk::Status* status);
+
  private:
     bool GetTablet(
         const std::string& db, const std::string& sql,

@@ -49,6 +49,17 @@ class ExplainInfo {
     virtual const std::string& GetIR() = 0;
 };
 
+class ProcedureInfo {
+ public:
+    ProcedureInfo() {}
+    virtual ~ProcedureInfo() {}
+    virtual const std::string& GetDbName() = 0;
+    virtual const std::string& GetSpName() = 0;
+    virtual const std::string& GetSql() = 0;
+    virtual const ::fesql::sdk::Schema& GetInputSchema() = 0;
+    virtual const ::fesql::sdk::Schema& GetOutputSchema() = 0;
+};
+
 class SQLRouter {
  public:
     SQLRouter() {}
@@ -101,6 +112,13 @@ class SQLRouter {
         fesql::sdk::Status* status) = 0;
 
     virtual bool RefreshCatalog() = 0;
+
+    virtual std::shared_ptr<fesql::sdk::ResultSet> CallProcedure(
+            const std::string& db, const std::string& sp_name,
+            std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<ProcedureInfo> ShowProcedure(
+            const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) = 0;
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);

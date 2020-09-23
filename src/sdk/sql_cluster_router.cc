@@ -66,6 +66,37 @@ class ExplainInfoImpl : public ExplainInfo {
     std::string ir_;
 };
 
+class ProcedureInfoImpl : public ProcedureInfo {
+ public:
+     ProcedureInfoImpl(const std::string& db_name, const std::string& sp_name,
+             const std::string& sql,
+             const ::fesql::sdk::SchemaImpl& input_schema,
+             const ::fesql::sdk::SchemaImpl& output_schema)
+        : db_name_(db_name),
+          sp_name_(sp_name),
+          sql_(sql),
+          input_schema_(input_schema),
+          output_schema_(output_schema) {}
+    ~ProcedureInfoImpl() {}
+
+    const ::fesql::sdk::Schema& GetInputSchema() { return input_schema_; }
+
+    const ::fesql::sdk::Schema& GetOutputSchema() { return output_schema_; }
+
+    const std::string& GetDbName() { return db_name_; }
+
+    const std::string& GetSpName() { return sp_name_; }
+
+    const std::string& GetSql() { return sql_; }
+
+ private:
+    std::string db_name_;
+    std::string sp_name_;
+    std::string sql_;
+    ::fesql::sdk::SchemaImpl input_schema_;
+    ::fesql::sdk::SchemaImpl output_schema_;
+};
+
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
     : options_(options),
       cluster_sdk_(NULL),
@@ -877,6 +908,29 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     return rs;
+}
+
+std::shared_ptr<ProcedureInfo> SQLClusterRouter::ShowProcedure(
+        const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) {
+    auto ns_ptr = cluster_sdk_->GetNsClient();
+    if (!ns_ptr) {
+        LOG(WARNING) << "no nameserver exist";
+        return std::shared_ptr<ProcedureInfo>();
+    }
+    rtidb::nameserver::ProcedureInfo sp_info_pb;
+    std::string err;
+    bool ok = ns_ptr->ShowProcedure(db, sp_name, sp_info_pb, err);
+    if (!ok) {
+        status->msg = "fail to show procedure for error " + err;
+        LOG(WARNING) << status->msg;
+        status->code = -1;
+        return std::shared_ptr<ProcedureInfo>();
+    }
+    ::fesql::sdk::SchemaImpl input_schema;
+    ::fesql::sdk::SchemaImpl output_schema;
+    std::shared_ptr<ProcedureInfoImpl> sp_info = std::make_shared<ProcedureInfoImpl>(
+            db, sp_name, sp_info_pb.sql(), input_schema, output_schema);
+    return sp_info;
 }
 
 }  // namespace sdk
