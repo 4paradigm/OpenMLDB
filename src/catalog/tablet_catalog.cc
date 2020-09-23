@@ -23,7 +23,6 @@
 #include <utility>
 
 #include "catalog/schema_adapter.h"
-#include "catalog/table_iterator_adapter.h"
 #include "catalog/distribute_iterator.h"
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"

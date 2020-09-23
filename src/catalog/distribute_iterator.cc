@@ -22,6 +22,53 @@
 namespace rtidb {
 namespace catalog {
 
+FullTableIterator::FullTableIterator(std::shared_ptr<Tables> tables) :
+    tables_(tables), cur_pid_(0), it_(), key_(0), value_() {}
+
+void FullTableIterator::SeekToFirst() {
+    for (const auto& kv : *tables_) {
+        it_.reset(kv.second->NewTraverseIterator(0));
+        it_->SeekToFirst();
+        if (it_->Valid()) {
+            cur_pid_ = kv.first;
+            key_ = it_->GetKey();
+            break;
+        }
+    }
+}
+
+bool FullTableIterator::Valid() const {
+    return it_ && it_->Valid();
+}
+
+void FullTableIterator::Next() {
+    it_->Next();
+    if (!it_->Valid()) {
+        it_.reset();
+        cur_pid_++;
+        for (const auto& kv : *tables_) {
+            if (kv.first < cur_pid_) {
+                continue;
+            }
+            it_.reset(kv.second->NewTraverseIterator(0));
+            it_->SeekToFirst();
+            if (it_->Valid()) {
+                cur_pid_ = kv.first;
+                break;
+            }
+        }
+    }
+    if (it_ && it_->Valid()) {
+        key_ = it_->GetKey();
+    }
+}
+
+const ::fesql::codec::Row& FullTableIterator::GetValue() {
+    value_ = ::fesql::codec::Row(::fesql::base::RefCountedSlice::Create(
+        it_->GetValue().data(), it_->GetValue().size()));
+    return value_;
+}
+
 DistributeWindowIterator::DistributeWindowIterator(std::shared_ptr<Tables> tables, uint32_t index)
     : tables_(tables), index_(index), it_() {}
 
@@ -63,22 +110,6 @@ std::unique_ptr<::fesql::codec::RowIterator> DistributeWindowIterator::GetValue(
 ::fesql::codec::RowIterator* DistributeWindowIterator::GetValue(int8_t* addr) { return it_->GetValue(addr); }
 
 const ::fesql::codec::Row DistributeWindowIterator::GetKey() { return it_->GetKey(); }
-
-DistributeRowIterator::DistributeRowIterator() {}
-
-bool DistributeRowIterator::Valid() const { return true; }
-
-void DistributeRowIterator::Next() {}
-
-const uint64_t& DistributeRowIterator::GetKey() const { return cur_ts_; }
-
-const ::fesql::codec::Row& DistributeRowIterator::GetValue() { return value_; }
-
-void DistributeRowIterator::Seek(const uint64_t& k) {}
-
-void DistributeRowIterator::SeekToFirst() {}
-
-bool DistributeRowIterator::IsSeekable() const { return true; }
 
 }  // namespace catalog
 }  // namespace rtidb

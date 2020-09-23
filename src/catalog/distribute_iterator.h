@@ -25,7 +25,6 @@
 #include <string>
 
 #include "base/hash.h"
-#include "catalog/client_manager.h"
 #include "storage/table.h"
 #include "vm/catalog.h"
 
@@ -33,6 +32,28 @@ namespace rtidb {
 namespace catalog {
 
 using Tables = std::map<uint32_t, std::shared_ptr<::rtidb::storage::Table>>;
+
+// the full table iterator
+class FullTableIterator
+    : public ::fesql::codec::ConstIterator<uint64_t, ::fesql::codec::Row> {
+ public:
+    explicit FullTableIterator(std::shared_ptr<Tables> tables);
+    void Seek(const uint64_t& ts) override {}
+    void SeekToFirst() override;
+    bool Valid() const override;
+    void Next() override;
+    const ::fesql::codec::Row& GetValue() override;
+    bool IsSeekable() const override { return true; }
+    // the key maybe the row num
+    const uint64_t& GetKey() const override { return key_; }
+
+ private:
+    std::shared_ptr<Tables> tables_;
+    uint32_t cur_pid_;
+    std::unique_ptr<::rtidb::storage::TableIterator> it_;
+    uint64_t key_;
+    ::fesql::codec::Row value_;
+};
 
 class DistributeWindowIterator : public ::fesql::codec::WindowIterator {
  public:
@@ -49,24 +70,6 @@ class DistributeWindowIterator : public ::fesql::codec::WindowIterator {
     std::shared_ptr<Tables> tables_;
     uint32_t index_;
     std::unique_ptr<::fesql::codec::WindowIterator> it_;
-};
-
-class DistributeRowIterator : public ::fesql::codec::RowIterator {
- public:
-    DistributeRowIterator();
-    bool Valid() const override;
-    void Next() override;
-    const uint64_t& GetKey() const override;
-    const ::fesql::codec::Row& GetValue() override;
-    void Seek(const uint64_t& k) override;
-    void SeekToFirst() override;
-    bool IsSeekable() const override;
-
- private:
-    bool request_all_;
-    uint64_t cur_ts_;
-    ::fesql::codec::Row value_;
-    std::shared_ptr<TableClientManager> table_client_manager_;
 };
 
 }  // namespace catalog
