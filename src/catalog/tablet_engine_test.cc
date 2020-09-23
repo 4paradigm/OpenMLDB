@@ -90,8 +90,9 @@ void StoreData(std::shared_ptr<TestArgs> args,
 }
 
 std::shared_ptr<TestArgs> PrepareTableWithTableDef(
-    const fesql::type::TableDef &table_def, const uint32_t tid) {
+    const fesql::type::TableDef &table_def, const std::string& db_name, const uint32_t tid) {
     std::shared_ptr<TestArgs> args = std::shared_ptr<TestArgs>(new TestArgs());
+    args->meta.set_db(db_name);
     args->meta.set_name(table_def.name());
     args->meta.set_tid(tid);
     args->meta.set_pid(0);
@@ -135,7 +136,7 @@ void TabletEngineTest::BatchModeCheck(
         std::shared_ptr<::fesql::storage::Table> sql_table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
 
-        auto args = PrepareTableWithTableDef(table_def, i + 1);
+        auto args = PrepareTableWithTableDef(table_def, sql_case.db(), i + 1);
         if (!args) {
             FAIL() << "fail to prepare table";
         }
@@ -230,7 +231,7 @@ void TabletEngineTest::RequestModeCheck(
         std::shared_ptr<::fesql::storage::Table> sql_table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
 
-        auto args = PrepareTableWithTableDef(table_def, i + 1);
+        auto args = PrepareTableWithTableDef(table_def, sql_case.db(), i + 1);
         if (!args) {
             FAIL() << "fail to prepare table";
         }
