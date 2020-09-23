@@ -291,14 +291,14 @@ Status CodeGenContext::CreateBranchImpl(llvm::Value* cond,
 Status CodeGenContext::CreateWhile(
     const std::function<Status(::llvm::Value** res)>& build_cond,
     const std::function<Status()>& build_body) {
-    // exit point
-    ::llvm::BasicBlock* exit_block = AppendNewBlock("__while_exit__");
-
     // while entry and body
     auto cur_scope = this->GetCurrentScope();
     CodeScope entry_scope(this, "__while_entry__", cur_scope);
     CodeScope body_scope(this, "__while_body__", cur_scope);
     GetBuilder()->CreateBr(entry_scope.blocks()->first());
+
+    // exit point
+    ::llvm::BasicBlock* exit_block = AppendNewBlock("__while_exit__");
 
     {
         CodeScopeGuard entry_guard(&entry_scope);

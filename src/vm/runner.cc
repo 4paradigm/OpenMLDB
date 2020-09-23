@@ -16,7 +16,9 @@
 #include "udf/udf.h"
 #include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
+#include "vm/jit_runtime.h"
 #include "vm/mem_catalog.h"
+
 namespace fesql {
 namespace vm {
 #define MAX_DEBUG_LINES_CNT 20
@@ -379,6 +381,9 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
         return Row();
     }
 
+    // Init current run step runtime
+    JITRuntime::get()->InitRunStep();
+
     auto udf =
         reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
             const_cast<int8_t*>(fn));
@@ -390,7 +395,10 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
 
     uint32_t ret = udf(row_ptr, window_ptr, &out_buf);
-    fesql::udf::ThreadLocalMemoryPoolReset();
+
+    // Release current run step resources
+    JITRuntime::get()->ReleaseRunStep();
+
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();

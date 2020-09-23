@@ -75,6 +75,7 @@ std::string GetLLVMObjectString(T* obj) {
     std::string res;
     llvm::raw_string_ostream ss(res);
     ss << *obj;
+    ss.flush();
     return res;
 }
 
