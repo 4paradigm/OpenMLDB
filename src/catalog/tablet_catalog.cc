@@ -226,7 +226,7 @@ bool TabletCatalog::AddTable(const ::rtidb::api::TableMeta& meta,
     auto it = db_it->second.find(table_name);
     if (it == db_it->second.end()) {
         handler = std::make_shared<TabletTableHandler>(meta);
-        if (handler->Init()) {
+        if (!handler->Init()) {
             LOG(WARNING) << "tablet handler init failed";
             return false;
         }
@@ -234,7 +234,7 @@ bool TabletCatalog::AddTable(const ::rtidb::api::TableMeta& meta,
     } else {
         handler = it->second;
     }
-    it->second->AddTable(table);
+    handler->AddTable(table);
     return true;
 }
 

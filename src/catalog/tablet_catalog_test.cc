@@ -34,7 +34,7 @@ namespace catalog {
 class TabletCatalogTest : public ::testing::Test {};
 
 struct TestArgs {
-    std::shared_ptr<::rtidb::storage::Table> table;
+    std::vector<std::shared_ptr<::rtidb::storage::Table>> tables;
     ::rtidb::api::TableMeta meta;
     std::string row;
     std::string idx_name;
@@ -45,6 +45,7 @@ struct TestArgs {
 TestArgs *PrepareTable(const std::string &tname) {
     TestArgs *args = new TestArgs();
     args->meta.set_name(tname);
+    args->meta.set_db("db1");
     args->meta.set_tid(1);
     args->meta.set_pid(0);
     args->meta.set_seg_cnt(8);
@@ -81,7 +82,7 @@ TestArgs *PrepareTable(const std::string &tname) {
     table->Put(pk, 1589780888000l, value.c_str(), value.size());
     args->ts = 1589780888000l;
     std::shared_ptr<::rtidb::storage::MemTable> mtable(table);
-    args->table = mtable;
+    args->tables.push_back(mtable);
     args->row = value;
     return args;
 }
@@ -90,7 +91,7 @@ TEST_F(TabletCatalogTest, tablet_smoke_test) {
     TestArgs *args = PrepareTable("t1");
     TabletTableHandler handler(args->meta);
     ASSERT_TRUE(handler.Init());
-    handler.AddTable(args->table);
+    handler.AddTable(args->tables[0]);
     auto it = handler.GetIterator();
     if (!it) {
         ASSERT_TRUE(false);
@@ -120,7 +121,7 @@ TEST_F(TabletCatalogTest, segment_handler_test) {
     auto handler = std::shared_ptr<TabletTableHandler>(
         new TabletTableHandler(args->meta));
     ASSERT_TRUE(handler->Init());
-    handler->AddTable(args->table);
+    handler->AddTable(args->tables[0]);
     // Seek key not exist
     {
         auto partition = handler->GetPartition(handler, args->idx_name);
@@ -140,7 +141,7 @@ TEST_F(TabletCatalogTest, segment_handler_pk_not_exist_test) {
     auto handler = std::shared_ptr<TabletTableHandler>(
         new TabletTableHandler(args->meta));
     ASSERT_TRUE(handler->Init());
-    handler->AddTable(args->table);
+    handler->AddTable(args->tables[0]);
     // Seek key not exist
     {
         auto partition = handler->GetPartition(handler, args->idx_name);
@@ -156,7 +157,7 @@ TEST_F(TabletCatalogTest, sql_smoke_test) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
-    ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
+    ASSERT_TRUE(catalog->AddTable(args->meta, args->tables[0]));
     ::fesql::vm::Engine engine(catalog);
     std::string sql = "select col1, col2 + 1 from t1;";
     ::fesql::vm::BatchRunSession session;
@@ -193,10 +194,10 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
-    ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
+    ASSERT_TRUE(catalog->AddTable(args->meta, args->tables[0]));
 
     TestArgs *args1 = PrepareTable("t2");
-    ASSERT_TRUE(catalog->AddTable(args1->meta, args1->table));
+    ASSERT_TRUE(catalog->AddTable(args1->meta, args1->tables[0]));
 
     ::fesql::vm::Engine engine(catalog);
     std::string sql =
@@ -234,10 +235,10 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
-    ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
+    ASSERT_TRUE(catalog->AddTable(args->meta, args->tables[0]));
 
     TestArgs *args1 = PrepareTable("t2");
-    ASSERT_TRUE(catalog->AddTable(args1->meta, args1->table));
+    ASSERT_TRUE(catalog->AddTable(args1->meta, args1->tables[0]));
 
     ::fesql::vm::Engine engine(catalog);
     std::string sql =
@@ -279,7 +280,7 @@ TEST_F(TabletCatalogTest, sql_window_smoke_500_test) {
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
 
-    ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
+    ASSERT_TRUE(catalog->AddTable(args->meta, args->tables[0]));
     ::fesql::vm::Engine engine(catalog);
     std::stringstream ss;
     ss << "select ";
@@ -311,7 +312,7 @@ TEST_F(TabletCatalogTest, sql_window_smoke_test) {
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
 
-    ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
+    ASSERT_TRUE(catalog->AddTable(args->meta, args->tables[0]));
     ::fesql::vm::Engine engine(catalog);
     std::string sql =
         "select sum(col2) over w1, t1.col1, t1.col2 from t1 window w1 "

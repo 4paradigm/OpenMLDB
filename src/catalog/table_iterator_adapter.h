@@ -103,7 +103,7 @@ class FullTableIterator
                 }
             }
         }
-        if (it_->Valid()) {
+        if (it_ && it_->Valid()) {
             key_ = it_->GetKey();
         }
     }
