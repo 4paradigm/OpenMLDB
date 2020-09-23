@@ -230,7 +230,8 @@ class FilterGenerator {
         return index_seek_gen_.Valid() || condition_gen_.Valid();
     }
     std::shared_ptr<TableHandler> Filter(std::shared_ptr<TableHandler> table);
-    std::shared_ptr<TableHandler> Filter(std::shared_ptr<PartitionHandler> table);
+    std::shared_ptr<TableHandler> Filter(
+        std::shared_ptr<PartitionHandler> table);
 
  private:
     ConditionGenerator condition_gen_;

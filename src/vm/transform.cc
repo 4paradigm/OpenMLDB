@@ -1280,7 +1280,8 @@ base::Status BatchModeTransformer::ValidateIndexOptimization(
             PhysicalFliterNode* filter_op =
                 dynamic_cast<PhysicalFliterNode*>(in);
             CHECK_TRUE(nullptr != in, kPlanError, "Invalid filter node: null")
-            CHECK_STATUS(ValidatePartitionDataProvider(filter_op->GetProducer(0)));
+            CHECK_STATUS(
+                ValidatePartitionDataProvider(filter_op->GetProducer(0)));
             break;
         }
         default: {

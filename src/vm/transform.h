@@ -133,9 +133,9 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
-    bool FilterOptimized(
-        const vm::SchemaSourceList& column_sources, PhysicalOpNode* in, Filter* filter,
-        PhysicalOpNode** new_in);
+    bool FilterOptimized(const vm::SchemaSourceList& column_sources,
+                         PhysicalOpNode* in, Filter* filter,
+                         PhysicalOpNode** new_in);
     bool JoinKeysOptimized(const vm::SchemaSourceList& column_sources,
                            PhysicalOpNode* in, Join* join,
                            PhysicalOpNode** new_in);
@@ -282,10 +282,10 @@ class BatchModeTransformer {
     bool GenJoin(Join* join, PhysicalOpNode* in,
                  base::Status& status);  // NOLINT
     bool GenFilter(Filter* filter, PhysicalOpNode* in,
-                 base::Status& status);  // NOLINT
-    bool GenConditionFilter(ConditionFilter* filter,
-                   const SchemaSourceList& input_name_schema_list,
                    base::Status& status);  // NOLINT
+    bool GenConditionFilter(ConditionFilter* filter,
+                            const SchemaSourceList& input_name_schema_list,
+                            base::Status& status);  // NOLINT
     bool GenKey(Key* hash, const SchemaSourceList& input_name_schema_list,
                 base::Status& status);  // NOLINT
     bool GenWindow(WindowOp* window, PhysicalOpNode* in,

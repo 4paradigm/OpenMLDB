@@ -1509,10 +1509,12 @@ std::shared_ptr<DataHandler> FilterRunner::Run(RunnerContext& ctx) {
     // build window with start and end offset
     switch (input->GetHanlderType()) {
         case kTableHandler: {
-            return filter_gen_.Filter( std::dynamic_pointer_cast<TableHandler>(input));
+            return filter_gen_.Filter(
+                std::dynamic_pointer_cast<TableHandler>(input));
         }
         case kPartitionHandler: {
-            return filter_gen_.Filter( std::dynamic_pointer_cast<PartitionHandler>(input));
+            return filter_gen_.Filter(
+                std::dynamic_pointer_cast<PartitionHandler>(input));
         }
         default: {
             LOG(WARNING) << "fail to filter when input is row";

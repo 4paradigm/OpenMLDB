@@ -696,7 +696,7 @@ class RequestWindowOp : public WindowOp {
 };
 class Filter {
  public:
-    Filter(const node::ExprNode *condition)
+    explicit Filter(const node::ExprNode *condition)
         : condition_(condition),
           left_key_(nullptr),
           right_key_(nullptr),
