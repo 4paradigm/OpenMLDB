@@ -926,8 +926,24 @@ std::shared_ptr<ProcedureInfo> SQLClusterRouter::ShowProcedure(
         status->code = -1;
         return std::shared_ptr<ProcedureInfo>();
     }
-    ::fesql::sdk::SchemaImpl input_schema;
-    ::fesql::sdk::SchemaImpl output_schema;
+    ::fesql::vm::Schema fesql_in_schema;
+    if (!rtidb::catalog::SchemaAdapter::ConvertSchema(
+                sp_info_pb.input_schema(), &fesql_in_schema)) {
+        status->msg = "fail to convert input schema";
+        LOG(WARNING) << status->msg;
+        status->code = -1;
+        return std::shared_ptr<ProcedureInfo>();
+    }
+    ::fesql::vm::Schema fesql_out_schema;
+    if (!rtidb::catalog::SchemaAdapter::ConvertSchema(
+                sp_info_pb.output_schema(), &fesql_out_schema)) {
+        status->msg = "fail to convert output schema";
+        LOG(WARNING) << status->msg;
+        status->code = -1;
+        return std::shared_ptr<ProcedureInfo>();
+    }
+    ::fesql::sdk::SchemaImpl input_schema(fesql_in_schema);
+    ::fesql::sdk::SchemaImpl output_schema(fesql_out_schema);
     std::shared_ptr<ProcedureInfoImpl> sp_info = std::make_shared<ProcedureInfoImpl>(
             db, sp_name, sp_info_pb.sql(), input_schema, output_schema);
     return sp_info;
