@@ -215,7 +215,7 @@ class ConditionOptimized : public TransformUpPysicalPass {
         const SchemaSourceList& name_schema_list,
         node::ExprListNode* and_conditions,
         node::ExprListNode* out_condition_list,
-        std::vector<ExprPair>& condition_eq_pair);
+        std::vector<ExprPair>& condition_eq_pair);  // NOLINT
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
