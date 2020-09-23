@@ -26,6 +26,7 @@ FullTableIterator::FullTableIterator(std::shared_ptr<Tables> tables) :
     tables_(tables), cur_pid_(0), it_(), key_(0), value_() {}
 
 void FullTableIterator::SeekToFirst() {
+    it_.reset();
     for (const auto& kv : *tables_) {
         it_.reset(kv.second->NewTraverseIterator(0));
         it_->SeekToFirst();
@@ -70,6 +71,7 @@ DistributeWindowIterator::DistributeWindowIterator(std::shared_ptr<Tables> table
 
 void DistributeWindowIterator::Seek(const std::string& key) {
     // assume all partitions in one tablet
+    it_.reset();
     uint32_t pid_num = tables_->size();
     if (pid_num > 0) {
         cur_pid_ = (uint32_t)(::rtidb::base::hash64(key) % pid_num);
@@ -82,6 +84,7 @@ void DistributeWindowIterator::Seek(const std::string& key) {
 }
 
 void DistributeWindowIterator::SeekToFirst() {
+    it_.reset();
     for (const auto& kv : *tables_) {
         it_.reset(kv.second->NewWindowIterator(index_));
         it_->SeekToFirst();

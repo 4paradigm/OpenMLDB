@@ -33,7 +33,6 @@ namespace catalog {
 
 using Tables = std::map<uint32_t, std::shared_ptr<::rtidb::storage::Table>>;
 
-// the full table iterator
 class FullTableIterator
     : public ::fesql::codec::ConstIterator<uint64_t, ::fesql::codec::Row> {
  public:
