@@ -175,10 +175,6 @@ void TabletEngineTest::BatchModeCheck(
     session.GetPhysicalPlan()->Print(oss, "");
     LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
 
-    if (!sql_case.batch_plan().empty()) {
-        ASSERT_EQ(oss.str(), sql_case.batch_plan());
-    }
-
     std::ostringstream runner_oss;
     session.GetRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
@@ -271,10 +267,6 @@ void TabletEngineTest::RequestModeCheck(
     std::ostringstream oss;
     session.GetPhysicalPlan()->Print(oss, "");
     LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
-
-    if (!sql_case.request_plan().empty()) {
-        ASSERT_EQ(oss.str(), sql_case.request_plan());
-    }
 
     std::ostringstream runner_oss;
     session.GetRunner()->Print(runner_oss, "");
