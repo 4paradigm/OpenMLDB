@@ -418,6 +418,10 @@ INSTANTIATE_TEST_SUITE_P(EngineTestUdafFunction, TabletEngineTest,
 INSTANTIATE_TEST_SUITE_P(EngineTestUdfFunction, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases(
                              "/cases/integration/v1/test_udf_function.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineTestWhere, TabletEngineTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_where.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineTestFZFunction, TabletEngineTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
 
 }  // namespace catalog
 }  // namespace rtidb
