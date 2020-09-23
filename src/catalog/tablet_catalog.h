@@ -172,8 +172,7 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler {
     std::shared_ptr<::fesql::vm::TableHandler> GetSegment(
         std::shared_ptr<::fesql::vm::PartitionHandler> partition_hander,
         const std::string &key) override {
-        return std::shared_ptr<TabletSegmentHandler>(
-            new TabletSegmentHandler(partition_hander, key));
+        return std::make_shared<TabletSegmentHandler>(partition_hander, key);
     }
     const std::string GetHandlerTypeName() override {
         return "TabletPartitionHandler";

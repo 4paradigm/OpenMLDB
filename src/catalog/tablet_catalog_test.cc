@@ -35,7 +35,7 @@ class TabletCatalogTest : public ::testing::Test {};
 
 struct TestArgs {
     std::vector<std::shared_ptr<::rtidb::storage::Table>> tables;
-    ::rtidb::api::TableMeta meta;
+    std::vector<::rtidb::api::TableMeta> meta;
     std::string row;
     std::string idx_name;
     std::string pk;
@@ -44,13 +44,15 @@ struct TestArgs {
 
 TestArgs *PrepareTable(const std::string &tname) {
     TestArgs *args = new TestArgs();
-    args->meta.set_name(tname);
-    args->meta.set_db("db1");
-    args->meta.set_tid(1);
-    args->meta.set_pid(0);
-    args->meta.set_seg_cnt(8);
-    args->meta.set_mode(::rtidb::api::TableMode::kTableLeader);
-    RtiDBSchema *schema = args->meta.mutable_column_desc();
+    ::rtidb::api::TableMeta meta;
+    meta.set_name(tname);
+    meta.set_db("db1");
+    meta.set_tid(1);
+    meta.set_pid(0);
+    meta.set_seg_cnt(8);
+    meta.set_ttl(0);
+    meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    RtiDBSchema *schema = meta.mutable_column_desc();
     auto col1 = schema->Add();
     col1->set_name("col1");
     col1->set_data_type(::rtidb::type::kVarchar);
@@ -58,7 +60,7 @@ TestArgs *PrepareTable(const std::string &tname) {
     col2->set_name("col2");
     col2->set_data_type(::rtidb::type::kBigInt);
 
-    RtiDBIndex *index = args->meta.mutable_column_key();
+    RtiDBIndex *index = meta.mutable_column_key();
     auto key1 = index->Add();
     key1->set_index_name("index0");
     key1->add_col_name("col1");
@@ -66,10 +68,10 @@ TestArgs *PrepareTable(const std::string &tname) {
     args->idx_name = "index0";
 
     ::rtidb::storage::MemTable *table =
-        new ::rtidb::storage::MemTable(args->meta);
+        new ::rtidb::storage::MemTable(meta);
     table->Init();
     ::fesql::vm::Schema fe_schema;
-    SchemaAdapter::ConvertSchema(args->meta.column_desc(), &fe_schema);
+    SchemaAdapter::ConvertSchema(meta.column_desc(), &fe_schema);
     ::fesql::codec::RowBuilder rb(fe_schema);
     std::string pk = "pk1";
     args->pk = pk;
@@ -83,13 +85,71 @@ TestArgs *PrepareTable(const std::string &tname) {
     args->ts = 1589780888000l;
     std::shared_ptr<::rtidb::storage::MemTable> mtable(table);
     args->tables.push_back(mtable);
+    args->meta.push_back(meta);
     args->row = value;
+    return args;
+}
+
+TestArgs *PrepareMultiPartitionTable(const std::string &tname, int partition_num) {
+    TestArgs *args = new TestArgs();
+    ::rtidb::api::TableMeta meta;
+    meta.set_name(tname);
+    meta.set_db("db1");
+    meta.set_tid(1);
+    meta.set_pid(0);
+    meta.set_seg_cnt(8);
+    meta.set_ttl(0);
+    meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    RtiDBSchema *schema = meta.mutable_column_desc();
+    auto col1 = schema->Add();
+    col1->set_name("col1");
+    col1->set_data_type(::rtidb::type::kVarchar);
+    auto col2 = schema->Add();
+    col2->set_name("col2");
+    col2->set_data_type(::rtidb::type::kBigInt);
+
+    RtiDBIndex *index = meta.mutable_column_key();
+    auto key1 = index->Add();
+    key1->set_index_name("index0");
+    key1->add_col_name("col1");
+    key1->add_ts_name("col2");
+    args->idx_name = "index0";
+
+    for (int i = 0; i < partition_num; i++) {
+        ::rtidb::api::TableMeta cur_meta(meta);
+        cur_meta.set_pid(i);
+        auto table = std::make_shared<::rtidb::storage::MemTable>(cur_meta);
+        table->Init();
+        args->tables.push_back(table);
+        args->meta.push_back(cur_meta);
+    }
+    ::fesql::vm::Schema fe_schema;
+    SchemaAdapter::ConvertSchema(meta.column_desc(), &fe_schema);
+    ::fesql::codec::RowBuilder rb(fe_schema);
+    uint32_t base = 100;
+    for (int i = 0; i < 100; i++) {
+        std::string pk = "pk" + std::to_string(base + i);
+        uint32_t size = rb.CalTotalLength(pk.size());
+        uint32_t pid = 0;
+        if (partition_num > 0) {
+            pid = (uint32_t)(::rtidb::base::hash64(pk) % partition_num);
+        }
+        uint64_t ts = 1589780888000l;
+        for (int j = 0; j < 5; j++) {
+            std::string value;
+            value.resize(size);
+            rb.SetBuffer(reinterpret_cast<int8_t *>(&(value[0])), size);
+            rb.AppendString(pk.c_str(), pk.size());
+            rb.AppendInt64(ts + j);
+            args->tables[pid]->Put(pk, ts + j, value.c_str(), value.size());
+        }
+    }
     return args;
 }
 
 TEST_F(TabletCatalogTest, tablet_smoke_test) {
     TestArgs *args = PrepareTable("t1");
-    TabletTableHandler handler(args->meta);
+    TabletTableHandler handler(args->meta[0]);
     ASSERT_TRUE(handler.Init());
     handler.AddTable(args->tables[0]);
     auto it = handler.GetIterator();
@@ -119,7 +179,7 @@ TEST_F(TabletCatalogTest, tablet_smoke_test) {
 TEST_F(TabletCatalogTest, segment_handler_test) {
     TestArgs *args = PrepareTable("t1");
     auto handler = std::shared_ptr<TabletTableHandler>(
-        new TabletTableHandler(args->meta));
+        new TabletTableHandler(args->meta[0]));
     ASSERT_TRUE(handler->Init());
     handler->AddTable(args->tables[0]);
     // Seek key not exist
@@ -139,7 +199,7 @@ TEST_F(TabletCatalogTest, segment_handler_test) {
 TEST_F(TabletCatalogTest, segment_handler_pk_not_exist_test) {
     TestArgs *args = PrepareTable("t1");
     auto handler = std::shared_ptr<TabletTableHandler>(
-        new TabletTableHandler(args->meta));
+        new TabletTableHandler(args->meta[0]));
     ASSERT_TRUE(handler->Init());
     handler->AddTable(args->tables[0]);
     // Seek key not exist
@@ -157,7 +217,7 @@ TEST_F(TabletCatalogTest, sql_smoke_test) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
-    ASSERT_TRUE(catalog->AddTable(args->meta, args->tables[0]));
+    ASSERT_TRUE(catalog->AddTable(args->meta[0], args->tables[0]));
     ::fesql::vm::Engine engine(catalog);
     std::string sql = "select col1, col2 + 1 from t1;";
     ::fesql::vm::BatchRunSession session;
@@ -194,10 +254,10 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
-    ASSERT_TRUE(catalog->AddTable(args->meta, args->tables[0]));
+    ASSERT_TRUE(catalog->AddTable(args->meta[0], args->tables[0]));
 
     TestArgs *args1 = PrepareTable("t2");
-    ASSERT_TRUE(catalog->AddTable(args1->meta, args1->tables[0]));
+    ASSERT_TRUE(catalog->AddTable(args1->meta[0], args1->tables[0]));
 
     ::fesql::vm::Engine engine(catalog);
     std::string sql =
@@ -235,10 +295,10 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
-    ASSERT_TRUE(catalog->AddTable(args->meta, args->tables[0]));
+    ASSERT_TRUE(catalog->AddTable(args->meta[0], args->tables[0]));
 
     TestArgs *args1 = PrepareTable("t2");
-    ASSERT_TRUE(catalog->AddTable(args1->meta, args1->tables[0]));
+    ASSERT_TRUE(catalog->AddTable(args1->meta[0], args1->tables[0]));
 
     ::fesql::vm::Engine engine(catalog);
     std::string sql =
@@ -280,7 +340,7 @@ TEST_F(TabletCatalogTest, sql_window_smoke_500_test) {
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
 
-    ASSERT_TRUE(catalog->AddTable(args->meta, args->tables[0]));
+    ASSERT_TRUE(catalog->AddTable(args->meta[0], args->tables[0]));
     ::fesql::vm::Engine engine(catalog);
     std::stringstream ss;
     ss << "select ";
@@ -312,7 +372,7 @@ TEST_F(TabletCatalogTest, sql_window_smoke_test) {
     ASSERT_TRUE(catalog->Init());
     TestArgs *args = PrepareTable("t1");
 
-    ASSERT_TRUE(catalog->AddTable(args->meta, args->tables[0]));
+    ASSERT_TRUE(catalog->AddTable(args->meta[0], args->tables[0]));
     ::fesql::vm::Engine engine(catalog);
     std::string sql =
         "select sum(col2) over w1, t1.col1, t1.col2 from t1 window w1 "
@@ -348,6 +408,41 @@ TEST_F(TabletCatalogTest, sql_window_smoke_test) {
     ASSERT_EQ(args->pk, pk);
     ASSERT_EQ(0, rv.GetInt64(2, &val));
     ASSERT_EQ(val, exp);
+}
+
+TEST_F(TabletCatalogTest, iterator_test) {
+    std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
+    ASSERT_TRUE(catalog->Init());
+    uint32_t pid_num = 8;
+    TestArgs *args = PrepareMultiPartitionTable("t1", pid_num);
+    for (uint32_t pid = 0; pid < pid_num; pid++) {
+        ASSERT_TRUE(catalog->AddTable(args->meta[pid], args->tables[pid]));
+    }
+    auto handler = catalog->GetTable("db1", "t1");
+    auto iterator = handler->GetWindowIterator("index0");
+    int pk_cnt = 0;
+    int record_num = 0;
+    iterator->SeekToFirst();
+    while(iterator->Valid()) {
+        pk_cnt++;
+        auto row_iterator = iterator->GetValue();
+        row_iterator->SeekToFirst();
+        while(row_iterator->Valid()) {
+            record_num++;
+            row_iterator->Next();
+        }
+        iterator->Next();
+    }
+    ASSERT_EQ(pk_cnt, 100);
+    ASSERT_EQ(record_num, 500);
+    auto full_iterator = handler->GetIterator();
+    full_iterator->SeekToFirst();
+    record_num = 0;
+    while(full_iterator->Valid()) {
+        record_num++;
+        full_iterator->Next();
+    }
+    ASSERT_EQ(record_num, 500);
 }
 
 }  // namespace catalog

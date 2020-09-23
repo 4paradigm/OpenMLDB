@@ -44,16 +44,12 @@ bool FullTableIterator::Valid() const {
 void FullTableIterator::Next() {
     it_->Next();
     if (!it_->Valid()) {
-        it_.reset();
         cur_pid_++;
-        for (const auto& kv : *tables_) {
-            if (kv.first < cur_pid_) {
-                continue;
-            }
-            it_.reset(kv.second->NewTraverseIterator(0));
+        for (auto iter = tables_->find(cur_pid_); iter != tables_->end(); iter++) {
+            it_.reset(iter->second->NewTraverseIterator(0));
             it_->SeekToFirst();
             if (it_->Valid()) {
-                cur_pid_ = kv.first;
+                cur_pid_ = iter->first;
                 break;
             }
         }
@@ -70,16 +66,15 @@ const ::fesql::codec::Row& FullTableIterator::GetValue() {
 }
 
 DistributeWindowIterator::DistributeWindowIterator(std::shared_ptr<Tables> tables, uint32_t index)
-    : tables_(tables), index_(index), it_() {}
+    : tables_(tables), index_(index), cur_pid_(0), it_() {}
 
 void DistributeWindowIterator::Seek(const std::string& key) {
-    uint32_t pid = 0;
     // assume all partitions in one tablet
     uint32_t pid_num = tables_->size();
     if (pid_num > 0) {
-        pid = (uint32_t)(::rtidb::base::hash64(key) % pid_num);
+        cur_pid_ = (uint32_t)(::rtidb::base::hash64(key) % pid_num);
     }
-    auto iter = tables_->find(pid);
+    auto iter = tables_->find(cur_pid_);
     if (iter != tables_->end()) {
         it_.reset(iter->second->NewWindowIterator(index_));
         it_->Seek(key);
@@ -91,15 +86,24 @@ void DistributeWindowIterator::SeekToFirst() {
         it_.reset(kv.second->NewWindowIterator(index_));
         it_->SeekToFirst();
         if (it_->Valid()) {
+            cur_pid_ = kv.first;
             break;
         }
-        it_.reset();
     }
 }
 
 void DistributeWindowIterator::Next() {
-    if (it_) {
-        it_->Next();
+    it_->Next();
+    if (!it_->Valid()) {
+        cur_pid_++;
+        for (auto iter = tables_->find(cur_pid_); iter != tables_->end(); iter++) {
+            it_.reset(iter->second->NewWindowIterator(index_));
+            it_->SeekToFirst();
+            if (it_->Valid()) {
+                cur_pid_ = iter->first;
+                break;
+            }
+        }
     }
 }
 

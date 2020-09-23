@@ -108,7 +108,12 @@ TabletTableHandler::GetWindowIterator(const std::string& idx_name) {
         return std::unique_ptr<::fesql::codec::WindowIterator>();
     }
     DLOG(INFO) << "get window it with index " << idx_name;
-    return std::unique_ptr<::fesql::codec::WindowIterator> (new DistributeWindowIterator(tables_, iter->second.index));
+    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
+    if (!tables->empty()) {
+        return std::unique_ptr<::fesql::codec::WindowIterator>(
+                new DistributeWindowIterator(tables, iter->second.index));
+    }
+    return std::unique_ptr<::fesql::codec::WindowIterator>();
 }
 
 // TODO(chenjing): 基于segment 优化Get(int pos) 操作

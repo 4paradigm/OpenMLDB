@@ -69,6 +69,7 @@ class DistributeWindowIterator : public ::fesql::codec::WindowIterator {
  private:
     std::shared_ptr<Tables> tables_;
     uint32_t index_;
+    uint32_t cur_pid_;
     std::unique_ptr<::fesql::codec::WindowIterator> it_;
 };
 
