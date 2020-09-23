@@ -423,11 +423,11 @@ TEST_F(TabletCatalogTest, iterator_test) {
     int pk_cnt = 0;
     int record_num = 0;
     iterator->SeekToFirst();
-    while(iterator->Valid()) {
+    while (iterator->Valid()) {
         pk_cnt++;
         auto row_iterator = iterator->GetValue();
         row_iterator->SeekToFirst();
-        while(row_iterator->Valid()) {
+        while (row_iterator->Valid()) {
             record_num++;
             row_iterator->Next();
         }
@@ -438,7 +438,7 @@ TEST_F(TabletCatalogTest, iterator_test) {
     auto full_iterator = handler->GetIterator();
     full_iterator->SeekToFirst();
     record_num = 0;
-    while(full_iterator->Valid()) {
+    while (full_iterator->Valid()) {
         record_num++;
         full_iterator->Next();
     }
