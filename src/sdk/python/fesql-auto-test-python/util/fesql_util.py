@@ -102,7 +102,6 @@ def selectRequestMode(executor,dbName:str,selectSql:str,input):
                 fesqlResult.ok = ok
                 fesqlResult.msg = rs
                 return fesqlResult
-            # if index ==0:
             schema = rs.GetSchema()
             result += convertRestultSetToList(rs,schema)
             insertResult = insert(executor,dbName,inserts[index])
@@ -147,7 +146,6 @@ def ddl(executor, dbName: str, sql: str):
 def getColumnData(rs,schema,index):
     obj = None
     if rs.IsNULL(index):
-        print("AA")
         return obj
     dataType = DataTypeName(schema.GetColumnType(index))
     # print("BB:{}".format(dataType))
