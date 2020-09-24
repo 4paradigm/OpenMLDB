@@ -206,6 +206,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
             if (it == procedure_cache_.end()) {
                 procedure_cache_.insert(std::make_pair(db,
                     std::map<std::string, std::shared_ptr<CompileInfo>>()));
+                it = procedure_cache_.find(db);
             }
             auto info_it = it->second.find(sql);
             if (info_it == it->second.end()) {
