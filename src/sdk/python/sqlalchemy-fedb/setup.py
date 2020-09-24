@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='sqlalchemy-fedb',
@@ -14,7 +14,8 @@ setup(
     install_requires=[
         "sqlalchemy"
     ],
-    packages=["sqlalchemy_fedb"],
+    include_package_data=True,
+    packages=find_packages(),
     entry_points={
         'sqlalchemy.dialects': [
             'fedb = sqlalchemy_fedb.safedb:FeDBDialect',
