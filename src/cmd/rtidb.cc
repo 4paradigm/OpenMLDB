@@ -268,7 +268,7 @@ void StartTablet() {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-#ifdef PZFPAG_ENABLE
+#ifdef PZFPGA_ENABLE
     PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d with fpga",
             real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
             RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
