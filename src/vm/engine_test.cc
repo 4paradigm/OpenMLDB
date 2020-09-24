@@ -143,6 +143,16 @@ TEST_P(EngineTest, test_batch_engine) {
         LOG(INFO) << "Skip mode " << sql_case.mode();
     }
 }
+TEST_P(EngineTest, test_batch_request_engine) {
+    ParamType sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (!boost::contains(sql_case.mode(), "request-unsupport") &&
+        !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
+        BatchRequestModeCheck(sql_case);
+    } else {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
+    }
+}
 
 TEST_F(EngineTest, EngineCacheTest) {
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
@@ -389,8 +399,8 @@ TEST_F(EngineTest, EngineGetDependentTableTest) {
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
             std::set<std::string> tables;
-            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", true, &tables,
-                                                  get_status));
+            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", kBatchMode,
+                                                  &tables, get_status));
             ASSERT_EQ(tables, pair.second);
         }
 
@@ -403,8 +413,8 @@ TEST_F(EngineTest, EngineGetDependentTableTest) {
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
             std::set<std::string> tables;
-            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", false, &tables,
-                                                  get_status));
+            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", kRequestMode,
+                                                  &tables, get_status));
             ASSERT_EQ(tables, pair.second);
         }
     }
@@ -423,8 +433,8 @@ TEST_F(EngineTest, EngineGetDependentTableTest) {
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
             std::set<std::string> tables;
-            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", true, &tables,
-                                                  get_status));
+            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", kBatchMode,
+                                                  &tables, get_status));
             ASSERT_EQ(tables, pair.second);
         }
     }

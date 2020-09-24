@@ -35,11 +35,15 @@ namespace vm {
 
 using fesql::base::Status;
 
+enum EngineMode { kBatchMode, kRequestMode, kBatchRequestMode };
+
+std::string EngineModeName(EngineMode mode);
+
 struct SQLContext {
-    // mode: batch|request
-    // the sql content
-    bool is_batch_mode;
+    // mode: batch|request|batch request
+    EngineMode engine_mode;
     bool is_performance_sensitive;
+    // the sql content
     std::string sql;
     // the database
     std::string db;
@@ -61,6 +65,7 @@ struct SQLContext {
     std::string encoded_schema;
     std::string encoded_request_schema;
     ::fesql::node::NodeManager nm;
+    ::fesql::udf::UDFLibrary* udf_library;
     SQLContext() { runner = NULL; }
     ~SQLContext() {}
 };
@@ -96,6 +101,11 @@ class SQLCompiler {
     bool ResolvePlanFnAddress(PhysicalOpNode* node,
                               std::unique_ptr<FeSQLJIT>& jit,  // NOLINT
                               Status& status);                 // NOLINT
+
+    Status BuildPhysicalPlan(SQLContext* ctx,
+                             const ::fesql::node::PlanNodeList& plan_list,
+                             ::llvm::Module* llvm_module,
+                             PhysicalOpNode** output);
 
  private:
     const std::shared_ptr<Catalog> cl_;

@@ -123,7 +123,7 @@ static void EngineBatchMode(const std::string sql, MODE mode, int64_t limit_cnt,
         case BENCHMARK: {
             for (auto _ : *state) {
                 benchmark::DoNotOptimize(
-                    static_cast<const std::shared_ptr<fesql::vm::TableHandler>>(
+                    static_cast<const std::shared_ptr<fesql::vm::DataHandler>>(
                         session.Run()));
             }
             break;
@@ -536,7 +536,7 @@ void EngineBatchModeSimpleQueryBM(const std::string& db, const std::string& sql,
             for (auto _ : *state) {
                 // use const value to avoid compiler bug for some version
                 benchmark::DoNotOptimize(
-                    static_cast<const std::shared_ptr<fesql::vm::TableHandler>>(
+                    static_cast<const std::shared_ptr<fesql::vm::DataHandler>>(
                         session.Run()));
             }
             break;

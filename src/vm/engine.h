@@ -94,7 +94,7 @@ class CompileInfo {
 
 class RunSession {
  public:
-    RunSession();
+    explicit RunSession(EngineMode engine_mode);
 
     virtual ~RunSession();
 
@@ -118,14 +118,15 @@ class RunSession {
         return compile_info_;
     }
 
-    virtual const bool IsBatchRun() const = 0;
-
     void EnableDebug() { is_debug_ = true; }
     void DisableDebug() { is_debug_ = false; }
+
+    EngineMode engine_mode() const { return engine_mode_; }
 
  protected:
     bool SetCompileInfo(const std::shared_ptr<CompileInfo>& compile_info);
     std::shared_ptr<CompileInfo> compile_info_;
+    EngineMode engine_mode_;
     bool is_debug_;
     friend Engine;
 };
@@ -133,12 +134,11 @@ class RunSession {
 class BatchRunSession : public RunSession {
  public:
     explicit BatchRunSession(bool mini_batch = false)
-        : RunSession(), mini_batch_(mini_batch) {}
+        : RunSession(kBatchMode), mini_batch_(mini_batch) {}
     ~BatchRunSession() {}
-    virtual int32_t Run(std::vector<Row>& output,  // NOLINT
-                        uint64_t limit = 0);
-    virtual std::shared_ptr<TableHandler> Run();  // NOLINT
-    const bool IsBatchRun() const override { return true; }
+    int32_t Run(std::vector<Row>& output,  // NOLINT
+                uint64_t limit = 0);
+    std::shared_ptr<TableHandler> Run();
 
  private:
     const bool mini_batch_;
@@ -146,10 +146,9 @@ class BatchRunSession : public RunSession {
 
 class RequestRunSession : public RunSession {
  public:
-    RequestRunSession() : RunSession() {}
+    RequestRunSession() : RunSession(kRequestMode) {}
     ~RequestRunSession() {}
-    virtual int32_t Run(const Row& in_row, Row* output);  // NOLINT
-    const bool IsBatchRun() const override { return false; }
+    int32_t Run(const Row& in_row, Row* output);  // NOLINT
     std::shared_ptr<TableHandler> RunRequestPlan(const Row& request,
                                                  PhysicalOpNode* node);
     virtual const Schema& GetRequestSchema() const {
@@ -158,6 +157,24 @@ class RequestRunSession : public RunSession {
     virtual const std::string& GetRequestName() const {
         return compile_info_->get_sql_context().request_name;
     }
+};
+
+class BatchRequestRunSession : public RunSession {
+ public:
+    BatchRequestRunSession() : RunSession(kBatchRequestMode) {}
+    ~BatchRequestRunSession() {}
+
+    const Schema& GetRequestSchema() const {
+        return compile_info_->get_sql_context().request_schema;
+    }
+    const std::string& GetRequestName() const {
+        return compile_info_->get_sql_context().request_name;
+    }
+    int32_t Run(const std::vector<Row>& request_batch,
+                std::vector<Row>& output);            // NOLINT
+    int32_t RunSingle(fesql::vm::RunnerContext& ctx,  // NOLINT
+                      const Row& request,
+                      Row* output);  // NOLINT
 };
 
 struct ExplainOutput {
@@ -169,8 +186,10 @@ struct ExplainOutput {
     vm::Schema output_schema;
 };
 
-typedef std::map<std::string, boost::compute::detail::lru_cache<
-                                  std::string, std::shared_ptr<CompileInfo>>>
+typedef std::map<
+    EngineMode,
+    std::map<std::string, boost::compute::detail::lru_cache<
+                              std::string, std::shared_ptr<CompileInfo>>>>
     EngineLRUCache;
 
 class Engine {
@@ -188,10 +207,12 @@ class Engine {
              base::Status& status);  // NOLINT
 
     bool GetDependentTables(const std::string& sql, const std::string& db,
-                            bool is_batch_mode, std::set<std::string>* tables,
+                            EngineMode engine_mode,
+                            std::set<std::string>* tables,
                             base::Status& status);  // NOLINT
-    bool Explain(const std::string& sql, const std::string& db, bool is_batch,
-                 ExplainOutput* explain_output, base::Status* status);
+    bool Explain(const std::string& sql, const std::string& db,
+                 EngineMode engine_mode, ExplainOutput* explain_output,
+                 base::Status* status);
     inline void UpdateCatalog(std::shared_ptr<Catalog> cl) {
         std::atomic_store_explicit(&cl_, cl, std::memory_order_release);
     }
@@ -203,12 +224,15 @@ class Engine {
                             base::Status& status);  // NOLINT
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,
-                                                bool is_batch);
+                                                EngineMode engine_mode);
+    bool SetCacheLocked(const std::string& db, const std::string& sql,
+                        EngineMode engine_mode,
+                        std::shared_ptr<CompileInfo> info);
+
     std::shared_ptr<Catalog> cl_;
     EngineOptions options_;
     base::SpinMutex mu_;
-    EngineLRUCache batch_lru_cache_;
-    EngineLRUCache request_lru_cache_;
+    EngineLRUCache lru_cache_;
 };
 
 }  // namespace vm
