@@ -175,10 +175,6 @@ void TabletEngineTest::BatchModeCheck(
     session.GetPhysicalPlan()->Print(oss, "");
     LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
 
-    if (!sql_case.batch_plan().empty()) {
-        ASSERT_EQ(oss.str(), sql_case.batch_plan());
-    }
-
     std::ostringstream runner_oss;
     session.GetRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
@@ -271,10 +267,6 @@ void TabletEngineTest::RequestModeCheck(
     std::ostringstream oss;
     session.GetPhysicalPlan()->Print(oss, "");
     LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
-
-    if (!sql_case.request_plan().empty()) {
-        ASSERT_EQ(oss.str(), sql_case.request_plan());
-    }
 
     std::ostringstream runner_oss;
     session.GetRunner()->Print(runner_oss, "");
@@ -418,6 +410,13 @@ INSTANTIATE_TEST_SUITE_P(EngineTestUdafFunction, TabletEngineTest,
 INSTANTIATE_TEST_SUITE_P(EngineTestUdfFunction, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases(
                              "/cases/integration/v1/test_udf_function.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineTestWhere, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/integration/v1/test_where.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestFZFunction, TabletEngineTest,
+    testing::ValuesIn(TabletEngineTest::InitCases(
+        "/cases/integration/v1/test_feature_zero_function.yaml")));
 
 }  // namespace catalog
 }  // namespace rtidb
