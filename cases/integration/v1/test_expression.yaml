@@ -3,7 +3,6 @@ debugs: []
 cases:
   - id: 1
     desc: 算术表达式
-    mode: python-unsupport
     inputs:
       - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp", "c5 bool"]
         indexs: ["index1:c1:c4"]
@@ -517,7 +516,6 @@ cases:
 
   - id: 19_1
     desc: SQL标准Cast语法-Cast(常量 as type)
-    mode: python-unsupport
     tags: ["@chenjing:补齐date的cast"]
     inputs:
       - columns: ["c1 int", "c2 float", "c5 bigint"]
@@ -535,7 +533,6 @@ cases:
         - [1, 2, 1.0, 1.0, true, 1590115420000, "1"]
   - id: 19-2
     desc: SQL标准Cast语法-Cast(表达式 as type)
-    mode: python-unsupport
     inputs:
       - columns: ["c1 int", "c2 float", "c5 bigint"]
         indexs: ["index1:c1:c5"]
@@ -552,7 +549,6 @@ cases:
         - [1, 2, 1.0, 1.0, true, 1590115420000, "1"]
   - id: 19-3
     desc: cast函数
-    mode: python-unsupport
     inputs:
       - columns: ["c1 int", "c2 float", "c5 bigint"]
         indexs: ["index1:c1:c5"]
@@ -569,7 +565,6 @@ cases:
         - [1, 2, 1.0, 1.0, true, 1590115420000, "1"]
   - id: 19-4
     desc: SQL标准Cast语法-Cast(表达式 as type)
-    mode: python-unsupport
     inputs:
       - columns: ["c1 int", "c2 float", "c5 bigint"]
         indexs: ["index1:c1:c5"]
@@ -586,7 +581,6 @@ cases:
         - [1, 2, 1.0, 1.0, true, 1590115420000, "1"]
   - id: 19-5
     desc: SQL标准Cast语法-Cast(表达式 as type)
-    mode: python-unsupport
     inputs:
       - columns: ["c0 string", "std_ts bigint", "c1 int", "c2 float", "c5 bigint"]
         indexs: ["index1:c0:std_ts"]
@@ -603,7 +597,6 @@ cases:
         - [NULL, NULL, NULL, NULL, NULL, NULL, NULL]
   - id: 19_6
     desc: SQL标准Cast语法-Cast(NULL as type)
-    mode: python-unsupport
     inputs:
       - columns: ["c1 int", "c2 float", "c5 bigint"]
         indexs: ["index1:c1:c5"]
