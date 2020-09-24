@@ -1000,7 +1000,7 @@ int RtidbClient::CreateTable(const std::string& table_meta) {
             auto_gen_pk_name = index.col_name(0);
         }
         const auto& iter = name_map.find(auto_gen_pk_name);
-        if (iter->second != "bigint") {
+        if (iter != name_map.end() && iter->second != "bigint") {
             return -12;
         }
     }
