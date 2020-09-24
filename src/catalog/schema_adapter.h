@@ -134,7 +134,7 @@ class SchemaAdapter {
 
     static bool ConvertSchema(const RtiDBSchema& rtidb_schema,
                               ::fesql::vm::Schema* output) {
-        if (output == NULL) {
+        if (output == NULL || rtidb_schema.size() == 0) {
             LOG(WARNING) << "output ptr is null";
             return false;
         }

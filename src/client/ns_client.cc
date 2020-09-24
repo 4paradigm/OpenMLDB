@@ -1465,6 +1465,7 @@ bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_n
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowProcedure,
                             &request, &response, FLAGS_request_timeout_ms, 1);
+    sp_info.CopyFrom(response.sp_info(0));
     msg = response.msg();
     if (ok && response.code() == 0) {
         return true;

@@ -868,6 +868,8 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
     }
     auto ns_ptr = cluster_sdk_->GetNsClient();
     if (!ns_ptr) {
+        status->msg = "no nameserver exist";
+        status->code = -1;
         LOG(WARNING) << "no nameserver exist";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
@@ -915,6 +917,8 @@ std::shared_ptr<ProcedureInfo> SQLClusterRouter::ShowProcedure(
     auto ns_ptr = cluster_sdk_->GetNsClient();
     if (!ns_ptr) {
         LOG(WARNING) << "no nameserver exist";
+        status->msg = "no nameserver exist";
+        status->code = -1;
         return std::shared_ptr<ProcedureInfo>();
     }
     rtidb::nameserver::ProcedureInfo sp_info_pb;

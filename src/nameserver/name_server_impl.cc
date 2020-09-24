@@ -10492,7 +10492,8 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
         PDLOG(WARNING, "cur nameserver is not leader");
         return;
     }
-    std::shared_ptr<::rtidb::nameserver::ProcedureInfo> sp_info(request->sp_info().New());
+    std::shared_ptr<::rtidb::nameserver::ProcedureInfo> sp_info =
+        std::make_shared<::rtidb::nameserver::ProcedureInfo>();
     sp_info->CopyFrom(request->sp_info());
     const std::string& db_name = sp_info->db_name();
     const std::string& sp_name = sp_info->sp_name();
@@ -10709,6 +10710,7 @@ void NameServerImpl::ShowProcedure(RpcController* controller,
                 return;
             }
             sp_info->CopyFrom(*(sp_it->second));
+            DLOG(INFO) << "show sql: " << sp_info->sql();
         }
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
