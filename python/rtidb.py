@@ -106,8 +106,6 @@ class tableBuilder:
     return self
 
   def addIdx(self, name: str, cols: List[str], idxType: str):
-    name = name.lower()
-    cols = [ i.lower() for i in cols]
     idxType = idxType.lower()
     if self.hasPrimary and idxType == "primarykey":
       raise Exception("already have primary idx")

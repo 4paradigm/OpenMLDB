@@ -955,6 +955,12 @@ int RtidbClient::CreateTable(const std::string& table_meta) {
         }
         rtidb::common::ColumnDesc* new_col = ns_tbinfo.add_column_desc_v1();
         new_col->CopyFrom(col);
+        const auto& tp_iter = rtidb::codec::DATA_TYPE_MAP.find(type);
+        if (tp_iter == rtidb::codec::DATA_TYPE_MAP.end()) {
+           return -21;
+        }
+        new_col->set_data_type(tp_iter->second);
+        std::cout << "type " << new_col->type();
         name_map.insert(std::make_pair(col_name, type));
     }
     std::set<std::string> key_set;
@@ -999,14 +1005,19 @@ int RtidbClient::CreateTable(const std::string& table_meta) {
         if (idx_iter->second == rtidb::type::kAutoGen) {
             auto_gen_pk_name = index.col_name(0);
         }
+        ck->set_index_type(idx_iter->second);
         const auto& iter = name_map.find(auto_gen_pk_name);
         if (iter != name_map.end() && iter->second != "bigint") {
             return -12;
         }
+        index_set.insert(index.index_name());
+    }
+    if (index_set.empty() && !name_map.empty()) {
+        return -13;
     }
     ok = client_->CreateTable(ns_tbinfo);
     if (!ok) {
-        return -13;
+        return -20;
     }
     return 0;
 }
