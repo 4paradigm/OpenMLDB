@@ -1,5 +1,5 @@
 db: test_zw
-debugs:
+debugs: []
 cases:
   - id: 0
     desc: concat两个字符串
@@ -29,7 +29,6 @@ cases:
 
   - id: 2
     desc: 默认udf null处理逻辑：返回null
-    mode: python-unsupport
     inputs:
       - columns: ["id int64", "c1 string", "c2 int", "c3 double",
                   "c4 date", "c5 timestamp", "std_ts timestamp"]
@@ -55,7 +54,6 @@ cases:
 
   - id: 3
     desc: udf使用中间结果null值
-    mode: python-unsupport
     inputs:
       - columns: ["id int64", "c1 string", "c2 int", "c3 double",
                   "c4 date", "c5 timestamp", "std_ts timestamp"]
@@ -81,7 +79,6 @@ cases:
 
   - id: 4
     desc: strcmp 两个字符串
-    mode: python-unsupport
     inputs:
       - columns: ["id int", "c1 string","c2 string","c7 timestamp"]
         indexs: ["index1:c1:c7"]
@@ -126,7 +123,6 @@ cases:
 
   - id: 6
     desc: 反三角函数
-    mode: python-unsupport
     inputs:
       - columns: ["id int", "c0 smallint", "c1 int", "c2 bigint", "c3 float", "c4 double"]
         indexs: ["index1:c0:c2"]
@@ -143,11 +139,10 @@ cases:
       columns: ["id int", "r0 double", "r1 float", "r2 double", "r3 double"]
       rows:
         - [1, 1.0471975511965979, 0.2013579207903308, 1.1071487177940904, 0.78539816339744828]
-        - [2, NULL, NULL, NULL, 0.000000]
+        - [2, NULL, NULL, NULL, NULL]
   
   - id: 7
     desc: 对数函数
-    mode: python-unsupport
     inputs:
       - columns: ["id int", "c0 smallint", "c1 int", "c2 bigint", "c3 float", "c4 double"]
         indexs: ["index1:c0:c2"]
@@ -169,7 +164,6 @@ cases:
 
   - id: 8
     desc: 数值符号函数
-    mode: python-unsupport
     inputs:
       - columns: ["id int", "c0 smallint", "c1 int", "c2 bigint", "c3 float", "c4 double"]
         indexs: ["index1:c0:c2"]
@@ -191,7 +185,6 @@ cases:
 
   - id: 9
     desc: 数值位数函数
-    mode: python-unsupport
     inputs:
       - columns: ["id int", "c0 smallint", "c1 int", "c2 bigint", "c3 float", "c4 double"]
         indexs: ["index1:c0:c2"]
@@ -213,7 +206,6 @@ cases:
 
   - id: 10
     desc: 数值幂函数
-    mode: python-unsupport
     inputs:
       - columns: ["id int", "c0 smallint", "c1 int", "c2 bigint", "c3 float", "c4 double"]
         indexs: ["index1:c0:c2"]
