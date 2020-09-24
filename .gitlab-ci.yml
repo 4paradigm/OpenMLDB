@@ -33,8 +33,22 @@ build:
       - build/bin/rtidb
       - build/src/sdk/libsql_jsdk.so
       - build/sql_pysdk/dist/*.whl
-      - fesql/build/src/proto/*.h
-      - fesql/build/release/lib/libfesql_core.a
+
+mac_build:
+  variables:
+    CICD_RUNNER_TAG: "rtidb_mac"
+  tags:
+    - rtidb_mac
+  stage: build
+  script:
+    - bash steps/simple_compile_mac.sh
+    - mv build/bin/rtidb build/bin/rtidb_mac
+  artifacts:
+    expire_in: 4h
+    paths:
+      - build/bin/rtidb_mac
+      - build/src/sdk/libsql_jsdk.dylib
+      - build/sql_pysdk/dist/*.whl
 
 java_ut:
   stage: test
@@ -123,6 +137,7 @@ auto_test:
 c++_ut:
   stage: test
   script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/compile.sh
