@@ -55,6 +55,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
     set(BRPC_LIBS brpc protobuf glog gflags unwind lzma ssl crypto leveldb z snappy dl pthread ${OS_LIB})
+    if (PZFPGA_ENABLE) 
+        link_directories(${PROJECT_SOURCE_DIR}/thirdparty/aclrte-linux64/lib)
+    endif()
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB 
             ${CMAKE_THREAD_LIBS_INIT}
@@ -82,11 +85,6 @@ if (TCMALLOC_ENABLE)
     set(CMAKE_EXE_LINKER_FLAGS "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${CMAKE_EXE_LINKER_FLAGS}")
 endif()
 
-option(LOG_FILE_PATH_ENABLE "Enable LOG FILE PATH ENABLE" ON) 
-message("LOG_FILE_PATH_ENABLE option is ${LOG_FILE_PATH_ENABLE}")
-if (LOG_FILE_PATH_ENABLE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__FILE__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"' -Wno-builtin-macro-redefined")
-endif()
 if(POLICY CMP0086)
   cmake_policy(SET CMP0086 NEW)
 endif()
@@ -101,11 +99,6 @@ include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include ${PROJECT_SOURCE_DI
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib 
     ${PROJECT_SOURCE_DIR}/thirdparty/lib64
     ${PROJECT_SOURCE_DIR}/fesql/build/release/lib)
-
-if (PZFPGA_ENABLE) 
-    add_definitions('-DPZFPGA')
-    link_directories(${PROJECT_SOURCE_DIR}/thirdparty/aclrte-linux64/lib)
-endif()
 
 add_subdirectory(src)
 add_custom_target(rtidbpy

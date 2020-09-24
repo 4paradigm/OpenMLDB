@@ -50,6 +50,7 @@
 #include "timer.h"     // NOLINT
 #include "tprinter.h"  // NOLINT
 #include "version.h"   // NOLINT
+#include "config.h" // NOLINT
 #include "vm/engine.h"
 
 using Schema = ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>;
@@ -267,9 +268,15 @@ void StartTablet() {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
+#ifdef PZFPAG_ENABLE
+    PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d with fpga",
+            real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
+            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+#else
     PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
             real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
             RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+#endif
     if (!tablet->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);

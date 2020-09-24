@@ -10,7 +10,7 @@
 #include "base/file_util.h"
 #include "base/hash.h"
 #include "base/glog_wapper.h" // NOLINT
-
+#include "config.h" // NOLINT
 
 
 DECLARE_bool(disable_wal);
