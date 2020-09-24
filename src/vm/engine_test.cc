@@ -16,6 +16,7 @@
  */
 
 #include "vm/engine_test.h"
+#include "base/sig_trace.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "gtest/internal/gtest-param-util.h"
@@ -447,5 +448,12 @@ int main(int argc, char** argv) {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     ::testing::InitGoogleTest(&argc, argv);
+
+    signal(SIGSEGV, fesql::base::FeSignalBacktraceHandler);
+    signal(SIGBUS, fesql::base::FeSignalBacktraceHandler);
+    signal(SIGFPE, fesql::base::FeSignalBacktraceHandler);
+    signal(SIGILL, fesql::base::FeSignalBacktraceHandler);
+    signal(SIGSYS, fesql::base::FeSignalBacktraceHandler);
+
     return RUN_ALL_TESTS();
 }
