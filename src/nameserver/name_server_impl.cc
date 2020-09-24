@@ -10537,7 +10537,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
         if (!tb_client->GetSchema(db_name, sql, &rtidb_input_schema, &rtidb_output_schema)) {
             response->set_code(::rtidb::base::ReturnCode::kGetSchemaFailed);
             response->set_msg("get schema from tablet failed");
-            PDLOG(WARNING, "get scheam from failed, db[%s], sp_name[%s], sql[%s]",
+            PDLOG(WARNING, "get scheam tablet from failed, db[%s], sp_name[%s], sql[%s]",
                     db_name.c_str(), sp_name.c_str(), sql.c_str());
             return;
         }

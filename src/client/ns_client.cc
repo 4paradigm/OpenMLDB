@@ -459,11 +459,11 @@ bool NsClient::HandleSQLCreateProcedure(const fesql::node::NodePointVector& pars
                     return false;
                 }
             }
-            client_.SendRequest(
+            bool ok = client_.SendRequest(
                 &::rtidb::nameserver::NameServer_Stub::CreateProcedure, &request,
                 &response, FLAGS_request_timeout_ms, 1);
             sql_status->msg = response.msg();
-            if (0 != response.code()) {
+            if (!ok || 0 != response.code()) {
                 return false;
             }
             break;
