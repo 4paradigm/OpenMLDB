@@ -166,7 +166,7 @@ DEFINE_uint32(max_col_display_length, 256,
 // rocksdb
 DEFINE_bool(disable_wal, true, "If true, do not write WAL for write.");
 DEFINE_string(file_compression, "pz",
-              "Type of compression, can be pz, lz4, zlib");
+              "Type of compression, can be off, pz, lz4, zlib");
 DEFINE_uint32(block_cache_mb, 4096,
               "Memory allocated for caching uncompressed block (OS page cache "
               "handles the compressed ones)");
@@ -183,7 +183,6 @@ DEFINE_uint32(load_table_queue_size, 1000, "set load tabale queue size");
 // multiple data center
 DEFINE_uint32(get_replica_status_interval, 10000,
               "config the interval to sync replica cluster status time");
-
 // object sotre
 DEFINE_uint32(oss_flush_size, 0, "set oss cache flush kilobyte size");
 DEFINE_int32(oss_flush_period, 0, "set oss cache flush period seconds");
