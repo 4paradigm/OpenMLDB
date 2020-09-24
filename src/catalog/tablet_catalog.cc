@@ -79,7 +79,7 @@ bool TabletTableHandler::Init() {
             const std::string& key = index_def.first_keys(j);
             auto it = types_.find(key);
             if (it == types_.end()) {
-                LOG(WARNING) << "column " << key << " does not exist in table";
+                LOG(WARNING) << "column " << key << " does not exist in table " << name_;
                 return false;
             }
             index_st.keys.push_back(it->second);
