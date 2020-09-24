@@ -77,7 +77,7 @@ object JoinPlan {
       joinConditions += leftCol === rightCol
     }
 
-    val filter = node.join().filter()
+    val filter = node.join().condition()
     // extra conditions
     if (filter.condition() != null) {
 

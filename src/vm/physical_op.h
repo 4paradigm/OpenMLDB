@@ -166,7 +166,7 @@ class ConditionFilter {
     explicit ConditionFilter(const node::ExprNode *condition)
         : condition_(condition) {}
     virtual ~ConditionFilter() {}
-    const bool ValidCondition() { return nullptr != condition_; }
+    const bool ValidCondition() const { return nullptr != condition_; }
     void set_condition(const node::ExprNode *condition) {
         condition_ = condition;
     }
@@ -694,57 +694,26 @@ class RequestWindowOp : public WindowOp {
     const Key &index_key() const { return index_key_; }
     Key index_key_;
 };
-class Join {
+class Filter {
  public:
-    explicit Join(const node::JoinType join_type)
-        : join_type_(join_type),
-          right_sort_(nullptr),
-          filter_(nullptr),
+    explicit Filter(const node::ExprNode *condition)
+        : condition_(condition),
           left_key_(nullptr),
           right_key_(nullptr),
           index_key_(nullptr) {}
-    explicit Join(const node::JoinType join_type,
-                  const node::ExprNode *condition)
-        : join_type_(join_type),
-          right_sort_(nullptr),
-          filter_(condition),
-          left_key_(nullptr),
-          right_key_(nullptr),
-          index_key_(nullptr) {}
-    Join(const node::JoinType join_type, const node::OrderByNode *orders,
-         const node::ExprNode *condition)
-        : join_type_(join_type),
-          right_sort_(orders),
-          filter_(condition),
-          left_key_(nullptr),
-          right_key_(nullptr),
-          index_key_(nullptr) {}
-    Join(const node::JoinType join_type, const node::ExprNode *condition,
-         const node::ExprListNode *left_keys,
-         const node::ExprListNode *right_keys)
-        : join_type_(join_type),
-          right_sort_(nullptr),
-          filter_(condition),
+    Filter(const node::ExprNode *condition, const node::ExprListNode *left_keys,
+           const node::ExprListNode *right_keys)
+        : condition_(condition),
           left_key_(left_keys),
           right_key_(right_keys),
           index_key_(nullptr) {}
-    Join(const node::JoinType join_type, const node::OrderByNode *orders,
-         const node::ExprNode *condition, const node::ExprListNode *left_keys,
-         const node::ExprListNode *right_keys)
-        : join_type_(join_type),
-          right_sort_(orders),
-          filter_(condition),
-          left_key_(left_keys),
-          right_key_(right_keys),
-          index_key_(nullptr) {}
-    virtual ~Join() {}
+
+    bool Valid() {
+        return index_key_.ValidKey() || condition_.ValidCondition();
+    }
     const std::string ToString() const {
         std::ostringstream oss;
-        oss << "type=" << node::JoinTypeName(join_type_);
-        if (right_sort_.ValidSort()) {
-            oss << ", right_sort=" << node::ExprString(right_sort_.orders());
-        }
-        oss << ", condition=" << node::ExprString(filter_.condition_)
+        oss << "condition=" << node::ExprString(condition_.condition_)
             << ", left_keys=" << node::ExprString(left_key_.keys())
             << ", right_keys=" << node::ExprString(right_key_.keys())
             << ", index_keys=" << node::ExprString(index_key_.keys());
@@ -752,10 +721,7 @@ class Join {
     }
     const std::string FnDetail() const {
         std::ostringstream oss;
-        oss << "condition " << filter_.FnDetail();
-        if (right_sort_.ValidSort()) {
-            oss << ", right_sort_=" << right_sort_.FnDetail();
-        }
+        oss << ", condition=" << condition_.FnDetail();
         oss << ", left_keys=" << left_key_.FnDetail()
             << ", right_keys=" << right_key_.FnDetail()
             << ", index_keys=" << index_key_.FnDetail();
@@ -764,15 +730,56 @@ class Join {
     const Key &left_key() const { return left_key_; }
     const Key &right_key() const { return right_key_; }
     const Key &index_key() const { return index_key_; }
-    const ConditionFilter &filter() const { return filter_; }
+    const ConditionFilter &condition() const { return condition_; }
+    ConditionFilter condition_;
+    Key left_key_;
+    Key right_key_;
+    Key index_key_;
+};
+class Join : public Filter {
+ public:
+    explicit Join(const node::JoinType join_type)
+        : Filter(nullptr), join_type_(join_type), right_sort_(nullptr) {}
+    Join(const node::JoinType join_type, const node::ExprNode *condition)
+        : Filter(condition), join_type_(join_type), right_sort_(nullptr) {}
+    Join(const node::JoinType join_type, const node::OrderByNode *orders,
+         const node::ExprNode *condition)
+        : Filter(condition), join_type_(join_type), right_sort_(orders) {}
+    Join(const node::JoinType join_type, const node::ExprNode *condition,
+         const node::ExprListNode *left_keys,
+         const node::ExprListNode *right_keys)
+        : Filter(condition, left_keys, right_keys),
+          join_type_(join_type),
+          right_sort_(nullptr) {}
+    Join(const node::JoinType join_type, const node::OrderByNode *orders,
+         const node::ExprNode *condition, const node::ExprListNode *left_keys,
+         const node::ExprListNode *right_keys)
+        : Filter(condition, left_keys, right_keys),
+          join_type_(join_type),
+          right_sort_(orders) {}
+    virtual ~Join() {}
+    const std::string ToString() const {
+        std::ostringstream oss;
+        oss << "type=" << node::JoinTypeName(join_type_);
+        if (right_sort_.ValidSort()) {
+            oss << ", right_sort=" << node::ExprString(right_sort_.orders());
+        }
+        oss << ", " << Filter::ToString();
+        return oss.str();
+    }
+    const std::string FnDetail() const {
+        std::ostringstream oss;
+
+        if (right_sort_.ValidSort()) {
+            oss << "right_sort_=" << right_sort_.FnDetail();
+        }
+        oss << Filter::FnDetail();
+        return oss.str();
+    }
     const node::JoinType join_type() const { return join_type_; }
     const Sort &right_sort() const { return right_sort_; }
     node::JoinType join_type_;
     Sort right_sort_;
-    ConditionFilter filter_;
-    Key left_key_;
-    Key right_key_;
-    Key index_key_;
 };
 
 class Union {
@@ -844,6 +851,7 @@ class RequestWindowUnionList {
     const bool Empty() const { return window_unions_.empty(); }
     std::list<std::pair<PhysicalOpNode *, RequestWindowOp>> window_unions_;
 };
+
 class PhysicalWindowNode : public PhysicalUnaryNode, public WindowOp {
  public:
     PhysicalWindowNode(PhysicalOpNode *node, const node::WindowPlanNode *w_ptr)
@@ -881,7 +889,7 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
         fn_infos_.push_back(&window_join.left_key_.fn_info_);
         fn_infos_.push_back(&window_join.right_key_.fn_info_);
         fn_infos_.push_back(&window_join.index_key_.fn_info_);
-        fn_infos_.push_back(&window_join.filter_.fn_info_);
+        fn_infos_.push_back(&window_join.condition_.fn_info_);
     }
 
     bool AddWindowUnion(PhysicalOpNode *node) {
@@ -985,7 +993,7 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     bool InitSchema() override;
     void RegisterFunctionInfo() {
         fn_infos_.push_back(&join_.right_sort_.fn_info_);
-        fn_infos_.push_back(&join_.filter_.fn_info_);
+        fn_infos_.push_back(&join_.condition_.fn_info_);
         fn_infos_.push_back(&join_.left_key_.fn_info_);
         fn_infos_.push_back(&join_.right_key_.fn_info_);
         fn_infos_.push_back(&join_.index_key_.fn_info_);
@@ -1044,7 +1052,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
     bool InitSchema() override;
     void RegisterFunctionInfo() {
         fn_infos_.push_back(&join_.right_sort_.fn_info_);
-        fn_infos_.push_back(&join_.filter_.fn_info_);
+        fn_infos_.push_back(&join_.condition_.fn_info_);
         fn_infos_.push_back(&join_.left_key_.fn_info_);
         fn_infos_.push_back(&join_.right_key_.fn_info_);
         fn_infos_.push_back(&join_.index_key_.fn_info_);
@@ -1164,13 +1172,14 @@ class PhysicalFliterNode : public PhysicalUnaryNode {
           filter_(condition) {
         output_type_ = node->output_type_;
         InitSchema();
-        fn_infos_.push_back(&filter_.fn_info_);
+        fn_infos_.push_back(&filter_.condition_.fn_info_);
+        fn_infos_.push_back(&filter_.index_key_.fn_info_);
     }
     virtual ~PhysicalFliterNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    bool Valid() { return filter_.ValidCondition(); }
-    const ConditionFilter &filter() const { return filter_; }
-    ConditionFilter filter_;
+    bool Valid() { return filter_.Valid(); }
+    const Filter &filter() const { return filter_; }
+    Filter filter_;
     static PhysicalFliterNode *CastFrom(PhysicalOpNode *node);
 };
 
