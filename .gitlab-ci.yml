@@ -103,7 +103,6 @@ fesql_auto_test:
   dependencies:
     - build
 
-
 auto_test:
   stage: test
   except:

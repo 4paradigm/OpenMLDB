@@ -8,7 +8,7 @@ log = LogManager('fesql-auto-test').get_logger_and_add_handlers()
 
 def test_smoke():
     print("hello")
-    options = driver.DriverOptions("172.27.128.37:16181","/fedb_0904")
+    options = driver.DriverOptions("172.27.128.37:16181","/fedb_0919")
     sdk = driver.Driver(options)
     assert sdk.init()
     db_name = "pydb" + str(time.time_ns()%100000)
