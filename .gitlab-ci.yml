@@ -181,6 +181,7 @@ tablet_one_demension:
     - ln -sf /depends/thirdsrc thirdsrc
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
+  after_script:
     - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
@@ -202,6 +203,7 @@ tablet_multi_demension:
     - ln -sf /depends/thirdsrc thirdsrc
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
+  after_script:
     - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
@@ -223,6 +225,7 @@ ns_one_demension:
     - ln -sf /depends/thirdsrc thirdsrc
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
+  after_script:
     - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
@@ -244,6 +247,7 @@ ns_multi_demension:
     - ln -sf /depends/thirdsrc thirdsrc
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
+  after_script:
     - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
@@ -265,6 +269,7 @@ disk_table:
     - ln -sf /depends/thirdsrc thirdsrc
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "disk"
+  after_script:
     - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
