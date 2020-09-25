@@ -35,6 +35,9 @@ fpga-build:
     expire_in: 4h
     paths:
       - build/bin
+  only:
+    variables:
+      - $ENV_BUILD == "all"
 
 build:
   stage: build
@@ -66,6 +69,9 @@ mac_build:
       - build/bin/rtidb_mac
       - build/src/sdk/libsql_jsdk.dylib
       - build/sql_pysdk/dist/*.whl
+  only:
+    variables:
+      - $ENV_BUILD == "all"
 
 fpga_c++_ut:
   image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
@@ -84,6 +90,9 @@ fpga_c++_ut:
         - reports/*.xml
   dependencies:
     - build
+  only:
+    variables:
+      - $ENV_BUILD == "all"
   except:
     variables:
       - $ENV_BUILD == "daily"
@@ -168,6 +177,9 @@ fesql_auto_test:
   except:
     variables:
       - $ENV_BUILD == "daily"
+  only:
+    variables:
+      - $ENV_BUILD == "all"
   dependencies:
     - build
 
@@ -198,6 +210,9 @@ auto_test:
   except:
     variables:
       - $ENV_BUILD == "daily"
+  only:
+    variables:
+      - $ENV_BUILD == "all"
   dependencies:
     - build
 
@@ -256,6 +271,9 @@ tablet_one_demension:
         - ./test-reports/*
   dependencies:
     - build
+  only:
+    variables:
+      - $ENV_BUILD == "all"
   except:
     variables:
       - $ENV_BUILD == "daily"
@@ -278,6 +296,9 @@ tablet_multi_demension:
         - ./test-reports/*
   dependencies:
     - build
+  only:
+    variables:
+      - $ENV_BUILD == "all"
   except:
     variables:
       - $ENV_BUILD == "daily"
@@ -300,6 +321,9 @@ ns_one_demension:
         - ./test-reports/*
   dependencies:
     - build
+  only:
+    variables:
+      - $ENV_BUILD == "all"
   except:
     variables:
       - $ENV_BUILD == "daily"
