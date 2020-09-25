@@ -29,9 +29,13 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(blobserver_impl_test gtest ${BIN_LIBS})
     add_library(replica STATIC replica/replicate_node.cc
                                replica/log_replicator.cc)
+
     add_executable(mem_table_iterator_test storage/mem_table_iterator_test.cc)
     target_link_libraries(mem_table_iterator_test gtest ${BIN_LIBS})
 
+    if (PZFPGA_ENABLE)
+        target_link_libraries(storage lz4 pz alteracl OpenCL elf z)
+    endif()
     add_executable(tablet_catalog_test catalog/tablet_catalog_test.cc)
     target_link_libraries(tablet_catalog_test gtest ${BIN_LIBS})
 
