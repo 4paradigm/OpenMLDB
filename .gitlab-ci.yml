@@ -438,5 +438,8 @@ fesql_auto_test_python:
   except:
     variables:
       - $ENV_BUILD == "daily"
+  only:
+    variables:
+      - $ENV_BUILD == "all"
   dependencies:
     - build
