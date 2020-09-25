@@ -106,14 +106,14 @@ class RunSession {
         return compile_info_->get_sql_context().encoded_schema;
     }
 
-    virtual vm::PhysicalOpNode* GetPhysicalPlan() {
+    virtual fesql::vm::PhysicalOpNode* GetPhysicalPlan() {
         return compile_info_->get_sql_context().physical_plan;
     }
 
-    virtual vm::Runner* GetMainRunner() {
+    virtual fesql::vm::Runner* GetMainRunner() {
         return compile_info_->get_sql_context().cluster_job.GetRunner(0);
     }
-    virtual ClusterJob& GetClusterJob() {
+    virtual fesql::vm::ClusterJob& GetClusterJob() {
         return compile_info_->get_sql_context().cluster_job;
     }
 

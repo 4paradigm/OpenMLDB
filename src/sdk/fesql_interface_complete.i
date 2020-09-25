@@ -35,7 +35,6 @@ using fesql::sdk::DBMSSdk;
 using fesql::sdk::TabletSdk;
 using namespace fesql::node;
 using fesql::vm::SQLContext;
-using fesql::vm::ClusterJob;
 using fesql::vm::Catalog;
 using fesql::vm::PhysicalOpNode;
 using fesql::vm::PhysicalWindowNode;

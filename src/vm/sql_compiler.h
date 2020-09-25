@@ -34,32 +34,6 @@ namespace fesql {
 namespace vm {
 
 using fesql::base::Status;
-class ClusterJob {
- public:
-    ClusterJob() : tasks_() {}
-    Runner* GetRunner(uint32_t id) {
-        return id >= tasks_.size() ? nullptr : tasks_[id];
-    }
-    void AddTask(Runner* task) { tasks_.push_back(task); }
-    void Reset() { tasks_.clear(); }
-    const size_t GetTaskSize() const { return tasks_.size(); }
-    const bool IsValid() const { return !tasks_.empty(); }
-    void Print(std::ostream& output, const std::string& tab) const {
-        if (tasks_.empty()) {
-            return;
-        }
-        uint32_t id = 0;
-        for (auto iter = tasks_.cbegin(); iter != tasks_.cend(); iter++) {
-            output << "TASK ID " << id++;
-            (*iter)->Print(output, tab);
-            output << "\n";
-        }
-    }
-    void Print() const { this->Print(std::cout, "    "); }
-
- private:
-    std::vector<Runner*> tasks_;
-};
 struct SQLContext {
     // mode: batch|request
     // the sql content
@@ -71,7 +45,7 @@ struct SQLContext {
     // the logical plan
     ::fesql::node::PlanNodeList logical_plan;
     PhysicalOpNode* physical_plan;
-    ClusterJob cluster_job;
+    fesql::vm::ClusterJob cluster_job;
     // TODO(wangtaize) add a light jit engine
     // eg using bthead to compile ir
     std::unique_ptr<FeSQLJIT> jit;

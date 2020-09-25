@@ -70,7 +70,6 @@ namespace std {
 using namespace fesql;
 using namespace fesql::node;
 using fesql::vm::SQLContext;
-using fesql::vm::ClusterJob;
 using fesql::vm::Catalog;
 using fesql::vm::PhysicalOpNode;
 using fesql::vm::PhysicalWindowNode;
