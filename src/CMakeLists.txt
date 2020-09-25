@@ -135,7 +135,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_executable(nameserver_test nameserver/name_server_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc)
     target_link_libraries(nameserver_test  gtest  ${BIN_LIBS})
 
-    add_executable(blob_proxy_impl_test blob_proxy/blob_proxy_impl_test.cc proto/common.pb.cc proto/tablet.pb.cc flags.cc)
+    add_executable(blob_proxy_impl_test blob_proxy/blob_proxy_impl_test.cc proto/common.pb.cc proto/client.pb.cc proto/tablet.pb.cc flags.cc)
     target_link_libraries(blob_proxy_impl_test gtest ${BIN_LIBS})
 
     add_executable(nameserver_create_remote_test nameserver/name_server_create_remote_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc)
