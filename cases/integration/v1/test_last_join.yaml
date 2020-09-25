@@ -808,6 +808,8 @@ cases:
         - ["bb",21,121,1590738991000]
   - id: 25
     desc: LAST JOIN with rename table
+    mode: offline-unsupport
+    tags: ["@chendihao @baoxinqi, 离线JOIN会异常"]
     inputs:
       - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c2:c4"]
@@ -837,6 +839,8 @@ cases:
         - ["bb",21, 31, "cc", 21, 32,1590738993000, "bb", 1590738990000]
   - id: 26
     desc: LAST JOIN subquery with rename table
+    mode: offline-unsupport
+    tags: ["@chendihao @baoxinqi, 离线JOIN会异常"]
     inputs:
       - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c2:c4"]
@@ -866,6 +870,8 @@ cases:
         - ["bb",21, 31, "cc", 21, 32,1590738993000, "bb", 1590738990000]
   - id: 27
     desc: LAST JOIN subquery with rename table 2
+    mode: offline-unsupport
+    tags: ["@chendihao @baoxinqi, 离线JOIN会异常"]
     inputs:
       - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: ["index1:c2:c4"]

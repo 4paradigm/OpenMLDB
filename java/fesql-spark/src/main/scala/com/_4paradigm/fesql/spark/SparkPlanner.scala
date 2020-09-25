@@ -86,7 +86,7 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
       case PhysicalOpType.kPhysicalOpLimit =>
         LimitPlan.gen(ctx, PhysicalLimitNode.CastFrom(root), children.head)
       case PhysicalOpType.kPhysicalOpRename =>
-        children.head
+        RenamePlan.gen(ctx, PhysicalRenameNode.CastFrom(root), children.head)
       case _ =>
         throw new UnsupportedFesqlException(s"Plan type $opType not supported")
     }

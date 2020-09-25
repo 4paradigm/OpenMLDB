@@ -91,12 +91,14 @@ class SQLCompiler {
 
     bool BuildClusterJob(SQLContext& ctx,  // NOLINT
                          Status& status);  // NOLINT
+
  private:
     void KeepIR(SQLContext& ctx, llvm::Module* m);  // NOLINT
 
     bool ResolvePlanFnAddress(vm::PhysicalOpNode* physical_plan,
                               std::unique_ptr<FeSQLJIT>& jit,  // NOLINT
                               Status& status);                 // NOLINT
+
  private:
     const std::shared_ptr<Catalog> cl_;
     bool keep_ir_;
