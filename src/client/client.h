@@ -14,6 +14,7 @@
 #include "codec/codec.h"
 #include "codec/schema_codec.h"
 #include "zk/zk_client.h"
+#include "client/ns_client.h"
 
 struct WriteOption {
     WriteOption() : update_if_exist(false) {
@@ -380,6 +381,7 @@ class BaseClient {
     std::map<std::string, std::shared_ptr<rtidb::client::BsClient>> blobs_;
     std::map<std::string, std::shared_ptr<TableHandler>> tables_;
     rtidb::zk::ZkClient* zk_client_;
+    rtidb::client::NsClient* ns_client_;
     std::string zk_cluster_;
     std::string zk_root_path_;
     std::string table_notify_;
