@@ -34,6 +34,9 @@ public class Common {
     }
 
     public static com._4paradigm.sql.sdk.Schema ConvertSchema(Schema schema) throws SQLException {
+        if (schema == null || schema.GetColumnCnt() == 0) {
+            throw new SQLException("schema is null or empty");
+        }
         List<Column> columnList = new ArrayList<>();
         for (int i = 0; i < schema.GetColumnCnt(); i++) {
             Column column = new Column();

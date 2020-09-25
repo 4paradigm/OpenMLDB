@@ -189,8 +189,19 @@ public class SqlClusterExecutor implements SqlExecutor {
             throw new SQLException("getRequestRow failed");
         }
         Schema inputSchema = procedureInfo.getInputSchema();
+        int strlen = 0;
         for (int i = 0 ; i < inputSchema.getColumnList().size(); i++) {
-            Column column = inputSchema.getColumnList().get(0);
+            Column column = inputSchema.getColumnList().get(i);
+            Object object = requestRow.get(i);
+            if (column.getSqlType() == Types.VARCHAR && object != null) {
+                strlen += ((String)object).length();
+            }
+        }
+        if (!sqlRequestRow.Init(strlen)) {
+            throw new SQLException("init request row failed");
+        }
+        for (int i = 0 ; i < inputSchema.getColumnList().size(); i++) {
+            Column column = inputSchema.getColumnList().get(i);
             switch (column.getSqlType()) {
                 case Types.BOOLEAN:
                     sqlRequestRow.AppendBool((Boolean)requestRow.get(i));
@@ -217,11 +228,18 @@ public class SqlClusterExecutor implements SqlExecutor {
                 case Types.TIMESTAMP:
                     sqlRequestRow.AppendTimestamp(((Timestamp)requestRow.get(i)).getTime());
                     break;
+                case Types.VARCHAR:
+                    sqlRequestRow.AppendString((String)requestRow.get(i));
+                    break;
                 default:
                     throw new SQLException("column type not supported");
             }
         }
+        sqlRequestRow.Build();
         ResultSet resultSet = sqlRouter.CallProcedure(dbName, proName, sqlRequestRow, status);
+        if (resultSet == null || status.getCode() != 0) {
+            throw new SQLException("call procedure fail");
+        }
         return new SQLResultSet(resultSet);
     }
 
@@ -234,13 +252,16 @@ public class SqlClusterExecutor implements SqlExecutor {
     public ProcedureInfo showProcedure(String dbName, String proName) throws SQLException{
         Status status = new Status();
         com._4paradigm.sql.ProcedureInfo procedureInfo = sqlRouter.ShowProcedure(dbName, proName, status);
+        if (procedureInfo == null || status.getCode() != 0) {
+            throw new SQLException("show procedure failed, msg: " + status.getMsg());
+        }
         ProcedureInfo spInfo = new ProcedureInfo();
         spInfo.setDbName(procedureInfo.GetDbName());
         spInfo.setProName(procedureInfo.GetSpName());
         spInfo.setSql(procedureInfo.GetSql());
         spInfo.setInputSchema(Common.ConvertSchema(procedureInfo.GetInputSchema()));
         spInfo.setOutputSchema(Common.ConvertSchema(procedureInfo.GetOutputSchema()));
-        return null;
+        return spInfo;
     }
 
     @Override
