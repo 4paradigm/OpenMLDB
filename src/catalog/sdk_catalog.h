@@ -25,6 +25,8 @@
 #include <memory>
 #include <mutex>
 #include "base/spinlock.h"
+#include "catalog/client_manager.h"
+#include "client/tablet_client.h"
 #include "proto/name_server.pb.h"
 #include "vm/catalog.h"
 
@@ -33,55 +35,52 @@ namespace catalog {
 
 class SDKTableHandler : public ::fesql::vm::TableHandler {
  public:
-    explicit SDKTableHandler(const ::rtidb::nameserver::TableInfo& meta);
-
-    ~SDKTableHandler();
+    SDKTableHandler(const ::rtidb::nameserver::TableInfo& meta,
+            const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients);
 
     bool Init();
 
-    inline const ::fesql::vm::Schema* GetSchema() { return &schema_; }
+    const ::fesql::vm::Schema* GetSchema() override { return &schema_; }
 
-    inline const std::string& GetName() { return name_; }
+    const std::string& GetName() override { return name_; }
 
-    inline const std::string& GetDatabase() { return db_; }
+    const std::string& GetDatabase() override { return db_; }
 
-    inline const ::fesql::vm::Types& GetTypes() { return types_; }
+    const ::fesql::vm::Types& GetTypes() override { return types_; }
 
-    inline const ::fesql::vm::IndexHint& GetIndex() { return index_hint_; }
+    const ::fesql::vm::IndexHint& GetIndex() override { return index_hint_; }
 
-    inline const ::fesql::codec::Row Get(int32_t pos) {
-        return ::fesql::codec::Row();
-    }
-
-    inline std::unique_ptr<::fesql::codec::RowIterator> GetIterator() const {
+    std::unique_ptr<::fesql::codec::RowIterator> GetIterator() const override {
         return std::move(std::unique_ptr<::fesql::codec::RowIterator>());
     }
 
-    inline ::fesql::codec::RowIterator* GetIterator(
-        int8_t* addr) const override {
+    ::fesql::codec::RowIterator* GetIterator(int8_t* addr) const override {
         return nullptr;
     }
 
-    inline std::unique_ptr<::fesql::codec::WindowIterator> GetWindowIterator(
-        const std::string& idx_name) {
+    std::unique_ptr<::fesql::codec::WindowIterator> GetWindowIterator(
+        const std::string& idx_name) override {
         return std::move(std::unique_ptr<::fesql::codec::WindowIterator>());
     }
 
-    virtual const uint64_t GetCount() { return cnt_; }
+    const uint64_t GetCount() override { return cnt_; }
 
-    inline ::fesql::codec::Row At(uint64_t pos) override {
+    ::fesql::codec::Row At(uint64_t pos) override {
         return ::fesql::codec::Row();
     }
 
-    virtual std::shared_ptr<::fesql::vm::PartitionHandler> GetPartition(
+    std::shared_ptr<::fesql::vm::PartitionHandler> GetPartition(
         std::shared_ptr<::fesql::vm::TableHandler> table_hander,
-        const std::string& index_name) const {
+        const std::string& index_name) const override {
         return std::shared_ptr<::fesql::vm::PartitionHandler>();
     }
 
-    inline const std::string GetHandlerTypeName() override {
+    const std::string GetHandlerTypeName() override {
         return "TabletTableHandler";
     }
+
+    bool GetTablets(const std::string& index_name, const std::string& pk,
+            std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets);
 
  private:
     inline int32_t GetColumnIndex(const std::string& column) {
@@ -101,6 +100,8 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
     ::fesql::vm::IndexList index_list_;
     ::fesql::vm::IndexHint index_hint_;
     uint64_t cnt_;
+    TableClientManager table_client_manager_;
+    std::vector<std::string> partition_key_;
 };
 
 typedef std::map<std::string,
@@ -110,28 +111,23 @@ typedef std::map<std::string, std::shared_ptr<::fesql::type::Database>> SDKDB;
 
 class SDKCatalog : public ::fesql::vm::Catalog {
  public:
-    SDKCatalog() : mu_(), table_metas_(), tables_(), db_() {}
+    SDKCatalog() : table_metas_(), tables_(), db_() {}
 
     ~SDKCatalog() {}
 
-    bool Init(const std::vector<::rtidb::nameserver::TableInfo>& tables);
+    bool Init(const std::vector<::rtidb::nameserver::TableInfo>& tables,
+        const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients);
 
-    bool Refresh(const std::vector<::rtidb::nameserver::TableInfo>& tables) {
-        return false;
-    }
-
-    std::shared_ptr<::fesql::type::Database> GetDatabase(
-        const std::string& db) {
+    std::shared_ptr<::fesql::type::Database> GetDatabase(const std::string& db) override {
         return std::shared_ptr<::fesql::type::Database>();
     }
 
     std::shared_ptr<::fesql::vm::TableHandler> GetTable(
-        const std::string& db, const std::string& table_name);
+        const std::string& db, const std::string& table_name) override;
 
-    inline bool IndexSupport() override { return true; }
+    bool IndexSupport() override { return true; }
 
  private:
-    ::rtidb::base::SpinMutex mu_;
     std::vector<::rtidb::nameserver::TableInfo> table_metas_;
     SDKTables tables_;
     SDKDB db_;
