@@ -960,7 +960,6 @@ int RtidbClient::CreateTable(const std::string& table_meta) {
            return -21;
         }
         new_col->set_data_type(tp_iter->second);
-        std::cout << "type " << new_col->type();
         name_map.insert(std::make_pair(col_name, type));
     }
     std::set<std::string> key_set;

@@ -138,41 +138,6 @@ class tableBuilder:
       output.write(idx.SerializeToString())
     return output.getvalue()
 
-def generate_auto():
-  table = "auto"
-  b = tableBuilder(table, "hdd", "Relational")
-  b.addCol("id", "bigint", True).addCol("attribute", "varchar", True).addCol("image", "varchar", False).addIdx("idx1", ["id"], "AutoGen")
-  with open("{}.txt".format(table), "w") as f:
-    f.write(b.SerializeToString())
-
-def generate_ck():
-  table = "ck"
-  b = tableBuilder(table, "hdd", "Relational")
-  b.addCol("id", "bigint", True).addCol("name", "varchar", True).addCol("mcc", "int", True).addCol("attribute", "varchar", True).addCol("image", "blob", False).addCol("date", "date", True).addCol("ts", "timestamp", True).addIdx("index_1", ["id","name"], "primaryKey").addIdx("index_2", ["mcc"], "nounique").addIdx("index_3",["date","ts"], "unique")
-  with open("{}.txt".format(table), "w") as f:
-    f.write(b.SerializeToString())
-
-def generate_date():
-  table = "date"
-  b = tableBuilder(table, "hdd", "Relational")
-  b.addCol("id", "bigint", True).addCol("attribute", "varchar", True).addCol("image", "varchar", False).addCol("male", "bool", False).addCol("date", "date", True).addCol("ts", "timestamp", True).addIdx("idx1", ["date"], "primaryKey").addIdx("idx2", ["male", "ts"], "nounique")
-  with open("{}.txt".format(table), "w") as f:
-    f.write(b.SerializeToString())
-
-def generate_rt_ck():
-  table = "rt_ck"
-  b = tableBuilder(table, "hdd", "Relational")
-  b.addCol("id", "bigint", True).addCol("name", "varchar", True).addCol("mcc", "int", False).addCol("attribute", "varchar", True).addCol("image", "blob", False).addIdx("index_1", ["id","name"], "primaryKey").addIdx("index_2", ["mcc"], "nounique")
-  with open("{}.txt".format(table), "w") as f:
-    f.write(b.SerializeToString())
-
-def generate_test1():
-  table = "test1"
-  b = tableBuilder(table, "hdd", "Relational")
-  b.addCol("id", "bigint", True).addCol("attribute", "varchar", True).addCol("image", "varchar", False).addIdx("id", ["id"], "primaryKey")
-  with open("{}.txt".format(table), "w") as f:
-    f.write(b.SerializeToString())
-
 def buildReadFilter(filter):
   mid_rf = interclient.ReadFilter()
   mid_rf.column = filter.name
