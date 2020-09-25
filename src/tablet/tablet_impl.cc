@@ -3539,7 +3539,7 @@ int32_t TabletImpl::DeleteTableInternal(
             }
         }
         if (!catalog_->DeleteTable(table->GetTableMeta().db(),
-                                   table->GetName())) {
+                                   table->GetName(), table->GetPid())) {
             LOG(WARNING) << "delete " << table->GetTableMeta().db() << " "
                          << table->GetName() << " in catalog failed";
         }
@@ -3762,20 +3762,11 @@ void TabletImpl::CreateTable(RpcController* controller,
         }
         if (table_meta->format_version() == 1 &&
             table_meta->storage_mode() == ::rtidb::common::kMemory) {
-            std::shared_ptr<catalog::TabletTableHandler> handler(
-                new catalog::TabletTableHandler(*table_meta, table_meta->db(),
-                                                table));
-            bool ok = handler->Init();
+            bool ok = catalog_->AddTable(*table_meta, table);
+            engine_.ClearCacheLocked(table_meta->db());
             if (ok) {
-                ok = catalog_->AddTable(handler);
-                engine_.ClearCacheLocked(table_meta->db());
-                if (ok) {
-                    LOG(INFO) << "add table " << table_meta->name()
-                              << " to catalog with db " << table_meta->db();
-                } else {
-                    LOG(WARNING) << "fail to add table " << table_meta->name()
-                                 << " to catalog with db " << table_meta->db();
-                }
+                LOG(INFO) << "add table " << table_meta->name()
+                          << " to catalog with db " << table_meta->db();
             } else {
                 LOG(WARNING) << "fail to add table " << table_meta->name()
                              << " to catalog with db " << table_meta->db();

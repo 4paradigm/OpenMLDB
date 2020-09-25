@@ -138,8 +138,13 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
         std::string,
         std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>>
         mapping;
-    std::shared_ptr<::rtidb::catalog::SDKCatalog> new_catalog(
-        new ::rtidb::catalog::SDKCatalog());
+    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>> tablet_clients;
+    {
+        // copy a pice of tablets
+        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+        tablet_clients = alive_tablets_;
+    }
+    std::shared_ptr<::rtidb::catalog::SDKCatalog> new_catalog = std::make_shared<::rtidb::catalog::SDKCatalog>();
     for (uint32_t i = 0; i < table_datas.size(); i++) {
         if (table_datas[i].empty()) continue;
         std::string value;
@@ -174,8 +179,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
         DLOG(INFO) << "load table info with name " << table_info->name()
                    << " in db " << table_info->db();
     }
-    bool ok = new_catalog->Init(tables);
-    if (!ok) {
+    if (!new_catalog->Init(tables, tablet_clients)) {
         LOG(WARNING) << "fail to init catalog";
         return false;
     }
