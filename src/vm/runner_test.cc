@@ -309,7 +309,8 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     ASSERT_TRUE(sql_compiler.BuildClusterJob(sql_context, compile_status));
     ASSERT_TRUE(sql_context.physical_plan != nullptr);
 
-    auto root = GetFirstRunnerOfType(sql_context.cluster_job.GetRunner(0), kRunnerGroup);
+    auto root = GetFirstRunnerOfType(sql_context.cluster_job.GetRunner(0),
+                                     kRunnerGroup);
     auto group_runner = dynamic_cast<GroupRunner*>(root);
     std::vector<Row> rows;
     fesql::type::TableDef temp_table;

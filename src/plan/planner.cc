@@ -407,10 +407,12 @@ bool Planner::IsTable(node::PlanNode *node) {
             return IsTable(node->GetChildren()[0]);
         }
         case node::kPlanTypeQuery: {
-            return IsTable(dynamic_cast<node::QueryPlanNode*>(node)->GetChildren()[0]);
+            return IsTable(
+                dynamic_cast<node::QueryPlanNode *>(node)->GetChildren()[0]);
         }
         case node::kPlanTypeProject: {
-            if ((dynamic_cast<node::ProjectPlanNode*>(node))->IsSimpleProjectPlan()) {
+            if ((dynamic_cast<node::ProjectPlanNode *>(node))
+                    ->IsSimpleProjectPlan()) {
                 return IsTable(node->GetChildren()[0]);
             }
         }

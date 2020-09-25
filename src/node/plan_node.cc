@@ -333,8 +333,8 @@ bool ProjectListNode::IsSimpleProjectList() {
     if (projects.empty()) {
         return false;
     }
-    for(auto item: projects) {
-        auto expr = dynamic_cast<ProjectNode*>(item)->GetExpression();
+    for (auto item : projects) {
+        auto expr = dynamic_cast<ProjectNode *>(item)->GetExpression();
         if (!node::ExprIsSimple(expr)) {
             return false;
         }
@@ -379,8 +379,8 @@ bool ProjectPlanNode::IsSimpleProjectPlan() {
         return false;
     }
 
-    for(auto item : project_list_vec_) {
-        auto project_list = dynamic_cast<node::ProjectListNode*>(item);
+    for (auto item : project_list_vec_) {
+        auto project_list = dynamic_cast<node::ProjectListNode *>(item);
         if (!project_list->IsSimpleProjectList()) {
             return false;
         }

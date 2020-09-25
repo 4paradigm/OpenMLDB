@@ -77,8 +77,6 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
           case _ => throw new UnsupportedFesqlException(
             s"Project type ${projectNode.getProject_type_} not supported")
         }
-
-
       case PhysicalOpType.kPhysicalOpGroupBy =>
         GroupByPlan.gen(ctx, PhysicalGroupNode.CastFrom(root), children.head)
 
@@ -87,7 +85,8 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
 
       case PhysicalOpType.kPhysicalOpLimit =>
         LimitPlan.gen(ctx, PhysicalLimitNode.CastFrom(root), children.head)
-
+      case PhysicalOpType.kPhysicalOpRename =>
+        children.head
       case _ =>
         throw new UnsupportedFesqlException(s"Plan type $opType not supported")
     }

@@ -424,6 +424,20 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
     const node::ExprListNode* groups = w_ptr->GetKeys();
 
     switch (depend->type_) {
+        case kPhysicalOpRename: {
+            PhysicalOpNode* new_depend;
+            if (!TransformWindowOp(depend->GetProducer(0), w_ptr, &new_depend,
+                                   status)) {
+                return false;
+            }
+            if (new_depend != depend) {
+                *output = new PhysicalRenameNode(
+                    new_depend,
+                    dynamic_cast<PhysicalRenameNode*>(depend)->name_);
+                node_manager_->RegisterNode(*output);
+            }
+            break;
+        }
         case kPhysicalOpDataProvider: {
             auto data_op = dynamic_cast<PhysicalDataProviderNode*>(depend);
             if (kProviderTypeRequest == data_op->provider_type_) {
@@ -608,6 +622,7 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
             break;
         }
         default: {
+            *output = depend;
             // do nothing
         }
     }
@@ -767,14 +782,17 @@ bool BatchModeTransformer::TransformRenameOp(const node::RenamePlanNode* node,
     if (!TransformPlanOp(node->GetChildren()[0], &left, status)) {
         return false;
     }
-    vm::SchemaSourceList new_sources;
+    //    vm::SchemaSourceList new_sources;
+    //
+    //    for (auto source :
+    //    left->GetOutputNameSchemaList().schema_source_list_) {
+    //        new_sources.AddSchemaSource(node->table_, source.schema_,
+    //                                    source.sources_);
+    //    }
+    //    left->SetOutputNameSchemaList(new_sources);
 
-    for (auto source : left->GetOutputNameSchemaList().schema_source_list_) {
-        new_sources.AddSchemaSource(node->table_, source.schema_,
-                                    source.sources_);
-    }
-    left->SetOutputNameSchemaList(new_sources);
-    *output = left;
+    *output = new PhysicalRenameNode(left, node->table_);
+    node_manager_->RegisterNode(*output);
     return true;
 }
 
@@ -1164,7 +1182,8 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
 base::Status BatchModeTransformer::ValidatePartitionDataProvider(
     PhysicalOpNode* in) {
     CHECK_TRUE(nullptr != in, kPlanError, "Invalid physical node: null");
-    if (kPhysicalOpSimpleProject == in->type_) {
+    if (kPhysicalOpSimpleProject == in->type_ ||
+        kPhysicalOpRename == in->type_) {
         CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)))
     } else {
         CHECK_TRUE(
@@ -1710,6 +1729,7 @@ bool GroupAndSortOptimized::KeysFilterOptimized(
                         "index key is empty";
         return false;
     }
+
     if (kPhysicalOpDataProvider == in->type_) {
         auto scan_op = dynamic_cast<PhysicalDataProviderNode*>(in);
         if (kProviderTypeTable == scan_op->provider_type_) {
@@ -1731,7 +1751,9 @@ bool GroupAndSortOptimized::KeysFilterOptimized(
     } else if (kPhysicalOpSimpleProject == in->type_) {
         auto simple_project = dynamic_cast<PhysicalSimpleProjectNode*>(in);
         PhysicalOpNode* new_depend;
-        if (!KeysFilterOptimized(simple_project->GetOutputNameSchemaList(),
+        if (!KeysFilterOptimized(column_sources.Empty()
+                                     ? simple_project->GetOutputNameSchemaList()
+                                     : column_sources,
                                  simple_project->producers()[0], group, hash,
                                  &new_depend)) {
             return false;
@@ -1741,6 +1763,18 @@ bool GroupAndSortOptimized::KeysFilterOptimized(
                 new_depend, simple_project->output_schema_,
                 simple_project->project_.column_sources());
         *new_in = new_simple_op;
+        return true;
+    } else if (kPhysicalOpRename == in->type_) {
+        PhysicalOpNode* new_depend;
+        if (!KeysFilterOptimized(
+                column_sources.Empty() ? in->GetOutputNameSchemaList()
+                                       : column_sources,
+                in->producers()[0], group, hash, &new_depend)) {
+            return false;
+        }
+        PhysicalRenameNode* new_op = new PhysicalRenameNode(
+            new_depend, dynamic_cast<PhysicalRenameNode*>(in)->name_);
+        *new_in = new_op;
         return true;
     }
     return false;
@@ -1806,7 +1840,9 @@ bool GroupAndSortOptimized::FilterOptimized(
     } else if (kPhysicalOpSimpleProject == in->type_) {
         auto simple_project = dynamic_cast<PhysicalSimpleProjectNode*>(in);
         PhysicalOpNode* new_depend;
-        if (!FilterOptimized(simple_project->GetOutputNameSchemaList(),
+        if (!FilterOptimized(column_sources.Empty()
+                                 ? simple_project->GetOutputNameSchemaList()
+                                 : column_sources,
                              simple_project->producers()[0], filter,
                              &new_depend)) {
             return false;
@@ -1818,6 +1854,18 @@ bool GroupAndSortOptimized::FilterOptimized(
         new_simple_op->SetOutputNameSchemaList(
             simple_project->GetOutputNameSchemaList());
         *new_in = new_simple_op;
+        return true;
+    } else if (kPhysicalOpRename == in->type_) {
+        PhysicalOpNode* new_depend;
+        if (!FilterOptimized(column_sources.Empty()
+                                 ? in->GetOutputNameSchemaList()
+                                 : column_sources,
+                             in->producers()[0], filter, &new_depend)) {
+            return false;
+        }
+        PhysicalRenameNode* new_op = new PhysicalRenameNode(
+            new_depend, dynamic_cast<PhysicalRenameNode*>(in)->name_);
+        *new_in = new_op;
         return true;
     }
     return false;
@@ -1862,6 +1910,18 @@ bool GroupAndSortOptimized::GroupOptimized(
                 simple_project->project_.column_sources());
         *new_in = new_simple_op;
         return true;
+    } else if (kPhysicalOpRename == in->type_) {
+        PhysicalOpNode* new_depend;
+        if (!GroupOptimized(schema_sources.Empty()
+                                ? in->GetOutputNameSchemaList()
+                                : schema_sources,
+                            in->producers()[0], group, &new_depend)) {
+            return false;
+        }
+        PhysicalRenameNode* new_op = new PhysicalRenameNode(
+            new_depend, dynamic_cast<PhysicalRenameNode*>(in)->name_);
+        *new_in = new_op;
+        return true;
     }
 
     return false;
@@ -1892,8 +1952,15 @@ bool GroupAndSortOptimized::SortOptimized(
         return true;
     } else if (kPhysicalOpSimpleProject == in->type_) {
         auto simple_project = dynamic_cast<PhysicalSimpleProjectNode*>(in);
-        return SortOptimized(simple_project->GetOutputNameSchemaList(),
+        return SortOptimized(schema_sources.Empty()
+                                 ? simple_project->GetOutputNameSchemaList()
+                                 : schema_sources,
                              simple_project->producers()[0], sort);
+    } else if (kPhysicalOpRename == in->type_) {
+        return SortOptimized(schema_sources.Empty()
+                                 ? in->GetOutputNameSchemaList()
+                                 : schema_sources,
+                             in->producers()[0], sort);
     }
     return false;
 }
@@ -2505,7 +2572,8 @@ bool LimitOptimized::ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt) {
     if (node->producers().empty()) {
         return false;
     }
-    if (node->type_ == kPhysicalOpSimpleProject) {
+    if (node->type_ == kPhysicalOpSimpleProject ||
+        node->type_ == kPhysicalOpRename) {
         return false;
     }
     if (node->is_block_) {
@@ -2921,24 +2989,26 @@ bool RequestModeransformer::TransformScanOp(const node::TablePlanNode* node,
 bool RequestModeransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* depend,
     PhysicalOpNode** output, base::Status& status) {
+    PhysicalOpNode* new_depend = depend;
     if (nullptr != project_list->w_ptr_) {
-        if (!TransformWindowOp(depend, project_list->w_ptr_, &depend, status)) {
+        if (!TransformWindowOp(depend, project_list->w_ptr_, &new_depend,
+                               status)) {
             return false;
         }
     }
-    switch (depend->output_type_) {
+    switch (new_depend->output_type_) {
         case kSchemaTypeRow:
-            return CreatePhysicalProjectNode(kRowProject, depend, project_list,
-                                             output, status);
+            return CreatePhysicalProjectNode(kRowProject, new_depend,
+                                             project_list, output, status);
         case kSchemaTypeGroup:
-            return CreatePhysicalProjectNode(kGroupAggregation, depend,
+            return CreatePhysicalProjectNode(kGroupAggregation, new_depend,
                                              project_list, output, status);
         case kSchemaTypeTable:
             if (project_list->is_window_agg_) {
-                return CreatePhysicalProjectNode(kAggregation, depend,
+                return CreatePhysicalProjectNode(kAggregation, new_depend,
                                                  project_list, output, status);
             } else {
-                return CreatePhysicalProjectNode(kTableProject, depend,
+                return CreatePhysicalProjectNode(kTableProject, new_depend,
                                                  project_list, output, status);
             }
     }
