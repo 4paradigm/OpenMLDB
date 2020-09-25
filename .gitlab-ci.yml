@@ -93,9 +93,6 @@ fpga_c++_ut:
   only:
     variables:
       - $ENV_BUILD == "all"
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
 
 #fpga_java_ut:
 #  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
@@ -174,9 +171,6 @@ fesql_auto_test:
         - src/sdk/java/fesql-auto-test-java/target/surefire-reports/TEST-*.xml
         - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
         - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/TEST-*.xml
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
   only:
     variables:
       - $ENV_BUILD == "all"
@@ -207,9 +201,6 @@ auto_test:
         - rtidb-auto-test-java/target/surefire-reports/TEST-*.xml
         - rtidb-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
         - rtidb-auto-test-java/target/failsafe-reports/TEST-*.xml
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
   only:
     variables:
       - $ENV_BUILD == "all"
@@ -274,9 +265,6 @@ tablet_one_demension:
   only:
     variables:
       - $ENV_BUILD == "all"
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
 
 tablet_multi_demension:
   stage: ts_integration_test
@@ -299,9 +287,6 @@ tablet_multi_demension:
   only:
     variables:
       - $ENV_BUILD == "all"
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
 
 ns_one_demension:
   stage: ns_integration_test
@@ -324,9 +309,6 @@ ns_one_demension:
   only:
     variables:
       - $ENV_BUILD == "all"
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
 
 ns_multi_demension:
   stage: ns_integration_test
@@ -349,9 +331,6 @@ ns_multi_demension:
   only:
     variables:
       - $ENV_BUILD == "all"
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
 
 disk_table:
   stage: ns_integration_test
@@ -374,9 +353,6 @@ disk_table:
   only:
     variables:
       - $ENV_BUILD == "all"
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
 
 deploy-fedb:
   stage: daily
@@ -435,9 +411,6 @@ fesql_auto_test_python:
     reports:
       junit:
         - src/sdk/python/fesql-auto-test-python/report/TEST-test_*.xml
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
   only:
     variables:
       - $ENV_BUILD == "all"
