@@ -1815,6 +1815,8 @@ bool GroupAndSortOptimized::FilterOptimized(
             new PhysicalSimpleProjectNode(
                 new_depend, simple_project->output_schema_,
                 simple_project->project_.column_sources());
+        new_simple_op->SetOutputNameSchemaList(
+            simple_project->GetOutputNameSchemaList());
         *new_in = new_simple_op;
         return true;
     }

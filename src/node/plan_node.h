@@ -324,6 +324,8 @@ class ProjectListNode : public LeafPlanNode {
     const bool is_window_agg_;
     const WindowPlanNode *w_ptr_;
 
+    bool IsSimpleProjectList();
+
  private:
     PlanNodeList projects;
 };
@@ -344,6 +346,7 @@ class ProjectPlanNode : public UnaryPlanNode {
     const std::string table_;
     const PlanNodeList project_list_vec_;
     const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping_;
+    bool IsSimpleProjectPlan();
 };
 
 class CreatePlanNode : public LeafPlanNode {
