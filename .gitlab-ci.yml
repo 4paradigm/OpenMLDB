@@ -346,6 +346,9 @@ ns_multi_demension:
         - ./test-reports/*
   dependencies:
     - build
+  only:
+    variables:
+      - $ENV_BUILD == "all"
   except:
     variables:
       - $ENV_BUILD == "daily"
@@ -368,6 +371,9 @@ disk_table:
         - ./test-reports/*
   dependencies:
     - build
+  only:
+    variables:
+      - $ENV_BUILD == "all"
   except:
     variables:
       - $ENV_BUILD == "daily"
