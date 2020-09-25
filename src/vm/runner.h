@@ -761,7 +761,6 @@ class RunnerBuilder {
     int32_t id_;
     node::NodeManager* nm_;
 };
-
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_RUNNER_H_

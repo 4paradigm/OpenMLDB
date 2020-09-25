@@ -110,8 +110,11 @@ class RunSession {
         return compile_info_->get_sql_context().physical_plan;
     }
 
-    virtual vm::Runner* GetRunner() {
-        return compile_info_->get_sql_context().runner;
+    virtual vm::Runner* GetMainRunner() {
+        return compile_info_->get_sql_context().cluster_job.GetRunner(0);
+    }
+    virtual ClusterJob& GetClusterJob() {
+        return compile_info_->get_sql_context().cluster_job;
     }
 
     virtual std::shared_ptr<CompileInfo> GetCompileInfo() {

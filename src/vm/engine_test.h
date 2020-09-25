@@ -384,7 +384,7 @@ void EngineCheck(SQLCase& sql_case, bool is_batch,  // NOLINT
     }
 
     std::ostringstream runner_oss;
-    session->GetRunner()->Print(runner_oss, "");
+    session->GetMainRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
 
     // Check Output Data

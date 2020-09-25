@@ -62,12 +62,12 @@ static void RequestUnionRunnerCase(const std::string& sql, int runner_id,
     session.GetPhysicalPlan()->Print(plan_oss, "");
     LOG(INFO) << "physical plan:\n" << plan_oss.str() << std::endl;
     std::ostringstream runner_oss;
-    session.GetRunner()->Print(runner_oss, "");
+    session.GetMainRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::unique_ptr<codec::RowView> row_view = std::unique_ptr<codec::RowView>(
         new codec::RowView(session.GetSchema()));
 
-    auto start_runner = GetRunner(session.GetRunner(), runner_id);
+    auto start_runner = GetRunner(session.GetMainRunner(), runner_id);
     ASSERT_TRUE(nullptr != start_runner);
     switch (mode) {
         case BENCHMARK: {
@@ -119,12 +119,12 @@ void IndexSeekRunnerCase(const std::string sql, int runner_id,
     session.GetPhysicalPlan()->Print(plan_oss, "");
     LOG(INFO) << "physical plan:\n" << plan_oss.str() << std::endl;
     std::ostringstream runner_oss;
-    session.GetRunner()->Print(runner_oss, "");
+    session.GetMainRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::unique_ptr<codec::RowView> row_view = std::unique_ptr<codec::RowView>(
         new codec::RowView(session.GetSchema()));
 
-    auto start_runner = GetRunner(session.GetRunner(), runner_id);
+    auto start_runner = GetRunner(session.GetMainRunner(), runner_id);
     ASSERT_TRUE(nullptr != start_runner);
     switch (mode) {
         case BENCHMARK: {
@@ -161,12 +161,12 @@ void AggRunnerCase(const std::string sql, int runner_id,
     session.GetPhysicalPlan()->Print(plan_oss, "");
     LOG(INFO) << "physical plan:\n" << plan_oss.str() << std::endl;
     std::ostringstream runner_oss;
-    session.GetRunner()->Print(runner_oss, "");
+    session.GetMainRunner()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::unique_ptr<codec::RowView> row_view = std::unique_ptr<codec::RowView>(
         new codec::RowView(session.GetSchema()));
 
-    auto start_runner = GetRunner(session.GetRunner(), runner_id);
+    auto start_runner = GetRunner(session.GetMainRunner(), runner_id);
     ASSERT_TRUE(nullptr != start_runner);
     switch (mode) {
         case BENCHMARK: {

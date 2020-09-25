@@ -160,7 +160,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         return false;
     }
     if (!options_.is_compile_only()) {
-        ok = compiler.BuildRunner(info->get_sql_context(), status);
+        ok = compiler.BuildClusterJob(info->get_sql_context(), status);
         if (!ok || 0 != status.code) {
             return false;
         }
@@ -276,7 +276,9 @@ bool RunSession::SetCompileInfo(
 
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
     RunnerContext ctx(in_row, is_debug_);
-    auto output = compile_info_->get_sql_context().runner->RunWithCache(ctx);
+    auto output =
+        compile_info_->get_sql_context().cluster_job.GetRunner(0)->RunWithCache(
+            ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
         return -1;
@@ -309,7 +311,9 @@ int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
 
 std::shared_ptr<TableHandler> BatchRunSession::Run() {
     RunnerContext ctx(is_debug_);
-    auto output = compile_info_->get_sql_context().runner->RunWithCache(ctx);
+    auto output =
+        compile_info_->get_sql_context().cluster_job.GetRunner(0)->RunWithCache(
+            ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
         return std::shared_ptr<TableHandler>();
@@ -334,7 +338,9 @@ std::shared_ptr<TableHandler> BatchRunSession::Run() {
 }
 int32_t BatchRunSession::Run(std::vector<Row>& rows, uint64_t limit) {
     RunnerContext ctx(is_debug_);
-    auto output = compile_info_->get_sql_context().runner->RunWithCache(ctx);
+    auto output =
+        compile_info_->get_sql_context().cluster_job.GetRunner(0)->RunWithCache(
+            ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
         return -1;

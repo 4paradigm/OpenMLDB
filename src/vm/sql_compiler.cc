@@ -337,6 +337,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         LOG(WARNING) << status;
         return false;
     }
+
     if (dump_plan_) {
         std::stringstream physical_plan_ss;
         ctx.physical_plan->Print(physical_plan_ss, "\t");
@@ -396,15 +397,33 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     DLOG(INFO) << "compile sql " << ctx.sql << " done";
     return true;
 }
-bool SQLCompiler::BuildRunner(SQLContext& ctx, Status& status) {  // NOLINT
-    RunnerBuilder runner_builder(&ctx.nm);
-    Runner* runner = runner_builder.Build(ctx.physical_plan, status);
+bool SQLCompiler::BuildClusterJob(SQLContext& ctx, Status& status) {  // NOLINT
+    if (nullptr == ctx.physical_plan) {
+        status.msg = "fail to build cluster job: physical plan is empty";
+        status.code = common::kOpGenError;
+        return false;
+    }
+    ctx.cluster_job.Reset();
+    Runner* task = nullptr;
+    if (!BuildRunner(&ctx.nm, ctx.physical_plan, &task, status)) {
+        status.msg = "fail to resolve cluster job";
+        ctx.cluster_job.Reset();
+        return false;
+    }
+    ctx.cluster_job.AddTask(task);
+    return true;
+}
+bool SQLCompiler::BuildRunner(node::NodeManager* nm,
+                              PhysicalOpNode* physical_plan, Runner** output,
+                              Status& status) {  // NOLINT
+    RunnerBuilder runner_builder(nm);
+    Runner* runner = runner_builder.Build(physical_plan, status);
     if (nullptr == runner) {
         status.msg = "fail to build runner: " + status.str();
         status.code = common::kOpGenError;
         return false;
     }
-    ctx.runner = runner;
+    *output = runner;
     return true;
 }
 
@@ -434,7 +453,7 @@ bool SQLCompiler::Parse(SQLContext& ctx,
     }
     return true;
 }
-bool SQLCompiler::ResolvePlanFnAddress(PhysicalOpNode* node,
+bool SQLCompiler::ResolvePlanFnAddress(vm::PhysicalOpNode* node,
                                        std::unique_ptr<FeSQLJIT>& jit,
                                        Status& status) {
     if (nullptr == node) {
