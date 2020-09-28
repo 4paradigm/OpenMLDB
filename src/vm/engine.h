@@ -176,7 +176,7 @@ class BatchRequestRunSession : public RunSession {
                 std::vector<Row>& output);  // NOLINT
     int32_t Run(const std::vector<Row>& request_batch,
                 std::vector<Row>& output);  // NOLINT
-    //TODO(baoxinqi): remove
+    // TODO(baoxinqi): remove
     int32_t RunSingle(fesql::vm::RunnerContext& ctx,  // NOLINT
                       const Row& request,
                       Row* output);  // NOLINT
