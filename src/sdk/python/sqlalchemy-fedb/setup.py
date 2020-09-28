@@ -15,6 +15,7 @@ setup(
         "sqlalchemy"
     ],
     include_package_data=True,
+    package_data = {'':['*.so']},
     packages=find_packages(),
     entry_points={
         'sqlalchemy.dialects': [
