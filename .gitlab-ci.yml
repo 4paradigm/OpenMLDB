@@ -352,6 +352,20 @@ deploy-fedb:
     variables:
       - $ENV_BUILD == "daily"
 
+deploy-fedb-fpga:
+  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
+  tags:
+    - fpga
+  stage: daily
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/simple_compile_fpga.sh
+    - source /root/.bashrc && bash steps/package_and_upload_fedb_fpga.sh
+  only:
+    variables:
+      - $ENV_BUILD == "daily"
+
 deploy-package:
   stage: deploy
   script:
