@@ -17,6 +17,8 @@
 #include <utility>
 
 #include "base/strings.h"
+#include "google/protobuf/text_format.h"
+#include "proto/client.pb.h"
 
 int64_t ViewResult::GetInt(uint32_t idx) {
     int64_t val = 0;
@@ -160,7 +162,7 @@ bool BaseClient::Init(std::string* msg) {
         *msg = "get leader ns endpoint fail";
         return false;
     }
-    ns_client_ = new rtidb::client::NsClient(endpoint);
+    ns_client_ = new rtidb::client::NsClient(endpoint, "");
     if (ns_client_->Init() < 0) {
         *msg = "ns client init failed";
         return false;
