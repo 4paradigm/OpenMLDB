@@ -37,6 +37,9 @@
 #include "udf/udf.h"
 #include "vm/runner.h"
 #include "vm/transform.h"
+
+using fesql::common::kPlanError;
+
 namespace fesql {
 namespace vm {
 
@@ -295,40 +298,12 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     }
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
     auto m = ::llvm::make_unique<::llvm::Module>("sql", *llvm_ctx);
+    ctx.udf_library = udf::DefaultUDFLibrary::get();
 
-    udf::DefaultUDFLibrary* library = udf::DefaultUDFLibrary::get();
-    if (ctx.is_batch_mode) {
-        vm::BatchModeTransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
-                                             library,
-                                             ctx.is_performance_sensitive);
-        transformer.AddDefaultPasses();
-        if (!transformer.TransformPhysicalPlan(ctx.logical_plan,
-                                               &ctx.physical_plan, status)) {
-            LOG(WARNING) << "fail to generate physical plan (batch mode): "
-                         << status << " for sql: \n"
-                         << ctx.sql;
-            return false;
-        }
-    } else {
-        vm::RequestModeransformer transformer(&(ctx.nm), ctx.db, cl_, m.get(),
-                                              library,
-                                              ctx.is_performance_sensitive);
-        transformer.AddDefaultPasses();
-        if (!transformer.TransformPhysicalPlan(ctx.logical_plan,
-                                               &ctx.physical_plan, status)) {
-            LOG(WARNING) << "fail to generate physical plan (request mode) "
-                            "for sql: \n"
-                         << ctx.sql;
-            return false;
-        }
-        ctx.request_schema = transformer.request_schema();
-        ok = codec::SchemaCodec::Encode(transformer.request_schema(),
-                                        &ctx.encoded_request_schema);
-        if (!ok) {
-            LOG(WARNING) << "fail to encode request schema";
-            return false;
-        }
-        ctx.request_name = transformer.request_name();
+    status =
+        BuildPhysicalPlan(&ctx, ctx.logical_plan, m.get(), &ctx.physical_plan);
+    if (!status.isOK()) {
+        return false;
     }
 
     if (nullptr == ctx.physical_plan) {
@@ -381,7 +356,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         return false;
     }
 
-    library->InitJITSymbols(ctx.jit.get());
+    ctx.udf_library->InitJITSymbols(ctx.jit.get());
     InitCodecSymbol(ctx.jit.get());
     udf::InitUDFSymbol(ctx.jit.get());
 
@@ -397,6 +372,67 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     DLOG(INFO) << "compile sql " << ctx.sql << " done";
     return true;
 }
+
+std::string EngineModeName(EngineMode mode) {
+    switch (mode) {
+        case kBatchMode:
+            return "kBatchMode";
+        case kRequestMode:
+            return "kRequestMode";
+        case kBatchRequestMode:
+            return "kBatchRequestMode";
+        default:
+            return "unknown";
+    }
+}
+
+Status SQLCompiler::BuildPhysicalPlan(
+    SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+    ::llvm::Module* llvm_module, PhysicalOpNode** output) {
+    Status status;
+    CHECK_TRUE(ctx != nullptr, kPlanError, "Null sql context");
+
+    udf::UDFLibrary* library = ctx->udf_library;
+    CHECK_TRUE(library != nullptr, kPlanError, "Null udf library");
+
+    switch (ctx->engine_mode) {
+        case kBatchMode: {
+            vm::BatchModeTransformer transformer(&ctx->nm, ctx->db, cl_,
+                                                 llvm_module, library,
+                                                 ctx->is_performance_sensitive);
+            transformer.AddDefaultPasses();
+            CHECK_TRUE(
+                transformer.TransformPhysicalPlan(plan_list, output, status),
+                kPlanError,
+                "Fail to generate physical plan (batch mode) for sql: \n",
+                ctx->sql, "\n", status.str());
+            return Status::OK();
+        }
+        case kRequestMode:
+        case kBatchRequestMode: {
+            vm::RequestModeransformer transformer(
+                &ctx->nm, ctx->db, cl_, llvm_module, library,
+                ctx->is_performance_sensitive);
+            transformer.AddDefaultPasses();
+            CHECK_TRUE(
+                transformer.TransformPhysicalPlan(plan_list, output, status),
+                kPlanError,
+                "Fail to generate physical plan (request mode) for sql: \n",
+                ctx->sql, "\n", status.str());
+
+            ctx->request_schema = transformer.request_schema();
+            CHECK_TRUE(codec::SchemaCodec::Encode(transformer.request_schema(),
+                                                  &ctx->encoded_request_schema),
+                       kPlanError, "Fail to encode request schema");
+            ctx->request_name = transformer.request_name();
+            return Status::OK();
+        }
+        default:
+            return Status(kPlanError, "Unknown engine mode: " +
+                                          EngineModeName(ctx->engine_mode));
+    }
+}
+
 bool SQLCompiler::BuildClusterJob(SQLContext& ctx, Status& status) {  // NOLINT
     if (nullptr == ctx.physical_plan) {
         status.msg = "fail to build cluster job: physical plan is empty";
@@ -438,7 +474,9 @@ bool SQLCompiler::Parse(SQLContext& ctx,
                         ::fesql::base::Status& status) {  // NOLINT
     ::fesql::node::NodePointVector parser_trees;
     ::fesql::parser::FeSQLParser parser;
-    ::fesql::plan::SimplePlanner planer(&ctx.nm, ctx.is_batch_mode);
+
+    bool is_batch_mode = ctx.engine_mode == kBatchMode;
+    ::fesql::plan::SimplePlanner planer(&ctx.nm, is_batch_mode);
 
     int ret = parser.parse(ctx.sql, parser_trees, &ctx.nm, status);
     if (ret != 0) {

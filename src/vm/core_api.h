@@ -60,9 +60,18 @@ class RunnerContext {
     explicit RunnerContext(const fesql::codec::Row& request,
                            const bool is_debug = false)
         : request_(request), is_debug_(is_debug), cache_() {}
-    const fesql::codec::Row request_;
+
+    const fesql::codec::Row& request() const { return request_; }
+    void SetRequest(const fesql::codec::Row& request);
+    bool is_debug() const { return is_debug_; }
+
+    std::shared_ptr<DataHandler> GetCache(int64_t id) const;
+    void SetCache(int64_t id, std::shared_ptr<DataHandler>);
+
+ private:
+    fesql::codec::Row request_;
     const bool is_debug_;
-    std::map<int32_t, std::shared_ptr<DataHandler>> cache_;
+    std::map<int64_t, std::shared_ptr<DataHandler>> cache_;
 };
 
 class CoreAPI {

@@ -119,7 +119,6 @@ cases:
   -
     id: 5
     desc: sum-timestamp
-    mode: python-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string", "c2 timestamp", "c3 timestamp"]
@@ -143,7 +142,6 @@ cases:
   -
     id: 6
     desc: avg-timestamp
-    mode: python-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
@@ -224,7 +222,6 @@ cases:
 
   - id: 11
     desc: arithmetic_and_udf_before_udaf
-    mode: python-unsupport
     inputs:
       - columns: ["id bigint", "c1 double", "c2 float", "c3 int"]
         indexs: ["index1:c3:id"]
@@ -252,7 +249,6 @@ cases:
 
   - id: 12
     desc: arithmetic_and_udf_after_udaf
-    mode: python-unsupport
     tags: ["目前只能f(udaf()) over w，否则无法进入window agg节点"]
     inputs:
       - columns: ["id bigint", "c1 double", "c2 float", "c3 int"]
@@ -281,7 +277,6 @@ cases:
 
   - id: 13
     desc: nested udaf
-    mode: python-unsupport
     inputs:
       - columns: ["id bigint", "c1 double", "c2 float", "c3 int"]
         indexs: ["index1:c3:id"]
@@ -332,7 +327,6 @@ cases:
 
   - id: 15
     desc: aggregate where
-    mode: python-unsupport
     inputs:
       - columns: ["id bigint", "c1 double", "c2 float", "c3 bigint"]
         indexs: ["index1:c3:id"]

@@ -301,7 +301,7 @@ const std::string GenerateTableName(int32_t id) {
     return "auto_t" + std::to_string(id);
 }
 
-void EngineCheck(SQLCase& sql_case, bool is_batch,  // NOLINT
+void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
                  bool check_compatible, int* return_status) {
     *return_status = ENGINE_TEST_RET_INVALID_CASE;
     int32_t input_cnt = sql_case.CountInputs();
@@ -333,10 +333,12 @@ void EngineCheck(SQLCase& sql_case, bool is_batch,  // NOLINT
 
     Engine engine(catalog);
     std::unique_ptr<RunSession> session;
-    if (is_batch) {
+    if (engine_mode == kBatchMode) {
         session = std::unique_ptr<RunSession>(new BatchRunSession);
-    } else {
+    } else if (engine_mode == kRequestMode) {
         session = std::unique_ptr<RunSession>(new RequestRunSession);
+    } else {
+        session = std::unique_ptr<RunSession>(new BatchRequestRunSession);
     }
     if (fesql::sqlcase::SQLCase::IS_DEBUG() || sql_case.debug()) {
         session->EnableDebug();
@@ -352,9 +354,16 @@ void EngineCheck(SQLCase& sql_case, bool is_batch,  // NOLINT
     }
     std::vector<Row> request_data;
     std::string request_name = "";
+
+    bool is_batch = engine_mode == kBatchMode;
     if (!is_batch) {
-        request_name =
-            dynamic_cast<RequestRunSession*>(session.get())->GetRequestName();
+        if (engine_mode == kRequestMode) {
+            request_name = dynamic_cast<RequestRunSession*>(session.get())
+                               ->GetRequestName();
+        } else {
+            request_name = dynamic_cast<BatchRequestRunSession*>(session.get())
+                               ->GetRequestName();
+        }
     }
     for (int32_t i = 0; i < input_cnt; i++) {
         auto input = sql_case.inputs()[i];
@@ -389,20 +398,38 @@ void EngineCheck(SQLCase& sql_case, bool is_batch,  // NOLINT
 
     // Check Output Data
     std::vector<Row> output;
-    if (is_batch) {
+    if (engine_mode == kBatchMode) {
         auto batch_session = dynamic_cast<BatchRunSession*>(session.get());
         int run_ret = batch_session->Run(output);
         if (run_ret != 0) {
             *return_status = ENGINE_TEST_RET_EXECUTION_ERROR;
         }
         ASSERT_EQ(0, run_ret);
-    } else {
+    } else if (engine_mode == kRequestMode) {
         auto request_table = name_table_map[request_name];
         ASSERT_TRUE(request_table->Init());
         auto request_session = dynamic_cast<RequestRunSession*>(session.get());
         for (auto in_row : request_data) {
             Row out_row;
             int run_ret = request_session->Run(in_row, &out_row);
+            if (run_ret != 0) {
+                *return_status = ENGINE_TEST_RET_EXECUTION_ERROR;
+            }
+            ASSERT_EQ(0, run_ret);
+            ASSERT_TRUE(request_table->Put(
+                reinterpret_cast<const char*>(in_row.buf()), in_row.size()));
+            output.push_back(out_row);
+        }
+    } else {
+        auto request_table = name_table_map[request_name];
+        ASSERT_TRUE(request_table->Init());
+        auto request_session =
+            dynamic_cast<BatchRequestRunSession*>(session.get());
+        RunnerContext runner_context(false);
+        for (auto in_row : request_data) {
+            Row out_row;
+            int run_ret =
+                request_session->RunSingle(runner_context, in_row, &out_row);
             if (run_ret != 0) {
                 *return_status = ENGINE_TEST_RET_EXECUTION_ERROR;
             }
@@ -523,12 +550,17 @@ void EngineCheck(SQLCase& sql_case, bool is_batch,  // NOLINT
 
 void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
     int return_status;
-    EngineCheck(sql_case, false, false, &return_status);
+    EngineCheck(sql_case, kRequestMode, false, &return_status);
 }
 
 void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
     int return_status;
-    EngineCheck(sql_case, true, true, &return_status);
+    EngineCheck(sql_case, kBatchMode, true, &return_status);
+}
+
+void BatchRequestModeCheck(SQLCase& sql_case) {  // NOLINT
+    int return_status;
+    EngineCheck(sql_case, kBatchRequestMode, false, &return_status);
 }
 
 }  // namespace vm
