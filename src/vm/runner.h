@@ -97,6 +97,7 @@ class KeyGenerator : public FnGenerator {
     explicit KeyGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~KeyGenerator() {}
     const std::string Gen(const Row& row);
+    const std::string GenConst();
 };
 class OrderGenerator : public FnGenerator {
  public:
@@ -128,11 +129,11 @@ class RangeGenerator {
     uint64_t start_row_;
     uint64_t end_row_;
 };
-class FilterGenerator {
+class FilterKeyGenerator {
  public:
-    explicit FilterGenerator(const Key& filter_key)
+    explicit FilterKeyGenerator(const Key& filter_key)
         : filter_key_(filter_key.fn_info_) {}
-    virtual ~FilterGenerator() {}
+    virtual ~FilterKeyGenerator() {}
     const bool Valid() const { return filter_key_.Valid(); }
     std::shared_ptr<TableHandler> Filter(std::shared_ptr<TableHandler> table,
                                          const std::string& request_keys) {
@@ -160,6 +161,7 @@ class FilterGenerator {
     }
     KeyGenerator filter_key_;
 };
+
 class PartitionGenerator {
  public:
     explicit PartitionGenerator(const Key& partition)
@@ -208,12 +210,32 @@ class IndexSeekGenerator {
     explicit IndexSeekGenerator(const Key& key)
         : index_key_gen_(key.fn_info_) {}
     virtual ~IndexSeekGenerator() {}
+    std::shared_ptr<TableHandler> SegmnetOfConstKey(
+        std::shared_ptr<DataHandler> input);
     std::shared_ptr<TableHandler> SegmentOfKey(
         const Row& row, std::shared_ptr<DataHandler> input);
     const bool Valid() const { return index_key_gen_.Valid(); }
 
  private:
     KeyGenerator index_key_gen_;
+};
+
+class FilterGenerator {
+ public:
+    explicit FilterGenerator(const Filter& filter)
+        : condition_gen_(filter.condition_.fn_info_),
+          index_seek_gen_(filter.index_key_) {}
+
+    const bool Valid() const {
+        return index_seek_gen_.Valid() || condition_gen_.Valid();
+    }
+    std::shared_ptr<TableHandler> Filter(std::shared_ptr<TableHandler> table);
+    std::shared_ptr<TableHandler> Filter(
+        std::shared_ptr<PartitionHandler> table);
+
+ private:
+    ConditionGenerator condition_gen_;
+    IndexSeekGenerator index_seek_gen_;
 };
 class WindowGenerator {
  public:
@@ -255,7 +277,7 @@ class RequestWindowGenertor {
         return segment;
     }
     RequestWindowOp window_op_;
-    FilterGenerator filter_gen_;
+    FilterKeyGenerator filter_gen_;
     SortGenerator sort_gen_;
     OrderGenerator range_gen_;
     IndexSeekGenerator index_seek_gen_;
@@ -473,7 +495,7 @@ class JoinGenerator {
  public:
     explicit JoinGenerator(const Join& join, size_t left_slices,
                            size_t right_slices)
-        : condition_gen_(join.filter_.fn_info_),
+        : condition_gen_(join.condition_.fn_info_),
           left_key_gen_(join.left_key_.fn_info_),
           right_group_gen_(join.right_key_),
           index_key_gen_(join.index_key_.fn_info_),
@@ -559,11 +581,11 @@ class GroupRunner : public Runner {
 class FilterRunner : public Runner {
  public:
     FilterRunner(const int32_t id, const SchemaSourceList& schema,
-                 const int32_t limit_cnt, const FnInfo& fn_info)
-        : Runner(id, kRunnerFilter, schema, limit_cnt), cond_gen_(fn_info) {}
+                 const int32_t limit_cnt, const Filter& filter)
+        : Runner(id, kRunnerFilter, schema, limit_cnt), filter_gen_(filter) {}
     ~FilterRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    ConditionGenerator cond_gen_;
+    FilterGenerator filter_gen_;
 };
 class SortRunner : public Runner {
  public:

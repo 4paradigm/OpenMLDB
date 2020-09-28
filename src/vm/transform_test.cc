@@ -594,7 +594,7 @@ TEST_P(FilterGenTest, GenFilter) {
     auto lib = ::fesql::udf::DefaultUDFLibrary::get();
     BatchModeTransformer transformer(&nm, "db", catalog, m.get(), lib);
 
-    ASSERT_TRUE(transformer.GenFilter(
+    ASSERT_TRUE(transformer.GenConditionFilter(
         &filter, join_node.GetOutputNameSchemaList(), status));
     m->print(::llvm::errs(), NULL);
     ASSERT_FALSE(filter.fn_info_.fn_name_.empty());

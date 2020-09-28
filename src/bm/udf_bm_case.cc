@@ -18,6 +18,7 @@
 #include "gtest/gtest.h"
 #include "udf/udf.h"
 #include "udf/udf_test.h"
+#include "vm/jit_runtime.h"
 #include "vm/mem_catalog.h"
 namespace fesql {
 namespace bm {
@@ -558,9 +559,10 @@ void CTimeYear(benchmark::State* state, MODE mode, const int32_t data_size) {
 int32_t RunByteMemPoolAlloc1000(size_t request_size) {
     std::vector<int8_t*> chucks;
     for (int i = 0; i < 1000; i++) {
-        chucks.push_back(fesql::udf::ThreadLocalMemoryPoolAlloc(request_size));
+        chucks.push_back(
+            fesql::vm::JITRuntime::get()->AllocManaged(request_size));
     }
-    fesql::udf::ThreadLocalMemoryPoolReset();
+    fesql::vm::JITRuntime::get()->ReleaseRunStep();
     return 1;
 }
 int32_t RunNewFree1000(size_t request_size) {

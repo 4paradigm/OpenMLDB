@@ -113,6 +113,14 @@ INSTANTIATE_TEST_CASE_P(EngineTestUdfFunction, EngineTest,
 INSTANTIATE_TEST_CASE_P(EngineTestUdafFunction, EngineTest,
                         testing::ValuesIn(InitCases(
                             "/cases/integration/v1/test_udaf_function.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWhere, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_where.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestFzFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
 
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();

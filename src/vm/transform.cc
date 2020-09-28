@@ -253,9 +253,7 @@ bool BatchModeTransformer::GenPlanNode(PhysicalOpNode* node,
         }
         case kPhysicalOpFilter: {
             auto op = dynamic_cast<PhysicalFliterNode*>(node);
-            if (!GenFilter(&op->filter_,
-                           node->producers()[0]->GetOutputNameSchemaList(),
-                           status)) {
+            if (!GenFilter(&op->filter_, node->producers()[0], status)) {
                 return false;
             }
             break;
@@ -1278,6 +1276,14 @@ base::Status BatchModeTransformer::ValidateIndexOptimization(
                 join_op->join(), join_op->GetProducer(1)));
             break;
         }
+        case kPhysicalOpFilter: {
+            PhysicalFliterNode* filter_op =
+                dynamic_cast<PhysicalFliterNode*>(in);
+            CHECK_TRUE(nullptr != in, kPlanError, "Invalid filter node: null")
+            CHECK_STATUS(
+                ValidatePartitionDataProvider(filter_op->GetProducer(0)));
+            break;
+        }
         default: {
             break;
         }
@@ -1392,8 +1398,8 @@ bool BatchModeTransformer::CodeGenExprList(
 
 bool BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in,
                                    base::Status& status) {
-    auto filter = join->filter_;
-    if (!GenFilter(&join->filter_, in->GetOutputNameSchemaList(), status)) {
+    if (!GenConditionFilter(&join->condition_, in->GetOutputNameSchemaList(),
+                            status)) {
         return false;
     }
     if (!GenKey(&join->left_key_, in->producers()[0]->GetOutputNameSchemaList(),
@@ -1418,7 +1424,24 @@ bool BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in,
 
     return true;
 }
-bool BatchModeTransformer::GenFilter(
+bool BatchModeTransformer::GenFilter(Filter* filter, PhysicalOpNode* in,
+                                     base::Status& status) {
+    if (!GenConditionFilter(&filter->condition_, in->GetOutputNameSchemaList(),
+                            status)) {
+        return false;
+    }
+    if (!GenKey(&filter->left_key_, in->GetOutputNameSchemaList(), status)) {
+        return false;
+    }
+    if (!GenKey(&filter->index_key_, in->GetOutputNameSchemaList(), status)) {
+        return false;
+    }
+    if (!GenKey(&filter->right_key_, in->GetOutputNameSchemaList(), status)) {
+        return false;
+    }
+    return true;
+}
+bool BatchModeTransformer::GenConditionFilter(
     ConditionFilter* filter, const SchemaSourceList& input_name_schema_list,
     base::Status& status) {
     if (nullptr != filter->condition_) {
@@ -1573,7 +1596,7 @@ bool BatchModeTransformer::GenWindowJoinList(WindowJoinList* window_join_list,
                 return false;
             }
             joined_schema.AddSchemaSources(right_schema);
-            if (!GenFilter(&join->filter_, joined_schema, status)) {
+            if (!GenConditionFilter(&join->condition_, joined_schema, status)) {
                 return false;
             }
         }
@@ -1725,7 +1748,16 @@ bool GroupAndSortOptimized::KeysFilterOptimized(
 bool GroupAndSortOptimized::JoinKeysOptimized(
     const vm::SchemaSourceList& column_sources, PhysicalOpNode* in, Join* join,
     PhysicalOpNode** new_in) {
-    if (nullptr == join || node::ExprListNullOrEmpty(join->right_key_.keys())) {
+    if (nullptr == join) {
+        return false;
+    }
+    return FilterOptimized(column_sources, in, join, new_in);
+}
+bool GroupAndSortOptimized::FilterOptimized(
+    const vm::SchemaSourceList& column_sources, PhysicalOpNode* in,
+    Filter* filter, PhysicalOpNode** new_in) {
+    if (nullptr == filter ||
+        node::ExprListNullOrEmpty(filter->right_key_.keys())) {
         return false;
     }
 
@@ -1738,9 +1770,10 @@ bool GroupAndSortOptimized::JoinKeysOptimized(
             node::ExprListNode* new_left_keys = nullptr;
             std::string index_name;
             auto& index_hint = scan_op->table_handler_->GetIndex();
-            const node::ExprListNode* right_partition = join->right_key_.keys();
-            if (!TransformGroupExpr(SchemaSourceList(), right_partition,
-                                    index_hint, &index_name, &index_keys,
+            const node::ExprListNode* right_partition =
+                filter->right_key_.keys();
+            if (!TransformGroupExpr(column_sources, right_partition, index_hint,
+                                    &index_name, &index_keys,
                                     &new_right_partition)) {
                 return false;
             }
@@ -1759,23 +1792,23 @@ bool GroupAndSortOptimized::JoinKeysOptimized(
                 }
                 if (is_index_key) {
                     left_index_keys->AddChild(
-                        join->left_key_.keys_->children_[i]);
+                        filter->left_key_.keys_->children_[i]);
                 } else {
                     new_left_keys->AddChild(
-                        join->left_key_.keys_->children_[i]);
+                        filter->left_key_.keys_->children_[i]);
                 }
             }
-            join->right_key_.set_keys(new_right_partition);
-            join->index_key_.set_keys(left_index_keys);
-            join->left_key_.set_keys(new_left_keys);
+            filter->right_key_.set_keys(new_right_partition);
+            filter->index_key_.set_keys(left_index_keys);
+            filter->left_key_.set_keys(new_left_keys);
             return true;
         }
     } else if (kPhysicalOpSimpleProject == in->type_) {
         auto simple_project = dynamic_cast<PhysicalSimpleProjectNode*>(in);
         PhysicalOpNode* new_depend;
-        if (!JoinKeysOptimized(simple_project->GetOutputNameSchemaList(),
-                               simple_project->producers()[0], join,
-                               &new_depend)) {
+        if (!FilterOptimized(simple_project->GetOutputNameSchemaList(),
+                             simple_project->producers()[0], filter,
+                             &new_depend)) {
             return false;
         }
         PhysicalSimpleProjectNode* new_simple_op =
@@ -1985,6 +2018,15 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                           &join_op->join_.right_sort_);
             return true;
         }
+        case kPhysicalOpFilter: {
+            PhysicalFliterNode* filter_op =
+                dynamic_cast<PhysicalFliterNode*>(in);
+            PhysicalOpNode* new_producer;
+            if (FilterOptimized(SchemaSourceList(), filter_op->GetProducer(0),
+                                &filter_op->filter_, &new_producer)) {
+                filter_op->SetProducer(0, new_producer);
+            }
+        }
         default: {
             return false;
         }
@@ -2142,7 +2184,8 @@ bool ConditionOptimized::JoinConditionOptimized(PhysicalOpNode* in,
         return false;
     }
     node::ExprListNode and_conditions;
-    if (!TransfromAndConditionList(join->filter_.condition_, &and_conditions)) {
+    if (!TransfromAndConditionList(join->condition_.condition_,
+                                   &and_conditions)) {
         return false;
     }
 
@@ -2164,7 +2207,35 @@ bool ConditionOptimized::JoinConditionOptimized(PhysicalOpNode* in,
         node_manager_->MakeAndExpr(&new_and_conditions);
     join->left_key_.set_keys(left_keys);
     join->right_key_.set_keys(right_keys);
-    join->filter_.set_condition(filter_condition);
+    join->condition_.set_condition(filter_condition);
+    return true;
+}
+bool ConditionOptimized::FilterConditionOptimized(PhysicalOpNode* in,
+                                                  Filter* filter) {
+    node::ExprListNode and_conditions;
+    if (!TransfromAndConditionList(filter->condition_.condition_,
+                                   &and_conditions)) {
+        return false;
+    }
+
+    node::ExprListNode new_and_conditions;
+    std::vector<ExprPair> condition_eq_pair;
+    if (!TransformConstEqualExprPair(in->GetOutputNameSchemaList(),
+                                     &and_conditions, &new_and_conditions,
+                                     condition_eq_pair)) {
+        return false;
+    }
+    node::ExprListNode* left_keys = node_manager_->MakeExprList();
+    node::ExprListNode* right_keys = node_manager_->MakeExprList();
+    for (auto pair : condition_eq_pair) {
+        right_keys->AddChild(pair.right_expr_);
+        left_keys->AddChild(pair.left_expr_);
+    }
+    node::ExprNode* filter_condition =
+        node_manager_->MakeAndExpr(&new_and_conditions);
+    filter->left_key_.set_keys(left_keys);
+    filter->right_key_.set_keys(right_keys);
+    filter->condition_.set_condition(filter_condition);
     return true;
 }
 bool ConditionOptimized::Transform(PhysicalOpNode* in,
@@ -2179,6 +2250,11 @@ bool ConditionOptimized::Transform(PhysicalOpNode* in,
             PhysicalRequestJoinNode* join_op =
                 dynamic_cast<PhysicalRequestJoinNode*>(in);
             return JoinConditionOptimized(join_op, &join_op->join_);
+        }
+        case kPhysicalOpFilter: {
+            PhysicalFliterNode* filter_op =
+                dynamic_cast<PhysicalFliterNode*>(in);
+            return FilterConditionOptimized(filter_op, &filter_op->filter_);
         }
         default: {
             return false;
@@ -2239,6 +2315,44 @@ bool ConditionOptimized::TransfromAndConditionList(
         }
     }
 }
+bool ConditionOptimized::MakeConstEqualExprPair(
+    const std::pair<node::ExprNode*, node::ExprNode*> expr_pair,
+    const vm::SchemasContext& ctx, const size_t min_schema_id,
+    ExprPair* output) {
+    bool is_first_const = node::ExprIsConst(expr_pair.first);
+    bool is_second_const = node::ExprIsConst(expr_pair.second);
+
+    if (is_first_const && is_second_const) {
+        return false;
+    } else if (is_first_const) {
+        // resolved second expr
+        const RowSchemaInfo* info_second;
+        if (!ctx.ExprRefResolved(expr_pair.second, &info_second)) {
+            return false;
+        }
+        if (min_schema_id <= info_second->idx_) {
+            // const expr = right_table_expr
+            *output = {expr_pair.first, expr_pair.second};
+            return true;
+        } else {
+            return false;
+        }
+    } else if (is_second_const) {
+        // resolved first expr
+        const RowSchemaInfo* info_first;
+        if (!ctx.ExprRefResolved(expr_pair.first, &info_first)) {
+            return false;
+        }
+        if (min_schema_id <= info_first->idx_) {
+            // right_table_expr = const expr
+            *output = {expr_pair.second, expr_pair.first};
+            return true;
+        } else {
+            return false;
+        }
+    }
+    return false;
+}
 // Transform equal condition to expression pair
 // e.g. t1.col1 = t2.col1 -> pair(t1.col1, t2.col1)
 bool ConditionOptimized::ExtractEqualExprPair(
@@ -2279,7 +2393,28 @@ bool ConditionOptimized::ExtractEqualExprPair(
         }
     }
 }
-
+// Return CosntExpr Equal Expr Pair
+// Const Expr should be first of pair
+bool ConditionOptimized::TransformConstEqualExprPair(
+    const SchemaSourceList& name_schema_list,
+    node::ExprListNode* and_conditions, node::ExprListNode* out_condition_list,
+    std::vector<ExprPair>& condition_eq_pair) {  // NOLINT
+    vm::SchemasContext ctx(name_schema_list);
+    for (auto expr : and_conditions->children_) {
+        std::pair<node::ExprNode*, node::ExprNode*> expr_pair;
+        if (!ExtractEqualExprPair(expr, &expr_pair)) {
+            out_condition_list->AddChild(expr);
+            continue;
+        }
+        ExprPair const_pair;
+        if (MakeConstEqualExprPair(expr_pair, ctx, 0, &const_pair)) {
+            condition_eq_pair.push_back(const_pair);
+        } else {
+            out_condition_list->AddChild(expr);
+        }
+    }
+    return !condition_eq_pair.empty();
+}
 // Return Equal Expression Pair
 // Left Expr should belongs to first schema
 bool ConditionOptimized::TransformEqualExprPair(
@@ -2289,7 +2424,15 @@ bool ConditionOptimized::TransformEqualExprPair(
     vm::SchemasContext ctx(name_schema_list);
     for (auto expr : and_conditions->children_) {
         std::pair<node::ExprNode*, node::ExprNode*> expr_pair;
-        if (ExtractEqualExprPair(expr, &expr_pair)) {
+        if (!ExtractEqualExprPair(expr, &expr_pair)) {
+            out_condition_list->AddChild(expr);
+            continue;
+        }
+        ExprPair const_pair;
+        if (MakeConstEqualExprPair(expr_pair, ctx, left_schema_cnt,
+                                   &const_pair)) {
+            condition_eq_pair.push_back(const_pair);
+        } else {
             const RowSchemaInfo* info_left;
             const RowSchemaInfo* info_right;
             if (!ctx.ExprRefResolved(expr_pair.first, &info_left)) {
@@ -2309,19 +2452,15 @@ bool ConditionOptimized::TransformEqualExprPair(
                 continue;
             }
             if (left_schema_cnt > info_left->idx_) {
-                ExprPair pair = {expr_pair.first, info_left->idx_,
-                                 expr_pair.second, info_right->idx_};
+                ExprPair pair = {expr_pair.first, expr_pair.second};
                 condition_eq_pair.push_back(pair);
             } else if (left_schema_cnt > info_right->idx_) {
-                ExprPair pair = {expr_pair.second, info_right->idx_,
-                                 expr_pair.first, info_left->idx_};
+                ExprPair pair = {expr_pair.second, expr_pair.first};
                 condition_eq_pair.push_back(pair);
             } else {
                 out_condition_list->AddChild(expr);
                 continue;
             }
-        } else {
-            out_condition_list->AddChild(expr);
         }
     }
     return !condition_eq_pair.empty();
@@ -2332,6 +2471,7 @@ void ConditionOptimized::SkipConstExpression(node::ExprListNode input,
         return;
     }
 }
+
 bool LimitOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     *output = in;
     if (kPhysicalOpLimit != in->type_) {

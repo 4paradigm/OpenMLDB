@@ -45,11 +45,8 @@ find_package(Threads)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
-    set(COMMON_LIBS boost_date_time boost_filesystem leveldb protobuf glog gflags unwind lzma z snappy ssl crypto dl)
+    set(COMMON_LIBS boost_date_time boost_filesystem boost_regex leveldb protobuf glog gflags unwind lzma z snappy ssl crypto dl)
     set(BRPC_LIBS brpc ${COMMON_LIBS})
-    set(ARROW_LIBS parquet arrow_dataset arrow brotlidec-static brotlienc-static
-            brotlicommon-static
-            thrift lz4 z zstd double-conversion snappy)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB
             ${CMAKE_THREAD_LIBS_INIT}
@@ -62,11 +59,8 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
             "-Wl,-U,_ProfilerStart"
             "-Wl,-U,_ProfilerStop")
-    set(COMMON_LIBS boost_date_time boost_filesystem leveldb protobuf glog gflags z snappy ssl crypto dl)
+    set(COMMON_LIBS boost_date_time boost_filesystem boost_regex leveldb protobuf glog gflags z snappy ssl crypto dl)
     set(BRPC_LIBS brpc ${COMMON_LIBS})
-    set(ARROW_LIBS parquet arrow_dataset arrow brotlidec brotlienc
-            brotlicommon
-            thrift lz4 z zstd double-conversion  snappy)
 endif ()
 
 set(BOOST_ROOT "${PROJECT_SOURCE_DIR}/thirdparty/")

@@ -1,5 +1,6 @@
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
+/*------------------------------------------------------------------------- *
+ *Copyright (C) 2020, 4paradigm
+ *
  * runner.cc
  *
  * Author: chenjing
@@ -15,7 +16,9 @@
 #include "udf/udf.h"
 #include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
+#include "vm/jit_runtime.h"
 #include "vm/mem_catalog.h"
+
 namespace fesql {
 namespace vm {
 #define MAX_DEBUG_LINES_CNT 20
@@ -286,7 +289,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto op = dynamic_cast<const PhysicalFliterNode*>(node);
             auto runner =
                 new FilterRunner(id_++, node->GetOutputNameSchemaList(),
-                                 op->GetLimitCnt(), op->filter_.fn_info_);
+                                 op->GetLimitCnt(), op->filter_);
             runner->AddProducer(input);
             return nm_->RegisterNode(runner);
         }
@@ -378,6 +381,9 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
         return Row();
     }
 
+    // Init current run step runtime
+    JITRuntime::get()->InitRunStep();
+
     auto udf =
         reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
             const_cast<int8_t*>(fn));
@@ -389,7 +395,10 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
 
     uint32_t ret = udf(row_ptr, window_ptr, &out_buf);
-    fesql::udf::ThreadLocalMemoryPoolReset();
+
+    // Release current run step resources
+    JITRuntime::get()->ReleaseRunStep();
+
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();
@@ -1499,8 +1508,27 @@ std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
     return fail_ptr;
 }
 std::shared_ptr<DataHandler> FilterRunner::Run(RunnerContext& ctx) {
-    LOG(WARNING) << "can't handler filter op";
-    return std::shared_ptr<DataHandler>();
+    auto fail_ptr = std::shared_ptr<DataHandler>();
+    auto input = producers_[0]->RunWithCache(ctx);
+    if (!input) {
+        LOG(WARNING) << "fail to run filter: input is empty or null";
+        return fail_ptr;
+    }
+    // build window with start and end offset
+    switch (input->GetHanlderType()) {
+        case kTableHandler: {
+            return filter_gen_.Filter(
+                std::dynamic_pointer_cast<TableHandler>(input));
+        }
+        case kPartitionHandler: {
+            return filter_gen_.Filter(
+                std::dynamic_pointer_cast<PartitionHandler>(input));
+        }
+        default: {
+            LOG(WARNING) << "fail to filter when input is row";
+            return fail_ptr;
+        }
+    }
 }
 std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
@@ -1641,6 +1669,35 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
     return row_handler;
 }
 
+/**
+ * TODO(chenjing): GenConst key during compile-time
+ * @return
+ */
+const std::string KeyGenerator::GenConst() {
+    Row key_row = CoreAPI::RowConstProject(fn_, true);
+    RowView row_view(row_view_);
+    if (!row_view.Reset(key_row.buf())) {
+        LOG(WARNING) << "fail to gen key: row view reset fail";
+        return "NA";
+    }
+    std::string keys = "";
+    for (auto pos : idxs_) {
+        std::string key =
+            row_view.IsNULL(pos)
+                ? codec::NONETOKEN
+                : fn_schema_.Get(pos).type() == fesql::type::kDate
+                      ? std::to_string(row_view.GetDateUnsafe(pos))
+                      : row_view.GetAsString(pos);
+        if (key == "") {
+            key = codec::EMPTY_STRING;
+        }
+        if (!keys.empty()) {
+            keys.append("|");
+        }
+        keys.append(key);
+    }
+    return keys;
+}
 const std::string KeyGenerator::Gen(const Row& row) {
     Row key_row = CoreAPI::RowProject(fn_, row, true);
     RowView row_view(row_view_);
@@ -1797,6 +1854,42 @@ Row WindowJoinGenerator::Join(
     }
     return row;
 }
+
+std::shared_ptr<TableHandler> IndexSeekGenerator::SegmnetOfConstKey(
+    std::shared_ptr<DataHandler> input) {
+    auto fail_ptr = std::shared_ptr<TableHandler>();
+    if (!input) {
+        LOG(WARNING) << "fail to seek segment of key: input is empty";
+        return fail_ptr;
+    }
+    if (!index_key_gen_.Valid()) {
+        switch (input->GetHanlderType()) {
+            case kPartitionHandler: {
+                LOG(WARNING) << "fail to seek segment: index key is empty";
+                return fail_ptr;
+            }
+            case kTableHandler: {
+                return std::dynamic_pointer_cast<TableHandler>(input);
+            }
+            default: {
+                LOG(WARNING) << "fail to seek segment when input is row";
+                return fail_ptr;
+            }
+        }
+    }
+
+    switch (input->GetHanlderType()) {
+        case kPartitionHandler: {
+            auto partition = std::dynamic_pointer_cast<PartitionHandler>(input);
+            auto key = index_key_gen_.GenConst();
+            return partition->GetSegment(partition, key);
+        }
+        default: {
+            LOG(WARNING) << "fail to seek segment when input isn't partition";
+            return fail_ptr;
+        }
+    }
+}
 std::shared_ptr<TableHandler> IndexSeekGenerator::SegmentOfKey(
     const Row& row, std::shared_ptr<DataHandler> input) {
     auto fail_ptr = std::shared_ptr<TableHandler>();
@@ -1838,5 +1931,35 @@ std::shared_ptr<TableHandler> IndexSeekGenerator::SegmentOfKey(
     }
 }
 
+std::shared_ptr<TableHandler> FilterGenerator::Filter(
+    std::shared_ptr<PartitionHandler> table) {
+    return Filter(index_seek_gen_.SegmnetOfConstKey(table));
+}
+std::shared_ptr<TableHandler> FilterGenerator::Filter(
+    std::shared_ptr<TableHandler> table) {
+    auto fail_ptr = std::shared_ptr<TableHandler>();
+    if (!table) {
+        LOG(WARNING) << "fail to filter table: input is empty";
+        return fail_ptr;
+    }
+
+    if (!condition_gen_.Valid()) {
+        return table;
+    }
+    auto mem_table =
+        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+    mem_table->SetOrderType(table->GetOrderType());
+    auto iter = table->GetIterator();
+    if (iter) {
+        iter->SeekToFirst();
+        while (iter->Valid()) {
+            if (condition_gen_.Gen(iter->GetValue())) {
+                mem_table->AddRow(iter->GetKey(), iter->GetValue());
+            }
+            iter->Next();
+        }
+    }
+    return mem_table;
+}
 }  // namespace vm
 }  // namespace fesql

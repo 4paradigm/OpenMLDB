@@ -1149,7 +1149,7 @@ void DefaultUDFLibrary::InitTypeUDF() {
             static_cast<void (*)(StringRef*, bool*, bool*)>(
                 v1::string_to_bool)))
         .return_by_arg(true)
-        .returns<Nullable<int16_t>>();
+        .returns<Nullable<bool>>();
 
     RegisterExternal("date")
         .args<codec::Timestamp>(reinterpret_cast<void*>(
