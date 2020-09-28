@@ -154,7 +154,7 @@ if(SQL_PYSDK_ENABLE)
 		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
 		)
         add_custom_target(sqlalchemy_fedb ALL DEPENDS sql_router_sdk
-            COMMAND ${CMAKE_COMMAND} -E remove_directory dis
+            COMMAND ${CMAKE_COMMAND} -E remove_directory dist
             COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/sqlalchemy-fedb/sqlalchemy_fedb/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/__init__.py
             COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/sqlalchemy-fedb/sqlalchemy_fedb/safedb.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/safedb.py
             COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/sqlalchemy-fedb/sqlalchemy_fedb/fedbapi/_fedbapi.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/fedbapi/_fedbapi.py
