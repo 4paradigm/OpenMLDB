@@ -288,7 +288,9 @@ static bool ExtractSingleRow(std::shared_ptr<DataHandler> handler,
 
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
     RunnerContext ctx(in_row, is_debug_);
-    auto output = compile_info_->get_sql_context().runner->RunWithCache(ctx);
+    auto output = compile_info_->get_sql_context()
+                      .cluster_job.GetRunner(0)
+                      ->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run request plan output is null";
         return -1;
