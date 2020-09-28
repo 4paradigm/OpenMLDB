@@ -3,6 +3,7 @@ from . import interclient
 from . import interclient_tools
 from typing import List
 from datetime import date
+import io
 
 class CompareOP(enum.IntEnum):
   EQ = enum.auto()
