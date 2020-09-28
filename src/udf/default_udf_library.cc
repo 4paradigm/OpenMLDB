@@ -1306,6 +1306,7 @@ void DefaultUDFLibrary::Init() {
     InitTrigonometricUDF();
     InitWindowFunctions();
     InitUDAF();
+    InitFeatureZero();
 }
 
 void DefaultUDFLibrary::InitUDAF() {
