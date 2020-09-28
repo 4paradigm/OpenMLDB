@@ -153,16 +153,24 @@ if(SQL_PYSDK_ENABLE)
 		  python/fedb.egg-info
 		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/sql_pysdk
 		)
+
         add_custom_target(sqlalchemy_fedb ALL DEPENDS sql_router_sdk
-            COMMAND ${CMAKE_COMMAND} -E remove_directory dist
             COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/sqlalchemy-fedb/sqlalchemy_fedb/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/__init__.py
             COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/sqlalchemy-fedb/sqlalchemy_fedb/safedb.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/safedb.py
             COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/sqlalchemy-fedb/sqlalchemy_fedb/fedbapi/_fedbapi.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/fedbapi/_fedbapi.py
             COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/sqlalchemy-fedb/sqlalchemy_fedb/fedbapi/__init__.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/fedbapi/__init__.py
             COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/fedb/driver.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/fedbapi/driver.py
             COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:sql_router_sdk> ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/fedbapi
+            COMMAND ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/sql_pysdk/fedb/sql_router_sdk.py ${CMAKE_BINARY_DIR}/python/sqlalchemy_fedb/fedbapi
+    	    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/sdk/python/sqlalchemy-fedb/setup.py ${CMAKE_BINARY_DIR}/python/
+            COMMAND ${CMAKE_COMMAND} -E remove_directory dist
+            COMMAND cd ${CMAKE_BINARY_DIR}/python/ && ${Python3_EXECUTABLE} setup.py bdist_wheel
+            BYPRODUCTS
+              python/sqlalchemy-fedb
+              python/build
+              python/dist
+              python/sqlalchemy-fedb.egg-info
         )
-
 endif()
 
 if(SQL_JAVASDK_ENABLE)
