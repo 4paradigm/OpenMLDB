@@ -11,17 +11,17 @@ RESERVED_WORDS = set("select")
 class FeDBCompiler(compiler.SQLCompiler):
 
     def default_from(self):
-        print("call default from")
+        pass
 
     def visit_char_length_func(self, fn, **kw):
-        print("call char length func")
+        pass
 
     def visit_table(self, table, asfrom=False, **kwargs):
-        print("call visit table")
+        pass
 
 
     def visit_tablesample(self, tablesample, asfrom=False, **kw):
-        print("call visit tablesample")
+        pass
 
 class FeDbIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = compiler.RESERVED_WORDS.copy()
@@ -68,7 +68,7 @@ class FeDbIdentifierPreparer(compiler.IdentifierPreparer):
         super(FeDBIdentifierPreparer, self).__init__(dialect, initial_quote='`', final_quote='`')
 
     def format_drill_table(self, schema, isFile=True):
-        print("call format drill table")
+        pass
 
 class FeDBDialect(default.DefaultDialect):
     
@@ -85,7 +85,6 @@ class FeDBDialect(default.DefaultDialect):
     @classmethod
     def dbapi(cls):
         from sqlalchemy_fedb import fedbapi as module
-        print("---call dbapi----")
         return module
 
     def create_connect_args(self, url, **kwargs):
@@ -96,17 +95,5 @@ class FeDBDialect(default.DefaultDialect):
     
         qargs["db"] = self._db
         qargs.update(url.query)
-        print("-------do connect args--------")
-        print(qargs)
 
         return (), qargs
-
-#    def do_execute(self, cursor, statement, parameters, context):
-#        print("call do execute")
-#        print(dir(cursor))
-#        print(cursor.__class__)
-#
-#    def connect(self, *cargs, **cparams):
-#        print("----connect----")
-#        print(cparams)
-#        return Connection(cparams)

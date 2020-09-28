@@ -121,11 +121,7 @@ class Cursor(object):
 
     @connected
     def close(self):
-        print("cursor close")
         self._connected = False
-
-    def __del__(self):
-        print("del cursor")
 
     def callproc(self, procname, parameters=()):
         pass
@@ -280,7 +276,7 @@ class Cursor(object):
 
     @connected
     def fetchmany(self, size=None):
-        print("call fetchmany")
+        pass
 
     def nextset(self):
         pass
@@ -293,17 +289,17 @@ class Cursor(object):
         
     @connected
     def fetchall(self):
-        print("call fetchall")
+        pass
 
     @connected
     def get_query_metadata(self):
-        print("call get query metadata")
+        pass
 
     def get_default_plugin(self):
-        print("call get default plugin")
+        pass
 
     def __iter__(self):
-        print("call __iter__")
+        pass
 
 class Connection(object):
 
@@ -330,22 +326,17 @@ class Connection(object):
 
 
     def execute(self):
-        print("conn execute")
+        pass
 
     def close(self):
         pass
 
     def cursor(self):
-        print("call cursor")
         return Cursor(self._db, self._zk, self._zkPath, self)
-
-    def __del__(self):
-        print("connection delete")
 
     @connected
     def _cursor_execute(self, cursor, statement, parameters):
-        print("call _cursor_execute")
-        print(cursor.__class__)
+        pass
 
     @connected
     def do_rollback(self, dbapi_connection):
@@ -364,5 +355,4 @@ class Connection(object):
         pass
 
 def connect(db, zk, zkPath):
-    print("only call connect*********")
     return Connection(db, zk, zkPath)
