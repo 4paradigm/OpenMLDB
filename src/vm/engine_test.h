@@ -393,7 +393,7 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
     }
 
     std::ostringstream runner_oss;
-    session->GetMainRunner()->Print(runner_oss, "");
+    session->GetMainTask()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
 
     // Check Output Data

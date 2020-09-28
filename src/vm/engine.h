@@ -110,8 +110,8 @@ class RunSession {
         return compile_info_->get_sql_context().physical_plan;
     }
 
-    virtual fesql::vm::Runner* GetMainRunner() {
-        return compile_info_->get_sql_context().cluster_job.GetRunner(0);
+    virtual fesql::vm::Runner* GetMainTask() {
+        return compile_info_->get_sql_context().cluster_job.GetTask(0);
     }
     virtual fesql::vm::ClusterJob& GetClusterJob() {
         return compile_info_->get_sql_context().cluster_job;

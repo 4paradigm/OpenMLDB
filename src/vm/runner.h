@@ -764,10 +764,16 @@ class RunnerBuilder {
 class ClusterJob {
  public:
     ClusterJob() : tasks_() {}
-    Runner* GetRunner(uint32_t id) {
+    Runner* GetTask(uint32_t id) {
         return id >= tasks_.size() ? nullptr : tasks_[id];
     }
-    void AddTask(Runner* task) { tasks_.push_back(task); }
+    bool AddTask(Runner* task) {
+        if (nullptr == task) {
+            return false;
+        }
+        tasks_.push_back(task);
+        return true;
+    }
     void Reset() { tasks_.clear(); }
     const size_t GetTaskSize() const { return tasks_.size(); }
     const bool IsValid() const { return !tasks_.empty(); }
