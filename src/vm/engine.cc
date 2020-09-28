@@ -287,10 +287,18 @@ static bool ExtractSingleRow(std::shared_ptr<DataHandler> handler,
 }
 
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
+    return Run(0, in_row, out_row);
+}
+int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
+                               Row* out_row) {
+    auto task = compile_info_->get_sql_context().cluster_job.GetTask(task_id);
+    if (nullptr == task) {
+        LOG(WARNING) << "fail to run request plan: taskid" << task_id
+                     << " not exist!";
+        return -2;
+    }
     RunnerContext ctx(in_row, is_debug_);
-    auto output =
-        compile_info_->get_sql_context().cluster_job.GetTask(0)->RunWithCache(
-            ctx);
+    auto output = task->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run request plan output is null";
         return -1;
@@ -304,10 +312,15 @@ int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
 
 int32_t BatchRequestRunSession::Run(const std::vector<Row>& request_batch,
                                     std::vector<Row>& output) {
+    return Run(0, request_batch, output);
+}
+int32_t BatchRequestRunSession::Run(const uint32_t id,
+                                    const std::vector<Row>& request_batch,
+                                    std::vector<Row>& output) {
     RunnerContext ctx(is_debug_);
     for (size_t i = 0; i < request_batch.size(); ++i) {
         output.push_back(Row());
-        int32_t ok = RunSingle(ctx, request_batch[i], &output.back());
+        int32_t ok = RunSingle(ctx, id, request_batch[i], &output.back());
         if (!ok) {
             return -1;
         }
@@ -318,10 +331,20 @@ int32_t BatchRequestRunSession::Run(const std::vector<Row>& request_batch,
 int32_t BatchRequestRunSession::RunSingle(RunnerContext& ctx,  // NOLINT
                                           const Row& request,
                                           Row* output) {  // NOLINT
+    return RunSingle(ctx, 0, request, output);
+}
+int32_t BatchRequestRunSession::RunSingle(RunnerContext& ctx,  // NOLINT
+                                          const uint32_t task_id,
+                                          const Row& request,
+                                          Row* output) {  // NOLINT
+    auto task = compile_info_->get_sql_context().cluster_job.GetTask(task_id);
+    if (nullptr == task) {
+        LOG(WARNING) << "fail to run request plan: taskid" << task_id
+                     << " not exist!";
+        return -2;
+    }
     ctx.SetRequest(request);
-    auto handler =
-        compile_info_->get_sql_context().cluster_job.GetTask(0)->RunWithCache(
-            ctx);
+    auto handler = task->RunWithCache(ctx);
     if (!handler) {
         LOG(WARNING) << "run request plan output is null";
         return -1;
