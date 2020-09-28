@@ -35,9 +35,6 @@ fpga-build:
     expire_in: 4h
     paths:
       - build/bin
-  only:
-    variables:
-      - $ENV_BUILD == "all"
 
 build:
   stage: build
@@ -69,9 +66,6 @@ mac_build:
       - build/bin/rtidb_mac
       - build/src/sdk/libsql_jsdk.dylib
       - build/sql_pysdk/dist/*.whl
-  only:
-    variables:
-      - $ENV_BUILD == "all"
 
 fpga_c++_ut:
   image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
@@ -90,9 +84,9 @@ fpga_c++_ut:
         - reports/*.xml
   dependencies:
     - build
-  only:
+  except:
     variables:
-      - $ENV_BUILD == "all"
+      - $ENV_BUILD == "daily"
 
 #fpga_java_ut:
 #  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
@@ -171,9 +165,9 @@ fesql_auto_test:
         - src/sdk/java/fesql-auto-test-java/target/surefire-reports/TEST-*.xml
         - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
         - src/sdk/java/fesql-auto-test-java/target/failsafe-reports/TEST-*.xml
-  only:
+  except:
     variables:
-      - $ENV_BUILD == "all"
+      - $ENV_BUILD == "daily"
   dependencies:
     - build
 
@@ -201,9 +195,9 @@ auto_test:
         - rtidb-auto-test-java/target/surefire-reports/TEST-*.xml
         - rtidb-auto-test-java/target/failsafe-reports/junitreports/TEST-*.xml
         - rtidb-auto-test-java/target/failsafe-reports/TEST-*.xml
-  only:
+  except:
     variables:
-      - $ENV_BUILD == "all"
+      - $ENV_BUILD == "daily"
   dependencies:
     - build
 
@@ -262,9 +256,9 @@ tablet_one_demension:
         - ./test-reports/*
   dependencies:
     - build
-  only:
+  except:
     variables:
-      - $ENV_BUILD == "all"
+      - $ENV_BUILD == "daily"
 
 tablet_multi_demension:
   stage: ts_integration_test
@@ -284,9 +278,9 @@ tablet_multi_demension:
         - ./test-reports/*
   dependencies:
     - build
-  only:
+  except:
     variables:
-      - $ENV_BUILD == "all"
+      - $ENV_BUILD == "daily"
 
 ns_one_demension:
   stage: ns_integration_test
@@ -306,9 +300,9 @@ ns_one_demension:
         - ./test-reports/*
   dependencies:
     - build
-  only:
+  except:
     variables:
-      - $ENV_BUILD == "all"
+      - $ENV_BUILD == "daily"
 
 ns_multi_demension:
   stage: ns_integration_test
@@ -328,9 +322,9 @@ ns_multi_demension:
         - ./test-reports/*
   dependencies:
     - build
-  only:
+  except:
     variables:
-      - $ENV_BUILD == "all"
+      - $ENV_BUILD == "daily"
 
 disk_table:
   stage: ns_integration_test
@@ -350,9 +344,9 @@ disk_table:
         - ./test-reports/*
   dependencies:
     - build
-  only:
+  except:
     variables:
-      - $ENV_BUILD == "all"
+      - $ENV_BUILD == "daily"
 
 deploy-fedb:
   stage: daily
@@ -411,8 +405,8 @@ fesql_auto_test_python:
     reports:
       junit:
         - src/sdk/python/fesql-auto-test-python/report/TEST-test_*.xml
-  only:
+  except:
     variables:
-      - $ENV_BUILD == "all"
+      - $ENV_BUILD == "daily"
   dependencies:
     - build
