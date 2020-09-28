@@ -54,7 +54,7 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
         return std::move(std::unique_ptr<::fesql::codec::RowIterator>());
     }
 
-    ::fesql::codec::RowIterator* GetIterator(int8_t* addr) const override {
+    ::fesql::codec::RowIterator* GetRawIterator() const override {
         return nullptr;
     }
 
