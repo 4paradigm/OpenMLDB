@@ -510,7 +510,7 @@ bool iterator_list(int8_t *input, int8_t *output) {
     ::fesql::codec::IteratorRef *iterator_ref =
         (::fesql::codec::IteratorRef *)(output);
     ListV<V> *col = (ListV<V> *)(list_ref->list);
-    auto col_iter = col->GetIterator(nullptr);
+    auto col_iter = col->GetRawIterator();
     col_iter->SeekToFirst();
     iterator_ref->iterator = reinterpret_cast<int8_t *>(col_iter);
     return true;
