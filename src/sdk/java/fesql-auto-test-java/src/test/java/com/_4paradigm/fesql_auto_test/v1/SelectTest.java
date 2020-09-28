@@ -115,4 +115,16 @@ public class SelectTest extends FesqlTest {
     public void testSubSelectRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, true).run();
     }
+
+    @DataProvider
+    public Object[] testWhereData() throws FileNotFoundException {
+        FesqlDataProvider dp = FesqlDataProvider
+                    .dataProviderGenerator("/integration/v1/test_where.yaml");
+        return dp.getCases().toArray();
+    }
+
+    @Test(enabled = false, dataProvider = "testWhereData")
+    public void testWhere(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase).run();
+    }
 }

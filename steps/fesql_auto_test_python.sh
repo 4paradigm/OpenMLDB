@@ -10,13 +10,10 @@ sleep 5
 cd onebox && sh start_onebox_on_rambuild.sh && cd $ROOT_DIR
 sleep 5
 echo "ROOT_DIR:${ROOT_DIR}"
-#sh steps/gen_code.sh
-#sh tools/install_fesql.sh
-#mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake .. && make -j16 python_package
-#cd ${ROOT_DIR}/python && python3 -m pip install .
 
 #cd fesql
-#git checkout feat/add-mode-python-unsupport
+#git fetch
+#git checkout feat/fix-python-some-fail-case
 #git pull
 
 cd ${ROOT_DIR}/build/sql_pysdk/dist/
@@ -28,6 +25,12 @@ cd ${ROOT_DIR}
 cd src/sdk/python/fesql-auto-test-python
 python3 -m pip install -r requirements.txt
 sed -i "s/env=.*/env=cicd/" fesql.conf
+#IP=`hostname -i`
+IP=127.0.0.1
+echo "cicd_tb_endpoint_0=$IP:9520" >> fesql.conf
+echo "cicd_tb_endpoint_1=$IP:9521" >> fesql.conf
+echo "cicd_tb_endpoint_2=$IP:9522" >> fesql.conf
+
 cat fesql.conf
 rm -rf report
 mkdir report

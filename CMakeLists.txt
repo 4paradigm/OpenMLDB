@@ -48,12 +48,16 @@ endif ()
 add_definitions(-DHAVE_STDBOOL_H=1)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
+option(PZFPGA_ENABLE "Enable pz compression for ssd tables" OFF)
 option(SQL_PYSDK_ENABLE "Enable sql pysdk" ON)
 option(SQL_JAVASDK_ENABLE "Enable sql javasdk" ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
     set(BRPC_LIBS brpc protobuf glog gflags unwind lzma ssl crypto leveldb z snappy dl pthread ${OS_LIB})
+    if (PZFPGA_ENABLE) 
+        link_directories(${PROJECT_SOURCE_DIR}/thirdparty/aclrte-linux64/lib)
+    endif()
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB 
             ${CMAKE_THREAD_LIBS_INIT}
@@ -68,7 +72,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_ProfilerStop")
     set(BRPC_LIBS brpc protobuf glog gflags ssl crypto leveldb z snappy dl pthread ${OS_LIB})
 endif ()
-set(VM_LIBS fesql_core fesql_sdk boost_filesystem boost_date_time)
+set(VM_LIBS fesql_core fesql_sdk boost_filesystem boost_date_time boost_regex)
 set(LLVM_DIR "${PROJECT_SOURCE_DIR}/thirdparty/lib/cmake/llvm")
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -81,11 +85,6 @@ if (TCMALLOC_ENABLE)
     set(CMAKE_EXE_LINKER_FLAGS "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${CMAKE_EXE_LINKER_FLAGS}")
 endif()
 
-option(LOG_FILE_PATH_ENABLE "Enable LOG FILE PATH ENABLE" ON) 
-message("LOG_FILE_PATH_ENABLE option is ${LOG_FILE_PATH_ENABLE}")
-if (LOG_FILE_PATH_ENABLE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__FILE__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"' -Wno-builtin-macro-redefined")
-endif()
 if(POLICY CMP0086)
   cmake_policy(SET CMP0086 NEW)
 endif()
@@ -95,10 +94,12 @@ configure_file(
     "${PROJECT_SOURCE_DIR}/src/config.h")
 
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/include ${PROJECT_SOURCE_DIR}/fesql/src 
- ${PROJECT_SOURCE_DIR}/fesql/build/src)
+    ${PROJECT_SOURCE_DIR}/fesql/build/src)
+
 link_directories(${PROJECT_SOURCE_DIR}/thirdparty/lib 
-${PROJECT_SOURCE_DIR}/thirdparty/lib64
+    ${PROJECT_SOURCE_DIR}/thirdparty/lib64
     ${PROJECT_SOURCE_DIR}/fesql/build/release/lib)
+
 add_subdirectory(src)
 add_custom_target(rtidbpy
 COMMAND make

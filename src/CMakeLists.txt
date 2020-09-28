@@ -2,7 +2,7 @@ include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
 
 add_library(rtidb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/blob_server.pb.cc proto/name_server.pb.cc)
 add_library(rtidb_codec STATIC codec/codec.cc codec/sdk_codec.cc)
-add_library(rtidb_catalog STATIC catalog/tablet_catalog.cc catalog/sdk_catalog.cc)
+add_library(rtidb_catalog STATIC catalog/tablet_catalog.cc catalog/sdk_catalog.cc catalog/distribute_iterator.cc catalog/client_manager.cc)
 add_library(client STATIC client/tablet_client.cc client/ns_client.cc client/bs_client.cc)
 add_library(rtidb_flags flags.cc)
 add_library(base STATIC base/status.cc base/ringqueue.h)
@@ -20,7 +20,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
                        log/log_reader.cc
                        log/writable_file.cc flags.cc)
 
-    set(BIN_LIBS client nameserver tablet rtidb_sdk client blobserver blob_proxy rtidb_catalog zk_client replica  base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
+    set(BIN_LIBS nameserver tablet rtidb_sdk blobserver blob_proxy rtidb_catalog client zk_client replica  base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
     ${VM_LIBS}
     ${LLVM_LIBS}
     ${BRPC_LIBS})
@@ -29,9 +29,13 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(blobserver_impl_test gtest ${BIN_LIBS})
     add_library(replica STATIC replica/replicate_node.cc
                                replica/log_replicator.cc)
+
     add_executable(mem_table_iterator_test storage/mem_table_iterator_test.cc)
     target_link_libraries(mem_table_iterator_test gtest ${BIN_LIBS})
 
+    if (PZFPGA_ENABLE)
+        target_link_libraries(storage lz4 pz alteracl OpenCL elf z)
+    endif()
     add_executable(tablet_catalog_test catalog/tablet_catalog_test.cc)
     target_link_libraries(tablet_catalog_test gtest ${BIN_LIBS})
 

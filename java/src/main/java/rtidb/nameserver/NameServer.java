@@ -9,6 +9,7 @@ public interface NameServer {
     ShowTabletResponse showTablet(ShowTabletRequest request);
     GeneralResponse changeLeader(ChangeLeaderRequest request);
     GeneralResponse recoverEndpoint(RecoverEndpointRequest request);
+    ShowOPStatusResponse showOPStatus(ShowOPStatusRequest request);
 
     GeneralResponse addTableField(AddTableFieldRequest request);
     GeneralResponse addIndex(AddIndexRequest request);

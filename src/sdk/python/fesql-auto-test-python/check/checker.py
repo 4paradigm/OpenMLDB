@@ -1,8 +1,8 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from abc import ABCMeta,abstractmethod
 from fedb.sql_router_sdk import DataTypeName
+from abc import ABCMeta,abstractmethod
 from nb_log import LogManager
 import re
 import datetime
@@ -107,6 +107,7 @@ class ColumnsChecker(BaseChecker):
     def check(self):
         log.info("columns check")
         expect = self.fesqlCase['expect'].get('columns')
+        fesql_util.convertExpectTypes(expect)
         schema = self.fesqlResult.resultSchema
         assert schema.GetColumnCnt() == len(expect),"actual:"+str(schema.GetColumnCnt())+",expect:"+str(len(expect))
         for index,value in enumerate(expect):

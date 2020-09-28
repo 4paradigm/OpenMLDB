@@ -1,9 +1,9 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-import executor.fesql_executor
 import common.fesql_test as fesql_test
 from ddt import ddt,file_data,unpack,data,idata
 import unittest
+import executor.fesql_executor
 import util.tools as tool
 
 @ddt

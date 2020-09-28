@@ -4,15 +4,23 @@
 //
 
 #include "storage/disk_table.h"
+
 #include <utility>
+
 #include "base/file_util.h"
 #include "base/hash.h"
 #include "base/glog_wapper.h" // NOLINT
-
+#include "config.h" // NOLINT
 
 
 DECLARE_bool(disable_wal);
 DECLARE_uint32(max_traverse_cnt);
+
+DECLARE_string(file_compression);
+DECLARE_uint32(block_cache_mb);
+DECLARE_uint32(write_buffer_mb);
+DECLARE_uint32(block_cache_shardbits);
+DECLARE_bool(verify_compression);
 
 namespace rtidb {
 namespace storage {
@@ -67,8 +75,9 @@ DiskTable::~DiskTable() {
 }
 
 void DiskTable::initOptionTemplate() {
-    std::shared_ptr<rocksdb::Cache> cache =
-        rocksdb::NewLRUCache(512 << 20, 8);  // Can be set by flags
+    std::shared_ptr<rocksdb::Cache> cache = rocksdb::NewLRUCache(
+        FLAGS_block_cache_mb << 20,
+        FLAGS_block_cache_shardbits);  // Can be set by flags
     // SSD options template
     ssd_option_template.max_open_files = -1;
     ssd_option_template.env->SetBackgroundThreads(
@@ -77,25 +86,47 @@ void DiskTable::initOptionTemplate() {
         4, rocksdb::Env::Priority::LOW);  // compaction threads
     ssd_option_template.memtable_prefix_bloom_size_ratio = 0.02;
     ssd_option_template.compaction_style = rocksdb::kCompactionStyleLevel;
-    ssd_option_template.level0_file_num_compaction_trigger = 10;
-    ssd_option_template.level0_slowdown_writes_trigger = 20;
-    ssd_option_template.level0_stop_writes_trigger = 40;
-    ssd_option_template.write_buffer_size = 64 << 20;
-    ssd_option_template.target_file_size_base = 64 << 20;
-    ssd_option_template.max_bytes_for_level_base = 512 << 20;
+    ssd_option_template.write_buffer_size =
+        FLAGS_write_buffer_mb << 20;  // L0 file size = write_buffer_size
+    ssd_option_template.level0_file_num_compaction_trigger =
+        1 << 4;  // L0 total size = write_buffer_size * 16
+    ssd_option_template.level0_slowdown_writes_trigger = 1 << 5;
+    ssd_option_template.level0_stop_writes_trigger = 1 << 6;
+    ssd_option_template.max_bytes_for_level_base =
+        ssd_option_template.write_buffer_size *
+        ssd_option_template
+            .level0_file_num_compaction_trigger;  // L1 size ~ L0 total size
+    ssd_option_template.target_file_size_base =
+        ssd_option_template.max_bytes_for_level_base >>
+        4;  // number of L1 files = 16
 
     rocksdb::BlockBasedTableOptions table_options;
-    table_options.cache_index_and_filter_blocks = true;
-    table_options.pin_l0_filter_and_index_blocks_in_cache = true;
+    // table_options.cache_index_and_filter_blocks = true;
+    // table_options.pin_l0_filter_and_index_blocks_in_cache = true;
     table_options.block_cache = cache;
     // table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10,
     // false));
     table_options.whole_key_filtering = false;
     table_options.block_size = 256 << 10;
     table_options.use_delta_encoding = false;
+#ifdef PZFPGA_ENABLE
+    if (FLAGS_file_compression.compare("pz") == 0) {
+        PDLOG(INFO, "initOptionTemplate PZ compression enabled");
+        ssd_option_template.compression = rocksdb::kPZCompression;
+    } else if (FLAGS_file_compression.compare("lz4") == 0) {
+        PDLOG(INFO, "initOptionTemplate lz4 compression enabled");
+        ssd_option_template.compression = rocksdb::kLZ4Compression;
+    } else if (FLAGS_file_compression.compare("zlib") == 0) {
+        PDLOG(INFO, "initOptionTemplate zlib compression enabled");
+        ssd_option_template.compression = rocksdb::kZlibCompression;
+    } else {
+        PDLOG(INFO, "initOptionTemplate NO compression enabled");
+        ssd_option_template.compression = rocksdb::kNoCompression;
+    }
+    if (FLAGS_verify_compression) table_options.verify_compression = true;
+#endif
     ssd_option_template.table_factory.reset(
         rocksdb::NewBlockBasedTableFactory(table_options));
-
     // HDD options template
     hdd_option_template.max_open_files = -1;
     hdd_option_template.env->SetBackgroundThreads(
@@ -306,59 +337,30 @@ bool DiskTable::Delete(const std::string& pk, uint32_t idx) {
 
 bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts,
                     uint32_t ts_idx, std::string& value) {
-    std::shared_ptr<IndexDef> index_def = GetIndex(idx);
-    if (!index_def) {
-        PDLOG(WARNING, "index %u not found in table tid %u pid %u", idx, id_,
-              pid_);
-        return false;
-    }
-    const std::vector<uint32_t> ts_vec = index_def->GetTsColumn();
-    if (std::find(ts_vec.begin(), ts_vec.end(), ts_idx) == ts_vec.end()) {
-        PDLOG(WARNING,
-              "ts index %u is not member of index %u, failed getting table tid "
-              "%u pid %u",
-              ts_idx, idx, id_, pid_);
-        return false;
-    }
-    rocksdb::Slice spk;
-    if (ts_vec.size() > 1) {
-        std::string combine_key = CombineKeyTs(pk, ts, ts_idx);
-        spk = rocksdb::Slice(combine_key);
-    } else {
-        std::string combine_key = CombineKeyTs(pk, ts);
-        spk = rocksdb::Slice(combine_key);
-    }
-    rocksdb::Status s;
-    s = db_->Get(rocksdb::ReadOptions(), cf_hs_[idx + 1], spk, &value);
-    if (s.ok()) {
+    Ticket ticket;
+    auto it = NewIterator(idx, ts_idx, pk, ticket);
+    it->Seek(ts);
+    if ((it->Valid()) && (it->GetKey() == ts)) {
+        value = it->GetValue().ToString();
+        delete it;
         return true;
     } else {
+        delete it;
         return false;
     }
 }
 
 bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts,
                     std::string& value) {
-    rocksdb::Slice spk;
-    std::shared_ptr<IndexDef> index_def = GetIndex(idx);
-    if (!index_def) {
-        PDLOG(WARNING, "index %u not found in table, tid %u pid %u", idx, id_,
-              pid_);
-        return false;
-    }
-    auto ts_vec = index_def->GetTsColumn();
-    if (ts_vec.size() > 1) {
-        std::string combine_key = CombineKeyTs(pk, ts, ts_vec.front());
-        spk = rocksdb::Slice(combine_key);
-    } else {
-        std::string combine_key = CombineKeyTs(pk, ts);
-        spk = rocksdb::Slice(combine_key);
-    }
-    rocksdb::Status s;
-    s = db_->Get(rocksdb::ReadOptions(), cf_hs_[idx + 1], spk, &value);
-    if (s.ok()) {
+    Ticket ticket;
+    auto it = NewIterator(idx, pk, ticket);
+    it->Seek(ts);
+    if ((it->Valid()) && (it->GetKey() == ts)) {
+        value = it->GetValue().ToString();
+        delete it;
         return true;
     } else {
+        delete it;
         return false;
     }
 }
