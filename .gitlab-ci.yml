@@ -14,6 +14,9 @@ stages:
 
 style_check:
   stage: precheck
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
   script:
     - source /root/.bashrc && bash tools/style_check.sh
   artifacts:
@@ -26,6 +29,9 @@ fpga-build:
   stage: build
   tags:
     - fpga
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
   script:
     - source /root/.bashrc && sh tools/install_fesql.sh
     - ln -sf /depends/thirdparty thirdparty
