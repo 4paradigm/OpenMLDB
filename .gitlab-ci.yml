@@ -366,6 +366,7 @@ deploy-fedb-fpga:
   script:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && sh tools/install_fesql.sh
     - source /root/.bashrc && bash steps/simple_compile_fpga.sh
     - source /root/.bashrc && bash steps/package_and_upload_fedb_fpga.sh
   only:
