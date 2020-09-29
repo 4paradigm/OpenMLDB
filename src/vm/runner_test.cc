@@ -86,13 +86,14 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     SqlJoinPlan, RunnerTest,
     testing::ValuesIn(InitCases("cases/plan/join_query.yaml")));
+
 void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
-                 const bool is_batch) {
+                 EngineMode engine_mode) {
     SQLCompiler sql_compiler(catalog);
     SQLContext sql_context;
     sql_context.sql = sql;
     sql_context.db = "db";
-    sql_context.is_batch_mode = is_batch;
+    sql_context.engine_mode = engine_mode;
     sql_context.is_performance_sensitive = false;
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
@@ -184,7 +185,7 @@ TEST_P(RunnerTest, request_mode_test) {
             new fesql::storage::Table(1, 1, table_def));
         AddTable(catalog, table_def, table);
     }
-    RunnerCheck(catalog, sqlstr, false);
+    RunnerCheck(catalog, sqlstr, kRequestMode);
 }
 
 TEST_P(RunnerTest, batch_mode_test) {
@@ -258,7 +259,7 @@ TEST_P(RunnerTest, batch_mode_test) {
             new fesql::storage::Table(1, 1, table_def));
         AddTable(catalog, table_def, table);
     }
-    RunnerCheck(catalog, sqlstr, true);
+    RunnerCheck(catalog, sqlstr, kBatchMode);
 }
 
 Runner* GetFirstRunnerOfType(Runner* root, const RunnerType type) {
@@ -295,13 +296,13 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     index->add_first_keys("col4");
     index->set_second_key("col5");
     auto catalog = BuildCommonCatalog(table_def, table);
-    RunnerCheck(catalog, sqlstr, true);
+    RunnerCheck(catalog, sqlstr, kBatchMode);
 
     SQLCompiler sql_compiler(catalog);
     SQLContext sql_context;
     sql_context.sql = sqlstr;
     sql_context.db = "db";
-    sql_context.is_batch_mode = true;
+    sql_context.engine_mode = kBatchMode;
     sql_context.is_performance_sensitive = false;
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);

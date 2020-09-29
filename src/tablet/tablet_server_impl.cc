@@ -241,8 +241,8 @@ void TabletServerImpl::Explain(RpcController* ctrl,
     common::Status* status = response->mutable_status();
     vm::ExplainOutput output;
     base::Status base_status;
-    bool ok = engine_->Explain(request->sql(), request->db(), false, &output,
-                               &base_status);
+    bool ok = engine_->Explain(request->sql(), request->db(), vm::kRequestMode,
+                               &output, &base_status);
     if (!ok || base_status.code != 0) {
         status->set_msg(base_status.str());
         status->set_code(base_status.code);
