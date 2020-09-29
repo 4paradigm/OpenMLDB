@@ -24,11 +24,12 @@ class PredicateFun {
  public:
     virtual bool operator()(const Row& row) const = 0;
 };
-class IteratorWrapper : public RowIterator {
+class IteratorProjectWrapper : public RowIterator {
  public:
-    IteratorWrapper(std::unique_ptr<RowIterator> iter, const ProjectFun* fun)
+    IteratorProjectWrapper(std::unique_ptr<RowIterator> iter,
+                           const ProjectFun* fun)
         : RowIterator(), iter_(std::move(iter)), fun_(fun), value_() {}
-    virtual ~IteratorWrapper() {}
+    virtual ~IteratorProjectWrapper() {}
     bool Valid() const override { return iter_->Valid(); }
     void Next() override { iter_->Next(); }
     const uint64_t& GetKey() const override { return iter_->GetKey(); }
@@ -50,11 +51,11 @@ class IteratorFilterWrapper : public RowIterator {
         : RowIterator(), iter_(std::move(iter)), predicate_(fun) {}
     virtual ~IteratorFilterWrapper() {}
     bool Valid() const override {
-        return iter_->Valid() && !predicate_->operator()(iter_->GetValue());
+        return iter_->Valid() && predicate_->operator()(iter_->GetValue());
     }
     void Next() override {
         iter_->Next();
-        while (Valid() && !predicate_->operator()(iter_->GetValue())) {
+        while (iter_->Valid() && !predicate_->operator()(iter_->GetValue())) {
             iter_->Next();
         }
     }
@@ -62,29 +63,34 @@ class IteratorFilterWrapper : public RowIterator {
     const Row& GetValue() override { return iter_->GetValue(); }
     void Seek(const uint64_t& k) override {
         iter_->Seek(k);
-        while (Valid() && !predicate_->operator()(iter_->GetValue())) {
+        while (iter_->Valid() && !predicate_->operator()(iter_->GetValue())) {
             iter_->Next();
         }
     }
-    void SeekToFirst() override { iter_->SeekToFirst(); }
+    void SeekToFirst() override {
+        iter_->SeekToFirst();
+        while (iter_->Valid() && !predicate_->operator()(iter_->GetValue())) {
+            iter_->Next();
+        }
+    }
     bool IsSeekable() const override { return iter_->IsSeekable(); }
     std::unique_ptr<RowIterator> iter_;
     const PredicateFun* predicate_;
 };
 
-class WindowIteratorWrapper : public WindowIterator {
+class WindowIteratorProjectWrapper : public WindowIterator {
  public:
-    WindowIteratorWrapper(std::unique_ptr<WindowIterator> iter,
-                          const ProjectFun* fun)
+    WindowIteratorProjectWrapper(std::unique_ptr<WindowIterator> iter,
+                                 const ProjectFun* fun)
         : WindowIterator(), iter_(std::move(iter)), fun_(fun) {}
-    virtual ~WindowIteratorWrapper() {}
+    virtual ~WindowIteratorProjectWrapper() {}
     std::unique_ptr<RowIterator> GetValue() override {
         auto iter = iter_->GetValue();
         if (!iter) {
             return std::unique_ptr<RowIterator>();
         } else {
             return std::unique_ptr<RowIterator>(
-                new IteratorWrapper(std::move(iter), fun_));
+                new IteratorProjectWrapper(std::move(iter), fun_));
         }
     }
     RowIterator* GetRawValue() override {
@@ -92,7 +98,7 @@ class WindowIteratorWrapper : public WindowIterator {
         if (!iter) {
             return nullptr;
         } else {
-            return new IteratorWrapper(std::move(iter), fun_);
+            return new IteratorProjectWrapper(std::move(iter), fun_);
         }
     }
     void Seek(const std::string& key) override { iter_->Seek(key); }
@@ -154,7 +160,7 @@ class PartitionProjectWrapper : public PartitionHandler {
             return std::unique_ptr<WindowIterator>();
         } else {
             return std::unique_ptr<WindowIterator>(
-                new WindowIteratorWrapper(std::move(iter), fun_));
+                new WindowIteratorProjectWrapper(std::move(iter), fun_));
         }
     }
     const Types& GetTypes() override { return partition_handler_->GetTypes(); }
@@ -178,7 +184,7 @@ class PartitionProjectWrapper : public PartitionHandler {
             return std::unique_ptr<RowIterator>();
         } else {
             return std::unique_ptr<RowIterator>(
-                new IteratorWrapper(std::move(iter), fun_));
+                new IteratorProjectWrapper(std::move(iter), fun_));
         }
     }
     base::ConstIterator<uint64_t, Row>* GetRawIterator() const override;
@@ -269,7 +275,7 @@ class TableProjectWrapper : public TableHandler {
             return std::unique_ptr<RowIterator>();
         } else {
             return std::unique_ptr<RowIterator>(
-                new IteratorWrapper(std::move(iter), fun_));
+                new IteratorProjectWrapper(std::move(iter), fun_));
         }
     }
     const Types& GetTypes() override { return table_hander_->GetTypes(); }
@@ -281,7 +287,7 @@ class TableProjectWrapper : public TableHandler {
             return std::unique_ptr<WindowIterator>();
         } else {
             return std::unique_ptr<WindowIterator>(
-                new WindowIteratorWrapper(std::move(iter), fun_));
+                new WindowIteratorProjectWrapper(std::move(iter), fun_));
         }
     }
     const Schema* GetSchema() override { return table_hander_->GetSchema(); }
@@ -294,7 +300,7 @@ class TableProjectWrapper : public TableHandler {
         if (!iter) {
             return nullptr;
         } else {
-            return new IteratorWrapper(std::move(iter), fun_);
+            return new IteratorProjectWrapper(std::move(iter), fun_);
         }
     }
     Row At(uint64_t pos) override {
