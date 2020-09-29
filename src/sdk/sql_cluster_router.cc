@@ -844,6 +844,8 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(
     ::fesql::base::Status vm_status;
     bool ok = engine_->Explain(sql, db, false, &explain_output, &vm_status);
     if (!ok) {
+        status->code = -1;
+        status->msg = vm_status.msg;
         LOG(WARNING) << "fail to explain sql " << sql;
         return std::shared_ptr<ExplainInfo>();
     }
@@ -859,17 +861,21 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
     const std::string& db, const std::string& sp_name,
     std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) {
     if (!row || status == NULL) {
-        LOG(WARNING) << "input is invalid";
+        status->code = -1;
+        status->msg = "input is invalid";
+        LOG(WARNING) << status->msg;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     if (!row->OK()) {
+        status->code = -1;
+        status->msg = "make sure the request row is built before execute sql";
         LOG(WARNING) << "make sure the request row is built before execute sql";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     auto ns_ptr = cluster_sdk_->GetNsClient();
     if (!ns_ptr) {
-        status->msg = "no nameserver exist";
         status->code = -1;
+        status->msg = "no nameserver exist";
         LOG(WARNING) << "no nameserver exist";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
@@ -877,9 +883,9 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
     std::string err;
     bool ok = ns_ptr->ShowProcedure(db, sp_name, sp_info, err);
     if (!ok) {
+        status->code = -1;
         status->msg = "fail to show procedure for error " + err;
         LOG(WARNING) << status->msg;
-        status->code = -1;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     const std::string& sql = sp_info.sql();
@@ -890,23 +896,33 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
     ok = GetTablet(db, sql, &tablets);
     if (!ok || tablets.size() <= 0) {
+        status->code = -1;
         status->msg = "not tablet found";
+        LOG(WARNING) << status->msg;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     uint32_t idx = rand_.Uniform(tablets.size());
     ok = tablets[idx]->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(),
                              options_.enable_debug);
     if (!ok) {
+        status->code = -1;
         status->msg = "request server error";
+        LOG(WARNING) << status->msg;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     if (response->code() != ::rtidb::base::kOk) {
+        status->code = -1;
+        status->msg = response->msg();
+        LOG(WARNING) << status->msg;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs(
         new rtidb::sdk::ResultSetSQL(std::move(response), std::move(cntl)));
     ok = rs->Init();
     if (!ok) {
+        status->code = -1;
+        status->msg = "resuletSetSQL init failed";
+        LOG(WARNING) << status->msg;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     return rs;
