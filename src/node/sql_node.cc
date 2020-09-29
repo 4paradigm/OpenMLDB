@@ -951,7 +951,24 @@ const bool IsNullPrimary(const ExprNode *expr) {
 bool ExprListNullOrEmpty(const ExprListNode *expr) {
     return nullptr == expr || expr->IsEmpty();
 }
+bool ExprIsSimple(const ExprNode *expr) {
+    if (nullptr == expr) {
+        return false;
+    }
 
+    switch (expr->expr_type_) {
+        case node::kExprPrimary: {
+            return true;
+        }
+        case node::kExprColumnRef: {
+            return true;
+        }
+        default: {
+            return false;
+        }
+    }
+    return true;
+}
 bool ExprIsConst(const ExprNode *expr) {
     if (nullptr == expr) {
         return true;

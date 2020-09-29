@@ -181,7 +181,7 @@ class RowHandler : public DataHandler {
     std::unique_ptr<RowIterator> GetIterator() const override {
         return std::unique_ptr<RowIterator>();
     }
-    RowIterator* GetIterator(int8_t* addr) const override { return nullptr; }
+    RowIterator* GetRawIterator() const override { return nullptr; }
     const uint64_t GetCount() override { return 0; }
     Row At(uint64_t pos) override { return Row(); }
     const HandlerType GetHanlderType() override { return kRowHandler; }
@@ -221,7 +221,7 @@ class PartitionHandler : public TableHandler {
     virtual std::unique_ptr<RowIterator> GetIterator() const {
         return std::unique_ptr<RowIterator>();
     }
-    RowIterator* GetIterator(int8_t* addr) const override { return nullptr; }
+    RowIterator* GetRawIterator() const { return nullptr; }
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) {
         return std::unique_ptr<WindowIterator>();

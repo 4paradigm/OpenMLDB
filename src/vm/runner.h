@@ -761,7 +761,38 @@ class RunnerBuilder {
     int32_t id_;
     node::NodeManager* nm_;
 };
+class ClusterJob {
+ public:
+    ClusterJob() : tasks_() {}
+    Runner* GetTask(uint32_t id) {
+        return id >= tasks_.size() ? nullptr : tasks_[id];
+    }
+    bool AddTask(Runner* task) {
+        if (nullptr == task) {
+            return false;
+        }
+        tasks_.push_back(task);
+        return true;
+    }
+    void Reset() { tasks_.clear(); }
+    const size_t GetTaskSize() const { return tasks_.size(); }
+    const bool IsValid() const { return !tasks_.empty(); }
+    void Print(std::ostream& output, const std::string& tab) const {
+        if (tasks_.empty()) {
+            return;
+        }
+        uint32_t id = 0;
+        for (auto iter = tasks_.cbegin(); iter != tasks_.cend(); iter++) {
+            output << "TASK ID " << id++;
+            (*iter)->Print(output, tab);
+            output << "\n";
+        }
+    }
+    void Print() const { this->Print(std::cout, "    "); }
 
+ private:
+    std::vector<Runner*> tasks_;
+};
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_RUNNER_H_

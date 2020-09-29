@@ -1098,8 +1098,9 @@ TEST_F(PlannerTest, FunDefForInPlanTest) {
 
 TEST_F(PlannerTest, RequestModePlanErrorTest) {
     const std::vector<std::string> sql_list = {
-        "select col1, col2 from t1 union select col1, col2 from t2;",
-        "select col1, col2 from t1 left join (select col1, col2 from tt) as t2 "
+        "select col1, col2 from t1 union select c1 + c2 as col1, col2 from t2;",
+        "select col1, col2 from t1 left join (select col1+col2 as add12 from "
+        "tt) as t2 "
         "on t1.col1 = t2.col1;"};
 
     for (auto sql : sql_list) {

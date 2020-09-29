@@ -171,7 +171,9 @@ PhysicalFliterNode* PhysicalFliterNode::CastFrom(PhysicalOpNode* node) {
 PhysicalLimitNode* PhysicalLimitNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalLimitNode*>(node);
 }
-
+PhysicalRenameNode* PhysicalRenameNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalRenameNode*>(node);
+}
 void PhysicalConstProjectNode::Print(std::ostream& output,
                                      const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
@@ -414,6 +416,16 @@ bool PhysicalRequestUnionNode::InitSchema() {
     output_schema_.CopyFrom(producers_[0]->output_schema_);
     output_name_schema_list_.AddSchemaSources(
         producers_[0]->GetOutputNameSchemaList());
+    PrintSchema();
+    return true;
+}
+bool PhysicalRenameNode::InitSchema() {
+    output_schema_.CopyFrom(producers_[0]->output_schema_);
+    for (auto source :
+         producers_[0]->GetOutputNameSchemaList().schema_source_list_) {
+        output_name_schema_list_.AddSchemaSource(name_, source.schema_,
+                                                 source.sources_);
+    }
     PrintSchema();
     return true;
 }

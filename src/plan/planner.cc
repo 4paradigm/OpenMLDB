@@ -393,6 +393,7 @@ bool Planner::CreateCreateTablePlan(
         create_tree->GetColumnDefList(), create_tree->GetDistributionList());
     return true;
 }
+
 bool Planner::IsTable(node::PlanNode *node) {
     if (nullptr == node) {
         return false;
@@ -404,6 +405,16 @@ bool Planner::IsTable(node::PlanNode *node) {
         }
         case node::kPlanTypeRename: {
             return IsTable(node->GetChildren()[0]);
+        }
+        case node::kPlanTypeQuery: {
+            return IsTable(
+                dynamic_cast<node::QueryPlanNode *>(node)->GetChildren()[0]);
+        }
+        case node::kPlanTypeProject: {
+            if ((dynamic_cast<node::ProjectPlanNode *>(node))
+                    ->IsSimpleProjectPlan()) {
+                return IsTable(node->GetChildren()[0]);
+            }
         }
         default: {
             return false;

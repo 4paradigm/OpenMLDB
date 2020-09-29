@@ -102,7 +102,6 @@ using fesql::codec::WindowIterator;
 %ignore fesql::vm::PartitionHandler;
 %ignore fesql::vm::SimpleCatalogTableHandler;
 %ignore DataTypeName; // TODO: Geneerate duplicated class
-%ignore fesql::vm::RequestRunSession::RunRequestPlan;
 %ignore fesql::vm::FeSQLJITWrapper::AddModule;
 
 // Ignore the unique_ptr functions

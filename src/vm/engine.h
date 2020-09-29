@@ -106,12 +106,15 @@ class RunSession {
         return compile_info_->get_sql_context().encoded_schema;
     }
 
-    virtual vm::PhysicalOpNode* GetPhysicalPlan() {
+    virtual fesql::vm::PhysicalOpNode* GetPhysicalPlan() {
         return compile_info_->get_sql_context().physical_plan;
     }
 
-    virtual vm::Runner* GetRunner() {
-        return compile_info_->get_sql_context().runner;
+    virtual fesql::vm::Runner* GetMainTask() {
+        return compile_info_->get_sql_context().cluster_job.GetTask(0);
+    }
+    virtual fesql::vm::ClusterJob& GetClusterJob() {
+        return compile_info_->get_sql_context().cluster_job;
     }
 
     virtual std::shared_ptr<CompileInfo> GetCompileInfo() {
@@ -148,9 +151,8 @@ class RequestRunSession : public RunSession {
  public:
     RequestRunSession() : RunSession(kRequestMode) {}
     ~RequestRunSession() {}
-    int32_t Run(const Row& in_row, Row* output);  // NOLINT
-    std::shared_ptr<TableHandler> RunRequestPlan(const Row& request,
-                                                 PhysicalOpNode* node);
+    int32_t Run(const Row& in_row, Row* output);                    // NOLINT
+    int32_t Run(uint32_t task_id, const Row& in_row, Row* output);  // NOLINT
     virtual const Schema& GetRequestSchema() const {
         return compile_info_->get_sql_context().request_schema;
     }
@@ -170,10 +172,17 @@ class BatchRequestRunSession : public RunSession {
     const std::string& GetRequestName() const {
         return compile_info_->get_sql_context().request_name;
     }
+    int32_t Run(const uint32_t id, const std::vector<Row>& request_batch,
+                std::vector<Row>& output);  // NOLINT
     int32_t Run(const std::vector<Row>& request_batch,
-                std::vector<Row>& output);            // NOLINT
+                std::vector<Row>& output);  // NOLINT
+    // TODO(baoxinqi): remove
     int32_t RunSingle(fesql::vm::RunnerContext& ctx,  // NOLINT
                       const Row& request,
+                      Row* output);  // NOLINT
+ private:
+    int32_t RunSingle(fesql::vm::RunnerContext& ctx,  // NOLINT
+                      const uint32_t id, const Row& request,
                       Row* output);  // NOLINT
 };
 

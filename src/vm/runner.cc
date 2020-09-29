@@ -307,6 +307,9 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             runner->AddProducer(input);
             return nm_->RegisterNode(runner);
         }
+        case kPhysicalOpRename: {
+            return Build(node->producers().at(0), status);
+        }
         default: {
             status.code = common::kOpGenError;
             status.msg = "can't handle node " + std::to_string(node->type_) +

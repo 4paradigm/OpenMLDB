@@ -49,15 +49,14 @@ struct SQLContext {
     std::string db;
     // the logical plan
     ::fesql::node::PlanNodeList logical_plan;
-    // the physical plan
     PhysicalOpNode* physical_plan;
+    fesql::vm::ClusterJob cluster_job;
     // TODO(wangtaize) add a light jit engine
     // eg using bthead to compile ir
     std::unique_ptr<FeSQLJIT> jit;
     Schema schema;
     Schema request_schema;
     std::string request_name;
-    Runner* runner;
     uint32_t row_size;
     std::string ir;
     std::string logical_plan_str;
@@ -66,7 +65,7 @@ struct SQLContext {
     std::string encoded_request_schema;
     ::fesql::node::NodeManager nm;
     ::fesql::udf::UDFLibrary* udf_library;
-    SQLContext() { runner = NULL; }
+    SQLContext() {}
     ~SQLContext() {}
 };
 
@@ -92,8 +91,12 @@ class SQLCompiler {
     bool Compile(SQLContext& ctx,                 // NOLINT
                  Status& status);                 // NOLINT
     bool Parse(SQLContext& ctx, Status& status);  // NOLINT
-    bool BuildRunner(SQLContext& ctx,             // NOLINT
-                     Status& status);             // NOLINT
+    bool BuildRunner(node::NodeManager* nm, PhysicalOpNode* physical_plan,
+                     Runner** output,
+                     Status& status);  // NOLINT
+
+    bool BuildClusterJob(SQLContext& ctx,  // NOLINT
+                         Status& status);  // NOLINT
 
  private:
     void KeepIR(SQLContext& ctx, llvm::Module* m);  // NOLINT

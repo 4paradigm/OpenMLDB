@@ -98,15 +98,15 @@ void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);
-    ASSERT_TRUE(sql_compiler.BuildRunner(sql_context, compile_status));
+    ASSERT_TRUE(sql_compiler.BuildClusterJob(sql_context, compile_status));
     ASSERT_TRUE(nullptr != sql_context.physical_plan);
+    ASSERT_TRUE(sql_context.cluster_job.IsValid());
     std::ostringstream oss;
     sql_context.physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
 
-    ASSERT_TRUE(nullptr != sql_context.runner);
     std::ostringstream runner_oss;
-    sql_context.runner->Print(runner_oss, "");
+    sql_context.cluster_job.Print(runner_oss, "");
     std::cout << "runner: \n" << runner_oss.str() << std::endl;
 
     std::ostringstream oss_schema;
@@ -307,10 +307,11 @@ TEST_F(RunnerTest, KeyGeneratorTest) {
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);
-    ASSERT_TRUE(sql_compiler.BuildRunner(sql_context, compile_status));
-    ASSERT_TRUE(nullptr != sql_context.physical_plan);
+    ASSERT_TRUE(sql_compiler.BuildClusterJob(sql_context, compile_status));
+    ASSERT_TRUE(sql_context.physical_plan != nullptr);
 
-    auto root = GetFirstRunnerOfType(sql_context.runner, kRunnerGroup);
+    auto root =
+        GetFirstRunnerOfType(sql_context.cluster_job.GetTask(0), kRunnerGroup);
     auto group_runner = dynamic_cast<GroupRunner*>(root);
     std::vector<Row> rows;
     fesql::type::TableDef temp_table;

@@ -108,7 +108,7 @@ class MemWindowIterator : public WindowIterator {
     void Next();
     bool Valid();
     std::unique_ptr<RowIterator> GetValue();
-    RowIterator* GetValue(int8_t* addr);
+    RowIterator* GetRawValue();
     const Row GetKey();
 
  private:
@@ -155,7 +155,7 @@ class MemTableHandler : public TableHandler {
     inline const std::string& GetDatabase() { return db_; }
 
     std::unique_ptr<RowIterator> GetIterator() const;
-    RowIterator* GetIterator(int8_t* addr) const;
+    RowIterator* GetRawIterator() const;
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
 
@@ -194,7 +194,7 @@ class MemTimeTableHandler : public TableHandler {
     inline const std::string& GetName() { return table_name_; }
     inline const IndexHint& GetIndex() { return index_hint_; }
     std::unique_ptr<RowIterator> GetIterator() const;
-    RowIterator* GetIterator(int8_t* addr) const;
+    RowIterator* GetRawIterator() const;
     inline const std::string& GetDatabase() { return db_; }
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
@@ -256,12 +256,8 @@ class Window : public MemTimeTableHandler {
         return std::move(it);
     }
 
-    RowIterator* GetIterator(int8_t* addr) const override {
-        if (nullptr == addr) {
-            return new vm::MemTimeTableIterator(&table_, schema_);
-        } else {
-            return new (addr) vm::MemTimeTableIterator(&table_, schema_);
-        }
+    RowIterator* GetRawIterator() const {
+        return new vm::MemTimeTableIterator(&table_, schema_);
     }
     virtual void BufferData(uint64_t key, const Row& row) = 0;
     virtual void PopBackData() { PopBackRow(); }
@@ -374,11 +370,11 @@ class MemSegmentHandler : public TableHandler {
         }
         return std::unique_ptr<RowIterator>();
     }
-    RowIterator* GetIterator(int8_t* addr) const override {
+    RowIterator* GetRawIterator() const override {
         auto iter = partition_hander_->GetWindowIterator();
         if (iter) {
             iter->Seek(key_);
-            return iter->Valid() ? iter->GetValue(addr) : nullptr;
+            return iter->Valid() ? iter->GetRawValue() : nullptr;
         }
         return nullptr;
     }
