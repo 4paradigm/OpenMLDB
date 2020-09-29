@@ -587,19 +587,19 @@ std::shared_ptr<DataHandler> SimpleProjectRunner::Run(RunnerContext& ctx) {
 
     switch (input->GetHanlderType()) {
         case kTableHandler: {
-            return std::shared_ptr<TableHandler>(
-                new TableWrapper(std::dynamic_pointer_cast<TableHandler>(input),
-                                 &project_gen_.fun_));
+            return std::shared_ptr<TableHandler>(new TableProjectWrapper(
+                std::dynamic_pointer_cast<TableHandler>(input),
+                &project_gen_.fun_));
         }
         case kPartitionHandler: {
-            return std::shared_ptr<TableHandler>(new PartitionWrapper(
+            return std::shared_ptr<TableHandler>(new PartitionProjectWrapper(
                 std::dynamic_pointer_cast<PartitionHandler>(input),
                 &project_gen_.fun_));
         }
         case kRowHandler: {
-            return std::shared_ptr<RowHandler>(
-                new RowWrapper(std::dynamic_pointer_cast<RowHandler>(input),
-                               &project_gen_.fun_));
+            return std::shared_ptr<RowHandler>(new RowProjectWrapper(
+                std::dynamic_pointer_cast<RowHandler>(input),
+                &project_gen_.fun_));
         }
         default: {
             LOG(WARNING) << "Fail run simple project, invalid handler type "
@@ -860,6 +860,7 @@ std::shared_ptr<PartitionHandler> PartitionGenerator::Partition(
     auto partitions = std::dynamic_pointer_cast<PartitionHandler>(table);
     auto iter = partitions->GetWindowIterator();
     iter->SeekToFirst();
+    output_partitions->SetOrderType(table->GetOrderType());
     while (iter->Valid()) {
         auto segment_iter = iter->GetValue();
         auto segment_key = iter->GetKey().ToString();
@@ -873,7 +874,6 @@ std::shared_ptr<PartitionHandler> PartitionGenerator::Partition(
         }
         iter->Next();
     }
-    output_partitions->SetOrderType(table->GetOrderType());
     return output_partitions;
 }
 std::shared_ptr<PartitionHandler> PartitionGenerator::Partition(
@@ -1733,7 +1733,7 @@ const int64_t OrderGenerator::Gen(const Row& row) {
     return Runner::GetColumnInt64(&row_view, idxs_[0],
                                   fn_schema_.Get(idxs_[0]).type());
 }
-const bool ConditionGenerator::Gen(const Row& row) {
+const bool ConditionGenerator::Gen(const Row& row) const {
     RowView row_view(row_view_);
     return CoreAPI::ComputeCondition(fn_, row, &row_view, idxs_[0]);
 }
@@ -1949,20 +1949,7 @@ std::shared_ptr<TableHandler> FilterGenerator::Filter(
     if (!condition_gen_.Valid()) {
         return table;
     }
-    auto mem_table =
-        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
-    mem_table->SetOrderType(table->GetOrderType());
-    auto iter = table->GetIterator();
-    if (iter) {
-        iter->SeekToFirst();
-        while (iter->Valid()) {
-            if (condition_gen_.Gen(iter->GetValue())) {
-                mem_table->AddRow(iter->GetKey(), iter->GetValue());
-            }
-            iter->Next();
-        }
-    }
-    return mem_table;
+    return std::shared_ptr<TableHandler>(new TableFilterWrapper(table, this));
 }
 }  // namespace vm
 }  // namespace fesql
