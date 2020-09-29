@@ -156,7 +156,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     public Schema getInputSchema(String dbName, String sql) throws SQLException {
         Status status = new Status();
         ExplainInfo explain = sqlRouter.Explain(dbName, sql, status);
-        if (status.getCode() != 0) {
+        if (status.getCode() != 0 || explain == null) {
             throw new SQLException("getInputSchema fail!", status.getMsg());
         }
         List<Column> columnList = new ArrayList<>();

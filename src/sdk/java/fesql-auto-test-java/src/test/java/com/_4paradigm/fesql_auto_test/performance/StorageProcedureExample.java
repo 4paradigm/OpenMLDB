@@ -1,6 +1,7 @@
 package com._4paradigm.fesql_auto_test.performance;
 
 import com._4paradigm.sql.jdbc.SQLResultSet;
+import com._4paradigm.sql.sdk.Schema;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlException;
 import com._4paradigm.sql.sdk.SqlExecutor;
@@ -29,14 +30,25 @@ public class StorageProcedureExample extends BaseExample {
             "                   c7 timestamp,\n" +
             "                   c8 date,\n" +
             "                   index(key=c1, ts=c7));";
-
+    String sql = "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+//String sql = "      select\n" +
+//        "          c1,\n" +
+//        "          min(c1) over table_1_s2_t1 as table_1_c1_9,\n" +
+//        "          min(c2) over table_1_s2_t1 as table_1_c2_10,\n" +
+//        "          identity(case when at(d1, 1) != null then distinct_count(d1) else null end) over table_1_s2_t1 as table_1_d1_11,\n" +
+//        "          identity(case when at(d2, 1) != null then distinct_count(d2) else null end) over table_1_s2_t1 as table_1_d2_12,\n" +
+//        "          identity(case when at(s1, 1) != null then distinct_count(s1) else null end) over table_1_s2_t1 as table_1_s1_13\n" +
+//        "      from\n" +
+//        "          (select '' as s1, s2 as s2, t1 as t1, date('2019-07-18') as t2, float(0) as d1, double(0) as d2, int(0) as c1, bigint(0) as c2, '' as ai, '' as kn, '' as ks from main)\n" +
+//        "          window table_1_s2_t1 as (\n" +
+//        "      UNION (select s1, s2, t1, t2, d1, d2, c1, c2, ai, kn, ks from table_1) partition by s2 order by t1 rows_range between 1d preceding and 0s preceding);";
     private SqlExecutor sqlExecutor = null;
     private String db = "test_db2";
-    private String tname = "trans";
     private String spName = "sp" + Math.abs(new Random().nextInt());
     private String dropDdl = "drop table trans;";
     private String cardNo = "card1";
     private String merchantId = "merChantId1";
+
 
     public void printSQL() {
         logger.info("ddl: \n{}", ddl);
@@ -54,6 +66,7 @@ public class StorageProcedureExample extends BaseExample {
         sqlExecutor.createDB(db);
         sqlExecutor.executeDDL(db, dropDdl);
         sqlExecutor.executeDDL(db, ddl);
+//        Schema inputSchema = sqlExecutor.getInputSchema(db, sql);
     }
 
     public void initSample() {
@@ -69,7 +82,6 @@ public class StorageProcedureExample extends BaseExample {
     }
 
     public void createProcedure() throws Exception {
-        String sql = "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
         String spSql = "create procedure " + spName + "(" + "const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
                 " begin " + sql + " end;";
         boolean ok = sqlExecutor.executeDDL(db, spSql);
@@ -97,6 +109,7 @@ public class StorageProcedureExample extends BaseExample {
         Assert.assertEquals(sqlResultSet.getString(1), "bb");
         Assert.assertEquals(sqlResultSet.getInt(2), 24);
         Assert.assertEquals(sqlResultSet.getLong(3), 34);
+        System.out.println("ok");
         sqlResultSet.close();
     }
 
