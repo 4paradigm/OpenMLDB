@@ -1,7 +1,6 @@
 cases:
   - id: 0
     desc: fz sql
-    mode: rtidb-unsupport
     db: db1
     sql: |
       select
@@ -10,9 +9,9 @@ cases:
           min(c2) over table_1_s2_t1 as table_1_c2_10,
           identity(case when at(d1, 1) != null then distinct_count(d1) else null end) over table_1_s2_t1 as table_1_d1_11,
           identity(case when at(d2, 1) != null then distinct_count(d2) else null end) over table_1_s2_t1 as table_1_d2_12,
-          identity(case when at(s1, 1) != null then distinct_count(s1) else null end) over table_1_s2_t1 as table_1_s1_13,
+          identity(case when at(s1, 1) != null then distinct_count(s1) else null end) over table_1_s2_t1 as table_1_s1_13
       from
-          (select '' as s1, s2 as s2, t1 as t1, date('2019-07-18') as t2, float(0) as d1, double(0) as d2, int(0) as c1, bigint(0) as c2, '' as ai, '' as kn, '' as ks from main)
+          (select '' as s1, s2 as s2, t1 as t1, date('2019-07-18') as t2, string(0) as d1, string(0) as d2, int(0) as c1, bigint(0) as c2, '' as ai, '' as kn, '' as ks from main)
           window table_1_s2_t1 as (
       UNION (select s1, s2, t1, t2, d1, d2, c1, c2, ai, kn, ks from table_1) partition by s2 order by t1 rows_range between 1d preceding and 0s preceding);
     inputs:
