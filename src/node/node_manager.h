@@ -13,6 +13,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "base/fe_object.h"
 #include "node/batch_plan_node.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
@@ -21,6 +22,7 @@
 
 namespace fesql {
 namespace node {
+
 class NodeManager {
  public:
     NodeManager();
@@ -174,7 +176,7 @@ class NodeManager {
     ExprNode *MakeExprFrom(const ExprNode *node,
                            const std::string relation_name,
                            const std::string db_name);
-    ExprIdNode *MakeExprIdNode(const std::string &name, int64_t id);
+    ExprIdNode *MakeExprIdNode(const std::string &name);
     ExprIdNode *MakeUnresolvedExprId(const std::string &name);
 
     // Make Fn Node
@@ -338,6 +340,7 @@ class NodeManager {
     template <typename T>
     T *RegisterNode(T *node_ptr) {
         node_list_.push_back(node_ptr);
+        SetNodeUniqueId(node_ptr);
         return node_ptr;
     }
 
@@ -347,7 +350,25 @@ class NodeManager {
                                  node::ExprNode *expression,
                                  node::FrameNode *frame);
 
-    std::list<NodeBase *> node_list_;
+    void SetNodeUniqueId(ExprNode *node);
+    void SetNodeUniqueId(TypeNode *node);
+    void SetNodeUniqueId(PlanNode *node);
+    void SetNodeUniqueId(vm::PhysicalOpNode *node);
+
+    template <typename T>
+    void SetNodeUniqueId(T *node) {
+        node->SetNodeId(other_node_idx_counter_++);
+    }
+
+    std::list<base::FeBaseObject *> node_list_;
+
+    // unique id counter for various types of node
+    size_t expr_idx_counter_ = 1;
+    size_t type_idx_counter_ = 1;
+    size_t plan_idx_counter_ = 1;
+    size_t physical_plan_idx_counter_ = 1;
+    size_t other_node_idx_counter_ = 1;
+    size_t exprid_idx_counter_ = 0;
 };
 
 }  // namespace node

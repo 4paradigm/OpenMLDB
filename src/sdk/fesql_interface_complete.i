@@ -47,6 +47,7 @@ using fesql::vm::ConditionFilter;
 using fesql::vm::ColumnProject;
 using fesql::vm::Key;
 using fesql::vm::WindowOp;
+using fesql::vm::EngineMode;
 using fesql::base::Iterator;
 using fesql::base::ConstIterator;
 using fesql::codec::RowIterator;

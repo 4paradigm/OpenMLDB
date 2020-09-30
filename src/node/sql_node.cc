@@ -158,10 +158,6 @@ void PrintValue(std::ostream &output, const std::string &org_tab,
     output << org_tab << SPACE_ST << item_name << ": " << value;
 }
 
-void SQLNode::Print(std::ostream &output, const std::string &tab) const {
-    output << tab << SPACE_ST << "node[" << NameOfSQLNodeType(type_) << "]";
-}
-
 bool SQLNode::Equals(const SQLNode *that) const {
     if (this == that) {
         return true;
@@ -784,6 +780,9 @@ std::string NameOfSQLNodeType(const SQLNodeType &type) {
         case kType:
             output = "kType";
             break;
+        case kNodeList:
+            output = "kNodeList";
+            break;
         case kResTarget:
             output = "kResTarget";
             break;
@@ -951,6 +950,78 @@ const bool IsNullPrimary(const ExprNode *expr) {
 
 bool ExprListNullOrEmpty(const ExprListNode *expr) {
     return nullptr == expr || expr->IsEmpty();
+}
+bool ExprIsSimple(const ExprNode *expr) {
+    if (nullptr == expr) {
+        return false;
+    }
+
+    switch (expr->expr_type_) {
+        case node::kExprPrimary: {
+            return true;
+        }
+        case node::kExprColumnRef: {
+            return true;
+        }
+        default: {
+            return false;
+        }
+    }
+    return true;
+}
+bool ExprIsConst(const ExprNode *expr) {
+    if (nullptr == expr) {
+        return true;
+    }
+    switch (expr->expr_type_) {
+        case node::kExprPrimary: {
+            return true;
+        }
+        case node::kExprBetween: {
+            std::vector<node::ExprNode *> expr_list;
+            auto between_expr = dynamic_cast<const node::BetweenExpr *>(expr);
+            expr_list.push_back(between_expr->left_);
+            expr_list.push_back(between_expr->right_);
+            expr_list.push_back(between_expr->expr_);
+            return ExprListIsConst(expr_list);
+        }
+        case node::kExprCall: {
+            auto call_expr = dynamic_cast<const node::CallExprNode *>(expr);
+            std::vector<node::ExprNode *> expr_list(call_expr->children_);
+            if (nullptr != call_expr->GetOver()) {
+                if (nullptr != call_expr->GetOver()->GetOrders()) {
+                    expr_list.push_back(call_expr->GetOver()->GetOrders());
+                }
+                if (nullptr != call_expr->GetOver()->GetPartitions()) {
+                    for (auto expr :
+                         call_expr->GetOver()->GetPartitions()->children_) {
+                        expr_list.push_back(expr);
+                    }
+                }
+            }
+            return ExprListIsConst(expr_list);
+        }
+        case node::kExprColumnRef:
+        case node::kExprId:
+        case node::kExprAll: {
+            return false;
+        }
+        default: {
+            return ExprListIsConst(expr->children_);
+        }
+    }
+}
+
+bool ExprListIsConst(const std::vector<node::ExprNode *> &exprs) {
+    if (exprs.empty()) {
+        return true;
+    }
+    for (auto expr : exprs) {
+        if (!ExprIsConst(expr)) {
+            return false;
+        }
+    }
+    return true;
 }
 void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
@@ -1515,7 +1586,7 @@ bool BetweenExpr::Equals(const ExprNode *node) const {
            ExprEquals(right_, that->right_);
 }
 
-const std::string FnDefNode::GetFlatString() const {
+std::string FnDefNode::GetFlatString() const {
     std::stringstream ss;
     ss << GetName() << "(";
     for (size_t i = 0; i < GetArgSize(); ++i) {

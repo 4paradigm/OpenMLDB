@@ -1,5 +1,6 @@
-/*-------------------------------------------------------------------------
- * Copyright (C) 2020, 4paradigm
+/*------------------------------------------------------------------------- *
+ *Copyright (C) 2020, 4paradigm
+ *
  * runner.cc
  *
  * Author: chenjing
@@ -15,7 +16,9 @@
 #include "udf/udf.h"
 #include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
+#include "vm/jit_runtime.h"
 #include "vm/mem_catalog.h"
+
 namespace fesql {
 namespace vm {
 #define MAX_DEBUG_LINES_CNT 20
@@ -28,7 +31,6 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         LOG(WARNING) << status;
         return nullptr;
     }
-
     switch (node->type_) {
         case kPhysicalOpDataProvider: {
             auto op = dynamic_cast<const PhysicalDataProviderNode*>(node);
@@ -36,22 +38,22 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 case kProviderTypeTable: {
                     auto provider =
                         dynamic_cast<const PhysicalTableProviderNode*>(node);
-                    return new DataRunner(id_++,
-                                          node->GetOutputNameSchemaList(),
-                                          provider->table_handler_);
+                    return nm_->RegisterNode(
+                        new DataRunner(id_++, node->GetOutputNameSchemaList(),
+                                       provider->table_handler_));
                 }
                 case kProviderTypePartition: {
                     auto provider =
                         dynamic_cast<const PhysicalPartitionProviderNode*>(
                             node);
-                    return new DataRunner(
+                    return nm_->RegisterNode(new DataRunner(
                         id_++, node->GetOutputNameSchemaList(),
                         provider->table_handler_->GetPartition(
-                            provider->table_handler_, provider->index_name_));
+                            provider->table_handler_, provider->index_name_)));
                 }
                 case kProviderTypeRequest: {
-                    return new RequestRunner(id_++,
-                                             node->GetOutputNameSchemaList());
+                    return nm_->RegisterNode(new RequestRunner(
+                        id_++, node->GetOutputNameSchemaList()));
                 }
                 default: {
                     status.msg = "fail to support data provider type " +
@@ -73,14 +75,14 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
                 op->project_.fn_info_);
             runner->AddProducer(input);
-            return runner;
+            return nm_->RegisterNode(runner);
         }
         case kPhysicalOpConstProject: {
             auto op = dynamic_cast<const PhysicalConstProjectNode*>(node);
             auto runner =
                 new ConstProjectRunner(id_++, node->GetOutputNameSchemaList(),
                                        op->GetLimitCnt(), op->project_);
-            return runner;
+            return nm_->RegisterNode(runner);
         }
         case kPhysicalOpProject: {
             auto input = Build(node->producers().at(0), status);
@@ -95,14 +97,14 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->project_);
                     runner->AddProducer(input);
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 case kAggregation: {
                     auto runner =
                         new AggRunner(id_++, node->GetOutputNameSchemaList(),
                                       op->GetLimitCnt(), op->project_);
                     runner->AddProducer(input);
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 case kGroupAggregation: {
                     auto op =
@@ -111,7 +113,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->group_, op->project_);
                     runner->AddProducer(input);
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 case kWindowAggregation: {
                     auto op =
@@ -151,14 +153,14 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                                    union_table);
                         }
                     }
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 case kRowProject: {
                     auto runner = new RowProjectRunner(
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->project_);
                     runner->AddProducer(input);
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 default: {
                     status.msg = "fail to support project type " +
@@ -197,7 +199,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     runner->AddWindowUnion(window_union.second, union_table);
                 }
             }
-            return runner;
+            return nm_->RegisterNode(runner);
         }
         case kPhysicalOpRequestJoin: {
             auto left = Build(node->producers().at(0), status);
@@ -218,7 +220,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         right->output_schemas().GetSchemaSourceListSize());
                     runner->AddProducer(left);
                     runner->AddProducer(right);
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 case node::kJoinTypeConcat: {
                     auto runner =
@@ -226,7 +228,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                          op->GetLimitCnt());
                     runner->AddProducer(left);
                     runner->AddProducer(right);
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 default: {
                     status.code = common::kOpGenError;
@@ -256,7 +258,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         right->output_schemas().GetSchemaSourceListSize());
                     runner->AddProducer(left);
                     runner->AddProducer(right);
-                    return runner;
+                    return nm_->RegisterNode(runner);
                 }
                 default: {
                     status.code = common::kOpGenError;
@@ -277,7 +279,7 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 new GroupRunner(id_++, node->GetOutputNameSchemaList(),
                                 op->GetLimitCnt(), op->group());
             runner->AddProducer(input);
-            return runner;
+            return nm_->RegisterNode(runner);
         }
         case kPhysicalOpFilter: {
             auto input = Build(node->producers().at(0), status);
@@ -287,9 +289,9 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto op = dynamic_cast<const PhysicalFliterNode*>(node);
             auto runner =
                 new FilterRunner(id_++, node->GetOutputNameSchemaList(),
-                                 op->GetLimitCnt(), op->filter_.fn_info_);
+                                 op->GetLimitCnt(), op->filter_);
             runner->AddProducer(input);
-            return runner;
+            return nm_->RegisterNode(runner);
         }
         case kPhysicalOpLimit: {
             auto input = Build(node->producers().at(0), status);
@@ -303,7 +305,10 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto runner = new LimitRunner(
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt());
             runner->AddProducer(input);
-            return runner;
+            return nm_->RegisterNode(runner);
+        }
+        case kPhysicalOpRename: {
+            return Build(node->producers().at(0), status);
         }
         default: {
             status.code = common::kOpGenError;
@@ -379,6 +384,9 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
         return Row();
     }
 
+    // Init current run step runtime
+    JITRuntime::get()->InitRunStep();
+
     auto udf =
         reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
             const_cast<int8_t*>(fn));
@@ -390,7 +398,10 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t key, const Row row,
     auto row_ptr = reinterpret_cast<const int8_t*>(&row);
 
     uint32_t ret = udf(row_ptr, window_ptr, &out_buf);
-    fesql::udf::ThreadLocalMemoryPoolReset();
+
+    // Release current run step resources
+    JITRuntime::get()->ReleaseRunStep();
+
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();
@@ -487,19 +498,19 @@ std::shared_ptr<TableHandler> Runner::TableReverse(
 }
 std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     if (need_cache_) {
-        auto iter = ctx.cache_.find(id_);
-        if (ctx.cache_.cend() != iter) {
-            return iter->second;
+        auto cached = ctx.GetCache(id_);
+        if (cached != nullptr) {
+            return cached;
         }
     }
     auto res = Run(ctx);
-    if (ctx.is_debug_) {
+    if (ctx.is_debug()) {
         LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
                   << "\n";
         Runner::PrintData(output_schemas_, res);
     }
     if (need_cache_) {
-        ctx.cache_.insert(std::make_pair(id_, res));
+        ctx.SetCache(id_, res);
     }
     return res;
 }
@@ -509,7 +520,7 @@ std::shared_ptr<DataHandler> DataRunner::Run(RunnerContext& ctx) {
 }
 
 std::shared_ptr<DataHandler> RequestRunner::Run(RunnerContext& ctx) {
-    return std::shared_ptr<DataHandler>(new MemRowHandler(ctx.request_));
+    return std::shared_ptr<DataHandler>(new MemRowHandler(ctx.request()));
 }
 std::shared_ptr<DataHandler> GroupRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
@@ -1023,8 +1034,15 @@ Row JoinGenerator::RowLastJoin(const Row& left_row,
             return RowLastJoinTable(
                 left_row, std::dynamic_pointer_cast<TableHandler>(right));
         }
+        case kRowHandler: {
+            auto right_table =
+                std::shared_ptr<MemTableHandler>(new MemTableHandler());
+            right_table->AddRow(
+                std::dynamic_pointer_cast<RowHandler>(right)->GetValue());
+            return RowLastJoinTable(left_row, right_table);
+        }
         default: {
-            LOG(WARNING) << "Last Join right isn't table or partition";
+            LOG(WARNING) << "Last Join right isn't row or table or partition";
             return Row(left_slices_, left_row, right_slices_, Row());
         }
     }
@@ -1493,8 +1511,27 @@ std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
     return fail_ptr;
 }
 std::shared_ptr<DataHandler> FilterRunner::Run(RunnerContext& ctx) {
-    LOG(WARNING) << "can't handler filter op";
-    return std::shared_ptr<DataHandler>();
+    auto fail_ptr = std::shared_ptr<DataHandler>();
+    auto input = producers_[0]->RunWithCache(ctx);
+    if (!input) {
+        LOG(WARNING) << "fail to run filter: input is empty or null";
+        return fail_ptr;
+    }
+    // build window with start and end offset
+    switch (input->GetHanlderType()) {
+        case kTableHandler: {
+            return filter_gen_.Filter(
+                std::dynamic_pointer_cast<TableHandler>(input));
+        }
+        case kPartitionHandler: {
+            return filter_gen_.Filter(
+                std::dynamic_pointer_cast<PartitionHandler>(input));
+        }
+        default: {
+            LOG(WARNING) << "fail to filter when input is row";
+            return fail_ptr;
+        }
+    }
 }
 std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
@@ -1635,6 +1672,35 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
     return row_handler;
 }
 
+/**
+ * TODO(chenjing): GenConst key during compile-time
+ * @return
+ */
+const std::string KeyGenerator::GenConst() {
+    Row key_row = CoreAPI::RowConstProject(fn_, true);
+    RowView row_view(row_view_);
+    if (!row_view.Reset(key_row.buf())) {
+        LOG(WARNING) << "fail to gen key: row view reset fail";
+        return "NA";
+    }
+    std::string keys = "";
+    for (auto pos : idxs_) {
+        std::string key =
+            row_view.IsNULL(pos)
+                ? codec::NONETOKEN
+                : fn_schema_.Get(pos).type() == fesql::type::kDate
+                      ? std::to_string(row_view.GetDateUnsafe(pos))
+                      : row_view.GetAsString(pos);
+        if (key == "") {
+            key = codec::EMPTY_STRING;
+        }
+        if (!keys.empty()) {
+            keys.append("|");
+        }
+        keys.append(key);
+    }
+    return keys;
+}
 const std::string KeyGenerator::Gen(const Row& row) {
     Row key_row = CoreAPI::RowProject(fn_, row, true);
     RowView row_view(row_view_);
@@ -1791,6 +1857,42 @@ Row WindowJoinGenerator::Join(
     }
     return row;
 }
+
+std::shared_ptr<TableHandler> IndexSeekGenerator::SegmnetOfConstKey(
+    std::shared_ptr<DataHandler> input) {
+    auto fail_ptr = std::shared_ptr<TableHandler>();
+    if (!input) {
+        LOG(WARNING) << "fail to seek segment of key: input is empty";
+        return fail_ptr;
+    }
+    if (!index_key_gen_.Valid()) {
+        switch (input->GetHanlderType()) {
+            case kPartitionHandler: {
+                LOG(WARNING) << "fail to seek segment: index key is empty";
+                return fail_ptr;
+            }
+            case kTableHandler: {
+                return std::dynamic_pointer_cast<TableHandler>(input);
+            }
+            default: {
+                LOG(WARNING) << "fail to seek segment when input is row";
+                return fail_ptr;
+            }
+        }
+    }
+
+    switch (input->GetHanlderType()) {
+        case kPartitionHandler: {
+            auto partition = std::dynamic_pointer_cast<PartitionHandler>(input);
+            auto key = index_key_gen_.GenConst();
+            return partition->GetSegment(partition, key);
+        }
+        default: {
+            LOG(WARNING) << "fail to seek segment when input isn't partition";
+            return fail_ptr;
+        }
+    }
+}
 std::shared_ptr<TableHandler> IndexSeekGenerator::SegmentOfKey(
     const Row& row, std::shared_ptr<DataHandler> input) {
     auto fail_ptr = std::shared_ptr<TableHandler>();
@@ -1832,5 +1934,35 @@ std::shared_ptr<TableHandler> IndexSeekGenerator::SegmentOfKey(
     }
 }
 
+std::shared_ptr<TableHandler> FilterGenerator::Filter(
+    std::shared_ptr<PartitionHandler> table) {
+    return Filter(index_seek_gen_.SegmnetOfConstKey(table));
+}
+std::shared_ptr<TableHandler> FilterGenerator::Filter(
+    std::shared_ptr<TableHandler> table) {
+    auto fail_ptr = std::shared_ptr<TableHandler>();
+    if (!table) {
+        LOG(WARNING) << "fail to filter table: input is empty";
+        return fail_ptr;
+    }
+
+    if (!condition_gen_.Valid()) {
+        return table;
+    }
+    auto mem_table =
+        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+    mem_table->SetOrderType(table->GetOrderType());
+    auto iter = table->GetIterator();
+    if (iter) {
+        iter->SeekToFirst();
+        while (iter->Valid()) {
+            if (condition_gen_.Gen(iter->GetValue())) {
+                mem_table->AddRow(iter->GetKey(), iter->GetValue());
+            }
+            iter->Next();
+        }
+    }
+    return mem_table;
+}
 }  // namespace vm
 }  // namespace fesql

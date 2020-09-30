@@ -1,7 +1,6 @@
 /*
- * batch_let_impl.h
- * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
- *
+ * fe_object.h
+ * Copyright (C) 2019 wangtaize <wangtaize@wangtaizedeMacBook-Pro-2.local>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,10 +14,17 @@
  * limitations under the License.
  */
 
-#ifndef SRC_BATCH_BATCH_LET_IMPL_H_
-#define SRC_BATCH_BATCH_LET_IMPL_H_
+#ifndef SRC_BASE_FE_OBJECT_H_
+#define SRC_BASE_FE_OBJECT_H_
 
 namespace fesql {
-namespace batch {}  // namespace batch
+namespace base {
+
+class FeBaseObject {
+ public:
+    virtual ~FeBaseObject() {}
+};
+
+}  // namespace base
 }  // namespace fesql
-#endif  // SRC_BATCH_BATCH_LET_IMPL_H_
+#endif  // SRC_BASE_FE_OBJECT_H_

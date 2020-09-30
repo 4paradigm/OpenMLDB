@@ -27,6 +27,7 @@
 #include "node/sql_node.h"
 #include "udf/default_udf_library.h"
 #include "udf/literal_traits.h"
+#include "vm/jit_runtime.h"
 
 namespace fesql {
 namespace udf {
@@ -150,8 +151,7 @@ void date_format(codec::Timestamp *timestamp, const std::string &format,
     char buffer[80];
     date_format(timestamp, format.c_str(), buffer, 80);
     output->size_ = strlen(buffer);
-    char *target =
-        reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
+    char *target = udf::v1::AllocManagedStringBuf(output->size_);
     memcpy(target, buffer, output->size_);
     output->data_ = target;
 }
@@ -205,8 +205,7 @@ void date_format(codec::Date *date, const std::string &format,
         return;
     }
     output->size_ = strlen(buffer);
-    char *target =
-        reinterpret_cast<char *>(ThreadLocalMemoryPoolAlloc(output->size_));
+    char *target = udf::v1::AllocManagedStringBuf(output->size_);
     memcpy(target, buffer, output->size_);
     output->data_ = target;
 }
@@ -495,6 +494,13 @@ uint32_t format_string<std::string>(const std::string &v, char *buffer,
     return snprintf(buffer, size, "%s", v.c_str());
 }
 
+char *AllocManagedStringBuf(int32_t bytes) {
+    if (bytes < 0) {
+        return nullptr;
+    }
+    return reinterpret_cast<char *>(vm::JITRuntime::get()->AllocManaged(bytes));
+}
+
 template <class V>
 bool iterator_list(int8_t *input, int8_t *output) {
     if (nullptr == input || nullptr == output) {
@@ -504,7 +510,7 @@ bool iterator_list(int8_t *input, int8_t *output) {
     ::fesql::codec::IteratorRef *iterator_ref =
         (::fesql::codec::IteratorRef *)(output);
     ListV<V> *col = (ListV<V> *)(list_ref->list);
-    auto col_iter = col->GetIterator(nullptr);
+    auto col_iter = col->GetRawIterator();
     col_iter->SeekToFirst();
     iterator_ref->iterator = reinterpret_cast<int8_t *>(col_iter);
     return true;
@@ -579,19 +585,6 @@ void delete_iterator(int8_t *input) {
 
 }  // namespace v1
 
-thread_local base::ByteMemoryPool __THREAD_LOCAL_MEM_POOL;
-
-int8_t *ThreadLocalMemoryPoolAlloc(int32_t request_size) {
-    if (request_size < 0) {
-        return nullptr;
-    }
-    return reinterpret_cast<int8_t *>(fesql::udf::__THREAD_LOCAL_MEM_POOL.Alloc(
-        static_cast<size_t>(request_size)));
-}
-void ThreadLocalMemoryPoolReset() {
-    fesql::udf::__THREAD_LOCAL_MEM_POOL.Reset();
-}
-
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr) {
     ::llvm::orc::MangleAndInterner mi(jit_ptr->getExecutionSession(),
                                       jit_ptr->getDataLayout());
@@ -601,7 +594,7 @@ void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
                    ::llvm::orc::MangleAndInterner &mi) {  // NOLINT
     fesql::vm::FeSQLJIT::AddSymbol(
         jd, mi, "fesql_memery_pool_alloc",
-        reinterpret_cast<void *>(&fesql::udf::ThreadLocalMemoryPoolAlloc));
+        reinterpret_cast<void *>(&udf::v1::AllocManagedStringBuf));
 }
 bool AddSymbol(::llvm::orc::JITDylib &jd,           // NOLINT
                ::llvm::orc::MangleAndInterner &mi,  // NOLINT

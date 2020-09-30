@@ -42,13 +42,13 @@ class BlockIRBuilderTest : public ::testing::Test {
     parser::FeSQLParser *parser_;
 };
 
-void CheckResult(std::string test, int32_t res, int32_t a, int32_t b) {
+void CheckResult(node::NodeManager *manager, std::string test, int32_t res,
+                 int32_t a, int32_t b) {
     node::NodePointVector trees;
     node::PlanNodeList plan_trees;
     base::Status status;
     parser::FeSQLParser parser;
-    node::NodeManager manager;
-    int ret = parser.parse(test, trees, &manager, status);
+    int ret = parser.parse(test, trees, manager, status);
     ASSERT_EQ(0, ret);
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
@@ -89,7 +89,7 @@ TEST_F(BlockIRBuilderTest, test_mutable_variable_test) {
         "    return sum\n"
         "end";
 
-    CheckResult(test, 6, 2, 3);
+    CheckResult(manager_, test, 6, 2, 3);
 }
 
 TEST_F(BlockIRBuilderTest, test_if_block) {
@@ -101,9 +101,9 @@ TEST_F(BlockIRBuilderTest, test_if_block) {
         "    return x*y\n"
         "end";
 
-    CheckResult(test, 5, 2, 3);
-    CheckResult(test, 3, 1, 3);
-    CheckResult(test, 2, 1, 2);
+    CheckResult(manager_, test, 5, 2, 3);
+    CheckResult(manager_, test, 3, 1, 3);
+    CheckResult(manager_, test, 2, 1, 2);
 }
 
 TEST_F(BlockIRBuilderTest, test_if_else_block) {
@@ -116,9 +116,9 @@ TEST_F(BlockIRBuilderTest, test_if_else_block) {
         "    \treturn x*y\n"
         "end";
 
-    CheckResult(test, 5, 2, 3);
-    CheckResult(test, 3, 1, 3);
-    CheckResult(test, 2, 1, 2);
+    CheckResult(manager_, test, 5, 2, 3);
+    CheckResult(manager_, test, 3, 1, 3);
+    CheckResult(manager_, test, 2, 1, 2);
 }
 
 TEST_F(BlockIRBuilderTest, test_if_elif_else_block) {
@@ -133,9 +133,9 @@ TEST_F(BlockIRBuilderTest, test_if_elif_else_block) {
         "    \treturn x*y\n"
         "end";
 
-    CheckResult(test, 5, 2, 3);
-    CheckResult(test, -2, 1, 3);
-    CheckResult(test, 2, 1, 2);
+    CheckResult(manager_, test, 5, 2, 3);
+    CheckResult(manager_, test, -2, 1, 3);
+    CheckResult(manager_, test, 2, 1, 2);
 }
 
 TEST_F(BlockIRBuilderTest, test_if_else_block_redundant_ret) {
@@ -151,9 +151,9 @@ TEST_F(BlockIRBuilderTest, test_if_else_block_redundant_ret) {
         "    return 0\n"
         "end";
 
-    CheckResult(test, 5, 2, 3);
-    CheckResult(test, -2, 1, 3);
-    CheckResult(test, 2, 1, 2);
+    CheckResult(manager_, test, 5, 2, 3);
+    CheckResult(manager_, test, -2, 1, 3);
+    CheckResult(manager_, test, 2, 1, 2);
 }
 
 TEST_F(BlockIRBuilderTest, test_if_else_mutable_var_block) {
@@ -169,9 +169,9 @@ TEST_F(BlockIRBuilderTest, test_if_else_mutable_var_block) {
         "    \tret = x*y\n"
         "    return ret\n"
         "end";
-    CheckResult(test, 5, 2, 3);
-    CheckResult(test, -2, 1, 3);
-    CheckResult(test, 2, 1, 2);
+    CheckResult(manager_, test, 5, 2, 3);
+    CheckResult(manager_, test, -2, 1, 3);
+    CheckResult(manager_, test, 2, 1, 2);
 }
 
 }  // namespace codegen

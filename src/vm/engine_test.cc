@@ -16,6 +16,7 @@
  */
 
 #include "vm/engine_test.h"
+#include "base/sig_trace.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "gtest/internal/gtest-param-util.h"
@@ -113,6 +114,14 @@ INSTANTIATE_TEST_CASE_P(EngineTestUdfFunction, EngineTest,
 INSTANTIATE_TEST_CASE_P(EngineTestUdafFunction, EngineTest,
                         testing::ValuesIn(InitCases(
                             "/cases/integration/v1/test_udaf_function.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWhere, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_where.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestFzFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
 
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
@@ -131,6 +140,16 @@ TEST_P(EngineTest, test_batch_engine) {
         !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-batch-unsupport")) {
         BatchModeCheck(sql_case);
+    } else {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
+    }
+}
+TEST_P(EngineTest, test_batch_request_engine) {
+    ParamType sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (!boost::contains(sql_case.mode(), "request-unsupport") &&
+        !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
+        BatchRequestModeCheck(sql_case);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
     }
@@ -381,8 +400,8 @@ TEST_F(EngineTest, EngineGetDependentTableTest) {
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
             std::set<std::string> tables;
-            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", true, &tables,
-                                                  get_status));
+            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", kBatchMode,
+                                                  &tables, get_status));
             ASSERT_EQ(tables, pair.second);
         }
 
@@ -395,8 +414,8 @@ TEST_F(EngineTest, EngineGetDependentTableTest) {
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
             std::set<std::string> tables;
-            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", false, &tables,
-                                                  get_status));
+            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", kRequestMode,
+                                                  &tables, get_status));
             ASSERT_EQ(tables, pair.second);
         }
     }
@@ -415,8 +434,8 @@ TEST_F(EngineTest, EngineGetDependentTableTest) {
             LOG(INFO) << sqlstr;
             std::cout << sqlstr << std::endl;
             std::set<std::string> tables;
-            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", true, &tables,
-                                                  get_status));
+            ASSERT_TRUE(engine.GetDependentTables(sqlstr, "db", kBatchMode,
+                                                  &tables, get_status));
             ASSERT_EQ(tables, pair.second);
         }
     }
@@ -429,5 +448,12 @@ int main(int argc, char** argv) {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     ::testing::InitGoogleTest(&argc, argv);
+
+    signal(SIGSEGV, fesql::base::FeSignalBacktraceHandler);
+    signal(SIGBUS, fesql::base::FeSignalBacktraceHandler);
+    signal(SIGFPE, fesql::base::FeSignalBacktraceHandler);
+    signal(SIGILL, fesql::base::FeSignalBacktraceHandler);
+    signal(SIGSYS, fesql::base::FeSignalBacktraceHandler);
+
     return RUN_ALL_TESTS();
 }

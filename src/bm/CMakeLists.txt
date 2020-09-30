@@ -16,12 +16,14 @@ foreach(SRC_FILE ${BM_FILES})
         list(APPEND BM_LIB_FILE_LIST ${SRC_FILE})
     endif()
 endforeach()
-
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(BM_LIBS ${ABSL_LIBS} ${yaml_libs} ${g_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} tcmalloc ${OS_LIB} benchmark gtest)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(BM_LIBS ${ABSL_LIBS} ${yaml_libs} ${g_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB} benchmark gtest)
+endif ()
 # bm lib
-set(BM_LIBS ${ABSL_LIBS} ${yaml_libs} ${g_libs} boost_filesystem ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} tcmalloc ${OS_LIB} benchmark gtest)
 add_library(fesql_bm_lib STATIC ${BM_LIB_FILE_LIST})
 target_link_libraries(fesql_bm_lib fesql_sdk fesql_flags ${BM_LIIBS})
-
 # bm executables
 set(BM_TARGET_LIST)
 foreach(BM_SCRIPT ${BM_EXEC_FILE_LIST})

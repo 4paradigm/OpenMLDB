@@ -22,7 +22,7 @@ namespace node {
 
 std::string NameOfPlanNodeType(const PlanType &type);
 
-class PlanNode : public NodeBase {
+class PlanNode : public NodeBase<PlanNode> {
  public:
     explicit PlanNode(PlanType type) : type_(type) {}
 
@@ -34,14 +34,19 @@ class PlanNode : public NodeBase {
 
     const std::vector<PlanNode *> &GetChildren() const { return children_; }
     int GetChildrenSize() const { return children_.size(); }
+
     friend std::ostream &operator<<(std::ostream &output, const PlanNode &thiz);
 
-    virtual void Print(std::ostream &output, const std::string &tab) const;
+    void Print(std::ostream &output, const std::string &tab) const override;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
 
-    virtual bool Equals(const PlanNode *that) const;
+    bool Equals(const PlanNode *that) const override;
     const PlanType type_;
+
+    const std::string GetTypeName() const override {
+        return NameOfPlanNodeType(type_);
+    }
 
  protected:
     std::vector<PlanNode *> children_;
@@ -319,6 +324,8 @@ class ProjectListNode : public LeafPlanNode {
     const bool is_window_agg_;
     const WindowPlanNode *w_ptr_;
 
+    bool IsSimpleProjectList();
+
  private:
     PlanNodeList projects;
 };
@@ -339,6 +346,7 @@ class ProjectPlanNode : public UnaryPlanNode {
     const std::string table_;
     const PlanNodeList project_list_vec_;
     const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping_;
+    bool IsSimpleProjectPlan();
 };
 
 class CreatePlanNode : public LeafPlanNode {

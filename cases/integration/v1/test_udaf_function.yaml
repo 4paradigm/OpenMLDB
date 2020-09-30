@@ -119,10 +119,9 @@ cases:
   -
     id: 5
     desc: sum-timestamp
-    mode: python-unsupport
     inputs:
       -
-        columns : ["id int64","c1 string", "c2 timestamp", "c3 timestamp"]
+        columns : ["id bigint","c1 string", "c2 timestamp", "c3 timestamp"]
         indexs: ["index1:c1:c2"]
         rows:
           - [1,"aa",1590738990000,1590738990000]
@@ -134,7 +133,7 @@ cases:
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c2 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int64", "m2 timestamp"]
+      columns: ["id bigint", "m2 timestamp"]
       rows:
         - [1, 1590738990000]
         - [2, 3181477981000]
@@ -143,7 +142,6 @@ cases:
   -
     id: 6
     desc: avg-timestamp
-    mode: python-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
@@ -224,9 +222,8 @@ cases:
 
   - id: 11
     desc: arithmetic_and_udf_before_udaf
-    mode: python-unsupport
     inputs:
-      - columns: ["id int64", "c1 double", "c2 float", "c3 int"]
+      - columns: ["id bigint", "c1 double", "c2 float", "c3 int"]
         indexs: ["index1:c3:id"]
         rows:
           - [1, 10.0, 1.0, 5]
@@ -242,7 +239,7 @@ cases:
       WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int64","r1 double", "r2 double"]
+      columns: ["id bigint","r1 double", "r2 double"]
       rows:
         - [1, 1.8, 7.3978952727983707]
         - [2, 3.2, 14.795790545596741]
@@ -252,10 +249,9 @@ cases:
 
   - id: 12
     desc: arithmetic_and_udf_after_udaf
-    mode: python-unsupport
     tags: ["目前只能f(udaf()) over w，否则无法进入window agg节点"]
     inputs:
-      - columns: ["id int64", "c1 double", "c2 float", "c3 int"]
+      - columns: ["id bigint", "c1 double", "c2 float", "c3 int"]
         indexs: ["index1:c3:id"]
         rows:
           - [1, 10.0, 1.0, 5]
@@ -271,7 +267,7 @@ cases:
       WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int64","r1 int", "r2 double"]
+      columns: ["id bigint","r1 int", "r2 double"]
       rows:
         - [1, 5, 0.78845736036427028]
         - [2, 10, 1.4816045409242156]
@@ -281,9 +277,8 @@ cases:
 
   - id: 13
     desc: nested udaf
-    mode: python-unsupport
     inputs:
-      - columns: ["id int64", "c1 double", "c2 float", "c3 int"]
+      - columns: ["id bigint", "c1 double", "c2 float", "c3 int"]
         indexs: ["index1:c3:id"]
         rows:
           - [1, 10.0, 1.0, 5]
@@ -300,7 +295,7 @@ cases:
       WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int64","r1 double", "r2 double", "r3 double"]
+      columns: ["id bigint","r1 double", "r2 double", "r3 double"]
       rows:
         - [1, 9.0, 2.3025850929940459, 11.0]
         - [2, 15.0, 3.1135153092103747, 31.0]
@@ -312,7 +307,7 @@ cases:
     desc: cast after udaf
     tags: ["TODO", "@chenjing 统一支持cast语法"]
     inputs:
-      - columns: ["id int64", "c1 double", "c2 float", "c3 int"]
+      - columns: ["id bigint", "c1 double", "c2 float", "c3 int"]
         indexs: ["index1:c3:id"]
         rows:
           - [1, 10.0, 1.0, 5]
@@ -332,9 +327,8 @@ cases:
 
   - id: 15
     desc: aggregate where
-    mode: python-unsupport
     inputs:
-      - columns: ["id int64", "c1 double", "c2 float", "c3 int64"]
+      - columns: ["id bigint", "c1 double", "c2 float", "c3 bigint"]
         indexs: ["index1:c3:id"]
         rows:
           - [1, 1.0, 1.1, 0]
@@ -356,7 +350,7 @@ cases:
       WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int64", "count_where_1 bigint", "avg_where_1 double", "count_where_2 bigint", "avg_where_2 double"]
+      columns: ["id bigint", "count_where_1 bigint", "avg_where_1 double", "count_where_2 bigint", "avg_where_2 double"]
       rows:
         - [1, 1, 1.0, 0, nan]
         - [2, 2, 1.5, 1, 7.6999998092651367]
@@ -372,7 +366,7 @@ cases:
     desc: window at functions
     inputs:
       -
-        columns : ["id int","pk int64","c1 string","c2 int","c3 bigint","c4 float",
+        columns : ["id int","pk bigint","c1 string","c2 int","c3 bigint","c4 float",
                    "c5 double","c6 timestamp","c7 date","c8 bool"]
         indexs: ["index1:pk:c6"]
         rows:
@@ -406,7 +400,7 @@ cases:
       order: id
       columns: ["id int","m1 string", "m2 string", "m3 int", "m4 int", "m5 bigint", "m6 bigint",
                 "m7 float", "m8 float", "m9 double", "m10 double",
-                "m11 timestamp", "m12 timestamp", "m13 date", "m14 date", "m15 bool", "m16 bool", "m17 int64"]
+                "m11 timestamp", "m12 timestamp", "m13 date", "m14 date", "m15 bool", "m16 bool", "m17 bigint"]
       rows:
         - [1, "a", NULL, 1, NULL, 30, NULL, 1.1, NULL, 2.1, NULL,
            1590738990000, NULL, "2020-05-01", NULL, true, NULL, NULL]
@@ -422,7 +416,7 @@ cases:
   - id: 17
     desc: count where value equals first value
     inputs:
-      - columns: ["id int64", "pk int64", "c1 string"]
+      - columns: ["id bigint", "pk bigint", "c1 string"]
         indexs: ["index1:pk:id"]
         rows:
           - [1, 0, "a"]
@@ -444,7 +438,7 @@ cases:
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int64", "count_where bigint"]
+      columns: ["id bigint", "count_where bigint"]
       rows:
         - [1, 1]
         - [2, 1]

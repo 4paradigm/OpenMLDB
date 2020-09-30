@@ -1295,15 +1295,15 @@ join_clause:
 		}
 		;
 last_join_clause:
-		table_reference LAST JOIN table_reference sort_clause join_condition
+		table_reference LAST JOIN table_reference opt_sort_clause join_condition
 		{
 			$$ = node_manager->MakeLastJoinNode($1, $4, $5, $6, "");
 		}
-		| table_reference LAST JOIN table_reference sort_clause join_condition relation_name
+		| table_reference LAST JOIN table_reference opt_sort_clause join_condition relation_name
 		{
 			$$ = node_manager->MakeLastJoinNode($1, $4, $5, $6, $7);
 		}
-		| table_reference LAST JOIN table_reference sort_clause join_condition AS relation_name
+		| table_reference LAST JOIN table_reference opt_sort_clause join_condition AS relation_name
 		{
 			$$ = node_manager->MakeLastJoinNode($1, $4, $5, $6, $8);
 			free($8);

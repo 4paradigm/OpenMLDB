@@ -227,17 +227,17 @@ Status RowFnLetIRBuilder::BuildProject(
     CHECK_STATUS(expr_ir_builder->Build(expr, &expr_out_val),
                  "Fail to codegen project expression: ", expr->GetExprString());
 
-    ::fesql::node::TypeNode data_type;
+    const ::fesql::node::TypeNode* data_type = nullptr;
     CHECK_TRUE(!expr_out_val.IsTuple(), kCodegenError,
                "Output do not support tuple");
     ::llvm::Type* llvm_ty = expr_out_val.GetType();
     CHECK_TRUE(llvm_ty != nullptr, kCodegenError);
-    CHECK_TRUE(GetFullType(llvm_ty, &data_type), kCodegenError,
-               "Fail to get output type at ", index, ", expect ",
+    CHECK_TRUE(GetFullType(ctx_->node_manager(), llvm_ty, &data_type),
+               kCodegenError, "Fail to get output type at ", index, ", expect ",
                expr->GetOutputType()->GetName());
 
     ::fesql::type::Type ctype;
-    CHECK_TRUE(DataType2SchemaType(data_type, &ctype), kCodegenError);
+    CHECK_TRUE(DataType2SchemaType(*data_type, &ctype), kCodegenError);
 
     outputs->insert(std::make_pair(index, expr_out_val));
     AddOutputColumnInfo(col_name, ctype, expr, output_schema,

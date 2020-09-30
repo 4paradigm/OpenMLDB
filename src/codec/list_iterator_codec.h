@@ -15,6 +15,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "base/fe_object.h"
 #include "base/fe_slice.h"
 #include "base/iterator.h"
 #include "codec/row.h"
@@ -43,7 +44,7 @@ class WindowIterator {
     virtual void Next() = 0;
     virtual bool Valid() = 0;
     virtual std::unique_ptr<RowIterator> GetValue() = 0;
-    virtual RowIterator *GetValue(int8_t *addr) = 0;
+    virtual RowIterator *GetRawValue() = 0;
     virtual const Row GetKey() = 0;
 };
 
@@ -54,7 +55,7 @@ class ListV {
     virtual ~ListV() {}
     // TODO(chenjing): at 数组越界处理
     virtual std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() const = 0;
-    virtual ConstIterator<uint64_t, V> *GetIterator(int8_t *addr) const = 0;
+    virtual ConstIterator<uint64_t, V> *GetRawIterator() const = 0;
     virtual const uint64_t GetCount() {
         auto iter = GetIterator();
         uint64_t cnt = 0;
@@ -126,12 +127,8 @@ class ColumnImpl : public WrapListImpl<V, Row> {
             new ColumnIterator<V>(root_, this));
         return std::move(iter);
     }
-    ConstIterator<uint64_t, V> *GetIterator(int8_t *addr) const override {
-        if (nullptr == addr) {
-            return new ColumnIterator<V>(root_, this);
-        } else {
-            return new (addr) ColumnIterator<V>(root_, this);
-        }
+    ConstIterator<uint64_t, V> *GetRawIterator() const override {
+        return new ColumnIterator<V>(root_, this);
     }
     const uint64_t GetCount() override { return root_->GetCount(); }
     V At(uint64_t pos) override { return GetFieldUnsafe(root_->At(pos)); }
@@ -208,12 +205,8 @@ class ArrayListV : public ListV<V> {
         return std::unique_ptr<ArrayListIterator<V>>(
             new ArrayListIterator<V>(buffer_, start_, end_));
     }
-    ConstIterator<uint64_t, V> *GetIterator(int8_t *addr) const override {
-        if (nullptr == addr) {
-            return new ArrayListIterator<V>(buffer_, start_, end_);
-        } else {
-            return new (addr) ArrayListIterator<V>(buffer_, start_, end_);
-        }
+    ConstIterator<uint64_t, V> *GetRawIterator() const override {
+        return new ArrayListIterator<V>(buffer_, start_, end_);
     }
     virtual const uint64_t GetCount() { return end_ - start_; }
     virtual V At(uint64_t pos) const { return buffer_->at(start_ + pos); }
@@ -329,13 +322,23 @@ class BoolArrayListIterator : public ConstIterator<uint64_t, bool> {
 
     bool Valid() const override { return iter_end_ != iter_; }
 
-    void Next() override { tmp_ = *(++iter_); }
+    void Next() override {
+        ++iter_;
+        if (Valid()) {
+            tmp_ = *iter_;
+        }
+    }
 
     const bool &GetValue() override { return tmp_; }
 
     const uint64_t &GetKey() const override { return key_; }
 
-    void SeekToFirst() { iter_ = iter_start_; }
+    void SeekToFirst() {
+        iter_ = iter_start_;
+        if (Valid()) {
+            tmp_ = *iter_;
+        }
+    }
 
     bool IsSeekable() const override { return true; }
 
@@ -364,12 +367,8 @@ class BoolArrayListV : public ListV<bool> {
         return std::unique_ptr<BoolArrayListIterator>(
             new BoolArrayListIterator(buffer_, start_, end_));
     }
-    ConstIterator<uint64_t, bool> *GetIterator(int8_t *addr) const override {
-        if (nullptr == addr) {
-            return new BoolArrayListIterator(buffer_, start_, end_);
-        } else {
-            return new (addr) BoolArrayListIterator(buffer_, start_, end_);
-        }
+    ConstIterator<uint64_t, bool> *GetRawIterator() const override {
+        return new BoolArrayListIterator(buffer_, start_, end_);
     }
     virtual const uint64_t GetCount() { return end_ - start_; }
     virtual bool At(uint64_t pos) const { return buffer_->at(start_ + pos); }
@@ -464,12 +463,8 @@ class InnerRangeList : public ListV<V> {
         return std::unique_ptr<InnerRangeIterator<V>>(
             new InnerRangeIterator<V>(root_, start_, end_));
     }
-    virtual ConstIterator<uint64_t, V> *GetIterator(int8_t *addr) const {
-        if (nullptr == addr) {
-            return new InnerRangeIterator<V>(root_, start_, end_);
-        } else {
-            return new (addr) InnerRangeIterator<V>(root_, start_, end_);
-        }
+    virtual ConstIterator<uint64_t, V> *GetRawIterator() const {
+        return new InnerRangeIterator<V>(root_, start_, end_);
     }
 
     ListV<Row> *root_;
@@ -488,12 +483,8 @@ class InnerRowsList : public ListV<V> {
         return std::unique_ptr<InnerRowsIterator<V>>(
             new InnerRowsIterator<V>(root_, start_, end_));
     }
-    virtual ConstIterator<uint64_t, V> *GetIterator(int8_t *addr) const {
-        if (nullptr == addr) {
-            return new InnerRowsIterator<V>(root_, start_, end_);
-        } else {
-            return new (addr) InnerRowsIterator<V>(root_, start_, end_);
-        }
+    virtual ConstIterator<uint64_t, V> *GetRawIterator() const {
+        return new InnerRowsIterator<V>(root_, start_, end_);
     }
 
     ListV<Row> *root_;

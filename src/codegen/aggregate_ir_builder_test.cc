@@ -24,12 +24,12 @@ namespace codegen {
 
 using fesql::codec::ArrayListV;
 using fesql::codec::Row;
-static node::NodeManager manager;
 
 class AggregateIRBuilderTest : public ::testing::Test {
  public:
     AggregateIRBuilderTest() {}
     ~AggregateIRBuilderTest() {}
+    node::NodeManager manager;
 };
 
 TEST_F(AggregateIRBuilderTest, test_mixed_multiple_agg) {
@@ -80,7 +80,6 @@ TEST_F(AggregateIRBuilderTest, test_mixed_multiple_agg) {
     window_ref.list = ptr;
     int8_t* window_ptr = reinterpret_cast<int8_t*>(&window_ref);
     vm::Schema schema;
-    node::NodeManager manager;
     CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
                       &output);
 

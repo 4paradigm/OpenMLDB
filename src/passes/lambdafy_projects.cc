@@ -18,13 +18,12 @@ Status LambdafyProjects::Transform(const node::PlanNodeList& projects,
                                    std::vector<node::FrameNode*>* out_frames) {
     // arg1: current input row
     auto row_type = nm_->MakeRowType(input_schemas_);
-    auto row_arg = nm_->MakeExprIdNode("row", node::ExprIdNode::GetNewId());
+    auto row_arg = nm_->MakeExprIdNode("row");
     row_arg->SetOutputType(row_type);
 
     // arg2: optional row list for agg
     auto window_type = nm_->MakeTypeNode(node::kList, row_type);
-    auto window_arg =
-        nm_->MakeExprIdNode("window", node::ExprIdNode::GetNewId());
+    auto window_arg = nm_->MakeExprIdNode("window");
     window_arg->SetOutputType(window_type);
 
     // iterate project exprs
@@ -52,7 +51,6 @@ Status LambdafyProjects::Transform(const node::PlanNodeList& projects,
                 }
             }
         } else if (legacy_agg_opt_ && FallBackToLegacyAgg(expr)) {
-            DLOG(INFO) << "Use agg opt for " << expr->GetExprString();
             out_list->AddChild(expr);
             require_agg_vec->push_back(true);
             out_frames->push_back(pp_node->frame());
@@ -60,11 +58,10 @@ Status LambdafyProjects::Transform(const node::PlanNodeList& projects,
 
         } else {
             bool has_agg;
-            bool is_root_agg;
             node::ExprNode* transformed = nullptr;
-            CHECK_STATUS(VisitExpr(expr, row_arg, window_arg, &transformed,
-                                   &has_agg, &is_root_agg),
-                         "Lambdafy ", expr->GetExprString(), " failed");
+            CHECK_STATUS(
+                VisitExpr(expr, row_arg, window_arg, &transformed, &has_agg),
+                "Lambdafy ", expr->GetExprString(), " failed");
             out_list->AddChild(transformed);
             require_agg_vec->push_back(has_agg);
             out_frames->push_back(pp_node->frame());
@@ -79,8 +76,7 @@ Status LambdafyProjects::Transform(const node::PlanNodeList& projects,
 Status LambdafyProjects::VisitExpr(node::ExprNode* expr,
                                    node::ExprIdNode* row_arg,
                                    node::ExprIdNode* window_arg,
-                                   node::ExprNode** out, bool* has_agg,
-                                   bool* is_agg_root) {
+                                   node::ExprNode** out, bool* has_agg) {
     // determine whether an agg call
     size_t child_num = expr->GetChildNum();
     if (expr->GetExprType() == node::kExprCall) {
@@ -95,17 +91,13 @@ Status LambdafyProjects::VisitExpr(node::ExprNode* expr,
                 if (call->GetOver() != nullptr) {
                     *out = expr;
                     *has_agg = false;
-                    *is_agg_root = false;
                     return Status::OK();
                 }
             } else if (library_->IsUDAF(fn->function_name(), child_num)) {
-                *has_agg = true;
-                *is_agg_root = true;
-                return VisitAggExpr(call, row_arg, window_arg, out);
+                return VisitAggExpr(call, row_arg, window_arg, out, has_agg);
             }
         }
     }
-    *is_agg_root = false;
     *has_agg = false;
 
     // count(*)
@@ -122,8 +114,7 @@ Status LambdafyProjects::VisitExpr(node::ExprNode* expr,
     // recursive visit children
     std::vector<node::ExprNode*> transformed_children(child_num);
     for (size_t i = 0; i < child_num; ++i) {
-        bool child_has_agg;
-        bool child_is_root_agg;
+        bool child_has_agg = false;
 
         auto child = expr->GetChild(i);
         if (expr->RequireListAt(&analysis_ctx_, i)) {
@@ -149,8 +140,7 @@ Status LambdafyProjects::VisitExpr(node::ExprNode* expr,
         }
 
         CHECK_STATUS(VisitExpr(child, row_arg, window_arg,
-                               &transformed_children[i], &child_has_agg,
-                               &child_is_root_agg));
+                               &transformed_children[i], &child_has_agg));
         *has_agg |= child_has_agg;
     }
 
@@ -189,7 +179,8 @@ Status LambdafyProjects::VisitLeafExpr(node::ExprNode* expr,
 Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
                                       node::ExprIdNode* row_arg,
                                       node::ExprIdNode* window_arg,
-                                      node::ExprNode** out) {
+                                      node::ExprNode** out,
+                                      bool* is_window_agg) {
     auto fn = dynamic_cast<const node::ExternalFnDefNode*>(call->GetFnDef());
     CHECK_TRUE(fn != nullptr, kCodegenError);
 
@@ -205,7 +196,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
     // collect original udaf argument types
     std::vector<node::ExprNode*> agg_original_args;
 
-    bool has_window_iter;
+    bool has_window_iter = false;
     for (size_t i = 0; i < agg_arg_num; ++i) {
         auto child = call->GetChild(i);
 
@@ -226,8 +217,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
         if (child_require_window_iter) {
             has_window_iter = true;
             if (iter_row == nullptr) {
-                iter_row = nm_->MakeExprIdNode("iter_row",
-                                               node::ExprIdNode::GetNewId());
+                iter_row = nm_->MakeExprIdNode("iter_row");
                 iter_row->SetOutputType(row_arg->GetOutputType());
                 iter_row->SetNullable(false);
             }
@@ -236,11 +226,9 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
             child_row_arg = row_arg;
         }
 
-        bool child_has_agg;
-        bool child_is_root_agg;
+        bool child_has_agg = false;
         CHECK_STATUS(VisitExpr(child, child_row_arg, window_arg,
-                               &transformed_child[i], &child_has_agg,
-                               &child_is_root_agg));
+                               &transformed_child[i], &child_has_agg));
 
         // resolve update arg
         node::ExprNode* resolved_arg = nullptr;
@@ -252,8 +240,8 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
 
         // collect original udaf info
         transformed_child[i] = resolved_arg;
-        auto original_arg = nm_->MakeExprIdNode(
-            "udaf_list_arg_" + std::to_string(i), node::ExprIdNode::GetNewId());
+        auto original_arg =
+            nm_->MakeExprIdNode("udaf_list_arg_" + std::to_string(i));
         auto resolved_type = resolved_arg->GetOutputType();
         if (child_require_window_iter) {
             original_arg->SetOutputType(
@@ -270,6 +258,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
         }
         agg_original_args.push_back(original_arg);
     }
+    *is_window_agg = has_window_iter;
 
     // resolve original udaf
     node::FnDefNode* fn_def = nullptr;
@@ -296,7 +285,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
     std::vector<const node::TypeNode*> proxy_udaf_arg_types;
 
     // state argument is first argument of update function
-    auto state_arg = nm_->MakeExprIdNode("state", node::ExprIdNode::GetNewId());
+    auto state_arg = nm_->MakeExprIdNode("state");
     actual_update_args.push_back(state_arg);
     proxy_update_args.push_back(state_arg);
 
@@ -314,8 +303,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
             actual_update_args.push_back(transformed_child[i]);
         } else if (args_require_iter[i]) {
             // use proxy lambda argument
-            auto arg = nm_->MakeExprIdNode("iter_arg_" + std::to_string(i),
-                                           node::ExprIdNode::GetNewId());
+            auto arg = nm_->MakeExprIdNode("iter_arg_" + std::to_string(i));
             auto child_type = transformed_child[i]->GetOutputType();
             CHECK_TRUE(child_type->base() == node::kList, kCodegenError);
             arg->SetOutputType(child_type->GetGenericType(0));

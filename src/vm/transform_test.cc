@@ -69,6 +69,7 @@ class TransformTest : public ::testing::TestWithParam<SQLCase> {
  public:
     TransformTest() {}
     ~TransformTest() {}
+    node::NodeManager manager;
 };
 INSTANTIATE_TEST_CASE_P(
     SqlSimpleQueryParse, TransformTest,
@@ -184,7 +185,6 @@ TEST_P(TransformTest, transform_physical_plan) {
             new fesql::storage::Table(1, 1, table_def));
         AddTable(catalog, table_def, table);
     }
-    ::fesql::node::NodeManager manager;
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
     {
@@ -311,7 +311,6 @@ TEST_F(TransformTest, TransfromConditionsTest) {
     for (size_t i = 0; i < sql_exp.size(); i++) {
         std::string sql = sql_exp[i].first;
         std::vector<std::string>& exp_list = sql_exp[i].second;
-        ::fesql::node::NodeManager manager;
         node::ExprNode* condition;
         boost::to_lower(sql);
         ExtractExprFromSimpleSQL(&manager, sql, &condition);
@@ -365,7 +364,6 @@ TEST_F(TransformTest, TransformEqualExprPairTest) {
     for (size_t i = 0; i < sql_exp.size(); i++) {
         std::string sql = sql_exp[i].first;
         std::pair<std::string, std::string>& exp_list = sql_exp[i].second;
-        ::fesql::node::NodeManager manager;
         node::ExprNode* condition;
         boost::to_lower(sql);
         ExtractExprFromSimpleSQL(&manager, sql, &condition);
@@ -469,7 +467,6 @@ TEST_P(TransformTest, window_merge_opt_test) {
             new fesql::storage::Table(1, 1, table_def));
         AddTable(catalog, table_def, table);
     }
-    ::fesql::node::NodeManager manager;
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
     {
@@ -509,13 +506,13 @@ class KeyGenTest : public ::testing::TestWithParam<std::string> {
  public:
     KeyGenTest() {}
     ~KeyGenTest() {}
+    node::NodeManager nm;
 };
 INSTANTIATE_TEST_CASE_P(KeyGen, KeyGenTest,
                         testing::Values("select col1 from t1;",
                                         "select col1, col2 from t1;"));
 
 TEST_P(KeyGenTest, GenTest) {
-    node::NodeManager nm;
     base::Status status;
 
     fesql::type::TableDef table_def;
@@ -558,6 +555,7 @@ class FilterGenTest : public ::testing::TestWithParam<std::string> {
  public:
     FilterGenTest() {}
     ~FilterGenTest() {}
+    node::NodeManager nm;
 };
 INSTANTIATE_TEST_CASE_P(FilterGen, FilterGenTest,
                         testing::Values("select t1.col1=t2.col1 from t1,t2;",
@@ -565,7 +563,6 @@ INSTANTIATE_TEST_CASE_P(FilterGen, FilterGenTest,
                                         "select t1.col1>t2.col2 from t1,t2;",
                                         "select t1.col1<t2.col2 from t1,t2;"));
 TEST_P(FilterGenTest, GenFilter) {
-    node::NodeManager nm;
     base::Status status;
 
     fesql::type::TableDef table_def;
@@ -597,7 +594,7 @@ TEST_P(FilterGenTest, GenFilter) {
     auto lib = ::fesql::udf::DefaultUDFLibrary::get();
     BatchModeTransformer transformer(&nm, "db", catalog, m.get(), lib);
 
-    ASSERT_TRUE(transformer.GenFilter(
+    ASSERT_TRUE(transformer.GenConditionFilter(
         &filter, join_node.GetOutputNameSchemaList(), status));
     m->print(::llvm::errs(), NULL);
     ASSERT_FALSE(filter.fn_info_.fn_name_.empty());

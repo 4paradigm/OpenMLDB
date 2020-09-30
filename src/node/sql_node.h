@@ -27,6 +27,7 @@
 #include "boost/filesystem/operations.hpp"
 #include "boost/lexical_cast.hpp"
 #include "node/expr_node.h"
+#include "node/node_base.h"
 #include "node/node_enum.h"
 
 // fwd
@@ -352,35 +353,24 @@ inline const std::string RoleTypeName(RoleType type) {
     }
 }
 
-class NodeBase {
- public:
-    virtual ~NodeBase() {}
-};
-
-class SQLNode : public NodeBase {
+class SQLNode : public NodeBase<SQLNode> {
  public:
     SQLNode(const SQLNodeType &type, uint32_t line_num, uint32_t location)
         : type_(type), line_num_(line_num), location_(location) {}
 
     virtual ~SQLNode() {}
 
-    virtual void Print(std::ostream &output, const std::string &tab) const;
-
     const SQLNodeType GetType() const { return type_; }
+    uint32_t GetLineNum() const override { return line_num_; }
+    uint32_t GetLocation() const override { return location_; }
 
-    uint32_t GetLineNum() const { return line_num_; }
-
-    uint32_t GetLocation() const { return location_; }
-
-    virtual bool Equals(const SQLNode *node) const;
-    friend std::ostream &operator<<(std::ostream &output, const SQLNode &thiz);
-    SQLNodeType type_;
-
-    std::string GetTreeString() const {
-        std::stringstream ss;
-        this->Print(ss, "");
-        return ss.str();
+    const std::string GetTypeName() const override {
+        return NameOfSQLNodeType(type_);
     }
+
+    bool Equals(const SQLNode *node) const override;
+
+    SQLNodeType type_;
 
  private:
     uint32_t line_num_;
@@ -389,9 +379,9 @@ class SQLNode : public NodeBase {
 
 typedef std::vector<SQLNode *> NodePointVector;
 
-class SQLNodeList : public NodeBase {
+class SQLNodeList : public SQLNode {
  public:
-    SQLNodeList() {}
+    SQLNodeList() : SQLNode(kNodeList, 0, 0) {}
     virtual ~SQLNodeList() {}
     void PushBack(SQLNode *node_ptr) { list_.push_back(node_ptr); }
     const bool IsEmpty() const { return list_.empty(); }
@@ -457,47 +447,59 @@ class ExprNode : public SQLNode {
      */
     virtual bool IsListReturn(ExprAnalysisContext *ctx) const { return false; }
 
-    static bool IsSafeCast(const TypeNode &from_type,
-                           const TypeNode &target_type);
+    static bool IsSafeCast(const TypeNode *from_type,
+                           const TypeNode *target_type);
 
-    static bool IsIntFloat2PointerCast(const TypeNode &left_type,
-                                       const TypeNode &right_type);
-    static Status InferNumberCastTypes(const TypeNode &left_type,
-                                       const TypeNode &right_type,
-                                       TypeNode *output_type);
+    static bool IsIntFloat2PointerCast(const TypeNode *left_type,
+                                       const TypeNode *right_type);
+    static Status InferNumberCastTypes(node::NodeManager *nm,
+                                       const TypeNode *left_type,
+                                       const TypeNode *right_type,
+                                       const TypeNode **output_type);
 
-    static Status AndTypeAccept(const TypeNode &lhs, const TypeNode &rhs,
-                                TypeNode *output_type);
-    static Status LShiftTypeAccept(const TypeNode &lhs, const TypeNode &rhs,
-                                   TypeNode *output_type);
-    static Status AddTypeAccept(const TypeNode &lhs, const TypeNode &rhs,
-                                TypeNode *output_type);
-    static Status SubTypeAccept(const TypeNode &lhs, const TypeNode &rhs,
-                                TypeNode *output_type);
-    static Status IsCastAccept(const TypeNode &left_type,
-                               const TypeNode &right_type,
-                               TypeNode *output_type);
+    static Status AndTypeAccept(node::NodeManager *nm, const TypeNode *lhs,
+                                const TypeNode *rhs,
+                                const TypeNode **output_type);
+    static Status LShiftTypeAccept(node::NodeManager *nm, const TypeNode *lhs,
+                                   const TypeNode *rhs,
+                                   const TypeNode **output_type);
+    static Status AddTypeAccept(node::NodeManager *nm, const TypeNode *lhs,
+                                const TypeNode *rhs,
+                                const TypeNode **output_type);
+    static Status SubTypeAccept(node::NodeManager *nm, const TypeNode *lhs,
+                                const TypeNode *rhs,
+                                const TypeNode **output_type);
+    static Status IsCastAccept(node::NodeManager *nm, const TypeNode *left_type,
+                               const TypeNode *right_type,
+                               const TypeNode **output_type);
 
-    static Status MultiTypeAccept(const TypeNode &left_type,
-                                  const TypeNode &right_type,
-                                  TypeNode *output_type);
-    static Status FDivTypeAccept(const TypeNode &left_type,
-                                 const TypeNode &right_type,
-                                 TypeNode *output_type);
-    static Status SDivTypeAccept(const TypeNode &left_type,
-                                 const TypeNode &right_type,
-                                 TypeNode *output_type);
-    static Status ModTypeAccept(const TypeNode &left_type,
-                                const TypeNode &right_type,
-                                TypeNode *output_type);
-    static Status NotTypeAccept(const TypeNode &left_type,
-                                 TypeNode *output_type);
-    static Status CompareTypeAccept(const TypeNode &left_type,
-                                    const TypeNode &right_type,
-                                    TypeNode *output_type);
-    static Status LogicalOpTypeAccept(const TypeNode &left_type,
-                                      const TypeNode &right_type,
-                                      TypeNode *output_type);
+    static Status MultiTypeAccept(node::NodeManager *nm,
+                                  const TypeNode *left_type,
+                                  const TypeNode *right_type,
+                                  const TypeNode **output_type);
+    static Status FDivTypeAccept(node::NodeManager *nm,
+                                 const TypeNode *left_type,
+                                 const TypeNode *right_type,
+                                 const TypeNode **output_type);
+    static Status SDivTypeAccept(node::NodeManager *nm,
+                                 const TypeNode *left_type,
+                                 const TypeNode *right_type,
+                                 const TypeNode **output_type);
+    static Status ModTypeAccept(node::NodeManager *nm,
+                                const TypeNode *left_type,
+                                const TypeNode *right_type,
+                                const TypeNode **output_type);
+    static Status NotTypeAccept(node::NodeManager *nm,
+                                const TypeNode *left_type,
+                                const TypeNode **output_type);
+    static Status CompareTypeAccept(node::NodeManager *nm,
+                                    const TypeNode *left_type,
+                                    const TypeNode *right_type,
+                                    const TypeNode **output_type);
+    static Status LogicalOpTypeAccept(node::NodeManager *nm,
+                                      const TypeNode *left_type,
+                                      const TypeNode *right_type,
+                                      const TypeNode **output_type);
 
  private:
     const TypeNode *output_type_ = nullptr;
@@ -1238,7 +1240,7 @@ class FnDefNode : public SQLNode {
     virtual base::Status Validate(
         const std::vector<const TypeNode *> &arg_types) const = 0;
 
-    const std::string GetFlatString() const;
+    std::string GetFlatString() const override;
 
     virtual bool RequireListAt(ExprAnalysisContext *ctx, size_t index) const;
     virtual bool IsListReturn(ExprAnalysisContext *ctx) const;
@@ -1410,8 +1412,6 @@ class ExprIdNode : public ExprNode {
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 
-    static int64_t GetNewId() { return expr_id_cnt_++; }
-
     bool IsResolved() const { return id_ >= 0; }
 
     bool IsListReturn(ExprAnalysisContext *ctx) const;
@@ -1419,13 +1419,6 @@ class ExprIdNode : public ExprNode {
  private:
     std::string name_;
     int64_t id_;
-
-    // Since lambda argument should be unique identified,
-    // a static count value is maintained here. Currently
-    // we can not put it in node_manager because there is
-    // no ensurement of unique node_manager instance.
-    // TODO(xxx): are all exprs unique identified neccesary?
-    static std::atomic<int64_t> expr_id_cnt_;
 };
 
 class ColumnRefNode : public ExprNode {
@@ -2344,6 +2337,9 @@ std::string ExprString(const ExprNode *expr);
 std::string MakeExprWithTable(const ExprNode *expr, const std::string db);
 const bool IsNullPrimary(const ExprNode *expr);
 bool ExprListNullOrEmpty(const ExprListNode *expr);
+bool ExprIsConst(const ExprNode *expr);
+bool ExprIsSimple(const ExprNode *expr);
+bool ExprListIsConst(const std::vector<node::ExprNode *> &exprs);
 bool SQLEquals(const SQLNode *left, const SQLNode *right);
 bool SQLListEquals(const SQLNodeList *left, const SQLNodeList *right);
 bool ExprEquals(const ExprNode *left, const ExprNode *right);

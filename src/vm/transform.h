@@ -133,6 +133,9 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
+    bool FilterOptimized(const vm::SchemaSourceList& column_sources,
+                         PhysicalOpNode* in, Filter* filter,
+                         PhysicalOpNode** new_in);
     bool JoinKeysOptimized(const vm::SchemaSourceList& column_sources,
                            PhysicalOpNode* in, Join* join,
                            PhysicalOpNode** new_in);
@@ -184,9 +187,7 @@ class SimpleProjectOptimized : public TransformUpPysicalPass {
 };
 struct ExprPair {
     node::ExprNode* left_expr_ = nullptr;
-    uint32_t left_idx_ = 0u;
     node::ExprNode* right_expr_ = nullptr;
-    uint32_t right_idx_ = 0u;
 };
 // Optimize filter condition
 // for FilterNode, JoinNode
@@ -201,8 +202,17 @@ class ConditionOptimized : public TransformUpPysicalPass {
     static bool ExtractEqualExprPair(
         node::ExprNode* condition,
         std::pair<node::ExprNode*, node::ExprNode*>* expr_pair);
+    static bool MakeConstEqualExprPair(
+        const std::pair<node::ExprNode*, node::ExprNode*> expr_pair,
+        const vm::SchemasContext& ctx, const size_t left_schema_cnt,
+        ExprPair* output);
     static bool TransformEqualExprPair(
         const SchemaSourceList& name_schema_list, const size_t left_schema_cnt,
+        node::ExprListNode* and_conditions,
+        node::ExprListNode* out_condition_list,
+        std::vector<ExprPair>& condition_eq_pair);  // NOLINT
+    static bool TransformConstEqualExprPair(
+        const SchemaSourceList& name_schema_list,
         node::ExprListNode* and_conditions,
         node::ExprListNode* out_condition_list,
         std::vector<ExprPair>& condition_eq_pair);  // NOLINT
@@ -212,6 +222,7 @@ class ConditionOptimized : public TransformUpPysicalPass {
     bool JoinConditionOptimized(PhysicalOpNode* in, Join* join);
     void SkipConstExpression(node::ExprListNode input,
                              node::ExprListNode* output);
+    bool FilterConditionOptimized(PhysicalOpNode* in, Filter* filter);
 };
 class LeftJoinOptimized : public TransformUpPysicalPass {
  public:
@@ -279,9 +290,11 @@ class BatchModeTransformer {
     bool GenPlanNode(PhysicalOpNode* node, base::Status& status);  // NOLINT
     bool GenJoin(Join* join, PhysicalOpNode* in,
                  base::Status& status);  // NOLINT
-    bool GenFilter(ConditionFilter* filter,
-                   const SchemaSourceList& input_name_schema_list,
+    bool GenFilter(Filter* filter, PhysicalOpNode* in,
                    base::Status& status);  // NOLINT
+    bool GenConditionFilter(ConditionFilter* filter,
+                            const SchemaSourceList& input_name_schema_list,
+                            base::Status& status);  // NOLINT
     bool GenKey(Key* hash, const SchemaSourceList& input_name_schema_list,
                 base::Status& status);  // NOLINT
     bool GenWindow(WindowOp* window, PhysicalOpNode* in,
@@ -301,6 +314,8 @@ class BatchModeTransformer {
                                                  PhysicalOpNode* in);
     base::Status ValidateJoinIndexOptimization(const Join& join,
                                                PhysicalOpNode* in);
+    base::Status ValidateRequestJoinIndexOptimization(const Join& join,
+                                                      PhysicalOpNode* in);
     base::Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
 
  protected:

@@ -126,8 +126,8 @@ void RunListIteratorCase(T expected, const type::TableDef& table,
                            kCodegenError);
 
                 ::llvm::Value* iterator = nullptr;
-                node::NodeManager nm;
-                auto elem_type = DataTypeTrait<T>::to_type_node(&nm);
+                node::NodeManager* nm = ctx->node_manager();
+                auto elem_type = DataTypeTrait<T>::to_type_node(nm);
                 CHECK_STATUS(
                     list_builder.BuildIterator(column, elem_type, &iterator));
                 ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
@@ -176,9 +176,9 @@ void RunListIteratorByRowCase(T expected, const type::TableDef& table,
                 Argument* arg0 = &*it;
 
                 ::llvm::Value* iterator = nullptr;
-                node::NodeManager nm;
+                node::NodeManager* nm = ctx->node_manager();
                 auto row_type =
-                    DataTypeTrait<udf::LiteralTypedRow<>>::to_type_node(&nm);
+                    DataTypeTrait<udf::LiteralTypedRow<>>::to_type_node(nm);
 
                 auto list_ref_ptr = arg0;
 
@@ -278,8 +278,8 @@ void RunInnerListIteratorCase(T expected, const type::TableDef& table,
                     kCodegenError);
 
                 ::llvm::Value* iterator = nullptr;
-                node::NodeManager nm;
-                auto elem_type = DataTypeTrait<T>::to_type_node(&nm);
+                node::NodeManager* nm = ctx->node_manager();
+                auto elem_type = DataTypeTrait<T>::to_type_node(nm);
                 CHECK_STATUS(
                     list_builder.BuildIterator(column, elem_type, &iterator));
 
@@ -350,8 +350,8 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 Function::arg_iterator it = fn->arg_begin();
                 Argument* arg0 = &*it;
 
-                node::NodeManager nm;
-                auto elem_type = DataTypeTrait<T>::to_type_node(&nm);
+                node::NodeManager* nm = ctx->node_manager();
+                auto elem_type = DataTypeTrait<T>::to_type_node(nm);
 
                 // build column
                 ::llvm::Value* column = NULL;
@@ -442,8 +442,8 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
                 CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column),
                            kCodegenError);
 
-                node::NodeManager nm;
-                auto elem_type = DataTypeTrait<T>::to_type_node(&nm);
+                node::NodeManager* nm = ctx->node_manager();
+                auto elem_type = DataTypeTrait<T>::to_type_node(nm);
                 ::llvm::Value* iter = nullptr;
                 base::Status status;
                 CHECK_STATUS(

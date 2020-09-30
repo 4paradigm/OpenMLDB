@@ -54,12 +54,48 @@ bool Table::Init() {
             return false;
         }
         st.ts_pos = col_map[table_def_.indexes(idx).second_key()];
+        switch (table_def_.columns(st.ts_pos).type()) {
+            case type::kInt64:
+            case type::kTimestamp: {
+                break;
+            }
+            default: {
+                LOG(WARNING) << "Invalid index ts type: "
+                             << fesql::type::Type_Name(
+                                    table_def_.columns(st.ts_pos).type());
+                return false;
+            }
+        }
         st.index = idx;
         std::vector<std::pair<fesql::type::Type, size_t>> col_vec;
         for (int i = 0; i < table_def_.indexes(idx).first_keys_size(); i++) {
             std::string name = table_def_.indexes(idx).first_keys(i);
             auto iter = col_map.find(name);
             if (iter == col_map.end()) return false;
+            if (st.ts_pos == iter->second) {
+                LOG(WARNING)
+                    << "Invalid index: ts column can't be used as key column";
+                return false;
+            }
+            switch (table_def_.columns(iter->second).type()) {
+                case type::kBool:
+                case type::kInt16:
+                case type::kInt32:
+                case type::kInt64:
+                case type::kDate:
+                case type::kTimestamp:
+                case type::kVarchar: {
+                    break;
+                }
+                default: {
+                    LOG(WARNING)
+                        << "Invalid index key type: "
+                        << fesql::type::Type_Name(
+                               table_def_.columns(iter->second).type());
+                    return false;
+                }
+            }
+
             col_vec.push_back(std::make_pair(
                 table_def_.columns(iter->second).type(), iter->second));
         }
@@ -81,7 +117,7 @@ bool Table::Init() {
     }
     DLOG(INFO) << "table " << table_def_.name() << " init ok";
     return true;
-}
+}  // namespace storage
 bool Table::DecodeKeysAndTs(const IndexSt& index, const char* row,
                             uint32_t size, std::string& key,
                             int64_t* time_ptr) {

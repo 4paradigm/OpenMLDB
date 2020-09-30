@@ -16,6 +16,7 @@
 #include <vector>
 #include "base/fe_status.h"
 #include "codec/fe_row_codec.h"
+#include "node/node_manager.h"
 #include "vm/catalog.h"
 #include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
@@ -96,6 +97,7 @@ class KeyGenerator : public FnGenerator {
     explicit KeyGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~KeyGenerator() {}
     const std::string Gen(const Row& row);
+    const std::string GenConst();
 };
 class OrderGenerator : public FnGenerator {
  public:
@@ -127,11 +129,11 @@ class RangeGenerator {
     uint64_t start_row_;
     uint64_t end_row_;
 };
-class FilterGenerator {
+class FilterKeyGenerator {
  public:
-    explicit FilterGenerator(const Key& filter_key)
+    explicit FilterKeyGenerator(const Key& filter_key)
         : filter_key_(filter_key.fn_info_) {}
-    virtual ~FilterGenerator() {}
+    virtual ~FilterKeyGenerator() {}
     const bool Valid() const { return filter_key_.Valid(); }
     std::shared_ptr<TableHandler> Filter(std::shared_ptr<TableHandler> table,
                                          const std::string& request_keys) {
@@ -159,6 +161,7 @@ class FilterGenerator {
     }
     KeyGenerator filter_key_;
 };
+
 class PartitionGenerator {
  public:
     explicit PartitionGenerator(const Key& partition)
@@ -207,12 +210,32 @@ class IndexSeekGenerator {
     explicit IndexSeekGenerator(const Key& key)
         : index_key_gen_(key.fn_info_) {}
     virtual ~IndexSeekGenerator() {}
+    std::shared_ptr<TableHandler> SegmnetOfConstKey(
+        std::shared_ptr<DataHandler> input);
     std::shared_ptr<TableHandler> SegmentOfKey(
         const Row& row, std::shared_ptr<DataHandler> input);
     const bool Valid() const { return index_key_gen_.Valid(); }
 
  private:
     KeyGenerator index_key_gen_;
+};
+
+class FilterGenerator {
+ public:
+    explicit FilterGenerator(const Filter& filter)
+        : condition_gen_(filter.condition_.fn_info_),
+          index_seek_gen_(filter.index_key_) {}
+
+    const bool Valid() const {
+        return index_seek_gen_.Valid() || condition_gen_.Valid();
+    }
+    std::shared_ptr<TableHandler> Filter(std::shared_ptr<TableHandler> table);
+    std::shared_ptr<TableHandler> Filter(
+        std::shared_ptr<PartitionHandler> table);
+
+ private:
+    ConditionGenerator condition_gen_;
+    IndexSeekGenerator index_seek_gen_;
 };
 class WindowGenerator {
  public:
@@ -254,7 +277,7 @@ class RequestWindowGenertor {
         return segment;
     }
     RequestWindowOp window_op_;
-    FilterGenerator filter_gen_;
+    FilterKeyGenerator filter_gen_;
     SortGenerator sort_gen_;
     OrderGenerator range_gen_;
     IndexSeekGenerator index_seek_gen_;
@@ -324,7 +347,7 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "UNKNOW";
     }
 }
-class Runner {
+class Runner : public node::NodeBase<Runner> {
  public:
     explicit Runner(const int32_t id)
         : id_(id),
@@ -387,6 +410,10 @@ class Runner {
     const vm::SchemaSourceList& output_schemas() const {
         return output_schemas_;
     }
+    virtual const std::string GetTypeName() const {
+        return RunnerTypeName(type_);
+    }
+    virtual bool Equals(const Runner* other) const { return this == other; }
 
  protected:
     bool need_cache_;
@@ -468,7 +495,7 @@ class JoinGenerator {
  public:
     explicit JoinGenerator(const Join& join, size_t left_slices,
                            size_t right_slices)
-        : condition_gen_(join.filter_.fn_info_),
+        : condition_gen_(join.condition_.fn_info_),
           left_key_gen_(join.left_key_.fn_info_),
           right_group_gen_(join.right_key_),
           index_key_gen_(join.index_key_.fn_info_),
@@ -554,11 +581,11 @@ class GroupRunner : public Runner {
 class FilterRunner : public Runner {
  public:
     FilterRunner(const int32_t id, const SchemaSourceList& schema,
-                 const int32_t limit_cnt, const FnInfo& fn_info)
-        : Runner(id, kRunnerFilter, schema, limit_cnt), cond_gen_(fn_info) {}
+                 const int32_t limit_cnt, const Filter& filter)
+        : Runner(id, kRunnerFilter, schema, limit_cnt), filter_gen_(filter) {}
     ~FilterRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    ConditionGenerator cond_gen_;
+    FilterGenerator filter_gen_;
 };
 class SortRunner : public Runner {
  public:
@@ -678,7 +705,6 @@ class RequestUnionRunner : public Runner {
         : Runner(id, kRunnerRequestUnion, schema, limit_cnt),
           range_gen_(range) {}
 
-    ~RequestUnionRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
@@ -727,15 +753,46 @@ class LimitRunner : public Runner {
 };
 class RunnerBuilder {
  public:
-    RunnerBuilder() : id_(0) {}
+    explicit RunnerBuilder(node::NodeManager* nm) : id_(0), nm_(nm) {}
     virtual ~RunnerBuilder() {}
-
-    Runner* Build(PhysicalOpNode* node, Status& status);  // NOLINT
-
+    Runner* Build(PhysicalOpNode* node,  // NOLINT
+                  Status& status);       // NOLINT
  private:
     int32_t id_;
+    node::NodeManager* nm_;
 };
+class ClusterJob {
+ public:
+    ClusterJob() : tasks_() {}
+    Runner* GetTask(uint32_t id) {
+        return id >= tasks_.size() ? nullptr : tasks_[id];
+    }
+    bool AddTask(Runner* task) {
+        if (nullptr == task) {
+            return false;
+        }
+        tasks_.push_back(task);
+        return true;
+    }
+    void Reset() { tasks_.clear(); }
+    const size_t GetTaskSize() const { return tasks_.size(); }
+    const bool IsValid() const { return !tasks_.empty(); }
+    void Print(std::ostream& output, const std::string& tab) const {
+        if (tasks_.empty()) {
+            return;
+        }
+        uint32_t id = 0;
+        for (auto iter = tasks_.cbegin(); iter != tasks_.cend(); iter++) {
+            output << "TASK ID " << id++;
+            (*iter)->Print(output, tab);
+            output << "\n";
+        }
+    }
+    void Print() const { this->Print(std::cout, "    "); }
 
+ private:
+    std::vector<Runner*> tasks_;
+};
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_RUNNER_H_

@@ -48,7 +48,8 @@ bool GetLLVMColumnSize(::fesql::node::TypeNode* v_type, uint32_t* size);
 bool GetBaseType(::llvm::Type* type, ::fesql::node::DataType* output);
 bool IsStringType(::llvm::Type* type);
 
-bool GetFullType(::llvm::Type* type, ::fesql::node::TypeNode* type_node);
+bool GetFullType(node::NodeManager* nm, ::llvm::Type* type,
+                 const ::fesql::node::TypeNode** type_node);
 
 bool SchemaType2DataType(const ::fesql::type::Type type,
                          ::fesql::node::DataType* output);
@@ -74,6 +75,7 @@ std::string GetLLVMObjectString(T* obj) {
     std::string res;
     llvm::raw_string_ostream ss(res);
     ss << *obj;
+    ss.flush();
     return res;
 }
 

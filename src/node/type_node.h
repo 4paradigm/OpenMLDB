@@ -25,6 +25,8 @@
 namespace fesql {
 namespace node {
 
+class NodeManager;
+
 class TypeNode : public SQLNode {
  public:
     TypeNode() : SQLNode(node::kType, 0, 0), base_(fesql::node::kNull) {}
@@ -90,7 +92,7 @@ class TypeNode : public SQLNode {
     bool IsNull() const;
     bool IsBool() const;
     bool IsFloating() const;
-    static Status CheckTypeNodeNotNull(const TypeNode* left_type);
+    static Status CheckTypeNodeNotNull(const TypeNode *left_type);
     bool IsGeneric() const;
 };
 
