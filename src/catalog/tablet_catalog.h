@@ -22,8 +22,8 @@
 #include <memory>
 #include <string>
 #include <utility>
-
 #include "base/spinlock.h"
+#include "catalog/distribute_iterator.h"
 #include "codec/row.h"
 #include "storage/table.h"
 #include "vm/catalog.h"
@@ -44,23 +44,23 @@ class TabletSegmentHandler : public ::fesql::vm::TableHandler {
 
     ~TabletSegmentHandler() {}
 
-    inline const ::fesql::vm::Schema *GetSchema() {
+    const ::fesql::vm::Schema *GetSchema() override {
         return partition_handler_->GetSchema();
     }
 
-    inline const std::string &GetName() {
+    const std::string &GetName() override {
         return partition_handler_->GetName();
     }
 
-    inline const std::string &GetDatabase() {
+    const std::string &GetDatabase() override {
         return partition_handler_->GetDatabase();
     }
 
-    inline const ::fesql::vm::Types &GetTypes() {
+    const ::fesql::vm::Types &GetTypes() override {
         return partition_handler_->GetTypes();
     }
 
-    inline const ::fesql::vm::IndexHint &GetIndex() {
+    const ::fesql::vm::IndexHint &GetIndex() override {
         return partition_handler_->GetIndex();
     }
 
@@ -68,7 +68,7 @@ class TabletSegmentHandler : public ::fesql::vm::TableHandler {
         return partition_handler_->GetOrderType();
     }
 
-    inline std::unique_ptr<::fesql::vm::RowIterator> GetIterator() const {
+    std::unique_ptr<::fesql::vm::RowIterator> GetIterator() const override {
         auto iter = partition_handler_->GetWindowIterator();
         if (iter) {
             DLOG(INFO) << "seek to pk " << key_;
@@ -82,15 +82,28 @@ class TabletSegmentHandler : public ::fesql::vm::TableHandler {
         }
         return std::unique_ptr<::fesql::vm::RowIterator>();
     }
-    ::fesql::vm::RowIterator *GetIterator(int8_t *addr) const override {
-        LOG(WARNING) << "can't get iterator with given address";
+
+    ::fesql::vm::RowIterator *GetRawIterator() const override {
+        auto iter = partition_handler_->GetWindowIterator();
+        if (iter) {
+            DLOG(INFO) << "seek to pk " << key_;
+            iter->Seek(key_);
+            if (iter->Valid() &&
+                0 == iter->GetKey().compare(fesql::codec::Row(key_))) {
+                return iter->GetRawValue();
+            } else {
+                return nullptr;
+            }
+        }
         return nullptr;
     }
-    inline std::unique_ptr<::fesql::vm::WindowIterator> GetWindowIterator(
-        const std::string &idx_name) {
+
+    std::unique_ptr<::fesql::vm::WindowIterator> GetWindowIterator(
+        const std::string &idx_name) override {
         return std::unique_ptr<::fesql::vm::WindowIterator>();
     }
-    virtual const uint64_t GetCount() {
+
+    const uint64_t GetCount() override {
         auto iter = GetIterator();
         if (!iter) return 0;
         uint64_t cnt = 0;
@@ -100,6 +113,7 @@ class TabletSegmentHandler : public ::fesql::vm::TableHandler {
         }
         return cnt;
     }
+
     ::fesql::vm::Row At(uint64_t pos) override {
         auto iter = GetIterator();
         if (!iter) return ::fesql::vm::Row();
@@ -128,25 +142,25 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler {
 
     ~TabletPartitionHandler() {}
 
-    const ::fesql::vm::OrderType GetOrderType() const {
+    const ::fesql::vm::OrderType GetOrderType() const override {
         return ::fesql::vm::OrderType::kDescOrder;
     }
 
-    inline const ::fesql::vm::Schema *GetSchema() {
+    const ::fesql::vm::Schema *GetSchema() override {
         return table_handler_->GetSchema();
     }
 
-    inline const std::string &GetName() { return table_handler_->GetName(); }
+    const std::string &GetName() override { return table_handler_->GetName(); }
 
-    inline const std::string &GetDatabase() {
+    const std::string &GetDatabase() override {
         return table_handler_->GetDatabase();
     }
 
-    inline const ::fesql::vm::Types &GetTypes() {
+    const ::fesql::vm::Types &GetTypes() override {
         return table_handler_->GetTypes();
     }
 
-    inline const ::fesql::vm::IndexHint &GetIndex() { return index_hint_; }
+    const ::fesql::vm::IndexHint &GetIndex() override { return table_handler_->GetIndex(); }
 
     std::unique_ptr<::fesql::vm::WindowIterator> GetWindowIterator() override {
         DLOG(INFO) << "get window it with name " << index_name_;
@@ -164,11 +178,11 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler {
         }
         return cnt;
     }
-    virtual std::shared_ptr<::fesql::vm::TableHandler> GetSegment(
+
+    std::shared_ptr<::fesql::vm::TableHandler> GetSegment(
         std::shared_ptr<::fesql::vm::PartitionHandler> partition_hander,
-        const std::string &key) {
-        return std::shared_ptr<TabletSegmentHandler>(
-            new TabletSegmentHandler(partition_hander, key));
+        const std::string &key) override {
+        return std::make_shared<TabletSegmentHandler>(partition_hander, key);
     }
     const std::string GetHandlerTypeName() override {
         return "TabletPartitionHandler";
@@ -177,62 +191,40 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler {
  private:
     std::shared_ptr<::fesql::vm::TableHandler> table_handler_;
     std::string index_name_;
-    ::fesql::vm::IndexHint index_hint_;
 };
 
 class TabletTableHandler : public ::fesql::vm::TableHandler {
  public:
-    TabletTableHandler(const ::rtidb::api::TableMeta &meta,
-                       const std::string &db,
-                       std::shared_ptr<::rtidb::storage::Table> table);
-
-    ~TabletTableHandler();
+    explicit TabletTableHandler(const ::rtidb::api::TableMeta &meta);
 
     bool Init();
 
-    inline const ::fesql::vm::Schema *GetSchema() { return &schema_; }
+    const ::fesql::vm::Schema *GetSchema() override { return &schema_; }
 
-    inline const std::string &GetName() { return name_; }
+    const std::string &GetName() override { return name_; }
 
-    inline const std::string &GetDatabase() { return db_; }
+    const std::string &GetDatabase() override { return db_; }
 
-    inline const ::fesql::vm::Types &GetTypes() { return types_; }
+    const ::fesql::vm::Types &GetTypes() override { return types_; }
 
-    inline const ::fesql::vm::IndexHint &GetIndex() { return index_hint_; }
+    const ::fesql::vm::IndexHint &GetIndex() override { return index_hint_; }
 
     const ::fesql::codec::Row Get(int32_t pos);
 
-    inline std::shared_ptr<storage::Table> GetTable() { return table_; }
+    std::unique_ptr<::fesql::codec::RowIterator> GetIterator() const override;
 
-    std::unique_ptr<::fesql::codec::RowIterator> GetIterator() const;
-
-    ::fesql::codec::RowIterator *GetIterator(int8_t *addr) const override;
+    ::fesql::codec::RowIterator *GetRawIterator() const override;
 
     std::unique_ptr<::fesql::codec::WindowIterator> GetWindowIterator(
-        const std::string &idx_name);
+        const std::string &idx_name) override;
 
-    virtual const uint64_t GetCount();
+    const uint64_t GetCount() override;
 
     ::fesql::codec::Row At(uint64_t pos) override;
 
-    virtual std::shared_ptr<::fesql::vm::PartitionHandler> GetPartition(
+    std::shared_ptr<::fesql::vm::PartitionHandler> GetPartition(
         std::shared_ptr<::fesql::vm::TableHandler> table_hander,
-        const std::string &index_name) const {
-        if (!table_hander) {
-            LOG(WARNING) << "fail to get partition for tablet table handler: "
-                            "table handler is null";
-            return std::shared_ptr<::fesql::vm::PartitionHandler>();
-        }
-        if (table_hander->GetIndex().find(index_name) ==
-            table_hander->GetIndex().cend()) {
-            LOG(WARNING)
-                << "fail to get partition for tablet table handler, index name "
-                << index_name;
-            return std::shared_ptr<::fesql::vm::PartitionHandler>();
-        }
-        return std::shared_ptr<TabletPartitionHandler>(
-            new TabletPartitionHandler(table_hander, index_name));
-    }
+        const std::string &index_name) const override;
 
     const std::string GetHandlerTypeName() override {
         return "TabletTableHandler";
@@ -241,6 +233,10 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
     inline int32_t GetTid() {
         return meta_.tid();
     }
+
+    void AddTable(std::shared_ptr<::rtidb::storage::Table> table);
+
+    int DeleteTable(uint32_t pid);
 
  private:
     inline int32_t GetColumnIndex(const std::string &column) {
@@ -256,7 +252,7 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
     ::fesql::vm::Schema schema_;
     std::string name_;
     std::string db_;
-    std::shared_ptr<::rtidb::storage::Table> table_;
+    std::shared_ptr<Tables> tables_;
     ::fesql::vm::Types types_;
     ::fesql::vm::IndexList index_list_;
     ::fesql::vm::IndexHint index_hint_;
@@ -278,16 +274,17 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     bool AddDB(const ::fesql::type::Database &db);
 
-    bool AddTable(std::shared_ptr<TabletTableHandler> table);
+    bool AddTable(const ::rtidb::api::TableMeta& meta,
+            std::shared_ptr<::rtidb::storage::Table> table);
 
-    std::shared_ptr<::fesql::type::Database> GetDatabase(const std::string &db);
+    std::shared_ptr<::fesql::type::Database> GetDatabase(const std::string &db) override;
 
     std::shared_ptr<::fesql::vm::TableHandler> GetTable(
-        const std::string &db, const std::string &table_name);
+        const std::string &db, const std::string &table_name) override;
 
     bool IndexSupport() override;
 
-    bool DeleteTable(const std::string &db, const std::string &table_name);
+    bool DeleteTable(const std::string &db, const std::string &table_name, uint32_t pid);
 
     bool DeleteDB(const std::string &db);
 

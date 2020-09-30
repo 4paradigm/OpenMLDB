@@ -150,7 +150,7 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
     }
     ::fesql::vm::ExplainOutput explain;
     ::fesql::base::Status vm_status;
-    bool ok = engine_->Explain(sql, db, false, &explain, &vm_status);
+    bool ok = engine_->Explain(sql, db, ::fesql::vm::kRequestMode, &explain, &vm_status);
     if (!ok) {
         status->code = -1;
         status->msg = vm_status.msg;
@@ -560,7 +560,7 @@ bool SQLClusterRouter::GetTablet(
     // TODO(wangtaize) cache compile result
     std::set<std::string> tables;
     ::fesql::base::Status status;
-    if (!engine_->GetDependentTables(sql, db, true, &tables, status)) {
+    if (!engine_->GetDependentTables(sql, db, ::fesql::vm::kBatchMode, &tables, status)) {
         LOG(WARNING) << "fail to get tablet: " << status.msg;
         return false;
     }
@@ -842,7 +842,7 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(
     ::fesql::sdk::Status* status) {
     ::fesql::vm::ExplainOutput explain_output;
     ::fesql::base::Status vm_status;
-    bool ok = engine_->Explain(sql, db, false, &explain_output, &vm_status);
+    bool ok = engine_->Explain(sql, db, ::fesql::vm::kRequestMode, &explain_output, &vm_status);
     if (!ok) {
         status->code = -1;
         status->msg = vm_status.msg;

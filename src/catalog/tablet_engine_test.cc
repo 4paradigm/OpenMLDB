@@ -90,8 +90,9 @@ void StoreData(std::shared_ptr<TestArgs> args,
 }
 
 std::shared_ptr<TestArgs> PrepareTableWithTableDef(
-    const fesql::type::TableDef &table_def, const uint32_t tid) {
+    const fesql::type::TableDef &table_def, const std::string& db_name, const uint32_t tid) {
     std::shared_ptr<TestArgs> args = std::shared_ptr<TestArgs>(new TestArgs());
+    args->meta.set_db(db_name);
     args->meta.set_name(table_def.name());
     args->meta.set_tid(tid);
     args->meta.set_pid(0);
@@ -135,14 +136,11 @@ void TabletEngineTest::BatchModeCheck(
         std::shared_ptr<::fesql::storage::Table> sql_table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
 
-        auto args = PrepareTableWithTableDef(table_def, i + 1);
+        auto args = PrepareTableWithTableDef(table_def, sql_case.db(), i + 1);
         if (!args) {
             FAIL() << "fail to prepare table";
         }
-        std::shared_ptr<TabletTableHandler> handler(
-            new TabletTableHandler(args->meta, sql_case.db(), args->table));
-        ASSERT_TRUE(handler->Init());
-        ASSERT_TRUE(catalog->AddTable(handler));
+        ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
         name_table_map.insert(
             std::make_pair(table_def.name(), std::make_pair(args, sql_table)));
     }
@@ -175,12 +173,8 @@ void TabletEngineTest::BatchModeCheck(
     session.GetPhysicalPlan()->Print(oss, "");
     LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
 
-    if (!sql_case.batch_plan().empty()) {
-        ASSERT_EQ(oss.str(), sql_case.batch_plan());
-    }
-
     std::ostringstream runner_oss;
-    session.GetRunner()->Print(runner_oss, "");
+    session.GetMainTask()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::vector<fesql::codec::Row> request_data;
     for (int32_t i = 0; i < input_cnt; i++) {
@@ -233,14 +227,11 @@ void TabletEngineTest::RequestModeCheck(
         std::shared_ptr<::fesql::storage::Table> sql_table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
 
-        auto args = PrepareTableWithTableDef(table_def, i + 1);
+        auto args = PrepareTableWithTableDef(table_def, sql_case.db(), i + 1);
         if (!args) {
             FAIL() << "fail to prepare table";
         }
-        std::shared_ptr<TabletTableHandler> handler(
-            new TabletTableHandler(args->meta, sql_case.db(), args->table));
-        ASSERT_TRUE(handler->Init());
-        ASSERT_TRUE(catalog->AddTable(handler));
+        ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
         name_table_map.insert(
             std::make_pair(table_def.name(), std::make_pair(args, sql_table)));
     }
@@ -272,12 +263,8 @@ void TabletEngineTest::RequestModeCheck(
     session.GetPhysicalPlan()->Print(oss, "");
     LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
 
-    if (!sql_case.request_plan().empty()) {
-        ASSERT_EQ(oss.str(), sql_case.request_plan());
-    }
-
     std::ostringstream runner_oss;
-    session.GetRunner()->Print(runner_oss, "");
+    session.GetMainTask()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::vector<fesql::codec::Row> request_data;
     const std::string &request_name = session.GetRequestName();
@@ -418,6 +405,13 @@ INSTANTIATE_TEST_SUITE_P(EngineTestUdafFunction, TabletEngineTest,
 INSTANTIATE_TEST_SUITE_P(EngineTestUdfFunction, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases(
                              "/cases/integration/v1/test_udf_function.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineTestWhere, TabletEngineTest,
+                         testing::ValuesIn(TabletEngineTest::InitCases(
+                             "/cases/integration/v1/test_where.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestFZFunction, TabletEngineTest,
+    testing::ValuesIn(TabletEngineTest::InitCases(
+        "/cases/integration/v1/test_feature_zero_function.yaml")));
 
 }  // namespace catalog
 }  // namespace rtidb

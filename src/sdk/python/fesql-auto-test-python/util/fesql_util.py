@@ -10,6 +10,7 @@ import re
 import random
 import string
 from datetime import datetime
+import common.fesql_config as fesql_config
 
 log = LogManager('fesql-auto-test').get_logger_and_add_handlers()
 
@@ -101,8 +102,7 @@ def selectRequestMode(executor,dbName:str,selectSql:str,input):
                 fesqlResult.ok = ok
                 fesqlResult.msg = rs
                 return fesqlResult
-            if index ==0:
-                schema = rs.GetSchema()
+            schema = rs.GetSchema()
             result += convertRestultSetToList(rs,schema)
             insertResult = insert(executor,dbName,inserts[index])
             # ok,msg = executor.executeInsert(dbName,inserts[index])
@@ -146,7 +146,6 @@ def ddl(executor, dbName: str, sql: str):
 def getColumnData(rs,schema,index):
     obj = None
     if rs.IsNULL(index):
-        # print("AA")
         return obj
     dataType = DataTypeName(schema.GetColumnType(index))
     # print("BB:{}".format(dataType))
@@ -170,6 +169,17 @@ def getColumnData(rs,schema,index):
         obj = rs.GetTimeUnsafe(index)
     # print("cc:{}".format(obj))
     return obj
+
+def convertExpectTypes(expectTypes:list):
+    for index,expectType in enumerate(expectTypes):
+        ss = re.split("\\s+",expectType)
+        dataType = ss[-1]
+        if dataType == 'int16':
+            expectTypes[index] = expectType[0:-len(dataType)]+"smallint"
+        elif dataType == 'int32':
+            expectTypes[index] = expectType[0:-len(dataType)]+"int"
+        elif dataType == 'int64':
+            expectTypes[index] = expectType[0:-len(dataType)]+"bigint"
 
 def getColumnType(dataType:str):
     if dataType == 'bool':
@@ -211,6 +221,12 @@ def select(executor, dbName: str, sql: str):
 def formatSql(sql:str,tableNames:list):
     if "{auto}" in sql:
         sql = sql.replace("{auto}", getRandomName())
+    if "{tb_endpoint_0}" in sql:
+        sql = sql.replace("{tb_endpoint_0}", fesql_config.tb_endpoint_0)
+    if "{tb_endpoint_1}" in sql:
+        sql = sql.replace("{tb_endpoint_1}", fesql_config.tb_endpoint_1)
+    if "{tb_endpoint_2}" in sql:
+        sql = sql.replace("{tb_endpoint_2}", fesql_config.tb_endpoint_2)
     indexs = formatSqlReg.findall(sql)
     for indexStr in indexs:
          index = int(indexStr)
