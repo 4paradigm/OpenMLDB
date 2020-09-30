@@ -231,6 +231,17 @@ class PartitionHandler : public TableHandler {
     virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key) {
         return std::shared_ptr<TableHandler>();
     }
+
+    // Return batch segments with given keys vector
+    // this is default implementation of GetSegments
+    virtual std::vector<std::shared_ptr<TableHandler>> GetSegments(
+        const std::vector<std::string>& keys) {
+        std::vector<std::shared_ptr<TableHandler>> segments;
+        for (auto key : keys) {
+            segments.push_back(GetSegment(key));
+        }
+        return segments;
+    }
     const std::string GetHandlerTypeName() override {
         return "PartitionHandler";
     }
