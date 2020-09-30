@@ -1,7 +1,8 @@
 cases:
   - id: 0
-    desc: fz sql
+    desc: fz sql 子查询
     db: db1
+    mode: rtidb-unsupport
     sql: |
       select
           c1,
@@ -14,6 +15,98 @@ cases:
           (select '' as s1, s2 as s2, t1 as t1, date('2019-07-18') as t2, string(0) as d1, string(0) as d2, int(0) as c1, bigint(0) as c2, '' as ai, '' as kn, '' as ks from main)
           window table_1_s2_t1 as (
       UNION (select s1, s2, t1, t2, d1, d2, c1, c2, ai, kn, ks from table_1) partition by s2 order by t1 rows_range between 1d preceding and 0s preceding);
+    inputs:
+      - name: main
+        schema: label:int,s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
+        index: index1:s2:t1,index2:s1:t1,index3:d1:t1,index4:d2:t1
+        data: |
+          1, 1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
+      - name: table_1
+        schema: s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
+        index: index1:s2:t1
+        data: |
+          1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
+      - name: table_2
+        schema: s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
+        index: index1:s1:t1
+        data: |
+          1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
+      - name: table_3
+        schema: s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
+        index: index1:s1:t1
+        data: |
+          1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
+    expect:
+      schema: col2:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, w1_col1_cnt:int64, col1:int32, col6:string
+      order: col1
+      data: |
+        5, 2, 2, 2.1, 21.1, 10, 3, 2, 1, 1
+        5, 4, 5, 5.3, 53.3, 15, 9, 3, 2, 22
+        55, 2, 6, 6.3, 63.3, 110, 3, 2, 3, 333
+        55, 4, 11, 11.7, 117.7, 165, 9, 3, 4, 4444
+        55,6, 14, 14.9, 149.9, 165, 15, 3, 5, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  
+  - id: 1
+    desc: 主表window
+    db: db1
+    mode: rtidb-unsupport
+    sql: |
+      select
+          c1,
+          min(c1) over table_1_s2_t1 as table_1_c1_9,
+          min(c2) over table_1_s2_t1 as table_1_c2_10,
+          identity(case when at(d1, 1) != null then distinct_count(d1) else null end) over table_1_s2_t1 as table_1_d1_11,
+          identity(case when at(d2, 1) != null then distinct_count(d2) else null end) over table_1_s2_t1 as table_1_d2_12,
+          identity(case when at(s1, 1) != null then distinct_count(s1) else null end) over table_1_s2_t1 as table_1_s1_13
+      from
+          main
+          window table_1_s2_t1 as (partition by s2 order by t1 rows_range between 1d preceding and 0s preceding);
+    inputs:
+      - name: main
+        schema: label:int,s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
+        index: index1:s2:t1,index2:s1:t1,index3:d1:t1,index4:d2:t1
+        data: |
+          1, 1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
+      - name: table_1
+        schema: s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
+        index: index1:s2:t1
+        data: |
+          1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
+      - name: table_2
+        schema: s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
+        index: index1:s1:t1
+        data: |
+          1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
+      - name: table_3
+        schema: s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
+        index: index1:s1:t1
+        data: |
+          1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
+    expect:
+      schema: col2:int16, col5:int64, w1_col1_sum:int32, w1_col3_sum:float, w1_col4_sum:double, w1_col2_sum:int16, w1_col5_sum:int64, w1_col1_cnt:int64, col1:int32, col6:string
+      order: col1
+      data: |
+        5, 2, 2, 2.1, 21.1, 10, 3, 2, 1, 1
+        5, 4, 5, 5.3, 53.3, 15, 9, 3, 2, 22
+        55, 2, 6, 6.3, 63.3, 110, 3, 2, 3, 333
+        55, 4, 11, 11.7, 117.7, 165, 9, 3, 4, 4444
+        55,6, 14, 14.9, 149.9, 165, 15, 3, 5, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+
+  - id: 2
+    desc: 主表window 添加 INSTANCE_NOT_IN_WINDOW 没有明显错误日志
+    db: db1
+    sql: |
+      select
+          c1,
+          min(c1) over table_1_s2_t1 as table_1_c1_9,
+          min(c2) over table_1_s2_t1 as table_1_c2_10,
+          identity(case when at(d1, 1) != null then distinct_count(d1) else null end) over table_1_s2_t1 as table_1_d1_11,
+          identity(case when at(d2, 1) != null then distinct_count(d2) else null end) over table_1_s2_t1 as table_1_d2_12,
+          identity(case when at(s1, 1) != null then distinct_count(s1) else null end) over table_1_s2_t1 as table_1_s1_13
+      from
+          main
+          window table_1_s2_t1 as (partition by s2 order by t1 rows_range between 1d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW);
     inputs:
       - name: main
         schema: label:int,s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
