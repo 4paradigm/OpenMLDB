@@ -1120,7 +1120,7 @@ distribution:   role_type EQUALS endpoint
                 }
                 ;
 
-create_sp_stmt:   CREATE PROCEDURE sp_name '(' input_parameters ')' BEGINTOKEN stmt ';' END
+create_sp_stmt:   CREATE PROCEDURE sp_name '(' input_parameters ')' BEGINTOKEN query_clause ';' END
                   {
                       $$ = node_manager->MakeCreateProcedureNode($3, $5, $8);         
                       free($3);
