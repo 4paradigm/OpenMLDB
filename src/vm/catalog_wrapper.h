@@ -195,9 +195,7 @@ class PartitionProjectWrapper : public PartitionHandler {
     const uint64_t GetCount() override {
         return partition_handler_->GetCount();
     }
-    virtual std::shared_ptr<TableHandler> GetSegment(
-        std::shared_ptr<PartitionHandler> partition_hander,
-        const std::string& key);
+    virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key);
     virtual const OrderType GetOrderType() const {
         return partition_handler_->GetOrderType();
     }
@@ -250,9 +248,7 @@ class PartitionFilterWrapper : public PartitionHandler {
         }
     }
     base::ConstIterator<uint64_t, Row>* GetRawIterator() const override;
-    virtual std::shared_ptr<TableHandler> GetSegment(
-        std::shared_ptr<PartitionHandler> partition_hander,
-        const std::string& key);
+    virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key);
     virtual const OrderType GetOrderType() const {
         return partition_handler_->GetOrderType();
     }
@@ -309,8 +305,7 @@ class TableProjectWrapper : public TableHandler {
     }
     const uint64_t GetCount() override { return table_hander_->GetCount(); }
     virtual std::shared_ptr<PartitionHandler> GetPartition(
-        std::shared_ptr<TableHandler> table_hander,
-        const std::string& index_name) const;
+        const std::string& index_name);
     virtual const OrderType GetOrderType() const {
         return table_hander_->GetOrderType();
     }
@@ -359,8 +354,7 @@ class TableFilterWrapper : public TableHandler {
             fun_);
     }
     virtual std::shared_ptr<PartitionHandler> GetPartition(
-        std::shared_ptr<TableHandler> table_hander,
-        const std::string& index_name) const;
+        const std::string& index_name);
     virtual const OrderType GetOrderType() const {
         return table_hander_->GetOrderType();
     }

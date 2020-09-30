@@ -11,9 +11,8 @@ namespace fesql {
 namespace vm {
 
 std::shared_ptr<TableHandler> PartitionProjectWrapper::GetSegment(
-    std::shared_ptr<PartitionHandler> partition_handler,
     const std::string& key) {
-    auto segment = partition_handler_->GetSegment(partition_handler_, key);
+    auto segment = partition_handler_->GetSegment(key);
     if (!segment) {
         return std::shared_ptr<TableHandler>();
     } else {
@@ -32,9 +31,8 @@ base::ConstIterator<uint64_t, Row>* PartitionProjectWrapper::GetRawIterator()
 }
 
 std::shared_ptr<TableHandler> PartitionFilterWrapper::GetSegment(
-    std::shared_ptr<PartitionHandler> partition_handler,
     const std::string& key) {
-    auto segment = partition_handler_->GetSegment(partition_handler_, key);
+    auto segment = partition_handler_->GetSegment(key);
     if (!segment) {
         return std::shared_ptr<TableHandler>();
     } else {
@@ -52,9 +50,8 @@ base::ConstIterator<uint64_t, Row>* PartitionFilterWrapper::GetRawIterator()
     }
 }
 std::shared_ptr<PartitionHandler> TableProjectWrapper::GetPartition(
-    std::shared_ptr<TableHandler> table_hander,
-    const std::string& index_name) const {
-    auto partition = table_hander_->GetPartition(table_hander_, index_name);
+    const std::string& index_name) {
+    auto partition = table_hander_->GetPartition(index_name);
     if (!partition) {
         return std::shared_ptr<PartitionHandler>();
     } else {
@@ -63,9 +60,8 @@ std::shared_ptr<PartitionHandler> TableProjectWrapper::GetPartition(
     }
 }
 std::shared_ptr<PartitionHandler> TableFilterWrapper::GetPartition(
-    std::shared_ptr<TableHandler> table_hander,
-    const std::string& index_name) const {
-    auto partition = table_hander_->GetPartition(table_hander_, index_name);
+    const std::string& index_name) {
+    auto partition = table_hander_->GetPartition(index_name);
     if (!partition) {
         return std::shared_ptr<PartitionHandler>();
     } else {

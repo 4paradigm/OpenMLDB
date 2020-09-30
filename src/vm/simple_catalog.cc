@@ -108,8 +108,7 @@ fesql::codec::Row SimpleCatalogTableHandler::At(uint64_t pos) {
 }
 
 std::shared_ptr<PartitionHandler> SimpleCatalogTableHandler::GetPartition(
-    std::shared_ptr<TableHandler> table_hander,
-    const std::string &index_name) const {
+    const std::string &index_name) {
     LOG(ERROR) << "Unsupported operation: GetPartition()";
     return nullptr;
 }
