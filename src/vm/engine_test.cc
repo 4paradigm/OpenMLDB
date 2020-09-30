@@ -36,6 +36,11 @@ class EngineTest : public ::testing::TestWithParam<SQLCase> {
 INSTANTIATE_TEST_CASE_P(
     EngineFailQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/fail_query.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestFzTest, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/fz_sql.yaml")));
+
 INSTANTIATE_TEST_CASE_P(
     EngineSimpleQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
