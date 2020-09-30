@@ -5792,7 +5792,7 @@ void TabletImpl::GetSchema(RpcController* controller,
     const std::string& sql = request->sql();
     ::fesql::base::Status vm_status;
     ::fesql::vm::ExplainOutput explain_output;
-    bool ok = engine_.Explain(sql, db, false, &explain_output, &vm_status);
+    bool ok = engine_.Explain(sql, db, ::fesql::vm::kRequestMode, &explain_output, &vm_status);
     if (!ok) {
         response->set_code(::rtidb::base::ReturnCode::kExplainFailed);
         response->set_msg("fail to explain sql:" + sql + " in db:" + db);
