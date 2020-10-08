@@ -70,7 +70,6 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
     }
 
     std::shared_ptr<::fesql::vm::PartitionHandler> GetPartition(
-        std::shared_ptr<::fesql::vm::TableHandler> table_hander,
         const std::string& index_name) const override {
         return std::shared_ptr<::fesql::vm::PartitionHandler>();
     }

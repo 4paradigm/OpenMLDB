@@ -148,18 +148,12 @@ const uint64_t TabletTableHandler::GetCount() {
     return iter->Valid() ? iter->GetValue() : ::fesql::codec::Row();
 }
 
-std::shared_ptr<::fesql::vm::PartitionHandler> TabletTableHandler::GetPartition(
-    std::shared_ptr<::fesql::vm::TableHandler> table_hander, const std::string& index_name) const {
-    if (!table_hander) {
-        LOG(WARNING) << "fail to get partition for tablet table handler: "
-                        "table handler is null";
-        return std::shared_ptr<::fesql::vm::PartitionHandler>();
-    }
-    if (table_hander->GetIndex().find(index_name) == table_hander->GetIndex().cend()) {
+std::shared_ptr<::fesql::vm::PartitionHandler> TabletTableHandler::GetPartition(const std::string& index_name) {
+    if (index_hint_.find(index_name) == index_hint_.cend()) {
         LOG(WARNING) << "fail to get partition for tablet table handler, index name " << index_name;
         return std::shared_ptr<::fesql::vm::PartitionHandler>();
     }
-    return std::make_shared<TabletPartitionHandler>(table_hander, index_name);
+    return std::make_shared<TabletPartitionHandler>(shared_from_this(), index_name);
 }
 
 void TabletTableHandler::AddTable(std::shared_ptr<::rtidb::storage::Table> table) {
