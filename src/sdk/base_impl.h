@@ -43,6 +43,7 @@ class SchemaImpl : public Schema {
 
     const DataType GetColumnType(uint32_t index) const;
     const bool IsColumnNotNull(uint32_t index) const;
+    const bool IsConstant(uint32_t index) const;
 
  private:
     vm::Schema schema_;
