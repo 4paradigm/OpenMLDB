@@ -453,6 +453,7 @@ bool NsClient::HandleSQLCreateProcedure(const fesql::node::NodePointVector& pars
                         return false;
                     }
                     col_desc->set_data_type(rtidb_type);
+                    col_desc->set_is_constant(input_ptr->GetIsConstant());
                 } else {
                     sql_status->msg = "fail to execute script with unSuppurt type" +
                         fesql::node::NameOfSQLNodeType(input->GetType());

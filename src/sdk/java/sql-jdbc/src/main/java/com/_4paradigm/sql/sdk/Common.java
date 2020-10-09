@@ -43,7 +43,7 @@ public class Common {
             column.setColumnName(schema.GetColumnName(i));
             column.setSqlType(type2SqlType(schema.GetColumnType(i)));
             column.setNotNull(schema.IsColumnNotNull(i));
-            column.setConstant(false);
+            column.setConstant(schema.IsConstant(i));
             columnList.add(column);
         }
         return new com._4paradigm.sql.sdk.Schema(columnList);
