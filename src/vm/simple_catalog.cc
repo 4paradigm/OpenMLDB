@@ -115,12 +115,12 @@ std::shared_ptr<PartitionHandler> SimpleCatalogTableHandler::GetPartition(
 }
 
 std::unique_ptr<RowIterator> SimpleCatalogTableHandler::GetIterator() const {
-    LOG(ERROR) << "Unsupported operation: GetIterator()";
+    LOG(ERROR) << "Unsupported operation: GetRawIterator()";
     return nullptr;
 }
 
-RowIterator *SimpleCatalogTableHandler::GetIterator(int8_t *addr) const {
-    LOG(ERROR) << "Unsupported operation: GetIterator()";
+RowIterator *SimpleCatalogTableHandler::GetRawIterator() const {
+    LOG(ERROR) << "Unsupported operation: GetRawIterator()";
     return nullptr;
 }
 

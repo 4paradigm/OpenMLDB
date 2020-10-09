@@ -57,7 +57,7 @@ class SimpleCatalogTableHandler : public TableHandler {
 
     std::unique_ptr<RowIterator> GetIterator() const override;
 
-    RowIterator *GetIterator(int8_t *addr) const override;
+    RowIterator *GetRawIterator() const override;
 
  private:
     std::string db_name_;

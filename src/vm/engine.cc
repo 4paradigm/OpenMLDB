@@ -38,19 +38,11 @@ namespace vm {
 
 static bool LLVM_IS_INITIALIZED = false;
 Engine::Engine(const std::shared_ptr<Catalog>& catalog)
-    : cl_(catalog),
-      options_(),
-      mu_(),
-      batch_lru_cache_(),
-      request_lru_cache_() {}
+    : cl_(catalog), options_(), mu_(), lru_cache_() {}
 
 Engine::Engine(const std::shared_ptr<Catalog>& catalog,
                const EngineOptions& options)
-    : cl_(catalog),
-      options_(options),
-      mu_(),
-      batch_lru_cache_(),
-      request_lru_cache_() {}
+    : cl_(catalog), options_(options), mu_(), lru_cache_() {}
 
 Engine::~Engine() {}
 
@@ -62,13 +54,13 @@ void Engine::InitializeGlobalLLVM() {
 }
 
 bool Engine::GetDependentTables(const std::string& sql, const std::string& db,
-                                bool is_batch_mode,
+                                EngineMode engine_mode,
                                 std::set<std::string>* tables,
                                 base::Status& status) {
     std::shared_ptr<CompileInfo> info(new CompileInfo());
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
-    info->get_sql_context().is_batch_mode = is_batch_mode;
+    info->get_sql_context().engine_mode = engine_mode;
     SQLCompiler compiler(
         std::atomic_load_explicit(&cl_, std::memory_order_acquire),
         options_.is_keep_ir(), false, options_.is_plan_only());
@@ -134,12 +126,13 @@ bool Engine::GetDependentTables(node::PlanNode* node,
     }
     return true;
 }
+
 bool Engine::Get(const std::string& sql, const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
     {
         std::shared_ptr<CompileInfo> info =
-            GetCacheLocked(db, sql, session.IsBatchRun());
+            GetCacheLocked(db, sql, session.engine_mode());
         if (info) {
             session.SetCompileInfo(info);
             return true;
@@ -149,7 +142,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     std::shared_ptr<CompileInfo> info(new CompileInfo());
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
-    info->get_sql_context().is_batch_mode = session.IsBatchRun();
+    info->get_sql_context().engine_mode = session.engine_mode();
     info->get_sql_context().is_performance_sensitive =
         options_.is_performance_sensitive();
     SQLCompiler compiler(
@@ -160,59 +153,25 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         return false;
     }
     if (!options_.is_compile_only()) {
-        ok = compiler.BuildRunner(info->get_sql_context(), status);
+        ok = compiler.BuildClusterJob(info->get_sql_context(), status);
         if (!ok || 0 != status.code) {
             return false;
         }
     }
-    {
-        std::lock_guard<base::SpinMutex> lock(mu_);
-        if (session.IsBatchRun()) {
-            auto it = batch_lru_cache_.find(db);
-            if (it == batch_lru_cache_.end()) {
-                batch_lru_cache_.insert(std::make_pair(
-                    db, boost::compute::detail::lru_cache<
-                            std::string, std::shared_ptr<CompileInfo>>(
-                            options_.max_sql_cache_size())));
-                it = batch_lru_cache_.find(db);
-            }
-            auto value = it->second.get(sql);
-            if (value == boost::none) {
-                it->second.insert(sql, info);
-                session.SetCompileInfo(info);
-            } else {
-                session.SetCompileInfo(value.value());
-            }
-        } else {
-            auto it = request_lru_cache_.find(db);
-            if (it == request_lru_cache_.end()) {
-                request_lru_cache_.insert(std::make_pair(
-                    db, boost::compute::detail::lru_cache<
-                            std::string, std::shared_ptr<CompileInfo>>(
-                            options_.max_sql_cache_size())));
-                it = request_lru_cache_.find(db);
-            }
-            auto value = it->second.get(sql);
-            if (value == boost::none) {
-                it->second.insert(sql, info);
-                session.SetCompileInfo(info);
-            } else {
-                session.SetCompileInfo(value.value());
-            }
-        }
-    }
+    SetCacheLocked(db, sql, session.engine_mode(), info);
+    session.SetCompileInfo(info);
     return true;
 }
 
 bool Engine::Explain(const std::string& sql, const std::string& db,
-                     bool is_batch, ExplainOutput* explain_output,
+                     EngineMode engine_mode, ExplainOutput* explain_output,
                      base::Status* status) {
     if (explain_output == NULL || status == NULL) {
         LOG(WARNING) << "input args is invalid";
         return false;
     }
     SQLContext ctx;
-    ctx.is_batch_mode = is_batch;
+    ctx.engine_mode = engine_mode;
     ctx.sql = sql;
     ctx.db = db;
     ctx.is_performance_sensitive = options_.is_performance_sensitive();
@@ -234,38 +193,62 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
 
 void Engine::ClearCacheLocked(const std::string& db) {
     std::lock_guard<base::SpinMutex> lock(mu_);
-    batch_lru_cache_.erase(db);
-    request_lru_cache_.erase(db);
+    for (auto& cache : lru_cache_) {
+        cache.second.erase(db);
+    }
 }
 
 std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
                                                     const std::string& sql,
-                                                    bool is_batch) {
+                                                    EngineMode engine_mode) {
     std::lock_guard<base::SpinMutex> lock(mu_);
-    if (is_batch) {
-        auto it = batch_lru_cache_.find(db);
-        if (it == batch_lru_cache_.end()) {
-            return std::shared_ptr<CompileInfo>();
-        }
-        auto value = it->second.get(sql);
-        if (value == boost::none) {
-            return std::shared_ptr<CompileInfo>();
-        }
-        return value.value();
+    auto mode_iter = lru_cache_.find(engine_mode);
+    if (mode_iter == lru_cache_.end()) {
+        return nullptr;
+    }
+    auto& mode_cache = mode_iter->second;
+    auto db_iter = mode_cache.find(db);
+    if (db_iter == mode_cache.end()) {
+        return nullptr;
+    }
+    auto& lru = db_iter->second;
+    auto value = lru.get(sql);
+    if (value == boost::none) {
+        return nullptr;
     } else {
-        auto it = request_lru_cache_.find(db);
-        if (it == request_lru_cache_.end()) {
-            return std::shared_ptr<CompileInfo>();
-        }
-        auto value = it->second.get(sql);
-        if (value == boost::none) {
-            return std::shared_ptr<CompileInfo>();
-        }
         return value.value();
     }
 }
 
-RunSession::RunSession() : is_debug_(false) {}
+bool Engine::SetCacheLocked(const std::string& db, const std::string& sql,
+                            EngineMode engine_mode,
+                            std::shared_ptr<CompileInfo> info) {
+    std::lock_guard<base::SpinMutex> lock(mu_);
+    auto& mode_cache = lru_cache_[engine_mode];
+    using BoostLRU =
+        boost::compute::detail::lru_cache<std::string,
+                                          std::shared_ptr<CompileInfo>>;
+    std::map<std::string, BoostLRU>::iterator db_iter = mode_cache.find(db);
+    if (db_iter == mode_cache.end()) {
+        db_iter = mode_cache.insert(
+            db_iter, {db, BoostLRU(options_.max_sql_cache_size())});
+    }
+    auto& lru = db_iter->second;
+    auto value = lru.get(sql);
+    if (value == boost::none) {
+        lru.insert(sql, info);
+        return true;
+    } else {
+        // TODO(xxx): Ensure compile result is stable
+        DLOG(INFO) << "Engine cache already exists: " << engine_mode << " "
+                   << db << "\n"
+                   << sql;
+        return false;
+    }
+}
+
+RunSession::RunSession(EngineMode engine_mode)
+    : engine_mode_(engine_mode), is_debug_(false) {}
 RunSession::~RunSession() {}
 
 bool RunSession::SetCompileInfo(
@@ -274,42 +257,110 @@ bool RunSession::SetCompileInfo(
     return true;
 }
 
-int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
-    RunnerContext ctx(in_row, is_debug_);
-    auto output = compile_info_->get_sql_context().runner->RunWithCache(ctx);
-    if (!output) {
-        LOG(WARNING) << "run batch plan output is null";
-        return -1;
-    }
-    switch (output->GetHanlderType()) {
+static bool ExtractSingleRow(std::shared_ptr<DataHandler> handler,
+                             Row* out_row) {
+    switch (handler->GetHanlderType()) {
         case kTableHandler: {
             auto iter =
-                std::dynamic_pointer_cast<TableHandler>(output)->GetIterator();
+                std::dynamic_pointer_cast<TableHandler>(handler)->GetIterator();
             if (!iter) {
-                return 0;
+                return false;
             }
             iter->SeekToFirst();
             if (iter->Valid()) {
                 *out_row = iter->GetValue();
+                return true;
+            } else {
+                return false;
             }
-            return 0;
         }
         case kRowHandler: {
             *out_row =
-                std::dynamic_pointer_cast<RowHandler>(output)->GetValue();
-            return 0;
+                std::dynamic_pointer_cast<RowHandler>(handler)->GetValue();
+            return true;
         }
         case kPartitionHandler: {
             LOG(WARNING) << "partition output is invalid";
+            return false;
+        }
+    }
+}
+
+int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
+    return Run(0, in_row, out_row);
+}
+int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
+                               Row* out_row) {
+    auto task = compile_info_->get_sql_context().cluster_job.GetTask(task_id);
+    if (nullptr == task) {
+        LOG(WARNING) << "fail to run request plan: taskid" << task_id
+                     << " not exist!";
+        return -2;
+    }
+    RunnerContext ctx(in_row, is_debug_);
+    auto output = task->RunWithCache(ctx);
+    if (!output) {
+        LOG(WARNING) << "run request plan output is null";
+        return -1;
+    }
+    bool ok = ExtractSingleRow(output, out_row);
+    if (ok) {
+        return 0;
+    }
+    return -1;
+}
+
+int32_t BatchRequestRunSession::Run(const std::vector<Row>& request_batch,
+                                    std::vector<Row>& output) {
+    return Run(0, request_batch, output);
+}
+int32_t BatchRequestRunSession::Run(const uint32_t id,
+                                    const std::vector<Row>& request_batch,
+                                    std::vector<Row>& output) {
+    RunnerContext ctx(is_debug_);
+    for (size_t i = 0; i < request_batch.size(); ++i) {
+        output.push_back(Row());
+        int32_t ok = RunSingle(ctx, id, request_batch[i], &output.back());
+        if (!ok) {
             return -1;
         }
     }
     return 0;
 }
 
+int32_t BatchRequestRunSession::RunSingle(RunnerContext& ctx,  // NOLINT
+                                          const Row& request,
+                                          Row* output) {  // NOLINT
+    return RunSingle(ctx, 0, request, output);
+}
+int32_t BatchRequestRunSession::RunSingle(RunnerContext& ctx,  // NOLINT
+                                          const uint32_t task_id,
+                                          const Row& request,
+                                          Row* output) {  // NOLINT
+    auto task = compile_info_->get_sql_context().cluster_job.GetTask(task_id);
+    if (nullptr == task) {
+        LOG(WARNING) << "fail to run request plan: taskid" << task_id
+                     << " not exist!";
+        return -2;
+    }
+    ctx.SetRequest(request);
+    auto handler = task->RunWithCache(ctx);
+    if (!handler) {
+        LOG(WARNING) << "run request plan output is null";
+        return -1;
+    }
+    bool ok = ExtractSingleRow(handler, output);
+    if (!ok) {
+        return -1;
+    }
+    return 0;
+}
+
 std::shared_ptr<TableHandler> BatchRunSession::Run() {
     RunnerContext ctx(is_debug_);
-    auto output = compile_info_->get_sql_context().runner->RunWithCache(ctx);
+    auto output =
+        compile_info_->get_sql_context().cluster_job.GetTask(0)->RunWithCache(
+            ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
         return std::shared_ptr<TableHandler>();
@@ -334,7 +385,9 @@ std::shared_ptr<TableHandler> BatchRunSession::Run() {
 }
 int32_t BatchRunSession::Run(std::vector<Row>& rows, uint64_t limit) {
     RunnerContext ctx(is_debug_);
-    auto output = compile_info_->get_sql_context().runner->RunWithCache(ctx);
+    auto output =
+        compile_info_->get_sql_context().cluster_job.GetTask(0)->RunWithCache(
+            ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
         return -1;

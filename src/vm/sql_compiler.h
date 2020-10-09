@@ -35,25 +35,28 @@ namespace vm {
 
 using fesql::base::Status;
 
+enum EngineMode { kBatchMode, kRequestMode, kBatchRequestMode };
+
+std::string EngineModeName(EngineMode mode);
+
 struct SQLContext {
-    // mode: batch|request
-    // the sql content
-    bool is_batch_mode;
+    // mode: batch|request|batch request
+    EngineMode engine_mode;
     bool is_performance_sensitive;
+    // the sql content
     std::string sql;
     // the database
     std::string db;
     // the logical plan
     ::fesql::node::PlanNodeList logical_plan;
-    // the physical plan
     PhysicalOpNode* physical_plan;
+    fesql::vm::ClusterJob cluster_job;
     // TODO(wangtaize) add a light jit engine
     // eg using bthead to compile ir
     std::unique_ptr<FeSQLJIT> jit;
     Schema schema;
     Schema request_schema;
     std::string request_name;
-    Runner* runner;
     uint32_t row_size;
     std::string ir;
     std::string logical_plan_str;
@@ -61,7 +64,8 @@ struct SQLContext {
     std::string encoded_schema;
     std::string encoded_request_schema;
     ::fesql::node::NodeManager nm;
-    SQLContext() { runner = NULL; }
+    ::fesql::udf::UDFLibrary* udf_library;
+    SQLContext() {}
     ~SQLContext() {}
 };
 
@@ -87,8 +91,12 @@ class SQLCompiler {
     bool Compile(SQLContext& ctx,                 // NOLINT
                  Status& status);                 // NOLINT
     bool Parse(SQLContext& ctx, Status& status);  // NOLINT
-    bool BuildRunner(SQLContext& ctx,             // NOLINT
-                     Status& status);             // NOLINT
+    bool BuildRunner(node::NodeManager* nm, PhysicalOpNode* physical_plan,
+                     Runner** output,
+                     Status& status);  // NOLINT
+
+    bool BuildClusterJob(SQLContext& ctx,  // NOLINT
+                         Status& status);  // NOLINT
 
  private:
     void KeepIR(SQLContext& ctx, llvm::Module* m);  // NOLINT
@@ -96,6 +104,11 @@ class SQLCompiler {
     bool ResolvePlanFnAddress(PhysicalOpNode* node,
                               std::unique_ptr<FeSQLJIT>& jit,  // NOLINT
                               Status& status);                 // NOLINT
+
+    Status BuildPhysicalPlan(SQLContext* ctx,
+                             const ::fesql::node::PlanNodeList& plan_list,
+                             ::llvm::Module* llvm_module,
+                             PhysicalOpNode** output);
 
  private:
     const std::shared_ptr<Catalog> cl_;

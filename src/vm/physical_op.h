@@ -1210,7 +1210,9 @@ class PhysicalRenameNode : public PhysicalUnaryNode {
         output_type_ = node->output_type_;
         InitSchema();
     }
+    bool InitSchema() override;
     virtual ~PhysicalRenameNode() {}
+    static PhysicalRenameNode *CastFrom(PhysicalOpNode *node);
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const std::string &name_;
 };

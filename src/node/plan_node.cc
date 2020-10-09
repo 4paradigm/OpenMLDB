@@ -326,6 +326,21 @@ bool ProjectListNode::Equals(const PlanNode *node) const {
            PlanListEquals(this->projects, that->projects) &&
            LeafPlanNode::Equals(node);
 }
+bool ProjectListNode::IsSimpleProjectList() {
+    if (is_window_agg_) {
+        return false;
+    }
+    if (projects.empty()) {
+        return false;
+    }
+    for (auto item : projects) {
+        auto expr = dynamic_cast<ProjectNode *>(item)->GetExpression();
+        if (!node::ExprIsSimple(expr)) {
+            return false;
+        }
+    }
+    return true;
+}
 void FuncDefPlanNode::Print(std::ostream &output,
                             const std::string &orgTab) const {
     PlanNode::Print(output, orgTab);
@@ -358,6 +373,19 @@ bool ProjectPlanNode::Equals(const PlanNode *node) const {
     const ProjectPlanNode *that = dynamic_cast<const ProjectPlanNode *>(node);
     return PlanListEquals(this->project_list_vec_, that->project_list_vec_) &&
            UnaryPlanNode::Equals(node);
+}
+bool ProjectPlanNode::IsSimpleProjectPlan() {
+    if (project_list_vec_.empty()) {
+        return false;
+    }
+
+    for (auto item : project_list_vec_) {
+        auto project_list = dynamic_cast<node::ProjectListNode *>(item);
+        if (!project_list->IsSimpleProjectList()) {
+            return false;
+        }
+    }
+    return true;
 }
 void LimitPlanNode::Print(std::ostream &output,
                           const std::string &org_tab) const {

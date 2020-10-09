@@ -2287,6 +2287,7 @@ std::string MakeExprWithTable(const ExprNode *expr, const std::string db);
 const bool IsNullPrimary(const ExprNode *expr);
 bool ExprListNullOrEmpty(const ExprListNode *expr);
 bool ExprIsConst(const ExprNode *expr);
+bool ExprIsSimple(const ExprNode *expr);
 bool ExprListIsConst(const std::vector<node::ExprNode *> &exprs);
 bool SQLEquals(const SQLNode *left, const SQLNode *right);
 bool SQLListEquals(const SQLNodeList *left, const SQLNodeList *right);

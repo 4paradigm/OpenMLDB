@@ -15,11 +15,8 @@ std::shared_ptr<TableHandler> PartitionWrapper::GetSegment(
     const std::string& key) {
     return partition_handler_->GetSegment(partition_handler, key);
 }
-base::ConstIterator<uint64_t, Row>* PartitionWrapper::GetIterator(
-    int8_t* addr) const {
-    return new IteratorWrapper(static_cast<std::unique_ptr<RowIterator>>(
-                                   partition_handler_->GetIterator(addr)),
-                               fun_);
+base::ConstIterator<uint64_t, Row>* PartitionWrapper::GetRawIterator() const {
+    return new IteratorWrapper(partition_handler_->GetIterator(), fun_);
 }
 std::shared_ptr<PartitionHandler> TableWrapper::GetPartition(
     std::shared_ptr<TableHandler> table_hander,

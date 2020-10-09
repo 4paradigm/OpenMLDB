@@ -307,6 +307,9 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             runner->AddProducer(input);
             return nm_->RegisterNode(runner);
         }
+        case kPhysicalOpRename: {
+            return Build(node->producers().at(0), status);
+        }
         default: {
             status.code = common::kOpGenError;
             status.msg = "can't handle node " + std::to_string(node->type_) +
@@ -495,19 +498,19 @@ std::shared_ptr<TableHandler> Runner::TableReverse(
 }
 std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     if (need_cache_) {
-        auto iter = ctx.cache_.find(id_);
-        if (ctx.cache_.cend() != iter) {
-            return iter->second;
+        auto cached = ctx.GetCache(id_);
+        if (cached != nullptr) {
+            return cached;
         }
     }
     auto res = Run(ctx);
-    if (ctx.is_debug_) {
+    if (ctx.is_debug()) {
         LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
                   << "\n";
         Runner::PrintData(output_schemas_, res);
     }
     if (need_cache_) {
-        ctx.cache_.insert(std::make_pair(id_, res));
+        ctx.SetCache(id_, res);
     }
     return res;
 }
@@ -517,7 +520,7 @@ std::shared_ptr<DataHandler> DataRunner::Run(RunnerContext& ctx) {
 }
 
 std::shared_ptr<DataHandler> RequestRunner::Run(RunnerContext& ctx) {
-    return std::shared_ptr<DataHandler>(new MemRowHandler(ctx.request_));
+    return std::shared_ptr<DataHandler>(new MemRowHandler(ctx.request()));
 }
 std::shared_ptr<DataHandler> GroupRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);

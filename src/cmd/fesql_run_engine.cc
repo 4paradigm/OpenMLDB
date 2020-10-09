@@ -31,9 +31,10 @@ int RunSingle(const std::string& yaml_path) {
     }
     for (auto& sql_case : cases) {
         bool is_batch = FLAGS_runner_mode == "batch";
+        EngineMode mode = is_batch ? kBatchMode : kRequestMode;
         bool check_compatible = false;
         int ret;
-        EngineCheck(sql_case, is_batch, check_compatible, &ret);
+        EngineCheck(sql_case, mode, check_compatible, &ret);
         if (ret != ENGINE_TEST_RET_SUCCESS) {
             return ret;
         }

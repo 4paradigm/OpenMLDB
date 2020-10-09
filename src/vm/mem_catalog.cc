@@ -65,12 +65,8 @@ std::unique_ptr<RowIterator> MemWindowIterator::GetValue() {
         new MemTimeTableIterator(&(iter_->second), schema_));
 }
 
-RowIterator* MemWindowIterator::GetValue(int8_t* addr) {
-    if (addr == nullptr) {
-        return new MemTimeTableIterator(&(iter_->second), schema_);
-    } else {
-        return new (addr) MemTimeTableIterator(&(iter_->second), schema_);
-    }
+RowIterator* MemWindowIterator::GetRawValue() {
+    return new MemTimeTableIterator(&(iter_->second), schema_);
 }
 
 const Row MemWindowIterator::GetKey() { return Row(iter_->first); }
@@ -152,12 +148,8 @@ void MemTimeTableHandler::Reverse() {
                       ? kDescOrder
                       : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
 }
-RowIterator* MemTimeTableHandler::GetIterator(int8_t* addr) const {
-    if (nullptr == addr) {
-        return new MemTimeTableIterator(&table_, schema_);
-    } else {
-        return new (addr) MemTimeTableIterator(&table_, schema_);
-    }
+RowIterator* MemTimeTableHandler::GetRawIterator() const {
+    return new MemTimeTableIterator(&table_, schema_);
 }
 
 MemPartitionHandler::MemPartitionHandler()
@@ -245,12 +237,8 @@ std::unique_ptr<RowIterator> MemTableHandler::GetIterator() const {
         new MemTableIterator(&table_, schema_));
     return std::move(it);
 }
-RowIterator* MemTableHandler::GetIterator(int8_t* addr) const {
-    if (addr == nullptr) {
-        return new MemTableIterator(&table_, schema_);
-    } else {
-        return new (addr) MemTableIterator(&table_, schema_);
-    }
+RowIterator* MemTableHandler::GetRawIterator() const {
+    return new MemTableIterator(&table_, schema_);
 }
 
 MemTableHandler::MemTableHandler()

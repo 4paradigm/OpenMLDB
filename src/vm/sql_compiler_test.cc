@@ -86,12 +86,12 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(InitCases("cases/plan/join_query.yaml")));
 
 void CompilerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
-                   const bool is_batch) {
+                   EngineMode engine_mode) {
     SQLCompiler sql_compiler(catalog);
     SQLContext sql_context;
     sql_context.sql = sql;
     sql_context.db = "db";
-    sql_context.is_batch_mode = is_batch;
+    sql_context.engine_mode = engine_mode;
     sql_context.is_performance_sensitive = false;
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
@@ -112,7 +112,7 @@ void RequestSchemaCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     SQLContext sql_context;
     sql_context.sql = sql;
     sql_context.db = "db";
-    sql_context.is_batch_mode = false;
+    sql_context.engine_mode = kRequestMode;
     sql_context.is_performance_sensitive = false;
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
@@ -213,7 +213,7 @@ TEST_P(SQLCompilerTest, compile_request_mode_test) {
             new fesql::storage::Table(1, 1, table_def));
         AddTable(catalog, table_def, table);
     }
-    CompilerCheck(catalog, sqlstr, false);
+    CompilerCheck(catalog, sqlstr, kRequestMode);
     RequestSchemaCheck(catalog, sqlstr, table_def);
 }
 
@@ -292,7 +292,7 @@ TEST_P(SQLCompilerTest, compile_batch_mode_test) {
             new fesql::storage::Table(1, 1, table_def));
         AddTable(catalog, table_def, table);
     }
-    CompilerCheck(catalog, sqlstr, true);
+    CompilerCheck(catalog, sqlstr, kBatchMode);
 
     // Check for work with simple catalog
     auto simple_catalog = std::make_shared<SimpleCatalog>();
@@ -341,7 +341,7 @@ TEST_P(SQLCompilerTest, compile_batch_mode_test) {
     }
 
     simple_catalog->AddDatabase(db);
-    CompilerCheck(simple_catalog, sqlstr, true);
+    CompilerCheck(simple_catalog, sqlstr, kBatchMode);
 }
 
 }  // namespace vm
