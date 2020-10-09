@@ -939,6 +939,12 @@ cmd_stmt:
                 free($3);
                 free($5);
             }
+            |SHOW CREATE PROCEDURE database_name '.' sp_name
+            {
+                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdShowCreateSp, $4, $6);
+                free($4);
+                free($6);
+            }
             |EXIT {
                 $$ = node_manager->MakeCmdNode(::fesql::node::kCmdExit);
             }
