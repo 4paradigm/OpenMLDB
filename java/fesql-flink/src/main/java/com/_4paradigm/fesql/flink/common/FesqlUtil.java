@@ -128,7 +128,9 @@ public class FesqlUtil {
             } else if (columnType == kInt32) {
                 fieldTypes[i] = Types.INT;
             } else if (columnType == kInt64) {
+                // TODO: Catch TableException: Type is not supported: BigInteger
                 fieldTypes[i] = Types.BIG_INT;
+                //fieldTypes[i] = Types.INT;
             } else if (columnType== kFloat) {
                 fieldTypes[i] = Types.FLOAT;
             } else if (columnType == kDouble) {
