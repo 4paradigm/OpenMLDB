@@ -259,8 +259,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         spInfo.setDbName(procedureInfo.GetDbName());
         spInfo.setProName(procedureInfo.GetSpName());
         spInfo.setSql(procedureInfo.GetSql());
-        spInfo.setInputSchema(Common.ConvertSchema(procedureInfo.GetInputSchema()));
-        spInfo.setOutputSchema(Common.ConvertSchema(procedureInfo.GetOutputSchema()));
+        spInfo.setInputSchema(Common.convertSchema(procedureInfo.GetInputSchema()));
+        spInfo.setOutputSchema(Common.convertSchema(procedureInfo.GetOutputSchema()));
         return spInfo;
     }
 

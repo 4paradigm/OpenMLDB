@@ -33,7 +33,7 @@ public class Common {
         }
     }
 
-    public static com._4paradigm.sql.sdk.Schema ConvertSchema(Schema schema) throws SQLException {
+    public static com._4paradigm.sql.sdk.Schema convertSchema(Schema schema) throws SQLException {
         if (schema == null || schema.GetColumnCnt() == 0) {
             throw new SQLException("schema is null or empty");
         }
@@ -47,5 +47,30 @@ public class Common {
             columnList.add(column);
         }
         return new com._4paradigm.sql.sdk.Schema(columnList);
+    }
+
+    private String sqlTypeToString(int sqlType) throws SQLException{
+        switch (sqlType) {
+            case Types.SMALLINT:
+                return "int16";
+            case Types.INTEGER:
+                return "int32";
+            case Types.BIGINT:
+                return "int64";
+            case Types.FLOAT:
+                return "float";
+            case Types.DOUBLE:
+                return "double";
+            case Types.BOOLEAN:
+                return "bool";
+            case Types.VARCHAR:
+                return "string";
+            case Types.TIMESTAMP:
+                return "timestamp";
+            case Types.DATE:
+                return "date";
+            default:
+                throw new SQLException("unsupported type: " + sqlType);
+        }
     }
 }

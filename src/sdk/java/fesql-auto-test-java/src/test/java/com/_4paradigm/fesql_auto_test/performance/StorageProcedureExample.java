@@ -39,9 +39,8 @@ public class StorageProcedureExample extends BaseExample {
 //        "          identity(case when at(d2, 1) != null then distinct_count(d2) else null end) over table_1_s2_t1 as table_1_d2_12,\n" +
 //        "          identity(case when at(s1, 1) != null then distinct_count(s1) else null end) over table_1_s2_t1 as table_1_s1_13\n" +
 //        "      from\n" +
-//        "          (select '' as s1, s2 as s2, t1 as t1, date('2019-07-18') as t2, float(0) as d1, double(0) as d2, int(0) as c1, bigint(0) as c2, '' as ai, '' as kn, '' as ks from main)\n" +
-//        "          window table_1_s2_t1 as (\n" +
-//        "      UNION (select s1, s2, t1, t2, d1, d2, c1, c2, ai, kn, ks from table_1) partition by s2 order by t1 rows_range between 1d preceding and 0s preceding);";
+//        "          main\n" +
+//        "          window table_1_s2_t1 as (partition by s2 order by t1 rows_range between 1d preceding and 0s preceding);";
     private SqlExecutor sqlExecutor = null;
     private String db = "test_db2";
     private String spName = "sp" + Math.abs(new Random().nextInt());
@@ -66,7 +65,7 @@ public class StorageProcedureExample extends BaseExample {
         sqlExecutor.createDB(db);
         sqlExecutor.executeDDL(db, dropDdl);
         sqlExecutor.executeDDL(db, ddl);
-//        Schema inputSchema = sqlExecutor.getInputSchema(db, sql);
+        Schema inputSchema = sqlExecutor.getInputSchema(db, sql);
     }
 
     public void initSample() {
@@ -84,6 +83,8 @@ public class StorageProcedureExample extends BaseExample {
     public void createProcedure() throws Exception {
         String spSql = "create procedure " + spName + "(" + "const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
                 " begin " + sql + " end;";
+//        String spSql = "create procedure " + spName + "(" + "label int, s1 string, s2 string, t1 timestamp, t2 date, d1 string, d2 string, c1 int, c2 bigint, ai string, kn string, ks string" + ")" +
+//                " begin " + sql + " end;";
         boolean ok = sqlExecutor.executeDDL(db, spSql);
         Assert.assertTrue(ok);
     }
