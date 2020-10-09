@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "base/linenoise.h"
 #include "base/texttable.h"
@@ -203,6 +204,72 @@ void PrintItems(std::ostream &stream, const std::string &head,
     }
 }
 
+void PrintItems(const std::vector<std::pair<std::string, std::string>> &items,
+        std::ostream &stream) {
+    if (items.empty()) {
+        stream << "Empty set" << std::endl;
+        return;
+    }
+
+    ::fesql::base::TextTable t('-', ' ', ' ');
+    t.add("DB");
+    t.add("SP");
+    t.endOfRow();
+    for (auto item : items) {
+        t.add(item.first);
+        t.add(item.second);
+        t.endOfRow();
+    }
+    stream << t;
+    auto items_size = items.size();
+    if (items_size > 1) {
+        stream << items_size << " rows in set" << std::endl;
+    } else {
+        stream << items_size << " row in set" << std::endl;
+    }
+}
+
+void PrintProcedureSchema(const std::string& head,
+        const ::fesql::vm::Schema &schema, std::ostream &stream) {
+    if (schema.size() == 0) {
+        stream << "Empty set" << std::endl;
+        return;
+    }
+    uint32_t items_size = schema.size();
+    ::fesql::base::TextTable t('-', ' ', ' ');
+
+    t.add("#");
+    t.add("Field");
+    t.add("Type");
+    t.add("IsConstant");
+    t.endOfRow();
+
+    for (uint32_t i = 0; i < items_size; i++) {
+        auto column = schema.Get(i);
+        t.add(std::to_string(i + 1));
+        t.add(column.name());
+        t.add(::fesql::type::Type_Name(column.type()));
+        t.add(column.is_constant() ? "YES" : "NO");
+        t.endOfRow();
+    }
+    stream << t << std::endl;
+}
+
+void PrintProcedureInfo(const rtidb::nameserver::ProcedureInfo& sp_info) {
+    std::vector<std::pair<std::string, std::string>> vec;
+    std::pair<std::string, std::string> pair = std::make_pair(sp_info.db_name(), sp_info.sp_name());
+    vec.push_back(pair);
+    PrintItems(vec, std::cout);
+    std::vector<std::string> items{sp_info.sql()};
+    PrintItems(std::cout, "SQL", items);
+    ::fesql::vm::Schema input_schema;
+    ::rtidb::catalog::SchemaAdapter::ConvertSchema(sp_info.input_schema(), &input_schema);
+    PrintProcedureSchema("Input Schema", input_schema, std::cout);
+    ::fesql::vm::Schema output_schema;
+    ::rtidb::catalog::SchemaAdapter::ConvertSchema(sp_info.output_schema(), &output_schema);
+    PrintProcedureSchema("Output Schema", output_schema, std::cout);
+}
+
 void HandleCmd(const fesql::node::CmdNode *cmd_node) {
     switch (cmd_node->GetCmdType()) {
         case fesql::node::kCmdShowDatabases: {
@@ -321,6 +388,23 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
                 std::cout << "Fail to drop index. error msg: " << error
                           << std::endl;
             }
+            break;
+        }
+        case fesql::node::kCmdShowCreateSp: {
+            std::string db_name = cmd_node->GetArgs()[0];
+            std::string sp_name = cmd_node->GetArgs()[1];
+            std::string error;
+            auto ns = cs->GetNsClient();
+            if (!ns) {
+                std::cout << "Fail to connect to db" << std::endl;
+                return;
+            }
+            rtidb::nameserver::ProcedureInfo sp_info;
+            if (!ns->ShowProcedure(db_name, sp_name, sp_info, error)) {
+                std::cout << "Fail to show procdure. error msg: " << error << std::endl;
+                return;
+            }
+            PrintProcedureInfo(sp_info);
             break;
         }
         case fesql::node::kCmdExit: {
