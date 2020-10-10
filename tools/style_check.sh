@@ -2,5 +2,5 @@
 #
 # style_check.sh
 
-python tools/cpplint.py --output=junit --root=. --recursive src/* 2> ./style.xml
+python tools/cpplint.py --output=junit --linelength=120000 --root=. --recursive src/* 2> ./style.xml
 

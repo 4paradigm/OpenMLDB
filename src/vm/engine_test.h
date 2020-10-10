@@ -51,8 +51,8 @@
 #include "plan/planner.h"
 #include "vm/engine.h"
 #include "vm/test_base.h"
-#define MAX_DEBUG_LINES_CNT 20
-#define MAX_DEBUG_COLUMN_CNT 20
+#define MAX_DEBUG_LINES_CNT 100 * 100 * 100
+#define MAX_DEBUG_COLUMN_CNT 100 * 100 * 100
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
@@ -460,9 +460,6 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
     //     ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
     //     ASSERT_NO_FATAL_FAILURE(
     //         CheckSchema(schema, case_output_table.columns()));
-
-    
-
     //     ASSERT_NO_FATAL_FAILURE(
     //         CheckRows(schema, sorted_output, case_output_data));
     // } else {
