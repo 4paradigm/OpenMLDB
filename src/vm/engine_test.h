@@ -113,6 +113,76 @@ void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema) {
             << "Fail column type at " << i;
     }
 }
+// enum Type {
+//   kBool = 0,
+//   kInt16 = 1,
+//   kInt32 = 3,
+//   kInt64 = 5,
+//   kFloat = 7,
+//   kDouble = 8,
+//   kVarchar = 9,
+//   kDate = 10,
+//   kTimestamp = 11,
+//   kBlob = 12,
+//   kNull = 101
+// };
+std::string YamlTypeName(type::Type type) {
+    if (type == 0) {
+        return "bool";
+    }
+    if (type == 1) {
+        return "int16";
+    }
+    if (type == 3) {
+        return "int32";
+    }
+    if (type == 5) {
+        return "int64";
+    }
+    if (type == 7) {
+        return "float";
+    }
+    if (type == 8) {
+        return "double";
+    }
+    if (type == 9) {
+        return "string";
+    }
+    if (type == 10) {
+        return "date";
+    }
+    if (type == 11) {
+        return "timestamp";
+    }
+    return "null";
+}
+
+// 打印符合yaml测试框架格式的预期结果
+void PrintYamlResult(const vm::Schema& schema, const std::vector<Row>& rows) {
+    std::ostringstream oss;
+    oss << "print schema\n";
+    for (int i = 0; i < schema.size(); i++) {
+        auto col = schema.Get(i);
+        oss << col.name() << ":" << YamlTypeName(col.type());
+        if (i + 1 != schema.size()) {
+            oss << ", ";
+        }
+    }
+    oss << "\nprint rows\n";
+    RowView row_view(schema);
+    for (auto row : rows) {
+        row_view.Reset(row.buf());
+        for (int idx = 0; idx < schema.size(); idx++) {
+            std::string str = row_view.GetAsString(idx);
+            oss << str;
+            if (idx + 1 != schema.size()) {
+                oss << ", ";
+            }
+        }
+    }
+    LOG(INFO) << "\n" << oss.str() << "\n";
+}
+
 void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
     std::ostringstream oss;
     RowView row_view(schema);
@@ -450,22 +520,23 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
 
     LOG(INFO) << "Real result:\n";
     PrintRows(schema, sorted_output);
+    PrintYamlResult(schema, sorted_output);
 
-    // if (!sql_case.expect().schema_.empty() ||
-    //     !sql_case.expect().columns_.empty()) {
-    //     // Check Output Schema
-    //     type::TableDef case_output_table;
-    //     ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
-    //     std::vector<Row> case_output_data;
-    //     ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
-    //     ASSERT_NO_FATAL_FAILURE(
-    //         CheckSchema(schema, case_output_table.columns()));
-    //     ASSERT_NO_FATAL_FAILURE(
-    //         CheckRows(schema, sorted_output, case_output_data));
-    // } else {
-    //     LOG(INFO) << "Real result:\n";
-    //     PrintRows(schema, sorted_output);
-    // }
+    if (!sql_case.expect().schema_.empty() ||
+        !sql_case.expect().columns_.empty()) {
+        // Check Output Schema
+        type::TableDef case_output_table;
+        ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
+        std::vector<Row> case_output_data;
+        ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
+        ASSERT_NO_FATAL_FAILURE(
+            CheckSchema(schema, case_output_table.columns()));
+        ASSERT_NO_FATAL_FAILURE(
+            CheckRows(schema, sorted_output, case_output_data));
+    } else {
+        LOG(INFO) << "Real result:\n";
+        PrintRows(schema, sorted_output);
+    }
 
     *return_status = ENGINE_TEST_RET_SUCCESS;
 
