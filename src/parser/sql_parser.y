@@ -394,6 +394,7 @@ typedef void* yyscan_t;
 %token FOLLOWER
 %token CONST
 %token BEGINTOKEN
+%token STATUS
 
  /* functions with special syntax */
 %token FSUBSTRING
@@ -945,6 +946,10 @@ cmd_stmt:
                 free($4);
                 free($6);
             }
+			|SHOW PROCEDURE STATUS
+			{
+				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdShowProcedures);
+			}
             |EXIT {
                 $$ = node_manager->MakeCmdNode(::fesql::node::kCmdExit);
             }
