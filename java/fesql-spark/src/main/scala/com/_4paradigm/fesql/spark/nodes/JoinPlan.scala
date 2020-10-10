@@ -87,7 +87,7 @@ object JoinPlan {
         inputSchemaSlices = inputSchemaSlices,
         outputSchema = filter.fn_info().fn_schema(),
         moduleTag = ctx.getTag,
-        moduleBroadcast = ctx.getModuleBufferBroadcast
+        moduleBroadcast = ctx.getSerializableModuleBuffer
       )
       sess.udf.register(regName, conditionUDF)
 
@@ -174,7 +174,7 @@ object JoinPlan {
                          inputSchemaSlices: Array[StructType],
                          outputSchema: java.util.List[ColumnDef],
                          moduleTag: String,
-                         moduleBroadcast: Broadcast[SerializableByteBuffer]
+                         moduleBroadcast: SerializableByteBuffer
                         ) extends Function1[Row, Boolean] with Serializable {
 
     @transient private lazy val tls = new ThreadLocal[UnSafeJoinConditionUDFImpl]() {
@@ -193,7 +193,7 @@ object JoinPlan {
                                    inputSchemaSlices: Array[StructType],
                                    outputSchema: java.util.List[ColumnDef],
                                    moduleTag: String,
-                                   moduleBroadcast: Broadcast[SerializableByteBuffer]
+                                   moduleBroadcast: SerializableByteBuffer
                                   ) extends Function1[Row, Boolean] with Serializable {
     private val jit = initJIT()
 
@@ -208,7 +208,7 @@ object JoinPlan {
 
     def initJIT(): FeSQLJITWrapper = {
       // ensure worker native
-      val buffer = moduleBroadcast.value.getBuffer
+      val buffer = moduleBroadcast.getBuffer
       JITManager.initJITModule(moduleTag, buffer)
       JITManager.getJIT(moduleTag)
     }
