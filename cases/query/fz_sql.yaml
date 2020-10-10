@@ -2,7 +2,7 @@ cases:
   - id: 0
     desc: fz sql 子查询
     db: db1
-    mode: rtidb-unsupport
+    mode: rtidb-unsupport, request-unsupport
     sql: |
       select
           c1,
@@ -49,7 +49,7 @@ cases:
   - id: 1
     desc: 主表window
     db: db1
-    mode: rtidb-unsupport
+    mode: rtidb-unsupport, request-unsupport
     sql: |
       select
           c1,
@@ -96,7 +96,7 @@ cases:
   - id: 2
     desc: 主表window 添加 INSTANCE_NOT_IN_WINDOW 没有明显错误日志
     db: db1
-    mode: rtidb-unsupport
+    mode: rtidb-unsupport, request-unsupport
     sql: |
       select
           c1,
@@ -142,7 +142,7 @@ cases:
   - id: 3
     desc: lastjoin 测试
     db: db1
-    mode: rtidb-unsupport
+    mode: rtidb-unsupport, request-unsupport
     sql: |
       select
           main.c1,
@@ -192,6 +192,7 @@ cases:
   - id: 4
     desc: 主表多个window测试
     db: db1
+    mode: rtidb-unsupport, request-unsupport
     sql: |
       select
           c1,
