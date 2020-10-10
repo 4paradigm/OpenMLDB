@@ -105,6 +105,45 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     ASSERT_EQ("hello", str2);
     free(buf);
 }
+TEST_F(FnLetIRBuilderTest, test_column_cast_and_const_cast) {
+    // Create an LLJIT instance.
+    std::string sql = "SELECT bigint(col1), col6, 1.0, date(\"2020-10-01\")  FROM t1 limit 10;";
+
+    int8_t* buf = NULL;
+    uint32_t size = 0;
+    fesql::type::TableDef table1;
+    BuildT1Buf(table1, &buf, &size);
+    Row row(base::RefCountedSlice::Create(buf, size));
+
+    int8_t* output = NULL;
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
+    int8_t* window_ptr = nullptr;
+    vm::Schema schema;
+    vm::ColumnSourceList column_sources;
+    CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
+                      &column_sources, &output);
+    uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
+    ASSERT_EQ(4, schema.size());
+    ASSERT_EQ(4, column_sources.size());
+
+    ASSERT_EQ(vm::kSourceColumnCast, column_sources[0].type());
+    ASSERT_EQ(0, column_sources[0].column_idx());
+    ASSERT_EQ(0, column_sources[0].schema_idx());
+    ASSERT_EQ(node::kInt64, column_sources[0].cast_type());
+
+
+    ASSERT_EQ(vm::kSourceColumn, column_sources[1].type());
+    ASSERT_EQ(5, column_sources[1].column_idx());
+    ASSERT_EQ(0, column_sources[1].schema_idx());
+
+    ASSERT_EQ(vm::kSourceConst, column_sources[2].type());
+    ASSERT_EQ(1.0, column_sources[2].const_value()->GetDouble());
+
+    ASSERT_EQ(vm::kSourceConstCast, column_sources[3].type());
+    ASSERT_EQ("2020-10-01", column_sources[3].const_value()->GetExprString());
+    ASSERT_EQ(node::kDate, column_sources[3].cast_type());
+    free(buf);
+}
 TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
     // Create an LLJIT instance.
     std::string sql =
