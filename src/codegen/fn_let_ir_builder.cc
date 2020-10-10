@@ -262,6 +262,37 @@ bool RowFnLetIRBuilder::AddOutputColumnInfo(
                     column_expr->GetColumnName()));
             break;
         }
+        case fesql::node::kExprCast: {
+            const ::fesql::node::CastExprNode* cast_expr = 
+                dynamic_cast<CastExprNode*>(expr);
+
+            if (nullptr == cast_expr->expr()) {
+                return false;
+            }
+            switch(cast_expr->expr()->expr_type_) {
+                case fesql::node::kExprGetField: {
+                    const ::fesql::node::GetFieldExpr* column_expr =
+                    (const ::fesql::node::GetFieldExpr*)cast_expr->expr();
+                    output_column_sources->push_back(
+                    ctx_->schemas_context()->ColumnSourceResolved(
+                        column_expr->GetRelationName(),
+                        column_expr->GetColumnName(),
+                        cast_expr->cast_type()));
+                    break;
+                }
+                case fesql::node::kExprPrimary: {
+                    auto const_expr = 
+                        dynamic_cast<const node::ConstNode*>(cast_expr->expr());
+                    output_column_sources->push_back(
+                        vm::ColumnSource(const_expr, cast_expr->cast_type()));
+                    break;
+                }
+                default: {
+                    output_column_sources->push_back(vm::ColumnSource());
+                }
+            }
+            break;
+        }
         case fesql::node::kExprPrimary: {
             auto const_expr = dynamic_cast<const node::ConstNode*>(expr);
             output_column_sources->push_back(vm::ColumnSource(const_expr));

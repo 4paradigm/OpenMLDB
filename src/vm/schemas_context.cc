@@ -232,6 +232,32 @@ const std::string SchemasContext::SourceColumnNameResolved(
     }
     return column_name;
 }
+
+// Resolve column name for given expression
+// return source column name for column expression and cast column expression
+// return empty string for other expression
+const std::string SchemasContext::SourceColumnNameResolved(
+    node::ExprNode* expr) {
+    if (nullptr == expr) {
+        return "";
+    }
+    switch(expr->expr_type_) {
+        case fesql::node::kExprColumnRef: {
+            return SourceColumnNameResolved(
+                dynamic_cast<node::ColumnRefNode*>(expr));
+            break;
+        }
+        case fesql::node::kExprCast: {
+            return SourceColumnNameResolved(
+                dynamic_cast<node::ExprCastNode*>(expr)->expr());
+        }
+        default: {
+            return "";
+        }
+    }
+    
+    return "";
+}
 vm::ColumnSource SchemasContext::ColumnSourceResolved(
     const std::string& relation_name, const std::string& col_name) const {
     const RowSchemaInfo* row_schema_info;
@@ -245,6 +271,23 @@ vm::ColumnSource SchemasContext::ColumnSourceResolved(
     }
     return ColumnSource(row_schema_info->idx_, column_idx, col_name);
 }
+
+vm::ColumnSource SchemasContext::ColumnSourceResolved(
+    const std::string& relation_name, const std::string& col_name,
+    const node::DataType cast_type) const {
+    const RowSchemaInfo* row_schema_info;
+    if (!ColumnRefResolved(relation_name, col_name, &row_schema_info)) {
+        LOG(WARNING) << "Resolve column expression failed";
+        return ColumnSource();
+    }
+    int32_t column_idx = ColumnIdxResolved(col_name, row_schema_info->schema_);
+    if (-1 == column_idx) {
+        return ColumnSource();
+    }
+    return ColumnSource(row_schema_info->idx_, column_idx, col_name, cast_type);
+}
+
+
 
 base::Status SchemasContext::ColumnTypeResolved(
     const std::string& relation_name, const std::string& col_name,

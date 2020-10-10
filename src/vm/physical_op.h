@@ -245,6 +245,19 @@ class ColumnProject {
                     sources.push_back(sources2[source1.column_idx()]);
                     break;
                 }
+                case kSourceConstCast: {
+                    sources.push_back(source1);
+                    break;
+                }
+                case kSourceColumnCast: {
+                    if (source1.column_idx() >= sources2.size()) {
+                        LOG(WARNING) << "Fail to combine column sources";
+                        return false;
+                    }
+                    sources.push_back(sources2[source1.column_idx()]);
+                    break;
+
+                }
                 case kSourceNone: {
                     LOG(WARNING) << "Fail to combine column sources";
                     return false;

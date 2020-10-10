@@ -39,7 +39,12 @@ using fesql::codec::RowIterator;
 using fesql::codec::Schema;
 using fesql::codec::WindowIterator;
 
-enum SourceType { kSourceColumn, kSourceConst, kSourceNone };
+enum SourceType { 
+    kSourceColumn, 
+    kSourceConst, 
+    kSourceColumnCast,
+    kSourceConstCast,
+    kSourceNone };
 class ColumnSource;
 typedef std::vector<ColumnSource> ColumnSourceList;
 class ColumnSource {
@@ -49,12 +54,14 @@ class ColumnSource {
           schema_idx_(0),
           column_idx_(0),
           column_name_(""),
+          cast_type_(node::kVoid),
           const_value_() {}
     explicit ColumnSource(const node::ConstNode* node)
         : type_(kSourceConst),
           schema_idx_(0),
           column_idx_(0),
           column_name_(""),
+          cast_type_(node::kVoid),
           const_value_(node) {}
     ColumnSource(uint32_t schema_idx, uint32_t column_idx,
                  const std::string& column_name)
@@ -62,6 +69,22 @@ class ColumnSource {
           schema_idx_(schema_idx),
           column_idx_(column_idx),
           column_name_(column_name),
+          cast_type_(node::kVoid),
+          const_value_() {}
+    ColumnSource(const node::ConstNode* node, const node::DataType type)
+        : type_(kSourceConstCast),
+          schema_idx_(0),
+          column_idx_(0),
+          column_name_(""),
+          cast_type_(type),
+          const_value_(node) {}
+    ColumnSource(uint32_t schema_idx, uint32_t column_idx,
+                 const std::string& column_name, const node::DataType type)
+        : type_(kSourceColumn),
+          schema_idx_(schema_idx),
+          column_idx_(column_idx),
+          column_name_(column_name),
+          cast_type_(type),
           const_value_() {}
 
     const std::string ToString() const {
@@ -71,6 +94,13 @@ class ColumnSource {
                        std::to_string(column_idx_) + "]";
             case kSourceConst:
                 return "<-" + node::ExprString(const_value_);
+            case kSourceColumnCast:
+                return "<-[" + std::to_string(schema_idx_) + ":" +
+                       std::to_string(column_idx_) + ":" + 
+                       node::DataTypeName(cast_type_) + "]";
+            case kSourceConstCast:
+                return "<-" + node::ExprString(const_value_) + ":" +
+                        node::DataTypeName(cast_type_);
             case kSourceNone:
                 return "->None";
         }
@@ -81,12 +111,13 @@ class ColumnSource {
     const uint32_t column_idx() const { return column_idx_; }
     const std::string& column_name() const { return column_name_; }
     const node::ConstNode* const_value() const { return const_value_; }
-
+    const node::DataType cast_type() const { return cast_type_;}
  private:
     SourceType type_;
     uint32_t schema_idx_;
     uint32_t column_idx_;
     std::string column_name_;
+    node::DataType cast_type_;
     const node::ConstNode* const_value_;
 };
 
