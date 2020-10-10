@@ -1457,18 +1457,32 @@ bool NsClient::TransformToTableDef(
     return true;
 }
 
+bool NsClient::ShowProcedure(std::vector<rtidb::nameserver::ProcedureInfo>& sp_infos,
+        std::string& msg) {
+    return ShowProcedure("", "", sp_infos, msg);
+}
+
 bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_name,
-        rtidb::nameserver::ProcedureInfo& sp_info, std::string& msg) {
+        std::vector<rtidb::nameserver::ProcedureInfo>& sp_infos, std::string& msg) {
     ::rtidb::nameserver::ShowProcedureRequest request;
     ::rtidb::nameserver::ShowProcedureResponse response;
-    request.set_db_name(db_name);
-    request.set_sp_name(sp_name);
+    if (db_name != "") {
+        request.set_db_name(db_name);
+    }
+    if (sp_name != "") {
+        request.set_sp_name(sp_name);
+    }
     bool ok =
         client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowProcedure,
                             &request, &response, FLAGS_request_timeout_ms, 1);
-    sp_info.CopyFrom(response.sp_info(0));
     msg = response.msg();
     if (ok && response.code() == 0) {
+        for (int32_t i = 0; i < response.sp_info_size(); i++) {
+            const rtidb::nameserver::ProcedureInfo& sp_info = response.sp_info(i);
+            rtidb::nameserver::ProcedureInfo sp_info_tmp;
+            sp_info_tmp.CopyFrom(sp_info);
+            sp_infos.push_back(sp_info_tmp);
+        }
         return true;
     }
     return false;

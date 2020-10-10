@@ -879,15 +879,22 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
         LOG(WARNING) << "no nameserver exist";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
-    rtidb::nameserver::ProcedureInfo sp_info;
+    std::vector<rtidb::nameserver::ProcedureInfo> sp_infos;
     std::string err;
-    bool ok = ns_ptr->ShowProcedure(db, sp_name, sp_info, err);
+    bool ok = ns_ptr->ShowProcedure(db, sp_name, sp_infos, err);
     if (!ok) {
         status->code = -1;
         status->msg = "fail to show procedure for error " + err;
         LOG(WARNING) << status->msg;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
+    if (sp_infos.empty()) {
+        status->code = -1;
+        status->msg = "fail to show procedure for error: result is empty";
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    const rtidb::nameserver::ProcedureInfo& sp_info = sp_infos.at(0);
     const std::string& sql = sp_info.sql();
 
     std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
@@ -937,15 +944,22 @@ std::shared_ptr<ProcedureInfo> SQLClusterRouter::ShowProcedure(
         status->code = -1;
         return std::shared_ptr<ProcedureInfo>();
     }
-    rtidb::nameserver::ProcedureInfo sp_info_pb;
+    std::vector<rtidb::nameserver::ProcedureInfo> sp_infos;
     std::string err;
-    bool ok = ns_ptr->ShowProcedure(db, sp_name, sp_info_pb, err);
+    bool ok = ns_ptr->ShowProcedure(db, sp_name, sp_infos, err);
     if (!ok) {
         status->msg = "fail to show procedure for error " + err;
         LOG(WARNING) << status->msg;
         status->code = -1;
         return std::shared_ptr<ProcedureInfo>();
     }
+    if (sp_infos.empty()) {
+        status->code = -1;
+        status->msg = "fail to show procedure for error: result is empty";
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<ProcedureInfo>();
+    }
+    rtidb::nameserver::ProcedureInfo& sp_info_pb = sp_infos.at(0);
     ::fesql::vm::Schema fesql_in_schema;
     if (!rtidb::catalog::SchemaAdapter::ConvertSchema(
                 sp_info_pb.input_schema(), &fesql_in_schema)) {
