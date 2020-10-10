@@ -1,11 +1,16 @@
 package com._4paradigm.sql.sdk;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ProcedureInfo {
     private String dbName;
     private String proName;
     private String sql;
     private Schema inputSchema;
     private Schema outputSchema;
+    private List<String> inputTables = new ArrayList<>();
+    private List<String> rtidbTables = new ArrayList<>();
 
     public ProcedureInfo() {
     }
@@ -56,5 +61,21 @@ public class ProcedureInfo {
 
     public void setOutputSchema(Schema outputSchema) {
         this.outputSchema = outputSchema;
+    }
+
+    public List<String> getInputTables() {
+        return inputTables;
+    }
+
+    public void setInputTables(List<String> inputTables) {
+        this.inputTables = inputTables;
+    }
+
+    public List<String> getRtidbTables() {
+        return rtidbTables;
+    }
+
+    public void setRtidbTables(List<String> rtidbTables) {
+        this.rtidbTables = rtidbTables;
     }
 }

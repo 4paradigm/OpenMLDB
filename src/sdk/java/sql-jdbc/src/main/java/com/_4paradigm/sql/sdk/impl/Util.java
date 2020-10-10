@@ -4,7 +4,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 
 public class Util {
-    private String sqlTypeToString(int sqlType) throws SQLException {
+    public static String sqlTypeToString(int sqlType) throws SQLException {
         switch (sqlType) {
             case Types.SMALLINT:
                 return "int16";
