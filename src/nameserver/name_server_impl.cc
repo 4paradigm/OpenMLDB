@@ -10600,8 +10600,8 @@ bool NameServerImpl::RecoverProcedureInfo() {
             PDLOG(WARNING, "db store procedure data node is not exist");
         } else {
             PDLOG(WARNING, "get db store procedure data node failed!");
+            return false;
         }
-        return false;
     }
     PDLOG(INFO, "need to recover db store procedure num[%d]", db_sp_vec.size());
     for (const auto& node : db_sp_vec) {
