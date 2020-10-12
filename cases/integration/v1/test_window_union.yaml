@@ -373,9 +373,9 @@ cases:
       SELECT id, c1, c3, c8, 
       distinct_count(c8) OVER w1 as w1_c8_dis_cnt,
       sum(c4) OVER w1 as w1_c4_sum 
-      FROM (select id, c1, int(c3f) as c3, c4, c5, c6, c7, c8 from {0}) WINDOW
+      FROM (select id, c1, int(c3f) as c3, c4, c5, c6, c7, c8 from {0}) as t1 WINDOW
       w1 AS (UNION (select id, c1, c3, c4, c5, c6, c7, date("2020-10-01") as c8 from {1})
-      PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW);
+      PARTITION BY t1.c3 ORDER BY t1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW);
     expect:
       order: id
       columns: ["id int", "c1 string", "c3 int", "c8 date", "w1_c8_dis_cnt bigint", "w1_c4_sum bigint"]
