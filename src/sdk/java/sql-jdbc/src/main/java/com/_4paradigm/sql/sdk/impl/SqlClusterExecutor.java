@@ -172,13 +172,20 @@ public class SqlClusterExecutor implements SqlExecutor {
         return new Schema(columnList);
     }
 
+
     @Override
-    public SQLResultSet callProcedure(String dbName, String proName, List<List<Object>> requestRows) throws SQLException {
-        if (requestRows == null || requestRows.isEmpty()) {
+    public SQLResultSet callProcedure(String dbName, String proName, Object[] requestRow) throws SQLException {
+        Object[][] requestRows = new Object[1][requestRow.length];
+        return callProcedure(dbName, proName, requestRows);
+    }
+
+    @Override
+    public SQLResultSet callProcedure(String dbName, String proName, Object[][] requestRows) throws SQLException {
+        if (requestRows == null || requestRows.length == 0) {
             throw new SQLException("requestRows is null or empty");
         }
-        List<Object> requestRow = requestRows.get(0);
-        if (requestRow == null || requestRow.isEmpty()) {
+        Object[] requestRow = requestRows[0];
+        if (requestRow == null || requestRow.length == 0) {
             throw new SQLException("requestRow is null or empty");
         }
         ProcedureInfo procedureInfo = showProcedure(dbName, proName);
@@ -192,7 +199,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         int strlen = 0;
         for (int i = 0 ; i < inputSchema.getColumnList().size(); i++) {
             Column column = inputSchema.getColumnList().get(i);
-            Object object = requestRow.get(i);
+            Object object = requestRow[i];
             if (column.getSqlType() == Types.VARCHAR && object != null) {
                 strlen += ((String)object).length();
             }
@@ -204,32 +211,32 @@ public class SqlClusterExecutor implements SqlExecutor {
             Column column = inputSchema.getColumnList().get(i);
             switch (column.getSqlType()) {
                 case Types.BOOLEAN:
-                    sqlRequestRow.AppendBool((Boolean)requestRow.get(i));
+                    sqlRequestRow.AppendBool((Boolean)requestRow[i]);
                     break;
                 case Types.SMALLINT:
-                    sqlRequestRow.AppendInt16((Short)requestRow.get(i));
+                    sqlRequestRow.AppendInt16((Short)requestRow[i]);
                     break;
                 case Types.INTEGER:
-                    sqlRequestRow.AppendInt32((Integer) requestRow.get(i));
+                    sqlRequestRow.AppendInt32((Integer) requestRow[i]);
                     break;
                 case Types.BIGINT:
-                    sqlRequestRow.AppendInt64((Long) requestRow.get(i));
+                    sqlRequestRow.AppendInt64((Long) requestRow[i]);
                     break;
                 case Types.FLOAT:
-                    sqlRequestRow.AppendFloat((Float) requestRow.get(i));
+                    sqlRequestRow.AppendFloat((Float) requestRow[i]);
                     break;
                 case Types.DOUBLE:
-                    sqlRequestRow.AppendDouble((Double) requestRow.get(i));
+                    sqlRequestRow.AppendDouble((Double) requestRow[i]);
                     break;
                 case Types.DATE:
-                    java.sql.Date date = (java.sql.Date)requestRow.get(i);
+                    java.sql.Date date = (java.sql.Date)requestRow[i];
                     sqlRequestRow.AppendDate(date.getYear() + 1900, date.getMonth() + 1, date.getDate());
                     break;
                 case Types.TIMESTAMP:
-                    sqlRequestRow.AppendTimestamp(((Timestamp)requestRow.get(i)).getTime());
+                    sqlRequestRow.AppendTimestamp(((Timestamp)requestRow[i]).getTime());
                     break;
                 case Types.VARCHAR:
-                    sqlRequestRow.AppendString((String)requestRow.get(i));
+                    sqlRequestRow.AppendString((String)requestRow[i]);
                     break;
                 default:
                     throw new SQLException("column type not supported");

@@ -90,18 +90,18 @@ public class StorageProcedureExample extends BaseExample {
     }
 
     public void callProcedure() throws Exception {
-        List<List<Object>> listList = new ArrayList<>();
-        List<Object> list = new ArrayList<>();
-        list.add("bb");
-        list.add(24);
-        list.add(34l);
-        list.add(1.5f);
-        list.add(2.5);
-        list.add(new Timestamp(1590738994000l));
-        list.add(Date.valueOf("2020-05-05"));
-        listList.add(list);
+        Object[][] requestRows = new Object[1][7];
+        Object[] requestRow = new Object[7];
+        requestRow[0] = "bb";
+        requestRow[1] = 24;
+        requestRow[2] = 34l;
+        requestRow[3] = 1.5f;
+        requestRow[4] = 2.5;
+        requestRow[5] = new Timestamp(1590738994000l);
+        requestRow[6] = Date.valueOf("2020-05-05");
+        requestRows[0] = requestRow;
 
-        SQLResultSet sqlResultSet = sqlExecutor.callProcedure(db, spName, listList);
+        SQLResultSet sqlResultSet = sqlExecutor.callProcedure(db, spName, requestRows);
         if (sqlResultSet == null) {
             Assert.fail();
         }
