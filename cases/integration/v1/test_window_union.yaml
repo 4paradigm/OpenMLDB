@@ -390,7 +390,7 @@ cases:
     mode: offline-unsupport
     inputs:
       - columns: ["id int","c1 string","c3f float","c4 bigint","c5 float","c6 double","c7str string","c8 date"]
-        indexs: ["index1:c1:c7"]
+        indexs: ["index1:c1:c4"]
         rows:
           - [1,"aa",20.0, 30,1.1,2.1,"2020-05-29 15:56:33","2020-05-01"]
           - [4,"dd",20.1, 33,1.4,2.4,"2020-05-29 15:56:34","2020-05-04"]
