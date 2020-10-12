@@ -41,8 +41,12 @@ class RowsChecker(BaseChecker):
             log.info("convert expect:{}".format(expect))
         orderName = self.fesqlCase['expect'].get('order')
         if orderName!=None and len(orderName)>0:
-            desc = self.fesqlResult.rs._cursor_description()
-            index = fesql_util.getIndexByColumnName(desc ,orderName)
+            if hasattr(self.fesqlResult.rs, "_cursor_description"):
+                desc = self.fesqlResult.rs._cursor_description()
+                index = fesql_util.getIndexByColumnName(desc ,orderName)
+            else:
+                schema = self.fesqlResult.resultSchema
+                index = fesql_util.getIndexByColumnName(schema,orderName)
             expect = sorted(expect,key= lambda x:x[index])
             actual = sorted(actual, key=lambda x: x[index])
             log.info("order expect:{}".format(expect))

@@ -77,12 +77,14 @@ class SQLExecutor(BaseExecutor):
     def prepare(self):
         createDB = self.fesqlCase.get('createDB')
         if createDB==None or createDB :
+            if hasattr(self.executor, "createDB"):
+                dbOk = self.executor.createDB(self.dbName)
+                log.info("create db:"+self.dbName+","+str(dbOk))
             try:
                 dbOk = self.executor.execute("create database {};".format(self.dbName))
+                log.info("create db:"+self.dbName)
             except Exception as e:
                 pass
-            #log.info("create db:"+self.dbName+","+str(dbOk))
-            log.info("create db:"+self.dbName)
         inputs = self.fesqlCase.get('inputs')
         res,self.tableNames = fesql_util.createAndInsert(self.executor,self.dbName,inputs)
         if not res.ok:

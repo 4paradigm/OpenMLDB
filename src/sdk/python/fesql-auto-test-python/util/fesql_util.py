@@ -231,6 +231,18 @@ def select(executor, dbName: str, sql: str):
     log.info("select sql:"+sql)
     fesqlResult = FesqlResult()
     rs = None
+    if hasattr(executor, "executeQuery"):
+        ok,rs = executor.executeQuery(dbName,sql)
+        if ok == False or rs == None:
+            fesqlResult.ok = False
+        else:
+            fesqlResult.ok = True
+            fesqlResult.count = rs.Size()
+            schema = rs.GetSchema()
+            fesqlResult.resultSchema = schema
+            fesqlResult.result = convertRestultSetToList(rs,schema)
+        return fesqlResult
+
     try:
         rs = executor.execute(sql)
         fesqlResult.ok = True
@@ -381,3 +393,14 @@ def convertRestultSetToList(rs):
     for r in rs:
         result.append(list(r))
     return result
+
+def convertRestultSetToList(rs, schema):
+    result = []
+    while rs.Next():
+        list = []
+        columnCount = schema.GetColumnCnt()
+        for i in range(columnCount):
+            list.append(getColumnData(rs, schema, i))
+        result.append(list)
+    return result
+
