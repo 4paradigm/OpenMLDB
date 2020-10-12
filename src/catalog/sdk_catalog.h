@@ -100,7 +100,7 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
     ::fesql::vm::IndexList index_list_;
     ::fesql::vm::IndexHint index_hint_;
     uint64_t cnt_;
-    TableClientManager table_client_manager_;
+    std::shared_ptr<TableClientManager> table_client_manager_;
     std::vector<std::string> partition_key_;
 };
 
