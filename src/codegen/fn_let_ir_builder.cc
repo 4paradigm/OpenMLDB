@@ -271,9 +271,9 @@ bool RowFnLetIRBuilder::AddOutputColumnInfo(
             if (nullptr == cast_expr->expr()) {
                 return false;
             }
-            switch(cast_expr->expr()->expr_type_) {
-                LOG(INFO) << "cast expression type: " << 
+            LOG(INFO) << "cast expression type: " << 
                 fesql::node::ExprTypeName(cast_expr->expr()->expr_type_);
+            switch(cast_expr->expr()->expr_type_) {      
                 case fesql::node::kExprGetField: {
                     const ::fesql::node::GetFieldExpr* column_expr =
                     (const ::fesql::node::GetFieldExpr*)cast_expr->expr();

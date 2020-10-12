@@ -80,7 +80,7 @@ class ColumnSource {
           const_value_(node) {}
     ColumnSource(uint32_t schema_idx, uint32_t column_idx,
                  const std::string& column_name, const node::DataType type)
-        : type_(kSourceColumn),
+        : type_(kSourceColumnCast),
           schema_idx_(schema_idx),
           column_idx_(column_idx),
           column_name_(column_name),
