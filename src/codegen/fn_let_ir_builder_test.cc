@@ -124,7 +124,6 @@ TEST_F(FnLetIRBuilderTest, test_column_cast_and_const_cast) {
     vm::ColumnSourceList column_sources;
     CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
                       &column_sources, &output);
-    uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
     fesql::codec::RowView row_view(schema);
     row_view.Reset(output);
     ASSERT_EQ(4, schema.size());
