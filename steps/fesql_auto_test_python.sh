@@ -22,6 +22,12 @@ echo "whl_name:${whl_name}"
 python3 -m pip install ${whl_name}
 
 cd ${ROOT_DIR}
+cd ${ROOT_DIR}/build/python/dist/
+whl_name=`ls | grep *.whl`
+echo "whl_name:${whl_name}"
+python3 -m pip install ${whl_name}
+
+cd ${ROOT_DIR}
 cd src/sdk/python/fesql-auto-test-python
 python3 -m pip install -r requirements.txt
 sed -i "s/env=.*/env=cicd/" fesql.conf

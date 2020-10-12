@@ -41,8 +41,8 @@ class RowsChecker(BaseChecker):
             log.info("convert expect:{}".format(expect))
         orderName = self.fesqlCase['expect'].get('order')
         if orderName!=None and len(orderName)>0:
-            schema = self.fesqlResult.resultSchema
-            index = fesql_util.getIndexByColumnName(schema,orderName)
+            desc = self.fesqlResult.rs._cursor_description()
+            index = fesql_util.getIndexByColumnName(desc ,orderName)
             expect = sorted(expect,key= lambda x:x[index])
             actual = sorted(actual, key=lambda x: x[index])
             log.info("order expect:{}".format(expect))
@@ -106,6 +106,7 @@ class ColumnsChecker(BaseChecker):
 
     def check(self):
         log.info("columns check")
+        """
         expect = self.fesqlCase['expect'].get('columns')
         fesql_util.convertExpectTypes(expect)
         schema = self.fesqlResult.resultSchema
@@ -113,6 +114,7 @@ class ColumnsChecker(BaseChecker):
         for index,value in enumerate(expect):
             actual = schema.GetColumnName(index)+" "+str(fesql_util.getColumnType(DataTypeName(schema.GetColumnType(index))))
             assert actual == value,'actual:{},expect:{}'.format(actual,value)
+        """
 
 class CountChecker(BaseChecker):
     def __init__(self,fesqlCase,fesqlResult):

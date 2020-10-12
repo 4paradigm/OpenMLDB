@@ -45,7 +45,7 @@ class BaseExecutor(metaclass=ABCMeta):
 class NullExecutor(BaseExecutor):
     def __init__(self,executor,fesqlCase):
         super(NullExecutor,self).__init__(executor,fesqlCase)
-
+    
     def excute(self):
         return None
 
@@ -77,8 +77,12 @@ class SQLExecutor(BaseExecutor):
     def prepare(self):
         createDB = self.fesqlCase.get('createDB')
         if createDB==None or createDB :
-            dbOk = self.executor.createDB(self.dbName)
-            log.info("create db:"+self.dbName+","+str(dbOk))
+            try:
+                dbOk = self.executor.execute("create database {};".format(self.dbName))
+            except Exception as e:
+                pass
+            #log.info("create db:"+self.dbName+","+str(dbOk))
+            log.info("create db:"+self.dbName)
         inputs = self.fesqlCase.get('inputs')
         res,self.tableNames = fesql_util.createAndInsert(self.executor,self.dbName,inputs)
         if not res.ok:

@@ -159,7 +159,7 @@ class Cursor(object):
                     raise DatabaseError("parameters is not enough")
                 ok, builder = self.connection._sdk.getInsertBuilder(self.db, command)
                 if not ok:
-                    raise DatabaseError(error)
+                    raise DatabaseError("get insert builder fail")
                 schema = builder.GetSchema()
                 holdIdxs = builder.GetHoleIdx()
                 strSize = 0
@@ -200,15 +200,15 @@ class Cursor(object):
                         raise DatabaseError("erred at append data seq {}".format(i));
                 ok, error = self.connection._sdk.executeInsert(self.db, command, builder)
                 if not ok:
-                    raise DatabaseError(err)
+                    raise DatabaseError(error)
             else:
                 ok, error = self.connection._sdk.executeInsert(self.db, command)
                 if not ok:
-                    raise DatabaseError(err)
+                    raise DatabaseError(error)
         elif command.find("select ") == 0:
             ok, rs = self.connection._sdk.executeQuery(self.db, command)
             if not ok:
-                raise DatabaseError(err)
+                raise DatabaseError("execute select fail")
             self.rowcount = rs.Size()
             self._resultSet = rs
             self.__schema = rs.GetSchema()
@@ -220,7 +220,7 @@ class Cursor(object):
                 driver.sql_router_sdk.kTypeFloat: self._resultSet.GetFloatUnsafe,
                 driver.sql_router_sdk.kTypeDouble: self._resultSet.GetDoubleUnsafe,
                 driver.sql_router_sdk.kTypeString: self._resultSet.GetStringUnsafe,
-                driver.sql_router_sdk.kTypeDate: self._resultSet.GetDateUnsafe,
+                driver.sql_router_sdk.kTypeDate: self._resultSet.GetAsString,
                 driver.sql_router_sdk.kTypeTimestamp: self._resultSet.GetTimeUnsafe
             }
             self.description = [
