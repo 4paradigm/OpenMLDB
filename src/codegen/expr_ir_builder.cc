@@ -254,12 +254,10 @@ Status ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call,
     std::vector<const node::TypeNode*> arg_types;
 
     // TODO(xxx): remove this
-    bool is_udaf = false;
     if (call->GetChildNum() > 0) {
         auto first_node_type = call->GetChild(0)->GetOutputType();
         if (first_node_type != nullptr &&
             first_node_type->base_ == node::kList) {
-            is_udaf = true;
         }
     }
     ExprIRBuilder sub_builder(ctx_);
