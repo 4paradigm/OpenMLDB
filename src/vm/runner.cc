@@ -1702,6 +1702,7 @@ const std::string KeyGenerator::GenConst() {
     return keys;
 }
 const std::string KeyGenerator::Gen(const Row& row) {
+    LOG(INFO) << "KeyGenerator::Gen >> ";
     Row key_row = CoreAPI::RowProject(fn_, row, true);
     RowView row_view(row_view_);
     if (!row_view.Reset(key_row.buf())) {
@@ -1724,6 +1725,7 @@ const std::string KeyGenerator::Gen(const Row& row) {
         }
         keys.append(key);
     }
+    LOG(INFO) << "key: " << keys;
     return keys;
 }
 const int64_t OrderGenerator::Gen(const Row& row) {
