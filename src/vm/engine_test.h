@@ -183,6 +183,38 @@ void PrintYamlResult(const vm::Schema& schema, const std::vector<Row>& rows) {
     LOG(INFO) << "\n" << oss.str() << "\n";
 }
 
+void PrintYamlV1Result(const vm::Schema& schema, const std::vector<Row>& rows) {
+    std::ostringstream oss;
+    oss << "print schema\n[";
+    for (int i = 0; i < schema.size(); i++) {
+        auto col = schema.Get(i);
+        oss << "\"" << col.name() << " " << YamlTypeName(col.type()) << "\"";
+        if (i + 1 != schema.size()) {
+            oss << ", ";
+        }
+    }
+    oss << "]\nprint rows\n";
+    RowView row_view(schema);
+    for (auto row : rows) {
+        row_view.Reset(row.buf());
+        oss << "- [";
+        for (int idx = 0; idx < schema.size(); idx++) { 
+            std::string str = row_view.GetAsString(idx);
+            auto col = schema.Get(idx);
+            if (YamlTypeName(col.type()) == "string" || YamlTypeName(col.type()) == "date") {
+                oss  << "\"" << str  << "\"";
+            } else {
+                oss << str;
+            }
+            if (idx + 1 != schema.size()) {
+                oss << ", ";
+            }
+        }
+        oss << "]\n";
+    }
+    LOG(INFO) << "\n" << oss.str() << "\n";
+}
+
 void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
     std::ostringstream oss;
     RowView row_view(schema);
@@ -521,6 +553,7 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
     LOG(INFO) << "Real result:\n";
     PrintRows(schema, sorted_output);
     PrintYamlResult(schema, sorted_output);
+    PrintYamlV1Result(schema, sorted_output);
 
     if (!sql_case.expect().schema_.empty() ||
         !sql_case.expect().columns_.empty()) {

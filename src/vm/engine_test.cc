@@ -42,6 +42,10 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(InitCases("/cases/query/fz_sql.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
+    EngineTestFzTempTest, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/fz_temp.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
     EngineSimpleQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
 INSTANTIATE_TEST_CASE_P(
@@ -127,6 +131,11 @@ INSTANTIATE_TEST_CASE_P(
     EngineTestFzFunction, EngineTest,
     testing::ValuesIn(
         InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestFzSQLFunction, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/v1/test_fz_sql.yaml")));
 
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
