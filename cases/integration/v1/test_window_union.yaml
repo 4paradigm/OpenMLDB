@@ -389,7 +389,7 @@ cases:
     desc: WINDOW UNION 子查询, timestamp(string) as window ts
     mode: offline-unsupport
     inputs:
-      - columns: ["id int","c1 string","c3f float","c4 bigint","c5 float","c6 double","c7 string","c8 date"]
+      - columns: ["id int","c1 string","c3f float","c4 bigint","c5 float","c6 double","c7str string","c8 date"]
         indexs: ["index1:c1:c7"]
         rows:
           - [1,"aa",20.0, 30,1.1,2.1,"2020-05-29 15:56:33","2020-05-01"]
@@ -398,14 +398,14 @@ cases:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 string"]
         indexs: ["index1:c3:c7"]
         rows:
-          - [2,"bb",20,31,1.2,2.2,"2020-05-29 15:56:31"]
-          - [3,"cc",20,32,1.3,2.3,"2020-05-29 15:56:32"]
+          - [2,"bb",20,31,1.2,2.2, 1590738991000]
+          - [3,"cc",20,32,1.3,2.3, 1590738992000]
     sql: |
       SELECT id, c1, c3, c8, 
       distinct_count(c8) OVER w1 as w1_c8_dis_cnt,
       sum(c4) OVER w1 as w1_c4_sum 
-      FROM (select id, c1, int(c3f) as c3, c4, c5, c6, timestamp(c7) as c7, c8 from {0}) WINDOW
-      w1 AS (UNION (select id, c1, c3, c4, c5, c6, timestamp(c7) as c7, date("2020-10-01") as c8 from {1})
+      FROM (select id, c1, int(c3f) as c3, c4, c5, c6, timestamp(c7str) as c7, c8 from {0}) WINDOW
+      w1 AS (UNION (select id, c1, c3, c4, c5, c6, c7, date("2020-10-01") as c8 from {1})
       PARTITION BY c3 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW);
     expect:
       order: id
