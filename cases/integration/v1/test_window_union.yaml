@@ -357,6 +357,7 @@ cases:
         - [5, "ee", 21, "2020-05-05", 1, 34]
   - id: 15
     desc: WINDOW UNION 子查询, column cast 和 const cast子查询. cast column as partition key 
+    tags: ["TODO", "cast column as key"]
     inputs:
       - columns: ["id int","c1 string","c3f float","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c1:c7"]
