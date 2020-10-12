@@ -358,13 +358,13 @@ cases:
   - id: 15
     desc: WINDOW UNION 子查询, column cast 和 const cast子查询. cast column as partition key 
     inputs:
-      - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      - columns: ["id int","c1 string","c3f float","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c1:c7"]
         rows:
-          - [1,"aa",20,30,1.1,2.1,1590738993000,"2020-05-01"]
-          - [4,"dd",20,33,1.4,2.4,1590738994000,"2020-05-04"]
-          - [5,"ee",21,34,1.5,2.5,1590738995000,"2020-05-05"]
-      - columns: ["id int","c1 string","c3f float","c4 bigint","c5 float","c6 double","c7 timestamp"]
+          - [1,"aa",20.0, 30,1.1,2.1,1590738993000,"2020-05-01"]
+          - [4,"dd",20.1, 33,1.4,2.4,1590738994000,"2020-05-04"]
+          - [5,"ee",21.2, 34,1.5,2.5,1590738995000,"2020-05-05"]
+      - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]
         indexs: ["index1:c3:c7"]
         rows:
           - [2,"bb",20.1,31,1.2,2.2,1590738991000]
@@ -373,8 +373,8 @@ cases:
       SELECT id, c1, c3, c8, 
       distinct_count(c8) OVER w1 as w1_c8_dis_cnt,
       sum(c4) OVER w1 as w1_c4_sum 
-      FROM {0} WINDOW
-      w1 AS (UNION (select id, c1, int(c3f) as c3, c4, c5, c6, c7, date("2020-10-01") as c8 from {1})
+      FROM {select id, c1, int(c3f) as c3, c4, c5, c6, c7, c8 from (0}) WINDOW
+      w1 AS (UNION (select id, c1, c3, c4, c5, c6, c7, date("2020-10-01") as c8 from {1})
       PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW);
     expect:
       order: id
