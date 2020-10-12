@@ -264,7 +264,7 @@ bool RowFnLetIRBuilder::AddOutputColumnInfo(
         }
         case fesql::node::kExprCast: {
             const ::fesql::node::CastExprNode* cast_expr = 
-                dynamic_cast<CastExprNode*>(expr);
+                dynamic_cast<const ::fesql::node::CastExprNode*>(expr);
 
             if (nullptr == cast_expr->expr()) {
                 return false;
@@ -277,14 +277,14 @@ bool RowFnLetIRBuilder::AddOutputColumnInfo(
                     ctx_->schemas_context()->ColumnSourceResolved(
                         column_expr->GetRelationName(),
                         column_expr->GetColumnName(),
-                        cast_expr->cast_type()));
+                        cast_expr->cast_type_));
                     break;
                 }
                 case fesql::node::kExprPrimary: {
                     auto const_expr = 
                         dynamic_cast<const node::ConstNode*>(cast_expr->expr());
                     output_column_sources->push_back(
-                        vm::ColumnSource(const_expr, cast_expr->cast_type()));
+                        vm::ColumnSource(const_expr, cast_expr->cast_type_));
                     break;
                 }
                 default: {

@@ -249,7 +249,7 @@ const std::string SchemasContext::SourceColumnNameResolved(
         }
         case fesql::node::kExprCast: {
             return SourceColumnNameResolved(
-                dynamic_cast<node::ExprCastNode*>(expr)->expr());
+                dynamic_cast<node::CastExprNode*>(expr)->expr());
         }
         default: {
             return "";
