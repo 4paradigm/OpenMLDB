@@ -252,8 +252,6 @@ bool RowFnLetIRBuilder::AddOutputColumnInfo(
     ::fesql::type::ColumnDef* cdef = output_schema->Add();
     cdef->set_name(col_name);
     cdef->set_type(ctype);
-    LOG(INFO) << "add output column info: expression type: "
-              << fesql::node::ExprTypeName(expr->expr_type_);
     switch (expr->GetExprType()) {
         case fesql::node::kExprGetField: {
             const ::fesql::node::GetFieldExpr* column_expr =
@@ -271,9 +269,6 @@ bool RowFnLetIRBuilder::AddOutputColumnInfo(
             if (nullptr == cast_expr->expr()) {
                 return false;
             }
-            LOG(INFO) << "cast expression type: "
-                      << fesql::node::ExprTypeName(
-                             cast_expr->expr()->expr_type_);
             switch (cast_expr->expr()->expr_type_) {
                 case fesql::node::kExprGetField: {
                     const ::fesql::node::GetFieldExpr* column_expr =
