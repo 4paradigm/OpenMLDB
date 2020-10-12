@@ -143,12 +143,12 @@ TEST_F(FnLetIRBuilderTest, test_column_cast_and_const_cast) {
 
     ASSERT_EQ(vm::kSourceConst, column_sources[2].type());
     ASSERT_EQ(1.0, column_sources[2].const_value()->GetDouble());
-    ASSERT_EQ(1.0, GetDoubleUnsafe(3));
+    ASSERT_EQ(1.0, row_view.GetDoubleUnsafe(3));
 
     ASSERT_EQ(vm::kSourceConstCast, column_sources[3].type());
     ASSERT_EQ("2020-10-01", column_sources[3].const_value()->GetExprString());
     ASSERT_EQ(node::kDate, column_sources[3].cast_type());
-    ASSERT_EQ(codec::Date(2020,10,01).date_, GetDateUnsafe(3));
+    ASSERT_EQ(codec::Date(2020,10,01).date_, row_view.GetDateUnsafe(3));
     free(buf);
 }
 TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
