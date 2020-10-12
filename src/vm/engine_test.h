@@ -292,28 +292,28 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                 case fesql::type::kInt32: {
                     ASSERT_EQ(row_view.GetInt32Unsafe(i),
                               row_view_exp.GetInt32Unsafe(i))
-                        << " At " << i;
+                        << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
                 case fesql::type::kInt64: {
                     ASSERT_EQ(row_view.GetInt64Unsafe(i),
                               row_view_exp.GetInt64Unsafe(i))
-                        << " At " << i;
+                        << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
                 case fesql::type::kInt16: {
                     ASSERT_EQ(row_view.GetInt16Unsafe(i),
                               row_view_exp.GetInt16Unsafe(i))
-                        << " At " << i;
+                        << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
                 case fesql::type::kFloat: {
                     float act = row_view.GetFloatUnsafe(i);
                     float exp = row_view_exp.GetFloatUnsafe(i);
                     if (IsNaN(exp)) {
-                        ASSERT_TRUE(IsNaN(act)) << " At " << i;
+                        ASSERT_TRUE(IsNaN(act)) << " At " << i << " " << schema.Get(i).name();
                     } else {
-                        ASSERT_FLOAT_EQ(act, exp) << " At " << i;
+                        ASSERT_FLOAT_EQ(act, exp) << " At " << i << " " << schema.Get(i).name();
                     }
                     break;
                 }
@@ -321,34 +321,34 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                     double act = row_view.GetDoubleUnsafe(i);
                     double exp = row_view_exp.GetDoubleUnsafe(i);
                     if (IsNaN(exp)) {
-                        ASSERT_TRUE(IsNaN(act)) << " At " << i;
+                        ASSERT_TRUE(IsNaN(act)) << " At " << i << " " << schema.Get(i).name();
                     } else {
-                        ASSERT_DOUBLE_EQ(act, exp) << " At " << i;
+                        ASSERT_DOUBLE_EQ(act, exp) << " At " << i << " " << schema.Get(i).name();
                     }
                     break;
                 }
                 case fesql::type::kVarchar: {
                     ASSERT_EQ(row_view.GetStringUnsafe(i),
                               row_view_exp.GetStringUnsafe(i))
-                        << " At " << i;
+                        << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
                 case fesql::type::kDate: {
                     ASSERT_EQ(row_view.GetDateUnsafe(i),
                               row_view_exp.GetDateUnsafe(i))
-                        << " At " << i;
+                        << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
                 case fesql::type::kTimestamp: {
                     ASSERT_EQ(row_view.GetTimestampUnsafe(i),
                               row_view_exp.GetTimestampUnsafe(i))
-                        << " At " << i;
+                        << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
                 case fesql::type::kBool: {
                     ASSERT_EQ(row_view.GetBoolUnsafe(i),
                               row_view_exp.GetBoolUnsafe(i))
-                        << " At " << i;
+                        << " At " << i << " " << schema.Get(i).name();
                     break;
                 }
                 default: {
