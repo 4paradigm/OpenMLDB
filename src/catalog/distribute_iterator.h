@@ -62,7 +62,7 @@ class DistributeWindowIterator : public ::fesql::codec::WindowIterator {
     void Next() override;
     bool Valid() override;
     std::unique_ptr<::fesql::codec::RowIterator> GetValue() override;
-    ::fesql::codec::RowIterator* GetValue(int8_t* addr) override;
+    ::fesql::codec::RowIterator* GetRawValue() override;
     const ::fesql::codec::Row GetKey() override;
 
  private:

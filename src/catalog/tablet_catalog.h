@@ -72,8 +72,18 @@ class TabletSegmentHandler : public ::fesql::vm::TableHandler {
         return std::unique_ptr<::fesql::vm::RowIterator>();
     }
 
-    ::fesql::vm::RowIterator *GetIterator(int8_t *addr) const override {
-        LOG(WARNING) << "can't get iterator with given address";
+    ::fesql::vm::RowIterator *GetRawIterator() const override {
+        auto iter = partition_handler_->GetWindowIterator();
+        if (iter) {
+            DLOG(INFO) << "seek to pk " << key_;
+            iter->Seek(key_);
+            if (iter->Valid() &&
+                0 == iter->GetKey().compare(fesql::codec::Row(key_))) {
+                return iter->GetRawValue();
+            } else {
+                return nullptr;
+            }
+        }
         return nullptr;
     }
 
@@ -176,7 +186,7 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
 
     std::unique_ptr<::fesql::codec::RowIterator> GetIterator() const override;
 
-    ::fesql::codec::RowIterator *GetIterator(int8_t *addr) const override;
+    ::fesql::codec::RowIterator *GetRawIterator() const override;
 
     std::unique_ptr<::fesql::codec::WindowIterator> GetWindowIterator(const std::string &idx_name) override;
 

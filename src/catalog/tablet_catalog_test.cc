@@ -266,7 +266,7 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test) {
         "on t1.col1 = t2.col1 and t1.col2 > t2.col2;";
     ::fesql::vm::ExplainOutput explain;
     ::fesql::base::Status status;
-    engine.Explain(sql, "db1", true, &explain, &status);
+    engine.Explain(sql, "db1", ::fesql::vm::kBatchMode, &explain, &status);
     std::cout << "logical_plan \n" << explain.logical_plan << std::endl;
     std::cout << "physical \n" << explain.physical_plan << std::endl;
 
@@ -307,7 +307,7 @@ TEST_F(TabletCatalogTest, sql_last_join_smoke_test2) {
         " on t1.col1 = t2.col1 and t1.col2 = t2.col2;";
     ::fesql::vm::ExplainOutput explain;
     ::fesql::base::Status status;
-    engine.Explain(sql, "db1", true, &explain, &status);
+    engine.Explain(sql, "db1", ::fesql::vm::kBatchMode, &explain, &status);
     std::cout << "logical_plan \n" << explain.logical_plan << std::endl;
     std::cout << "physical \n" << explain.physical_plan << std::endl;
     ::fesql::vm::BatchRunSession session;

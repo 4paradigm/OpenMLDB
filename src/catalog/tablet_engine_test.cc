@@ -174,7 +174,7 @@ void TabletEngineTest::BatchModeCheck(
     LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
 
     std::ostringstream runner_oss;
-    session.GetRunner()->Print(runner_oss, "");
+    session.GetMainTask()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::vector<fesql::codec::Row> request_data;
     for (int32_t i = 0; i < input_cnt; i++) {
@@ -264,7 +264,7 @@ void TabletEngineTest::RequestModeCheck(
     LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
 
     std::ostringstream runner_oss;
-    session.GetRunner()->Print(runner_oss, "");
+    session.GetMainTask()->Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::vector<fesql::codec::Row> request_data;
     const std::string &request_name = session.GetRequestName();

@@ -141,7 +141,13 @@ const ::fesql::codec::Row TabletTableHandler::Get(int32_t pos) {
     return iter->Valid() ? iter->GetValue() : ::fesql::codec::Row();
 }
 
-::fesql::codec::RowIterator* TabletTableHandler::GetIterator(int8_t* addr) const { return NULL; }
+::fesql::codec::RowIterator* TabletTableHandler::GetRawIterator() const {
+    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
+    if (!tables->empty()) {
+        return new catalog::FullTableIterator(tables);
+    }
+    return nullptr;
+}
 
 const uint64_t TabletTableHandler::GetCount() {
     auto iter = GetIterator();

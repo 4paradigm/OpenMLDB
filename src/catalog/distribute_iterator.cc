@@ -114,7 +114,7 @@ bool DistributeWindowIterator::Valid() { return it_ && it_->Valid(); }
 
 std::unique_ptr<::fesql::codec::RowIterator> DistributeWindowIterator::GetValue() { return it_->GetValue(); }
 
-::fesql::codec::RowIterator* DistributeWindowIterator::GetValue(int8_t* addr) { return it_->GetValue(addr); }
+::fesql::codec::RowIterator* DistributeWindowIterator::GetRawValue() { return it_->GetRawValue(); }
 
 const ::fesql::codec::Row DistributeWindowIterator::GetKey() { return it_->GetKey(); }
 
