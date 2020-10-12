@@ -256,7 +256,6 @@ class ColumnProject {
                     }
                     sources.push_back(sources2[source1.column_idx()]);
                     break;
-
                 }
                 case kSourceNone: {
                     LOG(WARNING) << "Fail to combine column sources";

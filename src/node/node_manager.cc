@@ -1264,7 +1264,8 @@ node::ExprListNode *NodeManager::BuildExprListFromSchemaSource(
                 auto column = schema_souce.schema_->Get(iter->column_idx());
                 output->AddChild(
                     MakeCastNode(iter->cast_type(),
-                        MakeColumnRefNode(column.name(), schema_souce.table_name_)));
+                                 MakeColumnRefNode(column.name(),
+                                                   schema_souce.table_name_)));
                 break;
             }
             case vm::kSourceConst: {
@@ -1273,9 +1274,9 @@ node::ExprListNode *NodeManager::BuildExprListFromSchemaSource(
                 break;
             }
             case vm::kSourceConstCast: {
-                output->AddChild(
-                    MakeCastNode(iter->cast_type(),
-                        const_cast<node::ConstNode *>(iter->const_value())));
+                output->AddChild(MakeCastNode(
+                    iter->cast_type(),
+                    const_cast<node::ConstNode *>(iter->const_value())));
                 break;
             }
             default: {

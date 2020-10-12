@@ -241,7 +241,7 @@ const std::string SchemasContext::SourceColumnNameResolved(
     if (nullptr == expr) {
         return "";
     }
-    switch(expr->expr_type_) {
+    switch (expr->expr_type_) {
         case fesql::node::kExprColumnRef: {
             return SourceColumnNameResolved(
                 dynamic_cast<node::ColumnRefNode*>(expr));
@@ -255,7 +255,7 @@ const std::string SchemasContext::SourceColumnNameResolved(
             return "";
         }
     }
-    
+
     return "";
 }
 vm::ColumnSource SchemasContext::ColumnSourceResolved(
@@ -286,8 +286,6 @@ vm::ColumnSource SchemasContext::ColumnSourceResolved(
     }
     return ColumnSource(row_schema_info->idx_, column_idx, col_name, cast_type);
 }
-
-
 
 base::Status SchemasContext::ColumnTypeResolved(
     const std::string& relation_name, const std::string& col_name,

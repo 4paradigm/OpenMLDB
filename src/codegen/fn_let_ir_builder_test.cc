@@ -107,7 +107,9 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
 }
 TEST_F(FnLetIRBuilderTest, test_column_cast_and_const_cast) {
     // Create an LLJIT instance.
-    std::string sql = "SELECT bigint(col1), col6, 1.0, date(\"2020-10-01\")  FROM t1 limit 10;";
+    std::string sql =
+        "SELECT bigint(col1), col6, 1.0, date(\"2020-10-01\")  FROM t1 limit "
+        "10;";
 
     int8_t* buf = NULL;
     uint32_t size = 0;
@@ -130,7 +132,6 @@ TEST_F(FnLetIRBuilderTest, test_column_cast_and_const_cast) {
     ASSERT_EQ(0, column_sources[0].column_idx());
     ASSERT_EQ(0, column_sources[0].schema_idx());
     ASSERT_EQ(node::kInt64, column_sources[0].cast_type());
-
 
     ASSERT_EQ(vm::kSourceColumn, column_sources[1].type());
     ASSERT_EQ(5, column_sources[1].column_idx());

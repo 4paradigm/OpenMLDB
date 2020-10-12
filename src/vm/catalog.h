@@ -39,12 +39,13 @@ using fesql::codec::RowIterator;
 using fesql::codec::Schema;
 using fesql::codec::WindowIterator;
 
-enum SourceType { 
-    kSourceColumn, 
-    kSourceConst, 
+enum SourceType {
+    kSourceColumn,
+    kSourceConst,
     kSourceColumnCast,
     kSourceConstCast,
-    kSourceNone };
+    kSourceNone
+};
 class ColumnSource;
 typedef std::vector<ColumnSource> ColumnSourceList;
 class ColumnSource {
@@ -96,11 +97,11 @@ class ColumnSource {
                 return "<-" + node::ExprString(const_value_);
             case kSourceColumnCast:
                 return "<-[" + std::to_string(schema_idx_) + ":" +
-                       std::to_string(column_idx_) + ":" + 
+                       std::to_string(column_idx_) + ":" +
                        node::DataTypeName(cast_type_) + "]";
             case kSourceConstCast:
                 return "<-" + node::ExprString(const_value_) + ":" +
-                        node::DataTypeName(cast_type_);
+                       node::DataTypeName(cast_type_);
             case kSourceNone:
                 return "->None";
         }
@@ -111,7 +112,8 @@ class ColumnSource {
     const uint32_t column_idx() const { return column_idx_; }
     const std::string& column_name() const { return column_name_; }
     const node::ConstNode* const_value() const { return const_value_; }
-    const node::DataType cast_type() const { return cast_type_;}
+    const node::DataType cast_type() const { return cast_type_; }
+
  private:
     SourceType type_;
     uint32_t schema_idx_;
