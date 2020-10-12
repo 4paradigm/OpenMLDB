@@ -252,14 +252,6 @@ Status ExprIRBuilder::BuildCallFn(const ::fesql::node::CallExprNode* call,
 
     std::vector<NativeValue> arg_values;
     std::vector<const node::TypeNode*> arg_types;
-
-    // TODO(xxx): remove this
-    if (call->GetChildNum() > 0) {
-        auto first_node_type = call->GetChild(0)->GetOutputType();
-        if (first_node_type != nullptr &&
-            first_node_type->base_ == node::kList) {
-        }
-    }
     ExprIRBuilder sub_builder(ctx_);
     sub_builder.set_frame(this->frame_arg_, this->frame_);
     for (size_t i = 0; i < call->GetChildNum(); ++i) {
