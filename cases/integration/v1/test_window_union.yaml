@@ -374,7 +374,7 @@ cases:
       distinct_count(c8) OVER w1 as w1_c8_dis_cnt,
       sum(c4) OVER w1 as w1_c4_sum 
       FROM {0} WINDOW
-      w1 AS (UNION (select id, c1, int(c3str) as c3, c4, c5, c6, c7, date("2020-10-01") as c8 from {1})
+      w1 AS (UNION (select id, c1, int(c3f) as c3, c4, c5, c6, c7, date("2020-10-01") as c8 from {1})
       PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW);
     expect:
       order: id
