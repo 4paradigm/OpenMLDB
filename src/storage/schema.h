@@ -149,6 +149,7 @@ class PartitionSt {
  public:
     PartitionSt() = default;
     explicit PartitionSt(const ::rtidb::nameserver::TablePartition& partitions);
+    explicit PartitionSt(const ::rtidb::common::TablePartition& partitions);
 
     inline const std::string& GetLeader() const { return leader_; }
     inline const std::vector<std::string>& GetFollower() const { return follower_; }
@@ -167,6 +168,8 @@ class TableSt {
     TableSt() : name_(), db_(), tid_(0), pid_num_(0), partitions_() {}
 
     explicit TableSt(const ::rtidb::nameserver::TableInfo& table_info);
+
+    explicit TableSt(const ::rtidb::api::TableMeta& meta);
 
     inline const std::string& GetName() const { return name_; }
 

@@ -187,6 +187,19 @@ PartitionSt::PartitionSt(const ::rtidb::nameserver::TablePartition& partitions) 
     }
 }
 
+PartitionSt::PartitionSt(const ::rtidb::common::TablePartition& partitions) : pid_(partitions.pid()) {
+    for (const auto& meta : partitions.partition_meta()) {
+        if (!meta.is_alive()) {
+            continue;
+        }
+        if (meta.is_leader()) {
+            leader_ = meta.endpoint();
+        } else {
+            follower_.push_back(meta.endpoint());
+        }
+    }
+}
+
 bool PartitionSt::operator==(const PartitionSt& partition_st) const {
     if (pid_ != partition_st.GetPid()) {
         return false;
@@ -215,6 +228,23 @@ TableSt::TableSt(const ::rtidb::nameserver::TableInfo& table_info)
       column_key_(table_info.column_key()) {
     partitions_ = std::make_shared<std::vector<PartitionSt>>();
     for (const auto& table_partition : table_info.table_partition()) {
+        uint32_t pid = table_partition.pid();
+        if (pid > partitions_->size()) {
+            continue;
+        }
+        partitions_->emplace_back(PartitionSt(table_partition));
+    }
+}
+
+TableSt::TableSt(const ::rtidb::api::TableMeta& meta)
+    : name_(meta.name()),
+      db_(meta.db()),
+      tid_(meta.tid()),
+      pid_num_(meta.table_partition_size()),
+      column_desc_(meta.column_desc()),
+      column_key_(meta.column_key()) {
+    partitions_ = std::make_shared<std::vector<PartitionSt>>();
+    for (const auto& table_partition : meta.table_partition()) {
         uint32_t pid = table_partition.pid();
         if (pid > partitions_->size()) {
             continue;

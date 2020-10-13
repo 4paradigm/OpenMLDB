@@ -33,7 +33,7 @@ namespace catalog {
 
 TabletTableHandler::TabletTableHandler(const ::rtidb::api::TableMeta& meta)
     : schema_(),
-      table_st_(),
+      table_st_(meta),
       tables_(std::make_shared<Tables>()),
       types_(),
       index_list_(),
