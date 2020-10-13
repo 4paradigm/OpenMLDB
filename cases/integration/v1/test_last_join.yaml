@@ -919,7 +919,7 @@ cases:
       (select c1 as name,c2 as age,c3 as id,c4 as ctime from {0}) as t1
       last join
       (select c1 as name,c2 as age,c3 as id,c4 as ctime from {1}) as t2
-      ORDER BY t1.id on t1.name=t2.name;
+      ORDER BY t2.id on t1.name=t2.name;
     expect:
       order: c1
       columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
