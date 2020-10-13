@@ -47,6 +47,8 @@ class RowsChecker(BaseChecker):
             else:
                 schema = self.fesqlResult.resultSchema
                 index = fesql_util.getIndexByColumnName(schema,orderName)
+            log.info("old data: {}".format(actual))
+            log.info("old data: {}".format(expect))
             expect = sorted(expect,key= lambda x:x[index])
             actual = sorted(actual, key=lambda x: x[index])
             log.info("order expect:{}".format(expect))
@@ -73,6 +75,7 @@ class RowsChecker(BaseChecker):
             else:
                 data = str(value);
                 column = columns[index]
+                log.info("column is:{}".format(column))
                 list.append(self.convertData(data,column))
         return list
 
@@ -83,6 +86,8 @@ class RowsChecker(BaseChecker):
         if data == 'None':
             return 'None'
         if type == 'int' :
+            obj = int(data)
+        elif type == 'int64':
             obj = int(data)
         elif type == 'bigint':
             obj = int(data)

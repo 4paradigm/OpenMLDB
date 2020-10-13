@@ -47,7 +47,8 @@ def getIndexByColumnName(schema,columnName):
     if hasattr(schema, "GetColumnCnt"):
         count = schema.GetColumnCnt()
         for i in range(count):
-            if schema.GetColumnName(i) == columnName: return i
+            if schema.GetColumnName(i) == columnName:
+                return i
     else:
         for i in range(len(schema)):
             if schema[i][0] == columnName:
@@ -132,7 +133,7 @@ def sqlRequestMode(executor,dbName:str,sql:str,input):
 def insert(executor,dbName:str,sql:str):
     log.info("insert sql:" + sql)
     fesqlResult = FesqlResult()
-    if hasattr(executor, "executeDDL"):
+    if hasattr(executor, "executeInsert"):
         insertOk,msg = executor.executeInsert(dbName, sql)
         fesqlResult.ok = insertOk
         fesqlResult.msg = msg
@@ -231,7 +232,6 @@ def getColumnType(dataType:str):
 def select(executor, dbName: str, sql: str):
     log.info("select sql:"+sql)
     fesqlResult = FesqlResult()
-    rs = None
     if hasattr(executor, "executeQuery"):
         ok,rs = executor.executeQuery(dbName,sql)
         if ok == False or rs == None:
@@ -239,21 +239,21 @@ def select(executor, dbName: str, sql: str):
         else:
             fesqlResult.ok = True
             fesqlResult.count = rs.Size()
+            fesqlResult.rs = rs
             schema = rs.GetSchema()
             fesqlResult.resultSchema = schema
             fesqlResult.result = convertRestultSetToList(rs,schema)
-        return fesqlResult
-
-    try:
-        rs = executor.execute(sql)
-        fesqlResult.ok = True
-        fesqlResult.msg = "ok"
-        fesqlResult.rs = rs
-        fesqlResult.count = rs.rowcount
-        fesqlResult.result = convertRestultSetToList(rs)
-    except Exception as e:
-        fesqlResult.ok = False
-        fesqlResult.msg = str(e)
+    else:
+        try:
+            rs = executor.execute(sql)
+            fesqlResult.ok = True
+            fesqlResult.msg = "ok"
+            fesqlResult.rs = rs
+            fesqlResult.count = rs.rowcount
+            fesqlResult.result = convertRestultSetToList(rs)
+        except Exception as e:
+            fesqlResult.ok = False
+            fesqlResult.msg = str(e)
     log.info("select result:"+str(fesqlResult))
     return fesqlResult
 
