@@ -36,6 +36,7 @@ class BlobProxyImpl : public ::rtidb::blobproxy::BlobProxy {
     std::mutex mu_;
     brpc::Server* server_;
     BaseClient* client_;
+    std::map<std::string, std::string> mime_;
 };
 }  // namespace blobproxy
 }  // namespace rtidb

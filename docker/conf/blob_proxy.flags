@@ -21,3 +21,4 @@
 --log_level=info
 #--io_pool_size=2
 #--task_pool_size=8
+--mime_conf=conf/mine.conf
