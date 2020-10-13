@@ -235,6 +235,8 @@ class Engine {
 
     void ClearCacheLocked(const std::string& db);
 
+    void ClearSpCacheLocked(const std::string& db, const std::string& sp_name);
+
  private:
     bool GetDependentTables(node::PlanNode* node, std::set<std::string>* tables,
                             base::Status& status);  // NOLINT

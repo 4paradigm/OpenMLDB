@@ -457,5 +457,11 @@ int32_t BatchRunSession::Run(std::vector<Row>& rows, uint64_t limit) {
     return 0;
 }
 
+void Engine::ClearSpCacheLocked(const std::string& db,
+                                const std::string& sp_name) {
+    std::lock_guard<base::SpinMutex> lock(mu_);
+    procedure_cache_[db].erase(sp_name);
+}
+
 }  // namespace vm
 }  // namespace fesql

@@ -950,6 +950,11 @@ cmd_stmt:
 			{
 				$$ = node_manager->MakeCmdNode(::fesql::node::kCmdShowProcedures);
 			}
+            |DROP PROCEDURE sp_name
+            {
+                $$ = node_manager->MakeCmdNode(::fesql::node::kCmdDropSp, $3);
+                free($3);
+            }
             |EXIT {
                 $$ = node_manager->MakeCmdNode(::fesql::node::kCmdExit);
             }
