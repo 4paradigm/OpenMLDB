@@ -414,7 +414,7 @@ cases:
         - [1, "aa", 20, 1590738993000, "2020-05-01", 2, 93]
         - [4, "dd", 20, 1590738994000, "2020-05-04", 2, 96]
         - [5, "ee", 21, 1590738995000, "2020-05-05", 1, 34]
- -  id: 14-4
+  - id: 14-4
     desc: WINDOW UNION 子查询, cast另一种写法 cast(column as timestamp) as window ts
     mode: offline-unsupport
     inputs:
