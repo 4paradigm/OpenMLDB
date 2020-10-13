@@ -171,7 +171,7 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
 
     explicit TabletTableHandler(const ::rtidb::nameserver::TableInfo &meta);
 
-    bool Init();
+    bool Init(const ClientManager& client_manager);
 
     const ::fesql::vm::Schema *GetSchema() override { return &schema_; }
 

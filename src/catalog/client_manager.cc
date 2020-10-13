@@ -33,19 +33,38 @@ std::shared_ptr<::rtidb::client::TabletClient> PartitionClientManager::GetFollow
 }
 
 TableClientManager::TableClientManager(const TablePartitions& partitions,
-                                       const std::shared_ptr<ClientManager>& client_manager) {
+                                       const ClientManager& client_manager) {
     for (const auto& table_partition : partitions) {
         uint32_t pid = table_partition.pid();
         std::shared_ptr<ClientWrapper> leader;
         std::vector<std::shared_ptr<ClientWrapper>> follower;
         for (const auto& meta : table_partition.partition_meta()) {
             if (meta.is_alive()) {
-                auto client = client_manager->GetClient(meta.endpoint());
+                auto client = client_manager.GetClient(meta.endpoint());
+                if (!client) {
+                    continue;
+                }
                 if (meta.is_leader()) {
                     leader = client;
                 } else {
                     follower.push_back(client);
                 }
+            }
+        }
+        partition_managers_.push_back(std::make_shared<PartitionClientManager>(pid, leader, follower));
+    }
+}
+
+TableClientManager::TableClientManager(const ::rtidb::storage::TableSt& table_st,
+                                       const ClientManager& client_manager) {
+    for (const auto& partition_st : *(table_st.GetPartitions())) {
+        uint32_t pid = partition_st.GetPid();
+        std::shared_ptr<ClientWrapper> leader = client_manager.GetClient(partition_st.GetLeader());
+        std::vector<std::shared_ptr<ClientWrapper>> follower;
+        for (const auto& endpoint : partition_st.GetFollower()) {
+            auto client = client_manager.GetClient(endpoint);
+            if (client) {
+                follower.push_back(client);
             }
         }
         partition_managers_.push_back(std::make_shared<PartitionClientManager>(pid, leader, follower));

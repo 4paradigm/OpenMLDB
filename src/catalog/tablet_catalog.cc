@@ -49,7 +49,7 @@ TabletTableHandler::TabletTableHandler(const ::rtidb::nameserver::TableInfo& met
       index_hint_(),
       table_client_manager_() {}
 
-bool TabletTableHandler::Init() {
+bool TabletTableHandler::Init(const ClientManager& client_manager) {
     bool ok = SchemaAdapter::ConvertSchema(table_st_.GetColumns(), &schema_);
     if (!ok) {
         LOG(WARNING) << "fail to covert schema to sql schema";
@@ -95,6 +95,7 @@ bool TabletTableHandler::Init() {
         }
         index_hint_.insert(std::make_pair(index_st.name, index_st));
     }
+    table_client_manager_ = std::make_shared<TableClientManager>(table_st_, client_manager);
     DLOG(INFO) << "init table handler for table " << GetName() << " in db " << GetDatabase() << " done";
     return true;
 }
@@ -263,7 +264,7 @@ bool TabletCatalog::AddTable(const ::rtidb::api::TableMeta& meta, std::shared_pt
     auto it = db_it->second.find(table_name);
     if (it == db_it->second.end()) {
         handler = std::make_shared<TabletTableHandler>(meta);
-        if (!handler->Init()) {
+        if (!handler->Init(client_manager_)) {
             LOG(WARNING) << "tablet handler init failed";
             return false;
         }
@@ -327,7 +328,7 @@ void TabletCatalog::RefreshTable(const std::vector<std::shared_ptr<::rtidb::name
             auto it = db_it->second.find(table_name);
             if (it == db_it->second.end()) {
                 handler = std::make_shared<TabletTableHandler>(*table_info);
-                if (!handler->Init()) {
+                if (!handler->Init(client_manager_)) {
                     LOG(WARNING) << "tablet handler init failed";
                     return;
                 }

@@ -25,7 +25,7 @@ namespace rtidb {
 namespace catalog {
 
 SDKTableHandler::SDKTableHandler(const ::rtidb::nameserver::TableInfo& meta,
-        const std::shared_ptr<ClientManager>& client_manager)
+        const ClientManager& client_manager)
     : meta_(meta), schema_(), name_(meta.name()), db_(meta.db()),
     table_client_manager_(std::make_shared<TableClientManager>(meta.table_partition(), client_manager)),
     partition_key_() {}
@@ -130,8 +130,7 @@ bool SDKCatalog::Init(
     const std::vector<::rtidb::nameserver::TableInfo>& tables,
     const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients) {
     table_metas_ = tables;
-    client_manager_ = std::make_shared<ClientManager>();
-    client_manager_->UpdateClient(tablet_clients);
+    client_manager_.UpdateClient(tablet_clients);
     for (size_t i = 0; i < tables.size(); i++) {
         const ::rtidb::nameserver::TableInfo& table_meta = tables[i];
         std::shared_ptr<SDKTableHandler> table = std::make_shared<SDKTableHandler>(table_meta, client_manager_);

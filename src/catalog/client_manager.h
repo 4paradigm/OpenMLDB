@@ -85,7 +85,9 @@ class ClientManager;
 
 class TableClientManager {
  public:
-    TableClientManager(const TablePartitions& partitions, const std::shared_ptr<ClientManager>& client_manager);
+    TableClientManager(const TablePartitions& partitions, const ClientManager& client_manager);
+
+    TableClientManager(const ::rtidb::storage::TableSt& table_st, const ClientManager& client_manager);
 
     std::shared_ptr<PartitionClientManager> GetPartitionClientManager(uint32_t pid) const {
         if (pid < partition_managers_.size()) {

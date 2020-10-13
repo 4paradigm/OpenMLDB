@@ -36,7 +36,7 @@ namespace catalog {
 class SDKTableHandler : public ::fesql::vm::TableHandler {
  public:
     SDKTableHandler(const ::rtidb::nameserver::TableInfo& meta,
-            const std::shared_ptr<ClientManager>& client_manager);
+            const ClientManager& client_manager);
 
     bool Init();
 
@@ -131,7 +131,7 @@ class SDKCatalog : public ::fesql::vm::Catalog {
     std::vector<::rtidb::nameserver::TableInfo> table_metas_;
     SDKTables tables_;
     SDKDB db_;
-    std::shared_ptr<ClientManager> client_manager_;
+    ClientManager client_manager_;
 };
 
 }  // namespace catalog
