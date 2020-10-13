@@ -33,12 +33,9 @@ namespace catalog {
 
 TabletTableHandler::TabletTableHandler(const ::rtidb::api::TableMeta& meta)
     : schema_(),
-      name_(meta.name()),
-      db_(meta.db()),
-      tid_(meta.tid()),
       column_desc_(meta.column_desc()),
       column_key_(meta.column_key()),
-      table_info_(),
+      table_st_(),
       tables_(std::make_shared<Tables>()),
       types_(),
       index_list_(),
@@ -47,12 +44,9 @@ TabletTableHandler::TabletTableHandler(const ::rtidb::api::TableMeta& meta)
 
 TabletTableHandler::TabletTableHandler(const ::rtidb::nameserver::TableInfo& meta)
     : schema_(),
-      name_(meta.name()),
-      db_(meta.db()),
-      tid_(meta.tid()),
       column_desc_(meta.column_desc_v1()),
       column_key_(meta.column_key()),
-      table_info_(meta),
+      table_st_(meta),
       tables_(std::make_shared<Tables>()),
       types_(),
       index_list_(),
@@ -98,14 +92,14 @@ bool TabletTableHandler::Init() {
             const std::string& key = index_def.first_keys(j);
             auto it = types_.find(key);
             if (it == types_.end()) {
-                LOG(WARNING) << "column " << key << " does not exist in table " << name_;
+                LOG(WARNING) << "column " << key << " does not exist in table " << GetName();
                 return false;
             }
             index_st.keys.push_back(it->second);
         }
         index_hint_.insert(std::make_pair(index_st.name, index_st));
     }
-    DLOG(INFO) << "init table handler for table " << name_ << " in db " << db_ << " done";
+    DLOG(INFO) << "init table handler for table " << GetName() << " in db " << GetDatabase() << " done";
     return true;
 }
 
@@ -196,7 +190,17 @@ int TabletTableHandler::DeleteTable(uint32_t pid) {
     return new_tables->size();
 }
 
-void TabletTableHandler::Update(const ::rtidb::nameserver::TableInfo& meta, const ClientManager& client_manager) {}
+void TabletTableHandler::Update(const ::rtidb::nameserver::TableInfo& meta, const ClientManager& client_manager) {
+    ::rtidb::storage::TableSt new_table_st(meta);
+    for (const auto& partition_st : *(new_table_st.GetPartitions())) {
+        uint32_t pid = partition_st.GetPid();
+        if (partition_st == table_st_.GetPartition(pid)) {
+            continue;
+        }
+        table_st_.SetPartition(partition_st);
+        table_client_manager_->SetPartitionClientManager(partition_st, client_manager);
+    }
+}
 
 bool TabletTableHandler::GetTablets(const std::string& index_name, const std::string& pk,
                                     std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* clients) {
@@ -204,7 +208,7 @@ bool TabletTableHandler::GetTablets(const std::string& index_name, const std::st
         return false;
     }
     clients->clear();
-    uint32_t pid_num = table_info_.table_partition_size();
+    uint32_t pid_num = table_st_.GetPartitionNum();
     uint32_t pid = 0;
     if (pid_num > 0) {
         pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);

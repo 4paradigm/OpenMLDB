@@ -28,6 +28,7 @@
 #include "base/random.h"
 #include "base/spinlock.h"
 #include "client/tablet_client.h"
+#include "storage/schema.h"
 
 namespace rtidb {
 namespace catalog {
@@ -48,6 +49,7 @@ class ClientWrapper {
             return false;
         }
         std::atomic_store_explicit(&tablet_client_, client, std::memory_order_relaxed);
+        return true;
     }
 
  private:
@@ -79,10 +81,12 @@ class TableClientManager {
 
     std::shared_ptr<PartitionClientManager> GetPartitionClientManager(uint32_t pid) const {
         if (pid < partition_managers_.size()) {
-            return partition_managers_[pid];
+            return std::atomic_load_explicit(&partition_managers_[pid], std::memory_order_relaxed);
         }
         return std::shared_ptr<PartitionClientManager>();
     }
+
+    bool SetPartitionClientManager(const ::rtidb::storage::PartitionSt& partition, const ClientManager& client_manager);
 
     std::shared_ptr<::rtidb::client::TabletClient> GetTablets(uint32_t pid) const {
         auto partition_manager = GetPartitionClientManager(pid);
@@ -98,14 +102,14 @@ class TableClientManager {
 
 class ClientManager {
  public:
-    std::shared_ptr<ClientWrapper> GetClient(const std::string& name);
+    std::shared_ptr<ClientWrapper> GetClient(const std::string& name) const;
 
     bool UpdateClient(const std::map<std::string, std::string>& real_ep_map);
 
  private:
     std::map<std::string, std::string> real_endpoint_map_;
     std::map<std::string, std::shared_ptr<ClientWrapper>> clients_;
-    ::rtidb::base::SpinMutex mu_;
+    mutable ::rtidb::base::SpinMutex mu_;
 };
 
 }  // namespace catalog

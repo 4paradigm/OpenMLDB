@@ -53,7 +53,27 @@ TableClientManager::TableClientManager(const TablePartitions& partitions,
     }
 }
 
-std::shared_ptr<ClientWrapper> ClientManager::GetClient(const std::string& name) {
+bool TableClientManager::SetPartitionClientManager(const ::rtidb::storage::PartitionSt& partition,
+        const ClientManager& client_manager) {
+    auto leader = client_manager.GetClient(partition.GetLeader());
+    if (!leader) {
+        return false;
+    }
+    std::vector<std::shared_ptr<ClientWrapper>> followers;
+    for (const auto& endpoint : partition.GetFollower()) {
+        auto client = client_manager.GetClient(endpoint);
+        if (!client) {
+            return false;
+        }
+        followers.push_back(client);
+    }
+    uint32_t pid = partition.GetPid();
+    auto partition_manager = std::make_shared<PartitionClientManager>(pid, leader, followers);
+    std::atomic_store_explicit(&partition_managers_[pid], partition_manager, std::memory_order_relaxed);
+    return true;
+}
+
+std::shared_ptr<ClientWrapper> ClientManager::GetClient(const std::string& name) const {
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     auto it = clients_.find(name);
     if (it == clients_.end()) {

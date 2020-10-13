@@ -30,6 +30,7 @@
 #include "client/tablet_client.h"
 #include "codec/row.h"
 #include "storage/table.h"
+#include "storage/schema.h"
 #include "vm/catalog.h"
 
 namespace rtidb {
@@ -174,9 +175,9 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
 
     const ::fesql::vm::Schema *GetSchema() override { return &schema_; }
 
-    const std::string &GetName() override { return name_; }
+    const std::string &GetName() override { return table_st_.GetName(); }
 
-    const std::string &GetDatabase() override { return db_; }
+    const std::string &GetDatabase() override { return table_st_.GetDB(); }
 
     const ::fesql::vm::Types &GetTypes() override { return types_; }
 
@@ -199,7 +200,7 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
 
     const std::string GetHandlerTypeName() override { return "TabletTableHandler"; }
 
-    inline int32_t GetTid() { return tid_; }
+    inline int32_t GetTid() { return table_st_.GetTid(); }
 
     void AddTable(std::shared_ptr<::rtidb::storage::Table> table);
 
@@ -221,13 +222,9 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
 
  private:
     ::fesql::vm::Schema schema_;
-    std::string name_;
-    std::string db_;
-    uint32_t tid_;
     ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> column_desc_;
     ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> column_key_;
-    TablePartitions table_partitions_;
-    ::rtidb::nameserver::TableInfo table_info_;
+    ::rtidb::storage::TableSt table_st_;
     std::shared_ptr<Tables> tables_;
     ::fesql::vm::Types types_;
     ::fesql::vm::IndexList index_list_;
