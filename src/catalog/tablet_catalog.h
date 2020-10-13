@@ -222,8 +222,6 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
 
  private:
     ::fesql::vm::Schema schema_;
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> column_desc_;
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> column_key_;
     ::rtidb::storage::TableSt table_st_;
     std::shared_ptr<Tables> tables_;
     ::fesql::vm::Types types_;

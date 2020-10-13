@@ -210,7 +210,9 @@ TableSt::TableSt(const ::rtidb::nameserver::TableInfo& table_info)
     : name_(table_info.name()),
       db_(table_info.db()),
       tid_(table_info.tid()),
-      pid_num_(table_info.table_partition_size()) {
+      pid_num_(table_info.table_partition_size()),
+      column_desc_(table_info.column_desc_v1()),
+      column_key_(table_info.column_key()) {
     partitions_ = std::make_shared<std::vector<PartitionSt>>();
     for (const auto& table_partition : table_info.table_partition()) {
         uint32_t pid = table_partition.pid();

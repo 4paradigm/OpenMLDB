@@ -20,10 +20,9 @@
 namespace rtidb {
 namespace catalog {
 
-PartitionClientManager::PartitionClientManager(uint32_t pid,
-        const std::shared_ptr<ClientWrapper>& leader,
-        const std::vector<std::shared_ptr<ClientWrapper>>& followers) :
-    pid_(pid), leader_(leader), followers_(followers), rand_(0xdeadbeef) {}
+PartitionClientManager::PartitionClientManager(uint32_t pid, const std::shared_ptr<ClientWrapper>& leader,
+                                               const std::vector<std::shared_ptr<ClientWrapper>>& followers)
+    : pid_(pid), leader_(leader), followers_(followers), rand_(0xdeadbeef) {}
 
 std::shared_ptr<::rtidb::client::TabletClient> PartitionClientManager::GetFollower() {
     if (!followers_.empty()) {
@@ -34,7 +33,7 @@ std::shared_ptr<::rtidb::client::TabletClient> PartitionClientManager::GetFollow
 }
 
 TableClientManager::TableClientManager(const TablePartitions& partitions,
-    const std::shared_ptr<ClientManager>& client_manager) {
+                                       const std::shared_ptr<ClientManager>& client_manager) {
     for (const auto& table_partition : partitions) {
         uint32_t pid = table_partition.pid();
         std::shared_ptr<ClientWrapper> leader;
@@ -53,8 +52,8 @@ TableClientManager::TableClientManager(const TablePartitions& partitions,
     }
 }
 
-bool TableClientManager::SetPartitionClientManager(const ::rtidb::storage::PartitionSt& partition,
-        const ClientManager& client_manager) {
+bool TableClientManager::UpdatePartitionClientManager(const ::rtidb::storage::PartitionSt& partition,
+                                                      const ClientManager& client_manager) {
     auto leader = client_manager.GetClient(partition.GetLeader());
     if (!leader) {
         return false;
@@ -89,18 +88,47 @@ bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpo
         if (it == real_endpoint_map_.end()) {
             auto wrapper = std::make_shared<ClientWrapper>(kv.first);
             if (!wrapper->UpdateClient(kv.second)) {
+                LOG(WARNING) << "add client failed. name " << kv.first << " , endpoint " << kv.second;
                 continue;
             }
+            LOG(INFO) << "add client. name " << kv.first << " , endpoint " << kv.second;
             clients_.emplace(kv.first, wrapper);
             real_endpoint_map_.emplace(kv.first, kv.second);
             continue;
         }
         if (it->second != kv.second) {
             auto client_it = clients_.find(kv.first);
+            LOG(INFO) << "update client " << kv.first << "from " << it->second << " to " << kv.second;
             if (!client_it->second->UpdateClient(kv.second)) {
+                LOG(WARNING) << "update client failed. name " << kv.first << " , endpoint " << kv.second;
                 continue;
             }
             it->second = kv.second;
+        }
+    }
+    return true;
+}
+
+bool ClientManager::UpdateClient(
+    const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients) {
+    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+    for (const auto& kv : tablet_clients) {
+        auto it = real_endpoint_map_.find(kv.first);
+        if (it == real_endpoint_map_.end()) {
+            auto wrapper = std::make_shared<ClientWrapper>(kv.first, kv.second);
+            LOG(INFO) << "add client. name " << kv.first << " , endpoint " << kv.second;
+            clients_.emplace(kv.first, wrapper);
+            real_endpoint_map_.emplace(kv.first, kv.second->GetRealEndpoint());
+            continue;
+        }
+        if (it->second != kv.second->GetRealEndpoint()) {
+            auto client_it = clients_.find(kv.first);
+            LOG(INFO) << "update client " << kv.first << "from " << it->second << " to " << kv.second;
+            if (!client_it->second->UpdateClient(kv.second)) {
+                LOG(WARNING) << "update client failed. name " << kv.first << " , endpoint " << kv.second;
+                continue;
+            }
+            it->second = kv.second->GetRealEndpoint();
         }
     }
     return true;

@@ -148,7 +148,6 @@ class TableIndex {
 class PartitionSt {
  public:
     PartitionSt() = default;
-
     explicit PartitionSt(const ::rtidb::nameserver::TablePartition& partitions);
 
     inline const std::string& GetLeader() const { return leader_; }
@@ -191,11 +190,21 @@ class TableSt {
 
     inline uint32_t GetPartitionNum() const { return pid_num_; }
 
+    inline const ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& GetColumns() const {
+        return column_desc_;
+    }
+
+    inline const ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>& GetColumnKey() const {
+        return column_key_;
+    }
+
  private:
     std::string name_;
     std::string db_;
     uint32_t tid_;
     uint32_t pid_num_;
+    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> column_desc_;
+    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> column_key_;
     std::shared_ptr<std::vector<PartitionSt>> partitions_;
 };
 

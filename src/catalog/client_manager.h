@@ -39,6 +39,9 @@ class ClientWrapper {
  public:
     explicit ClientWrapper(const std::string& name) : name_(name), tablet_client_() {}
 
+    ClientWrapper(const std::string& name, const std::shared_ptr<::rtidb::client::TabletClient>& client)
+        : name_(name), tablet_client_(client) {}
+
     std::shared_ptr<::rtidb::client::TabletClient> GetClient() {
         return std::atomic_load_explicit(&tablet_client_, std::memory_order_relaxed);
     }
@@ -48,6 +51,11 @@ class ClientWrapper {
         if (client->Init() != 0) {
             return false;
         }
+        std::atomic_store_explicit(&tablet_client_, client, std::memory_order_relaxed);
+        return true;
+    }
+
+    bool UpdateClient(const std::shared_ptr<::rtidb::client::TabletClient>& client) {
         std::atomic_store_explicit(&tablet_client_, client, std::memory_order_relaxed);
         return true;
     }
@@ -86,7 +94,8 @@ class TableClientManager {
         return std::shared_ptr<PartitionClientManager>();
     }
 
-    bool SetPartitionClientManager(const ::rtidb::storage::PartitionSt& partition, const ClientManager& client_manager);
+    bool UpdatePartitionClientManager(const ::rtidb::storage::PartitionSt& partition,
+                                      const ClientManager& client_manager);
 
     std::shared_ptr<::rtidb::client::TabletClient> GetTablets(uint32_t pid) const {
         auto partition_manager = GetPartitionClientManager(pid);
@@ -105,6 +114,8 @@ class ClientManager {
     std::shared_ptr<ClientWrapper> GetClient(const std::string& name) const;
 
     bool UpdateClient(const std::map<std::string, std::string>& real_ep_map);
+
+    bool UpdateClient(const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients);
 
  private:
     std::map<std::string, std::string> real_endpoint_map_;

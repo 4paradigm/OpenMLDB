@@ -33,8 +33,6 @@ namespace catalog {
 
 TabletTableHandler::TabletTableHandler(const ::rtidb::api::TableMeta& meta)
     : schema_(),
-      column_desc_(meta.column_desc()),
-      column_key_(meta.column_key()),
       table_st_(),
       tables_(std::make_shared<Tables>()),
       types_(),
@@ -44,8 +42,6 @@ TabletTableHandler::TabletTableHandler(const ::rtidb::api::TableMeta& meta)
 
 TabletTableHandler::TabletTableHandler(const ::rtidb::nameserver::TableInfo& meta)
     : schema_(),
-      column_desc_(meta.column_desc_v1()),
-      column_key_(meta.column_key()),
       table_st_(meta),
       tables_(std::make_shared<Tables>()),
       types_(),
@@ -54,13 +50,13 @@ TabletTableHandler::TabletTableHandler(const ::rtidb::nameserver::TableInfo& met
       table_client_manager_() {}
 
 bool TabletTableHandler::Init() {
-    bool ok = SchemaAdapter::ConvertSchema(column_desc_, &schema_);
+    bool ok = SchemaAdapter::ConvertSchema(table_st_.GetColumns(), &schema_);
     if (!ok) {
         LOG(WARNING) << "fail to covert schema to sql schema";
         return false;
     }
 
-    ok = SchemaAdapter::ConvertIndex(column_key_, &index_list_);
+    ok = SchemaAdapter::ConvertIndex(table_st_.GetColumnKey(), &index_list_);
     if (!ok) {
         LOG(WARNING) << "fail to conver index to sql index";
         return false;
@@ -198,7 +194,7 @@ void TabletTableHandler::Update(const ::rtidb::nameserver::TableInfo& meta, cons
             continue;
         }
         table_st_.SetPartition(partition_st);
-        table_client_manager_->SetPartitionClientManager(partition_st, client_manager);
+        table_client_manager_->UpdatePartitionClientManager(partition_st, client_manager);
     }
 }
 
