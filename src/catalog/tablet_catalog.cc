@@ -268,5 +268,39 @@ bool TabletCatalog::DeleteDB(const std::string& db) {
 
 bool TabletCatalog::IndexSupport() { return true; }
 
+bool TabletCatalog::AddProcedure(const std::string& db, const std::string& sp_name,
+        const std::string& sql) {
+    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    TabletDB::iterator it = db_.find(db);
+    if (it != db_.end()) {
+        LOG(WARNING) << "db " + db + "not exist";
+        return false;
+    }
+    auto& sp_map = procedures_[db];
+    if (sp_map.find(sp_name) != sp_map.end()) {
+        LOG(WARNING) << "procedure " + sp_name + "already exist";
+        return false;
+    }
+    sp_map.insert({sp_name, sql});
+    return true;
+}
+
+bool TabletCatalog::DropProcedure(const std::string& db, const std::string& sp_name) {
+    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    auto db_it = procedures_.find(db);
+    if (db_it == procedures_.end()) {
+        LOG(WARNING) << "db " + db + "not exist";
+        return false;
+    }
+    auto& sp_map = db_it->second;
+    auto it = sp_map.find(sp_name);
+    if (it == sp_map.end()) {
+        LOG(WARNING) << "procedure " + sp_name + "not exist";
+        return false;
+    }
+    sp_map.erase(sp_name);
+    return true;
+}
+
 }  // namespace catalog
 }  // namespace rtidb

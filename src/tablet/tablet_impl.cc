@@ -5829,7 +5829,6 @@ void TabletImpl::CreateProcedure(RpcController* controller,
     const std::string& db_name = request->db_name();
     const std::string& sp_name = request->sp_name();
     const std::string& sql = request->sql();
-    // TODO(wangbao): add map<db_name, map<sp_name, sql>> to TabletCatalog
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         auto db_it = sp_map_.find(db_name);
@@ -5861,6 +5860,14 @@ void TabletImpl::CreateProcedure(RpcController* controller,
             return;
         }
     }
+    bool ok = catalog_->AddProcedure(db_name, sp_name, sql);
+    if (ok) {
+        LOG(INFO) << "add procedure " << sp_name
+            << " to catalog with db " << db_name;
+    } else {
+        LOG(WARNING) << "fail to add procedure " << sp_name
+            << " to catalog with db " << db_name;
+    }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
@@ -5876,10 +5883,14 @@ void TabletImpl::DropProcedure(RpcController* controller,
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         sp_map_[db_name].erase(sp_name);
     }
+    if (!catalog_->DropProcedure(db_name, sp_name)) {
+        LOG(WARNING) << "drop procedure" << db_name << "."
+            << sp_name << " in catalog failed";
+    }
     engine_.ClearSpCacheLocked(db_name, sp_name);
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
-    PDLOG(INFO, "drop storage procedure success. db_name[%s] sp_name[%s]", db_name.c_str(), sp_name.c_str());
+    PDLOG(INFO, "drop procedure success. db_name[%s] sp_name[%s]", db_name.c_str(), sp_name.c_str());
 }
 
 }  // namespace tablet

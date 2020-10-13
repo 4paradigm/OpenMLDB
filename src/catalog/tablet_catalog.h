@@ -263,6 +263,7 @@ typedef std::map<std::string,
     TabletTables;
 typedef std::map<std::string, std::shared_ptr<::fesql::type::Database>>
     TabletDB;
+typedef std::map<std::string, std::map<std::string, std::string>> TabletProcedures;
 
 class TabletCatalog : public ::fesql::vm::Catalog {
  public:
@@ -288,10 +289,16 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     bool DeleteDB(const std::string &db);
 
+    bool AddProcedure(const std::string& db, const std::string& sp_name,
+            const std::string& sql);
+
+    bool DropProcedure(const std::string& db, const std::string& sp_name);
+
  private:
     ::rtidb::base::SpinMutex mu_;
     TabletTables tables_;
     TabletDB db_;
+    TabletProcedures procedures_;
 };
 
 }  // namespace catalog
