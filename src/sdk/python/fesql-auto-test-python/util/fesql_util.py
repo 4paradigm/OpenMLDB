@@ -250,7 +250,7 @@ def select(executor, dbName: str, sql: str):
             fesqlResult.msg = "ok"
             fesqlResult.rs = rs
             fesqlResult.count = rs.rowcount
-            fesqlResult.result = convertRestultSetToList(rs)
+            fesqlResult.result = convertRestultSetToListRS(rs)
         except Exception as e:
             fesqlResult.ok = False
             fesqlResult.msg = str(e)
@@ -389,7 +389,7 @@ def buildRequestRow(requestRow:SQLRequestRow,objects:list):
     ok = requestRow.Build()
     return ok
 
-def convertRestultSetToList(rs):
+def convertRestultSetToListRS(rs):
     result = []
     for r in rs:
         result.append(list(r))
