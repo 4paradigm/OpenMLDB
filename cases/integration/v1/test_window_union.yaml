@@ -489,6 +489,7 @@ cases:
           c1,
           min(c1) over table_1_s2_t1 as table_1_c1_9,
           min(c2) over table_1_s2_t1 as table_1_c2_10,
+          !isnull(at(d1, 1) over table_1_s2_t1 as d11_flag,
           case when !isnull(at(d1, 1) over table_1_s2_t1) then distinct_count(d1) over table_1_s2_t1 else null end as table_1_d1_11,
           case when !isnull(at(d2, 1) over table_1_s2_t1) then distinct_count(d2) over table_1_s2_t1 else null end as table_1_d2_12,
           case when !isnull(at(s1, 1) over table_1_s2_t1) then distinct_count(s1) over table_1_s2_t1 else null end as table_1_s1_13
