@@ -41,7 +41,6 @@ bool BlobProxyImpl::Init() {
         PDLOG(WARNING, "zk cluster disabled");
         return false;
     }
-    LOG(INFO) << "mime is " << FLAGS_mime_conf;
     if (!FLAGS_mime_conf.empty()) {
         std::ifstream infile(FLAGS_mime_conf);
         if (!infile.is_open()) {
