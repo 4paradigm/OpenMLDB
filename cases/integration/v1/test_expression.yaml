@@ -535,7 +535,7 @@ cases:
   - id: 19-2
     desc: SQL标准Cast语法-Cast(表达式 as type)
     mode: offline-unsupoort
-    tags: [@chendihao, @baoxinqi, support simple project node with column cast"]
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["c1 int", "c2 float", "c5 bigint"]
         indexs: ["index1:c1:c5"]
