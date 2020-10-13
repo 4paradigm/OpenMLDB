@@ -6,6 +6,8 @@
 #pragma once
 
 #include <mutex>
+#include <map>
+#include <string>
 
 #include "brpc/server.h"
 #include "client/client.h"

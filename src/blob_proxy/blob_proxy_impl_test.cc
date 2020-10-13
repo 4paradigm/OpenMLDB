@@ -206,7 +206,6 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     ::rtidb::base::SetLogLevel(INFO);
-    FLAGS_hdd_root_path =
-        "/tmp/test_blobserver" + ::rtidb::blobproxy::GenRand();
+    FLAGS_hdd_root_path = "/tmp/test_blobserver" + ::rtidb::blobproxy::GenRand();
     return RUN_ALL_TESTS();
 }
