@@ -33,6 +33,12 @@ class EngineTest : public ::testing::TestWithParam<SQLCase> {
     virtual ~EngineTest() {}
 };
 
+class BatchRequestEngineTest : public ::testing::TestWithParam<SQLCase> {
+ public:
+    BatchRequestEngineTest() {}
+    virtual ~BatchRequestEngineTest() {}
+};
+
 INSTANTIATE_TEST_CASE_P(
     EngineFailQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/fail_query.yaml")));
@@ -144,11 +150,15 @@ TEST_P(EngineTest, test_batch_engine) {
         LOG(INFO) << "Skip mode " << sql_case.mode();
     }
 }
-TEST_P(EngineTest, test_batch_request_engine) {
+
+INSTANTIATE_TEST_CASE_P(BatchRequestEngineTest, BatchRequestEngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/test_batch_request.yaml")));
+
+TEST_P(BatchRequestEngineTest, test_batch_request_engine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (!boost::contains(sql_case.mode(), "request-unsupport") &&
-        !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
+    if (!boost::contains(sql_case.mode(), "batch-request-unsupport")) {
         BatchRequestModeCheck(sql_case);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
@@ -449,11 +459,11 @@ int main(int argc, char** argv) {
     InitializeNativeTargetAsmPrinter();
     ::testing::InitGoogleTest(&argc, argv);
 
-    signal(SIGSEGV, fesql::base::FeSignalBacktraceHandler);
+    /*signal(SIGSEGV, fesql::base::FeSignalBacktraceHandler);
     signal(SIGBUS, fesql::base::FeSignalBacktraceHandler);
     signal(SIGFPE, fesql::base::FeSignalBacktraceHandler);
     signal(SIGILL, fesql::base::FeSignalBacktraceHandler);
-    signal(SIGSYS, fesql::base::FeSignalBacktraceHandler);
+    signal(SIGSYS, fesql::base::FeSignalBacktraceHandler);*/
 
     return RUN_ALL_TESTS();
 }

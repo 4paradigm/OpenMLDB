@@ -461,6 +461,27 @@ class PhysicalRequestProviderNode : public PhysicalDataProviderNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
 };
 
+class PhysicalRequestProviderNodeWithCommonColumn
+    : public PhysicalRequestProviderNode {
+ public:
+    explicit PhysicalRequestProviderNodeWithCommonColumn(
+        const std::shared_ptr<TableHandler> &table_handler,
+        const std::vector<size_t> common_column_indices)
+        : PhysicalRequestProviderNode(table_handler),
+          common_column_indices_(common_column_indices) {
+        ResetSchemaWithCommonColumnInfo();
+    }
+
+    ~PhysicalRequestProviderNodeWithCommonColumn() {}
+
+ private:
+    bool ResetSchemaWithCommonColumnInfo();
+
+    std::vector<size_t> common_column_indices_;
+    std::unique_ptr<fesql::vm::Schema> owned_common_schema_ = nullptr;
+    std::unique_ptr<fesql::vm::Schema> owned_non_common_schema_ = nullptr;
+};
+
 class PhysicalPartitionProviderNode : public PhysicalDataProviderNode {
  public:
     PhysicalPartitionProviderNode(PhysicalDataProviderNode *depend,

@@ -412,7 +412,7 @@ Status SQLCompiler::BuildPhysicalPlan(
         case kBatchRequestMode: {
             vm::RequestModeransformer transformer(
                 &ctx->nm, ctx->db, cl_, llvm_module, library,
-                ctx->is_performance_sensitive);
+                ctx->common_column_indices, ctx->is_performance_sensitive);
             transformer.AddDefaultPasses();
             CHECK_TRUE(
                 transformer.TransformPhysicalPlan(plan_list, output, status),

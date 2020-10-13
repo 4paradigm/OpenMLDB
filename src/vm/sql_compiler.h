@@ -65,6 +65,10 @@ struct SQLContext {
     std::string encoded_request_schema;
     ::fesql::node::NodeManager nm;
     ::fesql::udf::UDFLibrary* udf_library;
+
+    // common column indices in batch request mode
+    std::vector<size_t> common_column_indices;
+
     SQLContext() {}
     ~SQLContext() {}
 };

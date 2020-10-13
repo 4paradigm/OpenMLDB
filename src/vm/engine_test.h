@@ -333,12 +333,17 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
 
     Engine engine(catalog);
     std::unique_ptr<RunSession> session;
+
     if (engine_mode == kBatchMode) {
         session = std::unique_ptr<RunSession>(new BatchRunSession);
     } else if (engine_mode == kRequestMode) {
         session = std::unique_ptr<RunSession>(new RequestRunSession);
     } else {
-        session = std::unique_ptr<RunSession>(new BatchRequestRunSession);
+        auto batch_request_session = new BatchRequestRunSession;
+        for (size_t idx : sql_case.common_column_indices()) {
+            batch_request_session->AddCommonColumnIdx(idx);
+        }
+        session = std::unique_ptr<RunSession>(batch_request_session);
     }
     if (fesql::sqlcase::SQLCase::IS_DEBUG() || sql_case.debug()) {
         session->EnableDebug();
@@ -367,7 +372,7 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
     }
     for (int32_t i = 0; i < input_cnt; i++) {
         auto input = sql_case.inputs()[i];
-        if (!is_batch && input.name_ == request_name) {
+        if (engine_mode == kRequestMode && input.name_ == request_name) {
             ASSERT_TRUE(sql_case.ExtractInputData(request_data, i));
         } else {
             std::vector<Row> rows;
@@ -421,23 +426,79 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
             output.push_back(out_row);
         }
     } else {
-        auto request_table = name_table_map[request_name];
-        ASSERT_TRUE(request_table->Init());
+        const std::string request_batch_name = "batch_request";
+        auto iter = name_table_map.find(request_batch_name);
+        ASSERT_TRUE(iter != name_table_map.end());
+
+        if (iter == name_table_map.end()) {
+            LOG(WARNING) << "No batch_request data specified in case, run with "
+                            "single row batch";
+            return;
+        }
         auto request_session =
             dynamic_cast<BatchRequestRunSession*>(session.get());
-        RunnerContext runner_context(false);
-        for (auto in_row : request_data) {
-            Row out_row;
-            int run_ret =
-                request_session->RunSingle(runner_context, in_row, &out_row);
-            if (run_ret != 0) {
-                *return_status = ENGINE_TEST_RET_EXECUTION_ERROR;
+        const auto& common_column_indices =
+            request_session->common_column_indices();
+
+        auto& request_table = iter->second;
+        auto batch_iter = request_table->NewTraverseIterator();
+        batch_iter->SeekToFirst();
+        auto& request_schema = request_table->GetTableDef().columns();
+        request_data.clear();
+
+        if (common_column_indices.empty() ||
+            common_column_indices.size() == request_schema.size()) {
+            while (batch_iter->Valid()) {
+                auto& slice = batch_iter->GetValue();
+                request_data.emplace_back(codec::Row(
+                    base::RefCountedSlice::Create(slice.data(), slice.size())));
+                batch_iter->Next();
             }
-            ASSERT_EQ(0, run_ret);
-            ASSERT_TRUE(request_table->Put(
-                reinterpret_cast<const char*>(in_row.buf()), in_row.size()));
-            output.push_back(out_row);
+        } else {
+            std::vector<size_t> non_common_column_indices;
+            for (size_t i = 0; i < request_schema.size(); ++i) {
+                if (std::find(common_column_indices.begin(),
+                              common_column_indices.end(),
+                              i) == common_column_indices.end()) {
+                    non_common_column_indices.push_back(i);
+                }
+            }
+            codec::RowSelector left_selector(&request_schema,
+                                             common_column_indices);
+            codec::RowSelector right_selector(&request_schema,
+                                              non_common_column_indices);
+
+            bool left_selected = false;
+            codec::RefCountedSlice left_slice;
+            while (batch_iter->Valid()) {
+                auto& slice = batch_iter->GetValue();
+                if (!left_selected) {
+                    int8_t* left_buf;
+                    size_t left_size;
+                    left_selector.Select(slice.buf(), slice.size(), &left_buf,
+                                         &left_size);
+                    left_slice = codec::RefCountedSlice::CreateManaged(
+                        left_buf, left_size);
+                    left_selected = true;
+                }
+                int8_t* right_buf = nullptr;
+                size_t right_size;
+                right_selector.Select(slice.buf(), slice.size(), &right_buf,
+                                      &right_size);
+                codec::RefCountedSlice right_slice =
+                    codec::RefCountedSlice::CreateManaged(right_buf,
+                                                          right_size);
+                request_data.emplace_back(codec::Row(
+                    1, codec::Row(left_slice), 1, codec::Row(right_slice)));
+                batch_iter->Next();
+            }
         }
+        int run_ret = request_session->Run(request_data, output);
+        RunnerContext runner_context(false);
+        if (run_ret != 0) {
+            *return_status = ENGINE_TEST_RET_EXECUTION_ERROR;
+        }
+        ASSERT_EQ(0, run_ret);
     }
     auto sorted_output = SortRows(schema, output, sql_case.expect().order_);
 

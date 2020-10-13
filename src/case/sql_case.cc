@@ -1108,6 +1108,17 @@ bool SQLCase::CreateSQLCasesFromYaml(
                 return false;
             }
         }
+        if (sql_case_node["common_column_indices"]) {
+            auto data = sql_case_node["common_column_indices"];
+            std::vector<std::string> idxs;
+            if (!CreateStringListFromYamlNode(data, idxs)) {
+                return false;
+            }
+            for (auto str : idxs) {
+                sql_case.common_column_indices_.push_back(
+                    boost::lexical_cast<size_t>(str));
+            }
+        }
         sql_cases.push_back(sql_case);
     }
     return true;

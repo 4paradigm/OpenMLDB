@@ -180,10 +180,21 @@ class BatchRequestRunSession : public RunSession {
     int32_t RunSingle(fesql::vm::RunnerContext& ctx,  // NOLINT
                       const Row& request,
                       Row* output);  // NOLINT
+
+    void AddCommonColumnIdx(size_t idx) {
+        common_column_indices_.push_back(idx);
+    }
+
+    const std::vector<size_t>& common_column_indices() const {
+        return common_column_indices_;
+    }
+
  private:
     int32_t RunSingle(fesql::vm::RunnerContext& ctx,  // NOLINT
                       const uint32_t id, const Row& request,
                       Row* output);  // NOLINT
+
+    std::vector<size_t> common_column_indices_;
 };
 
 struct ExplainOutput {
@@ -234,9 +245,13 @@ class Engine {
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,
                                                 EngineMode engine_mode);
+
     bool SetCacheLocked(const std::string& db, const std::string& sql,
-                        EngineMode engine_mode,
+                        EngineMode engine_mode, bool overwrite,
                         std::shared_ptr<CompileInfo> info);
+
+    bool IsCompatibleCache(RunSession& session,  // NOLINT
+                           std::shared_ptr<CompileInfo> info);
 
     std::shared_ptr<Catalog> cl_;
     EngineOptions options_;

@@ -127,24 +127,54 @@ bool Engine::GetDependentTables(node::PlanNode* node,
     return true;
 }
 
+bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
+                               std::shared_ptr<CompileInfo> info) {
+    auto& cache_ctx = info->get_sql_context();
+    if (cache_ctx.engine_mode != session.engine_mode()) {
+        return false;
+    }
+    if (session.engine_mode() == kBatchRequestMode) {
+        auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
+        if (batch_req_sess == nullptr) {
+            return false;
+        }
+        auto& cache_indices = cache_ctx.common_column_indices;
+        auto& sess_indices = batch_req_sess->common_column_indices();
+        if (sess_indices.size() != cache_indices.size()) {
+            return false;
+        }
+        for (size_t i = 0; i < sess_indices.size(); ++i) {
+            if (sess_indices[i] != cache_indices[i]) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 bool Engine::Get(const std::string& sql, const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
-    {
-        std::shared_ptr<CompileInfo> info =
-            GetCacheLocked(db, sql, session.engine_mode());
-        if (info) {
-            session.SetCompileInfo(info);
-            return true;
-        }
+    std::shared_ptr<CompileInfo> info =
+        GetCacheLocked(db, sql, session.engine_mode());
+    if (info && IsCompatibleCache(session, info)) {
+        session.SetCompileInfo(info);
+        return true;
     }
 
-    std::shared_ptr<CompileInfo> info(new CompileInfo());
-    info->get_sql_context().sql = sql;
-    info->get_sql_context().db = db;
-    info->get_sql_context().engine_mode = session.engine_mode();
-    info->get_sql_context().is_performance_sensitive =
-        options_.is_performance_sensitive();
+    info = std::shared_ptr<CompileInfo>(new CompileInfo());
+    auto& sql_context = info->get_sql_context();
+    sql_context.sql = sql;
+    sql_context.db = db;
+    sql_context.engine_mode = session.engine_mode();
+    sql_context.is_performance_sensitive = options_.is_performance_sensitive();
+
+    auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
+    if (batch_req_sess) {
+        sql_context.common_column_indices =
+            batch_req_sess->common_column_indices();
+    }
+
     SQLCompiler compiler(
         std::atomic_load_explicit(&cl_, std::memory_order_acquire),
         options_.is_keep_ir(), false, options_.is_plan_only());
@@ -158,7 +188,9 @@ bool Engine::Get(const std::string& sql, const std::string& db,
             return false;
         }
     }
-    SetCacheLocked(db, sql, session.engine_mode(), info);
+
+    bool ovewrite_cache = session.engine_mode() == kBatchRequestMode;
+    SetCacheLocked(db, sql, session.engine_mode(), ovewrite_cache, info);
     session.SetCompileInfo(info);
     return true;
 }
@@ -221,7 +253,7 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
 }
 
 bool Engine::SetCacheLocked(const std::string& db, const std::string& sql,
-                            EngineMode engine_mode,
+                            EngineMode engine_mode, bool overwrite,
                             std::shared_ptr<CompileInfo> info) {
     std::lock_guard<base::SpinMutex> lock(mu_);
     auto& mode_cache = lru_cache_[engine_mode];
@@ -235,7 +267,7 @@ bool Engine::SetCacheLocked(const std::string& db, const std::string& sql,
     }
     auto& lru = db_iter->second;
     auto value = lru.get(sql);
-    if (value == boost::none) {
+    if (value == boost::none || overwrite) {
         lru.insert(sql, info);
         return true;
     } else {
@@ -324,7 +356,7 @@ int32_t BatchRequestRunSession::Run(const uint32_t id,
     for (size_t i = 0; i < request_batch.size(); ++i) {
         output.push_back(Row());
         int32_t ok = RunSingle(ctx, id, request_batch[i], &output.back());
-        if (!ok) {
+        if (ok != 0) {
             return -1;
         }
     }

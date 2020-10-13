@@ -55,6 +55,9 @@ class SQLCase {
     const bool standard_sql_compatible() const {
         return standard_sql_compatible_;
     }
+    const std::vector<size_t>& common_column_indices() const {
+        return common_column_indices_;
+    }
     const bool debug() const { return debug_; }
     const std::string& db() const { return db_; }
     const std::vector<TableInfo>& inputs() const { return inputs_; }
@@ -174,6 +177,7 @@ class SQLCase {
     std::string batch_plan_;
     std::string request_plan_;
     std::vector<TableInfo> inputs_;
+    std::vector<size_t> common_column_indices_;
     ExpectInfo expect_;
 };
 std::string FindFesqlDirPath();
