@@ -481,3 +481,40 @@ cases:
     expect:
       success: true
 
+  - id: 16-2
+    desc: 主表window 添加 INSTANCE_NOT_IN_WINDOW 没有明显错误日志 case when写法优化
+    db: db_wzx
+    sql: |
+      select
+          c1,
+          min(c1) over table_1_s2_t1 as table_1_c1_9,
+          min(c2) over table_1_s2_t1 as table_1_c2_10,
+          case when !isnull(at(d1, 1) over table_1_s2_t1) then distinct_count(d1) over table_1_s2_t1 else null end as table_1_d1_11,
+          case when !isnull(at(d2, 1) over table_1_s2_t1) then distinct_count(d2) over table_1_s2_t1 else null end as table_1_d2_12,
+          case when !isnull(at(s1, 1) over table_1_s2_t1) then distinct_count(s1) over table_1_s2_t1 else null end as table_1_s1_13
+      from
+          main
+          window table_1_s2_t1 as (partition by s2 order by t1 rows_range between 1d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW);
+    inputs:
+      - name: main
+        schema: label:int,s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
+        index: index1:s2:t1,index2:s1:t1,index3:d1:t1,index4:d2:t1
+        data: |
+          1, 1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
+      - name: table_1
+        schema: s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
+        index: index1:s2:t1
+        data: |
+          1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
+      - name: table_2
+        schema: s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
+        index: index1:s1:t1
+        data: |
+          1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
+      - name: table_3
+        schema: s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
+        index: index1:s1:t1
+        data: |
+          1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
+    expect:
+      success: true
