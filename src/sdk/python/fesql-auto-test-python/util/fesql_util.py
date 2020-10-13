@@ -45,6 +45,7 @@ def getCreateSql(name:str,columns:list,inexs:list):
 
 def getIndexByColumnName(schema,columnName):
     if hasattr(schema, "GetColumnCnt"):
+        count = schema.GetColumnCnt()
         for i in range(count):
             if schema.GetColumnName(i) == columnName: return i
     else:
