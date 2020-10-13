@@ -347,6 +347,17 @@ bool NsClient::HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
                 return false;
             }
         }
+        case fesql::node::kCmdDropSp: {
+            std::string sp_name = cmd_node->GetArgs()[0];
+            std::string error;
+            bool ok = DropProcedure(db, sp_name, error);
+            if (ok) {
+                return true;
+            } else {
+                sql_status->msg = error;
+                return false;
+            }
+        }
         default: {
             sql_status->msg = "fail to execute script with unSuppurt type";
             return false;
@@ -1483,6 +1494,22 @@ bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_n
             sp_info_tmp.CopyFrom(sp_info);
             sp_infos.push_back(sp_info_tmp);
         }
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::DropProcedure(const std::string& db_name,
+        const std::string& sp_name, std::string& msg) {
+    ::rtidb::nameserver::DropProcedureRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_db_name(db_name);
+    request.set_sp_name(sp_name);
+    bool ok =
+        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropProcedure,
+                            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
         return true;
     }
     return false;

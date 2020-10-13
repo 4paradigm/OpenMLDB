@@ -809,6 +809,11 @@ message CreateProcedureRequest {
     optional string sql = 3;
 }
 
+message DropProcedureRequest {
+    optional string db_name = 1;
+    optional string sp_name = 2;
+}
+
 service TabletServer {
 
     // write and read api for client
@@ -871,4 +876,5 @@ service TabletServer {
     rpc UpdateRealEndpointMap(UpdateRealEndpointMapRequest) returns (GeneralResponse);
     rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse);
     rpc CreateProcedure(CreateProcedureRequest) returns (GeneralResponse);
+    rpc DropProcedure(DropProcedureRequest) returns (GeneralResponse);
 }

@@ -43,7 +43,8 @@ public class StorageProcedureExample extends BaseExample {
 //        "          window table_1_s2_t1 as (partition by s2 order by t1 rows_range between 1d preceding and 0s preceding);";
     private SqlExecutor sqlExecutor = null;
     private String db = "test_db2";
-    private String spName = "sp" + Math.abs(new Random().nextInt());
+//    private String spName = "sp" + Math.abs(new Random().nextInt());
+    private String spName = "sp";
     private String dropDdl = "drop table trans;";
     private String cardNo = "card1";
     private String merchantId = "merChantId1";
@@ -65,6 +66,7 @@ public class StorageProcedureExample extends BaseExample {
         sqlExecutor.createDB(db);
         sqlExecutor.executeDDL(db, dropDdl);
         sqlExecutor.executeDDL(db, ddl);
+        sqlExecutor.executeDDL(db, "drop procedure sp;");
         Schema inputSchema = sqlExecutor.getInputSchema(db, sql);
     }
 

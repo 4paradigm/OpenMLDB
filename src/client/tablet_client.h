@@ -331,6 +331,8 @@ class TabletClient {
             rtidb::api::QueryResponse* response,
             bool is_debug);
 
+    bool DropProcedure(const std::string& db_name, const std::string& sp_name);
+
  private:
     std::string endpoint_;
     ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> client_;

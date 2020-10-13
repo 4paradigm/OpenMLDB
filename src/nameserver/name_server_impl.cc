@@ -10589,7 +10589,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
         response->set_msg("ok");
         return;
     } while (0);
-    // TODO(wangbao): DropProcedureOnTablet
+    DropProcedureOnTablet(db_name, sp_name);
 }
 
 bool NameServerImpl::RecoverProcedureInfo() {
@@ -10660,7 +10660,6 @@ bool NameServerImpl::CreateProcedureOnTablet(const std::string& db_name, const s
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (auto &kv : tablets_) {
-            // check tablet healthy
             if (kv.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
                 PDLOG(WARNING, "endpoint [%s] is offline", kv.first.c_str());
                 continue;
@@ -10721,11 +10720,65 @@ void NameServerImpl::ShowProcedure(RpcController* controller,
             db_sp_info_tmp = db_sp_info_;
         }
         for (auto& db_kv : db_sp_info_tmp) {
-            auto& db_name = db_kv.first;
             for (auto& sp_kv : db_kv.second) {
                 ::rtidb::nameserver::ProcedureInfo* sp_info = response->add_sp_info();
                 sp_info->CopyFrom(*sp_kv.second);
             }
+        }
+    }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
+void NameServerImpl::DropProcedureOnTablet(const std::string& db_name,
+        const std::string& sp_name) {
+    std::vector<std::shared_ptr<TabletClient>> tb_client_vec;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto &kv : tablets_) {
+            if (kv.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+                PDLOG(WARNING, "endpoint [%s] is offline", kv.first.c_str());
+                continue;
+            }
+            tb_client_vec.push_back(kv.second->client_);
+        }
+    }
+    for (auto tb_client : tb_client_vec) {
+        if (!tb_client->DropProcedure(db_name, sp_name)) {
+            PDLOG(WARNING, "drop procedure on tablet failed. db_name[%s], sp_name[%s], endpoint[%s]",
+                    db_name.c_str(), sp_name.c_str(), tb_client->GetEndpoint().c_str());
+            continue;
+        }
+        PDLOG(INFO, "drop procedure on tablet success. db_name[%s], sp_name[%s], endpoint[%s]",
+                db_name.c_str(), sp_name.c_str(), tb_client->GetEndpoint().c_str());
+    }
+}
+
+void NameServerImpl::DropProcedure(RpcController* controller,
+        const DropProcedureRequest* request,
+        GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    const std::string db_name = request->db_name();
+    const std::string sp_name = request->sp_name();
+    DropProcedureOnTablet(db_name, sp_name);
+    std::string sp_data_path = zk_db_sp_data_path_ + "/" + db_name + "_" + sp_name;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (!zk_client_->DeleteNode(sp_data_path)) {
+            PDLOG(WARNING, "delete storage procedure zk node[%s] failed!", sp_data_path.c_str());
+            response->set_code(::rtidb::base::ReturnCode::kDelZkFailed);
+            response->set_msg("delete storage procedure zk node failed");
+            return;
+        } else {
+            PDLOG(INFO, "delete storage procedure node[%s]", sp_data_path.c_str());
+            db_sp_info_[request->db_name()].erase(sp_name);
         }
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);

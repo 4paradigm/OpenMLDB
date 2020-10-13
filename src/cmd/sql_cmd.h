@@ -343,6 +343,10 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             break;
         }
         case fesql::node::kCmdDropTable: {
+            if (db.empty()) {
+                std::cout << "please enter database first" << std::endl;
+                return;
+            }
             std::string name = cmd_node->GetArgs()[0];
             std::string error;
             printf("Drop table %s? yes/no\n", name.c_str());
@@ -425,6 +429,32 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
                 pairs.push_back(std::make_pair(sp_info.db_name(), sp_info.sp_name()));
             }
             PrintItems(pairs, std::cout);
+            break;
+        }
+        case fesql::node::kCmdDropSp: {
+            if (db.empty()) {
+                std::cout << "please enter database first" << std::endl;
+                return;
+            }
+            std::string sp_name = cmd_node->GetArgs()[0];
+            std::string error;
+            printf("Drop store procedure %s? yes/no\n", sp_name.c_str());
+            std::string input;
+            std::cin >> input;
+            std::transform(input.begin(), input.end(), input.begin(),
+                           ::tolower);
+            if (input != "yes") {
+                printf("'drop %s' cmd is canceled!\n", sp_name.c_str());
+                return;
+            }
+            auto ns = cs->GetNsClient();
+            bool ok = ns->DropProcedure(db, sp_name, error);
+            if (ok) {
+                std::cout << "drop ok" << std::endl;
+            } else {
+                std::cout << "failed to drop. error msg: " << error
+                          << std::endl;
+            }
             break;
         }
         case fesql::node::kCmdExit: {

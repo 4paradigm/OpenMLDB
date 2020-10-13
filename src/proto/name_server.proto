@@ -501,6 +501,11 @@ message ShowProcedureResponse {
     repeated ProcedureInfo sp_info = 3;
 }
 
+message DropProcedureRequest {
+    optional string db_name = 1;
+    optional string sp_name = 2;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -549,4 +554,5 @@ service NameServer {
     rpc ShowSdkEndpoint(ShowSdkEndpointRequest) returns (ShowSdkEndpointResponse);
     rpc CreateProcedure(CreateProcedureRequest) returns (GeneralResponse);
     rpc ShowProcedure(ShowProcedureRequest) returns (ShowProcedureResponse);
+    rpc DropProcedure(DropProcedureRequest) returns (GeneralResponse);
 }

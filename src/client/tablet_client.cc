@@ -1643,5 +1643,19 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
     return true;
 }
 
+bool TabletClient::DropProcedure(const std::string& db_name, const std::string& sp_name) {
+    ::rtidb::api::DropProcedureRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_db_name(db_name);
+    request.set_sp_name(sp_name);
+    bool ok =
+        client_.SendRequest(&::rtidb::api::TabletServer_Stub::DropProcedure,
+                            &request, &response, FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
 }  // namespace client
 }  // namespace rtidb

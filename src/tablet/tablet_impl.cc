@@ -5831,7 +5831,7 @@ void TabletImpl::CreateProcedure(RpcController* controller,
     const std::string& sql = request->sql();
     // TODO(wangbao): add map<db_name, map<sp_name, sql>> to TabletCatalog
     {
-        std::lock_guard<std::mutex> lock(mu_);
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         auto db_it = sp_map_.find(db_name);
         if (db_it == sp_map_.end()) {
             sp_map_.insert(std::make_pair(db_name, std::map<std::string, std::string>()));
@@ -5863,6 +5863,23 @@ void TabletImpl::CreateProcedure(RpcController* controller,
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
+}
+
+void TabletImpl::DropProcedure(RpcController* controller,
+        const ::rtidb::api::DropProcedureRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    const std::string& db_name = request->db_name();
+    const std::string& sp_name = request->sp_name();
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        sp_map_[db_name].erase(sp_name);
+    }
+    engine_.ClearSpCacheLocked(db_name, sp_name);
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+    PDLOG(INFO, "drop storage procedure success. db_name[%s] sp_name[%s]", db_name.c_str(), sp_name.c_str());
 }
 
 }  // namespace tablet

@@ -315,6 +315,11 @@ class TabletImpl : public ::rtidb::api::TabletServer {
             const rtidb::api::CreateProcedureRequest* request,
             rtidb::api::GeneralResponse* response, Closure* done);
 
+    void DropProcedure(RpcController* controller,
+            const ::rtidb::api::DropProcedureRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
+
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization

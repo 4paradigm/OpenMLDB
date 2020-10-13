@@ -253,6 +253,9 @@ class NsClient {
     bool ShowProcedure(std::vector<rtidb::nameserver::ProcedureInfo>& sp_info, // NOLINT
             std::string& msg); // NOLINT
 
+    bool DropProcedure(const std::string& db_name, const std::string& sp_name,
+            std::string& msg); // NOLINT
+
  private:
     bool TransformToTableDef(
         const std::string& table_name,

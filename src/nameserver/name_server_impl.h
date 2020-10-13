@@ -429,6 +429,9 @@ class NameServerImpl : public NameServer {
             const ShowProcedureRequest* request, ShowProcedureResponse* response,
             Closure* done);
 
+    void DropProcedure(RpcController* controller, const DropProcedureRequest* request,
+            GeneralResponse* response, Closure* done);
+
  private:
     // Recover all memory status, the steps
     // 1.recover table meta from zookeeper
@@ -942,6 +945,8 @@ class NameServerImpl : public NameServer {
                           rtidb::common::VersionPair* new_pair);
 
     bool CheckParameter(const Schema& parameter, const Schema& input_schema);
+
+    void DropProcedureOnTablet(const std::string& db_name, const std::string& sp_name);
 
  private:
     std::mutex mu_;
