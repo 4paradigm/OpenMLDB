@@ -516,7 +516,8 @@ cases:
 
   - id: 19_1
     desc: SQL标准Cast语法-Cast(常量 as type)
-    tags: ["@chenjing:补齐date的cast"]
+    mode: offline-unsupoort
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["c1 int", "c2 float", "c5 bigint"]
         indexs: ["index1:c1:c5"]
@@ -525,14 +526,16 @@ cases:
     sql: |
       select cast(1 as int) as f1, cast(2 as bigint) as f2, cast(1 as float) as f3,
       cast(1 as double) as f4, cast(1 as bool) as f5, cast(1590115420000 as timestamp) as f6,
-      cast(1 as string) as f7 from {0};
+      cast(1 as string) as f7 , cast("2020-05-20" as date) as f8 from {0};
     expect:
       columns: ["f1 int", "f2 bigint", "f3 float", "f4 double", "f5 bool", "f6 timestamp",
-                "f7 string"]
+                "f7 string", "f8 date"]
       rows:
-        - [1, 2, 1.0, 1.0, true, 1590115420000, "1"]
+        - [1, 2, 1.0, 1.0, true, 1590115420000, "1", "2020-05-20"]
   - id: 19-2
     desc: SQL标准Cast语法-Cast(表达式 as type)
+    mode: offline-unsupoort
+    tags: [@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["c1 int", "c2 float", "c5 bigint"]
         indexs: ["index1:c1:c5"]
@@ -549,6 +552,8 @@ cases:
         - [1, 2, 1.0, 1.0, true, 1590115420000, "1"]
   - id: 19-3
     desc: cast函数
+    mode: offline-unsupoort
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["c1 int", "c2 float", "c5 bigint"]
         indexs: ["index1:c1:c5"]
@@ -597,6 +602,8 @@ cases:
         - [NULL, NULL, NULL, NULL, NULL, NULL, NULL]
   - id: 19_6
     desc: SQL标准Cast语法-Cast(NULL as type)
+    mode: offline-unsupoort
+    tags: ["TODO", "@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["c1 int", "c2 float", "c5 bigint"]
         indexs: ["index1:c1:c5"]
