@@ -414,8 +414,8 @@ cases:
         - [1, "aa", 20, 1590738993000, "2020-05-01", 2, 93]
         - [4, "dd", 20, 1590738994000, "2020-05-04", 2, 96]
         - [5, "ee", 21, 1590738995000, "2020-05-05", 1, 34]
- - id: 14-3
-    desc: WINDOW UNION 子查询, cast(column as timestamp) as window ts
+ -  id: 14-4
+    desc: WINDOW UNION 子查询, cast另一种写法 cast(column as timestamp) as window ts
     mode: offline-unsupport
     inputs:
       - columns: ["id int","c1 string","c3f float","c4 bigint","c5 float","c6 double","c7str string","c8 date"]
@@ -433,7 +433,7 @@ cases:
       SELECT id, c1, c3, c7, c8, 
       distinct_count(c8) OVER w1 as w1_c8_dis_cnt,
       sum(c4) OVER w1 as w1_c4_sum 
-      FROM (select id, c1, cast(c3f as int) as c3, c4, c5, c6, cast (c7str as timestamp) as c7, c8 from {0}) WINDOW
+      FROM (select id, c1, cast(c3f as int) as c3, c4, c5, c6, cast(c7str as timestamp) as c7, c8 from {0}) WINDOW
       w1 AS (UNION (select id, c1, c3, c4, c5, c6, c7, cast("2020-10-01" as date) as c8 from {1})
       PARTITION BY c3 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW);
     expect:
