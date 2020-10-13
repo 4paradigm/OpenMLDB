@@ -445,6 +445,7 @@ cases:
         - [5, "ee", 21, 1590738995000, "2020-05-05", 1, 34]
   - id: 16
     desc: 主表window 添加 INSTANCE_NOT_IN_WINDOW 没有明显错误日志
+    mode: offline-unsupport
     db: db_wzx
     sql: |
       select
@@ -479,10 +480,14 @@ cases:
         data: |
           1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
     expect:
-      success: true
+      order: c1
+      columns: ["c1 int", "table_1_c1_9 int", "table_1_c2_10 bigint", "table_1_d1_11 bigint", "table_1_d2_12 bigint", "table_1_s1_13 bigint"]
+      rows:
+        - [1, 1, 2, NULL, NULL, NULL]
 
   - id: 16-2
     desc: 主表window 添加 INSTANCE_NOT_IN_WINDOW 没有明显错误日志 case when写法优化
+    mode: offline-unsupport
     db: db_wzx
     sql: |
       select
@@ -517,4 +522,7 @@ cases:
         data: |
           1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
     expect:
-      success: true
+      order: c1
+      columns: ["c1 int", "table_1_c1_9 int", "table_1_c2_10 bigint", "table_1_d1_11 bigint", "table_1_d2_12 bigint", "table_1_s1_13 bigint"]
+      rows:
+        - [1, 1, 2, NULL, NULL, NULL]
