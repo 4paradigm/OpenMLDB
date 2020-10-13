@@ -16,10 +16,10 @@
  */
 
 #include "vm/engine_test.h"
-#include "base/sig_trace.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "gtest/internal/gtest-param-util.h"
+#include "vm/core_api.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
@@ -458,12 +458,6 @@ int main(int argc, char** argv) {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     ::testing::InitGoogleTest(&argc, argv);
-
-    /*signal(SIGSEGV, fesql::base::FeSignalBacktraceHandler);
-    signal(SIGBUS, fesql::base::FeSignalBacktraceHandler);
-    signal(SIGFPE, fesql::base::FeSignalBacktraceHandler);
-    signal(SIGILL, fesql::base::FeSignalBacktraceHandler);
-    signal(SIGSYS, fesql::base::FeSignalBacktraceHandler);*/
-
+    ::fesql::vm::CoreAPI::EnableSignalTraceback();
     return RUN_ALL_TESTS();
 }
