@@ -632,3 +632,18 @@ cases:
       columns: ["f1 string"]
       rows:
         - [NULL]
+  - id: 19-8
+    desc: cast函数多层子查询
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["c1 int", "c2 string"]
+        indexs: ["index1:c1:c5"]
+        rows:
+          - [1, "2020-05-22 10:43:40"]
+    sql: |
+      select c1, long(c2) DIV 1000 as c2_sec from (select c1, timestamp(c2) as c2 from {0});
+    expect:
+      columns: ["c1 int", "c2_sec bigint"]
+      rows:
+        - [1, 1590115420]
