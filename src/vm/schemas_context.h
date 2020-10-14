@@ -45,12 +45,9 @@ class SchemasContext {
     bool ColumnRefResolved(const std::string& relation_name,
                            const std::string& col_name,
                            const RowSchemaInfo** info) const;
+    ColumnSource ColumnSourceResolved(node::ExprNode* expr);
     ColumnSource ColumnSourceResolved(const std::string& relation_name,
                                       const std::string& col_name) const;
-    ColumnSource ColumnSourceResolved(const std::string& relation_name,
-                                      const std::string& col_name,
-                                      const node::DataType cast_type) const;
-    const std::string SourceColumnNameResolved(node::ColumnRefNode* column);
     const std::string SourceColumnNameResolved(node::ExprNode* expr);
     base::Status ColumnTypeResolved(const std::string& relation_name,
                                     const std::string& col_name,

@@ -244,7 +244,6 @@ Status RowFnLetIRBuilder::BuildProject(
                         output_column_sources);
     return Status::OK();
 }
-
 bool RowFnLetIRBuilder::AddOutputColumnInfo(
     const std::string& col_name, ::fesql::type::Type ctype,
     const node::ExprNode* expr, vm::Schema* output_schema,
@@ -252,56 +251,8 @@ bool RowFnLetIRBuilder::AddOutputColumnInfo(
     ::fesql::type::ColumnDef* cdef = output_schema->Add();
     cdef->set_name(col_name);
     cdef->set_type(ctype);
-    switch (expr->GetExprType()) {
-        case fesql::node::kExprGetField: {
-            const ::fesql::node::GetFieldExpr* column_expr =
-                (const ::fesql::node::GetFieldExpr*)expr;
-            output_column_sources->push_back(
-                ctx_->schemas_context()->ColumnSourceResolved(
-                    column_expr->GetRelationName(),
-                    column_expr->GetColumnName()));
-            break;
-        }
-        case fesql::node::kExprCast: {
-            const ::fesql::node::CastExprNode* cast_expr =
-                dynamic_cast<const ::fesql::node::CastExprNode*>(expr);
-
-            if (nullptr == cast_expr->expr()) {
-                return false;
-            }
-            switch (cast_expr->expr()->expr_type_) {
-                case fesql::node::kExprGetField: {
-                    const ::fesql::node::GetFieldExpr* column_expr =
-                        (const ::fesql::node::GetFieldExpr*)cast_expr->expr();
-                    output_column_sources->push_back(
-                        ctx_->schemas_context()->ColumnSourceResolved(
-                            column_expr->GetRelationName(),
-                            column_expr->GetColumnName(),
-                            cast_expr->cast_type_));
-                    break;
-                }
-                case fesql::node::kExprPrimary: {
-                    auto const_expr =
-                        dynamic_cast<const node::ConstNode*>(cast_expr->expr());
-                    output_column_sources->push_back(
-                        vm::ColumnSource(const_expr, cast_expr->cast_type_));
-                    break;
-                }
-                default: {
-                    output_column_sources->push_back(vm::ColumnSource());
-                }
-            }
-            break;
-        }
-        case fesql::node::kExprPrimary: {
-            auto const_expr = dynamic_cast<const node::ConstNode*>(expr);
-            output_column_sources->push_back(vm::ColumnSource(const_expr));
-            break;
-        }
-        default: {
-            output_column_sources->push_back(vm::ColumnSource());
-        }
-    }
+    output_column_sources->push_back(
+        ctx_->schemas_context()->ColumnSourceResolved(expr));
     return true;
 }
 

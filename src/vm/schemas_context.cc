@@ -214,49 +214,63 @@ bool SchemasContext::ColumnRefResolved(const std::string& relation_name,
         return true;
     }
 }
-
-const std::string SchemasContext::SourceColumnNameResolved(
-    node::ColumnRefNode* column) {
-    std::string column_name = column->GetColumnName();
-    if (!Empty()) {
-        auto source = ColumnSourceResolved(column->GetRelationName(),
-                                           column->GetColumnName());
-        if (nullptr == row_schema_info_list_[source.schema_idx()].sources_) {
-            return column_name;
-        }
-        if (vm::kSourceColumn == source.type()) {
-            column_name = row_schema_info_list_[source.schema_idx()]
-                              .sources_->at(source.column_idx())
-                              .column_name();
-        }
-    }
-    return column_name;
-}
-
 // Resolve column name for given expression
 // return source column name for column expression and cast column expression
 // return empty string for other expression
 const std::string SchemasContext::SourceColumnNameResolved(
     node::ExprNode* expr) {
-    if (nullptr == expr) {
+    auto source = ColumnSourceResolved(expr);
+
+    if (kSourceColumn == source.type()) {
+        if (nullptr == row_schema_info_list_[source.schema_idx()].sources_) {
+            return column_name;
+        }
+        column_name = row_schema_info_list_[source.schema_idx()]
+                              .sources_->at(source.column_idx())
+                              .column_name();
+        return column_name;
+    } else {
         return "";
     }
+}
+vm::ColumnSource SchemasContext::ColumnSourceResolved(node::ExprNode* expr) {
+    if (nullptr == expr) {
+        return ColumnSource();
+    }
     switch (expr->expr_type_) {
+        case fesql::node::kExprGetField: {
+            const ::fesql::node::GetFieldExpr* column_expr =
+                (const ::fesql::node::GetFieldExpr*)expr;
+            return ctx_->schemas_context()->ColumnSourceResolved(
+                column_expr->GetRelationName(), 
+                column_expr->GetColumnName());
+        }
         case fesql::node::kExprColumnRef: {
-            return SourceColumnNameResolved(
-                dynamic_cast<node::ColumnRefNode*>(expr));
-            break;
+            const ::fesql::node::ColumnRefNode* column_expr =
+                (const ::fesql::node::ColumnRefNode*)expr;
+            return ctx_->schemas_context()->ColumnSourceResolved(
+                column_expr->GetRelationName(),
+                column_expr->GetColumnName());
+        }
+        case fesql::node::kExprPrimary: {
+            auto const_expr = dynamic_cast<const node::ConstNode*>(expr);
+            return vm::ColumnSource(const_expr);
         }
         case fesql::node::kExprCast: {
-            return SourceColumnNameResolved(
+            auto source = ColumnSourceResolved(
                 dynamic_cast<node::CastExprNode*>(expr)->expr());
+            if (vm::kSourceNone == source.type()) {
+                return source;
+            } else {
+                source.AddCastType(dynamic_cast<node::CastExprNode*>(expr)->cast_type_);
+                return source;
+            }
         }
         default: {
-            return "";
+            return ColumnSource();
         }
     }
-
-    return "";
+    return ColumnSource();
 }
 vm::ColumnSource SchemasContext::ColumnSourceResolved(
     const std::string& relation_name, const std::string& col_name) const {
@@ -270,21 +284,6 @@ vm::ColumnSource SchemasContext::ColumnSourceResolved(
         return ColumnSource();
     }
     return ColumnSource(row_schema_info->idx_, column_idx, col_name);
-}
-
-vm::ColumnSource SchemasContext::ColumnSourceResolved(
-    const std::string& relation_name, const std::string& col_name,
-    const node::DataType cast_type) const {
-    const RowSchemaInfo* row_schema_info;
-    if (!ColumnRefResolved(relation_name, col_name, &row_schema_info)) {
-        LOG(WARNING) << "Resolve column expression failed";
-        return ColumnSource();
-    }
-    int32_t column_idx = ColumnIdxResolved(col_name, row_schema_info->schema_);
-    if (-1 == column_idx) {
-        return ColumnSource();
-    }
-    return ColumnSource(row_schema_info->idx_, column_idx, col_name, cast_type);
 }
 
 base::Status SchemasContext::ColumnTypeResolved(
