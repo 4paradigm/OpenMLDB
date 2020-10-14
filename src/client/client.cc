@@ -162,6 +162,13 @@ bool BaseClient::Init(std::string* msg) {
         *msg = "get leader ns endpoint fail";
         return false;
     }
+    const std::string name_path = zk_root_path_ + "/map/names/" + endpoint;
+    if (zk_client_->IsExistNode(name_path) == 0) {
+        std::string real_ep;
+        if (zk_client_->GetNodeValue(name_path, real_ep)) {
+            endpoint = real_ep;
+        }
+    }
     ns_client_ = new rtidb::client::NsClient(endpoint, "");
     if (ns_client_->Init() < 0) {
         *msg = "ns client init failed";
