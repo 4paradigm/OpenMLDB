@@ -61,3 +61,71 @@ cases:
         - [3, "???  k4:v4", "k4", "v4", 1, 1]
         - [4, "", "", "", 0, 0]
         - [5, "k5:v5 k3:v3", "k5 k3", "v5 v3", 2, 2]
+
+  - id: 3
+    desc: window top1 ratio
+    inputs:
+      -
+        columns : ["id bigint","pk bigint","c1 smallint","c2 int","c3 bigint","c4 float",
+                   "c5 double", "c6 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 1, 1, 1, 1, 1.1, 2.1, "1:1 1:2"]
+          - [2, 1, 2, 2, 1, 1.4, 2.1, "1:1" ]
+          - [3, 1, NULL, 3, 1, 1.3, 2.3, "1:1 1:3"]
+          - [4, 2, NULL, 5, 1, NULL, NULL, "1:3"]
+          - [5, 2, 5, 4, 1, 1.5, 2.5, "1:2 1:3"]
+    sql: |
+      SELECT id, 
+      window_top1_ratio(c1) OVER w1 as r1,
+      window_top1_ratio(c2) OVER w1 as r2,
+      window_top1_ratio(c3) OVER w1 as r3,
+      window_top1_ratio(c4) OVER w1 as r4,
+      window_top1_ratio(c5) OVER w1 as r5,
+      window_top1_ratio(fz_window_split_by_value(c6, " ", ":")) OVER w1 as r6,
+      fz_join(fz_window_split_by_value(c6, " ", ":")," ") as r7
+      FROM {0} 
+      WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id bigint","r1 double","r2 double","r3 double","r4 double","r5 double","r6 double","r7 string"]
+      rows:
+        - [1, 1.0, 1.0, 1, 1.0, 1.0, 0.5,"1 2"]
+        - [2, 0.5, 0.5, 1, 0.5, 1.0, 0.66666666666666663,"1 1 2"]
+        - [3, 0.5, 0.33333333333333331, 1, 0.33333333333333331, 0.66666666666666663, 0.6,"1 3 1 1 2"]
+        - [4, 0, 1, 1, 0, 0, 1,"3"]
+        - [5, 1, 0.5, 1, 1.0, 1, 0.66666666666666663,"2 3 3"]
+
+  - id: 4
+    desc: Multi Top 3 Frequency
+    inputs:
+      -
+        columns : ["id bigint","pk bigint","c1 string","c2 int","c3 string","c4 float",
+                   "c5 double", "c6 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 1, "1:2 1:3", 1, "1:2 1:3", 1.1, 2.1, "1:1 1:2"]
+          - [2, 1, "4:2 8:3", NULL, "1:2 1:3", 1.4, 2.1, "1:1" ]
+          - [3, 1, NULL, 2, "1:2 1:3", 1.3, 2.3, "1:1 1:3"]
+          - [4, 2, NULL, NULL, "1:2 1:3", NULL, NULL, "1:3"]
+          - [5, 2, "1:2 1:3", 5, "1:2 1:3", 1, 1.5, 2.5, "1:2 1:3"]
+    sql: |
+      SELECT id, 
+      multi_top3_frequency(fz_window_split_by_value(c1, " ", ":")) OVER w1 as r1,
+      multi_top3_frequency(c2) OVER w1 as r2,
+      multi_top3_frequency(fz_window_split(c3, ",")) OVER w1 as r3,
+      multi_top3_frequency(c4) OVER w1 as r4,
+      multi_top3_frequency(c5) OVER w1 as r5,
+      multi_top3_frequency(fz_window_split_by_value(c6, " ", ":")) OVER w1 as r6,
+      fz_join(fz_window_split_by_value(c6, " ", ":")," ") as r7
+      FROM {0} 
+      WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id bigint","r1 string","r2 string","r3 string","r4 string","r5 string","r6 string","r7 string"]
+      rows:
+        - [1, 1.0, 1.0, 1, 1.0, 1.0, 0.5,"1 2"]
+        - [2, 0.5, 0.5, 1, 0.5, 1.0, 0.66666666666666663,"1 1 2"]
+        - [3, 0.5, 0.33333333333333331, 1, 0.33333333333333331, 0.66666666666666663, 0.6,"1 3 1 1 2"]
+        - [4, 0, 1, 1, 0, 0, 1,"3"]
+        - [5, 1, 0.5, 1, 1.0, 1, 0.66666666666666663,"2 3 3"]

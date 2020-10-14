@@ -16,10 +16,20 @@
 
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
+#include "udf/containers.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
 #include "vm/jit_runtime.h"
+
+using fesql::codec::Date;
+using fesql::codec::ListRef;
+using fesql::codec::StringRef;
+using fesql::codec::Timestamp;
+using fesql::codegen::CodeGenContext;
+using fesql::codegen::NativeValue;
+using fesql::common::kCodegenError;
+using fesql::node::TypeNode;
 
 namespace fesql {
 namespace udf {
@@ -259,6 +269,195 @@ struct FZStringOpsDef {
         output->data_ = buf;
     }
 };
+        
+template <typename K>
+struct WindowTop1Ratio {
+    using ContainerT =
+        udf::container::BoundedGroupByDict<K, int64_t, int64_t>;
+    using InputK = typename ContainerT::InputK;
+
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        std::string suffix = ".opaque_dict_" +
+                            DataTypeTrait<K>::to_string() + "_";
+        helper
+            .doc(helper.GetDoc())
+            .templates<double, Opaque<ContainerT>, Nullable<K>>()
+            .init("window_top1_ratio_init" + suffix, ContainerT::Init)
+            .update("window_top1_ratio_update" + suffix, Update)
+            .output("window_top1_ratio_output" + suffix, Output);
+    }
+    
+    static ContainerT* Update(ContainerT* ptr, InputK key,
+                            bool is_key_null) {
+        if (is_key_null) {
+            return ptr;
+        }
+        auto& map = ptr->map();
+        auto stored_key = ContainerT::to_stored_key(key);
+        auto iter = map.find(stored_key);
+        if (iter == map.end()) {
+            map.insert(iter, {stored_key, 1});
+        } else {
+            auto& single = iter->second;
+            single += 1;
+        }
+        return ptr;
+    }
+
+    static double Output(ContainerT* ptr) {
+        auto& map = ptr->map();
+        if (map.empty()) {
+            return 0;
+        }
+        int max = 0;
+        int size = 0;
+        for (auto iter = map.begin(); iter != map.end(); ++iter) {
+            size += iter->second;
+            if (iter->second > max) {
+                max = iter->second;
+            }
+        }
+
+        double maxRatio = static_cast<double> (max) / size;
+
+        ContainerT::Destroy(ptr);
+        return maxRatio;
+    }
+};
+
+template <typename K>
+struct MultiTop3Frequency {
+    using ContainerT =
+        udf::container::BoundedGroupByDict<K, int64_t, int64_t>;
+    using InputK = typename ContainerT::InputK;
+
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        std::string suffix = ".opaque_dict_" +
+                            DataTypeTrait<K>::to_string() + "_";
+        helper
+            .doc(helper.GetDoc())
+            .templates<StringRef, Opaque<ContainerT>, Nullable<K>>()
+            .init("multi_top3_frequency_init" + suffix, ContainerT::Init)
+            .update("multi_top3_frequency_update" + suffix, Update)
+            .output("multi_top3_frequency_output" + suffix, Output);
+    }
+    
+    static ContainerT* Update(ContainerT* ptr, InputK key,
+                            bool is_key_null) {
+        if (is_key_null) {
+            return ptr;
+        }
+        auto& map = ptr->map();
+        auto stored_key = ContainerT::to_stored_key(key);
+        auto iter = map.find(stored_key);
+        if (iter == map.end()) {
+            map.insert(iter, {stored_key, 1});
+        } else {
+            auto& single = iter->second;
+            single += 1;
+        }
+        return ptr;
+    }
+
+    static void Output(ContainerT* ptr, codec::StringRef* output) {
+        auto& map = ptr->map();
+        if (map.empty()) {
+            output->size_ = 0;
+            output->data_ = "";
+            return;
+        }
+
+        // Find the top3
+        using StorageK = typename container::ContainerStorageTypeTrait<K>::type;
+        StorageK first = map.begin()->first;
+        StorageK second = map.begin()->first;
+        StorageK third = map.begin()->first;
+        int64_t firstNum = 0;
+        int64_t secondNum = 0;
+        int64_t thirdNum = 0;
+        for (auto iter = map.begin(); iter != map.end(); ++iter) {
+            if (iter->second < thirdNum) {
+                continue;
+            }
+            if (iter->second > firstNum) {
+                third = second;
+                thirdNum = secondNum;
+                second = first;
+                secondNum = firstNum;
+                first = iter->first;
+                firstNum = iter->second;
+            } else if (iter->second > secondNum) {
+                third = second;
+                thirdNum = secondNum;
+                second = iter->first;
+                secondNum = iter->second;
+            } else if(iter->second > thirdNum) {
+                third = iter->first;
+                thirdNum = iter->second;
+            }
+        }
+
+        // estimate output length
+        uint32_t str_len = 0;
+        std::string null = "NULL";
+        if(firstNum > 0){
+            str_len += v1::format_string(first, nullptr, 0) + 1;  // "k,"
+        } else{
+            str_len += v1::format_string(null, nullptr, 0) + 1;  // "NULL,"
+        }
+        if(secondNum > 0){
+            str_len += v1::format_string(second, nullptr, 0) + 1;  // "k,"
+        } else{
+            str_len += v1::format_string(null, nullptr, 0) + 1;  // "NULL,"
+        }
+        if(thirdNum > 0){
+            str_len += v1::format_string(third, nullptr, 0) + 1;  // "/0"
+        } else{
+            str_len += v1::format_string(null, nullptr, 0) + 1;  // "NULL,"
+        }
+
+        // allocate string buffer
+        char* buffer = udf::v1::AllocManagedStringBuf(str_len);
+
+        // fill string buffer
+        char* cur = buffer;
+        uint32_t remain_space = str_len;
+        uint32_t key_len = 0;
+
+        if(firstNum > 0){
+            key_len = v1::format_string(first, cur, remain_space);
+        } else{
+            key_len = v1::format_string(null, cur, remain_space) + 1;
+        }
+        cur += key_len;
+        *(cur++) = ',';
+        remain_space -= key_len + 1;
+
+        if(secondNum > 0){
+            key_len = v1::format_string(second, cur, remain_space);
+        } else{
+            key_len = v1::format_string(null, cur, remain_space) + 1;
+        }
+        cur += key_len;
+        *(cur++) = ',';
+        remain_space -= key_len + 1;
+
+        if(thirdNum > 0){
+            key_len = v1::format_string(third, cur, remain_space);
+        } else{
+            key_len = v1::format_string(null, cur, remain_space) + 1;
+        }
+        cur += key_len;
+
+        *(buffer + str_len - 1) = '\0';
+
+        output->data_ = buffer;
+        output->size_ =
+            str_len - 1;  // must leave one '\0' for string format impl
+        ContainerT::Destroy(ptr);
+
+    }
+};
 
 void DefaultUDFLibrary::InitFeatureZero() {
     RegisterUDAF("fz_window_split")
@@ -332,6 +531,14 @@ void DefaultUDFLibrary::InitFeatureZero() {
     RegisterExternal("fz_join")
         .list_argument_at(0)
         .args<ListRef<StringRef>, StringRef>(FZStringOpsDef::StringJoin);
+
+    RegisterUDAFTemplate<WindowTop1Ratio>("window_top1_ratio")
+        .doc("Compute the top1 ratio")
+    .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp, StringRef>();
+
+    RegisterUDAFTemplate<MultiTop3Frequency>("multi_top3frequency")
+        .doc("Return the top3 keys")
+    .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp, StringRef>();
 }
 
 }  // namespace udf
