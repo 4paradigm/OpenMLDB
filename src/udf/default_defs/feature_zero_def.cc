@@ -269,7 +269,7 @@ struct FZStringOpsDef {
         output->data_ = buf;
     }
 };
-        
+
 template <typename K>
 struct WindowTop1Ratio {
     using ContainerT =
@@ -286,7 +286,7 @@ struct WindowTop1Ratio {
             .update("window_top1_ratio_update" + suffix, Update)
             .output("window_top1_ratio_output" + suffix, Output);
     }
-    
+
     static ContainerT* Update(ContainerT* ptr, InputK key,
                             bool is_key_null) {
         if (is_key_null) {
@@ -341,7 +341,7 @@ struct MultiTop3Frequency {
             .update("multi_top3_frequency_update" + suffix, Update)
             .output("multi_top3_frequency_output" + suffix, Output);
     }
-    
+
     static ContainerT* Update(ContainerT* ptr, InputK key,
                             bool is_key_null) {
         if (is_key_null) {
@@ -361,59 +361,62 @@ struct MultiTop3Frequency {
 
     static void Output(ContainerT* ptr, codec::StringRef* output) {
         auto& map = ptr->map();
-        if (map.empty()) {
-            output->size_ = 0;
-            output->data_ = "";
-            return;
-        }
-
-        // Find the top3
         using StorageK = typename container::ContainerStorageTypeTrait<K>::type;
-        StorageK first = map.begin()->first;
-        StorageK second = map.begin()->first;
-        StorageK third = map.begin()->first;
+
         int64_t firstNum = 0;
         int64_t secondNum = 0;
         int64_t thirdNum = 0;
-        for (auto iter = map.begin(); iter != map.end(); ++iter) {
-            if (iter->second < thirdNum) {
-                continue;
-            }
-            if (iter->second > firstNum) {
-                third = second;
-                thirdNum = secondNum;
-                second = first;
-                secondNum = firstNum;
-                first = iter->first;
-                firstNum = iter->second;
-            } else if (iter->second > secondNum) {
-                third = second;
-                thirdNum = secondNum;
-                second = iter->first;
-                secondNum = iter->second;
-            } else if(iter->second > thirdNum) {
-                third = iter->first;
-                thirdNum = iter->second;
+        StorageK first;
+        StorageK second;
+        StorageK third;
+
+        if (!map.empty()) {
+            // Find the top3
+
+            first = map.begin()->first;
+            second = map.begin()->first;
+            third = map.begin()->first;
+
+            for (auto iter = map.begin(); iter != map.end(); ++iter) {
+                if (iter->second < thirdNum) {
+                    continue;
+                }
+                if (iter->second > firstNum) {
+                    third = second;
+                    thirdNum = secondNum;
+                    second = first;
+                    secondNum = firstNum;
+                    first = iter->first;
+                    firstNum = iter->second;
+                } else if (iter->second > secondNum) {
+                    third = second;
+                    thirdNum = secondNum;
+                    second = iter->first;
+                    secondNum = iter->second;
+                } else if (iter->second > thirdNum) {
+                    third = iter->first;
+                    thirdNum = iter->second;
+                }
             }
         }
 
         // estimate output length
         uint32_t str_len = 0;
         std::string null = "NULL";
-        if(firstNum > 0){
+        if (firstNum > 0) {
             str_len += v1::format_string(first, nullptr, 0) + 1;  // "k,"
-        } else{
+        } else {
             str_len += v1::format_string(null, nullptr, 0) + 1;  // "NULL,"
         }
-        if(secondNum > 0){
+        if (secondNum > 0) {
             str_len += v1::format_string(second, nullptr, 0) + 1;  // "k,"
-        } else{
+        } else {
             str_len += v1::format_string(null, nullptr, 0) + 1;  // "NULL,"
         }
-        if(thirdNum > 0){
+        if (thirdNum > 0) {
             str_len += v1::format_string(third, nullptr, 0) + 1;  // "/0"
-        } else{
-            str_len += v1::format_string(null, nullptr, 0) + 1;  // "NULL,"
+        } else {
+            str_len += v1::format_string(null, nullptr, 0) + 1;  // "NULL/0"
         }
 
         // allocate string buffer
@@ -424,28 +427,28 @@ struct MultiTop3Frequency {
         uint32_t remain_space = str_len;
         uint32_t key_len = 0;
 
-        if(firstNum > 0){
+        if (firstNum > 0) {
             key_len = v1::format_string(first, cur, remain_space);
-        } else{
-            key_len = v1::format_string(null, cur, remain_space) + 1;
+        } else {
+            key_len = v1::format_string(null, cur, remain_space);
         }
         cur += key_len;
         *(cur++) = ',';
         remain_space -= key_len + 1;
 
-        if(secondNum > 0){
+        if (secondNum > 0) {
             key_len = v1::format_string(second, cur, remain_space);
-        } else{
-            key_len = v1::format_string(null, cur, remain_space) + 1;
+        } else {
+            key_len = v1::format_string(null, cur, remain_space);
         }
         cur += key_len;
         *(cur++) = ',';
         remain_space -= key_len + 1;
 
-        if(thirdNum > 0){
+        if (thirdNum > 0) {
             key_len = v1::format_string(third, cur, remain_space);
-        } else{
-            key_len = v1::format_string(null, cur, remain_space) + 1;
+        } else {
+            key_len = v1::format_string(null, cur, remain_space);
         }
         cur += key_len;
 
@@ -455,7 +458,6 @@ struct MultiTop3Frequency {
         output->size_ =
             str_len - 1;  // must leave one '\0' for string format impl
         ContainerT::Destroy(ptr);
-
     }
 };
 
@@ -534,11 +536,13 @@ void DefaultUDFLibrary::InitFeatureZero() {
 
     RegisterUDAFTemplate<WindowTop1Ratio>("window_top1_ratio")
         .doc("Compute the top1 ratio")
-    .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp, StringRef>();
+    .args_in<int16_t, int32_t, int64_t, float,
+                    double, Date, Timestamp, StringRef>();
 
-    RegisterUDAFTemplate<MultiTop3Frequency>("multi_top3frequency")
+    RegisterUDAFTemplate<MultiTop3Frequency>("multi_top3_frequency")
         .doc("Return the top3 keys")
-    .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp, StringRef>();
+    .args_in<int16_t, int32_t, int64_t, float,
+                    double, Date, Timestamp, StringRef>();
 }
 
 }  // namespace udf
