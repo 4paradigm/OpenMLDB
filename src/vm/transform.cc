@@ -2112,7 +2112,7 @@ bool GroupAndSortOptimized::TransformGroupExpr(
                         "or index_name ptr is null";
         return false;
     }
-    LOG(INFO) << "TransformGroupExpr: " << node::ExprString(groups);
+    DLOG(INFO) << "keys optimized: " << node::ExprString(groups);
     SchemasContext schema_ctx(schema_sources);
     std::vector<std::string> columns;
     for (auto group : groups->children_) {
@@ -2120,7 +2120,7 @@ bool GroupAndSortOptimized::TransformGroupExpr(
             case node::kExprColumnRef: {
                 auto column = dynamic_cast<node::ColumnRefNode*>(group);
                 auto column_name = schema_ctx.SourceColumnNameResolved(column);
-                LOG(INFO) << "column_name: " << column_name;
+                DLOG(INFO) << "resloved column_name: " << column_name;
                 columns.push_back(column_name);
                 break;
             }
@@ -2154,7 +2154,7 @@ bool GroupAndSortOptimized::TransformGroupExpr(
                         auto column = dynamic_cast<node::ColumnRefNode*>(group);
                         std::string column_name =
                             schema_ctx.SourceColumnNameResolved(column);
-                        LOG(INFO) << "column_name: " << column_name;
+                        DLOG(INFO) << "column_name: " << column_name;
                         // skip group when match index keys
                         if (column_name == iter->name) {
                             key_expr_list->AddChild(group);
@@ -2175,7 +2175,7 @@ bool GroupAndSortOptimized::TransformGroupExpr(
                 case node::kExprColumnRef: {
                     std::string column = schema_ctx.SourceColumnNameResolved(
                         dynamic_cast<node::ColumnRefNode*>(expr));
-                    LOG(INFO) << "column_name: " << column;
+                    DLOG(INFO) << "column_name: " << column;
                     // skip group when match index keys
                     if (keys.find(column) == keys.cend()) {
                         new_groups->AddChild(expr);
