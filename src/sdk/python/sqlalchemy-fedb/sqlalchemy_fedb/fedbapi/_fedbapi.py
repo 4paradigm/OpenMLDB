@@ -264,7 +264,6 @@ class Cursor(object):
             self._resultSet = None
             self.__schema = None
             self.__getMap = None
-            self.description = None
             return None
         values = []
         for i in range(self.__schema.GetColumnCnt()):
