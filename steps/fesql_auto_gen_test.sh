@@ -13,7 +13,7 @@ cd ${ROOT_DIR}
 python3 -m pip install numpy -i https://pypi.tuna.tsinghua.edu.cn/simple
 python3 -m pip install PyYaml -i https://pypi.tuna.tsinghua.edu.cn/simple
 python3 fesql/tools/autotest/auto_cases.py  \
-    --bin_path=build  \
+    --bin_path=fesql/build  \
     --udf_path=udf_defs.yaml  \
     --expr_num=2  \
     --expr_depth=3  \
