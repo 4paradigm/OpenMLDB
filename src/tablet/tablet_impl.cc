@@ -328,7 +328,7 @@ bool TabletImpl::RegisterZK() {
         }
         PDLOG(INFO, "tablet with endpoint %s register to zk cluster %s ok",
               endpoint_.c_str(), zk_cluster_.c_str());
-        if (!zk_client_->IsExistNode(notify_path_)) {
+        if (zk_client_->IsExistNode(notify_path_) != 0) {
             zk_client_->CreateNode(notify_path_, "1");
         }
         if (!zk_client_->WatchItem(notify_path_, boost::bind(&TabletImpl::RefreshTableInfo, this))) {
