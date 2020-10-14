@@ -188,6 +188,7 @@
 					</execution>
 				</executions>
 				<configuration>
+					<generateGitPropertiesFilename>${project.build.outputDirectory}/fesql_git.properties</generateGitPropertiesFilename>
 					<injectAllReactorProjects>true</injectAllReactorProjects>
 					<dateFormat>yyyy.MM.dd HH:mm:ss</dateFormat>
 					<verbose>true</verbose>
