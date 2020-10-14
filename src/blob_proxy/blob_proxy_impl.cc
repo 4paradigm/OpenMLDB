@@ -117,16 +117,6 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
         cntl->http_response().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
         return;
     }
-    const std::string* content_format = cntl->http_request().uri().GetQuery("format");
-    std::string application_type;
-    if (content_format != NULL) {
-        auto iter = mime_.find(*content_format);
-        if (iter != mime_.end()) {
-            application_type = iter->second;
-        }
-    }
-    const std::string* filename = cntl->http_request().uri().GetQuery("filename");
-    const std::string* charset = cntl->http_request().uri().GetQuery("charset");
     auto& response_writer = cntl->response_attachment();
     std::shared_ptr<TableHandler> th = client_->GetTableHandler(table);
     if (!th) {
@@ -161,6 +151,16 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
         response_writer.append(err_msg);
         return;
     }
+    const std::string* content_format = cntl->http_request().uri().GetQuery("format");
+    std::string application_type;
+    if (content_format != NULL) {
+        auto iter = mime_.find(*content_format);
+        if (iter != mime_.end()) {
+            application_type = iter->second;
+        }
+    }
+    const std::string* filename = cntl->http_request().uri().GetQuery("filename");
+    const std::string* charset = cntl->http_request().uri().GetQuery("charset");
     if (!application_type.empty()) {
         if (charset != NULL) {
             std::ostringstream oss;
