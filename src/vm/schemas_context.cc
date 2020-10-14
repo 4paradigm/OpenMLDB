@@ -233,7 +233,7 @@ const std::string SchemasContext::SourceColumnNameResolved(
         return "";
     }
 }
-vm::ColumnSource SchemasContext::ColumnSourceResolved(node::ExprNode* expr) {
+vm::ColumnSource SchemasContext::ColumnSourceResolved(const node::ExprNode* expr) {
     if (nullptr == expr) {
         return ColumnSource();
     }
@@ -258,11 +258,11 @@ vm::ColumnSource SchemasContext::ColumnSourceResolved(node::ExprNode* expr) {
         }
         case fesql::node::kExprCast: {
             auto source = ColumnSourceResolved(
-                dynamic_cast<node::CastExprNode*>(expr)->expr());
+                dynamic_cast<const node::CastExprNode*>(expr)->expr());
             if (vm::kSourceNone == source.type()) {
                 return source;
             } else {
-                source.AddCastType(dynamic_cast<node::CastExprNode*>(expr)->cast_type_);
+                source.AddCastType(dynamic_cast<const node::CastExprNode*>(expr)->cast_type_);
                 return source;
             }
         }
