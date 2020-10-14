@@ -445,7 +445,6 @@ cases:
         - [5, "ee", 21, 1590738995000, "2020-05-05", 1, 34]
   - id: 16
     desc: 主表window 添加 INSTANCE_NOT_IN_WINDOW 没有明显错误日志
-    tags: ["TODO", "@chenjing check java sdk case"]
     mode: offline-unsupport
     db: db_wzx
     sql: |
@@ -488,7 +487,6 @@ cases:
 
   - id: 16-2
     desc: 主表window 添加 INSTANCE_NOT_IN_WINDOW 没有明显错误日志 case when写法优化
-    tags: ["TODO", "@chenjing check java sdk case"]
     mode: offline-unsupport
     db: db_wzx
     sql: |
