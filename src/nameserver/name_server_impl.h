@@ -948,6 +948,8 @@ class NameServerImpl : public NameServer {
 
     void DropProcedureOnTablet(const std::string& db_name, const std::string& sp_name);
 
+    void RecoverProcedureOnTablet(const std::string& endpoint);
+
  private:
     std::mutex mu_;
     Tablets tablets_;

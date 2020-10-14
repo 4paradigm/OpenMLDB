@@ -1399,6 +1399,9 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             }
         }
         PDLOG(INFO, "healthy tablet with endpoint[%s]", it->c_str());
+        tit = tablets_.find(*it);
+        thread_pool_.DelayTask(FLAGS_get_task_status_interval,
+                boost::bind(&NameServerImpl::RecoverProcedureOnTablet, this, tit->second->client_->GetEndpoint()));
     }
     // handle offline tablet
     for (Tablets::iterator tit = tablets_.begin(); tit != tablets_.end(); ++tit) {
@@ -10668,9 +10671,11 @@ bool NameServerImpl::CreateProcedureOnTablet(const std::string& db_name, const s
         }
     }
     for (auto tb_client : tb_client_vec) {
-        if (!tb_client->CreateProcedure(db_name, sp_name, sql)) {
-            PDLOG(WARNING, "create procedure on tablet failed. db_name[%s], sp_name[%s], sql[%s], endpoint[%s]",
-                    db_name.c_str(), sp_name.c_str(), sql.c_str(), tb_client->GetEndpoint().c_str());
+        std::string msg;
+        if (!tb_client->CreateProcedure(db_name, sp_name, sql, msg)) {
+            PDLOG(WARNING,
+                    "create procedure on tablet failed. db_name[%s], sp_name[%s], sql[%s], endpoint[%s], msg[%s]",
+                    db_name.c_str(), sp_name.c_str(), sql.c_str(), tb_client->GetEndpoint().c_str(), msg.c_str());
             return false;
         }
         PDLOG(INFO, "create procedure on tablet success. db_name[%s], sp_name[%s], sql[%s], endpoint[%s]",
@@ -10783,6 +10788,44 @@ void NameServerImpl::DropProcedure(RpcController* controller,
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
+}
+
+void NameServerImpl::RecoverProcedureOnTablet(const std::string& endpoint) {
+    std::shared_ptr<::rtidb::client::TabletClient> tb_client;
+    decltype(db_sp_info_) db_sp_info_tmp;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        auto it = tablets_.find(endpoint);
+        if (it == tablets_.end()) {
+            PDLOG(WARNING, "tablet [%s] not exist!", endpoint.c_str());
+            return;
+        }
+        tb_client = it->second->client_;
+        for (const auto& op_list : task_vec_) {
+            if (!op_list.empty()) {
+                thread_pool_.DelayTask(FLAGS_get_task_status_interval,
+                        boost::bind(&NameServerImpl::RecoverProcedureOnTablet, this, endpoint));
+                return;
+            }
+        }
+        db_sp_info_tmp = db_sp_info_;
+    }
+    for (auto& db_kv : db_sp_info_tmp) {
+        const std::string& db_name = db_kv.first;
+        for (auto& sp_kv : db_kv.second) {
+            const std::string& sp_name = sp_kv.first;
+            const std::string& sql = sp_kv.second->sql();
+            std::string msg;
+            if (!tb_client->CreateProcedure(db_name, sp_name, sql, msg)) {
+                PDLOG(WARNING,
+                        "create procedure on tablet failed. db_name[%s], sp_name[%s], sql[%s], endpoint[%s], msg[%s]",
+                        db_name.c_str(), sp_name.c_str(), sql.c_str(), tb_client->GetEndpoint().c_str(), msg.c_str());
+                continue;
+            }
+            PDLOG(INFO, "create procedure on tablet success. db_name[%s], sp_name[%s], sql[%s], endpoint[%s]",
+                    db_name.c_str(), sp_name.c_str(), sql.c_str(), tb_client->GetEndpoint().c_str());
+        }
+    }
 }
 
 }  // namespace nameserver

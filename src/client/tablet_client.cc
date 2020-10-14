@@ -1608,7 +1608,7 @@ bool TabletClient::GetSchema(const std::string& db_name, const std::string& sql,
 }
 
 bool TabletClient::CreateProcedure(const std::string& db_name, const std::string& sp_name,
-        const std::string& sql) {
+        const std::string& sql, std::string& msg) {
     rtidb::api::CreateProcedureRequest request;
     rtidb::api::GeneralResponse response;
     request.set_db_name(db_name);
@@ -1616,6 +1616,7 @@ bool TabletClient::CreateProcedure(const std::string& db_name, const std::string
     request.set_sql(sql);
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateProcedure,
             &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    msg = response.msg();
     if (!ok || response.code() != 0) {
         return false;
     }

@@ -324,7 +324,7 @@ class TabletClient {
             Schema* input_schema, Schema* output_schema);
 
     bool CreateProcedure(const std::string& db_name, const std::string& sp_name,
-            const std::string& sql);
+            const std::string& sql, std::string& msg); // NOLINT
 
     bool CallProcedure(const std::string& db, const std::string& sp_name,
             const std::string& row, brpc::Controller* cntl,

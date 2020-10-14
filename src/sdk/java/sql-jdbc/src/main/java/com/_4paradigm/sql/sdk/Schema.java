@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Schema {
-    private String tableName;
+    private String tableName = "";
     private List<Column> columnList = new ArrayList<>();
 
     public String getTableName() {

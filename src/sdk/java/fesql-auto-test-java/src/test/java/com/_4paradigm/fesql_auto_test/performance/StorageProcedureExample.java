@@ -66,8 +66,8 @@ public class StorageProcedureExample extends BaseExample {
         sqlExecutor.createDB(db);
         sqlExecutor.executeDDL(db, dropDdl);
         sqlExecutor.executeDDL(db, ddl);
-        sqlExecutor.executeDDL(db, "drop procedure sp;");
-        Schema inputSchema = sqlExecutor.getInputSchema(db, sql);
+//        sqlExecutor.executeDDL(db, "drop procedure sp;");
+//        Schema inputSchema = sqlExecutor.getInputSchema(db, sql);
     }
 
     public void initSample() {
