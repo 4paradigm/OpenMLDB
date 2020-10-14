@@ -159,9 +159,17 @@ object JoinPlan {
 
         distinct.drop(indexName)
       } else { // Does not have order by column
-        // Randomly select the first row from joined table
-        joined.dropDuplicates(indexName).drop(indexName)
+        try {
+          org.apache.spark.sql.catalyst.plans.JoinType("last") // If Spark distribution support native last join type
+          leftDf.join(rightDf, joinConditions.reduce(_ && _),  "last")
+        } catch {
+          case _: IllegalArgumentException => {
+            // Randomly select the first row from joined table
+            joined.dropDuplicates(indexName).drop(indexName)
+          }
+        }
       }
+
     } else { // Just left join, not last join
       joined
     }
