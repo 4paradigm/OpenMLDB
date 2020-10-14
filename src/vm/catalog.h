@@ -86,7 +86,7 @@ class ColumnSource {
             for (auto iter = cast_type_chains_.cbegin(); 
                 iter != cast_type_chains_.cend(); iter++) {
                 cast_types.append(":");
-                cast_types.append((*iter)->GetExprString());
+                cast_types.append(node::DataTypeName(*iter));
             }
         }
         switch (type_) {
