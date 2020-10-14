@@ -4846,20 +4846,19 @@ void TabletImpl::RefreshTableInfo() {
     } else {
         LOG(INFO) << "no tables in db";
     }
-    std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_vec;
+    std::vector<::rtidb::nameserver::TableInfo> table_info_vec;
     for (const auto& node : table_datas) {
         std::string value;
         if (!zk_client_->GetNodeValue(db_table_data_path + "/" + node, value)) {
             LOG(WARNING) << "fail to get table data. node: " << node;
             continue;
         }
-        std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
-            std::make_shared<rtidb::nameserver::TableInfo>();
-        if (!table_info->ParseFromString(value)) {
+        ::rtidb::nameserver::TableInfo table_info;
+        if (!table_info.ParseFromString(value)) {
             LOG(WARNING) << "fail to parse table proto. node: " << node << " value: "<< value;
             continue;
         }
-        table_info_vec.push_back(table_info);
+        table_info_vec.push_back(std::move(table_info));
     }
     catalog_->RefreshTable(table_info_vec);
 }

@@ -255,7 +255,7 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     bool DeleteDB(const std::string &db);
 
-    void RefreshTable(const std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>> &table_info_vec);
+    void RefreshTable(const std::vector<::rtidb::nameserver::TableInfo> &table_info_vec);
 
     bool UpdateClient(const std::map<std::string, std::string> &real_ep_map);
 

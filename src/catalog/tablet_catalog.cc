@@ -309,11 +309,11 @@ bool TabletCatalog::DeleteDB(const std::string& db) {
 
 bool TabletCatalog::IndexSupport() { return true; }
 
-void TabletCatalog::RefreshTable(const std::vector<std::shared_ptr<::rtidb::nameserver::TableInfo>>& table_info_vec) {
+void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInfo>& table_info_vec) {
     std::map<std::string, std::set<std::string>> table_map;
     for (const auto& table_info : table_info_vec) {
-        const std::string& db_name = table_info->db();
-        const std::string& table_name = table_info->name();
+        const std::string& db_name = table_info.db();
+        const std::string& table_name = table_info.name();
         if (db_name.empty()) {
             continue;
         }
@@ -327,7 +327,7 @@ void TabletCatalog::RefreshTable(const std::vector<std::shared_ptr<::rtidb::name
             }
             auto it = db_it->second.find(table_name);
             if (it == db_it->second.end()) {
-                handler = std::make_shared<TabletTableHandler>(*table_info);
+                handler = std::make_shared<TabletTableHandler>(table_info);
                 if (!handler->Init(client_manager_)) {
                     LOG(WARNING) << "tablet handler init failed";
                     return;
@@ -337,7 +337,7 @@ void TabletCatalog::RefreshTable(const std::vector<std::shared_ptr<::rtidb::name
                 handler = it->second;
             }
         }
-        handler->Update(*table_info, client_manager_);
+        handler->Update(table_info, client_manager_);
         auto cur_db_it = table_map.find(db_name);
         if (cur_db_it == table_map.end()) {
             auto result = table_map.emplace(db_name, std::set<std::string>());

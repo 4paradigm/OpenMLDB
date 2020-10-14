@@ -32,10 +32,12 @@ std::shared_ptr<::rtidb::client::TabletClient> PartitionClientManager::GetFollow
     return std::shared_ptr<::rtidb::client::TabletClient>();
 }
 
-TableClientManager::TableClientManager(const TablePartitions& partitions,
-                                       const ClientManager& client_manager) {
+TableClientManager::TableClientManager(const TablePartitions& partitions, const ClientManager& client_manager) {
     for (const auto& table_partition : partitions) {
         uint32_t pid = table_partition.pid();
+        if (pid > partition_managers_.size()) {
+            continue;
+        }
         std::shared_ptr<ClientWrapper> leader;
         std::vector<std::shared_ptr<ClientWrapper>> follower;
         for (const auto& meta : table_partition.partition_meta()) {
@@ -55,10 +57,12 @@ TableClientManager::TableClientManager(const TablePartitions& partitions,
     }
 }
 
-TableClientManager::TableClientManager(const ::rtidb::storage::TableSt& table_st,
-                                       const ClientManager& client_manager) {
+TableClientManager::TableClientManager(const ::rtidb::storage::TableSt& table_st, const ClientManager& client_manager) {
     for (const auto& partition_st : *(table_st.GetPartitions())) {
         uint32_t pid = partition_st.GetPid();
+        if (pid > partition_managers_.size()) {
+            continue;
+        }
         std::shared_ptr<ClientWrapper> leader = client_manager.GetClient(partition_st.GetLeader());
         std::vector<std::shared_ptr<ClientWrapper>> follower;
         for (const auto& endpoint : partition_st.GetFollower()) {
@@ -73,6 +77,10 @@ TableClientManager::TableClientManager(const ::rtidb::storage::TableSt& table_st
 
 bool TableClientManager::UpdatePartitionClientManager(const ::rtidb::storage::PartitionSt& partition,
                                                       const ClientManager& client_manager) {
+    uint32_t pid = partition.GetPid();
+    if (pid > partition_managers_.size()) {
+        return false;
+    }
     auto leader = client_manager.GetClient(partition.GetLeader());
     if (!leader) {
         return false;
@@ -85,7 +93,6 @@ bool TableClientManager::UpdatePartitionClientManager(const ::rtidb::storage::Pa
         }
         followers.push_back(client);
     }
-    uint32_t pid = partition.GetPid();
     auto partition_manager = std::make_shared<PartitionClientManager>(pid, leader, followers);
     std::atomic_store_explicit(&partition_managers_[pid], partition_manager, std::memory_order_relaxed);
     return true;
