@@ -1258,7 +1258,7 @@ class CastExprNode : public ExprNode {
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *that) const;
     ExprNode *expr() const { return GetChild(0); }
-    DataType cast_type_;
+    const DataType cast_type_;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 };
