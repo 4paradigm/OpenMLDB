@@ -19,17 +19,17 @@ echo "ROOT_DIR:${ROOT_DIR}"
 cd ${ROOT_DIR}/build/sql_pysdk/dist/
 whl_name=`ls | grep *.whl`
 echo "whl_name:${whl_name}"
-python3 -m pip install ${whl_name}
+python3 -m pip install ${whl_name} -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 cd ${ROOT_DIR}
 cd ${ROOT_DIR}/build/python/dist/
 whl_name=`ls | grep *.whl`
 echo "whl_name:${whl_name}"
-python3 -m pip install ${whl_name}
+python3 -m pip install ${whl_name} -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 cd ${ROOT_DIR}
 cd src/sdk/python/fesql-auto-test-python
-python3 -m pip install -r requirements.txt
+python3 -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 sed -i "s/env=.*/env=cicd/" fesql.conf
 #IP=`hostname -i`
 IP=127.0.0.1
