@@ -936,6 +936,23 @@ bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
         }
         default: {
             *output = nullptr;
+            for (auto child : node_ptr->children_) {
+                const WindowDefNode *w = nullptr;
+                if (!WindowOfExpression(windows, child, &w)) {
+                    return false;
+                }
+                // resolve window of child
+                if (nullptr != w) {
+                    if (*output == nullptr) {
+                        *output = w;
+                    } else if (!node::SQLEquals(*output, w)) {
+                        LOG(WARNING)
+                            << "Fail to resolved window from expression: "
+                            << "expression depends on more than one window";
+                        return false;
+                    }
+                }
+            }
         }
     }
     return true;

@@ -242,7 +242,9 @@ class ColumnProject {
                         LOG(WARNING) << "Fail to combine column sources";
                         return false;
                     }
-                    sources.push_back(sources2[source1.column_idx()]);
+                    auto combine_source = sources2[source1.column_idx()];
+                    combine_source.AddCastTypes(source1.cast_types());
+                    sources.push_back(combine_source);
                     break;
                 }
                 case kSourceNone: {
