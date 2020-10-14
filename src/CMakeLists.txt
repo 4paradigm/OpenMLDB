@@ -45,6 +45,9 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_executable(sdk_catalog_test catalog/sdk_catalog_test.cc flags.cc)
     target_link_libraries(sdk_catalog_test gtest ${BIN_LIBS})
 
+    add_executable(client_manager_test catalog/client_manager_test.cc)
+    target_link_libraries(client_manager_test gtest ${BIN_LIBS})
+
     add_executable(strings_test base/strings_test.cc)
     target_link_libraries(strings_test gtest ${BIN_LIBS})
 

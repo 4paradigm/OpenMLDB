@@ -142,16 +142,18 @@ bool ClientManager::UpdateClient(
         auto it = real_endpoint_map_.find(kv.first);
         if (it == real_endpoint_map_.end()) {
             auto wrapper = std::make_shared<ClientWrapper>(kv.first, kv.second);
-            LOG(INFO) << "add client. name " << kv.first << " , endpoint " << kv.second;
+            LOG(INFO) << "add client. name " << kv.first << ", endpoint " << kv.second->GetRealEndpoint();
             clients_.emplace(kv.first, wrapper);
             real_endpoint_map_.emplace(kv.first, kv.second->GetRealEndpoint());
             continue;
         }
         if (it->second != kv.second->GetRealEndpoint()) {
             auto client_it = clients_.find(kv.first);
-            LOG(INFO) << "update client " << kv.first << "from " << it->second << " to " << kv.second;
+            LOG(INFO) << "update client " << kv.first << " from " << it->second << " to "
+                      << kv.second->GetRealEndpoint();
             if (!client_it->second->UpdateClient(kv.second)) {
-                LOG(WARNING) << "update client failed. name " << kv.first << " , endpoint " << kv.second;
+                LOG(WARNING) << "update client failed. name " << kv.first << ", endpoint "
+                             << kv.second->GetRealEndpoint();
                 continue;
             }
             it->second = kv.second->GetRealEndpoint();
