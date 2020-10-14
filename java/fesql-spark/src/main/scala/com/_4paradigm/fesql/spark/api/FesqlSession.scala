@@ -145,7 +145,7 @@ class FesqlSession {
    * Get the version from git commit message.
    */
   def version(): Unit = {
-    val stream = this.getClass.getClassLoader.getResourceAsStream("git.properties")
+    val stream = this.getClass.getClassLoader.getResourceAsStream("fesql_git.properties")
     if (stream == null) {
       logger.warn("Project version is missing")
     } else {
