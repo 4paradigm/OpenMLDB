@@ -245,6 +245,13 @@ const std::string SchemasContext::SourceColumnNameResolved(
     if (nullptr == expr) {
         return "";
     }
+
+    // return column name of given expression when schema context is empty
+    if (Empty()) {
+        return ColumnNameResolved(expr);
+    }
+
+    // try to resolve column source of given enpression
     auto source = ColumnSourceResolved(expr);
 
     switch(source.type()) {
