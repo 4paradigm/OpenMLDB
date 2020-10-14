@@ -642,7 +642,7 @@ cases:
         rows:
           - [1, "2020-05-22 10:43:40", 1]
     sql: |
-      select c1, long(c2) DIV 1000 as c2_sec from (select c1, timestamp(c2) as c2 from {0});
+      select c1, bigint(c2) DIV 1000 as c2_sec from (select c1, timestamp(c2) as c2 from {0});
     expect:
       columns: ["c1 int", "c2_sec bigint"]
       rows:
