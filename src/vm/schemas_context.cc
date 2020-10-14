@@ -223,13 +223,14 @@ const std::string SchemasContext::SourceColumnNameResolved(
 
     if (kSourceColumn == source.type()) {
         if (nullptr == row_schema_info_list_[source.schema_idx()].sources_) {
-            return column_name;
+            return "";
         }
         column_name = row_schema_info_list_[source.schema_idx()]
                               .sources_->at(source.column_idx())
                               .column_name();
         return column_name;
     } else {
+        
         return "";
     }
 }
