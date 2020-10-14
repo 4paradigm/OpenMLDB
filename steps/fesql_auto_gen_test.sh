@@ -19,6 +19,14 @@ python3 fesql/tools/autotest/auto_cases.py  \
     --expr_depth=3  \
     --max_cases=1 \
     --workers=4
+
+ls -al logs
+fail_num=`ls -l logs | wc -l`
+if [ $fail_num -gt 0 ];then
+  exit 1
+else
+  exit 0
+fi
 #
 #cd ${ROOT_DIR}
 #echo "CCC"
