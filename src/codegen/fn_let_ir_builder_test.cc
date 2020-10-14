@@ -108,7 +108,7 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
 TEST_F(FnLetIRBuilderTest, test_column_cast_and_const_cast) {
     // Create an LLJIT instance.
     std::string sql =
-        "SELECT bigint(col1), col6, 1.0, date(\"2020-10-01\"), " +
+        "SELECT bigint(col1), col6, 1.0, date(\"2020-10-01\"), "
         "bigint(timestamp(\"2020-05-22 10:43:40\"))  FROM t1 limit "
         "10;";
 
