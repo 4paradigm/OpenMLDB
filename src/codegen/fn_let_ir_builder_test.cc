@@ -151,7 +151,8 @@ TEST_F(FnLetIRBuilderTest, test_column_cast_and_const_cast) {
     ASSERT_EQ(codec::Date(2020, 10, 01).date_, row_view.GetDateUnsafe(3));
 
     ASSERT_EQ(vm::kSourceConst, column_sources[4].type());
-    ASSERT_EQ("2020-05-22 10:43:40", column_sources[4].const_value()->GetExprString());
+    ASSERT_EQ("2020-05-22 10:43:40",
+              column_sources[4].const_value()->GetExprString());
     ASSERT_EQ(node::kTimestamp, column_sources[4].cast_types()[0]);
     ASSERT_EQ(node::kInt64, column_sources[4].cast_types()[1]);
     ASSERT_EQ(1590115420000L, row_view.GetInt64Unsafe(4));

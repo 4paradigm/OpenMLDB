@@ -39,11 +39,7 @@ using fesql::codec::RowIterator;
 using fesql::codec::Schema;
 using fesql::codec::WindowIterator;
 
-enum SourceType {
-    kSourceColumn,
-    kSourceConst,
-    kSourceNone
-};
+enum SourceType { kSourceColumn, kSourceConst, kSourceNone };
 class ColumnSource;
 typedef std::vector<ColumnSource> ColumnSourceList;
 class ColumnSource {
@@ -76,15 +72,15 @@ class ColumnSource {
     }
 
     void AddCastTypes(const std::vector<node::DataType>& types) {
-        for(auto type: types) {
+        for (auto type : types) {
             AddCastType(type);
         }
     }
     const std::string ToString() const {
         std::string cast_types = "";
         if (!cast_type_chains_.empty()) {
-            for (auto iter = cast_type_chains_.cbegin(); 
-                iter != cast_type_chains_.cend(); iter++) {
+            for (auto iter = cast_type_chains_.cbegin();
+                 iter != cast_type_chains_.cend(); iter++) {
                 cast_types.append(":");
                 cast_types.append(node::DataTypeName(*iter));
             }
@@ -105,7 +101,10 @@ class ColumnSource {
     const uint32_t column_idx() const { return column_idx_; }
     const std::string& column_name() const { return column_name_; }
     const node::ConstNode* const_value() const { return const_value_; }
-    const std::vector<node::DataType>& cast_types() const { return cast_type_chains_; }
+    const std::vector<node::DataType>& cast_types() const {
+        return cast_type_chains_;
+    }
+
  private:
     SourceType type_;
     uint32_t schema_idx_;

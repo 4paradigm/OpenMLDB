@@ -1249,14 +1249,15 @@ node::ExprListNode *NodeManager::BuildExprListFromSchemaSource(
     }
     for (auto iter = column_sources.cbegin(); iter != column_sources.cend();
          iter++) {
-        node::ExprNode* expr = nullptr;
+        node::ExprNode *expr = nullptr;
         switch (iter->type()) {
             case vm::kSourceColumn: {
                 auto schema_souce =
                     schema_souces.schema_source_list().at(iter->schema_idx());
                 auto column = schema_souce.schema_->Get(iter->column_idx());
-                expr = MakeColumnRefNode(column.name(), schema_souce.table_name_);
-                
+                expr =
+                    MakeColumnRefNode(column.name(), schema_souce.table_name_);
+
                 break;
             }
             case vm::kSourceConst: {
@@ -1269,7 +1270,7 @@ node::ExprListNode *NodeManager::BuildExprListFromSchemaSource(
             }
         }
         if (!iter->cast_types().empty()) {
-            for(auto type: iter->cast_types()) {
+            for (auto type : iter->cast_types()) {
                 expr = MakeCastNode(type, expr);
             }
         }

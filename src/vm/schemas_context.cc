@@ -233,10 +233,9 @@ const std::string SchemasContext::ColumnNameResolved(node::ExprNode* expr) {
             return "";
         }
     }
-
 }
 // Resolve source column name for given expression
-// if expression has a source, return source column name 
+// if expression has a source, return source column name
 // else if expr is column expression
 //      return column expression's column name
 // else return empty string
@@ -254,14 +253,15 @@ const std::string SchemasContext::SourceColumnNameResolved(
     // try to resolve column source of given enpression
     auto source = ColumnSourceResolved(expr);
 
-    switch(source.type()) {
+    switch (source.type()) {
         case kSourceColumn: {
-            if (nullptr == row_schema_info_list_[source.schema_idx()].sources_) {
+            if (nullptr ==
+                row_schema_info_list_[source.schema_idx()].sources_) {
                 return ColumnNameResolved(expr);
             }
             return row_schema_info_list_[source.schema_idx()]
-                              .sources_->at(source.column_idx())
-                              .column_name();
+                .sources_->at(source.column_idx())
+                .column_name();
         }
         case kSourceConst: {
             return "";
@@ -271,7 +271,8 @@ const std::string SchemasContext::SourceColumnNameResolved(
         }
     }
 }
-vm::ColumnSource SchemasContext::ColumnSourceResolved(const node::ExprNode* expr) {
+vm::ColumnSource SchemasContext::ColumnSourceResolved(
+    const node::ExprNode* expr) {
     if (nullptr == expr) {
         return ColumnSource();
     }
@@ -279,16 +280,14 @@ vm::ColumnSource SchemasContext::ColumnSourceResolved(const node::ExprNode* expr
         case fesql::node::kExprGetField: {
             const ::fesql::node::GetFieldExpr* column_expr =
                 (const ::fesql::node::GetFieldExpr*)expr;
-            return ColumnSourceResolved(
-                column_expr->GetRelationName(), 
-                column_expr->GetColumnName());
+            return ColumnSourceResolved(column_expr->GetRelationName(),
+                                        column_expr->GetColumnName());
         }
         case fesql::node::kExprColumnRef: {
             const ::fesql::node::ColumnRefNode* column_expr =
                 (const ::fesql::node::ColumnRefNode*)expr;
-            return ColumnSourceResolved(
-                column_expr->GetRelationName(),
-                column_expr->GetColumnName());
+            return ColumnSourceResolved(column_expr->GetRelationName(),
+                                        column_expr->GetColumnName());
         }
         case fesql::node::kExprPrimary: {
             auto const_expr = dynamic_cast<const node::ConstNode*>(expr);
@@ -300,7 +299,8 @@ vm::ColumnSource SchemasContext::ColumnSourceResolved(const node::ExprNode* expr
             if (vm::kSourceNone == source.type()) {
                 return source;
             } else {
-                source.AddCastType(dynamic_cast<const node::CastExprNode*>(expr)->cast_type_);
+                source.AddCastType(
+                    dynamic_cast<const node::CastExprNode*>(expr)->cast_type_);
                 return source;
             }
         }
