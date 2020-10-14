@@ -248,6 +248,7 @@ const std::string SchemasContext::SourceColumnNameResolved(
 
     // return column name of given expression when schema context is empty
     if (Empty()) {
+        LOG(INFO) << "schema context is empty";
         return ColumnNameResolved(expr);
     }
 
@@ -257,7 +258,7 @@ const std::string SchemasContext::SourceColumnNameResolved(
     switch(source.type()) {
         case kSourceColumn: {
             if (nullptr == row_schema_info_list_[source.schema_idx()].sources_) {
-                return "";
+                return ColumnNameResolved(expr);
             }
             return row_schema_info_list_[source.schema_idx()]
                               .sources_->at(source.column_idx())
