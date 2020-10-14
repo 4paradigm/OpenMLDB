@@ -11,6 +11,7 @@ cd build && cmake .. && make fesql_proto && make fesql_parser && make -j5
 cd ${ROOT_DIR}
 ./fesql/build/src/export_udf_info --output_file=./udf_defs.yaml
 python3 -m pip install numpy -i https://pypi.tuna.tsinghua.edu.cn/simple
+python3 -m pip install PyYaml -i https://pypi.tuna.tsinghua.edu.cn/simple
 python3 fesql/tools/autotest/auto_cases.py  \
     --bin_path=build  \
     --udf_path=udf_defs.yaml  \
