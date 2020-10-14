@@ -2175,7 +2175,7 @@ bool GroupAndSortOptimized::TransformGroupExpr(
                 case node::kExprColumnRef: {
                     std::string column = schema_ctx.SourceColumnNameResolved(
                         dynamic_cast<node::ColumnRefNode*>(expr));
-                    LOG(INFO) << "column_name: " << column_name;
+                    LOG(INFO) << "column_name: " << column;
                     // skip group when match index keys
                     if (keys.find(column) == keys.cend()) {
                         new_groups->AddChild(expr);
