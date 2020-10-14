@@ -49,6 +49,7 @@ class SchemasContext {
     ColumnSource ColumnSourceResolved(const std::string& relation_name,
                                       const std::string& col_name) const;
     const std::string SourceColumnNameResolved(node::ExprNode* expr);
+    const std::string ColumnNameResolved(node::ExprNode* expr);
     base::Status ColumnTypeResolved(const std::string& relation_name,
                                     const std::string& col_name,
                                     fesql::type::Type* type);

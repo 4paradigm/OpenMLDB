@@ -214,23 +214,54 @@ bool SchemasContext::ColumnRefResolved(const std::string& relation_name,
         return true;
     }
 }
-// Resolve column name for given expression
-// return source column name for column expression and cast column expression
-// return empty string for other expression
-const std::string SchemasContext::SourceColumnNameResolved(
-    node::ExprNode* expr) {
-    auto source = ColumnSourceResolved(expr);
-
-    if (kSourceColumn == source.type()) {
-        if (nullptr == row_schema_info_list_[source.schema_idx()].sources_) {
+const std::string SchemasContext::ColumnNameResolved(node::ExprNode* expr) {
+    if (nullptr == expr) {
+        return "";
+    }
+    switch (expr->expr_type_) {
+        case fesql::node::kExprGetField: {
+            const ::fesql::node::GetFieldExpr* column_expr =
+                (const ::fesql::node::GetFieldExpr*)expr;
+            return column_expr->GetColumnName();
+        }
+        case fesql::node::kExprColumnRef: {
+            const ::fesql::node::ColumnRefNode* column_expr =
+                (const ::fesql::node::ColumnRefNode*)expr;
+            return column_expr->GetColumnName();
+        }
+        default: {
             return "";
         }
-        return row_schema_info_list_[source.schema_idx()]
+    }
+
+}
+// Resolve source column name for given expression
+// if expression has a source, return source column name 
+// else if expr is column expression
+//      return column expression's column name
+// else return empty string
+const std::string SchemasContext::SourceColumnNameResolved(
+    node::ExprNode* expr) {
+    if (nullptr == expr) {
+        return "";
+    }
+    auto source = ColumnSourceResolved(expr);
+
+    switch(source.type()) {
+        case kSourceColumn: {
+            if (nullptr == row_schema_info_list_[source.schema_idx()].sources_) {
+                return "";
+            }
+            return row_schema_info_list_[source.schema_idx()]
                               .sources_->at(source.column_idx())
                               .column_name();
-    } else {
-        
-        return "";
+        }
+        case kSourceConst: {
+            return "";
+        }
+        default: {
+            return ColumnNameResolved(expr);
+        }
     }
 }
 vm::ColumnSource SchemasContext::ColumnSourceResolved(const node::ExprNode* expr) {
