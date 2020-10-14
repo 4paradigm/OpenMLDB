@@ -242,14 +242,14 @@ vm::ColumnSource SchemasContext::ColumnSourceResolved(const node::ExprNode* expr
         case fesql::node::kExprGetField: {
             const ::fesql::node::GetFieldExpr* column_expr =
                 (const ::fesql::node::GetFieldExpr*)expr;
-            return ctx_->schemas_context()->ColumnSourceResolved(
+            return ColumnSourceResolved(
                 column_expr->GetRelationName(), 
                 column_expr->GetColumnName());
         }
         case fesql::node::kExprColumnRef: {
             const ::fesql::node::ColumnRefNode* column_expr =
                 (const ::fesql::node::ColumnRefNode*)expr;
-            return ctx_->schemas_context()->ColumnSourceResolved(
+            return ColumnSourceResolved(
                 column_expr->GetRelationName(),
                 column_expr->GetColumnName());
         }
