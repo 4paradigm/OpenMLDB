@@ -21,8 +21,10 @@ python3 fesql/tools/autotest/auto_cases.py  \
     --workers=4
 
 ls -al logs
-fail_num=`ls -l logs | wc -l`
-if [ $fail_num -gt 0 ];then
+failed_num=`ls -l logs | wc -l`
+echo "failed_num=$failed_num"
+echo "CI_COMMIT_SHA:$CI_COMMIT_SHA"
+if [ $failed_num -gt 0 ];then
   exit 1
 else
   exit 0
