@@ -21,7 +21,7 @@ class TestRtidb(unittest.TestCase):
     self.nsc.createTable(tb)
     self.assertTrue(table_name in self.nsc.showTable())
     time.sleep(2)
-    data = {"id":"2001","attribute":"a1", "image":"i1"}
+    data = {"id":"2001","attribute":"a1", "image":None}
     self.assertTrue(self.nsc.put(table_name, data, None).success())
     ro = rtidb.ReadOption()
     ro.index.update({"id":"2001"})
@@ -515,7 +515,7 @@ class TestRtidb(unittest.TestCase):
     self.nsc.createTable(tb)
     self.assertTrue(table_name in self.nsc.showTable())
     time.sleep(2)
-    data = {"id": 6001,"name":"n1","mcc": None,"attribute":"a1", "image":b"i1"}
+    data = {"id": 6001,"name":"n1","mcc": None,"attribute":"a1", "image":None}
     self.assertTrue(self.nsc.put(table_name, data, None).success())
     ro = rtidb.ReadOption()
     ro.index.update({"mcc":None})
