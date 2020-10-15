@@ -77,12 +77,12 @@ cases:
           - [5, 2, 5, 4, 1, 1.5, 2.5, "1:2 1:3"]
     sql: |
       SELECT id, 
-      window_top1_ratio(c1) OVER w1 as r1,
-      window_top1_ratio(c2) OVER w1 as r2,
-      window_top1_ratio(c3) OVER w1 as r3,
-      window_top1_ratio(c4) OVER w1 as r4,
-      window_top1_ratio(c5) OVER w1 as r5,
-      window_top1_ratio(fz_window_split_by_value(c6, " ", ":")) OVER w1 as r6,
+      fz_top1_radio(c1) OVER w1 as r1,
+      fz_top1_radio(c2) OVER w1 as r2,
+      fz_top1_radio(c3) OVER w1 as r3,
+      fz_top1_radio(c4) OVER w1 as r4,
+      fz_top1_radio(c5) OVER w1 as r5,
+      fz_top1_radio(fz_window_split_by_value(c6, " ", ":")) OVER w1 as r6,
       fz_join(fz_window_split_by_value(c6, " ", ":")," ") as r7
       FROM {0} 
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -111,12 +111,12 @@ cases:
           - [5, 2, "1:2 1:3", 5, "1:8 1:3", 1, 1.5, "1:2 1:3"]
     sql: |
       SELECT id, 
-      multi_top3_frequency(fz_window_split_by_key(c1, " ", ":")) OVER w1 as r1,
-      multi_top3_frequency(c2) OVER w1 as r2,
-      multi_top3_frequency(fz_window_split(c3, ",")) OVER w1 as r3,
-      multi_top3_frequency(c4) OVER w1 as r4,
-      multi_top3_frequency(c5) OVER w1 as r5,
-      multi_top3_frequency(fz_window_split_by_value(c6, " ", ":")) OVER w1 as r6,
+      fz_top3_frequency(fz_window_split_by_key(c1, " ", ":")) OVER w1 as r1,
+      fz_top3_frequency(c2) OVER w1 as r2,
+      fz_top3_frequency(fz_window_split(c3, ",")) OVER w1 as r3,
+      fz_top3_frequency(c4) OVER w1 as r4,
+      fz_top3_frequency(c5) OVER w1 as r5,
+      fz_top3_frequency(fz_window_split_by_value(c6, " ", ":")) OVER w1 as r6,
       fz_join(fz_window_split_by_value(c6, " ", ":")," ") as r7
       FROM {0} 
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);

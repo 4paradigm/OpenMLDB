@@ -271,7 +271,7 @@ struct FZStringOpsDef {
 };
 
 template <typename K>
-struct WindowTop1Ratio {
+struct FZTop1Ratio {
     using ContainerT =
         udf::container::BoundedGroupByDict<K, int64_t, int64_t>;
     using InputK = typename ContainerT::InputK;
@@ -282,9 +282,9 @@ struct WindowTop1Ratio {
         helper
             .doc(helper.GetDoc())
             .templates<double, Opaque<ContainerT>, Nullable<K>>()
-            .init("window_top1_ratio_init" + suffix, ContainerT::Init)
-            .update("window_top1_ratio_update" + suffix, Update)
-            .output("window_top1_ratio_output" + suffix, Output);
+            .init("fz_top1_radio_init" + suffix, ContainerT::Init)
+            .update("fz_top1_radio_update" + suffix, Update)
+            .output("fz_top1_radio_output" + suffix, Output);
     }
 
     static ContainerT* Update(ContainerT* ptr, InputK key,
@@ -326,7 +326,7 @@ struct WindowTop1Ratio {
 };
 
 template <typename K>
-struct MultiTop3Frequency {
+struct FZTop3Frequency {
     using ContainerT =
         udf::container::BoundedGroupByDict<K, int64_t, int64_t>;
     using InputK = typename ContainerT::InputK;
@@ -337,9 +337,9 @@ struct MultiTop3Frequency {
         helper
             .doc(helper.GetDoc())
             .templates<StringRef, Opaque<ContainerT>, Nullable<K>>()
-            .init("multi_top3_frequency_init" + suffix, ContainerT::Init)
-            .update("multi_top3_frequency_update" + suffix, Update)
-            .output("multi_top3_frequency_output" + suffix, Output);
+            .init("fz_top3_frequency_init" + suffix, ContainerT::Init)
+            .update("fz_top3_frequency_update" + suffix, Update)
+            .output("fz_top3_frequency_output" + suffix, Output);
     }
 
     static ContainerT* Update(ContainerT* ptr, InputK key,
@@ -534,12 +534,12 @@ void DefaultUDFLibrary::InitFeatureZero() {
         .list_argument_at(0)
         .args<ListRef<StringRef>, StringRef>(FZStringOpsDef::StringJoin);
 
-    RegisterUDAFTemplate<WindowTop1Ratio>("window_top1_ratio")
+    RegisterUDAFTemplate<FZTop1Ratio>("fz_top1_radio")
         .doc("Compute the top1 ratio")
     .args_in<int16_t, int32_t, int64_t, float,
                     double, Date, Timestamp, StringRef>();
 
-    RegisterUDAFTemplate<MultiTop3Frequency>("multi_top3_frequency")
+    RegisterUDAFTemplate<FZTop3Frequency>("fz_top3_frequency")
         .doc("Return the top3 keys")
     .args_in<int16_t, int32_t, int64_t, float,
                     double, Date, Timestamp, StringRef>();
