@@ -564,5 +564,5 @@ void BatchRequestModeCheck(SQLCase& sql_case) {  // NOLINT
 }
 
 }  // namespace vm
-}  // namespace fesql
+}  
 #endif  // SRC_VM_ENGINE_TEST_H_
