@@ -825,9 +825,9 @@ cases:
       from {0};
     expect:
       columns: ["bool_c1 bool", "bool_c2 bool", "bool_c3 bool", "bool_c4 bool", "bool_c5 bool", 
-                "bool_c6 bool", "bool_c7 bool", "bool_c8 bool", "bool_c9 bool", "bool_c10 bool"]
+                "bool_c6 bool", "bool_c8 bool", "bool_c9 bool", "bool_c10 bool"]
       rows:
-        - [true, true, true, true, true, true, true, true, true, true]
+        - [true, true, true, true, true, true, true, true, true]
   - id: 21-1
     desc: column name prefix with _
     inputs:
