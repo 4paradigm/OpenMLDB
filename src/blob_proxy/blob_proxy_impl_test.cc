@@ -185,12 +185,12 @@ TEST_F(BlobProxyImplTest, Basic_Test) {
         int ret = channel.Init(FLAGS_endpoint.c_str(), &oc);
         ASSERT_EQ(0, ret);
         brpc::Controller cntl;
-        cntl.http_request().uri() =
-            FLAGS_endpoint + "/v1/get/" + name + "/" + std::to_string(key);
+        cntl.http_request().uri() = FLAGS_endpoint + "/v1/get/" + name + "/" + std::to_string(key) + "?format=mp3";
         cntl.http_request().set_method(brpc::HTTP_METHOD_GET);
         channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_EQ(200, cntl.http_response().status_code());
         ASSERT_FALSE(cntl.Failed());
+        ASSERT_EQ("audio/mpeg", cntl.http_response().content_type());
         butil::IOBuf buff = cntl.response_attachment();
         std::string ss = buff.to_string();
         int code = memcmp(value.data(), ss.data(), value.length());
@@ -206,7 +206,6 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     ::rtidb::base::SetLogLevel(INFO);
-    FLAGS_hdd_root_path =
-        "/tmp/test_blobserver" + ::rtidb::blobproxy::GenRand();
+    FLAGS_hdd_root_path = "/tmp/test_blobserver" + ::rtidb::blobproxy::GenRand();
     return RUN_ALL_TESTS();
 }
