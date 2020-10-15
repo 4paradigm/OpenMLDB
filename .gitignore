@@ -27,3 +27,4 @@ java/fesql-native/src/main/java/com/*
 # ignore docgen
 tools/documentation/udf_doxygen/html
 tools/documentation/udf_doxygen/udfs
+style.xml
