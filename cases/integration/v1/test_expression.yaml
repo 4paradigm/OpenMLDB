@@ -769,7 +769,7 @@ cases:
       columns: ["string_c1 string", "string_c2 string", "string_c3 string", "string_c4 string", "string_c5 string", 
                 "string_c6 string", "string_c7 string", "string_c8 string", "string_c9 string", "string_c10 string"]
       rows:
-        - ["1", "1", "1", "1", "1", "2020-05-22 10:43:40", "2020-05-22", "1590115420000", "true", "1"]
+        - ["1", "1", "1", "1", "1", "2020-05-22 10:43:40", "2020-05-22", "2020-05-22 10:43:40", "1", "1"]
   - id: 20-7
     desc: cast as date
     mode: offline-unsupport
@@ -785,7 +785,7 @@ cases:
       date(c6) as date_c6, date(c7) as date_c7, date(c8) as date_c8, date(c10) as date_c10
       from {0};
     expect:
-      columns: ["date_c6 date", "date_c7 date", "date_c8 date", "date_c9 date"]
+      columns: ["date_c6 date", "date_c7 date", "date_c8 date", "date_c10 date"]
       rows:
         - ["2020-05-22", "2020-05-22", "2020-05-22", NULL]
   - id: 20-8
@@ -807,7 +807,7 @@ cases:
       columns: ["timestamp_c1 timestamp", "timestamp_c2 timestamp", "timestamp_c3 timestamp", "timestamp_c4 timestamp", "timestamp_c5 timestamp", 
                 "timestamp_c6 timestamp", "timestamp_c7 timestamp", "timestamp_c8 timestamp", "timestamp_c9 timestamp", "timestamp_c10 timestamp"]
       rows:
-        - [1, 1, 1, 1, 1, 1590115420000, 1590115420000, 1590115420000, 1, NULL]
+        - [1, 1, 1, 1, 1, 1590115420000, 1590076800000, 1590115420000, 1, NULL]
   - id: 20-9
     desc: cast as bool
     mode: offline-unsupport
