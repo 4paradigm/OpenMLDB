@@ -189,6 +189,9 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (requestRow == null || requestRow.length == 0) {
             throw new SQLException("requestRow is null or empty");
         }
+        if (!sqlRouter.RefreshCatalog()) {
+            throw new SQLException("refresh catalog failed!");
+        }
         ProcedureInfo procedureInfo = showProcedure(dbName, proName);
         if (procedureInfo == null) {
             throw new SQLException("show procedure failed");
@@ -260,9 +263,6 @@ public class SqlClusterExecutor implements SqlExecutor {
         ResultSet resultSet = sqlRouter.CallProcedure(dbName, proName, sqlRequestRow, status);
         if (resultSet == null || status.getCode() != 0) {
             throw new SQLException("call procedure fail");
-        }
-        if (!sqlRouter.RefreshCatalog()) {
-            throw new SQLException("refresh catalog failed!");
         }
         return new SQLResultSet(resultSet);
     }
