@@ -99,17 +99,13 @@ void ClusterInfo::UpdateNSClient(const std::vector<std::string>& children) {
     std::string real_endpoint;
     if (FLAGS_use_name) {
         std::vector<std::string> vec;
-        if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/map/names", vec) || vec.empty()) {
-            PDLOG(WARNING, "get zk /map/names children failed");
+        const std::string name_path = cluster_add_.zk_path() + "/map/names/" + endpoint;
+        if (zk_client_->IsExistNode(name_path) != 0) {
+            LOG(WARNING) << endpoint << " not in name vec";
             return;
         }
-        auto n_iter = std::find(vec.begin(), vec.end(), endpoint);
-        if (n_iter == vec.end()) {
-            PDLOG(WARNING, "name not in names_vec");
-            return;
-        }
-        if (!zk_client_->GetNodeValue(cluster_add_.zk_path() + "/map/names/" + *n_iter, real_endpoint)) {
-            PDLOG(WARNING, "get zk failed, get real_endpoint failed");
+        if (!zk_client_->GetNodeValue(name_path, real_endpoint)) {
+            LOG(WARNING) << "get real_endpoint failed for name " << endpoint;
             return;
         }
     }
@@ -156,20 +152,15 @@ int ClusterInfo::Init(std::string& msg) {
     std::string real_endpoint;
     if (FLAGS_use_name) {
         std::vector<std::string> vec;
-        if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/map/names", vec) || vec.empty()) {
-            msg = "get zk failed";
-            PDLOG(WARNING, "get zk failed, get remote children");
-            return 451;
-        }
-        auto n_iter = std::find(vec.begin(), vec.end(), endpoint);
-        if (n_iter == vec.end()) {
+        const std::string name_path = cluster_add_.zk_path() + "/map/names/" + endpoint;
+        if (!zk_client_->IsExistNode(name_path) != 0) {
             msg = "name not in names_vec";
-            PDLOG(WARNING, "name not in names_vec");
+            LOG(WARNING) << endpoint << " not in name vec";
             return -1;
         }
-        if (!zk_client_->GetNodeValue(cluster_add_.zk_path() + "/map/names/" + *n_iter, real_endpoint)) {
+        if (!zk_client_->GetNodeValue(name_path, real_endpoint)) {
             msg = "get zk failed";
-            PDLOG(WARNING, "get zk failed, get real_endpoint failed");
+            LOG(WARNING) << "get real_endpoint failed for name " << endpoint;
             return 451;
         }
     }
@@ -219,21 +210,22 @@ bool ClusterInfo::CreateTableRemote(const ::rtidb::api::TaskInfo& task_info,
 }
 
 bool ClusterInfo::UpdateRemoteRealEpMap() {
+    if (!FLAGS_use_name) {
+        return true;
+    }
     decltype(remote_real_ep_map_) tmp_map = std::make_shared<std::map<std::string, std::string>>();
-    if (FLAGS_use_name) {
-        std::vector<std::string> vec;
-        if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/map/names", vec) || vec.empty()) {
-            PDLOG(WARNING, "get zk failed, get remote children");
-            return false;
+    std::vector<std::string> vec;
+    if (!zk_client_->GetChildren(cluster_add_.zk_path() + "/map/names", vec) || vec.empty()) {
+        PDLOG(WARNING, "get zk failed, get remote children");
+        return false;
+    }
+    for (const auto& ep : vec) {
+        std::string real_endpoint;
+        if (!zk_client_->GetNodeValue(cluster_add_.zk_path() + "/map/names/" + ep, real_endpoint)) {
+            PDLOG(WARNING, "get zk failed, get real_endpoint failed");
+            continue;
         }
-        for (auto& ep : vec) {
-            std::string real_endpoint;
-            if (!zk_client_->GetNodeValue(cluster_add_.zk_path() + "/map/names/" + ep, real_endpoint)) {
-                PDLOG(WARNING, "get zk failed, get real_endpoint failed");
-                continue;
-            }
-            tmp_map->insert(std::make_pair(ep, real_endpoint));
-        }
+        tmp_map->insert(std::make_pair(ep, real_endpoint));
     }
     std::atomic_store_explicit(&remote_real_ep_map_, tmp_map, std::memory_order_release);
     return true;
