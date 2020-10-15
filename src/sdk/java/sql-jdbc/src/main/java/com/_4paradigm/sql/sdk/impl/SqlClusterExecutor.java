@@ -176,6 +176,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     @Override
     public SQLResultSet callProcedure(String dbName, String proName, Object[] requestRow) throws SQLException {
         Object[][] requestRows = new Object[1][requestRow.length];
+        requestRows[0] = requestRow;
         return callProcedure(dbName, proName, requestRows);
     }
 
@@ -207,39 +208,46 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (!sqlRequestRow.Init(strlen)) {
             throw new SQLException("init request row failed");
         }
+        boolean ok = false;
         for (int i = 0 ; i < inputSchema.getColumnList().size(); i++) {
             Column column = inputSchema.getColumnList().get(i);
+            if (requestRow[i] == null) {
+                ok = sqlRequestRow.AppendNULL();
+            }
             switch (column.getSqlType()) {
                 case Types.BOOLEAN:
-                    sqlRequestRow.AppendBool((Boolean)requestRow[i]);
+                    ok = sqlRequestRow.AppendBool((Boolean)requestRow[i]);
                     break;
                 case Types.SMALLINT:
-                    sqlRequestRow.AppendInt16((Short)requestRow[i]);
+                    ok = sqlRequestRow.AppendInt16((Short)requestRow[i]);
                     break;
                 case Types.INTEGER:
-                    sqlRequestRow.AppendInt32((Integer) requestRow[i]);
+                    ok = sqlRequestRow.AppendInt32((Integer) requestRow[i]);
                     break;
                 case Types.BIGINT:
-                    sqlRequestRow.AppendInt64((Long) requestRow[i]);
+                    ok = sqlRequestRow.AppendInt64((Long) requestRow[i]);
                     break;
                 case Types.FLOAT:
-                    sqlRequestRow.AppendFloat((Float) requestRow[i]);
+                    ok = sqlRequestRow.AppendFloat((Float) requestRow[i]);
                     break;
                 case Types.DOUBLE:
-                    sqlRequestRow.AppendDouble((Double) requestRow[i]);
+                    ok = sqlRequestRow.AppendDouble((Double) requestRow[i]);
                     break;
                 case Types.DATE:
                     java.sql.Date date = (java.sql.Date)requestRow[i];
-                    sqlRequestRow.AppendDate(date.getYear() + 1900, date.getMonth() + 1, date.getDate());
+                    ok = sqlRequestRow.AppendDate(date.getYear() + 1900, date.getMonth() + 1, date.getDate());
                     break;
                 case Types.TIMESTAMP:
-                    sqlRequestRow.AppendTimestamp(((Timestamp)requestRow[i]).getTime());
+                    ok = sqlRequestRow.AppendTimestamp(((Timestamp)requestRow[i]).getTime());
                     break;
                 case Types.VARCHAR:
-                    sqlRequestRow.AppendString((String)requestRow[i]);
+                    ok = sqlRequestRow.AppendString((String)requestRow[i]);
                     break;
                 default:
                     throw new SQLException("column type not supported");
+            }
+            if (!ok) {
+                throw new SQLException("apend data failed, idx is " + i);
             }
         }
         sqlRequestRow.Build();
