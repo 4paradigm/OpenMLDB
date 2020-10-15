@@ -665,12 +665,12 @@ cases:
       float(c1) as float_c1, float(c2) as float_c2, float(c3) as float_c3, float(c4) as float_c4, float(c5) as float_c5, float(c6) as float_c6, float(c8) as float_c8, float(c9) as float_c9,
       double(c1) as double_c1, double(c2) as double_c2, double(c3) as double_c3, double(c4) as double_c4, double(c5) as double_c5, double(c6) as double_c6, double(c8) as double_c8, double(c9) as double_c9,
       string(c1) as string_c1, string(c2) as string_c2, string(c3) as string_c3, string(c4) as string_c4, string(c5) as string_c5, string(c6) as string_c6, string(c7) as string_c7, string(c8) as string_c8, string(c9) as string_c9,
-      date(c1) as date_c1, date(c2) as date_c2, date(c3) as date_c3, date(c4) as date_c4, date(c5) as date_c5, date(c6) as date_c6, date(c8) as date_c8, date(c9) as date_c9,
+      date(c6) as date_c6, date(c8) as date_c8, date(c9) as date_c9,
+      timestamp(c1) as timestamp_c1, timestamp(c2) as timestamp_c2, timestamp(c3) as timestamp_c3, timestamp(c4) as timestamp_c4, timestamp(c5) as timestamp_c5, timestamp(c6) as timestamp_c6, timestamp(c7) as timestamp_c7, timestamp(c8) as timestamp_c8, timestamp(c9) as timestamp_c9,
+      bool(c1) as bool_c1, bool(c2) as bool_c2, bool(c3) as bool_c3, bool(c4) as bool_c4, bool(c5) as bool_c5, bool(c6) as bool_c6, bool(c8) as bool_c8, bool(c9) as bool_c9
       from {0};
     expect:
-      columns: ["c1 int", "c2_sec bigint"]
-      rows:
-        - [1, 1590115420]
+      success: true
   - id: 20-1
     desc: column name prefix with _
     inputs:
