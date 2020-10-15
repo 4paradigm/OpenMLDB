@@ -90,7 +90,6 @@ cases:
   - id: 2
     desc: 主表window 添加 INSTANCE_NOT_IN_WINDOW 没有明显错误日志
     db: db1
-    mode: rtidb-unsupport, request-unsupport
     sql: |
       select
           c1,
@@ -124,7 +123,7 @@ cases:
         data: |
           1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
     expect:
-      success: false
+      success: true
 
   - id: 3
     desc: lastjoin 测试
@@ -175,6 +174,7 @@ cases:
   - id: 5
     desc: lastjoin 和 window 拼接成大表
     db: db1
+    mode: rtidb-unsupport, request-unsupport
     sql: |
       select * from 
       (
@@ -233,6 +233,7 @@ cases:
   - id: 4
     desc: 主表多个window测试
     db: db1
+    mode: rtidb-unsupport, request-unsupport
     sql: |
       select
           c1,

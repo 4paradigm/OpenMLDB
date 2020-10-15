@@ -11,9 +11,12 @@ cases:
           - [2, 0, "k3:v3"]
           - [3, 0, "???,,k4:v4"]
           - [4, 0, NULL]
-          - [5, 0, "k5:v5,k3:v3"]
+          - [5, 0, "k5:v5,k5:v3"]
     sql: |
       SELECT id,
+        identity(case when !isnull(at(c1, 0)) then distinct_count(fz_window_split(c1,  ",")) else null end) over w1 as table_2_kn_0,
+        identity(case when !isnull(at(c1, 0)) then distinct_count(fz_window_split_by_key(c1,  ",",  ":")) else null end) over w1 as table_2_kn_0,
+        identity(case when !isnull(at(c1, 0)) then distinct_count(fz_window_split_by_value(c1,  ",",  ":")) else null end) over w1 as table_2_kn_0,
         fz_join(fz_window_split(c1, ","), " ") OVER w1 AS split_and_join,
         fz_join(fz_window_split_by_key(c1, ",", ":"), " ") OVER w1 AS split_key_and_join,
         fz_join(fz_window_split_by_value(c1, ",", ":"), " ") OVER w1 AS split_value_and_join,
@@ -35,7 +38,8 @@ cases:
   - id: 2
     desc: feature zero split utility functions on single row
     inputs:
-      - columns: ["id int64", "pk int64", "c1 string"]
+      - name: main
+        columns: ["id int64", "pk int64", "c1 string"]
         indexs: ["index1:pk:id"]
         rows:
           - [1, 0, "k1:v1,k2:v2"]
@@ -50,7 +54,7 @@ cases:
         fz_join(fz_split_by_value(c1, ",", ":"), " ") AS split_value_and_join,
         count(fz_split_by_key(c1, ",", ":")) AS split_key_and_count,
         distinct_count(fz_split_by_key(c1, ",", ":")) AS split_key_and_distinct_count
-      FROM {0};
+      FROM main;
     expect:
       order: id
       columns: ["id int64", "split_and_join string", "split_key_and_join string", "split_value_and_join string",
