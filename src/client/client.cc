@@ -17,6 +17,8 @@
 #include <utility>
 
 #include "base/strings.h"
+#include "google/protobuf/text_format.h"
+#include "proto/client.pb.h"
 
 int64_t ViewResult::GetInt(uint32_t idx) {
     int64_t val = 0;
@@ -110,6 +112,35 @@ bool BatchQueryResult::Next() {
     return ok;
 }
 
+bool BaseClient::CreateTable(const rtidb::nameserver::TableInfo& info) {
+    std::string msg;
+    return ns_client_->CreateTable(info, msg);
+}
+
+std::vector<std::string> BaseClient::ShowTable(const std::string& name) {
+    std::vector<std::string> tbs;
+    std::string msg;
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    bool ok = ns_client_->ShowTable(name, tables, msg);
+    if (!ok) {
+        return tbs;
+    }
+    tbs.resize(tables.size());
+    for (const auto& tb : tables) {
+        tbs.push_back(tb.name());
+    }
+
+    return std::move(tbs);
+}
+
+void BaseClient::DropTable(const std::string& name) {
+    if (name.empty()) {
+        return;
+    }
+    std::string msg;
+    ns_client_->DropTable(name, msg);
+}
+
 bool BaseClient::Init(std::string* msg) {
     zk_client_ = new rtidb::zk::ZkClient(zk_cluster_, "", zk_session_timeout_,
             endpoint_, zk_root_path_);
@@ -119,6 +150,31 @@ bool BaseClient::Init(std::string* msg) {
             return false;
         }
     }
+    std::string node_path = zk_root_path_ + "/leader";
+    std::vector<std::string> children;
+    if (!zk_client_->GetChildren(node_path, children) || children.empty()) {
+        *msg = "get ns node list fail";
+        return false;
+    }
+    std::string leader_path = node_path + "/" + children[0];
+    std::string endpoint;
+    if (!zk_client_->GetNodeValue(leader_path, endpoint)) {
+        *msg = "get leader ns endpoint fail";
+        return false;
+    }
+    const std::string name_path = zk_root_path_ + "/map/names/" + endpoint;
+    if (zk_client_->IsExistNode(name_path) == 0) {
+        std::string real_ep;
+        if (zk_client_->GetNodeValue(name_path, real_ep)) {
+            endpoint = real_ep;
+        }
+    }
+    ns_client_ = new rtidb::client::NsClient(endpoint, "");
+    if (ns_client_->Init() < 0) {
+        *msg = "ns client init failed";
+        return false;
+    }
+
     zk_table_data_path_ = zk_root_path_ + "/table/table_data";
     RefreshNodeList();
     RefreshTable();
@@ -878,3 +934,107 @@ BlobInfoResult RtidbClient::GetBlobInfo(const std::string& name) {
     return result;
 }
 
+int RtidbClient::CreateTable(const std::string& table_meta) {
+    rtidb::client::TableInfo table_info;
+    bool ok = google::protobuf::TextFormat::ParseFromString(table_meta, &table_info);
+    if (!ok) {
+        return -1;
+    }
+    {
+        std::shared_ptr<TableHandler> th = client_->GetTableHandler(table_info.name());
+        if (th != nullptr) {
+            return -2;
+        }
+    }
+    rtidb::nameserver::TableInfo ns_tbinfo;
+    ns_tbinfo.set_replica_num(1);
+    ns_tbinfo.set_partition_num(1);
+
+    ns_tbinfo.set_name(table_info.name());
+    ns_tbinfo.set_table_type(rtidb::type::TableType::kRelational);
+    std::map<std::string, std::string> name_map;
+    for (const auto& col : table_info.column_desc()) {
+        const std::string& type = col.type();
+        if (rtidb::codec::DATA_TYPE_MAP.count(type) < 1) {
+            return -4;
+        }
+        const std::string& col_name = col.name();
+        if (col_name.empty() || name_map.count(col_name) > 0) {
+            return -5;
+        }
+        rtidb::common::ColumnDesc* new_col = ns_tbinfo.add_column_desc_v1();
+        new_col->CopyFrom(col);
+        const auto& tp_iter = rtidb::codec::DATA_TYPE_MAP.find(type);
+        if (tp_iter == rtidb::codec::DATA_TYPE_MAP.end()) {
+           return -21;
+        }
+        new_col->set_data_type(tp_iter->second);
+        name_map.insert(std::make_pair(col_name, type));
+    }
+    std::set<std::string> key_set;
+    for (const auto& idx : table_info.column_key()) {
+        const std::string& key_name = idx.index_name();
+        if (key_set.count(key_name) > 0) {
+            return -6;
+        }
+        for (const auto& col : idx.col_name()) {
+            const auto& iter = name_map.find(col);
+            if (iter == name_map.end()) {
+                return -7;
+            }
+            if (iter->second == "float" || iter->second == "double") {
+                return -8;
+            }
+        }
+        rtidb::common::ColumnKey* column_key = ns_tbinfo.add_column_key();
+        column_key->CopyFrom(idx);
+        key_set.insert(key_name);
+    }
+    std::set<std::string> index_set;
+    std::string auto_gen_pk_name;
+    for (const auto& index : table_info.index()) {
+        if (index_set.count(index.index_name()) > 0) {
+            return -9;
+        }
+        for (const auto& col : index.col_name()) {
+            if (name_map.count(col) < 0) {
+                return -10;
+            }
+        }
+        rtidb::common::ColumnKey* ck = ns_tbinfo.add_column_key();
+        ck->set_index_name(index.index_name());
+        for (const auto& col : index.col_name()) {
+            ck->add_col_name(col);
+        }
+        const auto& idx_iter = rtidb::codec::INDEX_TYPE_MAP.find(index.index_type());
+        if (idx_iter == rtidb::codec::INDEX_TYPE_MAP.end()) {
+            return -11;
+        }
+        if (idx_iter->second == rtidb::type::kAutoGen) {
+            auto_gen_pk_name = index.col_name(0);
+        }
+        ck->set_index_type(idx_iter->second);
+        const auto& iter = name_map.find(auto_gen_pk_name);
+        if (iter != name_map.end() && iter->second != "bigint") {
+            return -12;
+        }
+        index_set.insert(index.index_name());
+    }
+    if (index_set.empty() && !name_map.empty()) {
+        return -13;
+    }
+    ok = client_->CreateTable(ns_tbinfo);
+    if (!ok) {
+        return -20;
+    }
+    return 0;
+}
+
+std::vector<std::string> RtidbClient::ShowTable(const std::string& name) {
+    return std::move(client_->ShowTable(name));
+}
+
+void RtidbClient::DropTable(const std::string& name) {
+    if (name.empty()) return;
+    client_->DropTable(name);
+}
