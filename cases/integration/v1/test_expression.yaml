@@ -664,7 +664,7 @@ cases:
       from {0};
     expect:
       columns: ["int_c1 int", "int_c2 int", "int_c3 int", "int_c4 int", "int_c5 int", "int_c6 int", 
-                "int_c7 int", "int_c9 int", "int_c10 int"]
+                "int_c8 int", "int_c9 int", "int_c10 int"]
       rows:
         - [1, 1, 1, 1, 1, NULL, 977520480, 1, 1]
   - id: 20-2
@@ -687,7 +687,7 @@ cases:
       columns: ["smallint_c1 smallint", "smallint_c2 smallint", "smallint_c3 smallint", "smallint_c4 smallint", "smallint_c5 smallint", 
                 "smallint_c6 smallint", "smallint_c7 smallint", "smallint_c9 smallint", "smallint_c10 smallint"]
       rows:
-        - [1, 1, 1, 1, 1, NULL, 977520480, 1, 1]
+        - [1, 1, 1, 1, 1, NULL, -14496, 1, 1]
   - id: 20-3
     desc: cast as bigint
     mode: offline-unsupport
