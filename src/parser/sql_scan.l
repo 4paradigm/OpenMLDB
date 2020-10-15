@@ -502,14 +502,14 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 <FUN>{fdiv_assign} { return FDIV_ASSIGN; }
 <INITIAL>{assign} { return EQUALS; }
 {equals} { return EQUALS; }
-<FUN>[A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
+<FUN>[A-Za-z_][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
                           return FUN_IDENTIFIER; }
 
 <FUN>`[^`/\\.\n]+`           { yylval->strval = strdup(yytext+1);
                           yylval->strval[yyleng-2] = 0;
                           return FUN_IDENTIFIER; }
 
-[A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
+[A-Za-z_][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
                           return SQL_IDENTIFIER; }
 `[^`/\\.\n]+`           { yylval->strval = strdup(yytext+1);
                           yylval->strval[yyleng-2] = 0;
