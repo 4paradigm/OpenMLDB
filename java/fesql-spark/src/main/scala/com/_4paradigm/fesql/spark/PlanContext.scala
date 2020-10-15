@@ -15,7 +15,7 @@ import scala.collection.mutable
 class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, config: Map[String, Any]) {
 
   private var moduleBuffer: SerializableByteBuffer = _
-  private var moduleBroadCast: Broadcast[SerializableByteBuffer] = _
+  // private var moduleBroadCast: Broadcast[SerializableByteBuffer] = _
 
   private val planResults = mutable.HashMap[Long, SparkInstance]()
 
@@ -27,12 +27,14 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
 
   def setModuleBuffer(buf: ByteBuffer): Unit = {
     moduleBuffer = new SerializableByteBuffer(buf)
-    moduleBroadCast = session.sparkContext.broadcast(moduleBuffer)
+    // moduleBroadCast = session.sparkContext.broadcast(moduleBuffer)
   }
 
   def getModuleBuffer: ByteBuffer = moduleBuffer.getBuffer
 
-  def getModuleBufferBroadcast: Broadcast[SerializableByteBuffer] = moduleBroadCast
+  def getSerializableModuleBuffer: SerializableByteBuffer = moduleBuffer
+
+  // def getModuleBufferBroadcast: Broadcast[SerializableByteBuffer] = moduleBroadCast
 
   def getPlanResult(node: PhysicalOpNode): Option[SparkInstance] = {
     planResults.get(PhysicalOpNode.getCPtr(node))

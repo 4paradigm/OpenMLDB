@@ -4,11 +4,13 @@ import com._4paradigm.fesql.common.{JITManager, SerializableByteBuffer}
 import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalTableProjectNode}
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.StructType
+import org.slf4j.LoggerFactory
 
 object RowProjectPlan {
+
+  val logger = LoggerFactory.getLogger(this.getClass)
 
   /**
    * @param ctx
@@ -29,7 +31,7 @@ object RowProjectPlan {
     val projectConfig = ProjectConfig(
       functionName = node.project().fn_name(),
       moduleTag = ctx.getTag,
-      moduleBroadcast = ctx.getModuleBufferBroadcast,
+      moduleNoneBroadcast = ctx.getSerializableModuleBuffer,
       inputSchemaSlices = inputSchemaSlices,
       outputSchemaSlices = outputSchemaSlices
     )
@@ -40,8 +42,11 @@ object RowProjectPlan {
 
       // ensure worker native
       val tag = projectConfig.moduleTag
-      val buffer = projectConfig.moduleBroadcast.value.getBuffer
-      JITManager.initJITModule(tag, buffer)
+
+      // TODO: Do not use broadcast for prophet FESQL op
+      val buffer = projectConfig.moduleNoneBroadcast
+
+      JITManager.initJITModule(tag, buffer.getBuffer)
       val jit = JITManager.getJIT(tag)
 
       projectIter(limitIter, jit, projectConfig)
@@ -96,9 +101,10 @@ object RowProjectPlan {
   // spark closure class
   case class ProjectConfig(functionName: String,
                            moduleTag: String,
-                           moduleBroadcast: Broadcast[SerializableByteBuffer],
+                           // moduleBroadcast: Broadcast[SerializableByteBuffer],
                            inputSchemaSlices: Array[StructType],
                            outputSchemaSlices: Array[StructType],
-                           inputSchema: StructType = null)
+                           inputSchema: StructType = null,
+                           moduleNoneBroadcast: SerializableByteBuffer = null)
 
 }
