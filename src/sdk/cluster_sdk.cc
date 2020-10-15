@@ -23,6 +23,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <algorithm>
 
 #include "base/strings.h"
 #include "boost/algorithm/string.hpp"
