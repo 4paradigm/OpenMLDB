@@ -91,7 +91,6 @@ self [,()\[\].\:\+\-\*\/\%\^\<\>]
 
 ident_start [A-Za-z\200-\377_]
 ident_cont [A-Za-z\200-\377_0-9\$]
-identifier {ident_start}{ident_cont}*
 
 %%
 
@@ -527,12 +526,6 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 @`[^`\n]*$ { yyerror("unterminated quoted user variable %s", yytext); }
 @'[^'\n]*$ { yyerror("unterminated quoted user variable %s", yytext); }
 
-
-
-<FUN>{identifier} {
-            yylval->strval = strdup(yytext);
-            return FUN_IDENTIFIER;
-    }
 
 {self} {
             return yytext[0];
