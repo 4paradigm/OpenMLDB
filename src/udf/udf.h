@@ -251,12 +251,15 @@ void string_to(codec::StringRef *str, V *v, bool *is_null_ptr) {
     } catch(boost::bad_lexical_cast const& e) {
         *is_null_ptr = true;
         *v = V();
+        std::cout<< "bad_lexical_cast exception occur here";
         return;
     } catch (...) {
         *is_null_ptr = true;
+        std::cout<< "exception occur here";
         *v = V();
         return;
     }
+    std::cout << "return here";
     return;
 }
 
