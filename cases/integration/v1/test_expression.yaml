@@ -654,7 +654,7 @@ cases:
     inputs:
       - columns: ["c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
       "c6 string", "c7 date", "c8 timestamp", "c9 bool"]
-        indexs: ["index1:c6:c7"]
+        indexs: ["index1:c6:c8"]
         rows:
           - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true]
     sql: |
