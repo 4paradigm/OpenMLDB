@@ -534,7 +534,7 @@ public class FesqlUtil {
             }
             int columnType = metaData.getColumnType(i + 1);
             if (columnType == Types.BOOLEAN) {
-                requestPs.setBoolean(i + 1, Boolean.parseBoolean(obj.toString));
+                requestPs.setBoolean(i + 1, Boolean.parseBoolean(obj.toString()));
             } else if (columnType == Types.SMALLINT) {
                 requestPs.setShort(i + 1, Short.parseShort(obj.toString()));
             } else if (columnType == Types.INTEGER) {
