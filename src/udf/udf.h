@@ -239,13 +239,18 @@ int32_t strcmp(fesql::codec::StringRef *s1, fesql::codec::StringRef *s2);
 void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr);
 template <typename V>
 void string_to(codec::StringRef *str, V *v, bool *is_null_ptr) {
+    *is_null_ptr = true;
     if (nullptr == str) {
         *is_null_ptr = true;
         return;
     }
     try {
-        *v = boost::lexical_cast<V>(str->ToString());
+        *v = boost::lexical_cast<V, std::string>(str->ToString());
         *is_null_ptr = false;
+        return;
+    } catch(boost::bad_lexical_cast const& e) {
+        LOG_ERR("Fail to cast string to %s", e.source_type().name);
+        *is_null_ptr = true;
         return;
     } catch (...) {
         *is_null_ptr = true;
