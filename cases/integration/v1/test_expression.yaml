@@ -718,7 +718,7 @@ cases:
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
         indexs: ["index1:c6:c8"]
         rows:
-          - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000.0, true, "1"]
+          - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
     sql: |
       select 
       float(c1) as float_c1, float(c2) as float_c2, float(c3) as float_c3, float(c4) as float_c4, float(c5) as float_c5, 
@@ -728,7 +728,7 @@ cases:
       columns: ["float_c1 float", "float_c2 float", "float_c3 float", "float_c4 float", "float_c5 float", 
                 "float_c6 float", "float_c8 float", "float_c9 float", "float_c10 float"]
       rows:
-        - [1.0, 1.0, 1.0, 1.0, 1.0, NULL, -14496, 1.0, 1.0]
+        - [1.0, 1.0, 1.0, 1.0, 1.0, NULL, 1590115420000.0, 1.0, 1.0]
   - id: 20-5
     desc: cast as double
     mode: offline-unsupport
@@ -738,7 +738,7 @@ cases:
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]
         indexs: ["index1:c6:c8"]
         rows:
-          - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "10"]
+          - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
     sql: |
       select 
       double(c1) as double_c1, double(c2) as double_c2, double(c3) as double_c3, double(c4) as double_c4, double(c5) as double_c5, 
@@ -769,7 +769,7 @@ cases:
       columns: ["string_c1 string", "string_c2 string", "string_c3 string", "string_c4 string", "string_c5 string", 
                 "string_c6 string", "string_c7 string", "string_c8 string", "string_c9 string", "string_c10 string"]
       rows:
-        - ["1", "1", "1", "1", "1", "2020-05-22 10:43:40", "1590115420000", "true", "1"]
+        - ["1", "1", "1", "1", "1", "2020-05-22 10:43:40", "2020-05-22", "1590115420000", "true", "1"]
   - id: 20-7
     desc: cast as date
     mode: offline-unsupport
@@ -785,7 +785,9 @@ cases:
       date(c6) as date_c6, date(c7) as date_c7, date(c8) as date_c8, date(c10) as date_c10
       from {0};
     expect:
-      success: true
+      columns: ["date_c6 date", "date_c7 date", "date_c8 date", "date_c9 date"]
+      rows:
+        - ["2020-05-22", "2020-05-22", "2020-05-22", NULL]
   - id: 20-8
     desc: cast as timestamp 
     mode: offline-unsupport
@@ -802,7 +804,10 @@ cases:
       timestamp(c6) as timestamp_c6, timestamp(c7) as timestamp_c7, timestamp(c8) as timestamp_c8, timestamp(c9) as timestamp_c9, timestamp(c10) as timestamp_c10
       from {0};
     expect:
-      success: true
+      columns: ["timestamp_c1 timestamp", "timestamp_c2 timestamp", "timestamp_c3 timestamp", "timestamp_c4 timestamp", "timestamp_c5 timestamp", 
+                "timestamp_c6 timestamp", "timestamp_c7 timestamp", "timestamp_c8 timestamp", "timestamp_c9 timestamp", "timestamp_c10 timestamp"]
+      rows:
+        - [1, 1, 1, 1, 1, 1590115420000, 1590115420000, 1590115420000, 1, NULL]
   - id: 20-9
     desc: cast as bool
     mode: offline-unsupport
@@ -819,7 +824,10 @@ cases:
       bool(c6) as bool_c6, bool(c8) as bool_c8, bool(c9) as bool_c9, bool(c10) as bool_c10
       from {0};
     expect:
-      success: true
+      columns: ["bool_c1 bool", "bool_c2 bool", "bool_c3 bool", "bool_c4 bool", "bool_c5 bool", 
+                "bool_c6 bool", "bool_c7 bool", "bool_c8 bool", "bool_c9 bool", "bool_c10 bool"]
+      rows:
+        - [true, true, true, true, true, true, true, true, true, true]
   - id: 21-1
     desc: column name prefix with _
     inputs:
