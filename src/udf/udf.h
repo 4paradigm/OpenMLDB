@@ -249,7 +249,6 @@ void string_to(codec::StringRef *str, V *v, bool *is_null_ptr) {
         *is_null_ptr = false;
         return;
     } catch(boost::bad_lexical_cast const& e) {
-        LOG(WARNING) << "Fail to cast string to " << e.source_type().name;
         *is_null_ptr = true;
         return;
     } catch (...) {
