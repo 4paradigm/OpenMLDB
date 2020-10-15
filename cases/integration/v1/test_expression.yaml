@@ -647,8 +647,8 @@ cases:
       columns: ["c1 int", "c2_sec bigint"]
       rows:
         - [1, 1590115420]
-  - id: 19-9
-    desc: cast (type1col as type2) 枚举type1, type2
+  - id: 20-1
+    desc: cast as int
     mode: offline-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
@@ -659,11 +659,91 @@ cases:
           - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true]
     sql: |
       select 
-      int(c1) as int_c1, int(c2) as int_c2, int(c3) as int_c3, int(c4) as int_c4, int(c5) as int_c5, int(c6) as int_c6, int(c8) as int_c8, int(c9) as int_c9,
-      smallint(c1) as smallint_c1, smallint(c2) as smallint_c2, smallint(c3) as smallint_c3, smallint(c4) as smallint_c4, smallint(c5) as smallint_c5, smallint(c6) as smallint_c6, smallint(c8) as smallint_c8, smallint(c9) as smallint_c9,
-      bigint(c1) as bigint_c1, bigint(c2) as bigint_c2, bigint(c3) as bigint_c3, bigint(c4) as bigint_c4, bigint(c5) as bigint_c5, bigint(c6) as bigint_c6, bigint(c8) as bigint_c8, bigint(c9) as bigint_c9,
-      float(c1) as float_c1, float(c2) as float_c2, float(c3) as float_c3, float(c4) as float_c4, float(c5) as float_c5, float(c6) as float_c6, float(c8) as float_c8, float(c9) as float_c9,
-      double(c1) as double_c1, double(c2) as double_c2, double(c3) as double_c3, double(c4) as double_c4, double(c5) as double_c5, double(c6) as double_c6, double(c8) as double_c8, double(c9) as double_c9,
+      int(c1) as int_c1, int(c2) as int_c2, int(c3) as int_c3, int(c4) as int_c4, 
+      int(c5) as int_c5, int(c6) as int_c6, int(c8) as int_c8, int(c9) as int_c9
+      from {0};
+    expect:
+      success: true
+  - id: 20-2
+    desc: cast as smallint
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
+      "c6 string", "c7 date", "c8 timestamp", "c9 bool"]
+        indexs: ["index1:c6:c8"]
+        rows:
+          - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true]
+    sql: |
+      select 
+      smallint(c1) as smallint_c1, smallint(c2) as smallint_c2, smallint(c3) as smallint_c3, smallint(c4) as smallint_c4, 
+      smallint(c5) as smallint_c5, smallint(c6) as smallint_c6, smallint(c8) as smallint_c8, smallint(c9) as smallint_c9
+      from {0};
+    expect:
+      success: true
+  - id: 20-3
+    desc: cast as bigint
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
+      "c6 string", "c7 date", "c8 timestamp", "c9 bool"]
+        indexs: ["index1:c6:c8"]
+        rows:
+          - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true]
+    sql: |
+      select 
+      bigint(c1) as bigint_c1, bigint(c2) as bigint_c2, bigint(c3) as bigint_c3, bigint(c4) as bigint_c4, 
+      bigint(c5) as bigint_c5, bigint(c6) as bigint_c6, bigint(c8) as bigint_c8, bigint(c9) as bigint_c9
+      from {0};
+    expect:
+      success: true
+  - id: 20-4
+    desc: cast as float
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
+      "c6 string", "c7 date", "c8 timestamp", "c9 bool"]
+        indexs: ["index1:c6:c8"]
+        rows:
+          - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true]
+    sql: |
+      select 
+      float(c1) as float_c1, float(c2) as float_c2, float(c3) as float_c3, float(c4) as float_c4, float(c5) as float_c5, 
+      float(c6) as float_c6, float(c8) as float_c8, float(c9) as float_c9
+      from {0};
+    expect:
+      success: true
+  - id: 20-5
+    desc: cast as double
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
+      "c6 string", "c7 date", "c8 timestamp", "c9 bool"]
+        indexs: ["index1:c6:c8"]
+        rows:
+          - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true]
+    sql: |
+      select 
+      double(c1) as double_c1, double(c2) as double_c2, double(c3) as double_c3, double(c4) as double_c4, double(c5) as double_c5, 
+      double(c6) as double_c6, double(c8) as double_c8, double(c9) as double_c9
+      from {0};
+    expect:
+      success: true
+  - id: 20-6
+    desc: cast as string
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
+      "c6 string", "c7 date", "c8 timestamp", "c9 bool"]
+        indexs: ["index1:c6:c8"]
+        rows:
+          - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true]
+    sql: |
+      select 
       string(c1) as string_c1, string(c2) as string_c2, string(c3) as string_c3, string(c4) as string_c4, string(c5) as string_c5, string(c6) as string_c6, string(c7) as string_c7, string(c8) as string_c8, string(c9) as string_c9,
       date(c6) as date_c6, date(c7) as date_c7, date(c8) as date_c8,
       timestamp(c1) as timestamp_c1, timestamp(c2) as timestamp_c2, timestamp(c3) as timestamp_c3, timestamp(c4) as timestamp_c4, timestamp(c5) as timestamp_c5, timestamp(c6) as timestamp_c6, timestamp(c7) as timestamp_c7, timestamp(c8) as timestamp_c8, timestamp(c9) as timestamp_c9,
@@ -671,7 +751,59 @@ cases:
       from {0};
     expect:
       success: true
-  - id: 20-1
+  - id: 20-7
+    desc: cast as date
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
+      "c6 string", "c7 date", "c8 timestamp", "c9 bool"]
+        indexs: ["index1:c6:c8"]
+        rows:
+          - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true]
+    sql: |
+      select 
+      date(c6) as date_c6, date(c7) as date_c7, date(c8) as date_c8,
+      timestamp(c1) as timestamp_c1, timestamp(c2) as timestamp_c2, timestamp(c3) as timestamp_c3, timestamp(c4) as timestamp_c4, timestamp(c5) as timestamp_c5, timestamp(c6) as timestamp_c6, timestamp(c7) as timestamp_c7, timestamp(c8) as timestamp_c8, timestamp(c9) as timestamp_c9,
+      bool(c1) as bool_c1, bool(c2) as bool_c2, bool(c3) as bool_c3, bool(c4) as bool_c4, bool(c5) as bool_c5, bool(c6) as bool_c6, bool(c8) as bool_c8, bool(c9) as bool_c9
+      from {0};
+    expect:
+      success: true
+  - id: 20-7
+    desc: cast as timestamp 
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
+      "c6 string", "c7 date", "c8 timestamp", "c9 bool"]
+        indexs: ["index1:c6:c8"]
+        rows:
+          - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true]
+    sql: |
+      select 
+      timestamp(c1) as timestamp_c1, timestamp(c2) as timestamp_c2, timestamp(c3) as timestamp_c3, timestamp(c4) as timestamp_c4, timestamp(c5) as timestamp_c5, 
+      timestamp(c6) as timestamp_c6, timestamp(c7) as timestamp_c7, timestamp(c8) as timestamp_c8, timestamp(c9) as timestamp_c9
+      from {0};
+    expect:
+      success: true
+  - id: 20-8
+    desc: cast as bool
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double", 
+      "c6 string", "c7 date", "c8 timestamp", "c9 bool"]
+        indexs: ["index1:c6:c8"]
+        rows:
+          - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true]
+    sql: |
+      select 
+      bool(c1) as bool_c1, bool(c2) as bool_c2, bool(c3) as bool_c3, bool(c4) as bool_c4, bool(c5) as bool_c5, 
+      bool(c6) as bool_c6, bool(c8) as bool_c8, bool(c9) as bool_c9
+      from {0};
+    expect:
+      success: true
+  - id: 21-1
     desc: column name prefix with _
     inputs:
       - columns: ["_c1 int", "_c2 string", "_c5 bigint"]
