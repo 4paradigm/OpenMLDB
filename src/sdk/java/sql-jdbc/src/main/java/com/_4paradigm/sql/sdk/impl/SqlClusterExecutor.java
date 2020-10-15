@@ -190,6 +190,9 @@ public class SqlClusterExecutor implements SqlExecutor {
             throw new SQLException("requestRow is null or empty");
         }
         ProcedureInfo procedureInfo = showProcedure(dbName, proName);
+        if (procedureInfo == null) {
+            throw new SQLException("show procedure failed");
+        }
         Status status = new Status();
         SQLRequestRow sqlRequestRow = sqlRouter.GetRequestRow(dbName, procedureInfo.getSql(), status);
         if (status.getCode() != 0 || sqlRequestRow == null) {
@@ -197,11 +200,14 @@ public class SqlClusterExecutor implements SqlExecutor {
             throw new SQLException("getRequestRow failed");
         }
         Schema inputSchema = procedureInfo.getInputSchema();
+        if (inputSchema == null) {
+            throw new SQLException("inputSchema is null");
+        }
         int strlen = 0;
         for (int i = 0 ; i < inputSchema.getColumnList().size(); i++) {
             Column column = inputSchema.getColumnList().get(i);
             Object object = requestRow[i];
-            if (column.getSqlType() == Types.VARCHAR && object != null) {
+            if (column != null && column.getSqlType() == Types.VARCHAR && object != null) {
                 strlen += ((String)object).length();
             }
         }
@@ -255,6 +261,9 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (resultSet == null || status.getCode() != 0) {
             throw new SQLException("call procedure fail");
         }
+        if (!sqlRouter.RefreshCatalog()) {
+            throw new SQLException("refresh catalog failed!");
+        }
         return new SQLResultSet(resultSet);
     }
 
@@ -298,4 +307,5 @@ public class SqlClusterExecutor implements SqlExecutor {
         }
         return ok;
     }
+
 }

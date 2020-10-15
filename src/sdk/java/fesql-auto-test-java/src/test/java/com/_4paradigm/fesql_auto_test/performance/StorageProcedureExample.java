@@ -11,9 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.sql.Date;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -49,7 +48,6 @@ public class StorageProcedureExample extends BaseExample {
     private String cardNo = "card1";
     private String merchantId = "merChantId1";
 
-
     public void printSQL() {
         logger.info("ddl: \n{}", ddl);
     }
@@ -66,7 +64,7 @@ public class StorageProcedureExample extends BaseExample {
         sqlExecutor.createDB(db);
         sqlExecutor.executeDDL(db, dropDdl);
         sqlExecutor.executeDDL(db, ddl);
-//        sqlExecutor.executeDDL(db, "drop procedure sp;");
+        sqlExecutor.executeDDL(db, "drop procedure sp;");
 //        Schema inputSchema = sqlExecutor.getInputSchema(db, sql);
     }
 
@@ -92,7 +90,18 @@ public class StorageProcedureExample extends BaseExample {
     }
 
     public void callProcedure() throws Exception {
-        Object[][] requestRows = new Object[1][7];
+//        Object[][] requestRows = new Object[1][7];
+//        Object[] requestRow = new Object[7];
+//        requestRow[0] = "bb";
+//        requestRow[1] = 24;
+//        requestRow[2] = 34l;
+//        requestRow[3] = 1.5f;
+//        requestRow[4] = 2.5;
+//        requestRow[5] = new Timestamp(1590738994000l);
+//        requestRow[6] = Date.valueOf("2020-05-05");
+//        requestRows[0] = requestRow;
+//        SQLResultSet sqlResultSet = sqlExecutor.callProcedure(db, spName, requestRows);
+
         Object[] requestRow = new Object[7];
         requestRow[0] = "bb";
         requestRow[1] = 24;
@@ -101,9 +110,8 @@ public class StorageProcedureExample extends BaseExample {
         requestRow[4] = 2.5;
         requestRow[5] = new Timestamp(1590738994000l);
         requestRow[6] = Date.valueOf("2020-05-05");
-        requestRows[0] = requestRow;
 
-        SQLResultSet sqlResultSet = sqlExecutor.callProcedure(db, spName, requestRows);
+        SQLResultSet sqlResultSet = sqlExecutor.callProcedure(db, spName, requestRow);
         if (sqlResultSet == null) {
             Assert.fail();
         }
@@ -123,6 +131,7 @@ public class StorageProcedureExample extends BaseExample {
             example.initDDL();
             example.initSample();
             example.createProcedure();
+            System.out.println("create ok");
             example.callProcedure();
         } catch (Exception e) {
             e.printStackTrace();
