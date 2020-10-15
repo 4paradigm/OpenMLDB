@@ -2,9 +2,12 @@ cases:
   - id: 0
     desc: SELECT ALL
     sql: SELECT * FROM t1;
-  - id: 1
+  - id: 1-1
     desc: SELECT列
     sql: SELECT COL1, -COL1 FROM t1;
+  - id: 1-2
+    desc: SELECT列 with prefix _
+    sql: SELECT _COL1, -_COL1 FROM t1;
   - id: 2
     desc: SELECT列重命名
     sql: SELECT COL1 as c1 FROM t1;
