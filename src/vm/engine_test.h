@@ -149,6 +149,16 @@ void PrintRows(const vm::Schema& schema, const std::vector<Row>& rows) {
     }
     oss << t << std::endl;
     LOG(INFO) << "\n" << oss.str() << "\n";
+    if (fesql::sqlcase::SQLCase::IS_DEBUG() &&
+        (t.rows().size() >= MAX_DEBUG_LINES_CNT 
+            || t.current_columns_size() >= MAX_DEBUG_COLUMN_CNT)) {
+        std::ostringstream oss;
+        row_view.Reset(row.buf());
+        for (auto row : rows) {
+            oss << row.GetRowString() << "\n";
+        }
+        LOG(INFO) << "\xdebug all rows:\n" << oss.str() << "\n";
+    }
 }
 
 const std::vector<Row> SortRows(const vm::Schema& schema,
