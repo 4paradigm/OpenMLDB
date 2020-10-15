@@ -245,7 +245,7 @@ void string_to(codec::StringRef *str, V *v, bool *is_null_ptr) {
         return;
     }
     try {
-        *v = boost::lexical_cast<V, std::string>(str.data_, str.size_);
+        *v = boost::lexical_cast<V, std::string>(str->data_, str->size_);
         *is_null_ptr = false;
         return;
     } catch(boost::bad_lexical_cast const& e) {
