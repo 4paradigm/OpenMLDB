@@ -250,11 +250,14 @@ void string_to(codec::StringRef *str, V *v, bool *is_null_ptr) {
         return;
     } catch(boost::bad_lexical_cast const& e) {
         *is_null_ptr = true;
+        *v = V();
         return;
     } catch (...) {
         *is_null_ptr = true;
+        *v = V();
         return;
     }
+    return;
 }
 
 /**
