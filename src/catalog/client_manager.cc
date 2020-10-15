@@ -114,10 +114,10 @@ bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpo
         if (it == real_endpoint_map_.end()) {
             auto wrapper = std::make_shared<ClientWrapper>(kv.first);
             if (!wrapper->UpdateClient(kv.second)) {
-                LOG(WARNING) << "add client failed. name " << kv.first << " , endpoint " << kv.second;
+                LOG(WARNING) << "add client failed. name " << kv.first << ", endpoint " << kv.second;
                 continue;
             }
-            LOG(INFO) << "add client. name " << kv.first << " , endpoint " << kv.second;
+            LOG(INFO) << "add client. name " << kv.first << ", endpoint " << kv.second;
             clients_.emplace(kv.first, wrapper);
             real_endpoint_map_.emplace(kv.first, kv.second);
             continue;
@@ -126,7 +126,7 @@ bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpo
             auto client_it = clients_.find(kv.first);
             LOG(INFO) << "update client " << kv.first << "from " << it->second << " to " << kv.second;
             if (!client_it->second->UpdateClient(kv.second)) {
-                LOG(WARNING) << "update client failed. name " << kv.first << " , endpoint " << kv.second;
+                LOG(WARNING) << "update client failed. name " << kv.first << ", endpoint " << kv.second;
                 continue;
             }
             it->second = kv.second;
