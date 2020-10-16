@@ -657,6 +657,7 @@ cases:
         indexs: ["index1:c6:c8"]
         rows:
           - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
+          - [-1, -1, -1, -1.0, -1.0, "2020-05-22 10:43:40", "2020-05-22", -1590115420000, false, "-1"]
     sql: |
       select 
       int(c1) as int_c1, int(c2) as int_c2, int(c3) as int_c3, int(c4) as int_c4, 
@@ -667,6 +668,7 @@ cases:
                 "int_c8 int", "int_c9 int", "int_c10 int"]
       rows:
         - [1, 1, 1, 1, 1, NULL, 977520480, 1, 1]
+        - [-1, -1, -1, -1, -1, NULL, 977520480, 0, -1]
   - id: 20-2
     desc: cast as smallint
     mode: offline-unsupport
