@@ -256,9 +256,11 @@ void string_to_int(codec::StringRef *str, int32_t *out, bool *is_null_ptr) {
     try {
         // string -> integer
         char* end = nullptr;
-        std::string temp = str->ToString()
-        *out = std::stoi(temp.c_str(), &end, 10);
-        if (*end != '\0') {
+        std::string::size_type sz;   // alias of size_t
+        std::string temp = str->ToString();
+        *out = std::stoi(temp, &sz);
+        if (sz > 0) {
+            std::cout << "stoi rest string: " << str_dec.substr(sz);
             *out = 0;
             *is_null_ptr = true;
             return;
