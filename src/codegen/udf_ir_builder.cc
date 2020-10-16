@@ -450,7 +450,6 @@ Status UDFIRBuilder::BuildExternCall(
 
     auto callee =
         ctx_->GetModule()->getOrInsertFunction(fn->function_name(), func_ty);
-
     // set i16 signext attr for extern call
     // https://releases.llvm.org/9.0.0/docs/LangRef.html#parameter-attributes
     auto function = ctx_->GetModule()->getFunction(fn->function_name());
@@ -471,6 +470,7 @@ Status UDFIRBuilder::BuildExternCall(
                                    sext_attr);
         }
     }
+    
     return BuildLLVMCall(fn, callee, args, fn->return_by_arg(), output);
 }
 
