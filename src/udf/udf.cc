@@ -260,7 +260,7 @@ void string_to_int(codec::StringRef *str, int32_t *out, bool *is_null_ptr) {
         std::string temp = str->ToString();
         *out = std::stoi(temp, &sz);
         if (sz > 0) {
-            std::cout << "stoi rest string: " << str_dec.substr(sz);
+            std::cout << "stoi rest string: " << temp.substr(sz);
             *out = 0;
             *is_null_ptr = true;
             return;
