@@ -282,13 +282,15 @@ void string_to_smallint(codec::StringRef *str, int16_t *out, bool *is_null_ptr) 
     try {
         // string -> integer
         std::string::size_type sz;   // alias of size_t
-        int i = std::stol(str->ToString(), &sz);
+        int i = std::stoi(str->ToString(), &sz);
         std::cout<< "string to int: " << i << "\n";
         if (sz < str->size_) {
             *out = static_cast<int16_t>(i);
             std::cout<< "string to smallint: " << *out << "\n";
             *is_null_ptr = true;
             return;
+        } else {
+            std::cout << "stoi sz: " << sz; 
         }
         *is_null_ptr = false;
     } catch (...) {
