@@ -255,7 +255,14 @@ void string_to_int(codec::StringRef *str, int32_t *out, bool *is_null_ptr) {
     }
     try {
         // string -> integer
-        *out = std::stoi(str->ToString());
+        char* end = nullptr;
+        auto temp = str->ToString()
+        *out = std::stoi(temp.c_str(), &end);
+        if (*end != '\0') {
+            *out = 0;
+            *is_null_ptr = true;
+            return;
+        }
         *is_null_ptr = false;
     } catch (...) {
         // error management
