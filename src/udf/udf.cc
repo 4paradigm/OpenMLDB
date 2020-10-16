@@ -257,7 +257,7 @@ void string_to_int(codec::StringRef *str, int32_t *out, bool *is_null_ptr) {
         // string -> integer
         char* end = nullptr;
         std::string temp = str->ToString()
-        *out = std::stoi(temp.c_str(), &end);
+        *out = std::stoi(temp.c_str(), &end, 10);
         if (*end != '\0') {
             *out = 0;
             *is_null_ptr = true;
