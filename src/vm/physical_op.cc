@@ -362,12 +362,13 @@ bool PhysicalRequestProviderNodeWithCommonColumn::
         for (auto idx : common_column_indices_) {
             common_column_indices_set.insert(idx);
         }
+        size_t schema_size = schema->size();
         bool share_common = common_column_indices_set.size() > 0 &&
-                            common_column_indices_set.size() < schema->size();
+                            common_column_indices_set.size() < schema_size;
         if (share_common) {
             owned_common_schema_ = std::unique_ptr<Schema>(new Schema());
             owned_non_common_schema_ = std::unique_ptr<Schema>(new Schema());
-            for (size_t i = 0; i < schema->size(); ++i) {
+            for (size_t i = 0; i < schema_size; ++i) {
                 if (common_column_indices_set.find(i) !=
                     common_column_indices_set.end()) {
                     *owned_common_schema_->Add() = schema->Get(i);
@@ -382,14 +383,15 @@ bool PhysicalRequestProviderNodeWithCommonColumn::
                 table_handler_->GetName(), owned_non_common_schema_.get());
 
             output_schema_.Clear();
-            for (size_t i = 0; i < owned_common_schema_->size(); ++i) {
+            for (auto i = 0; i < owned_common_schema_->size(); ++i) {
                 *output_schema_.Add() = owned_common_schema_->Get(i);
             }
-            for (size_t i = 0; i < owned_non_common_schema_->size(); ++i) {
+            for (auto i = 0; i < owned_non_common_schema_->size(); ++i) {
                 *output_schema_.Add() = owned_non_common_schema_->Get(i);
             }
             return true;
         } else {
+            output_name_schema_list_.schema_source_list_.clear();
             output_name_schema_list_.AddSchemaSource(table_handler_->GetName(),
                                                      schema);
             output_schema_ = *schema;

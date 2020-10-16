@@ -77,7 +77,6 @@ cases:
           - [5,"a",5,34,1.4,2.4,1590738994000]
           - [6,"a",6,35,1.5,2.5,1590738995000]
       -
-        name: t2
         columns : ["id int","timecol timestamp","c8 date","c9 string"]
         indexs: ["index2:id:timecol"]
         rows:
@@ -99,7 +98,7 @@ cases:
     sql: |
       SELECT {0}.id, c1, sum(c3) OVER w1 as m3, sum(c4) OVER w1 as m4, sum(c5) OVER w1 as m5,
             sum(c6) OVER w1 as m6, max(c7) OVER w1 as m7, max(c8) OVER w1 as m8, min(c9) OVER w1 as m9 
-      FROM {0} last join t2 order by t2.timecol on {0}.id=t2.id and {0}.c7=t2.timecol
+      FROM {0} last join {1} order by {1}.timecol on {0}.id={1}.id and {0}.c7={1}.timecol
       WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id

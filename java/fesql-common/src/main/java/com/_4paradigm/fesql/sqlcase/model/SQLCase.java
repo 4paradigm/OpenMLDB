@@ -16,6 +16,7 @@ public class SQLCase {
     boolean standard_sql;
     boolean standard_sql_compatible;
     List<String> tags;
+    List<String> common_column_indices;
     String batch_plan;
     String request_plan;
     List<InputDesc> inputs;

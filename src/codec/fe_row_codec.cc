@@ -911,7 +911,7 @@ bool RowDecoder::ResolveStringCol(const std::string& name,
 fesql::codec::Schema RowSelector::CreateTargetSchema() {
     Schema target_schema;
     for (size_t idx : indices_) {
-        if (idx < schema_->size()) {
+        if (idx < static_cast<size_t>(schema_->size())) {
             *target_schema.Add() = schema_->Get(idx);
         }
     }
@@ -931,7 +931,7 @@ bool RowSelector::Select(const int8_t* slice, size_t size, int8_t** out_slice,
     row_view_.Reset(slice, size);
     size_t str_size = 0;
     for (size_t idx : indices_) {
-        if (idx < schema_->size()) {
+        if (idx < static_cast<size_t>(schema_->size())) {
             if (schema_->Get(idx).type() == type::kVarchar &&
                 !row_view_.IsNULL(idx)) {
                 str_size += row_view_.GetStringUnsafe(idx).size();
@@ -944,7 +944,7 @@ bool RowSelector::Select(const int8_t* slice, size_t size, int8_t** out_slice,
 
     target_row_builder_.SetBuffer(*out_slice, *out_size);
     for (size_t idx : indices_) {
-        if (idx >= schema_->size()) {
+        if (idx >= static_cast<size_t>(schema_->size())) {
             continue;
         }
         if (row_view_.IsNULL(idx)) {

@@ -416,16 +416,16 @@ Status BatchModeTransformer::CreateRequestUnionNode(
             col_name_to_idx;
         auto common_schema = request->GetOutputSchemaSlice(0);
         auto non_common_schema = request->GetOutputSchemaSlice(1);
-        for (size_t i = 0; i < common_schema->size(); ++i) {
+        for (int i = 0; i < common_schema->size(); ++i) {
             auto& col_ref = common_schema->Get(i);
             col_name_to_idx[col_ref.name()] = {0, i};
         }
-        for (size_t i = 0; i < non_common_schema->size(); ++i) {
+        for (int i = 0; i < non_common_schema->size(); ++i) {
             auto& col_ref = non_common_schema->Get(i);
             col_name_to_idx[col_ref.name()] = {1, i};
         }
         std::vector<ColumnSource> column_list;
-        for (size_t i = 0; i < primary_schema->size(); ++i) {
+        for (int i = 0; i < primary_schema->size(); ++i) {
             auto& col_def = primary_schema->Get(i);
             auto idx_iter = col_name_to_idx.find(col_def.name());
             CHECK_TRUE(idx_iter != col_name_to_idx.end(), kPlanError,
