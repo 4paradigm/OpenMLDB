@@ -255,7 +255,7 @@ void string_to_int(codec::StringRef *str, int32_t *out, bool *is_null_ptr) {
     }
     try {
         // string -> integer
-        std::string::size_type sz;   // alias of size_t
+        std::string::size_type sz;  // alias of size_t
         *out = std::stoi(str->ToString(), &sz);
         if (sz < str->size_) {
             *out = 0;
@@ -266,10 +266,11 @@ void string_to_int(codec::StringRef *str, int32_t *out, bool *is_null_ptr) {
     } catch (...) {
         // error management
         return;
-    }  
+    }
     return;
 }
-void string_to_smallint(codec::StringRef *str, int16_t *out, bool *is_null_ptr) {
+void string_to_smallint(codec::StringRef *str, int16_t *out,
+                        bool *is_null_ptr) {
     // init
     *out = 0;
     *is_null_ptr = true;
@@ -281,7 +282,7 @@ void string_to_smallint(codec::StringRef *str, int16_t *out, bool *is_null_ptr) 
     }
     try {
         // string -> integer
-        std::string::size_type sz;   // alias of size_t
+        std::string::size_type sz;  // alias of size_t
         int i = std::stoi(str->ToString(), &sz);
         if (sz < str->size_) {
             *is_null_ptr = true;
@@ -292,7 +293,7 @@ void string_to_smallint(codec::StringRef *str, int16_t *out, bool *is_null_ptr) 
     } catch (...) {
         // error management
         return;
-    }  
+    }
     return;
 }
 void string_to_bigint(codec::StringRef *str, int64_t *out, bool *is_null_ptr) {
@@ -307,7 +308,7 @@ void string_to_bigint(codec::StringRef *str, int64_t *out, bool *is_null_ptr) {
     }
     try {
         // string -> integer
-        std::string::size_type sz;   // alias of size_t
+        std::string::size_type sz;  // alias of size_t
         *out = std::stol(str->ToString(), &sz);
         if (sz < str->size_) {
             *out = 0;
@@ -318,7 +319,7 @@ void string_to_bigint(codec::StringRef *str, int64_t *out, bool *is_null_ptr) {
     } catch (...) {
         // error management
         return;
-    }  
+    }
     return;
 }
 void string_to_float(codec::StringRef *str, float *out, bool *is_null_ptr) {
@@ -333,7 +334,7 @@ void string_to_float(codec::StringRef *str, float *out, bool *is_null_ptr) {
     }
     try {
         // string -> integer
-        std::string::size_type sz;   // alias of size_t
+        std::string::size_type sz;  // alias of size_t
         *out = std::stof(str->ToString(), &sz);
         if (sz < str->size_) {
             *out = 0;
@@ -344,7 +345,7 @@ void string_to_float(codec::StringRef *str, float *out, bool *is_null_ptr) {
     } catch (...) {
         // error management
         return;
-    }  
+    }
     return;
 }
 void string_to_double(codec::StringRef *str, double *out, bool *is_null_ptr) {
@@ -359,7 +360,7 @@ void string_to_double(codec::StringRef *str, double *out, bool *is_null_ptr) {
     }
     try {
         // string -> integer
-        std::string::size_type sz;   // alias of size_t
+        std::string::size_type sz;  // alias of size_t
         *out = std::stod(str->ToString(), &sz);
         if (sz < str->size_) {
             *out = 0;
@@ -370,7 +371,7 @@ void string_to_double(codec::StringRef *str, double *out, bool *is_null_ptr) {
     } catch (...) {
         // error management
         return;
-    }  
+    }
     return;
 }
 void string_to_date(codec::StringRef *str, fesql::codec::Date *output,
