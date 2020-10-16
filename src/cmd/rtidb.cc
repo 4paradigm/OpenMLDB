@@ -39,7 +39,6 @@
 #include "cmd/display.h"
 #include "cmd/sdk_iterator.h"
 #include "cmd/sql_cmd.h"
-#include "codec/flat_array.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"

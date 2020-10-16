@@ -45,6 +45,7 @@ build
 build_mac
 thirdparty
 thirdsrc
+.vscode/
 onebox/*.log
 onebox/*binlogs*
 onebox/*bin*

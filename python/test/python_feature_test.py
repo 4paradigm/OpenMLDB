@@ -3,6 +3,7 @@ import rtidb
 from datetime import date
 import pathlib
 import os
+import time
 
 class TestRtidb(unittest.TestCase):
   
@@ -13,7 +14,13 @@ class TestRtidb(unittest.TestCase):
   
   def test_query(self):
     table_name = "test1"
-    os.system("create_table/drop_and_create.sh {}".format(table_name))
+    self.nsc.dropTable(table_name)
+    time.sleep(2)
+    tb = rtidb.tableBuilder(table_name, "hdd", "Relational")
+    tb.addCol("id", "bigint", True).addCol("attribute", "varchar", True).addCol("image", "varchar", False).addIdx("id", ["id"], "primaryKey")
+    self.nsc.createTable(tb)
+    self.assertTrue(table_name in self.nsc.showTable())
+    time.sleep(2)
     data = {"id":"2001","attribute":"a1", "image":None}
     self.assertTrue(self.nsc.put(table_name, data, None).success())
     ro = rtidb.ReadOption()
@@ -62,7 +69,13 @@ class TestRtidb(unittest.TestCase):
 
   def test_query_multi_index(self):
     table_name = "rt_ck"
-    os.system("create_table/drop_and_create.sh {}".format(table_name))
+    self.nsc.dropTable(table_name)
+    time.sleep(2)
+    tb = rtidb.tableBuilder(table_name, "hdd", "Relational")
+    tb.addCol("id", "bigint", True).addCol("name", "varchar", True).addCol("mcc", "int", False).addCol("attribute", "varchar", True).addCol("image", "blob", False).addIdx("index_1", ["id","name"], "primaryKey").addIdx("index_2", ["mcc"], "nounique")
+    self.nsc.createTable(tb)
+    self.assertTrue(table_name in self.nsc.showTable())
+    time.sleep(2)
     # multi index
     data = {"id":"2001","name":"n1","mcc":"2001","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put(table_name, data, None).success())
@@ -130,7 +143,13 @@ class TestRtidb(unittest.TestCase):
 
   def test_traverse(self):
     table_name = "test1"
-    os.system("create_table/drop_and_create.sh {}".format(table_name))
+    self.nsc.dropTable(table_name)
+    time.sleep(2)
+    tb = rtidb.tableBuilder(table_name, "hdd", "Relational")
+    tb.addCol("id", "bigint", True).addCol("attribute", "varchar", True).addCol("image", "varchar", False).addIdx("id", ["id"], "primaryKey")
+    self.nsc.createTable(tb)
+    self.assertTrue(table_name in self.nsc.showTable())
+    time.sleep(2)
     for i in range(1000) :
         data = {"id":"{:d}".format(i), "attribute":"a{}".format(i), "image":"i{}".format(i)}
         self.assertTrue(self.nsc.put(table_name, data, None).success())
@@ -174,7 +193,13 @@ class TestRtidb(unittest.TestCase):
 
   def test_traverse_multi_index(self):
     table_name = "rt_ck"
-    os.system("create_table/drop_and_create.sh {}".format(table_name))
+    self.nsc.dropTable(table_name)
+    time.sleep(2)
+    tb = rtidb.tableBuilder(table_name, "hdd", "Relational")
+    tb.addCol("id", "bigint", True).addCol("name", "varchar", True).addCol("mcc", "int", False).addCol("attribute", "varchar", True).addCol("image", "blob", False).addIdx("index_1", ["id","name"], "primaryKey").addIdx("index_2", ["mcc"], "nounique")
+    self.nsc.createTable(tb)
+    self.assertTrue(table_name in self.nsc.showTable())
+    time.sleep(2)
     # multi index
     for i in range(1000) :
         data = {"id":"{:d}".format(i), "name":"n{}".format(i), "mcc":"{:d}".format(i), 
@@ -208,7 +233,13 @@ class TestRtidb(unittest.TestCase):
 
   def test_batchQuery(self):
     table_name = "rt_ck"
-    os.system("create_table/drop_and_create.sh {}".format(table_name))
+    self.nsc.dropTable(table_name)
+    time.sleep(2)
+    tb = rtidb.tableBuilder(table_name, "hdd", "Relational")
+    tb.addCol("id", "bigint", True).addCol("name", "varchar", True).addCol("mcc", "int", False).addCol("attribute", "varchar", True).addCol("image", "blob", False).addIdx("index_1", ["id","name"], "primaryKey").addIdx("index_2", ["mcc"], "nounique")
+    self.nsc.createTable(tb)
+    self.assertTrue(table_name in self.nsc.showTable())
+    time.sleep(2)
     # multi index
     data = {"id":"1","name":"n1","mcc":"1","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put(table_name, data, None).success())
@@ -252,7 +283,13 @@ class TestRtidb(unittest.TestCase):
 
   def test_update(self):
     table_name = "test1"
-    os.system("create_table/drop_and_create.sh {}".format(table_name))
+    self.nsc.dropTable(table_name)
+    time.sleep(2)
+    tb = rtidb.tableBuilder(table_name, "hdd", "Relational")
+    tb.addCol("id", "bigint", True).addCol("attribute", "varchar", True).addCol("image", "varchar", False).addIdx("id", ["id"], "primaryKey")
+    self.nsc.createTable(tb)
+    self.assertTrue(table_name in self.nsc.showTable())
+    time.sleep(2)
     data = {"id":"3001","attribute":"a1", "image":"i1"}
     self.assertTrue(self.nsc.put(table_name, data, None).success())
     condition_columns = {"id":"3001"} 
@@ -287,8 +324,13 @@ class TestRtidb(unittest.TestCase):
 
   def test_update_multi_index(self):
     table_name = "rt_ck"
-    os.system("create_table/drop_and_create.sh {}".format(table_name))
-    os.system("create_table/drop_and_create.sh rt_ck")
+    self.nsc.dropTable(table_name)
+    time.sleep(2)
+    tb = rtidb.tableBuilder(table_name, "hdd", "Relational")
+    tb.addCol("id", "bigint", True).addCol("name", "varchar", True).addCol("mcc", "int", False).addCol("attribute", "varchar", True).addCol("image", "blob", False).addIdx("index_1", ["id","name"], "primaryKey").addIdx("index_2", ["mcc"], "nounique")
+    self.nsc.createTable(tb)
+    self.assertTrue(table_name in self.nsc.showTable())
+    time.sleep(2)
     # multi index
     data = {"id":"3001","name":"n1","mcc":"3001","attribute":"a1", "image":b"i1"}
     self.assertTrue(self.nsc.put(table_name, data, None).success())
@@ -348,7 +390,13 @@ class TestRtidb(unittest.TestCase):
 
   def test_auto_gen(self):
     table_name = "auto"
-    os.system("create_table/drop_and_create.sh {}".format(table_name))
+    self.nsc.dropTable(table_name)
+    time.sleep(2)
+    tb = rtidb.tableBuilder(table_name, "hdd", "Relational")
+    tb.addCol("id", "bigint", True).addCol("attribute", "varchar", True).addCol("image", "varchar", False).addIdx("idx1", ["id"], "AutoGen")
+    self.nsc.createTable(tb)
+    self.assertTrue(table_name in self.nsc.showTable())
+    time.sleep(2)
     data = {"id":4001, "attribute":"a1", "image":"i1"}
     try:
       self.nsc.put("auto", data, None);
@@ -371,7 +419,13 @@ class TestRtidb(unittest.TestCase):
 
   def test_date_index(self):
     table_name = "date"
-    os.system("create_table/drop_and_create.sh {}".format(table_name))
+    self.nsc.dropTable(table_name)
+    time.sleep(2)
+    tb = rtidb.tableBuilder(table_name, "hdd", "Relational")
+    tb.addCol("id", "bigint", True).addCol("attribute", "varchar", True).addCol("image", "varchar", False).addCol("male", "bool", False).addCol("date", "date", True).addCol("ts", "timestamp", True).addIdx("idx1", ["date"], "primaryKey").addIdx("idx2", ["male", "ts"], "nounique")
+    self.nsc.createTable(tb)
+    self.assertTrue(table_name in self.nsc.showTable())
+    time.sleep(2)
     data = {"id":"5001","attribute":"a1", "image":"i1", "male":True, "date":date(2020,1,1), "ts":1588756531}
     self.assertTrue(self.nsc.put(table_name, data, None).success())
     ro = rtidb.ReadOption()
@@ -454,7 +508,13 @@ class TestRtidb(unittest.TestCase):
     
   def test_index_null(self):
     table_name = "rt_ck"
-    os.system("create_table/drop_and_create.sh {}".format(table_name))
+    self.nsc.dropTable(table_name)
+    time.sleep(2)
+    tb = rtidb.tableBuilder(table_name, "hdd", "Relational")
+    tb.addCol("id", "bigint", True).addCol("name", "varchar", True).addCol("mcc", "int", False).addCol("attribute", "varchar", True).addCol("image", "blob", False).addIdx("index_1", ["id","name"], "primaryKey").addIdx("index_2", ["mcc"], "nounique")
+    self.nsc.createTable(tb)
+    self.assertTrue(table_name in self.nsc.showTable())
+    time.sleep(2)
     data = {"id": 6001,"name":"n1","mcc": None,"attribute":"a1", "image":None}
     self.assertTrue(self.nsc.put(table_name, data, None).success())
     ro = rtidb.ReadOption()
