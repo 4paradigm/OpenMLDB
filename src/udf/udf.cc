@@ -243,6 +243,29 @@ void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr) {
     *is_null_ptr = false;
     return;
 }
+void string_to_int(codec::StringRef *str, int32_t *out, bool *is_null_ptr) {
+    if (nullptr == str) {
+        *out = 0;
+        *is_null_ptr = true;
+        return;
+    }
+    if (0 == str->size_) {
+        *out = 0;
+        *is_null_ptr = false;
+        return;
+    }
+    try {
+        // string -> integer
+        int i = std::stoi(str->ToString());
+    } catch (...) {
+        // error management
+        *out = 0;
+        *is_null_ptr = false;
+    }  
+    *out = true;
+    *is_null_ptr = false;
+    return;
+}
 void string_to_date(codec::StringRef *str, fesql::codec::Date *output,
                     bool *is_null) {
     if (19 == str->size_) {

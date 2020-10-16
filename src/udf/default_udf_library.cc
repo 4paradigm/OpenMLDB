@@ -1129,7 +1129,7 @@ void DefaultUDFLibrary::InitTypeUDF() {
     RegisterExternal("int32")
         .args<codec::StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, int32_t*, bool*)>(
-                v1::string_to<int32_t>)))
+                v1::string_to_int)))
         .return_by_arg(true)
         .returns<Nullable<int32_t>>();
     RegisterExternal("int64")
