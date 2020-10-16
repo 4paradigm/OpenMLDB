@@ -1861,6 +1861,13 @@ void TabletImpl::Query(RpcController* ctrl,
             return;
         }
         auto iter = table->GetIterator();
+        if (!iter) {
+            response->set_schema(session.GetEncodedSchema());
+            response->set_byte_size(0);
+            response->set_count(0);
+            response->set_code(::rtidb::base::kOk);
+            return;
+        }
         iter->SeekToFirst();
         uint32_t byte_size = 0;
         uint32_t count = 0;
