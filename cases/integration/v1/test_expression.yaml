@@ -812,7 +812,7 @@ cases:
         indexs: ["index1:c6:c8"]
         rows:
           - [1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
-          - [-1, -1, -1, -1.0, -1.0, "2020-05-22 10:43:40", "2020-05-22", -1590115420000, false, "-1"]
+          - [-1, -1, -1, -1.0, -1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, false, "-1"]
     sql: |
       select 
       timestamp(c1) as timestamp_c1, timestamp(c2) as timestamp_c2, timestamp(c3) as timestamp_c3, timestamp(c4) as timestamp_c4, timestamp(c5) as timestamp_c5, 
