@@ -26,9 +26,12 @@ public class ColumnsChecker extends BaseChecker {
     public void check() throws Exception {
         log.info("column name check");
         List<String> expect = (List<String>) fesqlCase.getExpect().getColumns();
+        if (expect == null || expect.size() == 0) {
+            return;
+        }
         Schema schema = fesqlResult.getResultSchema();
         if (schema != null) {
-            Assert.assertEquals(expect.size(), schema.GetColumnCnt());
+            Assert.assertEquals(expect.size(), schema.GetColumnCnt(), "Illegal schema size");
             for (int i = 0; i < expect.size(); i++) {
                 Assert.assertEquals(schema.GetColumnName(i), Table.getColumnName(expect.get(i)));
                 Assert.assertEquals(schema.GetColumnType(i),
@@ -36,7 +39,7 @@ public class ColumnsChecker extends BaseChecker {
             }
         } else {
             ResultSetMetaData metaData = fesqlResult.getMetaData();
-            Assert.assertEquals(expect.size(), metaData.getColumnCount());
+            Assert.assertEquals(expect.size(), metaData.getColumnCount(), "Illegal schema size");
             for (int i = 0; i < expect.size(); i++) {
                 Assert.assertEquals(metaData.getColumnName(i + 1), Table.getColumnName(expect.get(i)));
                 Assert.assertEquals(metaData.getColumnType(i + 1),

@@ -774,6 +774,38 @@ message QueryResponse {
     optional bytes schema = 5;
 }
 
+/**
+  * Batch request input encoding:
+  *   - common columns are encoded in shared `common_row` field
+  *   - other non-common columns are encoded in `non_common_rows` for each row
+  *   - column in common/non-common part preserve ordering of original schema 
+  */
+message SQLBatchRequestQueryRequest {
+    optional string sql = 1;
+    optional string db = 2;
+    repeated uint32 common_column_indices = 3;
+    optional bytes common_row = 4;
+    repeated bytes non_common_rows = 5;
+    optional bool is_debug = 6 [default = false];
+}
+
+/**
+  * Batch request output decoding:
+  *   - All data are stored in payload buffer
+  *   - Data are concatenation of 1+N row buffer for batch size N,
+  *     with sizes specified by `row_sizes` field
+  *   - The first is shared common output columns, the others are
+  *     non-common column part for each input request 
+  */
+message SQLBatchRequestQueryResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint32 count = 3;
+    optional bytes schema = 4;
+    repeated uint32 common_column_indices = 5;
+    repeated uint32 row_sizes = 6;
+}
+
 message ExplainRequest {
     optional string sql = 1;
     optional string db = 2;
@@ -801,6 +833,7 @@ service TabletServer {
     rpc Update(UpdateRequest) returns (UpdateResponse);
     rpc BatchQuery(BatchQueryRequest) returns (BatchQueryResponse);
     rpc Query(QueryRequest) returns(QueryResponse);
+    rpc SQLBatchRequestQuery(SQLBatchRequestQueryRequest) returns(SQLBatchRequestQueryResponse);
 
     // table api for master
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);

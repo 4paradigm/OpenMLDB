@@ -25,6 +25,11 @@ using Cond_Column = ::google::protobuf::RepeatedPtrField<rtidb::api::Columns>;
 
 namespace rtidb {
 
+// forward decl
+namespace sdk {
+class SQLRequestRowBatch;
+}  // namespace sdk
+
 const uint32_t INVALID_TID = UINT32_MAX;
 namespace client {
 using ::rtidb::api::TaskInfo;
@@ -76,6 +81,13 @@ class TabletClient {
                const std::string& row, brpc::Controller* cntl,
                ::rtidb::api::QueryResponse* response,
                const bool is_debug = false);
+
+    bool SQLBatchRequestQuery(const std::string& db, const std::string& sql,
+                              std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch>,
+                              brpc::Controller* cntl,
+                              ::rtidb::api::SQLBatchRequestQueryResponse* response,
+                              const bool is_debug = false);
+
     bool Update(
         uint32_t tid, uint32_t pid,
         const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>&

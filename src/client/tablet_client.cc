@@ -9,10 +9,11 @@
 
 #include <algorithm>
 #include <iostream>
-
+#include <set>
 #include "base/glog_wapper.h"  // NOLINT
 #include "brpc/channel.h"
 #include "codec/codec.h"
+#include "sdk/sql_request_row.h"
 #include "timer.h"  // NOLINT
 
 DECLARE_int32(request_max_retry);
@@ -153,6 +154,35 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
                                   &request, response);
 
     if (!ok) {
+        LOG(WARNING) << "fail to query tablet";
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::SQLBatchRequestQuery(const std::string& db, const std::string& sql,
+                                        std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
+                                        brpc::Controller* cntl,
+                                        ::rtidb::api::SQLBatchRequestQueryResponse* response,
+                                        const bool is_debug) {
+    if (cntl == NULL || response == NULL) return false;
+    ::rtidb::api::SQLBatchRequestQueryRequest request;
+    request.set_sql(sql);
+    request.set_db(db);
+    request.set_is_debug(is_debug);
+
+    const std::set<size_t>& indices_set = row_batch->common_column_indices();
+    for (size_t idx : indices_set) {
+        request.add_common_column_indices(idx);
+    }
+    request.set_common_row(*row_batch->GetCommonSlice());
+    for (int i = 0; i < row_batch->Size(); ++i) {
+        request.add_non_common_rows(*row_batch->GetNonCommonSlice(i));
+    }
+
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
+                                  cntl, &request, response);
+    if (!ok || response->code() != ::rtidb::base::kOk) {
         LOG(WARNING) << "fail to query tablet";
         return false;
     }

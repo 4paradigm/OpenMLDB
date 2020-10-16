@@ -100,6 +100,11 @@ class SQLRouter {
         const std::string& db, const std::string& sql,
         fesql::sdk::Status* status) = 0;
 
+    virtual std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQLBatchRequest(
+        const std::string& db, const std::string& sql,
+        std::shared_ptr<rtidb::sdk::SQLRequestRowBatch> row_batch,
+        ::fesql::sdk::Status* status) = 0;
+
     virtual bool RefreshCatalog() = 0;
 };
 

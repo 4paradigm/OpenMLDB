@@ -122,8 +122,13 @@ class SQLClusterRouter : public SQLRouter {
         const std::string& db, const std::string& sql,
         std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status);
 
-    std::shared_ptr<::fesql::sdk::ResultSet> ExecuteSQL(
+    std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
+        ::fesql::sdk::Status* status);
+
+    std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQLBatchRequest(
+        const std::string& db, const std::string& sql,
+        std::shared_ptr<SQLRequestRowBatch> row_batch,
         ::fesql::sdk::Status* status);
 
     bool RefreshCatalog();

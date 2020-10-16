@@ -1926,6 +1926,81 @@ void TabletImpl::Query(RpcController* ctrl,
     }
 }
 
+void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
+                                      const rtidb::api::SQLBatchRequestQueryRequest* request,
+                                      rtidb::api::SQLBatchRequestQueryResponse* response,
+                                      Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
+    butil::IOBuf& buf = cntl->response_attachment();
+    ::fesql::base::Status status;
+
+    size_t common_column_num = request->common_column_indices().size();
+    ::fesql::vm::BatchRequestRunSession session;
+    for (size_t i = 0; i < common_column_num; ++i) {
+        auto col_idx = request->common_column_indices().Get(i);
+        session.AddCommonColumnIdx(col_idx);
+    }
+
+    bool ok =
+        engine_.Get(request->sql(), request->db(), session, status);
+    if (!ok) {
+        response->set_msg(status.msg);
+        response->set_code(::rtidb::base::kSQLCompileError);
+        DLOG(WARNING) << "fail to get sql engine: " << request->sql()
+            << "\n" << status.str();
+        return;
+    }
+
+    // fill input data
+    std::vector<::fesql::codec::Row> input_rows;
+    if (common_column_num > 0 &&
+        common_column_num < static_cast<size_t>(session.GetRequestSchema().size())) {
+        ::fesql::codec::Row common_row(request->common_row());
+        for (auto i = 0; i < request->non_common_rows().size(); ++i) {
+            input_rows.emplace_back(::fesql::codec::Row(
+                1, common_row, 1, ::fesql::codec::Row(request->non_common_rows().Get(i))));
+        }
+    } else {
+        for (auto i = 0; i < request->non_common_rows().size(); ++i) {
+            input_rows.emplace_back(::fesql::codec::Row(request->non_common_rows().Get(i)));
+        }
+    }
+
+    // run session
+    if (request->is_debug()) {
+        session.EnableDebug();
+    }
+    std::vector<::fesql::codec::Row> output_rows;
+    int32_t run_ret = session.Run(input_rows, output_rows);
+    if (run_ret != 0) {
+        response->set_msg(status.msg);
+        response->set_code(::rtidb::base::kSQLRunError);
+        DLOG(WARNING) << "fail to run sql: " << request->sql();
+        return;
+    }
+
+    // fill output data
+    for (auto& output_row : output_rows) {
+        if (output_row.GetRowPtrCnt() != 1) {
+            response->set_msg(status.msg);
+            response->set_code(::rtidb::base::kSQLRunError);
+            DLOG(WARNING) << "illegal row ptrs: expect 1";
+            return;
+        }
+        buf.append(output_row.buf(0), output_row.size(0));
+        response->add_row_sizes(output_row.size(0));
+    }
+
+    // fill response
+    response->set_schema(session.GetEncodedSchema());
+    response->set_count(output_rows.size());
+    response->set_code(::rtidb::base::kOk);
+    DLOG(INFO) << "handle batch request sql " << request->sql()
+               << " with record cnt " << output_rows.size()
+               << " with schema size " << session.GetSchema().size();
+}
+
 void TabletImpl::BatchQuery(RpcController* controller,
                             const rtidb::api::BatchQueryRequest* request,
                             rtidb::api::BatchQueryResponse* response,

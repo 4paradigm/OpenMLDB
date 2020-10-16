@@ -29,6 +29,7 @@
 #include "sdk/base.h"
 #include "sdk/base_impl.h"
 #include "sdk/result_set_sql.h"
+#include "sdk/batch_request_result_set_sql.h"
 #include "timer.h"  //NOLINT
 #include "boost/none.hpp"
 
@@ -649,6 +650,43 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     if (!ok) {
         DLOG(INFO) << "fail to init result set for sql " << sql;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    return rs;
+}
+
+std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchRequest(
+    const std::string& db, const std::string& sql,
+    std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) {
+    if (!row_batch || status == NULL) {
+        LOG(WARNING) << "input is invalid";
+        return nullptr;
+    }
+    std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
+    std::unique_ptr<::rtidb::api::SQLBatchRequestQueryResponse> response(
+        new ::rtidb::api::SQLBatchRequestQueryResponse());
+    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
+    bool ok = GetTablet(db, sql, &tablets);
+    if (!ok || tablets.size() <= 0) {
+        status->msg = "no tablet found";
+        return nullptr;
+    }
+    uint32_t idx = rand_.Uniform(tablets.size());
+    ok = tablets[idx]->SQLBatchRequestQuery(db, sql, row_batch, cntl.get(),
+                                            response.get(),
+                                            options_.enable_debug);
+    if (!ok) {
+        status->msg = "request server error " + response->msg();
+        return nullptr;
+    }
+    if (response->code() != ::rtidb::base::kOk) {
+        status->msg = response->msg();
+        return nullptr;
+    }
+    std::shared_ptr<::rtidb::sdk::SQLBatchRequestResultSet> rs(
+        new rtidb::sdk::SQLBatchRequestResultSet(std::move(response), std::move(cntl)));
+    ok = rs->Init();
+    if (!ok) {
+        return nullptr;
     }
     return rs;
 }

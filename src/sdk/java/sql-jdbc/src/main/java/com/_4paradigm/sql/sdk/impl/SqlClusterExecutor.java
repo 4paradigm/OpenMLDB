@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.List;
 
 public class SqlClusterExecutor implements SqlExecutor {
     static {
@@ -124,6 +125,13 @@ public class SqlClusterExecutor implements SqlExecutor {
         return impl;
     }
 
+    public PreparedStatement getBatchRequestPreparedStmt(String db, String sql,
+                                                         List<Integer> commonColumnIndices) throws SQLException {
+        BatchRequestPreparedStatementImpl impl = new BatchRequestPreparedStatementImpl(
+                db, sql, this.sqlRouter, commonColumnIndices);
+        return impl;
+    }
+
     @Override
     public SQLInsertRows getInsertRows(String db, String sql) {
         Status status = new Status();
@@ -141,6 +149,16 @@ public class SqlClusterExecutor implements SqlExecutor {
         ResultSet rs = sqlRouter.ExecuteSQL(db, sql, row, status);
         if (status.getCode() != 0) {
             logger.error("getInsertRow fail: {}", status.getMsg());
+        }
+        return rs;
+    }
+
+    @Override
+    public ResultSet executeSQLBatchRequest(String db, String sql, SQLRequestRowBatch row_batch) {
+        Status status = new Status();
+        ResultSet rs = sqlRouter.ExecuteSQLBatchRequest(db, sql, row_batch, status);
+        if (status.getCode() != 0) {
+            logger.error("executeSQLBatchRequest fail: {}", status.getMsg());
         }
         return rs;
     }

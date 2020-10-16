@@ -272,6 +272,11 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                const rtidb::api::QueryRequest* request,
                rtidb::api::QueryResponse* response, Closure* done);
 
+    void SQLBatchRequestQuery(RpcController* controller,
+                              const rtidb::api::SQLBatchRequestQueryRequest* request,
+                              rtidb::api::SQLBatchRequestQueryResponse* response,
+                              Closure* done);
+
     void CancelOP(RpcController* controller,
                   const rtidb::api::CancelOPRequest* request,
                   rtidb::api::GeneralResponse* response, Closure* done);
