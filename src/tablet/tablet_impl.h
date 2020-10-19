@@ -484,6 +484,12 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     bool GetRealEp(uint64_t tid, uint64_t pid,
             std::map<std::string, std::string>* real_ep_map);
 
+    void RequestQuery(const rtidb::api::QueryRequest& request,
+        const std::string& sql,
+        ::fesql::base::Status& status, // NOLINT
+        ::fesql::vm::RequestRunSession& session, // NOLINT 
+        rtidb::api::QueryResponse& response, butil::IOBuf& buf); // NOLINT
+
  private:
     RelationalTables relational_tables_;
     Tables tables_;

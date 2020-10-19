@@ -1893,12 +1893,12 @@ void TabletImpl::Query(RpcController* ctrl,
             response->set_msg("input row is empty");
             return;
         }
-        std::string sql = request->sql();
         ::fesql::vm::RequestRunSession session;
         if (request->is_procedure()) {
             session.SetIsProcedure(true);
             const std::string& db_name = request->db();
             const std::string& sp_name = request->sp_name();
+            std::string sql = "";
             {
                 std::lock_guard<std::mutex> lock(mu_);
                 auto db_it = sp_map_.find(db_name);
@@ -1918,36 +1918,10 @@ void TabletImpl::Query(RpcController* ctrl,
                 }
                 sql = sp_it->second;
             }
+            RequestQuery(*request, sql, status, session, *response, buf);
+        } else {
+            RequestQuery(*request, request->sql(), status, session, *response, buf);
         }
-        {
-            bool ok =
-                engine_.Get(sql, request->db(), session, status);
-            if (!ok) {
-                response->set_msg(status.msg);
-                response->set_code(::rtidb::base::kSQLCompileError);
-                DLOG(WARNING) << "fail to run sql " << sql;
-                return;
-            }
-        }
-        if (request->is_debug()) {
-            session.EnableDebug();
-        }
-        ::fesql::codec::Row row(request->input_row());
-        ::fesql::codec::Row output;
-        int32_t ret = session.Run(row, &output);
-        if (ret != 0) {
-            DLOG(WARNING) << "fail to run sql " << sql;
-            response->set_code(::rtidb::base::kSQLRunError);
-            response->set_msg("fail to run sql");
-            return;
-        }
-        buf.append(reinterpret_cast<void*>(output.buf()), output.size());
-        response->set_schema(session.GetEncodedSchema());
-        response->set_byte_size(output.size());
-        response->set_count(1);
-        response->set_code(::rtidb::base::kOk);
-        DLOG(INFO) << "handle request sql " << sql
-                   << " with record cnt 1";
     }
 }
 
@@ -5903,6 +5877,40 @@ void TabletImpl::DropProcedure(RpcController* controller,
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
     PDLOG(INFO, "drop procedure success. db_name[%s] sp_name[%s]", db_name.c_str(), sp_name.c_str());
+}
+
+void TabletImpl::RequestQuery(const rtidb::api::QueryRequest& request,
+        const std::string& sql,
+        ::fesql::base::Status& status,
+        ::fesql::vm::RequestRunSession& session,
+        rtidb::api::QueryResponse& response, butil::IOBuf& buf) {
+    bool ok =
+        engine_.Get(sql, request.db(), session, status);
+    if (!ok) {
+        response.set_msg(status.msg);
+        response.set_code(::rtidb::base::kSQLCompileError);
+        DLOG(WARNING) << "fail to run sql " << sql;
+        return;
+    }
+    if (request.is_debug()) {
+        session.EnableDebug();
+    }
+    ::fesql::codec::Row row(request.input_row());
+    ::fesql::codec::Row output;
+    int32_t ret = session.Run(row, &output);
+    if (ret != 0) {
+        DLOG(WARNING) << "fail to run sql " << sql;
+        response.set_code(::rtidb::base::kSQLRunError);
+        response.set_msg("fail to run sql");
+        return;
+    }
+    buf.append(reinterpret_cast<void*>(output.buf()), output.size());
+    response.set_schema(session.GetEncodedSchema());
+    response.set_byte_size(output.size());
+    response.set_count(1);
+    response.set_code(::rtidb::base::kOk);
+    DLOG(INFO) << "handle request sql " << sql
+        << " with record cnt 1";
 }
 
 }  // namespace tablet
