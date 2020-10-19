@@ -26,6 +26,8 @@ DECLARE_string(hdd_root_path);
 DECLARE_uint32(oss_flush_size);
 DECLARE_int32(oss_flush_period);
 DECLARE_bool(use_name);
+DECLARE_bool(recycle_bin_enabled);
+DECLARE_int32(task_pool_size);
 
 using ::rtidb::base::ReturnCode;
 using ::rtidb::base::BLOB_PREFIX;
@@ -40,7 +42,7 @@ BlobServerImpl::BlobServerImpl()
       zk_client_(nullptr),
       server_(nullptr),
       keep_alive_pool_(1),
-      task_pool_(2),
+      task_pool_(FLAGS_task_pool_size),
       follower_(false),
       object_stores_() {}
 
@@ -72,7 +74,7 @@ bool BlobServerImpl::Init(const std::string& real_endpoint) {
     std::vector<std::string> root_paths;
     ::rtidb::base::SplitString(FLAGS_hdd_root_path, ",", root_paths);
     for (auto &it : root_paths) {
-        bool ok = ::rtidb::base::MkdirRecur(it);
+        bool ok = ::rtidb::base::MkdirRecur(it + "/recycle");
         if (!ok) {
             PDLOG(WARNING, "fail to creat dir %s", it.c_str());
             return false;
@@ -214,7 +216,7 @@ int BlobServerImpl::CreateTable(const TableMeta& meta) {
         paths.append(it);
     }
     store = std::make_shared<ObjectStore>(meta, paths, FLAGS_oss_flush_size,
-                                          FLAGS_oss_flush_period);
+                                          FLAGS_oss_flush_period, &task_pool_);
     if (!store->Init()) {
         PDLOG(WARNING, "init table faield. tid[%u] pid[%u]", tid, pid);
         return 4;
@@ -439,10 +441,25 @@ void BlobServerImpl::DropTableInternal(uint32_t tid, uint32_t pid) {
         return;
     }
 
-    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-    object_stores_[tid].erase(pid);
-    if (object_stores_[tid].empty()) {
-        object_stores_.erase(tid);
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        object_stores_[tid].erase(pid);
+        if (object_stores_[tid].empty()) {
+            object_stores_.erase(tid);
+        }
+    }
+    std::vector<std::string> root_paths;
+    ::rtidb::base::SplitString(FLAGS_hdd_root_path, ",", root_paths);
+    for (const auto& path : root_paths) {
+        std::ostringstream oss;
+        oss << path << "/" << tid << "_" << "pid";
+        std::string source = oss.str();
+        if (FLAGS_recycle_bin_enabled) {
+            oss << "_" + rtidb::base::GetNowTime();
+            rtidb::base::Rename(source, oss.str());
+        } else {
+            rtidb::base::RemoveDirRecursive(source);
+        }
     }
     PDLOG(INFO, "drop table tid[%u] pid[%u] success", tid, pid);
 }

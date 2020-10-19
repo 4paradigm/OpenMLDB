@@ -17,7 +17,7 @@ static std::once_flag options_initialized;
 
 ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
                          std::string db_root_path, uint32_t flush_size,
-                         int32_t flush_period)
+                         int32_t flush_period, baidu::common::ThreadPool* thread_pool)
     : db_(nullptr),
       tid_(table_meta.tid()),
       pid_(table_meta.pid()),
@@ -26,24 +26,30 @@ ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
       is_leader_(false),
       storage_mode_(table_meta.storage_mode()),
       id_generator_(),
-      thread_pool_(2),
+      thread_pool_(thread_pool),
       flush_size_(flush_size),
-      flush_period_(flush_period) {}
+      flush_period_(flush_period),
+      last_bg_id_(-1),
+      running_(false) {}
 
 bool ObjectStore::Init() {
     std::call_once(options_initialized, settings_init);
     char* path = const_cast<char*>(db_root_path_.data());
     time_t before_time = 0;
     db_ = hs_open(path, 1, before_time, 1);
-    if (db_ != NULL) {
-        thread_pool_.DelayTask(1000, [this] { DoFlash(); });
+    if (db_ != nullptr && thread_pool_ != nullptr) {
+        last_bg_id_ = thread_pool_->DelayTask(1000, [this] { DoFlash(); });
+        running_.store(true, std::memory_order_release);
         return true;
     }
     return false;
 }
 
 ObjectStore::~ObjectStore() {
-    thread_pool_.Stop(true);
+    if (running_.load(std::memory_order_acquire)) {
+        running_.store(false, std::memory_order_release);
+        thread_pool_->CancelTask(last_bg_id_, false, nullptr);
+    }
     DoFlash();
     hs_close(db_);
 }
@@ -79,7 +85,9 @@ bool ObjectStore::Delete(int64_t key) {
 
 void ObjectStore::DoFlash() {
     hs_flush(db_, flush_size_, flush_period_);
-    thread_pool_.DelayTask(1000, [this] { DoFlash(); });
+    if (running_.load(std::memory_order_acquire)) {
+        last_bg_id_ = thread_pool_->DelayTask(1000, [this] { DoFlash(); });
+    }
 }
 
 ::rtidb::common::StorageMode ObjectStore::GetStorageMode() const {

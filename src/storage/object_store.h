@@ -5,6 +5,7 @@
 
 #pragma once
 #include <string>
+#include <atomic>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -27,7 +28,7 @@ class ObjectStore {
  public:
     ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
                 std::string  db_root_path, uint32_t flush_size,
-                int32_t flush_period_);
+                int32_t flush_period_, baidu::common::ThreadPool* thread_pool);
 
     bool Init();
 
@@ -58,9 +59,11 @@ class ObjectStore {
     bool is_leader_;
     ::rtidb::common::StorageMode storage_mode_;
     ::rtidb::base::IdGenerator id_generator_;
-    ::baidu::common::ThreadPool thread_pool_;
+    ::baidu::common::ThreadPool* thread_pool_;
     uint32_t flush_size_;
     int32_t flush_period_;
+    int64_t last_bg_id_;
+    std::atomic<bool> running_;
 };
 
 }  // namespace storage
