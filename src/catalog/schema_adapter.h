@@ -74,7 +74,7 @@ class SchemaAdapter {
 
     static bool ConvertIndex(const RtiDBIndex& index,
                              ::fesql::vm::IndexList* output) {
-        if (output == NULL) {
+        if (output == nullptr) {
             LOG(WARNING) << "output ptr is null";
             return false;
         }
@@ -99,7 +99,7 @@ class SchemaAdapter {
 
     static bool ConvertSchema(const RtiDBSchema& rtidb_schema,
                               ::fesql::vm::Schema* output) {
-        if (output == NULL || rtidb_schema.size() == 0) {
+        if (output == nullptr || rtidb_schema.empty()) {
             LOG(WARNING) << "output ptr is null";
             return false;
         }
@@ -151,7 +151,7 @@ class SchemaAdapter {
 
     static bool ConvertSchema(const ::fesql::vm::Schema& fesql_schema,
             RtiDBSchema* rtidb_schema) {
-        if (rtidb_schema == NULL) {
+        if (rtidb_schema == nullptr) {
             LOG(WARNING) << "rtidb_schema is null";
             return false;
         }
@@ -165,34 +165,49 @@ class SchemaAdapter {
         return true;
     }
 
-    static rtidb::type::DataType ConvertType(fesql::node::DataType fesql_type) {
+    static bool ConvertType(fesql::node::DataType fesql_type,
+            rtidb::type::DataType* rtidb_type) {
+        if (rtidb_type == nullptr) {
+            return false;
+        }
         switch (fesql_type) {
             case fesql::node::kBool:
-                return ::rtidb::type::kBool;
+                *rtidb_type = rtidb::type::kBool;
+                break;
             case fesql::node::kInt16:
-                return ::rtidb::type::kSmallInt;
+                *rtidb_type = rtidb::type::kSmallInt;
+                break;
             case fesql::node::kInt32:
-                return ::rtidb::type::kInt;
+                *rtidb_type = rtidb::type::kInt;
+                break;
             case fesql::node::kInt64:
-                return ::rtidb::type::kBigInt;
+                *rtidb_type = rtidb::type::kBigInt;
+                break;
             case fesql::node::kFloat:
-                return ::rtidb::type::kFloat;
+                *rtidb_type = rtidb::type::kFloat;
+                break;
             case fesql::node::kDouble:
-                return ::rtidb::type::kDouble;
+                *rtidb_type = rtidb::type::kDouble;
+                break;
             case fesql::node::kDate:
-                return ::rtidb::type::kDate;
+                *rtidb_type = rtidb::type::kDate;
+                break;
             case fesql::node::kTimestamp:
-                return ::rtidb::type::kTimestamp;
+                *rtidb_type = rtidb::type::kTimestamp;
+                break;
             case fesql::node::kVarchar:
-                return ::rtidb::type::kVarchar;
+                *rtidb_type = rtidb::type::kVarchar;
+                break;
             default:
-                return ::rtidb::type::kUnKnown;
+                LOG(WARNING) << "unsupported type" << fesql_type;
+                return false;
         }
+        return true;
     }
 
     static bool ConvertType(const fesql::type::ColumnDef& sql_column,
             rtidb::common::ColumnDesc* rtidb_column) {
-        if (rtidb_column == NULL) {
+        if (rtidb_column == nullptr) {
             LOG(WARNING) << "rtidb_column is null";
             return false;
         }
@@ -201,35 +216,35 @@ class SchemaAdapter {
         rtidb_column->set_is_constant(sql_column.is_constant());
         switch (sql_column.type()) {
             case fesql::type::kBool:
-                rtidb_column->set_data_type(::rtidb::type::kBool);
+                rtidb_column->set_data_type(rtidb::type::kBool);
                 break;
             case fesql::type::kInt16:
-                rtidb_column->set_data_type(::rtidb::type::kSmallInt);
+                rtidb_column->set_data_type(rtidb::type::kSmallInt);
                 break;
             case fesql::type::kInt32:
-                rtidb_column->set_data_type(::rtidb::type::kInt);
+                rtidb_column->set_data_type(rtidb::type::kInt);
                 break;
             case fesql::type::kInt64:
-                rtidb_column->set_data_type(::rtidb::type::kBigInt);
+                rtidb_column->set_data_type(rtidb::type::kBigInt);
                 break;
             case fesql::type::kFloat:
-                rtidb_column->set_data_type(::rtidb::type::kFloat);
+                rtidb_column->set_data_type(rtidb::type::kFloat);
                 break;
             case fesql::type::kDouble:
-                rtidb_column->set_data_type(::rtidb::type::kDouble);
+                rtidb_column->set_data_type(rtidb::type::kDouble);
                 break;
             case fesql::type::kDate:
-                rtidb_column->set_data_type(::rtidb::type::kDate);
+                rtidb_column->set_data_type(rtidb::type::kDate);
                 break;
             case fesql::type::kTimestamp:
-                rtidb_column->set_data_type(::rtidb::type::kTimestamp);
+                rtidb_column->set_data_type(rtidb::type::kTimestamp);
                 break;
             case fesql::type::kVarchar:
-                rtidb_column->set_data_type(::rtidb::type::kVarchar);
+                rtidb_column->set_data_type(rtidb::type::kVarchar);
                 break;
             default:
                 LOG(WARNING) << "type "
-                    << ::fesql::type::Type_Name(sql_column.type())
+                    << fesql::type::Type_Name(sql_column.type())
                     << " is not supported";
                 return false;
         }

@@ -158,7 +158,7 @@ void PrintTableIndex(std::ostream &stream,
 }
 
 void PrintTableSchema(std::ostream &stream, const ::fesql::vm::Schema &schema) {
-    if (schema.size() == 0) {
+    if (schema.empty()) {
         stream << "Empty set" << std::endl;
         return;
     }
@@ -231,7 +231,7 @@ void PrintItems(const std::vector<std::pair<std::string, std::string>> &items,
 
 void PrintProcedureSchema(const std::string& head,
         const ::fesql::vm::Schema &schema, std::ostream &stream) {
-    if (schema.size() == 0) {
+    if (schema.empty()) {
         stream << "Empty set" << std::endl;
         return;
     }

@@ -458,9 +458,11 @@ bool NsClient::HandleSQLCreateProcedure(const fesql::node::NodePointVector& pars
                     }
                     ::rtidb::common::ColumnDesc* col_desc = schema->Add();
                     col_desc->set_name(input_ptr->GetColumnName());
-                    auto rtidb_type = ::rtidb::catalog::SchemaAdapter::ConvertType(input_ptr->GetColumnType());
-                    if (rtidb_type == ::rtidb::type::kUnKnown) {
-                        sql_status->msg = "unknown column type";
+                    rtidb::type::DataType rtidb_type;
+                    bool ok = ::rtidb::catalog::SchemaAdapter::ConvertType(input_ptr->GetColumnType(),
+                            &rtidb_type);
+                    if (!ok) {
+                        sql_status->msg = "convert type failed";
                         return false;
                     }
                     col_desc->set_data_type(rtidb_type);
@@ -1477,10 +1479,10 @@ bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_n
         std::vector<rtidb::nameserver::ProcedureInfo>& sp_infos, std::string& msg) {
     ::rtidb::nameserver::ShowProcedureRequest request;
     ::rtidb::nameserver::ShowProcedureResponse response;
-    if (db_name != "") {
+    if (db_name.empty()) {
         request.set_db_name(db_name);
     }
-    if (sp_name != "") {
+    if (sp_name.empty()) {
         request.set_sp_name(sp_name);
     }
     bool ok =

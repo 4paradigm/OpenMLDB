@@ -61,6 +61,7 @@ public class StorageProcedureExample extends BaseExample {
     }
 
     public void initDDL() throws Exception {
+        sqlExecutor.dropDB(db);
         sqlExecutor.createDB(db);
         sqlExecutor.executeDDL(db, dropDdl);
         sqlExecutor.executeDDL(db, ddl);

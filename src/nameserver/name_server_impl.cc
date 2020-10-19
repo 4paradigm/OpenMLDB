@@ -10592,6 +10592,7 @@ bool NameServerImpl::RecoverProcedureInfo() {
     if (!zk_client_->GetChildren(zk_db_sp_data_path_, db_sp_vec)) {
         if (zk_client_->IsExistNode(zk_db_sp_data_path_) > 0) {
             PDLOG(WARNING, "db store procedure data node is not exist");
+            return true;
         } else {
             PDLOG(WARNING, "get db store procedure data node failed!");
             return false;
@@ -10654,7 +10655,7 @@ bool NameServerImpl::CreateProcedureOnTablet(const std::string& db_name, const s
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (auto &kv : tablets_) {
-            if (kv.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+            if (!kv.second->Health()) {
                 PDLOG(WARNING, "endpoint [%s] is offline", kv.first.c_str());
                 continue;
             }
@@ -10732,7 +10733,7 @@ void NameServerImpl::DropProcedureOnTablet(const std::string& db_name,
     {
         std::lock_guard<std::mutex> lock(mu_);
         for (auto &kv : tablets_) {
-            if (kv.second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
+            if (!kv.second->Health()) {
                 PDLOG(WARNING, "endpoint [%s] is offline", kv.first.c_str());
                 continue;
             }
