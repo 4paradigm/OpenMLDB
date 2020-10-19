@@ -720,6 +720,16 @@ class ConstNode : public ExprNode {
         : ExprNode(kExprPrimary), data_type_(fesql::node::kInt64) {
         val_.vlong = val;
     }
+    explicit ConstNode(int val, TTLType ttl_type)
+        : ExprNode(kExprPrimary), data_type_(fesql::node::kInt32),
+        ttl_type_(ttl_type) {
+        val_.vint = val;
+    }
+    explicit ConstNode(int64_t val, TTLType ttl_type)
+        : ExprNode(kExprPrimary), data_type_(fesql::node::kInt64),
+        ttl_type_(ttl_type) {
+        val_.vlong = val;
+    }
     explicit ConstNode(float val)
         : ExprNode(kExprPrimary), data_type_(fesql::node::kFloat) {
         val_.vfloat = val;
@@ -779,6 +789,8 @@ class ConstNode : public ExprNode {
     double GetDouble() const { return val_.vdouble; }
 
     DataType GetDataType() const { return data_type_; }
+
+    TTLType GetTTLType() const { return ttl_type_; }
 
     int64_t GetMillis() const {
         switch (data_type_) {
@@ -923,6 +935,7 @@ class ConstNode : public ExprNode {
         float vfloat;
         double vdouble;
     } val_;
+    TTLType ttl_type_ = fesql::node::kAbsolute;
 };
 class LimitNode : public SQLNode {
  public:
@@ -1669,13 +1682,13 @@ class IndexTsNode : public SQLNode {
 class IndexTTLNode : public SQLNode {
  public:
     IndexTTLNode() : SQLNode(kIndexTTL, 0, 0) {}
-    explicit IndexTTLNode(ExprNode *expr)
+    explicit IndexTTLNode(ExprListNode *expr)
         : SQLNode(kIndexTTL, 0, 0), ttl_expr_(expr) {}
 
-    ExprNode *GetTTLExpr() const { return ttl_expr_; }
+    ExprListNode *GetTTLExpr() const { return ttl_expr_; }
 
  private:
-    ExprNode *ttl_expr_;
+    ExprListNode *ttl_expr_;
 };
 class IndexTTLTypeNode : public SQLNode {
  public:
@@ -1699,7 +1712,8 @@ class ColumnIndexNode : public SQLNode {
           ts_(""),
           version_(""),
           version_count_(0),
-          ttl_(-1L),
+          abs_ttl_(0),
+          lat_ttl_(0),
           ttl_type_(""),
           name_("") {}
 
@@ -1723,36 +1737,63 @@ class ColumnIndexNode : public SQLNode {
 
     const std::string &ttl_type() const { return ttl_type_; }
     void set_ttl_type(const std::string &ttl_type) { ttl_type_ = ttl_type; }
-    int64_t GetTTL() const { return ttl_; }
-    void SetTTL(ExprNode *ttl_node) {
-        if (nullptr == ttl_node) {
-            ttl_ = -1l;
+
+    int64_t GetAbsTTL() const { return abs_ttl_; }
+    int64_t GetLatTTL() const { return lat_ttl_; }
+
+    void SetTTL(ExprListNode *ttl_node_list) {
+        if (nullptr == ttl_node_list) {
+            return;
         } else {
-            switch (ttl_node->GetExprType()) {
-                case kExprPrimary: {
-                    const ConstNode *ttl = dynamic_cast<ConstNode *>(ttl_node);
-                    switch (ttl->GetDataType()) {
-                        case fesql::node::kInt32:
-                            ttl_ = ttl->GetInt();
-                            break;
-                        case fesql::node::kInt64:
-                            ttl_ = ttl->GetLong();
-                            break;
-                        case fesql::node::kDay:
-                        case fesql::node::kHour:
-                        case fesql::node::kMinute:
-                        case fesql::node::kSecond:
-                            ttl_ = ttl->GetMillis();
-                            break;
-                        default: {
-                            ttl_ = -1;
-                        }
-                    }
-                    break;
+            uint32_t node_num = ttl_node_list->GetChildNum();
+            if (node_num > 2) {
+                return;
+            }
+            for (uint32_t i = 0; i < node_num; i++) {
+                auto ttl_node = ttl_node_list->GetChild(i);
+                if (ttl_node == nullptr) {
+                    return;
                 }
-                default: {
-                    LOG(WARNING) << "can't set ttl with expr type "
-                                 << ExprTypeName(ttl_node->GetExprType());
+                switch (ttl_node->GetExprType()) {
+                    case kExprPrimary: {
+                        const ConstNode *ttl =
+                            dynamic_cast<ConstNode *>(ttl_node);
+                        switch (ttl->GetDataType()) {
+                            case fesql::node::kInt32:
+                                if (ttl->GetTTLType() == fesql::node::kAbsolute) {
+                                    abs_ttl_ = ttl->GetInt();
+                                } else {
+                                    lat_ttl_ = ttl->GetInt();
+                                }
+                                break;
+                            case fesql::node::kInt64:
+                                if (ttl->GetTTLType() == fesql::node::kAbsolute) {
+                                    abs_ttl_ = ttl->GetLong();
+                                } else {
+                                    lat_ttl_ = ttl->GetLong();
+                                }
+                                break;
+                            case fesql::node::kDay:
+                            case fesql::node::kHour:
+                            case fesql::node::kMinute:
+                            case fesql::node::kSecond:
+                                if (ttl->GetTTLType() == fesql::node::kAbsolute) {
+                                    abs_ttl_ = ttl->GetMillis();
+                                } else {
+                                    return;
+                                }
+                                break;
+                            default: {
+                                return;
+                            }
+                        }
+                        break;
+                    }
+                    default: {
+                        LOG(WARNING) << "can't set ttl with expr type "
+                                     << ExprTypeName(ttl_node->GetExprType());
+                        return;
+                    }
                 }
             }
         }
@@ -1765,7 +1806,8 @@ class ColumnIndexNode : public SQLNode {
     std::string ts_;
     std::string version_;
     int version_count_;
-    int64_t ttl_;
+    int64_t abs_ttl_;
+    int64_t lat_ttl_;
     std::string ttl_type_;
     std::string name_;
 };

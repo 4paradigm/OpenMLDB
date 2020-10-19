@@ -470,8 +470,18 @@ ExprNode *NodeManager::MakeConstNode(int value) {
     return RegisterNode(node_ptr);
 }
 
+ExprNode *NodeManager::MakeConstNode(int value, TTLType ttl_type) {
+    ExprNode *node_ptr = new ConstNode(value, ttl_type);
+    return RegisterNode(node_ptr);
+}
+
 ExprNode *NodeManager::MakeConstNode(int64_t value) {
     ExprNode *node_ptr = new ConstNode(value);
+    return RegisterNode(node_ptr);
+}
+
+ExprNode *NodeManager::MakeConstNode(int64_t value, TTLType ttl_type) {
+    ExprNode *node_ptr = new ConstNode(value, ttl_type);
     return RegisterNode(node_ptr);
 }
 
@@ -479,6 +489,7 @@ ExprNode *NodeManager::MakeConstNode(int64_t value, DataType time_type) {
     ExprNode *node_ptr = new ConstNode(value, time_type);
     return RegisterNode(node_ptr);
 }
+
 ExprNode *NodeManager::MakeConstNode(float value) {
     ExprNode *node_ptr = new ConstNode(value);
     return RegisterNode(node_ptr);
@@ -697,6 +708,14 @@ ExprListNode *NodeManager::MakeExprList(ExprNode *expr_node) {
     return new_list_ptr;
 }
 
+ExprListNode *NodeManager::MakeExprList(ExprNode *expr_node_1, ExprNode *expr_node_2) {
+    ExprListNode *new_list_ptr = new ExprListNode();
+    new_list_ptr->AddChild(expr_node_1);
+    new_list_ptr->AddChild(expr_node_2);
+    RegisterNode(new_list_ptr);
+    return new_list_ptr;
+}
+
 PlanNode *NodeManager::MakeLeafPlanNode(const PlanType &type) {
     PlanNode *node_ptr = new LeafPlanNode(type);
     RegisterNode(node_ptr);
@@ -863,7 +882,7 @@ SQLNode *NodeManager::MakeIndexTsNode(const std::string &ts) {
     return RegisterNode(node_ptr);
 }
 
-SQLNode *NodeManager::MakeIndexTTLNode(ExprNode *ttl_expr) {
+SQLNode *NodeManager::MakeIndexTTLNode(ExprListNode *ttl_expr) {
     SQLNode *node_ptr = new IndexTTLNode(ttl_expr);
     return RegisterNode(node_ptr);
 }

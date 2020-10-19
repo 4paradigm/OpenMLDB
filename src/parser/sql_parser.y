@@ -416,7 +416,7 @@ typedef void* yyscan_t;
 %type <expr> 	var primary_time  expr_const sql_cast_expr
 				sql_call_expr column_ref frame_expr join_condition opt_frame_size
 				fun_expr sql_expr
-				sort_clause opt_sort_clause
+				sort_clause opt_sort_clause abs_ttl lat_ttl
  /* select stmt */
 %type <node>  stmt
               projection
@@ -431,7 +431,7 @@ typedef void* yyscan_t;
 				group_expr sql_id_list
 				sql_expr_list fun_expr_list
 				insert_values insert_value
-				sql_when_then_expr_list
+				sql_when_then_expr_list ttl_list
 
 
 %type<expr> insert_expr where_expr having_expr sql_case_when_expr sql_when_then_expr sql_else_expr
@@ -744,6 +744,44 @@ primary_time:
 	|'-' INTNUM {
 		$$ = node_manager->MakeConstNode(-1*$2);
 	};
+
+ttl_list:   abs_ttl
+            {
+                $$ = node_manager->MakeExprList($1);
+            }
+            | abs_ttl '|' lat_ttl
+            {
+                $$ = node_manager->MakeExprList($1, $3);
+            };
+
+abs_ttl:
+    DAYNUM {
+        $$ = node_manager->MakeConstNode($1, fesql::node::kDay);
+    }
+    |HOURNUM {
+        $$ = node_manager->MakeConstNode($1, fesql::node::kHour);
+    }
+    |MINUTENUM {
+        $$ = node_manager->MakeConstNode($1, fesql::node::kMinute);
+    }
+    |SECONDNUM{
+        $$ = node_manager->MakeConstNode($1, fesql::node::kSecond);
+    }
+    |LONGNUM {
+        $$ = node_manager->MakeConstNode($1, fesql::node::kAbsolute);
+    }
+    |INTNUM {
+        $$ = node_manager->MakeConstNode($1, fesql::node::kAbsolute);
+    };
+
+lat_ttl:
+    LONGNUM {
+        $$ = node_manager->MakeConstNode($1, fesql::node::kLatest);
+    }
+    |INTNUM {
+        $$ = node_manager->MakeConstNode($1, fesql::node::kLatest);
+    };
+
 var: FUN_IDENTIFIER {
         $$ = node_manager->MakeUnresolvedExprId($1);
 		free($1);
@@ -987,7 +1025,7 @@ column_index_item:  KEY EQUALS column_name
                         $$ = node_manager->MakeIndexTsNode($3);
                         free($3);
                     }
-                    | TTL EQUALS primary_time
+                    | TTL EQUALS ttl_list
                     {
                         $$ = node_manager->MakeIndexTTLNode($3);
                     }

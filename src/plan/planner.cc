@@ -976,9 +976,9 @@ bool TransformTableDef(const std::string &table_name,
                 index->set_name(column_index->GetName());
 
                 // TODO(chenjing): set ttl per key
-                if (-1 != column_index->GetTTL()) {
-                    index->add_ttl(column_index->GetTTL());
-                }
+                //if (-1 != column_index->GetTTL()) {
+                    //index->add_ttl(column_index->GetTTL());
+                //}
 
                 for (auto key : column_index->GetKey()) {
                     index->add_first_keys(key);

@@ -549,7 +549,7 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ("column2", index_node->GetTs());
     ASSERT_EQ("column5", index_node->GetVersion());
     ASSERT_EQ(3, index_node->GetVersionCount());
-    ASSERT_EQ(60 * 86400000L, index_node->GetTTL());
+    ASSERT_EQ(60 * 86400000L, index_node->GetAbsTTL());
 }
 
 class SqlParserErrorTest : public ::testing::TestWithParam<

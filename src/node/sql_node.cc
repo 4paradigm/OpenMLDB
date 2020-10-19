@@ -1079,7 +1079,9 @@ void ColumnIndexNode::Print(std::ostream &output,
     output << "\n";
     PrintValue(output, tab, ts_, "ts_col", false);
     output << "\n";
-    PrintValue(output, tab, std::to_string(ttl_), "ttl", false);
+    PrintValue(output, tab, std::to_string(abs_ttl_), "abs_ttl", false);
+    output << "\n";
+    PrintValue(output, tab, std::to_string(lat_ttl_), "lat_ttl", false);
     output << "\n";
     PrintValue(output, tab, ttl_type_, "ttl_type", false);
     output << "\n";
