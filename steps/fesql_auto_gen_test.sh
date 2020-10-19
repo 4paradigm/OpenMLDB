@@ -26,6 +26,7 @@ echo "failed_num=$failed_num"
 echo "CI_COMMIT_SHA:$CI_COMMIT_SHA"
 tar czvf $CI_COMMIT_SHA logs
 if [ $failed_num -gt 0 ];then
+  sh -x steps/upload_to_pkg.sh http://pkg.4paradigm.com:81/rtidb/test/fesql-log/ $CI_COMMIT_SHA
   exit 1
 else
   exit 0
