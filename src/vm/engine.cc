@@ -283,6 +283,9 @@ static bool ExtractSingleRow(std::shared_ptr<DataHandler> handler,
             LOG(WARNING) << "partition output is invalid";
             return false;
         }
+        default: {
+            return false;
+        }
     }
 }
 

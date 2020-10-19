@@ -87,7 +87,7 @@ object JoinPlan {
         inputSchemaSlices = inputSchemaSlices,
         outputSchema = filter.fn_info().fn_schema(),
         moduleTag = ctx.getTag,
-        moduleBroadcast = ctx.getModuleBufferBroadcast
+        moduleBroadcast = ctx.getSerializableModuleBuffer
       )
       sess.udf.register(regName, conditionUDF)
 
@@ -159,9 +159,17 @@ object JoinPlan {
 
         distinct.drop(indexName)
       } else { // Does not have order by column
-        // Randomly select the first row from joined table
-        joined.dropDuplicates(indexName).drop(indexName)
+        try {
+          org.apache.spark.sql.catalyst.plans.JoinType("last") // If Spark distribution support native last join type
+          leftDf.join(rightDf, joinConditions.reduce(_ && _),  "last")
+        } catch {
+          case _: IllegalArgumentException => {
+            // Randomly select the first row from joined table
+            joined.dropDuplicates(indexName).drop(indexName)
+          }
+        }
       }
+
     } else { // Just left join, not last join
       joined
     }
@@ -174,7 +182,7 @@ object JoinPlan {
                          inputSchemaSlices: Array[StructType],
                          outputSchema: java.util.List[ColumnDef],
                          moduleTag: String,
-                         moduleBroadcast: Broadcast[SerializableByteBuffer]
+                         moduleBroadcast: SerializableByteBuffer
                         ) extends Function1[Row, Boolean] with Serializable {
 
     @transient private lazy val tls = new ThreadLocal[UnSafeJoinConditionUDFImpl]() {
@@ -193,7 +201,7 @@ object JoinPlan {
                                    inputSchemaSlices: Array[StructType],
                                    outputSchema: java.util.List[ColumnDef],
                                    moduleTag: String,
-                                   moduleBroadcast: Broadcast[SerializableByteBuffer]
+                                   moduleBroadcast: SerializableByteBuffer
                                   ) extends Function1[Row, Boolean] with Serializable {
     private val jit = initJIT()
 
@@ -208,7 +216,7 @@ object JoinPlan {
 
     def initJIT(): FeSQLJITWrapper = {
       // ensure worker native
-      val buffer = moduleBroadcast.value.getBuffer
+      val buffer = moduleBroadcast.getBuffer
       JITManager.initJITModule(moduleTag, buffer)
       JITManager.getJIT(moduleTag)
     }

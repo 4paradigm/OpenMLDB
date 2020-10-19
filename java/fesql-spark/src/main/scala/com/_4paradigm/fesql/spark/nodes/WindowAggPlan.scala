@@ -36,7 +36,7 @@ object WindowAggPlan {
     val resultRDD = inputDf.rdd.mapPartitions(iter => {
       // ensure worker native
       val tag = windowAggConfig.moduleTag
-      val buffer = windowAggConfig.moduleBroadcast.value.getBuffer
+      val buffer = windowAggConfig.moduleNoneBroadcast.getBuffer
       JITManager.initJITModule(tag, buffer)
       val jit = JITManager.getJIT(tag)
 
@@ -57,7 +57,7 @@ object WindowAggPlan {
     val resultRDD = inputDf.rdd.mapPartitions(iter => {
       // ensure worker native
       val tag = windowAggConfig.moduleTag
-      val buffer = windowAggConfig.moduleBroadcast.value.getBuffer
+      val buffer = windowAggConfig.moduleNoneBroadcast.getBuffer
       JITManager.initJITModule(tag, buffer)
       val jit = JITManager.getJIT(tag)
 
@@ -125,7 +125,7 @@ object WindowAggPlan {
       groupIdxs = groupIdxs.toArray,
       functionName = node.project.fn_name,
       moduleTag = ctx.getTag,
-      moduleBroadcast = ctx.getModuleBufferBroadcast,
+      moduleNoneBroadcast = ctx.getSerializableModuleBuffer,
       inputSchema = inputSchema,
       inputSchemaSlices = inputSchemaSlices,
       outputSchemaSlices = outputSchemaSlices,
@@ -233,7 +233,7 @@ object WindowAggPlan {
                              groupIdxs: Array[Int],
                              functionName: String,
                              moduleTag: String,
-                             moduleBroadcast: Broadcast[SerializableByteBuffer],
+                             moduleNoneBroadcast: SerializableByteBuffer,
                              inputSchema: StructType,
                              inputSchemaSlices: Array[StructType],
                              outputSchemaSlices: Array[StructType],
