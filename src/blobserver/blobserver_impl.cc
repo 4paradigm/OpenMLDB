@@ -439,20 +439,18 @@ void BlobServerImpl::DropTable(RpcController *controller,
 
 void BlobServerImpl::DropTableInternal(uint32_t tid, uint32_t pid) {
     {
-        std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        std::shared_ptr<ObjectStore> store = GetStoreUnLock(tid, pid);
         if (!store) {
             PDLOG(WARNING, "tid[%u] pid[%u] does not exist", tid, pid);
             return;
         }
-    }
-
-    {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         object_stores_[tid].erase(pid);
         if (object_stores_[tid].empty()) {
             object_stores_.erase(tid);
         }
     }
+
     std::vector<std::string> root_paths;
     ::rtidb::base::SplitString(FLAGS_hdd_root_path, ",", root_paths);
     for (const auto& path : root_paths) {
