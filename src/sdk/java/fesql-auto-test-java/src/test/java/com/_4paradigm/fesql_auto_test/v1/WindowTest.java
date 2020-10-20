@@ -48,19 +48,6 @@ public class WindowTest extends FesqlTest {
         return null;
     }
 
-    @DataProvider
-    public Object[] testRowDataWithSp() throws FileNotFoundException {
-        try {
-            FesqlDataProvider dp = FesqlDataProvider
-                    .dataProviderGenerator("/integration/v1/test_window_row_with_sp.yaml");
-            return dp.getCases().toArray();
-        } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail("fail to load sql cases");
-        }
-        return null;
-    }
-
     @Test(dataProvider = "testRowData")
     public void testRow(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase).run();
@@ -88,8 +75,18 @@ public class WindowTest extends FesqlTest {
         ExecutorFactory.build(executor, testCase, true).run();
     }
 
-    @Test(dataProvider = "testRowDataWithSp")
+    @Test(dataProvider = "testRowData")
     public void testRowRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase).run();
+    }
+
+    @Test(dataProvider = "testRowRangeData")
+    public void testRowRangeRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase).run();
+    }
+
+    @Test(dataProvider = "testWindowUnionData")
+    public void testWindowUnionRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase).run();
     }
 }

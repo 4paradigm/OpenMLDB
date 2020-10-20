@@ -27,8 +27,11 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
                 return null;
             }
             log.info("sql:{}", sql);
+            String spSql = FesqlUtil.getStoredProcedureSql(sql, fesqlCase.getInputs());
+            log.info("spSql:{}", spSql);
+
             sql = FesqlUtil.formatSql(sql, tableNames);
-            fesqlResult = FesqlUtil.sqlRequestModeWithSp(executor, dbName, tableNames.get(0), sql, fesqlCase.getInputs().get(0));
+            fesqlResult = FesqlUtil.sqlRequestModeWithSp(executor, dbName, tableNames.get(0), spSql, fesqlCase.getInputs().get(0));
         }
         return fesqlResult;
     }
