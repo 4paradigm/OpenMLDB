@@ -27,8 +27,7 @@ namespace storage {
 class ObjectStore {
  public:
     ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
-                std::string  db_root_path, uint32_t flush_size,
-                int32_t flush_period_, baidu::common::ThreadPool* thread_pool);
+                std::string db_root_path, uint32_t flush_size, int32_t flush_period);
 
     bool Init();
 
@@ -48,8 +47,9 @@ class ObjectStore {
 
     ::rtidb::common::StorageMode GetStorageMode() const;
 
- private:
     void DoFlash();
+
+ private:
 
     HStore* db_;
     uint32_t tid_;
@@ -59,11 +59,8 @@ class ObjectStore {
     bool is_leader_;
     ::rtidb::common::StorageMode storage_mode_;
     ::rtidb::base::IdGenerator id_generator_;
-    ::baidu::common::ThreadPool* thread_pool_;
     uint32_t flush_size_;
     int32_t flush_period_;
-    int64_t last_bg_id_;
-    std::atomic<bool> running_;
 };
 
 }  // namespace storage

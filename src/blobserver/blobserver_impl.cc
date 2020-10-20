@@ -28,6 +28,7 @@ DECLARE_int32(oss_flush_period);
 DECLARE_bool(use_name);
 DECLARE_bool(recycle_bin_enabled);
 DECLARE_int32(task_pool_size);
+DECLARE_uint32(oss_flush_delay);
 
 using ::rtidb::base::ReturnCode;
 using ::rtidb::base::BLOB_PREFIX;
@@ -215,14 +216,16 @@ int BlobServerImpl::CreateTable(const TableMeta& meta) {
         }
         paths.append(it);
     }
-    store = std::make_shared<ObjectStore>(meta, paths, FLAGS_oss_flush_size,
-                                          FLAGS_oss_flush_period, &task_pool_);
+    store = std::make_shared<ObjectStore>(meta, paths, FLAGS_oss_flush_size, FLAGS_oss_flush_period);
     if (!store->Init()) {
         PDLOG(WARNING, "init table faield. tid[%u] pid[%u]", tid, pid);
         return 4;
     }
-    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-    object_stores_[tid].insert(std::make_pair(pid, store));
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        object_stores_[tid].insert(std::make_pair(pid, store));
+    }
+    task_pool_.DelayTask(FLAGS_oss_flush_delay * 1000, [this, tid, pid]() { FlushTableInternal(tid, pid); });
     return 0;
 }
 
@@ -464,6 +467,15 @@ void BlobServerImpl::DropTableInternal(uint32_t tid, uint32_t pid) {
         }
     }
     PDLOG(INFO, "drop table tid[%u] pid[%u] success", tid, pid);
+}
+void BlobServerImpl::FlushTableInternal(uint32_t tid, uint32_t pid) {
+    std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
+    if (!store) {
+        PDLOG(WARNING, "tid[%u] pid[%u] does not exist", tid, pid);
+        return;
+    }
+    store->DoFlash();
+    task_pool_.DelayTask(FLAGS_oss_flush_delay * 1000, [this, tid, pid]() { FlushTableInternal(tid, pid); });
 }
 
 }  // namespace blobserver

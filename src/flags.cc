@@ -186,4 +186,5 @@ DEFINE_uint32(get_replica_status_interval, 10000,
 // object sotre
 DEFINE_uint32(oss_flush_size, 0, "set oss cache flush kilobyte size");
 DEFINE_int32(oss_flush_period, 0, "set oss cache flush period seconds");
+DEFINE_uint32(oss_flush_delay, 1, "set oss cache flush delay seconds");
 DEFINE_string(mime_conf, "", "set mime db conf path");
