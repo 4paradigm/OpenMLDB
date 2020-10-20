@@ -5,7 +5,6 @@
 
 #pragma once
 #include <string>
-#include <atomic>
 #ifdef __cplusplus
 extern "C" {
 #endif
