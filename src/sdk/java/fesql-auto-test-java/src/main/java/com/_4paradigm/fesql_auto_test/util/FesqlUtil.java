@@ -180,6 +180,16 @@ public class FesqlUtil {
         return fesqlResult;
     }
 
+    public static FesqlResult sqlRequestModeWithSp(SqlExecutor executor, String dbName, String spName, String sql, InputDesc rows) throws SQLException {
+        FesqlResult fesqlResult = null;
+        if (sql.toLowerCase().startsWith("create procedure")) {
+            fesqlResult = selectRequestModeWithSp(executor, dbName, spName, sql, rows);
+        } else {
+            logger.error("unsupport sql: {}", sql);
+        }
+        return fesqlResult;
+    }
+
     public static FesqlResult sql(SqlExecutor executor, String dbName, String sql) {
         FesqlResult fesqlResult = null;
         if (sql.startsWith("create")) {
@@ -372,6 +382,86 @@ public class FesqlUtil {
             }
             try {
                 rps.close();
+                resultSet.close();
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+        }
+        fesqlResult.setResult(result);
+        fesqlResult.setCount(result.size());
+        fesqlResult.setOk(true);
+
+        log.info("select result:{}", fesqlResult);
+        return fesqlResult;
+    }
+
+    private static FesqlResult selectRequestModeWithSp(SqlExecutor executor, String dbName, String spName,
+                                                                     String sql, InputDesc input) {
+        if (sql.isEmpty()) {
+            logger.error("fail to execute sql in request mode: select sql is empty");
+            return null;
+        }
+
+        List<List<Object>> rows = null == input ? null : input.getRows();
+        if (CollectionUtils.isEmpty(rows)) {
+            logger.error("fail to execute sql in request mode: request rows is null or empty");
+            return null;
+        }
+        List<String> inserts = input.getInserts();
+        if (CollectionUtils.isEmpty(inserts)) {
+            logger.error("fail to execute sql in request mode: fail to build insert sql for request rows");
+            return null;
+        }
+
+        if (rows.size() != inserts.size()) {
+            logger.error("fail to execute sql in request mode: rows size isn't match with inserts size");
+            return null;
+        }
+
+        log.info("procedure sql:{}", sql);
+        FesqlResult fesqlResult = new FesqlResult();
+        if (!executor.executeDDL(dbName, sql)) {
+            fesqlResult.setOk(false);
+            return fesqlResult;
+        }
+        List<List<Object>> result = Lists.newArrayList();
+        for (int i = 0; i < rows.size(); i++) {
+            Object[] objects = new Object[rows.get(i).size()];
+            for (int k = 0; k < objects.length; k++) {
+                objects[k] = rows.get(i).get(k);
+            }
+            java.sql.ResultSet resultSet = null;
+            try {
+                resultSet = executor.callProcedure(dbName, spName, objects);
+            } catch (SQLException throwables) {
+                fesqlResult.setOk(false);
+                return fesqlResult;
+            }
+            if (resultSet == null) {
+                fesqlResult.setOk(false);
+                log.info("select result:{}", fesqlResult);
+                return fesqlResult;
+            }
+            try {
+                result.addAll(convertRestultSetToList((SQLResultSet) resultSet));
+            } catch (SQLException throwables) {
+                fesqlResult.setOk(false);
+                return fesqlResult;
+            }
+            if (!executor.executeInsert(dbName, inserts.get(i))) {
+                log.error("fail to execute sql in request mode: fail to insert request row after query");
+                fesqlResult.setOk(false);
+                return fesqlResult;
+            }
+            if (i == 0) {
+                try {
+                    fesqlResult.setMetaData(resultSet.getMetaData());
+                } catch (SQLException throwables) {
+                    fesqlResult.setOk(false);
+                    return fesqlResult;
+                }
+            }
+            try {
                 resultSet.close();
             } catch (SQLException throwables) {
                 throwables.printStackTrace();

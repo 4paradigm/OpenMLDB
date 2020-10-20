@@ -30,16 +30,6 @@ public class StorageProcedureExample extends BaseExample {
             "                   c8 date,\n" +
             "                   index(key=c1, ts=c7));";
     String sql = "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-//String sql = "      select\n" +
-//        "          c1,\n" +
-//        "          min(c1) over table_1_s2_t1 as table_1_c1_9,\n" +
-//        "          min(c2) over table_1_s2_t1 as table_1_c2_10,\n" +
-//        "          identity(case when at(d1, 1) != null then distinct_count(d1) else null end) over table_1_s2_t1 as table_1_d1_11,\n" +
-//        "          identity(case when at(d2, 1) != null then distinct_count(d2) else null end) over table_1_s2_t1 as table_1_d2_12,\n" +
-//        "          identity(case when at(s1, 1) != null then distinct_count(s1) else null end) over table_1_s2_t1 as table_1_s1_13\n" +
-//        "      from\n" +
-//        "          main\n" +
-//        "          window table_1_s2_t1 as (partition by s2 order by t1 rows_range between 1d preceding and 0s preceding);";
     private SqlExecutor sqlExecutor = null;
     private String db = "test_db2";
 //    private String spName = "sp" + Math.abs(new Random().nextInt());
@@ -84,8 +74,6 @@ public class StorageProcedureExample extends BaseExample {
     public void createProcedure() throws Exception {
         String spSql = "create procedure " + spName + "(" + "const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
                 " begin " + sql + " end;";
-//        String spSql = "create procedure " + spName + "(" + "label int, s1 string, s2 string, t1 timestamp, t2 date, d1 string, d2 string, c1 int, c2 bigint, ai string, kn string, ks string" + ")" +
-//                " begin " + sql + " end;";
         boolean ok = sqlExecutor.executeDDL(db, spSql);
         Assert.assertTrue(ok);
     }

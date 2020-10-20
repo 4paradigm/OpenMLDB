@@ -222,32 +222,45 @@ public class SqlClusterExecutor implements SqlExecutor {
             Column column = inputSchema.getColumnList().get(i);
             if (requestRow[i] == null) {
                 ok = sqlRequestRow.AppendNULL();
+                if (!ok) {
+                    throw new SQLException("apend data failed, idx is " + i);
+                }
+                continue;
             }
             switch (column.getSqlType()) {
                 case Types.BOOLEAN:
-                    ok = sqlRequestRow.AppendBool((Boolean)requestRow[i]);
+                    ok = sqlRequestRow.AppendBool(Boolean.parseBoolean(requestRow[i].toString()));
                     break;
                 case Types.SMALLINT:
-                    ok = sqlRequestRow.AppendInt16((Short)requestRow[i]);
+                    ok = sqlRequestRow.AppendInt16(Short.parseShort(requestRow[i].toString()));
                     break;
                 case Types.INTEGER:
-                    ok = sqlRequestRow.AppendInt32((Integer) requestRow[i]);
+                    ok = sqlRequestRow.AppendInt32(Integer.parseInt(requestRow[i].toString()));
                     break;
                 case Types.BIGINT:
-                    ok = sqlRequestRow.AppendInt64((Long) requestRow[i]);
+                    ok = sqlRequestRow.AppendInt64(Long.parseLong(requestRow[i].toString()));
                     break;
                 case Types.FLOAT:
-                    ok = sqlRequestRow.AppendFloat((Float) requestRow[i]);
+                    ok = sqlRequestRow.AppendFloat(Float.parseFloat(requestRow[i].toString()));
                     break;
                 case Types.DOUBLE:
-                    ok = sqlRequestRow.AppendDouble((Double) requestRow[i]);
+                    ok = sqlRequestRow.AppendDouble(Double.parseDouble(requestRow[i].toString()));
                     break;
                 case Types.DATE:
-                    java.sql.Date date = (java.sql.Date)requestRow[i];
+                    java.sql.Date date;
+                    if (requestRow[i] instanceof java.sql.Date) {
+                        date = (java.sql.Date) requestRow[i];
+                    } else {
+                        date = java.sql.Date.valueOf(requestRow[i].toString());
+                    }
                     ok = sqlRequestRow.AppendDate(date.getYear() + 1900, date.getMonth() + 1, date.getDate());
                     break;
                 case Types.TIMESTAMP:
-                    ok = sqlRequestRow.AppendTimestamp(((Timestamp)requestRow[i]).getTime());
+                    if (requestRow[i] instanceof Timestamp) {
+                        ok = sqlRequestRow.AppendTimestamp(((Timestamp) requestRow[i]).getTime());
+                    } else {
+                        ok = sqlRequestRow.AppendTimestamp(Long.parseLong(requestRow[i].toString()));
+                    }
                     break;
                 case Types.VARCHAR:
                     ok = sqlRequestRow.AppendString((String)requestRow[i]);
@@ -259,7 +272,9 @@ public class SqlClusterExecutor implements SqlExecutor {
                 throw new SQLException("apend data failed, idx is " + i);
             }
         }
-        sqlRequestRow.Build();
+        if (!sqlRequestRow.Build()) {
+            throw new SQLException("build request row failed");
+        }
         ResultSet resultSet = sqlRouter.CallProcedure(dbName, proName, sqlRequestRow, status);
         if (resultSet == null || status.getCode() != 0) {
             throw new SQLException("call procedure fail");
