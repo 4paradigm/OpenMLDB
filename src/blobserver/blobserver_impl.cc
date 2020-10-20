@@ -448,6 +448,7 @@ void BlobServerImpl::DropTableInternal(uint32_t tid, uint32_t pid) {
             object_stores_.erase(tid);
         }
     }
+    delete store;
     std::vector<std::string> root_paths;
     ::rtidb::base::SplitString(FLAGS_hdd_root_path, ",", root_paths);
     for (const auto& path : root_paths) {

@@ -38,16 +38,15 @@ bool ObjectStore::Init() {
     time_t before_time = 0;
     db_ = hs_open(path, 1, before_time, 1);
     if (db_ != nullptr && thread_pool_ != nullptr) {
+        running_ = true;
         last_bg_id_ = thread_pool_->DelayTask(1000, [this] { DoFlash(); });
-        running_.store(true, std::memory_order_release);
         return true;
     }
     return false;
 }
 
 ObjectStore::~ObjectStore() {
-    if (running_.load(std::memory_order_acquire)) {
-        running_.store(false, std::memory_order_release);
+    if (running_.exchange(false, std::memory_order_consume)) {
         thread_pool_->CancelTask(last_bg_id_, false, nullptr);
     }
     DoFlash();
