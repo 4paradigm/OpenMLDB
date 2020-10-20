@@ -22,11 +22,14 @@
 #include <memory>
 #include <string>
 #include <utility>
-
+#include <vector>
 #include "base/spinlock.h"
+#include "catalog/client_manager.h"
 #include "catalog/distribute_iterator.h"
+#include "client/tablet_client.h"
 #include "codec/row.h"
 #include "storage/table.h"
+#include "storage/schema.h"
 #include "vm/catalog.h"
 
 namespace rtidb {
@@ -165,13 +168,15 @@ class TabletTableHandler : public ::fesql::vm::TableHandler,
  public:
     explicit TabletTableHandler(const ::rtidb::api::TableMeta &meta);
 
-    bool Init();
+    explicit TabletTableHandler(const ::rtidb::nameserver::TableInfo &meta);
+
+    bool Init(const ClientManager& client_manager);
 
     const ::fesql::vm::Schema *GetSchema() override { return &schema_; }
 
-    const std::string &GetName() override { return name_; }
+    const std::string &GetName() override { return table_st_.GetName(); }
 
-    const std::string &GetDatabase() override { return db_; }
+    const std::string &GetDatabase() override { return table_st_.GetDB(); }
 
     const ::fesql::vm::Types &GetTypes() override { return types_; }
 
@@ -190,14 +195,18 @@ class TabletTableHandler : public ::fesql::vm::TableHandler,
     ::fesql::codec::Row At(uint64_t pos) override;
 
     std::shared_ptr<::fesql::vm::PartitionHandler> GetPartition(const std::string &index_name) override;
-
     const std::string GetHandlerTypeName() override { return "TabletTableHandler"; }
 
-    inline int32_t GetTid() { return meta_.tid(); }
+    inline int32_t GetTid() { return table_st_.GetTid(); }
 
     void AddTable(std::shared_ptr<::rtidb::storage::Table> table);
 
     int DeleteTable(uint32_t pid);
+
+    void Update(const ::rtidb::nameserver::TableInfo &meta, const ClientManager &client_manager);
+
+    bool GetTablets(const std::string &index_name, const std::string &pk,
+                    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> *clients);
 
  private:
     inline int32_t GetColumnIndex(const std::string &column) {
@@ -209,14 +218,13 @@ class TabletTableHandler : public ::fesql::vm::TableHandler,
     }
 
  private:
-    ::rtidb::api::TableMeta meta_;
     ::fesql::vm::Schema schema_;
-    std::string name_;
-    std::string db_;
+    ::rtidb::storage::TableSt table_st_;
     std::shared_ptr<Tables> tables_;
     ::fesql::vm::Types types_;
     ::fesql::vm::IndexList index_list_;
     ::fesql::vm::IndexHint index_hint_;
+    std::shared_ptr<TableClientManager> table_client_manager_;
 };
 
 typedef std::map<std::string, std::map<std::string, std::shared_ptr<TabletTableHandler>>> TabletTables;
@@ -244,10 +252,15 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     bool DeleteDB(const std::string &db);
 
+    void RefreshTable(const std::vector<::rtidb::nameserver::TableInfo> &table_info_vec);
+
+    bool UpdateClient(const std::map<std::string, std::string> &real_ep_map);
+
  private:
     ::rtidb::base::SpinMutex mu_;
     TabletTables tables_;
     TabletDB db_;
+    ClientManager client_manager_;
 };
 
 }  // namespace catalog

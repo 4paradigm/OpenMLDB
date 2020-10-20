@@ -549,7 +549,7 @@ TEST_F(NameServerImplTest, Offline) {
         FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
-
+    sleep(2);
     {
         ::rtidb::api::ConnectZKRequest request;
         ::rtidb::api::GeneralResponse response;

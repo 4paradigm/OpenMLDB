@@ -19,6 +19,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -31,23 +32,31 @@ namespace rtidb {
 namespace catalog {
 
 TabletTableHandler::TabletTableHandler(const ::rtidb::api::TableMeta& meta)
-    : meta_(meta),
-      schema_(),
-      name_(meta.name()),
-      db_(meta.db()),
+    : schema_(),
+      table_st_(meta),
       tables_(std::make_shared<Tables>()),
       types_(),
       index_list_(),
-      index_hint_() {}
+      index_hint_(),
+      table_client_manager_() {}
 
-bool TabletTableHandler::Init() {
-    bool ok = SchemaAdapter::ConvertSchema(meta_.column_desc(), &schema_);
+TabletTableHandler::TabletTableHandler(const ::rtidb::nameserver::TableInfo& meta)
+    : schema_(),
+      table_st_(meta),
+      tables_(std::make_shared<Tables>()),
+      types_(),
+      index_list_(),
+      index_hint_(),
+      table_client_manager_() {}
+
+bool TabletTableHandler::Init(const ClientManager& client_manager) {
+    bool ok = SchemaAdapter::ConvertSchema(table_st_.GetColumns(), &schema_);
     if (!ok) {
         LOG(WARNING) << "fail to covert schema to sql schema";
         return false;
     }
 
-    ok = SchemaAdapter::ConvertIndex(meta_.column_key(), &index_list_);
+    ok = SchemaAdapter::ConvertIndex(table_st_.GetColumnKey(), &index_list_);
     if (!ok) {
         LOG(WARNING) << "fail to conver index to sql index";
         return false;
@@ -79,14 +88,15 @@ bool TabletTableHandler::Init() {
             const std::string& key = index_def.first_keys(j);
             auto it = types_.find(key);
             if (it == types_.end()) {
-                LOG(WARNING) << "column " << key << " does not exist in table " << name_;
+                LOG(WARNING) << "column " << key << " does not exist in table " << GetName();
                 return false;
             }
             index_st.keys.push_back(it->second);
         }
         index_hint_.insert(std::make_pair(index_st.name, index_st));
     }
-    DLOG(INFO) << "init table handler for table " << name_ << " in db " << db_ << " done";
+    table_client_manager_ = std::make_shared<TableClientManager>(table_st_, client_manager);
+    DLOG(INFO) << "init table handler for table " << GetName() << " in db " << GetDatabase() << " done";
     return true;
 }
 
@@ -171,7 +181,38 @@ int TabletTableHandler::DeleteTable(uint32_t pid) {
     return new_tables->size();
 }
 
-TabletCatalog::TabletCatalog() : mu_(), tables_(), db_() {}
+void TabletTableHandler::Update(const ::rtidb::nameserver::TableInfo& meta, const ClientManager& client_manager) {
+    ::rtidb::storage::TableSt new_table_st(meta);
+    for (const auto& partition_st : *(new_table_st.GetPartitions())) {
+        uint32_t pid = partition_st.GetPid();
+        if (partition_st == table_st_.GetPartition(pid)) {
+            continue;
+        }
+        table_st_.SetPartition(partition_st);
+        table_client_manager_->UpdatePartitionClientManager(partition_st, client_manager);
+    }
+}
+
+bool TabletTableHandler::GetTablets(const std::string& index_name, const std::string& pk,
+                                    std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* clients) {
+    if (clients == nullptr) {
+        return false;
+    }
+    clients->clear();
+    uint32_t pid_num = table_st_.GetPartitionNum();
+    uint32_t pid = 0;
+    if (pid_num > 0) {
+        pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
+    }
+    auto client = table_client_manager_->GetTablets(pid);
+    if (!client) {
+        return false;
+    }
+    clients->push_back(client);
+    return true;
+}
+
+TabletCatalog::TabletCatalog() : mu_(), tables_(), db_(), client_manager_() {}
 
 TabletCatalog::~TabletCatalog() {}
 
@@ -217,7 +258,7 @@ bool TabletCatalog::AddTable(const ::rtidb::api::TableMeta& meta, std::shared_pt
     auto it = db_it->second.find(table_name);
     if (it == db_it->second.end()) {
         handler = std::make_shared<TabletTableHandler>(meta);
-        if (!handler->Init()) {
+        if (!handler->Init(client_manager_)) {
             LOG(WARNING) << "tablet handler init failed";
             return false;
         }
@@ -261,6 +302,68 @@ bool TabletCatalog::DeleteDB(const std::string& db) {
 }
 
 bool TabletCatalog::IndexSupport() { return true; }
+
+void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInfo>& table_info_vec) {
+    std::map<std::string, std::set<std::string>> table_map;
+    for (const auto& table_info : table_info_vec) {
+        const std::string& db_name = table_info.db();
+        const std::string& table_name = table_info.name();
+        if (db_name.empty()) {
+            continue;
+        }
+        std::shared_ptr<TabletTableHandler> handler;
+        {
+            std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+            auto db_it = tables_.find(db_name);
+            if (db_it == tables_.end()) {
+                auto result = tables_.emplace(db_name, std::map<std::string, std::shared_ptr<TabletTableHandler>>());
+                db_it = result.first;
+            }
+            auto it = db_it->second.find(table_name);
+            if (it == db_it->second.end()) {
+                handler = std::make_shared<TabletTableHandler>(table_info);
+                if (!handler->Init(client_manager_)) {
+                    LOG(WARNING) << "tablet handler init failed";
+                    return;
+                }
+                db_it->second.emplace(table_name, handler);
+            } else {
+                handler = it->second;
+            }
+        }
+        handler->Update(table_info, client_manager_);
+        auto cur_db_it = table_map.find(db_name);
+        if (cur_db_it == table_map.end()) {
+            auto result = table_map.emplace(db_name, std::set<std::string>());
+            cur_db_it = result.first;
+        }
+        cur_db_it->second.insert(table_name);
+    }
+
+    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    for (auto db_it = tables_.begin(); db_it != tables_.end();) {
+        auto cur_db_it = table_map.find(db_it->first);
+        if (cur_db_it == table_map.end()) {
+            LOG(WARNING) << "delete db from catalog. db: " << db_it->first;
+            db_it = tables_.erase(db_it);
+            continue;
+        }
+        for (auto table_it = db_it->second.begin(); table_it != db_it->second.end();) {
+            if (cur_db_it->second.find(table_it->first) == cur_db_it->second.end()) {
+                LOG(WARNING) << "delete table from catalog. db: " << db_it->first << ", table: " << table_it->first;
+                table_it = db_it->second.erase(table_it);
+                continue;
+            }
+            ++table_it;
+        }
+        ++db_it;
+    }
+}
+
+bool TabletCatalog::UpdateClient(const std::map<std::string, std::string>& real_ep_map) {
+    DLOG(INFO) << "update client";
+    return client_manager_.UpdateClient(real_ep_map);
+}
 
 }  // namespace catalog
 }  // namespace rtidb
