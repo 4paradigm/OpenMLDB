@@ -857,7 +857,7 @@ cases:
         - [2, true, true, true, true, true, true, true, false, true]
   - id: 21-1
     desc: column name prefix with _
-    mode: offline-support
+    mode: offline-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["_c1 int", "_c2 string", "_c5 bigint"]
