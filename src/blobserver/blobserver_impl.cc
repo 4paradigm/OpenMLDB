@@ -435,10 +435,12 @@ void BlobServerImpl::DropTable(RpcController *controller,
 }
 
 void BlobServerImpl::DropTableInternal(uint32_t tid, uint32_t pid) {
-    std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
-    if (!store) {
-        PDLOG(WARNING, "tid[%u] pid[%u] does not exist", tid, pid);
-        return;
+    {
+        std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
+        if (!store) {
+            PDLOG(WARNING, "tid[%u] pid[%u] does not exist", tid, pid);
+            return;
+        }
     }
 
     {
@@ -448,7 +450,6 @@ void BlobServerImpl::DropTableInternal(uint32_t tid, uint32_t pid) {
             object_stores_.erase(tid);
         }
     }
-    delete store;
     std::vector<std::string> root_paths;
     ::rtidb::base::SplitString(FLAGS_hdd_root_path, ",", root_paths);
     for (const auto& path : root_paths) {
