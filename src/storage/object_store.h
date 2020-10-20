@@ -50,7 +50,6 @@ class ObjectStore {
     void DoFlash();
 
  private:
-
     HStore* db_;
     uint32_t tid_;
     uint32_t pid_;
