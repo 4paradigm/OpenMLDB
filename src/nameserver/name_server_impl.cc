@@ -2761,6 +2761,16 @@ int NameServerImpl::CreateTableOnTablet(std::shared_ptr<::rtidb::nameserver::Tab
         ::rtidb::common::ColumnKey* column_key = table_meta.add_column_key();
         column_key->CopyFrom(table_info->column_key(idx));
     }
+    for (const auto& table_partition : table_info->table_partition()) {
+        ::rtidb::common::TablePartition* partition = table_meta.add_table_partition();
+        partition->set_pid(table_partition.pid());
+        for (const auto& partition_meta : table_partition.partition_meta()) {
+            ::rtidb::common::PartitionMeta* meta = partition->add_partition_meta();
+            meta->set_endpoint(partition_meta.endpoint());
+            meta->set_is_leader(partition_meta.is_leader());
+            meta->set_is_alive(true);
+        }
+    }
     for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
         uint32_t pid = table_info->table_partition(idx).pid();
         table_meta.set_pid(pid);

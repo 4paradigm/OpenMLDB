@@ -45,6 +45,8 @@ class TabletClient {
 
     std::string GetEndpoint();
 
+    const std::string& GetRealEndpoint() const;
+
     bool CreateTable(const std::string& name, uint32_t tid, uint32_t pid,
                      uint64_t abs_ttl, uint64_t lat_ttl, bool leader,
                      const std::vector<std::string>& endpoints,
@@ -335,6 +337,7 @@ class TabletClient {
 
  private:
     std::string endpoint_;
+    std::string real_endpoint_;
     ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub> client_;
     std::vector<uint64_t> percentile_;
 };

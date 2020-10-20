@@ -395,6 +395,8 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     void CheckZkClient();
 
+    void RefreshTableInfo();
+
     int32_t DeleteTableInternal(
         uint32_t tid, uint32_t pid,
         std::shared_ptr<::rtidb::api::TaskInfo> task_ptr);
@@ -522,6 +524,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::string zk_path_;
     std::string endpoint_;
     std::map<std::string, std::map<std::string, std::string>> sp_map_;
+    std::string notify_path_;
 };
 
 }  // namespace tablet

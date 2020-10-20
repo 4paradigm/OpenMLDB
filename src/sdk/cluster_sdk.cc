@@ -23,6 +23,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <algorithm>
 
 #include "base/strings.h"
 #include "boost/algorithm/string.hpp"
@@ -107,6 +108,7 @@ bool ClusterSDK::CreateNsClient() {
         LOG(WARNING) << "no nameserver exists";
         return false;
     }
+    std::sort(children.begin(), children.end());
     std::string real_path = ns_node + "/" + children[0];
     std::string endpoint;
     if (!zk_client_->GetNodeValue(real_path, endpoint)) {
