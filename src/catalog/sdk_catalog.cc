@@ -25,9 +25,10 @@ namespace rtidb {
 namespace catalog {
 
 SDKTableHandler::SDKTableHandler(const ::rtidb::nameserver::TableInfo& meta,
-        const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients)
+        const ClientManager& client_manager)
     : meta_(meta), schema_(), name_(meta.name()), db_(meta.db()),
-    table_client_manager_(meta.table_partition(), tablet_clients), partition_key_() {}
+    table_client_manager_(std::make_shared<TableClientManager>(meta.table_partition(), client_manager)),
+    partition_key_() {}
 
 bool SDKTableHandler::Init() {
     if (meta_.format_version() != 1) {
@@ -112,7 +113,7 @@ bool SDKTableHandler::GetTablets(const std::string& index_name, const std::strin
         }
         if (!match_partition_key) {
             for (uint32_t pid = 0; pid < pid_num; pid++) {
-                tablets->push_back(table_client_manager_.GetTablets(pid));
+                tablets->push_back(table_client_manager_->GetTablets(pid));
             }
             return true;
         }
@@ -121,7 +122,7 @@ bool SDKTableHandler::GetTablets(const std::string& index_name, const std::strin
     if (pid_num > 0) {
         pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
     }
-    tablets->push_back(table_client_manager_.GetTablets(pid));
+    tablets->push_back(table_client_manager_->GetTablets(pid));
     return true;
 }
 
@@ -129,9 +130,10 @@ bool SDKCatalog::Init(
     const std::vector<::rtidb::nameserver::TableInfo>& tables,
     const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients) {
     table_metas_ = tables;
+    client_manager_.UpdateClient(tablet_clients);
     for (size_t i = 0; i < tables.size(); i++) {
         const ::rtidb::nameserver::TableInfo& table_meta = tables[i];
-        std::shared_ptr<SDKTableHandler> table = std::make_shared<SDKTableHandler>(table_meta, tablet_clients);
+        std::shared_ptr<SDKTableHandler> table = std::make_shared<SDKTableHandler>(table_meta, client_manager_);
         if (!table->Init()) {
             LOG(WARNING) << "fail to init table " << table_meta.name();
             return false;

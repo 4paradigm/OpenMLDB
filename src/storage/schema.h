@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
 
@@ -49,11 +50,9 @@ struct TTLDesc {
             case ::rtidb::api::TTLType::kLatestTime:
                 return std::to_string(lat_ttl);
             case ::rtidb::api::TTLType::kAbsAndLat:
-                return std::to_string(abs_ttl) + "min&&" +
-                       std::to_string(lat_ttl);
+                return std::to_string(abs_ttl) + "min&&" + std::to_string(lat_ttl);
             case ::rtidb::api::TTLType::kAbsOrLat:
-                return std::to_string(abs_ttl) + "min||" +
-                       std::to_string(lat_ttl);
+                return std::to_string(abs_ttl) + "min||" + std::to_string(lat_ttl);
             default:
                 return "";
         }
@@ -67,8 +66,7 @@ enum class IndexStatus { kReady = 0, kWaiting, kDeleting, kDeleted };
 
 class ColumnDef {
  public:
-     ColumnDef(const std::string& name, uint32_t id,
-             ::rtidb::type::DataType type, bool not_null);
+    ColumnDef(const std::string& name, uint32_t id, ::rtidb::type::DataType type, bool not_null);
     inline uint32_t GetId() const { return id_; }
     const std::string& GetName() const { return name_; }
     inline ::rtidb::type::DataType GetType() const { return type_; }
@@ -101,21 +99,14 @@ class IndexDef {
  public:
     IndexDef(const std::string& name, uint32_t id);
     IndexDef(const std::string& name, uint32_t id, IndexStatus stauts);
-    IndexDef(const std::string& name, uint32_t id, const IndexStatus& stauts,
-             ::rtidb::type::IndexType type,
+    IndexDef(const std::string& name, uint32_t id, const IndexStatus& stauts, ::rtidb::type::IndexType type,
              const std::vector<ColumnDef>& column_idx_map);
     const std::string& GetName() { return name_; }
     const std::vector<uint32_t>& GetTsColumn() { return ts_column_; }
-    void SetTsColumn(const std::vector<uint32_t>& ts_vec) {
-        ts_column_ = ts_vec;
-    }
-    inline bool IsReady() {
-        return status_.load(std::memory_order_acquire) == IndexStatus::kReady;
-    }
+    void SetTsColumn(const std::vector<uint32_t>& ts_vec) { ts_column_ = ts_vec; }
+    inline bool IsReady() { return status_.load(std::memory_order_acquire) == IndexStatus::kReady; }
     inline uint32_t GetId() { return index_id_; }
-    void SetStatus(IndexStatus status) {
-        status_.store(status, std::memory_order_release);
-    }
+    void SetStatus(IndexStatus status) { status_.store(status, std::memory_order_release); }
     IndexStatus GetStatus() { return status_.load(std::memory_order_acquire); }
     inline ::rtidb::type::IndexType GetType() { return type_; }
     inline const std::vector<ColumnDef>& GetColumns() { return columns_; }
@@ -139,24 +130,85 @@ class TableIndex {
     std::shared_ptr<IndexDef> GetIndex(const std::string& name);
     int AddIndex(std::shared_ptr<IndexDef> index_def);
     std::vector<std::shared_ptr<IndexDef>> GetAllIndex();
-    inline uint32_t Size() const {
-        return std::atomic_load_explicit(&indexs_, std::memory_order_relaxed)
-            ->size();
-    }
+    inline uint32_t Size() const { return std::atomic_load_explicit(&indexs_, std::memory_order_relaxed)->size(); }
     bool HasAutoGen();
     std::shared_ptr<IndexDef> GetPkIndex();
-    const std::shared_ptr<IndexDef> GetIndexByCombineStr(
-        const std::string& combine_str);
+    const std::shared_ptr<IndexDef> GetIndexByCombineStr(const std::string& combine_str);
     bool IsColName(const std::string& name);
     bool IsUniqueColName(const std::string& name);
 
  private:
     std::shared_ptr<std::vector<std::shared_ptr<IndexDef>>> indexs_;
     std::shared_ptr<IndexDef> pk_index_;
-    std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<IndexDef>>>
-        combine_col_name_map_;
+    std::shared_ptr<std::unordered_map<std::string, std::shared_ptr<IndexDef>>> combine_col_name_map_;
     std::shared_ptr<std::vector<std::string>> col_name_vec_;
     std::shared_ptr<std::vector<std::string>> unique_col_name_vec_;
+};
+
+class PartitionSt {
+ public:
+    PartitionSt() = default;
+    explicit PartitionSt(const ::rtidb::nameserver::TablePartition& partitions);
+    explicit PartitionSt(const ::rtidb::common::TablePartition& partitions);
+
+    inline const std::string& GetLeader() const { return leader_; }
+    inline const std::vector<std::string>& GetFollower() const { return follower_; }
+    inline uint32_t GetPid() const { return pid_; }
+
+    bool operator==(const PartitionSt& partition_st) const;
+
+ private:
+    uint32_t pid_;
+    std::string leader_;
+    std::vector<std::string> follower_;
+};
+
+class TableSt {
+ public:
+    TableSt() : name_(), db_(), tid_(0), pid_num_(0), partitions_() {}
+
+    explicit TableSt(const ::rtidb::nameserver::TableInfo& table_info);
+
+    explicit TableSt(const ::rtidb::api::TableMeta& meta);
+
+    inline const std::string& GetName() const { return name_; }
+
+    inline const std::string& GetDB() const { return db_; }
+
+    inline uint32_t GetTid() const { return tid_; }
+
+    std::shared_ptr<std::vector<PartitionSt>> GetPartitions() const {
+        return std::atomic_load_explicit(&partitions_, std::memory_order_relaxed);
+    }
+
+    PartitionSt GetPartition(uint32_t pid) const {
+        auto partitions = std::atomic_load_explicit(&partitions_, std::memory_order_relaxed);
+        if (pid < partitions->size()) {
+            return partitions->at(pid);
+        }
+        return PartitionSt();
+    }
+
+    bool SetPartition(const PartitionSt& partition_st);
+
+    inline uint32_t GetPartitionNum() const { return pid_num_; }
+
+    inline const ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>& GetColumns() const {
+        return column_desc_;
+    }
+
+    inline const ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>& GetColumnKey() const {
+        return column_key_;
+    }
+
+ private:
+    std::string name_;
+    std::string db_;
+    uint32_t tid_;
+    uint32_t pid_num_;
+    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> column_desc_;
+    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> column_key_;
+    std::shared_ptr<std::vector<PartitionSt>> partitions_;
 };
 
 }  // namespace storage
