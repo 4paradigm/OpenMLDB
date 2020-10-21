@@ -6,7 +6,9 @@ import com._4paradigm.fesql.spark.utils.SparkColumnUtil
 import com._4paradigm.fesql.vm.{PhysicalSimpleProjectNode, SourceType}
 import org.slf4j.LoggerFactory
 import org.apache.spark.sql.functions.lit
-import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, TimestampType}
+import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, TimestampType}
+import com._4paradigm.fesql.node.{DataType => FesqlDataType}
+import org.apache.spark.sql.functions.to_date
 
 import scala.collection.JavaConverters._
 
@@ -52,16 +54,41 @@ object SimpleProjectPlan {
 
           // Get constant value and case type and rename
           outputColTypeList(i) match {
+            // TODO: Support cast other type to bool
             case Type.kInt16 => lit(const_value.GetSmallInt()).cast(ShortType).alias(outputColName)
             case Type.kInt32 => lit(const_value.GetInt()).cast(IntegerType).alias(outputColName)
             case Type.kInt64 => lit(const_value.GetLong()).cast(LongType).alias(outputColName)
             case Type.kFloat => lit(const_value.GetFloat()).cast(FloatType).alias(outputColName)
             case Type.kDouble => lit(const_value.GetDouble()).cast(DoubleType).alias(outputColName)
-            // case Type.kBool => lit(const_value.GetInt()).cast(BooleanType).alias(outputColName)
-            case Type.kVarchar => lit(const_value.GetStr()).cast(StringType).alias(outputColName)
-            //case Type.kDate => lit(const_value.GetSmallInt()).cast(DateType).alias(outputColName)
-            //case Type.kTimestamp => lit(const_value.GetSmallInt()).cast(TimestampType).alias(outputColName)
-            case _ => throw new IllegalArgumentException(s"FeSQL type ${outputColTypeList(i)} not supported")
+            case Type.kBool => {
+              const_value.GetDataType() match {
+                case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 => lit(const_value.GetInt()).cast(BooleanType).alias(outputColName)
+                case FesqlDataType.kFloat | FesqlDataType.kDouble => null
+                case FesqlDataType.kVarchar => null
+              }
+            }
+            case Type.kDate => {
+              const_value.GetDataType() match {
+                case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 => lit(const_value.GetSmallInt()).cast(DateType).alias(outputColName)
+                case FesqlDataType.kFloat | FesqlDataType.kDouble => null
+                case FesqlDataType.kVarchar => to_date(lit(const_value.GetAsString()), "yyyy-MM-dd").alias(outputColName)
+              }
+            }
+            case Type.kTimestamp => {
+              const_value.GetDataType() match {
+                case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 => lit(const_value.GetAsInt64()).divide(1000).cast(TimestampType).alias(outputColName)
+                case FesqlDataType.kFloat | FesqlDataType.kDouble => null
+                case FesqlDataType.kVarchar => null
+                case _ => throw new IllegalArgumentException(s"FESQL type from ${const_value.GetDataType()} to ${outputColTypeList(i)} is not supported")
+              }
+            }
+            case Type.kVarchar => {
+              const_value.GetDataType() match {
+                case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 | FesqlDataType.kFloat | FesqlDataType.kDouble | FesqlDataType.kVarchar => lit(const_value.GetAsString()).cast(StringType).alias(outputColName)
+                case _ => throw new IllegalArgumentException(s"FESQL type from ${const_value.GetDataType()} to ${outputColTypeList(i)} is not supported")
+              }
+            }
+            case _ => throw new IllegalArgumentException(s"FESQL type ${outputColTypeList(i)} not supported")
           }
 
         }
