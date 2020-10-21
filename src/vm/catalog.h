@@ -230,8 +230,7 @@ class TableHandler : public DataHandler {
         const std::string& idx_name) = 0;
     const HandlerType GetHanlderType() override { return kTableHandler; }
     virtual std::shared_ptr<PartitionHandler> GetPartition(
-        std::shared_ptr<TableHandler> table_hander,
-        const std::string& index_name) const {
+        const std::string& index_name) {
         return std::shared_ptr<PartitionHandler>();
     }
     const std::string GetHandlerTypeName() override { return "TableHandler"; }
@@ -253,10 +252,19 @@ class PartitionHandler : public TableHandler {
     virtual std::unique_ptr<WindowIterator> GetWindowIterator() = 0;
     const HandlerType GetHanlderType() override { return kPartitionHandler; }
     virtual Row At(uint64_t pos) { return Row(); }
-    virtual std::shared_ptr<TableHandler> GetSegment(
-        std::shared_ptr<PartitionHandler> partition_hander,
-        const std::string& key) {
+    virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key) {
         return std::shared_ptr<TableHandler>();
+    }
+
+    // Return batch segments with given keys vector
+    // this is default implementation of GetSegments
+    virtual std::vector<std::shared_ptr<TableHandler>> GetSegments(
+        const std::vector<std::string>& keys) {
+        std::vector<std::shared_ptr<TableHandler>> segments;
+        for (auto key : keys) {
+            segments.push_back(GetSegment(key));
+        }
+        return segments;
     }
     const std::string GetHandlerTypeName() override {
         return "PartitionHandler";
