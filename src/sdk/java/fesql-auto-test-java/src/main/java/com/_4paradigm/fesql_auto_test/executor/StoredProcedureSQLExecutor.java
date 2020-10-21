@@ -1,5 +1,6 @@
 package com._4paradigm.fesql_auto_test.executor;
 
+import com._4paradigm.fesql.sqlcase.model.InputDesc;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
@@ -15,6 +16,19 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
 
     public StoredProcedureSQLExecutor(SqlExecutor executor, SQLCase fesqlCase) {
         super(executor, fesqlCase);
+    }
+
+    @Override
+    protected void prepare() throws Exception {
+        boolean dbOk = executor.createDB(dbName);
+        log.info("create db:{},{}", dbName, dbOk);
+        FesqlResult res = FesqlUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), true, 3);
+        if (!res.isOk()) {
+            throw new RuntimeException("fail to run SQLExecutor: prepare fail");
+        }
+        for (InputDesc inputDesc : fesqlCase.getInputs()) {
+            tableNames.add(inputDesc.getName());
+        }
     }
 
     @Override

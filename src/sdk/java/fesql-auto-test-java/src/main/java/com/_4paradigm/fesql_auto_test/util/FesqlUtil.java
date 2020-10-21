@@ -760,14 +760,18 @@ public class FesqlUtil {
     }
 
     public static FesqlResult createAndInsert(SqlExecutor executor, String
-            dbName, List<InputDesc> inputs,
-                                              boolean requestMode) {
+            dbName, List<InputDesc> inputs, boolean requestMode) {
+        return createAndInsert(executor, dbName, inputs, requestMode, 1);
+    }
+
+    public static FesqlResult createAndInsert(SqlExecutor executor, String
+            dbName, List<InputDesc> inputs, boolean requestMode, int replicaNum) {
         FesqlResult fesqlResult = new FesqlResult();
         if (inputs != null && inputs.size() > 0) {
             for (int i = 0; i < inputs.size(); i++) {
                 String tableName = inputs.get(i).getName();
                 //create table
-                String createSql = inputs.get(i).getCreate();
+                String createSql = inputs.get(i).getCreate(replicaNum);
                 createSql = SQLCase.formatSql(createSql, i, inputs.get(i).getName());
                 if (!createSql.isEmpty()) {
                     FesqlResult res = FesqlUtil.ddl(executor, dbName, createSql);
