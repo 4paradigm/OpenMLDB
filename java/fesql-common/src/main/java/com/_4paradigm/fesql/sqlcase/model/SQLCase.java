@@ -20,6 +20,7 @@ public class SQLCase {
     String batch_plan;
     String request_plan;
     List<InputDesc> inputs;
+    InputDesc batch_request;
     ExpectDesc expect;
 
     public static String formatSql(String sql, int idx, String name) {
