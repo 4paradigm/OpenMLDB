@@ -37,11 +37,15 @@ public class Table {
      *
      * @return
      */
-    public String getCreate() {
+    public String getCreate(int replicaNum) {
         if (!StringUtils.isEmpty(create)) {
             return create;
         }
-        return buildCreateSQLFromColumnsIndexs(name, getColumns(), getIndexs());
+        return buildCreateSQLFromColumnsIndexs(name, getColumns(), getIndexs(), replicaNum);
+    }
+
+    public String getCreate() {
+        return getCreate(1);
     }
 
     public String getProcedure(String sql) {
@@ -324,7 +328,8 @@ public class Table {
         return builder.toString();
     }
 
-    public static String buildCreateSQLFromColumnsIndexs(String name, List<String> columns, List<String> indexs) {
+    public static String buildCreateSQLFromColumnsIndexs(String name, List<String> columns, List<String> indexs,
+            int replicaNum) {
         if (CollectionUtils.isEmpty(indexs) || CollectionUtils.isEmpty(columns)) {
             return "";
         }
@@ -361,7 +366,11 @@ public class Table {
         if (sql.endsWith(",")) {
             sql = sql.substring(0, sql.length() - 1);
         }
-        sql += ");";
+        if (replicaNum == 1) {
+            sql += ");";
+        } else {
+            sql = sql + ")replicanum=" + replicaNum + ";";
+        }
         return sql;
     }
 
