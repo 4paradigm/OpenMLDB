@@ -9,6 +9,7 @@ import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, TimestampType}
 import com._4paradigm.fesql.node.{DataType => FesqlDataType}
 import org.apache.spark.sql.functions.to_date
+import org.apache.spark.sql.functions.to_timestamp
 
 import scala.collection.JavaConverters._
 
@@ -110,7 +111,7 @@ object SimpleProjectPlan {
               const_value.GetDataType() match {
                 case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 => lit(const_value.GetAsInt64()).divide(1000).cast(TimestampType).alias(outputColName)
                 case FesqlDataType.kFloat | FesqlDataType.kDouble => lit(const_value.GetAsInt64()).divide(1000).cast(TimestampType).alias(outputColName)
-                case FesqlDataType.kVarchar => null
+                case FesqlDataType.kVarchar => to_timestamp(lit(const_value.GetAsString()), "yyyy/MM/dd HH:mm:ss").cast(DateType).alias(outputColName)
                 case FesqlDataType.kNull => lit(null).cast(TimestampType).alias(outputColName)
                 case _ => throw new IllegalArgumentException(s"FESQL type from ${const_value.GetDataType()} to ${outputColTypeList(i)} is not supported")
               }
