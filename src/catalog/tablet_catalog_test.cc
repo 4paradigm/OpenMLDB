@@ -186,8 +186,8 @@ TEST_F(TabletCatalogTest, segment_handler_test) {
     handler->AddTable(args->tables[0]);
     // Seek key not exist
     {
-        auto partition = handler->GetPartition(handler, args->idx_name);
-        auto segment = partition->GetSegment(partition, args->pk);
+        auto partition = handler->GetPartition(args->idx_name);
+        auto segment = partition->GetSegment(args->pk);
         auto iter = segment->GetIterator();
         if (!iter) {
             FAIL();
@@ -207,8 +207,8 @@ TEST_F(TabletCatalogTest, segment_handler_pk_not_exist_test) {
     handler->AddTable(args->tables[0]);
     // Seek key not exist
     {
-        auto partition = handler->GetPartition(handler, args->idx_name);
-        auto segment = partition->GetSegment(partition, "KEY_NOT_EXIST");
+        auto partition = handler->GetPartition(args->idx_name);
+        auto segment = partition->GetSegment("KEY_NOT_EXIST");
         auto iter = segment->GetIterator();
         if (iter) {
             FAIL();
