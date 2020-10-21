@@ -133,7 +133,7 @@ class tableBuilder:
     output = io.StringIO()
     output.write("name : \"{}\"\n".format(self.name))
     output.write("table_type : \"{}\"\n".format(self.tableType))
-    output.write("storage_mode : k{}".format(self.sm))
+    output.write("storage_mode : \"{}\"\n".format(self.sm))
     for col in self.columns:
       output.write(col.SerializeToString())
     for idx in self.idxs:
