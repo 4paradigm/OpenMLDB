@@ -5,12 +5,12 @@
 
 #include "storage/relational_table.h"
 
+#include <rocksdb/sst_file_manager.h>
+
 #include <algorithm>
 #include <set>
 #include <utility>
-#include <rocksdb/sst_file_manager.h>
 
-#include "storage/relational_table.h"
 #include "base/file_util.h"
 #include "base/hash.h"
 #include "base/glog_wapper.h" // NOLINT
