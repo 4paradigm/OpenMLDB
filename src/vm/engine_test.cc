@@ -150,6 +150,16 @@ TEST_P(EngineTest, test_batch_engine) {
         LOG(INFO) << "Skip mode " << sql_case.mode();
     }
 }
+TEST_P(EngineTest, test_batch_request_engine_for_last_row) {
+    ParamType sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (!boost::contains(sql_case.mode(), "request-unsupport") &&
+        !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
+        BatchRequestModeCheck(sql_case);
+    } else {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
+    }
+}
 
 INSTANTIATE_TEST_CASE_P(BatchRequestEngineTest, BatchRequestEngineTest,
                         testing::ValuesIn(InitCases(

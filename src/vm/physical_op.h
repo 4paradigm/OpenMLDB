@@ -11,6 +11,7 @@
 #define SRC_VM_PHYSICAL_OP_H_
 #include <list>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -466,7 +467,7 @@ class PhysicalRequestProviderNodeWithCommonColumn
  public:
     explicit PhysicalRequestProviderNodeWithCommonColumn(
         const std::shared_ptr<TableHandler> &table_handler,
-        const std::vector<size_t> common_column_indices)
+        const std::set<size_t> common_column_indices)
         : PhysicalRequestProviderNode(table_handler),
           common_column_indices_(common_column_indices) {
         ResetSchemaWithCommonColumnInfo();
@@ -474,10 +475,12 @@ class PhysicalRequestProviderNodeWithCommonColumn
 
     ~PhysicalRequestProviderNodeWithCommonColumn() {}
 
+    void Print(std::ostream &output, const std::string &tab) const override;
+
  private:
     bool ResetSchemaWithCommonColumnInfo();
 
-    std::vector<size_t> common_column_indices_;
+    std::set<size_t> common_column_indices_;
     std::unique_ptr<fesql::vm::Schema> owned_common_schema_ = nullptr;
     std::unique_ptr<fesql::vm::Schema> owned_non_common_schema_ = nullptr;
 };

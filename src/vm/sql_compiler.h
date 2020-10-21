@@ -19,6 +19,7 @@
 #define SRC_VM_SQL_COMPILER_H_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 #include "base/fe_status.h"
@@ -67,7 +68,7 @@ struct SQLContext {
     ::fesql::udf::UDFLibrary* udf_library;
 
     // common column indices in batch request mode
-    std::vector<size_t> common_column_indices;
+    std::set<size_t> common_column_indices;
 
     SQLContext() {}
     ~SQLContext() {}

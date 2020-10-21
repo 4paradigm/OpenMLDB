@@ -181,11 +181,9 @@ class BatchRequestRunSession : public RunSession {
                       const Row& request,
                       Row* output);  // NOLINT
 
-    void AddCommonColumnIdx(size_t idx) {
-        common_column_indices_.push_back(idx);
-    }
+    void AddCommonColumnIdx(size_t idx) { common_column_indices_.insert(idx); }
 
-    const std::vector<size_t>& common_column_indices() const {
+    const std::set<size_t>& common_column_indices() const {
         return common_column_indices_;
     }
 
@@ -194,7 +192,7 @@ class BatchRequestRunSession : public RunSession {
                       const uint32_t id, const Row& request,
                       Row* output);  // NOLINT
 
-    std::vector<size_t> common_column_indices_;
+    std::set<size_t> common_column_indices_;
 };
 
 struct ExplainOutput {

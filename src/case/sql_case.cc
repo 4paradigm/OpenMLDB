@@ -813,6 +813,18 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
         table->insert_ = schema_data["insert"].as<std::string>();
         boost::trim(table->insert_);
     }
+
+    if (schema_data["common_column_indices"]) {
+        auto data = schema_data["common_column_indices"];
+        std::vector<std::string> idxs;
+        if (!CreateStringListFromYamlNode(data, idxs)) {
+            return false;
+        }
+        for (auto str : idxs) {
+            table->common_column_indices_.insert(
+                boost::lexical_cast<size_t>(str));
+        }
+    }
     return true;
 }
 bool SQLCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
@@ -1108,15 +1120,10 @@ bool SQLCase::CreateSQLCasesFromYaml(
                 return false;
             }
         }
-        if (sql_case_node["common_column_indices"]) {
-            auto data = sql_case_node["common_column_indices"];
-            std::vector<std::string> idxs;
-            if (!CreateStringListFromYamlNode(data, idxs)) {
+        if (sql_case_node["batch_request"]) {
+            if (!CreateTableInfoFromYamlNode(sql_case_node["batch_request"],
+                                             &sql_case.batch_request_)) {
                 return false;
-            }
-            for (auto str : idxs) {
-                sql_case.common_column_indices_.push_back(
-                    boost::lexical_cast<size_t>(str));
             }
         }
         sql_cases.push_back(sql_case);

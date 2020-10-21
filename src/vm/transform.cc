@@ -465,6 +465,7 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
     if (!CheckHistoryWindowFrame(w_ptr, status)) {
         return false;
     }
+    LOG(INFO) << "Check " << *depend;
     auto check_status = CheckTimeOrIntegerOrderColumn(
         w_ptr->GetOrders(), depend->GetOutputNameSchemaList());
     if (!check_status.isOK()) {
@@ -745,6 +746,7 @@ bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
     *output = new PhysicalJoinNode(left, right, node->join_type_, node->orders_,
                                    node->condition_);
     node_manager_->RegisterNode(*output);
+    LOG(INFO) << "Check " << **output;
     auto check_status = CheckTimeOrIntegerOrderColumn(
         node->orders_, (*output)->GetOutputNameSchemaList());
     if (!check_status.isOK()) {
@@ -1205,6 +1207,7 @@ bool BatchModeTransformer::TransformProjectOp(
                 if (!CheckHistoryWindowFrame(project_list->w_ptr_, status)) {
                     return false;
                 }
+                LOG(INFO) << "Check " << *depend;
                 auto check_status = CheckTimeOrIntegerOrderColumn(
                     project_list->w_ptr_->GetOrders(),
                     depend->GetOutputNameSchemaList());
@@ -2947,7 +2950,7 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
 RequestModeransformer::RequestModeransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
-    udf::UDFLibrary* library, const std::vector<size_t>& common_column_indices,
+    udf::UDFLibrary* library, const std::set<size_t>& common_column_indices,
     const bool performance_sensitive)
     : BatchModeTransformer(node_manager, db, catalog, module, library,
                            performance_sensitive),
@@ -3064,6 +3067,7 @@ bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
                                           node->orders_, node->condition_);
 
     node_manager_->RegisterNode(*output);
+    LOG(INFO) << "Check " << **output;
     auto check_status = CheckTimeOrIntegerOrderColumn(
         node->orders_, (*output)->GetOutputNameSchemaList());
     if (!check_status.isOK()) {

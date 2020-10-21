@@ -83,6 +83,13 @@ void PhysicalRequestProviderNode::Print(std::ostream& output,
     output << "(request=" << table_handler_->GetName() << ")";
 }
 
+void PhysicalRequestProviderNodeWithCommonColumn::Print(
+    std::ostream& output, const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(request=" << table_handler_->GetName()
+           << ", common_column_num=" << common_column_indices_.size() << ")";
+}
+
 void PhysicalPartitionProviderNode::Print(std::ostream& output,
                                           const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
@@ -358,19 +365,14 @@ bool PhysicalRequestProviderNodeWithCommonColumn::
             LOG(WARNING) << "InitSchema fail: table schema is null";
             return false;
         }
-        std::set<size_t> common_column_indices_set;
-        for (auto idx : common_column_indices_) {
-            common_column_indices_set.insert(idx);
-        }
-        size_t schema_size = schema->size();
-        bool share_common = common_column_indices_set.size() > 0 &&
-                            common_column_indices_set.size() < schema_size;
+        bool share_common = common_column_indices_.size() > 0 &&
+                            common_column_indices_.size() < schema->size();
         if (share_common) {
             owned_common_schema_ = std::unique_ptr<Schema>(new Schema());
             owned_non_common_schema_ = std::unique_ptr<Schema>(new Schema());
-            for (size_t i = 0; i < schema_size; ++i) {
-                if (common_column_indices_set.find(i) !=
-                    common_column_indices_set.end()) {
+            for (size_t i = 0; i < schema->size(); ++i) {
+                if (common_column_indices_.find(i) !=
+                    common_column_indices_.end()) {
                     *owned_common_schema_->Add() = schema->Get(i);
                 } else {
                     *owned_non_common_schema_->Add() = schema->Get(i);

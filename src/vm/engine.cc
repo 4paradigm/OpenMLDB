@@ -140,14 +140,7 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
         }
         auto& cache_indices = cache_ctx.common_column_indices;
         auto& sess_indices = batch_req_sess->common_column_indices();
-        if (sess_indices.size() != cache_indices.size()) {
-            return false;
-        }
-        for (size_t i = 0; i < sess_indices.size(); ++i) {
-            if (sess_indices[i] != cache_indices[i]) {
-                return false;
-            }
-        }
+        return cache_indices == sess_indices;
     }
     return true;
 }

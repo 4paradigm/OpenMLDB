@@ -11,6 +11,7 @@
 #define SRC_CASE_SQL_CASE_H_
 #include <vm/catalog.h>
 #include <yaml-cpp/node/node.h>
+#include <set>
 #include <string>
 #include <vector>
 #include "codec/fe_row_codec.h"
@@ -31,6 +32,7 @@ class SQLCase {
         std::vector<std::vector<std::string>> rows_;
         std::string create_;
         std::string insert_;
+        std::set<size_t> common_column_indices_;
     };
     struct ExpectInfo {
         int64_t count_ = -1;
@@ -55,12 +57,10 @@ class SQLCase {
     const bool standard_sql_compatible() const {
         return standard_sql_compatible_;
     }
-    const std::vector<size_t>& common_column_indices() const {
-        return common_column_indices_;
-    }
     const bool debug() const { return debug_; }
     const std::string& db() const { return db_; }
     const std::vector<TableInfo>& inputs() const { return inputs_; }
+    const TableInfo& batch_request() const { return batch_request_; }
     const ExpectInfo& expect() const { return expect_; }
     void set_expect(const ExpectInfo& data) { expect_ = data; }
     void set_input_name(const std::string name, int32_t idx) {
@@ -177,7 +177,7 @@ class SQLCase {
     std::string batch_plan_;
     std::string request_plan_;
     std::vector<TableInfo> inputs_;
-    std::vector<size_t> common_column_indices_;
+    TableInfo batch_request_;
     ExpectInfo expect_;
 };
 std::string FindFesqlDirPath();

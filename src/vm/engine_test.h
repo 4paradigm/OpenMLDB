@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -301,16 +302,12 @@ const std::string GenerateTableName(int32_t id) {
     return "auto_t" + std::to_string(id);
 }
 
-void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
-                 bool check_compatible, int* return_status) {
-    *return_status = ENGINE_TEST_RET_INVALID_CASE;
-    int32_t input_cnt = sql_case.CountInputs();
-
-    // Init catalog
-    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
-        name_table_map;
+std::shared_ptr<tablet::TabletCatalog> InitEngineCatalog(
+    SQLCase& sql_case,  // NOLINT
+    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>&
+        name_table_map) {  // NOLINT
     auto catalog = BuildCommonCatalog();
-    for (int32_t i = 0; i < input_cnt; i++) {
+    for (int32_t i = 0; i < sql_case.CountInputs(); i++) {
         if (sql_case.inputs()[i].name_.empty()) {
             sql_case.set_input_name(GenerateTableName(i), i);
         }
@@ -319,193 +316,21 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
         std::shared_ptr<::fesql::storage::Table> table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
         name_table_map[table_def.name()] = table;
-        ASSERT_TRUE(AddTable(catalog, table_def, table));
-    }
-
-    // Init engine and run session
-    std::string sql_str = sql_case.sql_str();
-    for (int j = 0; j < input_cnt; ++j) {
-        std::string placeholder = "{" + std::to_string(j) + "}";
-        boost::replace_all(sql_str, placeholder, sql_case.inputs()[j].name_);
-    }
-    std::cout << sql_str << std::endl;
-    base::Status get_status;
-
-    Engine engine(catalog);
-    std::unique_ptr<RunSession> session;
-
-    if (engine_mode == kBatchMode) {
-        session = std::unique_ptr<RunSession>(new BatchRunSession);
-    } else if (engine_mode == kRequestMode) {
-        session = std::unique_ptr<RunSession>(new RequestRunSession);
-    } else {
-        auto batch_request_session = new BatchRequestRunSession;
-        for (size_t idx : sql_case.common_column_indices()) {
-            batch_request_session->AddCommonColumnIdx(idx);
-        }
-        session = std::unique_ptr<RunSession>(batch_request_session);
-    }
-    if (fesql::sqlcase::SQLCase::IS_DEBUG() || sql_case.debug()) {
-        session->EnableDebug();
-    }
-
-    bool ok = engine.Get(sql_str, sql_case.db(), *(session.get()), get_status);
-    if (!ok) {
-        *return_status = ENGINE_TEST_RET_COMPILE_ERROR;
-    }
-    ASSERT_EQ(sql_case.expect().success_, ok);
-    if (!sql_case.expect().success_) {
-        return;
-    }
-    std::vector<Row> request_data;
-    std::string request_name = "";
-
-    bool is_batch = engine_mode == kBatchMode;
-    if (!is_batch) {
-        if (engine_mode == kRequestMode) {
-            request_name = dynamic_cast<RequestRunSession*>(session.get())
-                               ->GetRequestName();
-        } else {
-            request_name = dynamic_cast<BatchRequestRunSession*>(session.get())
-                               ->GetRequestName();
+        if (!AddTable(catalog, table_def, table)) {
+            return nullptr;
         }
     }
-    for (int32_t i = 0; i < input_cnt; i++) {
-        auto input = sql_case.inputs()[i];
-        if (engine_mode == kRequestMode && input.name_ == request_name) {
-            ASSERT_TRUE(sql_case.ExtractInputData(request_data, i));
-        } else {
-            std::vector<Row> rows;
-            sql_case.ExtractInputData(rows, i);
-            if (!rows.empty()) {
-                ASSERT_NO_FATAL_FAILURE(
-                    StoreData(name_table_map[input.name_].get(), rows));
-            }
-        }
-    }
+    return catalog;
+}
 
-    vm::Schema schema;
-    schema = session->GetSchema();
-    PrintSchema(schema);
-    std::ostringstream oss;
-    session->GetPhysicalPlan()->Print(oss, "");
-    LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
-
-    if (is_batch && !sql_case.batch_plan().empty()) {
-        ASSERT_EQ(oss.str(), sql_case.batch_plan());
-    } else if (!is_batch && !sql_case.request_plan().empty()) {
-        ASSERT_EQ(oss.str(), sql_case.request_plan());
-    }
-
-    std::ostringstream runner_oss;
-    session->GetMainTask()->Print(runner_oss, "");
-    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
-
-    // Check Output Data
-    std::vector<Row> output;
-    if (engine_mode == kBatchMode) {
-        auto batch_session = dynamic_cast<BatchRunSession*>(session.get());
-        int run_ret = batch_session->Run(output);
-        if (run_ret != 0) {
-            *return_status = ENGINE_TEST_RET_EXECUTION_ERROR;
-        }
-        ASSERT_EQ(0, run_ret);
-    } else if (engine_mode == kRequestMode) {
-        auto request_table = name_table_map[request_name];
-        ASSERT_TRUE(request_table->Init());
-        auto request_session = dynamic_cast<RequestRunSession*>(session.get());
-        for (auto in_row : request_data) {
-            Row out_row;
-            int run_ret = request_session->Run(in_row, &out_row);
-            if (run_ret != 0) {
-                *return_status = ENGINE_TEST_RET_EXECUTION_ERROR;
-            }
-            ASSERT_EQ(0, run_ret);
-            ASSERT_TRUE(request_table->Put(
-                reinterpret_cast<const char*>(in_row.buf()), in_row.size()));
-            output.push_back(out_row);
-        }
-    } else {
-        const std::string request_batch_name = "batch_request";
-        auto iter = name_table_map.find(request_batch_name);
-        ASSERT_TRUE(iter != name_table_map.end());
-
-        if (iter == name_table_map.end()) {
-            LOG(WARNING) << "No batch_request data specified in case, run with "
-                            "single row batch";
-            return;
-        }
-        auto request_session =
-            dynamic_cast<BatchRequestRunSession*>(session.get());
-        const auto& common_column_indices =
-            request_session->common_column_indices();
-
-        auto& request_table = iter->second;
-        auto batch_iter = request_table->NewTraverseIterator();
-        batch_iter->SeekToFirst();
-        auto& request_schema = request_table->GetTableDef().columns();
-        request_data.clear();
-
-        if (common_column_indices.empty() ||
-            common_column_indices.size() == request_schema.size()) {
-            while (batch_iter->Valid()) {
-                auto& slice = batch_iter->GetValue();
-                request_data.emplace_back(codec::Row(
-                    base::RefCountedSlice::Create(slice.data(), slice.size())));
-                batch_iter->Next();
-            }
-        } else {
-            std::vector<size_t> non_common_column_indices;
-            for (size_t i = 0; i < request_schema.size(); ++i) {
-                if (std::find(common_column_indices.begin(),
-                              common_column_indices.end(),
-                              i) == common_column_indices.end()) {
-                    non_common_column_indices.push_back(i);
-                }
-            }
-            codec::RowSelector left_selector(&request_schema,
-                                             common_column_indices);
-            codec::RowSelector right_selector(&request_schema,
-                                              non_common_column_indices);
-
-            bool left_selected = false;
-            codec::RefCountedSlice left_slice;
-            while (batch_iter->Valid()) {
-                auto& slice = batch_iter->GetValue();
-                if (!left_selected) {
-                    int8_t* left_buf;
-                    size_t left_size;
-                    left_selector.Select(slice.buf(), slice.size(), &left_buf,
-                                         &left_size);
-                    left_slice = codec::RefCountedSlice::CreateManaged(
-                        left_buf, left_size);
-                    left_selected = true;
-                }
-                int8_t* right_buf = nullptr;
-                size_t right_size;
-                right_selector.Select(slice.buf(), slice.size(), &right_buf,
-                                      &right_size);
-                codec::RefCountedSlice right_slice =
-                    codec::RefCountedSlice::CreateManaged(right_buf,
-                                                          right_size);
-                request_data.emplace_back(codec::Row(
-                    1, codec::Row(left_slice), 1, codec::Row(right_slice)));
-                batch_iter->Next();
-            }
-        }
-        int run_ret = request_session->Run(request_data, output);
-        RunnerContext runner_context(false);
-        if (run_ret != 0) {
-            *return_status = ENGINE_TEST_RET_EXECUTION_ERROR;
-        }
-        ASSERT_EQ(0, run_ret);
-    }
-    auto sorted_output = SortRows(schema, output, sql_case.expect().order_);
-
+void DoEngineCheckExpect(SQLCase& sql_case,  // NOLINT
+                         const vm::Schema& schema,
+                         const std::vector<Row>& output) {
     if (sql_case.expect().count_ >= 0) {
         ASSERT_EQ(sql_case.expect().count_, output.size());
     }
 
+    auto sorted_output = SortRows(schema, output, sql_case.expect().order_);
     if (!sql_case.expect().schema_.empty() ||
         !sql_case.expect().columns_.empty()) {
         // Check Output Schema
@@ -528,11 +353,80 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
         LOG(INFO) << "Real result:\n";
         PrintRows(schema, sorted_output);
     }
+}
 
+void DoBatchEngineCheck(SQLCase& sql_case,  // NOLINT
+                        bool check_compatible, int* return_status) {
+    *return_status = ENGINE_TEST_RET_INVALID_CASE;
+    int32_t input_cnt = sql_case.CountInputs();
+
+    // Init catalog
+    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
+        name_table_map;
+    auto catalog = InitEngineCatalog(sql_case, name_table_map);
+
+    // Init engine and run session
+    std::string sql_str = sql_case.sql_str();
+    for (int j = 0; j < input_cnt; ++j) {
+        std::string placeholder = "{" + std::to_string(j) + "}";
+        boost::replace_all(sql_str, placeholder, sql_case.inputs()[j].name_);
+    }
+    std::cout << sql_str << std::endl;
+    base::Status get_status;
+
+    Engine engine(catalog);
+    BatchRunSession session;
+    if (fesql::sqlcase::SQLCase::IS_DEBUG() || sql_case.debug()) {
+        session.EnableDebug();
+    }
+
+    bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
+    if (!ok) {
+        *return_status = ENGINE_TEST_RET_COMPILE_ERROR;
+    }
+    ASSERT_EQ(sql_case.expect().success_, ok);
+    if (!sql_case.expect().success_) {
+        return;
+    }
+
+    // Prepare data
+    for (int32_t i = 0; i < input_cnt; i++) {
+        auto input = sql_case.inputs()[i];
+        std::vector<Row> rows;
+        sql_case.ExtractInputData(rows, i);
+        if (!rows.empty()) {
+            ASSERT_NO_FATAL_FAILURE(
+                StoreData(name_table_map[input.name_].get(), rows));
+        }
+    }
+
+    vm::Schema schema;
+    schema = session.GetSchema();
+    PrintSchema(schema);
+    std::ostringstream oss;
+    session.GetPhysicalPlan()->Print(oss, "");
+    LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
+
+    if (!sql_case.batch_plan().empty()) {
+        ASSERT_EQ(oss.str(), sql_case.batch_plan());
+    }
+
+    std::ostringstream runner_oss;
+    session.GetMainTask()->Print(runner_oss, "");
+    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
+
+    // Check Output Data
+    std::vector<Row> output;
+    int run_ret = session.Run(output);
+    if (run_ret != 0) {
+        *return_status = ENGINE_TEST_RET_EXECUTION_ERROR;
+    }
+    ASSERT_EQ(0, run_ret);
+    DoEngineCheckExpect(sql_case, schema, output);
     *return_status = ENGINE_TEST_RET_SUCCESS;
 
     // Determine whether to compare with SQLite
-    if (is_batch && check_compatible && sql_case.standard_sql() &&
+    if (check_compatible && sql_case.standard_sql() &&
         sql_case.standard_sql_compatible()) {
         // Use SQLite to get output
         sqlite3* db;
@@ -606,6 +500,287 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
         ASSERT_NO_FATAL_FAILURE(CheckRows(
             schema, SortRows(schema, sqliteRows, sql_case.expect().order_),
             SortRows(schema, output, sql_case.expect().order_)));
+    }
+}
+
+void DoRequestEngineCheck(SQLCase& sql_case, int* return_status) {  // NOLINT
+    *return_status = ENGINE_TEST_RET_INVALID_CASE;
+    int32_t input_cnt = sql_case.CountInputs();
+
+    // Init catalog
+    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
+        name_table_map;
+    auto catalog = InitEngineCatalog(sql_case, name_table_map);
+
+    // Init engine and run session
+    std::string sql_str = sql_case.sql_str();
+    for (int j = 0; j < input_cnt; ++j) {
+        std::string placeholder = "{" + std::to_string(j) + "}";
+        boost::replace_all(sql_str, placeholder, sql_case.inputs()[j].name_);
+    }
+    std::cout << sql_str << std::endl;
+    base::Status get_status;
+
+    Engine engine(catalog);
+    RequestRunSession session;
+    if (fesql::sqlcase::SQLCase::IS_DEBUG() || sql_case.debug()) {
+        session.EnableDebug();
+    }
+
+    bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
+    if (!ok) {
+        *return_status = ENGINE_TEST_RET_COMPILE_ERROR;
+    }
+    ASSERT_EQ(sql_case.expect().success_, ok);
+    if (!sql_case.expect().success_) {
+        return;
+    }
+    std::vector<Row> request_data;
+    std::string request_name = session.GetRequestName();
+
+    // Prepare data
+    for (int32_t i = 0; i < input_cnt; i++) {
+        auto input = sql_case.inputs()[i];
+        if (input.name_ == request_name) {
+            ASSERT_TRUE(sql_case.ExtractInputData(request_data, i));
+        } else {
+            std::vector<Row> rows;
+            sql_case.ExtractInputData(rows, i);
+            if (!rows.empty()) {
+                ASSERT_NO_FATAL_FAILURE(
+                    StoreData(name_table_map[input.name_].get(), rows));
+            }
+        }
+    }
+
+    vm::Schema schema;
+    schema = session.GetSchema();
+    PrintSchema(schema);
+    std::ostringstream oss;
+    session.GetPhysicalPlan()->Print(oss, "");
+    LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
+
+    if (!sql_case.request_plan().empty()) {
+        ASSERT_EQ(oss.str(), sql_case.request_plan());
+    }
+
+    std::ostringstream runner_oss;
+    session.GetMainTask()->Print(runner_oss, "");
+    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
+
+    // Check Output Data
+    std::vector<Row> output;
+    auto request_table = name_table_map[request_name];
+    ASSERT_TRUE(request_table->Init());
+    for (auto in_row : request_data) {
+        Row out_row;
+        int run_ret = session.Run(in_row, &out_row);
+        if (run_ret != 0) {
+            *return_status = ENGINE_TEST_RET_EXECUTION_ERROR;
+        }
+        ASSERT_EQ(0, run_ret);
+        ASSERT_TRUE(request_table->Put(
+            reinterpret_cast<const char*>(in_row.buf()), in_row.size()));
+        output.push_back(out_row);
+    }
+    DoEngineCheckExpect(sql_case, schema, output);
+    *return_status = ENGINE_TEST_RET_SUCCESS;
+}
+
+void DoBatchRequestEngineCheckWithCommonColumnIndices(
+    SQLCase& sql_case,  // NOLINT
+    const std::set<size_t>& common_column_indice_set, int* return_status) {
+    // Init catalog
+    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
+        name_table_map;
+    auto catalog = InitEngineCatalog(sql_case, name_table_map);
+
+    *return_status = ENGINE_TEST_RET_INVALID_CASE;
+    int32_t input_cnt = sql_case.CountInputs();
+
+    // Init engine and run session
+    std::string sql_str = sql_case.sql_str();
+    for (int j = 0; j < input_cnt; ++j) {
+        std::string placeholder = "{" + std::to_string(j) + "}";
+        boost::replace_all(sql_str, placeholder, sql_case.inputs()[j].name_);
+    }
+    std::cout << sql_str << std::endl;
+    base::Status get_status;
+
+    bool has_batch_request = !sql_case.batch_request().rows_.empty();
+    if (!has_batch_request) {
+        LOG(WARNING) << "No batch request field in case, "
+                     << "try use last row from primary input";
+    }
+
+    Engine engine(catalog);
+    BatchRequestRunSession session;
+    for (size_t idx : common_column_indice_set) {
+        session.AddCommonColumnIdx(idx);
+    }
+    if (fesql::sqlcase::SQLCase::IS_DEBUG() || sql_case.debug()) {
+        session.EnableDebug();
+    }
+
+    bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
+    if (!ok) {
+        *return_status = ENGINE_TEST_RET_COMPILE_ERROR;
+    }
+    ASSERT_EQ(sql_case.expect().success_, ok);
+    if (!sql_case.expect().success_) {
+        return;
+    }
+    std::vector<Row> original_request_data;
+    std::vector<Row> request_data;
+    std::string request_name = session.GetRequestName();
+    auto& request_schema = session.GetRequestSchema();
+
+    // Prepare data
+    for (int32_t i = 0; i < input_cnt; i++) {
+        auto input = sql_case.inputs()[i];
+        std::vector<Row> rows;
+        sql_case.ExtractInputData(rows, i);
+        if (!rows.empty()) {
+            if (input.name_ == request_name && !has_batch_request) {
+                original_request_data.push_back(rows.back());
+                rows.pop_back();
+            }
+            ASSERT_NO_FATAL_FAILURE(
+                StoreData(name_table_map[input.name_].get(), rows));
+        }
+    }
+
+    vm::Schema schema = session.GetSchema();
+    PrintSchema(schema);
+    std::ostringstream oss;
+    session.GetPhysicalPlan()->Print(oss, "");
+    LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
+
+    std::ostringstream runner_oss;
+    session.GetMainTask()->Print(runner_oss, "");
+    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
+
+    type::TableDef request_table;
+    if (has_batch_request) {
+        ASSERT_TRUE(sql_case.ExtractTableDef(sql_case.batch_request().columns_,
+                                             sql_case.batch_request().indexs_,
+                                             request_table));
+        ASSERT_TRUE(sql_case.ExtractRows(request_table.columns(),
+                                         sql_case.batch_request().rows_,
+                                         original_request_data));
+    } else {
+        ASSERT_TRUE(sql_case.ExtractInputTableDef(request_table, 0));
+    }
+
+    // Check Output Data
+    std::vector<Row> output;
+    std::vector<size_t> common_column_indices;
+    for (size_t idx : session.common_column_indices()) {
+        common_column_indices.push_back(idx);
+    }
+    if (common_column_indices.empty() ||
+        common_column_indices.size() == request_schema.size()) {
+        request_data = original_request_data;
+    } else {
+        std::vector<size_t> non_common_column_indices;
+        for (size_t i = 0; i < request_schema.size(); ++i) {
+            if (std::find(common_column_indices.begin(),
+                          common_column_indices.end(),
+                          i) == common_column_indices.end()) {
+                non_common_column_indices.push_back(i);
+            }
+        }
+        codec::RowSelector left_selector(&request_table.columns(),
+                                         common_column_indices);
+        codec::RowSelector right_selector(&request_table.columns(),
+                                          non_common_column_indices);
+
+        bool left_selected = false;
+        codec::RefCountedSlice left_slice;
+        for (auto& original_row : original_request_data) {
+            if (!left_selected) {
+                int8_t* left_buf;
+                size_t left_size;
+                left_selector.Select(original_row.buf(0), original_row.size(0),
+                                     &left_buf, &left_size);
+                left_slice =
+                    codec::RefCountedSlice::CreateManaged(left_buf, left_size);
+                left_selected = true;
+            }
+            int8_t* right_buf = nullptr;
+            size_t right_size;
+            right_selector.Select(original_row.buf(0), original_row.size(0),
+                                  &right_buf, &right_size);
+            codec::RefCountedSlice right_slice =
+                codec::RefCountedSlice::CreateManaged(right_buf, right_size);
+            request_data.emplace_back(codec::Row(1, codec::Row(left_slice), 1,
+                                                 codec::Row(right_slice)));
+        }
+    }
+    int run_ret = session.Run(request_data, output);
+    if (run_ret != 0) {
+        *return_status = ENGINE_TEST_RET_EXECUTION_ERROR;
+    }
+    ASSERT_EQ(0, run_ret);
+
+    if (has_batch_request) {
+        DoEngineCheckExpect(sql_case, schema, output);
+    } else {
+        std::vector<Row> case_output_data;
+        ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
+        LOG(INFO) << "Expect result:\n";
+        PrintRows(schema, {case_output_data.back()});
+        LOG(INFO) << "Real result:\n";
+        PrintRows(schema, output);
+        CheckRows(schema, output, {case_output_data.back()});
+    }
+    *return_status = ENGINE_TEST_RET_SUCCESS;
+}
+
+void DoBatchRequestEngineCheck(SQLCase& sql_case,  // NOLINT
+                               int* return_status) {
+    bool has_batch_request = !sql_case.batch_request().rows_.empty();
+    if (has_batch_request) {
+        DoBatchRequestEngineCheckWithCommonColumnIndices(
+            sql_case, sql_case.batch_request().common_column_indices_,
+            return_status);
+    } else if (!sql_case.inputs().empty()) {
+        // set different common column conf
+        size_t schema_size = sql_case.inputs()[0].columns_.size();
+        std::set<size_t> common_column_indices;
+
+        // empty
+        DoBatchRequestEngineCheckWithCommonColumnIndices(
+            sql_case, common_column_indices, return_status);
+
+        // full
+        for (size_t i = 0; i < schema_size; ++i) {
+            common_column_indices.insert(i);
+        }
+        DoBatchRequestEngineCheckWithCommonColumnIndices(
+            sql_case, common_column_indices, return_status);
+        common_column_indices.clear();
+
+        // partial
+        // TODO(bxq): use transform pass to resolve all problems
+        // of changing the request schema
+        // for (size_t i = 0; i < schema_size; i += 2) {
+        //    common_column_indices.insert(i);
+        // }
+        // DoBatchRequestEngineCheckWithCommonColumnIndices(
+        //    sql_case, common_column_indices, return_status);
+        // common_column_indices.clear();
+    }
+}
+
+void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
+                 bool check_compatible, int* return_status) {
+    if (engine_mode == kBatchMode) {
+        DoBatchEngineCheck(sql_case, check_compatible, return_status);
+    } else if (engine_mode == kRequestMode) {
+        DoRequestEngineCheck(sql_case, return_status);
+    } else {
+        DoBatchRequestEngineCheck(sql_case, return_status);
     }
 }
 
