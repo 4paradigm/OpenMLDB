@@ -1479,10 +1479,10 @@ bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_n
         std::vector<rtidb::nameserver::ProcedureInfo>& sp_infos, std::string& msg) {
     ::rtidb::nameserver::ShowProcedureRequest request;
     ::rtidb::nameserver::ShowProcedureResponse response;
-    if (db_name.empty()) {
+    if (!db_name.empty()) {
         request.set_db_name(db_name);
     }
-    if (sp_name.empty()) {
+    if (!sp_name.empty()) {
         request.set_sp_name(sp_name);
     }
     bool ok =
