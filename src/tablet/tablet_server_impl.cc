@@ -219,7 +219,7 @@ void TabletServerImpl::Query(RpcController* ctrl, const QueryRequest* request,
         }
         codec::Row row(request->row());
         codec::Row output;
-        int32_t ret = session.Run(row, &output);
+        int32_t ret = session.Run(request->task_id(), row, &output);
         if (ret != 0) {
             LOG(WARNING) << "fail to run sql " << request->sql();
             status->set_code(common::kSQLError);

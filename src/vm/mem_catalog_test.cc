@@ -105,10 +105,31 @@ Row project(const Row& row) {
     builder.AppendFloat(row_view.GetFloatUnsafe(3) + 2.0f);
     return Row(base::RefCountedSlice::Create(buf, total_size));
 }
+const bool predicate(const Row& row) {
+    type::TableDef table1;
+    BuildTableDef(table1);
+    codec::RowView row_view(table1.columns());
+    row_view.Reset(row.buf());
 
-class SimpleWrapperFun : public WrapperFun {
+    type::TableDef table2;
+    {
+        {
+            ::fesql::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::fesql::type::kInt32);
+            column->set_name("c1");
+        }
+        {
+            ::fesql::type::ColumnDef* column = table2.add_columns();
+            column->set_type(::fesql::type::kFloat);
+            column->set_name("c3");
+        }
+    }
+    return row_view.GetInt32Unsafe(0) > 0;
+}
+
+class SimpleWrapperFun : public ProjectFun {
  public:
-    SimpleWrapperFun() : WrapperFun() {}
+    SimpleWrapperFun() : ProjectFun() {}
     ~SimpleWrapperFun() {}
     Row operator()(const Row& row) const override { return project(row); }
 };
@@ -125,7 +146,7 @@ TEST_F(MemCataLogTest, table_hander_wrapper_test) {
     }
 
     SimpleWrapperFun fn;
-    vm::TableWrapper wrapper(table_handler, &fn);
+    vm::TableProjectWrapper wrapper(table_handler, &fn);
 
     type::TableDef table2;
     {
@@ -169,7 +190,7 @@ TEST_F(MemCataLogTest, partition_hander_wrapper_test) {
     partition_handler->Sort(false);
 
     SimpleWrapperFun fn;
-    vm::PartitionWrapper wrapper(partition_handler, &fn);
+    vm::PartitionProjectWrapper wrapper(partition_handler, &fn);
 
     type::TableDef table2;
     {
