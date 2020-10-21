@@ -242,30 +242,6 @@ void string_to_smallint(codec::StringRef *str, int16_t *v, bool *is_null_ptr);
 void string_to_bigint(codec::StringRef *str, int64_t *v, bool *is_null_ptr);
 void string_to_float(codec::StringRef *str, float *v, bool *is_null_ptr);
 void string_to_double(codec::StringRef *str, double *v, bool *is_null_ptr);
-template <typename V>
-void string_to(codec::StringRef *str, V *v, bool *is_null_ptr) {
-    *is_null_ptr = true;
-    if (nullptr == str) {
-        *is_null_ptr = true;
-        return;
-    }
-    try {
-        *v = boost::lexical_cast<V>(str->ToString());
-        *is_null_ptr = false;
-        return;
-    } catch (boost::bad_lexical_cast const &e) {
-        *is_null_ptr = true;
-        *v = V();
-        return;
-    } catch (...) {
-        *is_null_ptr = true;
-        *v = V();
-        return;
-    }
-    std::cout << "return here";
-    return;
-}
-
 /**
  * Allocate string buffer from jit runtime.
  */
