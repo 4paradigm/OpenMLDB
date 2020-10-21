@@ -13,6 +13,7 @@ import org.apache.spark.sql.functions.to_timestamp
 
 import scala.collection.JavaConverters._
 
+
 object SimpleProjectPlan {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -26,6 +27,7 @@ object SimpleProjectPlan {
   def gen(ctx: PlanContext, node: PhysicalSimpleProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
     val inputInstance = inputs.head
     val inputDf = inputInstance.getDf(ctx.getSparkSession)
+    val inputDfTypes = inputDf.schema.fields.toList
 
     // Get the output column names from output schema
     val outputColNameList = node.GetOutputSchema().asScala.map(col =>
@@ -47,7 +49,35 @@ object SimpleProjectPlan {
         case SourceType.kSourceColumn => {
           // Resolved the column index to get column and rename
           val colIndex = SparkColumnUtil.resolveColumnIndex(columnSource.schema_idx(), columnSource.column_idx(), node.GetProducer(0))
-          SparkColumnUtil.getCol(inputDf, colIndex).alias(outputColNameList(i));
+          var sparkCol = SparkColumnUtil.getCol(inputDf, colIndex)
+          val sparkColType = inputDfTypes(colIndex).dataType
+
+          val castTypes = columnSource.cast_types()
+          for(i <- 0 until castTypes.size()) {
+            val castType = castTypes.get(i)
+
+            castType match {
+              case FesqlDataType.kInt16 => sparkCol = sparkCol.cast(ShortType)
+              case FesqlDataType.kInt32 => sparkCol = sparkCol.cast(IntegerType)
+              case FesqlDataType.kInt64 => sparkCol = sparkCol.cast(LongType)
+              case FesqlDataType.kFloat => sparkCol = sparkCol.cast(FloatType)
+              case FesqlDataType.kDouble => sparkCol = sparkCol.cast(DoubleType)
+              case FesqlDataType.kBool => sparkCol = sparkCol.cast(BooleanType)
+              case FesqlDataType.kDate => {
+                sparkColType match {
+                  case StringType => sparkCol = to_date(lit(sparkCol), "yyyy-MM-dd")
+                }
+              }
+              case FesqlDataType.kTimestamp => {
+                sparkColType match {
+                  case StringType => sparkCol = to_timestamp(sparkCol) // format "yyyy/MM/dd HH:mm:ss"
+                }
+              }
+              case FesqlDataType.kVarchar => sparkCol = sparkCol.cast(StringType)
+            }
+          }
+
+          sparkCol.alias(outputColNameList(i))
         }
         case SourceType.kSourceConst => {
           val const_value = columnSource.const_value()
@@ -103,7 +133,7 @@ object SimpleProjectPlan {
               const_value.GetDataType() match {
                 case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 => lit(const_value.GetAsInt64()).cast(DateType).alias(outputColName)
                 case FesqlDataType.kFloat | FesqlDataType.kDouble => lit(const_value.GetAsDouble()).cast(DateType).alias(outputColName)
-                case FesqlDataType.kVarchar => to_date(lit(const_value.GetAsString()), "yyyy-MM-dd").cast(DateType).alias(outputColName)
+                case FesqlDataType.kVarchar => to_date(lit(const_value.GetAsString()), "yyyy-MM-dd").alias(outputColName)
                 case FesqlDataType.kNull => lit(null).cast(DateType).alias(outputColName)
               }
             }
@@ -111,7 +141,7 @@ object SimpleProjectPlan {
               const_value.GetDataType() match {
                 case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 => lit(const_value.GetAsInt64()).divide(1000).cast(TimestampType).alias(outputColName)
                 case FesqlDataType.kFloat | FesqlDataType.kDouble => lit(const_value.GetAsInt64()).divide(1000).cast(TimestampType).alias(outputColName)
-                case FesqlDataType.kVarchar => to_timestamp(lit(const_value.GetAsString()), "yyyy/MM/dd HH:mm:ss").cast(DateType).alias(outputColName)
+                case FesqlDataType.kVarchar => to_timestamp(lit(const_value.GetAsString())).alias(outputColName)
                 case FesqlDataType.kNull => lit(null).cast(TimestampType).alias(outputColName)
                 case _ => throw new IllegalArgumentException(s"FESQL type from ${const_value.GetDataType()} to ${outputColTypeList(i)} is not supported")
               }
@@ -133,8 +163,8 @@ object SimpleProjectPlan {
 
     // Use Spark DataFrame to select columns
     val result = SparkColumnUtil.setDataframeNullable(inputDf.select(selectColList:_*), true)
-
     SparkInstance.fromDataFrame(result)
+
   }
 
 }
