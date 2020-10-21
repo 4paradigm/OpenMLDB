@@ -72,21 +72,14 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
             log.info("sql:{}", sql);
             sql = FesqlUtil.formatSql(sql, tableNames);
             if (isBatchRequest) {
-                InputDesc batch_request = null;
-                for (int i = 0; i < fesqlCase.getInputs().size(); ++i) {
-                    InputDesc input = fesqlCase.getInputs().get(i);
-                    if (input != null && input.getName().equals("batch_request")) {
-                        batch_request = input;
-                        break;
-                    }
-                }
-                if (batch_request == null) {
+                InputDesc batchRequest = fesqlCase.getBatch_request();
+                if (batchRequest == null) {
                     log.error("No batch request provided in case");
                     return null;
                 }
                 List<Integer> commonColumnIndices = new ArrayList<>();
-                if (fesqlCase.getCommon_column_indices() != null) {
-                    for (String str : fesqlCase.getCommon_column_indices()) {
+                if (batchRequest.getCommon_column_indices() != null) {
+                    for (String str : batchRequest.getCommon_column_indices()) {
                         if (str != null) {
                             commonColumnIndices.add(Integer.parseInt(str));
                         }
@@ -94,7 +87,7 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
                 }
 
                 fesqlResult = FesqlUtil.sqlBatchRequestMode(
-                        executor, dbName, sql, batch_request, commonColumnIndices);
+                        executor, dbName, sql, batchRequest, commonColumnIndices);
             } else {
                 InputDesc input = fesqlCase.getInputs().get(0);
                 fesqlResult = FesqlUtil.sqlRequestMode(executor, dbName, sql, input);
