@@ -639,6 +639,8 @@ cases:
         - [1, 1590115420]
   - id: 20
     desc: 不依赖输入表cast常量
+    mode: online-unsupport
+    tags: ["TODO", "@chenjing, support const project node"]
     inputs:
       - columns: ["c1 int", "c2 string", "c5 bigint"]
         indexs: ["index1:c1:c5"]
