@@ -13,6 +13,7 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
 %include std_shared_ptr.i
 %include stl.i
 %include stdint.i
+%include std_vector.i
 
 namespace std {
     %template(StringVector) vector<string>;
@@ -90,6 +91,7 @@ using fesql::codec::Row;
 using fesql::vm::ColumnSource;
 using fesql::node::PlanType;
 using fesql::codec::WindowIterator;
+using fesql::node::DataType;
 %}
 
 %rename(BaseStatus) fesql::base::Status;
@@ -137,5 +139,8 @@ using fesql::codec::WindowIterator;
 namespace fesql {
     namespace vm {
         %template(ColumnSourceList) ::std::vector<fesql::vm::ColumnSource>;
+    }
+    namespace node {
+        %template(DataTypeList) ::std::vector<fesql::node::DataType>;
     }
 }
