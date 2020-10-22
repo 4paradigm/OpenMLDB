@@ -165,7 +165,7 @@ DEFINE_uint32(max_col_display_length, 256,
 
 // rocksdb
 DEFINE_bool(disable_wal, true, "If true, do not write WAL for write.");
-DEFINE_string(file_compression, "pz",
+DEFINE_string(file_compression, "off",
               "Type of compression, can be off, pz, lz4, zlib");
 DEFINE_uint32(block_cache_mb, 4096,
               "Memory allocated for caching uncompressed block (OS page cache "
