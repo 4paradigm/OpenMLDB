@@ -134,7 +134,7 @@ TEST_P(EngineTest, test_request_engine) {
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
-        RequestModeCheck(sql_case);
+        EngineCheck(sql_case, kRequestMode);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
     }
@@ -145,7 +145,7 @@ TEST_P(EngineTest, test_batch_engine) {
     if (!boost::contains(sql_case.mode(), "batch-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-batch-unsupport")) {
-        BatchModeCheck(sql_case);
+        EngineCheck(sql_case, kBatchMode);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
     }
@@ -155,7 +155,7 @@ TEST_P(EngineTest, test_batch_request_engine_for_last_row) {
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
-        BatchRequestModeCheck(sql_case);
+        EngineCheck(sql_case, kBatchRequestMode);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
     }
@@ -169,7 +169,7 @@ TEST_P(BatchRequestEngineTest, test_batch_request_engine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "batch-request-unsupport")) {
-        BatchRequestModeCheck(sql_case);
+        EngineCheck(sql_case, kBatchRequestMode);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
     }

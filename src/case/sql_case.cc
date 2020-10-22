@@ -282,7 +282,8 @@ bool SQLCase::AddInput(const TableInfo& table_data) {
     inputs_.push_back(table_data);
     return true;
 }
-bool SQLCase::ExtractInputData(std::vector<Row>& rows, int32_t input_idx) {
+bool SQLCase::ExtractInputData(std::vector<Row>& rows,
+                               int32_t input_idx) const {
     if (inputs_[input_idx].data_.empty() && inputs_[input_idx].rows_.empty()) {
         LOG(WARNING) << "Empty Data String";
         return false;
@@ -307,7 +308,7 @@ bool SQLCase::ExtractInputData(std::vector<Row>& rows, int32_t input_idx) {
     return true;
 }
 
-bool SQLCase::ExtractOutputData(std::vector<Row>& rows) {
+bool SQLCase::ExtractOutputData(std::vector<Row>& rows) const {
     if (expect_.data_.empty() && expect_.rows_.empty()) {
         LOG(WARNING) << "ExtractOutputData Fail: Empty Data";
         return false;
@@ -609,7 +610,8 @@ const std::string SQLCase::case_name() const {
     boost::replace_all(name, " ", "_");
     return name;
 }
-bool SQLCase::ExtractInputTableDef(type::TableDef& table, int32_t input_idx) {
+bool SQLCase::ExtractInputTableDef(type::TableDef& table,
+                                   int32_t input_idx) const {
     if (!inputs_[input_idx].schema_.empty()) {
         if (!ExtractTableDef(inputs_[input_idx].schema_,
                              inputs_[input_idx].index_, table)) {
@@ -630,7 +632,8 @@ bool SQLCase::ExtractInputTableDef(type::TableDef& table, int32_t input_idx) {
 // Build Create SQL
 // schema + index --> create sql
 // columns + indexs --> create sql
-bool SQLCase::BuildCreateSQLFromInput(int32_t input_idx, std::string* sql) {
+bool SQLCase::BuildCreateSQLFromInput(int32_t input_idx,
+                                      std::string* sql) const {
     if (!inputs_[input_idx].create_.empty()) {
         *sql = inputs_[input_idx].create_;
         return true;
@@ -647,8 +650,8 @@ bool SQLCase::BuildCreateSQLFromInput(int32_t input_idx, std::string* sql) {
     return true;
 }
 
-bool SQLCase::BuildInsertSQLListFromInput(int32_t input_idx,
-                                          std::vector<std::string>* sql_list) {
+bool SQLCase::BuildInsertSQLListFromInput(
+    int32_t input_idx, std::vector<std::string>* sql_list) const {
     if (!inputs_[input_idx].insert_.empty()) {
         sql_list->push_back(inputs_[input_idx].insert_);
         return true;
@@ -693,7 +696,8 @@ bool SQLCase::BuildInsertSQLListFromInput(int32_t input_idx,
     }
     return true;
 }
-bool SQLCase::BuildInsertSQLFromInput(int32_t input_idx, std::string* sql) {
+bool SQLCase::BuildInsertSQLFromInput(int32_t input_idx,
+                                      std::string* sql) const {
     if (!inputs_[input_idx].insert_.empty()) {
         *sql = inputs_[input_idx].insert_;
         return true;
@@ -717,7 +721,7 @@ bool SQLCase::BuildInsertSQLFromInput(int32_t input_idx, std::string* sql) {
     }
     return true;
 }
-bool SQLCase::ExtractOutputSchema(type::TableDef& table) {
+bool SQLCase::ExtractOutputSchema(type::TableDef& table) const {
     if (!expect_.schema_.empty()) {
         return ExtractSchema(expect_.schema_, table);
     } else if (!expect_.columns_.empty()) {

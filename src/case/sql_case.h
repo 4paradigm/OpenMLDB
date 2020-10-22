@@ -72,15 +72,16 @@ class SQLCase {
     // extract schema from schema string
     // name:type|name:type|name:type|
     bool ExtractInputTableDef(type::TableDef& table,  // NOLINT
-                              int32_t input_idx = 0);
-    bool BuildCreateSQLFromInput(int32_t input_idx, std::string* sql);
-    bool BuildInsertSQLFromInput(int32_t input_idx, std::string* sql);
+                              int32_t input_idx = 0) const;
+    bool BuildCreateSQLFromInput(int32_t input_idx, std::string* sql) const;
+    bool BuildInsertSQLFromInput(int32_t input_idx, std::string* sql) const;
     bool BuildInsertSQLListFromInput(int32_t input_idx,
-                                     std::vector<std::string>* sql_list);
-    bool ExtractOutputSchema(type::TableDef& table);             // NOLINT
+                                     std::vector<std::string>* sql_list) const;
+    bool ExtractOutputSchema(type::TableDef& table) const;       // NOLINT
     bool ExtractInputData(std::vector<fesql::codec::Row>& rows,  // NOLINT
-                          int32_t input_idx = 0);
-    bool ExtractOutputData(std::vector<fesql::codec::Row>& rows);  // NOLINT
+                          int32_t input_idx = 0) const;
+    bool ExtractOutputData(
+        std::vector<fesql::codec::Row>& rows) const;  // NOLINT
 
     bool AddInput(const TableInfo& table_data);
     static bool TypeParse(const std::string& row_str, fesql::type::Type* type);

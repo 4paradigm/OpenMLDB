@@ -365,12 +365,13 @@ bool PhysicalRequestProviderNodeWithCommonColumn::
             LOG(WARNING) << "InitSchema fail: table schema is null";
             return false;
         }
+        size_t schema_size = static_cast<size_t>(schema->size());
         bool share_common = common_column_indices_.size() > 0 &&
-                            common_column_indices_.size() < schema->size();
+                            common_column_indices_.size() < schema_size;
         if (share_common) {
             owned_common_schema_ = std::unique_ptr<Schema>(new Schema());
             owned_non_common_schema_ = std::unique_ptr<Schema>(new Schema());
-            for (size_t i = 0; i < schema->size(); ++i) {
+            for (size_t i = 0; i < schema_size; ++i) {
                 if (common_column_indices_.find(i) !=
                     common_column_indices_.end()) {
                     *owned_common_schema_->Add() = schema->Get(i);
