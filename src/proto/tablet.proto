@@ -790,6 +790,14 @@ message ExplainResponse {
     optional bool is_batch = 7;
 }
 
+message GetCatalogRequest {}
+
+message GetCatalogResponse {
+    optional rtidb.common.CatalogInfo catalog = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
 service TabletServer {
 
     // write and read api for client
@@ -837,6 +845,7 @@ service TabletServer {
     rpc CheckFile(CheckFileRequest) returns(GeneralResponse);
     rpc DeleteBinlog(GeneralRequest) returns(GeneralResponse);
     rpc ShowMemPool(HttpRequest) returns (HttpResponse);
+    rpc GetCatalog(GetCatalogRequest) returns (GetCatalogResponse);
     rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
     rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
     rpc UpdateTableMetaForAddField(UpdateTableMetaForAddFieldRequest) returns (GeneralResponse);

@@ -259,11 +259,14 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     bool UpdateClient(const std::map<std::string, std::string> &real_ep_map);
 
+    uint64_t GetVersion() const;
+
  private:
     ::rtidb::base::SpinMutex mu_;
     TabletTables tables_;
     TabletDB db_;
     ClientManager client_manager_;
+    std::atomic<uint64_t> version_;
 };
 
 }  // namespace catalog

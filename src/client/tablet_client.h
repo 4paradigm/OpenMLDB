@@ -307,6 +307,8 @@ class TabletClient {
                        const ::rtidb::common::ColumnKey& column_key,
                        uint32_t idx, std::shared_ptr<TaskInfo> task_info);
 
+    bool GetCatalog(uint64_t* version);
+
     bool SendIndexData(uint32_t tid, uint32_t pid,
                        const std::map<uint32_t, std::string>& pid_endpoint_map,
                        std::shared_ptr<TaskInfo> task_info);

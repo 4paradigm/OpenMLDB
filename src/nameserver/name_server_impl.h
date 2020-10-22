@@ -247,6 +247,10 @@ class NameServerImpl : public NameServer {
                       const ShowOPStatusRequest* request,
                       ShowOPStatusResponse* response, Closure* done);
 
+    void ShowCatalog(RpcController* controller,
+                      const ShowCatalogRequest* request,
+                      ShowCatalogResponse* response, Closure* done);
+
     void ConfSet(RpcController* controller, const ConfSetRequest* request,
                  GeneralResponse* response, Closure* done);
 

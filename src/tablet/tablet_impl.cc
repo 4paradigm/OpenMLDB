@@ -3954,6 +3954,24 @@ void TabletImpl::GetAllSnapshotOffset(
     response->set_code(::rtidb::base::ReturnCode::kOk);
 }
 
+void TabletImpl::GetCatalog(RpcController* controller,
+                             const ::rtidb::api::GetCatalogRequest* request,
+                             ::rtidb::api::GetCatalogResponse* response,
+                             Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (catalog_) {
+        ::rtidb::common::CatalogInfo* catalog_info = response->mutable_catalog();
+        catalog_info->set_version(catalog_->GetVersion());
+        catalog_info->set_endpoint(FLAGS_endpoint);
+        response->set_code(0);
+        response->set_msg("ok");
+        return;
+    }
+    response->set_code(-1);
+    response->set_msg("catalog is not exist");
+    PDLOG(WARNING, "catalog is not exist");
+}
+
 void TabletImpl::GetTermPair(RpcController* controller,
                              const ::rtidb::api::GetTermPairRequest* request,
                              ::rtidb::api::GetTermPairResponse* response,

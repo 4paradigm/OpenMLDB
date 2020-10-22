@@ -11,9 +11,10 @@
 #include <utility>
 
 #include "base/glog_wapper.h"
+#include "base/strings.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/bind.hpp"
-#include "base/strings.h"
+#include "boost/lexical_cast.hpp"
 
 using ::rtidb::base::BLOB_PREFIX;
 
@@ -399,6 +400,31 @@ bool ZkClient::SetNodeValue(const std::string& node, const std::string& value) {
     }
     if (zoo_set(zk_, node.c_str(), value.c_str(), value.length(), -1) == ZOK) {
         return true;
+    }
+    return false;
+}
+
+bool ZkClient::Increment(const std::string& node) {
+    int try_num = 3;
+    while (try_num-- > 0) {
+        std::string value;
+        int buffer_len = ZK_MAX_BUFFER_SIZE;
+        Stat stat;
+        if (zoo_get(zk_, node.c_str(), 0, buffer_, &buffer_len, &stat) == ZOK) {
+            value.assign(buffer_, buffer_len);
+        } else {
+            continue;
+        }
+        uint64_t number = 0;
+        try {
+            number = boost::lexical_cast<uint64_t>(value);
+        } catch (const std::exception& e) {
+            return false;
+        }
+        std::string new_value = std::to_string(number + 1);
+        if (zoo_set(zk_, node.c_str(), new_value.c_str(), new_value.length(), stat.version) == ZOK) {
+            return true;
+        }
     }
     return false;
 }

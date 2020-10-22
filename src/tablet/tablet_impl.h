@@ -209,6 +209,11 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                      ::rtidb::api::GetTermPairResponse* response,
                      Closure* done);
 
+    void GetCatalog(RpcController* controller,
+                     const ::rtidb::api::GetCatalogRequest* request,
+                     ::rtidb::api::GetCatalogResponse* response,
+                     Closure* done);
+
     void GetTableFollower(RpcController* controller,
                           const ::rtidb::api::GetTableFollowerRequest* request,
                           ::rtidb::api::GetTableFollowerResponse* response,

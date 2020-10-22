@@ -218,7 +218,7 @@ bool TabletTableHandler::GetTablets(const std::string& index_name, const std::st
     return true;
 }
 
-TabletCatalog::TabletCatalog() : mu_(), tables_(), db_(), client_manager_() {}
+TabletCatalog::TabletCatalog() : mu_(), tables_(), db_(), client_manager_(), version_(1) {}
 
 TabletCatalog::~TabletCatalog() {}
 
@@ -369,6 +369,10 @@ void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInf
 bool TabletCatalog::UpdateClient(const std::map<std::string, std::string>& real_ep_map) {
     DLOG(INFO) << "update client";
     return client_manager_.UpdateClient(real_ep_map);
+}
+
+uint64_t TabletCatalog::GetVersion() const {
+    return version_.load(std::memory_order_relaxed);
 }
 
 }  // namespace catalog
