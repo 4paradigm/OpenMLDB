@@ -83,7 +83,8 @@ object SimpleProjectPlan {
               case FesqlDataType.kDate => {
                 sparkColType match {
                   case StringType => {
-                    sparkCol = to_date(lit(sparkCol), "yyyy-MM-dd")
+                    // TODO: may support "yyyyMMdd", "yyyy-MM-dd HH:mm:ss"
+                    sparkCol = to_date(sparkCol, "yyyy-MM-dd")
                     sparkColType = DateType
                   }
                 }
