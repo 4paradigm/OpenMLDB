@@ -5,7 +5,7 @@ import com._4paradigm.fesql.spark.utils.SparkColumnUtil
 import com._4paradigm.fesql.vm.{PhysicalSimpleProjectNode, SourceType}
 import org.slf4j.LoggerFactory
 import org.apache.spark.sql.functions.lit
-import org.apache.spark.sql.types.{BooleanType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType}
+import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, TimestampType}
 import com._4paradigm.fesql.node.{DataType => FesqlDataType}
 import org.apache.spark.sql.functions.to_date
 import org.apache.spark.sql.functions.to_timestamp
@@ -49,30 +49,57 @@ object SimpleProjectPlan {
           // Resolved the column index to get column and rename
           val colIndex = SparkColumnUtil.resolveColumnIndex(columnSource.schema_idx(), columnSource.column_idx(), node.GetProducer(0))
           var sparkCol = SparkColumnUtil.getCol(inputDf, colIndex)
-          val sparkColType = inputDfTypes(colIndex).dataType
+          var sparkColType = inputDfTypes(colIndex).dataType
 
           val castTypes = columnSource.cast_types()
           for(i <- 0 until castTypes.size()) {
             val castType = castTypes.get(i)
 
             castType match {
-              case FesqlDataType.kInt16 => sparkCol = sparkCol.cast(ShortType)
-              case FesqlDataType.kInt32 => sparkCol = sparkCol.cast(IntegerType)
-              case FesqlDataType.kInt64 => sparkCol = sparkCol.cast(LongType)
-              case FesqlDataType.kFloat => sparkCol = sparkCol.cast(FloatType)
-              case FesqlDataType.kDouble => sparkCol = sparkCol.cast(DoubleType)
-              case FesqlDataType.kBool => sparkCol = sparkCol.cast(BooleanType)
+              case FesqlDataType.kInt16 => {
+                sparkCol = sparkCol.cast(ShortType)
+                sparkColType = ShortType
+              }
+              case FesqlDataType.kInt32 => {
+                sparkCol = sparkCol.cast(IntegerType)
+                sparkColType = IntegerType
+              }
+              case FesqlDataType.kInt64 => {
+                sparkCol = sparkCol.cast(LongType)
+                sparkColType = LongType
+              }
+              case FesqlDataType.kFloat => {
+                sparkCol = sparkCol.cast(FloatType)
+                sparkColType = FloatType
+              }
+              case FesqlDataType.kDouble => {
+                sparkCol = sparkCol.cast(DoubleType)
+                sparkColType = DoubleType
+              }
+              case FesqlDataType.kBool => {
+                sparkCol = sparkCol.cast(BooleanType)
+                sparkColType = BooleanType
+              }
               case FesqlDataType.kDate => {
                 sparkColType match {
-                  case StringType => sparkCol = to_date(lit(sparkCol), "yyyy-MM-dd")
+                  case StringType => {
+                    sparkCol = to_date(lit(sparkCol), "yyyy-MM-dd")
+                    sparkColType = DateType
+                  }
                 }
               }
               case FesqlDataType.kTimestamp => {
                 sparkColType match {
-                  case StringType => sparkCol = to_timestamp(sparkCol) // format "yyyy/MM/dd HH:mm:ss"
+                  case StringType => {
+                    sparkCol = to_timestamp(sparkCol) // format "yyyy/MM/dd HH:mm:ss"
+                    sparkColType = TimestampType
+                  }
                 }
               }
-              case FesqlDataType.kVarchar => sparkCol = sparkCol.cast(StringType)
+              case FesqlDataType.kVarchar => {
+                sparkCol = sparkCol.cast(StringType)
+                sparkColType = StringType
+              }
             }
           }
 
