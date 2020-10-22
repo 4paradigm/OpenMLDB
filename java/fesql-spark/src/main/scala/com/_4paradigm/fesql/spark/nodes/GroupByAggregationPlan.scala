@@ -41,7 +41,7 @@ object GroupByAggregationPlan {
     val projectConfig = ProjectConfig(
       functionName = node.project().fn_name(),
       moduleTag = ctx.getTag,
-      moduleBroadcast = ctx.getModuleBufferBroadcast,
+      moduleNoneBroadcast = ctx.getSerializableModuleBuffer,
       inputSchemaSlices = inputSchemaSlices,
       outputSchemaSlices = outputSchemaSlices,
       inputSchema = inputSchema
@@ -57,7 +57,7 @@ object GroupByAggregationPlan {
 
         // Init JIT
         val tag = projectConfig.moduleTag
-        val buffer = projectConfig.moduleBroadcast.value.getBuffer
+        val buffer = projectConfig.moduleNoneBroadcast.getBuffer
         JITManager.initJITModule(tag, buffer)
         val jit = JITManager.getJIT(tag)
         val fn = jit.FindFunction(projectConfig.functionName)

@@ -49,12 +49,14 @@ class ColumnSource {
           schema_idx_(0),
           column_idx_(0),
           column_name_(""),
+          cast_type_chains_(),
           const_value_() {}
     explicit ColumnSource(const node::ConstNode* node)
         : type_(kSourceConst),
           schema_idx_(0),
           column_idx_(0),
           column_name_(""),
+          cast_type_chains_(),
           const_value_(node) {}
     ColumnSource(uint32_t schema_idx, uint32_t column_idx,
                  const std::string& column_name)
@@ -62,15 +64,33 @@ class ColumnSource {
           schema_idx_(schema_idx),
           column_idx_(column_idx),
           column_name_(column_name),
+          cast_type_chains_(),
           const_value_() {}
 
+    void AddCastType(const node::DataType& type) {
+        cast_type_chains_.push_back(type);
+    }
+
+    void AddCastTypes(const std::vector<node::DataType>& types) {
+        for (auto type : types) {
+            AddCastType(type);
+        }
+    }
     const std::string ToString() const {
+        std::string cast_types = "";
+        if (!cast_type_chains_.empty()) {
+            for (auto iter = cast_type_chains_.cbegin();
+                 iter != cast_type_chains_.cend(); iter++) {
+                cast_types.append(":");
+                cast_types.append(node::DataTypeName(*iter));
+            }
+        }
         switch (type_) {
             case kSourceColumn:
                 return "<-[" + std::to_string(schema_idx_) + ":" +
-                       std::to_string(column_idx_) + "]";
+                       std::to_string(column_idx_) + cast_types + "]";
             case kSourceConst:
-                return "<-" + node::ExprString(const_value_);
+                return "<-" + node::ExprString(const_value_) + cast_types;
             case kSourceNone:
                 return "->None";
         }
@@ -81,12 +101,16 @@ class ColumnSource {
     const uint32_t column_idx() const { return column_idx_; }
     const std::string& column_name() const { return column_name_; }
     const node::ConstNode* const_value() const { return const_value_; }
+    const std::vector<node::DataType>& cast_types() const {
+        return cast_type_chains_;
+    }
 
  private:
     SourceType type_;
     uint32_t schema_idx_;
     uint32_t column_idx_;
     std::string column_name_;
+    std::vector<node::DataType> cast_type_chains_;
     const node::ConstNode* const_value_;
 };
 
@@ -206,8 +230,7 @@ class TableHandler : public DataHandler {
         const std::string& idx_name) = 0;
     const HandlerType GetHanlderType() override { return kTableHandler; }
     virtual std::shared_ptr<PartitionHandler> GetPartition(
-        std::shared_ptr<TableHandler> table_hander,
-        const std::string& index_name) const {
+        const std::string& index_name) {
         return std::shared_ptr<PartitionHandler>();
     }
     const std::string GetHandlerTypeName() override { return "TableHandler"; }
@@ -229,10 +252,19 @@ class PartitionHandler : public TableHandler {
     virtual std::unique_ptr<WindowIterator> GetWindowIterator() = 0;
     const HandlerType GetHanlderType() override { return kPartitionHandler; }
     virtual Row At(uint64_t pos) { return Row(); }
-    virtual std::shared_ptr<TableHandler> GetSegment(
-        std::shared_ptr<PartitionHandler> partition_hander,
-        const std::string& key) {
+    virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key) {
         return std::shared_ptr<TableHandler>();
+    }
+
+    // Return batch segments with given keys vector
+    // this is default implementation of GetSegments
+    virtual std::vector<std::shared_ptr<TableHandler>> GetSegments(
+        const std::vector<std::string>& keys) {
+        std::vector<std::shared_ptr<TableHandler>> segments;
+        for (auto key : keys) {
+            segments.push_back(GetSegment(key));
+        }
+        return segments;
     }
     const std::string GetHandlerTypeName() override {
         return "PartitionHandler";
