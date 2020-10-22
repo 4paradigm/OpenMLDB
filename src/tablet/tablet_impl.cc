@@ -4855,6 +4855,18 @@ void TabletImpl::CheckZkClient() {
 }
 
 void TabletImpl::RefreshTableInfo() {
+    std::string db_table_notify_path = zk_path_ + "/table/notify";
+    std::string value;
+    if (!zk_client_->GetNodeValue(db_table_notify_path, value)) {
+        LOG(WARNING) << "fail to get node value. node is " << db_table_notify_path;
+        return;
+    }
+    uint64_t version = 0;
+    try {
+        version = std::stoull(value);
+    } catch (const std::exception& e) {
+        LOG(WARNING) << "value is not integer";
+    }
     std::string db_table_data_path = zk_path_ + "/table/db_table_data";
     std::vector<std::string> table_datas;
     if (zk_client_->IsExistNode(db_table_data_path) == 0) {
@@ -4881,7 +4893,7 @@ void TabletImpl::RefreshTableInfo() {
         }
         table_info_vec.push_back(std::move(table_info));
     }
-    catalog_->RefreshTable(table_info_vec);
+    catalog_->RefreshTable(table_info_vec, version);
 }
 
 int TabletImpl::CheckDimessionPut(const ::rtidb::api::PutRequest* request,

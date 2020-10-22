@@ -309,7 +309,7 @@ bool TabletCatalog::DeleteDB(const std::string& db) {
 
 bool TabletCatalog::IndexSupport() { return true; }
 
-void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInfo>& table_info_vec) {
+void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInfo>& table_info_vec, uint64_t version) {
     std::map<std::string, std::set<std::string>> table_map;
     for (const auto& table_info : table_info_vec) {
         const std::string& db_name = table_info.db();
@@ -364,6 +364,8 @@ void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInf
         }
         ++db_it;
     }
+    version_.store(version, std::memory_order_relaxed);
+    LOG(INFO) << "refresh catalog";
 }
 
 bool TabletCatalog::UpdateClient(const std::map<std::string, std::string>& real_ep_map) {
