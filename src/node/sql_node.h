@@ -1760,14 +1760,16 @@ class ColumnIndexNode : public SQLNode {
                             dynamic_cast<ConstNode *>(ttl_node);
                         switch (ttl->GetDataType()) {
                             case fesql::node::kInt32:
-                                if (ttl->GetTTLType() == fesql::node::kAbsolute) {
+                                if (ttl->GetTTLType() ==
+                                        fesql::node::kAbsolute) {
                                     abs_ttl_ = ttl->GetInt();
                                 } else {
                                     lat_ttl_ = ttl->GetInt();
                                 }
                                 break;
                             case fesql::node::kInt64:
-                                if (ttl->GetTTLType() == fesql::node::kAbsolute) {
+                                if (ttl->GetTTLType() ==
+                                        fesql::node::kAbsolute) {
                                     abs_ttl_ = ttl->GetLong();
                                 } else {
                                     lat_ttl_ = ttl->GetLong();
@@ -1777,7 +1779,8 @@ class ColumnIndexNode : public SQLNode {
                             case fesql::node::kHour:
                             case fesql::node::kMinute:
                             case fesql::node::kSecond:
-                                if (ttl->GetTTLType() == fesql::node::kAbsolute) {
+                                if (ttl->GetTTLType() ==
+                                        fesql::node::kAbsolute) {
                                     abs_ttl_ = ttl->GetMillis();
                                 } else {
                                     return;

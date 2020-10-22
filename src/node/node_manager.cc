@@ -708,7 +708,8 @@ ExprListNode *NodeManager::MakeExprList(ExprNode *expr_node) {
     return new_list_ptr;
 }
 
-ExprListNode *NodeManager::MakeExprList(ExprNode *expr_node_1, ExprNode *expr_node_2) {
+ExprListNode *NodeManager::MakeExprList(ExprNode *expr_node_1,
+                                        ExprNode *expr_node_2) {
     ExprListNode *new_list_ptr = new ExprListNode();
     new_list_ptr->AddChild(expr_node_1);
     new_list_ptr->AddChild(expr_node_2);
