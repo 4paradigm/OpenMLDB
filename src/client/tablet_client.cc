@@ -26,8 +26,9 @@ namespace client {
 
 TabletClient::TabletClient(const std::string& endpoint,
         const std::string& real_endpoint)
-    : endpoint_(endpoint), client_(endpoint) {
+    : endpoint_(endpoint), real_endpoint_(endpoint), client_(endpoint) {
         if (!real_endpoint.empty()) {
+            real_endpoint_ = real_endpoint;
             client_ = ::rtidb::RpcClient<
                 ::rtidb::api::TabletServer_Stub>(real_endpoint);
         }
@@ -35,8 +36,9 @@ TabletClient::TabletClient(const std::string& endpoint,
 
 TabletClient::TabletClient(const std::string& endpoint,
         const std::string& real_endpoint, bool use_sleep_policy)
-    : endpoint_(endpoint), client_(endpoint, use_sleep_policy) {
+    : endpoint_(endpoint), real_endpoint_(endpoint), client_(endpoint, use_sleep_policy) {
         if (!real_endpoint.empty()) {
+            real_endpoint_ = real_endpoint;
             client_ = ::rtidb::RpcClient<::rtidb::api::TabletServer_Stub>(
                     real_endpoint, use_sleep_policy);
         }
@@ -47,6 +49,8 @@ TabletClient::~TabletClient() {}
 int TabletClient::Init() { return client_.Init(); }
 
 std::string TabletClient::GetEndpoint() { return endpoint_; }
+
+const std::string& TabletClient::GetRealEndpoint() const { return real_endpoint_; }
 
 bool TabletClient::CreateTable(
     const std::string& name, uint32_t tid, uint32_t pid, uint64_t abs_ttl,

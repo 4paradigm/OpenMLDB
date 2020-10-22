@@ -150,7 +150,8 @@ TestArgs *PrepareMultiPartitionTable(const std::string &tname, int partition_num
 TEST_F(TabletCatalogTest, tablet_smoke_test) {
     TestArgs *args = PrepareTable("t1");
     TabletTableHandler handler(args->meta[0]);
-    ASSERT_TRUE(handler.Init());
+    ClientManager client_manager;
+    ASSERT_TRUE(handler.Init(client_manager));
     handler.AddTable(args->tables[0]);
     auto it = handler.GetIterator();
     if (!it) {
@@ -180,12 +181,13 @@ TEST_F(TabletCatalogTest, segment_handler_test) {
     TestArgs *args = PrepareTable("t1");
     auto handler = std::shared_ptr<TabletTableHandler>(
         new TabletTableHandler(args->meta[0]));
-    ASSERT_TRUE(handler->Init());
+    ClientManager client_manager;
+    ASSERT_TRUE(handler->Init(client_manager));
     handler->AddTable(args->tables[0]);
     // Seek key not exist
     {
-        auto partition = handler->GetPartition(handler, args->idx_name);
-        auto segment = partition->GetSegment(partition, args->pk);
+        auto partition = handler->GetPartition(args->idx_name);
+        auto segment = partition->GetSegment(args->pk);
         auto iter = segment->GetIterator();
         if (!iter) {
             FAIL();
@@ -200,12 +202,13 @@ TEST_F(TabletCatalogTest, segment_handler_pk_not_exist_test) {
     TestArgs *args = PrepareTable("t1");
     auto handler = std::shared_ptr<TabletTableHandler>(
         new TabletTableHandler(args->meta[0]));
-    ASSERT_TRUE(handler->Init());
+    ClientManager client_manager;
+    ASSERT_TRUE(handler->Init(client_manager));
     handler->AddTable(args->tables[0]);
     // Seek key not exist
     {
-        auto partition = handler->GetPartition(handler, args->idx_name);
-        auto segment = partition->GetSegment(partition, "KEY_NOT_EXIST");
+        auto partition = handler->GetPartition(args->idx_name);
+        auto segment = partition->GetSegment("KEY_NOT_EXIST");
         auto iter = segment->GetIterator();
         if (iter) {
             FAIL();

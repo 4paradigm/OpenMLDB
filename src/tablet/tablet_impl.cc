@@ -114,7 +114,8 @@ TabletImpl::TabletImpl()
       engine_(catalog_),
       zk_cluster_(),
       zk_path_(),
-      endpoint_() {}
+      endpoint_(),
+      notify_path_() {}
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
@@ -134,6 +135,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     zk_cluster_ = zk_cluster;
     zk_path_ = zk_path;
     endpoint_ = endpoint;
+    notify_path_ = zk_path + "/table/notify";
     std::lock_guard<std::mutex> lock(mu_);
     ::rtidb::base::SplitString(FLAGS_db_root_path, ",",
                                mode_root_paths_[::rtidb::common::kMemory]);
@@ -326,6 +328,13 @@ bool TabletImpl::RegisterZK() {
         }
         PDLOG(INFO, "tablet with endpoint %s register to zk cluster %s ok",
               endpoint_.c_str(), zk_cluster_.c_str());
+        if (zk_client_->IsExistNode(notify_path_) != 0) {
+            zk_client_->CreateNode(notify_path_, "1");
+        }
+        if (!zk_client_->WatchItem(notify_path_, boost::bind(&TabletImpl::RefreshTableInfo, this))) {
+            LOG(WARNING) << "add notify watcher failed";
+            return false;
+        }
         keep_alive_pool_.DelayTask(
             FLAGS_zk_keep_alive_check_interval,
             boost::bind(&TabletImpl::CheckZkClient, this));
@@ -3545,11 +3554,6 @@ int32_t TabletImpl::DeleteTableInternal(
                 snapshots_.erase(tid);
             }
         }
-        if (!catalog_->DeleteTable(table->GetTableMeta().db(),
-                                   table->GetName(), table->GetPid())) {
-            LOG(WARNING) << "delete " << table->GetTableMeta().db() << " "
-                         << table->GetName() << " in catalog failed";
-        }
         if (replicator) {
             replicator->DelAllReplicateNode();
             PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
@@ -4839,6 +4843,36 @@ void TabletImpl::CheckZkClient() {
                                boost::bind(&TabletImpl::CheckZkClient, this));
 }
 
+void TabletImpl::RefreshTableInfo() {
+    std::string db_table_data_path = zk_path_ + "/table/db_table_data";
+    std::vector<std::string> table_datas;
+    if (zk_client_->IsExistNode(db_table_data_path) == 0) {
+        bool ok = zk_client_->GetChildren(db_table_data_path, table_datas);
+        if (!ok) {
+            LOG(WARNING) << "fail to get table list with path "
+                         << db_table_data_path;
+            return;
+        }
+    } else {
+        LOG(INFO) << "no tables in db";
+    }
+    std::vector<::rtidb::nameserver::TableInfo> table_info_vec;
+    for (const auto& node : table_datas) {
+        std::string value;
+        if (!zk_client_->GetNodeValue(db_table_data_path + "/" + node, value)) {
+            LOG(WARNING) << "fail to get table data. node: " << node;
+            continue;
+        }
+        ::rtidb::nameserver::TableInfo table_info;
+        if (!table_info.ParseFromString(value)) {
+            LOG(WARNING) << "fail to parse table proto. node: " << node << " value: "<< value;
+            continue;
+        }
+        table_info_vec.push_back(std::move(table_info));
+    }
+    catalog_->RefreshTable(table_info_vec);
+}
+
 int TabletImpl::CheckDimessionPut(const ::rtidb::api::PutRequest* request,
                                   uint32_t idx_cnt) {
     for (int32_t i = 0; i < request->dimensions_size(); i++) {
@@ -5742,6 +5776,7 @@ void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
     }
     std::atomic_store_explicit(&real_ep_map_, tmp_real_ep_map,
             std::memory_order_release);
+    catalog_->UpdateClient(*tmp_real_ep_map);
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
