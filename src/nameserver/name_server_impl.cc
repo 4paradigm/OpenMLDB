@@ -1362,6 +1362,9 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             tablet->ctime_ = ::baidu::common::timer::get_micros() / 1000;
             tablets_.insert(std::make_pair(*it, tablet));
             PDLOG(INFO, "add tablet client. endpoint[%s]", it->c_str());
+            tit = tablets_.find(*it);
+            thread_pool_.DelayTask(FLAGS_get_task_status_interval,
+                    boost::bind(&NameServerImpl::RecoverProcedureOnTablet, this, tit->second->client_->GetEndpoint()));
         } else {
             if (tit->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
                 if (FLAGS_use_name) {
@@ -1388,12 +1391,13 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                 tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
                 PDLOG(INFO, "tablet is online. endpoint[%s]", tit->first.c_str());
                 thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOnline, this, tit->first));
+                tit = tablets_.find(*it);
+                thread_pool_.DelayTask(FLAGS_get_task_status_interval,
+                        boost::bind(&NameServerImpl::RecoverProcedureOnTablet, this,
+                            tit->second->client_->GetEndpoint()));
             }
         }
         PDLOG(INFO, "healthy tablet with endpoint[%s]", it->c_str());
-        tit = tablets_.find(*it);
-        thread_pool_.DelayTask(FLAGS_get_task_status_interval,
-                boost::bind(&NameServerImpl::RecoverProcedureOnTablet, this, tit->second->client_->GetEndpoint()));
     }
     // handle offline tablet
     for (Tablets::iterator tit = tablets_.begin(); tit != tablets_.end(); ++tit) {
@@ -10565,7 +10569,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
         sp_info->SerializeToString(&sp_value);
         std::string compressed;
         ::snappy::Compress(sp_value.c_str(), sp_value.length(), &compressed);
-        std::string sp_data_path = zk_db_sp_data_path_ + "/" + db_name + "_" + sp_name;
+        std::string sp_data_path = zk_db_sp_data_path_ + "/" + db_name + "." + sp_name;
         if (zk_client_->IsExistNode(sp_data_path) != 0) {
             if (!zk_client_->CreateNode(sp_data_path, compressed)) {
                 PDLOG(WARNING, "create db store procedure node[%s] failed! value[%s] value size[%lu]",
@@ -10775,7 +10779,7 @@ void NameServerImpl::DropProcedure(RpcController* controller,
     const std::string db_name = request->db_name();
     const std::string sp_name = request->sp_name();
     DropProcedureOnTablet(db_name, sp_name);
-    std::string sp_data_path = zk_db_sp_data_path_ + "/" + db_name + "_" + sp_name;
+    std::string sp_data_path = zk_db_sp_data_path_ + "/" + db_name + "." + sp_name;
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (!zk_client_->DeleteNode(sp_data_path)) {
