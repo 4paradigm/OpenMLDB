@@ -503,15 +503,15 @@ TEST_F(SQLSDKQueryTest, execute_where_test) {
     int64_t ts = 1594800959827;
     char buffer[4096];
     sprintf(buffer,  // NOLINT
-                "insert into trans "
-                "values('c_sk_seq0','cust_no0','pay_cust_name0','card_%d','"
-                "payee_card_no0','card_type0','mc_%d','2020-"
-                "10-20 "
-                "10:23:50',1.0,'txn_curr',2.0,3.0,4.0,5.0,6.0,'lgn_ip0','iemi0'"
-                ",'client_mac0',10,20,'cust_idt_no0','"
-                "province0',"
-                "'city0', 'longitude', %s);",
-                0, 0, std::to_string(ts++).c_str());  // NOLINT
+            "insert into trans "
+            "values('c_sk_seq0','cust_no0','pay_cust_name0','card_%d','"
+            "payee_card_no0','card_type0','mc_%d','2020-"
+            "10-20 "
+            "10:23:50',1.0,'txn_curr',2.0,3.0,4.0,5.0,6.0,'lgn_ip0','iemi0'"
+            ",'client_mac0',10,20,'cust_idt_no0','"
+            "province0',"
+            "'city0', 'longitude', %s);",
+            0, 0, std::to_string(ts++).c_str());  // NOLINT
     std::string insert_sql = std::string(buffer, strlen(buffer));
     ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
     std::string where_exist = "select * from trans where merch_id='mc_0';";
@@ -527,7 +527,6 @@ TEST_F(SQLSDKQueryTest, execute_where_test) {
     }
     ASSERT_EQ(rs->Size(), 0);
 }
- 
 
 TEST_F(SQLSDKQueryTest, execute_insert_loops_test) {
     std::string ddl =
