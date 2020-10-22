@@ -35,7 +35,7 @@ object ConstProjectPlan {
 
       columnSource.`type`() match {
         case SourceType.kSourceColumn => {
-          throw new FesqlException((s"Should not handle source column for const proejct node")
+          throw new FesqlException(s"Should not handle source column for const proejct node")
         }
         case SourceType.kSourceConst => {
           val const_value = columnSource.const_value()
