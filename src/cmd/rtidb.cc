@@ -3751,6 +3751,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         printf("update - update record of specified table\n");
         printf("query - query record from relational table\n");
         printf("setsdkendpoint - set sdkendpoint for external network sdk\n");
+        printf("showcatalogversion - show catalog version\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -6650,8 +6651,6 @@ int main(int argc, char* argv[]) {
     } else if (FLAGS_role == "blob") {
         StartBlob();
 #endif
-    } else if (FLAGS_role == "ns_client") {
-        StartNsClient();
     } else if (FLAGS_role == "bs_client") {
         StartBsClient();
     } else {

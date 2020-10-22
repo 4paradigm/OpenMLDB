@@ -425,6 +425,7 @@ bool ZkClient::Increment(const std::string& node) {
         if (zoo_set(zk_, node.c_str(), new_value.c_str(), new_value.length(), stat.version) == ZOK) {
             return true;
         }
+        PDLOG(INFO, "retry increment %s", node);
     }
     return false;
 }
