@@ -11,6 +11,7 @@ import random
 import string
 from datetime import datetime
 import common.fesql_config as fesql_config
+import time
 
 log = LogManager('fesql-auto-test').get_logger_and_add_handlers()
 
@@ -23,6 +24,7 @@ def getRandomName():
     return tableName
 
 def getCreateSql(name:str,columns:list,inexs:list):
+    time.sleep(1)
     createSql = "create table "+name+"("
     for column in columns:
         createSql+=column+","

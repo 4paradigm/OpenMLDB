@@ -23,7 +23,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
 #include "base/spinlock.h"
 #include "catalog/client_manager.h"
 #include "catalog/distribute_iterator.h"
@@ -78,8 +77,7 @@ class TabletSegmentHandler : public ::fesql::vm::TableHandler {
         if (iter) {
             DLOG(INFO) << "seek to pk " << key_;
             iter->Seek(key_);
-            if (iter->Valid() &&
-                0 == iter->GetKey().compare(fesql::codec::Row(key_))) {
+            if (iter->Valid() && 0 == iter->GetKey().compare(fesql::codec::Row(key_))) {
                 return iter->GetRawValue();
             } else {
                 return nullptr;
@@ -118,7 +116,8 @@ class TabletSegmentHandler : public ::fesql::vm::TableHandler {
     std::string key_;
 };
 
-class TabletPartitionHandler : public ::fesql::vm::PartitionHandler {
+class TabletPartitionHandler : public ::fesql::vm::PartitionHandler,
+                               public std::enable_shared_from_this<fesql::vm::PartitionHandler> {
  public:
     TabletPartitionHandler(std::shared_ptr<::fesql::vm::TableHandler> table_hander, const std::string &index_name)
         : PartitionHandler(), table_handler_(table_hander), index_name_(index_name) {}
@@ -154,9 +153,8 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler {
         return cnt;
     }
 
-    std::shared_ptr<::fesql::vm::TableHandler> GetSegment(
-        std::shared_ptr<::fesql::vm::PartitionHandler> partition_hander, const std::string &key) override {
-        return std::make_shared<TabletSegmentHandler>(partition_hander, key);
+    std::shared_ptr<::fesql::vm::TableHandler> GetSegment(const std::string &key) override {
+        return std::make_shared<TabletSegmentHandler>(shared_from_this(), key);
     }
     const std::string GetHandlerTypeName() override { return "TabletPartitionHandler"; }
 
@@ -165,7 +163,8 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler {
     std::string index_name_;
 };
 
-class TabletTableHandler : public ::fesql::vm::TableHandler {
+class TabletTableHandler : public ::fesql::vm::TableHandler,
+                           public std::enable_shared_from_this<fesql::vm::TableHandler> {
  public:
     explicit TabletTableHandler(const ::rtidb::api::TableMeta &meta);
 
@@ -195,9 +194,7 @@ class TabletTableHandler : public ::fesql::vm::TableHandler {
 
     ::fesql::codec::Row At(uint64_t pos) override;
 
-    std::shared_ptr<::fesql::vm::PartitionHandler> GetPartition(std::shared_ptr<::fesql::vm::TableHandler> table_hander,
-                                                                const std::string &index_name) const override;
-
+    std::shared_ptr<::fesql::vm::PartitionHandler> GetPartition(const std::string &index_name) override;
     const std::string GetHandlerTypeName() override { return "TabletTableHandler"; }
 
     inline int32_t GetTid() { return table_st_.GetTid(); }

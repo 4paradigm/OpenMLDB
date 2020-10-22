@@ -18,7 +18,7 @@ class TestLastJoin(unittest.TestCase):
 
     @idata(fesql_test.getCases(tool.getCasePath('/integration/v1/test_last_join.yaml')))
     def test_lastjoin(self, *testCases):
-        executor.fesql_executor.build(self.connection,testCases[0]).run()
+        executor.fesql_executor.build(self.connection, testCases[0]).run()
 
 if __name__ == '__main__':
     unittest.main()
