@@ -124,8 +124,7 @@ void TabletWindowIterate(benchmark::State* state, MODE mode,
                          int64_t data_size) {
     auto catalog = BuildOnePkTableStorage(data_size);
     auto table_hanlder = catalog->GetTable("db", "t1");
-    auto partition_handler =
-        table_hanlder->GetPartition(table_hanlder, "index1");
+    auto partition_handler = table_hanlder->GetPartition("index1");
     if (!partition_handler) {
         FAIL();
     }

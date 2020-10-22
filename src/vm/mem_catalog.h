@@ -416,7 +416,9 @@ class MemSegmentHandler : public TableHandler {
     std::string key_;
 };
 
-class MemPartitionHandler : public PartitionHandler {
+class MemPartitionHandler
+    : public PartitionHandler,
+      public std::enable_shared_from_this<PartitionHandler> {
  public:
     MemPartitionHandler();
     explicit MemPartitionHandler(const Schema* schema);
@@ -435,11 +437,9 @@ class MemPartitionHandler : public PartitionHandler {
     void Reverse();
     void Print();
     virtual const uint64_t GetCount() { return partitions_.size(); }
-    virtual std::shared_ptr<TableHandler> GetSegment(
-        std::shared_ptr<PartitionHandler> partition_hander,
-        const std::string& key) {
+    virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key) {
         return std::shared_ptr<MemSegmentHandler>(
-            new MemSegmentHandler(partition_hander, key));
+            new MemSegmentHandler(shared_from_this(), key));
     }
     void SetOrderType(const OrderType order_type) { order_type_ = order_type; }
     const OrderType GetOrderType() const { return order_type_; }

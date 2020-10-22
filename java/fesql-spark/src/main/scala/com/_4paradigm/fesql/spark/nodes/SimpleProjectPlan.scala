@@ -1,14 +1,17 @@
 package com._4paradigm.fesql.spark.nodes
 
-import com._4paradigm.fesql.`type`.TypeOuterClass.Type
 import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.utils.SparkColumnUtil
 import com._4paradigm.fesql.vm.{PhysicalSimpleProjectNode, SourceType}
 import org.slf4j.LoggerFactory
 import org.apache.spark.sql.functions.lit
-import org.apache.spark.sql.types.{BooleanType, DataType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, TimestampType}
+import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, TimestampType}
+import com._4paradigm.fesql.node.{DataType => FesqlDataType}
+import org.apache.spark.sql.functions.to_date
+import org.apache.spark.sql.functions.to_timestamp
 
 import scala.collection.JavaConverters._
+
 
 object SimpleProjectPlan {
 
@@ -23,6 +26,7 @@ object SimpleProjectPlan {
   def gen(ctx: PlanContext, node: PhysicalSimpleProjectNode, inputs: Seq[SparkInstance]): SparkInstance = {
     val inputInstance = inputs.head
     val inputDf = inputInstance.getDf(ctx.getSparkSession)
+    val inputDfTypes = inputDf.schema.fields.toList
 
     // Get the output column names from output schema
     val outputColNameList = node.GetOutputSchema().asScala.map(col =>
@@ -44,26 +48,68 @@ object SimpleProjectPlan {
         case SourceType.kSourceColumn => {
           // Resolved the column index to get column and rename
           val colIndex = SparkColumnUtil.resolveColumnIndex(columnSource.schema_idx(), columnSource.column_idx(), node.GetProducer(0))
-          SparkColumnUtil.getCol(inputDf, colIndex).alias(outputColNameList(i));
+          var sparkCol = SparkColumnUtil.getCol(inputDf, colIndex)
+          var sparkColType = inputDfTypes(colIndex).dataType
+
+          val castTypes = columnSource.cast_types()
+          for(i <- 0 until castTypes.size()) {
+            val castType = castTypes.get(i)
+
+            castType match {
+              case FesqlDataType.kInt16 => {
+                sparkCol = sparkCol.cast(ShortType)
+                sparkColType = ShortType
+              }
+              case FesqlDataType.kInt32 => {
+                sparkCol = sparkCol.cast(IntegerType)
+                sparkColType = IntegerType
+              }
+              case FesqlDataType.kInt64 => {
+                sparkCol = sparkCol.cast(LongType)
+                sparkColType = LongType
+              }
+              case FesqlDataType.kFloat => {
+                sparkCol = sparkCol.cast(FloatType)
+                sparkColType = FloatType
+              }
+              case FesqlDataType.kDouble => {
+                sparkCol = sparkCol.cast(DoubleType)
+                sparkColType = DoubleType
+              }
+              case FesqlDataType.kBool => {
+                sparkCol = sparkCol.cast(BooleanType)
+                sparkColType = BooleanType
+              }
+              case FesqlDataType.kDate => {
+                sparkColType match {
+                  case StringType => {
+                    // TODO: may support "yyyyMMdd", "yyyy-MM-dd HH:mm:ss"
+                    sparkCol = to_date(sparkCol, "yyyy-MM-dd")
+                    sparkColType = DateType
+                  }
+                }
+              }
+              case FesqlDataType.kTimestamp => {
+                sparkColType match {
+                  case StringType => {
+                    sparkCol = to_timestamp(sparkCol) // format "yyyy/MM/dd HH:mm:ss"
+                    sparkColType = TimestampType
+                  }
+                }
+              }
+              case FesqlDataType.kVarchar => {
+                sparkCol = sparkCol.cast(StringType)
+                sparkColType = StringType
+              }
+            }
+          }
+
+          sparkCol.alias(outputColNameList(i))
         }
         case SourceType.kSourceConst => {
           val const_value = columnSource.const_value()
           val outputColName = outputColNameList(i)
-
-          // Get constant value and case type and rename
-          outputColTypeList(i) match {
-            case Type.kInt16 => lit(const_value.GetSmallInt()).cast(ShortType).alias(outputColName)
-            case Type.kInt32 => lit(const_value.GetInt()).cast(IntegerType).alias(outputColName)
-            case Type.kInt64 => lit(const_value.GetLong()).cast(LongType).alias(outputColName)
-            case Type.kFloat => lit(const_value.GetFloat()).cast(FloatType).alias(outputColName)
-            case Type.kDouble => lit(const_value.GetDouble()).cast(DoubleType).alias(outputColName)
-            // case Type.kBool => lit(const_value.GetInt()).cast(BooleanType).alias(outputColName)
-            case Type.kVarchar => lit(const_value.GetStr()).cast(StringType).alias(outputColName)
-            //case Type.kDate => lit(const_value.GetSmallInt()).cast(DateType).alias(outputColName)
-            //case Type.kTimestamp => lit(const_value.GetSmallInt()).cast(TimestampType).alias(outputColName)
-            case _ => throw new IllegalArgumentException(s"FeSQL type ${outputColTypeList(i)} not supported")
-          }
-
+          ConstProjectPlan.getConstCol(outputColTypeList(i), const_value, outputColName)
         }
       }
 
@@ -71,8 +117,8 @@ object SimpleProjectPlan {
 
     // Use Spark DataFrame to select columns
     val result = SparkColumnUtil.setDataframeNullable(inputDf.select(selectColList:_*), true)
-
     SparkInstance.fromDataFrame(result)
+
   }
 
 }

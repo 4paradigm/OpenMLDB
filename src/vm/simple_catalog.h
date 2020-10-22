@@ -52,8 +52,7 @@ class SimpleCatalogTableHandler : public TableHandler {
     fesql::codec::Row At(uint64_t pos) override;
 
     std::shared_ptr<PartitionHandler> GetPartition(
-        std::shared_ptr<TableHandler> table_hander,
-        const std::string &index_name) const override;
+        const std::string &index_name) override;
 
     std::unique_ptr<RowIterator> GetIterator() const override;
 

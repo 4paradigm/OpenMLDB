@@ -81,7 +81,9 @@ class TabletSegmentHandler : public TableHandler {
     std::string key_;
 };
 
-class TabletPartitionHandler : public PartitionHandler {
+class TabletPartitionHandler
+    : public PartitionHandler,
+      public std::enable_shared_from_this<PartitionHandler> {
  public:
     TabletPartitionHandler(std::shared_ptr<TableHandler> table_hander,
                            const std::string& index_name)
@@ -102,18 +104,15 @@ class TabletPartitionHandler : public PartitionHandler {
     }
 
     inline const vm::Types& GetTypes() { return table_handler_->GetTypes(); }
-
     inline const vm::IndexHint& GetIndex() { return index_hint_; }
     std::unique_ptr<vm::WindowIterator> GetWindowIterator() override {
         return table_handler_->GetWindowIterator(index_name_);
     }
     const uint64_t GetCount() override;
 
-    virtual std::shared_ptr<TableHandler> GetSegment(
-        std::shared_ptr<PartitionHandler> partition_hander,
-        const std::string& key) {
+    virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key) {
         return std::shared_ptr<TabletSegmentHandler>(
-            new TabletSegmentHandler(partition_hander, key));
+            new TabletSegmentHandler(shared_from_this(), key));
     }
     const std::string GetHandlerTypeName() override {
         return "TabletPartitionHandler";
@@ -125,7 +124,9 @@ class TabletPartitionHandler : public PartitionHandler {
     vm::IndexHint index_hint_;
 };
 
-class TabletTableHandler : public vm::TableHandler {
+class TabletTableHandler
+    : public vm::TableHandler,
+      public std::enable_shared_from_this<vm::TableHandler> {
  public:
     TabletTableHandler(const vm::Schema schema, const std::string& name,
                        const std::string& db, const vm::IndexList& index_list,
@@ -157,22 +158,15 @@ class TabletTableHandler : public vm::TableHandler {
     Row At(uint64_t pos) override;
 
     virtual std::shared_ptr<PartitionHandler> GetPartition(
-        std::shared_ptr<TableHandler> table_hander,
-        const std::string& index_name) const {
-        if (!table_hander) {
-            LOG(WARNING) << "fail to get partition for tablet table handler: "
-                            "table handler is null";
-            return std::shared_ptr<PartitionHandler>();
-        }
-        if (table_hander->GetIndex().find(index_name) ==
-            table_hander->GetIndex().cend()) {
+        const std::string& index_name) {
+        if (index_hint_.find(index_name) == index_hint_.cend()) {
             LOG(WARNING)
                 << "fail to get partition for tablet table handler, index name "
                 << index_name;
             return std::shared_ptr<PartitionHandler>();
         }
         return std::shared_ptr<TabletPartitionHandler>(
-            new TabletPartitionHandler(table_hander, index_name));
+            new TabletPartitionHandler(shared_from_this(), index_name));
     }
     const std::string GetHandlerTypeName() override {
         return "TabletTableHandler";
