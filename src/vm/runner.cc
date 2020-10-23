@@ -24,12 +24,14 @@ namespace vm {
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_MAX 20
 
-Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
+std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
+                                                 Status& status) {
+    auto fail = std::make_pair(0, nullptr);
     if (nullptr == node) {
         status.msg = "fail to build runner : physical node is null";
         status.code = common::kOpGenError;
         LOG(WARNING) << status;
-        return nullptr;
+        return fail;
     }
     switch (node->type_) {
         case kPhysicalOpDataProvider: {
@@ -38,36 +40,44 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 case kProviderTypeTable: {
                     auto provider =
                         dynamic_cast<const PhysicalTableProviderNode*>(node);
-                    return nm_->RegisterNode(
-                        new DataRunner(id_++, node->GetOutputNameSchemaList(),
-                                       provider->table_handler_));
+                    return std::make_pair(
+                        0, nm_->RegisterNode(new DataRunner(
+                               id_++, node->GetOutputNameSchemaList(),
+                               provider->table_handler_)));
                 }
                 case kProviderTypePartition: {
                     auto provider =
                         dynamic_cast<const PhysicalPartitionProviderNode*>(
                             node);
-                    return nm_->RegisterNode(
-                        new DataRunner(id_++, node->GetOutputNameSchemaList(),
-                                       provider->table_handler_->GetPartition(
-                                           provider->index_name_)));
+                    if (support_cluster_optimized_) {
+                        partition_id_++;
+                    }
+                    return std::make_pair(
+                        partition_id_,
+                        nm_->RegisterNode(new DataRunner(
+                            id_++, node->GetOutputNameSchemaList(),
+                            provider->table_handler_->GetPartition(
+                                provider->index_name_))));
                 }
                 case kProviderTypeRequest: {
-                    return nm_->RegisterNode(new RequestRunner(
-                        id_++, node->GetOutputNameSchemaList()));
+                    return std::make_pair(
+                        0, nm_->RegisterNode(new RequestRunner(
+                               id_++, node->GetOutputNameSchemaList())));
                 }
                 default: {
                     status.msg = "fail to support data provider type " +
                                  DataProviderTypeName(op->provider_type_);
                     status.code = common::kOpGenError;
                     LOG(WARNING) << status;
-                    return nullptr;
+                    return fail;
                 }
             }
         }
         case kPhysicalOpSimpleProject: {
-            auto input = Build(node->producers().at(0), status);
+            auto [partition_id, input] =  // NOLINT
+                Build(node->producers().at(0), status);
             if (nullptr == input) {
-                return nullptr;
+                return fail;
             }
 
             auto op = dynamic_cast<const PhysicalSimpleProjectNode*>(node);
@@ -75,19 +85,20 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
                 op->project_.fn_info_);
             runner->AddProducer(input);
-            return nm_->RegisterNode(runner);
+            return std::make_pair(partition_id, nm_->RegisterNode(runner));
         }
         case kPhysicalOpConstProject: {
             auto op = dynamic_cast<const PhysicalConstProjectNode*>(node);
             auto runner =
                 new ConstProjectRunner(id_++, node->GetOutputNameSchemaList(),
                                        op->GetLimitCnt(), op->project_);
-            return nm_->RegisterNode(runner);
+            return std::make_pair(0, nm_->RegisterNode(runner));
         }
         case kPhysicalOpProject: {
-            auto input = Build(node->producers().at(0), status);
+            auto [partition_id, input] =  // NOLINT
+                Build(node->producers().at(0), status);
             if (nullptr == input) {
-                return nullptr;
+                return fail;
             }
 
             auto op = dynamic_cast<const PhysicalProjectNode*>(node);
@@ -97,14 +108,16 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->project_);
                     runner->AddProducer(input);
-                    return nm_->RegisterNode(runner);
+                    return std::make_pair(partition_id,
+                                          nm_->RegisterNode(runner));
                 }
                 case kAggregation: {
                     auto runner =
                         new AggRunner(id_++, node->GetOutputNameSchemaList(),
                                       op->GetLimitCnt(), op->project_);
                     runner->AddProducer(input);
-                    return nm_->RegisterNode(runner);
+                    return std::make_pair(partition_id,
+                                          nm_->RegisterNode(runner));
                 }
                 case kGroupAggregation: {
                     auto op =
@@ -113,7 +126,8 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->group_, op->project_);
                     runner->AddProducer(input);
-                    return nm_->RegisterNode(runner);
+                    return std::make_pair(partition_id,
+                                          nm_->RegisterNode(runner));
                 }
                 case kWindowAggregation: {
                     auto op =
@@ -130,10 +144,17 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     if (!op->window_joins_.Empty()) {
                         for (auto window_join :
                              op->window_joins_.window_joins_) {
-                            auto join_right_runner =
+                            auto [window_join_partition_id,  // NOLINT
+                                  join_right_runner] =       // NOLINT
                                 Build(window_join.first, status);
                             if (nullptr == join_right_runner) {
-                                return nullptr;
+                                return fail;
+                            }
+
+                            // set runner partition id, if main table depend on
+                            // no window(partition)
+                            if (0 == partition_id) {
+                                partition_id = window_join_partition_id;
                             }
                             runner->AddWindowJoin(window_join.second,
                                                   input_slices,
@@ -144,71 +165,84 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     if (!op->window_unions_.Empty()) {
                         for (auto window_union :
                              op->window_unions_.window_unions_) {
-                            auto union_table =
+                            auto [union_table_partition_id,  // NOLINT
+                                  union_table] =             // NOLINT
                                 Build(window_union.first, status);
                             if (nullptr == union_table) {
-                                return nullptr;
+                                return fail;
+                            }
+                            if (0 == partition_id) {
+                                partition_id = union_table_partition_id;
                             }
                             runner->AddWindowUnion(window_union.second,
                                                    union_table);
                         }
                     }
-                    return nm_->RegisterNode(runner);
+                    return std::make_pair(partition_id,
+                                          nm_->RegisterNode(runner));
                 }
                 case kRowProject: {
                     auto runner = new RowProjectRunner(
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->project_);
                     runner->AddProducer(input);
-                    return nm_->RegisterNode(runner);
+                    return std::make_pair(partition_id,
+                                          nm_->RegisterNode(runner));
                 }
                 default: {
                     status.msg = "fail to support project type " +
                                  ProjectTypeName(op->project_type_);
                     status.code = common::kOpGenError;
                     LOG(WARNING) << status;
-                    return nullptr;
+                    return fail;
                 }
             }
         }
         case kPhysicalOpRequestUnoin: {
-            auto left = Build(node->producers().at(0), status);
+            auto [left_partition_id, left] =  // NOLINT
+                Build(node->producers().at(0), status);
             if (nullptr == left) {
-                return nullptr;
+                return fail;
             }
-            auto right = Build(node->producers().at(1), status);
+            auto [right_partition_id, right] =  // NOLINT
+                Build(node->producers().at(1), status);
             if (nullptr == right) {
-                return nullptr;
+                return fail;
             }
             auto op = dynamic_cast<const PhysicalRequestUnionNode*>(node);
             auto runner =
                 new RequestUnionRunner(id_++, node->GetOutputNameSchemaList(),
                                        op->GetLimitCnt(), op->window().range_);
-            runner->AddProducer(left);
-            runner->AddProducer(right);
-
             if (!op->instance_not_in_window()) {
                 runner->AddWindowUnion(op->window_, right);
             }
             if (!op->window_unions_.Empty()) {
                 for (auto window_union : op->window_unions_.window_unions_) {
-                    auto union_table = Build(window_union.first, status);
+                    auto [union_table_partition_id, union_table] =  // NOLINT
+                        Build(window_union.first, status);
                     if (nullptr == union_table) {
-                        return nullptr;
+                        return fail;
+                    }
+                    if (0 == right_partition_id) {
+                        right_partition_id = union_table_partition_id;
                     }
                     runner->AddWindowUnion(window_union.second, union_table);
                 }
             }
-            return nm_->RegisterNode(runner);
+            return BuildRunnerWithProxy(nm_->RegisterNode(runner), left,
+                                        left_partition_id, right,
+                                        right_partition_id, status);
         }
         case kPhysicalOpRequestJoin: {
-            auto left = Build(node->producers().at(0), status);
+            auto [left_partition_id, left] =  // NOLINT
+                Build(node->producers().at(0), status);
             if (nullptr == left) {
-                return nullptr;
+                return fail;
             }
-            auto right = Build(node->producers().at(1), status);
+            auto [right_partition_id, right] =  // NOLINT
+                Build(node->producers().at(1), status);
             if (nullptr == right) {
-                return nullptr;
+                return fail;
             }
             auto op = dynamic_cast<const PhysicalRequestJoinNode*>(node);
             switch (op->join().join_type()) {
@@ -218,35 +252,39 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         op->GetLimitCnt(), op->join_,
                         left->output_schemas().GetSchemaSourceListSize(),
                         right->output_schemas().GetSchemaSourceListSize());
-                    runner->AddProducer(left);
-                    runner->AddProducer(right);
-                    return nm_->RegisterNode(runner);
+
+                    return BuildRunnerWithProxy(nm_->RegisterNode(runner), left,
+                                                left_partition_id, right,
+                                                right_partition_id, status);
                 }
                 case node::kJoinTypeConcat: {
                     auto runner =
                         new ConcatRunner(id_++, node->GetOutputNameSchemaList(),
                                          op->GetLimitCnt());
-                    runner->AddProducer(left);
-                    runner->AddProducer(right);
-                    return nm_->RegisterNode(runner);
+
+                    return BuildRunnerWithProxy(nm_->RegisterNode(runner), left,
+                                                left_partition_id, right,
+                                                right_partition_id, status);
                 }
                 default: {
                     status.code = common::kOpGenError;
                     status.msg = "can't handle join type " +
                                  node::JoinTypeName(op->join().join_type());
                     LOG(WARNING) << status;
-                    return nullptr;
+                    return fail;
                 }
             }
         }
         case kPhysicalOpJoin: {
-            auto left = Build(node->producers().at(0), status);
+            auto [left_partition_id, left] =  // NOLINT
+                Build(node->producers().at(0), status);
             if (nullptr == left) {
-                return nullptr;
+                return fail;
             }
-            auto right = Build(node->producers().at(1), status);
+            auto [right_partition_id, right] =  // NOLINT
+                Build(node->producers().at(1), status);
             if (nullptr == right) {
-                return nullptr;
+                return fail;
             }
             auto op = dynamic_cast<const PhysicalJoinNode*>(node);
             switch (op->join().join_type()) {
@@ -258,54 +296,58 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         right->output_schemas().GetSchemaSourceListSize());
                     runner->AddProducer(left);
                     runner->AddProducer(right);
-                    return nm_->RegisterNode(runner);
+                    return std::make_pair(left_partition_id,
+                                          nm_->RegisterNode(runner));
                 }
                 default: {
                     status.code = common::kOpGenError;
                     status.msg = "can't handle join type " +
                                  node::JoinTypeName(op->join().join_type());
                     LOG(WARNING) << status;
-                    return nullptr;
+                    return fail;
                 }
             }
         }
         case kPhysicalOpGroupBy: {
-            auto input = Build(node->producers().at(0), status);
+            auto [partition_id, input] =  // NOLINT
+                Build(node->producers().at(0), status);
             if (nullptr == input) {
-                return nullptr;
+                return fail;
             }
             auto op = dynamic_cast<const PhysicalGroupNode*>(node);
             auto runner =
                 new GroupRunner(id_++, node->GetOutputNameSchemaList(),
                                 op->GetLimitCnt(), op->group());
             runner->AddProducer(input);
-            return nm_->RegisterNode(runner);
+            return std::make_pair(partition_id, nm_->RegisterNode(runner));
         }
         case kPhysicalOpFilter: {
-            auto input = Build(node->producers().at(0), status);
+            auto [partition_id, input] =  // NOLINT
+                Build(node->producers().at(0), status);
             if (nullptr == input) {
-                return nullptr;
+                return fail;
             }
             auto op = dynamic_cast<const PhysicalFliterNode*>(node);
             auto runner =
                 new FilterRunner(id_++, node->GetOutputNameSchemaList(),
                                  op->GetLimitCnt(), op->filter_);
             runner->AddProducer(input);
-            return nm_->RegisterNode(runner);
+            return std::make_pair(partition_id, nm_->RegisterNode(runner));
         }
         case kPhysicalOpLimit: {
-            auto input = Build(node->producers().at(0), status);
+            auto [partition_id, input] =  // NOLINT
+                Build(node->producers().at(0), status);
             if (nullptr == input) {
-                return nullptr;
+                return fail;
             }
             auto op = dynamic_cast<const PhysicalLimitNode*>(node);
             if (op->GetLimitCnt() == 0 || op->GetLimitOptimized()) {
-                return input;
+                return std::make_pair(partition_id, input);
             }
             auto runner = new LimitRunner(
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt());
             runner->AddProducer(input);
-            return nm_->RegisterNode(runner);
+            return std::make_pair(partition_id, nm_->RegisterNode(runner));
         }
         case kPhysicalOpRename: {
             return Build(node->producers().at(0), status);
@@ -315,9 +357,33 @@ Runner* RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             status.msg = "can't handle node " + std::to_string(node->type_) +
                          " " + PhysicalOpTypeName(node->type_);
             LOG(WARNING) << status;
-            return nullptr;
+            return fail;
         }
     }
+}
+std::pair<int32_t, Runner*> RunnerBuilder::BuildRunnerWithProxy(
+    Runner* runner, Runner* left, int32_t left_partition_id, Runner* right,
+    int32_t right_partition_id, Status& status) {
+    int32_t final_partition_id = 0;
+    if (0 != left_partition_id && 0 != right_partition_id &&
+        left_partition_id != right_partition_id) {
+        if (!cluster_job_.AddTask(left_partition_id, left)) {
+            status.msg = "duplicate cluster task, partition id: " +
+                         std::to_string(left_partition_id);
+            status.msg = common::kOpGenError;
+            return std::make_pair(0, nullptr);
+        }
+        // replace left with proxy runner
+        left = nm_->RegisterNode(
+            new ProxyRunner(id_++, left_partition_id, left->output_schemas()));
+        final_partition_id = right_partition_id;
+    } else {
+        final_partition_id =
+            0 != right_partition_id ? right_partition_id : left_partition_id;
+    }
+    runner->AddProducer(left);
+    runner->AddProducer(right);
+    return std::make_pair(final_partition_id, runner);
 }
 
 bool Runner::GetColumnBool(RowView* row_view, int idx, type::Type type) {
@@ -1586,7 +1652,6 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
     uint64_t end = UINT64_MAX;
     uint64_t rows_start_preceding = 0;
     int64_t request_key = range_gen_.ts_gen_.Gen(request);
-    DLOG(INFO) << "request key: " << request_key;
     if (range_gen_.Valid()) {
         start = (request_key + range_gen_.start_offset_) < 0
                     ? 0
@@ -1596,7 +1661,6 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
                   : (request_key + range_gen_.end_offset_);
         rows_start_preceding = range_gen_.start_row_;
     }
-    DLOG(INFO) << " start " << start << " end " << end;
     window_table->AddRow(request_key, request);
     // Prepare Union Window
     auto union_inputs = windows_union_gen_.RunInputs(ctx);
@@ -1670,6 +1734,23 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
     return row_handler;
 }
 
+std::shared_ptr<DataHandler> ProxyRunner::Run(RunnerContext& ctx) {
+    auto cluster_job = ctx.cluster_job();
+    auto fail_ptr = std::shared_ptr<DataHandler>();
+    if (nullptr == cluster_job) {
+        LOG(WARNING) << "fail to run proxy runner: invalid cluster job ptr";
+        return fail_ptr;
+    }
+
+    // run proxy in local
+    auto runner = cluster_job->GetTask(task_id_);
+    if (nullptr == runner) {
+        LOG(WARNING) << "fail to run proxy runner: invalid task of taskid "
+                     << task_id_;
+        return fail_ptr;
+    }
+    return runner->RunWithCache(ctx);
+}
 /**
  * TODO(chenjing): GenConst key during compile-time
  * @return
@@ -1683,12 +1764,10 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -1708,12 +1787,10 @@ const std::string KeyGenerator::Gen(const Row& row) {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }

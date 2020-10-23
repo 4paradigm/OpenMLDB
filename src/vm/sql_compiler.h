@@ -91,12 +91,8 @@ class SQLCompiler {
     bool Compile(SQLContext& ctx,                 // NOLINT
                  Status& status);                 // NOLINT
     bool Parse(SQLContext& ctx, Status& status);  // NOLINT
-    bool BuildRunner(node::NodeManager* nm, PhysicalOpNode* physical_plan,
-                     Runner** output,
-                     Status& status);  // NOLINT
-
-    bool BuildClusterJob(SQLContext& ctx,  // NOLINT
-                         Status& status);  // NOLINT
+    bool BuildClusterJob(SQLContext& ctx,         // NOLINT
+                         Status& status);         // NOLINT
 
  private:
     void KeepIR(SQLContext& ctx, llvm::Module* m);  // NOLINT

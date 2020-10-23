@@ -11,6 +11,7 @@
 #define SRC_VM_RUNNER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -35,6 +36,7 @@ using vm::TableHandler;
 using vm::Window;
 
 class Runner;
+class RunnerContext;
 class FnGenerator {
  public:
     explicit FnGenerator(const FnInfo& info)
@@ -307,6 +309,7 @@ enum RunnerType {
     kRunnerIndexSeek,
     kRunnerLastJoin,
     kRunnerConcat,
+    kRunnerProxy,
     kRunnerRequestLastJoin,
     kRunnerLimit,
     kRunnerUnknow,
@@ -349,6 +352,8 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "REQUEST_LASTJOIN";
         case kRunnerLimit:
             return "LIMIT";
+        case kRunnerProxy:
+            return "PROXY";
         default:
             return "UNKNOW";
     }
@@ -757,48 +762,178 @@ class LimitRunner : public Runner {
     ~LimitRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
 };
-class RunnerBuilder {
+
+class ProxyRunner : public Runner {
  public:
-    explicit RunnerBuilder(node::NodeManager* nm) : id_(0), nm_(nm) {}
-    virtual ~RunnerBuilder() {}
-    Runner* Build(PhysicalOpNode* node,  // NOLINT
-                  Status& status);       // NOLINT
+    ProxyRunner(int32_t id, int32_t task_id, const SchemaSourceList& schema)
+        : Runner(id, kRunnerProxy, schema), task_id_(task_id) {}
+    ~ProxyRunner() {}
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    virtual void Print(std::ostream& output, const std::string& tab) const {
+        output << tab << "[" << id_ << "]" << RunnerTypeName(type_)
+               << "(TASK_ID=" << task_id_ << ")";
+        if (!producers_.empty()) {
+            for (auto producer : producers_) {
+                output << "\n";
+                producer->Print(output, "  " + tab);
+            }
+        }
+    }
+
  private:
-    int32_t id_;
-    node::NodeManager* nm_;
+    int32_t task_id_;
 };
 class ClusterJob {
  public:
-    ClusterJob() : tasks_() {}
+    ClusterJob() : main_task_id_(-1), tasks_() {}
     Runner* GetTask(uint32_t id) {
-        return id >= tasks_.size() ? nullptr : tasks_[id];
+        if (-1 == id) {
+            LOG(WARNING) << "fail get task: task " << id << " not exist";
+            return nullptr;
+        }
+        auto iter = tasks_.find(id);
+        if (iter == tasks_.cend()) {
+            LOG(WARNING) << "fail get task: task " << id << " not exist";
+            return nullptr;
+        }
+        return tasks_[id];
     }
-    bool AddTask(Runner* task) {
-        if (nullptr == task) {
+    int32_t main_task_id() { return main_task_id_; }
+    Runner* GetMainTask() {
+        if (-1 == main_task_id_) {
+            LOG(WARNING) << "fail get main task: main task not exist";
+            return nullptr;
+        }
+        return GetTask(main_task_id_);
+    }
+    bool AddMainTask(int32_t task_id, Runner* task) {
+        if (-1 != main_task_id_) {
+            LOG(WARNING) << "fail add main task: main task id already exist";
             return false;
         }
-        tasks_.push_back(task);
+        if (!AddTask(task_id, task)) {
+            return false;
+        }
+        main_task_id_ = task_id;
         return true;
     }
-    void Reset() { tasks_.clear(); }
+    bool AddTask(int32_t task_id, Runner* task) {
+        DLOG(INFO) << "add task with taskid " << task_id;
+        if (nullptr == task) {
+            LOG(WARNING) << "fail add task: task is null";
+            return false;
+        }
+        if (tasks_.find(task_id) != tasks_.end()) {
+            return true;
+        }
+        tasks_.insert(std::make_pair(task_id, task));
+        return true;
+    }
+    void Reset() {
+        main_task_id_ = -1;
+        tasks_.clear();
+    }
     const size_t GetTaskSize() const { return tasks_.size(); }
     const bool IsValid() const { return !tasks_.empty(); }
     void Print(std::ostream& output, const std::string& tab) const {
         if (tasks_.empty()) {
+            output << "EMPTY CLUSTER JOB\n";
             return;
         }
-        uint32_t id = 0;
+        auto iter = tasks_.find(main_task_id_);
+        if (iter == tasks_.cend() || nullptr == iter->second) {
+            output << "EMPTY MAIN TASK\n";
+            return;
+        }
+        output << "MAIN TASK ID " << main_task_id_ << "\n";
+        iter->second->Print(output, tab);
+        output << "\n";
         for (auto iter = tasks_.cbegin(); iter != tasks_.cend(); iter++) {
-            output << "TASK ID " << id++;
-            (*iter)->Print(output, tab);
+            if (iter->first == main_task_id_) {
+                // skip print main task
+                continue;
+            }
+            output << "TASK ID " << iter->first << "\n";
+            iter->second->Print(output, tab);
             output << "\n";
         }
     }
     void Print() const { this->Print(std::cout, "    "); }
 
  private:
-    std::vector<Runner*> tasks_;
+    int32_t main_task_id_;
+    std::map<int32_t, Runner*> tasks_;
 };
+class RunnerBuilder {
+ public:
+    explicit RunnerBuilder(node::NodeManager* nm,
+                           bool support_cluster_optimized)
+        : nm_(nm),
+          support_cluster_optimized_(support_cluster_optimized),
+          id_(0),
+          cluster_job_() {}
+    virtual ~RunnerBuilder() {}
+    std::pair<int32_t, Runner*> Build(PhysicalOpNode* node,  // NOLINT
+                                      Status& status);       // NOLINT
+    ClusterJob BuildClusterJob(PhysicalOpNode* node,
+                               Status& status) {  // NOLINT
+        id_ = 0;
+        partition_id_ = 0;
+        cluster_job_.Reset();
+        auto [partition_id, runner] =  // NOLINT whitespace/braces
+            Build(node, status);
+        if (!cluster_job_.AddMainTask(partition_id, runner)) {
+            status.msg = "duplicate cluster task, partition id: " +
+                         std::to_string(partition_id);
+            status.msg = common::kOpGenError;
+            return ClusterJob();
+        }
+        return cluster_job_;
+    }
+
+    std::pair<int32_t, Runner*> BuildRunnerWithProxy(
+        Runner* runner, Runner* left, int32_t left_id, Runner* right,
+        int32_t right_id, Status& status); // NOLINT
+
+ private:
+    node::NodeManager* nm_;
+    bool support_cluster_optimized_;
+    int32_t id_;
+    int32_t partition_id_;
+    ClusterJob cluster_job_;
+};
+
+class RunnerContext {
+ public:
+    explicit RunnerContext(fesql::vm::ClusterJob* cluster_job,
+                           const bool is_debug = false)
+        : cluster_job_(cluster_job),
+          request_(),
+          is_debug_(is_debug),
+          cache_() {}
+    explicit RunnerContext(fesql::vm::ClusterJob* cluster_job,
+                           const fesql::codec::Row& request,
+                           const bool is_debug = false)
+        : cluster_job_(cluster_job),
+          request_(request),
+          is_debug_(is_debug),
+          cache_() {}
+
+    const fesql::codec::Row& request() const { return request_; }
+    fesql::vm::ClusterJob* cluster_job() { return cluster_job_; }
+    void SetRequest(const fesql::codec::Row& request);
+    bool is_debug() const { return is_debug_; }
+
+    std::shared_ptr<DataHandler> GetCache(int64_t id) const;
+    void SetCache(int64_t id, std::shared_ptr<DataHandler>);
+
+ private:
+    fesql::vm::ClusterJob* cluster_job_;
+    fesql::codec::Row request_;
+    const bool is_debug_;
+    std::map<int64_t, std::shared_ptr<DataHandler>> cache_;
+};
+
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_RUNNER_H_

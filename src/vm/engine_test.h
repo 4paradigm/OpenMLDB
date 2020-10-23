@@ -393,7 +393,7 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
     }
 
     std::ostringstream runner_oss;
-    session->GetMainTask()->Print(runner_oss, "");
+    session->GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
 
     // Check Output Data
@@ -425,7 +425,8 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
         ASSERT_TRUE(request_table->Init());
         auto request_session =
             dynamic_cast<BatchRequestRunSession*>(session.get());
-        RunnerContext runner_context(false);
+
+        RunnerContext runner_context(&request_session->GetClusterJob(), false);
         for (auto in_row : request_data) {
             Row out_row;
             int run_ret =
