@@ -486,6 +486,34 @@ message ShowCatalogResponse {
     optional string msg = 3;
 }
 
+message ProcedureInfo {
+    optional string db_name = 1;
+    optional string sp_name = 2;
+    optional string sql = 3;
+    repeated rtidb.common.ColumnDesc input_schema = 4;
+    repeated rtidb.common.ColumnDesc output_schema = 5;
+}
+
+message CreateProcedureRequest {
+    optional ProcedureInfo sp_info = 1;
+}
+
+message ShowProcedureRequest {
+    optional string db_name = 1;
+    optional string sp_name = 2;
+}
+
+message ShowProcedureResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated ProcedureInfo sp_info = 3;
+}
+
+message DropProcedureRequest {
+    optional string db_name = 1;
+    optional string sp_name = 2;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -533,4 +561,7 @@ service NameServer {
     rpc ShowBlobServer(ShowBlobServerRequest) returns (ShowBlobServerResponse);
     rpc ShowSdkEndpoint(ShowSdkEndpointRequest) returns (ShowSdkEndpointResponse);
     rpc ShowCatalog(ShowCatalogRequest) returns (ShowCatalogResponse);
+    rpc CreateProcedure(CreateProcedureRequest) returns (GeneralResponse);
+    rpc ShowProcedure(ShowProcedureRequest) returns (ShowProcedureResponse);
+    rpc DropProcedure(DropProcedureRequest) returns (GeneralResponse);
 }

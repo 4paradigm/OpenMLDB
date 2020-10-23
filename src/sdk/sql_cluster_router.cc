@@ -66,6 +66,37 @@ class ExplainInfoImpl : public ExplainInfo {
     std::string ir_;
 };
 
+class ProcedureInfoImpl : public ProcedureInfo {
+ public:
+     ProcedureInfoImpl(const std::string& db_name, const std::string& sp_name,
+             const std::string& sql,
+             const ::fesql::sdk::SchemaImpl& input_schema,
+             const ::fesql::sdk::SchemaImpl& output_schema)
+        : db_name_(db_name),
+          sp_name_(sp_name),
+          sql_(sql),
+          input_schema_(input_schema),
+          output_schema_(output_schema) {}
+    ~ProcedureInfoImpl() {}
+
+    const ::fesql::sdk::Schema& GetInputSchema() { return input_schema_; }
+
+    const ::fesql::sdk::Schema& GetOutputSchema() { return output_schema_; }
+
+    const std::string& GetDbName() { return db_name_; }
+
+    const std::string& GetSpName() { return sp_name_; }
+
+    const std::string& GetSql() { return sql_; }
+
+ private:
+    std::string db_name_;
+    std::string sp_name_;
+    std::string sql_;
+    ::fesql::sdk::SchemaImpl input_schema_;
+    ::fesql::sdk::SchemaImpl output_schema_;
+};
+
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
     : options_(options),
       cluster_sdk_(NULL),
@@ -813,6 +844,8 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(
     ::fesql::base::Status vm_status;
     bool ok = engine_->Explain(sql, db, ::fesql::vm::kRequestMode, &explain_output, &vm_status);
     if (!ok) {
+        status->code = -1;
+        status->msg = vm_status.msg;
         LOG(WARNING) << "fail to explain sql " << sql;
         return std::shared_ptr<ExplainInfo>();
     }
@@ -822,6 +855,132 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(
         input_schema, output_schema, explain_output.logical_plan,
         explain_output.physical_plan, explain_output.ir));
     return impl;
+}
+
+std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
+    const std::string& db, const std::string& sp_name,
+    std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) {
+    if (!row || status == NULL) {
+        status->code = -1;
+        status->msg = "input is invalid";
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    if (!row->OK()) {
+        status->code = -1;
+        status->msg = "make sure the request row is built before execute sql";
+        LOG(WARNING) << "make sure the request row is built before execute sql";
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    auto ns_ptr = cluster_sdk_->GetNsClient();
+    if (!ns_ptr) {
+        status->code = -1;
+        status->msg = "no nameserver exist";
+        LOG(WARNING) << "no nameserver exist";
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    std::vector<rtidb::nameserver::ProcedureInfo> sp_infos;
+    std::string err;
+    bool ok = ns_ptr->ShowProcedure(db, sp_name, sp_infos, err);
+    if (!ok) {
+        status->code = -1;
+        status->msg = "fail to show procedure for error " + err;
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    if (sp_infos.empty()) {
+        status->code = -1;
+        status->msg = "fail to show procedure for error: result is empty";
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    const rtidb::nameserver::ProcedureInfo& sp_info = sp_infos.at(0);
+    const std::string& sql = sp_info.sql();
+
+    std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
+    std::unique_ptr<::rtidb::api::QueryResponse> response(
+        new ::rtidb::api::QueryResponse());
+    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
+    ok = GetTablet(db, sql, &tablets);
+    if (!ok || tablets.size() <= 0) {
+        status->code = -1;
+        status->msg = "not tablet found";
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    uint32_t idx = rand_.Uniform(tablets.size());
+    ok = tablets[idx]->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(),
+                             options_.enable_debug);
+    if (!ok) {
+        status->code = -1;
+        status->msg = "request server error";
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    if (response->code() != ::rtidb::base::kOk) {
+        status->code = -1;
+        status->msg = response->msg();
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs(
+        new rtidb::sdk::ResultSetSQL(std::move(response), std::move(cntl)));
+    ok = rs->Init();
+    if (!ok) {
+        status->code = -1;
+        status->msg = "resuletSetSQL init failed";
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    }
+    return rs;
+}
+
+std::shared_ptr<ProcedureInfo> SQLClusterRouter::ShowProcedure(
+        const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) {
+    auto ns_ptr = cluster_sdk_->GetNsClient();
+    if (!ns_ptr) {
+        LOG(WARNING) << "no nameserver exist";
+        status->msg = "no nameserver exist";
+        status->code = -1;
+        return std::shared_ptr<ProcedureInfo>();
+    }
+    std::vector<rtidb::nameserver::ProcedureInfo> sp_infos;
+    std::string err;
+    bool ok = ns_ptr->ShowProcedure(db, sp_name, sp_infos, err);
+    if (!ok) {
+        status->msg = "fail to show procedure for error " + err;
+        LOG(WARNING) << status->msg;
+        status->code = -1;
+        return std::shared_ptr<ProcedureInfo>();
+    }
+    if (sp_infos.empty()) {
+        status->code = -1;
+        status->msg = "fail to show procedure for error: result is empty";
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<ProcedureInfo>();
+    }
+    rtidb::nameserver::ProcedureInfo& sp_info_pb = sp_infos.at(0);
+    ::fesql::vm::Schema fesql_in_schema;
+    if (!rtidb::catalog::SchemaAdapter::ConvertSchema(
+                sp_info_pb.input_schema(), &fesql_in_schema)) {
+        status->msg = "fail to convert input schema";
+        LOG(WARNING) << status->msg;
+        status->code = -1;
+        return std::shared_ptr<ProcedureInfo>();
+    }
+    ::fesql::vm::Schema fesql_out_schema;
+    if (!rtidb::catalog::SchemaAdapter::ConvertSchema(
+                sp_info_pb.output_schema(), &fesql_out_schema)) {
+        status->msg = "fail to convert output schema";
+        LOG(WARNING) << status->msg;
+        status->code = -1;
+        return std::shared_ptr<ProcedureInfo>();
+    }
+    ::fesql::sdk::SchemaImpl input_schema(fesql_in_schema);
+    ::fesql::sdk::SchemaImpl output_schema(fesql_out_schema);
+    std::shared_ptr<ProcedureInfoImpl> sp_info = std::make_shared<ProcedureInfoImpl>(
+            db, sp_name, sp_info_pb.sql(), input_schema, output_schema);
+    return sp_info;
 }
 
 }  // namespace sdk
