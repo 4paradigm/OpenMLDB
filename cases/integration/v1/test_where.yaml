@@ -69,8 +69,8 @@ cases:
       success: false
   - id: 2-2
     desc: Where条件未命中索引-离线支持
-    mode: request-unsupport, offline-unsupport
-    tags: ["TODO", "@chenjing", "预期结果应该是一行 0, 1, 5, 1.1, 11.1, 1, 1 "]
+    mode: request-unsupport, online-unsupport
+    tags: ["TODO", "@chenjing", "预期结果应该是一行 0, 1, 5, 1.1, 11.1, 1, 1"]
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=5 and col1 < 2;
@@ -87,8 +87,7 @@ cases:
       schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
       order: col1
       data: |
-        1, 4, 55, 4.4, 44.4, 2, 4444
-        2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        0, 1, 5, 1.1, 11.1, 1, 1
   - id: 3-1
     desc: Where条件未命中索引示例2
     mode: request-unsupport, offline-unsupport
@@ -109,8 +108,8 @@ cases:
       success: false
   - id: 3-2
     desc: Where条件未命中索引示例2
-    mode: request-unsupport, offline-unsupport
-    tags: ["TODO", "@chenjing", "预期结果应该是一行 0, 2, 5, 2.2, 22.2, 2, 22 "]
+    mode: request-unsupport, online-unsupport
+    tags: ["TODO", "@chenjing", "预期结果应该是一行 0, 2, 5, 2.2, 22.2, 2, 22"]
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col1=col5 and col1 > 1;
@@ -128,7 +127,6 @@ cases:
       order: col1
       data: |
         0, 2, 5, 2.2, 22.2, 2, 22
-        1, 3, 55, 3.3, 33.3, 1, 333
   - id: 4
     desc: Where条件命中索引,索引穿透简单子查询
     mode: request-unsupport
