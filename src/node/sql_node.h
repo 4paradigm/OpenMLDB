@@ -923,6 +923,26 @@ class ConstNode : public ExprNode {
         }
     }
 
+    const std::string GetAsString() const {
+        switch (data_type_) {
+            case kInt32:
+                return std::to_string(val_.vint);
+            case kInt16:
+                return std::to_string(val_.vsmallint);
+            case kInt64:
+                return std::to_string(val_.vlong);
+            case kFloat:
+                return std::to_string(val_.vfloat);
+            case kDouble:
+                return std::to_string(val_.vdouble);
+            case kVarchar:
+                return std::string(val_.vstr);
+            default: {
+                return "";
+            }
+        }
+    }
+
     Status InferAttr(ExprAnalysisContext *ctx) override;
 
  private:
