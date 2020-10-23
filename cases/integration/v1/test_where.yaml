@@ -1,8 +1,7 @@
 cases:
   - id: 0
     desc: Where条件命中索引
-    tags: ["@chendihao, offline should support where"]
-    mode: request-unsupport, offline-unsupport
+    mode: request-unsupport
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=5;
@@ -28,7 +27,6 @@ cases:
   - id: 1
     desc: Where部分条件命中索引
     mode: request-unsupport, offline-unsupport
-    tags: ["@chendihao, offline should support where"]
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=55 and col1 > 3;
@@ -54,6 +52,7 @@ cases:
   - id: 2-1
     desc: Where条件未命中索引
     mode: request-unsupport, offline-unsupport
+    tags: ["在线不支持，离线可以支持，暂时不跑离线测试"]
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=55 and col1 > 1;
@@ -70,8 +69,8 @@ cases:
       success: false
   - id: 2-2
     desc: Where条件未命中索引-离线支持
-    mode: request-unsupport
-    tags: ["TODO", "@chendihao,离线支持where"]
+    mode: request-unsupport, offline-unsupport
+    tags: ["TODO", "@chenjing", "预期结果应该是一行 0, 1, 5, 1.1, 11.1, 1, 1 "]
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=5 and col1 < 2;
@@ -93,6 +92,7 @@ cases:
   - id: 3-1
     desc: Where条件未命中索引示例2
     mode: request-unsupport, offline-unsupport
+    tags: ["在线不支持，离线可以支持，暂时不跑离线测试"]
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=col3 and col1 < 2;
@@ -110,7 +110,7 @@ cases:
   - id: 3-2
     desc: Where条件未命中索引示例2
     mode: request-unsupport, offline-unsupport
-    tags: ["TODO", "@chendihao,离线支持where语法"]
+    tags: ["TODO", "@chenjing", "预期结果应该是一行 0, 2, 5, 2.2, 22.2, 2, 22 "]
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col1=col5 and col1 > 1;
@@ -131,8 +131,7 @@ cases:
         1, 3, 55, 3.3, 33.3, 1, 333
   - id: 4
     desc: Where条件命中索引,索引穿透简单子查询
-    tags: ["@chendihao, offline should support where"]
-    mode: request-unsupport, offline-unsupport
+    mode: request-unsupport
     db: db1
     sql: |
       SELECT c0, c1, c2, c3, c4, c5, c6, c1+c4 as c14 FROM
