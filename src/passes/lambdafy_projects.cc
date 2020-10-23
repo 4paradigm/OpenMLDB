@@ -205,7 +205,10 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
         bool child_is_list = child->IsListReturn(&analysis_ctx_) &&
                              child->GetExprType() != node::kExprColumnRef;
 
-        bool child_require_iter = call->RequireListAt(&analysis_ctx_, i);
+        // TODO(bxq): udaf require information about const argument positions
+        bool child_is_const = child->GetExprType() == node::kExprPrimary;
+        bool child_require_iter =
+            call->RequireListAt(&analysis_ctx_, i) && !child_is_const;
         bool child_require_window_iter = child_require_iter && !child_is_list;
         args_require_iter.push_back(child_require_iter);
         args_require_window_iter.push_back(child_require_window_iter);
@@ -253,8 +256,14 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
                            "UDAF require list type at position ", i,
                            " but get ", resolved_type->GetName());
             }
-            original_arg->SetOutputType(resolved_type);
-            original_arg->SetNullable(resolved_arg->nullable());
+            if (child_is_const) {
+                original_arg->SetOutputType(
+                    nm_->MakeTypeNode(node::kList, resolved_type));
+                original_arg->SetNullable(false);
+            } else {
+                original_arg->SetOutputType(resolved_type);
+                original_arg->SetNullable(resolved_arg->nullable());
+            }
         }
         agg_original_args.push_back(original_arg);
     }
@@ -316,9 +325,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
                 transformed_child[i]->GetOutputType());
         } else {
             // non-iter argument
-            proxy_udaf_args.push_back(transformed_child[i]);
-            proxy_udaf_arg_types.push_back(
-                transformed_child[i]->GetOutputType());
+            actual_update_args.push_back(transformed_child[i]);
         }
     }
 
