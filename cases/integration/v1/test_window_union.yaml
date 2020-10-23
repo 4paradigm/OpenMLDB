@@ -459,22 +459,26 @@ cases:
           {0} as main
           window table_1_s2_t1 as (partition by s2 order by t1 rows_range between 1d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW);
     inputs:
-      - schema: label:int,s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
-        index: index1:s2:t1,index2:s1:t1,index3:d1:t1,index4:d2:t1
-        data: |
-          1, 1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
-      - schema: s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
-        index: index1:s2:t1
-        data: |
-          1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
-      - schema: s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
-        index: index1:s1:t1
-        data: |
-          1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
-      - schema: s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
-        index: index1:s1:t1
-        data: |
-          1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
+      - columns: ["label int", "s1 string","s2 string", "t1 timestamp","t2 date","d1 string", "d2 string", "c1 int", "c2 bigint",
+                  "ai string", "kn string", "ks string"]
+        indexs: ["index1:s2:t1", "index2:s1:t1", "index3:d1:t1", "index4:d2:t1"]
+        rows:
+          - [1, "1", "2", 1600946381104, "2019-07-18", "xx", "xx", 1, 2 , "3x","4x","kx"]
+      - columns: ["s1 string","s2 string", "t1 timestamp","t2 date","d1 string", "d2 string", "c1 int", "c2 bigint",
+                  "ai string", "kn string", "ks string"]
+        indexs: ["index1:s2:t1"]
+        rows:
+          - ["1", "2", 1600946381104, "2019-07-18", "xx", "xx", 1, 2 , "3x","4x","kx"]
+      - columns: ["s1 string","s2 string", "t1 timestamp","t2 date","d1 string", "d2 string", "c1 int", "c2 bigint",
+                  "ai string", "kn string", "ks string"]
+        indexs: ["index1:s1:t1"]
+        rows:
+          - ["1", "2", 1600946381104, "2019-07-18", "xx", "xx", 1, 2 , "3x","4x","kx"]
+      - columns: ["s1 string","s2 string", "t1 timestamp","t2 date","d1 string", "d2 string", "c1 int", "c2 bigint",
+                  "ai string", "kn string", "ks string"]
+        indexs: ["index1:s1:t1"]
+        rows:
+          - ["1", "2", 1600946381104, "2019-07-18", "xx", "xx", 1, 2 , "3x","4x","kx"]
     expect:
       order: c1
       columns: ["c1 int", "table_1_c1_9 int", "table_1_c2_10 bigint", "table_1_d1_11 bigint", "table_1_d2_12 bigint", "table_1_s1_13 bigint"]
@@ -497,22 +501,26 @@ cases:
           {0} as main
           window table_1_s2_t1 as (partition by s2 order by t1 rows_range between 1d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW);
     inputs:
-      - schema: label:int,s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
-        index: index1:s2:t1,index2:s1:t1,index3:d1:t1,index4:d2:t1
-        data: |
-          1, 1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
-      - schema: s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
-        index: index1:s2:t1
-        data: |
-          1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
-      - schema: s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
-        index: index1:s1:t1
-        data: |
-          1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
-      - schema: s1:string,s2:string,t1:timestamp,t2:date,d1:string,d2:string,c1:int,c2:bigint,ai:string,kn:string,ks:string
-        index: index1:s1:t1
-        data: |
-          1, 2, 1600946381104, 2019-07-18, xx, xx, 1,2,3x,4x,kx
+      - columns: ["label int", "s1 string","s2 string", "t1 timestamp","t2 date","d1 string", "d2 string", "c1 int", "c2 bigint",
+          "ai string", "kn string", "ks string"]
+        indexs: ["index1:s2:t1", "index2:s1:t1", "index3:d1:t1", "index4:d2:t1"]
+        rows:
+          - [1, "1", "2", 1600946381104, "2019-07-18", "xx", "xx", 1, 2 , "3x","4x","kx"]
+      - columns: ["s1 string","s2 string", "t1 timestamp","t2 date","d1 string", "d2 string", "c1 int", "c2 bigint",
+                  "ai string", "kn string", "ks string"]
+        indexs: ["index1:s2:t1"]
+        rows:
+          - ["1", "2", 1600946381104, "2019-07-18", "xx", "xx", 1, 2 , "3x","4x","kx"]
+      - columns: ["s1 string","s2 string", "t1 timestamp","t2 date","d1 string", "d2 string", "c1 int", "c2 bigint",
+                  "ai string", "kn string", "ks string"]
+        indexs: ["index1:s1:t1"]
+        rows:
+          - ["1", "2", 1600946381104, "2019-07-18", "xx", "xx", 1, 2 , "3x","4x","kx"]
+      - columns: ["s1 string","s2 string", "t1 timestamp","t2 date","d1 string", "d2 string", "c1 int", "c2 bigint",
+                  "ai string", "kn string", "ks string"]
+        indexs: ["index1:s1:t1"]
+        rows:
+          - ["1", "2", 1600946381104, "2019-07-18", "xx", "xx", 1, 2 , "3x","4x","kx"]
     expect:
       order: c1
       columns: ["c1 int", "table_1_c1_9 int", "table_1_c2_10 bigint", "table_1_d1_11 bigint", "table_1_d2_12 bigint", "table_1_s1_13 bigint"]
