@@ -459,7 +459,7 @@ void BlobServerImpl::DropTableInternal(uint32_t tid, uint32_t pid) {
         std::ostringstream oss;
         oss << path << "/" << tid << "_" << pid;
         std::ostringstream dss;
-        dss << path << "/recycle" << tid << "_" << pid << "_" << rtidb::base::GetNowTime();
+        dss << path << "/recycle/" << tid << "_" << pid << "_" << rtidb::base::GetNowTime();
         if (FLAGS_recycle_bin_enabled) {
             rtidb::base::Rename(oss.str(), dss.str());
         } else {
