@@ -285,6 +285,10 @@ bool ConstNode::Equals(const ExprNode *node) const {
            GetExprString() == that->GetExprString() && ExprNode::Equals(node);
 }
 
+ConstNode *ConstNode::CastFrom(ExprNode *node) {
+    return reinterpret_cast<ConstNode *>(node);
+}
+
 void LimitNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
