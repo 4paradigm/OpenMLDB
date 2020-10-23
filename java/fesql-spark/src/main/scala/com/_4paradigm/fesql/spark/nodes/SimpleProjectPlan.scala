@@ -47,7 +47,7 @@ object SimpleProjectPlan {
         case SourceType.kSourceColumn => {
           // Resolved the column index to get column and rename
           val colIndex = SparkColumnUtil.resolveColumnIndex(columnSource.schema_idx(), columnSource.column_idx(), node.GetProducer(0))
-          var sparkCol = SparkColumnUtil.getCol(inputDf, colIndex)
+          var sparkCol = SparkColumnUtil.getColumnFromIndex(inputDf, colIndex)
           var sparkColType = inputDfTypes(colIndex).dataType
 
           val castTypes = columnSource.cast_types()

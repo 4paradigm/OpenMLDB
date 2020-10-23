@@ -1,5 +1,7 @@
 package com._4paradigm.fesql.spark.utils
 
+import java.util
+
 import com._4paradigm.fesql.common.{FesqlException, UnsupportedFesqlException}
 import com._4paradigm.fesql.node.{ColumnRefNode, ConstNode, ExprNode, ExprType}
 import com._4paradigm.fesql.spark.PlanContext
@@ -8,6 +10,8 @@ import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.{Column, DataFrame}
 import com._4paradigm.fesql.node.{DataType => FesqlDataType}
 import org.apache.spark.sql.functions.lit
+
+import scala.collection.mutable
 
 
 object SparkColumnUtil {
@@ -22,7 +26,7 @@ object SparkColumnUtil {
         if (index < 0) {
           throw new FesqlException(s"Can not resolve column of left table: ${expr.GetExprString()}")
         }
-        getCol(left, index)
+        getColumnFromIndex(left, index)
 
       case _ => throw new FesqlException(
         s"Expr ${expr.GetExprString()} not supported")
@@ -40,7 +44,7 @@ object SparkColumnUtil {
         if (index < leftSize) {
           throw new FesqlException("Can not resolve column of left table")
         }
-        getCol(right, index - leftSize)
+        getColumnFromIndex(right, index - leftSize)
 
       case _ => throw new FesqlException(
         s"Expr ${expr.GetExprString()} not supported")
@@ -74,7 +78,7 @@ object SparkColumnUtil {
         } else if (index >= planNode.GetOutputSchema().size()) {
           throw new FesqlException(s"Column index out of bounds: $index")
         }
-        inputDf.col(inputDf.schema.fields(index).name)
+        getColumnFromIndex(inputDf, index)
       }
       case ExprType.kExprPrimary => {
         val constNode = ConstNode.CastFrom(expr)
@@ -101,8 +105,16 @@ object SparkColumnUtil {
     index
   }
 
-  def getCol(dataFrame: DataFrame, index: Int): Column = {
-    new Column(dataFrame.queryExecution.analyzed.output(index))
+  def getColumnFromIndex(df: DataFrame, index: Int): Column = {
+    new Column(df.queryExecution.analyzed.output(index))
+  }
+
+  def getColumnsFromDataFrame(df: DataFrame): mutable.ArrayBuffer[Column] = {
+    val columnList = new mutable.ArrayBuffer[Column]()
+    for (i <- 0 until df.schema.size) {
+      columnList += getColumnFromIndex(df, i)
+    }
+    columnList
   }
 
   // Set the nullable property of the dataframe
