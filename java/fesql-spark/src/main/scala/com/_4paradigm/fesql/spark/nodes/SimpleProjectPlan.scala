@@ -4,7 +4,6 @@ import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.utils.SparkColumnUtil
 import com._4paradigm.fesql.vm.{PhysicalSimpleProjectNode, SourceType}
 import org.slf4j.LoggerFactory
-import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, TimestampType}
 import com._4paradigm.fesql.node.{DataType => FesqlDataType}
 import org.apache.spark.sql.functions.to_date
