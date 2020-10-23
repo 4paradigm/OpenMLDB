@@ -33,6 +33,9 @@
 #include "thread_pool.h"  // NOLINT
 #include "vm/engine.h"
 #include "zk/zk_client.h"
+#include "catalog/schema_adapter.h"
+#include "sdk/base.h"
+#include "sdk/base_impl.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -302,7 +305,20 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                        const ::rtidb::api::CountRequest* request,
                        uint32_t* count);
 
+    void GetSchema(RpcController* controller,
+            const rtidb::api::GetSchemaRequest* request,
+            rtidb::api::GetSchemaResponse* response, Closure* done);
+
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
+
+    void CreateProcedure(RpcController* controller,
+            const rtidb::api::CreateProcedureRequest* request,
+            rtidb::api::GeneralResponse* response, Closure* done);
+
+    void DropProcedure(RpcController* controller,
+            const ::rtidb::api::DropProcedureRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
 
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
@@ -470,6 +486,12 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     bool GetRealEp(uint64_t tid, uint64_t pid,
             std::map<std::string, std::string>* real_ep_map);
 
+    void RequestQuery(const rtidb::api::QueryRequest& request,
+        const std::string& sql,
+        ::fesql::base::Status& status, // NOLINT
+        ::fesql::vm::RequestRunSession& session, // NOLINT 
+        rtidb::api::QueryResponse& response, butil::IOBuf& buf); // NOLINT
+
  private:
     RelationalTables relational_tables_;
     Tables tables_;
@@ -501,6 +523,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::string zk_cluster_;
     std::string zk_path_;
     std::string endpoint_;
+    std::map<std::string, std::map<std::string, std::string>> sp_map_;
     std::string notify_path_;
 };
 
