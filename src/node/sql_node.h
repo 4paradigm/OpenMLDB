@@ -1732,8 +1732,8 @@ class ColumnIndexNode : public SQLNode {
           ts_(""),
           version_(""),
           version_count_(0),
-          abs_ttl_(0),
-          lat_ttl_(0),
+          abs_ttl_(-1),
+          lat_ttl_(-1),
           ttl_type_(""),
           name_("") {}
 
@@ -1763,15 +1763,21 @@ class ColumnIndexNode : public SQLNode {
 
     void SetTTL(ExprListNode *ttl_node_list) {
         if (nullptr == ttl_node_list) {
+            abs_ttl_ = -1;
+            lat_ttl_ = -1;
             return;
         } else {
             uint32_t node_num = ttl_node_list->GetChildNum();
             if (node_num > 2) {
+                abs_ttl_ = -1;
+                lat_ttl_ = -1;
                 return;
             }
             for (uint32_t i = 0; i < node_num; i++) {
                 auto ttl_node = ttl_node_list->GetChild(i);
                 if (ttl_node == nullptr) {
+                    abs_ttl_ = -1;
+                    lat_ttl_ = -1;
                     return;
                 }
                 switch (ttl_node->GetExprType()) {
@@ -1803,6 +1809,8 @@ class ColumnIndexNode : public SQLNode {
                                         fesql::node::kAbsolute) {
                                     abs_ttl_ = ttl->GetMillis();
                                 } else {
+                                    abs_ttl_ = -1;
+                                    lat_ttl_ = -1;
                                     return;
                                 }
                                 break;

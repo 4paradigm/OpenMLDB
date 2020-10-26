@@ -97,3 +97,23 @@ cases:
           column4 string NOT NULL,
           column5 int NOT NULL,
           index(key=column1, ts=column2)) replicanum=2, distribution(leader="127.0.0.1:9927", follower="127.0.0.1:9926");
+  - id: 11
+    desc: Create with ttl_type absorlat
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=column1, ts=column2, ttl=10d|100, ttl_type=absorlat));
+  - id: 12
+    desc: Create with ttl_type absandlat
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=column1, ts=column2, ttl=10d|100, ttl_type=absandlat));

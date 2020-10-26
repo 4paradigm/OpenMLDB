@@ -749,6 +749,10 @@ ttl_list:   abs_ttl
             {
                 $$ = node_manager->MakeExprList($1);
             }
+            | lat_ttl
+            {
+                $$ = node_manager->MakeExprList($1);
+            }
             | abs_ttl '|' lat_ttl
             {
                 $$ = node_manager->MakeExprList($1, $3);
@@ -764,15 +768,6 @@ abs_ttl:
     |MINUTENUM {
         $$ = node_manager->MakeConstNode($1, fesql::node::kMinute);
     }
-    |SECONDNUM{
-        $$ = node_manager->MakeConstNode($1, fesql::node::kSecond);
-    }
-    |LONGNUM {
-        $$ = node_manager->MakeConstNode($1, fesql::node::kAbsolute);
-    }
-    |INTNUM {
-        $$ = node_manager->MakeConstNode($1, fesql::node::kAbsolute);
-    };
 
 lat_ttl:
     LONGNUM {
