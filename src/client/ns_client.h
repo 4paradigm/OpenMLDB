@@ -15,6 +15,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include "base/status.h"
 #include "node/node_manager.h"
