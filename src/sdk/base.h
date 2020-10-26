@@ -73,6 +73,7 @@ class Schema {
         return kTypeUnknow;
     }
     virtual const bool IsColumnNotNull(uint32_t index) const { return false; }
+    virtual const bool IsConstant(uint32_t index) const { return false; }
 
  private:
     std::string empty;

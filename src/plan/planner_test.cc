@@ -1405,6 +1405,32 @@ TEST_F(PlannerTest, CreatePlanLeakTest) {
         break;
     }
 }
+
+TEST_F(PlannerTest, CreateSpParseTest) {
+    std::string sql =
+        "create procedure sp1(const c1 string, const c3 int, c4 bigint,"
+        "c5 float, c6 double, c7 timestamp, c8 date) "
+        "begin "
+        "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
+        "WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS "
+        "BETWEEN 2 PRECEDING AND CURRENT ROW);"
+        "end;";
+
+    base::Status status;
+    node::NodePointVector parser_trees;
+    int ret = parser_->parse(sql, parser_trees, manager_, status);
+    ASSERT_EQ(0, ret);
+
+    sql =
+        "create procedure sp1(const c1 string, const c3 int, c4 bigint,"
+        "c5 float, c6 double, c7 timestamp, c8 date) "
+        "begin "
+        "insert into t1 (col1, col2, col3, col4) values(1, 2, 3.1, \"string\");"
+        "end;";
+    ret = parser_->parse(sql, parser_trees, manager_, status);
+    ASSERT_EQ(1, ret);
+}
+
 }  // namespace plan
 }  // namespace fesql
 

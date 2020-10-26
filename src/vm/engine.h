@@ -126,11 +126,15 @@ class RunSession {
 
     EngineMode engine_mode() const { return engine_mode_; }
 
+    void SetIsProcedure(bool flag) { is_procedure_ = flag; }
+    bool IsProcedure() { return is_procedure_; }
+
  protected:
     bool SetCompileInfo(const std::shared_ptr<CompileInfo>& compile_info);
     std::shared_ptr<CompileInfo> compile_info_;
     EngineMode engine_mode_;
     bool is_debug_;
+    bool is_procedure_;
     friend Engine;
 };
 
@@ -210,6 +214,9 @@ typedef std::map<
                               std::string, std::shared_ptr<CompileInfo>>>>
     EngineLRUCache;
 
+typedef std::map<std::string, std::map<
+    std::string, std::shared_ptr<CompileInfo>>> ProcedureCache;
+
 class Engine {
  public:
     Engine(const std::shared_ptr<Catalog>& cl, const EngineOptions& options);
@@ -237,15 +244,17 @@ class Engine {
 
     void ClearCacheLocked(const std::string& db);
 
+    void ClearSpCacheLocked(const std::string& db, const std::string& sp_name);
+
  private:
     bool GetDependentTables(node::PlanNode* node, std::set<std::string>* tables,
                             base::Status& status);  // NOLINT
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,
-                                                EngineMode engine_mode);
-
+                                                EngineMode engine_mode,
+                                                bool is_procedure);
     bool SetCacheLocked(const std::string& db, const std::string& sql,
-                        EngineMode engine_mode, bool overwrite,
+                        EngineMode engine_mode, bool is_procedure,
                         std::shared_ptr<CompileInfo> info);
 
     bool IsCompatibleCache(RunSession& session,  // NOLINT
@@ -255,6 +264,7 @@ class Engine {
     EngineOptions options_;
     base::SpinMutex mu_;
     EngineLRUCache lru_cache_;
+    ProcedureCache procedure_cache_;
 };
 
 }  // namespace vm

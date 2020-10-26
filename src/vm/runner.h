@@ -52,9 +52,9 @@ class FnGenerator {
     std::vector<int32_t> idxs_;
 };
 
-class RowProjectFun : public WrapperFun {
+class RowProjectFun : public ProjectFun {
  public:
-    explicit RowProjectFun(int8_t* fn) : WrapperFun(), fn_(fn) {}
+    explicit RowProjectFun(int8_t* fn) : ProjectFun(), fn_(fn) {}
     ~RowProjectFun() {}
     Row operator()(const Row& row) const override {
         return CoreAPI::RowProject(fn_, row, false);
@@ -109,7 +109,7 @@ class ConditionGenerator : public FnGenerator {
  public:
     explicit ConditionGenerator(const FnInfo& info) : FnGenerator(info) {}
     virtual ~ConditionGenerator() {}
-    const bool Gen(const Row& row);
+    const bool Gen(const Row& row) const;
 };
 class RangeGenerator {
  public:
@@ -220,7 +220,7 @@ class IndexSeekGenerator {
     KeyGenerator index_key_gen_;
 };
 
-class FilterGenerator {
+class FilterGenerator : public PredicateFun {
  public:
     explicit FilterGenerator(const Filter& filter)
         : condition_gen_(filter.condition_.fn_info_),
@@ -232,6 +232,12 @@ class FilterGenerator {
     std::shared_ptr<TableHandler> Filter(std::shared_ptr<TableHandler> table);
     std::shared_ptr<TableHandler> Filter(
         std::shared_ptr<PartitionHandler> table);
+    bool operator()(const Row& row) const override {
+        if (!Valid()) {
+            return true;
+        }
+        return condition_gen_.Gen(row);
+    }
 
  private:
     ConditionGenerator condition_gen_;

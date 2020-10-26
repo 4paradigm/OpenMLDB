@@ -68,6 +68,11 @@ const bool SchemaImpl::IsColumnNotNull(uint32_t index) const {
     return schema_.Get(index).is_not_null();
 }
 
+const bool SchemaImpl::IsConstant(uint32_t index) const {
+    if ((int32_t)index >= schema_.size()) return false;
+    return schema_.Get(index).is_constant();
+}
+
 TableImpl::TableImpl(const type::TableDef& table_def) : table_def_(table_def) {}
 
 TableImpl::~TableImpl() {}
