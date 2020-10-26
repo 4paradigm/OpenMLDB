@@ -410,6 +410,7 @@ bool ZkClient::Increment(const std::string& node) {
         std::string value;
         int buffer_len = ZK_MAX_BUFFER_SIZE;
         Stat stat;
+        std::lock_guard<std::mutex> lock(mu_);
         if (zoo_get(zk_, node.c_str(), 0, buffer_, &buffer_len, &stat) == ZOK) {
             value.assign(buffer_, buffer_len);
         } else {

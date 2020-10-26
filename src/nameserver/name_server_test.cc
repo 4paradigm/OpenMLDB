@@ -1690,6 +1690,10 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         meta = partion->add_partition_meta();
         meta->set_endpoint("127.0.0.1:9536");
         meta->set_is_leader(true);
+        ::rtidb::common::ColumnDesc* desc = table_info->add_column_desc_v1();
+        desc->set_name("col1");
+        desc->set_type("string");
+        desc->set_add_ts_idx(true);
         bool ok = name_server_client.SendRequest(
             &::rtidb::nameserver::NameServer_Stub::CreateTable, &request, &response,
             FLAGS_request_timeout_ms, 1);
@@ -1728,6 +1732,10 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
         meta = partion->add_partition_meta();
         meta->set_endpoint("127.0.0.1:9536");
         meta->set_is_leader(true);
+        ::rtidb::common::ColumnDesc* desc = table_info->add_column_desc_v1();
+        desc->set_name("col1");
+        desc->set_type("string");
+        desc->set_add_ts_idx(true);
         bool ok = name_server_client.SendRequest(
             &::rtidb::nameserver::NameServer_Stub::CreateTable, &request, &response,
             FLAGS_request_timeout_ms, 1);
