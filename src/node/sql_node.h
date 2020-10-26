@@ -1788,7 +1788,9 @@ class ColumnIndexNode : public SQLNode {
                             case fesql::node::kInt32:
                                 if (ttl->GetTTLType() ==
                                         fesql::node::kAbsolute) {
-                                    abs_ttl_ = ttl->GetInt();
+                                    abs_ttl_ = -1;
+                                    lat_ttl_ = -1;
+                                    return;
                                 } else {
                                     lat_ttl_ = ttl->GetInt();
                                 }
@@ -1796,7 +1798,9 @@ class ColumnIndexNode : public SQLNode {
                             case fesql::node::kInt64:
                                 if (ttl->GetTTLType() ==
                                         fesql::node::kAbsolute) {
-                                    abs_ttl_ = ttl->GetLong();
+                                    abs_ttl_ = -1;
+                                    lat_ttl_ = -1;
+                                    return;
                                 } else {
                                     lat_ttl_ = ttl->GetLong();
                                 }

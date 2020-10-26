@@ -767,7 +767,7 @@ abs_ttl:
     }
     |MINUTENUM {
         $$ = node_manager->MakeConstNode($1, fesql::node::kMinute);
-    }
+    };
 
 lat_ttl:
     LONGNUM {
