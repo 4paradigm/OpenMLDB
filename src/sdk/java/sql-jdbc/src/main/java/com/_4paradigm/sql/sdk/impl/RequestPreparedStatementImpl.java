@@ -332,7 +332,9 @@ public class RequestPreparedStatementImpl implements PreparedStatement {
                 throw new SQLException("apend data failed, idx is " + i);
             }
         }
-        this.currentRow.Build();
+        if (!this.currentRow.Build()) {
+            throw new SQLException("build request row failed");
+        }
         clearParameters();
     }
 

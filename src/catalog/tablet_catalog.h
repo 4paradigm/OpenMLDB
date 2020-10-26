@@ -229,6 +229,7 @@ class TabletTableHandler : public ::fesql::vm::TableHandler,
 
 typedef std::map<std::string, std::map<std::string, std::shared_ptr<TabletTableHandler>>> TabletTables;
 typedef std::map<std::string, std::shared_ptr<::fesql::type::Database>> TabletDB;
+typedef std::map<std::string, std::map<std::string, std::string>> TabletProcedures;
 
 class TabletCatalog : public ::fesql::vm::Catalog {
  public:
@@ -252,6 +253,10 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     bool DeleteDB(const std::string &db);
 
+    bool AddProcedure(const std::string& db, const std::string& sp_name,
+            const std::string& sql);
+
+    bool DropProcedure(const std::string& db, const std::string& sp_name);
     void RefreshTable(const std::vector<::rtidb::nameserver::TableInfo> &table_info_vec);
 
     bool UpdateClient(const std::map<std::string, std::string> &real_ep_map);
@@ -260,6 +265,7 @@ class TabletCatalog : public ::fesql::vm::Catalog {
     ::rtidb::base::SpinMutex mu_;
     TabletTables tables_;
     TabletDB db_;
+    TabletProcedures procedures_;
     ClientManager client_manager_;
 };
 
