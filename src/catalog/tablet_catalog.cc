@@ -388,7 +388,7 @@ void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInf
         ++db_it;
     }
     version_.store(version, std::memory_order_relaxed);
-    LOG(INFO) << "refresh catalog";
+    LOG(INFO) << "refresh catalog. version " << version;
 }
 
 bool TabletCatalog::UpdateClient(const std::map<std::string, std::string>& real_ep_map) {
