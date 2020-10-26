@@ -136,7 +136,7 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query, cntl,
                                   &request, response);
 
-    if (!ok) {
+    if (!ok || response->code() != 0) {
         LOG(WARNING) << "fail to query tablet";
         return false;
     }
@@ -156,7 +156,7 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query, cntl,
                                   &request, response);
 
-    if (!ok) {
+    if (!ok || response->code() != 0) {
         LOG(WARNING) << "fail to query tablet";
         return false;
     }
@@ -1586,6 +1586,76 @@ bool TabletClient::UpdateRealEndpointMap(
             &::rtidb::api::TabletServer_Stub::UpdateRealEndpointMap,
             &request, &response, FLAGS_request_timeout_ms,
             FLAGS_request_max_retry);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::GetSchema(const std::string& db_name, const std::string& sql,
+        Schema* input_schema, Schema* output_schema) {
+    if (input_schema == nullptr || output_schema == nullptr) {
+        return false;
+    }
+    rtidb::api::GetSchemaRequest request;
+    rtidb::api::GetSchemaResponse response;
+    request.set_db_name(db_name);
+    request.set_sql(sql);
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::GetSchema,
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    input_schema->CopyFrom(response.input_schema());
+    output_schema->CopyFrom(response.output_schema());
+    return true;
+}
+
+bool TabletClient::CreateProcedure(const std::string& db_name, const std::string& sp_name,
+        const std::string& sql, std::string& msg) {
+    rtidb::api::CreateProcedureRequest request;
+    rtidb::api::GeneralResponse response;
+    request.set_db_name(db_name);
+    request.set_sp_name(sp_name);
+    request.set_sql(sql);
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateProcedure,
+            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+    msg = response.msg();
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name,
+                         const std::string& row, brpc::Controller* cntl,
+                         rtidb::api::QueryResponse* response,
+                         bool is_debug) {
+    if (cntl == NULL || response == NULL) return false;
+    ::rtidb::api::QueryRequest request;
+    request.set_sp_name(sp_name);
+    request.set_db(db);
+    request.set_is_debug(is_debug);
+    request.set_input_row(row);
+    request.set_is_batch(false);
+    request.set_is_procedure(true);
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query, cntl,
+                                  &request, response);
+    if (!ok || response->code() != 0) {
+        LOG(WARNING) << "fail to query tablet";
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::DropProcedure(const std::string& db_name, const std::string& sp_name) {
+    ::rtidb::api::DropProcedureRequest request;
+    ::rtidb::api::GeneralResponse response;
+    request.set_db_name(db_name);
+    request.set_sp_name(sp_name);
+    bool ok =
+        client_.SendRequest(&::rtidb::api::TabletServer_Stub::DropProcedure,
+                            &request, &response, FLAGS_request_timeout_ms, 1);
     if (!ok || response.code() != 0) {
         return false;
     }
