@@ -911,6 +911,26 @@ class ConstNode : public ExprNode {
         }
     }
 
+    const std::string GetAsString() const {
+        switch (data_type_) {
+            case kInt32:
+                return std::to_string(val_.vint);
+            case kInt16:
+                return std::to_string(val_.vsmallint);
+            case kInt64:
+                return std::to_string(val_.vlong);
+            case kFloat:
+                return std::to_string(val_.vfloat);
+            case kDouble:
+                return std::to_string(val_.vdouble);
+            case kVarchar:
+                return std::string(val_.vstr);
+            default: {
+                return "";
+            }
+        }
+    }
+
     Status InferAttr(ExprAnalysisContext *ctx) override;
 
  private:
@@ -2280,6 +2300,57 @@ class DistributionsNode : public SQLNode {
 
  private:
     SQLNodeList *distribution_list_;
+};
+
+class CreateSpStmt : public SQLNode {
+ public:
+    explicit CreateSpStmt(const std::string &sp_name)
+        : SQLNode(kCreateSpStmt, 0, 0),
+          sp_name_(sp_name) {}
+
+    ~CreateSpStmt() {}
+
+    NodePointVector &GetInputParameterList() { return input_parameter_list_; }
+    const NodePointVector &GetInputParameterList() const {
+        return input_parameter_list_;
+    }
+
+    NodePointVector &GetInnerNodeList() { return inner_node_list_; }
+    const NodePointVector &GetInnerNodeList() const {
+        return inner_node_list_;
+    }
+
+    const std::string& GetSpName() const { return sp_name_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    std::string sp_name_;
+    NodePointVector input_parameter_list_;
+    NodePointVector inner_node_list_;
+};
+
+class InputParameterNode : public SQLNode {
+ public:
+    InputParameterNode(const std::string &name, DataType data_type,
+                  bool is_constant)
+        : SQLNode(kInputParameter, 0, 0),
+          column_name_(name),
+          column_type_(data_type),
+          is_constant_(is_constant) {}
+    ~InputParameterNode() {}
+
+    std::string GetColumnName() const { return column_name_; }
+
+    DataType GetColumnType() const { return column_type_; }
+
+    bool GetIsConstant() const { return is_constant_; }
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    std::string column_name_;
+    DataType column_type_;
+    bool is_constant_;
 };
 
 std::string ExprString(const ExprNode *expr);
