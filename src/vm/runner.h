@@ -817,20 +817,15 @@ class ClusterJob {
         main_task_id_ = task_id;
         return true;
     }
-    bool AddTask(int32_t task_id, Runner* task) {
-        DLOG(INFO) << "add task with taskid " << task_id;
+    bool AddTask(Runner* task) {
         if (nullptr == task) {
             LOG(WARNING) << "fail add task: task is null";
             return false;
         }
-        if (tasks_.find(task_id) != tasks_.end()) {
-            return true;
-        }
-        tasks_.insert(std::make_pair(task_id, task));
+        tasks_.push_back(task);
         return true;
     }
     void Reset() {
-        main_task_id_ = -1;
         tasks_.clear();
     }
     const size_t GetTaskSize() const { return tasks_.size(); }
@@ -840,21 +835,9 @@ class ClusterJob {
             output << "EMPTY CLUSTER JOB\n";
             return;
         }
-        auto iter = tasks_.find(main_task_id_);
-        if (iter == tasks_.cend() || nullptr == iter->second) {
-            output << "EMPTY MAIN TASK\n";
-            return;
-        }
-        output << "MAIN TASK ID " << main_task_id_ << "\n";
-        iter->second->Print(output, tab);
-        output << "\n";
-        for (auto iter = tasks_.cbegin(); iter != tasks_.cend(); iter++) {
-            if (iter->first == main_task_id_) {
-                // skip print main task
-                continue;
-            }
-            output << "TASK ID " << iter->first << "\n";
-            iter->second->Print(output, tab);
+        for(int i = 0 ; i < tasks_.size(); i++) {
+            output << "TASK ID " << i << "\n";
+            tasks_[i]->Print(output, tab);
             output << "\n";
         }
     }
@@ -862,7 +845,7 @@ class ClusterJob {
 
  private:
     int32_t main_task_id_;
-    std::map<int32_t, Runner*> tasks_;
+    std::vector<Runner*> tasks_;
 };
 class RunnerBuilder {
  public:
@@ -893,7 +876,7 @@ class RunnerBuilder {
 
     std::pair<int32_t, Runner*> BuildRunnerWithProxy(
         Runner* runner, Runner* left, int32_t left_id, Runner* right,
-        int32_t right_id, Status& status); // NOLINT
+        int32_t right_id, Status& status);  // NOLINT
 
  private:
     node::NodeManager* nm_;

@@ -373,9 +373,11 @@ std::pair<int32_t, Runner*> RunnerBuilder::BuildRunnerWithProxy(
             status.msg = common::kOpGenError;
             return std::make_pair(0, nullptr);
         }
-        // replace left with proxy runner
         left = nm_->RegisterNode(
-            new ProxyRunner(id_++, left_partition_id, left->output_schemas()));
+            new RequestRunner(id_++, left->output_schemas()));
+        // replace left with proxy runner
+//        left = nm_->RegisterNode(
+//            new ProxyRunner(id_++, left_partition_id, left->output_schemas()));
         final_partition_id = right_partition_id;
     } else {
         final_partition_id =
