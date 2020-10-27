@@ -6,8 +6,7 @@ import com._4paradigm.fesql.vm.{PhysicalRenameNode}
 object RenamePlan {
 
   def gen(ctx: PlanContext, node: PhysicalRenameNode, input: SparkInstance): SparkInstance = {
-    // Register the new table name for dataframe
-    ctx.registerDataFrame(node.getName_, input.getDf(ctx.getSparkSession))
+    // Return the same dataframe for child node
     SparkInstance.fromDataFrame(input.getDf(ctx.getSparkSession))
   }
 
