@@ -1732,8 +1732,8 @@ class ColumnIndexNode : public SQLNode {
           ts_(""),
           version_(""),
           version_count_(0),
-          abs_ttl_(0),
-          lat_ttl_(0),
+          abs_ttl_(-2),
+          lat_ttl_(-2),
           ttl_type_(""),
           name_("") {}
 
