@@ -54,14 +54,13 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                        provider->table_handler_->GetPartition(
                                            provider->index_name_)));
                     if (support_cluster_optimized_) {
-                        return ClusterTask(runner,
-                                           provider->table_handler_->GetDatabase(),
-                                           provider->table_handler_->GetName(),
-                                           provider->index_name_);
+                        return ClusterTask(
+                            runner, provider->table_handler_->GetDatabase(),
+                            provider->table_handler_->GetName(),
+                            provider->index_name_);
                     } else {
                         return ClusterTask(runner);
                     }
-
                 }
                 case kProviderTypeRequest: {
                     auto runner = nm_->RegisterNode(new RequestRunner(
@@ -625,6 +624,12 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
             return cached;
         }
     }
+    if (need_batch_cache_) {
+        auto batch_cached = ctx.GetBatchCache(id_);
+        if (batch_cached != nullptr) {
+            return batch_cached;
+        }
+    }
     auto res = Run(ctx);
     if (ctx.is_debug()) {
         LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
@@ -633,6 +638,9 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     }
     if (need_cache_) {
         ctx.SetCache(id_, res);
+    }
+    if (need_batch_cache_) {
+        ctx.SetBatchCache(id_, res);
     }
     return res;
 }
@@ -1877,10 +1885,12 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
-                          : fn_schema_.Get(pos).type() == fesql::type::kDate
-                              ? std::to_string(row_view.GetDateUnsafe(pos))
-                              : row_view.GetAsString(pos);
+        std::string key =
+            row_view.IsNULL(pos)
+                ? codec::NONETOKEN
+                : fn_schema_.Get(pos).type() == fesql::type::kDate
+                      ? std::to_string(row_view.GetDateUnsafe(pos))
+                      : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -1900,10 +1910,12 @@ const std::string KeyGenerator::Gen(const Row& row) {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
-                          : fn_schema_.Get(pos).type() == fesql::type::kDate
-                              ? std::to_string(row_view.GetDateUnsafe(pos))
-                              : row_view.GetAsString(pos);
+        std::string key =
+            row_view.IsNULL(pos)
+                ? codec::NONETOKEN
+                : fn_schema_.Get(pos).type() == fesql::type::kDate
+                      ? std::to_string(row_view.GetDateUnsafe(pos))
+                      : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }

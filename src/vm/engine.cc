@@ -145,6 +145,8 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     info->get_sql_context().engine_mode = session.engine_mode();
     info->get_sql_context().is_performance_sensitive =
         options_.is_performance_sensitive();
+    info->get_sql_context().is_cluster_optimized =
+        options_.is_cluster_optimzied();
     SQLCompiler compiler(
         std::atomic_load_explicit(&cl_, std::memory_order_acquire),
         options_.is_keep_ir(), false, options_.is_plan_only());
@@ -175,6 +177,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     ctx.sql = sql;
     ctx.db = db;
     ctx.is_performance_sensitive = options_.is_performance_sensitive();
+    ctx.is_cluster_optimized = options_.is_cluster_optimzied();
     SQLCompiler compiler(
         std::atomic_load_explicit(&cl_, std::memory_order_acquire), true, true);
     bool ok = compiler.Compile(ctx, *status);
@@ -295,7 +298,8 @@ int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
 }
 int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
                                Row* out_row) {
-    auto task = compile_info_->get_sql_context().cluster_job.GetTask(task_id).GetRoot();
+    auto task =
+        compile_info_->get_sql_context().cluster_job.GetTask(task_id).GetRoot();
     if (nullptr == task) {
         LOG(WARNING) << "fail to run request plan: taskid" << task_id
                      << " not exist!";
@@ -367,9 +371,10 @@ int32_t BatchRequestRunSession::RunSingle(RunnerContext& ctx,  // NOLINT
 
 std::shared_ptr<TableHandler> BatchRunSession::Run() {
     RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, is_debug_);
-    auto output =
-        compile_info_->get_sql_context().cluster_job.GetMainTask().GetRoot()->RunWithCache(
-            ctx);
+    auto output = compile_info_->get_sql_context()
+                      .cluster_job.GetMainTask()
+                      .GetRoot()
+                      ->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
         return std::shared_ptr<TableHandler>();

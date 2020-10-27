@@ -63,7 +63,7 @@ static void RequestUnionRunnerCase(const std::string& sql, int runner_id,
     session.GetPhysicalPlan()->Print(plan_oss, "");
     LOG(INFO) << "physical plan:\n" << plan_oss.str() << std::endl;
     std::ostringstream runner_oss;
-    session.GetMainTask()->Print(runner_oss, "");
+    session.GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::unique_ptr<codec::RowView> row_view = std::unique_ptr<codec::RowView>(
         new codec::RowView(session.GetSchema()));

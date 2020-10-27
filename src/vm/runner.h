@@ -368,6 +368,7 @@ class Runner : public node::NodeBase<Runner> {
           type_(kRunnerUnknow),
           limit_cnt_(0),
           need_cache_(false),
+          need_batch_cache_(false),
           producers_(),
           output_schemas_() {}
     explicit Runner(const int32_t id, const RunnerType type,
@@ -376,6 +377,7 @@ class Runner : public node::NodeBase<Runner> {
           type_(type),
           limit_cnt_(0),
           need_cache_(false),
+          need_batch_cache_(false),
           producers_(),
           output_schemas_(output_schemas) {}
     Runner(const int32_t id, const RunnerType type,
@@ -384,6 +386,7 @@ class Runner : public node::NodeBase<Runner> {
           type_(type),
           limit_cnt_(limit_cnt),
           need_cache_(false),
+          need_batch_cache_(false),
           producers_(),
           output_schemas_(output_schemas) {}
     virtual ~Runner() {}
@@ -401,12 +404,8 @@ class Runner : public node::NodeBase<Runner> {
             }
         }
     }
-    void EnableCache() {
-        need_cache_ = true;
-    }
-    void DisableCache() {
-        need_cache_ = false;
-    }
+    void EnableCache() { need_cache_ = true; }
+    void DisableCache() { need_cache_ = false; }
     const int32_t id_;
     const RunnerType type_;
     const int32_t limit_cnt_;
@@ -440,6 +439,7 @@ class Runner : public node::NodeBase<Runner> {
 
  protected:
     bool need_cache_;
+    bool need_batch_cache_;
     std::vector<Runner*> producers_;
     const vm::SchemaSourceList output_schemas_;
 };
@@ -822,7 +822,7 @@ class ClusterTask {
  public:
     ClusterTask()
         : root_(nullptr), db_(""), table_(""), index_(""), index_key_() {}
-    ClusterTask(Runner* root)
+    explicit ClusterTask(Runner* root)
         : root_(root), db_(""), table_(""), index_(""), index_key_() {}
     ClusterTask(Runner* root, std::string db, std::string table,
                 std::string index)
@@ -901,7 +901,11 @@ class ClusterJob {
             return;
         }
         for (int i = 0; i < tasks_.size(); i++) {
-            output << "TASK ID " << i;
+            if (main_task_id_ == i) {
+                output << "MAIN TASK ID " << i;
+            } else {
+                output << "TASK ID " << i;
+            }
             tasks_[i].Print(output, tab);
             output << "\n";
         }
@@ -947,7 +951,7 @@ class RunnerBuilder {
     int32_t partition_id_;
     ClusterJob cluster_job_;
     bool AddRunnerToRemoteTask(Runner* runner, int32_t task_id) {
-       return cluster_job_.AddRunnerToTask(runner, task_id);
+        return cluster_job_.AddRunnerToTask(runner, task_id);
     }
 };
 
@@ -958,14 +962,14 @@ class RunnerContext {
         : cluster_job_(cluster_job),
           request_(),
           is_debug_(is_debug),
-          cache_() {}
+          batch_cache_() {}
     explicit RunnerContext(fesql::vm::ClusterJob* cluster_job,
                            const fesql::codec::Row& request,
                            const bool is_debug = false)
         : cluster_job_(cluster_job),
           request_(request),
           is_debug_(is_debug),
-          cache_() {}
+          batch_cache_() {}
 
     const fesql::codec::Row& request() const { return request_; }
     fesql::vm::ClusterJob* cluster_job() { return cluster_job_; }
@@ -973,12 +977,16 @@ class RunnerContext {
     bool is_debug() const { return is_debug_; }
 
     std::shared_ptr<DataHandler> GetCache(int64_t id) const;
-    void SetCache(int64_t id, std::shared_ptr<DataHandler>);
+    void SetCache(int64_t id, std::shared_ptr<DataHandler> data);
+    void ClearCache() { cache_.clear(); }
+    std::shared_ptr<DataHandler> GetBatchCache(int64_t id) const;
+    void SetBatchCache(int64_t id, std::shared_ptr<DataHandler> data);
 
  private:
     fesql::vm::ClusterJob* cluster_job_;
     fesql::codec::Row request_;
     const bool is_debug_;
+    std::map<int64_t, std::shared_ptr<DataHandler>> batch_cache_;
     std::map<int64_t, std::shared_ptr<DataHandler>> cache_;
 };
 
