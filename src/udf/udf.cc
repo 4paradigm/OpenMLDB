@@ -231,6 +231,7 @@ void date_to_string(codec::Date *date, fesql::codec::StringRef *output) {
 }
 void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr) {
     if (nullptr == str) {
+        *out = false;
         *is_null_ptr = true;
         return;
     }
