@@ -1298,14 +1298,14 @@ bool NsClient::TransformToTableDef(
                             }
                         }
                         if (table->ttl_desc().ttl_type() == rtidb::api::kAbsoluteTime) {
-                            if (column_index->GetAbsTTL() == -1) {
+                            if (column_index->GetAbsTTL() == -1 || column_index->GetLatTTL() != -2) {
                                 status->msg = "CREATE common: abs ttl format error";
                                 status->code = fesql::common::kSQLError;
                                 return false;
                             }
                             it->second->set_abs_ttl(column_index->GetAbsTTL() / 60000);
                         } else if (table->ttl_desc().ttl_type() == rtidb::api::kLatestTime) {
-                            if (column_index->GetLatTTL() == -1) {
+                            if (column_index->GetLatTTL() == -1 || column_index->GetAbsTTL() != -2) {
                                 status->msg = "CREATE common: lat ttl format error";
                                 status->code = fesql::common::kSQLError;
                                 return false;
