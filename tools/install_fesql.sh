@@ -14,3 +14,5 @@ WORK_DIR=`pwd`
 
 cd fesql && ln -sf ${RTIDB_THIRDPARTY} thirdparty && mkdir -p build
 cd build && cmake -DCMAKE_BUILD_TYPE=${CMAKE_TYPE} -DCMAKE_INSTALL_PREFIX="${RTIDB_THIRDPARTY}" -DTESTING_ENABLE=OFF -DCOVERAGE_ENABLE=OFF -DPYSDK_ENABLE=OFF -DJAVASDK_ENABLE=OFF -DEXPRIRMENT_ENABLE=OFF ..  && make -j5 install
+
+cd ${WORK_DIR}/fesql/java/fesql-common && mvn install

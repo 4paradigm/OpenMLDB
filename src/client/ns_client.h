@@ -26,6 +26,7 @@
 #include "rpc/rpc_client.h"
 #include "sdk/dbms_sdk.h"
 #include "sdk/result_set_impl.h"
+#include "catalog/schema_adapter.h"
 
 namespace rtidb {
 namespace client {
@@ -247,6 +248,15 @@ class NsClient {
     bool DeleteIndex(const std::string& db, const std::string& table_name,
                      const std::string& idx_name, std::string& msg);  // NOLINT
 
+    bool ShowProcedure(const std::string& db_name, const std::string& sp_name,
+            std::vector<rtidb::nameserver::ProcedureInfo>& sp_info, std::string& msg); // NOLINT
+
+    bool ShowProcedure(std::vector<rtidb::nameserver::ProcedureInfo>& sp_info, // NOLINT
+            std::string& msg); // NOLINT
+
+    bool DropProcedure(const std::string& db_name, const std::string& sp_name,
+            std::string& msg); // NOLINT
+
  private:
     bool TransformToTableDef(
         const std::string& table_name,
@@ -261,6 +271,9 @@ class NsClient {
                               const std::string& db,
                               fesql::node::NodeManager* node_manager,
                               fesql::base::Status* sql_status);
+    bool HandleSQLCreateProcedure(const fesql::node::NodePointVector& parser_trees,
+            const std::string& db, const std::string& sql,
+            fesql::node::NodeManager* node_manager, fesql::base::Status* sql_status);
 
  private:
     std::string endpoint_;
