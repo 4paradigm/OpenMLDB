@@ -266,9 +266,8 @@ class NodeManager {
         const NodePointVector &partition_meta_list);
 
     CreateProcedurePlanNode *MakeCreateProcedurePlanNode(
-            const std::string &sp_name,
-            const NodePointVector &input_parameter_list,
-            const PlanNodeList& inner_plan_node_list);
+        const std::string &sp_name, const NodePointVector &input_parameter_list,
+        const PlanNodeList &inner_plan_node_list);
 
     CmdPlanNode *MakeCmdPlanNode(const CmdNode *node);
 
@@ -330,12 +329,12 @@ class NodeManager {
     SQLNode *MakeDistributionsNode(SQLNodeList *distribution_list);
 
     SQLNode *MakeCreateProcedureNode(const std::string &sp_name,
-            SQLNodeList *input_parameter_list,
-            SQLNode* inner_node);
+                                     SQLNodeList *input_parameter_list,
+                                     SQLNode *inner_node);
 
     SQLNode *MakeInputParameterNode(bool is_constant,
-            const std::string &column_name,
-            DataType data_type);
+                                    const std::string &column_name,
+                                    DataType data_type);
 
     template <typename T>
     T *RegisterNode(T *node_ptr) {

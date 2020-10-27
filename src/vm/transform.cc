@@ -1467,10 +1467,10 @@ bool BatchModeTransformer::TransformPhysicalPlan(
             }
             case ::fesql::node::kPlanTypeCreateSp: {
                 const ::fesql::node::CreateProcedurePlanNode* sp_plan =
-                    dynamic_cast<
-                        const ::fesql::node::CreateProcedurePlanNode*>(node);
+                    dynamic_cast<const ::fesql::node::CreateProcedurePlanNode*>(
+                        node);
                 if (!TransformPhysicalPlan(sp_plan->GetInnerPlanNodeList(),
-                            output, status)) {
+                                           output, status)) {
                     return false;
                 }
                 break;

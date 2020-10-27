@@ -23,6 +23,7 @@
 #include <mutex>  //NOLINT
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 #include "base/raw_buffer.h"
 #include "base/spin_lock.h"
@@ -214,8 +215,10 @@ typedef std::map<
                               std::string, std::shared_ptr<CompileInfo>>>>
     EngineLRUCache;
 
-typedef std::map<std::string, std::map<
-    std::string, std::shared_ptr<CompileInfo>>> ProcedureCache;
+typedef std::map<std::string,
+                 std::map<std::string, std::pair<std::shared_ptr<CompileInfo>,
+                                                 std::shared_ptr<CompileInfo>>>>
+    ProcedureCache;
 
 class Engine {
  public:
@@ -258,7 +261,8 @@ class Engine {
                         std::shared_ptr<CompileInfo> info);
 
     bool IsCompatibleCache(RunSession& session,  // NOLINT
-                           std::shared_ptr<CompileInfo> info);
+                           std::shared_ptr<CompileInfo> info,
+                           base::Status& status);  // NOLINT
 
     std::shared_ptr<Catalog> cl_;
     EngineOptions options_;

@@ -42,8 +42,11 @@ Engine::Engine(const std::shared_ptr<Catalog>& catalog)
 
 Engine::Engine(const std::shared_ptr<Catalog>& catalog,
                const EngineOptions& options)
-    : cl_(catalog), options_(options), mu_(), lru_cache_(),
-    procedure_cache_() {}
+    : cl_(catalog),
+      options_(options),
+      mu_(),
+      lru_cache_(),
+      procedure_cache_() {}
 
 Engine::~Engine() {}
 
@@ -129,9 +132,15 @@ bool Engine::GetDependentTables(node::PlanNode* node,
 }
 
 bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
-                               std::shared_ptr<CompileInfo> info) {
+                               std::shared_ptr<CompileInfo> info,
+                               base::Status& status) {  // NOLINT
     auto& cache_ctx = info->get_sql_context();
     if (cache_ctx.engine_mode != session.engine_mode()) {
+        status =
+            Status(common::kSQLError,
+                   "Inconsistent cache, mode expect " +
+                       EngineModeName(session.engine_mode()) + " but get " +
+                       EngineModeName(cache_ctx.engine_mode));
         return false;
     }
     if (session.engine_mode() == kBatchRequestMode) {
@@ -141,7 +150,11 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
         }
         auto& cache_indices = cache_ctx.common_column_indices;
         auto& sess_indices = batch_req_sess->common_column_indices();
-        return cache_indices == sess_indices;
+        if (cache_indices != sess_indices) {
+            status =
+                Status(common::kSQLError, "Inconsistent common column config");
+            return false;
+        }
     }
     return true;
 }
@@ -151,7 +164,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
                  base::Status& status) {  // NOLINT (runtime/references)
     std::shared_ptr<CompileInfo> info =
         GetCacheLocked(db, sql, session.engine_mode(), session.IsProcedure());
-    if (info && IsCompatibleCache(session, info)) {
+    if (info && IsCompatibleCache(session, info, status)) {
         session.SetCompileInfo(info);
         return true;
     }
@@ -256,7 +269,11 @@ std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
         if (info_it == it->second.end()) {
             return nullptr;
         }
-        return info_it->second;
+        if (engine_mode == kRequestMode) {
+            return info_it->second.first;
+        } else {
+            return info_it->second.second;
+        }
     }
 }
 
@@ -269,11 +286,11 @@ bool Engine::SetCacheLocked(const std::string& db, const std::string& spec,
         auto& mode_cache = lru_cache_[engine_mode];
         using BoostLRU =
             boost::compute::detail::lru_cache<std::string,
-            std::shared_ptr<CompileInfo>>;
+                                              std::shared_ptr<CompileInfo>>;
         std::map<std::string, BoostLRU>::iterator db_iter = mode_cache.find(db);
         if (db_iter == mode_cache.end()) {
             db_iter = mode_cache.insert(
-                    db_iter, {db, BoostLRU(options_.max_sql_cache_size())});
+                db_iter, {db, BoostLRU(options_.max_sql_cache_size())});
         }
         auto& lru = db_iter->second;
         auto value = lru.get(sql);
@@ -282,26 +299,27 @@ bool Engine::SetCacheLocked(const std::string& db, const std::string& spec,
             return true;
         } else {
             // TODO(xxx): Ensure compile result is stable
-            DLOG(INFO) << "Engine cache already exists: "
-                << engine_mode << " " << db << "\n" << sql;
+            DLOG(INFO) << "Engine cache already exists: " << engine_mode << " "
+                       << db << "\n"
+                       << sql;
             return false;
         }
     } else {
         const auto& sp_name = spec;
-        auto db_it = procedure_cache_.find(db);
-        if (db_it == procedure_cache_.end()) {
-            db_it = procedure_cache_.insert(db_it, std::make_pair(db,
-                        std::map<std::string, std::shared_ptr<CompileInfo>>()));
+        auto& cache_pair = procedure_cache_[db][sp_name];
+        std::shared_ptr<CompileInfo>* cache_ptr;
+        if (engine_mode == kRequestMode) {
+            cache_ptr = &cache_pair.first;
+        } else {
+            cache_ptr = &cache_pair.second;
         }
-        auto& info_map = db_it->second;
-        auto info_it = info_map.find(sp_name);
-        if (info_it == info_map.end()) {
-            info_map.insert(std::make_pair(sp_name, info));
+        if (*cache_ptr == nullptr) {
+            *cache_ptr = info;
             return true;
         } else {
             // TODO(xxx): Ensure compile result is stable
             DLOG(INFO) << "Engine procedure cache already exists: "
-                << engine_mode << " " << db << " : " << sp_name;
+                       << engine_mode << " : " << db << " : " << sp_name;
             return false;
         }
     }
