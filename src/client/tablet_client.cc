@@ -1571,6 +1571,23 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid,
     return false;
 }
 
+bool TabletClient::GetCatalog(uint64_t* version) {
+    if (version == nullptr) {
+        return false;
+    }
+    ::rtidb::api::GetCatalogRequest request;
+    ::rtidb::api::GetCatalogResponse response;
+    bool ok = client_.SendRequest(
+            &::rtidb::api::TabletServer_Stub::GetCatalog,
+            &request, &response, FLAGS_request_timeout_ms,
+            FLAGS_request_max_retry);
+    if (!ok || response.code() != 0) {
+        return false;
+    }
+    *version = response.catalog().version();
+    return true;
+}
+
 bool TabletClient::UpdateRealEndpointMap(
         const std::map<std::string, std::string>& map) {
     ::rtidb::api::UpdateRealEndpointMapRequest request;

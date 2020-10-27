@@ -253,6 +253,8 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     bool DeleteDB(const std::string &db);
 
+    void RefreshTable(const std::vector<::rtidb::nameserver::TableInfo> &table_info_vec, uint64_t version);
+
     bool AddProcedure(const std::string& db, const std::string& sp_name,
             const std::string& sql);
 
@@ -261,12 +263,15 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     bool UpdateClient(const std::map<std::string, std::string> &real_ep_map);
 
+    uint64_t GetVersion() const;
+
  private:
     ::rtidb::base::SpinMutex mu_;
     TabletTables tables_;
     TabletDB db_;
     TabletProcedures procedures_;
     ClientManager client_manager_;
+    std::atomic<uint64_t> version_;
 };
 
 }  // namespace catalog

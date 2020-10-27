@@ -3953,6 +3953,24 @@ void TabletImpl::GetAllSnapshotOffset(
     response->set_code(::rtidb::base::ReturnCode::kOk);
 }
 
+void TabletImpl::GetCatalog(RpcController* controller,
+                             const ::rtidb::api::GetCatalogRequest* request,
+                             ::rtidb::api::GetCatalogResponse* response,
+                             Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (catalog_) {
+        ::rtidb::common::CatalogInfo* catalog_info = response->mutable_catalog();
+        catalog_info->set_version(catalog_->GetVersion());
+        catalog_info->set_endpoint(FLAGS_endpoint);
+        response->set_code(0);
+        response->set_msg("ok");
+        return;
+    }
+    response->set_code(-1);
+    response->set_msg("catalog is not exist");
+    PDLOG(WARNING, "catalog is not exist");
+}
+
 void TabletImpl::GetTermPair(RpcController* controller,
                              const ::rtidb::api::GetTermPairRequest* request,
                              ::rtidb::api::GetTermPairResponse* response,
@@ -4848,6 +4866,18 @@ void TabletImpl::CheckZkClient() {
 }
 
 void TabletImpl::RefreshTableInfo() {
+    std::string db_table_notify_path = zk_path_ + "/table/notify";
+    std::string value;
+    if (!zk_client_->GetNodeValue(db_table_notify_path, value)) {
+        LOG(WARNING) << "fail to get node value. node is " << db_table_notify_path;
+        return;
+    }
+    uint64_t version = 0;
+    try {
+        version = std::stoull(value);
+    } catch (const std::exception& e) {
+        LOG(WARNING) << "value is not integer";
+    }
     std::string db_table_data_path = zk_path_ + "/table/db_table_data";
     std::vector<std::string> table_datas;
     if (zk_client_->IsExistNode(db_table_data_path) == 0) {
@@ -4874,7 +4904,7 @@ void TabletImpl::RefreshTableInfo() {
         }
         table_info_vec.push_back(std::move(table_info));
     }
-    catalog_->RefreshTable(table_info_vec);
+    catalog_->RefreshTable(table_info_vec, version);
 }
 
 int TabletImpl::CheckDimessionPut(const ::rtidb::api::PutRequest* request,
