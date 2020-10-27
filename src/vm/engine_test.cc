@@ -176,7 +176,6 @@ TEST_P(EngineTest, test_cluster_batch_request_engine) {
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
-
         BatchRequestModeCheck(options, sql_case);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
