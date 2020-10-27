@@ -55,3 +55,18 @@ cases:
       order: id
       rows:
         - [1, "helloworldabc"]
+  - id: 5
+    desc: 不依赖输入表cast常量
+    mode: request-unsupport
+    tags: ["TODO", "@chenjing, support const project node"]
+    inputs:
+      - columns: ["c1 int", "c2 string", "c5 bigint"]
+        indexs: ["index1:c1:c5"]
+        rows:
+          - [1, "2020-05-22 10:43:40", 1]
+    sql: |
+      select int(10) as c1, bigint(20) as c2;
+    expect:
+      columns: ["c1 int", "c2 bigint"]
+      rows:
+        - [10, 20]
