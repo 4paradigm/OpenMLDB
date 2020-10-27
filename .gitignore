@@ -45,6 +45,7 @@ build
 build_mac
 thirdparty
 thirdsrc
+.vscode/
 onebox/*.log
 onebox/*binlogs*
 onebox/*bin*
@@ -72,3 +73,4 @@ src/sdk/java/fesql-auto-test-java/target/
 src/sdk/python/fesql-auto-test-python/logs
 src/sdk/python/fesql-auto-test-python/report
 src/sdk/python/logs
+.vscode/settings.json

@@ -11,20 +11,24 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <fstream>
+#include <utility>
 
 #include "boost/algorithm/string/classification.hpp"
 #include "boost/algorithm/string/split.hpp"
+#include "boost/algorithm/string.hpp"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
+DECLARE_string(mime_conf);
 
 namespace rtidb {
 namespace blobproxy {
 BlobProxyImpl::BlobProxyImpl()
-    : mu_(), server_(NULL), client_(NULL) {}
+    : mu_(), server_(NULL), client_(NULL), mime_() {}
 
 BlobProxyImpl::~BlobProxyImpl() {
     if (client_ != NULL) {
@@ -38,6 +42,34 @@ bool BlobProxyImpl::Init() {
         PDLOG(WARNING, "zk cluster disabled");
         return false;
     }
+    if (!FLAGS_mime_conf.empty()) {
+        std::ifstream infile(FLAGS_mime_conf);
+        if (!infile.is_open()) {
+            LOG(WARNING) << "open mime db conf:" << FLAGS_mime_conf << " fail, skip load mime db";
+        } else {
+            std::string line;
+            while (std::getline(infile, line)) {
+                std::vector<std::string> vec;
+                boost::split(vec, line, boost::is_any_of(";"));
+                if (vec.size() < 2) {
+                    LOG(WARNING) << "skip load:" << line << ", because parameters is not enough";
+                    continue;
+                }
+                std::vector<std::string> name_extensions;
+                boost::split(name_extensions, vec[1], boost::is_any_of("\t "));
+                boost::trim(vec[0]);
+                for (const auto& extension : name_extensions) {
+                    mime_.insert(std::make_pair(extension, vec[0]));
+                }
+                line.clear();
+            }
+            infile.close();
+        }
+    } else {
+        mime_.insert(std::make_pair("mp3", "audio/mpeg"));
+    }
+
+
     client_ = new BaseClient(FLAGS_zk_cluster, FLAGS_zk_root_path,
             FLAGS_endpoint, FLAGS_zk_session_timeout,
             FLAGS_zk_keep_alive_check_interval);
@@ -63,15 +95,13 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
         table = unresolve_path;
         const std::string* id = cntl->http_request().uri().GetQuery("blob_id");
         if (id == NULL) {
-            cntl->http_response().set_status_code(
-                brpc::HTTP_STATUS_BAD_REQUEST);
+            cntl->http_response().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
             return;
         }
         try {
             blob_id = boost::lexical_cast<int64_t>(*id);
         } catch (boost::bad_lexical_cast&) {
-            cntl->http_response().set_status_code(
-                brpc::HTTP_STATUS_BAD_REQUEST);
+            cntl->http_response().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
             return;
         }
     } else if (vec.size() == 2) {
@@ -80,8 +110,7 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
         try {
             blob_id = boost::lexical_cast<int64_t>(vec[1]);
         } catch (boost::bad_lexical_cast&) {
-            cntl->http_response().set_status_code(
-                brpc::HTTP_STATUS_BAD_REQUEST);
+            cntl->http_response().set_status_code(brpc::HTTP_STATUS_BAD_REQUEST);
             return;
         }
     } else {
@@ -121,6 +150,30 @@ void BlobProxyImpl::Get(RpcController* controller, const HttpRequest* request,
         cntl->http_response().set_status_code(brpc::HTTP_STATUS_NOT_FOUND);
         response_writer.append(err_msg);
         return;
+    }
+    const std::string* content_format = cntl->http_request().uri().GetQuery("format");
+    std::string application_type;
+    if (content_format != NULL) {
+        auto iter = mime_.find(*content_format);
+        if (iter != mime_.end()) {
+            application_type = iter->second;
+        }
+    }
+    const std::string* filename = cntl->http_request().uri().GetQuery("filename");
+    const std::string* charset = cntl->http_request().uri().GetQuery("charset");
+    if (!application_type.empty()) {
+        if (charset != NULL) {
+            std::ostringstream oss;
+            oss << application_type << "; " << "charset=" << (*charset);
+            cntl->http_response().set_content_type(oss.str());
+        } else {
+            cntl->http_response().set_content_type(application_type);
+        }
+    }
+    if (filename != NULL) {
+        std::ostringstream  oss;
+        oss << "inline; filename=" << (*filename) << ";";
+        cntl->http_response().SetHeader("Content-Disposition", oss.str());
     }
     response_writer.append(buff);
 }

@@ -41,8 +41,14 @@ class RowsChecker(BaseChecker):
             log.info("convert expect:{}".format(expect))
         orderName = self.fesqlCase['expect'].get('order')
         if orderName!=None and len(orderName)>0:
-            schema = self.fesqlResult.resultSchema
-            index = fesql_util.getIndexByColumnName(schema,orderName)
+            if hasattr(self.fesqlResult.rs, "_cursor_description"):
+                desc = self.fesqlResult.rs._cursor_description()
+                index = fesql_util.getIndexByColumnName(desc ,orderName)
+            else:
+                schema = self.fesqlResult.resultSchema
+                index = fesql_util.getIndexByColumnName(schema,orderName)
+            log.info("old data: {}".format(actual))
+            log.info("old data: {}".format(expect))
             expect = sorted(expect,key= lambda x:x[index])
             actual = sorted(actual, key=lambda x: x[index])
             log.info("order expect:{}".format(expect))
@@ -69,6 +75,7 @@ class RowsChecker(BaseChecker):
             else:
                 data = str(value);
                 column = columns[index]
+                log.info("column is:{}".format(column))
                 list.append(self.convertData(data,column))
         return list
 
@@ -79,6 +86,8 @@ class RowsChecker(BaseChecker):
         if data == 'None':
             return 'None'
         if type == 'int' :
+            obj = int(data)
+        elif type == 'int64':
             obj = int(data)
         elif type == 'bigint':
             obj = int(data)
@@ -106,6 +115,7 @@ class ColumnsChecker(BaseChecker):
 
     def check(self):
         log.info("columns check")
+        """
         expect = self.fesqlCase['expect'].get('columns')
         fesql_util.convertExpectTypes(expect)
         schema = self.fesqlResult.resultSchema
@@ -113,6 +123,7 @@ class ColumnsChecker(BaseChecker):
         for index,value in enumerate(expect):
             actual = schema.GetColumnName(index)+" "+str(fesql_util.getColumnType(DataTypeName(schema.GetColumnType(index))))
             assert actual == value,'actual:{},expect:{}'.format(actual,value)
+        """
 
 class CountChecker(BaseChecker):
     def __init__(self,fesqlCase,fesqlResult):

@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "base/linenoise.h"
 #include "base/texttable.h"
@@ -157,7 +158,7 @@ void PrintTableIndex(std::ostream &stream,
 }
 
 void PrintTableSchema(std::ostream &stream, const ::fesql::vm::Schema &schema) {
-    if (schema.size() == 0) {
+    if (schema.empty()) {
         stream << "Empty set" << std::endl;
         return;
     }
@@ -201,6 +202,72 @@ void PrintItems(std::ostream &stream, const std::string &head,
     } else {
         stream << items_size << " row in set" << std::endl;
     }
+}
+
+void PrintItems(const std::vector<std::pair<std::string, std::string>> &items,
+        std::ostream &stream) {
+    if (items.empty()) {
+        stream << "Empty set" << std::endl;
+        return;
+    }
+
+    ::fesql::base::TextTable t('-', ' ', ' ');
+    t.add("DB");
+    t.add("SP");
+    t.endOfRow();
+    for (auto item : items) {
+        t.add(item.first);
+        t.add(item.second);
+        t.endOfRow();
+    }
+    stream << t;
+    auto items_size = items.size();
+    if (items_size > 1) {
+        stream << items_size << " rows in set" << std::endl;
+    } else {
+        stream << items_size << " row in set" << std::endl;
+    }
+}
+
+void PrintProcedureSchema(const std::string& head,
+        const ::fesql::vm::Schema &schema, std::ostream &stream) {
+    if (schema.empty()) {
+        stream << "Empty set" << std::endl;
+        return;
+    }
+    uint32_t items_size = schema.size();
+    ::fesql::base::TextTable t('-', ' ', ' ');
+
+    t.add("#");
+    t.add("Field");
+    t.add("Type");
+    t.add("IsConstant");
+    t.endOfRow();
+
+    for (uint32_t i = 0; i < items_size; i++) {
+        auto column = schema.Get(i);
+        t.add(std::to_string(i + 1));
+        t.add(column.name());
+        t.add(::fesql::type::Type_Name(column.type()));
+        t.add(column.is_constant() ? "YES" : "NO");
+        t.endOfRow();
+    }
+    stream << t << std::endl;
+}
+
+void PrintProcedureInfo(const rtidb::nameserver::ProcedureInfo& sp_info) {
+    std::vector<std::pair<std::string, std::string>> vec;
+    std::pair<std::string, std::string> pair = std::make_pair(sp_info.db_name(), sp_info.sp_name());
+    vec.push_back(pair);
+    PrintItems(vec, std::cout);
+    std::vector<std::string> items{sp_info.sql()};
+    PrintItems(std::cout, "SQL", items);
+    ::fesql::vm::Schema input_schema;
+    ::rtidb::catalog::SchemaAdapter::ConvertSchema(sp_info.input_schema(), &input_schema);
+    PrintProcedureSchema("Input Schema", input_schema, std::cout);
+    ::fesql::vm::Schema output_schema;
+    ::rtidb::catalog::SchemaAdapter::ConvertSchema(sp_info.output_schema(), &output_schema);
+    PrintProcedureSchema("Output Schema", output_schema, std::cout);
 }
 
 void HandleCmd(const fesql::node::CmdNode *cmd_node) {
@@ -276,6 +343,10 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             break;
         }
         case fesql::node::kCmdDropTable: {
+            if (db.empty()) {
+                std::cout << "please enter database first" << std::endl;
+                return;
+            }
             std::string name = cmd_node->GetArgs()[0];
             std::string error;
             printf("Drop table %s? yes/no\n", name.c_str());
@@ -319,6 +390,69 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
                 std::cout << "drop index ok" << std::endl;
             } else {
                 std::cout << "Fail to drop index. error msg: " << error
+                          << std::endl;
+            }
+            break;
+        }
+        case fesql::node::kCmdShowCreateSp: {
+            std::string db_name = cmd_node->GetArgs()[0];
+            std::string sp_name = cmd_node->GetArgs()[1];
+            std::string error;
+            auto ns = cs->GetNsClient();
+            if (!ns) {
+                std::cout << "Fail to connect to db" << std::endl;
+                return;
+            }
+            std::vector<rtidb::nameserver::ProcedureInfo> sp_infos;
+            if (!ns->ShowProcedure(db_name, sp_name, sp_infos, error) || sp_infos.empty()) {
+                std::cout << "Fail to show procdure. error msg: " << error << std::endl;
+                return;
+            }
+            PrintProcedureInfo(sp_infos.at(0));
+            break;
+        }
+        case fesql::node::kCmdShowProcedures: {
+            std::string error;
+            auto ns = cs->GetNsClient();
+            if (!ns) {
+                std::cout << "Fail to connect to db" << std::endl;
+                return;
+            }
+            std::vector<rtidb::nameserver::ProcedureInfo> sp_infos;
+            if (!ns->ShowProcedure(sp_infos, error) || sp_infos.empty()) {
+                std::cout << "Fail to show procdure. error msg: " << error << std::endl;
+                return;
+            }
+            std::vector<std::pair<std::string, std::string>> pairs;
+            for (uint32_t i = 0; i < sp_infos.size(); i++) {
+                auto& sp_info = sp_infos.at(i);
+                pairs.push_back(std::make_pair(sp_info.db_name(), sp_info.sp_name()));
+            }
+            PrintItems(pairs, std::cout);
+            break;
+        }
+        case fesql::node::kCmdDropSp: {
+            if (db.empty()) {
+                std::cout << "please enter database first" << std::endl;
+                return;
+            }
+            std::string sp_name = cmd_node->GetArgs()[0];
+            std::string error;
+            printf("Drop store procedure %s? yes/no\n", sp_name.c_str());
+            std::string input;
+            std::cin >> input;
+            std::transform(input.begin(), input.end(), input.begin(),
+                           ::tolower);
+            if (input != "yes") {
+                printf("'drop %s' cmd is canceled!\n", sp_name.c_str());
+                return;
+            }
+            auto ns = cs->GetNsClient();
+            bool ok = ns->DropProcedure(db, sp_name, error);
+            if (ok) {
+                std::cout << "drop ok" << std::endl;
+            } else {
+                std::cout << "failed to drop. error msg: " << error
                           << std::endl;
             }
             break;
@@ -383,7 +517,8 @@ void HandleSQL(const std::string &sql) {
             std::cout << info->GetPhysicalPlan() << std::endl;
             return;
         }
-        case fesql::node::kCreateStmt: {
+        case fesql::node::kCreateStmt:
+        case fesql::node::kCreateSpStmt: {
             if (db.empty()) {
                 std::cout << "please use database first" << std::endl;
                 return;

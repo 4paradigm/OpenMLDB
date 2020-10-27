@@ -14,6 +14,7 @@
 #include "codec/codec.h"
 #include "codec/schema_codec.h"
 #include "zk/zk_client.h"
+#include "client/ns_client.h"
 
 struct WriteOption {
     WriteOption() : update_if_exist(false) {
@@ -370,6 +371,9 @@ class BaseClient {
     std::shared_ptr<TableHandler> GetTableHandler(const std::string& name);
     bool GetRealEndpoint(const std::string& endpoint,
             std::string* real_endpoint);
+    bool CreateTable(const rtidb::nameserver::TableInfo& info);
+    std::vector<std::string> ShowTable(const std::string& name);
+    void DropTable(const std::string& name);
 
  private:
     std::mutex mu_;
@@ -377,6 +381,7 @@ class BaseClient {
     std::map<std::string, std::shared_ptr<rtidb::client::BsClient>> blobs_;
     std::map<std::string, std::shared_ptr<TableHandler>> tables_;
     rtidb::zk::ZkClient* zk_client_;
+    rtidb::client::NsClient* ns_client_;
     std::string zk_cluster_;
     std::string zk_root_path_;
     std::string table_notify_;
@@ -412,6 +417,12 @@ class RtidbClient {
     std::vector<std::string>& GetBlobSchema(const std::string& name);
     BlobInfoResult GetBlobInfo(const std::string& name);
     bool DeleteBlobs(const std::string& name, const std::vector<int64_t>& keys);
+
+    int CreateTable(const std::string& table_meta);
+
+    std::vector<std::string> ShowTable(const std::string& name);
+
+    void DropTable(const std::string& name);
 
  private:
     BaseClient* client_;
