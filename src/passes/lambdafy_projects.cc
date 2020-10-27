@@ -327,7 +327,8 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
         nm_->MakeFuncNode(ori_update_fn, actual_update_args, nullptr);
     auto update_func = nm_->MakeLambdaNode(proxy_update_args, update_body);
 
-    std::string new_udaf_name = fn->function_name();
+    std::string new_udaf_name = "window_agg_$";
+    new_udaf_name.append(fn->function_name());
     new_udaf_name.append("<");
     for (size_t i = 0; i < agg_original_args.size(); ++i) {
         new_udaf_name.append(agg_original_args[i]->GetOutputType()->GetName());
