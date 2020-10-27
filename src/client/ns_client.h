@@ -81,6 +81,8 @@ class NsClient {
         std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT
         std::string& msg);                                    // NOLINT
 
+    bool ShowCatalogVersion(std::map<std::string, uint64_t>* version_map, std::string* msg);
+
     bool ShowAllTable(
         std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT
         std::string& msg);                                    // NOLINT
