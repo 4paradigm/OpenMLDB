@@ -862,7 +862,7 @@ cases:
       rows:
         - [1, true, true, true, true, true, true, true, true, true]
         - [2, true, true, true, true, true, true, true, false, true]
-        - [3, true, true, true, true, true, NULL, true, false, fase]
+        - [3, true, true, true, true, true, NULL, true, false, false]
   - id: 21-1
     desc: column name prefix with _
     mode: offline-unsupport
