@@ -111,7 +111,7 @@ class RunSession {
     }
 
     virtual fesql::vm::Runner* GetMainTask() {
-        return compile_info_->get_sql_context().cluster_job.GetMainTask();
+        return compile_info_->get_sql_context().cluster_job.GetMainTask().GetRoot();
     }
     virtual fesql::vm::ClusterJob& GetClusterJob() {
         return compile_info_->get_sql_context().cluster_job;

@@ -24,9 +24,8 @@ namespace vm {
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_MAX 20
 
-std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
-                                                 Status& status) {
-    auto fail = std::make_pair(0, nullptr);
+ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
+    auto fail = ClusterTask();
     if (nullptr == node) {
         status.msg = "fail to build runner : physical node is null";
         status.code = common::kOpGenError;
@@ -40,29 +39,34 @@ std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
                 case kProviderTypeTable: {
                     auto provider =
                         dynamic_cast<const PhysicalTableProviderNode*>(node);
-                    return std::make_pair(
-                        0, nm_->RegisterNode(new DataRunner(
-                               id_++, node->GetOutputNameSchemaList(),
-                               provider->table_handler_)));
+                    auto runner = nm_->RegisterNode(
+                        new DataRunner(id_++, node->GetOutputNameSchemaList(),
+                                       provider->table_handler_));
+                    return ClusterTask(runner);
                 }
                 case kProviderTypePartition: {
                     auto provider =
                         dynamic_cast<const PhysicalPartitionProviderNode*>(
                             node);
+
+                    auto runner = nm_->RegisterNode(
+                        new DataRunner(id_++, node->GetOutputNameSchemaList(),
+                                       provider->table_handler_->GetPartition(
+                                           provider->index_name_)));
                     if (support_cluster_optimized_) {
-                        partition_id_++;
+                        return ClusterTask(runner,
+                                           provider->table_handler_->GetDatabase(),
+                                           provider->table_handler_->GetName(),
+                                           provider->index_name_);
+                    } else {
+                        return ClusterTask(runner);
                     }
-                    return std::make_pair(
-                        partition_id_,
-                        nm_->RegisterNode(new DataRunner(
-                            id_++, node->GetOutputNameSchemaList(),
-                            provider->table_handler_->GetPartition(
-                                provider->index_name_))));
+
                 }
                 case kProviderTypeRequest: {
-                    return std::make_pair(
-                        0, nm_->RegisterNode(new RequestRunner(
-                               id_++, node->GetOutputNameSchemaList())));
+                    auto runner = nm_->RegisterNode(new RequestRunner(
+                        id_++, node->GetOutputNameSchemaList()));
+                    return ClusterTask(runner);
                 }
                 default: {
                     status.msg = "fail to support data provider type " +
@@ -74,29 +78,37 @@ std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
             }
         }
         case kPhysicalOpSimpleProject: {
-            auto [partition_id, input] =  // NOLINT
+            auto cluster_task =  // NOLINT
                 Build(node->producers().at(0), status);
+            auto input = cluster_task.GetRoot();
             if (nullptr == input) {
                 return fail;
             }
-
             auto op = dynamic_cast<const PhysicalSimpleProjectNode*>(node);
             auto runner = new SimpleProjectRunner(
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
                 op->project_.fn_info_);
+            if (kRunnerRequestRunProxy == input->type_) {
+                cluster_job_.AddRunnerToTask(
+                    nm_->RegisterNode(runner),
+                    dynamic_cast<ProxyRequestRunner*>(input)->task_id());
+                return cluster_task;
+            }
             runner->AddProducer(input);
-            return std::make_pair(partition_id, nm_->RegisterNode(runner));
+            cluster_task.SetRoot(runner);
+            return cluster_task;
         }
         case kPhysicalOpConstProject: {
             auto op = dynamic_cast<const PhysicalConstProjectNode*>(node);
             auto runner =
                 new ConstProjectRunner(id_++, node->GetOutputNameSchemaList(),
                                        op->GetLimitCnt(), op->project_);
-            return std::make_pair(0, nm_->RegisterNode(runner));
+            return ClusterTask(nm_->RegisterNode(runner));
         }
         case kPhysicalOpProject: {
-            auto [partition_id, input] =  // NOLINT
+            auto cluster_task =  // NOLINT
                 Build(node->producers().at(0), status);
+            auto input = cluster_task.GetRoot();
             if (nullptr == input) {
                 return fail;
             }
@@ -108,16 +120,23 @@ std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->project_);
                     runner->AddProducer(input);
-                    return std::make_pair(partition_id,
-                                          nm_->RegisterNode(runner));
+                    cluster_task.SetRoot(nm_->RegisterNode(runner));
+                    return cluster_task;
                 }
                 case kAggregation: {
                     auto runner =
                         new AggRunner(id_++, node->GetOutputNameSchemaList(),
                                       op->GetLimitCnt(), op->project_);
+                    if (kRunnerRequestRunProxy == input->type_) {
+                        cluster_job_.AddRunnerToTask(
+                            nm_->RegisterNode(runner),
+                            dynamic_cast<ProxyRequestRunner*>(input)
+                                ->task_id());
+                        return cluster_task;
+                    }
                     runner->AddProducer(input);
-                    return std::make_pair(partition_id,
-                                          nm_->RegisterNode(runner));
+                    cluster_task.SetRoot(nm_->RegisterNode(runner));
+                    return cluster_task;
                 }
                 case kGroupAggregation: {
                     auto op =
@@ -126,8 +145,8 @@ std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->group_, op->project_);
                     runner->AddProducer(input);
-                    return std::make_pair(partition_id,
-                                          nm_->RegisterNode(runner));
+                    cluster_task.SetRoot(nm_->RegisterNode(runner));
+                    return cluster_task;
                 }
                 case kWindowAggregation: {
                     auto op =
@@ -141,20 +160,39 @@ std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
                     size_t input_slices =
                         input->output_schemas().GetSchemaSourceListSize();
 
+                    if (!op->window_unions_.Empty()) {
+                        for (auto window_union :
+                             op->window_unions_.window_unions_) {
+                            auto union_task = Build(window_union.first, status);
+                            auto union_table = union_task.GetRoot();
+                            if (nullptr == union_table) {
+                                return fail;
+                            }
+                            if (!cluster_task.IsClusterTask()) {
+                                cluster_task = union_task;
+                                cluster_task.SetIndexKey(
+                                    window_union.second.partition());
+                            }
+                            runner->AddWindowUnion(window_union.second,
+                                                   union_table);
+                        }
+                    }
                     if (!op->window_joins_.Empty()) {
                         for (auto window_join :
                              op->window_joins_.window_joins_) {
-                            auto [window_join_partition_id,  // NOLINT
-                                  join_right_runner] =       // NOLINT
+                            auto join_task =  // NOLINT
                                 Build(window_join.first, status);
+                            auto join_right_runner = join_task.GetRoot();
                             if (nullptr == join_right_runner) {
                                 return fail;
                             }
 
                             // set runner partition id, if main table depend on
                             // no window(partition)
-                            if (0 == partition_id) {
-                                partition_id = window_join_partition_id;
+                            if (!cluster_task.IsClusterTask()) {
+                                cluster_task = join_task;
+                                cluster_task.SetIndexKey(
+                                    window_join.second.index_key_);
                             }
                             runner->AddWindowJoin(window_join.second,
                                                   input_slices,
@@ -162,32 +200,25 @@ std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
                         }
                     }
 
-                    if (!op->window_unions_.Empty()) {
-                        for (auto window_union :
-                             op->window_unions_.window_unions_) {
-                            auto [union_table_partition_id,  // NOLINT
-                                  union_table] =             // NOLINT
-                                Build(window_union.first, status);
-                            if (nullptr == union_table) {
-                                return fail;
-                            }
-                            if (0 == partition_id) {
-                                partition_id = union_table_partition_id;
-                            }
-                            runner->AddWindowUnion(window_union.second,
-                                                   union_table);
-                        }
-                    }
-                    return std::make_pair(partition_id,
-                                          nm_->RegisterNode(runner));
+                    cluster_task.SetRoot(nm_->RegisterNode(runner));
+                    return cluster_task;
                 }
                 case kRowProject: {
                     auto runner = new RowProjectRunner(
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->project_);
-                    runner->AddProducer(input);
-                    return std::make_pair(partition_id,
-                                          nm_->RegisterNode(runner));
+
+                    if (kRunnerRequestRunProxy == input->type_) {
+                        cluster_job_.AddRunnerToTask(
+                            nm_->RegisterNode(runner),
+                            dynamic_cast<ProxyRequestRunner*>(input)
+                                ->task_id());
+                        return cluster_task;
+                    } else {
+                        runner->AddProducer(input);
+                        cluster_task.SetRoot(nm_->RegisterNode(runner));
+                        return cluster_task;
+                    }
                 }
                 default: {
                     status.msg = "fail to support project type " +
@@ -199,13 +230,13 @@ std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
             }
         }
         case kPhysicalOpRequestUnoin: {
-            auto [left_partition_id, left] =  // NOLINT
-                Build(node->producers().at(0), status);
+            auto left_task = Build(node->producers().at(0), status);
+            auto left = left_task.GetRoot();
             if (nullptr == left) {
                 return fail;
             }
-            auto [right_partition_id, right] =  // NOLINT
-                Build(node->producers().at(1), status);
+            auto right_task = Build(node->producers().at(1), status);
+            auto right = right_task.GetRoot();
             if (nullptr == right) {
                 return fail;
             }
@@ -213,58 +244,72 @@ std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
             auto runner =
                 new RequestUnionRunner(id_++, node->GetOutputNameSchemaList(),
                                        op->GetLimitCnt(), op->window().range_);
+            Key index_key;
             if (!op->instance_not_in_window()) {
                 runner->AddWindowUnion(op->window_, right);
+                index_key = op->window_.index_key_;
             }
             if (!op->window_unions_.Empty()) {
                 for (auto window_union : op->window_unions_.window_unions_) {
-                    auto [union_table_partition_id, union_table] =  // NOLINT
-                        Build(window_union.first, status);
+                    auto union_task = Build(window_union.first, status);
+                    auto union_table = union_task.GetRoot();
                     if (nullptr == union_table) {
                         return fail;
                     }
-                    if (0 == right_partition_id) {
-                        right_partition_id = union_table_partition_id;
-                    }
                     runner->AddWindowUnion(window_union.second, union_table);
+                    if (!index_key.ValidKey()) {
+                        index_key = window_union.second.index_key_;
+                    }
                 }
             }
-            return BuildRunnerWithProxy(nm_->RegisterNode(runner), left,
-                                        left_partition_id, right,
-                                        right_partition_id, status);
+            auto cluster_task =
+                BuildRunnerWithProxy(nm_->RegisterNode(runner), left_task,
+                                     right_task, index_key, status);
+            return cluster_task;
         }
         case kPhysicalOpRequestJoin: {
-            auto [left_partition_id, left] =  // NOLINT
+            auto left_task =  // NOLINT
                 Build(node->producers().at(0), status);
+            auto left = left_task.GetRoot();
             if (nullptr == left) {
                 return fail;
             }
-            auto [right_partition_id, right] =  // NOLINT
+            auto right_task =  // NOLINT
                 Build(node->producers().at(1), status);
+            auto right = right_task.GetRoot();
             if (nullptr == right) {
                 return fail;
             }
             auto op = dynamic_cast<const PhysicalRequestJoinNode*>(node);
             switch (op->join().join_type()) {
                 case node::kJoinTypeLast: {
-                    auto runner = new RequestLastJoinRunner(
-                        id_++, node->GetOutputNameSchemaList(),
-                        op->GetLimitCnt(), op->join_,
-                        left->output_schemas().GetSchemaSourceListSize(),
-                        right->output_schemas().GetSchemaSourceListSize());
-
-                    return BuildRunnerWithProxy(nm_->RegisterNode(runner), left,
-                                                left_partition_id, right,
-                                                right_partition_id, status);
+                    auto concat =
+                        new ConcatRunner(id_++, node->GetOutputNameSchemaList(),
+                                         op->GetLimitCnt());
+                    auto request_filter_right =
+                        new RequestLastFilterRightRunner(
+                            id_++,
+                            node->producers().at(1)->GetOutputNameSchemaList(),
+                            op->GetLimitCnt(), op->join_,
+                            left->output_schemas().GetSchemaSourceListSize(),
+                            right->output_schemas().GetSchemaSourceListSize());
+                    auto request_filter_task = BuildRunnerWithProxy(
+                        nm_->RegisterNode(request_filter_right), left_task,
+                        right_task, op->join().index_key_, status);
+                    left_task.GetRoot()->EnableCache();
+                    auto cluster_task = BuildRunnerWithProxy(
+                        nm_->RegisterNode(concat), left_task,
+                        request_filter_task, Key(), status);
+                    return cluster_task;
                 }
                 case node::kJoinTypeConcat: {
                     auto runner =
                         new ConcatRunner(id_++, node->GetOutputNameSchemaList(),
                                          op->GetLimitCnt());
-
-                    return BuildRunnerWithProxy(nm_->RegisterNode(runner), left,
-                                                left_partition_id, right,
-                                                right_partition_id, status);
+                    auto cluster_task = BuildRunnerWithProxy(
+                        nm_->RegisterNode(runner), left_task, right_task, Key(),
+                        status);
+                    return cluster_task;
                 }
                 default: {
                     status.code = common::kOpGenError;
@@ -276,13 +321,13 @@ std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
             }
         }
         case kPhysicalOpJoin: {
-            auto [left_partition_id, left] =  // NOLINT
-                Build(node->producers().at(0), status);
+            auto left_task = Build(node->producers().at(0), status);
+            auto left = left_task.GetRoot();
             if (nullptr == left) {
                 return fail;
             }
-            auto [right_partition_id, right] =  // NOLINT
-                Build(node->producers().at(1), status);
+            auto right_task = Build(node->producers().at(1), status);
+            auto right = right_task.GetRoot();
             if (nullptr == right) {
                 return fail;
             }
@@ -296,8 +341,9 @@ std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
                         right->output_schemas().GetSchemaSourceListSize());
                     runner->AddProducer(left);
                     runner->AddProducer(right);
-                    return std::make_pair(left_partition_id,
-                                          nm_->RegisterNode(runner));
+                    // TODO(chenjing): support join+window
+                    left_task.SetRoot(nm_->RegisterNode(runner));
+                    return left_task;
                 }
                 default: {
                     status.code = common::kOpGenError;
@@ -309,8 +355,8 @@ std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
             }
         }
         case kPhysicalOpGroupBy: {
-            auto [partition_id, input] =  // NOLINT
-                Build(node->producers().at(0), status);
+            auto cluster_task = Build(node->producers().at(0), status);
+            auto input = cluster_task.GetRoot();
             if (nullptr == input) {
                 return fail;
             }
@@ -319,11 +365,13 @@ std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
                 new GroupRunner(id_++, node->GetOutputNameSchemaList(),
                                 op->GetLimitCnt(), op->group());
             runner->AddProducer(input);
-            return std::make_pair(partition_id, nm_->RegisterNode(runner));
+            cluster_task.SetRoot(nm_->RegisterNode(runner));
+            return cluster_task;
         }
         case kPhysicalOpFilter: {
-            auto [partition_id, input] =  // NOLINT
+            auto cluster_task =  // NOLINT
                 Build(node->producers().at(0), status);
+            auto input = cluster_task.GetRoot();
             if (nullptr == input) {
                 return fail;
             }
@@ -332,22 +380,25 @@ std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
                 new FilterRunner(id_++, node->GetOutputNameSchemaList(),
                                  op->GetLimitCnt(), op->filter_);
             runner->AddProducer(input);
-            return std::make_pair(partition_id, nm_->RegisterNode(runner));
+            cluster_task.SetRoot(nm_->RegisterNode(runner));
+            return cluster_task;
         }
         case kPhysicalOpLimit: {
-            auto [partition_id, input] =  // NOLINT
+            auto cluster_task =  // NOLINT
                 Build(node->producers().at(0), status);
+            auto input = cluster_task.GetRoot();
             if (nullptr == input) {
                 return fail;
             }
             auto op = dynamic_cast<const PhysicalLimitNode*>(node);
             if (op->GetLimitCnt() == 0 || op->GetLimitOptimized()) {
-                return std::make_pair(partition_id, input);
+                return cluster_task;
             }
             auto runner = new LimitRunner(
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt());
             runner->AddProducer(input);
-            return std::make_pair(partition_id, nm_->RegisterNode(runner));
+            cluster_task.SetRoot(nm_->RegisterNode(runner));
+            return cluster_task;
         }
         case kPhysicalOpRename: {
             return Build(node->producers().at(0), status);
@@ -361,31 +412,34 @@ std::pair<int32_t, Runner*> RunnerBuilder::Build(PhysicalOpNode* node,
         }
     }
 }
-std::pair<int32_t, Runner*> RunnerBuilder::BuildRunnerWithProxy(
-    Runner* runner, Runner* left, int32_t left_partition_id, Runner* right,
-    int32_t right_partition_id, Status& status) {
-    int32_t final_partition_id = 0;
-    if (0 != left_partition_id && 0 != right_partition_id &&
-        left_partition_id != right_partition_id) {
-        if (!cluster_job_.AddTask(left_partition_id, left)) {
-            status.msg = "duplicate cluster task, partition id: " +
-                         std::to_string(left_partition_id);
-            status.msg = common::kOpGenError;
-            return std::make_pair(0, nullptr);
-        }
-        left = nm_->RegisterNode(
-            new RequestRunner(id_++, left->output_schemas()));
-        // replace left with proxy runner
-//        left = nm_->RegisterNode(
-//            new ProxyRunner(id_++, left_partition_id, left->output_schemas()));
-        final_partition_id = right_partition_id;
+// runner(left,right) -->
+// proxy_request_run(left, task_id) : task[runner(request, right)]
+ClusterTask RunnerBuilder::BuildRunnerWithProxy(Runner* runner,
+                                                const ClusterTask& left_task,
+                                                const ClusterTask& right_task,
+                                                const Key& index_key,
+                                                Status& status) {
+    auto left = left_task.GetRoot();
+    auto right = right_task.GetRoot();
+    auto task = left_task;
+    if (support_cluster_optimized_ && right_task.IsClusterTask()) {
+        runner->AddProducer(nm_->RegisterNode(
+            new RequestRunner(id_++, left->output_schemas())));
+        runner->AddProducer(right);
+        auto remote_task = right_task;
+        remote_task.SetRoot(runner);
+        remote_task.SetIndexKey(index_key);
+        auto remote_task_id = cluster_job_.AddTask(remote_task);
+        auto proxy_runner = nm_->RegisterNode(new ProxyRequestRunner(
+            id_++, remote_task_id, runner->output_schemas()));
+        proxy_runner->AddProducer(left);
+        return ClusterTask(proxy_runner);
     } else {
-        final_partition_id =
-            0 != right_partition_id ? right_partition_id : left_partition_id;
+        runner->AddProducer(left);
+        runner->AddProducer(right);
+        task.SetRoot(runner);
     }
-    runner->AddProducer(left);
-    runner->AddProducer(right);
-    return std::make_pair(final_partition_id, runner);
+    return task;
 }
 
 bool Runner::GetColumnBool(RowView* row_view, int idx, type::Type type) {
@@ -823,7 +877,21 @@ void WindowAggRunner::RunWindowAggOnKey(
         instance_segment_iter->Next();
     }
 }
-
+std::shared_ptr<DataHandler> RequestLastFilterRightRunner::Run(
+    RunnerContext& ctx) {  // NOLINT
+    auto fail_ptr = std::shared_ptr<DataHandler>();
+    auto left = producers_[0]->RunWithCache(ctx);
+    auto right = producers_[1]->RunWithCache(ctx);
+    if (!left || !right) {
+        return std::shared_ptr<DataHandler>();
+    }
+    if (kRowHandler != left->GetHanlderType()) {
+        return std::shared_ptr<DataHandler>();
+    }
+    auto left_row = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
+    return std::shared_ptr<RowHandler>(new MemRowHandler(
+        join_gen_.RowLastJoinDropLeftSlices(left_row, right)));
+}
 std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
     RunnerContext& ctx) {  // NOLINT
     auto fail_ptr = std::shared_ptr<DataHandler>();
@@ -1088,6 +1156,15 @@ std::shared_ptr<TableHandler> SortGenerator::Sort(
         }
     }
     return output_table;
+}
+Row JoinGenerator::RowLastJoinDropLeftSlices(
+    const Row& left_row, std::shared_ptr<DataHandler> right) {
+    Row joined = RowLastJoin(left_row, right);
+    Row right_row(joined.GetSlice(left_slices_));
+    for (int offset = 0; offset < right_slices_; offset++) {
+        right_row.Append(joined.GetSlice(left_slices_ + offset));
+    }
+    return right_row;
 }
 Row JoinGenerator::RowLastJoin(const Row& left_row,
                                std::shared_ptr<DataHandler> right) {
@@ -1736,7 +1813,13 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
     return row_handler;
 }
 
-std::shared_ptr<DataHandler> ProxyRunner::Run(RunnerContext& ctx) {
+std::shared_ptr<DataHandler> ProxyRequestRunner::Run(RunnerContext& ctx) {
+    auto input = producers_[0]->RunWithCache(ctx);
+    if (!input) {
+        LOG(WARNING) << "input is empty";
+        return std::shared_ptr<DataHandler>();
+    }
+
     auto cluster_job = ctx.cluster_job();
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (nullptr == cluster_job) {
@@ -1744,14 +1827,42 @@ std::shared_ptr<DataHandler> ProxyRunner::Run(RunnerContext& ctx) {
         return fail_ptr;
     }
 
-    // run proxy in local
-    auto runner = cluster_job->GetTask(task_id_);
-    if (nullptr == runner) {
+    auto task = cluster_job->GetTask(task_id_);
+    if (task.IsInValid()) {
         LOG(WARNING) << "fail to run proxy runner: invalid task of taskid "
                      << task_id_;
         return fail_ptr;
     }
-    return runner->RunWithCache(ctx);
+    std::string key_str = "";
+    switch (input->GetHanlderType()) {
+        case kRowHandler: {
+            auto row = std::dynamic_pointer_cast<RowHandler>(input)->GetValue();
+            if (!task.GetIndexKey().ValidKey()) {
+                // local mode
+                RunnerContext local_ctx(ctx.cluster_job(), row, ctx.is_debug());
+                return task.GetRoot()->RunWithCache(local_ctx);
+            }
+            KeyGenerator generator(task.GetIndexKey().fn_info());
+            key_str = generator.Gen(row);
+            if (key_str.empty()) {
+                // local mode
+                RunnerContext local_ctx(ctx.cluster_job(), row, ctx.is_debug());
+                return task.GetRoot()->RunWithCache(local_ctx);
+            } else {
+                DLOG(INFO) << "pick tablet with given index_name "
+                           << task.index() << " key " << key_str;
+                // TODO(denglong): route tablet client based on index
+                // and
+                RunnerContext local_ctx(ctx.cluster_job(), row, ctx.is_debug());
+                return task.GetRoot()->RunWithCache(local_ctx);
+            }
+        }
+        default: {
+            LOG(WARNING) << "invalid key row, key generator input type is "
+                         << input->GetHandlerTypeName();
+            return fail_ptr;
+        }
+    }
 }
 /**
  * TODO(chenjing): GenConst key during compile-time

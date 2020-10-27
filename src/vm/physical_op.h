@@ -87,6 +87,7 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
 }
 
 struct FnInfo {
+    ~FnInfo() {}
     std::string fn_name_ = "";
     int8_t *fn_ = nullptr;
     vm::Schema fn_schema_;
@@ -121,11 +122,10 @@ class Range {
     Range() : range_key_(nullptr), frame_(nullptr) {}
     Range(const node::OrderByNode *order, const node::FrameNode *frame)
         : range_key_(nullptr), frame_(frame) {
-        range_key_ = nullptr == order
+        range_key_ = nullptr == order ? nullptr
+                     : node::ExprListNullOrEmpty(order->order_by_)
                          ? nullptr
-                         : node::ExprListNullOrEmpty(order->order_by_)
-                               ? nullptr
-                               : order->order_by_->children_[0];
+                         : order->order_by_->children_[0];
     }
     virtual ~Range() {}
     const bool Valid() const { return nullptr != range_key_; }
