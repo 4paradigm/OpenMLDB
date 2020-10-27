@@ -282,23 +282,15 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto op = dynamic_cast<const PhysicalRequestJoinNode*>(node);
             switch (op->join().join_type()) {
                 case node::kJoinTypeLast: {
-                    auto concat =
-                        new ConcatRunner(id_++, node->GetOutputNameSchemaList(),
-                                         op->GetLimitCnt());
-                    auto request_filter_right =
-                        new RequestLastFilterRightRunner(
-                            id_++,
-                            node->producers().at(1)->GetOutputNameSchemaList(),
-                            op->GetLimitCnt(), op->join_,
-                            left->output_schemas().GetSchemaSourceListSize(),
-                            right->output_schemas().GetSchemaSourceListSize());
-                    auto request_filter_task = BuildRunnerWithProxy(
-                        nm_->RegisterNode(request_filter_right), left_task,
-                        right_task, op->join().index_key_, status);
-                    left_task.GetRoot()->EnableCache();
+                    auto runner = new RequestLastJoinRunner(
+                        id_++, node->GetOutputNameSchemaList(),
+                        op->GetLimitCnt(), op->join_,
+                        left->output_schemas().GetSchemaSourceListSize(),
+                        right->output_schemas().GetSchemaSourceListSize(),
+                        op->output_right_only());
                     auto cluster_task = BuildRunnerWithProxy(
-                        nm_->RegisterNode(concat), left_task,
-                        request_filter_task, Key(), status);
+                        nm_->RegisterNode(runner), left_task, right_task, Key(),
+                        status);
                     return cluster_task;
                 }
                 case node::kJoinTypeConcat: {
@@ -1885,12 +1877,10 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -1910,12 +1900,10 @@ const std::string KeyGenerator::Gen(const Row& row) {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }

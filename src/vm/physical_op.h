@@ -40,6 +40,7 @@ enum PhysicalOpType {
     kPhysicalOpIndexSeek,
     kPhysicalOpRequestUnoin,
     kPhysicalOpRequestJoin,
+    kPhysicalOpRequestJoinScan,
     kPhysicalOpRequestGroup,
     kPhysicalOpRequestGroupAndSort,
 };
@@ -79,6 +80,8 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "REQUEST_UNION";
         case kPhysicalOpRequestJoin:
             return "REQUEST_JOIN";
+        case kPhysicalOpRequestJoinScan:
+            return "REQUEST_JOIN_SCAN";
         case kPhysicalOpIndexSeek:
             return "INDEX_SEEK";
         default:
@@ -122,11 +125,10 @@ class Range {
     Range() : range_key_(nullptr), frame_(nullptr) {}
     Range(const node::OrderByNode *order, const node::FrameNode *frame)
         : range_key_(nullptr), frame_(frame) {
-        range_key_ = nullptr == order
+        range_key_ = nullptr == order ? nullptr
+                     : node::ExprListNullOrEmpty(order->order_by_)
                          ? nullptr
-                         : node::ExprListNullOrEmpty(order->order_by_)
-                               ? nullptr
-                               : order->order_by_->children_[0];
+                         : order->order_by_->children_[0];
     }
     virtual ~Range() {}
     const bool Valid() const { return nullptr != range_key_; }
@@ -1013,7 +1015,8 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const node::JoinType join_type)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
-          join_(join_type) {
+          join_(join_type),
+          output_right_only_(false) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
         RegisterFunctionInfo();
@@ -1023,18 +1026,31 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
                             const node::OrderByNode *orders,
                             const node::ExprNode *condition)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
-          join_(join_type, orders, condition) {
+          join_(join_type, orders, condition),
+          output_right_only_(false) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
         RegisterFunctionInfo();
     }
+    PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                            const Join &join, const bool output_right_only)
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
+          join_(join),
+          output_right_only_(output_right_only) {
+        output_type_ = kSchemaTypeRow;
+        InitSchema();
+        RegisterFunctionInfo();
+    }
+
+ private:
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const node::JoinType join_type,
                             const node::ExprNode *condition,
                             const node::ExprListNode *left_keys,
                             const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
-          join_(join_type, condition, left_keys, right_keys) {
+          join_(join_type, condition, left_keys, right_keys),
+          output_right_only_(false) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
         RegisterFunctionInfo();
@@ -1046,11 +1062,14 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
                             const node::ExprListNode *left_keys,
                             const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
-          join_(join_type, orders, condition, left_keys, right_keys) {
+          join_(join_type, orders, condition, left_keys, right_keys),
+          output_right_only_(false) {
         output_type_ = kSchemaTypeRow;
         InitSchema();
         RegisterFunctionInfo();
     }
+
+ public:
     virtual ~PhysicalRequestJoinNode() {}
     bool InitSchema() override;
     void RegisterFunctionInfo() {
@@ -1062,7 +1081,9 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
     }
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const Join &join() const { return join_; }
+    const bool output_right_only() const { return output_right_only_; }
     Join join_;
+    const bool output_right_only_;
 };
 class PhysicalUnionNode : public PhysicalBinaryNode {
  public:

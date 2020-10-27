@@ -752,13 +752,16 @@ class RequestLastJoinRunner : public Runner {
  public:
     RequestLastJoinRunner(const int32_t id, const SchemaSourceList& schema,
                           const int32_t limit_cnt, const Join& join,
-                          size_t left_slices, size_t right_slices)
+                          const size_t left_slices, const size_t right_slices,
+                          const bool output_right_only)
         : Runner(id, kRunnerRequestLastJoin, schema, limit_cnt),
-          join_gen_(join, left_slices, right_slices) {}
+          join_gen_(join, left_slices, right_slices),
+          output_right_only_(output_right_only){}
     ~RequestLastJoinRunner() {}
 
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     JoinGenerator join_gen_;
+    const bool output_right_only_;
 };
 class RequestLastFilterRightRunner : public Runner {
  public:
@@ -867,7 +870,7 @@ class ClusterJob {
  public:
     ClusterJob() : tasks_(), main_task_id_(-1) {}
     ClusterTask GetTask(int32_t id) {
-        if (id < 0 || id >= static_cast<int32_t >(tasks_.size())) {
+        if (id < 0 || id >= static_cast<int32_t>(tasks_.size())) {
             LOG(WARNING) << "fail get task: task " << id << " not exist";
             return ClusterTask();
         }

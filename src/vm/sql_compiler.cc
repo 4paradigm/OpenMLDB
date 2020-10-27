@@ -397,9 +397,9 @@ Status SQLCompiler::BuildPhysicalPlan(
 
     switch (ctx->engine_mode) {
         case kBatchMode: {
-            vm::BatchModeTransformer transformer(&ctx->nm, ctx->db, cl_,
-                                                 llvm_module, library,
-                                                 ctx->is_performance_sensitive);
+            vm::BatchModeTransformer transformer(
+                &ctx->nm, ctx->db, cl_, llvm_module, library,
+                ctx->is_performance_sensitive, ctx->is_cluster_optimized);
             transformer.AddDefaultPasses();
             CHECK_TRUE(
                 transformer.TransformPhysicalPlan(plan_list, output, status),
@@ -412,7 +412,7 @@ Status SQLCompiler::BuildPhysicalPlan(
         case kBatchRequestMode: {
             vm::RequestModeransformer transformer(
                 &ctx->nm, ctx->db, cl_, llvm_module, library,
-                ctx->is_performance_sensitive);
+                ctx->is_performance_sensitive, ctx->is_cluster_optimized);
             transformer.AddDefaultPasses();
             CHECK_TRUE(
                 transformer.TransformPhysicalPlan(plan_list, output, status),

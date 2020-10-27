@@ -71,18 +71,21 @@ BatchModeTransformer::BatchModeTransformer(
       module_(module),
       id_(0),
       performance_sensitive_mode_(false),
+      cluster_optimized_mode_(false),
       library_(library) {}
 
 BatchModeTransformer::BatchModeTransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
-    udf::UDFLibrary* library, bool performance_sensitive)
+    udf::UDFLibrary* library, const bool performance_sensitive,
+    const bool cluster_optimized_mode)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
       module_(module),
       id_(0),
       performance_sensitive_mode_(performance_sensitive),
+      cluster_optimized_mode_(cluster_optimized_mode),
       library_(library) {}
 BatchModeTransformer::~BatchModeTransformer() {}
 
@@ -906,6 +909,7 @@ bool BatchModeTransformer::AddDefaultPasses() {
     AddPass(kPassLeftJoinOptimized);
     AddPass(kPassGroupAndSortOptimized);
     AddPass(kPassLimitOptimized);
+    AddPass(kPassClusterOptimized);
     return false;
 }
 
@@ -1163,6 +1167,15 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
                 }
                 break;
             }
+            case kPassClusterOptimized: {
+                if (cluster_optimized_mode_) {
+                    ClusterOptimized pass(node_manager_, db_, catalog_);
+                    PhysicalOpNode* new_op = nullptr;
+                    if (pass.Apply(physical_plan, &new_op)) {
+                        physical_plan = new_op;
+                    }
+                }
+            }
             case kPassLimitOptimized: {
                 LimitOptimized pass(node_manager_, db_, catalog_);
                 PhysicalOpNode* new_op = nullptr;
@@ -1344,7 +1357,6 @@ bool BatchModeTransformer::TransformPhysicalPlan(
                     return false;
                 }
                 ApplyPasses(physical_plan, output);
-
                 if (performance_sensitive_mode_ &&
                     !ValidateIndexOptimization(physical_plan).isOK()) {
                     LOG(WARNING) << "fail to support physical plan in "
@@ -2838,12 +2850,51 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
     return true;
 }
 
+bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
+    if (nullptr == in) {
+        LOG(WARNING) << "LeftJoin optimized skip: node is null";
+        return false;
+    }
+    switch (in->type_) {
+        case kPhysicalOpRequestJoin: {
+            auto join_op = dynamic_cast<PhysicalRequestJoinNode*>(in);
+            switch (join_op->join().join_type()) {
+                case node::kJoinTypeLeft:
+                case node::kJoinTypeLast: {
+                    auto left = dynamic_cast<PhysicalDataProviderNode*>(
+                        join_op->producers()[0]);
+                    auto right = dynamic_cast<PhysicalDataProviderNode*>(
+                        join_op->producers()[1]);
+                    auto request_join_right_only =
+                        node_manager_->RegisterNode(new PhysicalRequestJoinNode(
+                            left, right, join_op->join(), true));
+
+                    auto concat_op =
+                        node_manager_->RegisterNode(new PhysicalRequestJoinNode(
+                            left, request_join_right_only,
+                            fesql::node::kJoinTypeConcat));
+                    *output = concat_op;
+                    return true;
+                    break;
+                }
+                default: {
+                    // do nothing
+                }
+            }
+        }
+        default: {
+            return false;
+        }
+    }
+    return false;
+}
 RequestModeransformer::RequestModeransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
-    udf::UDFLibrary* library, const bool performance_sensitive)
+    udf::UDFLibrary* library, const bool performance_sensitive,
+    const bool cluster_optimized)
     : BatchModeTransformer(node_manager, db, catalog, module, library,
-                           performance_sensitive) {}
+                           performance_sensitive, cluster_optimized) {}
 
 RequestModeransformer::~RequestModeransformer() {}
 
