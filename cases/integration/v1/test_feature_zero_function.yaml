@@ -77,12 +77,12 @@ cases:
           - [5, 2, 5, 4, 1, 1.5, 2.5, "1:2 1:3"]
     sql: |
       SELECT id, 
-      fz_top1_radio(c1) OVER w1 as r1,
-      fz_top1_radio(c2) OVER w1 as r2,
-      fz_top1_radio(c3) OVER w1 as r3,
-      fz_top1_radio(c4) OVER w1 as r4,
-      fz_top1_radio(c5) OVER w1 as r5,
-      fz_top1_radio(fz_window_split_by_value(c6, " ", ":")) OVER w1 as r6,
+      fz_top1_ratio(c1) OVER w1 as r1,
+      fz_top1_ratio(c2) OVER w1 as r2,
+      fz_top1_ratio(c3) OVER w1 as r3,
+      fz_top1_ratio(c4) OVER w1 as r4,
+      fz_top1_ratio(c5) OVER w1 as r5,
+      fz_top1_ratio(fz_window_split_by_value(c6, " ", ":")) OVER w1 as r6,
       fz_join(fz_window_split_by_value(c6, " ", ":")," ") as r7
       FROM {0} 
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -111,12 +111,12 @@ cases:
           - [5, 2, "1:2 1:3", 5, "1:8 1:3", 1, 1.5, "1:2 1:3"]
     sql: |
       SELECT id, 
-      fz_top3_frequency(fz_window_split_by_key(c1, " ", ":")) OVER w1 as r1,
-      fz_top3_frequency(c2) OVER w1 as r2,
-      fz_top3_frequency(fz_window_split(c3, ",")) OVER w1 as r3,
-      fz_top3_frequency(c4) OVER w1 as r4,
-      fz_top3_frequency(c5) OVER w1 as r5,
-      fz_top3_frequency(fz_window_split_by_value(c6, " ", ":")) OVER w1 as r6,
+      fz_topn_frequency(fz_window_split_by_key(c1, " ", ":"), 3) OVER w1 as r1,
+      fz_topn_frequency(c2, 3) OVER w1 as r2,
+      fz_topn_frequency(fz_window_split(c3, ","), 3) OVER w1 as r3,
+      fz_topn_frequency(c4, 3) OVER w1 as r4,
+      fz_topn_frequency(c5, 3) OVER w1 as r5,
+      fz_topn_frequency(fz_window_split_by_value(c6, " ", ":"), 3) OVER w1 as r6,
       fz_join(fz_window_split_by_value(c6, " ", ":")," ") as r7
       FROM {0} 
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -127,5 +127,5 @@ cases:
         - [1, "1,4,NULL", "1,NULL,NULL", "1:2 1:3,NULL,NULL", "1.100000,NULL,NULL", "2.100000,NULL,NULL ", "1,2,NULL", "1 2"]
         - [2, "4,1,8", "1,NULL,NULL ", "1:2 1:3,1:7 1:3,NULL", "1.100000,1.400000,NULL", "2.100000,NULL,NULL", "1,2,NULL","1 1 2"]
         - [3, "4,1,8", "1,2,NULL","1:2 1:3,1:7 1:3,NULL", "1.100000,1.300000,1.400000", "2.100000,2.300000,NULL", "1,2,3","1 3 1 1 2"]
-        - [4, "NULL,NULL,NULL", "NULL,NULL,NULL", "1:8 1:3,NULL,NULL", "NULL,NULL,NULL", "NULL,NULL,NULL", "3,NULL,NULL","3"]
+        - [4, "", "NULL,NULL,NULL", "1:8 1:3,NULL,NULL", "NULL,NULL,NULL", "NULL,NULL,NULL", "3,NULL,NULL","3"]
         - [5, "1,NULL,NULL", "5,NULL,NULL", "1:8 1:3,NULL,NULL", "1.000000,NULL,NULL", "1.500000,NULL,NULL", "3,2,NULL","2 3 3"]
