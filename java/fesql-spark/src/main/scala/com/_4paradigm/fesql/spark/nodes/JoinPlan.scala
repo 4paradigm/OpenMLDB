@@ -40,7 +40,11 @@ object JoinPlan {
       }
     }
 
-    val indexColIdx = leftDf.schema.size - 1
+    val indexColIdx = if (joinType == JoinType.kJoinTypeLast) {
+      leftDf.schema.size - 1
+    } else {
+      leftDf.schema.size
+    }
 
     val rightDf = right.getDf(sess)
 
@@ -98,7 +102,6 @@ object JoinPlan {
     val joined = leftDf.join(rightDf, joinConditions.reduce(_ && _),  "left")
 
     val result = if (joinType == JoinType.kJoinTypeLast) {
-
 
       // TODO: Support multiple order by columns
 
