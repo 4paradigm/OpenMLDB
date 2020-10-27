@@ -97,6 +97,15 @@ cases:
           column4 string NOT NULL,
           column5 int NOT NULL,
           index(key=column1, ts=column2)) replicanum=2, distribution(leader="127.0.0.1:9927", follower="127.0.0.1:9926");
+  - id: 10
+    desc: create procedure 
+    sql: |
+        create procedure sp1(const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date)
+        begin
+            SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum
+                FROM trans
+                WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+        end;
   - id: 11
     desc: Create with ttl_type absorlat
     sql: |

@@ -372,6 +372,9 @@ REPLICANUM { return REPLICANUM; }
 DISTRIBUTION { return DISTRIBUTION; }
 LEADER { return LEADER; }
 FOLLOWER { return FOLLOWER; }
+CONST {return CONST; }
+BEGIN {return BEGINTOKEN; }
+STATUS { return STATUS; }
 
  /* function definition */
 <FUN_INDENT>"def" {
