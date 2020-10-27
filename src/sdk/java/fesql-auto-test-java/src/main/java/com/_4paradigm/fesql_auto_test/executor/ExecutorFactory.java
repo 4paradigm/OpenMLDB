@@ -42,4 +42,11 @@ public class ExecutorFactory {
                 sqlExecutor, fesqlCase, true);
         return executor;
     }
+
+    public static BaseExecutor getFeRequestQueryWithSpExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase) {
+        BaseExecutor executor = null;
+        executor = new StoredProcedureSQLExecutor(sqlExecutor, fesqlCase);
+        return executor;
+    }
+
 }

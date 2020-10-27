@@ -12,16 +12,19 @@ class FesqlResult():
 
     def __str__(self):
         resultStr = "FesqlResult{ok=" + str(self.ok) + ", count=" + str(self.count) + ", msg="+ str(self.msg) +"}"
+        """
         if(self.result != None):
             resultStr += "result="+str(len(self.result))+":\n"
-            columnCount = self.resultSchema.GetColumnCnt()
             columnName = "i\t";
-            for i in range(columnCount):
-                columnName+=self.resultSchema.GetColumnName(i)+"\t";
+            cols = self.rs._cursor_description()
+            print(cols)
+            for i in range(cols):
+                columnName+="{}\t".format(cols[i][0])
             resultStr += columnName+"\n"
             for index,value in enumerate(self.result):
                 lineStr = str(index+1)
                 for v in value:
                     lineStr+='\t'+str(v)
                 resultStr+=lineStr+"\n"
+        """
         return resultStr

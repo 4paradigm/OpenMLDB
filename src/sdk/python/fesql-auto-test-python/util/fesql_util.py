@@ -11,6 +11,7 @@ import random
 import string
 from datetime import datetime
 import common.fesql_config as fesql_config
+import time
 
 log = LogManager('fesql-auto-test').get_logger_and_add_handlers()
 
@@ -23,6 +24,7 @@ def getRandomName():
     return tableName
 
 def getCreateSql(name:str,columns:list,inexs:list):
+    time.sleep(1)
     createSql = "create table "+name+"("
     for column in columns:
         createSql+=column+","
@@ -44,10 +46,15 @@ def getCreateSql(name:str,columns:list,inexs:list):
     return createSql
 
 def getIndexByColumnName(schema,columnName):
-    count = schema.GetColumnCnt()
-    for i in range(count):
-        if schema.GetColumnName(i) == columnName :
-            return i
+    if hasattr(schema, "GetColumnCnt"):
+        count = schema.GetColumnCnt()
+        for i in range(count):
+            if schema.GetColumnName(i) == columnName:
+                return i
+    else:
+        for i in range(len(schema)):
+            if schema[i][0] == columnName:
+                return i
     return -1;
 
 def sqls(executor,dbName:str,sqls:list):
@@ -128,18 +135,40 @@ def sqlRequestMode(executor,dbName:str,sql:str,input):
 def insert(executor,dbName:str,sql:str):
     log.info("insert sql:" + sql)
     fesqlResult = FesqlResult()
-    insertOk,msg = executor.executeInsert(dbName, sql)
-    fesqlResult.ok = insertOk
-    fesqlResult.msg = msg
+    if hasattr(executor, "executeInsert"):
+        insertOk,msg = executor.executeInsert(dbName, sql)
+        fesqlResult.ok = insertOk
+        fesqlResult.msg = msg
+        log.info("insert result:" + str(fesqlResult))
+        return fesqlResult
+
+    try:
+        executor.execute(sql)
+        fesqlResult.ok = True
+        fesqlResult.msg = "ok"
+    except Exception as e:
+        fesqlResult.ok = False
+        fesqlResult.msg = str(e)
     log.info("insert result:" + str(fesqlResult))
     return fesqlResult
 
 def ddl(executor, dbName: str, sql: str):
     log.info("ddl sql:"+sql)
     fesqlResult = FesqlResult()
-    createOk,msg = executor.executeDDL(dbName, sql)
-    fesqlResult.ok = createOk
-    fesqlResult.msg = msg
+    if hasattr(executor, "executeDDL"):
+        createOk,msg = executor.executeDDL(dbName, sql)
+        fesqlResult.ok = createOk
+        fesqlResult.msg = msg
+        log.info("ddl result:"+str(fesqlResult))
+        return fesqlResult
+ 
+    try:
+        executor.execute(sql)
+        fesqlResult.ok = True
+        fesqlResult.msg = "ok"
+    except Exception as e:
+        fesqlResult.ok = False
+        fesqlResult.msg = str(e)
     log.info("ddl result:"+str(fesqlResult))
     return fesqlResult
 
@@ -205,16 +234,28 @@ def getColumnType(dataType:str):
 def select(executor, dbName: str, sql: str):
     log.info("select sql:"+sql)
     fesqlResult = FesqlResult()
-    ok,rs = executor.executeQuery(dbName,sql)
-    if ok == False or rs == None:
-        fesqlResult.ok = False
+    if hasattr(executor, "executeQuery"):
+        ok,rs = executor.executeQuery(dbName,sql)
+        if ok == False or rs == None:
+            fesqlResult.ok = False
+        else:
+            fesqlResult.ok = True
+            fesqlResult.count = rs.Size()
+            fesqlResult.rs = rs
+            schema = rs.GetSchema()
+            fesqlResult.resultSchema = schema
+            fesqlResult.result = convertRestultSetToList(rs,schema)
     else:
-        fesqlResult.ok = True
-        fesqlResult.rs = rs
-        fesqlResult.count = rs.Size()
-        schema = rs.GetSchema()
-        fesqlResult.resultSchema = schema
-        fesqlResult.result = convertRestultSetToList(rs,schema)
+        try:
+            rs = executor.execute(sql)
+            fesqlResult.ok = True
+            fesqlResult.msg = "ok"
+            fesqlResult.rs = rs
+            fesqlResult.count = rs.rowcount
+            fesqlResult.result = convertRestultSetToListRS(rs)
+        except Exception as e:
+            fesqlResult.ok = False
+            fesqlResult.msg = str(e)
     log.info("select result:"+str(fesqlResult))
     return fesqlResult
 
@@ -350,7 +391,13 @@ def buildRequestRow(requestRow:SQLRequestRow,objects:list):
     ok = requestRow.Build()
     return ok
 
-def convertRestultSetToList(rs,schema):
+def convertRestultSetToListRS(rs):
+    result = []
+    for r in rs:
+        result.append(list(r))
+    return result
+
+def convertRestultSetToList(rs, schema):
     result = []
     while rs.Next():
         list = []
@@ -359,3 +406,4 @@ def convertRestultSetToList(rs,schema):
             list.append(getColumnData(rs, schema, i))
         result.append(list)
     return result
+

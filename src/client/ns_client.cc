@@ -304,6 +304,14 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
             }
             return ok;
         }
+        case fesql::node::kCreateSpStmt: {
+            bool ok = HandleSQLCreateProcedure(parser_trees, db, script,
+                &node_manager, &sql_status);
+            if (!ok) {
+                msg = sql_status.msg;
+            }
+            return ok;
+        }
         default: {
             msg = "fail to execute script with unSuppurt type";
             return false;
@@ -332,6 +340,17 @@ bool NsClient::HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
             std::string error;
 
             bool ok = DeleteIndex(db, table_name, index_name, error);
+            if (ok) {
+                return true;
+            } else {
+                sql_status->msg = error;
+                return false;
+            }
+        }
+        case fesql::node::kCmdDropSp: {
+            std::string sp_name = cmd_node->GetArgs()[0];
+            std::string error;
+            bool ok = DropProcedure(db, sp_name, error);
             if (ok) {
                 return true;
             } else {
@@ -382,6 +401,83 @@ bool NsClient::HandleSQLCreateTable(
                 &response, FLAGS_request_timeout_ms, 1);
             sql_status->msg = response.msg();
             if (0 != response.code()) {
+                return false;
+            }
+            break;
+        }
+        default: {
+            sql_status->msg = "fail to execute script with unSuppurt type" +
+                              fesql::node::NameOfPlanNodeType(plan->GetType());
+            return false;
+        }
+    }
+    return true;
+}
+
+bool NsClient::HandleSQLCreateProcedure(const fesql::node::NodePointVector& parser_trees,
+        const std::string& db, const std::string& sql,
+        fesql::node::NodeManager* node_manager, fesql::base::Status* sql_status) {
+    fesql::plan::SimplePlanner planner(node_manager);
+    fesql::node::PlanNodeList plan_trees;
+    planner.CreatePlanTree(parser_trees, plan_trees, *sql_status);
+    if (0 != sql_status->code) {
+        return false;
+    }
+
+    fesql::node::PlanNode* plan = plan_trees[0];
+    if (nullptr == plan) {
+        sql_status->msg = "fail to execute plan : plan null";
+        return false;
+    }
+    switch (plan->GetType()) {
+        case fesql::node::kPlanTypeCreateSp: {
+            fesql::node::CreateProcedurePlanNode* create_sp =
+                dynamic_cast<fesql::node::CreateProcedurePlanNode*>(plan);
+            if (create_sp == nullptr) {
+                return false;
+            }
+            ::rtidb::nameserver::CreateProcedureRequest request;
+            ::rtidb::nameserver::GeneralResponse response;
+            ::rtidb::nameserver::ProcedureInfo* sp_info =
+                request.mutable_sp_info();
+            sp_info->set_db_name(db);
+            sp_info->set_sp_name(create_sp->GetSpName());
+            sp_info->set_sql(sql);
+
+            google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>* schema =
+                sp_info->mutable_input_schema();
+            for (auto input : create_sp->GetInputParameterList()) {
+                if (input == nullptr) {
+                    return false;
+                }
+                if (input->GetType() == fesql::node::kInputParameter) {
+                    fesql::node::InputParameterNode* input_ptr =
+                        (fesql::node::InputParameterNode*)input;
+                    if (input_ptr == nullptr) {
+                        return false;
+                    }
+                    ::rtidb::common::ColumnDesc* col_desc = schema->Add();
+                    col_desc->set_name(input_ptr->GetColumnName());
+                    rtidb::type::DataType rtidb_type;
+                    bool ok = ::rtidb::catalog::SchemaAdapter::ConvertType(input_ptr->GetColumnType(),
+                            &rtidb_type);
+                    if (!ok) {
+                        sql_status->msg = "convert type failed";
+                        return false;
+                    }
+                    col_desc->set_data_type(rtidb_type);
+                    col_desc->set_is_constant(input_ptr->GetIsConstant());
+                } else {
+                    sql_status->msg = "fail to execute script with unSuppurt type" +
+                        fesql::node::NameOfSQLNodeType(input->GetType());
+                    return false;
+                }
+            }
+            bool ok = client_.SendRequest(
+                &::rtidb::nameserver::NameServer_Stub::CreateProcedure, &request,
+                &response, FLAGS_request_timeout_ms, 1);
+            sql_status->msg = response.msg();
+            if (!ok || 0 != response.code()) {
                 return false;
             }
             break;
@@ -1373,5 +1469,53 @@ bool NsClient::TransformToTableDef(
     }
     return true;
 }
+
+bool NsClient::ShowProcedure(std::vector<rtidb::nameserver::ProcedureInfo>& sp_infos,
+        std::string& msg) {
+    return ShowProcedure("", "", sp_infos, msg);
+}
+
+bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_name,
+        std::vector<rtidb::nameserver::ProcedureInfo>& sp_infos, std::string& msg) {
+    ::rtidb::nameserver::ShowProcedureRequest request;
+    ::rtidb::nameserver::ShowProcedureResponse response;
+    if (!db_name.empty()) {
+        request.set_db_name(db_name);
+    }
+    if (!sp_name.empty()) {
+        request.set_sp_name(sp_name);
+    }
+    bool ok =
+        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowProcedure,
+                            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        for (int32_t i = 0; i < response.sp_info_size(); i++) {
+            const rtidb::nameserver::ProcedureInfo& sp_info = response.sp_info(i);
+            rtidb::nameserver::ProcedureInfo sp_info_tmp;
+            sp_info_tmp.CopyFrom(sp_info);
+            sp_infos.push_back(sp_info_tmp);
+        }
+        return true;
+    }
+    return false;
+}
+
+bool NsClient::DropProcedure(const std::string& db_name,
+        const std::string& sp_name, std::string& msg) {
+    ::rtidb::nameserver::DropProcedureRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    request.set_db_name(db_name);
+    request.set_sp_name(sp_name);
+    bool ok =
+        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::DropProcedure,
+                            &request, &response, FLAGS_request_timeout_ms, 1);
+    msg = response.msg();
+    if (ok && response.code() == 0) {
+        return true;
+    }
+    return false;
+}
+
 }  // namespace client
 }  // namespace rtidb

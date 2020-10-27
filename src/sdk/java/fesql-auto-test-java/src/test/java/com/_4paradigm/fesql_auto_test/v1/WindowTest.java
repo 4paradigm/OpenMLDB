@@ -74,4 +74,19 @@ public class WindowTest extends FesqlTest {
     public void testWindowUnionRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, true).run();
     }
+
+    @Test(dataProvider = "testRowData")
+    public void testRowRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase).run();
+    }
+
+    @Test(dataProvider = "testRowRangeData")
+    public void testRowRangeRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase).run();
+    }
+
+    @Test(dataProvider = "testWindowUnionData")
+    public void testWindowUnionRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase).run();
+    }
 }
