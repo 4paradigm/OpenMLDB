@@ -19,6 +19,8 @@
 DEFINE_string(yaml_path, "", "Yaml filepath to load cases from");
 DEFINE_string(runner_mode, "batch",
               "Specify runner mode, can be batch or request");
+DEFINE_string(cluster_mode, "standalone",
+              "Specify cluster mode, can be standalone or cluster");
 
 namespace fesql {
 namespace vm {
@@ -29,12 +31,14 @@ int RunSingle(const std::string& yaml_path) {
         LOG(WARNING) << "Load cases from " << yaml_path << " failed";
         return ENGINE_TEST_RET_INVALID_CASE;
     }
+    EngineOptions options;
+    options.set_cluster_optimized(FLAGS_cluster_mode == "cluster");
     for (auto& sql_case : cases) {
         bool is_batch = FLAGS_runner_mode == "batch";
         EngineMode mode = is_batch ? kBatchMode : kRequestMode;
         bool check_compatible = false;
         int ret;
-        EngineCheck(sql_case, mode, check_compatible, &ret);
+        EngineCheck(sql_case, mode, options, check_compatible, &ret);
         if (ret != ENGINE_TEST_RET_SUCCESS) {
             return ret;
         }

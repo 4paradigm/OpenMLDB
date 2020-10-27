@@ -867,7 +867,7 @@ class ClusterJob {
  public:
     ClusterJob() : tasks_(), main_task_id_(-1) {}
     ClusterTask GetTask(int32_t id) {
-        if (id < 0 || id >= tasks_.size()) {
+        if (id < 0 || id >= static_cast<int32_t >(tasks_.size())) {
             LOG(WARNING) << "fail get task: task " << id << " not exist";
             return ClusterTask();
         }
@@ -900,7 +900,7 @@ class ClusterJob {
             output << "EMPTY CLUSTER JOB\n";
             return;
         }
-        for (int i = 0; i < tasks_.size(); i++) {
+        for (size_t i = 0; i < tasks_.size(); i++) {
             if (main_task_id_ == i) {
                 output << "MAIN TASK ID " << i;
             } else {
