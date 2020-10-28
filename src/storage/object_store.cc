@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "codec/codec.h"
+#include "base/file_util.h"
 
 namespace rtidb {
 namespace storage {
@@ -16,7 +17,8 @@ namespace storage {
 static std::once_flag options_initialized;
 
 ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
-                         std::string db_root_path, uint32_t flush_size, int32_t flush_period)
+                         std::string db_root_path, uint32_t flush_size, int32_t flush_period,
+                         const std::string& root_path, bool recycle_bin_enabled)
     : db_(nullptr),
       tid_(table_meta.tid()),
       pid_(table_meta.pid()),
@@ -26,7 +28,9 @@ ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
       storage_mode_(table_meta.storage_mode()),
       id_generator_(),
       flush_size_(flush_size),
-      flush_period_(flush_period) {}
+      flush_period_(flush_period),
+      root_path_(root_path),
+      recycle_bin_enabled_(recycle_bin_enabled) {}
 
 bool ObjectStore::Init() {
     std::call_once(options_initialized, settings_init);

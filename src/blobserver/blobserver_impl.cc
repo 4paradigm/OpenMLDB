@@ -216,7 +216,8 @@ int BlobServerImpl::CreateTable(const TableMeta& meta) {
         }
         paths.append(it);
     }
-    store = std::make_shared<ObjectStore>(meta, paths, FLAGS_oss_flush_size, FLAGS_oss_flush_period);
+    store = std::make_shared<ObjectStore>(meta, paths, FLAGS_oss_flush_size, FLAGS_oss_flush_period,
+                                          FLAGS_hdd_root_path, FLAGS_recycle_bin_enabled);
     if (!store->Init()) {
         PDLOG(WARNING, "init table faield. tid[%u] pid[%u]", tid, pid);
         return 4;
@@ -453,19 +454,6 @@ void BlobServerImpl::DropTableInternal(uint32_t tid, uint32_t pid) {
     }
     store.reset();
 
-    std::vector<std::string> root_paths;
-    ::rtidb::base::SplitString(FLAGS_hdd_root_path, ",", root_paths);
-    for (const auto& path : root_paths) {
-        std::ostringstream oss;
-        oss << path << "/" << tid << "_" << pid;
-        std::ostringstream dss;
-        dss << path << "/recycle/" << tid << "_" << pid << "_" << rtidb::base::GetNowTime();
-        if (FLAGS_recycle_bin_enabled) {
-            rtidb::base::Rename(oss.str(), dss.str());
-        } else {
-            rtidb::base::RemoveDirRecursive(oss.str());
-        }
-    }
     PDLOG(INFO, "drop table tid[%u] pid[%u] success", tid, pid);
 }
 void BlobServerImpl::FlushTableInternal(uint32_t tid, uint32_t pid) {
