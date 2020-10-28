@@ -3,9 +3,12 @@ package com._4paradigm.fesql.spark.nodes
 import com._4paradigm.fesql.node.{ExprListNode, ExprNode}
 import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.nodes.JoinPlan.JoinConditionUDF
+import com._4paradigm.fesql.spark.utils.SparkColumnUtil.getColumnFromIndex
 import com._4paradigm.fesql.spark.utils.{FesqlUtil, SparkColumnUtil}
 import com._4paradigm.fesql.vm.PhysicalFliterNode
-import org.apache.spark.sql.functions
+import org.apache.spark.sql.{Column, functions}
+
+import scala.collection.mutable
 
 
 object FilterPlan {
@@ -44,7 +47,8 @@ object FilterPlan {
       )
       ctx.getSparkSession.udf.register(regName, conditionUDF)
 
-      val allColWrap = functions.struct(inputDf.columns.map(inputDf.col): _*)
+      val allColumns = SparkColumnUtil.getColumnsFromDataFrame(inputDf)
+      val allColWrap = functions.struct(allColumns:_*)
       val condictionCol = functions.callUDF(regName, allColWrap)
 
       outputDf = outputDf.where(condictionCol)

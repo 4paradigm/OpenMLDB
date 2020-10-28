@@ -155,3 +155,24 @@ cases:
       data: |
         0, 1, 5, 0.0, 11.1, 1, empty_str, 12.1
         0, 2, 5, 0.0, 22.2, 2, empty_str, 24.2
+  - id: 5
+    desc: Where包含重复列名
+    mode: request-unsupport, rtidb-unsupport
+    tags: ["@chenjing"]
+    db: db1
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp", "c5 int"]
+        indexs: ["index1:c3:c4"]
+        rows:
+          - ["aa",2,3,1590738989000, 100]
+          - ["bb",21,31,1590738990000, 200]
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c3:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+    sql: select {0}.c1,{1}.c1,{0}.c2,{1}.c3,{1}.c4,{0}.c5 from {0} last join {1} on {0}.c3={1}.c3 where c5 = 100;
+    expect:
+      columns: ["c1 string","c1 string", "c2 int","c3 bigint", "c4 timestamp", "c5 int"]
+      rows:
+        - ["aa","aa",2,3,1590738989000, 100]
