@@ -56,10 +56,17 @@ class GroupbyInterface {
 class RunnerContext {
  public:
     explicit RunnerContext(const bool is_debug = false)
-        : request_(), is_debug_(is_debug), cache_() {}
+        : request_(), is_debug_(is_debug), cache_(), catalog_(), compile_info_() {}
     explicit RunnerContext(const fesql::codec::Row& request,
                            const bool is_debug = false)
-        : request_(request), is_debug_(is_debug), cache_() {}
+        : request_(request), is_debug_(is_debug), cache_(), catalog_(), compile_info_() {}
+
+    RunnerContext(const fesql::codec::Row& request,
+                  bool is_debug, uint32_t task_id,
+                  std::shared_ptr<Catalog> catalog,
+                  std::shared_ptr<CompileInfo> compile_info)
+        : request_(request), is_debug_(is_debug), task_id_(task_id),
+        cache_(), catalog_(catalog), compile_info_(compile_info) {}
 
     const fesql::codec::Row& request() const { return request_; }
     void SetRequest(const fesql::codec::Row& request);
@@ -67,11 +74,17 @@ class RunnerContext {
 
     std::shared_ptr<DataHandler> GetCache(int64_t id) const;
     void SetCache(int64_t id, std::shared_ptr<DataHandler>);
+    uint32_t GetTaskId() const { return task_id_; }
+    std::shared_ptr<Catalog> GetCatalog() const { return catalog_; }
+    std::shared_ptr<CompileInfo> GetCompileInfo() const { return compile_info_; }
 
  private:
     fesql::codec::Row request_;
     const bool is_debug_;
     std::map<int64_t, std::shared_ptr<DataHandler>> cache_;
+    uint32_t task_id_;
+    std::shared_ptr<Catalog> catalog_;
+    std::shared_ptr<CompileInfo> compile_info_;
 };
 
 class CoreAPI {

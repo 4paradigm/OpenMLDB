@@ -195,6 +195,9 @@ class DataHandler : public ListV<Row> {
     virtual const std::string& GetDatabase() = 0;
     virtual const HandlerType GetHanlderType() = 0;
     virtual const std::string GetHandlerTypeName() = 0;
+    virtual base::Status GetStatus() {
+        return base::Status::OK();
+    }
 };
 
 class RowHandler : public DataHandler {
@@ -235,6 +238,13 @@ class TableHandler : public DataHandler {
     }
     const std::string GetHandlerTypeName() override { return "TableHandler"; }
     virtual const OrderType GetOrderType() const { return kNoneOrder; }
+    virtual std::shared_ptr<RowHandler> SubQuery(const std::string& index_name,
+                                                 const std::string& pk,
+                                                 uint32_t task_id,
+                                                 const std::string& sql,
+                                                 const Row& row) {
+        return std::shared_ptr<RowHandler>();
+    }
 };
 
 class PartitionHandler : public TableHandler {

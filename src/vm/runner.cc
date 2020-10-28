@@ -1531,6 +1531,27 @@ std::shared_ptr<DataHandler> FilterRunner::Run(RunnerContext& ctx) {
         }
     }
 }
+
+std::shared_ptr<DataHandler> RemoteRequestRunner::Run(RunnerContext& ctx) {
+    auto catalog = ctx.GetCatalog();
+    if (!catalog) {
+        LOG(WARNING) << "catalog is null";
+        return std::shared_ptr<DataHandler>();
+    }
+    auto compile_info = ctx.GetCompileInfo();
+    if (!compile_info) {
+        LOG(WARNING) << "compile_info is null";
+        return std::shared_ptr<DataHandler>();
+    }
+    const auto& sql_ctx = compile_info.get_sql_context();
+    // assume has table_name, index_name and pk;
+    std::string table_name;
+    std::string index_name;
+    std::string pk;
+    auto table_handler = catalog->GetTable(sql_ctx.db, table_name);
+    return table_handler->SubQuery(index_name, pk, sql_ctx.sql, ctx.GetTaskId(), ctx.request());
+}
+
 std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
     if (!input) {
