@@ -27,6 +27,7 @@ object FilterPlan {
       for (i <- 0 until keyNum) {
         val leftColumn = SparkColumnUtil.resolveExprNodeToColumn(leftKeys.GetChild(i), node.GetProducer(0), inputDf)
         val rightColumn = SparkColumnUtil.resolveExprNodeToColumn(rightKeys.GetChild(i), node.GetProducer(0), inputDf)
+        // TODO: Add tests to check null equality in Spark and FESQL core
         outputDf = outputDf.where(leftColumn === rightColumn)
       }
     }
