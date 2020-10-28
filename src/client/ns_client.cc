@@ -1399,14 +1399,22 @@ bool NsClient::TransformToTableDef(
                                 status->code = fesql::common::kSQLError;
                                 return false;
                             }
-                            it->second->set_abs_ttl(column_index->GetAbsTTL() / 60000);
+                            if (column_index->GetAbsTTL() == -2) {
+                                it->second->set_abs_ttl(0);
+                            } else {
+                                it->second->set_abs_ttl(column_index->GetAbsTTL() / 60000);
+                            }
                         } else if (table->ttl_desc().ttl_type() == rtidb::api::kLatestTime) {
                             if (column_index->GetLatTTL() == -1 || column_index->GetAbsTTL() != -2) {
                                 status->msg = "CREATE common: lat ttl format error";
                                 status->code = fesql::common::kSQLError;
                                 return false;
                             }
-                            it->second->set_lat_ttl(column_index->GetLatTTL());
+                            if (column_index->GetLatTTL() == -2) {
+                                it->second->set_lat_ttl(0);
+                            } else {
+                                it->second->set_lat_ttl(column_index->GetLatTTL());
+                            }
                         } else {
                             if (column_index->GetAbsTTL() == -1) {
                                 status->msg = "CREATE common: abs ttl format error";

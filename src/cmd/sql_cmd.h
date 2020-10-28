@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 #include <utility>
+#include <map>
 
 #include "base/linenoise.h"
 #include "base/texttable.h"
@@ -36,6 +37,8 @@
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_bool(interactive);
+
+using ::rtidb::catalog::TTL_TYPE_MAP;
 
 namespace rtidb {
 namespace cmd {
@@ -145,6 +148,8 @@ void PrintTableIndex(std::ostream &stream,
     t.add("name");
     t.add("keys");
     t.add("ts");
+    t.add("ttl");
+    t.add("ttl_type");
     t.endOfRow();
     for (int i = 0; i < index_list.size(); i++) {
         const ::fesql::type::IndexDef &index = index_list.Get(i);
@@ -152,6 +157,23 @@ void PrintTableIndex(std::ostream &stream,
         t.add(index.name());
         t.add(index.first_keys(0));
         t.add(index.second_key());
+        std::ostringstream oss;
+        for (int i = 0; i < index.ttl_size(); i++) {
+            oss << index.ttl(i);
+            if (i != index.ttl_size() - 1) {
+                oss << "m" << ",";
+            }
+        }
+        t.add(oss.str());
+        if (index.ttl_type() == ::fesql::type::kTTLTimeLive) {
+            t.add("kAbsolute");
+        } else if (index.ttl_type() == ::fesql::type::kTTLCountLive) {
+            t.add("kLatest");
+        } else if (index.ttl_type() == ::fesql::type::kTTLTimeLiveAndCountLive) {
+            t.add("kAbsAndLat");
+        } else {
+            t.add("kAbsOrLat");
+        }
         t.endOfRow();
     }
     stream << t;
@@ -312,6 +334,37 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             ::fesql::vm::IndexList index_list;
             ::rtidb::catalog::SchemaAdapter::ConvertIndex(table->column_key(),
                                                           &index_list);
+            auto ttl_type = table->ttl_desc().ttl_type();
+            auto ttl_it = TTL_TYPE_MAP.find(ttl_type);
+            if (ttl_it == TTL_TYPE_MAP.end()) {
+                std::cout << "not found " <<  ::rtidb::api::TTLType_Name(ttl_type)
+                    << " in TTL_TYPE_MAP" << std::endl;
+                return;
+            }
+
+            std::map<std::string, ::rtidb::common::ColumnDesc> col_map;
+            for (auto& col : table->column_desc_v1()) {
+                col_map.insert(std::make_pair(col.name(), col));
+            }
+            for (int i = 0; i < index_list.size(); i++) {
+                ::fesql::type::IndexDef* index_def = index_list.Mutable(i);
+                index_def->set_ttl_type(ttl_it->second);
+                const std::string& ts_name = index_def->second_key();
+                auto col_it = col_map.find(ts_name);
+                if (col_it == col_map.end()) {
+                    std::cout << "ts name not found in col_map" << std::endl;
+                    return;
+                }
+                auto& col = col_it->second;
+                if (ttl_type == ::rtidb::api::kAbsAndLat || ttl_type == ::rtidb::api::kAbsOrLat) {
+                    index_def->add_ttl(col.abs_ttl());
+                    index_def->add_ttl(col.lat_ttl());
+                } else if (ttl_type == ::rtidb::api::kAbsoluteTime) {
+                    index_def->add_ttl(col.abs_ttl());
+                } else {
+                    index_def->add_ttl(col.lat_ttl());
+                }
+            }
             PrintTableIndex(std::cout, index_list);
             break;
         }
