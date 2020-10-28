@@ -42,8 +42,11 @@ Engine::Engine(const std::shared_ptr<Catalog>& catalog)
 
 Engine::Engine(const std::shared_ptr<Catalog>& catalog,
                const EngineOptions& options)
-    : cl_(catalog), options_(options), mu_(), lru_cache_(),
-    procedure_cache_() {}
+    : cl_(catalog),
+      options_(options),
+      mu_(),
+      lru_cache_(),
+      procedure_cache_() {}
 
 Engine::~Engine() {}
 
@@ -133,7 +136,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
                  base::Status& status) {  // NOLINT (runtime/references)
     {
         std::shared_ptr<CompileInfo> info = GetCacheLocked(
-                db, sql, session.engine_mode(), session.IsProcedure());
+            db, sql, session.engine_mode(), session.IsProcedure());
         if (info) {
             session.SetCompileInfo(info);
             return true;
@@ -243,11 +246,11 @@ bool Engine::SetCacheLocked(const std::string& db, const std::string& sql,
         auto& mode_cache = lru_cache_[engine_mode];
         using BoostLRU =
             boost::compute::detail::lru_cache<std::string,
-            std::shared_ptr<CompileInfo>>;
+                                              std::shared_ptr<CompileInfo>>;
         std::map<std::string, BoostLRU>::iterator db_iter = mode_cache.find(db);
         if (db_iter == mode_cache.end()) {
             db_iter = mode_cache.insert(
-                    db_iter, {db, BoostLRU(options_.max_sql_cache_size())});
+                db_iter, {db, BoostLRU(options_.max_sql_cache_size())});
         }
         auto& lru = db_iter->second;
         auto value = lru.get(sql);
@@ -257,15 +260,17 @@ bool Engine::SetCacheLocked(const std::string& db, const std::string& sql,
         } else {
             // TODO(xxx): Ensure compile result is stable
             DLOG(INFO) << "Engine cache already exists: " << engine_mode << " "
-                << db << "\n"
-                << sql;
+                       << db << "\n"
+                       << sql;
             return false;
         }
     } else {
         auto db_it = procedure_cache_.find(db);
         if (db_it == procedure_cache_.end()) {
-            db_it = procedure_cache_.insert(db_it, std::make_pair(db,
-                        std::map<std::string, std::shared_ptr<CompileInfo>>()));
+            db_it = procedure_cache_.insert(
+                db_it,
+                std::make_pair(
+                    db, std::map<std::string, std::shared_ptr<CompileInfo>>()));
         }
         auto& info_map = db_it->second;
         auto info_it = info_map.find(sql);
@@ -275,8 +280,8 @@ bool Engine::SetCacheLocked(const std::string& db, const std::string& sql,
         } else {
             // TODO(xxx): Ensure compile result is stable
             DLOG(INFO) << "Engine cache already exists: " << engine_mode << " "
-                << db << "\n"
-                << sql;
+                       << db << "\n"
+                       << sql;
             return false;
         }
     }

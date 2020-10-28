@@ -2305,8 +2305,7 @@ class DistributionsNode : public SQLNode {
 class CreateSpStmt : public SQLNode {
  public:
     explicit CreateSpStmt(const std::string &sp_name)
-        : SQLNode(kCreateSpStmt, 0, 0),
-          sp_name_(sp_name) {}
+        : SQLNode(kCreateSpStmt, 0, 0), sp_name_(sp_name) {}
 
     ~CreateSpStmt() {}
 
@@ -2316,11 +2315,9 @@ class CreateSpStmt : public SQLNode {
     }
 
     NodePointVector &GetInnerNodeList() { return inner_node_list_; }
-    const NodePointVector &GetInnerNodeList() const {
-        return inner_node_list_;
-    }
+    const NodePointVector &GetInnerNodeList() const { return inner_node_list_; }
 
-    const std::string& GetSpName() const { return sp_name_; }
+    const std::string &GetSpName() const { return sp_name_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
@@ -2333,7 +2330,7 @@ class CreateSpStmt : public SQLNode {
 class InputParameterNode : public SQLNode {
  public:
     InputParameterNode(const std::string &name, DataType data_type,
-                  bool is_constant)
+                       bool is_constant)
         : SQLNode(kInputParameter, 0, 0),
           column_name_(name),
           column_type_(data_type),

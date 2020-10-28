@@ -41,9 +41,9 @@ INSTANTIATE_TEST_CASE_P(
     EngineTestFzTest, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/fz_sql.yaml")));
 
-INSTANTIATE_TEST_CASE_P(
-    EngineTestFzTempTest, EngineTest,
-    testing::ValuesIn(InitCases("/cases/query/fz_temp.yaml")));
+// INSTANTIATE_TEST_CASE_P(
+//     EngineTestFzTempTest, EngineTest,
+//     testing::ValuesIn(InitCases("/cases/query/fz_temp.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
     EngineSimpleQuery, EngineTest,

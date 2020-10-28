@@ -26,14 +26,13 @@ cases:
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int64", "split_and_join string", "split_key_and_join string", "split_value_and_join string",
-                "split_key_and_count int64", "split_key_and_distinct_count int64"]
+      columns: ["id int64", "table_2_kn_0 int64", "table_2_kn_0 int64", "table_2_kn_0 int64", "split_and_join string", "split_key_and_join string", "split_value_and_join string", "split_key_and_count int64", "split_key_and_distinct_count int64"]
       rows:
-        - [1, "k1:v1 k2:v2", "k1 k2", "v1 v2", 2, 2]
-        - [2, "k3:v3 k1:v1 k2:v2", "k3 k1 k2", "v3 v1 v2", 3, 3]
-        - [3, "???  k4:v4 k3:v3 k1:v1 k2:v2", "k4 k3 k1 k2", "v4 v3 v1 v2", 4, 4]
-        - [4, "???  k4:v4 k3:v3 k1:v1 k2:v2", "k4 k3 k1 k2", "v4 v3 v1 v2", 4, 4]
-        - [5, "k5:v5 k3:v3 ???  k4:v4 k3:v3 k1:v1 k2:v2", "k5 k3 k4 k3 k1 k2", "v5 v3 v4 v3 v1 v2", 6, 5]
+        - [1, 2, 2, 2, "k1:v1 k2:v2", "k1 k2", "v1 v2", 2, 2]
+        - [2, 3, 3, 3, "k3:v3 k1:v1 k2:v2", "k3 k1 k2", "v3 v1 v2", 3, 3]
+        - [3, 6, 4, 4, "???  k4:v4 k3:v3 k1:v1 k2:v2", "k4 k3 k1 k2", "v4 v3 v1 v2", 4, 4]
+        - [4, NULL, NULL, NULL, "???  k4:v4 k3:v3 k1:v1 k2:v2", "k4 k3 k1 k2", "v4 v3 v1 v2", 4, 4]
+        - [5, 8, 5, 5, "k5:v5 k5:v3 ???  k4:v4 k3:v3 k1:v1 k2:v2", "k5 k5 k4 k3 k1 k2", "v5 v3 v4 v3 v1 v2", 6, 5]
 
   - id: 2
     desc: feature zero split utility functions on single row

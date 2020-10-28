@@ -205,8 +205,9 @@ typedef std::map<
                               std::string, std::shared_ptr<CompileInfo>>>>
     EngineLRUCache;
 
-typedef std::map<std::string, std::map<
-    std::string, std::shared_ptr<CompileInfo>>> ProcedureCache;
+typedef std::map<std::string,
+                 std::map<std::string, std::shared_ptr<CompileInfo>>>
+    ProcedureCache;
 
 class Engine {
  public:
@@ -246,8 +247,7 @@ class Engine {
                                                 bool is_procedure);
     bool SetCacheLocked(const std::string& db, const std::string& sql,
                         EngineMode engine_mode,
-                        std::shared_ptr<CompileInfo> info,
-                        bool is_procedure);
+                        std::shared_ptr<CompileInfo> info, bool is_procedure);
 
     std::shared_ptr<Catalog> cl_;
     EngineOptions options_;
