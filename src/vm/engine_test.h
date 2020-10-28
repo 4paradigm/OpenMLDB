@@ -198,11 +198,12 @@ void PrintYamlV1Result(const vm::Schema& schema, const std::vector<Row>& rows) {
     for (auto row : rows) {
         row_view.Reset(row.buf());
         oss << "- [";
-        for (int idx = 0; idx < schema.size(); idx++) { 
+        for (int idx = 0; idx < schema.size(); idx++) {
             std::string str = row_view.GetAsString(idx);
             auto col = schema.Get(idx);
-            if (YamlTypeName(col.type()) == "string" || YamlTypeName(col.type()) == "date") {
-                oss  << "\"" << str  << "\"";
+            if (YamlTypeName(col.type()) == "string" ||
+                YamlTypeName(col.type()) == "date") {
+                oss << "\"" << str << "\"";
             } else {
                 oss << str;
             }
@@ -343,9 +344,11 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                     float act = row_view.GetFloatUnsafe(i);
                     float exp = row_view_exp.GetFloatUnsafe(i);
                     if (IsNaN(exp)) {
-                        ASSERT_TRUE(IsNaN(act)) << " At " << i << " " << schema.Get(i).name();
+                        ASSERT_TRUE(IsNaN(act))
+                            << " At " << i << " " << schema.Get(i).name();
                     } else {
-                        ASSERT_FLOAT_EQ(act, exp) << " At " << i << " " << schema.Get(i).name();
+                        ASSERT_FLOAT_EQ(act, exp)
+                            << " At " << i << " " << schema.Get(i).name();
                     }
                     break;
                 }
@@ -353,9 +356,11 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                     double act = row_view.GetDoubleUnsafe(i);
                     double exp = row_view_exp.GetDoubleUnsafe(i);
                     if (IsNaN(exp)) {
-                        ASSERT_TRUE(IsNaN(act)) << " At " << i << " " << schema.Get(i).name();
+                        ASSERT_TRUE(IsNaN(act))
+                            << " At " << i << " " << schema.Get(i).name();
                     } else {
-                        ASSERT_DOUBLE_EQ(act, exp) << " At " << i << " " << schema.Get(i).name();
+                        ASSERT_DOUBLE_EQ(act, exp)
+                            << " At " << i << " " << schema.Get(i).name();
                     }
                     break;
                 }

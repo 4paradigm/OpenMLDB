@@ -272,23 +272,20 @@ struct FZStringOpsDef {
 
 template <typename K>
 struct FZTop1Ratio {
-    using ContainerT =
-        udf::container::BoundedGroupByDict<K, int64_t, int64_t>;
+    using ContainerT = udf::container::BoundedGroupByDict<K, int64_t, int64_t>;
     using InputK = typename ContainerT::InputK;
 
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
-        std::string suffix = ".opaque_dict_" +
-                            DataTypeTrait<K>::to_string() + "_";
-        helper
-            .doc(helper.GetDoc())
+        std::string suffix =
+            ".opaque_dict_" + DataTypeTrait<K>::to_string() + "_";
+        helper.doc(helper.GetDoc())
             .templates<double, Opaque<ContainerT>, Nullable<K>>()
             .init("fz_top1_radio_init" + suffix, ContainerT::Init)
             .update("fz_top1_radio_update" + suffix, Update)
             .output("fz_top1_radio_output" + suffix, Output);
     }
 
-    static ContainerT* Update(ContainerT* ptr, InputK key,
-                            bool is_key_null) {
+    static ContainerT* Update(ContainerT* ptr, InputK key, bool is_key_null) {
         if (is_key_null) {
             return ptr;
         }
@@ -318,7 +315,7 @@ struct FZTop1Ratio {
             }
         }
 
-        double maxRatio = static_cast<double> (max) / size;
+        double maxRatio = static_cast<double>(max) / size;
 
         ContainerT::Destroy(ptr);
         return maxRatio;
@@ -327,23 +324,20 @@ struct FZTop1Ratio {
 
 template <typename K>
 struct FZTop3Frequency {
-    using ContainerT =
-        udf::container::BoundedGroupByDict<K, int64_t, int64_t>;
+    using ContainerT = udf::container::BoundedGroupByDict<K, int64_t, int64_t>;
     using InputK = typename ContainerT::InputK;
 
     void operator()(UDAFRegistryHelper& helper) {  // NOLINT
-        std::string suffix = ".opaque_dict_" +
-                            DataTypeTrait<K>::to_string() + "_";
-        helper
-            .doc(helper.GetDoc())
+        std::string suffix =
+            ".opaque_dict_" + DataTypeTrait<K>::to_string() + "_";
+        helper.doc(helper.GetDoc())
             .templates<StringRef, Opaque<ContainerT>, Nullable<K>>()
             .init("fz_top3_frequency_init" + suffix, ContainerT::Init)
             .update("fz_top3_frequency_update" + suffix, Update)
             .output("fz_top3_frequency_output" + suffix, Output);
     }
 
-    static ContainerT* Update(ContainerT* ptr, InputK key,
-                            bool is_key_null) {
+    static ContainerT* Update(ContainerT* ptr, InputK key, bool is_key_null) {
         if (is_key_null) {
             return ptr;
         }
@@ -536,13 +530,13 @@ void DefaultUDFLibrary::InitFeatureZero() {
 
     RegisterUDAFTemplate<FZTop1Ratio>("fz_top1_radio")
         .doc("Compute the top1 ratio")
-    .args_in<int16_t, int32_t, int64_t, float,
-                    double, Date, Timestamp, StringRef>();
+        .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
+                 StringRef>();
 
     RegisterUDAFTemplate<FZTop3Frequency>("fz_top3_frequency")
         .doc("Return the top3 keys")
-    .args_in<int16_t, int32_t, int64_t, float,
-                    double, Date, Timestamp, StringRef>();
+        .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
+                 StringRef>();
 }
 
 }  // namespace udf
