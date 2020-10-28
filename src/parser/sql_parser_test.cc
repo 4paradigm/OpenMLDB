@@ -599,7 +599,7 @@ TEST_F(SqlParserTest, ParserMultiTTlType) {
         "    column5 int,\n"
         "    index(key=(column4, column3), version=(column5, 3), "
         "ts=column2, "
-        "ttl=60d|100, ttl_type=absorlat)\n"
+        "ttl=(60d,100), ttl_type=absorlat)\n"
         ");";
     CheckTTL(parser_, manager_, sql_1, 0);
     std::string sql_2 =
@@ -611,7 +611,7 @@ TEST_F(SqlParserTest, ParserMultiTTlType) {
         "    column5 int,\n"
         "    index(key=(column4, column3), version=(column5, 3), "
         "ts=column2, "
-        "ttl=60d|100, ttl_type=absandlat)\n"
+        "ttl=(60d,100), ttl_type=absandlat)\n"
         ");";
     CheckTTL(parser_, manager_, sql_2, 0);
     std::string sql_3 =
@@ -623,7 +623,7 @@ TEST_F(SqlParserTest, ParserMultiTTlType) {
         "    column5 int,\n"
         "    index(key=(column4, column3), version=(column5, 3), "
         "ts=column2, "
-        "ttl=60|100, ttl_type=absandlat)\n"
+        "ttl=(60,100), ttl_type=absandlat)\n"
         ");";
     CheckTTL(parser_, manager_, sql_3, 1);
     std::string sql_4 =
@@ -635,7 +635,7 @@ TEST_F(SqlParserTest, ParserMultiTTlType) {
         "    column5 int,\n"
         "    index(key=(column4, column3), version=(column5, 3), "
         "ts=column2, "
-        "ttl=60|100d, ttl_type=absandlat)\n"
+        "ttl=(60,100d), ttl_type=absandlat)\n"
         ");";
     CheckTTL(parser_, manager_, sql_4, 1);
 }

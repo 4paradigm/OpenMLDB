@@ -422,7 +422,7 @@ cases:
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
-      index(key=(c4),ts=c7, ttl=10m|10, ttl_type=absorlat));
+      index(key=(c4),ts=c7, ttl=(10m,10), ttl_type=absorlat));
     expect:
       success: true
   -
@@ -431,7 +431,7 @@ cases:
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
-      index(key=(c4),ts=c7, ttl=10|10m, ttl_type=absandlat));
+      index(key=(c4),ts=c7, ttl=(10,10m), ttl_type=absandlat));
     expect:
       success: false 
   -
@@ -440,7 +440,7 @@ cases:
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
-      index(key=(c4),ts=c7, ttl=10m|10, ttl_type=absandlat));
+      index(key=(c4),ts=c7, ttl=(10m,10), ttl_type=absandlat));
     expect:
       success: true
   -
@@ -459,5 +459,14 @@ cases:
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
       index(key=(c4),ts=c7, ttl=10m, ttl_type=latest));
+    expect:
+      success: false
+  -
+    id: 47
+    desc: ttl_type latest
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c4),ts=c7, ttl=(10m,10), ttl_type=latest));
     expect:
       success: false

@@ -760,9 +760,9 @@ ttl_list:   abs_ttl
             {
                 $$ = node_manager->MakeExprList($1);
             }
-            | abs_ttl '|' lat_ttl
+            | '(' abs_ttl ',' lat_ttl ')'
             {
-                $$ = node_manager->MakeExprList($1, $3);
+                $$ = node_manager->MakeExprList($2, $4);
             };
 
 abs_ttl:

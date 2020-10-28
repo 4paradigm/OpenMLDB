@@ -115,7 +115,7 @@ cases:
           column3 int NOT NULL,
           column4 string NOT NULL,
           column5 int NOT NULL,
-          index(key=column1, ts=column2, ttl=10d|100, ttl_type=absorlat));
+          index(key=column1, ts=column2, ttl=(10d,100), ttl_type=absorlat));
   - id: 12
     desc: Create with ttl_type absandlat
     sql: |
@@ -125,4 +125,4 @@ cases:
           column3 int NOT NULL,
           column4 string NOT NULL,
           column5 int NOT NULL,
-          index(key=column1, ts=column2, ttl=10d|100, ttl_type=absandlat));
+          index(key=column1, ts=column2, ttl=(10d,100), ttl_type=absandlat));
