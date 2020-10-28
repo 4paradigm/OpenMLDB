@@ -237,22 +237,11 @@ void sub_string(fesql::codec::StringRef *str, int32_t pos, int32_t len,
                 fesql::codec::StringRef *output);
 int32_t strcmp(fesql::codec::StringRef *s1, fesql::codec::StringRef *s2);
 void string_to_bool(codec::StringRef *str, bool *out, bool *is_null_ptr);
-template <typename V>
-void string_to(codec::StringRef *str, V *v, bool *is_null_ptr) {
-    if (nullptr == str) {
-        *is_null_ptr = true;
-        return;
-    }
-    try {
-        *v = boost::lexical_cast<V>(str->ToString());
-        *is_null_ptr = false;
-        return;
-    } catch (...) {
-        *is_null_ptr = true;
-        return;
-    }
-}
-
+void string_to_int(codec::StringRef *str, int32_t *v, bool *is_null_ptr);
+void string_to_smallint(codec::StringRef *str, int16_t *v, bool *is_null_ptr);
+void string_to_bigint(codec::StringRef *str, int64_t *v, bool *is_null_ptr);
+void string_to_float(codec::StringRef *str, float *v, bool *is_null_ptr);
+void string_to_double(codec::StringRef *str, double *v, bool *is_null_ptr);
 /**
  * Allocate string buffer from jit runtime.
  */

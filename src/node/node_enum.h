@@ -75,6 +75,8 @@ enum SQLNodeType {
     kPartitionMeta,
     kReplicaNum,
     kDistributions,
+    kCreateSpStmt,
+    kInputParameter,
     kUnknow
 };
 
@@ -206,6 +208,9 @@ enum CmdType {
     kCmdDropTable,
     kCmdCreateIndex,
     kCmdDropIndex,
+    kCmdShowCreateSp,
+    kCmdShowProcedures,
+    kCmdDropSp,
     kCmdExit
 };
 enum ExplainType {
@@ -232,6 +237,7 @@ enum PlanType {
     kProjectList,
     kPlanTypeWindow,
     kProjectNode,
+    kPlanTypeCreateSp,
     kUnknowPlan = 100,
 };
 
