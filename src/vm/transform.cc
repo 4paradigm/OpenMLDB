@@ -1429,8 +1429,12 @@ bool BatchModeTransformer::CodeGenExprList(
 
 bool BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in,
                                    base::Status& status) {
-    if (!GenConditionFilter(&join->condition_, in->GetOutputNameSchemaList(),
-                            status)) {
+    vm::SchemaSourceList join_input_schema;
+    join_input_schema.AddSchemaSources(
+        in->producers()[0]->GetOutputNameSchemaList());
+    join_input_schema.AddSchemaSources(
+        in->producers()[1]->GetOutputNameSchemaList());
+    if (!GenConditionFilter(&join->condition_, join_input_schema, status)) {
         return false;
     }
     if (!GenKey(&join->left_key_, in->producers()[0]->GetOutputNameSchemaList(),
@@ -2861,10 +2865,8 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
             switch (join_op->join().join_type()) {
                 case node::kJoinTypeLeft:
                 case node::kJoinTypeLast: {
-                    auto left = dynamic_cast<PhysicalDataProviderNode*>(
-                        join_op->producers()[0]);
-                    auto right = dynamic_cast<PhysicalDataProviderNode*>(
-                        join_op->producers()[1]);
+                    auto left = join_op->producers()[0];
+                    auto right = join_op->producers()[1];
                     auto request_join_right_only =
                         node_manager_->RegisterNode(new PhysicalRequestJoinNode(
                             left, right, join_op->join(), true));

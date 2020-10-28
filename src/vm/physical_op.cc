@@ -452,7 +452,7 @@ bool PhysicalRequestJoinNode::InitSchema() {
                         "producer is null";
         return false;
     }
-    if (output_right_slices_only_) {
+    if (output_right_only_) {
         output_schema_.CopyFrom(producers_[1]->output_schema_);
         output_name_schema_list_.AddSchemaSources(
             producers_[1]->GetOutputNameSchemaList());

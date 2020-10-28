@@ -66,12 +66,8 @@ class EngineOptions {
         performance_sensitive_ = flag;
     }
 
-    inline bool is_cluster_optimzied() const {
-        return cluster_optimized_;
-    }
-    inline void set_cluster_optimized(bool flag) {
-        cluster_optimized_ = flag;
-    }
+    inline bool is_cluster_optimzied() const { return cluster_optimized_; }
+    inline void set_cluster_optimized(bool flag) { cluster_optimized_ = flag; }
     inline void set_max_sql_cache_size(uint32_t size) {
         max_sql_cache_size_ = size;
     }

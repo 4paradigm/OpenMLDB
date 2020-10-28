@@ -302,8 +302,8 @@ const std::string GenerateTableName(int32_t id) {
 }
 
 void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
-                 const EngineOptions& engine_options,
-                 bool check_compatible, int* return_status) {
+                 const EngineOptions& engine_options, bool check_compatible,
+                 int* return_status) {
     *return_status = ENGINE_TEST_RET_INVALID_CASE;
     int32_t input_cnt = sql_case.CountInputs();
 
@@ -551,21 +551,23 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
     }
 }
 
-void RequestModeCheck(const EngineOptions& options, SQLCase& sql_case) {  // NOLINT
+void RequestModeCheck(const EngineOptions& options,
+                      SQLCase& sql_case) {  // NOLINT
     int return_status;
     EngineCheck(sql_case, kRequestMode, options, false, &return_status);
 }
 
-void BatchModeCheck(const EngineOptions& options, SQLCase& sql_case) {  // NOLINT
+void BatchModeCheck(const EngineOptions& options,
+                    SQLCase& sql_case) {  // NOLINT
     int return_status;
     EngineCheck(sql_case, kBatchMode, options, true, &return_status);
 }
 
-void BatchRequestModeCheck(const EngineOptions& options, SQLCase& sql_case) {  // NOLINT
+void BatchRequestModeCheck(const EngineOptions& options,
+                           SQLCase& sql_case) {  // NOLINT
     int return_status;
     EngineCheck(sql_case, kBatchRequestMode, options, false, &return_status);
 }
-
 
 }  // namespace vm
 }  // namespace fesql

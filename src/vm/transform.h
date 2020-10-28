@@ -237,11 +237,11 @@ class LeftJoinOptimized : public TransformUpPysicalPass {
                                  const Schema& schema);
 };
 
-class ClusterOptimized: public TransformUpPysicalPass {
+class ClusterOptimized : public TransformUpPysicalPass {
  public:
     ClusterOptimized(node::NodeManager* node_manager, const std::string& db,
-    const std::shared_ptr<Catalog>& catalog)
-    : TransformUpPysicalPass(node_manager, db, catalog) {}
+                     const std::shared_ptr<Catalog>& catalog)
+        : TransformUpPysicalPass(node_manager, db, catalog) {}
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);

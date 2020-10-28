@@ -32,6 +32,11 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         LOG(WARNING) << status;
         return fail;
     }
+    auto iter = task_map_.find(node);
+    if (iter != task_map_.cend()) {
+        iter->second.GetRoot()->EnableCache();
+        return (iter->second);
+    }
     switch (node->type_) {
         case kPhysicalOpDataProvider: {
             auto op = dynamic_cast<const PhysicalDataProviderNode*>(node);
@@ -42,7 +47,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto runner = nm_->RegisterNode(
                         new DataRunner(id_++, node->GetOutputNameSchemaList(),
                                        provider->table_handler_));
-                    return ClusterTask(runner);
+                    return RegisterTask(node, ClusterTask(runner));
                 }
                 case kProviderTypePartition: {
                     auto provider =
@@ -54,25 +59,27 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                        provider->table_handler_->GetPartition(
                                            provider->index_name_)));
                     if (support_cluster_optimized_) {
-                        return ClusterTask(
-                            runner, provider->table_handler_->GetDatabase(),
-                            provider->table_handler_->GetName(),
-                            provider->index_name_);
+                        return RegisterTask(
+                            node,
+                            ClusterTask(runner,
+                                        provider->table_handler_->GetDatabase(),
+                                        provider->table_handler_->GetName(),
+                                        provider->index_name_));
                     } else {
-                        return ClusterTask(runner);
+                        return RegisterTask(node, ClusterTask(runner));
                     }
                 }
                 case kProviderTypeRequest: {
                     auto runner = nm_->RegisterNode(new RequestRunner(
                         id_++, node->GetOutputNameSchemaList()));
-                    return ClusterTask(runner);
+                    return RegisterTask(node, ClusterTask(runner));
                 }
                 default: {
                     status.msg = "fail to support data provider type " +
                                  DataProviderTypeName(op->provider_type_);
                     status.code = common::kOpGenError;
                     LOG(WARNING) << status;
-                    return fail;
+                    return RegisterTask(node, fail);
                 }
             }
         }
@@ -81,7 +88,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 Build(node->producers().at(0), status);
             auto input = cluster_task.GetRoot();
             if (nullptr == input) {
-                return fail;
+                return RegisterTask(node, fail);
             }
             auto op = dynamic_cast<const PhysicalSimpleProjectNode*>(node);
             auto runner = new SimpleProjectRunner(
@@ -91,25 +98,25 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 cluster_job_.AddRunnerToTask(
                     nm_->RegisterNode(runner),
                     dynamic_cast<ProxyRequestRunner*>(input)->task_id());
-                return cluster_task;
+                return RegisterTask(node, cluster_task);
             }
             runner->AddProducer(input);
             cluster_task.SetRoot(runner);
-            return cluster_task;
+            return RegisterTask(node, cluster_task);
         }
         case kPhysicalOpConstProject: {
             auto op = dynamic_cast<const PhysicalConstProjectNode*>(node);
             auto runner =
                 new ConstProjectRunner(id_++, node->GetOutputNameSchemaList(),
                                        op->GetLimitCnt(), op->project_);
-            return ClusterTask(nm_->RegisterNode(runner));
+            return RegisterTask(node, ClusterTask(nm_->RegisterNode(runner)));
         }
         case kPhysicalOpProject: {
             auto cluster_task =  // NOLINT
                 Build(node->producers().at(0), status);
             auto input = cluster_task.GetRoot();
             if (nullptr == input) {
-                return fail;
+                return RegisterTask(node, fail);
             }
 
             auto op = dynamic_cast<const PhysicalProjectNode*>(node);
@@ -120,7 +127,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         op->GetLimitCnt(), op->project_);
                     runner->AddProducer(input);
                     cluster_task.SetRoot(nm_->RegisterNode(runner));
-                    return cluster_task;
+                    return RegisterTask(node, cluster_task);
                 }
                 case kAggregation: {
                     auto runner =
@@ -131,11 +138,11 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                             nm_->RegisterNode(runner),
                             dynamic_cast<ProxyRequestRunner*>(input)
                                 ->task_id());
-                        return cluster_task;
+                        return RegisterTask(node, cluster_task);
                     }
                     runner->AddProducer(input);
                     cluster_task.SetRoot(nm_->RegisterNode(runner));
-                    return cluster_task;
+                    return RegisterTask(node, cluster_task);
                 }
                 case kGroupAggregation: {
                     auto op =
@@ -145,7 +152,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         op->GetLimitCnt(), op->group_, op->project_);
                     runner->AddProducer(input);
                     cluster_task.SetRoot(nm_->RegisterNode(runner));
-                    return cluster_task;
+                    return RegisterTask(node, cluster_task);
                 }
                 case kWindowAggregation: {
                     auto op =
@@ -165,7 +172,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                             auto union_task = Build(window_union.first, status);
                             auto union_table = union_task.GetRoot();
                             if (nullptr == union_table) {
-                                return fail;
+                                return RegisterTask(node, fail);
                             }
                             if (!cluster_task.IsClusterTask()) {
                                 cluster_task = union_task;
@@ -183,7 +190,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                 Build(window_join.first, status);
                             auto join_right_runner = join_task.GetRoot();
                             if (nullptr == join_right_runner) {
-                                return fail;
+                                return RegisterTask(node, fail);
                             }
 
                             // set runner partition id, if main table depend on
@@ -200,7 +207,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     }
 
                     cluster_task.SetRoot(nm_->RegisterNode(runner));
-                    return cluster_task;
+                    return RegisterTask(node, cluster_task);
                 }
                 case kRowProject: {
                     auto runner = new RowProjectRunner(
@@ -212,11 +219,11 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                             nm_->RegisterNode(runner),
                             dynamic_cast<ProxyRequestRunner*>(input)
                                 ->task_id());
-                        return cluster_task;
+                        return RegisterTask(node, cluster_task);
                     } else {
                         runner->AddProducer(input);
                         cluster_task.SetRoot(nm_->RegisterNode(runner));
-                        return cluster_task;
+                        return RegisterTask(node, cluster_task);
                     }
                 }
                 default: {
@@ -224,7 +231,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                  ProjectTypeName(op->project_type_);
                     status.code = common::kOpGenError;
                     LOG(WARNING) << status;
-                    return fail;
+                    return RegisterTask(node, fail);
                 }
             }
         }
@@ -232,12 +239,12 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto left_task = Build(node->producers().at(0), status);
             auto left = left_task.GetRoot();
             if (nullptr == left) {
-                return fail;
+                return RegisterTask(node, fail);
             }
             auto right_task = Build(node->producers().at(1), status);
             auto right = right_task.GetRoot();
             if (nullptr == right) {
-                return fail;
+                return RegisterTask(node, fail);
             }
             auto op = dynamic_cast<const PhysicalRequestUnionNode*>(node);
             auto runner =
@@ -253,7 +260,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto union_task = Build(window_union.first, status);
                     auto union_table = union_task.GetRoot();
                     if (nullptr == union_table) {
-                        return fail;
+                        return RegisterTask(node, fail);
                     }
                     runner->AddWindowUnion(window_union.second, union_table);
                     if (!index_key.ValidKey()) {
@@ -264,20 +271,20 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto cluster_task =
                 BuildRunnerWithProxy(nm_->RegisterNode(runner), left_task,
                                      right_task, index_key, status);
-            return cluster_task;
+            return RegisterTask(node, cluster_task);
         }
         case kPhysicalOpRequestJoin: {
             auto left_task =  // NOLINT
                 Build(node->producers().at(0), status);
             auto left = left_task.GetRoot();
             if (nullptr == left) {
-                return fail;
+                return RegisterTask(node, fail);
             }
             auto right_task =  // NOLINT
                 Build(node->producers().at(1), status);
             auto right = right_task.GetRoot();
             if (nullptr == right) {
-                return fail;
+                return RegisterTask(node, fail);
             }
             auto op = dynamic_cast<const PhysicalRequestJoinNode*>(node);
             switch (op->join().join_type()) {
@@ -291,7 +298,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto cluster_task = BuildRunnerWithProxy(
                         nm_->RegisterNode(runner), left_task, right_task, Key(),
                         status);
-                    return cluster_task;
+                    return RegisterTask(node, cluster_task);
                 }
                 case node::kJoinTypeConcat: {
                     auto runner =
@@ -300,14 +307,14 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto cluster_task = BuildRunnerWithProxy(
                         nm_->RegisterNode(runner), left_task, right_task, Key(),
                         status);
-                    return cluster_task;
+                    return RegisterTask(node, cluster_task);
                 }
                 default: {
                     status.code = common::kOpGenError;
                     status.msg = "can't handle join type " +
                                  node::JoinTypeName(op->join().join_type());
                     LOG(WARNING) << status;
-                    return fail;
+                    return RegisterTask(node, fail);
                 }
             }
         }
@@ -315,12 +322,12 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto left_task = Build(node->producers().at(0), status);
             auto left = left_task.GetRoot();
             if (nullptr == left) {
-                return fail;
+                return RegisterTask(node, fail);
             }
             auto right_task = Build(node->producers().at(1), status);
             auto right = right_task.GetRoot();
             if (nullptr == right) {
-                return fail;
+                return RegisterTask(node, fail);
             }
             auto op = dynamic_cast<const PhysicalJoinNode*>(node);
             switch (op->join().join_type()) {
@@ -334,14 +341,14 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     runner->AddProducer(right);
                     // TODO(chenjing): support join+window
                     left_task.SetRoot(nm_->RegisterNode(runner));
-                    return left_task;
+                    return RegisterTask(node, left_task);
                 }
                 default: {
                     status.code = common::kOpGenError;
                     status.msg = "can't handle join type " +
                                  node::JoinTypeName(op->join().join_type());
                     LOG(WARNING) << status;
-                    return fail;
+                    return RegisterTask(node, fail);
                 }
             }
         }
@@ -349,7 +356,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto cluster_task = Build(node->producers().at(0), status);
             auto input = cluster_task.GetRoot();
             if (nullptr == input) {
-                return fail;
+                return RegisterTask(node, fail);
             }
             auto op = dynamic_cast<const PhysicalGroupNode*>(node);
             auto runner =
@@ -357,14 +364,14 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                 op->GetLimitCnt(), op->group());
             runner->AddProducer(input);
             cluster_task.SetRoot(nm_->RegisterNode(runner));
-            return cluster_task;
+            return RegisterTask(node, cluster_task);
         }
         case kPhysicalOpFilter: {
             auto cluster_task =  // NOLINT
                 Build(node->producers().at(0), status);
             auto input = cluster_task.GetRoot();
             if (nullptr == input) {
-                return fail;
+                return RegisterTask(node, fail);
             }
             auto op = dynamic_cast<const PhysicalFliterNode*>(node);
             auto runner =
@@ -372,24 +379,24 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                  op->GetLimitCnt(), op->filter_);
             runner->AddProducer(input);
             cluster_task.SetRoot(nm_->RegisterNode(runner));
-            return cluster_task;
+            return RegisterTask(node, cluster_task);
         }
         case kPhysicalOpLimit: {
             auto cluster_task =  // NOLINT
                 Build(node->producers().at(0), status);
             auto input = cluster_task.GetRoot();
             if (nullptr == input) {
-                return fail;
+                return RegisterTask(node, fail);
             }
             auto op = dynamic_cast<const PhysicalLimitNode*>(node);
             if (op->GetLimitCnt() == 0 || op->GetLimitOptimized()) {
-                return cluster_task;
+                return RegisterTask(node, cluster_task);
             }
             auto runner = new LimitRunner(
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt());
             runner->AddProducer(input);
             cluster_task.SetRoot(nm_->RegisterNode(runner));
-            return cluster_task;
+            return RegisterTask(node, cluster_task);
         }
         case kPhysicalOpRename: {
             return Build(node->producers().at(0), status);
@@ -399,7 +406,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             status.msg = "can't handle node " + std::to_string(node->type_) +
                          " " + PhysicalOpTypeName(node->type_);
             LOG(WARNING) << status;
-            return fail;
+            return RegisterTask(node, fail);
         }
     }
 }
@@ -613,6 +620,7 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     if (need_cache_) {
         auto cached = ctx.GetCache(id_);
         if (cached != nullptr) {
+            DLOG(INFO) << "RUNNER ID " << id_ << "HIT CACHE!";
             return cached;
         }
     }
@@ -877,21 +885,7 @@ void WindowAggRunner::RunWindowAggOnKey(
         instance_segment_iter->Next();
     }
 }
-std::shared_ptr<DataHandler> RequestLastFilterRightRunner::Run(
-    RunnerContext& ctx) {  // NOLINT
-    auto fail_ptr = std::shared_ptr<DataHandler>();
-    auto left = producers_[0]->RunWithCache(ctx);
-    auto right = producers_[1]->RunWithCache(ctx);
-    if (!left || !right) {
-        return std::shared_ptr<DataHandler>();
-    }
-    if (kRowHandler != left->GetHanlderType()) {
-        return std::shared_ptr<DataHandler>();
-    }
-    auto left_row = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
-    return std::shared_ptr<RowHandler>(new MemRowHandler(
-        join_gen_.RowLastJoinDropLeftSlices(left_row, right)));
-}
+
 std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
     RunnerContext& ctx) {  // NOLINT
     auto fail_ptr = std::shared_ptr<DataHandler>();
@@ -904,8 +898,13 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
         return std::shared_ptr<DataHandler>();
     }
     auto left_row = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
-    return std::shared_ptr<RowHandler>(
-        new MemRowHandler(join_gen_.RowLastJoin(left_row, right)));
+    if (output_right_only_) {
+        return std::shared_ptr<RowHandler>(new MemRowHandler(
+            join_gen_.RowLastJoinDropLeftSlices(left_row, right)));
+    } else {
+        return std::shared_ptr<RowHandler>(
+            new MemRowHandler(join_gen_.RowLastJoin(left_row, right)));
+    }
 }
 
 std::shared_ptr<DataHandler> LastJoinRunner::Run(RunnerContext& ctx) {
@@ -1877,10 +1876,12 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
-                          : fn_schema_.Get(pos).type() == fesql::type::kDate
-                              ? std::to_string(row_view.GetDateUnsafe(pos))
-                              : row_view.GetAsString(pos);
+        std::string key =
+            row_view.IsNULL(pos)
+                ? codec::NONETOKEN
+                : fn_schema_.Get(pos).type() == fesql::type::kDate
+                      ? std::to_string(row_view.GetDateUnsafe(pos))
+                      : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -1900,10 +1901,12 @@ const std::string KeyGenerator::Gen(const Row& row) {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
-                          : fn_schema_.Get(pos).type() == fesql::type::kDate
-                              ? std::to_string(row_view.GetDateUnsafe(pos))
-                              : row_view.GetAsString(pos);
+        std::string key =
+            row_view.IsNULL(pos)
+                ? codec::NONETOKEN
+                : fn_schema_.Get(pos).type() == fesql::type::kDate
+                      ? std::to_string(row_view.GetDateUnsafe(pos))
+                      : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }

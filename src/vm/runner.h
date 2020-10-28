@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include "base/fe_status.h"
@@ -756,24 +757,12 @@ class RequestLastJoinRunner : public Runner {
                           const bool output_right_only)
         : Runner(id, kRunnerRequestLastJoin, schema, limit_cnt),
           join_gen_(join, left_slices, right_slices),
-          output_right_only_(output_right_only){}
+          output_right_only_(output_right_only) {}
     ~RequestLastJoinRunner() {}
 
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     JoinGenerator join_gen_;
     const bool output_right_only_;
-};
-class RequestLastFilterRightRunner : public Runner {
- public:
-    RequestLastFilterRightRunner(const int32_t id,
-                                 const SchemaSourceList& schema,
-                                 const int32_t limit_cnt, const Join& join,
-                                 size_t left_slices, size_t right_slices)
-        : Runner(id, kRequestLastFilterRight, schema, limit_cnt),
-          join_gen_(join, left_slices, right_slices) {}
-    ~RequestLastFilterRightRunner() {}
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    JoinGenerator join_gen_;
 };
 class ConcatRunner : public Runner {
  public:
@@ -926,8 +915,13 @@ class RunnerBuilder {
         : nm_(nm),
           support_cluster_optimized_(support_cluster_optimized),
           id_(0),
-          cluster_job_() {}
+          cluster_job_(),
+          task_map_() {}
     virtual ~RunnerBuilder() {}
+    ClusterTask RegisterTask(PhysicalOpNode* node, ClusterTask task) {
+        task_map_[node] = task;
+        return task;
+    }
     ClusterTask Build(PhysicalOpNode* node,  // NOLINT
                       Status& status);       // NOLINT
     ClusterJob BuildClusterJob(PhysicalOpNode* node,
@@ -956,6 +950,8 @@ class RunnerBuilder {
     bool AddRunnerToRemoteTask(Runner* runner, int32_t task_id) {
         return cluster_job_.AddRunnerToTask(runner, task_id);
     }
+    std::unordered_map<::fesql::vm::PhysicalOpNode*, ::fesql::vm::ClusterTask>
+        task_map_;
 };
 
 class RunnerContext {
