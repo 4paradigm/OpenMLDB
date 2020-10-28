@@ -85,13 +85,13 @@ class RowsChecker(BaseChecker):
         obj = None
         if data == 'None':
             return 'None'
-        if type == 'int' :
+        if type == 'int' or type == 'int32':
             obj = int(data)
         elif type == 'int64':
             obj = int(data)
         elif type == 'bigint':
             obj = int(data)
-        elif type == 'smallint':
+        elif type == 'smallint' or type == 'int16':
             obj = int(data)
         elif type == 'float':
             obj = float(data)
