@@ -824,7 +824,7 @@ cases:
         rows:
           - [1, 1, 1, 1, 1.0, 1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, true, "1"]
           - [2, -1, -1, -1, -1.0, -1.0, "2020-05-22 10:43:40", "2020-05-22", 1590115420000, false, "-1"]
-          - [2, -1, -1, -1, -1.0, -1.0, NULL, "2020-05-22", 1590115420000, false, ""]
+          - [3, -1, -1, -1, -1.0, -1.0, NULL, "2020-05-22", 1590115420000, false, ""]
     sql: |
       select id,
       timestamp(c1) as timestamp_c1, timestamp(c2) as timestamp_c2, timestamp(c3) as timestamp_c3, timestamp(c4) as timestamp_c4, timestamp(c5) as timestamp_c5, 
@@ -837,7 +837,7 @@ cases:
       rows:
         - [1, 1, 1, 1, 1, 1, 1590115420000, 1590076800000, 1590115420000, 1, NULL]
         - [2, NULL, NULL, NULL, NULL, NULL, 1590115420000, 1590076800000, 1590115420000, 0, NULL]
-        - [2, NULL, NULL, NULL, NULL, NULL, NULL, 1590076800000, 1590115420000, 0, NULL]
+        - [3, NULL, NULL, NULL, NULL, NULL, NULL, 1590076800000, 1590115420000, 0, NULL]
   - id: 20-9
     desc: cast as bool
     mode: offline-unsupport
@@ -862,7 +862,7 @@ cases:
       rows:
         - [1, true, true, true, true, true, true, true, true, true]
         - [2, true, true, true, true, true, true, true, false, true]
-        - [3, true, true, true, true, true, NULL, true, false, fase]
+        - [3, true, true, true, true, true, NULL, true, false, false]
   - id: 21-1
     desc: column name prefix with _
     mode: offline-unsupport
