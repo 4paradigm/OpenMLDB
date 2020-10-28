@@ -318,7 +318,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
                 throw new SQLException("unkown data type");
             }
             if (!ok) {
-                throw new SQLException("put data faile idx is " + i + " type is " + currentDatasType.get(i).toString());
+                throw new SQLException("put data faile idx is " + i);
             }
         }
         currentRow = null;
