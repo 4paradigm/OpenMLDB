@@ -1538,18 +1538,14 @@ std::shared_ptr<DataHandler> RemoteRequestRunner::Run(RunnerContext& ctx) {
         LOG(WARNING) << "catalog is null";
         return std::shared_ptr<DataHandler>();
     }
-    auto compile_info = ctx.GetCompileInfo();
-    if (!compile_info) {
-        LOG(WARNING) << "compile_info is null";
-        return std::shared_ptr<DataHandler>();
-    }
-    const auto& sql_ctx = compile_info.get_sql_context();
-    // assume has table_name, index_name and pk;
+    // assume has db, table_name, index_name, pk and sql;
+    std::string db;
     std::string table_name;
     std::string index_name;
     std::string pk;
-    auto table_handler = catalog->GetTable(sql_ctx.db, table_name);
-    return table_handler->SubQuery(index_name, pk, sql_ctx.sql, ctx.GetTaskId(),
+    std::string sql;
+    auto table_handler = catalog->GetTable(db, table_name);
+    return table_handler->SubQuery(index_name, pk, ctx.GetTaskId(), sql,
                                    ctx.request());
 }
 

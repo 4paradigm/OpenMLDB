@@ -242,7 +242,7 @@ class TableHandler : public DataHandler {
                                                  const std::string& pk,
                                                  uint32_t task_id,
                                                  const std::string& sql,
-                                                 const Row& row) {
+                                                 const fesql::codec::Row& row) {
         return std::shared_ptr<RowHandler>();
     }
 };
