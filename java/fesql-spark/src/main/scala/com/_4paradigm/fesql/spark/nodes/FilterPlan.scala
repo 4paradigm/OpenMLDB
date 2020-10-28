@@ -17,22 +17,21 @@ object FilterPlan {
 
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
     val filter = node.filter().condition()
-    // FILTER_BY(condition=, left_keys=(2,1.000000), right_keys=(c1,c2), index_keys=)
 
+    // Handle equal condiction
     if (node.filter().left_key() != null && node.filter().left_key().getKeys_ != null) {
-
       val leftKeys: ExprListNode = node.filter().left_key().getKeys_
       val rightKeys: ExprListNode = node.filter().right_key().getKeys_
 
       val keyNum = leftKeys.GetChildNum
       for (i <- 0 until keyNum) {
-        val leftColumn = SparkColumnUtil.resolveExprNodeToColumn(leftKeys.GetChild(i), node.GetProducer(i), inputDf)
-        val rightColumn = SparkColumnUtil.resolveExprNodeToColumn(rightKeys.GetChild(i), node.GetProducer(i), inputDf)
+        val leftColumn = SparkColumnUtil.resolveExprNodeToColumn(leftKeys.GetChild(i), node.GetProducer(0), inputDf)
+        val rightColumn = SparkColumnUtil.resolveExprNodeToColumn(rightKeys.GetChild(i), node.GetProducer(0), inputDf)
         outputDf = outputDf.where(leftColumn === rightColumn)
       }
-
     }
 
+    // Handle non-equal condiction
     if (filter.condition() != null) {
       val regName = "FESQL_FILTER_CONDITION_" + node.GetFnName()
       val conditionUDF = new JoinConditionUDF(
@@ -43,7 +42,6 @@ object FilterPlan {
         moduleBroadcast = ctx.getSerializableModuleBuffer
       )
       ctx.getSparkSession.udf.register(regName, conditionUDF)
-
 
       val allColWrap = functions.struct(inputDf.columns.map(inputDf.col): _*)
       val condictionCol = functions.callUDF(regName, allColWrap)
