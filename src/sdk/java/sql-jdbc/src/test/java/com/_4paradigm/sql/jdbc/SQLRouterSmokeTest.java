@@ -132,11 +132,11 @@ public class SQLRouterSmokeTest {
             java.sql.Date d4 = new java.sql.Date(2019, 4, 4);
             java.sql.Date d5 = new java.sql.Date(2019, 5, 5);
             String date1 = String.format("%s-%02d-%02d", d1.getYear() + 1900, d1.getMonth(), d1.getDate());
-            String fullInsert = String.format("insert into tsql1010 values(1000, '%s', 'guangdong', 'guangzhou', 1);", date1);
+            String fullInsert = String.format("insert into tsql1010 values(1000, '%s', 'guangdong', '广州', 1);", date1);
             ok = router.executeInsert(dbname, fullInsert);
             Assert.assertTrue(ok);
             Object[][]datas = new Object[][]{
-                    {1000l, d1, "guangdong", "guangzhou", 1},
+                    {1000l, d1, "guangdong", "广州", 1},
                     {1001l, d2, "jiangsu", "nanjing", 2},
                     {1002l, d3, "sandong", "jinan", 3},
                     {1003l, d4, "zhejiang", "hangzhou", 4},
