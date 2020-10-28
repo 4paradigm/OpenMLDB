@@ -175,7 +175,7 @@ struct FZStringOpsDef {
     static StringSplitState* UpdateSplit(StringSplitState* state,
                                          StringRef* str, bool is_null,
                                          StringRef* delimeter) {
-        if (is_null) {
+        if (is_null || delimeter->size_ == 0) {
             return state;
         }
         auto list = state->GetListV();
@@ -222,7 +222,7 @@ struct FZStringOpsDef {
                                               StringRef* str, bool is_null,
                                               StringRef* delimeter,
                                               StringRef* kv_delimeter) {
-        if (is_null) {
+        if (is_null || delimeter->size_ == 0 || kv_delimeter->size_ == 0) {
             return state;
         }
         auto list = state->GetListV();
@@ -275,7 +275,7 @@ struct FZStringOpsDef {
                                                 StringRef* str, bool is_null,
                                                 StringRef* delimeter,
                                                 StringRef* kv_delimeter) {
-        if (is_null) {
+        if (is_null || delimeter->size_ == 0 || kv_delimeter->size_ == 0) {
             return state;
         }
         auto list = state->GetListV();
