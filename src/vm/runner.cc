@@ -1549,7 +1549,8 @@ std::shared_ptr<DataHandler> RemoteRequestRunner::Run(RunnerContext& ctx) {
     std::string index_name;
     std::string pk;
     auto table_handler = catalog->GetTable(sql_ctx.db, table_name);
-    return table_handler->SubQuery(index_name, pk, sql_ctx.sql, ctx.GetTaskId(), ctx.request());
+    return table_handler->SubQuery(index_name, pk, sql_ctx.sql, ctx.GetTaskId(),
+                                   ctx.request());
 }
 
 std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {

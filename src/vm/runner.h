@@ -596,7 +596,7 @@ class FilterRunner : public Runner {
 
 class RemoteRequestRunner : public Runner {
  public:
-     virtual std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
 };
 
 class SortRunner : public Runner {
