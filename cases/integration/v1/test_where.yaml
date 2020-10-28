@@ -69,7 +69,7 @@ cases:
       success: false
   - id: 2-2
     desc: Where条件未命中索引-离线支持
-    mode: request-unsupport, online-unsupport
+    mode: request-unsupport, rtidb-unsupport
     tags: ["TODO", "@chenjing", "预期结果应该是一行 0, 1, 5, 1.1, 11.1, 1, 1"]
     db: db1
     sql: |
@@ -108,7 +108,7 @@ cases:
       success: false
   - id: 3-2
     desc: Where条件未命中索引示例2
-    mode: request-unsupport, online-unsupport
+    mode: request-unsupport, rtidb-unsupport
     tags: ["TODO", "@chenjing", "预期结果应该是一行 0, 2, 5, 2.2, 22.2, 2, 22"]
     db: db1
     sql: |
