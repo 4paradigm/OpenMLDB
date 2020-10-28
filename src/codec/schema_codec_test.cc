@@ -40,8 +40,9 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
             ::fesql::type::ColumnDef* column = schema.Add();
             column->set_type(::fesql::type::kVarchar);
             column->set_name("col0");
+            column->set_is_constant(true);
         }
-        inputs.push_back(std::make_pair(schema, 8));
+        inputs.push_back(std::make_pair(schema, 9));
     }
 
     {
@@ -51,8 +52,9 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
             ::fesql::type::ColumnDef* column = schema.Add();
             column->set_type(::fesql::type::kInt16);
             column->set_name("col0");
+            column->set_is_constant(true);
         }
-        inputs.push_back(std::make_pair(schema, 8));
+        inputs.push_back(std::make_pair(schema, 9));
     }
     {
         // int32
@@ -61,8 +63,9 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
             ::fesql::type::ColumnDef* column = schema.Add();
             column->set_type(::fesql::type::kInt32);
             column->set_name("col0");
+            column->set_is_constant(true);
         }
-        inputs.push_back(std::make_pair(schema, 8));
+        inputs.push_back(std::make_pair(schema, 9));
     }
     {
         // int64
@@ -71,8 +74,9 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
             ::fesql::type::ColumnDef* column = schema.Add();
             column->set_type(::fesql::type::kInt64);
             column->set_name("col0");
+            column->set_is_constant(false);
         }
-        inputs.push_back(std::make_pair(schema, 8));
+        inputs.push_back(std::make_pair(schema, 9));
     }
     {
         // float
@@ -81,8 +85,9 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
             ::fesql::type::ColumnDef* column = schema.Add();
             column->set_type(::fesql::type::kFloat);
             column->set_name("col0");
+            column->set_is_constant(false);
         }
-        inputs.push_back(std::make_pair(schema, 8));
+        inputs.push_back(std::make_pair(schema, 9));
     }
     {
         // double
@@ -91,8 +96,9 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
             ::fesql::type::ColumnDef* column = schema.Add();
             column->set_type(::fesql::type::kDouble);
             column->set_name("col0");
+            column->set_is_constant(false);
         }
-        inputs.push_back(std::make_pair(schema, 8));
+        inputs.push_back(std::make_pair(schema, 9));
     }
     {
         // date
@@ -101,8 +107,9 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
             ::fesql::type::ColumnDef* column = schema.Add();
             column->set_type(::fesql::type::kDate);
             column->set_name("col0");
+            column->set_is_constant(false);
         }
-        inputs.push_back(std::make_pair(schema, 8));
+        inputs.push_back(std::make_pair(schema, 9));
     }
     {
         // timestamp
@@ -111,8 +118,9 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
             ::fesql::type::ColumnDef* column = schema.Add();
             column->set_type(::fesql::type::kTimestamp);
             column->set_name("col0");
+            column->set_is_constant(false);
         }
-        inputs.push_back(std::make_pair(schema, 8));
+        inputs.push_back(std::make_pair(schema, 9));
     }
 
     {
@@ -121,18 +129,21 @@ std::vector<std::pair<vm::Schema, uint32_t>> GenTestInput() {
             ::fesql::type::ColumnDef* column = schema.Add();
             column->set_type(::fesql::type::kTimestamp);
             column->set_name("col0");
+            column->set_is_constant(true);
         }
         {
             ::fesql::type::ColumnDef* column = schema.Add();
             column->set_type(::fesql::type::kVarchar);
             column->set_name("col20");
+            column->set_is_constant(false);
         }
         {
             ::fesql::type::ColumnDef* column = schema.Add();
             column->set_type(::fesql::type::kInt32);
             column->set_name("col21");
+            column->set_is_constant(false);
         }
-        inputs.push_back(std::make_pair(schema, 22));
+        inputs.push_back(std::make_pair(schema, 25));
     }
     return inputs;
 }
@@ -144,6 +155,7 @@ void CompareSchema(const vm::Schema& left, const vm::Schema& right) {
         const type::ColumnDef& right_column = right.Get(i);
         ASSERT_EQ(left_column.name(), right_column.name());
         ASSERT_TRUE(left_column.type() == right_column.type());
+        ASSERT_TRUE(left_column.is_constant() == right_column.is_constant());
     }
 }
 
