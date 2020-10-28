@@ -761,6 +761,22 @@ class RequestLastJoinRunner : public Runner {
     ~RequestLastJoinRunner() {}
 
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    virtual void Print(std::ostream& output, const std::string& tab) const {
+        output << tab << "[" << id_ << "]" << RunnerTypeName(type_);
+        if (output_right_only_) {
+            output <<" OUTPUT_RIGHT_ONLY";
+        }
+
+        if (need_cache_) {
+            output << "(cache_enable)";
+        }
+        if (!producers_.empty()) {
+            for (auto producer : producers_) {
+                output << "\n";
+                producer->Print(output, "  " + tab);
+            }
+        }
+    }
     JoinGenerator join_gen_;
     const bool output_right_only_;
 };

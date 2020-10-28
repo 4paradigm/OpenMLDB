@@ -433,10 +433,11 @@ bool PhysicalRenameNode::InitSchema() {
 void PhysicalRequestJoinNode::Print(std::ostream& output,
                                     const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(" << join_.ToString();
+    output << "(";
     if (output_right_only_) {
-        output << ", OUTPUT_RIGHT_ONLY";
+        output << "OUTPUT_RIGHT_ONLY, ";
     }
+    output << join_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
