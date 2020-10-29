@@ -216,12 +216,12 @@ class RowHandler : public DataHandler {
 
 class Tablet {
  public:
-    virtual std::shared_ptr<RowHandler> SubQuery(uint32_t task_id,
-                                                 const std::string& sql,
-                                                 const fesql::codec::Row& row);
     virtual std::shared_ptr<RowHandler> SubQuery(
         uint32_t task_id, const std::string& sql,
-        const std::vector<fesql::codec::Row>& rows);
+        const fesql::codec::Row& row) = 0;
+    virtual std::shared_ptr<RowHandler> SubQuery(
+        uint32_t task_id, const std::string& sql,
+        const std::vector<fesql::codec::Row>& rows) = 0;
 };
 
 class TableHandler : public DataHandler {
