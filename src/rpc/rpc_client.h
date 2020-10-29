@@ -91,6 +91,21 @@ class RpcClient {
         stub_ = new T(channel_);
         return 0;
     }
+
+    template <class Request, class Response, class Callback>
+    bool SendRequest(void (T::*func)(google::protobuf::RpcController*,
+                                     const Request*, Response*, Callback*),
+                     brpc::Controller* cntl, const Request* request,
+                     Response* response, Callback* callback) {
+        if (stub_ == NULL) {
+            PDLOG(WARNING,
+                  "stub is null. client must be init before send request");
+            return false;
+        }
+        (stub_->*func)(cntl, request, response, callback);
+        return true;
+    }
+
     template <class Request, class Response, class Callback>
     bool SendRequest(void (T::*func)(google::protobuf::RpcController*,
                                      const Request*, Response*, Callback*),

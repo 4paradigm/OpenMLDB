@@ -193,23 +193,14 @@ void TabletTableHandler::Update(const ::rtidb::nameserver::TableInfo& meta, cons
     }
 }
 
-bool TabletTableHandler::GetTablets(const std::string& index_name, const std::string& pk,
-                                    std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* clients) {
-    if (clients == nullptr) {
-        return false;
-    }
-    clients->clear();
+std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::string& index_name,
+                                                                   const std::string& pk) {
     uint32_t pid_num = table_st_.GetPartitionNum();
     uint32_t pid = 0;
     if (pid_num > 0) {
         pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
     }
-    auto client = table_client_manager_->GetTablets(pid);
-    if (!client) {
-        return false;
-    }
-    clients->push_back(client);
-    return true;
+    return table_client_manager_->GetTablet(pid);
 }
 
 TabletCatalog::TabletCatalog() : mu_(), tables_(), db_(), client_manager_(), version_(1) {}
@@ -303,8 +294,7 @@ bool TabletCatalog::DeleteDB(const std::string& db) {
 
 bool TabletCatalog::IndexSupport() { return true; }
 
-bool TabletCatalog::AddProcedure(const std::string& db, const std::string& sp_name,
-        const std::string& sql) {
+bool TabletCatalog::AddProcedure(const std::string& db, const std::string& sp_name, const std::string& sql) {
     std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
     auto& sp_map = procedures_[db];
     if (sp_map.find(sp_name) != sp_map.end()) {
@@ -396,9 +386,7 @@ bool TabletCatalog::UpdateClient(const std::map<std::string, std::string>& real_
     return client_manager_.UpdateClient(real_ep_map);
 }
 
-uint64_t TabletCatalog::GetVersion() const {
-    return version_.load(std::memory_order_relaxed);
-}
+uint64_t TabletCatalog::GetVersion() const { return version_.load(std::memory_order_relaxed); }
 
 }  // namespace catalog
 }  // namespace rtidb

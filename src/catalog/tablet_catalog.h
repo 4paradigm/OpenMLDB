@@ -24,13 +24,13 @@
 #include <utility>
 #include <vector>
 #include "base/spinlock.h"
+#include "brpc/controller.h"
 #include "catalog/client_manager.h"
 #include "catalog/distribute_iterator.h"
 #include "client/tablet_client.h"
 #include "codec/row.h"
 #include "storage/table.h"
 #include "storage/schema.h"
-#include "vm/catalog.h"
 
 namespace rtidb {
 namespace catalog {
@@ -197,6 +197,8 @@ class TabletTableHandler : public ::fesql::vm::TableHandler,
     std::shared_ptr<::fesql::vm::PartitionHandler> GetPartition(const std::string &index_name) override;
     const std::string GetHandlerTypeName() override { return "TabletTableHandler"; }
 
+    std::shared_ptr<::fesql::vm::Tablet> GetTablet(const std::string& index_name, const std::string& pk) override;
+
     inline int32_t GetTid() { return table_st_.GetTid(); }
 
     void AddTable(std::shared_ptr<::rtidb::storage::Table> table);
@@ -204,9 +206,6 @@ class TabletTableHandler : public ::fesql::vm::TableHandler,
     int DeleteTable(uint32_t pid);
 
     void Update(const ::rtidb::nameserver::TableInfo &meta, const ClientManager &client_manager);
-
-    bool GetTablets(const std::string &index_name, const std::string &pk,
-                    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> *clients);
 
  private:
     inline int32_t GetColumnIndex(const std::string &column) {
@@ -259,7 +258,6 @@ class TabletCatalog : public ::fesql::vm::Catalog {
             const std::string& sql);
 
     bool DropProcedure(const std::string& db, const std::string& sp_name);
-    void RefreshTable(const std::vector<::rtidb::nameserver::TableInfo> &table_info_vec);
 
     bool UpdateClient(const std::map<std::string, std::string> &real_ep_map);
 

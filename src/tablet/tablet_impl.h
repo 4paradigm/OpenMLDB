@@ -280,6 +280,10 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                const rtidb::api::QueryRequest* request,
                rtidb::api::QueryResponse* response, Closure* done);
 
+    void SubQuery(RpcController* controller,
+               const rtidb::api::SubQueryRequest* request,
+               rtidb::api::SubQueryResponse* response, Closure* done);
+
     void CancelOP(RpcController* controller,
                   const rtidb::api::CancelOPRequest* request,
                   rtidb::api::GeneralResponse* response, Closure* done);
@@ -496,6 +500,12 @@ class TabletImpl : public ::rtidb::api::TabletServer {
         ::fesql::base::Status& status, // NOLINT
         ::fesql::vm::RequestRunSession& session, // NOLINT 
         rtidb::api::QueryResponse& response, butil::IOBuf& buf); // NOLINT
+
+    void RequestSubQuery(const rtidb::api::SubQueryRequest& request,
+        const std::string& sql,
+        ::fesql::base::Status& status, // NOLINT
+        ::fesql::vm::RequestRunSession& session, // NOLINT
+        rtidb::api::SubQueryResponse& response, butil::IOBuf& buf); // NOLINT
 
  private:
     RelationalTables relational_tables_;

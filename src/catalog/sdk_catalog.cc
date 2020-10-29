@@ -113,7 +113,7 @@ bool SDKTableHandler::GetTablets(const std::string& index_name, const std::strin
         }
         if (!match_partition_key) {
             for (uint32_t pid = 0; pid < pid_num; pid++) {
-                tablets->push_back(table_client_manager_->GetTablets(pid));
+                tablets->push_back(table_client_manager_->GetTablet(pid)->GetClient());
             }
             return true;
         }
@@ -122,7 +122,7 @@ bool SDKTableHandler::GetTablets(const std::string& index_name, const std::strin
     if (pid_num > 0) {
         pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
     }
-    tablets->push_back(table_client_manager_->GetTablets(pid));
+    tablets->push_back(table_client_manager_->GetTablet(pid)->GetClient());
     return true;
 }
 
