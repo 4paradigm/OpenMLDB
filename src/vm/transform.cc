@@ -2853,7 +2853,63 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
     }
     return true;
 }
+bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
+                                             const Join& join,
+                                             PhysicalOpNode** out) {
+    auto left = join_op->GetProducer(0);
+    std::vector<const fesql::node::ColumnRefNode*> columns;
+    join.ResolvedRelatedColumns(&columns);
+    std::ostringstream oss;
+    for (auto column : columns) {
+        oss << node::ExprString(column) << ",";
+    }
+    DLOG(INFO) << "join resolved related columns: \n" << oss.str();
+    auto schema_context = SchemasContext(join_op->GetOutputNameSchemaList());
+    auto left_schema_list_size = left->GetOutputSchemaListSize();
+    std::unordered_map<uint64_t, ColumnSource> column_source_map_;
+    for (auto expr : columns) {
+        auto column_source = schema_context.ColumnSourceResolved(expr);
+        if (column_source.type() != vm::kSourceColumn) {
+            LOG(WARNING) << "fail to resolve column " << node::ExprString(expr);
+            return false;
+        }
+        if (column_source.schema_idx() < left_schema_list_size) {
+            uint64_t id =
+                (static_cast<uint64_t>(column_source.schema_idx()) << 32) +
+                column_source.column_idx();
+            if (column_source_map_.find(id) == column_source_map_.end()) {
+                column_source_map_.insert(std::make_pair(id, column_source));
+            }
+        }
+    }
 
+    auto left_schema_list =
+        left->GetOutputNameSchemaList().schema_source_list();
+    ColumnSourceList simplify_column_source_list;
+    Schema simplily_schema;
+
+    std::string schema_name = left_schema_list[0].table_name_;
+    for (size_t i = 0; i < left_schema_list.size(); i++) {
+        auto org_schema = left_schema_list[i].schema_;
+        for (int column_id = 0; column_id < org_schema->size(); column_id++) {
+            int key_id = (static_cast<uint64_t>(i) << 32) + column_id;
+            if (column_source_map_.find(key_id) != column_source_map_.end()) {
+                auto column = simplily_schema.Add();
+                column->CopyFrom(org_schema->Get(column_id));
+                simplify_column_source_list.push_back(
+                    column_source_map_[key_id]);
+            }
+        }
+    }
+
+    if (column_source_map_.size() < left->GetOutputSchema()->size()) {
+        *out = node_manager_->RegisterNode(new PhysicalSimpleProjectNode(
+            left, simplily_schema, simplify_column_source_list, schema_name));
+    } else {
+        *out = left;
+    }
+    return true;
+}
 bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     if (nullptr == in) {
         LOG(WARNING) << "LeftJoin optimized skip: node is null";
@@ -2867,9 +2923,14 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                 case node::kJoinTypeLast: {
                     auto left = join_op->producers()[0];
                     auto right = join_op->producers()[1];
+                    auto simplify_left = left;
+                    if (!SimplifyJoinLeftInput(join_op, join_op->join(),
+                                               &simplify_left)) {
+                        return false;
+                    }
                     auto request_join_right_only =
                         node_manager_->RegisterNode(new PhysicalRequestJoinNode(
-                            left, right, join_op->join(), true));
+                            simplify_left, right, join_op->join(), true));
 
                     auto concat_op =
                         node_manager_->RegisterNode(new PhysicalRequestJoinNode(

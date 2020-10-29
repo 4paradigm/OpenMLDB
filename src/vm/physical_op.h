@@ -98,7 +98,6 @@ struct FnInfo {
     const vm::Schema &fn_schema() { return fn_schema_; }
     const int8_t *fn() { return fn_; }
 };
-
 class Sort {
  public:
     explicit Sort(const node::OrderByNode *orders) : orders_(orders) {}
@@ -116,6 +115,11 @@ class Sort {
     }
     const FnInfo &fn_info() const { return fn_info_; }
     const std::string FnDetail() const { return "sort = " + fn_info_.fn_name_; }
+    void ResolvedRelatedColumns(
+        std::vector<const fesql::node::ColumnRefNode *> *columns) const {
+        node::ColumnOfExpression(orders_, columns);
+        return;
+    }
     const node::OrderByNode *orders_;
     FnInfo fn_info_;
 };
@@ -182,6 +186,11 @@ class ConditionFilter {
     const node::ExprNode *condition() const { return condition_; }
     const FnInfo &fn_info() const { return fn_info_; }
     const std::string FnDetail() const { return fn_info_.fn_name_; }
+    virtual void ResolvedRelatedColumns(
+        std::vector<const fesql::node::ColumnRefNode *> *columns) const {
+        node::ColumnOfExpression(condition_, columns);
+        return;
+    }
     const node::ExprNode *condition_;
     FnInfo fn_info_;
 };
@@ -201,6 +210,10 @@ class Key {
     const node::ExprListNode *keys() const { return keys_; }
     const FnInfo &fn_info() const { return fn_info_; }
     const std::string FnDetail() const { return "keys=" + fn_info_.fn_name_; }
+    void ResolvedRelatedColumns(
+        std::vector<const fesql::node::ColumnRefNode *> *columns) const {
+        node::ColumnOfExpression(keys_, columns);
+    }
 
     const node::ExprListNode *keys_;
     FnInfo fn_info_;
@@ -590,20 +603,24 @@ class PhysicalConstProjectNode : public PhysicalOpNode {
 class PhysicalSimpleProjectNode : public PhysicalUnaryNode {
  public:
     PhysicalSimpleProjectNode(PhysicalOpNode *node, const Schema &schema,
-                              const ColumnSourceList &sources)
+                              const ColumnSourceList &sources,
+                              const std::string schema_name = "")
         : PhysicalUnaryNode(node, kPhysicalOpSimpleProject, true, false),
-          project_(sources) {
+          project_(sources),
+          schema_name_(schema_name) {
         output_type_ = node->output_type_;
         output_schema_ = schema;
         InitSchema();
         fn_infos_.push_back(&project_.fn_info_);
     }
+
     virtual ~PhysicalSimpleProjectNode() {}
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     static PhysicalSimpleProjectNode *CastFrom(PhysicalOpNode *node);
     const ColumnProject &project() const { return project_; }
     ColumnProject project_;
+    const std::string schema_name_;
 };
 class PhysicalAggrerationNode : public PhysicalProjectNode {
  public:
@@ -737,6 +754,13 @@ class Filter {
     const Key &right_key() const { return right_key_; }
     const Key &index_key() const { return index_key_; }
     const ConditionFilter &condition() const { return condition_; }
+    virtual void ResolvedRelatedColumns(
+        std::vector<const fesql::node::ColumnRefNode *> *columns) const {
+        left_key_.ResolvedRelatedColumns(columns);
+        right_key_.ResolvedRelatedColumns(columns);
+        index_key_.ResolvedRelatedColumns(columns);
+        condition_.ResolvedRelatedColumns(columns);
+    }
     ConditionFilter condition_;
     Key left_key_;
     Key right_key_;
@@ -784,6 +808,11 @@ class Join : public Filter {
     }
     const node::JoinType join_type() const { return join_type_; }
     const Sort &right_sort() const { return right_sort_; }
+    void ResolvedRelatedColumns(
+        std::vector<const fesql::node::ColumnRefNode *> *columns) const {
+        Filter::ResolvedRelatedColumns(columns);
+        right_sort_.ResolvedRelatedColumns(columns);
+    }
     node::JoinType join_type_;
     Sort right_sort_;
 };

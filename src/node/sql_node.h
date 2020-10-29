@@ -2296,6 +2296,9 @@ bool FnDefEquals(const FnDefNode *left, const FnDefNode *right);
 bool TypeEquals(const TypeNode *left, const TypeNode *right);
 bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
                         ExprNode *node_ptr, const WindowDefNode **output);
+void ColumnOfExpression(
+    const ExprNode *node_ptr,
+    std::vector<const node::ColumnRefNode *> *columns);  // NOLINT
 void FillSQLNodeList2NodeVector(
     SQLNodeList *node_list_ptr,
     std::vector<SQLNode *> &node_list);  // NOLINT (runtime/references)

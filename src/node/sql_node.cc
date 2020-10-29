@@ -907,7 +907,27 @@ void FillSQLNodeList2NodeVector(
         }
     }
 }
-
+void ColumnOfExpression(const ExprNode *node_ptr,
+                        std::vector<const node::ColumnRefNode *> *columns) {
+    if (nullptr == columns || nullptr == node_ptr) {
+        return;
+    }
+    switch (node_ptr->expr_type_) {
+        case kExprPrimary: {
+            return;
+        }
+        case kExprColumnRef: {
+            columns->push_back(
+                dynamic_cast<const node::ColumnRefNode *>(node_ptr));
+            return;
+        }
+        default: {
+            for (auto child : node_ptr->children_) {
+                ColumnOfExpression(child, columns);
+            }
+        }
+    }
+}
 bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
                         ExprNode *node_ptr, const WindowDefNode **output) {
     switch (node_ptr->GetExprType()) {

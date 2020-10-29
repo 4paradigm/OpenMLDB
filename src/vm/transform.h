@@ -245,6 +245,8 @@ class ClusterOptimized : public TransformUpPysicalPass {
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+    bool SimplifyJoinLeftInput(PhysicalBinaryNode* join_op, const Join& join,
+                               PhysicalOpNode** out);
 };
 typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
     LogicalGraph;

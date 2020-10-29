@@ -35,7 +35,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     auto iter = task_map_.find(node);
     if (iter != task_map_.cend()) {
         iter->second.GetRoot()->EnableCache();
-        return (iter->second);
+        return ClusterTask((iter->second));
     }
     switch (node->type_) {
         case kPhysicalOpDataProvider: {
@@ -94,7 +94,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto runner = new SimpleProjectRunner(
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
                 op->project_.fn_info_);
-            if (kRunnerRequestRunProxy == input->type_) {
+            if (kRunnerRequestRunProxy == input->type_ &&
+                !input->need_cache()) {
                 cluster_job_.AddRunnerToTask(
                     nm_->RegisterNode(runner),
                     dynamic_cast<ProxyRequestRunner*>(input)->task_id());
@@ -1876,12 +1877,10 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -1901,12 +1900,10 @@ const std::string KeyGenerator::Gen(const Row& row) {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }

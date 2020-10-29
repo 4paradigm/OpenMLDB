@@ -127,7 +127,7 @@ bool PhysicalConstProjectNode::InitSchema() {
     return true;
 }
 bool PhysicalSimpleProjectNode::InitSchema() {
-    output_name_schema_list_.AddSchemaSource("", &output_schema_,
+    output_name_schema_list_.AddSchemaSource(schema_name_, &output_schema_,
                                              &project_.column_sources());
     PrintSchema();
     return true;

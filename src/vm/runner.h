@@ -405,6 +405,7 @@ class Runner : public node::NodeBase<Runner> {
             }
         }
     }
+    const bool need_cache() { return need_cache_; }
     void EnableCache() { need_cache_ = true; }
     void DisableCache() { need_cache_ = false; }
     const int32_t id_;
@@ -764,7 +765,7 @@ class RequestLastJoinRunner : public Runner {
     virtual void Print(std::ostream& output, const std::string& tab) const {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_);
         if (output_right_only_) {
-            output <<" OUTPUT_RIGHT_ONLY";
+            output << " OUTPUT_RIGHT_ONLY";
         }
 
         if (need_cache_) {
