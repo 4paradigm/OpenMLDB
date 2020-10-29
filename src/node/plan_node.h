@@ -429,6 +429,47 @@ class FuncDefPlanNode : public LeafPlanNode {
     FnNodeFnDef *fn_def_;
 };
 
+class CreateProcedurePlanNode : public LeafPlanNode {
+ public:
+    CreateProcedurePlanNode(const std::string &sp_name,
+                   const NodePointVector& input_parameter_list,
+                   const PlanNodeList& inner_plan_node_list)
+        : LeafPlanNode(kPlanTypeCreateSp),
+          database_(""),
+          sp_name_(sp_name),
+          input_parameter_list_(input_parameter_list),
+          inner_plan_node_list_(inner_plan_node_list) {}
+    ~CreateProcedurePlanNode() {}
+
+    const std::string& GetDatabase() const { return database_; }
+
+    void setDatabase(const std::string &database) { database_ = database; }
+
+    const std::string& GetSpName() const { return sp_name_; }
+
+    void setSpName(const std::string &sp_name) {
+        sp_name_ = sp_name;
+    }
+
+    NodePointVector &GetInputParameterList() { return input_parameter_list_; }
+    void SetInputParameterList(const NodePointVector &input_parameter_list) {
+        input_parameter_list_ = input_parameter_list;
+    }
+
+    const PlanNodeList &GetInnerPlanNodeList() const {
+        return inner_plan_node_list_;
+    }
+    void SetInnerPlanNodeList(const PlanNodeList &inner_plan_node_list) {
+        inner_plan_node_list_ = inner_plan_node_list;
+    }
+
+ private:
+    std::string database_;
+    std::string sp_name_;
+    NodePointVector input_parameter_list_;
+    PlanNodeList inner_plan_node_list_;
+};
+
 bool PlanEquals(const PlanNode *left, const PlanNode *right);
 bool PlanListEquals(const std::vector<PlanNode *> &list1,
                     const std::vector<PlanNode *> &list2);

@@ -1,8 +1,7 @@
 cases:
   - id: 0
     desc: Where条件命中索引
-    tags: ["@chendihao, offline should support where"]
-    mode: request-unsupport, offline-unsupport
+    mode: request-unsupport
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=5;
@@ -28,7 +27,6 @@ cases:
   - id: 1
     desc: Where部分条件命中索引
     mode: request-unsupport, offline-unsupport
-    tags: ["@chendihao, offline should support where"]
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=55 and col1 > 3;
@@ -54,6 +52,7 @@ cases:
   - id: 2-1
     desc: Where条件未命中索引
     mode: request-unsupport, offline-unsupport
+    tags: ["在线不支持，离线可以支持，暂时不跑离线测试"]
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=55 and col1 > 1;
@@ -70,8 +69,8 @@ cases:
       success: false
   - id: 2-2
     desc: Where条件未命中索引-离线支持
-    mode: request-unsupport
-    tags: ["TODO", "@chendihao,离线支持where"]
+    mode: request-unsupport, rtidb-unsupport
+    tags: ["TODO", "@chenjing", "预期结果应该是一行 0, 1, 5, 1.1, 11.1, 1, 1"]
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=5 and col1 < 2;
@@ -88,11 +87,11 @@ cases:
       schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
       order: col1
       data: |
-        1, 4, 55, 4.4, 44.4, 2, 4444
-        2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        0, 1, 5, 1.1, 11.1, 1, 1
   - id: 3-1
     desc: Where条件未命中索引示例2
     mode: request-unsupport, offline-unsupport
+    tags: ["在线不支持，离线可以支持，暂时不跑离线测试"]
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=col3 and col1 < 2;
@@ -109,8 +108,8 @@ cases:
       success: false
   - id: 3-2
     desc: Where条件未命中索引示例2
-    mode: request-unsupport, offline-unsupport
-    tags: ["TODO", "@chendihao,离线支持where语法"]
+    mode: request-unsupport, rtidb-unsupport
+    tags: ["TODO", "@chenjing", "预期结果应该是一行 0, 2, 5, 2.2, 22.2, 2, 22"]
     db: db1
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col1=col5 and col1 > 1;
@@ -128,11 +127,9 @@ cases:
       order: col1
       data: |
         0, 2, 5, 2.2, 22.2, 2, 22
-        1, 3, 55, 3.3, 33.3, 1, 333
   - id: 4
     desc: Where条件命中索引,索引穿透简单子查询
-    tags: ["@chendihao, offline should support where"]
-    mode: request-unsupport, offline-unsupport
+    mode: request-unsupport
     db: db1
     sql: |
       SELECT c0, c1, c2, c3, c4, c5, c6, c1+c4 as c14 FROM
@@ -158,7 +155,28 @@ cases:
       data: |
         0, 1, 5, 0.0, 11.1, 1, empty_str, 12.1
         0, 2, 5, 0.0, 22.2, 2, empty_str, 24.2
-  - id: 5-1
+  - id: 5
+    desc: Where包含重复列名
+    mode: request-unsupport, rtidb-unsupport
+    tags: ["@chenjing"]
+    db: db1
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp", "c5 int"]
+        indexs: ["index1:c3:c4"]
+        rows:
+          - ["aa",2,3,1590738989000, 100]
+          - ["bb",21,31,1590738990000, 200]
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c3:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+    sql: select {0}.c1,{1}.c1,{0}.c2,{1}.c3,{1}.c4,{0}.c5 from {0} last join {1} on {0}.c3={1}.c3 where c5 = 100;
+    expect:
+      columns: ["c1 string","c1 string", "c2 int","c3 bigint", "c4 timestamp", "c5 int"]
+      rows:
+        - ["aa","aa",2,3,1590738989000, 100]
+  - id: 6-1
     desc: Where条件后全表聚合
     tags: ["TODO", "@baoxinqi, 全表聚合"]
     mode: request-unsupport, offline-unsupport

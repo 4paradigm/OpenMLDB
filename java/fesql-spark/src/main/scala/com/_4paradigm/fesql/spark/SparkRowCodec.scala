@@ -151,7 +151,7 @@ class SparkRowCodec(sliceSchemas: Array[StructType]) {
         if (!row.isNullAt(idx)) {
           val str = row.getString(idx)
           if (str != null) {
-            length += str.length
+            length += str.getBytes("utf-8").length
           }
         }
       })

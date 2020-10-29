@@ -145,7 +145,7 @@ object WindowAggPlan {
     for (i <- 0 until groupByExprs.GetChildNum()) {
       val expr = groupByExprs.GetChild(i)
       val colIdx = SparkColumnUtil.resolveColumnIndex(expr, node.GetProducer(0))
-      groupByCols += SparkColumnUtil.getCol(input, colIdx)
+      groupByCols += SparkColumnUtil.getColumnFromIndex(input, colIdx)
     }
 
     val partitions = ctx.getConf("fesql.group.partitions", 0)
@@ -161,7 +161,7 @@ object WindowAggPlan {
     for (i <- 0 until orderExprs.GetChildNum()) {
       val expr = orderExprs.GetChild(i)
       val colIdx = SparkColumnUtil.resolveColumnIndex(expr, node.GetProducer(0))
-      val column = SparkColumnUtil.getCol(input, colIdx)
+      val column = SparkColumnUtil.getColumnFromIndex(input, colIdx)
       if (orders.is_asc()) {
         orderByCols += column.asc
       } else {

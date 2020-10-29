@@ -62,6 +62,8 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
         DataProviderPlan.gen(ctx, PhysicalDataProviderNode.CastFrom(root), children)
       case PhysicalOpType.kPhysicalOpSimpleProject =>
         SimpleProjectPlan.gen(ctx, PhysicalSimpleProjectNode.CastFrom(root), children)
+      case PhysicalOpType.kPhysicalOpConstProject =>
+        ConstProjectPlan.gen(ctx, PhysicalConstProjectNode.CastFrom(root))
       case PhysicalOpType.kPhysicalOpProject =>
         val projectNode = PhysicalProjectNode.CastFrom(root)
         projectNode.getProject_type_ match {
@@ -79,14 +81,14 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
         }
       case PhysicalOpType.kPhysicalOpGroupBy =>
         GroupByPlan.gen(ctx, PhysicalGroupNode.CastFrom(root), children.head)
-
       case PhysicalOpType.kPhysicalOpJoin =>
         JoinPlan.gen(ctx, PhysicalJoinNode.CastFrom(root), children.head, children.last)
-
       case PhysicalOpType.kPhysicalOpLimit =>
         LimitPlan.gen(ctx, PhysicalLimitNode.CastFrom(root), children.head)
       case PhysicalOpType.kPhysicalOpRename =>
         RenamePlan.gen(ctx, PhysicalRenameNode.CastFrom(root), children.head)
+      case PhysicalOpType.kPhysicalOpFilter =>
+        FilterPlan.gen(ctx, PhysicalFliterNode.CastFrom(root), children.head)
       case _ =>
         throw new UnsupportedFesqlException(s"Plan type $opType not supported")
     }

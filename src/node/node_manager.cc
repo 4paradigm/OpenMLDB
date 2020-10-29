@@ -1051,6 +1051,17 @@ CreatePlanNode *NodeManager::MakeCreateTablePlanNode(
     RegisterNode(node_ptr);
     return node_ptr;
 }
+
+CreateProcedurePlanNode *NodeManager::MakeCreateProcedurePlanNode(
+    const std::string &sp_name,
+    const NodePointVector &input_parameter_list,
+    const PlanNodeList& inner_plan_node_list) {
+    node::CreateProcedurePlanNode *node_ptr = new CreateProcedurePlanNode(
+        sp_name, input_parameter_list, inner_plan_node_list);
+    RegisterNode(node_ptr);
+    return node_ptr;
+}
+
 CmdPlanNode *NodeManager::MakeCmdPlanNode(const CmdNode *node) {
     node::CmdPlanNode *node_ptr =
         new CmdPlanNode(node->GetCmdType(), node->GetArgs());
@@ -1340,6 +1351,25 @@ SQLNode *NodeManager::MakeReplicaNumNode(int num) {
 SQLNode *NodeManager::MakeDistributionsNode(SQLNodeList *distribution_list) {
     DistributionsNode *index_ptr = new DistributionsNode(distribution_list);
     return RegisterNode(index_ptr);
+}
+
+SQLNode *NodeManager::MakeCreateProcedureNode(const std::string &sp_name,
+                                          SQLNodeList *input_parameter_list,
+                                          SQLNode* inner_node) {
+    CreateSpStmt *node_ptr = new CreateSpStmt(sp_name);
+    FillSQLNodeList2NodeVector(input_parameter_list,
+            node_ptr->GetInputParameterList());
+    std::vector<SQLNode *>& list = node_ptr->GetInnerNodeList();
+    list.push_back(inner_node);
+    return RegisterNode(node_ptr);
+}
+
+SQLNode *NodeManager::MakeInputParameterNode(bool is_constant,
+                                            const std::string &column_name,
+                                            DataType data_type) {
+    SQLNode *node_ptr = new InputParameterNode(
+            column_name, data_type, is_constant);
+    return RegisterNode(node_ptr);
 }
 
 void NodeManager::SetNodeUniqueId(ExprNode *node) {

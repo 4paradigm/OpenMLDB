@@ -1,11 +1,17 @@
 package com._4paradigm.fesql.spark.utils
 
-import com._4paradigm.fesql.common.FesqlException
-import com._4paradigm.fesql.node.{ColumnRefNode, ExprNode, ExprType}
+import java.util
+
+import com._4paradigm.fesql.common.{FesqlException, UnsupportedFesqlException}
+import com._4paradigm.fesql.node.{ColumnRefNode, ConstNode, ExprNode, ExprType}
 import com._4paradigm.fesql.spark.PlanContext
 import com._4paradigm.fesql.vm.{CoreAPI, PhysicalJoinNode, PhysicalOpNode}
 import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.{Column, DataFrame}
+import com._4paradigm.fesql.node.{DataType => FesqlDataType}
+import org.apache.spark.sql.functions.lit
+
+import scala.collection.mutable
 
 
 object SparkColumnUtil {
@@ -20,7 +26,7 @@ object SparkColumnUtil {
         if (index < 0) {
           throw new FesqlException(s"Can not resolve column of left table: ${expr.GetExprString()}")
         }
-        getCol(left, index)
+        getColumnFromIndex(left, index)
 
       case _ => throw new FesqlException(
         s"Expr ${expr.GetExprString()} not supported")
@@ -38,13 +44,14 @@ object SparkColumnUtil {
         if (index < leftSize) {
           throw new FesqlException("Can not resolve column of left table")
         }
-        getCol(right, index - leftSize)
+        getColumnFromIndex(right, index - leftSize)
 
       case _ => throw new FesqlException(
         s"Expr ${expr.GetExprString()} not supported")
     }
   }
 
+  // Resolve FESQL column reference expression to get column index
   def resolveColumnIndex(expr: ExprNode, planNode: PhysicalOpNode): Int = {
     expr.getExpr_type_ match {
       case ExprType.kExprColumnRef =>
@@ -61,6 +68,33 @@ object SparkColumnUtil {
     }
   }
 
+  // Resolve FESQL expr node to get Spark column
+  def resolveExprNodeToColumn(expr: ExprNode, planNode: PhysicalOpNode, inputDf: DataFrame): Column = {
+    expr.getExpr_type_ match {
+      case ExprType.kExprColumnRef => {
+        val index = CoreAPI.ResolveColumnIndex(planNode, ColumnRefNode.CastFrom(expr))
+        if (index < 0) {
+          throw new FesqlException(s"Fail to resolve ${expr.GetExprString()}")
+        } else if (index >= planNode.GetOutputSchema().size()) {
+          throw new FesqlException(s"Column index out of bounds: $index")
+        }
+        getColumnFromIndex(inputDf, index)
+      }
+      case ExprType.kExprPrimary => {
+        val constNode = ConstNode.CastFrom(expr)
+        constNode.GetDataType() match {
+          case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 => lit(constNode.GetAsInt64())
+          case FesqlDataType.kFloat | FesqlDataType.kDouble => lit(constNode.GetAsDouble())
+          case FesqlDataType.kVarchar => lit(constNode.GetAsString())
+          case _ => throw new UnsupportedFesqlException(s"Fail to support const node ${constNode.GetExprString()}")
+        }
+      }
+      case _ => throw new UnsupportedFesqlException(
+        s"Fail to resolve expr node ${expr.GetExprString()}")
+    }
+
+  }
+
   def resolveColumnIndex(schema_idx: Int, column_idx: Int, planNode: PhysicalOpNode): Int = {
     val index = CoreAPI.ResolveColumnIndex(planNode, schema_idx, column_idx)
     if (index < 0) {
@@ -71,8 +105,16 @@ object SparkColumnUtil {
     index
   }
 
-  def getCol(dataFrame: DataFrame, index: Int): Column = {
-    new Column(dataFrame.queryExecution.analyzed.output(index))
+  def getColumnFromIndex(df: DataFrame, index: Int): Column = {
+    new Column(df.queryExecution.analyzed.output(index))
+  }
+
+  def getColumnsFromDataFrame(df: DataFrame): mutable.ArrayBuffer[Column] = {
+    val columnList = new mutable.ArrayBuffer[Column]()
+    for (i <- 0 until df.schema.size) {
+      columnList += getColumnFromIndex(df, i)
+    }
+    columnList
   }
 
   // Set the nullable property of the dataframe

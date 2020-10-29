@@ -24,7 +24,7 @@ public class SQLCaseTest {
         Assert.assertEquals(Table.buildCreateSQLFromColumnsIndexs("auto_t1",
                 Lists.newArrayList("c1 string", "c2 bigint", "c3 int", "c4 float",
                 "c5 timestamp"), Lists.newArrayList("index1:c1:c5", "index2:c1|c2:c5:365d",
-                        "index3:c1:c5:1000:absolute")),
+                        "index3:c1:c5:1000:absolute"), 1),
                 "create table auto_t1(\n" +
                         "c1 string,\n" +
                         "c2 bigint,\n" +

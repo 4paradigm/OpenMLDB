@@ -285,6 +285,10 @@ bool ConstNode::Equals(const ExprNode *node) const {
            GetExprString() == that->GetExprString() && ExprNode::Equals(node);
 }
 
+ConstNode *ConstNode::CastFrom(ExprNode *node) {
+    return dynamic_cast<ConstNode *>(node);
+}
+
 void LimitNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -330,7 +334,7 @@ void ColumnRefNode::Print(std::ostream &output,
 }
 
 ColumnRefNode *ColumnRefNode::CastFrom(ExprNode *node) {
-    return reinterpret_cast<ColumnRefNode *>(node);
+    return dynamic_cast<ColumnRefNode *>(node);
 }
 
 const std::string ColumnRefNode::GenerateExpressionName() const {
@@ -2014,6 +2018,32 @@ void DistributionsNode::Print(std::ostream &output,
     output << "\n";
     PrintSQLVector(output, tab, distribution_list_->GetList(),
                    "distribution_list", true);
+}
+
+void CreateSpStmt::Print(std::ostream &output,
+        const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, sp_name_, "sp_name", false);
+    output << "\n";
+    PrintSQLVector(output, tab, input_parameter_list_,
+            "input_parameter_list", false);
+    output << "\n";
+    PrintSQLVector(output, tab, inner_node_list_,
+            "inner_node_list", true);
+}
+
+void InputParameterNode::Print(std::ostream &output,
+                          const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, column_name_, "column_name", false);
+    output << "\n";
+    PrintValue(output, tab, DataTypeName(column_type_), "column_type", false);
+    output << "\n";
+    PrintValue(output, tab, std::to_string(is_constant_), "is_constant", true);
 }
 
 }  // namespace node

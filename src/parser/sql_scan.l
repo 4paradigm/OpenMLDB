@@ -91,7 +91,6 @@ self [,()\[\].\:\+\-\*\/\%\^\<\>]
 
 ident_start [A-Za-z\200-\377_]
 ident_cont [A-Za-z\200-\377_0-9\$]
-identifier {ident_start}{ident_cont}*
 
 %%
 
@@ -372,6 +371,9 @@ REPLICANUM { return REPLICANUM; }
 DISTRIBUTION { return DISTRIBUTION; }
 LEADER { return LEADER; }
 FOLLOWER { return FOLLOWER; }
+CONST {return CONST; }
+BEGIN {return BEGINTOKEN; }
+STATUS { return STATUS; }
 
  /* function definition */
 <FUN_INDENT>"def" {
@@ -503,14 +505,14 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 <FUN>{fdiv_assign} { return FDIV_ASSIGN; }
 <INITIAL>{assign} { return EQUALS; }
 {equals} { return EQUALS; }
-<FUN>[A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
+<FUN>[A-Za-z_][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
                           return FUN_IDENTIFIER; }
 
 <FUN>`[^`/\\.\n]+`           { yylval->strval = strdup(yytext+1);
                           yylval->strval[yyleng-2] = 0;
                           return FUN_IDENTIFIER; }
 
-[A-Za-z][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
+[A-Za-z_][A-Za-z0-9_]*	{ yylval->strval = strdup(yytext);
                           return SQL_IDENTIFIER; }
 `[^`/\\.\n]+`           { yylval->strval = strdup(yytext+1);
                           yylval->strval[yyleng-2] = 0;
@@ -527,12 +529,6 @@ B'[01]+'     { yylval->strval = strdup(yytext); return STRING; }
 @`[^`\n]*$ { yyerror("unterminated quoted user variable %s", yytext); }
 @'[^'\n]*$ { yyerror("unterminated quoted user variable %s", yytext); }
 
-
-
-<FUN>{identifier} {
-            yylval->strval = strdup(yytext);
-            return FUN_IDENTIFIER;
-    }
 
 {self} {
             return yytext[0];

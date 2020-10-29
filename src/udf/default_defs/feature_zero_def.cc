@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------
  **/
 #include <algorithm>
+#include <queue>
 #include <string>
 #include <tuple>
 #include <unordered_set>
@@ -16,10 +17,20 @@
 
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
+#include "udf/containers.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
 #include "vm/jit_runtime.h"
+
+using fesql::codec::Date;
+using fesql::codec::ListRef;
+using fesql::codec::StringRef;
+using fesql::codec::Timestamp;
+using fesql::codegen::CodeGenContext;
+using fesql::codegen::NativeValue;
+using fesql::common::kCodegenError;
+using fesql::node::TypeNode;
 
 namespace fesql {
 namespace udf {
@@ -117,44 +128,87 @@ base::ConstIterator<uint64_t, StringRef>* MutableStringListV::GetRawIterator()
 /**
  * ListV && ListRef Wrapper whose lifetime is managed by jit runtime.
  */
-class StringListWrapper : public base::FeBaseObject {
+class StringSplitState : public base::FeBaseObject {
  public:
-    StringListWrapper() { list_ref_.list = reinterpret_cast<int8_t*>(&list_); }
+    StringSplitState() { list_ref_.list = reinterpret_cast<int8_t*>(&list_); }
 
     ListRef<StringRef>* GetListRef() { return &list_ref_; }
 
     MutableStringListV* GetListV() { return &list_; }
 
+    bool IsDelimeterInitialized() const { return delims_compiled_; }
+
+    void SetDelimeterInitialized() { delims_compiled_ = true; }
+
+    void InitDelimeter(const std::string& delim) {
+        delims_[0] = boost::regex(delim);
+    }
+
+    void InitKVDelimeter(const std::string& delim) {
+        delims_[1] = boost::regex(delim);
+    }
+
+    boost::regex& GetDelimeter() { return delims_[0]; }
+
+    boost::regex& GetKVDelimeter() { return delims_[1]; }
+
  private:
     MutableStringListV list_;
     ListRef<StringRef> list_ref_;
+
+    boost::regex delims_[2];
+    bool delims_compiled_ = false;
 };
 
 struct FZStringOpsDef {
-    static StringListWrapper* InitList() {
-        auto list = new StringListWrapper();
+    static StringSplitState* InitList() {
+        auto list = new StringSplitState();
         vm::JITRuntime::get()->AddManagedObject(list);
         return list;
     }
 
-    static void OutputList(StringListWrapper* ptr, ListRef<StringRef>* output) {
-        *output = *ptr->GetListRef();
+    static void OutputList(StringSplitState* state,
+                           ListRef<StringRef>* output) {
+        *output = *state->GetListRef();
     }
 
-    static StringListWrapper* UpdateSplit(StringListWrapper* ptr,
-                                          StringRef* str, bool is_null,
-                                          StringRef* delimeter) {
-        if (is_null) {
-            return ptr;
+    static StringSplitState* UpdateSplit(StringSplitState* state,
+                                         StringRef* str, bool is_null,
+                                         StringRef* delimeter) {
+        if (is_null || delimeter->size_ == 0) {
+            return state;
         }
-        auto list = ptr->GetListV();
-        std::vector<std::string> parts;
-        boost::split_regex(parts, str->ToString(),
-                           boost::regex(delimeter->ToString()));
-        for (auto& part : parts) {
-            list->Add(part);
+        auto list = state->GetListV();
+        if (delimeter->size_ == 1) {
+            char d = delimeter->data_[0];
+            const char* begin = str->data_;
+            const char* end = str->data_ + str->size_;
+            const char* cur = begin;
+            while (cur < end) {
+                if (*cur == d) {
+                    list->Add(std::string(begin, cur - begin));
+                    begin = cur + 1;
+                }
+                ++cur;
+            }
+            if (begin == cur) {
+                list->Add("");
+            } else {
+                list->Add(std::string(begin, cur - begin));
+            }
+        } else {
+            // fallback impl with boost regex
+            if (!state->IsDelimeterInitialized()) {
+                state->InitDelimeter(delimeter->ToString());
+                state->SetDelimeterInitialized();
+            }
+            std::vector<std::string> parts;
+            boost::split_regex(parts, str->ToString(), state->GetDelimeter());
+            for (auto& part : parts) {
+                list->Add(part);
+            }
         }
-        return ptr;
+        return state;
     }
 
     static void SingleSplit(StringRef* str, bool is_null, StringRef* delimeter,
@@ -164,26 +218,49 @@ struct FZStringOpsDef {
         output->list = reinterpret_cast<int8_t*>(list->GetListV());
     }
 
-    static StringListWrapper* UpdateSplitByKey(StringListWrapper* ptr,
-                                               StringRef* str, bool is_null,
-                                               StringRef* delimeter,
-                                               StringRef* kv_delimeter) {
-        if (is_null) {
-            return ptr;
+    static StringSplitState* UpdateSplitByKey(StringSplitState* state,
+                                              StringRef* str, bool is_null,
+                                              StringRef* delimeter,
+                                              StringRef* kv_delimeter) {
+        if (is_null || delimeter->size_ == 0 || kv_delimeter->size_ == 0) {
+            return state;
         }
-        auto list = ptr->GetListV();
-        std::vector<std::string> parts;
-        boost::split_regex(parts, str->ToString(),
-                           boost::regex(delimeter->ToString()));
-        auto kv_delim_regex = boost::regex(kv_delimeter->ToString());
-        for (auto& part : parts) {
-            std::vector<std::string> sub_parts;
-            boost::split_regex(sub_parts, part, kv_delim_regex);
-            if (sub_parts.size() >= 2) {
-                list->Add(sub_parts[0]);
+        auto list = state->GetListV();
+        if (delimeter->size_ == 1 && kv_delimeter->size_ == 1) {
+            char d1 = delimeter->data_[0];
+            char d2 = kv_delimeter->data_[0];
+            const char* begin = str->data_;
+            const char* end = str->data_ + str->size_;
+            const char* cur = begin;
+            bool part_found = false;
+            while (cur < end) {
+                if (*cur == d1) {
+                    part_found = false;
+                    begin = cur + 1;
+                } else if (*cur == d2 && !part_found) {
+                    list->Add(std::string(begin, cur - begin));
+                    part_found = true;
+                }
+                ++cur;
+            }
+        } else {
+            // fallback impl with boost regex
+            if (!state->IsDelimeterInitialized()) {
+                state->InitDelimeter(delimeter->ToString());
+                state->InitKVDelimeter(kv_delimeter->ToString());
+                state->SetDelimeterInitialized();
+            }
+            std::vector<std::string> parts;
+            boost::split_regex(parts, str->ToString(), state->GetDelimeter());
+            for (auto& part : parts) {
+                std::vector<std::string> sub_parts;
+                boost::split_regex(sub_parts, part, state->GetKVDelimeter());
+                if (sub_parts.size() >= 2) {
+                    list->Add(sub_parts[0]);
+                }
             }
         }
-        return ptr;
+        return state;
     }
 
     static void SingleSplitByKey(StringRef* str, bool is_null,
@@ -194,26 +271,62 @@ struct FZStringOpsDef {
         output->list = reinterpret_cast<int8_t*>(list->GetListV());
     }
 
-    static StringListWrapper* UpdateSplitByValue(StringListWrapper* ptr,
-                                                 StringRef* str, bool is_null,
-                                                 StringRef* delimeter,
-                                                 StringRef* kv_delimeter) {
-        if (is_null) {
-            return ptr;
+    static StringSplitState* UpdateSplitByValue(StringSplitState* state,
+                                                StringRef* str, bool is_null,
+                                                StringRef* delimeter,
+                                                StringRef* kv_delimeter) {
+        if (is_null || delimeter->size_ == 0 || kv_delimeter->size_ == 0) {
+            return state;
         }
-        auto list = ptr->GetListV();
-        std::vector<std::string> parts;
-        boost::split_regex(parts, str->ToString(),
-                           boost::regex(delimeter->ToString()));
-        auto kv_delim_regex = boost::regex(kv_delimeter->ToString());
-        for (auto& part : parts) {
-            std::vector<std::string> sub_parts;
-            boost::split_regex(sub_parts, part, kv_delim_regex);
-            if (sub_parts.size() >= 2) {
-                list->Add(sub_parts[1]);
+        auto list = state->GetListV();
+        if (delimeter->size_ == 1 && kv_delimeter->size_ == 1) {
+            char d1 = delimeter->data_[0];
+            char d2 = kv_delimeter->data_[0];
+            const char* begin = str->data_;
+            const char* end = str->data_ + str->size_;
+            const char* cur = begin;
+            int cur_parts = 0;
+            while (cur < end) {
+                if (*cur == d1) {
+                    if (cur_parts == 1) {
+                        list->Add(std::string(begin, cur - begin));
+                    }
+                    cur_parts = 0;
+                } else if (*cur == d2) {
+                    ++cur_parts;
+                    if (cur_parts == 1) {
+                        begin = cur + 1;
+                    } else if (cur_parts == 2) {
+                        list->Add(std::string(begin, cur - begin));
+                    }
+                }
+                ++cur;
+            }
+            if (cur_parts == 1) {
+                if (cur == begin) {
+                    list->Add("");
+                } else {
+                    list->Add(std::string(begin, cur - begin));
+                }
+            }
+        } else {
+            // fallback impl with boost regex
+            if (!state->IsDelimeterInitialized()) {
+                state->InitDelimeter(delimeter->ToString());
+                state->InitKVDelimeter(kv_delimeter->ToString());
+                state->SetDelimeterInitialized();
+            }
+            std::vector<std::string> parts;
+            boost::split_regex(parts, str->ToString(), state->GetDelimeter());
+            for (auto& part : parts) {
+                std::vector<std::string> sub_parts;
+                boost::split_regex(sub_parts, part, state->GetKVDelimeter());
+                if (sub_parts.size() >= 2) {
+                    list->Add(sub_parts[1]);
+                }
             }
         }
-        return ptr;
+        return state;
     }
 
     static void SingleSplitByValue(StringRef* str, bool is_null,
@@ -260,9 +373,169 @@ struct FZStringOpsDef {
     }
 };
 
+template <typename K>
+struct FZTop1Ratio {
+    using ContainerT = udf::container::BoundedGroupByDict<K, int64_t, int64_t>;
+    using InputK = typename ContainerT::InputK;
+
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        std::string suffix =
+            ".opaque_dict_" + DataTypeTrait<K>::to_string() + "_";
+        helper.doc(helper.GetDoc())
+            .templates<double, Opaque<ContainerT>, Nullable<K>>()
+            .init("fz_top1_ratio_init" + suffix, ContainerT::Init)
+            .update("fz_top1_ratio_update" + suffix, Update)
+            .output("fz_top1_ratio_output" + suffix, Output);
+    }
+
+    static ContainerT* Update(ContainerT* ptr, InputK key, bool is_key_null) {
+        if (is_key_null) {
+            return ptr;
+        }
+        auto& map = ptr->map();
+        auto stored_key = ContainerT::to_stored_key(key);
+        auto iter = map.find(stored_key);
+        if (iter == map.end()) {
+            map.insert(iter, {stored_key, 1});
+        } else {
+            auto& single = iter->second;
+            single += 1;
+        }
+        return ptr;
+    }
+
+    static double Output(ContainerT* ptr) {
+        auto& map = ptr->map();
+        if (map.empty()) {
+            return 0;
+        }
+        int max = 0;
+        int size = 0;
+        for (auto iter = map.begin(); iter != map.end(); ++iter) {
+            size += iter->second;
+            if (iter->second > max) {
+                max = iter->second;
+            }
+        }
+        double maxRatio = static_cast<double>(max) / size;
+        ContainerT::Destroy(ptr);
+        return maxRatio;
+    }
+};
+
+template <typename K>
+struct FZTopNFrequency {
+    // we need store top_n config in state
+    class TopNContainer
+        : public udf::container::BoundedGroupByDict<K, int64_t> {
+     public:
+        static void Init(TopNContainer* addr) { new (addr) TopNContainer(); }
+        static void Destroy(TopNContainer* ptr) { ptr->~TopNContainer(); }
+        // record top n config
+        size_t top_n_ = 0;
+    };
+
+    using InputK = typename TopNContainer::InputK;
+
+    void operator()(UDAFRegistryHelper& helper) {  // NOLINT
+        std::string suffix =
+            ".opaque_dict_" + DataTypeTrait<K>::to_string() + "_";
+        helper.doc(helper.GetDoc())
+            .templates<StringRef, Opaque<TopNContainer>, Nullable<K>, int32_t>()
+            .init("fz_topn_frequency_init" + suffix, TopNContainer::Init)
+            .update("fz_topn_frequency_update" + suffix, Update)
+            .output("fz_topn_frequency_output" + suffix, Output);
+    }
+
+    static TopNContainer* Update(TopNContainer* ptr, InputK key,
+                                 bool is_key_null, int32_t top_n) {
+        auto& map = ptr->map();
+        ptr->top_n_ = top_n;
+        if (is_key_null) {
+            return ptr;
+        }
+        auto stored_key = TopNContainer::to_stored_key(key);
+        auto iter = map.find(stored_key);
+        if (iter == map.end()) {
+            map.insert(iter, {stored_key, 1});
+        } else {
+            auto& single = iter->second;
+            single += 1;
+        }
+        return ptr;
+    }
+
+    static void Output(TopNContainer* ptr, codec::StringRef* output) {
+        if (ptr->top_n_ == 0) {
+            output->data_ = "";
+            output->size_ = 0;
+            return;
+        }
+        auto& map = ptr->map();
+        using StorageK = typename container::ContainerStorageTypeTrait<K>::type;
+        using Entry = std::pair<StorageK, size_t>;
+        auto cmp = [](Entry x, Entry y) {
+            if (x.second < y.second) {
+                return true;
+            } else if (x.second == y.second) {
+                return x.first > y.first;
+            } else {
+                return false;
+            }
+        };
+        std::priority_queue<Entry, std::vector<Entry>, decltype(cmp)> queue(
+            cmp);
+        for (auto iter = map.begin(); iter != map.end(); ++iter) {
+            queue.push({iter->first, iter->second});
+        }
+        std::vector<StorageK> keys;
+        for (size_t i = 0; i < ptr->top_n_; ++i) {
+            if (queue.empty()) {
+                break;
+            }
+            keys.emplace_back(queue.top().first);
+            queue.pop();
+        }
+
+        // estimate output length
+        uint32_t str_len = 0;
+        for (size_t i = 0; i < ptr->top_n_; ++i) {
+            if (i < keys.size()) {
+                str_len += v1::format_string(keys[i], nullptr, 0) + 1;  // "k,"
+            } else {
+                str_len += 5;
+            }
+        }
+
+        // allocate string buffer
+        char* buffer = udf::v1::AllocManagedStringBuf(str_len);
+
+        // fill string buffer
+        char* cur = buffer;
+        uint32_t remain_space = str_len;
+        for (size_t i = 0; i < ptr->top_n_; ++i) {
+            uint32_t key_len;
+            if (i < keys.size()) {
+                key_len = v1::format_string(keys[i], cur, remain_space);
+            } else {
+                key_len = 4;
+                snprintf(cur, 5, "NULL");  // NOLINT
+            }
+            cur += key_len;
+            *(cur++) = ',';
+            remain_space -= key_len + 1;
+        }
+        // must leave one '\0' for string format impl
+        *(buffer + str_len - 1) = '\0';
+        output->data_ = buffer;
+        output->size_ = str_len - 1;
+        TopNContainer::Destroy(ptr);
+    }
+};
+
 void DefaultUDFLibrary::InitFeatureZero() {
     RegisterUDAF("fz_window_split")
-        .templates<ListRef<StringRef>, Opaque<StringListWrapper>,
+        .templates<ListRef<StringRef>, Opaque<StringSplitState>,
                    Nullable<StringRef>, StringRef>()
         .init("fz_window_split_init", FZStringOpsDef::InitList)
         .update("fz_window_split_update", FZStringOpsDef::UpdateSplit)
@@ -282,7 +555,7 @@ void DefaultUDFLibrary::InitFeatureZero() {
             Null values are skipped.)");
 
     RegisterUDAF("fz_window_split_by_key")
-        .templates<ListRef<StringRef>, Opaque<StringListWrapper>,
+        .templates<ListRef<StringRef>, Opaque<StringSplitState>,
                    Nullable<StringRef>, StringRef, StringRef>()
         .init("fz_window_split_by_key_init", FZStringOpsDef::InitList)
         .update("fz_window_split_by_key_update",
@@ -306,7 +579,7 @@ void DefaultUDFLibrary::InitFeatureZero() {
             key to output list. Null and illegal segments are skipped.)");
 
     RegisterUDAF("fz_window_split_by_value")
-        .templates<ListRef<StringRef>, Opaque<StringListWrapper>,
+        .templates<ListRef<StringRef>, Opaque<StringSplitState>,
                    Nullable<StringRef>, StringRef, StringRef>()
         .init("fz_window_split_by_value_init", FZStringOpsDef::InitList)
         .update("fz_window_split_by_value_update",
@@ -332,6 +605,16 @@ void DefaultUDFLibrary::InitFeatureZero() {
     RegisterExternal("fz_join")
         .list_argument_at(0)
         .args<ListRef<StringRef>, StringRef>(FZStringOpsDef::StringJoin);
+
+    RegisterUDAFTemplate<FZTop1Ratio>("fz_top1_ratio")
+        .doc("Compute the top1 key's ratio")
+        .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
+                 StringRef>();
+
+    RegisterUDAFTemplate<FZTopNFrequency>("fz_topn_frequency")
+        .doc("Return the topN keys sorted by their frequency")
+        .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
+                 StringRef>();
 }
 
 }  // namespace udf
