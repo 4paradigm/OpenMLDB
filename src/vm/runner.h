@@ -594,7 +594,7 @@ class FilterRunner : public Runner {
     FilterGenerator filter_gen_;
 };
 
-class RemoteRequestRunner : public Runner {
+class ProxyRequestRunner : public Runner {
  public:
      std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
 };

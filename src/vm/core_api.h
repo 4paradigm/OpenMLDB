@@ -59,22 +59,19 @@ class RunnerContext {
         : request_(),
           is_debug_(is_debug),
           cache_(),
-          task_id_(0),
           catalog_() {}
     explicit RunnerContext(const fesql::codec::Row& request,
                            const bool is_debug = false)
         : request_(request),
           is_debug_(is_debug),
           cache_(),
-          task_id_(0),
           catalog_() {}
 
     RunnerContext(const fesql::codec::Row& request, bool is_debug,
-                  uint32_t task_id, std::shared_ptr<Catalog> catalog)
+                  std::shared_ptr<Catalog> catalog)
         : request_(request),
           is_debug_(is_debug),
           cache_(),
-          task_id_(task_id),
           catalog_(catalog) {}
 
     const fesql::codec::Row& request() const { return request_; }
@@ -83,14 +80,12 @@ class RunnerContext {
 
     std::shared_ptr<DataHandler> GetCache(int64_t id) const;
     void SetCache(int64_t id, std::shared_ptr<DataHandler>);
-    uint32_t GetTaskId() const { return task_id_; }
     std::shared_ptr<Catalog> GetCatalog() const { return catalog_; }
 
  private:
     fesql::codec::Row request_;
     const bool is_debug_;
     std::map<int64_t, std::shared_ptr<DataHandler>> cache_;
-    uint32_t task_id_;
     std::shared_ptr<Catalog> catalog_;
 };
 
