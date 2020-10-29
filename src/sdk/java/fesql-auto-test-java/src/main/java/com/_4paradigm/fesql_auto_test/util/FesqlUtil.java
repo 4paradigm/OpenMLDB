@@ -407,8 +407,72 @@ public class FesqlUtil {
         return fesqlResult;
     }
 
+    private static FesqlResult selectBatchRequestModeWithPreparedStatement(SqlExecutor executor, String dbName,
+                                                                           String selectSql, InputDesc input,
+                                                                           List<Integer> commonColumnIndices) {
+        if (selectSql.isEmpty()) {
+            logger.error("fail to execute sql in batch request mode: select sql is empty");
+            return null;
+        }
+        List<List<Object>> rows = null == input ? null : input.getRows();
+        if (CollectionUtils.isEmpty(rows)) {
+            logger.error("fail to execute sql in batch request mode: request rows is null or empty");
+            return null;
+        }
+        List<String> inserts = input.getInserts();
+        if (CollectionUtils.isEmpty(inserts)) {
+            logger.error("fail to execute sql in batch request mode: fail to build insert sql for request rows");
+            return null;
+        }
+        if (rows.size() != inserts.size()) {
+            logger.error("fail to execute sql in batch request mode: rows size isn't match with inserts size");
+            return null;
+        }
+        log.info("select sql:{}", selectSql);
+        FesqlResult fesqlResult = new FesqlResult();
+
+        PreparedStatement rps = null;
+        SQLResultSet sqlResultSet = null;
+        try {
+            rps = executor.getBatchRequestPreparedStmt(dbName, selectSql, commonColumnIndices);
+
+            for (List<Object> row : rows) {
+                boolean ok = setRequestData(rps, row);
+                if (ok) {
+                    rps.addBatch();
+                }
+            }
+
+            sqlResultSet = (SQLResultSet) rps.executeQuery();
+            List<List<Object>> result = Lists.newArrayList();
+            result.addAll(convertRestultSetToList(sqlResultSet));
+            fesqlResult.setResult(result);
+            fesqlResult.setMetaData(sqlResultSet.getMetaData());
+            fesqlResult.setCount(result.size());
+            fesqlResult.setResultSchema(sqlResultSet.GetInternalSchema());
+
+        } catch (SQLException sqlException) {
+            fesqlResult.setOk(false);
+            sqlException.printStackTrace();
+        } finally {
+            try {
+                if (rps != null) {
+                    rps.close();
+                }
+                if (sqlResultSet != null) {
+                    sqlResultSet.close();
+                }
+            } catch (SQLException closeException) {
+                closeException.printStackTrace();
+            }
+        }
+        fesqlResult.setOk(true);
+        log.info("select result:{}", fesqlResult);
+        return fesqlResult;
+    }
+
     private static FesqlResult selectRequestModeWithSp(SqlExecutor executor, String dbName, String spName,
-                                                       String sql, InputDesc input) {
+                String sql, InputDesc input) {
         if (sql.isEmpty()) {
             logger.error("fail to execute sql in request mode: select sql is empty");
             return null;
@@ -417,6 +481,10 @@ public class FesqlUtil {
         List<List<Object>> rows = null == input ? null : input.getRows();
         if (CollectionUtils.isEmpty(rows)) {
             logger.error("fail to execute sql in request mode: request rows is null or empty");
+            return null;
+        }
+        List<String> inserts = input.getInserts();
+        if (CollectionUtils.isEmpty(inserts)) {
             logger.error("fail to execute sql in request mode: fail to build insert sql for request rows");
             return null;
         }
@@ -482,10 +550,9 @@ public class FesqlUtil {
         return fesqlResult;
     }
 
-    private static FesqlResult selectBatchRequestModeWithPreparedStatement(SqlExecutor executor, String dbName,
-                                                                           String selectSql, InputDesc input,
-                                                                           List<Integer> commonColumnIndices) {
-        if (selectSql.isEmpty()) {
+    public static FesqlResult selectBatchRequestModeWithSp(SqlExecutor executor, String dbName, String spName,
+                                                            String sql, InputDesc input) {
+        if (sql.isEmpty()) {
             logger.error("fail to execute sql in batch request mode: select sql is empty");
             return null;
         }
@@ -494,54 +561,33 @@ public class FesqlUtil {
             logger.error("fail to execute sql in batch request mode: request rows is null or empty");
             return null;
         }
-        List<String> inserts = input.getInserts();
-        if (CollectionUtils.isEmpty(inserts)) {
-            logger.error("fail to execute sql in batch request mode: fail to build insert sql for request rows");
-            return null;
-        }
-        if (rows.size() != inserts.size()) {
-            logger.error("fail to execute sql in batch request mode: rows size isn't match with inserts size");
-            return null;
-        }
-        log.info("select sql:{}", selectSql);
+        log.info("procedure sql: {}", sql);
         FesqlResult fesqlResult = new FesqlResult();
-
-        PreparedStatement rps = null;
-        SQLResultSet sqlResultSet = null;
-        try {
-            rps = executor.getBatchRequestPreparedStmt(dbName, selectSql, commonColumnIndices);
-
-            for (List<Object> row : rows) {
-                boolean ok = setRequestData(rps, row);
-                if (ok) {
-                    rps.addBatch();
-                }
-            }
-
-            sqlResultSet = (SQLResultSet) rps.executeQuery();
-            List<List<Object>> result = Lists.newArrayList();
-            result.addAll(convertRestultSetToList(sqlResultSet));
-            fesqlResult.setResult(result);
-            fesqlResult.setMetaData(sqlResultSet.getMetaData());
-            fesqlResult.setCount(result.size());
-            fesqlResult.setResultSchema(sqlResultSet.GetInternalSchema());
-
-        } catch (SQLException sqlException) {
+        if (!executor.executeDDL(dbName, sql)) {
             fesqlResult.setOk(false);
-            sqlException.printStackTrace();
-        } finally {
-            try {
-                if (rps != null) {
-                    rps.close();
-                }
-                if (sqlResultSet != null) {
-                    sqlResultSet.close();
-                }
-            } catch (SQLException closeException) {
-                closeException.printStackTrace();
+            return fesqlResult;
+        }
+        Object[][] rowArray = new Object[rows.size()][];
+        for (int i = 0; i < rows.size(); ++i) {
+            List<Object> row = rows.get(i);
+            rowArray[i] = new Object[row.size()];
+            for (int j = 0; j < row.size(); ++j) {
+                rowArray[i][j] = row.get(j);
             }
         }
-
+        List<List<Object>> result = Lists.newArrayList();
+        try {
+            java.sql.ResultSet resultSet = executor.callProcedure(dbName, spName, rowArray);
+            result.addAll(convertRestultSetToList((SQLResultSet) resultSet));
+            fesqlResult.setMetaData(resultSet.getMetaData());
+            resultSet.close();
+        } catch (SQLException e) {
+            log.error("Call procedure failed", e);
+            fesqlResult.setOk(false);
+            return fesqlResult;
+        }
+        fesqlResult.setResult(result);
+        fesqlResult.setCount(result.size());
         fesqlResult.setOk(true);
         log.info("select result:{}", fesqlResult);
         return fesqlResult;
@@ -840,13 +886,18 @@ public class FesqlUtil {
         return sql;
     }
 
-    public static FesqlResult createAndInsert(SqlExecutor executor, String dbName, List<InputDesc> inputs,
+
+    public static FesqlResult createAndInsert(SqlExecutor executor, String dbName,
+                                              List<InputDesc> inputs,
                                               boolean useFirstInputAsRequests) {
         return createAndInsert(executor, dbName, inputs, useFirstInputAsRequests, 1);
     }
 
-    public static FesqlResult createAndInsert(SqlExecutor executor, String dbName,
-                                              List<InputDesc> inputs, boolean useFirstInputAsRequests, int replicaNum) {
+    public static FesqlResult createAndInsert(SqlExecutor executor,
+                                              String dbName,
+                                              List<InputDesc> inputs,
+                                              boolean useFirstInputAsRequests,
+                                              int replicaNum) {
         FesqlResult fesqlResult = new FesqlResult();
         if (inputs != null && inputs.size() > 0) {
             for (int i = 0; i < inputs.size(); i++) {

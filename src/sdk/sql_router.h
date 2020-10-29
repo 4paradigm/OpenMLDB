@@ -122,6 +122,10 @@ class SQLRouter {
             const std::string& db, const std::string& sp_name,
             std::shared_ptr<rtidb::sdk::SQLRequestRow> row, fesql::sdk::Status* status) = 0;
 
+    virtual std::shared_ptr<fesql::sdk::ResultSet> CallSQLBatchRequestProcedure(
+            const std::string& db, const std::string& sp_name,
+            std::shared_ptr<rtidb::sdk::SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) = 0;
+
     virtual std::shared_ptr<ProcedureInfo> ShowProcedure(
             const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) = 0;
 };

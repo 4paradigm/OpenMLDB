@@ -255,7 +255,7 @@ void PrintProcedureSchema(const std::string& head,
     stream << t << std::endl;
 }
 
-void PrintProcedureInfo(const rtidb::nameserver::ProcedureInfo& sp_info) {
+void PrintProcedureInfo(const rtidb::api::ProcedureInfo& sp_info) {
     std::vector<std::pair<std::string, std::string>> vec;
     std::pair<std::string, std::string> pair = std::make_pair(sp_info.db_name(), sp_info.sp_name());
     vec.push_back(pair);
@@ -403,7 +403,8 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
                 std::cout << "Fail to connect to db" << std::endl;
                 return;
             }
-            std::vector<rtidb::nameserver::ProcedureInfo> sp_infos;
+
+            std::vector<rtidb::api::ProcedureInfo> sp_infos;
             if (!ns->ShowProcedure(db_name, sp_name, sp_infos, error) || sp_infos.empty()) {
                 std::cout << "Fail to show procdure. error msg: " << error << std::endl;
                 return;
@@ -418,7 +419,7 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
                 std::cout << "Fail to connect to db" << std::endl;
                 return;
             }
-            std::vector<rtidb::nameserver::ProcedureInfo> sp_infos;
+            std::vector<rtidb::api::ProcedureInfo> sp_infos;
             if (!ns->ShowProcedure(sp_infos, error) || sp_infos.empty()) {
                 std::cout << "Fail to show procdure. error msg: " << error << std::endl;
                 return;

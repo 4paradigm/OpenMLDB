@@ -45,7 +45,8 @@ public class ExecutorFactory {
 
     public static BaseExecutor getFeRequestQueryWithSpExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase) {
         BaseExecutor executor = null;
-        executor = new StoredProcedureSQLExecutor(sqlExecutor, fesqlCase);
+        executor = new StoredProcedureSQLExecutor(
+                sqlExecutor, fesqlCase, fesqlCase.getBatch_request() != null);
         return executor;
     }
 

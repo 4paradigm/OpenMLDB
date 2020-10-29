@@ -33,7 +33,6 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
     public ResultSet executeQuery() throws SQLException {
         checkClosed();
         Status status = new Status();
-        logger.info("" + currentRowBatch.Size());
         com._4paradigm.sql.ResultSet resultSet = router.ExecuteSQLBatchRequest(
                 db, currentSql, currentRowBatch, status);
         if (resultSet == null) {

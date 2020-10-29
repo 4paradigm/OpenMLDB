@@ -17,6 +17,11 @@ public class BatchRequestTest extends FesqlTest {
         ExecutorFactory.getSQLBatchRequestQueryExecutor(executor, testCase).run();
     }
 
+    @Test(dataProvider = "testBatchRequestData")
+    public void testSPBatchRequest(SQLCase testCase) {
+        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase).run();
+    }
+
     @DataProvider
     public Object[] testBatchRequestData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider

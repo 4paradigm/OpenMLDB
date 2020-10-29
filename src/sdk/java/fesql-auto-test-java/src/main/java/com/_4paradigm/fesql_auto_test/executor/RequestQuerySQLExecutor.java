@@ -14,7 +14,7 @@ import java.util.List;
 @Slf4j
 public class RequestQuerySQLExecutor extends SQLExecutor {
 
-    private boolean isBatchRequest;
+    protected boolean isBatchRequest;
 
     public RequestQuerySQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest) {
         super(executor, fesqlCase);

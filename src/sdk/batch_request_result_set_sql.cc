@@ -45,7 +45,6 @@ SQLBatchRequestResultSet::SQLBatchRequestResultSet(
 SQLBatchRequestResultSet::~SQLBatchRequestResultSet() {}
 
 bool SQLBatchRequestResultSet::Init() {
-    LOG(INFO) << "Init";
     if (!response_ || response_->code() != ::rtidb::base::kOk) {
         LOG(WARNING) << "bad response code " << response_->code();
         return false;
@@ -64,7 +63,6 @@ bool SQLBatchRequestResultSet::Init() {
 
     // Decode schema
     ::fesql::codec::Schema schema;
-    LOG(INFO) << response_->schema().size();
     ::fesql::codec::SchemaCodec::Decode(response_->schema(), &schema);
     external_schema_.SetSchema(schema);
 
