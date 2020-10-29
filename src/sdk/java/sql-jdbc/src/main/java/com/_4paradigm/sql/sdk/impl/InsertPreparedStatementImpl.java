@@ -185,7 +185,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         }
         byte bytes[] = s.getBytes(CHARSET);
         stringsLen.put(i, bytes.length);
-        stringsLen.put(i, s.length());
         hasSet.set(i - 1, true);
         currentDatas.set(i - 1, s);
         currentDatasLen.set(i - 1, bytes.length);
