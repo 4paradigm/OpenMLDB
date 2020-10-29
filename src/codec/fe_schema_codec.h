@@ -29,7 +29,7 @@ namespace fesql {
 namespace codec {
 
 const uint32_t MAX_ROW_BYTE_SIZE = 1024 * 1024;
-const uint32_t FIELD_BYTE_SIZE = 2;
+const uint32_t FIELD_BYTE_SIZE = 3;
 const uint16_t HEADER_SIZE = 2;
 
 class SchemaCodec {
@@ -48,6 +48,9 @@ class SchemaCodec {
         cbuffer += 2;
         vm::Schema::const_iterator it = schema.begin();
         for (; it != schema.end(); ++it) {
+            uint8_t is_constant = it->is_constant() ? 1 : 0;
+            memcpy(cbuffer, static_cast<const void*>(&is_constant), 1);
+            cbuffer += 1;
             uint8_t type = static_cast<uint8_t>(it->type());
             memcpy(cbuffer, static_cast<const void*>(&type), 1);
             cbuffer += 1;
@@ -81,6 +84,9 @@ class SchemaCodec {
             if (buf_size - read_size < FIELD_BYTE_SIZE) {
                 break;
             }
+            uint8_t is_constant = 0;
+            memcpy(static_cast<void*>(&is_constant), buffer, 1);
+            buffer += 1;
             uint8_t type = 0;
             memcpy(static_cast<void*>(&type), buffer, 1);
             if (!::fesql::type::Type_IsValid(type)) {
@@ -99,6 +105,7 @@ class SchemaCodec {
             buffer += name_size;
             read_size += total_size;
             column->set_type(static_cast<::fesql::type::Type>(type));
+            column->set_is_constant(is_constant == 1);
         }
         return true;
     }

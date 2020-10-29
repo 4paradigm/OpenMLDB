@@ -944,6 +944,7 @@ class ConstNode : public ExprNode {
     }
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
+    static ConstNode *CastFrom(ExprNode *node);
 
  private:
     DataType data_type_;

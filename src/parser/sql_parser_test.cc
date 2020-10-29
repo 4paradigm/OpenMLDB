@@ -145,7 +145,8 @@ TEST_P(SqlParserTest, Parser_Select_Expr_List) {
 }
 
 TEST_F(SqlParserTest, ConstExprTest) {
-    std::string sqlstr = "select col1, 1, 1l, 1.0f, 1.0, \"abc\" from t1;";
+    std::string sqlstr =
+        "select col1, 1, 1l, 1.0f, 1.0, \"abc\", _c1, __c2 from t1;";
     NodePointVector trees;
     base::Status status;
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
@@ -215,6 +216,18 @@ TEST_F(SqlParserTest, ConstExprTest) {
                               dynamic_cast<node::ResTarget *>(*iter)->GetVal())
                               ->GetStr();
         ASSERT_EQ("abc", std::string(str));
+    }
+    iter++;
+    {
+        ASSERT_EQ("_c1", dynamic_cast<node::ColumnRefNode *>(
+                             dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+                             ->GetColumnName());
+    }
+    iter++;
+    {
+        ASSERT_EQ("__c2", dynamic_cast<node::ColumnRefNode *>(
+                              dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+                              ->GetColumnName());
     }
     iter++;
     ASSERT_TRUE(iter == iter_end);
