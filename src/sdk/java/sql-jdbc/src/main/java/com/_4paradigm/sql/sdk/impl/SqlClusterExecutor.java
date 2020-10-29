@@ -157,7 +157,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         ExplainInfo explain = sqlRouter.Explain(dbName, sql, status);
         if (status.getCode() != 0 || explain == null) {
-            throw new SQLException("getInputSchema fail!", status.getMsg());
+            throw new SQLException("getInputSchema fail! msg: " + status.getMsg());
         }
         List<Column> columnList = new ArrayList<>();
         com._4paradigm.sql.Schema schema = explain.GetInputSchema();
@@ -200,7 +200,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         SQLRequestRow sqlRequestRow = sqlRouter.GetRequestRow(dbName, procedureInfo.getSql(), status);
         if (status.getCode() != 0 || sqlRequestRow == null) {
             logger.error("getRequestRow failed: {}", status.getMsg());
-            throw new SQLException("getRequestRow failed");
+            throw new SQLException("getRequestRow failed!, msg: " + status.getMsg());
         }
         Schema inputSchema = procedureInfo.getInputSchema();
         if (inputSchema == null) {
@@ -277,7 +277,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         }
         ResultSet resultSet = sqlRouter.CallProcedure(dbName, proName, sqlRequestRow, status);
         if (resultSet == null || status.getCode() != 0) {
-            throw new SQLException("call procedure fail");
+            throw new SQLException("call procedure fail! msg: " + status.getMsg());
         }
         return new SQLResultSet(resultSet);
     }
