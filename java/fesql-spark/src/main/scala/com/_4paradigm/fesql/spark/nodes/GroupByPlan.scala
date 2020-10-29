@@ -18,7 +18,7 @@ object GroupByPlan {
       val expr = groupByExprs.GetChild(i)
 
       val colIdx = SparkColumnUtil.resolveColumnIndex(expr, node.GetProducer(0))
-      groupByCols += SparkColumnUtil.getCol(inputDf, colIdx)
+      groupByCols += SparkColumnUtil.getColumnFromIndex(inputDf, colIdx)
     }
 
     val partitions = ctx.getConf("fesql.group.partitions", 0)
