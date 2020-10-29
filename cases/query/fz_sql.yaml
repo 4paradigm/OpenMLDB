@@ -2,7 +2,6 @@ cases:
   - id: 0
     desc: fz sql 子查询
     db: db1
-    # mode: rtidb-unsupport, request-unsupport
     sql: |
       select
           c1,
@@ -169,7 +168,7 @@ cases:
   - id: 5
     desc: lastjoin 和 window 拼接成大表
     db: db1
-    # mode: rtidb-unsupport, request-unsupport
+    mode: batch-unsupport
     sql: |
       select * from 
       (
@@ -228,7 +227,7 @@ cases:
   - id: 4
     desc: 主表多个window测试
     db: db1
-    # mode: rtidb-unsupport, request-unsupport
+    mode: batch-unsupport
     sql: |
       select
           c1,
