@@ -212,7 +212,7 @@ bool TabletTableHandler::GetTablets(const std::string& index_name, const std::st
     return true;
 }
 
-TabletCatalog::TabletCatalog() : mu_(), tables_(), db_(), client_manager_() {}
+TabletCatalog::TabletCatalog() : mu_(), tables_(), db_(), client_manager_(), version_(1) {}
 
 TabletCatalog::~TabletCatalog() {}
 
@@ -332,7 +332,7 @@ bool TabletCatalog::DropProcedure(const std::string& db, const std::string& sp_n
     return true;
 }
 
-void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInfo>& table_info_vec) {
+void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInfo>& table_info_vec, uint64_t version) {
     std::map<std::string, std::set<std::string>> table_map;
     for (const auto& table_info : table_info_vec) {
         const std::string& db_name = table_info.db();
@@ -387,11 +387,17 @@ void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInf
         }
         ++db_it;
     }
+    version_.store(version, std::memory_order_relaxed);
+    LOG(INFO) << "refresh catalog. version " << version;
 }
 
 bool TabletCatalog::UpdateClient(const std::map<std::string, std::string>& real_ep_map) {
     DLOG(INFO) << "update client";
     return client_manager_.UpdateClient(real_ep_map);
+}
+
+uint64_t TabletCatalog::GetVersion() const {
+    return version_.load(std::memory_order_relaxed);
 }
 
 }  // namespace catalog

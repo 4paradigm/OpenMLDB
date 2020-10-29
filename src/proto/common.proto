@@ -62,3 +62,8 @@ message TablePartition {
     optional uint32 pid = 1;
     repeated PartitionMeta partition_meta = 2;
 }
+
+message CatalogInfo {
+    optional uint64 version = 1;
+    optional string endpoint = 2;
+}

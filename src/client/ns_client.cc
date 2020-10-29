@@ -1211,6 +1211,26 @@ bool NsClient::DeleteIndex(const std::string& table_name,
     return DeleteIndex(GetDb(), table_name, idx_name, msg);
 }
 
+bool NsClient::ShowCatalogVersion(std::map<std::string, uint64_t>* version_map, std::string* msg) {
+    if (version_map == nullptr || msg == nullptr) {
+        return false;
+    }
+    version_map->clear();
+    ::rtidb::nameserver::ShowCatalogRequest request;
+    ::rtidb::nameserver::ShowCatalogResponse response;
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowCatalog, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    int code = response.code();
+    if (ok && code == 0) {
+        for (const auto& catalog_info : response.catalog()) {
+            version_map->emplace(catalog_info.endpoint(), catalog_info.version());
+        }
+        return true;
+    }
+    *msg = response.msg();
+    return false;
+}
+
 bool NsClient::TransformToTableDef(
     const std::string& table_name,
     int replica_num,
