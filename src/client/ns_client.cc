@@ -1441,13 +1441,21 @@ bool NsClient::TransformToTableDef(
                                 status->code = fesql::common::kSQLError;
                                 return false;
                             }
-                            it->second->set_abs_ttl(column_index->GetAbsTTL() / 60000);
+                            if (column_index->GetAbsTTL() == -2) {
+                                it->second->set_abs_ttl(0);
+                            } else {
+                                it->second->set_abs_ttl(column_index->GetAbsTTL() / 60000);
+                            }
                             if (column_index->GetLatTTL() == -1) {
                                 status->msg = "CREATE common: lat ttl format error";
                                 status->code = fesql::common::kSQLError;
                                 return false;
                             }
-                            it->second->set_lat_ttl(column_index->GetLatTTL());
+                            if (column_index->GetLatTTL() == -2) {
+                                it->second->set_lat_ttl(0);
+                            } else {
+                                it->second->set_lat_ttl(column_index->GetLatTTL());
+                            }
                         }
                     }
                 } else {
