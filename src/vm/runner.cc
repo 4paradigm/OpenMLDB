@@ -1555,7 +1555,7 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(RunnerContext& ctx) {
         LOG(WARNING) << "tablet is null";
         return std::shared_ptr<DataHandler>();
     }
-    return tablet->SubQuery(task_id, sql, ctx.request());
+    return tablet->SubQuery(task_id, db, sql, ctx.request());
 }
 
 std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {
