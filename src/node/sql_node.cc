@@ -285,6 +285,10 @@ bool ConstNode::Equals(const ExprNode *node) const {
            GetExprString() == that->GetExprString() && ExprNode::Equals(node);
 }
 
+ConstNode *ConstNode::CastFrom(ExprNode *node) {
+    return dynamic_cast<ConstNode *>(node);
+}
+
 void LimitNode::Print(std::ostream &output, const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
@@ -330,7 +334,7 @@ void ColumnRefNode::Print(std::ostream &output,
 }
 
 ColumnRefNode *ColumnRefNode::CastFrom(ExprNode *node) {
-    return reinterpret_cast<ColumnRefNode *>(node);
+    return dynamic_cast<ColumnRefNode *>(node);
 }
 
 const std::string ColumnRefNode::GenerateExpressionName() const {

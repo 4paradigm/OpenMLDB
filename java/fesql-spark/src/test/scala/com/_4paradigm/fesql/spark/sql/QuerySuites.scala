@@ -19,6 +19,7 @@ class QuerySuites extends SQLBaseSuite {
   testCases("cases/integration/v1/test_feature_zero_function.yaml")
   testCases("cases/integration/v1/test_fz_sql.yaml")
   testCases("cases/query/fz_sql.yaml")
+  testCases("cases/integration/v1/test_where.yaml")
 
   // TODO: fix if java cases support not inputs
   //testCases("cases/query/const_query.yaml")
