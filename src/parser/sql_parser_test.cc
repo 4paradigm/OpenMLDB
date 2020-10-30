@@ -145,7 +145,8 @@ TEST_P(SqlParserTest, Parser_Select_Expr_List) {
 }
 
 TEST_F(SqlParserTest, ConstExprTest) {
-    std::string sqlstr = "select col1, 1, 1l, 1.0f, 1.0, \"abc\" from t1;";
+    std::string sqlstr =
+        "select col1, 1, 1l, 1.0f, 1.0, \"abc\", _c1, __c2 from t1;";
     NodePointVector trees;
     base::Status status;
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
@@ -215,6 +216,18 @@ TEST_F(SqlParserTest, ConstExprTest) {
                               dynamic_cast<node::ResTarget *>(*iter)->GetVal())
                               ->GetStr();
         ASSERT_EQ("abc", std::string(str));
+    }
+    iter++;
+    {
+        ASSERT_EQ("_c1", dynamic_cast<node::ColumnRefNode *>(
+                             dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+                             ->GetColumnName());
+    }
+    iter++;
+    {
+        ASSERT_EQ("__c2", dynamic_cast<node::ColumnRefNode *>(
+                              dynamic_cast<node::ResTarget *>(*iter)->GetVal())
+                              ->GetColumnName());
     }
     iter++;
     ASSERT_TRUE(iter == iter_end);
@@ -549,7 +562,95 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ("column2", index_node->GetTs());
     ASSERT_EQ("column5", index_node->GetVersion());
     ASSERT_EQ(3, index_node->GetVersionCount());
-    ASSERT_EQ(60 * 86400000L, index_node->GetTTL());
+    ASSERT_EQ(60 * 86400000L, index_node->GetAbsTTL());
+}
+
+void CheckTTL(FeSQLParser *parser, NodeManager *manager,
+        const std::string& sql, int expect) {
+    NodePointVector trees;
+    base::Status status;
+    int ret = parser->parse(sql.c_str(), trees, manager, status);
+
+    ASSERT_EQ(expect, ret);
+    if (expect == 1) {
+        return;
+    }
+    ASSERT_EQ(1u, trees.size());
+    std::cout << *(trees.front()) << std::endl;
+
+    ASSERT_EQ(node::kCreateStmt, trees.front()->GetType());
+    node::CreateStmt *createStmt = (node::CreateStmt *)trees.front();
+
+    ASSERT_EQ("test", createStmt->GetTableName());
+    ASSERT_EQ(true, createStmt->GetOpIfNotExist());
+
+    ASSERT_EQ(6u, createStmt->GetColumnDefList().size());
+
+    ASSERT_EQ(node::kColumnIndex,
+            (createStmt->GetColumnDefList()[5])->GetType());
+    node::ColumnIndexNode *index_node =
+        (node::ColumnIndexNode *)(createStmt->GetColumnDefList()[5]);
+    std::vector<std::string> key;
+    key.push_back("column4");
+    key.push_back("column3");
+    ASSERT_EQ(key, index_node->GetKey());
+
+    ASSERT_EQ("column2", index_node->GetTs());
+    ASSERT_EQ("column5", index_node->GetVersion());
+    ASSERT_EQ(3, index_node->GetVersionCount());
+    ASSERT_EQ(60 * 86400000L, index_node->GetAbsTTL());
+    ASSERT_EQ(100, index_node->GetLatTTL());
+}
+
+TEST_F(SqlParserTest, ParserMultiTTlType) {
+    std::string sql_1 =
+        "create table IF NOT EXISTS test(\n"
+        "    column1 int NOT NULL,\n"
+        "    column2 timestamp NOT NULL,\n"
+        "    column3 int NOT NULL,\n"
+        "    column4 string NOT NULL,\n"
+        "    column5 int,\n"
+        "    index(key=(column4, column3), version=(column5, 3), "
+        "ts=column2, "
+        "ttl=(60d,100), ttl_type=absorlat)\n"
+        ");";
+    CheckTTL(parser_, manager_, sql_1, 0);
+    std::string sql_2 =
+        "create table IF NOT EXISTS test(\n"
+        "    column1 int NOT NULL,\n"
+        "    column2 timestamp NOT NULL,\n"
+        "    column3 int NOT NULL,\n"
+        "    column4 string NOT NULL,\n"
+        "    column5 int,\n"
+        "    index(key=(column4, column3), version=(column5, 3), "
+        "ts=column2, "
+        "ttl=(60d,100), ttl_type=absandlat)\n"
+        ");";
+    CheckTTL(parser_, manager_, sql_2, 0);
+    std::string sql_3 =
+        "create table IF NOT EXISTS test(\n"
+        "    column1 int NOT NULL,\n"
+        "    column2 timestamp NOT NULL,\n"
+        "    column3 int NOT NULL,\n"
+        "    column4 string NOT NULL,\n"
+        "    column5 int,\n"
+        "    index(key=(column4, column3), version=(column5, 3), "
+        "ts=column2, "
+        "ttl=(60,100), ttl_type=absandlat)\n"
+        ");";
+    CheckTTL(parser_, manager_, sql_3, 1);
+    std::string sql_4 =
+        "create table IF NOT EXISTS test(\n"
+        "    column1 int NOT NULL,\n"
+        "    column2 timestamp NOT NULL,\n"
+        "    column3 int NOT NULL,\n"
+        "    column4 string NOT NULL,\n"
+        "    column5 int,\n"
+        "    index(key=(column4, column3), version=(column5, 3), "
+        "ts=column2, "
+        "ttl=(60,100d), ttl_type=absandlat)\n"
+        ");";
+    CheckTTL(parser_, manager_, sql_4, 1);
 }
 
 class SqlParserErrorTest : public ::testing::TestWithParam<
@@ -564,7 +665,6 @@ class SqlParserErrorTest : public ::testing::TestWithParam<
         delete parser_;
         delete manager_;
     }
-
  protected:
     NodeManager *manager_;
     FeSQLParser *parser_;

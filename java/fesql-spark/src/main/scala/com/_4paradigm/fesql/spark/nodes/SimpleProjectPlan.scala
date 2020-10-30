@@ -4,7 +4,6 @@ import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.utils.SparkColumnUtil
 import com._4paradigm.fesql.vm.{PhysicalSimpleProjectNode, SourceType}
 import org.slf4j.LoggerFactory
-import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, TimestampType}
 import com._4paradigm.fesql.node.{DataType => FesqlDataType}
 import org.apache.spark.sql.functions.to_date
@@ -48,7 +47,7 @@ object SimpleProjectPlan {
         case SourceType.kSourceColumn => {
           // Resolved the column index to get column and rename
           val colIndex = SparkColumnUtil.resolveColumnIndex(columnSource.schema_idx(), columnSource.column_idx(), node.GetProducer(0))
-          var sparkCol = SparkColumnUtil.getCol(inputDf, colIndex)
+          var sparkCol = SparkColumnUtil.getColumnFromIndex(inputDf, colIndex)
           var sparkColType = inputDfTypes(colIndex).dataType
 
           val castTypes = columnSource.cast_types()

@@ -106,3 +106,23 @@ cases:
                 FROM trans
                 WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
         end;
+  - id: 11
+    desc: Create with ttl_type absorlat
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=column1, ts=column2, ttl=(10d,100), ttl_type=absorlat));
+  - id: 12
+    desc: Create with ttl_type absandlat
+    sql: |
+      create table test(
+          column1 int NOT NULL,
+          column2 timestamp NOT NULL,
+          column3 int NOT NULL,
+          column4 string NOT NULL,
+          column5 int NOT NULL,
+          index(key=column1, ts=column2, ttl=(10d,100), ttl_type=absandlat));
