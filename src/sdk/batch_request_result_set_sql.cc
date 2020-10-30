@@ -163,7 +163,7 @@ bool SQLBatchRequestResultSet::GetString(uint32_t index, std::string* str) {
     }
     size_t mapped_index = column_remap_[index];
     butil::IOBuf tmp;
-    int32_t ret;
+    int32_t ret = -1;
     if (IsCommonColumnIdx(index)) {
         ret = common_row_view_->GetString(mapped_index, &tmp);
     } else {

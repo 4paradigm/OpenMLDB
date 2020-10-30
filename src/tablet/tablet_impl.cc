@@ -2018,18 +2018,19 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
         response->set_code(::rtidb::base::kSQLCompileError);
         return;
     }
+    size_t input_row_num = request->non_common_rows().size();
     size_t common_column_num = compile_info->get_sql_context().common_column_indices.size();
-    std::vector<::fesql::codec::Row> input_rows;
+    std::vector<::fesql::codec::Row> input_rows(input_row_num);
     if (common_column_num > 0 &&
         common_column_num < static_cast<size_t>(session.GetRequestSchema().size())) {
         ::fesql::codec::Row common_row(request->common_row());
-        for (auto i = 0; i < request->non_common_rows().size(); ++i) {
-            input_rows.emplace_back(::fesql::codec::Row(
-                1, common_row, 1, ::fesql::codec::Row(request->non_common_rows().Get(i))));
+        for (size_t i = 0; i < input_row_num; ++i) {
+            input_rows[i] = ::fesql::codec::Row(
+                1, common_row, 1, ::fesql::codec::Row(request->non_common_rows().Get(i)));
         }
     } else {
-        for (auto i = 0; i < request->non_common_rows().size(); ++i) {
-            input_rows.emplace_back(::fesql::codec::Row(request->non_common_rows().Get(i)));
+        for (size_t i = 0; i < input_row_num; ++i) {
+            input_rows[i] = ::fesql::codec::Row(request->non_common_rows().Get(i));
         }
     }
 
@@ -2049,9 +2050,9 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
     // fill output data
     for (auto& output_row : output_rows) {
         if (output_row.GetRowPtrCnt() != 1) {
-            response->set_msg(status.msg);
+            response->set_msg("illegal row ptrs: expect 1");
             response->set_code(::rtidb::base::kSQLRunError);
-            DLOG(WARNING) << "illegal row ptrs: expect 1";
+            LOG(WARNING) << "illegal row ptrs: expect 1";
             return;
         }
         buf.append(output_row.buf(0), output_row.size(0));
