@@ -3,8 +3,9 @@ package com._4paradigm.fesql.spark.nodes
 import com._4paradigm.fesql.`type`.TypeOuterClass.ColumnDef
 import com._4paradigm.fesql.codec.RowView
 import com._4paradigm.fesql.common.{FesqlException, JITManager, SerializableByteBuffer}
-import com._4paradigm.fesql.node.JoinType
+import com._4paradigm.fesql.node.{ExprListNode, JoinType}
 import com._4paradigm.fesql.spark._
+import com._4paradigm.fesql.spark.utils.SparkColumnUtil.getColumnFromIndex
 import com._4paradigm.fesql.spark.utils.{FesqlUtil, SparkColumnUtil, SparkRowUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalJoinNode}
 import org.apache.spark.broadcast.Broadcast
@@ -39,42 +40,30 @@ object JoinPlan {
       }
     }
 
+    val indexColIdx = if (joinType == JoinType.kJoinTypeLast) {
+      leftDf.schema.size - 1
+    } else {
+      leftDf.schema.size
+    }
+
     val rightDf = right.getDf(sess)
 
     val inputSchemaSlices = FesqlUtil.getOutputSchemaSlices(node)
 
-    // get left index
-    val leftKeys = node.join().left_key().keys()
-    val leftKeysCnt = if (null == leftKeys) 0 else leftKeys.GetChildNum()
-    val leftKeyCols = mutable.ArrayBuffer[Column]()
-    if (null != leftKeys) {
-      for (i <- 0 until leftKeysCnt) {
-        val expr = leftKeys.GetChild(i)
-        val column = SparkColumnUtil.resolveLeftColumn(expr, node, leftDf, ctx)
-        leftKeyCols += column
-      }
-    }
-
-    // get right index
-    val rightKeys = node.join().right_key().keys()
-    val rightKeysCnt = if (null == rightKeys) 0 else rightKeys.GetChildNum
-    val rightKeyCols = mutable.ArrayBuffer[Column]()
-    for (i <- 0 until rightKeysCnt) {
-      val expr = rightKeys.GetChild(i)
-      val column = SparkColumnUtil.resolveRightColumn(expr, node, rightDf, ctx)
-      rightKeyCols += column
-    }
-
     // build join condition
     val joinConditions = mutable.ArrayBuffer[Column]()
-    if (leftKeyCols.lengthCompare(rightKeyCols.length) != 0) {
-      throw new FesqlException("Illegal join key conditions")
-    }
 
-    // == key conditions
-    for ((leftCol, rightCol) <- leftKeyCols.zip(rightKeyCols)) {
-      // TODO: handle null value
-      joinConditions += leftCol === rightCol
+    // Handle equal condiction
+    if (node.join().left_key() != null && node.join().left_key().getKeys_ != null) {
+      val leftKeys: ExprListNode = node.join().left_key().getKeys_
+      val rightKeys: ExprListNode = node.join().right_key().getKeys_
+
+      val keyNum = leftKeys.GetChildNum
+      for (i <- 0 until keyNum) {
+        val leftColumn = SparkColumnUtil.resolveExprNodeToColumn(leftKeys.GetChild(i), node.GetProducer(0), leftDf)
+        val rightColumn = SparkColumnUtil.resolveExprNodeToColumn(rightKeys.GetChild(i), node.GetProducer(1), rightDf)
+        joinConditions += (leftColumn === rightColumn)
+      }
     }
 
     val filter = node.join().condition()
@@ -91,10 +80,18 @@ object JoinPlan {
       )
       sess.udf.register(regName, conditionUDF)
 
-      val allColWrap = functions.struct(
-          leftDf.columns.filter(_ != indexName).map(leftDf.col) ++
-          rightDf.columns.map(rightDf.col)
-      : _*)
+      // Handle the duplicated column names to get Spark Column by index
+      val allColumns = new mutable.ArrayBuffer[Column]()
+      for (i <- 0 until leftDf.schema.size) {
+        if (i != indexColIdx) {
+          allColumns += getColumnFromIndex(leftDf, i)
+        }
+      }
+      for (i <- 0 until rightDf.schema.size) {
+        allColumns += getColumnFromIndex(rightDf, i)
+      }
+
+      val allColWrap = functions.struct(allColumns:_*)
       joinConditions += functions.callUDF(regName, allColWrap)
     }
 
@@ -105,7 +102,6 @@ object JoinPlan {
     val joined = leftDf.join(rightDf, joinConditions.reduce(_ && _),  "left")
 
     val result = if (joinType == JoinType.kJoinTypeLast) {
-      val indexColIdx = leftDf.schema.size - 1
 
       // TODO: Support multiple order by columns
 

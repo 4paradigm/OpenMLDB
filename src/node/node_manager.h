@@ -138,7 +138,7 @@ class NodeManager {
     SQLNode *MakeKeyNode(const std::string &key);
     SQLNode *MakeIndexKeyNode(const std::string &key);
     SQLNode *MakeIndexTsNode(const std::string &ts);
-    SQLNode *MakeIndexTTLNode(ExprNode *ttl_expr);
+    SQLNode *MakeIndexTTLNode(ExprListNode *ttl_expr);
     SQLNode *MakeIndexTTLTypeNode(const std::string &ttl_type);
     SQLNode *MakeIndexVersionNode(const std::string &version);
     SQLNode *MakeIndexVersionNode(const std::string &version, int count);
@@ -182,8 +182,10 @@ class NodeManager {
     // Make Fn Node
     ExprNode *MakeConstNode(int16_t value);
     ExprNode *MakeConstNode(int value);
+    ExprNode *MakeConstNode(int value, TTLType ttl_type);
     ExprNode *MakeConstNode(int64_t value, DataType unit);
     ExprNode *MakeConstNode(int64_t value);
+    ExprNode *MakeConstNode(int64_t value, TTLType ttl_type);
     ExprNode *MakeConstNode(float value);
     ExprNode *MakeConstNode(double value);
     ExprNode *MakeConstNode(const std::string &value);
@@ -242,6 +244,7 @@ class NodeManager {
     SQLNodeList *MakeNodeList();
 
     ExprListNode *MakeExprList(ExprNode *node_ptr);
+    ExprListNode *MakeExprList(ExprNode *node_ptr_1, ExprNode *node_ptr_2);
     ExprListNode *MakeExprList();
 
     DatasetNode *MakeDataset(const std::string &table);

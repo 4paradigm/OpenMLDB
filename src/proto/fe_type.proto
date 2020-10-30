@@ -19,7 +19,9 @@ enum Type {
 enum TTLType {
     kTTLTimeLive = 1;
     kTTLCountLive = 2;
-    kTTLNone = 3;
+    kTTLTimeLiveAndCountLive = 3;
+    kTTLTimeLiveOrCountLive = 4;
+    kTTLNone = 5;
 }
 
 message ColumnDef {

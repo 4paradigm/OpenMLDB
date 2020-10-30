@@ -24,7 +24,7 @@ object GroupByAggregationPlan {
       val expr = groupByExprs.GetChild(i)
       val colIdx = SparkColumnUtil.resolveColumnIndex(expr, node.GetProducer(0))
       groupIdxs += colIdx
-      groupByCols += SparkColumnUtil.getCol(inputDf, colIdx)
+      groupByCols += SparkColumnUtil.getColumnFromIndex(inputDf, colIdx)
     }
 
     // Sort by partition keys

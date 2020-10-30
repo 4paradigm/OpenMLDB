@@ -241,6 +241,11 @@ enum PlanType {
     kUnknowPlan = 100,
 };
 
+enum TTLType {
+    kAbsolute,
+    kLatest,
+};
+
 // batch plan node type
 enum BatchPlanNodeType { kBatchDataset, kBatchPartition, kBatchMap };
 
