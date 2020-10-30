@@ -389,6 +389,7 @@ typedef void* yyscan_t;
 %token YEAR
 %token ZEROFILL
 %token REPLICANUM
+%token PARTITIONNUM
 %token DISTRIBUTION
 %token LEADER
 %token FOLLOWER
@@ -460,7 +461,7 @@ typedef void* yyscan_t;
                join_outer
                endpoint
 
-%type <intval> opt_window_exclusion_clause replica_num
+%type <intval> opt_window_exclusion_clause replica_num partition_num
 
 /* create procedure */
 %type <node> create_sp_stmt input_parameter
@@ -1135,6 +1136,10 @@ option:     REPLICANUM EQUALS replica_num
             {
                 $$ = node_manager->MakeReplicaNumNode($3);
             }
+            | PARTITIONNUM EQUALS partition_num
+            {
+                $$ = node_manager->MakePartitionNumNode($3);
+            }
             | DISTRIBUTION '(' distribution_list ')'
             {
                 $$ = node_manager->MakeDistributionsNode($3);
@@ -1146,6 +1151,12 @@ endpoint:
   ;
 
 replica_num:   INTNUM
+            {
+                $$ = $1;
+            }
+            ;
+
+partition_num:   INTNUM
             {
                 $$ = $1;
             }

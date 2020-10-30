@@ -2342,6 +2342,23 @@ class ReplicaNumNode : public SQLNode {
     int replica_num_;
 };
 
+class PartitionNumNode : public SQLNode {
+ public:
+    PartitionNumNode() : SQLNode(kPartitionNum, 0, 0), partition_num_(1) {}
+
+    explicit PartitionNumNode(int num)
+        : SQLNode(kPartitionNum, 0, 0), partition_num_(num) {}
+
+    ~PartitionNumNode() {}
+
+    int GetPartitionNum() const { return partition_num_; }
+
+    void Print(std::ostream &output, const std::string &org_tab) const;
+
+ private:
+    int partition_num_;
+};
+
 class DistributionsNode : public SQLNode {
  public:
     explicit DistributionsNode(SQLNodeList *distribution_list)

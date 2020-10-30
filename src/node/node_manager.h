@@ -330,6 +330,8 @@ class NodeManager {
 
     SQLNode *MakeReplicaNumNode(int num);
 
+    SQLNode *MakePartitionNumNode(int num);
+
     SQLNode *MakeDistributionsNode(SQLNodeList *distribution_list);
 
     SQLNode *MakeCreateProcedureNode(const std::string &sp_name,
