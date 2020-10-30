@@ -128,7 +128,7 @@ cases:
       columns: ["id bigint","r1 string","r2 string","r3 string","r4 string","r5 string","r6 string","r7 string"]
       rows:
         - [1, "1,4,NULL", "1,NULL,NULL", "1:2 1:3,NULL,NULL", "1.100000,NULL,NULL", "2.100000,NULL,NULL", "1,2,NULL", "1 2"]
-        - [2, "4,1,8", "1,NULL,NULL ", "1:2 1:3,1:7 1:3,NULL", "1.100000,1.400000,NULL", "2.100000,NULL,NULL", "1,2,NULL","1 1 2"]
+        - [2, "4,1,8", "1,NULL,NULL", "1:2 1:3,1:7 1:3,NULL", "1.100000,1.400000,NULL", "2.100000,NULL,NULL", "1,2,NULL","1 1 2"]
         - [3, "4,1,8", "1,2,NULL","1:2 1:3,1:7 1:3,NULL", "1.100000,1.300000,1.400000", "2.100000,2.300000,NULL", "1,2,3","1 3 1 1 2"]
         - [4, "", "NULL,NULL,NULL", "1:8 1:3,NULL,NULL", "NULL,NULL,NULL", "NULL,NULL,NULL", "3,NULL,NULL","3"]
         - [5, "1,NULL,NULL", "5,NULL,NULL", "1:8 1:3,NULL,NULL", "1.000000,NULL,NULL", "1.500000,NULL,NULL", "3,2,NULL","2 3 3"]
