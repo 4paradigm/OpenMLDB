@@ -15,6 +15,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include "base/status.h"
 #include "node/node_manager.h"
@@ -80,6 +81,8 @@ class NsClient {
         const std::string& name, const std::string& db, bool show_all,
         std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT
         std::string& msg);                                    // NOLINT
+
+    bool ShowCatalogVersion(std::map<std::string, uint64_t>* version_map, std::string* msg);
 
     bool ShowAllTable(
         std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT

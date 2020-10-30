@@ -741,11 +741,11 @@ public class FesqlUtil {
             }
             int columnType = metaData.getColumnType(i + 1);
             if (columnType == Types.BOOLEAN) {
-                requestPs.setBoolean(i + 1, (Boolean) obj);
+                requestPs.setBoolean(i + 1, Boolean.parseBoolean(obj.toString()));
             } else if (columnType == Types.SMALLINT) {
-                requestPs.setShort(i + 1, (Short) obj);
+                requestPs.setShort(i + 1, Short.parseShort(obj.toString()));
             } else if (columnType == Types.INTEGER) {
-                requestPs.setInt(i + 1, (Integer) obj);
+                requestPs.setInt(i + 1, Integer.parseInt(obj.toString()));
             } else if (columnType == Types.BIGINT) {
                 requestPs.setLong(i + 1, Long.parseLong(obj.toString()));
             } else if (columnType == Types.FLOAT) {

@@ -8582,18 +8582,12 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::rtidb::api::TaskInfo> ta
 }
 
 void NameServerImpl::NotifyTableChanged() {
-    std::string value;
-    bool ok = zk_client_->GetNodeValue(zk_table_changed_notify_node_, value);
+    bool ok = zk_client_->Increment(zk_table_changed_notify_node_);
     if (!ok) {
-        PDLOG(WARNING, "get zk table changed notify node value failed");
+        PDLOG(WARNING, "increment failed. node is %s", zk_table_changed_notify_node_.c_str());
         return;
     }
-    uint64_t counter = std::stoull(value) + 1;
-    ok = zk_client_->SetNodeValue(zk_table_changed_notify_node_, std::to_string(counter));
-    if (!ok) {
-        PDLOG(WARNING, "incr zk table changed notify node value failed");
-    }
-    PDLOG(INFO, "notify table changed ok, update counter from %s to %lu", value.c_str(), counter);
+    PDLOG(INFO, "notify table changed ok");
 }
 
 bool NameServerImpl::GetTableInfo(const std::string& table_name, const std::string& db_name,
@@ -8857,6 +8851,42 @@ void NameServerImpl::AddReplicaClusterByNs(RpcController* controller,
     response->set_code(code);
     response->set_msg(rpc_msg);
 }
+
+void NameServerImpl::ShowCatalog(RpcController* controller,
+                                const ShowCatalogRequest* request,
+                                ShowCatalogResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (!running_.load(std::memory_order_acquire)) {
+        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
+        response->set_msg("cur nameserver is not leader");
+        PDLOG(WARNING, "cur nameserver is not leader");
+        return;
+    }
+    std::map<std::string, std::shared_ptr<TabletInfo>> tablet_map;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (const auto& kv : tablets_) {
+            if (kv.second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
+                tablet_map.emplace(kv.first, kv.second);
+            }
+        }
+    }
+    for (const auto& kv : tablet_map) {
+        uint64_t version = 1;
+        if (!kv.second->client_->GetCatalog(&version)) {
+            response->set_code(::rtidb::base::ReturnCode::kRequestTabletFailed);
+            response->set_msg("request tablet failed");
+            PDLOG(WARNING, "request tablet failed");
+            return;
+        }
+        auto catalog_info = response->add_catalog();
+        catalog_info->set_endpoint(kv.first);
+        catalog_info->set_version(version);
+    }
+    response->set_code(::rtidb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
 void NameServerImpl::ShowReplicaCluster(RpcController* controller, const GeneralRequest* request,
                                         ShowReplicaClusterResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
