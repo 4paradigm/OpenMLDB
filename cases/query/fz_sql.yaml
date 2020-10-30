@@ -84,6 +84,7 @@ cases:
   - id: 2
     desc: window set INSTANCE_NOT_IN_WINDOW false
     db: db1
+    mode: offline-unsupport
     sql: |
       select
           c1,
