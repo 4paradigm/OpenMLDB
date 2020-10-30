@@ -19,6 +19,7 @@ class FesqlSession {
   private var sparkMaster: String = null
 
   private val registeredTables = mutable.HashMap[String, DataFrame]()
+  private val fesqlTimeZone = "Asia/Shanghai";
 
   /**
    * Construct with Spark session.
@@ -28,7 +29,7 @@ class FesqlSession {
   def this(sparkSession: SparkSession) = {
     this()
     this.sparkSession = sparkSession
-    this.sparkSession.conf.set("spark.sql.session.timeZone", "Asia/Shanghai")
+    this.sparkSession.conf.set("spark.sql.session.timeZone", fesqlTimeZone)
   }
 
   /**
@@ -61,7 +62,7 @@ class FesqlSession {
 
         // TODO: Need to set for official Spark 2.3.0 jars
         logger.debug("Set spark.hadoop.yarn.timeline-service.enabled as false")
-        builder.config("spark.hadoop.yarn.timeline-service.enabled", value=false)
+        builder.config("spark.hadoop.yarn.timeline-service.enabled", value = false)
 
         this.sparkSession = builder.appName("FesqlApp")
           .master(sparkMaster)
