@@ -149,6 +149,20 @@ RawPtrHandle CoreAPI::AppendRow(fesql::codec::Row* row, size_t bytes) {
     return buf;
 }
 
+std::shared_ptr<DataHandler> RunnerContext::GetBatchCache(int64_t id) const {
+    auto iter = batch_cache_.find(id);
+    if (iter == batch_cache_.end()) {
+        return nullptr;
+    } else {
+        return iter->second;
+    }
+}
+
+void RunnerContext::SetBatchCache(int64_t id,
+                                  std::shared_ptr<DataHandler> data) {
+    batch_cache_[id] = data;
+}
+
 std::shared_ptr<DataHandler> RunnerContext::GetCache(int64_t id) const {
     auto iter = cache_.find(id);
     if (iter == cache_.end()) {

@@ -50,6 +50,7 @@ class EngineOptions {
           compile_only_(false),
           plan_only_(false),
           performance_sensitive_(true),
+          cluster_optimized_(false),
           max_sql_cache_size_(50) {}
     inline void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
     inline bool is_keep_ir() const { return this->keep_ir_; }
@@ -65,6 +66,8 @@ class EngineOptions {
         performance_sensitive_ = flag;
     }
 
+    inline bool is_cluster_optimzied() const { return cluster_optimized_; }
+    inline void set_cluster_optimized(bool flag) { cluster_optimized_ = flag; }
     inline void set_max_sql_cache_size(uint32_t size) {
         max_sql_cache_size_ = size;
     }
@@ -74,6 +77,7 @@ class EngineOptions {
     bool compile_only_;
     bool plan_only_;
     bool performance_sensitive_;
+    bool cluster_optimized_;
     uint32_t max_sql_cache_size_;
 };
 
@@ -111,7 +115,9 @@ class RunSession {
     }
 
     virtual fesql::vm::Runner* GetMainTask() {
-        return compile_info_->get_sql_context().cluster_job.GetTask(0);
+        return compile_info_->get_sql_context()
+            .cluster_job.GetMainTask()
+            .GetRoot();
     }
     virtual fesql::vm::ClusterJob& GetClusterJob() {
         return compile_info_->get_sql_context().cluster_job;

@@ -43,6 +43,7 @@ struct SQLContext {
     // mode: batch|request|batch request
     EngineMode engine_mode;
     bool is_performance_sensitive;
+    bool is_cluster_optimized;
     // the sql content
     std::string sql;
     // the database
@@ -91,12 +92,8 @@ class SQLCompiler {
     bool Compile(SQLContext& ctx,                 // NOLINT
                  Status& status);                 // NOLINT
     bool Parse(SQLContext& ctx, Status& status);  // NOLINT
-    bool BuildRunner(node::NodeManager* nm, PhysicalOpNode* physical_plan,
-                     Runner** output,
-                     Status& status);  // NOLINT
-
-    bool BuildClusterJob(SQLContext& ctx,  // NOLINT
-                         Status& status);  // NOLINT
+    bool BuildClusterJob(SQLContext& ctx,         // NOLINT
+                         Status& status);         // NOLINT
 
  private:
     void KeepIR(SQLContext& ctx, llvm::Module* m);  // NOLINT

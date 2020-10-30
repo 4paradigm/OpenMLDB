@@ -1,5 +1,4 @@
 db: test_zw
-debugs: []
 cases:
   - id: 1
     desc: 算术表达式

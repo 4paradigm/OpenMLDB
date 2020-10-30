@@ -302,7 +302,8 @@ const std::string GenerateTableName(int32_t id) {
 }
 
 void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
-                 bool check_compatible, int* return_status) {
+                 const EngineOptions& engine_options, bool check_compatible,
+                 int* return_status) {
     *return_status = ENGINE_TEST_RET_INVALID_CASE;
     int32_t input_cnt = sql_case.CountInputs();
 
@@ -331,7 +332,7 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
     std::cout << sql_str << std::endl;
     base::Status get_status;
 
-    Engine engine(catalog);
+    Engine engine(catalog, engine_options);
     std::unique_ptr<RunSession> session;
     if (engine_mode == kBatchMode) {
         session = std::unique_ptr<RunSession>(new BatchRunSession);
@@ -393,7 +394,7 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
     }
 
     std::ostringstream runner_oss;
-    session->GetMainTask()->Print(runner_oss, "");
+    session->GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
 
     // Check Output Data
@@ -425,7 +426,8 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
         ASSERT_TRUE(request_table->Init());
         auto request_session =
             dynamic_cast<BatchRequestRunSession*>(session.get());
-        RunnerContext runner_context(false);
+
+        RunnerContext runner_context(&request_session->GetClusterJob(), false);
         for (auto in_row : request_data) {
             Row out_row;
             int run_ret =
@@ -437,6 +439,7 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
             ASSERT_TRUE(request_table->Put(
                 reinterpret_cast<const char*>(in_row.buf()), in_row.size()));
             output.push_back(out_row);
+            runner_context.ClearCache();
         }
     }
     auto sorted_output = SortRows(schema, output, sql_case.expect().order_);
@@ -548,19 +551,22 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
     }
 }
 
-void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
+void RequestModeCheck(const EngineOptions& options,
+                      SQLCase& sql_case) {  // NOLINT
     int return_status;
-    EngineCheck(sql_case, kRequestMode, false, &return_status);
+    EngineCheck(sql_case, kRequestMode, options, false, &return_status);
 }
 
-void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
+void BatchModeCheck(const EngineOptions& options,
+                    SQLCase& sql_case) {  // NOLINT
     int return_status;
-    EngineCheck(sql_case, kBatchMode, true, &return_status);
+    EngineCheck(sql_case, kBatchMode, options, true, &return_status);
 }
 
-void BatchRequestModeCheck(SQLCase& sql_case) {  // NOLINT
+void BatchRequestModeCheck(const EngineOptions& options,
+                           SQLCase& sql_case) {  // NOLINT
     int return_status;
-    EngineCheck(sql_case, kBatchRequestMode, false, &return_status);
+    EngineCheck(sql_case, kBatchRequestMode, options, false, &return_status);
 }
 
 }  // namespace vm

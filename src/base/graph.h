@@ -13,11 +13,13 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#define BOOST_ALLOW_DEPRECATED_HEADERS
 #include "boost/graph/adjacency_list.hpp"
 #include "boost/graph/depth_first_search.hpp"
 #include "boost/graph/dijkstra_shortest_paths.hpp"
 #include "boost/graph/graph_traits.hpp"
 #include "glog/logging.h"
+#undef BOOST_ALLOW_DEPRECATED_HEADERS
 
 namespace fesql {
 namespace base {

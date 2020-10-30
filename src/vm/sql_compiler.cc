@@ -397,9 +397,9 @@ Status SQLCompiler::BuildPhysicalPlan(
 
     switch (ctx->engine_mode) {
         case kBatchMode: {
-            vm::BatchModeTransformer transformer(&ctx->nm, ctx->db, cl_,
-                                                 llvm_module, library,
-                                                 ctx->is_performance_sensitive);
+            vm::BatchModeTransformer transformer(
+                &ctx->nm, ctx->db, cl_, llvm_module, library,
+                ctx->is_performance_sensitive, ctx->is_cluster_optimized);
             transformer.AddDefaultPasses();
             CHECK_TRUE(
                 transformer.TransformPhysicalPlan(plan_list, output, status),
@@ -412,7 +412,7 @@ Status SQLCompiler::BuildPhysicalPlan(
         case kBatchRequestMode: {
             vm::RequestModeransformer transformer(
                 &ctx->nm, ctx->db, cl_, llvm_module, library,
-                ctx->is_performance_sensitive);
+                ctx->is_performance_sensitive, ctx->is_cluster_optimized);
             transformer.AddDefaultPasses();
             CHECK_TRUE(
                 transformer.TransformPhysicalPlan(plan_list, output, status),
@@ -439,28 +439,12 @@ bool SQLCompiler::BuildClusterJob(SQLContext& ctx, Status& status) {  // NOLINT
         status.code = common::kOpGenError;
         return false;
     }
-    ctx.cluster_job.Reset();
-    Runner* task = nullptr;
-    if (!BuildRunner(&ctx.nm, ctx.physical_plan, &task, status)) {
-        status.msg = "fail to resolve cluster job";
-        ctx.cluster_job.Reset();
-        return false;
-    }
-    ctx.cluster_job.AddTask(task);
-    return true;
-}
-bool SQLCompiler::BuildRunner(node::NodeManager* nm,
-                              PhysicalOpNode* physical_plan, Runner** output,
-                              Status& status) {  // NOLINT
-    RunnerBuilder runner_builder(nm);
-    Runner* runner = runner_builder.Build(physical_plan, status);
-    if (nullptr == runner) {
-        status.msg = "fail to build runner: " + status.str();
-        status.code = common::kOpGenError;
-        return false;
-    }
-    *output = runner;
-    return true;
+    bool is_request_mode = vm::kRequestMode == ctx.engine_mode ||
+                           vm::kBatchRequestMode == ctx.engine_mode;
+    RunnerBuilder runner_builder(&ctx.nm,
+                                 ctx.is_cluster_optimized && is_request_mode);
+    ctx.cluster_job = runner_builder.BuildClusterJob(ctx.physical_plan, status);
+    return status.isOK();
 }
 
 /**

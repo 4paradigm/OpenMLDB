@@ -104,7 +104,7 @@ void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::fesql::udf::DefaultUDFLibrary::get();
     RequestModeransformer transform(&manager, "db", catalog, m.get(), lib,
-                                    false);
+                                    false, false);
 
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
@@ -154,10 +154,11 @@ INSTANTIATE_TEST_CASE_P(
     SqlSubQueryPlan, TransformRequestModeTest,
     testing::ValuesIn(InitCases("cases/plan/sub_query.yaml")));
 
-TEST_P(TransformRequestModeTest, transform_physical_plan) {
-    std::string sqlstr = GetParam().sql_str();
+void CheckTransformPhysicalPlan(const SQLCase& sql_case,
+                                bool is_cluster_optimized,
+                                node::NodeManager* nm) {
+    std::string sqlstr = sql_case.sql_str();
     LOG(INFO) << sqlstr;
-
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
     boost::to_lower(sqlstr);
     LOG(INFO) << sqlstr;
@@ -228,10 +229,10 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     ::fesql::node::PlanNodeList plan_trees;
     ::fesql::base::Status base_status;
     {
-        ::fesql::plan::SimplePlanner planner(&manager, false);
+        ::fesql::plan::SimplePlanner planner(nm, false);
         ::fesql::parser::FeSQLParser parser;
         ::fesql::node::NodePointVector parser_trees;
-        parser.parse(sqlstr, parser_trees, &manager, base_status);
+        parser.parse(sqlstr, parser_trees, nm, base_status);
         ASSERT_EQ(0, base_status.code);
         if (planner.CreatePlanTree(parser_trees, plan_trees, base_status) ==
             0) {
@@ -249,7 +250,7 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::fesql::udf::DefaultUDFLibrary::get();
-    RequestModeransformer transform(&manager, "db", catalog, m.get(), lib,
+    RequestModeransformer transform(nm, "db", catalog, m.get(), lib, false,
                                     false);
 
     PhysicalOpNode* physical_plan = nullptr;
@@ -264,6 +265,12 @@ TEST_P(TransformRequestModeTest, transform_physical_plan) {
     //    m->print(::llvm::errs(), NULL);
 }
 
+TEST_P(TransformRequestModeTest, transform_physical_plan) {
+    CheckTransformPhysicalPlan(GetParam(), false, &manager);
+}
+TEST_P(TransformRequestModeTest, cluster_transform_physical_plan) {
+    CheckTransformPhysicalPlan(GetParam(), true, &manager);
+}
 class TransformRequestModePassOptimizedTest
     : public ::testing::TestWithParam<std::pair<std::string, std::string>> {
  public:
