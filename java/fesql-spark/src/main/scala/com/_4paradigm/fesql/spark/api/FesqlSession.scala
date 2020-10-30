@@ -28,6 +28,7 @@ class FesqlSession {
   def this(sparkSession: SparkSession) = {
     this()
     this.sparkSession = sparkSession
+    this.sparkSession.conf.set("spark.sql.session.timeZone", "Asia/Shanghai")
   }
 
   /**
