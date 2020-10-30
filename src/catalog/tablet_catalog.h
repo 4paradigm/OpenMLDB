@@ -24,7 +24,6 @@
 #include <utility>
 #include <vector>
 #include "base/spinlock.h"
-#include "brpc/controller.h"
 #include "catalog/client_manager.h"
 #include "catalog/distribute_iterator.h"
 #include "client/tablet_client.h"

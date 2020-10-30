@@ -20,10 +20,12 @@
 
 #include <set>
 #include <string>
+#include <unordered_map>
 
 #include "glog/logging.h"
 #include "proto/common.pb.h"
 #include "vm/catalog.h"
+#include "proto/tablet.pb.h"
 
 namespace rtidb {
 namespace catalog {
@@ -31,6 +33,13 @@ typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
     RtiDBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>
     RtiDBIndex;
+
+
+static const std::unordered_map<::rtidb::api::TTLType, ::fesql::type::TTLType>
+    TTL_TYPE_MAP = {{::rtidb::api::kAbsoluteTime, ::fesql::type::kTTLTimeLive},
+                    {::rtidb::api::kLatestTime, ::fesql::type::kTTLCountLive},
+                    {::rtidb::api::kAbsAndLat, ::fesql::type::kTTLTimeLiveAndCountLive},
+                    {::rtidb::api::kAbsOrLat, ::fesql::type::kTTLTimeLiveOrCountLive}};
 
 class SchemaAdapter {
  public:

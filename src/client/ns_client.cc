@@ -1391,13 +1391,20 @@ bool NsClient::TransformToTableDef(
                             }
                         }
                         if (!column_index->ttl_type().empty()) {
-                            if (column_index->ttl_type() == "absolute") {
+                            std::string ttl_type = column_index->ttl_type();
+                            std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(), ::tolower);
+                            if (ttl_type == "absolute") {
                                 table->mutable_ttl_desc()->set_ttl_type(
-                                    rtidb::api::kAbsoluteTime);
-
-                            } else if (column_index->ttl_type() == "latest") {
+                                        rtidb::api::kAbsoluteTime);
+                            } else if (ttl_type == "latest") {
                                 table->mutable_ttl_desc()->set_ttl_type(
-                                    rtidb::api::kLatestTime);
+                                        rtidb::api::kLatestTime);
+                            } else if (ttl_type == "absorlat") {
+                                table->mutable_ttl_desc()->set_ttl_type(
+                                        rtidb::api::kAbsOrLat);
+                            } else if (ttl_type == "absandlat") {
+                                table->mutable_ttl_desc()->set_ttl_type(
+                                        rtidb::api::kAbsAndLat);
                             } else {
                                 status->msg = "CREATE common: ttl_type " +
                                               column_index->ttl_type() +
@@ -1406,14 +1413,48 @@ bool NsClient::TransformToTableDef(
                                 return false;
                             }
                         }
-                        if (-1 != column_index->GetTTL()) {
-                            // todo: support multi ttl
-                            if (table->ttl_desc().ttl_type() ==
-                                rtidb::api::kAbsoluteTime) {
-                                it->second->set_abs_ttl(column_index->GetTTL() /
-                                                        60000);
+                        if (table->ttl_desc().ttl_type() == rtidb::api::kAbsoluteTime) {
+                            if (column_index->GetAbsTTL() == -1 || column_index->GetLatTTL() != -2) {
+                                status->msg = "CREATE common: abs ttl format error";
+                                status->code = fesql::common::kSQLError;
+                                return false;
+                            }
+                            if (column_index->GetAbsTTL() == -2) {
+                                it->second->set_abs_ttl(0);
                             } else {
-                                it->second->set_lat_ttl(column_index->GetTTL());
+                                it->second->set_abs_ttl(column_index->GetAbsTTL() / 60000);
+                            }
+                        } else if (table->ttl_desc().ttl_type() == rtidb::api::kLatestTime) {
+                            if (column_index->GetLatTTL() == -1 || column_index->GetAbsTTL() != -2) {
+                                status->msg = "CREATE common: lat ttl format error";
+                                status->code = fesql::common::kSQLError;
+                                return false;
+                            }
+                            if (column_index->GetLatTTL() == -2) {
+                                it->second->set_lat_ttl(0);
+                            } else {
+                                it->second->set_lat_ttl(column_index->GetLatTTL());
+                            }
+                        } else {
+                            if (column_index->GetAbsTTL() == -1) {
+                                status->msg = "CREATE common: abs ttl format error";
+                                status->code = fesql::common::kSQLError;
+                                return false;
+                            }
+                            if (column_index->GetAbsTTL() == -2) {
+                                it->second->set_abs_ttl(0);
+                            } else {
+                                it->second->set_abs_ttl(column_index->GetAbsTTL() / 60000);
+                            }
+                            if (column_index->GetLatTTL() == -1) {
+                                status->msg = "CREATE common: lat ttl format error";
+                                status->code = fesql::common::kSQLError;
+                                return false;
+                            }
+                            if (column_index->GetLatTTL() == -2) {
+                                it->second->set_lat_ttl(0);
+                            } else {
+                                it->second->set_lat_ttl(column_index->GetLatTTL());
                             }
                         }
                     }

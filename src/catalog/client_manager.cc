@@ -58,6 +58,10 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
     request.set_db(db);
     request.set_is_batch(false);
     request.set_task_id(task_id);
+    if (!row.empty()) {
+        std::string* input_row = request.mutable_input_row();
+        input_row->assign(reinterpret_cast<const char*>(row.buf()), row.size());
+    }
     std::unique_ptr<brpc::Controller> cntl(new brpc::Controller);
     std::unique_ptr<::rtidb::api::QueryResponse> response(new ::rtidb::api::QueryResponse);
     if (!GetClient()->SubQuery(request, cntl.get(), response.get())) {
