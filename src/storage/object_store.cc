@@ -7,8 +7,10 @@
 
 #include <mutex>
 #include <utility>
+#include <vector>
 
 #include "codec/codec.h"
+#include "base/file_util.h"
 
 namespace rtidb {
 namespace storage {
@@ -16,8 +18,8 @@ namespace storage {
 static std::once_flag options_initialized;
 
 ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
-                         std::string db_root_path, uint32_t flush_size,
-                         int32_t flush_period)
+                         std::string db_root_path, uint32_t flush_size, int32_t flush_period,
+                         const std::string& root_path, bool recycle_bin_enabled)
     : db_(nullptr),
       tid_(table_meta.tid()),
       pid_(table_meta.pid()),
@@ -26,26 +28,35 @@ ObjectStore::ObjectStore(const ::rtidb::blobserver::TableMeta& table_meta,
       is_leader_(false),
       storage_mode_(table_meta.storage_mode()),
       id_generator_(),
-      thread_pool_(2),
       flush_size_(flush_size),
-      flush_period_(flush_period) {}
+      flush_period_(flush_period),
+      root_path_(root_path),
+      recycle_bin_enabled_(recycle_bin_enabled) {}
 
 bool ObjectStore::Init() {
     std::call_once(options_initialized, settings_init);
     char* path = const_cast<char*>(db_root_path_.data());
     time_t before_time = 0;
     db_ = hs_open(path, 1, before_time, 1);
-    if (db_ != NULL) {
-        thread_pool_.DelayTask(1000, [this] { DoFlash(); });
-        return true;
-    }
-    return false;
+    return true;
 }
 
 ObjectStore::~ObjectStore() {
-    thread_pool_.Stop(true);
     DoFlash();
     hs_close(db_);
+    std::vector<std::string> root_paths;
+    ::rtidb::base::SplitString(root_path_, ",", root_paths);
+    for (const auto& path : root_paths) {
+        std::ostringstream oss;
+        oss << path << "/" << tid_ << "_" << pid_;
+        std::ostringstream dss;
+        dss << path << "/recycle/" << tid_ << "_" << pid_ << "_" << rtidb::base::GetNowTime();
+        if (recycle_bin_enabled_) {
+            rtidb::base::Rename(oss.str(), dss.str());
+        } else {
+            rtidb::base::RemoveDirRecursive(oss.str());
+        }
+    }
 }
 
 bool ObjectStore::Store(int64_t key, const std::string& value) {
@@ -79,7 +90,6 @@ bool ObjectStore::Delete(int64_t key) {
 
 void ObjectStore::DoFlash() {
     hs_flush(db_, flush_size_, flush_period_);
-    thread_pool_.DelayTask(1000, [this] { DoFlash(); });
 }
 
 ::rtidb::common::StorageMode ObjectStore::GetStorageMode() const {
