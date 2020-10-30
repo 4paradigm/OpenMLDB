@@ -134,7 +134,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto runner =
                         new AggRunner(id_++, node->GetOutputNameSchemaList(),
                                       op->GetLimitCnt(), op->project_);
-                    if (kRunnerRequestRunProxy == input->type_) {
+                    if (kRunnerRequestRunProxy == input->type_ &&
+                        !input->need_cache()) {
                         cluster_job_.AddRunnerToTask(
                             nm_->RegisterNode(runner),
                             dynamic_cast<ProxyRequestRunner*>(input)

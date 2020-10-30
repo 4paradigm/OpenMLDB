@@ -1002,6 +1002,7 @@ class RunnerContext {
     fesql::vm::ClusterJob* cluster_job_;
     fesql::codec::Row request_;
     const bool is_debug_;
+    // TODO(chenjing): optimize
     std::map<int64_t, std::shared_ptr<DataHandler>> batch_cache_;
     std::map<int64_t, std::shared_ptr<DataHandler>> cache_;
 };

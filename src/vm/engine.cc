@@ -370,6 +370,7 @@ int32_t BatchRequestRunSession::Run(const uint32_t id,
             return -1;
         }
     }
+    ctx.ClearCache();
     return 0;
 }
 
