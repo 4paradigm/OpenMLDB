@@ -323,7 +323,7 @@ cases:
       WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columsn: ["id bigint", "c3 int", "r1 string", "r2 string", "r3 string"]
+      columns: ["id bigint", "c3 int", "r1 string", "r2 string", "r3 string"]
       rows:
         - [1, 5, "10", "10", "10"]
         - [2, 5, "19", "19", "19"]
