@@ -767,28 +767,10 @@ message QueryRequest {
     optional bool is_debug = 5 [default = false];
     optional string sp_name = 6;
     optional bool is_procedure = 7 [default = false];
-}
-
-message QueryResponse {
-    optional int32 code = 1;
-    optional string msg = 2;
-    optional uint32 count = 3;
-    optional uint32 byte_size = 4;
-    optional bytes schema = 5;
-}
-
-message SubQueryRequest {
-    optional string sql = 1;
-    optional string db = 2;
-    optional bool is_batch = 3;
-    optional bytes input_row = 4;
-    optional bool is_debug = 5 [default = false];
-    optional string sp_name = 6;
-    optional bool is_procedure = 7 [default = false];
     optional uint64 task_id = 8;
 }
 
-message SubQueryResponse {
+message QueryResponse {
     optional int32 code = 1;
     optional string msg = 2;
     optional uint32 count = 3;
@@ -854,7 +836,7 @@ service TabletServer {
     rpc Update(UpdateRequest) returns (UpdateResponse);
     rpc BatchQuery(BatchQueryRequest) returns (BatchQueryResponse);
     rpc Query(QueryRequest) returns(QueryResponse);
-    rpc SubQuery(SubQueryRequest) returns(SubQueryResponse);
+    rpc SubQuery(QueryRequest) returns(QueryResponse);
 
     // table api for master
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);

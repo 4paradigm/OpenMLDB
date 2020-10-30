@@ -337,9 +337,9 @@ class TabletClient {
 
     bool DropProcedure(const std::string& db_name, const std::string& sp_name);
 
-    bool SubQuery(const ::rtidb::api::SubQueryRequest& request,
+    bool SubQuery(const ::rtidb::api::QueryRequest& request,
             brpc::Controller* cntl,
-            ::rtidb::api::SubQueryResponse* response);
+            ::rtidb::api::QueryResponse* response);
 
  private:
     std::string endpoint_;

@@ -16,12 +16,13 @@
  */
 
 #include "catalog/client_manager.h"
+#include <utility>
 
 namespace rtidb {
 namespace catalog {
 
 TabletRowHandler::TabletRowHandler(std::unique_ptr<brpc::Controller> cntl,
-                                   std::unique_ptr<::rtidb::api::SubQueryResponse> response)
+                                   std::unique_ptr<::rtidb::api::QueryResponse> response)
     : status_(::fesql::base::Status::OK()), row_(), cntl_(std::move(cntl)), response_(std::move(response)) {}
 
 TabletRowHandler::TabletRowHandler(::fesql::base::Status status) : status_(status), row_(), cntl_(), response_() {}
@@ -41,13 +42,13 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
 std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                   const std::string& sql,
                                                                   const ::fesql::codec::Row& row) {
-    ::rtidb::api::SubQueryRequest request;
+    ::rtidb::api::QueryRequest request;
     request.set_sql(sql);
     request.set_db(db);
     request.set_is_batch(false);
     request.set_task_id(task_id);
     std::unique_ptr<brpc::Controller> cntl(new brpc::Controller);
-    std::unique_ptr<::rtidb::api::SubQueryResponse> response(new ::rtidb::api::SubQueryResponse);
+    std::unique_ptr<::rtidb::api::QueryResponse> response(new ::rtidb::api::QueryResponse);
     if (!GetClient()->SubQuery(request, cntl.get(), response.get())) {
         return std::make_shared<TabletRowHandler>(
             ::fesql::base::Status(::fesql::common::kRpcError, "send request failed"));

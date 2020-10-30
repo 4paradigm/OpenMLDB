@@ -1846,6 +1846,12 @@ void TabletImpl::Query(RpcController* ctrl,
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
+    ProcessQuery(request, response, &buf);
+}
+
+void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
+        ::rtidb::api::QueryResponse* response,
+        butil::IOBuf* buf) {
     ::fesql::base::Status status;
     if (request->is_batch()) {
         ::fesql::vm::BatchRunSession session;
@@ -1892,7 +1898,7 @@ void TabletImpl::Query(RpcController* ctrl,
             }
             byte_size += row.size();
             iter->Next();
-            buf.append(reinterpret_cast<void*>(row.buf()), row.size());
+            buf->append(reinterpret_cast<void*>(row.buf()), row.size());
             count += 1;
         }
         response->set_schema(session.GetEncodedSchema());
@@ -1934,55 +1940,20 @@ void TabletImpl::Query(RpcController* ctrl,
                 }
                 sql = sp_it->second;
             }
-            RequestQuery(*request, sql, status, session, *response, buf);
+            RequestQuery(*request, sql, status, session, *response, *buf);
         } else {
-            RequestQuery(*request, request->sql(), status, session, *response, buf);
+            RequestQuery(*request, request->sql(), status, session, *response, *buf);
         }
     }
 }
 
 void TabletImpl::SubQuery(RpcController* ctrl,
-                       const rtidb::api::SubQueryRequest* request,
-                       rtidb::api::SubQueryResponse* response, Closure* done) {
+                       const rtidb::api::QueryRequest* request,
+                       rtidb::api::QueryResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
-    ::fesql::base::Status status;
-
-    if (request->input_row().empty()) {
-        response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
-        response->set_msg("input row is empty");
-        return;
-    }
-    ::fesql::vm::RequestRunSession session;
-    if (request->is_procedure()) {
-        session.SetIsProcedure(true);
-        const std::string& db_name = request->db();
-        const std::string& sp_name = request->sp_name();
-        std::string sql = "";
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            auto db_it = sp_map_.find(db_name);
-            if (db_it == sp_map_.end()) {
-                response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
-                response->set_msg("db not found");
-                PDLOG(WARNING, "db[%s] not found", db_name.c_str());
-                return;
-            }
-            auto sp_it = db_it->second.find(sp_name);
-            if (sp_it == db_it->second.end()) {
-                response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
-                response->set_msg("store procedure not found");
-                PDLOG(WARNING, "store procedure[%s] not found in db[%s]",
-                        sp_name.c_str(), db_name.c_str());
-                return;
-            }
-            sql = sp_it->second;
-        }
-        RequestSubQuery(*request, sql, status, session, *response, buf);
-    } else {
-        RequestSubQuery(*request, request->sql(), status, session, *response, buf);
-    }
+    ProcessQuery(request, response, &buf);
 }
 
 void TabletImpl::BatchQuery(RpcController* controller,
@@ -6000,40 +5971,6 @@ void TabletImpl::RequestQuery(const rtidb::api::QueryRequest& request,
         ::fesql::base::Status& status,
         ::fesql::vm::RequestRunSession& session,
         rtidb::api::QueryResponse& response, butil::IOBuf& buf) {
-    bool ok =
-        engine_.Get(sql, request.db(), session, status);
-    if (!ok) {
-        response.set_msg(status.msg);
-        response.set_code(::rtidb::base::kSQLCompileError);
-        DLOG(WARNING) << "fail to run sql " << sql;
-        return;
-    }
-    if (request.is_debug()) {
-        session.EnableDebug();
-    }
-    ::fesql::codec::Row row(request.input_row());
-    ::fesql::codec::Row output;
-    int32_t ret = session.Run(row, &output);
-    if (ret != 0) {
-        DLOG(WARNING) << "fail to run sql " << sql;
-        response.set_code(::rtidb::base::kSQLRunError);
-        response.set_msg("fail to run sql");
-        return;
-    }
-    buf.append(reinterpret_cast<void*>(output.buf()), output.size());
-    response.set_schema(session.GetEncodedSchema());
-    response.set_byte_size(output.size());
-    response.set_count(1);
-    response.set_code(::rtidb::base::kOk);
-    DLOG(INFO) << "handle request sql " << sql
-        << " with record cnt 1";
-}
-
-void TabletImpl::RequestSubQuery(const rtidb::api::SubQueryRequest& request,
-        const std::string& sql,
-        ::fesql::base::Status& status,
-        ::fesql::vm::RequestRunSession& session,
-        rtidb::api::SubQueryResponse& response, butil::IOBuf& buf) {
     bool ok =
         engine_.Get(sql, request.db(), session, status);
     if (!ok) {

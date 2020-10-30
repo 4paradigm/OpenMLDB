@@ -1665,9 +1665,9 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
     return true;
 }
 
-bool TabletClient::SubQuery(const ::rtidb::api::SubQueryRequest& request,
+bool TabletClient::SubQuery(const ::rtidb::api::QueryRequest& request,
         brpc::Controller* cntl,
-        ::rtidb::api::SubQueryResponse* response) {
+        ::rtidb::api::QueryResponse* response) {
     if (cntl == nullptr || response == nullptr) {
         return false;
     }

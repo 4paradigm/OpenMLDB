@@ -38,8 +38,8 @@ using TablePartitions = ::google::protobuf::RepeatedPtrField<::rtidb::nameserver
 
 class TabletRowHandler : public ::fesql::vm::RowHandler {
  public:
-    TabletRowHandler(std::unique_ptr<brpc::Controller> cntl, std::unique_ptr<::rtidb::api::SubQueryResponse> response);
-    TabletRowHandler(::fesql::base::Status status);
+    TabletRowHandler(std::unique_ptr<brpc::Controller> cntl, std::unique_ptr<::rtidb::api::QueryResponse> response);
+    explicit TabletRowHandler(::fesql::base::Status status);
     const ::fesql::vm::Schema* GetSchema() override { return nullptr; }
     const std::string& GetName() override { return name_; }
     const std::string& GetDatabase() override { return db_; }
@@ -53,7 +53,7 @@ class TabletRowHandler : public ::fesql::vm::RowHandler {
     ::fesql::base::Status status_;
     ::fesql::codec::Row row_;
     std::unique_ptr<brpc::Controller> cntl_;
-    std::unique_ptr<::rtidb::api::SubQueryResponse> response_;
+    std::unique_ptr<::rtidb::api::QueryResponse> response_;
 };
 
 class TabletAccessor : public ::fesql::vm::Tablet {
