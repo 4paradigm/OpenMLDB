@@ -7,6 +7,7 @@
 
 #include <mutex>
 #include <utility>
+#include <vector>
 
 #include "codec/codec.h"
 #include "base/file_util.h"
@@ -43,6 +44,19 @@ bool ObjectStore::Init() {
 ObjectStore::~ObjectStore() {
     DoFlash();
     hs_close(db_);
+    std::vector<std::string> root_paths;
+    ::rtidb::base::SplitString(root_path_, ",", root_paths);
+    for (const auto& path : root_paths) {
+        std::ostringstream oss;
+        oss << path << "/" << tid_ << "_" << pid_;
+        std::ostringstream dss;
+        dss << path << "/recycle/" << tid_ << "_" << pid_ << "_" << rtidb::base::GetNowTime();
+        if (recycle_bin_enabled_) {
+            rtidb::base::Rename(oss.str(), dss.str());
+        } else {
+            rtidb::base::RemoveDirRecursive(oss.str());
+        }
+    }
 }
 
 bool ObjectStore::Store(int64_t key, const std::string& value) {
