@@ -17,15 +17,19 @@
 
 #include "catalog/client_manager.h"
 #include <utility>
+#include "codec/fe_schema_codec.h"
 
 namespace rtidb {
 namespace catalog {
 
-TabletRowHandler::TabletRowHandler(std::unique_ptr<brpc::Controller> cntl,
+TabletRowHandler::TabletRowHandler(const std::string& db,
+                                   std::unique_ptr<brpc::Controller> cntl,
                                    std::unique_ptr<::rtidb::api::QueryResponse> response)
-    : status_(::fesql::base::Status::OK()), row_(), cntl_(std::move(cntl)), response_(std::move(response)) {}
+    : db_(db), name_(), status_(::fesql::base::Status::OK()), schema_(),
+    buf_(), row_(), cntl_(std::move(cntl)), response_(std::move(response)) {}
 
-TabletRowHandler::TabletRowHandler(::fesql::base::Status status) : status_(status), row_(), cntl_(), response_() {}
+TabletRowHandler::TabletRowHandler(::fesql::base::Status status) :
+    db_(), name_(), status_(status), schema_(), buf_(), row_(), cntl_(), response_() {}
 
 const ::fesql::codec::Row& TabletRowHandler::GetValue() {
     if (!cntl_ || !response_) {
@@ -36,6 +40,13 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
         status_ = ::fesql::base::Status(::fesql::common::kRpcError, "request error. " + cntl_->ErrorText());
         return row_;
     }
+    if (!::fesql::codec::SchemaCodec::Decode(response_->schema(), &schema_)) {
+        status_ = ::fesql::base::Status(::fesql::common::kSchemaCodecError, "decode schema error");
+        return row_;
+    }
+    // copy data to string buffer
+    buf_ = cntl_->response_attachment().to_string();
+    row_.Reset(reinterpret_cast<const int8_t*>(buf_.c_str()), buf_.length());
     return row_;
 }
 
@@ -53,7 +64,7 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
         return std::make_shared<TabletRowHandler>(
             ::fesql::base::Status(::fesql::common::kRpcError, "send request failed"));
     }
-    return std::make_shared<TabletRowHandler>(std::move(cntl), std::move(response));
+    return std::make_shared<TabletRowHandler>(db, std::move(cntl), std::move(response));
 }
 
 std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
