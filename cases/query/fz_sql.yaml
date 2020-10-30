@@ -1,6 +1,6 @@
 cases:
   - id: 0
-    desc: fz sql 子查询
+    desc: fz sub select
     db: db1
     sql: |
       select
@@ -41,7 +41,7 @@ cases:
         0, 0, 0, 1, 2, 4
   
   - id: 1
-    desc: 主表window
+    desc: only main window
     db: db1
     sql: |
       select
@@ -82,7 +82,7 @@ cases:
 
 
   - id: 2
-    desc: 主表window 添加 INSTANCE_NOT_IN_WINDOW 没有明显错误日志
+    desc: window set INSTANCE_NOT_IN_WINDOW false
     db: db1
     sql: |
       select
@@ -120,7 +120,7 @@ cases:
       success: true
 
   - id: 3
-    desc: lastjoin 测试
+    desc: lastjoin test
     db: db1
     
     sql: |
@@ -166,7 +166,7 @@ cases:
         1, 1, 1, 1600946381104, 2019-07-18, 1, 2, xx, xx
 
   - id: 5
-    desc: lastjoin 和 window 拼接成大表
+    desc: lastjoin join with window
     db: db1
     mode: batch-unsupport
     sql: |
@@ -225,7 +225,7 @@ cases:
         1, 1, 1600946381104, 2019-07-18, 1, 2, xx, xx, 1, 1, 1, 2
 
   - id: 4
-    desc: 主表多个window测试
+    desc: multi window for main table
     db: db1
     mode: batch-unsupport
     sql: |
