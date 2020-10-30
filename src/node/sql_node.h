@@ -721,13 +721,15 @@ class ConstNode : public ExprNode {
         val_.vlong = val;
     }
     explicit ConstNode(int val, TTLType ttl_type)
-        : ExprNode(kExprPrimary), data_type_(fesql::node::kInt32),
-        ttl_type_(ttl_type) {
+        : ExprNode(kExprPrimary),
+          data_type_(fesql::node::kInt32),
+          ttl_type_(ttl_type) {
         val_.vint = val;
     }
     explicit ConstNode(int64_t val, TTLType ttl_type)
-        : ExprNode(kExprPrimary), data_type_(fesql::node::kInt64),
-        ttl_type_(ttl_type) {
+        : ExprNode(kExprPrimary),
+          data_type_(fesql::node::kInt64),
+          ttl_type_(ttl_type) {
         val_.vlong = val;
     }
     explicit ConstNode(float val)
@@ -1788,7 +1790,7 @@ class ColumnIndexNode : public SQLNode {
                         switch (ttl->GetDataType()) {
                             case fesql::node::kInt32:
                                 if (ttl->GetTTLType() ==
-                                        fesql::node::kAbsolute) {
+                                    fesql::node::kAbsolute) {
                                     abs_ttl_ = -1;
                                     lat_ttl_ = -1;
                                     return;
@@ -1798,7 +1800,7 @@ class ColumnIndexNode : public SQLNode {
                                 break;
                             case fesql::node::kInt64:
                                 if (ttl->GetTTLType() ==
-                                        fesql::node::kAbsolute) {
+                                    fesql::node::kAbsolute) {
                                     abs_ttl_ = -1;
                                     lat_ttl_ = -1;
                                     return;
@@ -1811,7 +1813,7 @@ class ColumnIndexNode : public SQLNode {
                             case fesql::node::kMinute:
                             case fesql::node::kSecond:
                                 if (ttl->GetTTLType() ==
-                                        fesql::node::kAbsolute) {
+                                    fesql::node::kAbsolute) {
                                     abs_ttl_ = ttl->GetMillis();
                                 } else {
                                     abs_ttl_ = -1;
