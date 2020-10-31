@@ -871,7 +871,7 @@ class ClusterTask {
 class ClusterJob {
  public:
     ClusterJob() : tasks_(), main_task_id_(-1), sql_("") {}
-    ClusterJob(const std::string& sql)
+    explicit ClusterJob(const std::string& sql)
         : tasks_(), main_task_id_(-1), sql_(sql) {}
     ClusterTask GetTask(int32_t id) {
         if (id < 0 || id >= static_cast<int32_t>(tasks_.size())) {
