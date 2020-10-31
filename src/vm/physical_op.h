@@ -40,7 +40,6 @@ enum PhysicalOpType {
     kPhysicalOpIndexSeek,
     kPhysicalOpRequestUnoin,
     kPhysicalOpRequestJoin,
-    kPhysicalOpRequestJoinScan,
     kPhysicalOpRequestGroup,
     kPhysicalOpRequestGroupAndSort,
 };
@@ -80,8 +79,6 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "REQUEST_UNION";
         case kPhysicalOpRequestJoin:
             return "REQUEST_JOIN";
-        case kPhysicalOpRequestJoinScan:
-            return "REQUEST_JOIN_SCAN";
         case kPhysicalOpIndexSeek:
             return "INDEX_SEEK";
         default:

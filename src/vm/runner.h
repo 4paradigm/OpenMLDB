@@ -312,7 +312,6 @@ enum RunnerType {
     kRunnerConcat,
     kRunnerRequestRunProxy,
     kRunnerRequestLastJoin,
-    kRequestLastFilterRight,
     kRunnerLimit,
     kRunnerUnknow,
 };
@@ -352,8 +351,6 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "CONCAT";
         case kRunnerRequestLastJoin:
             return "REQUEST_LASTJOIN";
-        case kRequestLastFilterRight:
-            return "REQUEST_LASTFILTER_RIGHT";
         case kRunnerLimit:
             return "LIMIT";
         case kRunnerRequestRunProxy:
@@ -613,6 +610,7 @@ class FilterRunner : public Runner {
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     FilterGenerator filter_gen_;
 };
+
 class SortRunner : public Runner {
  public:
     SortRunner(const int32_t id, const SchemaSourceList& schema,
@@ -830,17 +828,21 @@ class ProxyRequestRunner : public Runner {
 class ClusterTask {
  public:
     ClusterTask()
-        : root_(nullptr), db_(""), table_(""), index_(""), index_key_() {}
+        : root_(nullptr), table_handler_(), index_(""), index_key_() {}
     explicit ClusterTask(Runner* root)
-        : root_(root), db_(""), table_(""), index_(""), index_key_() {}
-    ClusterTask(Runner* root, std::string db, std::string table,
+        : root_(root), table_handler_(), index_(""), index_key_() {}
+    ClusterTask(Runner* root, const std::shared_ptr<TableHandler> table_handler,
                 std::string index)
-        : root_(root), db_(db), table_(table), index_(index), index_key_() {}
+        : root_(root),
+          table_handler_(table_handler),
+          index_(index),
+          index_key_() {}
     ~ClusterTask() {}
     void Print(std::ostream& output, const std::string& tab) const {
         if (IsClusterTask()) {
-            output << ", partition index = " << db_ << "." << table_ << "."
-                   << index_ << ", " << index_key_.ToString() << "\n";
+            output << ", partition index = " << table_handler_->GetDatabase()
+                   << "." << table_handler_->GetName() << "." << index_ << ", "
+                   << index_key_.ToString() << "\n";
         } else {
             output << "\n";
         }
@@ -854,27 +856,23 @@ class ClusterTask {
     void SetRoot(Runner* root) { root_ = root; }
     Key GetIndexKey() const { return index_key_; }
     void SetIndexKey(const Key& key) { index_key_ = key; }
-    Runner* GetKeyRunner() const { return key_runner_; }
-    void SetKeyRunner(Runner* key_runner) { key_runner_ = key_runner; }
 
     const bool IsValid() const { return nullptr != root_; }
-    const bool IsInValid() const { return nullptr == root_; }
     const bool IsClusterTask() const { return !index_.empty(); }
     const std::string& index() { return index_; }
-    const std::string& table() { return table_; }
-    const std::string& db() { return db_; }
+    std::shared_ptr<TableHandler> table_handler() { return table_handler_; }
 
  private:
     Runner* root_;
-    Runner* key_runner_;
-    std::string db_;
-    std::string table_;
+    std::shared_ptr<TableHandler> table_handler_;
     std::string index_;
     Key index_key_;
 };
 class ClusterJob {
  public:
-    ClusterJob() : tasks_(), main_task_id_(-1) {}
+    ClusterJob() : tasks_(), main_task_id_(-1), sql_("") {}
+    ClusterJob(const std::string& sql)
+        : tasks_(), main_task_id_(-1), sql_(sql) {}
     ClusterTask GetTask(int32_t id) {
         if (id < 0 || id >= static_cast<int32_t>(tasks_.size())) {
             LOG(WARNING) << "fail get task: task " << id << " not exist";
@@ -885,6 +883,10 @@ class ClusterJob {
 
     ClusterTask GetMainTask() { return GetTask(main_task_id_); }
     int32_t AddTask(const ClusterTask& task) {
+        if (!task.IsValid()) {
+            LOG(WARNING) << "fail to add invalid task";
+            return -1;
+        }
         tasks_.push_back(task);
         return tasks_.size() - 1;
     }
@@ -899,11 +901,12 @@ class ClusterJob {
         return true;
     }
 
-    void AddMainTAsk(const ClusterTask& task) { main_task_id_ = AddTask(task); }
+    void AddMainTask(const ClusterTask& task) { main_task_id_ = AddTask(task); }
     void Reset() { tasks_.clear(); }
     const size_t GetTaskSize() const { return tasks_.size(); }
     const bool IsValid() const { return !tasks_.empty(); }
     const int32_t main_task_id() const { return main_task_id_; }
+    const std::string& sql() const { return sql_; }
     void Print(std::ostream& output, const std::string& tab) const {
         if (tasks_.empty()) {
             output << "EMPTY CLUSTER JOB\n";
@@ -924,15 +927,16 @@ class ClusterJob {
  private:
     std::vector<ClusterTask> tasks_;
     int32_t main_task_id_;
+    std::string sql_;
 };
 class RunnerBuilder {
  public:
-    explicit RunnerBuilder(node::NodeManager* nm,
+    explicit RunnerBuilder(node::NodeManager* nm, const std::string& sql,
                            bool support_cluster_optimized)
         : nm_(nm),
           support_cluster_optimized_(support_cluster_optimized),
           id_(0),
-          cluster_job_(),
+          cluster_job_(sql),
           task_map_() {}
     virtual ~RunnerBuilder() {}
     ClusterTask RegisterTask(PhysicalOpNode* node, ClusterTask task) {
@@ -944,11 +948,10 @@ class RunnerBuilder {
     ClusterJob BuildClusterJob(PhysicalOpNode* node,
                                Status& status) {  // NOLINT
         id_ = 0;
-        partition_id_ = 0;
         cluster_job_.Reset();
         auto task =  // NOLINT whitespace/braces
             Build(node, status);
-        cluster_job_.AddMainTAsk(task);
+        cluster_job_.AddMainTask(task);
         return cluster_job_;
     }
 
@@ -962,7 +965,6 @@ class RunnerBuilder {
     node::NodeManager* nm_;
     bool support_cluster_optimized_;
     int32_t id_;
-    int32_t partition_id_;
     ClusterJob cluster_job_;
     bool AddRunnerToRemoteTask(Runner* runner, int32_t task_id) {
         return cluster_job_.AddRunnerToTask(runner, task_id);
@@ -1007,6 +1009,10 @@ class RunnerContext {
     std::map<int64_t, std::shared_ptr<DataHandler>> cache_;
 };
 
+class LocalTabletAccesser : public Tablet {
+ public:
+    LocalTabletAccesser() {}
+};
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_RUNNER_H_
