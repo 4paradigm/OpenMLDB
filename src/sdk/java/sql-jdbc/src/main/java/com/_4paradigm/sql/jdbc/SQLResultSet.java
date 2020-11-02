@@ -1,6 +1,7 @@
 package com._4paradigm.sql.jdbc;
 
 import com._4paradigm.sql.DataType;
+import com._4paradigm.sql.Schema;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -51,6 +52,10 @@ public class SQLResultSet implements ResultSet {
         if (this.resultSet.GetSchema().GetColumnType(i - 1) != type) {
             throw new SQLException("data type not match");
         }
+    }
+
+    public Schema GetInternalSchema() {
+        return this.resultSet.GetSchema();
     }
 
     @Override

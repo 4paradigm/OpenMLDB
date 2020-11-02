@@ -9,10 +9,11 @@
 
 #include <algorithm>
 #include <iostream>
-
+#include <set>
 #include "base/glog_wapper.h"  // NOLINT
 #include "brpc/channel.h"
 #include "codec/codec.h"
+#include "sdk/sql_request_row.h"
 #include "timer.h"  // NOLINT
 
 DECLARE_int32(request_max_retry);
@@ -157,6 +158,35 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
                                   &request, response);
 
     if (!ok || response->code() != 0) {
+        LOG(WARNING) << "fail to query tablet";
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::SQLBatchRequestQuery(const std::string& db, const std::string& sql,
+                                        std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
+                                        brpc::Controller* cntl,
+                                        ::rtidb::api::SQLBatchRequestQueryResponse* response,
+                                        const bool is_debug) {
+    if (cntl == NULL || response == NULL) return false;
+    ::rtidb::api::SQLBatchRequestQueryRequest request;
+    request.set_sql(sql);
+    request.set_db(db);
+    request.set_is_debug(is_debug);
+
+    const std::set<size_t>& indices_set = row_batch->common_column_indices();
+    for (size_t idx : indices_set) {
+        request.add_common_column_indices(idx);
+    }
+    request.set_common_row(*row_batch->GetCommonSlice());
+    for (int i = 0; i < row_batch->Size(); ++i) {
+        request.add_non_common_rows(*row_batch->GetNonCommonSlice(i));
+    }
+
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
+                                  cntl, &request, response);
+    if (!ok || response->code() != ::rtidb::base::kOk) {
         LOG(WARNING) << "fail to query tablet";
         return false;
     }
@@ -1628,15 +1658,10 @@ bool TabletClient::GetSchema(const std::string& db_name, const std::string& sql,
     return true;
 }
 
-bool TabletClient::CreateProcedure(const std::string& db_name, const std::string& sp_name,
-        const std::string& sql, std::string& msg) {
-    rtidb::api::CreateProcedureRequest request;
+bool TabletClient::CreateProcedure(const rtidb::api::CreateProcedureRequest& sp_request, std::string& msg) {
     rtidb::api::GeneralResponse response;
-    request.set_db_name(db_name);
-    request.set_sp_name(sp_name);
-    request.set_sql(sql);
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateProcedure,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &sp_request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     msg = response.msg();
     if (!ok || response.code() != 0) {
         return false;
@@ -1659,6 +1684,34 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query, cntl,
                                   &request, response);
     if (!ok || response->code() != 0) {
+        LOG(WARNING) << "fail to query tablet";
+        return false;
+    }
+    return true;
+}
+
+bool TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
+        std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
+        brpc::Controller* cntl,
+        rtidb::api::SQLBatchRequestQueryResponse* response,
+        bool is_debug) {
+    if (cntl == NULL || response == NULL) {
+        return false;
+    }
+    ::rtidb::api::SQLBatchRequestQueryRequest request;
+    request.set_sp_name(sp_name);
+    request.set_is_procedure(true);
+    request.set_sql("");
+    request.set_db(db);
+    request.set_is_debug(is_debug);
+    request.set_common_row(*row_batch->GetCommonSlice());
+    for (int i = 0; i < row_batch->Size(); ++i) {
+        request.add_non_common_rows(*row_batch->GetNonCommonSlice(i));
+    }
+
+    bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
+                                  cntl, &request, response);
+    if (!ok || response->code() != ::rtidb::base::kOk) {
         LOG(WARNING) << "fail to query tablet";
         return false;
     }

@@ -316,5 +316,108 @@ bool SQLRequestRow::Build() {
     return true;
 }
 
+::fesql::type::Type ProtoTypeFromDataType(::fesql::sdk::DataType type) {
+    switch (type) {
+        case fesql::sdk::kTypeBool:
+            return fesql::type::kBool;
+        case fesql::sdk::kTypeInt16:
+            return fesql::type::kInt16;
+        case fesql::sdk::kTypeInt32:
+            return fesql::type::kInt32;
+        case fesql::sdk::kTypeInt64:
+            return fesql::type::kInt64;
+        case fesql::sdk::kTypeFloat:
+            return fesql::type::kFloat;
+        case fesql::sdk::kTypeDouble:
+            return fesql::type::kDouble;
+        case fesql::sdk::kTypeString:
+            return fesql::type::kVarchar;
+        case fesql::sdk::kTypeDate:
+            return fesql::type::kDate;
+        case fesql::sdk::kTypeTimestamp:
+            return fesql::type::kTimestamp;
+        default:
+            return fesql::type::kNull;
+    }
+}
+
+void ColumnIndicesSet::AddCommonColumnIdx(size_t idx) {
+    if (idx >= bound_) {
+        LOG(WARNING) << "Common column index out of bound: " << idx;
+        return;
+    }
+    common_column_indices_.insert(idx);
+}
+
+SQLRequestRowBatch::SQLRequestRowBatch(std::shared_ptr<fesql::sdk::Schema> schema,
+                                       std::shared_ptr<ColumnIndicesSet> indices):
+    common_selector_(nullptr), non_common_selector_(nullptr) {
+    if (schema == nullptr) {
+        LOG(WARNING) << "Null input schema";
+        return;
+    }
+    common_column_indices_ = indices->common_column_indices_;
+
+    std::vector<size_t> common_indices_vec;
+    std::vector<size_t> non_common_indices_vec;
+    for (int i = 0; i < schema->GetColumnCnt(); ++i) {
+        auto col_ref = request_schema_.Add();
+        col_ref->set_name(schema->GetColumnName(i));
+        col_ref->set_is_not_null(schema->IsColumnNotNull(i));
+        col_ref->set_type(ProtoTypeFromDataType(schema->GetColumnType(i)));
+        if (common_column_indices_.find(i) != common_column_indices_.end()) {
+            common_indices_vec.push_back(i);
+        } else {
+            non_common_indices_vec.push_back(i);
+        }
+    }
+
+    if (!common_column_indices_.empty()) {
+        common_selector_ = std::unique_ptr<::fesql::codec::RowSelector>(
+            new ::fesql::codec::RowSelector(&request_schema_, common_indices_vec));
+        non_common_selector_ = std::unique_ptr<::fesql::codec::RowSelector>(
+            new ::fesql::codec::RowSelector(&request_schema_, non_common_indices_vec));
+    }
+}
+
+bool SQLRequestRowBatch::AddRow(std::shared_ptr<SQLRequestRow> row) {
+    if (row == nullptr || !row->OK()) {
+        LOG(WARNING) << "make sure the request row is built before execute sql";
+        return false;
+    }
+    const std::string& row_str = row->GetRow();
+    int8_t* input_buf = reinterpret_cast<int8_t*>(const_cast<char*>(&row_str[0]));
+    size_t input_size = row_str.size();
+
+    // non-common
+    if (common_column_indices_.empty() ||
+        common_column_indices_.size() == static_cast<size_t>(request_schema_.size())) {
+        non_common_slices_.emplace_back(std::string(
+            reinterpret_cast<char*>(input_buf), input_size));
+        return true;
+    }
+
+    if (non_common_slices_.empty()) {
+        int8_t* common_buf = nullptr;
+        size_t common_size = 0;
+        if (!common_selector_->Select(input_buf, input_size,
+                                      &common_buf, &common_size)) {
+            LOG(WARNING) << "Extract common slice failed";
+            return false;
+        }
+        common_slice_ = std::string(reinterpret_cast<char*>(common_buf), common_size);
+    }
+    int8_t* non_common_buf = nullptr;
+    size_t non_common_size = 0;
+    if (!non_common_selector_->Select(input_buf, input_size,
+                                      &non_common_buf, &non_common_size)) {
+        LOG(WARNING) << "Extract non-common slice failed";
+        return false;
+    }
+    non_common_slices_.emplace_back(std::string(
+        reinterpret_cast<char*>(non_common_buf), non_common_size));
+    return true;
+}
+
 }  // namespace sdk
 }  // namespace rtidb
