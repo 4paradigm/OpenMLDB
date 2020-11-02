@@ -593,6 +593,12 @@ class FilterRunner : public Runner {
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     FilterGenerator filter_gen_;
 };
+
+class ProxyRequestRunner : public Runner {
+ public:
+     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+};
+
 class SortRunner : public Runner {
  public:
     SortRunner(const int32_t id, const SchemaSourceList& schema,

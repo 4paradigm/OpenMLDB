@@ -1531,6 +1531,33 @@ std::shared_ptr<DataHandler> FilterRunner::Run(RunnerContext& ctx) {
         }
     }
 }
+
+std::shared_ptr<DataHandler> ProxyRequestRunner::Run(RunnerContext& ctx) {
+    auto catalog = ctx.GetCatalog();
+    if (!catalog) {
+        LOG(WARNING) << "catalog is null";
+        return std::shared_ptr<DataHandler>();
+    }
+    // assume has db, table_name, index_name, pk, sql, task id;
+    std::string db;
+    std::string table_name;
+    std::string index_name;
+    std::string pk;
+    std::string sql;
+    uint32_t task_id = 0;
+    auto table_handler = catalog->GetTable(db, table_name);
+    if (!table_handler) {
+        LOG(WARNING) << "table handler is null";
+        return std::shared_ptr<DataHandler>();
+    }
+    auto tablet = table_handler->GetTablet(index_name, pk);
+    if (!tablet) {
+        LOG(WARNING) << "tablet is null";
+        return std::shared_ptr<DataHandler>();
+    }
+    return tablet->SubQuery(task_id, db, sql, ctx.request());
+}
+
 std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
     if (!input) {
