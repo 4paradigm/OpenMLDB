@@ -149,6 +149,8 @@ java_ut:
         - java/target/surefire-reports/TEST-*.xml
         - java/target/failsafe-reports/junitreports/TEST-*.xml
         - java/target/failsafe-reports/TEST-*.xml
+  dependencies:
+    - build
 
 fesql_auto_test:
   stage: test
