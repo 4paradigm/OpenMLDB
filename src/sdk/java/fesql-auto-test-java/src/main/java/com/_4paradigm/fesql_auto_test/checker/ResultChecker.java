@@ -61,8 +61,46 @@ public class ResultChecker extends BaseChecker {
         log.info("actual:{}", actual);
         Assert.assertEquals(actual.size(), expect.size(),
                 String.format("ResultChecker fail: expect size %d, real size %d", expect.size(), actual.size()));
-        Assert.assertEquals(actual, expect,
-                String.format("ResultChecker fail: expect\n%s\nreal\n%s", Table.getTableString(fesqlCase.getExpect().getColumns(), expect), fesqlResult.toString()));
+        for (int i = 0; i < actual.size(); ++i) {
+            List<Object> actual_list = actual.get(i);
+            List<Object> expect_list = expect.get(i);
+            Assert.assertEquals(actual_list.size(), expect_list.size(), String.format(
+                    "ResultChecker fail at %dth row: expect row size %d, real row size %d",
+                    i, expect_list.size(), actual_list.size()));
+            for (int j = 0; j < actual_list.size(); ++j) {
+                Object actual_val = actual_list.get(j);
+                Object expect_val = expect_list.get(j);
+
+                if (actual_val != null && actual_val instanceof Float) {
+                    Assert.assertTrue(expect_val != null && expect_val instanceof Float);
+                    Assert.assertEquals(
+                            (Float) actual_val, (Float) expect_val, 1e-10,
+                            String.format("ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
+                                i, j, expect_val, actual_val,
+                                Table.getTableString(fesqlCase.getExpect().getColumns(), expect),
+                                fesqlResult.toString())
+                    );
+
+                } else if (actual_val != null && actual_val instanceof Double) {
+                    Assert.assertTrue(expect_val != null && expect_val instanceof Double);
+                    Assert.assertEquals(
+                            (Double) actual_val, (Double) expect_val, 1e-10,
+                            String.format("ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
+                                    i, j, expect_val, actual_val,
+                                    Table.getTableString(fesqlCase.getExpect().getColumns(), expect),
+                                    fesqlResult.toString())
+                    );
+
+                } else {
+                    Assert.assertEquals(actual_val, expect_val, String.format(
+                            "ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
+                            i, j, expect_val, actual_val,
+                            Table.getTableString(fesqlCase.getExpect().getColumns(), expect),
+                            fesqlResult.toString()));
+
+                }
+            }
+        }
     }
 
     public class RowsSort implements Comparator<List> {

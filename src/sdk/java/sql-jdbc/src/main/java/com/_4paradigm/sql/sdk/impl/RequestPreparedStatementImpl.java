@@ -17,16 +17,16 @@ import java.util.*;
 
 public class RequestPreparedStatementImpl implements PreparedStatement {
     private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
-    private String db;
-    private String currentSql;
-    private SQLRouter router;
-    private SQLRequestRow currentRow;
-    private Schema currentSchema;
-    private List<Object> currentDatas;
-    private List<Boolean> hasSet;
-    private boolean closed = false;
-    private boolean closeOnComplete = false;
-    private Map<Integer, Integer> stringsLen = new HashMap<>();
+    protected String db;
+    protected String currentSql;
+    protected SQLRouter router;
+    protected SQLRequestRow currentRow;
+    protected Schema currentSchema;
+    protected List<Object> currentDatas;
+    protected List<Boolean> hasSet;
+    protected boolean closed = false;
+    protected boolean closeOnComplete = false;
+    protected Map<Integer, Integer> stringsLen = new HashMap<>();
 
     public RequestPreparedStatementImpl(String db, String sql, SQLRouter router) throws SQLException {
         this.db = db;
@@ -73,13 +73,13 @@ public class RequestPreparedStatementImpl implements PreparedStatement {
         }
     }
 
-    private void checkClosed() throws SQLException{
+    void checkClosed() throws SQLException{
         if (closed) {
             throw new SQLException("preparedstatement closed");
         }
     }
 
-    private void checkIdx(int i) throws SQLException {
+    void checkIdx(int i) throws SQLException {
         checkClosed();
         checkNull();
         if (i <= 0) {
@@ -281,7 +281,7 @@ public class RequestPreparedStatementImpl implements PreparedStatement {
         throw new SQLException("current do not support this method");
     }
 
-    private void dataBuild() throws SQLException {
+    protected void dataBuild() throws SQLException {
         for (int i = 0; i < this.hasSet.size(); i++) {
             if (!this.hasSet.get(i)) {
                 throw new SQLException("data not enough");
@@ -351,7 +351,6 @@ public class RequestPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
-    @Deprecated
     public void addBatch() throws SQLException {
         throw new SQLException("current do not support this method");
     }
@@ -695,19 +694,16 @@ public class RequestPreparedStatementImpl implements PreparedStatement {
     }
 
     @Override
-    @Deprecated
     public void addBatch(String s) throws SQLException {
         throw new SQLException("current do not support this method");
     }
 
     @Override
-    @Deprecated
     public void clearBatch() throws SQLException {
         throw new SQLException("current do not support this method");
     }
 
     @Override
-    @Deprecated
     public int[] executeBatch() throws SQLException {
         throw new SQLException("current do not support this method");
     }

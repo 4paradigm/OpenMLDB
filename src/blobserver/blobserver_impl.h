@@ -73,6 +73,9 @@ class BlobServerImpl : public ::rtidb::blobserver::BlobServer {
     int WriteTableMeta(const std::string& path, const TableMeta& meta);
 
     void DropTableInternal(uint32_t tid, uint32_t pid);
+
+    void FlushTableInternal(uint32_t tid, uint32_t pid);
+
     SpinMutex spin_mutex_;
     ZkClient* zk_client_;
     brpc::Server* server_;

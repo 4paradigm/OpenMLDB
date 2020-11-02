@@ -26,6 +26,9 @@ DECLARE_string(hdd_root_path);
 DECLARE_uint32(oss_flush_size);
 DECLARE_int32(oss_flush_period);
 DECLARE_bool(use_name);
+DECLARE_bool(recycle_bin_enabled);
+DECLARE_int32(task_pool_size);
+DECLARE_uint32(oss_flush_delay);
 
 using ::rtidb::base::ReturnCode;
 using ::rtidb::base::BLOB_PREFIX;
@@ -40,7 +43,7 @@ BlobServerImpl::BlobServerImpl()
       zk_client_(nullptr),
       server_(nullptr),
       keep_alive_pool_(1),
-      task_pool_(2),
+      task_pool_(FLAGS_task_pool_size),
       follower_(false),
       object_stores_() {}
 
@@ -72,7 +75,7 @@ bool BlobServerImpl::Init(const std::string& real_endpoint) {
     std::vector<std::string> root_paths;
     ::rtidb::base::SplitString(FLAGS_hdd_root_path, ",", root_paths);
     for (auto &it : root_paths) {
-        bool ok = ::rtidb::base::MkdirRecur(it);
+        bool ok = ::rtidb::base::MkdirRecur(it + "/recycle");
         if (!ok) {
             PDLOG(WARNING, "fail to creat dir %s", it.c_str());
             return false;
@@ -213,14 +216,17 @@ int BlobServerImpl::CreateTable(const TableMeta& meta) {
         }
         paths.append(it);
     }
-    store = std::make_shared<ObjectStore>(meta, paths, FLAGS_oss_flush_size,
-                                          FLAGS_oss_flush_period);
+    store = std::make_shared<ObjectStore>(meta, paths, FLAGS_oss_flush_size, FLAGS_oss_flush_period,
+                                          FLAGS_hdd_root_path, FLAGS_recycle_bin_enabled);
     if (!store->Init()) {
         PDLOG(WARNING, "init table faield. tid[%u] pid[%u]", tid, pid);
         return 4;
     }
-    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-    object_stores_[tid].insert(std::make_pair(pid, store));
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        object_stores_[tid].insert(std::make_pair(pid, store));
+    }
+    task_pool_.DelayTask(FLAGS_oss_flush_delay * 1000, [this, tid, pid]() { FlushTableInternal(tid, pid); });
     return 0;
 }
 
@@ -433,18 +439,31 @@ void BlobServerImpl::DropTable(RpcController *controller,
 }
 
 void BlobServerImpl::DropTableInternal(uint32_t tid, uint32_t pid) {
+    std::shared_ptr<ObjectStore> store;
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        store = GetStoreUnLock(tid, pid);
+        if (!store) {
+            PDLOG(WARNING, "tid[%u] pid[%u] does not exist", tid, pid);
+            return;
+        }
+        object_stores_[tid].erase(pid);
+        if (object_stores_[tid].empty()) {
+            object_stores_.erase(tid);
+        }
+    }
+    store.reset();
+
+    PDLOG(INFO, "drop table tid[%u] pid[%u] success", tid, pid);
+}
+void BlobServerImpl::FlushTableInternal(uint32_t tid, uint32_t pid) {
     std::shared_ptr<ObjectStore> store = GetStore(tid, pid);
     if (!store) {
         PDLOG(WARNING, "tid[%u] pid[%u] does not exist", tid, pid);
         return;
     }
-
-    std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-    object_stores_[tid].erase(pid);
-    if (object_stores_[tid].empty()) {
-        object_stores_.erase(tid);
-    }
-    PDLOG(INFO, "drop table tid[%u] pid[%u] success", tid, pid);
+    store->DoFlash();
+    task_pool_.DelayTask(FLAGS_oss_flush_delay * 1000, [this, tid, pid]() { FlushTableInternal(tid, pid); });
 }
 
 }  // namespace blobserver
