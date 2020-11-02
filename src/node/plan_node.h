@@ -352,12 +352,14 @@ class ProjectPlanNode : public UnaryPlanNode {
 class CreatePlanNode : public LeafPlanNode {
  public:
     CreatePlanNode(const std::string &table_name, int replica_num,
+                   int partition_num,
                    NodePointVector column_list,
                    NodePointVector distribution_list)
         : LeafPlanNode(kPlanTypeCreate),
           database_(""),
           table_name_(table_name),
           replica_num_(replica_num),
+          partition_num_(partition_num),
           column_desc_list_(column_list),
           distribution_list_(distribution_list) {}
     ~CreatePlanNode() {}
@@ -381,6 +383,10 @@ class CreatePlanNode : public LeafPlanNode {
 
     void setReplicaNum(int replica_num) { replica_num_ = replica_num; }
 
+    int GetPartitionNum() const { return partition_num_; }
+
+    void setPartitionNum(int partition_num) { partition_num_ = partition_num; }
+
     NodePointVector &GetDistributionList() { return distribution_list_; }
     void SetDistributionList(const NodePointVector &distribution_list) {
         distribution_list_ = distribution_list;
@@ -390,6 +396,7 @@ class CreatePlanNode : public LeafPlanNode {
     std::string database_;
     std::string table_name_;
     int replica_num_;
+    int partition_num_;
     NodePointVector column_desc_list_;
     NodePointVector distribution_list_;
 };

@@ -593,8 +593,9 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
                         break;
                     }
                     case kPartitionNum: {
-                        partition_num = dynamic_cast<PartitionNumNode *>(node_ptr)
-                                          ->GetPartitionNum();
+                        partition_num =
+                            dynamic_cast<PartitionNumNode *>(node_ptr)
+                                ->GetPartitionNum();
                         break;
                     }
                     case kDistributions: {
@@ -1069,11 +1070,12 @@ ProjectNode *NodeManager::MakeProjectNode(const int32_t pos,
     return node_ptr;
 }
 CreatePlanNode *NodeManager::MakeCreateTablePlanNode(
-    const std::string &table_name, int replica_num,
+    const std::string &table_name, int replica_num, int partition_num,
     const NodePointVector &column_list,
     const NodePointVector &partition_meta_list) {
-    node::CreatePlanNode *node_ptr = new CreatePlanNode(
-        table_name, replica_num, column_list, partition_meta_list);
+    node::CreatePlanNode *node_ptr =
+        new CreatePlanNode(table_name, replica_num, partition_num, column_list,
+                           partition_meta_list);
     RegisterNode(node_ptr);
     return node_ptr;
 }
