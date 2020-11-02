@@ -211,8 +211,9 @@ typedef std::map<
                               std::string, std::shared_ptr<CompileInfo>>>>
     EngineLRUCache;
 
-typedef std::map<std::string, std::map<
-    std::string, std::shared_ptr<CompileInfo>>> ProcedureCache;
+typedef std::map<std::string,
+                 std::map<std::string, std::shared_ptr<CompileInfo>>>
+    ProcedureCache;
 
 class Engine {
  public:
@@ -252,8 +253,7 @@ class Engine {
                                                 bool is_procedure);
     bool SetCacheLocked(const std::string& db, const std::string& sql,
                         EngineMode engine_mode,
-                        std::shared_ptr<CompileInfo> info,
-                        bool is_procedure);
+                        std::shared_ptr<CompileInfo> info, bool is_procedure);
 
     std::shared_ptr<Catalog> cl_;
     EngineOptions options_;
@@ -262,6 +262,38 @@ class Engine {
     ProcedureCache procedure_cache_;
 };
 
+class LocalTablet : public Tablet {
+ public:
+    explicit LocalTablet(vm::Engine* engine) : Tablet(), engine_((engine)) {}
+    ~LocalTablet() {}
+    std::shared_ptr<RowHandler> SubQuery(uint32_t task_id,
+                                         const std::string& db,
+                                         const std::string& sql,
+                                         const Row& row) override {
+        DLOG(INFO) << "Local tablet SubQuery: task id " << task_id;
+        RequestRunSession session;
+        base::Status status;
+        if (!engine_->Get(sql, db, session, status)) {
+            return std::shared_ptr<RowHandler>(new ErrorRowHandler(
+                common::kCallMethodError, "SubQuery fail: compile sql fail"));
+        }
+
+        Row out;
+        if (0 != session.Run(task_id, row, &out)) {
+            return std::shared_ptr<RowHandler>(new ErrorRowHandler(
+                common::kCallMethodError, "sub query fail: session run fail"));
+        }
+        return std::shared_ptr<RowHandler>(new MemRowHandler(out));
+    }
+    std::shared_ptr<RowHandler> SubQuery(
+        uint32_t task_id, const std::string& db, const std::string& sql,
+        const std::vector<fesql::codec::Row>& rows) override {
+        return std::shared_ptr<RowHandler>();
+    }
+
+ private:
+    vm::Engine* engine_;
+};
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_ENGINE_H_

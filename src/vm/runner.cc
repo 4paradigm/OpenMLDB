@@ -235,7 +235,6 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         }
         case kPhysicalOpRequestUnoin: {
             auto left_task = Build(node->producers().at(0), status);
-            auto left = left_task.GetRoot();
             if (!left_task.IsValid()) {
                 return RegisterTask(node, fail);
             }
@@ -293,9 +292,10 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         left->output_schemas().GetSchemaSourceListSize(),
                         right->output_schemas().GetSchemaSourceListSize(),
                         op->output_right_only());
+
                     auto cluster_task = BuildRunnerWithProxy(
-                        nm_->RegisterNode(runner), left_task, right_task, Key(),
-                        status);
+                        nm_->RegisterNode(runner), left_task, right_task,
+                        op->join().index_key(), status);
                     return RegisterTask(node, cluster_task);
                 }
                 case node::kJoinTypeConcat: {
@@ -430,8 +430,9 @@ ClusterTask RunnerBuilder::BuildRunnerWithProxy(Runner* runner,
             LOG(WARNING) << "fail to add remote task id";
             return ClusterTask();
         }
-        auto proxy_runner = nm_->RegisterNode(new ProxyRequestRunner(
-            id_++, remote_task_id, runner->output_schemas()));
+        auto proxy_runner = nm_->RegisterNode(
+            new ProxyRequestRunner(id_++, static_cast<uint32_t>(remote_task_id),
+                                   runner->output_schemas()));
         proxy_runner->AddProducer(left);
         return ClusterTask(proxy_runner);
     } else {
@@ -622,7 +623,7 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     if (need_cache_) {
         auto cached = ctx.GetCache(id_);
         if (cached != nullptr) {
-            DLOG(INFO) << "RUNNER ID " << id_ << "HIT CACHE!";
+            DLOG(INFO) << "RUNNER ID " << id_ << " HIT CACHE!";
             return cached;
         }
     }
@@ -1862,13 +1863,15 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(RunnerContext& ctx) {
                 }
                 auto tablet = table_handler->GetTablet(task.index(), pk);
                 if (!tablet) {
-                    LOG(WARNING) << "tablet is null, run in local mode";
+                    DLOG(INFO) << "tablet is null, run in local mode";
                     RunnerContext local_ctx(ctx.cluster_job(), row,
                                             ctx.is_debug());
                     return task.GetRoot()->RunWithCache(local_ctx);
+                } else {
+                    return tablet->SubQuery(task_id_,
+                                            table_handler->GetDatabase(),
+                                            cluster_job->sql(), row);
                 }
-                return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
-                                        cluster_job->sql(), ctx.request());
             }
         }
         default: {

@@ -163,7 +163,8 @@ TEST_P(EngineTest, test_cluster_request_engine) {
     options.set_cluster_optimized(true);
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
-        !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
+        !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "cluster-unsupport")) {
         RequestModeCheck(options, sql_case);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
@@ -175,7 +176,8 @@ TEST_P(EngineTest, test_cluster_batch_request_engine) {
     options.set_cluster_optimized(true);
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
-        !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
+        !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "cluster-unsupport")) {
         BatchRequestModeCheck(options, sql_case);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();

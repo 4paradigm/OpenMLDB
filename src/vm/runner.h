@@ -797,7 +797,7 @@ class LimitRunner : public Runner {
 
 class ProxyRequestRunner : public Runner {
  public:
-    ProxyRequestRunner(int32_t id, int32_t task_id,
+    ProxyRequestRunner(int32_t id, uint32_t task_id,
                        const SchemaSourceList& schema)
         : Runner(id, kRunnerRequestRunProxy, schema), task_id_(task_id) {}
     ~ProxyRequestRunner() {}
@@ -818,7 +818,7 @@ class ProxyRequestRunner : public Runner {
     const int32_t task_id() const { return task_id_; }
 
  private:
-    int32_t task_id_;
+    uint32_t task_id_;
 };
 
 // task info of cluster job

@@ -311,6 +311,8 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
     std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
         name_table_map;
     auto catalog = BuildCommonCatalog();
+    Engine engine(catalog, engine_options);
+
     for (int32_t i = 0; i < input_cnt; i++) {
         if (sql_case.inputs()[i].name_.empty()) {
             sql_case.set_input_name(GenerateTableName(i), i);
@@ -320,7 +322,12 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
         std::shared_ptr<::fesql::storage::Table> table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
         name_table_map[table_def.name()] = table;
-        ASSERT_TRUE(AddTable(catalog, table_def, table));
+        if (engine_options.is_cluster_optimzied()) {
+            // add table with local tablet
+            ASSERT_TRUE(AddTable(catalog, table_def, table, &engine));
+        } else {
+            ASSERT_TRUE(AddTable(catalog, table_def, table));
+        }
     }
 
     // Init engine and run session
@@ -332,7 +339,6 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
     std::cout << sql_str << std::endl;
     base::Status get_status;
 
-    Engine engine(catalog, engine_options);
     std::unique_ptr<RunSession> session;
     if (engine_mode == kBatchMode) {
         session = std::unique_ptr<RunSession>(new BatchRunSession);
