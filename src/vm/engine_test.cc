@@ -16,10 +16,10 @@
  */
 
 #include "vm/engine_test.h"
-#include "base/sig_trace.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "gtest/internal/gtest-param-util.h"
+#include "vm/core_api.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
@@ -33,9 +33,24 @@ class EngineTest : public ::testing::TestWithParam<SQLCase> {
     virtual ~EngineTest() {}
 };
 
+class BatchRequestEngineTest : public ::testing::TestWithParam<SQLCase> {
+ public:
+    BatchRequestEngineTest() {}
+    virtual ~BatchRequestEngineTest() {}
+};
+
 INSTANTIATE_TEST_CASE_P(
     EngineFailQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/fail_query.yaml")));
+
+INSTANTIATE_TEST_CASE_P(
+    EngineTestFzTest, EngineTest,
+    testing::ValuesIn(InitCases("/cases/query/fz_sql.yaml")));
+
+// INSTANTIATE_TEST_CASE_P(
+//     EngineTestFzTempTest, EngineTest,
+//     testing::ValuesIn(InitCases("/cases/query/fz_temp.yaml")));
+
 INSTANTIATE_TEST_CASE_P(
     EngineSimpleQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/simple_query.yaml")));
@@ -123,12 +138,16 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(
         InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
 
+INSTANTIATE_TEST_CASE_P(
+    EngineTestFzSQLFunction, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/v1/test_fz_sql.yaml")));
+
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
-        RequestModeCheck(sql_case);
+        EngineCheck(sql_case, kRequestMode);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
     }
@@ -139,17 +158,31 @@ TEST_P(EngineTest, test_batch_engine) {
     if (!boost::contains(sql_case.mode(), "batch-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-batch-unsupport")) {
-        BatchModeCheck(sql_case);
+        EngineCheck(sql_case, kBatchMode);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
     }
 }
-TEST_P(EngineTest, test_batch_request_engine) {
+TEST_P(EngineTest, test_batch_request_engine_for_last_row) {
     ParamType sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
-        BatchRequestModeCheck(sql_case);
+        EngineCheck(sql_case, kBatchRequestMode);
+    } else {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
+    }
+}
+
+INSTANTIATE_TEST_CASE_P(BatchRequestEngineTest, BatchRequestEngineTest,
+                        testing::ValuesIn(InitCases(
+                            "/cases/integration/v1/test_batch_request.yaml")));
+
+TEST_P(BatchRequestEngineTest, test_batch_request_engine) {
+    ParamType sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (!boost::contains(sql_case.mode(), "batch-request-unsupport")) {
+        EngineCheck(sql_case, kBatchRequestMode);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
     }
@@ -448,12 +481,6 @@ int main(int argc, char** argv) {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     ::testing::InitGoogleTest(&argc, argv);
-
-    signal(SIGSEGV, fesql::base::FeSignalBacktraceHandler);
-    signal(SIGBUS, fesql::base::FeSignalBacktraceHandler);
-    signal(SIGFPE, fesql::base::FeSignalBacktraceHandler);
-    signal(SIGILL, fesql::base::FeSignalBacktraceHandler);
-    signal(SIGSYS, fesql::base::FeSignalBacktraceHandler);
-
+    ::fesql::vm::CoreAPI::EnableSignalTraceback();
     return RUN_ALL_TESTS();
 }

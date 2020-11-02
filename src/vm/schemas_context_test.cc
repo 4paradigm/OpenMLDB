@@ -109,8 +109,8 @@ TEST_F(SchemasContextTest, NewSchemasContextTest) {
     }
     SchemasContext ctx(name_schemas);
 
-    ASSERT_EQ(0u, ctx.table_context_id_map_["t1"]);
-    ASSERT_EQ(1u, ctx.table_context_id_map_["t2"]);
+    ASSERT_EQ(0u, ctx.table_context_id_map_["t1"][0]);
+    ASSERT_EQ(1u, ctx.table_context_id_map_["t2"][0]);
 
     ASSERT_EQ(std::vector<uint32_t>({0u, 1u}), ctx.col_context_id_map_["col1"]);
     ASSERT_EQ(std::vector<uint32_t>({1u}), ctx.col_context_id_map_["str0"]);

@@ -38,12 +38,11 @@ namespace vm {
 
 static bool LLVM_IS_INITIALIZED = false;
 Engine::Engine(const std::shared_ptr<Catalog>& catalog)
-    : cl_(catalog), options_(), mu_(), lru_cache_(), procedure_cache_() {}
+    : cl_(catalog), options_(), mu_(), lru_cache_() {}
 
 Engine::Engine(const std::shared_ptr<Catalog>& catalog,
                const EngineOptions& options)
-    : cl_(catalog), options_(options), mu_(), lru_cache_(),
-    procedure_cache_() {}
+    : cl_(catalog), options_(options), mu_(), lru_cache_() {}
 
 Engine::~Engine() {}
 
@@ -128,24 +127,57 @@ bool Engine::GetDependentTables(node::PlanNode* node,
     return true;
 }
 
+bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
+                               std::shared_ptr<CompileInfo> info,
+                               base::Status& status) {  // NOLINT
+    auto& cache_ctx = info->get_sql_context();
+    if (cache_ctx.engine_mode != session.engine_mode()) {
+        status =
+            Status(common::kSQLError,
+                   "Inconsistent cache, mode expect " +
+                       EngineModeName(session.engine_mode()) + " but get " +
+                       EngineModeName(cache_ctx.engine_mode));
+        return false;
+    }
+    if (session.engine_mode() == kBatchRequestMode) {
+        auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
+        if (batch_req_sess == nullptr) {
+            return false;
+        }
+        auto& cache_indices = cache_ctx.common_column_indices;
+        auto& sess_indices = batch_req_sess->common_column_indices();
+        if (cache_indices != sess_indices) {
+            status =
+                Status(common::kSQLError, "Inconsistent common column config");
+            return false;
+        }
+    }
+    return true;
+}
+
 bool Engine::Get(const std::string& sql, const std::string& db,
                  RunSession& session,
                  base::Status& status) {  // NOLINT (runtime/references)
-    {
-        std::shared_ptr<CompileInfo> info = GetCacheLocked(
-                db, sql, session.engine_mode(), session.IsProcedure());
-        if (info) {
-            session.SetCompileInfo(info);
-            return true;
-        }
+    std::shared_ptr<CompileInfo> info =
+        GetCacheLocked(db, sql, session.engine_mode());
+    if (info && IsCompatibleCache(session, info, status)) {
+        session.SetCompileInfo(info);
+        return true;
     }
 
-    std::shared_ptr<CompileInfo> info(new CompileInfo());
-    info->get_sql_context().sql = sql;
-    info->get_sql_context().db = db;
-    info->get_sql_context().engine_mode = session.engine_mode();
-    info->get_sql_context().is_performance_sensitive =
-        options_.is_performance_sensitive();
+    info = std::shared_ptr<CompileInfo>(new CompileInfo());
+    auto& sql_context = info->get_sql_context();
+    sql_context.sql = sql;
+    sql_context.db = db;
+    sql_context.engine_mode = session.engine_mode();
+    sql_context.is_performance_sensitive = options_.is_performance_sensitive();
+
+    auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
+    if (batch_req_sess) {
+        sql_context.common_column_indices =
+            batch_req_sess->common_column_indices();
+    }
+
     SQLCompiler compiler(
         std::atomic_load_explicit(&cl_, std::memory_order_acquire),
         options_.is_keep_ir(), false, options_.is_plan_only());
@@ -159,7 +191,8 @@ bool Engine::Get(const std::string& sql, const std::string& db,
             return false;
         }
     }
-    SetCacheLocked(db, sql, session.engine_mode(), info, session.IsProcedure());
+
+    SetCacheLocked(db, sql, session.engine_mode(), info);
     session.SetCompileInfo(info);
     return true;
 }
@@ -201,89 +234,55 @@ void Engine::ClearCacheLocked(const std::string& db) {
 
 std::shared_ptr<CompileInfo> Engine::GetCacheLocked(const std::string& db,
                                                     const std::string& sql,
-                                                    EngineMode engine_mode,
-                                                    bool is_procedure) {
+                                                    EngineMode engine_mode) {
     std::lock_guard<base::SpinMutex> lock(mu_);
-    if (!is_procedure) {
-        auto mode_iter = lru_cache_.find(engine_mode);
-        if (mode_iter == lru_cache_.end()) {
-            return nullptr;
-        }
-        auto& mode_cache = mode_iter->second;
-        auto db_iter = mode_cache.find(db);
-        if (db_iter == mode_cache.end()) {
-            return nullptr;
-        }
-        auto& lru = db_iter->second;
-        auto value = lru.get(sql);
-        if (value == boost::none) {
-            return nullptr;
-        } else {
-            return value.value();
-        }
+    auto mode_iter = lru_cache_.find(engine_mode);
+    if (mode_iter == lru_cache_.end()) {
+        return nullptr;
+    }
+    auto& mode_cache = mode_iter->second;
+    auto db_iter = mode_cache.find(db);
+    if (db_iter == mode_cache.end()) {
+        return nullptr;
+    }
+    auto& lru = db_iter->second;
+    auto value = lru.get(sql);
+    if (value == boost::none) {
+        return nullptr;
     } else {
-        auto it = procedure_cache_.find(db);
-        if (it == procedure_cache_.end()) {
-            return nullptr;
-        }
-        auto info_it = it->second.find(sql);
-        if (info_it == it->second.end()) {
-            return nullptr;
-        }
-        return info_it->second;
+        return value.value();
     }
 }
 
 bool Engine::SetCacheLocked(const std::string& db, const std::string& sql,
                             EngineMode engine_mode,
-                            std::shared_ptr<CompileInfo> info,
-                            bool is_procedure) {
+                            std::shared_ptr<CompileInfo> info) {
     std::lock_guard<base::SpinMutex> lock(mu_);
-    if (!is_procedure) {
-        auto& mode_cache = lru_cache_[engine_mode];
-        using BoostLRU =
-            boost::compute::detail::lru_cache<std::string,
-            std::shared_ptr<CompileInfo>>;
-        std::map<std::string, BoostLRU>::iterator db_iter = mode_cache.find(db);
-        if (db_iter == mode_cache.end()) {
-            db_iter = mode_cache.insert(
-                    db_iter, {db, BoostLRU(options_.max_sql_cache_size())});
-        }
-        auto& lru = db_iter->second;
-        auto value = lru.get(sql);
-        if (value == boost::none) {
-            lru.insert(sql, info);
-            return true;
-        } else {
-            // TODO(xxx): Ensure compile result is stable
-            DLOG(INFO) << "Engine cache already exists: " << engine_mode << " "
-                << db << "\n"
-                << sql;
-            return false;
-        }
+    auto& mode_cache = lru_cache_[engine_mode];
+    using BoostLRU =
+        boost::compute::detail::lru_cache<std::string,
+                                          std::shared_ptr<CompileInfo>>;
+    std::map<std::string, BoostLRU>::iterator db_iter = mode_cache.find(db);
+    if (db_iter == mode_cache.end()) {
+        db_iter = mode_cache.insert(
+            db_iter, {db, BoostLRU(options_.max_sql_cache_size())});
+    }
+    auto& lru = db_iter->second;
+    auto value = lru.get(sql);
+    if (value == boost::none || engine_mode == kBatchRequestMode) {
+        lru.insert(sql, info);
+        return true;
     } else {
-        auto db_it = procedure_cache_.find(db);
-        if (db_it == procedure_cache_.end()) {
-            db_it = procedure_cache_.insert(db_it, std::make_pair(db,
-                        std::map<std::string, std::shared_ptr<CompileInfo>>()));
-        }
-        auto& info_map = db_it->second;
-        auto info_it = info_map.find(sql);
-        if (info_it == info_map.end()) {
-            info_map.insert(std::make_pair(sql, info));
-            return true;
-        } else {
-            // TODO(xxx): Ensure compile result is stable
-            DLOG(INFO) << "Engine cache already exists: " << engine_mode << " "
-                << db << "\n"
-                << sql;
-            return false;
-        }
+        // TODO(xxx): Ensure compile result is stable
+        DLOG(INFO) << "Engine cache already exists: " << engine_mode << " "
+                   << db << "\n"
+                   << sql;
+        return false;
     }
 }
 
 RunSession::RunSession(EngineMode engine_mode)
-    : engine_mode_(engine_mode), is_debug_(false), is_procedure_(false) {}
+    : engine_mode_(engine_mode), is_debug_(false) {}
 RunSession::~RunSession() {}
 
 bool RunSession::SetCompileInfo(
@@ -359,7 +358,7 @@ int32_t BatchRequestRunSession::Run(const uint32_t id,
     for (size_t i = 0; i < request_batch.size(); ++i) {
         output.push_back(Row());
         int32_t ok = RunSingle(ctx, id, request_batch[i], &output.back());
-        if (!ok) {
+        if (ok != 0) {
             return -1;
         }
     }
@@ -421,6 +420,7 @@ std::shared_ptr<TableHandler> BatchRunSession::Run() {
     }
     return std::shared_ptr<TableHandler>();
 }
+
 int32_t BatchRunSession::Run(std::vector<Row>& rows, uint64_t limit) {
     RunnerContext ctx(is_debug_);
     auto output =
@@ -455,12 +455,6 @@ int32_t BatchRunSession::Run(std::vector<Row>& rows, uint64_t limit) {
         }
     }
     return 0;
-}
-
-void Engine::ClearSpCacheLocked(const std::string& db,
-                                const std::string& sp_name) {
-    std::lock_guard<base::SpinMutex> lock(mu_);
-    procedure_cache_[db].erase(sp_name);
 }
 
 }  // namespace vm
