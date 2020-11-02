@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -49,6 +50,7 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "parser/parser.h"
 #include "plan/planner.h"
+#include "sys/time.h"
 #include "vm/engine.h"
 #include "vm/test_base.h"
 #define MAX_DEBUG_LINES_CNT 100 * 100 * 100
@@ -64,9 +66,12 @@ static const int ENGINE_TEST_RET_EXECUTION_ERROR = 3;
 
 namespace fesql {
 namespace vm {
+using fesql::base::Status;
 using fesql::codec::ArrayListV;
 using fesql::codec::Row;
+using fesql::common::kSQLError;
 using fesql::sqlcase::SQLCase;
+
 enum EngineRunMode { RUNBATCH, RUNONE };
 
 std::vector<SQLCase> InitCases(std::string yaml_path);
@@ -408,158 +413,39 @@ const std::string GenerateTableName(int32_t id) {
     return "auto_t" + std::to_string(id);
 }
 
-void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
-                 bool check_compatible, int* return_status) {
-    *return_status = ENGINE_TEST_RET_INVALID_CASE;
-    int32_t input_cnt = sql_case.CountInputs();
-
-    // Init catalog
-    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
-        name_table_map;
+std::shared_ptr<tablet::TabletCatalog> InitEngineCatalog(
+    const SQLCase& sql_case,
+    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>&  // NOLINT
+        name_table_map,                                               // NOLINT
+    std::map<size_t, std::string>& idx_table_name_map) {              // NOLINT
     auto catalog = BuildCommonCatalog();
-    for (int32_t i = 0; i < input_cnt; i++) {
-        if (sql_case.inputs()[i].name_.empty()) {
-            sql_case.set_input_name(GenerateTableName(i), i);
+    for (int32_t i = 0; i < sql_case.CountInputs(); i++) {
+        std::string actual_name = sql_case.inputs()[i].name_;
+        if (actual_name.empty()) {
+            actual_name = GenerateTableName(i);
         }
         type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
+        table_def.set_name(actual_name);
         std::shared_ptr<::fesql::storage::Table> table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
         name_table_map[table_def.name()] = table;
-        ASSERT_TRUE(AddTable(catalog, table_def, table));
-    }
-
-    // Init engine and run session
-    std::string sql_str = sql_case.sql_str();
-    for (int j = 0; j < input_cnt; ++j) {
-        std::string placeholder = "{" + std::to_string(j) + "}";
-        boost::replace_all(sql_str, placeholder, sql_case.inputs()[j].name_);
-    }
-    std::cout << sql_str << std::endl;
-    base::Status get_status;
-
-    Engine engine(catalog);
-    std::unique_ptr<RunSession> session;
-    if (engine_mode == kBatchMode) {
-        session = std::unique_ptr<RunSession>(new BatchRunSession);
-    } else if (engine_mode == kRequestMode) {
-        session = std::unique_ptr<RunSession>(new RequestRunSession);
-    } else {
-        session = std::unique_ptr<RunSession>(new BatchRequestRunSession);
-    }
-    if (fesql::sqlcase::SQLCase::IS_DEBUG() || sql_case.debug()) {
-        session->EnableDebug();
-    }
-
-    bool ok = engine.Get(sql_str, sql_case.db(), *(session.get()), get_status);
-    if (!ok) {
-        *return_status = ENGINE_TEST_RET_COMPILE_ERROR;
-    }
-    ASSERT_EQ(sql_case.expect().success_, ok);
-    if (!sql_case.expect().success_) {
-        return;
-    }
-    std::vector<Row> request_data;
-    std::string request_name = "";
-
-    bool is_batch = engine_mode == kBatchMode;
-    if (!is_batch) {
-        if (engine_mode == kRequestMode) {
-            request_name = dynamic_cast<RequestRunSession*>(session.get())
-                               ->GetRequestName();
-        } else {
-            request_name = dynamic_cast<BatchRequestRunSession*>(session.get())
-                               ->GetRequestName();
+        if (!AddTable(catalog, table_def, table)) {
+            return nullptr;
         }
+        idx_table_name_map[i] = actual_name;
     }
-    for (int32_t i = 0; i < input_cnt; i++) {
-        auto input = sql_case.inputs()[i];
-        if (!is_batch && input.name_ == request_name) {
-            ASSERT_TRUE(sql_case.ExtractInputData(request_data, i));
-        } else {
-            std::vector<Row> rows;
-            sql_case.ExtractInputData(rows, i);
-            if (!rows.empty()) {
-                ASSERT_NO_FATAL_FAILURE(
-                    StoreData(name_table_map[input.name_].get(), rows));
-            }
-        }
-    }
+    return catalog;
+}
 
-    vm::Schema schema;
-    schema = session->GetSchema();
-    PrintSchema(schema);
-    std::ostringstream oss;
-    session->GetPhysicalPlan()->Print(oss, "");
-    LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
-
-    if (is_batch && !sql_case.batch_plan().empty()) {
-        ASSERT_EQ(oss.str(), sql_case.batch_plan());
-    } else if (!is_batch && !sql_case.request_plan().empty()) {
-        ASSERT_EQ(oss.str(), sql_case.request_plan());
-    }
-
-    std::ostringstream runner_oss;
-    session->GetMainTask()->Print(runner_oss, "");
-    LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
-
-    // Check Output Data
-    std::vector<Row> output;
-    if (engine_mode == kBatchMode) {
-        auto batch_session = dynamic_cast<BatchRunSession*>(session.get());
-        int run_ret = batch_session->Run(output);
-        if (run_ret != 0) {
-            *return_status = ENGINE_TEST_RET_EXECUTION_ERROR;
-        }
-        ASSERT_EQ(0, run_ret);
-    } else if (engine_mode == kRequestMode) {
-        auto request_table = name_table_map[request_name];
-        ASSERT_TRUE(request_table->Init());
-        auto request_session = dynamic_cast<RequestRunSession*>(session.get());
-        for (auto in_row : request_data) {
-            Row out_row;
-            int run_ret = request_session->Run(in_row, &out_row);
-            if (run_ret != 0) {
-                *return_status = ENGINE_TEST_RET_EXECUTION_ERROR;
-            }
-            ASSERT_EQ(0, run_ret);
-            ASSERT_TRUE(request_table->Put(
-                reinterpret_cast<const char*>(in_row.buf()), in_row.size()));
-            output.push_back(out_row);
-        }
-    } else {
-        auto request_table = name_table_map[request_name];
-        ASSERT_TRUE(request_table->Init());
-        auto request_session =
-            dynamic_cast<BatchRequestRunSession*>(session.get());
-        RunnerContext runner_context(false);
-        for (auto in_row : request_data) {
-            Row out_row;
-            int run_ret =
-                request_session->RunSingle(runner_context, in_row, &out_row);
-            if (run_ret != 0) {
-                *return_status = ENGINE_TEST_RET_EXECUTION_ERROR;
-            }
-            ASSERT_EQ(0, run_ret);
-            ASSERT_TRUE(request_table->Put(
-                reinterpret_cast<const char*>(in_row.buf()), in_row.size()));
-            output.push_back(out_row);
-        }
-    }
-    auto sorted_output = SortRows(schema, output, sql_case.expect().order_);
-
+void DoEngineCheckExpect(const SQLCase& sql_case, const vm::Schema& schema,
+                         const std::vector<Row>& output,
+                         bool is_batch_request) {
     if (sql_case.expect().count_ >= 0) {
         ASSERT_EQ(sql_case.expect().count_, output.size());
     }
 
-    // LOG(INFO) << "Expect result:\n";
-    // PrintRows(schema, case_output_data);
-
-    LOG(INFO) << "Real result:\n";
-    PrintRows(schema, sorted_output);
-    PrintYamlResult(schema, sorted_output);
-    PrintYamlV1Result(schema, sorted_output);
-
+    auto sorted_output = SortRows(schema, output, sql_case.expect().order_);
     if (!sql_case.expect().schema_.empty() ||
         !sql_case.expect().columns_.empty()) {
         // Check Output Schema
@@ -569,106 +455,529 @@ void EngineCheck(SQLCase& sql_case, EngineMode engine_mode,  // NOLINT
         ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
         ASSERT_NO_FATAL_FAILURE(
             CheckSchema(schema, case_output_table.columns()));
+
+        // for batch request mode, trivally compare last result
+        if (is_batch_request && sql_case.batch_request().columns_.empty()) {
+            if (!case_output_data.empty()) {
+                case_output_data = {case_output_data.back()};
+            }
+        }
+
+        LOG(INFO) << "Expect result:\n";
+        PrintRows(schema, case_output_data);
+
+        LOG(INFO) << "Real result:\n";
+        PrintRows(schema, sorted_output);
+
         ASSERT_NO_FATAL_FAILURE(
             CheckRows(schema, sorted_output, case_output_data));
     } else {
         LOG(INFO) << "Real result:\n";
         PrintRows(schema, sorted_output);
     }
+}
 
-    *return_status = ENGINE_TEST_RET_SUCCESS;
+void CheckSQLiteCompatible(const SQLCase& sql_case, const vm::Schema& schema,
+                           const std::vector<Row>& output) {
+    // Use SQLite to get output
+    sqlite3* db;
+    char* zErrMsg = 0;
+    int rc;
 
-    // Determine whether to compare with SQLite
-    if (is_batch && check_compatible && sql_case.standard_sql() &&
-        sql_case.standard_sql_compatible()) {
-        // Use SQLite to get output
-        sqlite3* db;
-        char* zErrMsg = 0;
-        int rc;
+    // Create database in the memory
+    rc = sqlite3_open(":memory:", &db);
+    if (rc) {
+        LOG(ERROR) << "Can't open database: %s\n" << sqlite3_errmsg(db);
+        exit(0);
+    } else {
+        LOG(INFO) << "Database Create successfully\n";
+    }
 
-        // Create database in the memory
-        rc = sqlite3_open(":memory:", &db);
-        if (rc) {
-            LOG(ERROR) << "Can't open database: %s\n" << sqlite3_errmsg(db);
-            exit(0);
-        } else {
-            LOG(INFO) << "Database Create successfully\n";
+    // Create SQL statement to create a table schema
+    type::TableDef output_table;
+    sql_case.ExtractInputTableDef(output_table);
+    std::string create_table_sql;
+    SQLCase::BuildCreateSQLFromSchema(output_table, &create_table_sql, false);
+    LOG(INFO) << create_table_sql;
+
+    // Create a table schema
+    const char* create_table_sql_ch = create_table_sql.c_str();
+    rc = sqlite3_exec(db, create_table_sql_ch, 0, 0, &zErrMsg);
+    if (rc != SQLITE_OK) {
+        LOG(ERROR) << "SQL error: %s\n" << zErrMsg;
+        sqlite3_free(zErrMsg);
+    } else {
+        LOG(INFO) << "Table schema created successfully\n";
+    }
+
+    // Create SQL statements to insert data to the table (One insert)
+    std::string create_insert_sql = "";
+    std::vector<std::string> data_line;
+    sql_case.BuildInsertSQLFromInput(0, &create_insert_sql);
+
+    // Insert data into the table
+    const char* create_insert_sql_ch = create_insert_sql.c_str();
+    std::cout << create_insert_sql_ch << std::endl;
+    rc = sqlite3_exec(db, create_insert_sql_ch, 0, 0, &zErrMsg);
+    if (rc != SQLITE_OK) {
+        LOG(ERROR) << "SQL error: %s\n" << zErrMsg;
+        sqlite3_free(zErrMsg);
+    } else {
+        LOG(INFO) << "Records created successfully\n";
+    }
+
+    // Execute SQL statement
+    const char* create_execute_sql_ch = sql_case.sql_str().c_str();
+    std::string sqliteStr = "";
+    rc = sqlite3_exec(db, create_execute_sql_ch,
+                      GenerateSqliteTestStringCallback,
+                      static_cast<void*>(&sqliteStr), &zErrMsg);
+    if (rc != SQLITE_OK) {
+        LOG(ERROR) << "SQL error: " << zErrMsg
+                   << "\nsql: " << create_execute_sql_ch;
+        sqlite3_free(zErrMsg);
+    } else {
+        LOG(INFO) << "Operation done successfully\n";
+    }
+    sqlite3_close(db);
+    sqliteStr.pop_back();
+
+    // Transfer Sqlite outcome to Fesql row
+    std::vector<fesql::codec::Row> sqliteRows;
+    SQLCase::ExtractRows(schema, sqliteStr, sqliteRows);
+
+    // Compare Fesql output with SQLite output.
+    ASSERT_NO_FATAL_FAILURE(CheckRows(
+        schema, SortRows(schema, sqliteRows, sql_case.expect().order_),
+        SortRows(schema, output, sql_case.expect().order_)));
+}
+
+class EngineTestRunner {
+ public:
+    explicit EngineTestRunner(const SQLCase& sql_case) : sql_case_(sql_case) {
+        catalog_ =
+            InitEngineCatalog(sql_case_, name_table_map_, idx_table_name_map_);
+        engine_ = std::make_shared<Engine>(catalog_);
+    }
+
+    void SetSession(std::shared_ptr<RunSession> session) { session_ = session; }
+
+    std::shared_ptr<RunSession> GetSession() const { return session_; }
+
+    Status Compile();
+    virtual Status PrepareData() = 0;
+    virtual Status Compute(std::vector<codec::Row>*) = 0;
+
+    int return_code() const { return return_code_; }
+    const SQLCase& sql_case() const { return sql_case_; }
+
+    void RunCheck();
+    void RunBenchmark(size_t iters);
+
+ protected:
+    SQLCase sql_case_;
+
+    std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
+        name_table_map_;
+    std::map<size_t, std::string> idx_table_name_map_;
+    std::shared_ptr<tablet::TabletCatalog> catalog_;
+
+    std::shared_ptr<Engine> engine_ = nullptr;
+
+    std::shared_ptr<RunSession> session_ = nullptr;
+
+    int return_code_ = ENGINE_TEST_RET_INVALID_CASE;
+};
+
+Status EngineTestRunner::Compile() {
+    std::string sql_str = sql_case_.sql_str();
+    for (int j = 0; j < sql_case_.CountInputs(); ++j) {
+        std::string placeholder = "{" + std::to_string(j) + "}";
+        boost::replace_all(sql_str, placeholder, idx_table_name_map_[j]);
+    }
+    LOG(INFO) << "Compile SQL:\n" << sql_str;
+    CHECK_TRUE(session_ != nullptr, common::kSQLError, "Session is not set");
+    if (fesql::sqlcase::SQLCase::IS_DEBUG() || sql_case_.debug()) {
+        session_->EnableDebug();
+    }
+    struct timeval st;
+    struct timeval et;
+    gettimeofday(&st, nullptr);
+    Status status;
+    bool ok = engine_->Get(sql_str, sql_case_.db(), *session_, status);
+    gettimeofday(&et, nullptr);
+    double mill =
+        (et.tv_sec - st.tv_sec) * 1000 + (et.tv_usec - st.tv_usec) / 1000.0;
+    LOG(INFO) << "SQL Compile take " << mill << " milliseconds";
+
+    if (!ok || !status.isOK()) {
+        return_code_ = ENGINE_TEST_RET_COMPILE_ERROR;
+    } else {
+        LOG(INFO) << "SQL output schema:";
+        PrintSchema(session_->GetSchema());
+
+        std::ostringstream oss;
+        session_->GetPhysicalPlan()->Print(oss, "");
+        LOG(INFO) << "Physical plan:\n" << oss.str() << std::endl;
+
+        std::ostringstream runner_oss;
+        session_->GetMainTask()->Print(runner_oss, "");
+        LOG(INFO) << "Runner plan:\n" << runner_oss.str() << std::endl;
+    }
+    return status;
+}
+
+void EngineTestRunner::RunCheck() {
+    auto engine_mode = session_->engine_mode();
+    Status status = Compile();
+    ASSERT_EQ(sql_case_.expect().success_, status.isOK());
+    if (!status.isOK()) {
+        return_code_ = ENGINE_TEST_RET_COMPILE_ERROR;
+        return;
+    }
+    std::ostringstream oss;
+    session_->GetPhysicalPlan()->Print(oss, "");
+    if (!sql_case_.batch_plan().empty() && engine_mode == kBatchMode) {
+        ASSERT_EQ(oss.str(), sql_case_.batch_plan());
+    } else if (!sql_case_.request_plan().empty() &&
+               engine_mode == kRequestMode) {
+        ASSERT_EQ(oss.str(), sql_case_.request_plan());
+    }
+    status = PrepareData();
+    ASSERT_TRUE(status.isOK()) << "Prepare data error: " << status;
+    if (!status.isOK()) {
+        return;
+    }
+    std::vector<Row> output_rows;
+    status = Compute(&output_rows);
+    ASSERT_TRUE(status.isOK()) << "Session run error: " << status;
+    if (!status.isOK()) {
+        return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
+        return;
+    }
+    DoEngineCheckExpect(sql_case_, session_->GetSchema(), output_rows,
+                        engine_mode == kBatchRequestMode);
+    return_code_ = ENGINE_TEST_RET_SUCCESS;
+}
+
+void EngineTestRunner::RunBenchmark(size_t iters) {
+    auto engine_mode = session_->engine_mode();
+    if (engine_mode == kRequestMode) {
+        LOG(WARNING) << "Request mode case can not properly run many times";
+        return;
+    }
+
+    Status status = Compile();
+    if (!status.isOK()) {
+        LOG(WARNING) << "Compile error: " << status;
+        return;
+    }
+    status = PrepareData();
+    if (!status.isOK()) {
+        LOG(WARNING) << "Prepare data error: " << status;
+        return;
+    }
+
+    std::vector<Row> output_rows;
+    status = Compute(&output_rows);
+    if (!status.isOK()) {
+        LOG(WARNING) << "Run error: " << status;
+        return;
+    }
+    PrintRows(session_->GetSchema(), output_rows);
+
+    struct timeval st;
+    struct timeval et;
+    gettimeofday(&st, nullptr);
+    for (size_t i = 0; i < iters; ++i) {
+        output_rows.clear();
+        status = Compute(&output_rows);
+        if (!status.isOK()) {
+            LOG(WARNING) << "Run error at " << i << "th iter: " << status;
+            return;
         }
-
-        // Create SQL statement to create a table schema
-        type::TableDef output_table;
-        sql_case.ExtractInputTableDef(output_table);
-        std::string create_table_sql;
-        SQLCase::BuildCreateSQLFromSchema(output_table, &create_table_sql,
-                                          false);
-        LOG(INFO) << create_table_sql;
-
-        // Create a table schema
-        const char* create_table_sql_ch = create_table_sql.c_str();
-        rc = sqlite3_exec(db, create_table_sql_ch, 0, 0, &zErrMsg);
-        if (rc != SQLITE_OK) {
-            LOG(ERROR) << "SQL error: %s\n" << zErrMsg;
-            sqlite3_free(zErrMsg);
-        } else {
-            LOG(INFO) << "Table schema created successfully\n";
-        }
-
-        // Create SQL statements to insert data to the table (One insert)
-        std::string create_insert_sql = "";
-        std::vector<std::string> data_line;
-        sql_case.BuildInsertSQLFromInput(0, &create_insert_sql);
-
-        // Insert data into the table
-        const char* create_insert_sql_ch = create_insert_sql.c_str();
-        std::cout << create_insert_sql_ch << std::endl;
-        rc = sqlite3_exec(db, create_insert_sql_ch, 0, 0, &zErrMsg);
-        if (rc != SQLITE_OK) {
-            LOG(ERROR) << "SQL error: %s\n" << zErrMsg;
-            sqlite3_free(zErrMsg);
-        } else {
-            LOG(INFO) << "Records created successfully\n";
-        }
-
-        // Execute SQL statement
-        const char* create_execute_sql_ch = sql_case.sql_str().c_str();
-        std::string sqliteStr = "";
-        rc = sqlite3_exec(db, create_execute_sql_ch,
-                          GenerateSqliteTestStringCallback,
-                          static_cast<void*>(&sqliteStr), &zErrMsg);
-        if (rc != SQLITE_OK) {
-            LOG(ERROR) << "SQL error: " << zErrMsg
-                       << "\nsql: " << create_execute_sql_ch;
-            sqlite3_free(zErrMsg);
-        } else {
-            LOG(INFO) << "Operation done successfully\n";
-        }
-        sqlite3_close(db);
-        sqliteStr.pop_back();
-
-        // Transfer Sqlite outcome to Fesql row
-        std::vector<fesql::codec::Row> sqliteRows;
-        SQLCase::ExtractRows(schema, sqliteStr, sqliteRows);
-
-        // Compare Fesql output with SQLite output.
-        ASSERT_NO_FATAL_FAILURE(CheckRows(
-            schema, SortRows(schema, sqliteRows, sql_case.expect().order_),
-            SortRows(schema, output, sql_case.expect().order_)));
+    }
+    gettimeofday(&et, nullptr);
+    if (iters != 0) {
+        double mill =
+            (et.tv_sec - st.tv_sec) * 1000 + (et.tv_usec - st.tv_usec) / 1000.0;
+        printf("Engine run take approximately %.5f ms per run\n", mill / iters);
     }
 }
 
-void RequestModeCheck(SQLCase& sql_case) {  // NOLINT
-    int return_status;
-    EngineCheck(sql_case, kRequestMode, false, &return_status);
+class BatchEngineTestRunner : public EngineTestRunner {
+ public:
+    explicit BatchEngineTestRunner(const SQLCase& sql_case)
+        : EngineTestRunner(sql_case) {
+        session_ = std::make_shared<BatchRunSession>();
+    }
+
+    Status PrepareData() override {
+        for (int32_t i = 0; i < sql_case_.CountInputs(); i++) {
+            auto input = sql_case_.inputs()[i];
+            std::vector<Row> rows;
+            sql_case_.ExtractInputData(rows, i);
+            if (!rows.empty()) {
+                std::string table_name = idx_table_name_map_[i];
+                StoreData(name_table_map_[table_name].get(), rows);
+            }
+        }
+        return Status::OK();
+    }
+
+    Status Compute(std::vector<Row>* outputs) override {
+        auto batch_session =
+            std::dynamic_pointer_cast<BatchRunSession>(session_);
+        CHECK_TRUE(batch_session != nullptr, common::kSQLError);
+        int run_ret = batch_session->Run(*outputs);
+        if (run_ret != 0) {
+            return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
+        }
+        CHECK_TRUE(run_ret == 0, common::kSQLError, "Run batch session failed");
+        return Status::OK();
+    }
+
+    void RunSQLiteCheck() {
+        // Determine whether to compare with SQLite
+        if (sql_case_.standard_sql() && sql_case_.standard_sql_compatible()) {
+            std::vector<Row> output_rows;
+            ASSERT_TRUE(Compute(&output_rows).isOK());
+            CheckSQLiteCompatible(sql_case_, GetSession()->GetSchema(),
+                                  output_rows);
+        }
+    }
+};
+
+class RequestEngineTestRunner : public EngineTestRunner {
+ public:
+    explicit RequestEngineTestRunner(const SQLCase& sql_case)
+        : EngineTestRunner(sql_case) {
+        session_ = std::make_shared<RequestRunSession>();
+    }
+
+    Status PrepareData() override {
+        request_rows_.clear();
+        auto request_session =
+            std::dynamic_pointer_cast<RequestRunSession>(session_);
+        CHECK_TRUE(request_session != nullptr, common::kSQLError);
+        std::string request_name = request_session->GetRequestName();
+
+        for (int32_t i = 0; i < sql_case_.CountInputs(); i++) {
+            std::string input_name = idx_table_name_map_[i];
+            if (input_name == request_name) {
+                CHECK_TRUE(sql_case_.ExtractInputData(request_rows_, i),
+                           kSQLError, "Extract case input rows failed");
+            } else {
+                std::vector<Row> rows;
+                sql_case_.ExtractInputData(rows, i);
+                if (!rows.empty()) {
+                    StoreData(name_table_map_[input_name].get(), rows);
+                }
+            }
+        }
+        return Status::OK();
+    }
+
+    Status Compute(std::vector<Row>* outputs) override {
+        auto request_session =
+            std::dynamic_pointer_cast<RequestRunSession>(session_);
+        CHECK_TRUE(request_session != nullptr, common::kSQLError);
+
+        std::string request_name = request_session->GetRequestName();
+        auto request_table = name_table_map_[request_name];
+        CHECK_TRUE(request_table->Init(), kSQLError,
+                   "Init request table failed");
+        for (auto in_row : request_rows_) {
+            Row out_row;
+            int run_ret = request_session->Run(in_row, &out_row);
+            if (run_ret != 0) {
+                return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
+                return Status(kSQLError, "Run request session failed");
+            }
+            CHECK_TRUE(
+                request_table->Put(reinterpret_cast<const char*>(in_row.buf()),
+                                   in_row.size()),
+                kSQLError);
+            outputs->push_back(out_row);
+        }
+        return Status::OK();
+    }
+
+ private:
+    std::vector<Row> request_rows_;
+};
+
+class BatchRequestEngineTestRunner : public EngineTestRunner {
+ public:
+    BatchRequestEngineTestRunner(const SQLCase& sql_case,
+                                 const std::set<size_t>& common_column_indices)
+        : EngineTestRunner(sql_case) {
+        auto request_session = std::make_shared<BatchRequestRunSession>();
+        for (size_t idx : common_column_indices) {
+            request_session->AddCommonColumnIdx(idx);
+        }
+        session_ = request_session;
+    }
+
+    Status PrepareData() override {
+        request_rows_.clear();
+        auto request_session =
+            std::dynamic_pointer_cast<BatchRequestRunSession>(session_);
+        CHECK_TRUE(request_session != nullptr, common::kSQLError);
+
+        bool has_batch_request = !sql_case_.batch_request().columns_.empty();
+        if (!has_batch_request) {
+            LOG(WARNING) << "No batch request field in case, "
+                         << "try use last row from primary input";
+        }
+
+        std::vector<Row> original_request_data;
+        std::string request_name = request_session->GetRequestName();
+        auto& request_schema = request_session->GetRequestSchema();
+        for (int32_t i = 0; i < sql_case_.CountInputs(); i++) {
+            auto input = sql_case_.inputs()[i];
+            std::vector<Row> rows;
+            sql_case_.ExtractInputData(rows, i);
+            if (!rows.empty()) {
+                if (idx_table_name_map_[i] == request_name &&
+                    !has_batch_request) {
+                    original_request_data.push_back(rows.back());
+                    rows.pop_back();
+                }
+                std::string table_name = idx_table_name_map_[i];
+                StoreData(name_table_map_[table_name].get(), rows);
+            }
+        }
+
+        type::TableDef request_table;
+        if (has_batch_request) {
+            sql_case_.ExtractTableDef(sql_case_.batch_request().columns_,
+                                      sql_case_.batch_request().indexs_,
+                                      request_table);
+            sql_case_.ExtractRows(request_table.columns(),
+                                  sql_case_.batch_request().rows_,
+                                  original_request_data);
+        } else {
+            sql_case_.ExtractInputTableDef(request_table, 0);
+        }
+
+        std::vector<size_t> common_column_indices;
+        for (size_t idx : request_session->common_column_indices()) {
+            common_column_indices.push_back(idx);
+        }
+        size_t request_schema_size = static_cast<size_t>(request_schema.size());
+        if (common_column_indices.empty() ||
+            common_column_indices.size() == request_schema_size) {
+            request_rows_ = original_request_data;
+        } else {
+            std::vector<size_t> non_common_column_indices;
+            for (size_t i = 0; i < request_schema_size; ++i) {
+                if (std::find(common_column_indices.begin(),
+                              common_column_indices.end(),
+                              i) == common_column_indices.end()) {
+                    non_common_column_indices.push_back(i);
+                }
+            }
+            codec::RowSelector left_selector(&request_table.columns(),
+                                             common_column_indices);
+            codec::RowSelector right_selector(&request_table.columns(),
+                                              non_common_column_indices);
+
+            bool left_selected = false;
+            codec::RefCountedSlice left_slice;
+            for (auto& original_row : original_request_data) {
+                if (!left_selected) {
+                    int8_t* left_buf;
+                    size_t left_size;
+                    left_selector.Select(original_row.buf(0),
+                                         original_row.size(0), &left_buf,
+                                         &left_size);
+                    left_slice = codec::RefCountedSlice::CreateManaged(
+                        left_buf, left_size);
+                    left_selected = true;
+                }
+                int8_t* right_buf = nullptr;
+                size_t right_size;
+                right_selector.Select(original_row.buf(0), original_row.size(0),
+                                      &right_buf, &right_size);
+                codec::RefCountedSlice right_slice =
+                    codec::RefCountedSlice::CreateManaged(right_buf,
+                                                          right_size);
+                request_rows_.emplace_back(codec::Row(
+                    1, codec::Row(left_slice), 1, codec::Row(right_slice)));
+            }
+        }
+        return Status::OK();
+    }
+
+    Status Compute(std::vector<Row>* outputs) override {
+        auto request_session =
+            std::dynamic_pointer_cast<BatchRequestRunSession>(session_);
+        CHECK_TRUE(request_session != nullptr, common::kSQLError);
+
+        int run_ret = request_session->Run(request_rows_, *outputs);
+        if (run_ret != 0) {
+            return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
+            return Status(kSQLError, "Run batch request session failed");
+        }
+        return Status::OK();
+    }
+
+ private:
+    std::vector<Row> request_rows_;
+};
+
+void BatchRequestEngineCheckWithCommonColumnIndices(
+    const SQLCase& sql_case, const std::set<size_t>& common_column_indices) {
+    BatchRequestEngineTestRunner engine_test(sql_case, common_column_indices);
+    engine_test.RunCheck();
 }
 
-void BatchModeCheck(SQLCase& sql_case) {  // NOLINT
-    int return_status;
-    EngineCheck(sql_case, kBatchMode, true, &return_status);
+void BatchRequestEngineCheck(const SQLCase& sql_case) {
+    bool has_batch_request = !sql_case.batch_request().columns_.empty();
+    if (has_batch_request) {
+        BatchRequestEngineCheckWithCommonColumnIndices(
+            sql_case, sql_case.batch_request().common_column_indices_);
+    } else if (!sql_case.inputs().empty()) {
+        // set different common column conf
+        size_t schema_size = sql_case.inputs()[0].columns_.size();
+        std::set<size_t> common_column_indices;
+
+        // empty
+        BatchRequestEngineCheckWithCommonColumnIndices(sql_case,
+                                                       common_column_indices);
+
+        // full
+        for (size_t i = 0; i < schema_size; ++i) {
+            common_column_indices.insert(i);
+        }
+        BatchRequestEngineCheckWithCommonColumnIndices(sql_case,
+                                                       common_column_indices);
+        common_column_indices.clear();
+
+        // partial
+        // TODO(bxq): use transform pass to resolve all problems
+        // of changing the request schema
+        // for (size_t i = 0; i < schema_size; i += 2) {
+        //    common_column_indices.insert(i);
+        // }
+        // BatchRequestEngineCheckWithCommonColumnIndices(
+        //    sql_case, common_column_indices, return_status);
+        // common_column_indices.clear();
+    }
 }
 
-void BatchRequestModeCheck(SQLCase& sql_case) {  // NOLINT
-    int return_status;
-    EngineCheck(sql_case, kBatchRequestMode, false, &return_status);
+void EngineCheck(const SQLCase& sql_case, EngineMode engine_mode) {
+    if (engine_mode == kBatchMode) {
+        BatchEngineTestRunner engine_test(sql_case);
+        engine_test.RunCheck();
+        engine_test.RunSQLiteCheck();
+    } else if (engine_mode == kRequestMode) {
+        RequestEngineTestRunner engine_test(sql_case);
+        engine_test.RunCheck();
+    } else {
+        BatchRequestEngineCheck(sql_case);
+    }
 }
 
 }  // namespace vm

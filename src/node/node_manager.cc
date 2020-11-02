@@ -1367,6 +1367,11 @@ SQLNode *NodeManager::MakeReplicaNumNode(int num) {
     return RegisterNode(node_ptr);
 }
 
+SQLNode *NodeManager::MakePartitionNumNode(int num) {
+    SQLNode *node_ptr = new PartitionNumNode(num);
+    return RegisterNode(node_ptr);
+}
+
 SQLNode *NodeManager::MakeDistributionsNode(SQLNodeList *distribution_list) {
     DistributionsNode *index_ptr = new DistributionsNode(distribution_list);
     return RegisterNode(index_ptr);

@@ -7,6 +7,7 @@
  *--------------------------------------------------------------------------
  **/
 #include "vm/core_api.h"
+#include "base/sig_trace.h"
 #include "codec/fe_row_codec.h"
 #include "udf/udf.h"
 #include "vm/jit_runtime.h"
@@ -147,6 +148,15 @@ RawPtrHandle CoreAPI::AppendRow(fesql::codec::Row* row, size_t bytes) {
     auto slice = base::RefCountedSlice::CreateManaged(buf, bytes);
     row->Append(slice);
     return buf;
+}
+
+bool CoreAPI::EnableSignalTraceback() {
+    signal(SIGSEGV, fesql::base::FeSignalBacktraceHandler);
+    signal(SIGBUS, fesql::base::FeSignalBacktraceHandler);
+    signal(SIGFPE, fesql::base::FeSignalBacktraceHandler);
+    signal(SIGILL, fesql::base::FeSignalBacktraceHandler);
+    signal(SIGSYS, fesql::base::FeSignalBacktraceHandler);
+    return true;
 }
 
 std::shared_ptr<DataHandler> RunnerContext::GetCache(int64_t id) const {

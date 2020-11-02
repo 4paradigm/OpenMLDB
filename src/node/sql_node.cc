@@ -1993,6 +1993,15 @@ void ReplicaNumNode::Print(std::ostream &output,
     PrintValue(output, tab, std::to_string(replica_num_), "replica_num", true);
 }
 
+void PartitionNumNode::Print(std::ostream &output,
+                             const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, std::to_string(partition_num_), "partition_num",
+               true);
+}
+
 void DistributionsNode::Print(std::ostream &output,
                               const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
