@@ -10555,39 +10555,6 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
         }
     }
     do {
-        std::vector<std::shared_ptr<rtidb::client::TabletClient>> tb_client_set;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            for (const auto& kv : tablets_) {
-                if (kv.second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
-                    tb_client_set.push_back(kv.second->client_);
-                }
-            }
-        }
-        if (tb_client_set.empty()) {
-            response->set_code(::rtidb::base::ReturnCode::kTabletIsNotHealthy);
-            response->set_msg("tablet is not healthy");
-            PDLOG(WARNING, "tablet is not healthy");
-            return;
-        }
-        Schema rtidb_input_schema;
-        Schema rtidb_output_schema;
-        std::shared_ptr<rtidb::client::TabletClient> tb_client =
-            tb_client_set.at(rand_.Next() % tb_client_set.size());
-        if (!tb_client->GetSchema(db_name, sql, &rtidb_input_schema, &rtidb_output_schema)) {
-            response->set_code(::rtidb::base::ReturnCode::kGetSchemaFailed);
-            response->set_msg("get schema from tablet failed");
-            PDLOG(WARNING, "get scheam tablet from failed, db[%s], sp_name[%s], sql[%s]",
-                    db_name.c_str(), sp_name.c_str(), sql.c_str());
-            return;
-        }
-        if (!CheckParameter(sp_info->input_schema(), rtidb_input_schema)) {
-            response->set_code(::rtidb::base::ReturnCode::kCheckParameterFailed);
-            response->set_msg("check parameter failed");
-            PDLOG(WARNING, "check parameter failed, db[%s], sp_name[%s], sql[%s]",
-                    db_name.c_str(), sp_name.c_str(), sql.c_str());
-            return;
-        }
         if (!CreateProcedureOnTablet(db_name, sp_name, sql)) {
             response->set_code(::rtidb::base::ReturnCode::kCreateProcedureFailedOnTablet);
             response->set_msg("create procedure failed on tablet");
@@ -10595,7 +10562,6 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
         }
 
         std::string sp_value;
-        sp_info->mutable_output_schema()->CopyFrom(rtidb_output_schema);
         sp_info->SerializeToString(&sp_value);
         std::string compressed;
         ::snappy::Compress(sp_value.c_str(), sp_value.length(), &compressed);

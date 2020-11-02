@@ -476,12 +476,35 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
                                   fesql::sdk::Status* status) {
     auto ns_ptr = cluster_sdk_->GetNsClient();
     if (!ns_ptr) {
-        LOG(WARNING) << "no nameserver exist";
+        status->code = -1;
+        status->msg = "no nameserver exist";
+        LOG(WARNING) << status->msg;
         return false;
     }
     // TODO(wangtaize) update ns client to thread safe
     std::string err;
-    bool ok = ns_ptr->ExecuteSQL(db, sql, err);
+    bool ok = false;
+
+    // parse sql to judge whether is create procedure case
+    fesql::node::NodeManager node_manager;
+    fesql::parser::FeSQLParser parser;
+    DLOG(INFO) << "start to execute script from dbms:\n" << sql;
+    fesql::base::Status sql_status;
+    fesql::node::NodePointVector parser_trees;
+    parser.parse(sql, parser_trees, &node_manager, sql_status);
+    if (sql_status.code != 0) {
+        status->code = -1;
+        status->msg = sql_status.msg;
+        LOG(WARNING) << status->msg;
+        return false;
+    }
+    fesql::node::SQLNode* node = parser_trees[0];
+    if (node->GetType() == fesql::node::kCreateSpStmt) {
+        ok = HandleSQLCreateProcedure(parser_trees, db, sql,
+                ns_ptr, &node_manager, &err);
+    } else {
+        ok = ns_ptr->ExecuteSQL(db, sql, err);
+    }
     if (!ok) {
         status->msg = "fail to execute sql " + sql + " for error " + err;
         LOG(WARNING) << status->msg;
@@ -490,6 +513,7 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
     }
     return true;
 }
+
 bool SQLClusterRouter::ShowDB(std::vector<std::string>* dbs,
                               fesql::sdk::Status* status) {
     auto ns_ptr = cluster_sdk_->GetNsClient();
@@ -981,6 +1005,131 @@ std::shared_ptr<ProcedureInfo> SQLClusterRouter::ShowProcedure(
     std::shared_ptr<ProcedureInfoImpl> sp_info = std::make_shared<ProcedureInfoImpl>(
             db, sp_name, sp_info_pb.sql(), input_schema, output_schema);
     return sp_info;
+}
+
+bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVector& parser_trees,
+        const std::string& db, const std::string& sql,
+        std::shared_ptr<::rtidb::client::NsClient> ns_ptr,
+        fesql::node::NodeManager* node_manager, std::string* msg) {
+    if (node_manager == nullptr || msg == nullptr) {
+        return false;
+    }
+    fesql::plan::SimplePlanner planner(node_manager);
+    fesql::node::PlanNodeList plan_trees;
+    fesql::base::Status sql_status;
+    planner.CreatePlanTree(parser_trees, plan_trees, sql_status);
+    if (sql_status.code != 0) {
+        *msg = sql_status.msg;
+        return false;
+    }
+
+    fesql::node::PlanNode* plan = plan_trees[0];
+    if (plan == nullptr) {
+        *msg = "fail to execute plan : PlanNode null";
+        return false;
+    }
+    switch (plan->GetType()) {
+        case fesql::node::kPlanTypeCreateSp: {
+            fesql::node::CreateProcedurePlanNode* create_sp =
+                dynamic_cast<fesql::node::CreateProcedurePlanNode*>(plan);
+            if (create_sp == nullptr) {
+                *msg = "cast CreateProcedurePlanNode failed";
+                return false;
+            }
+            // construct sp_info
+            rtidb::nameserver::ProcedureInfo sp_info;
+            sp_info.set_db_name(db);
+            sp_info.set_sp_name(create_sp->GetSpName());
+            sp_info.set_sql(sql);
+            RtidbSchema* schema = sp_info.mutable_input_schema();
+            for (auto input : create_sp->GetInputParameterList()) {
+                if (input == nullptr) {
+                    *msg = "fail to execute plan : InputParameterNode null";
+                    return false;
+                }
+                if (input->GetType() == fesql::node::kInputParameter) {
+                    fesql::node::InputParameterNode* input_ptr =
+                        (fesql::node::InputParameterNode*)input;
+                    if (input_ptr == nullptr) {
+                        *msg = "cast InputParameterNode failed";
+                        return false;
+                    }
+                    rtidb::common::ColumnDesc* col_desc = schema->Add();
+                    col_desc->set_name(input_ptr->GetColumnName());
+                    rtidb::type::DataType rtidb_type;
+                    bool ok = ::rtidb::catalog::SchemaAdapter::ConvertType(input_ptr->GetColumnType(),
+                            &rtidb_type);
+                    if (!ok) {
+                        *msg = "convert type failed";
+                        return false;
+                    }
+                    col_desc->set_data_type(rtidb_type);
+                    col_desc->set_is_constant(input_ptr->GetIsConstant());
+                } else {
+                    *msg = "fail to execute script with unSuppurt type" +
+                        fesql::node::NameOfSQLNodeType(input->GetType());
+                    return false;
+                }
+            }
+            // get input schema, check input parameter, and fill sp_info
+            fesql::vm::ExplainOutput explain_output;
+            bool ok = engine_->Explain(sql, db, fesql::vm::kRequestMode, &explain_output, &sql_status);
+            if (!ok) {
+                *msg = "fail to explain sql";
+                return false;
+            }
+            RtidbSchema rtidb_input_schema;
+            if (!rtidb::catalog::SchemaAdapter::ConvertSchema(explain_output.input_schema, &rtidb_input_schema)) {
+                *msg = "convert input schema failed";
+                return false;
+            }
+            if (!CheckParameter(*schema, rtidb_input_schema)) {
+                *msg = "check input parameter failed";
+                return false;
+            }
+            sp_info.mutable_input_schema()->CopyFrom(*schema);
+            // get output schema, and fill sp_info
+            RtidbSchema rtidb_output_schema;
+            if (!rtidb::catalog::SchemaAdapter::ConvertSchema(explain_output.output_schema, &rtidb_output_schema)) {
+                *msg = "convert output schema failed";
+                return false;
+            }
+            sp_info.mutable_output_schema()->CopyFrom(rtidb_output_schema);
+            // send request to ns client
+            if (!ns_ptr->CreateProcedure(sp_info, msg)) {
+                *msg = "create procedure failed, msg: " + *msg;
+                return false;
+            }
+            break;
+        }
+        default: {
+            *msg = "fail to execute script with unSuppurt type " +
+                              fesql::node::NameOfPlanNodeType(plan->GetType());
+            return false;
+        }
+    }
+    return true;
+}
+
+bool SQLClusterRouter::CheckParameter(const RtidbSchema& parameter,
+        const RtidbSchema& input_schema) {
+    if (parameter.size() != input_schema.size()) {
+        return false;
+    }
+    for (int32_t i = 0; i < parameter.size(); i++) {
+        if (parameter.Get(i).name() != input_schema.Get(i).name()) {
+            LOG(WARNING) << "check column name failed, expect " << input_schema.Get(i).name()
+                << ", but " << parameter.Get(i).name();
+            return false;
+        }
+        if (parameter.Get(i).data_type() != input_schema.Get(i).data_type()) {
+            LOG(WARNING) << "check column type failed, expect "
+                << rtidb::type::DataType_Name(input_schema.Get(i).data_type())
+                << ", but " << rtidb::type::DataType_Name(parameter.Get(i).data_type());
+            return false;
+        }
+    }
+    return true;
 }
 
 }  // namespace sdk

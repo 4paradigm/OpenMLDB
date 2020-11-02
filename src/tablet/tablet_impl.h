@@ -310,10 +310,6 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                        const ::rtidb::api::CountRequest* request,
                        uint32_t* count);
 
-    void GetSchema(RpcController* controller,
-            const rtidb::api::GetSchemaRequest* request,
-            rtidb::api::GetSchemaResponse* response, Closure* done);
-
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
 
     void CreateProcedure(RpcController* controller,

@@ -38,6 +38,9 @@
 namespace rtidb {
 namespace sdk {
 
+typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
+    RtidbSchema;
+
 static std::shared_ptr<::fesql::sdk::Schema> ConvertToSchema(
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info) {
     ::fesql::vm::Schema schema;
@@ -166,6 +169,13 @@ class SQLClusterRouter : public SQLRouter {
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
         const std::map<uint32_t, uint32_t>& column_map,
         ::fesql::node::ExprListNode* row, uint32_t* str_length);
+
+    bool HandleSQLCreateProcedure(const fesql::node::NodePointVector& parser_trees,
+            const std::string& db, const std::string& sql,
+            std::shared_ptr<::rtidb::client::NsClient> ns_ptr,
+            fesql::node::NodeManager* node_manager, std::string* msg);
+
+    inline bool CheckParameter(const RtidbSchema& parameter, const RtidbSchema& input_schema);
 
  private:
     SQLRouterOptions options_;

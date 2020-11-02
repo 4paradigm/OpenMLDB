@@ -324,9 +324,6 @@ class TabletClient {
 
     bool UpdateRealEndpointMap(const std::map<std::string, std::string>& map);
 
-    bool GetSchema(const std::string& db_name, const std::string& sql,
-            Schema* input_schema, Schema* output_schema);
-
     bool CreateProcedure(const std::string& db_name, const std::string& sp_name,
             const std::string& sql, std::string& msg); // NOLINT
 

@@ -800,18 +800,6 @@ message GetCatalogResponse {
     optional string msg = 3;
 }
 
-message GetSchemaRequest {
-    optional string db_name = 1;
-    optional string sql = 2;
-}
-
-message GetSchemaResponse {
-    optional int32 code = 1;
-    optional string msg = 2;
-    repeated rtidb.common.ColumnDesc input_schema = 3;
-    repeated rtidb.common.ColumnDesc output_schema = 4;
-}
-
 message CreateProcedureRequest {
     optional string db_name = 1;
     optional string sp_name = 2;
@@ -884,7 +872,6 @@ service TabletServer {
     rpc ExtractIndexData(ExtractIndexDataRequest) returns (GeneralResponse);
     rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
     rpc UpdateRealEndpointMap(UpdateRealEndpointMapRequest) returns (GeneralResponse);
-    rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse);
     rpc CreateProcedure(CreateProcedureRequest) returns (GeneralResponse);
     rpc DropProcedure(DropProcedureRequest) returns (GeneralResponse);
 }
