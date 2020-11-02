@@ -77,6 +77,7 @@ enum SQLNodeType {
     kDistributions,
     kCreateSpStmt,
     kInputParameter,
+    kPartitionNum,
     kUnknow
 };
 
