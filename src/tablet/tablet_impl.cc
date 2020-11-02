@@ -5984,7 +5984,12 @@ void TabletImpl::RequestQuery(const rtidb::api::QueryRequest& request,
     }
     ::fesql::codec::Row row(request.input_row());
     ::fesql::codec::Row output;
-    int32_t ret = session.Run(row, &output);
+    int32_t ret = 0;
+    if (request.has_task_id()) {
+        ret = session.Run(request.task_id(), row, &output);
+    } else {
+        ret = session.Run(row, &output);
+    }
     if (ret != 0) {
         DLOG(WARNING) << "fail to run sql " << sql;
         response.set_code(::rtidb::base::kSQLRunError);

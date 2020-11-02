@@ -64,7 +64,12 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
     }
     std::unique_ptr<brpc::Controller> cntl(new brpc::Controller);
     std::unique_ptr<::rtidb::api::QueryResponse> response(new ::rtidb::api::QueryResponse);
-    if (!GetClient()->SubQuery(request, cntl.get(), response.get())) {
+    auto client = GetClient();
+    if (!client) {
+        return std::make_shared<TabletRowHandler>(
+            ::fesql::base::Status(::fesql::common::kRpcError, "get client failed"));
+    }
+    if (!client->SubQuery(request, cntl.get(), response.get())) {
         return std::make_shared<TabletRowHandler>(
             ::fesql::base::Status(::fesql::common::kRpcError, "send request failed"));
     }
