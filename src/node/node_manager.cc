@@ -581,6 +581,7 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
                                           SQLNodeList *column_desc_list,
                                           SQLNodeList *table_option_list) {
     int replica_num = 1;
+    int partition_num = 1;
     SQLNodeList partition_meta_list;
     if (nullptr != table_option_list) {
         for (auto node_ptr : table_option_list->GetList()) {
@@ -589,6 +590,11 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
                     case kReplicaNum: {
                         replica_num = dynamic_cast<ReplicaNumNode *>(node_ptr)
                                           ->GetReplicaNum();
+                        break;
+                    }
+                    case kPartitionNum: {
+                        partition_num = dynamic_cast<PartitionNumNode *>(node_ptr)
+                                          ->GetPartitionNum();
                         break;
                     }
                     case kDistributions: {
@@ -620,7 +626,7 @@ SQLNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist,
         }
     }
     CreateStmt *node_ptr =
-        new CreateStmt(table_name, op_if_not_exist, replica_num);
+        new CreateStmt(table_name, op_if_not_exist, replica_num, partition_num);
     FillSQLNodeList2NodeVector(column_desc_list, node_ptr->GetColumnDefList());
     FillSQLNodeList2NodeVector(&partition_meta_list,
                                node_ptr->GetDistributionList());
