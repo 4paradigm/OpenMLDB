@@ -1235,7 +1235,7 @@ bool NsClient::TransformToTableDef(
     if (create_node == NULL || table == NULL || status == NULL) return false;
     std::string table_name = create_node->GetTableName();
     const fesql::node::NodePointVector& column_desc_list = create_node->GetColumnDescList();
-    const fesql::node::NodePointVector& distribution_list = create_node->GetColumnDescList();
+    const fesql::node::NodePointVector& distribution_list = create_node->GetDistributionList();
     std::set<std::string> index_names;
     std::map<std::string, ::rtidb::common::ColumnDesc*> column_names;
     table->set_name(table_name);
