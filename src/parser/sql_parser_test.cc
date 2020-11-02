@@ -565,8 +565,8 @@ TEST_F(SqlParserTest, Parser_Create_Stmt) {
     ASSERT_EQ(60 * 86400000L, index_node->GetAbsTTL());
 }
 
-void CheckTTL(FeSQLParser *parser, NodeManager *manager,
-        const std::string& sql, int expect) {
+void CheckTTL(FeSQLParser *parser, NodeManager *manager, const std::string &sql,
+              int expect) {
     NodePointVector trees;
     base::Status status;
     int ret = parser->parse(sql.c_str(), trees, manager, status);
@@ -587,7 +587,7 @@ void CheckTTL(FeSQLParser *parser, NodeManager *manager,
     ASSERT_EQ(6u, createStmt->GetColumnDefList().size());
 
     ASSERT_EQ(node::kColumnIndex,
-            (createStmt->GetColumnDefList()[5])->GetType());
+              (createStmt->GetColumnDefList()[5])->GetType());
     node::ColumnIndexNode *index_node =
         (node::ColumnIndexNode *)(createStmt->GetColumnDefList()[5]);
     std::vector<std::string> key;
@@ -665,6 +665,7 @@ class SqlParserErrorTest : public ::testing::TestWithParam<
         delete parser_;
         delete manager_;
     }
+
  protected:
     NodeManager *manager_;
     FeSQLParser *parser_;

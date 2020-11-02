@@ -11,6 +11,7 @@
 #define SRC_CASE_SQL_CASE_H_
 #include <vm/catalog.h>
 #include <yaml-cpp/node/node.h>
+#include <set>
 #include <string>
 #include <vector>
 #include "codec/fe_row_codec.h"
@@ -31,6 +32,7 @@ class SQLCase {
         std::vector<std::vector<std::string>> rows_;
         std::string create_;
         std::string insert_;
+        std::set<size_t> common_column_indices_;
     };
     struct ExpectInfo {
         int64_t count_ = -1;
@@ -58,6 +60,7 @@ class SQLCase {
     const bool debug() const { return debug_; }
     const std::string& db() const { return db_; }
     const std::vector<TableInfo>& inputs() const { return inputs_; }
+    const TableInfo& batch_request() const { return batch_request_; }
     const ExpectInfo& expect() const { return expect_; }
     void set_expect(const ExpectInfo& data) { expect_ = data; }
     void set_input_name(const std::string name, int32_t idx) {
@@ -69,15 +72,16 @@ class SQLCase {
     // extract schema from schema string
     // name:type|name:type|name:type|
     bool ExtractInputTableDef(type::TableDef& table,  // NOLINT
-                              int32_t input_idx = 0);
-    bool BuildCreateSQLFromInput(int32_t input_idx, std::string* sql);
-    bool BuildInsertSQLFromInput(int32_t input_idx, std::string* sql);
+                              int32_t input_idx = 0) const;
+    bool BuildCreateSQLFromInput(int32_t input_idx, std::string* sql) const;
+    bool BuildInsertSQLFromInput(int32_t input_idx, std::string* sql) const;
     bool BuildInsertSQLListFromInput(int32_t input_idx,
-                                     std::vector<std::string>* sql_list);
-    bool ExtractOutputSchema(type::TableDef& table);             // NOLINT
+                                     std::vector<std::string>* sql_list) const;
+    bool ExtractOutputSchema(type::TableDef& table) const;       // NOLINT
     bool ExtractInputData(std::vector<fesql::codec::Row>& rows,  // NOLINT
-                          int32_t input_idx = 0);
-    bool ExtractOutputData(std::vector<fesql::codec::Row>& rows);  // NOLINT
+                          int32_t input_idx = 0) const;
+    bool ExtractOutputData(
+        std::vector<fesql::codec::Row>& rows) const;  // NOLINT
 
     bool AddInput(const TableInfo& table_data);
     static bool TypeParse(const std::string& row_str, fesql::type::Type* type);
@@ -174,6 +178,7 @@ class SQLCase {
     std::string batch_plan_;
     std::string request_plan_;
     std::vector<TableInfo> inputs_;
+    TableInfo batch_request_;
     ExpectInfo expect_;
 };
 std::string FindFesqlDirPath();

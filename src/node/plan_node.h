@@ -432,8 +432,8 @@ class FuncDefPlanNode : public LeafPlanNode {
 class CreateProcedurePlanNode : public LeafPlanNode {
  public:
     CreateProcedurePlanNode(const std::string &sp_name,
-                   const NodePointVector& input_parameter_list,
-                   const PlanNodeList& inner_plan_node_list)
+                            const NodePointVector &input_parameter_list,
+                            const PlanNodeList &inner_plan_node_list)
         : LeafPlanNode(kPlanTypeCreateSp),
           database_(""),
           sp_name_(sp_name),
@@ -441,15 +441,13 @@ class CreateProcedurePlanNode : public LeafPlanNode {
           inner_plan_node_list_(inner_plan_node_list) {}
     ~CreateProcedurePlanNode() {}
 
-    const std::string& GetDatabase() const { return database_; }
+    const std::string &GetDatabase() const { return database_; }
 
     void setDatabase(const std::string &database) { database_ = database; }
 
-    const std::string& GetSpName() const { return sp_name_; }
+    const std::string &GetSpName() const { return sp_name_; }
 
-    void setSpName(const std::string &sp_name) {
-        sp_name_ = sp_name;
-    }
+    void setSpName(const std::string &sp_name) { sp_name_ = sp_name; }
 
     NodePointVector &GetInputParameterList() { return input_parameter_list_; }
     void SetInputParameterList(const NodePointVector &input_parameter_list) {

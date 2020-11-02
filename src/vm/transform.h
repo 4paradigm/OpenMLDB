@@ -10,6 +10,7 @@
 #ifndef SRC_VM_TRANSFORM_H_
 #define SRC_VM_TRANSFORM_H_
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -362,6 +363,15 @@ class BatchModeTransformer {
     virtual bool CreatePhysicalConstProjectNode(
         node::ProjectListNode* project_list, PhysicalOpNode** output,
         base::Status& status);  // NOLINT
+
+    base::Status CreateRequestUnionNode(PhysicalOpNode* request,
+                                        PhysicalOpNode* right,
+                                        const std::string& primary_name,
+                                        const codec::Schema* primary_schema,
+                                        const node::ExprListNode* partition,
+                                        const node::WindowPlanNode* window_plan,
+                                        PhysicalRequestUnionNode** output);
+
     virtual bool CreatePhysicalProjectNode(const ProjectType project_type,
                                            PhysicalOpNode* node,
                                            node::ProjectListNode* project_list,
@@ -424,6 +434,7 @@ class RequestModeransformer : public BatchModeTransformer {
                           const std::string& db,
                           const std::shared_ptr<Catalog>& catalog,
                           ::llvm::Module* module, udf::UDFLibrary* library,
+                          const std::set<size_t>& common_column_indices,
                           const bool performance_sensitive);
     virtual ~RequestModeransformer();
 
@@ -448,6 +459,7 @@ class RequestModeransformer : public BatchModeTransformer {
  private:
     vm::Schema request_schema_;
     std::string request_name_;
+    std::set<size_t> common_column_indices_;
 };
 
 inline bool SchemaType2DataType(const ::fesql::type::Type type,

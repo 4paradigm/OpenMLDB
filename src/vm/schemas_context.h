@@ -39,9 +39,6 @@ class SchemasContext {
         std::set<const RowSchemaInfo*>& infos) const;  // NOLINT
     bool ExprRefResolved(const node::ExprNode* expr,
                          const RowSchemaInfo** info) const;
-
-    bool AllRefResolved(const std::string& relation_name,
-                        const RowSchemaInfo** info) const;
     bool ColumnRefResolved(const std::string& relation_name,
                            const std::string& col_name,
                            const RowSchemaInfo** info) const;
@@ -62,7 +59,7 @@ class SchemasContext {
     // column_name -> [context_id1, context_id2]
     std::map<std::string, std::vector<uint32_t>> col_context_id_map_;
     // table_name -> context_id1
-    std::map<std::string, uint32_t> table_context_id_map_;
+    std::map<std::string, std::vector<uint32_t>> table_context_id_map_;
     int32_t ColumnOffsetResolved(const std::string& relation_name,
                                  const std::string& col_name) const;
     int32_t ColumnOffsetResolved(const int32_t schema_idx,
