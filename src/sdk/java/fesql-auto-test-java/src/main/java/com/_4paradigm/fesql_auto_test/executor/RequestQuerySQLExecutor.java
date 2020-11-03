@@ -8,20 +8,25 @@ import com._4paradigm.sql.sdk.SqlExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
 public class RequestQuerySQLExecutor extends SQLExecutor {
 
-    public RequestQuerySQLExecutor(SqlExecutor executor, SQLCase fesqlCase) {
+    protected boolean isBatchRequest;
+
+    public RequestQuerySQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest) {
         super(executor, fesqlCase);
+        this.isBatchRequest = isBatchRequest;
     }
 
     @Override
     protected void prepare() throws Exception {
         boolean dbOk = executor.createDB(dbName);
         log.info("create db:{},{}", dbName, dbOk);
-        FesqlResult res = FesqlUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), true);
+        boolean useFirstInputAsRequests = !isBatchRequest;
+        FesqlResult res = FesqlUtil.createAndInsert(executor, dbName, fesqlCase.getInputs(), useFirstInputAsRequests);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run SQLExecutor: prepare fail");
         }
@@ -66,7 +71,27 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
             }
             log.info("sql:{}", sql);
             sql = FesqlUtil.formatSql(sql, tableNames);
-            fesqlResult = FesqlUtil.sqlRequestMode(executor, dbName, sql, fesqlCase.getInputs().get(0));
+            if (isBatchRequest) {
+                InputDesc batchRequest = fesqlCase.getBatch_request();
+                if (batchRequest == null) {
+                    log.error("No batch request provided in case");
+                    return null;
+                }
+                List<Integer> commonColumnIndices = new ArrayList<>();
+                if (batchRequest.getCommon_column_indices() != null) {
+                    for (String str : batchRequest.getCommon_column_indices()) {
+                        if (str != null) {
+                            commonColumnIndices.add(Integer.parseInt(str));
+                        }
+                    }
+                }
+
+                fesqlResult = FesqlUtil.sqlBatchRequestMode(
+                        executor, dbName, sql, batchRequest, commonColumnIndices);
+            } else {
+                InputDesc input = fesqlCase.getInputs().get(0);
+                fesqlResult = FesqlUtil.sqlRequestMode(executor, dbName, sql, input);
+            }
         }
         return fesqlResult;
     }

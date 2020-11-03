@@ -125,8 +125,13 @@ class SQLClusterRouter : public SQLRouter {
         const std::string& db, const std::string& sql,
         std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status);
 
-    std::shared_ptr<::fesql::sdk::ResultSet> ExecuteSQL(
+    std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
+        ::fesql::sdk::Status* status);
+
+    std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQLBatchRequest(
+        const std::string& db, const std::string& sql,
+        std::shared_ptr<SQLRequestRowBatch> row_batch,
         ::fesql::sdk::Status* status);
 
     bool RefreshCatalog();
@@ -134,6 +139,10 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<fesql::sdk::ResultSet> CallProcedure(
             const std::string& db, const std::string& sp_name,
             std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status);
+
+    std::shared_ptr<fesql::sdk::ResultSet> CallSQLBatchRequestProcedure(
+            const std::string& db, const std::string& sp_name,
+            std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status);
 
     std::shared_ptr<ProcedureInfo> ShowProcedure(
             const std::string& db, const std::string& sp_name, fesql::sdk::Status* status);

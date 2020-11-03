@@ -952,6 +952,14 @@ int RtidbClient::CreateTable(const std::string& table_meta) {
 
     ns_tbinfo.set_name(table_info.name());
     ns_tbinfo.set_table_type(rtidb::type::TableType::kRelational);
+    std::string storage_mode = table_info.storage_mode();
+    if (storage_mode == "kssd" || storage_mode == "ssd") {
+        ns_tbinfo.set_storage_mode(::rtidb::common::kSSD);
+    } else if (storage_mode == "khdd" || storage_mode == "hdd") {
+        ns_tbinfo.set_storage_mode(::rtidb::common::kHDD);
+    } else {
+        return -3;
+    }
     std::map<std::string, std::string> name_map;
     for (const auto& col : table_info.column_desc()) {
         const std::string& type = col.type();

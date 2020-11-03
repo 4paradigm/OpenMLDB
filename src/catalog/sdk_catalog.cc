@@ -129,7 +129,7 @@ bool SDKTableHandler::GetTablets(const std::string& index_name, const std::strin
 bool SDKCatalog::Init(
     const std::vector<::rtidb::nameserver::TableInfo>& tables,
     const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients,
-    const std::vector<::rtidb::nameserver::ProcedureInfo>& procedures) {
+    const std::vector<::rtidb::api::ProcedureInfo>& procedures) {
     table_metas_ = tables;
     client_manager_.UpdateClient(tablet_clients);
     for (size_t i = 0; i < tables.size(); i++) {

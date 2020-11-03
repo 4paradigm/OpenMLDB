@@ -83,7 +83,7 @@ class ClusterSDK {
     bool GetRealEndpoint(const std::string& endpoint,
             std::string* real_endpoint);
 
-    std::shared_ptr<::rtidb::nameserver::ProcedureInfo> GetProcedureInfo(
+    std::shared_ptr<::rtidb::api::ProcedureInfo> GetProcedureInfo(
             const std::string& db, const std::string& sp_name);
 
  private:
@@ -117,7 +117,7 @@ class ClusterSDK {
     std::string sp_root_path_;
     std::map<
         std::string,
-        std::map<std::string, std::shared_ptr<::rtidb::nameserver::ProcedureInfo>>>
+        std::map<std::string, std::shared_ptr<::rtidb::api::ProcedureInfo>>>
         sp_map_;
 };
 

@@ -251,15 +251,15 @@ class NsClient {
                      const std::string& idx_name, std::string& msg);  // NOLINT
 
     bool ShowProcedure(const std::string& db_name, const std::string& sp_name,
-            std::vector<rtidb::nameserver::ProcedureInfo>& sp_info, std::string& msg); // NOLINT
+            std::vector<rtidb::api::ProcedureInfo>& sp_info, std::string& msg); // NOLINT
 
-    bool ShowProcedure(std::vector<rtidb::nameserver::ProcedureInfo>& sp_info, // NOLINT
+    bool ShowProcedure(std::vector<rtidb::api::ProcedureInfo>& sp_info, // NOLINT
             std::string& msg); // NOLINT
 
     bool DropProcedure(const std::string& db_name, const std::string& sp_name,
             std::string& msg); // NOLINT
 
-    bool CreateProcedure(const ::rtidb::nameserver::ProcedureInfo& sp_info,
+    bool CreateProcedure(const ::rtidb::api::ProcedureInfo& sp_info,
             std::string* msg);
 
  private:

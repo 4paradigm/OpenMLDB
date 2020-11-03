@@ -10536,7 +10536,6 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
     sp_info->CopyFrom(request->sp_info());
     const std::string& db_name = sp_info->db_name();
     const std::string& sp_name = sp_info->sp_name();
-    const std::string& sql = sp_info->sql();
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (databases_.find(db_name) == databases_.end()) {
@@ -10555,7 +10554,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
         }
     }
     do {
-        if (!CreateProcedureOnTablet(db_name, sp_name, sql)) {
+        if (!CreateProcedureOnTablet(*request)) {
             response->set_code(::rtidb::base::ReturnCode::kCreateProcedureFailedOnTablet);
             response->set_msg("create procedure failed on tablet");
             break;
@@ -10659,8 +10658,7 @@ bool NameServerImpl::CheckParameter(const Schema& parameter, const Schema& input
     return true;
 }
 
-bool NameServerImpl::CreateProcedureOnTablet(const std::string& db_name, const std::string& sp_name,
-        const std::string& sql) {
+bool NameServerImpl::CreateProcedureOnTablet(const ::rtidb::api::CreateProcedureRequest& sp_request) {
     // TODO(wangbao): find tablet that table exist
     std::vector<std::shared_ptr<TabletClient>> tb_client_vec;
     {
@@ -10673,16 +10671,19 @@ bool NameServerImpl::CreateProcedureOnTablet(const std::string& db_name, const s
             tb_client_vec.push_back(kv.second->client_);
         }
     }
+    const auto& sp_info = sp_request.sp_info();
     for (auto tb_client : tb_client_vec) {
         std::string msg;
-        if (!tb_client->CreateProcedure(db_name, sp_name, sql, msg)) {
+        if (!tb_client->CreateProcedure(sp_request, msg)) {
             PDLOG(WARNING,
                     "create procedure on tablet failed. db_name[%s], sp_name[%s], sql[%s], endpoint[%s], msg[%s]",
-                    db_name.c_str(), sp_name.c_str(), sql.c_str(), tb_client->GetEndpoint().c_str(), msg.c_str());
+                    sp_info.db_name().c_str(), sp_info.sp_name().c_str(), sp_info.sql().c_str(),
+                    tb_client->GetEndpoint().c_str(), msg.c_str());
             return false;
         }
         PDLOG(INFO, "create procedure on tablet success. db_name[%s], sp_name[%s], sql[%s], endpoint[%s]",
-                db_name.c_str(), sp_name.c_str(), sql.c_str(), tb_client->GetEndpoint().c_str());
+                sp_info.db_name().c_str(), sp_info.sp_name().c_str(), sp_info.sql().c_str(),
+                tb_client->GetEndpoint().c_str());
     }
     return true;
 }
@@ -10820,7 +10821,9 @@ void NameServerImpl::RecoverProcedureOnTablet(const std::string& endpoint) {
             const std::string& sp_name = sp_kv.first;
             const std::string& sql = sp_kv.second->sql();
             std::string msg;
-            if (!tb_client->CreateProcedure(db_name, sp_name, sql, msg)) {
+            ::rtidb::api::CreateProcedureRequest sp_request;
+            *sp_request.mutable_sp_info() = *sp_kv.second;
+            if (!tb_client->CreateProcedure(sp_request, msg)) {
                 PDLOG(WARNING,
                         "create procedure on tablet failed. db_name[%s], sp_name[%s], sql[%s], endpoint[%s], msg[%s]",
                         db_name.c_str(), sp_name.c_str(), sql.c_str(), tb_client->GetEndpoint().c_str(), msg.c_str());

@@ -184,10 +184,10 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
                    << " in db " << table_info->db();
     }
 
-    std::vector<::rtidb::nameserver::ProcedureInfo> procedures;
+    std::vector<::rtidb::api::ProcedureInfo> procedures;
     std::map<
         std::string,
-        std::map<std::string, std::shared_ptr<::rtidb::nameserver::ProcedureInfo>>>
+        std::map<std::string, std::shared_ptr<::rtidb::api::ProcedureInfo>>>
         sp_mapping;
     for (uint32_t i = 0; i < sp_datas.size(); i++) {
         if (sp_datas[i].empty()) continue;
@@ -200,8 +200,8 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         }
         std::string uncompressed;
         ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
-        std::shared_ptr<::rtidb::nameserver::ProcedureInfo> sp_info(
-                new ::rtidb::nameserver::ProcedureInfo());
+        std::shared_ptr<::rtidb::api::ProcedureInfo> sp_info(
+                new ::rtidb::api::ProcedureInfo());
         ok = sp_info->ParseFromString(uncompressed);
         if (!ok) {
             LOG(WARNING) << "fail to parse procedure proto with " << value;
@@ -212,7 +212,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         auto it = sp_mapping.find(sp_info->db_name());
         if (it == sp_mapping.end()) {
             std::map<std::string,
-                     std::shared_ptr<::rtidb::nameserver::ProcedureInfo>>
+                     std::shared_ptr<::rtidb::api::ProcedureInfo>>
                      sp_in_db = {{sp_info->sp_name(), sp_info}};
             sp_mapping.insert(std::make_pair(sp_info->db_name(), sp_in_db));
         } else {
@@ -483,16 +483,16 @@ bool ClusterSDK::GetRealEndpoint(const std::string& endpoint,
     return true;
 }
 
-std::shared_ptr<::rtidb::nameserver::ProcedureInfo> ClusterSDK::GetProcedureInfo(
+std::shared_ptr<::rtidb::api::ProcedureInfo> ClusterSDK::GetProcedureInfo(
     const std::string& db, const std::string& sp_name) {
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     auto it = sp_map_.find(db);
     if (it == sp_map_.end()) {
-        return std::shared_ptr<::rtidb::nameserver::ProcedureInfo>();
+        return std::shared_ptr<::rtidb::api::ProcedureInfo>();
     }
     auto sit = it->second.find(sp_name);
     if (sit == it->second.end()) {
-        return std::shared_ptr<::rtidb::nameserver::ProcedureInfo>();
+        return std::shared_ptr<::rtidb::api::ProcedureInfo>();
     }
     return sit->second;
 }

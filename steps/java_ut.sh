@@ -13,6 +13,7 @@ cp -rf src/proto/name_server.proto java/src/main/proto/
 cp -rf src/proto/common.proto java/src/main/proto/
 cp -rf src/proto/type.proto java/src/main/proto/
 cp -rf src/proto/blob_server.proto java/src/main/proto/
+cp -rf src/proto/sql_procedure.proto java/src/main/proto/
 test -d /rambuild/ut_zookeeper && rm -rf /rambuild/ut_zookeeper/*
 cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
 cd thirdsrc/zookeeper-3.4.14
