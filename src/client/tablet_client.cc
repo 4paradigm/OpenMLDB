@@ -1640,10 +1640,9 @@ bool TabletClient::UpdateRealEndpointMap(
 }
 
 bool TabletClient::CreateProcedure(const rtidb::api::CreateProcedureRequest& sp_request, std::string& msg) {
-    rtidb::api::CreateProcedureRequest request;
     rtidb::api::GeneralResponse response;
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateProcedure,
-            &request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
+            &sp_request, &response, FLAGS_request_timeout_ms, FLAGS_request_max_retry);
     msg = response.msg();
     if (!ok || response.code() != 0) {
         return false;
