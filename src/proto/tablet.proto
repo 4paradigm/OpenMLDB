@@ -768,6 +768,7 @@ message QueryRequest {
     optional bool is_debug = 5 [default = false];
     optional string sp_name = 6;
     optional bool is_procedure = 7 [default = false];
+    optional uint64 task_id = 8;
 }
 
 message QueryResponse {
@@ -847,6 +848,7 @@ service TabletServer {
     rpc Update(UpdateRequest) returns (UpdateResponse);
     rpc BatchQuery(BatchQueryRequest) returns (BatchQueryResponse);
     rpc Query(QueryRequest) returns(QueryResponse);
+    rpc SubQuery(QueryRequest) returns(QueryResponse);
     rpc SQLBatchRequestQuery(SQLBatchRequestQueryRequest) returns(SQLBatchRequestQueryResponse);
 
     // table api for master
