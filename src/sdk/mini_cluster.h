@@ -64,10 +64,8 @@ class MiniCluster {
           zk_path_(),
           ns_client_(NULL) {}
     ~MiniCluster() {}
-    bool SetUp() {
+    bool SetUp(int tablet_num = 2) {
         ns_ = new brpc::Server();
-        brpc::Server* tb1 = new brpc::Server();
-        brpc::Server* tb2 = new brpc::Server();
         srand(time(NULL));
         FLAGS_db_root_path = "/tmp/mini_cluster" + GenRand();
         zk_cluster_ = "127.0.0.1:" + std::to_string(zk_port_);
@@ -94,14 +92,13 @@ class MiniCluster {
         if (ns_client_->Init() != 0) {
             return false;
         }
-        if (!StartTablet(tb1)) {
-           return false;
+        for (int i = 0; i < tablet_num; i++) {
+            brpc::Server* tb = new brpc::Server();
+            if (!StartTablet(tb)) {
+               return false;
+            }
+            sleep(2);
         }
-        sleep(2);
-        if (!StartTablet(tb2)) {
-           return false;
-        }
-        sleep(2);
         LOG(INFO) << "start mini cluster with zk cluster " << zk_cluster_
                   << " and zk path " << zk_path_;
         LOG(INFO) << "----- ns " << ns_endpoint;

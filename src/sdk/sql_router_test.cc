@@ -991,6 +991,7 @@ TEST_F(SQLRouterTest, smoketest_on_muti_partitions) {
     ::fesql::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
+    auto endpoints = mc_->GetTbEndpoint();
     std::string ddl = "create table " + name +
                       "("
                       "col1 string, col2 bigint,"
@@ -1010,7 +1011,6 @@ TEST_F(SQLRouterTest, smoketest_on_muti_partitions) {
     ASSERT_TRUE(rs != nullptr);
     ASSERT_EQ(100, rs->Size());
     ASSERT_TRUE(rs->Next());
-
     ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->DropDB(db, &status);
@@ -1024,7 +1024,7 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::rtidb::sdk::MiniCluster mc(6181);
     ::rtidb::sdk::mc_ = &mc;
-    int ok = ::rtidb::sdk::mc_->SetUp();
+    int ok = ::rtidb::sdk::mc_->SetUp(1);
     sleep(1);
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));

@@ -44,7 +44,7 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
         status_ = ::fesql::base::Status(::fesql::common::kSchemaCodecError, "decode schema error");
         return row_;
     }
-    // copy data to string buffer
+    // TODO(denglong) do not copy data
     buf_ = cntl_->response_attachment().to_string();
     row_.Reset(reinterpret_cast<const int8_t*>(buf_.c_str()), buf_.length());
     return row_;
