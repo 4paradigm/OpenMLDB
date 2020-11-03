@@ -23,6 +23,7 @@
 #include <mutex>  //NOLINT
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 #include "base/raw_buffer.h"
 #include "base/spin_lock.h"
@@ -127,20 +128,17 @@ class RunSession {
         return compile_info_;
     }
 
+    bool SetCompileInfo(const std::shared_ptr<CompileInfo>& compile_info);
+
     void EnableDebug() { is_debug_ = true; }
     void DisableDebug() { is_debug_ = false; }
 
     EngineMode engine_mode() const { return engine_mode_; }
 
-    void SetIsProcedure(bool flag) { is_procedure_ = flag; }
-    bool IsProcedure() { return is_procedure_; }
-
  protected:
-    bool SetCompileInfo(const std::shared_ptr<CompileInfo>& compile_info);
     std::shared_ptr<CompileInfo> compile_info_;
     EngineMode engine_mode_;
     bool is_debug_;
-    bool is_procedure_;
     friend Engine;
 };
 
@@ -190,10 +188,19 @@ class BatchRequestRunSession : public RunSession {
     int32_t RunSingle(fesql::vm::RunnerContext& ctx,  // NOLINT
                       const Row& request,
                       Row* output);  // NOLINT
+
+    void AddCommonColumnIdx(size_t idx) { common_column_indices_.insert(idx); }
+
+    const std::set<size_t>& common_column_indices() const {
+        return common_column_indices_;
+    }
+
  private:
     int32_t RunSingle(fesql::vm::RunnerContext& ctx,  // NOLINT
                       const uint32_t id, const Row& request,
                       Row* output);  // NOLINT
+
+    std::set<size_t> common_column_indices_;
 };
 
 struct ExplainOutput {
@@ -210,10 +217,6 @@ typedef std::map<
     std::map<std::string, boost::compute::detail::lru_cache<
                               std::string, std::shared_ptr<CompileInfo>>>>
     EngineLRUCache;
-
-typedef std::map<std::string,
-                 std::map<std::string, std::shared_ptr<CompileInfo>>>
-    ProcedureCache;
 
 class Engine {
  public:
@@ -242,24 +245,24 @@ class Engine {
 
     void ClearCacheLocked(const std::string& db);
 
-    void ClearSpCacheLocked(const std::string& db, const std::string& sp_name);
-
  private:
     bool GetDependentTables(node::PlanNode* node, std::set<std::string>* tables,
                             base::Status& status);  // NOLINT
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,
-                                                EngineMode engine_mode,
-                                                bool is_procedure);
+                                                EngineMode engine_mode);
     bool SetCacheLocked(const std::string& db, const std::string& sql,
                         EngineMode engine_mode,
-                        std::shared_ptr<CompileInfo> info, bool is_procedure);
+                        std::shared_ptr<CompileInfo> info);
+
+    bool IsCompatibleCache(RunSession& session,  // NOLINT
+                           std::shared_ptr<CompileInfo> info,
+                           base::Status& status);  // NOLINT
 
     std::shared_ptr<Catalog> cl_;
     EngineOptions options_;
     base::SpinMutex mu_;
     EngineLRUCache lru_cache_;
-    ProcedureCache procedure_cache_;
 };
 
 class LocalTablet : public Tablet {

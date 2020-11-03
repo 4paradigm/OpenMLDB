@@ -83,6 +83,8 @@ class CoreAPI {
                                  const Row& row,
                                  fesql::codec::RowView* row_view,
                                  size_t out_idx);
+
+    static bool EnableSignalTraceback();
 };
 
 }  // namespace vm

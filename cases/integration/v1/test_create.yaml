@@ -470,3 +470,21 @@ cases:
       index(key=(c4),ts=c7, ttl=(10m,10), ttl_type=latest));
     expect:
       success: false
+  -
+    id: 48
+    desc: create with partition num
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3), ts=c4)) partitionnum=8;
+    expect:
+      success: true
+  -
+    id: 49
+    desc: create with partition num
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3), ts=c4)) replicanum=2, partitionnum=8;
+    expect:
+      success: true

@@ -8,7 +8,7 @@ if $(uname -a | grep -q Darwin); then
 else
     JOBS=$(grep -c ^processor /proc/cpuinfo 2>/dev/null)
 fi 
-
+JOBS=40
 mkdir -p build && cd build 
 cmake .. -DCOVERAGE_ENABLE=ON -DTESTING_ENABLE=ON
 make fesql_proto && make fesql_parser && make -j${JOBS}

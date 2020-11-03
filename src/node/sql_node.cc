@@ -2013,6 +2013,15 @@ void ReplicaNumNode::Print(std::ostream &output,
     PrintValue(output, tab, std::to_string(replica_num_), "replica_num", true);
 }
 
+void PartitionNumNode::Print(std::ostream &output,
+                             const std::string &org_tab) const {
+    SQLNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, std::to_string(partition_num_), "partition_num",
+               true);
+}
+
 void DistributionsNode::Print(std::ostream &output,
                               const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
@@ -2023,21 +2032,20 @@ void DistributionsNode::Print(std::ostream &output,
 }
 
 void CreateSpStmt::Print(std::ostream &output,
-        const std::string &org_tab) const {
+                         const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
     PrintValue(output, tab, sp_name_, "sp_name", false);
     output << "\n";
-    PrintSQLVector(output, tab, input_parameter_list_,
-            "input_parameter_list", false);
+    PrintSQLVector(output, tab, input_parameter_list_, "input_parameter_list",
+                   false);
     output << "\n";
-    PrintSQLVector(output, tab, inner_node_list_,
-            "inner_node_list", true);
+    PrintSQLVector(output, tab, inner_node_list_, "inner_node_list", true);
 }
 
 void InputParameterNode::Print(std::ostream &output,
-                          const std::string &org_tab) const {
+                               const std::string &org_tab) const {
     SQLNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";

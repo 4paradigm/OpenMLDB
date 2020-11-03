@@ -7,6 +7,8 @@
  *--------------------------------------------------------------------------
  **/
 #include "vm/physical_op.h"
+#include <set>
+
 namespace fesql {
 namespace vm {
 
@@ -79,6 +81,13 @@ void PhysicalRequestProviderNode::Print(std::ostream& output,
                                         const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(request=" << table_handler_->GetName() << ")";
+}
+
+void PhysicalRequestProviderNodeWithCommonColumn::Print(
+    std::ostream& output, const std::string& tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << "(request=" << table_handler_->GetName()
+           << ", common_column_num=" << common_column_indices_.size() << ")";
 }
 
 void PhysicalPartitionProviderNode::Print(std::ostream& output,
@@ -347,6 +356,56 @@ bool PhysicalDataProviderNode::InitSchema() {
         return false;
     }
 }
+
+bool PhysicalRequestProviderNodeWithCommonColumn::
+    ResetSchemaWithCommonColumnInfo() {
+    if (table_handler_) {
+        auto schema = table_handler_->GetSchema();
+        if (!schema) {
+            LOG(WARNING) << "InitSchema fail: table schema is null";
+            return false;
+        }
+        size_t schema_size = static_cast<size_t>(schema->size());
+        bool share_common = common_column_indices_.size() > 0 &&
+                            common_column_indices_.size() < schema_size;
+        if (share_common) {
+            owned_common_schema_ = std::unique_ptr<Schema>(new Schema());
+            owned_non_common_schema_ = std::unique_ptr<Schema>(new Schema());
+            for (size_t i = 0; i < schema_size; ++i) {
+                if (common_column_indices_.find(i) !=
+                    common_column_indices_.end()) {
+                    *owned_common_schema_->Add() = schema->Get(i);
+                } else {
+                    *owned_non_common_schema_->Add() = schema->Get(i);
+                }
+            }
+            output_name_schema_list_.schema_source_list_.clear();
+            output_name_schema_list_.AddSchemaSource(
+                table_handler_->GetName(), owned_common_schema_.get());
+            output_name_schema_list_.AddSchemaSource(
+                table_handler_->GetName(), owned_non_common_schema_.get());
+
+            output_schema_.Clear();
+            for (auto i = 0; i < owned_common_schema_->size(); ++i) {
+                *output_schema_.Add() = owned_common_schema_->Get(i);
+            }
+            for (auto i = 0; i < owned_non_common_schema_->size(); ++i) {
+                *output_schema_.Add() = owned_non_common_schema_->Get(i);
+            }
+            return true;
+        } else {
+            output_name_schema_list_.schema_source_list_.clear();
+            output_name_schema_list_.AddSchemaSource(table_handler_->GetName(),
+                                                     schema);
+            output_schema_ = *schema;
+            return true;
+        }
+    } else {
+        LOG(WARNING) << "InitSchema fail: table handler is null";
+        return false;
+    }
+}
+
 void PhysicalOpNode::PrintSchema() {
     std::stringstream ss;
     ss << PhysicalOpTypeName(type_) << " output name schema list: \n";

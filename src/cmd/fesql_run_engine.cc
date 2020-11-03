@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <utility>
 #include "vm/engine_test.h"
 
 DEFINE_string(yaml_path, "", "Yaml filepath to load cases from");
@@ -21,9 +22,29 @@ DEFINE_string(runner_mode, "batch",
               "Specify runner mode, can be batch or request");
 DEFINE_string(cluster_mode, "standalone",
               "Specify cluster mode, can be standalone or cluster");
+DEFINE_int32(run_iters, 0, "Measure the approximate run time if specified");
+DEFINE_int32(case_id, -1, "Specify the case id to run and skip others");
 
 namespace fesql {
 namespace vm {
+
+int DoRunEngine(const SQLCase& sql_case, EngineMode engine_mode) {
+    std::shared_ptr<EngineTestRunner> runner;
+    if (engine_mode == kBatchMode) {
+        runner = std::make_shared<BatchEngineTestRunner>(sql_case);
+    } else if (engine_mode == kRequestMode) {
+        runner = std::make_shared<RequestEngineTestRunner>(sql_case);
+    } else {
+        runner = std::make_shared<BatchRequestEngineTestRunner>(
+            sql_case, sql_case.batch_request().common_column_indices_);
+    }
+    if (FLAGS_run_iters > 0) {
+        runner->RunBenchmark(FLAGS_run_iters);
+    } else {
+        runner->RunCheck();
+    }
+    return runner->return_code();
+}
 
 int RunSingle(const std::string& yaml_path) {
     std::vector<SQLCase> cases;
@@ -34,11 +55,19 @@ int RunSingle(const std::string& yaml_path) {
     EngineOptions options;
     options.set_cluster_optimized(FLAGS_cluster_mode == "cluster");
     for (auto& sql_case : cases) {
-        bool is_batch = FLAGS_runner_mode == "batch";
-        EngineMode mode = is_batch ? kBatchMode : kRequestMode;
-        bool check_compatible = false;
-        int ret;
-        EngineCheck(sql_case, mode, options, check_compatible, &ret);
+        if (FLAGS_case_id >= 0 &&
+            std::to_string(FLAGS_case_id) != sql_case.id()) {
+            continue;
+        }
+        EngineMode mode;
+        if (FLAGS_runner_mode == "batch") {
+            mode = kBatchMode;
+        } else if (FLAGS_runner_mode == "request") {
+            mode = kRequestMode;
+        } else {
+            mode = kBatchRequestMode;
+        }
+        int ret = DoRunEngine(sql_case, options, mode);
         if (ret != ENGINE_TEST_RET_SUCCESS) {
             return ret;
         }

@@ -43,7 +43,7 @@ build_fesql_on_linux:
             - intermediate_cicd_artifact_linux.tar.gz
 
 build_fesql_on_mac:
-    stage: build
+    stage: test
     variables:
         CICD_RUNNER_THIRDPARTY_PATH: "/opt/depends/thirdparty"
         CICD_RUNNER_TAG: "macos"

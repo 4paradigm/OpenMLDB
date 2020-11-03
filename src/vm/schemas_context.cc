@@ -20,7 +20,7 @@ vm::SchemasContext::SchemasContext(
         row_schema_info_list_.push_back(info);
         // init table -> context idx map
         if (!info.table_name_.empty()) {
-            table_context_id_map_.insert(std::make_pair(info.table_name_, idx));
+            table_context_id_map_[info.table_name_].push_back(idx);
         }
 
         // init col -> context idx map
@@ -97,8 +97,7 @@ bool SchemasContext::ExprRefResolved(const node::ExprNode* expr,
             return true;
         }
         case node::kExprAll: {
-            auto all_expr = dynamic_cast<const node::AllNode*>(expr);
-            return AllRefResolved(all_expr->GetRelationName(), info);
+            return false;
         }
         case node::kExprColumnRef: {
             auto column_expr = dynamic_cast<const node::ColumnRefNode*>(expr);
@@ -134,31 +133,7 @@ bool SchemasContext::ExprRefResolved(const node::ExprNode* expr,
         }
     }
 }
-bool SchemasContext::AllRefResolved(const std::string& relation_name,
-                                    const RowSchemaInfo** info) const {
-    if (relation_name.empty()) {
-        LOG(WARNING) << "fail to find column: relation and col is empty";
-        return false;
-    }
 
-    uint32_t table_ctx_id = -1;
-    if (!relation_name.empty()) {
-        auto table_map_iter = table_context_id_map_.find(relation_name);
-
-        if (table_map_iter == table_context_id_map_.cend()) {
-            LOG(WARNING) << "Unknow Table: ' " + relation_name + "'  in DB";
-            return false;
-        }
-        table_ctx_id = table_map_iter->second;
-    }
-
-    if (table_context_id_map_.size() > 1) {
-        LOG(WARNING) << "'*':  in field list is ambiguous";
-        return false;
-    }
-    *info = &row_schema_info_list_[table_ctx_id];
-    return true;
-}
 bool SchemasContext::ColumnRefResolved(const std::string& relation_name,
                                        const std::string& col_name,
                                        const RowSchemaInfo** info) const {
@@ -167,7 +142,7 @@ bool SchemasContext::ColumnRefResolved(const std::string& relation_name,
         return false;
     }
 
-    uint32_t table_ctx_id = -1;
+    const std::vector<uint32_t>* table_ctx_ids = nullptr;
     if (!relation_name.empty()) {
         auto table_map_iter = table_context_id_map_.find(relation_name);
         if (table_map_iter == table_context_id_map_.cend()) {
@@ -175,7 +150,7 @@ bool SchemasContext::ColumnRefResolved(const std::string& relation_name,
                                 relation_name + "'";
             return false;
         }
-        table_ctx_id = table_map_iter->second;
+        table_ctx_ids = &table_map_iter->second;
     }
 
     auto iter = col_context_id_map_.find(col_name);
@@ -191,10 +166,14 @@ bool SchemasContext::ColumnRefResolved(const std::string& relation_name,
             return false;
         } else {
             *info = nullptr;
-            for (auto col_ctx_id : iter->second) {
-                if (col_ctx_id == table_ctx_id) {
-                    *info = &row_schema_info_list_[col_ctx_id];
-                    return true;
+            if (table_ctx_ids != nullptr) {
+                for (auto col_ctx_id : iter->second) {
+                    for (auto table_ctx_id : *table_ctx_ids) {
+                        if (col_ctx_id == table_ctx_id) {
+                            *info = &row_schema_info_list_[col_ctx_id];
+                            return true;
+                        }
+                    }
                 }
             }
             LOG(WARNING) << "Unknow Column: ' " + col_name + "'  in '" +
@@ -204,7 +183,9 @@ bool SchemasContext::ColumnRefResolved(const std::string& relation_name,
     } else {
         uint32_t col_context_id = iter->second[0];
         if (!relation_name.empty()) {
-            if (table_ctx_id != col_context_id) {
+            if (table_ctx_ids == nullptr ||
+                std::find(table_ctx_ids->begin(), table_ctx_ids->end(),
+                          col_context_id) == table_ctx_ids->end()) {
                 LOG(WARNING) << "Unknow Column: ' " + col_name + "'  in '" +
                                     relation_name + "'";
                 return false;
