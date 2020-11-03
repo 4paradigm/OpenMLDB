@@ -29,17 +29,42 @@
 #include "base/spinlock.h"
 #include "client/tablet_client.h"
 #include "storage/schema.h"
+#include "vm/catalog.h"
 
 namespace rtidb {
 namespace catalog {
 
 using TablePartitions = ::google::protobuf::RepeatedPtrField<::rtidb::nameserver::TablePartition>;
 
-class ClientWrapper {
+class TabletRowHandler : public ::fesql::vm::RowHandler {
  public:
-    explicit ClientWrapper(const std::string& name) : name_(name), tablet_client_() {}
+    TabletRowHandler(const std::string& db,
+            std::unique_ptr<brpc::Controller> cntl,
+            std::unique_ptr<::rtidb::api::QueryResponse> response);
+    explicit TabletRowHandler(::fesql::base::Status status);
+    const ::fesql::vm::Schema* GetSchema() override { return nullptr; }
+    const std::string& GetName() override { return name_; }
+    const std::string& GetDatabase() override { return db_; }
 
-    ClientWrapper(const std::string& name, const std::shared_ptr<::rtidb::client::TabletClient>& client)
+    ::fesql::base::Status GetStatus() override { return status_; }
+    const ::fesql::codec::Row& GetValue() override;
+
+ private:
+    std::string db_;
+    std::string name_;
+    ::fesql::base::Status status_;
+    ::fesql::vm::Schema schema_;
+    std::string buf_;
+    ::fesql::codec::Row row_;
+    std::unique_ptr<brpc::Controller> cntl_;
+    std::unique_ptr<::rtidb::api::QueryResponse> response_;
+};
+
+class TabletAccessor : public ::fesql::vm::Tablet {
+ public:
+    explicit TabletAccessor(const std::string& name) : name_(name), tablet_client_() {}
+
+    TabletAccessor(const std::string& name, const std::shared_ptr<::rtidb::client::TabletClient>& client)
         : name_(name), tablet_client_(client) {}
 
     std::shared_ptr<::rtidb::client::TabletClient> GetClient() {
@@ -60,6 +85,12 @@ class ClientWrapper {
         return true;
     }
 
+    std::shared_ptr<::fesql::vm::RowHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
+                                                      const ::fesql::codec::Row& row) override;
+
+    std::shared_ptr<::fesql::vm::RowHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
+                                                      const std::vector<::fesql::codec::Row>& row) override;
+
  private:
     std::string name_;
     std::shared_ptr<::rtidb::client::TabletClient> tablet_client_;
@@ -67,17 +98,17 @@ class ClientWrapper {
 
 class PartitionClientManager {
  public:
-    PartitionClientManager(uint32_t pid, const std::shared_ptr<ClientWrapper>& leader,
-                           const std::vector<std::shared_ptr<ClientWrapper>>& followers);
+    PartitionClientManager(uint32_t pid, const std::shared_ptr<TabletAccessor>& leader,
+                           const std::vector<std::shared_ptr<TabletAccessor>>& followers);
 
-    inline std::shared_ptr<::rtidb::client::TabletClient> GetLeader() const { return leader_->GetClient(); }
+    inline std::shared_ptr<TabletAccessor> GetLeader() const { return leader_; }
 
-    std::shared_ptr<::rtidb::client::TabletClient> GetFollower();
+    std::shared_ptr<TabletAccessor> GetFollower();
 
  private:
     uint32_t pid_;
-    std::shared_ptr<ClientWrapper> leader_;
-    std::vector<std::shared_ptr<ClientWrapper>> followers_;
+    std::shared_ptr<TabletAccessor> leader_;
+    std::vector<std::shared_ptr<TabletAccessor>> followers_;
     ::rtidb::base::Random rand_;
 };
 
@@ -99,12 +130,12 @@ class TableClientManager {
     bool UpdatePartitionClientManager(const ::rtidb::storage::PartitionSt& partition,
                                       const ClientManager& client_manager);
 
-    std::shared_ptr<::rtidb::client::TabletClient> GetTablets(uint32_t pid) const {
+    std::shared_ptr<TabletAccessor> GetTablet(uint32_t pid) const {
         auto partition_manager = GetPartitionClientManager(pid);
         if (partition_manager) {
             return partition_manager->GetLeader();
         }
-        return std::shared_ptr<::rtidb::client::TabletClient>();
+        return std::shared_ptr<TabletAccessor>();
     }
 
  private:
@@ -113,7 +144,7 @@ class TableClientManager {
 
 class ClientManager {
  public:
-    std::shared_ptr<ClientWrapper> GetClient(const std::string& name) const;
+    std::shared_ptr<TabletAccessor> GetTablet(const std::string& name) const;
 
     bool UpdateClient(const std::map<std::string, std::string>& real_ep_map);
 
@@ -121,7 +152,7 @@ class ClientManager {
 
  private:
     std::map<std::string, std::string> real_endpoint_map_;
-    std::map<std::string, std::shared_ptr<ClientWrapper>> clients_;
+    std::map<std::string, std::shared_ptr<TabletAccessor>> clients_;
     mutable ::rtidb::base::SpinMutex mu_;
 };
 

@@ -390,9 +390,7 @@ bool NsClient::HandleSQLCreateTable(
             ::rtidb::nameserver::TableInfo* table_info =
                 request.mutable_table_info();
             table_info->set_db(db);
-            TransformToTableDef(create->GetTableName(), create->GetReplicaNum(),
-                    create->GetColumnDescList(), create->GetDistributionList(),
-                    table_info, sql_status);
+            TransformToTableDef(create, table_info, sql_status);
             if (0 != sql_status->code) {
                 return false;
             }
@@ -1232,23 +1230,30 @@ bool NsClient::ShowCatalogVersion(std::map<std::string, uint64_t>* version_map, 
 }
 
 bool NsClient::TransformToTableDef(
-    const std::string& table_name,
-    int replica_num,
-    const fesql::node::NodePointVector& column_desc_list,
-    const fesql::node::NodePointVector& distribution_list,
+    ::fesql::node::CreatePlanNode* create_node,
     ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status) {
-    if (table == NULL || status == NULL) return false;
+    if (create_node == NULL || table == NULL || status == NULL) return false;
+    std::string table_name = create_node->GetTableName();
+    const fesql::node::NodePointVector& column_desc_list = create_node->GetColumnDescList();
+    const fesql::node::NodePointVector& distribution_list = create_node->GetDistributionList();
     std::set<std::string> index_names;
     std::map<std::string, ::rtidb::common::ColumnDesc*> column_names;
     table->set_name(table_name);
     // todo: change default setting
-    table->set_partition_num(1);
+    int replica_num = create_node->GetReplicaNum();
     if (replica_num <= 0) {
         status->msg = "CREATE common: replica_num should be bigger than 0";
         status->code = fesql::common::kSQLError;
         return false;
     }
     table->set_replica_num((uint32_t)replica_num);
+    int partition_num = create_node->GetPartitionNum();
+    if (partition_num <= 0) {
+        status->msg = "CREATE common: partition_num should be greater than 0";
+        status->code = fesql::common::kSQLError;
+        return false;
+    }
+    table->set_partition_num(create_node->GetPartitionNum());
     table->set_format_version(1);
     ::rtidb::api::TTLDesc* ttl_desc = table->mutable_ttl_desc();
     ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);

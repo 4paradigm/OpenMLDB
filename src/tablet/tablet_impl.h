@@ -292,6 +292,10 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                const rtidb::api::QueryRequest* request,
                rtidb::api::QueryResponse* response, Closure* done);
 
+    void SubQuery(RpcController* controller,
+               const rtidb::api::QueryRequest* request,
+               rtidb::api::QueryResponse* response, Closure* done);
+
     void SQLBatchRequestQuery(RpcController* controller,
                               const rtidb::api::SQLBatchRequestQueryRequest* request,
                               rtidb::api::SQLBatchRequestQueryResponse* response,
@@ -507,6 +511,10 @@ class TabletImpl : public ::rtidb::api::TabletServer {
 
     bool GetRealEp(uint64_t tid, uint64_t pid,
             std::map<std::string, std::string>* real_ep_map);
+
+    void ProcessQuery(const rtidb::api::QueryRequest* request,
+            ::rtidb::api::QueryResponse* response,
+            butil::IOBuf* buf);
 
  private:
     void RunRequestQuery(const rtidb::api::QueryRequest& request,

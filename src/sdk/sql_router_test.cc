@@ -980,6 +980,43 @@ TEST_F(SQLRouterTest, smoketimestamptest_on_sql) {
     ASSERT_TRUE(ok);
 }
 
+TEST_F(SQLRouterTest, smoketest_on_muti_partitions) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    auto endpoints = mc_->GetTbEndpoint();
+    std::string ddl = "create table " + name +
+                      "("
+                      "col1 string, col2 bigint,"
+                      "index(key=col1, ts=col2)) partitionnum=8;";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+    for (int i = 0; i < 100; i++) {
+        std::string key = "'hello" + std::to_string(i) + "'";
+        std::string insert = "insert into " + name + " values(" + key + ", 1590);";
+        ok = router->ExecuteInsert(db, insert, &status);
+        ASSERT_TRUE(ok);
+    }
+    ASSERT_TRUE(router->RefreshCatalog());
+    std::string sql_select = "select col1 from " + name + " ;";
+    auto rs = router->ExecuteSQL(db, sql_select, &status);
+    ASSERT_TRUE(rs != nullptr);
+    ASSERT_EQ(100, rs->Size());
+    ASSERT_TRUE(rs->Next());
+    ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
+}
+
 }  // namespace sdk
 }  // namespace rtidb
 
@@ -987,7 +1024,7 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::rtidb::sdk::MiniCluster mc(6181);
     ::rtidb::sdk::mc_ = &mc;
-    int ok = ::rtidb::sdk::mc_->SetUp();
+    int ok = ::rtidb::sdk::mc_->SetUp(1);
     sleep(1);
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
