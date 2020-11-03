@@ -222,7 +222,8 @@ TEST_P(BatchRequestEngineTest, test_cluster_batch_request_engine) {
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     EngineOptions options;
     options.set_cluster_optimized(true);
-    if (!boost::contains(sql_case.mode(), "batch-request-unsupport")) {
+    if (!boost::contains(sql_case.mode(), "batch-request-unsupport") &&
+        !boost::contains(sql_case.mode(), "cluster-unsupport")) {
         EngineCheck(sql_case, options, kBatchRequestMode);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();

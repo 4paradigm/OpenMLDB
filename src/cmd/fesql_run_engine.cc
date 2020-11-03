@@ -28,15 +28,16 @@ DEFINE_int32(case_id, -1, "Specify the case id to run and skip others");
 namespace fesql {
 namespace vm {
 
-int DoRunEngine(const SQLCase& sql_case, EngineMode engine_mode) {
+int DoRunEngine(const SQLCase& sql_case, const EngineOptions& options,
+                EngineMode engine_mode) {
     std::shared_ptr<EngineTestRunner> runner;
     if (engine_mode == kBatchMode) {
-        runner = std::make_shared<BatchEngineTestRunner>(sql_case);
+        runner = std::make_shared<BatchEngineTestRunner>(sql_case, options);
     } else if (engine_mode == kRequestMode) {
-        runner = std::make_shared<RequestEngineTestRunner>(sql_case);
+        runner = std::make_shared<RequestEngineTestRunner>(sql_case, options);
     } else {
         runner = std::make_shared<BatchRequestEngineTestRunner>(
-            sql_case, sql_case.batch_request().common_column_indices_);
+            sql_case, options, sql_case.batch_request().common_column_indices_);
     }
     if (FLAGS_run_iters > 0) {
         runner->RunBenchmark(FLAGS_run_iters);

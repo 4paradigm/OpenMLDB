@@ -250,7 +250,7 @@ void CheckTransformPhysicalPlan(const SQLCase& sql_case,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::fesql::udf::DefaultUDFLibrary::get();
-    RequestModeransformer transform(&manager, "db", catalog, m.get(), lib, {},
+    RequestModeransformer transform(nm, "db", catalog, m.get(), lib, {},
                                     false, false);
 
     PhysicalOpNode* physical_plan = nullptr;

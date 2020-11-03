@@ -588,7 +588,7 @@ Status EngineTestRunner::Compile() {
         LOG(INFO) << "Physical plan:\n" << oss.str() << std::endl;
 
         std::ostringstream runner_oss;
-        session_->GetMainTask()->Print(runner_oss, "");
+        session_->GetClusterJob().Print(runner_oss, "");
         LOG(INFO) << "Runner plan:\n" << runner_oss.str() << std::endl;
     }
     return status;

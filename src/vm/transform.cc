@@ -3012,7 +3012,7 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
     for (size_t i = 0; i < left_schema_list.size(); i++) {
         auto org_schema = left_schema_list[i].schema_;
         for (int column_id = 0; column_id < org_schema->size(); column_id++) {
-            int key_id = (static_cast<uint64_t>(i) << 32) + column_id;
+            uint64_t key_id = (static_cast<uint64_t>(i) << 32) + column_id;
             if (column_source_map_.find(key_id) != column_source_map_.end()) {
                 auto column = simplily_schema.Add();
                 column->CopyFrom(org_schema->Get(column_id));
