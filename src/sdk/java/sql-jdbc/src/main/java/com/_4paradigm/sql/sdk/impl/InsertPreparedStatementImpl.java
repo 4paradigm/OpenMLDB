@@ -8,17 +8,20 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.sql.*;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.util.*;
 
 public class InsertPreparedStatementImpl implements PreparedStatement {
+    public static final Charset CHARSET = Charset.forName("utf-8");
     private String currentSql = null;
     private SQLInsertRow currentRow = null;
     private SQLInsertRows currentRows = null;
     private SQLRouter router = null;
     private List<Object> currentDatas = null;
+    private List<Integer> currentDatasLen = null;
     private List<DataType> currentDatasType = null;
     private Schema currentSchema = null;
     private String db = null;
@@ -46,6 +49,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         this.db = db;
         VectorUint32 idxs = this.currentRow.GetHoleIdx();
         currentDatas = new ArrayList<>(idxs.size());
+        currentDatasLen = new ArrayList<>(idxs.size());
         currentDatasType = new ArrayList<>(idxs.size());
         hasSet = new ArrayList<>(idxs.size());
         scehmaIdxs = new ArrayList<>(idxs.size());
@@ -54,6 +58,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             DataType type = currentSchema.GetColumnType(idx);
             currentDatasType.add(type);
             currentDatas.add(null);
+            currentDatasLen.add(0);
             hasSet.add(false);
             scehmaIdxs.add(i);
         }
@@ -178,9 +183,11 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             setNull(i);
             return;
         }
-        stringsLen.put(i, s.length());
+        byte bytes[] = s.getBytes(CHARSET);
+        stringsLen.put(i, bytes.length);
         hasSet.set(i - 1, true);
         currentDatas.set(i - 1, s);
+        currentDatasLen.set(i - 1, bytes.length);
     }
 
     @Override
@@ -277,11 +284,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             if (currentDatasType.get(i) != DataType.kTypeString) {
                 continue;
             }
-            Object data = currentDatas.get(i);
-            if (data == null) {
-                continue;
-            }
-            strLen += ((String)data).length();
+            strLen += currentDatasLen.get(i);
         }
         boolean ok = currentRow.Init(strLen);
         if (!ok) {
