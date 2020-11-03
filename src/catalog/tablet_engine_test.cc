@@ -319,11 +319,13 @@ TEST_P(TabletEngineTest, request_query_test) {
 TEST_P(TabletEngineTest, cluster_request_query_test) {
     ParamType sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    fesql::vm::EngineOptions options;
+    options.set_cluster_optimized(true);
     if (!boost::contains(sql_case.mode(), "rtidb-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-request-unsupport") &&
         !boost::contains(sql_case.mode(), "request-unsupport") &&
         !boost::contains(sql_case.mode(), "cluster-unsupport")) {
-        TabletEngineTest::RequestModeCheck(sql_case);
+        TabletEngineTest::RequestModeCheck(sql_case, options);
     }
 }
 INSTANTIATE_TEST_SUITE_P(EngineConstQuery, TabletEngineTest,
