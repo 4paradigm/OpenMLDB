@@ -4466,7 +4466,7 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
         std::make_pair(table_meta->pid(), replicator));
     if (table_meta->format_version() == 1 &&
             table_meta->storage_mode() == ::rtidb::common::kMemory) {
-        bool ok = catalog_->AddTable(*table_meta, table);
+        bool ok = catalog_->AddTable(*table_meta, table, local_tablet_);
         engine_.ClearCacheLocked(table_meta->db());
         if (ok) {
             LOG(INFO) << "add table " << table_meta->name()

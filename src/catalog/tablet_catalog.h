@@ -243,7 +243,7 @@ class TabletCatalog : public ::fesql::vm::Catalog {
     bool AddDB(const ::fesql::type::Database &db);
 
     bool AddTable(const ::rtidb::api::TableMeta &meta, std::shared_ptr<::rtidb::storage::Table> table,
-                  std::shared_ptr<fesql::vm::Tablet> local_tablet);
+                  std::shared_ptr<fesql::vm::Tablet> local_tablet = std::shared_ptr<fesql::vm::Tablet>());
 
     std::shared_ptr<::fesql::type::Database> GetDatabase(const std::string &db) override;
 

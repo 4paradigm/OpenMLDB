@@ -203,6 +203,9 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
         pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
     }
     // TODO(denglong): return local_tablet if pid is in local
+    if (0 == pid_num) {
+        return local_tablet_;
+    }
     return table_client_manager_->GetTablet(pid);
 }
 

@@ -29,8 +29,9 @@ class TabletEngineTest : public rtidb::test::SQLCaseTest {
  public:
     TabletEngineTest() {}
     virtual ~TabletEngineTest() {}
-    static void BatchModeCheck(fesql::sqlcase::SQLCase &sql_case);    // NOLINT
-    static void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case);  // NOLINT
+    static void BatchModeCheck(fesql::sqlcase::SQLCase &sql_case);   // NOLINT
+    static void RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // NOLINT
+                                 fesql::vm::EngineOptions options = fesql::vm::EngineOptions());
 };
 struct TestArgs {
     std::shared_ptr<::rtidb::storage::Table> table;
@@ -40,14 +41,12 @@ struct TestArgs {
     std::string pk;
     uint64_t ts;
 };
-void StoreData(std::shared_ptr<TestArgs> args,
-               std::shared_ptr<fesql::storage::Table> sql_table,
+void StoreData(std::shared_ptr<TestArgs> args, std::shared_ptr<fesql::storage::Table> sql_table,
                const std::vector<fesql::codec::Row> &rows) {
     auto meta = args->meta;
     auto table = args->table;
     rtidb::codec::SDKCodec sdk_codec(meta);
-    LOG(INFO) << "store data start: rows size " << rows.size()
-              << ", index size: " << sql_table->GetIndexMap().size();
+    LOG(INFO) << "store data start: rows size " << rows.size() << ", index size: " << sql_table->GetIndexMap().size();
     fesql::codec::RowView row_view(sql_table->GetTableDef().columns());
     int column_size = sql_table->GetTableDef().columns_size();
     auto sql_schema = sql_table->GetTableDef().columns();
@@ -57,10 +56,9 @@ void StoreData(std::shared_ptr<TestArgs> args,
         std::vector<std::string> raw_data;
         row_view.Reset(row.buf());
         for (int i = 0; i < column_size; i++) {
-            std::string key_str =
-                sql_schema.Get(i).type() == fesql::type::kDate
-                    ? std::to_string(row_view.GetDateUnsafe(i))
-                    : row_view.GetAsString(i);
+            std::string key_str = sql_schema.Get(i).type() == fesql::type::kDate
+                                      ? std::to_string(row_view.GetDateUnsafe(i))
+                                      : row_view.GetAsString(i);
             if (key_str == "") {
                 key_str = rtidb::codec::EMPTY_STRING;
             }
@@ -89,8 +87,8 @@ void StoreData(std::shared_ptr<TestArgs> args,
     LOG(INFO) << "store data done!";
 }
 
-std::shared_ptr<TestArgs> PrepareTableWithTableDef(
-    const fesql::type::TableDef &table_def, const std::string& db_name, const uint32_t tid) {
+std::shared_ptr<TestArgs> PrepareTableWithTableDef(const fesql::type::TableDef &table_def, const std::string &db_name,
+                                                   const uint32_t tid) {
     std::shared_ptr<TestArgs> args = std::shared_ptr<TestArgs>(new TestArgs());
     args->meta.set_db(db_name);
     args->meta.set_name(table_def.name());
@@ -103,27 +101,23 @@ std::shared_ptr<TestArgs> PrepareTableWithTableDef(
 
     RtiDBIndex *index = args->meta.mutable_column_key();
     RtiDBSchema *schema = args->meta.mutable_column_desc();
-    if (!SchemaAdapter::ConvertSchemaAndIndex(
-            table_def.columns(), table_def.indexes(), schema, index)) {
+    if (!SchemaAdapter::ConvertSchemaAndIndex(table_def.columns(), table_def.indexes(), schema, index)) {
         return std::shared_ptr<TestArgs>();
     }
 
-    args->table = std::shared_ptr<::rtidb::storage::MemTable>(
-        new ::rtidb::storage::MemTable(args->meta));
+    args->table = std::shared_ptr<::rtidb::storage::MemTable>(new ::rtidb::storage::MemTable(args->meta));
     args->table->Init();
     return args;
 }
 
-void TabletEngineTest::BatchModeCheck(
-    fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
+void TabletEngineTest::BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
     int32_t input_cnt = sql_case.CountInputs();
 
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
 
     // Init catalog
-    std::map<std::string, std::pair<std::shared_ptr<TestArgs>,
-                                    std::shared_ptr<::fesql::storage::Table>>>
+    std::map<std::string, std::pair<std::shared_ptr<TestArgs>, std::shared_ptr<::fesql::storage::Table>>>
         name_table_map;
     for (int32_t i = 0; i < input_cnt; i++) {
         if (sql_case.inputs()[i].name_.empty()) {
@@ -131,27 +125,22 @@ void TabletEngineTest::BatchModeCheck(
         }
         fesql::type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
-        LOG(INFO) << "input " << i << " index size "
-                  << table_def.indexes().size();
-        std::shared_ptr<::fesql::storage::Table> sql_table(
-            new ::fesql::storage::Table(i + 1, 1, table_def));
+        LOG(INFO) << "input " << i << " index size " << table_def.indexes().size();
+        std::shared_ptr<::fesql::storage::Table> sql_table(new ::fesql::storage::Table(i + 1, 1, table_def));
 
         auto args = PrepareTableWithTableDef(table_def, sql_case.db(), i + 1);
         if (!args) {
             FAIL() << "fail to prepare table";
         }
         ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
-        name_table_map.insert(
-            std::make_pair(table_def.name(), std::make_pair(args, sql_table)));
+        name_table_map.insert(std::make_pair(table_def.name(), std::make_pair(args, sql_table)));
     }
 
     // Init engine and run session
     std::string sql_str = sql_case.sql_str();
     for (int j = 0; j < input_cnt; ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
-        std::string tname = sql_case.inputs()[j].name_.empty()
-                                ? ("t" + std::to_string(j))
-                                : sql_case.inputs()[j].name_;
+        std::string tname = sql_case.inputs()[j].name_.empty() ? ("t" + std::to_string(j)) : sql_case.inputs()[j].name_;
         boost::replace_all(sql_str, placeholder, tname);
     }
     std::cout << sql_str << std::endl;
@@ -184,8 +173,7 @@ void TabletEngineTest::BatchModeCheck(
         if (!rows.empty()) {
             name_table_map[input.name_].first->table->Init();
             name_table_map[input.name_].second->Init();
-            StoreData(name_table_map[input.name_].first,
-                      name_table_map[input.name_].second, rows);
+            StoreData(name_table_map[input.name_].first, name_table_map[input.name_].second, rows);
         } else {
             LOG(INFO) << "rows empty";
         }
@@ -201,20 +189,19 @@ void TabletEngineTest::BatchModeCheck(
     // Check Output Data
     std::vector<fesql::codec::Row> output;
     ASSERT_EQ(0, session.Run(output));
-    CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
-              case_output_data);
+    CheckRows(schema, SortRows(schema, output, sql_case.expect().order_), case_output_data);
 }
 
-void TabletEngineTest::RequestModeCheck(
-    fesql::sqlcase::SQLCase &sql_case) {  // NOLINT
+void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // NOLINT
+                                        fesql::vm::EngineOptions options) {
     int32_t input_cnt = sql_case.CountInputs();
 
     std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
     ASSERT_TRUE(catalog->Init());
+    fesql::vm::Engine engine(catalog, options);
 
     // Init catalog
-    std::map<std::string, std::pair<std::shared_ptr<TestArgs>,
-                                    std::shared_ptr<::fesql::storage::Table>>>
+    std::map<std::string, std::pair<std::shared_ptr<TestArgs>, std::shared_ptr<::fesql::storage::Table>>>
         name_table_map;
     for (int32_t i = 0; i < input_cnt; i++) {
         if (sql_case.inputs()[i].name_.empty()) {
@@ -222,32 +209,31 @@ void TabletEngineTest::RequestModeCheck(
         }
         fesql::type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
-        LOG(INFO) << "input " << i << " index size "
-                  << table_def.indexes().size();
-        std::shared_ptr<::fesql::storage::Table> sql_table(
-            new ::fesql::storage::Table(i + 1, 1, table_def));
+        LOG(INFO) << "input " << i << " index size " << table_def.indexes().size();
+        std::shared_ptr<::fesql::storage::Table> sql_table(new ::fesql::storage::Table(i + 1, 1, table_def));
 
         auto args = PrepareTableWithTableDef(table_def, sql_case.db(), i + 1);
         if (!args) {
             FAIL() << "fail to prepare table";
         }
-        ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
-        name_table_map.insert(
-            std::make_pair(table_def.name(), std::make_pair(args, sql_table)));
+        if (options.is_cluster_optimzied()) {
+            ASSERT_TRUE(catalog->AddTable(args->meta, args->table,
+                                          std::shared_ptr<fesql::vm::Tablet>(new fesql::vm::LocalTablet(&engine))));
+        } else {
+            ASSERT_TRUE(catalog->AddTable(args->meta, args->table));
+        }
+        name_table_map.insert(std::make_pair(table_def.name(), std::make_pair(args, sql_table)));
     }
 
     // Init engine and run session
     std::string sql_str = sql_case.sql_str();
     for (int j = 0; j < input_cnt; ++j) {
         std::string placeholder = "{" + std::to_string(j) + "}";
-        std::string tname = sql_case.inputs()[j].name_.empty()
-                                ? ("t" + std::to_string(j))
-                                : sql_case.inputs()[j].name_;
+        std::string tname = sql_case.inputs()[j].name_.empty() ? ("t" + std::to_string(j)) : sql_case.inputs()[j].name_;
         boost::replace_all(sql_str, placeholder, tname);
     }
     std::cout << sql_str << std::endl;
     fesql::base::Status get_status;
-    fesql::vm::Engine engine(catalog);
     fesql::vm::RequestRunSession session;
     //    session.EnableDebug();
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
@@ -279,8 +265,7 @@ void TabletEngineTest::RequestModeCheck(
         if (!rows.empty()) {
             name_table_map[input.name_].first->table->Init();
             name_table_map[input.name_].second->Init();
-            StoreData(name_table_map[input.name_].first,
-                      name_table_map[input.name_].second, rows);
+            StoreData(name_table_map[input.name_].first, name_table_map[input.name_].second, rows);
         } else {
             LOG(INFO) << "rows empty";
         }
@@ -306,14 +291,11 @@ void TabletEngineTest::RequestModeCheck(
         int ret = session.Run(in_row, &out_row);
         ASSERT_EQ(0, ret);
         LOG(INFO) << "store request row into db"
-                  << ", index size: "
-                  << request_sql_table->GetIndexMap().size();
-        StoreData(request_table, request_sql_table,
-                  std::vector<fesql::codec::Row>{in_row});
+                  << ", index size: " << request_sql_table->GetIndexMap().size();
+        StoreData(request_table, request_sql_table, std::vector<fesql::codec::Row>{in_row});
         output.push_back(out_row);
     }
-    CheckRows(schema, SortRows(schema, output, sql_case.expect().order_),
-              case_output_data);
+    CheckRows(schema, SortRows(schema, output, sql_case.expect().order_), case_output_data);
 }
 
 TEST_P(TabletEngineTest, batch_query_test) {
@@ -334,84 +316,76 @@ TEST_P(TabletEngineTest, request_query_test) {
         TabletEngineTest::RequestModeCheck(sql_case);
     }
 }
+TEST_P(TabletEngineTest, cluster_request_query_test) {
+    ParamType sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (!boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "rtidb-request-unsupport") &&
+        !boost::contains(sql_case.mode(), "request-unsupport") &&
+        !boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        TabletEngineTest::RequestModeCheck(sql_case);
+    }
+}
 INSTANTIATE_TEST_SUITE_P(EngineConstQuery, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/query/const_query.yaml")));
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/const_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineSimpleQuery, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/query/simple_query.yaml")));
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/simple_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineUdfQuery, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/query/udf_query.yaml")));
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/udf_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineUdafQuery, TabletEngineTest,
-                         testing::ValuesIn(rtidb::test::SQLCaseTest::InitCases(
-                             "/cases/query/udaf_query.yaml")));
+                         testing::ValuesIn(rtidb::test::SQLCaseTest::InitCases("/cases/query/udaf_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineExtreamQuery, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/query/extream_query.yaml")));
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/extream_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinQuery, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/query/last_join_query.yaml")));
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinWindowQuery, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/query/last_join_window_query.yaml")));
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_window_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineRequestLastJoinWindowQuery, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/query/last_join_window_query.yaml")));
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_window_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineWindowQuery, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/query/window_query.yaml")));
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/window_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineWindowWithUnionQuery, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/query/window_with_union_query.yaml")));
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/window_with_union_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineBatchGroupQuery, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/query/group_query.yaml")));
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/group_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineTestWindowRow, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/integration/v1/test_window_row.yaml")));
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_window_row.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     EngineTestWindowRowRange, TabletEngineTest,
-    testing::ValuesIn(TabletEngineTest::InitCases(
-        "/cases/integration/v1/test_window_row_range.yaml")));
+    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_window_row_range.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(EngineTestWindowUnion, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/integration/v1/test_window_union.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestWindowUnion, TabletEngineTest,
+    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_window_union.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestLastJoin, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/integration/v1/test_last_join.yaml")));
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_last_join.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestExpression, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/integration/v1/test_expression.yaml")));
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_expression.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(EngineTestSelectSample, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/integration/v1/test_select_sample.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestSelectSample, TabletEngineTest,
+    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_select_sample.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestSubSelect, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/integration/v1/test_sub_select.yaml")));
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_sub_select.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(EngineTestUdafFunction, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/integration/v1/test_udaf_function.yaml")));
-INSTANTIATE_TEST_SUITE_P(EngineTestUdfFunction, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/integration/v1/test_udf_function.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestUdafFunction, TabletEngineTest,
+    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_udaf_function.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestUdfFunction, TabletEngineTest,
+    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_udf_function.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestWhere, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases(
-                             "/cases/integration/v1/test_where.yaml")));
+                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_where.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     EngineTestFZFunction, TabletEngineTest,
-    testing::ValuesIn(TabletEngineTest::InitCases(
-        "/cases/integration/v1/test_feature_zero_function.yaml")));
+    testing::ValuesIn(TabletEngineTest::InitCases("/cases/integration/v1/test_feature_zero_function.yaml")));
 
 }  // namespace catalog
 }  // namespace rtidb
