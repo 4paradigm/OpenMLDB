@@ -9,12 +9,14 @@ import com._4paradigm.sql.sdk.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.UnsupportedEncodingException;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+
 
 public class SqlClusterExecutor implements SqlExecutor {
     static {
@@ -131,6 +133,13 @@ public class SqlClusterExecutor implements SqlExecutor {
         return impl;
     }
 
+    public PreparedStatement getBatchRequestPreparedStmt(String db, String sql,
+                                                         List<Integer> commonColumnIndices) throws SQLException {
+        BatchRequestPreparedStatementImpl impl = new BatchRequestPreparedStatementImpl(
+                db, sql, this.sqlRouter, commonColumnIndices);
+        return impl;
+    }
+
     @Override
     public SQLInsertRows getInsertRows(String db, String sql) {
         Status status = new Status();
@@ -148,6 +157,16 @@ public class SqlClusterExecutor implements SqlExecutor {
         ResultSet rs = sqlRouter.ExecuteSQL(db, sql, row, status);
         if (status.getCode() != 0) {
             logger.error("getInsertRow fail: {}", status.getMsg());
+        }
+        return rs;
+    }
+
+    @Override
+    public ResultSet executeSQLBatchRequest(String db, String sql, SQLRequestRowBatch row_batch) {
+        Status status = new Status();
+        ResultSet rs = sqlRouter.ExecuteSQLBatchRequest(db, sql, row_batch, status);
+        if (status.getCode() != 0) {
+            logger.error("executeSQLBatchRequest fail: {}", status.getMsg());
         }
         return rs;
     }
@@ -172,62 +191,99 @@ public class SqlClusterExecutor implements SqlExecutor {
         return new Schema(columnList);
     }
 
-
     @Override
-    public SQLResultSet callProcedure(String dbName, String proName, Object[] requestRow) throws SQLException {
-        Object[][] requestRows = new Object[1][requestRow.length];
-        requestRows[0] = requestRow;
-        return callProcedure(dbName, proName, requestRows);
+    public SQLResultSet callProcedure(String dbName, String spName, Object[] requestRow) throws SQLException {
+        if (requestRow == null || requestRow.length == 0) {
+            throw new SQLException("requestRows is null or empty");
+        }
+        com._4paradigm.sql.ProcedureInfo procedureInfo = prepareProcedure(dbName, spName);
+        return callProcedureWithSingleRow(
+                dbName, spName, procedureInfo, requestRow);
     }
 
     @Override
-    public SQLResultSet callProcedure(String dbName, String proName, Object[][] requestRows) throws SQLException {
+    public SQLResultSet callProcedure(String dbName, String spName, Object[][] requestRows) throws SQLException {
         if (requestRows == null || requestRows.length == 0) {
             throw new SQLException("requestRows is null or empty");
         }
-        Object[] requestRow = requestRows[0];
-        if (requestRow == null || requestRow.length == 0) {
-            throw new SQLException("requestRow is null or empty");
+        com._4paradigm.sql.ProcedureInfo procedureInfo = prepareProcedure(dbName, spName);
+        com._4paradigm.sql.Schema inputSchema = procedureInfo.GetInputSchema();
+        logger.info("Create sql batch1!!!");
+        ColumnIndicesSet columnIndices = new ColumnIndicesSet(inputSchema);
+        for (int i = 0; i < procedureInfo.GetInputSchema().GetColumnCnt(); ++i) {
+            if (procedureInfo.GetInputSchema().IsConstant(i)) {
+                logger.info("input " + i + " is const");
+                columnIndices.AddCommonColumnIdx(i);
+            }
         }
+        SQLRequestRowBatch batch = new SQLRequestRowBatch(inputSchema, columnIndices);
+        for (Object[] requestRow : requestRows) {
+            if (requestRow == null || requestRow.length == 0) {
+                throw new SQLException("requestRow is null or empty");
+            }
+            SQLRequestRow sqlRequestRow = getProcedureRequestRow(dbName, procedureInfo, requestRow);
+            boolean addOk = batch.AddRow(sqlRequestRow);
+            if (!addOk) {
+                throw new SQLException("Add request row to batch failed");
+            }
+        }
+        Status status = new Status();
+        ResultSet resultSet = sqlRouter.CallSQLBatchRequestProcedure(
+                dbName, spName, batch, status);
+        return new SQLResultSet(resultSet);
+    }
+
+    private com._4paradigm.sql.ProcedureInfo prepareProcedure(String dbName, String spName) throws SQLException {
         if (!sqlRouter.RefreshCatalog()) {
             throw new SQLException("refresh catalog failed!");
         }
-        ProcedureInfo procedureInfo = showProcedure(dbName, proName);
-        if (procedureInfo == null) {
-            throw new SQLException("show procedure failed");
-        }
         Status status = new Status();
-        SQLRequestRow sqlRequestRow = sqlRouter.GetRequestRow(dbName, procedureInfo.getSql(), status);
+        com._4paradigm.sql.ProcedureInfo procedureInfo = sqlRouter.ShowProcedure(dbName, spName, status);
+        if (procedureInfo == null || status.getCode() != 0) {
+            throw new SQLException("show procedure failed, msg: " + status.getMsg());
+        }
+        return procedureInfo;
+    }
+
+    private SQLRequestRow getProcedureRequestRow(String dbName,
+                                                 com._4paradigm.sql.ProcedureInfo procedureInfo,
+                                                 Object[] requestRow) throws SQLException {
+        Status status = new Status();
+        SQLRequestRow sqlRequestRow = sqlRouter.GetRequestRow(dbName, procedureInfo.GetSql(), status);
         if (status.getCode() != 0 || sqlRequestRow == null) {
             logger.error("getRequestRow failed: {}", status.getMsg());
             throw new SQLException("getRequestRow failed!, msg: " + status.getMsg());
         }
-        Schema inputSchema = procedureInfo.getInputSchema();
+        com._4paradigm.sql.Schema inputSchema = procedureInfo.GetInputSchema();
         if (inputSchema == null) {
             throw new SQLException("inputSchema is null");
         }
         int strlen = 0;
-        for (int i = 0 ; i < inputSchema.getColumnList().size(); i++) {
-            Column column = inputSchema.getColumnList().get(i);
+        for (int i = 0 ; i < inputSchema.GetColumnCnt(); i++) {
+            DataType dataType = inputSchema.GetColumnType(i);
             Object object = requestRow[i];
-            if (column != null && column.getSqlType() == Types.VARCHAR && object != null) {
-                strlen += ((String)object).length();
+            if (dataType != null && dataType == DataType.kTypeString && object != null) {
+                try {
+                    strlen += ((String)object).getBytes("utf-8").length;
+                } catch (UnsupportedEncodingException e) {
+                    throw new SQLException(e);
+                }
             }
         }
         if (!sqlRequestRow.Init(strlen)) {
             throw new SQLException("init request row failed");
         }
-        boolean ok = false;
-        for (int i = 0 ; i < inputSchema.getColumnList().size(); i++) {
-            Column column = inputSchema.getColumnList().get(i);
+        boolean ok;
+        for (int i = 0 ; i < inputSchema.GetColumnCnt(); i++) {
+            DataType dataType = inputSchema.GetColumnType(i);
             if (requestRow[i] == null) {
                 ok = sqlRequestRow.AppendNULL();
                 if (!ok) {
-                    throw new SQLException("apend data failed, idx is " + i);
+                    throw new SQLException("append data failed, idx is " + i);
                 }
                 continue;
             }
-            switch (column.getSqlType()) {
+            switch (Common.type2SqlType(dataType)) {
                 case Types.BOOLEAN:
                     ok = sqlRequestRow.AppendBool(Boolean.parseBoolean(requestRow[i].toString()));
                     break;
@@ -269,13 +325,24 @@ public class SqlClusterExecutor implements SqlExecutor {
                     throw new SQLException("column type not supported");
             }
             if (!ok) {
-                throw new SQLException("apend data failed, idx is " + i);
+                throw new SQLException("append data failed, idx is " + i);
             }
         }
         if (!sqlRequestRow.Build()) {
             throw new SQLException("build request row failed");
         }
-        ResultSet resultSet = sqlRouter.CallProcedure(dbName, proName, sqlRequestRow, status);
+        return sqlRequestRow;
+    }
+
+    private SQLResultSet callProcedureWithSingleRow(String dbName, String spName,
+                                                    com._4paradigm.sql.ProcedureInfo procedureInfo,
+                                                    Object[] requestRow) throws SQLException {
+        if (requestRow == null || requestRow.length == 0) {
+            throw new SQLException("requestRow is null or empty");
+        }
+        SQLRequestRow sqlRequestRow = getProcedureRequestRow(dbName, procedureInfo, requestRow);
+        Status status = new Status();
+        ResultSet resultSet = sqlRouter.CallProcedure(dbName, spName, sqlRequestRow, status);
         if (resultSet == null || status.getCode() != 0) {
             throw new SQLException("call procedure fail! msg: " + status.getMsg());
         }
@@ -283,7 +350,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
-    public boolean dropProcedure(String dbName, String proName)  throws SQLException{
+    public boolean dropProcedure(String dbName, String proName) throws SQLException {
         return false;
     }
 

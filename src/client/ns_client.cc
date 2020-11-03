@@ -390,9 +390,7 @@ bool NsClient::HandleSQLCreateTable(
             ::rtidb::nameserver::TableInfo* table_info =
                 request.mutable_table_info();
             table_info->set_db(db);
-            TransformToTableDef(create->GetTableName(), create->GetReplicaNum(),
-                    create->GetColumnDescList(), create->GetDistributionList(),
-                    table_info, sql_status);
+            TransformToTableDef(create, table_info, sql_status);
             if (0 != sql_status->code) {
                 return false;
             }
@@ -436,9 +434,9 @@ bool NsClient::HandleSQLCreateProcedure(const fesql::node::NodePointVector& pars
             if (create_sp == nullptr) {
                 return false;
             }
-            ::rtidb::nameserver::CreateProcedureRequest request;
+            ::rtidb::api::CreateProcedureRequest request;
             ::rtidb::nameserver::GeneralResponse response;
-            ::rtidb::nameserver::ProcedureInfo* sp_info =
+            ::rtidb::api::ProcedureInfo* sp_info =
                 request.mutable_sp_info();
             sp_info->set_db_name(db);
             sp_info->set_sp_name(create_sp->GetSpName());
@@ -1232,23 +1230,30 @@ bool NsClient::ShowCatalogVersion(std::map<std::string, uint64_t>* version_map, 
 }
 
 bool NsClient::TransformToTableDef(
-    const std::string& table_name,
-    int replica_num,
-    const fesql::node::NodePointVector& column_desc_list,
-    const fesql::node::NodePointVector& distribution_list,
+    ::fesql::node::CreatePlanNode* create_node,
     ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status) {
-    if (table == NULL || status == NULL) return false;
+    if (create_node == NULL || table == NULL || status == NULL) return false;
+    std::string table_name = create_node->GetTableName();
+    const fesql::node::NodePointVector& column_desc_list = create_node->GetColumnDescList();
+    const fesql::node::NodePointVector& distribution_list = create_node->GetDistributionList();
     std::set<std::string> index_names;
     std::map<std::string, ::rtidb::common::ColumnDesc*> column_names;
     table->set_name(table_name);
     // todo: change default setting
-    table->set_partition_num(1);
+    int replica_num = create_node->GetReplicaNum();
     if (replica_num <= 0) {
         status->msg = "CREATE common: replica_num should be bigger than 0";
         status->code = fesql::common::kSQLError;
         return false;
     }
     table->set_replica_num((uint32_t)replica_num);
+    int partition_num = create_node->GetPartitionNum();
+    if (partition_num <= 0) {
+        status->msg = "CREATE common: partition_num should be greater than 0";
+        status->code = fesql::common::kSQLError;
+        return false;
+    }
+    table->set_partition_num(create_node->GetPartitionNum());
     table->set_format_version(1);
     ::rtidb::api::TTLDesc* ttl_desc = table->mutable_ttl_desc();
     ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
@@ -1531,15 +1536,15 @@ bool NsClient::TransformToTableDef(
     return true;
 }
 
-bool NsClient::ShowProcedure(std::vector<rtidb::nameserver::ProcedureInfo>& sp_infos,
+bool NsClient::ShowProcedure(std::vector<rtidb::api::ProcedureInfo>& sp_infos,
         std::string& msg) {
     return ShowProcedure("", "", sp_infos, msg);
 }
 
 bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_name,
-        std::vector<rtidb::nameserver::ProcedureInfo>& sp_infos, std::string& msg) {
-    ::rtidb::nameserver::ShowProcedureRequest request;
-    ::rtidb::nameserver::ShowProcedureResponse response;
+        std::vector<rtidb::api::ProcedureInfo>& sp_infos, std::string& msg) {
+    ::rtidb::api::ShowProcedureRequest request;
+    ::rtidb::api::ShowProcedureResponse response;
     if (!db_name.empty()) {
         request.set_db_name(db_name);
     }
@@ -1552,8 +1557,8 @@ bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_n
     msg = response.msg();
     if (ok && response.code() == 0) {
         for (int32_t i = 0; i < response.sp_info_size(); i++) {
-            const rtidb::nameserver::ProcedureInfo& sp_info = response.sp_info(i);
-            rtidb::nameserver::ProcedureInfo sp_info_tmp;
+            const rtidb::api::ProcedureInfo& sp_info = response.sp_info(i);
+            rtidb::api::ProcedureInfo sp_info_tmp;
             sp_info_tmp.CopyFrom(sp_info);
             sp_infos.push_back(sp_info_tmp);
         }
@@ -1564,7 +1569,7 @@ bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_n
 
 bool NsClient::DropProcedure(const std::string& db_name,
         const std::string& sp_name, std::string& msg) {
-    ::rtidb::nameserver::DropProcedureRequest request;
+    ::rtidb::api::DropProcedureRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_db_name(db_name);
     request.set_sp_name(sp_name);

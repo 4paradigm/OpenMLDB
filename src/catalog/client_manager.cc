@@ -16,20 +16,82 @@
  */
 
 #include "catalog/client_manager.h"
+#include <utility>
+#include "codec/fe_schema_codec.h"
 
 namespace rtidb {
 namespace catalog {
 
-PartitionClientManager::PartitionClientManager(uint32_t pid, const std::shared_ptr<ClientWrapper>& leader,
-                                               const std::vector<std::shared_ptr<ClientWrapper>>& followers)
+TabletRowHandler::TabletRowHandler(const std::string& db,
+                                   std::unique_ptr<brpc::Controller> cntl,
+                                   std::unique_ptr<::rtidb::api::QueryResponse> response)
+    : db_(db), name_(), status_(::fesql::base::Status::OK()), schema_(),
+    buf_(), row_(), cntl_(std::move(cntl)), response_(std::move(response)) {}
+
+TabletRowHandler::TabletRowHandler(::fesql::base::Status status) :
+    db_(), name_(), status_(status), schema_(), buf_(), row_(), cntl_(), response_() {}
+
+const ::fesql::codec::Row& TabletRowHandler::GetValue() {
+    if (!cntl_ || !response_) {
+        return row_;
+    }
+    brpc::Join(cntl_->call_id());
+    if (cntl_->Failed()) {
+        status_ = ::fesql::base::Status(::fesql::common::kRpcError, "request error. " + cntl_->ErrorText());
+        return row_;
+    }
+    if (!::fesql::codec::SchemaCodec::Decode(response_->schema(), &schema_)) {
+        status_ = ::fesql::base::Status(::fesql::common::kSchemaCodecError, "decode schema error");
+        return row_;
+    }
+    // TODO(denglong) do not copy data
+    buf_ = cntl_->response_attachment().to_string();
+    row_.Reset(reinterpret_cast<const int8_t*>(buf_.c_str()), buf_.length());
+    return row_;
+}
+
+std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
+                                                                  const std::string& sql,
+                                                                  const ::fesql::codec::Row& row) {
+    ::rtidb::api::QueryRequest request;
+    request.set_sql(sql);
+    request.set_db(db);
+    request.set_is_batch(false);
+    request.set_task_id(task_id);
+    if (!row.empty()) {
+        std::string* input_row = request.mutable_input_row();
+        input_row->assign(reinterpret_cast<const char*>(row.buf()), row.size());
+    }
+    std::unique_ptr<brpc::Controller> cntl(new brpc::Controller);
+    std::unique_ptr<::rtidb::api::QueryResponse> response(new ::rtidb::api::QueryResponse);
+    auto client = GetClient();
+    if (!client) {
+        return std::make_shared<TabletRowHandler>(
+            ::fesql::base::Status(::fesql::common::kRpcError, "get client failed"));
+    }
+    if (!client->SubQuery(request, cntl.get(), response.get())) {
+        return std::make_shared<TabletRowHandler>(
+            ::fesql::base::Status(::fesql::common::kRpcError, "send request failed"));
+    }
+    return std::make_shared<TabletRowHandler>(db, std::move(cntl), std::move(response));
+}
+
+std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
+                                                                  const std::string& sql,
+                                                                  const std::vector<::fesql::codec::Row>& row) {
+    return std::shared_ptr<::fesql::vm::RowHandler>();
+}
+
+PartitionClientManager::PartitionClientManager(uint32_t pid, const std::shared_ptr<TabletAccessor>& leader,
+                                               const std::vector<std::shared_ptr<TabletAccessor>>& followers)
     : pid_(pid), leader_(leader), followers_(followers), rand_(0xdeadbeef) {}
 
-std::shared_ptr<::rtidb::client::TabletClient> PartitionClientManager::GetFollower() {
+std::shared_ptr<TabletAccessor> PartitionClientManager::GetFollower() {
     if (!followers_.empty()) {
         uint32_t it = rand_.Next() % followers_.size();
-        return followers_[it]->GetClient();
+        return followers_[it];
     }
-    return std::shared_ptr<::rtidb::client::TabletClient>();
+    return std::shared_ptr<TabletAccessor>();
 }
 
 TableClientManager::TableClientManager(const TablePartitions& partitions, const ClientManager& client_manager) {
@@ -38,11 +100,11 @@ TableClientManager::TableClientManager(const TablePartitions& partitions, const 
         if (pid > partition_managers_.size()) {
             continue;
         }
-        std::shared_ptr<ClientWrapper> leader;
-        std::vector<std::shared_ptr<ClientWrapper>> follower;
+        std::shared_ptr<TabletAccessor> leader;
+        std::vector<std::shared_ptr<TabletAccessor>> follower;
         for (const auto& meta : table_partition.partition_meta()) {
             if (meta.is_alive()) {
-                auto client = client_manager.GetClient(meta.endpoint());
+                auto client = client_manager.GetTablet(meta.endpoint());
                 if (!client) {
                     continue;
                 }
@@ -63,10 +125,10 @@ TableClientManager::TableClientManager(const ::rtidb::storage::TableSt& table_st
         if (pid > partition_managers_.size()) {
             continue;
         }
-        std::shared_ptr<ClientWrapper> leader = client_manager.GetClient(partition_st.GetLeader());
-        std::vector<std::shared_ptr<ClientWrapper>> follower;
+        std::shared_ptr<TabletAccessor> leader = client_manager.GetTablet(partition_st.GetLeader());
+        std::vector<std::shared_ptr<TabletAccessor>> follower;
         for (const auto& endpoint : partition_st.GetFollower()) {
-            auto client = client_manager.GetClient(endpoint);
+            auto client = client_manager.GetTablet(endpoint);
             if (client) {
                 follower.push_back(client);
             }
@@ -81,13 +143,13 @@ bool TableClientManager::UpdatePartitionClientManager(const ::rtidb::storage::Pa
     if (pid > partition_managers_.size()) {
         return false;
     }
-    auto leader = client_manager.GetClient(partition.GetLeader());
+    auto leader = client_manager.GetTablet(partition.GetLeader());
     if (!leader) {
         return false;
     }
-    std::vector<std::shared_ptr<ClientWrapper>> followers;
+    std::vector<std::shared_ptr<TabletAccessor>> followers;
     for (const auto& endpoint : partition.GetFollower()) {
-        auto client = client_manager.GetClient(endpoint);
+        auto client = client_manager.GetTablet(endpoint);
         if (!client) {
             return false;
         }
@@ -98,11 +160,11 @@ bool TableClientManager::UpdatePartitionClientManager(const ::rtidb::storage::Pa
     return true;
 }
 
-std::shared_ptr<ClientWrapper> ClientManager::GetClient(const std::string& name) const {
+std::shared_ptr<TabletAccessor> ClientManager::GetTablet(const std::string& name) const {
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     auto it = clients_.find(name);
     if (it == clients_.end()) {
-        return std::shared_ptr<ClientWrapper>();
+        return std::shared_ptr<TabletAccessor>();
     }
     return it->second;
 }
@@ -112,7 +174,7 @@ bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpo
     for (const auto& kv : endpoint_map) {
         auto it = real_endpoint_map_.find(kv.first);
         if (it == real_endpoint_map_.end()) {
-            auto wrapper = std::make_shared<ClientWrapper>(kv.first);
+            auto wrapper = std::make_shared<TabletAccessor>(kv.first);
             if (!wrapper->UpdateClient(kv.second)) {
                 LOG(WARNING) << "add client failed. name " << kv.first << ", endpoint " << kv.second;
                 continue;
@@ -141,7 +203,7 @@ bool ClientManager::UpdateClient(
     for (const auto& kv : tablet_clients) {
         auto it = real_endpoint_map_.find(kv.first);
         if (it == real_endpoint_map_.end()) {
-            auto wrapper = std::make_shared<ClientWrapper>(kv.first, kv.second);
+            auto wrapper = std::make_shared<TabletAccessor>(kv.first, kv.second);
             DLOG(INFO) << "add client. name " << kv.first << ", endpoint " << kv.second->GetRealEndpoint();
             clients_.emplace(kv.first, wrapper);
             real_endpoint_map_.emplace(kv.first, kv.second->GetRealEndpoint());

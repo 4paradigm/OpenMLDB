@@ -25,6 +25,11 @@ using Cond_Column = ::google::protobuf::RepeatedPtrField<rtidb::api::Columns>;
 
 namespace rtidb {
 
+// forward decl
+namespace sdk {
+class SQLRequestRowBatch;
+}  // namespace sdk
+
 const uint32_t INVALID_TID = UINT32_MAX;
 namespace client {
 using ::rtidb::api::TaskInfo;
@@ -78,6 +83,13 @@ class TabletClient {
                const std::string& row, brpc::Controller* cntl,
                ::rtidb::api::QueryResponse* response,
                const bool is_debug = false);
+
+    bool SQLBatchRequestQuery(const std::string& db, const std::string& sql,
+                              std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch>,
+                              brpc::Controller* cntl,
+                              ::rtidb::api::SQLBatchRequestQueryResponse* response,
+                              const bool is_debug = false);
+
     bool Update(
         uint32_t tid, uint32_t pid,
         const ::google::protobuf::RepeatedPtrField<::rtidb::api::Columns>&
@@ -327,15 +339,25 @@ class TabletClient {
     bool GetSchema(const std::string& db_name, const std::string& sql,
             Schema* input_schema, Schema* output_schema);
 
-    bool CreateProcedure(const std::string& db_name, const std::string& sp_name,
-            const std::string& sql, std::string& msg); // NOLINT
+    bool CreateProcedure(const rtidb::api::CreateProcedureRequest& sp_request,
+                         std::string& msg); // NOLINT
 
     bool CallProcedure(const std::string& db, const std::string& sp_name,
             const std::string& row, brpc::Controller* cntl,
             rtidb::api::QueryResponse* response,
             bool is_debug);
 
+    bool CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
+            std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch>,
+            brpc::Controller* cntl,
+            rtidb::api::SQLBatchRequestQueryResponse* response,
+            bool is_debug);
+
     bool DropProcedure(const std::string& db_name, const std::string& sp_name);
+
+    bool SubQuery(const ::rtidb::api::QueryRequest& request,
+            brpc::Controller* cntl,
+            ::rtidb::api::QueryResponse* response);
 
  private:
     std::string endpoint_;

@@ -19,9 +19,12 @@
 #define SRC_SDK_SQL_REQUEST_ROW_H_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
+#include "base/fe_slice.h"
+#include "codec/fe_row_codec.h"
 #include "sdk/base.h"
 
 namespace rtidb {
@@ -71,6 +74,65 @@ class SQLRequestRow {
     uint32_t str_length_current_;
     bool has_error_;
     bool is_ok_;
+};
+
+
+class ColumnIndicesSet;
+
+/**
+  * SDK input interface for batch request, with common column encoding optimization.
+  */
+class SQLRequestRowBatch {
+ public:
+    SQLRequestRowBatch(std::shared_ptr<fesql::sdk::Schema> schema,
+                       std::shared_ptr<ColumnIndicesSet> indices);
+    bool AddRow(std::shared_ptr<SQLRequestRow> row);
+    int Size() const { return non_common_slices_.size(); }
+
+    const std::set<size_t>& common_column_indices() const {
+        return common_column_indices_;
+    }
+
+    const std::string* GetCommonSlice() const {
+        return &common_slice_;
+    }
+
+    const std::string* GetNonCommonSlice(uint32_t idx) const {
+        if (idx >= non_common_slices_.size()) {
+            return nullptr;
+        }
+        return &non_common_slices_[idx];
+    }
+
+    void Clear() {
+        common_slice_.clear();
+        non_common_slices_.clear();
+    }
+
+ private:
+    ::fesql::codec::Schema request_schema_;
+    std::set<size_t> common_column_indices_;
+
+    std::unique_ptr<::fesql::codec::RowSelector> common_selector_;
+    std::unique_ptr<::fesql::codec::RowSelector> non_common_selector_;
+
+    std::string common_slice_;
+    std::vector<std::string> non_common_slices_;
+};
+
+class ColumnIndicesSet {
+ public:
+    explicit ColumnIndicesSet(std::shared_ptr<fesql::sdk::Schema> schema)
+        : bound_(schema->GetColumnCnt()) {}
+
+    bool Empty() const { return common_column_indices_.empty(); }
+
+    void AddCommonColumnIdx(size_t idx);
+
+ private:
+    friend class SQLRequestRowBatch;
+    size_t bound_;
+    std::set<size_t> common_column_indices_;
 };
 
 }  // namespace sdk

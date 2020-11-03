@@ -251,9 +251,9 @@ class NsClient {
                      const std::string& idx_name, std::string& msg);  // NOLINT
 
     bool ShowProcedure(const std::string& db_name, const std::string& sp_name,
-            std::vector<rtidb::nameserver::ProcedureInfo>& sp_info, std::string& msg); // NOLINT
+            std::vector<rtidb::api::ProcedureInfo>& sp_info, std::string& msg); // NOLINT
 
-    bool ShowProcedure(std::vector<rtidb::nameserver::ProcedureInfo>& sp_info, // NOLINT
+    bool ShowProcedure(std::vector<rtidb::api::ProcedureInfo>& sp_info, // NOLINT
             std::string& msg); // NOLINT
 
     bool DropProcedure(const std::string& db_name, const std::string& sp_name,
@@ -261,10 +261,7 @@ class NsClient {
 
  private:
     bool TransformToTableDef(
-        const std::string& table_name,
-        int replica_num,
-        const fesql::node::NodePointVector& column_desc_list,
-        const fesql::node::NodePointVector& partition_meta_list,
+        ::fesql::node::CreatePlanNode* create_node,
         ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status);
 
     bool HandleSQLCmd(const fesql::node::CmdNode* cmd_node,

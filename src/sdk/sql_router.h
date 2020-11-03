@@ -111,11 +111,20 @@ class SQLRouter {
         const std::string& db, const std::string& sql,
         fesql::sdk::Status* status) = 0;
 
+    virtual std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQLBatchRequest(
+        const std::string& db, const std::string& sql,
+        std::shared_ptr<rtidb::sdk::SQLRequestRowBatch> row_batch,
+        ::fesql::sdk::Status* status) = 0;
+
     virtual bool RefreshCatalog() = 0;
 
     virtual std::shared_ptr<fesql::sdk::ResultSet> CallProcedure(
             const std::string& db, const std::string& sp_name,
             std::shared_ptr<rtidb::sdk::SQLRequestRow> row, fesql::sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<fesql::sdk::ResultSet> CallSQLBatchRequestProcedure(
+            const std::string& db, const std::string& sp_name,
+            std::shared_ptr<rtidb::sdk::SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<ProcedureInfo> ShowProcedure(
             const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) = 0;

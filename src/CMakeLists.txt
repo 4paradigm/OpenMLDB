@@ -1,6 +1,6 @@
 include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
 
-add_library(rtidb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/blob_server.pb.cc proto/name_server.pb.cc)
+add_library(rtidb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/blob_server.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc)
 add_library(rtidb_codec STATIC codec/codec.cc codec/sdk_codec.cc)
 add_library(rtidb_catalog STATIC catalog/tablet_catalog.cc catalog/sdk_catalog.cc catalog/distribute_iterator.cc catalog/client_manager.cc)
 add_library(client STATIC client/tablet_client.cc client/ns_client.cc client/bs_client.cc)
