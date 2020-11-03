@@ -46,7 +46,8 @@ ClusterSDK::ClusterSDK(const ClusterOptions& options)
       catalog_(new ::rtidb::catalog::SDKCatalog()),
       pool_(1),
       session_id_(0),
-      running_(true) {}
+      running_(true),
+      sp_root_path_(options.zk_path + "/table/db_sp_data") {}
 
 ClusterSDK::~ClusterSDK() {
     running_.store(false, std::memory_order_relaxed);
@@ -134,7 +135,8 @@ bool ClusterSDK::CreateNsClient() {
     }
 }
 
-bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
+bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
+        const std::vector<std::string>& sp_datas) {
     std::vector<::rtidb::nameserver::TableInfo> tables;
     std::map<
         std::string,
@@ -181,7 +183,46 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
         DLOG(INFO) << "load table info with name " << table_info->name()
                    << " in db " << table_info->db();
     }
-    if (!new_catalog->Init(tables, tablet_clients)) {
+
+    std::vector<::rtidb::nameserver::ProcedureInfo> procedures;
+    std::map<
+        std::string,
+        std::map<std::string, std::shared_ptr<::rtidb::nameserver::ProcedureInfo>>>
+        sp_mapping;
+    for (uint32_t i = 0; i < sp_datas.size(); i++) {
+        if (sp_datas[i].empty()) continue;
+        std::string value;
+        bool ok = zk_client_->GetNodeValue(
+                sp_root_path_ + "/" + sp_datas[i], value);
+        if (!ok) {
+            LOG(WARNING) << "fail to get procedure data";
+            continue;
+        }
+        std::string uncompressed;
+        ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
+        std::shared_ptr<::rtidb::nameserver::ProcedureInfo> sp_info(
+                new ::rtidb::nameserver::ProcedureInfo());
+        ok = sp_info->ParseFromString(uncompressed);
+        if (!ok) {
+            LOG(WARNING) << "fail to parse procedure proto with " << value;
+            return false;
+        }
+        DLOG(INFO) << "parse procedure " << sp_info->sp_name() << " ok";
+        procedures.push_back(*(sp_info.get()));
+        auto it = sp_mapping.find(sp_info->db_name());
+        if (it == sp_mapping.end()) {
+            std::map<std::string,
+                     std::shared_ptr<::rtidb::nameserver::ProcedureInfo>>
+                     sp_in_db = {{sp_info->sp_name(), sp_info}};
+            sp_mapping.insert(std::make_pair(sp_info->db_name(), sp_in_db));
+        } else {
+            it->second.insert(std::make_pair(sp_info->sp_name(), sp_info));
+        }
+        DLOG(INFO) << "load procedure info with sp name " << sp_info->sp_name()
+            << " in db " << sp_info->db_name();
+    }
+
+    if (!new_catalog->Init(tables, tablet_clients, procedures)) {
         LOG(WARNING) << "fail to init catalog";
         return false;
     }
@@ -189,6 +230,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas) {
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         table_to_tablets_ = mapping;
         catalog_ = new_catalog;
+        sp_map_ = sp_mapping;
         return true;
     }
 }
@@ -273,9 +315,20 @@ bool ClusterSDK::InitCatalog() {
     } else {
         LOG(INFO) << "no tables in db";
     }
+    std::vector<std::string> sp_datas;
+    if (zk_client_->IsExistNode(sp_root_path_) == 0) {
+        bool ok = zk_client_->GetChildren(sp_root_path_, sp_datas);
+        if (!ok) {
+            LOG(WARNING) << "fail to get procedure list with path "
+                         << sp_root_path_;
+            return false;
+        }
+    } else {
+        LOG(INFO) << "no procedures in db";
+    }
     bool ok = InitTabletClient();
     if (!ok) return false;
-    return RefreshCatalog(table_datas);
+    return RefreshCatalog(table_datas, sp_datas);
 }
 
 std::shared_ptr<::rtidb::client::TabletClient>
@@ -428,6 +481,20 @@ bool ClusterSDK::GetRealEndpoint(const std::string& endpoint,
         }
     }
     return true;
+}
+
+std::shared_ptr<::rtidb::nameserver::ProcedureInfo> ClusterSDK::GetProcedureInfo(
+    const std::string& db, const std::string& sp_name) {
+    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+    auto it = sp_map_.find(db);
+    if (it == sp_map_.end()) {
+        return std::shared_ptr<::rtidb::nameserver::ProcedureInfo>();
+    }
+    auto sit = it->second.find(sp_name);
+    if (sit == it->second.end()) {
+        return std::shared_ptr<::rtidb::nameserver::ProcedureInfo>();
+    }
+    return sit->second;
 }
 
 }  // namespace sdk

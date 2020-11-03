@@ -10588,6 +10588,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
         {
             std::lock_guard<std::mutex> lock(mu_);
             db_sp_info_[db_name].insert(std::make_pair(sp_name, sp_info));
+            NotifyTableChanged();
         }
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
@@ -10787,6 +10788,7 @@ void NameServerImpl::DropProcedure(RpcController* controller,
             PDLOG(INFO, "delete storage procedure node[%s]", sp_data_path.c_str());
             db_sp_info_[request->db_name()].erase(sp_name);
         }
+        NotifyTableChanged();
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");

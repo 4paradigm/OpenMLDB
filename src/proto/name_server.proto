@@ -492,6 +492,8 @@ message ProcedureInfo {
     optional string sql = 3;
     repeated rtidb.common.ColumnDesc input_schema = 4;
     repeated rtidb.common.ColumnDesc output_schema = 5;
+    optional string main_table = 6;
+    repeated string tables = 7; // dependent tables
 }
 
 message CreateProcedureRequest {

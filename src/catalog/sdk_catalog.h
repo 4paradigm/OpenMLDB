@@ -115,7 +115,8 @@ class SDKCatalog : public ::fesql::vm::Catalog {
     ~SDKCatalog() {}
 
     bool Init(const std::vector<::rtidb::nameserver::TableInfo>& tables,
-        const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients);
+        const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients,
+        const std::vector<::rtidb::nameserver::ProcedureInfo>& procedures);
 
     std::shared_ptr<::fesql::type::Database> GetDatabase(const std::string& db) override {
         return std::shared_ptr<::fesql::type::Database>();
@@ -131,6 +132,7 @@ class SDKCatalog : public ::fesql::vm::Catalog {
     SDKTables tables_;
     SDKDB db_;
     ClientManager client_manager_;
+    std::vector<::rtidb::nameserver::ProcedureInfo> procedures_;
 };
 
 }  // namespace catalog

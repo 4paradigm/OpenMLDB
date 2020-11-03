@@ -22,6 +22,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <snappy.h>
 
 #include "base/spinlock.h"
 #include "catalog/sdk_catalog.h"
@@ -82,9 +83,13 @@ class ClusterSDK {
     bool GetRealEndpoint(const std::string& endpoint,
             std::string* real_endpoint);
 
+    std::shared_ptr<::rtidb::nameserver::ProcedureInfo> GetProcedureInfo(
+            const std::string& db, const std::string& sp_name);
+
  private:
     bool InitCatalog();
-    bool RefreshCatalog(const std::vector<std::string>& table_datas);
+    bool RefreshCatalog(const std::vector<std::string>& table_datas,
+            const std::vector<std::string>& sp_datas);
     bool InitTabletClient();
     bool CreateNsClient();
     void WatchNotify();
@@ -109,6 +114,11 @@ class ClusterSDK {
     ::baidu::common::ThreadPool pool_;
     uint64_t session_id_;
     std::atomic<bool> running_;
+    std::string sp_root_path_;
+    std::map<
+        std::string,
+        std::map<std::string, std::shared_ptr<::rtidb::nameserver::ProcedureInfo>>>
+        sp_map_;
 };
 
 }  // namespace sdk
