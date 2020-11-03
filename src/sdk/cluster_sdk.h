@@ -18,11 +18,11 @@
 #ifndef SRC_SDK_CLUSTER_SDK_H_
 #define SRC_SDK_CLUSTER_SDK_H_
 
+#include <snappy.h>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
-#include <snappy.h>
 
 #include "base/spinlock.h"
 #include "catalog/sdk_catalog.h"

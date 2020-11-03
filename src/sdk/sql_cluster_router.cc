@@ -968,7 +968,7 @@ std::shared_ptr<ProcedureInfo> SQLClusterRouter::ShowProcedure(
     }
     ::fesql::vm::Schema fesql_in_schema;
     if (!rtidb::catalog::SchemaAdapter::ConvertSchema(
-                sp_info.input_schema(), &fesql_in_schema)) {
+                sp_info->input_schema(), &fesql_in_schema)) {
         status->msg = "fail to convert input schema";
         LOG(WARNING) << status->msg;
         status->code = -1;
@@ -976,7 +976,7 @@ std::shared_ptr<ProcedureInfo> SQLClusterRouter::ShowProcedure(
     }
     ::fesql::vm::Schema fesql_out_schema;
     if (!rtidb::catalog::SchemaAdapter::ConvertSchema(
-                sp_info.output_schema(), &fesql_out_schema)) {
+                sp_info->output_schema(), &fesql_out_schema)) {
         status->msg = "fail to convert output schema";
         LOG(WARNING) << status->msg;
         status->code = -1;
@@ -984,9 +984,9 @@ std::shared_ptr<ProcedureInfo> SQLClusterRouter::ShowProcedure(
     }
     ::fesql::sdk::SchemaImpl input_schema(fesql_in_schema);
     ::fesql::sdk::SchemaImpl output_schema(fesql_out_schema);
-    std::shared_ptr<ProcedureInfoImpl> sp_info = std::make_shared<ProcedureInfoImpl>(
-            db, sp_name, sp_info.sql(), input_schema, output_schema);
-    return sp_info;
+    std::shared_ptr<ProcedureInfoImpl> sp_info_impl = std::make_shared<ProcedureInfoImpl>(
+            db, sp_name, sp_info->sql(), input_schema, output_schema);
+    return sp_info_impl;
 }
 
 bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVector& parser_trees,
