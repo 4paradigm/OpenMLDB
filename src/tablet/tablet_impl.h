@@ -548,6 +548,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::shared_ptr<::rtidb::catalog::TabletCatalog> catalog_;
     // thread safe
     ::fesql::vm::Engine engine_;
+    std::shared_ptr<::fesql::vm::LocalTablet> local_tablet_;
     std::string zk_cluster_;
     std::string zk_path_;
     std::string endpoint_;

@@ -112,6 +112,7 @@ TabletImpl::TabletImpl()
       follower_(false),
       catalog_(new ::rtidb::catalog::TabletCatalog()),
       engine_(catalog_),
+      local_tablet_(new ::fesql::vm::LocalTablet(engine_)),
       zk_cluster_(),
       zk_path_(),
       endpoint_(),

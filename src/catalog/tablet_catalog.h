@@ -23,13 +23,14 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "base/spinlock.h"
 #include "catalog/client_manager.h"
 #include "catalog/distribute_iterator.h"
 #include "client/tablet_client.h"
 #include "codec/row.h"
-#include "storage/table.h"
 #include "storage/schema.h"
+#include "storage/table.h"
 
 namespace rtidb {
 namespace catalog {
@@ -165,11 +166,12 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler,
 class TabletTableHandler : public ::fesql::vm::TableHandler,
                            public std::enable_shared_from_this<fesql::vm::TableHandler> {
  public:
-    explicit TabletTableHandler(const ::rtidb::api::TableMeta &meta);
+    explicit TabletTableHandler(const ::rtidb::api::TableMeta &meta,
+                                std::shared_ptr<fesql::vm::Tablet> local_tablet = std::shared_ptr<fesql::vm::Tablet>());
 
     explicit TabletTableHandler(const ::rtidb::nameserver::TableInfo &meta);
 
-    bool Init(const ClientManager& client_manager);
+    bool Init(const ClientManager &client_manager);
 
     const ::fesql::vm::Schema *GetSchema() override { return &schema_; }
 
@@ -196,7 +198,7 @@ class TabletTableHandler : public ::fesql::vm::TableHandler,
     std::shared_ptr<::fesql::vm::PartitionHandler> GetPartition(const std::string &index_name) override;
     const std::string GetHandlerTypeName() override { return "TabletTableHandler"; }
 
-    std::shared_ptr<::fesql::vm::Tablet> GetTablet(const std::string& index_name, const std::string& pk) override;
+    std::shared_ptr<::fesql::vm::Tablet> GetTablet(const std::string &index_name, const std::string &pk) override;
 
     inline int32_t GetTid() { return table_st_.GetTid(); }
 
@@ -223,6 +225,7 @@ class TabletTableHandler : public ::fesql::vm::TableHandler,
     ::fesql::vm::IndexList index_list_;
     ::fesql::vm::IndexHint index_hint_;
     std::shared_ptr<TableClientManager> table_client_manager_;
+    std::shared_ptr<fesql::vm::Tablet> local_tablet_;
 };
 
 typedef std::map<std::string, std::map<std::string, std::shared_ptr<TabletTableHandler>>> TabletTables;
@@ -239,7 +242,8 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     bool AddDB(const ::fesql::type::Database &db);
 
-    bool AddTable(const ::rtidb::api::TableMeta &meta, std::shared_ptr<::rtidb::storage::Table> table);
+    bool AddTable(const ::rtidb::api::TableMeta &meta, std::shared_ptr<::rtidb::storage::Table> table,
+                  std::shared_ptr<fesql::vm::Tablet> local_tablet);
 
     std::shared_ptr<::fesql::type::Database> GetDatabase(const std::string &db) override;
 
@@ -253,10 +257,9 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     void RefreshTable(const std::vector<::rtidb::nameserver::TableInfo> &table_info_vec, uint64_t version);
 
-    bool AddProcedure(const std::string& db, const std::string& sp_name,
-            const std::string& sql);
+    bool AddProcedure(const std::string &db, const std::string &sp_name, const std::string &sql);
 
-    bool DropProcedure(const std::string& db, const std::string& sp_name);
+    bool DropProcedure(const std::string &db, const std::string &sp_name);
 
     bool UpdateClient(const std::map<std::string, std::string> &real_ep_map);
 

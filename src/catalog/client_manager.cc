@@ -53,6 +53,7 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
 std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                   const std::string& sql,
                                                                   const ::fesql::codec::Row& row) {
+    DLOG(INFO) << "SubQuery taskid: " << task_id;
     ::rtidb::api::QueryRequest request;
     request.set_sql(sql);
     request.set_db(db);
