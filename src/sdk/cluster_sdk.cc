@@ -184,7 +184,6 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
                    << " in db " << table_info->db();
     }
 
-    std::vector<::rtidb::api::ProcedureInfo> procedures;
     std::map<
         std::string,
         std::map<std::string, std::shared_ptr<::rtidb::api::ProcedureInfo>>>
@@ -208,7 +207,6 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
             return false;
         }
         DLOG(INFO) << "parse procedure " << sp_info->sp_name() << " ok";
-        procedures.push_back(*(sp_info.get()));
         auto it = sp_mapping.find(sp_info->db_name());
         if (it == sp_mapping.end()) {
             std::map<std::string,
@@ -222,7 +220,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
             << " in db " << sp_info->db_name();
     }
 
-    if (!new_catalog->Init(tables, tablet_clients, procedures)) {
+    if (!new_catalog->Init(tables, tablet_clients)) {
         LOG(WARNING) << "fail to init catalog";
         return false;
     }
