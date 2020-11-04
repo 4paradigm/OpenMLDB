@@ -204,6 +204,7 @@ struct ExplainOutput {
     std::string physical_plan;
     std::string ir;
     vm::Schema output_schema;
+    std::string request_name;
 };
 
 typedef std::map<
