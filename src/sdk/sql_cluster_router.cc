@@ -41,12 +41,14 @@ class ExplainInfoImpl : public ExplainInfo {
     ExplainInfoImpl(const ::fesql::sdk::SchemaImpl& input_schema,
                     const ::fesql::sdk::SchemaImpl& output_schema,
                     const std::string& logical_plan,
-                    const std::string& physical_plan, const std::string& ir)
+                    const std::string& physical_plan, const std::string& ir,
+                    const std::string& request_name)
         : input_schema_(input_schema),
           output_schema_(output_schema),
           logical_plan_(logical_plan),
           physical_plan_(physical_plan),
-          ir_(ir) {}
+          ir_(ir),
+          request_name_(request_name) {}
     ~ExplainInfoImpl() {}
 
     const ::fesql::sdk::Schema& GetInputSchema() { return input_schema_; }
@@ -59,12 +61,15 @@ class ExplainInfoImpl : public ExplainInfo {
 
     const std::string& GetIR() { return ir_; }
 
+    const std::string& GetRequestName() { return request_name_; }
+
  private:
     ::fesql::sdk::SchemaImpl input_schema_;
     ::fesql::sdk::SchemaImpl output_schema_;
     std::string logical_plan_;
     std::string physical_plan_;
     std::string ir_;
+    std::string request_name_;
 };
 
 class ProcedureInfoImpl : public ProcedureInfo {
@@ -72,12 +77,17 @@ class ProcedureInfoImpl : public ProcedureInfo {
      ProcedureInfoImpl(const std::string& db_name, const std::string& sp_name,
              const std::string& sql,
              const ::fesql::sdk::SchemaImpl& input_schema,
-             const ::fesql::sdk::SchemaImpl& output_schema)
+             const ::fesql::sdk::SchemaImpl& output_schema,
+             const std::vector<std::string>& tables,
+             const std::string& main_table)
         : db_name_(db_name),
           sp_name_(sp_name),
           sql_(sql),
           input_schema_(input_schema),
-          output_schema_(output_schema) {}
+          output_schema_(output_schema),
+          tables_(tables),
+          main_table_(main_table) {}
+
     ~ProcedureInfoImpl() {}
 
     const ::fesql::sdk::Schema& GetInputSchema() { return input_schema_; }
@@ -90,12 +100,18 @@ class ProcedureInfoImpl : public ProcedureInfo {
 
     const std::string& GetSql() { return sql_; }
 
+    const std::vector<std::string>& GetTables() { return tables_; }
+
+    const std::string& GetMainTable() { return main_table_; }
+
  private:
     std::string db_name_;
     std::string sp_name_;
     std::string sql_;
     ::fesql::sdk::SchemaImpl input_schema_;
     ::fesql::sdk::SchemaImpl output_schema_;
+    std::vector<std::string> tables_;
+    std::string main_table_;
 };
 
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
@@ -916,7 +932,7 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(
     ::fesql::sdk::SchemaImpl output_schema(explain_output.output_schema);
     std::shared_ptr<ExplainInfoImpl> impl(new ExplainInfoImpl(
         input_schema, output_schema, explain_output.logical_plan,
-        explain_output.physical_plan, explain_output.ir));
+        explain_output.physical_plan, explain_output.ir, explain_output.request_name));
     return impl;
 }
 
@@ -1088,8 +1104,13 @@ std::shared_ptr<ProcedureInfo> SQLClusterRouter::ShowProcedure(
     }
     ::fesql::sdk::SchemaImpl input_schema(fesql_in_schema);
     ::fesql::sdk::SchemaImpl output_schema(fesql_out_schema);
+    std::vector<std::string> table_vec;
+    const auto& tables = sp_info->tables();
+    for (const auto& table : tables) {
+        table_vec.push_back(table);
+    }
     std::shared_ptr<ProcedureInfoImpl> sp_info_impl = std::make_shared<ProcedureInfoImpl>(
-            db, sp_name, sp_info->sql(), input_schema, output_schema);
+            db, sp_name, sp_info->sql(), input_schema, output_schema, table_vec, sp_info->main_table());
     return sp_info_impl;
 }
 
@@ -1182,6 +1203,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVect
             }
             sp_info.mutable_output_schema()->CopyFrom(rtidb_output_schema);
             // TODO(wb) get main table
+            sp_info.set_main_table(explain_output.request_name);
             // get dependent tables, and fill sp_info
             std::set<std::string> tables;
             ::fesql::base::Status status;

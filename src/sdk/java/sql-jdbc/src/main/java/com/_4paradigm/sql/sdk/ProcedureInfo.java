@@ -9,18 +9,10 @@ public class ProcedureInfo {
     private String sql;
     private Schema inputSchema;
     private Schema outputSchema;
+    private String mainTable;
     private List<String> inputTables = new ArrayList<>();
-    private List<String> rtidbTables = new ArrayList<>();
 
     public ProcedureInfo() {
-    }
-
-    public ProcedureInfo(String dbName, String proName, String sql, Schema inputSchema, Schema outputSchema) {
-        this.dbName = dbName;
-        this.proName = proName;
-        this.sql = sql;
-        this.inputSchema = inputSchema;
-        this.outputSchema = outputSchema;
     }
 
     public String getDbName() {
@@ -71,11 +63,11 @@ public class ProcedureInfo {
         this.inputTables = inputTables;
     }
 
-    public List<String> getRtidbTables() {
-        return rtidbTables;
+    public String getMainTable() {
+        return mainTable;
     }
 
-    public void setRtidbTables(List<String> rtidbTables) {
-        this.rtidbTables = rtidbTables;
+    public void setMainTable(String mainTable) {
+        this.mainTable = mainTable;
     }
 }
