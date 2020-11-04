@@ -145,9 +145,8 @@ class SQLClusterRouter : public SQLRouter {
             const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) override;
 
  private:
-    bool GetTablet(
-        const std::string& db, const std::string& sql,
-        std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets);
+    std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
+        const std::string& db, const std::string& sql);
 
     void GetTables(::fesql::vm::PhysicalOpNode* node,
                    std::set<std::string>* tables);

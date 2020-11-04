@@ -84,7 +84,9 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
 
     bool GetTablet(std::vector<std::shared_ptr<TabletAccessor>>* tablets);
 
-    uint32_t GetTid() const { return meta_.tid(); }
+    inline uint32_t GetTid() const { return meta_.tid(); }
+
+    inline uint32_t GetPartitionNum() const { return meta_.table_partition_size(); }
 
  private:
     inline int32_t GetColumnIndex(const std::string& column) {

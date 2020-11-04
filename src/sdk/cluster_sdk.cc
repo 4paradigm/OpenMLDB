@@ -45,7 +45,8 @@ ClusterSDK::ClusterSDK(const ClusterOptions& options)
       table_to_tablets_(),
       catalog_(new ::rtidb::catalog::SDKCatalog(client_manager_)),
       pool_(1),
-      session_id_(0) {}
+      session_id_(0),
+      rand_(0xdeadbeef) {}
 
 ClusterSDK::~ClusterSDK() {
     pool_.Stop(false);
@@ -271,12 +272,28 @@ bool ClusterSDK::GetRealEndpoint(const std::string& endpoint, std::string* real_
     return true;
 }
 
-std::shared_ptr<::rtidb::catalog::TabletAccessor> ClusterSDK::GetTablet() {
-    return GetCatalog()->GetTablet();
+std::shared_ptr<::rtidb::catalog::TabletAccessor> ClusterSDK::GetTablet() { return GetCatalog()->GetTablet(); }
+
+std::shared_ptr<::rtidb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db,
+                                                                        const std::string& name) {
+    auto table_handler = GetCatalog()->GetTable(db, name);
+    if (table_handler) {
+        ::rtidb::catalog::SDKTableHandler* sdk_table_handler =
+            dynamic_cast<::rtidb::catalog::SDKTableHandler*>(table_handler.get());
+        if (sdk_table_handler) {
+            uint32_t pid_num = sdk_table_handler->GetPartitionNum();
+            uint32_t pid = 0;
+            if (pid_num > 0) {
+                pid = rand_.Uniform(pid_num);
+            }
+            return sdk_table_handler->GetTablet(pid);
+        }
+    }
+    return std::shared_ptr<::rtidb::catalog::TabletAccessor>();
 }
 
 bool ClusterSDK::GetTablet(const std::string& db, const std::string& name,
-        std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>>* tablets) {
+                           std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>>* tablets) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
         ::rtidb::catalog::SDKTableHandler* sdk_table_handler =
@@ -288,8 +305,8 @@ bool ClusterSDK::GetTablet(const std::string& db, const std::string& name,
     return false;
 }
 
-std::shared_ptr<::rtidb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db,
-                                                                        const std::string& name, uint32_t pid) {
+std::shared_ptr<::rtidb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db, const std::string& name,
+                                                                        uint32_t pid) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
         ::rtidb::catalog::SDKTableHandler* sdk_table_handler =

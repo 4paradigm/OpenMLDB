@@ -78,6 +78,8 @@ class ClusterSDK {
     bool GetTablet(const std::string& db, const  std::string& name,
             std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>>* tablets);
     std::shared_ptr<::rtidb::catalog::TabletAccessor> GetTablet(const std::string& db,
+                                                                   const  std::string& name);
+    std::shared_ptr<::rtidb::catalog::TabletAccessor> GetTablet(const std::string& db,
                                                                    const  std::string& name,
                                                                    uint32_t pid);
 
@@ -106,6 +108,7 @@ class ClusterSDK {
     std::shared_ptr<::rtidb::client::NsClient> ns_client_;
     ::baidu::common::ThreadPool pool_;
     uint64_t session_id_;
+    ::rtidb::base::Random rand_;
 };
 
 }  // namespace sdk
