@@ -20,7 +20,7 @@
 #ifndef SRC_CATALOG_CLIENT_MANAGER_H_
 #define SRC_CATALOG_CLIENT_MANAGER_H_
 
-#include <map>
+#include <unordered_map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -153,8 +153,8 @@ class ClientManager {
     bool UpdateClient(const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients);
 
  private:
-    std::map<std::string, std::string> real_endpoint_map_;
-    std::map<std::string, std::shared_ptr<TabletAccessor>> clients_;
+    std::unordered_map<std::string, std::string> real_endpoint_map_;
+    std::unordered_map<std::string, std::shared_ptr<TabletAccessor>> clients_;
     mutable ::rtidb::base::SpinMutex mu_;
     mutable ::rtidb::base::Random rand_;
 };
