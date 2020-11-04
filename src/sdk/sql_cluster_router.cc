@@ -556,8 +556,8 @@ bool SQLClusterRouter::DropDB(const std::string& db,
 
 bool SQLClusterRouter::GetTablet(
     const std::string& db, const std::string& sql,
-    std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets) {
-    if (tablets == NULL) return false;
+    std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* clients) {
+    if (clients == NULL) return false;
     // TODO(wangtaize) cache compile result
     std::set<std::string> tables;
     ::fesql::base::Status status;
@@ -568,21 +568,26 @@ bool SQLClusterRouter::GetTablet(
 
     // pick one tablet for const query sql
     if (tables.empty()) {
-        auto client = cluster_sdk_->GetTabletClient();
-        if (!client) {
+        auto tablet = cluster_sdk_->GetTablet();
+        if (!tablet) {
             LOG(WARNING) << "fail to pack a tablet";
             return false;
         }
-        tablets->push_back(client);
+        clients->push_back(tablet->GetClient());
         return true;
     }
     for (const auto& name : tables) {
-        auto client = cluster_sdk_->GetTabletClient(db, name);
-        if (!client) {
+        std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>> tablets;
+        auto ret = cluster_sdk_->GetTablet(db, name, &tablets);
+        if (!ret || tablets.empty()) {
             LOG(WARNING) << "fail to get table " << name << " tablet";
             return false;
         }
-        tablets->push_back(client);
+        for (const auto& tablet : tablets) {
+            if (tablet) {
+                clients->push_back(tablet->GetClient());
+            }
+        }
     }
     return true;
 }
@@ -755,18 +760,42 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         LOG(WARNING) << status->msg;
         return false;
     }
-    auto tablet = cluster_sdk_->GetTabletClient(db, table_info->name());
-    if (!tablet) {
+    std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>> tablets;
+    bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
+    if (!ret || tablets.empty()) {
         status->msg = "fail to get table " + table_info->name() + " tablet";
         LOG(WARNING) << status->msg;
         return false;
     }
-    DLOG(INFO) << "put data to endpoint " << tablet->GetEndpoint()
-               << " with dimensions size " << row->GetDimensions().size();
-    bool ok = tablet->Put(table_info->tid(), 0, row->GetDimensions(),
-                          row->GetTs(), row->GetRow(), 1);
-    if (!ok) {
-        status->msg = "fail to make a put request to table " + table_info->name();
+    return PutRow(table_info->tid(), row, tablets, status);
+}
+
+bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>& row,
+        const std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>>& tablets,
+        ::fesql::sdk::Status* status) {
+    if (status == nullptr) {
+        return false;
+    }
+    auto dimensions = row->GetDimensions();
+    for (const auto& kv : dimensions) {
+        uint32_t pid = kv.first;
+        if (pid < tablets.size()) {
+            auto tablet = tablets[pid];
+            if (tablet) {
+                auto client = tablet->GetClient();
+                if (client) {
+                    DLOG(INFO) << "put data to endpoint " << client->GetEndpoint()
+                               << " with dimensions size " << kv.second.size();
+                    if (!client->Put(tid, pid, kv.second, row->GetTs(), row->GetRow(), 1)) {
+                        status->msg = "fail to make a put request to table. tid " + std::to_string(tid);
+                        LOG(WARNING) << status->msg;
+                        return false;
+                    }
+                    continue;
+                }
+            }
+        }
+        status->msg = "fail to get tablet client. pid " + std::to_string(pid);
         LOG(WARNING) << status->msg;
         return false;
     }
@@ -785,21 +814,16 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     if (cache) {
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
             cache->table_info;
-        auto tablet = cluster_sdk_->GetTabletClient(db, table_info->name());
-        if (!tablet) {
+        std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>> tablets;
+        bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
+        if (!ret || tablets.empty()) {
             status->msg = "fail to get table " + table_info->name() + " tablet";
             LOG(WARNING) << status->msg;
             return false;
         }
-        DLOG(INFO) << "put data to endpoint " << tablet->GetEndpoint();
         for (uint32_t i = 0; i < rows->GetCnt(); ++i) {
             std::shared_ptr<SQLInsertRow> row = rows->GetRow(i);
-            bool ok = tablet->Put(table_info->tid(), 0, row->GetDimensions(),
-                                  row->GetTs(), row->GetRow(), 1);
-            if (!ok) {
-                status->msg =
-                    "fail to get table " + table_info->name() + " tablet";
-                LOG(WARNING) << status->msg;
+            if (!PutRow(table_info->tid(), row, tablets, status)) {
                 return false;
             }
         }
@@ -823,21 +847,17 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     std::shared_ptr<RouterCache> cache = GetCache(db, sql);
     if (cache) {
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = cache->table_info;
-        auto tablet = cluster_sdk_->GetTabletClient(db, table_info->name());
-        if (!tablet) {
+        std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>> tablets;
+        bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
+        if (!ret || tablets.empty()) {
             status->msg = "fail to get table " + table_info->name() + " tablet";
             LOG(WARNING) << status->msg;
             return false;
         }
-        DLOG(INFO) << "put data to endpoint " << tablet->GetEndpoint();
-        bool ok = tablet->Put(table_info->tid(), 0, row->GetDimensions(),
-                              row->GetTs(), row->GetRow(), 1);
-        if (!ok) {
-            status->msg = "fail to get table " + table_info->name() + " tablet";
-            LOG(WARNING) << status->msg;
+        if (!PutRow(table_info->tid(), row, tablets, status)) {
             return false;
         }
-        return ok;
+        return true;
     } else {
         status->msg = "please use getInsertRow with " + sql + " first";
         LOG(WARNING) << status->msg;

@@ -74,10 +74,10 @@ class ClusterSDK {
     bool GetRealEndpoint(const std::string& endpoint,
             std::string* real_endpoint);
 
-    std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient();
-    std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(const std::string& db,
-                                                                   const  std::string& name);
-    std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(const std::string& db,
+    std::shared_ptr<::rtidb::catalog::TabletAccessor> GetTablet();
+    bool GetTablet(const std::string& db, const  std::string& name,
+            std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>>* tablets);
+    std::shared_ptr<::rtidb::catalog::TabletAccessor> GetTablet(const std::string& db,
                                                                    const  std::string& name,
                                                                    uint32_t pid);
 

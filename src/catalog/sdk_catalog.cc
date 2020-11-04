@@ -27,8 +27,7 @@ namespace catalog {
 SDKTableHandler::SDKTableHandler(const ::rtidb::nameserver::TableInfo& meta,
         const ClientManager& client_manager)
     : meta_(meta), schema_(), name_(meta.name()), db_(meta.db()),
-    table_client_manager_(std::make_shared<TableClientManager>(meta.table_partition(), client_manager)),
-    rand_(0xdeadbeef) {}
+    table_client_manager_(std::make_shared<TableClientManager>(meta.table_partition(), client_manager)) {}
 
 bool SDKTableHandler::Init() {
     if (meta_.format_version() != 1) {
@@ -102,13 +101,15 @@ std::shared_ptr<TabletAccessor> SDKTableHandler::GetTablet(uint32_t pid) {
     return table_client_manager_->GetTablet(pid);
 }
 
-std::shared_ptr<TabletAccessor> SDKTableHandler::GetTablet() {
-    uint32_t pid_num = meta_.table_partition_size();
-    uint32_t pid = 0;
-    if (pid_num > 0) {
-        pid = rand_.Uniform(pid_num);
+bool SDKTableHandler::GetTablet(std::vector<std::shared_ptr<TabletAccessor>>* tablets) {
+    if (tablets == nullptr) {
+        return false;
     }
-    return table_client_manager_->GetTablet(pid);
+    tablets->clear();
+    for (uint32_t pid = 0; pid < (uint32_t)meta_.table_partition_size(); pid++) {
+        tablets->push_back(table_client_manager_->GetTablet(pid));
+    }
+    return true;
 }
 
 bool SDKCatalog::Init(const std::vector<::rtidb::nameserver::TableInfo>& tables) {

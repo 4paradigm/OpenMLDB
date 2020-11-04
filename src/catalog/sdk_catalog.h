@@ -24,7 +24,6 @@
 #include <string>
 #include <memory>
 #include <mutex>
-#include "base/random.h"
 #include "base/spinlock.h"
 #include "catalog/client_manager.h"
 #include "client/tablet_client.h"
@@ -83,7 +82,7 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
 
     std::shared_ptr<TabletAccessor> GetTablet(uint32_t pid);
 
-    std::shared_ptr<TabletAccessor> GetTablet();
+    bool GetTablet(std::vector<std::shared_ptr<TabletAccessor>>* tablets);
 
     uint32_t GetTid() const { return meta_.tid(); }
 
@@ -106,7 +105,6 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
     ::fesql::vm::IndexHint index_hint_;
     uint64_t cnt_;
     std::shared_ptr<TableClientManager> table_client_manager_;
-    ::rtidb::base::Random rand_;
 };
 
 typedef std::map<std::string,
@@ -116,7 +114,7 @@ typedef std::map<std::string, std::shared_ptr<::fesql::type::Database>> SDKDB;
 
 class SDKCatalog : public ::fesql::vm::Catalog {
  public:
-    SDKCatalog(std::shared_ptr<ClientManager> client_manager) :
+    explicit SDKCatalog(std::shared_ptr<ClientManager> client_manager) :
         tables_(), db_(), client_manager_(client_manager) {}
 
     ~SDKCatalog() {}

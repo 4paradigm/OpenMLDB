@@ -271,48 +271,35 @@ bool ClusterSDK::GetRealEndpoint(const std::string& endpoint, std::string* real_
     return true;
 }
 
-std::shared_ptr<::rtidb::client::TabletClient> ClusterSDK::GetTabletClient() {
-    auto catalog = GetCatalog();
-
-    auto tablet = catalog->GetTablet();
-    if (tablet) {
-        return tablet->GetClient();
-    }
-    return std::shared_ptr<::rtidb::client::TabletClient>();
+std::shared_ptr<::rtidb::catalog::TabletAccessor> ClusterSDK::GetTablet() {
+    return GetCatalog()->GetTablet();
 }
 
-std::shared_ptr<::rtidb::client::TabletClient> ClusterSDK::GetTabletClient(const std::string& db,
-                                                                           const std::string& name) {
-    auto catalog = GetCatalog();
-    auto table_handler = catalog->GetTable(db, name);
+bool ClusterSDK::GetTablet(const std::string& db, const std::string& name,
+        std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>>* tablets) {
+    auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
         ::rtidb::catalog::SDKTableHandler* sdk_table_handler =
             dynamic_cast<::rtidb::catalog::SDKTableHandler*>(table_handler.get());
         if (sdk_table_handler) {
-            auto tablet = sdk_table_handler->GetTablet();
-            if (tablet) {
-                return tablet->GetClient();
-            }
+            return sdk_table_handler->GetTablet(tablets);
         }
     }
-    return std::shared_ptr<::rtidb::client::TabletClient>();
+    return false;
 }
 
-std::shared_ptr<::rtidb::client::TabletClient> ClusterSDK::GetTabletClient(const std::string& db,
-                                                                           const std::string& name, uint32_t pid) {
-    auto catalog = GetCatalog();
-    auto table_handler = catalog->GetTable(db, name);
+std::shared_ptr<::rtidb::catalog::TabletAccessor> ClusterSDK::GetTablet(const std::string& db,
+                                                                        const std::string& name, uint32_t pid) {
+    auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
         ::rtidb::catalog::SDKTableHandler* sdk_table_handler =
             dynamic_cast<::rtidb::catalog::SDKTableHandler*>(table_handler.get());
         if (sdk_table_handler) {
             auto tablet = sdk_table_handler->GetTablet(pid);
-            if (tablet) {
-                return tablet->GetClient();
-            }
+            return tablet;
         }
     }
-    return std::shared_ptr<::rtidb::client::TabletClient>();
+    return std::shared_ptr<::rtidb::catalog::TabletAccessor>();
 }
 
 }  // namespace sdk

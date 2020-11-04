@@ -150,6 +150,8 @@ class ClientManager {
 
     bool UpdateClient(const std::map<std::string, std::string>& real_ep_map);
 
+    bool UpdateClient(const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients);
+
  private:
     std::map<std::string, std::string> real_endpoint_map_;
     std::map<std::string, std::shared_ptr<TabletAccessor>> clients_;

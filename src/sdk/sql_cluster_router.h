@@ -152,6 +152,10 @@ class SQLClusterRouter : public SQLRouter {
     void GetTables(::fesql::vm::PhysicalOpNode* node,
                    std::set<std::string>* tables);
 
+    bool PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>& row,
+            const std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>>& tablets,
+            ::fesql::sdk::Status* status);
+
     bool IsConstQuery(::fesql::vm::PhysicalOpNode* node);
     std::shared_ptr<RouterCache> GetCache(const std::string& db,
                                           const std::string& sql);

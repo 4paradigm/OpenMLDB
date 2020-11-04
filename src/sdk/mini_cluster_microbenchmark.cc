@@ -97,13 +97,14 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     option.zk_path = mc->GetZkPath();
     ::rtidb::sdk::ClusterSDK sdk(option);
     sdk.Init();
-    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablet;
-    ok = sdk.GetTabletByTable(db, name, &tablet);
+    std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>> tablet;
+    ok = sdk.GetTablet(db, name, &tablet);
     if (!ok || tablet.size() <= 0) return;
     uint32_t tid = sdk.GetTableId(db, name);
     {
-        for (int32_t i = 0; i < 1000; i++)
-            ok = tablet[0]->Put(tid, 0, pk, ts + i, value, 1);
+        for (int32_t i = 0; i < 1000; i++) {
+            ok = tablet[0]->GetClient()->Put(tid, 0, pk, ts + i, value, 1);
+        }
     }
     std::string sql =
         "select col1, col2 + 1, col3, col4, col5 from " + name + " ;";
