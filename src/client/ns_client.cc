@@ -281,7 +281,7 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
     fesql::base::Status sql_status;
     fesql::node::NodePointVector parser_trees;
     parser.parse(script, parser_trees, &node_manager, sql_status);
-    if (0 != sql_status.code) {
+    if (parser_trees.empty() || 0 != sql_status.code) {
         msg = sql_status.msg;
         return false;
     }
@@ -363,7 +363,7 @@ bool NsClient::HandleSQLCreateTable(
     fesql::plan::SimplePlanner planner(node_manager);
     fesql::node::PlanNodeList plan_trees;
     planner.CreatePlanTree(parser_trees, plan_trees, *sql_status);
-    if (0 != sql_status->code) {
+    if (plan_trees.empty() || 0 != sql_status->code) {
         return false;
     }
 

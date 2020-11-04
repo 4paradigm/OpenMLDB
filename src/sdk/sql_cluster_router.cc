@@ -509,7 +509,7 @@ bool SQLClusterRouter::ExecuteDDL(const std::string& db, const std::string& sql,
     fesql::base::Status sql_status;
     fesql::node::NodePointVector parser_trees;
     parser.parse(sql, parser_trees, &node_manager, sql_status);
-    if (sql_status.code != 0) {
+    if (parser_trees.empty() || sql_status.code != 0) {
         status->code = -1;
         status->msg = sql_status.msg;
         LOG(WARNING) << status->msg;
@@ -951,13 +951,6 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
         LOG(WARNING) << "make sure the request row is built before execute sql";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
-    auto ns_ptr = cluster_sdk_->GetNsClient();
-    if (!ns_ptr) {
-        status->code = -1;
-        status->msg = "no nameserver exist";
-        LOG(WARNING) << "no nameserver exist";
-        return std::shared_ptr<::fesql::sdk::ResultSet>();
-    }
     const auto& sp_info = cluster_sdk_->GetProcedureInfo(db, sp_name);
     if (!sp_info) {
         status->code = -1;
@@ -969,15 +962,13 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
     std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
     std::unique_ptr<::rtidb::api::QueryResponse> response(
         new ::rtidb::api::QueryResponse());
-    auto& tables = sp_info->tables();
+    const std::string& table = sp_info->main_table();
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
-    for (auto& table : tables) {
-        if (!cluster_sdk_->GetTabletByTable(db, table, &tablets)) {
-            status->code = -1;
-            status->msg = "fail to get tablet, table "  + table;
-            LOG(WARNING) << status->msg;
-            return std::shared_ptr<::fesql::sdk::ResultSet>();
-        }
+    if (!cluster_sdk_->GetTabletByTable(db, table, &tablets)) {
+        status->code = -1;
+        status->msg = "fail to get tablet, table "  + table;
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     if (tablets.size() <= 0) {
         status->code = -1;
@@ -1125,7 +1116,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVect
     fesql::node::PlanNodeList plan_trees;
     fesql::base::Status sql_status;
     planner.CreatePlanTree(parser_trees, plan_trees, sql_status);
-    if (sql_status.code != 0) {
+    if (plan_trees.empty() || sql_status.code != 0) {
         *msg = sql_status.msg;
         return false;
     }
@@ -1207,7 +1198,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVect
             // get dependent tables, and fill sp_info
             std::set<std::string> tables;
             ::fesql::base::Status status;
-            if (!engine_->GetDependentTables(sql, db, ::fesql::vm::kBatchMode, &tables, status)) {
+            if (!engine_->GetDependentTables(sql, db, ::fesql::vm::kRequestMode, &tables, status)) {
                 LOG(WARNING) << "fail to get dependent tables: " << status.msg;
                 return false;
             }

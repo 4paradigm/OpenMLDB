@@ -47,7 +47,7 @@ ClusterSDK::ClusterSDK(const ClusterOptions& options)
       pool_(1),
       session_id_(0),
       running_(true),
-      sp_root_path_(options.zk_path + "/table/db_sp_data") {}
+      sp_root_path_(options.zk_path + "/store_procedure/db_sp_data") {}
 
 ClusterSDK::~ClusterSDK() {
     running_.store(false, std::memory_order_relaxed);
