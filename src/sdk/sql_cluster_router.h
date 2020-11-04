@@ -82,67 +82,67 @@ class SQLClusterRouter : public SQLRouter {
 
     bool Init();
 
-    bool CreateDB(const std::string& db, fesql::sdk::Status* status);
+    bool CreateDB(const std::string& db, fesql::sdk::Status* status) override;
 
-    bool DropDB(const std::string& db, fesql::sdk::Status* status);
+    bool DropDB(const std::string& db, fesql::sdk::Status* status) override;
 
-    bool ShowDB(std::vector<std::string>* dbs, fesql::sdk::Status* status);
+    bool ShowDB(std::vector<std::string>* dbs, fesql::sdk::Status* status) override;
 
     bool ExecuteDDL(const std::string& db, const std::string& sql,
-                    fesql::sdk::Status* status);
+                    fesql::sdk::Status* status) override;
 
     bool ExecuteInsert(const std::string& db, const std::string& sql,
-                       ::fesql::sdk::Status* status);
+                       ::fesql::sdk::Status* status) override;
 
     bool ExecuteInsert(const std::string& db, const std::string& sql,
                        std::shared_ptr<SQLInsertRow> row,
-                       fesql::sdk::Status* status);
+                       fesql::sdk::Status* status) override;
 
     bool ExecuteInsert(const std::string& db, const std::string& sql,
                        std::shared_ptr<SQLInsertRows> rows,
-                       fesql::sdk::Status* status);
+                       fesql::sdk::Status* status) override;
 
     std::shared_ptr<ExplainInfo> Explain(const std::string& db,
                                          const std::string& sql,
-                                         ::fesql::sdk::Status* status);
+                                         ::fesql::sdk::Status* status) override;
 
     std::shared_ptr<SQLRequestRow> GetRequestRow(const std::string& db,
                                                  const std::string& sql,
-                                                 ::fesql::sdk::Status* status);
+                                                 ::fesql::sdk::Status* status) override;
 
     std::shared_ptr<SQLInsertRow> GetInsertRow(const std::string& db,
                                                const std::string& sql,
-                                               ::fesql::sdk::Status* status);
+                                               ::fesql::sdk::Status* status) override;
 
     std::shared_ptr<SQLInsertRows> GetInsertRows(const std::string& db,
                                                  const std::string& sql,
-                                                 ::fesql::sdk::Status* status);
+                                                 ::fesql::sdk::Status* status) override;
 
     std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
-        std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status);
+        std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) override;
 
     std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
-        ::fesql::sdk::Status* status);
+        ::fesql::sdk::Status* status) override;
 
     std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQLBatchRequest(
         const std::string& db, const std::string& sql,
         std::shared_ptr<SQLRequestRowBatch> row_batch,
-        ::fesql::sdk::Status* status);
+        ::fesql::sdk::Status* status) override;
 
-    bool RefreshCatalog();
+    bool RefreshCatalog() override;
 
     std::shared_ptr<fesql::sdk::ResultSet> CallProcedure(
             const std::string& db, const std::string& sp_name,
-            std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status);
+            std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) override;
 
     std::shared_ptr<fesql::sdk::ResultSet> CallSQLBatchRequestProcedure(
             const std::string& db, const std::string& sp_name,
-            std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status);
+            std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) override;
 
     std::shared_ptr<ProcedureInfo> ShowProcedure(
-            const std::string& db, const std::string& sp_name, fesql::sdk::Status* status);
+            const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) override;
 
  private:
     bool GetTablet(

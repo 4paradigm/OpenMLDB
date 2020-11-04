@@ -144,16 +144,17 @@ class TableClientManager {
 
 class ClientManager {
  public:
+    ClientManager() : real_endpoint_map_(), clients_(), mu_(), rand_(0xdeadbeef) {}
     std::shared_ptr<TabletAccessor> GetTablet(const std::string& name) const;
+    std::shared_ptr<TabletAccessor> GetTablet() const;
 
     bool UpdateClient(const std::map<std::string, std::string>& real_ep_map);
-
-    bool UpdateClient(const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients);
 
  private:
     std::map<std::string, std::string> real_endpoint_map_;
     std::map<std::string, std::shared_ptr<TabletAccessor>> clients_;
     mutable ::rtidb::base::SpinMutex mu_;
+    mutable ::rtidb::base::Random rand_;
 };
 
 }  // namespace catalog

@@ -169,6 +169,22 @@ std::shared_ptr<TabletAccessor> ClientManager::GetTablet(const std::string& name
     return it->second;
 }
 
+std::shared_ptr<TabletAccessor> ClientManager::GetTablet() const {
+    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+    if (clients_.empty()) {
+        return std::shared_ptr<TabletAccessor>();
+    }
+    uint32_t seq = rand_.Uniform(clients_.size());
+    uint32_t cnt = 0;
+    for (const auto& kv : clients_) {
+        if (cnt == seq) {
+            return kv.second;
+        }
+        cnt++;
+    }
+    return std::shared_ptr<TabletAccessor>();
+}
+
 bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpoint_map) {
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     for (const auto& kv : endpoint_map) {
@@ -192,33 +208,6 @@ bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpo
                 continue;
             }
             it->second = kv.second;
-        }
-    }
-    return true;
-}
-
-bool ClientManager::UpdateClient(
-    const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients) {
-    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-    for (const auto& kv : tablet_clients) {
-        auto it = real_endpoint_map_.find(kv.first);
-        if (it == real_endpoint_map_.end()) {
-            auto wrapper = std::make_shared<TabletAccessor>(kv.first, kv.second);
-            DLOG(INFO) << "add client. name " << kv.first << ", endpoint " << kv.second->GetRealEndpoint();
-            clients_.emplace(kv.first, wrapper);
-            real_endpoint_map_.emplace(kv.first, kv.second->GetRealEndpoint());
-            continue;
-        }
-        if (it->second != kv.second->GetRealEndpoint()) {
-            auto client_it = clients_.find(kv.first);
-            LOG(INFO) << "update client " << kv.first << " from " << it->second << " to "
-                      << kv.second->GetRealEndpoint();
-            if (!client_it->second->UpdateClient(kv.second)) {
-                LOG(WARNING) << "update client failed. name " << kv.first << ", endpoint "
-                             << kv.second->GetRealEndpoint();
-                continue;
-            }
-            it->second = kv.second->GetRealEndpoint();
         }
     }
     return true;

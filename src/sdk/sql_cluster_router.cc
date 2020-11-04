@@ -568,20 +568,21 @@ bool SQLClusterRouter::GetTablet(
 
     // pick one tablet for const query sql
     if (tables.empty()) {
-        auto tablet = cluster_sdk_->PickOneTablet();
-        if (!tablet) {
+        auto client = cluster_sdk_->GetTabletClient();
+        if (!client) {
             LOG(WARNING) << "fail to pack a tablet";
             return false;
         }
-        tablets->push_back(tablet);
+        tablets->push_back(client);
         return true;
     }
-    auto it = tables.begin();
-    for (; it != tables.end(); ++it) {
-        if (!cluster_sdk_->GetTabletByTable(db, *it, tablets)) {
-            LOG(WARNING) << "fail to get table " << *it << " tablet";
+    for (const auto& name : tables) {
+        auto client = cluster_sdk_->GetTabletClient(db, name);
+        if (!client) {
+            LOG(WARNING) << "fail to get table " << name << " tablet";
             return false;
         }
+        tablets->push_back(client);
     }
     return true;
 }
@@ -754,8 +755,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         LOG(WARNING) << status->msg;
         return false;
     }
-    std::shared_ptr<::rtidb::client::TabletClient> tablet =
-        cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
+    auto tablet = cluster_sdk_->GetTabletClient(db, table_info->name());
     if (!tablet) {
         status->msg = "fail to get table " + table_info->name() + " tablet";
         LOG(WARNING) << status->msg;
@@ -785,8 +785,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     if (cache) {
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
             cache->table_info;
-        std::shared_ptr<::rtidb::client::TabletClient> tablet =
-            cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
+        auto tablet = cluster_sdk_->GetTabletClient(db, table_info->name());
         if (!tablet) {
             status->msg = "fail to get table " + table_info->name() + " tablet";
             LOG(WARNING) << status->msg;
@@ -824,8 +823,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     std::shared_ptr<RouterCache> cache = GetCache(db, sql);
     if (cache) {
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = cache->table_info;
-        std::shared_ptr<::rtidb::client::TabletClient> tablet =
-            cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
+        auto tablet = cluster_sdk_->GetTabletClient(db, table_info->name());
         if (!tablet) {
             status->msg = "fail to get table " + table_info->name() + " tablet";
             LOG(WARNING) << status->msg;
