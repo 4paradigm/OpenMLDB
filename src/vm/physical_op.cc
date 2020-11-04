@@ -501,6 +501,10 @@ void PhysicalRequestJoinNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 
+PhysicalRequestJoinNode* PhysicalRequestJoinNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalRequestJoinNode*>(node);
+}
+
 bool PhysicalRequestJoinNode::InitSchema() {
     if (2 != producers_.size() || nullptr == producers_[0] ||
         nullptr == producers_[1]) {

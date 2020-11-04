@@ -1,12 +1,13 @@
 package com._4paradigm.fesql.common;
 import com._4paradigm.fesql.FeSqlLibrary;
 
+import com._4paradigm.fesql.node.ColumnRefNode;
+import com._4paradigm.fesql.node.ExprListNode;
+import com._4paradigm.fesql.node.ExprNode;
+import com._4paradigm.fesql.node.ExprType;
 import com._4paradigm.fesql.tablet.Tablet;
 import com._4paradigm.fesql.type.TypeOuterClass;
-import com._4paradigm.fesql.vm.Engine;
-import com._4paradigm.fesql.vm.PhysicalJoinNode;
-import com._4paradigm.fesql.vm.PhysicalOpNode;
-import com._4paradigm.fesql.vm.PhysicalOpType;
+import com._4paradigm.fesql.vm.*;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import lombok.Data;
@@ -21,6 +22,18 @@ public class DDLEngine {
         // Ensure native initialized
         FeSqlLibrary.initCore();
         Engine.InitializeGlobalLLVM();
+    }
+
+    public static int resolveColumnIndex(ExprNode expr, PhysicalOpNode planNode) throws FesqlException {
+        if (expr.getExpr_type_() == ExprType.kExprColumnRef) {
+            int index = CoreAPI.ResolveColumnIndex(planNode, ColumnRefNode.CastFrom(expr));
+            if (index >= 0 && index <= planNode.GetOutputSchema().size()) {
+                return index;
+            } else {
+                throw new FesqlException("Fail to resolve {} with index = {}".format(expr.GetExprString(), index));
+            }
+        }
+        throw new FesqlException("Expr {} not supported".format(expr.GetExprString()));
     }
 
     /**
@@ -40,7 +53,8 @@ public class DDLEngine {
             tableDefMap.put(e.getName(), e);
         }
         try {
-            SQLEngine engine = new SQLEngine(sql, db.build());
+            RequestEngine engine = new RequestEngine(sql, db.build());
+            // SQLEngine engine = new SQLEngine(sql, db.build());
             PhysicalOpNode plan = engine.getPlan();
             List<PhysicalOpNode> listNodes = new ArrayList<PhysicalOpNode>();
             dagToList(plan, listNodes);
@@ -50,46 +64,137 @@ public class DDLEngine {
             System.out.println(plan.GetProducerCnt());
         } catch (UnsupportedFesqlException e) {
             e.printStackTrace();
+        } catch (FesqlException e) {
+            e.printStackTrace();
         }
         return "xx";
     }
 
-    public static List<RtidbTable> parseRtidbIndex(List<PhysicalOpNode> nodes, Map<String, TypeOuterClass.TableDef> tableDefMap) {
+    public static List<RtidbTable> parseRtidbIndex(List<PhysicalOpNode> nodes, Map<String, TypeOuterClass.TableDef> tableDefMap) throws FesqlException {
         List<RtidbTable> rtidbTables = new ArrayList<>();
+        Map<String, String> table2OrgTable = new HashMap<>();
         for (PhysicalOpNode node : nodes) {
+            System.out.println("node type = " + node.GetTypeName());
             PhysicalOpType type = node.getType_();
             if (type.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
+                PhysicalDataProviderNode castNode = PhysicalDataProviderNode.CastFrom(node);
+                System.out.println("PhysicalDataProviderNode = " + castNode.GetName());
                 continue;
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpSimpleProject.swigValue()) {
+                PhysicalSimpleProjectNode castNode = PhysicalSimpleProjectNode.CastFrom(node);
+                System.out.println("PhysicalSimpleProjectNode ");
                 continue;
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpConstProject.swigValue()) {
                 continue;
             }
+            if (type.swigValue() == PhysicalOpType.kPhysicalOpRequestUnoin.swigValue()) {
+                System.out.println("kPhysicalOpRequestUnoin ");
+                continue;
+            }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpProject.swigValue()) {
+                PhysicalProjectNode projectNode = PhysicalProjectNode.CastFrom(node);
+                if (projectNode.getProject_type_().swigValue() == ProjectType.kRowProject.swigValue()) {
+                    continue;
+                }
+                if (projectNode.getProject_type_().swigValue() == ProjectType.kWindowAggregation.swigValue()) {
+                    System.out.println("kWindowAggregation ");
+                    PhysicalWindowAggrerationNode castNode = PhysicalWindowAggrerationNode.CastFrom(projectNode);
+                    WindowUnionList wuList = castNode.window_unions();
+                    for (int i = 0; i < wuList.GetSize(); i++) {
+                        PhysicalOpNode unionNode = castNode.window_unions().GetUnionNode(i);
+                        System.out.println("window union = " + unionNode.GetTypeName());
+                    }
+                    continue;
+                }
+                if (projectNode.getProject_type_().swigValue() == ProjectType.kTableProject.swigValue()) {
+                    continue;
+                }
+
+                // PhysicalWindowAggrerationNode.CastFrom(node)
                 continue;
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpGroupBy.swigValue()) {
                 continue;
             }
-            if (type.swigValue() == PhysicalOpType.kPhysicalOpJoin.swigValue()) {
-                PhysicalJoinNode join = PhysicalJoinNode.CastFrom(node);
-                System.out.println(join.getJoin_().FnDetail());
+            if (type.swigValue() == PhysicalOpType.kPhysicalOpRequestJoin.swigValue()) {
+                PhysicalRequestJoinNode join = PhysicalRequestJoinNode.CastFrom(node);
+                System.out.println(join.GetProducer(0).GetTypeName());
+                System.out.println(join.GetProducer(1).GetTypeName());
+                System.out.println("leftkey type = " + join.join().left_key().getKeys_().GetChild(0).GetTypeName());
+                System.out.println("rightkey type = " + join.join().right_key().getKeys_().GetChild(0).GetTypeName());
+                ColumnRefNode columnNode = ColumnRefNode.CastFrom(join.getJoin_().left_key().getKeys_().GetChild(0));
+                System.out.println("leftkey name = " + columnNode.GetColumnName());
+                System.out.println("leftkey name = " + columnNode.GetRelationName());
+                columnNode = ColumnRefNode.CastFrom(join.getJoin_().right_key().getKeys_().GetChild(0));
+                System.out.println("rightKey name = " + columnNode.GetColumnName());
+                System.out.println("rightKey name = " + columnNode.GetRelationName());
+//                System.out.println(join.getJoin_().FnDetail());
+                PhysicalDataProviderNode dataNode = findDataProviderNode(join.GetProducer(0));
+                if (dataNode != null) {
+                    // PhysicalDataProviderNode dataNode = PhysicalDataProviderNode.CastFrom(join.GetProducer(0));
+                    System.out.println(dataNode.GetName());
+                }
+                dataNode = findDataProviderNode(join.GetProducer(1));
+                if (dataNode != null) {
+                    // PhysicalDataProviderNode dataNode = PhysicalDataProviderNode.CastFrom(join.GetProducer(1));
+                    System.out.println(dataNode.GetName());
+                }
+
+                ExprListNode rightNode = join.getJoin_().right_key().getKeys_();
+
+                for (int i = 0; i < rightNode.GetChildNum(); i++) {
+                    // System.out.println(join.GetProducer(1));
+                    int index = resolveColumnIndex(rightNode.GetChild(i), join.GetProducer(1));
+                    System.out.println(index);
+
+                }
+
+                ExprListNode leftNode = join.getJoin_().left_key().getKeys_();
+
+                for (int i = 0; i < leftNode.GetChildNum(); i++) {
+                    // System.out.println(join.GetProducer(0));
+                    int index = resolveColumnIndex(leftNode.GetChild(i), join.GetProducer(0));
+                    // System.out.println(index);
+                    
+                }
 //                System.out.println(join.getJoin_().getRight_sort_().orders().GetExprString());
-                System.out.println(join.getJoin_().right_key().keys().GetExprString());
-                System.out.println(join.getJoin_().left_key().keys().GetExprString());
-                System.out.println(node.GetFnInfo().getFn_name_());
+                // System.out.println(join.getJoin_().right_key().getKeys_().GetChild(0));
+                // System.out.println(join.GetFnName());
+                // System.out.println(join.getJoin_().left_key().getKeys_().getChildren_());
+                // System.out.println(node.GetFnInfo().getFn_name_());
+                // System.out.println("over");
                 continue;
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpLimit.swigValue()) {
                 continue;
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpRename.swigValue()) {
+                PhysicalRenameNode castNode = PhysicalRenameNode.CastFrom(node);
+                System.out.println("rename = " + castNode.getName_());
+                PhysicalDataProviderNode dataNode = findDataProviderNode(node.GetProducer(0));
+                if (dataNode != null) {
+                    table2OrgTable.put(castNode.getName_(), dataNode.GetName());
+                }
                 continue;
             }
         }
         return rtidbTables;
+    }
+    
+    public static PhysicalDataProviderNode findDataProviderNode(PhysicalOpNode node) {
+        if (node.getType_() == PhysicalOpType.kPhysicalOpDataProvider) {
+            return PhysicalDataProviderNode.CastFrom(node);
+        }
+        if (node.getType_() == PhysicalOpType.kPhysicalOpSimpleProject) {
+            return findDataProviderNode(node.GetProducer(0));
+        }
+        if (node.getType_() == PhysicalOpType.kPhysicalOpRename) {
+            return findDataProviderNode(node.GetProducer(0));
+        }
+        return null;
+
     }
 
     public static void dagToList(PhysicalOpNode node, List<PhysicalOpNode> list) {
@@ -155,8 +260,10 @@ public class DDLEngine {
 
 
     public static void main(String[] args) {
-        String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.json";
-        String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.txt";
+//        String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.json";
+//        String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.txt";
+        String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/rong_e.json";
+        String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/rong_e.txt";
         File file = new File(schemaPath);
         File sql = new File(sqlPath);
         try {

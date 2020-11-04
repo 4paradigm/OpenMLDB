@@ -1075,6 +1075,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
         RegisterFunctionInfo();
     }
     virtual ~PhysicalRequestJoinNode() {}
+    static PhysicalRequestJoinNode *CastFrom(PhysicalOpNode *node);
     bool InitSchema() override;
     void RegisterFunctionInfo() {
         fn_infos_.push_back(&join_.right_sort_.fn_info_);
