@@ -13,6 +13,9 @@ target_link_libraries(sql_router_test gtest ${BIN_LIBS})
 add_executable(sql_sdk_test sql_sdk_test.cc)
 target_link_libraries(sql_sdk_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
 
+add_executable(sql_cluster_test sql_cluster_test.cc)
+target_link_libraries(sql_cluster_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+
 add_executable(sql_request_row_test sql_request_row_test.cc)
 target_link_libraries(sql_request_row_test gtest ${BIN_LIBS})
 

@@ -209,12 +209,7 @@ bool ClusterSDK::InitCatalog() {
 }
 
 uint32_t ClusterSDK::GetTableId(const std::string& db, const std::string& tname) {
-    std::shared_ptr<::rtidb::catalog::SDKCatalog> catalog;
-    {
-        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-        catalog = catalog_;
-    }
-    auto table_handler = catalog->GetTable(db, tname);
+    auto table_handler = GetCatalog()->GetTable(db, tname);
     ::rtidb::catalog::SDKTableHandler* sdk_table_handler =
         dynamic_cast<::rtidb::catalog::SDKTableHandler*>(table_handler.get());
     return sdk_table_handler->GetTid();
