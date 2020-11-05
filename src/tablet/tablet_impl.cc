@@ -71,7 +71,7 @@ DECLARE_uint32(get_table_diskused_interval);
 DECLARE_uint32(task_check_interval);
 DECLARE_uint32(load_index_max_wait_time);
 DECLARE_bool(use_name);
-DECLARE_bool(cluter_job_enable);
+DECLARE_bool(cluster_job_enable);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -112,7 +112,7 @@ TabletImpl::TabletImpl()
       mode_recycle_root_paths_(),
       follower_(false),
       catalog_(new ::rtidb::catalog::TabletCatalog()),
-      engine_(catalog_, fesql::vm::EngineOptions::NewEngineOptionWithClusterEnable(FLAGS_cluter_job_enable)),
+      engine_(catalog_, fesql::vm::EngineOptions::NewEngineOptionWithClusterEnable(FLAGS_cluster_job_enable)),
       local_tablet_(new ::fesql::vm::LocalTablet(&engine_)),
       zk_cluster_(),
       zk_path_(),
