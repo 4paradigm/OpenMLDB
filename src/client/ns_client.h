@@ -250,12 +250,6 @@ class NsClient {
     bool DeleteIndex(const std::string& db, const std::string& table_name,
                      const std::string& idx_name, std::string& msg);  // NOLINT
 
-    bool ShowProcedure(const std::string& db_name, const std::string& sp_name,
-            std::vector<rtidb::api::ProcedureInfo>& sp_info, std::string& msg); // NOLINT
-
-    bool ShowProcedure(std::vector<rtidb::api::ProcedureInfo>& sp_info, // NOLINT
-            std::string& msg); // NOLINT
-
     bool DropProcedure(const std::string& db_name, const std::string& sp_name,
             std::string& msg); // NOLINT
 

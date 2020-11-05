@@ -951,14 +951,14 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
         LOG(WARNING) << "make sure the request row is built before execute sql";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
-    const auto& sp_info = cluster_sdk_->GetProcedureInfo(db, sp_name);
-    if (!sp_info) {
+    std::vector<std::shared_ptr<::rtidb::api::ProcedureInfo>> sp_infos;
+    if (!cluster_sdk_->GetProcedureInfo(db, sp_name, &sp_infos, &status->msg)) {
         status->code = -1;
-        status->msg = "procedure " + sp_name + " does not exist in db " + db;
+        status->msg = "procedure not found, msg: " + status->msg;
         LOG(WARNING) << status->msg;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
-
+    const auto& sp_info = sp_infos.at(0);
     std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
     std::unique_ptr<::rtidb::api::QueryResponse> response(
         new ::rtidb::api::QueryResponse());
@@ -1017,27 +1017,21 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProc
         status->msg = "no nameserver exist";
         return nullptr;
     }
-    std::vector<rtidb::api::ProcedureInfo> sp_infos;
-    std::string err;
-    bool ok = ns_ptr->ShowProcedure(db, sp_name, sp_infos, err);
-    if (!ok) {
+    std::vector<std::shared_ptr<::rtidb::api::ProcedureInfo>> sp_infos;
+    if (!cluster_sdk_->GetProcedureInfo(db, sp_name, &sp_infos, &status->msg)) {
         status->code = -1;
-        status->msg = "fail to show procedure for error " + err;
+        status->msg = "procedure not found, msg: " + status->msg;
+        LOG(WARNING) << status->msg;
         return nullptr;
     }
-    if (sp_infos.empty()) {
-        status->code = -1;
-        status->msg = "fail to show procedure for error: result is empty";
-        return nullptr;
-    }
-    const rtidb::api::ProcedureInfo& sp_info = sp_infos.at(0);
-    const std::string& sql = sp_info.sql();
+    const auto& sp_info = sp_infos.at(0);
+    const std::string& sql = sp_info->sql();
 
     std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
     std::unique_ptr<::rtidb::api::SQLBatchRequestQueryResponse> response(
         new ::rtidb::api::SQLBatchRequestQueryResponse());
     std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
-    ok = GetTablet(db, sql, &tablets);
+    bool ok = GetTablet(db, sql, &tablets);
     if (!ok || tablets.size() <= 0) {
         status->code = -1;
         status->msg = "not tablet found";
@@ -1070,13 +1064,20 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProc
 
 std::shared_ptr<ProcedureInfo> SQLClusterRouter::ShowProcedure(
         const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) {
-    const auto& sp_info = cluster_sdk_->GetProcedureInfo(db, sp_name);
-    if (!sp_info) {
+    if (status == nullptr) {
         status->code = -1;
-        status->msg = "procedure " + sp_name + " does not exist in db " + db;
+        status->msg = "null ptr";
         LOG(WARNING) << status->msg;
         return std::shared_ptr<ProcedureInfo>();
     }
+    std::vector<std::shared_ptr<::rtidb::api::ProcedureInfo>> sp_infos;
+    if (!cluster_sdk_->GetProcedureInfo(db, sp_name, &sp_infos, &status->msg)) {
+        status->code = -1;
+        status->msg = "procedure not found, msg: " + status->msg;
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<ProcedureInfo>();
+    }
+    const auto& sp_info = sp_infos.at(0);
     ::fesql::vm::Schema fesql_in_schema;
     if (!rtidb::catalog::SchemaAdapter::ConvertSchema(
                 sp_info->input_schema(), &fesql_in_schema)) {
@@ -1238,6 +1239,19 @@ bool SQLClusterRouter::CheckParameter(const RtidbSchema& parameter,
                 << ", but " << rtidb::type::DataType_Name(parameter.Get(i).data_type());
             return false;
         }
+    }
+    return true;
+}
+
+bool SQLClusterRouter::ShowProcedure(const std::string& db, const std::string& sp_name,
+        std::vector<std::shared_ptr<::rtidb::api::ProcedureInfo>>* sp_infos, std::string* msg) {
+    std::vector<std::shared_ptr<rtidb::api::ProcedureInfo>> result;
+    if (msg == nullptr || sp_infos == nullptr) {
+        *msg = "null ptr";
+        return false;
+    }
+    if (!cluster_sdk_->GetProcedureInfo(db, sp_name, sp_infos, msg)) {
+        return false;
     }
     return true;
 }

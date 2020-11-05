@@ -22,6 +22,7 @@
 #include <vector>
 #include <utility>
 #include <map>
+#include <memory>
 
 #include "base/linenoise.h"
 #include "base/texttable.h"
@@ -451,36 +452,25 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             std::string db_name = cmd_node->GetArgs()[0];
             std::string sp_name = cmd_node->GetArgs()[1];
             std::string error;
-            auto ns = cs->GetNsClient();
-            if (!ns) {
-                std::cout << "Fail to connect to db" << std::endl;
-                return;
-            }
-
-            std::vector<rtidb::api::ProcedureInfo> sp_infos;
-            if (!ns->ShowProcedure(db_name, sp_name, sp_infos, error) || sp_infos.empty()) {
+            std::vector<std::shared_ptr<rtidb::api::ProcedureInfo>> sp_infos;
+            if (!cs->GetProcedureInfo(db_name, sp_name, &sp_infos, &error) || sp_infos.empty()) {
                 std::cout << "Fail to show procdure. error msg: " << error << std::endl;
                 return;
             }
-            PrintProcedureInfo(sp_infos.at(0));
+            PrintProcedureInfo(*sp_infos.at(0));
             break;
         }
         case fesql::node::kCmdShowProcedures: {
             std::string error;
-            auto ns = cs->GetNsClient();
-            if (!ns) {
-                std::cout << "Fail to connect to db" << std::endl;
-                return;
-            }
-            std::vector<rtidb::api::ProcedureInfo> sp_infos;
-            if (!ns->ShowProcedure(sp_infos, error) || sp_infos.empty()) {
+            std::vector<std::shared_ptr<rtidb::api::ProcedureInfo>> sp_infos;
+            if (!cs->GetProcedureInfo("", "", &sp_infos, &error) || sp_infos.empty()) {
                 std::cout << "Fail to show procdure. error msg: " << error << std::endl;
                 return;
             }
             std::vector<std::pair<std::string, std::string>> pairs;
             for (uint32_t i = 0; i < sp_infos.size(); i++) {
                 auto& sp_info = sp_infos.at(i);
-                pairs.push_back(std::make_pair(sp_info.db_name(), sp_info.sp_name()));
+                pairs.push_back(std::make_pair(sp_info->db_name(), sp_info->sp_name()));
             }
             PrintItems(pairs, std::cout);
             break;

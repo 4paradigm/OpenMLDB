@@ -481,18 +481,37 @@ bool ClusterSDK::GetRealEndpoint(const std::string& endpoint,
     return true;
 }
 
-std::shared_ptr<::rtidb::api::ProcedureInfo> ClusterSDK::GetProcedureInfo(
-    const std::string& db, const std::string& sp_name) {
+bool ClusterSDK::GetProcedureInfo(const std::string& db, const std::string& sp_name,
+        std::vector<std::shared_ptr<::rtidb::api::ProcedureInfo>>* sp_infos, std::string* msg) {
+    if (msg == nullptr || sp_infos == nullptr) {
+        *msg = "null ptr";
+        return false;
+    }
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-    auto it = sp_map_.find(db);
-    if (it == sp_map_.end()) {
-        return std::shared_ptr<::rtidb::api::ProcedureInfo>();
+    if (!db.empty() && !sp_name.empty()) {
+        auto it = sp_map_.find(db);
+        if (it == sp_map_.end()) {
+            *msg = sp_name + " does not exist in sp_map";
+            return false;
+        }
+        auto sit = it->second.find(sp_name);
+        if (sit == it->second.end()) {
+            *msg = db + " does not exist in sp_map";
+            return false;
+        }
+        sp_infos->push_back(sit->second);
+    } else {
+        for (const auto& db_kv : sp_map_) {
+            for (const auto& sp_kv : db_kv.second) {
+                sp_infos->push_back(sp_kv.second);
+            }
+        }
+        if (sp_infos->empty()) {
+            *msg = "procedure set is empty";
+            return false;
+        }
     }
-    auto sit = it->second.find(sp_name);
-    if (sit == it->second.end()) {
-        return std::shared_ptr<::rtidb::api::ProcedureInfo>();
-    }
-    return sit->second;
+    return true;
 }
 
 }  // namespace sdk

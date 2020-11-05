@@ -1468,37 +1468,6 @@ bool NsClient::TransformToTableDef(
     return true;
 }
 
-bool NsClient::ShowProcedure(std::vector<rtidb::api::ProcedureInfo>& sp_infos,
-        std::string& msg) {
-    return ShowProcedure("", "", sp_infos, msg);
-}
-
-bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_name,
-        std::vector<rtidb::api::ProcedureInfo>& sp_infos, std::string& msg) {
-    ::rtidb::api::ShowProcedureRequest request;
-    ::rtidb::api::ShowProcedureResponse response;
-    if (!db_name.empty()) {
-        request.set_db_name(db_name);
-    }
-    if (!sp_name.empty()) {
-        request.set_sp_name(sp_name);
-    }
-    bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowProcedure,
-                            &request, &response, FLAGS_request_timeout_ms, 1);
-    msg = response.msg();
-    if (ok && response.code() == 0) {
-        for (int32_t i = 0; i < response.sp_info_size(); i++) {
-            const rtidb::api::ProcedureInfo& sp_info = response.sp_info(i);
-            rtidb::api::ProcedureInfo sp_info_tmp;
-            sp_info_tmp.CopyFrom(sp_info);
-            sp_infos.push_back(sp_info_tmp);
-        }
-        return true;
-    }
-    return false;
-}
-
 bool NsClient::DropProcedure(const std::string& db_name,
         const std::string& sp_name, std::string& msg) {
     ::rtidb::api::DropProcedureRequest request;
