@@ -452,18 +452,18 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             std::string db_name = cmd_node->GetArgs()[0];
             std::string sp_name = cmd_node->GetArgs()[1];
             std::string error;
-            std::vector<std::shared_ptr<rtidb::api::ProcedureInfo>> sp_infos;
-            if (!cs->GetProcedureInfo(db_name, sp_name, &sp_infos, &error) || sp_infos.empty()) {
+            rtidb::api::ProcedureInfo sp_info;
+            if (!cs->GetProcedureInfo(db_name, sp_name, &sp_info, &error)) {
                 std::cout << "Fail to show procdure. error msg: " << error << std::endl;
                 return;
             }
-            PrintProcedureInfo(*sp_infos.at(0));
+            PrintProcedureInfo(sp_info);
             break;
         }
         case fesql::node::kCmdShowProcedures: {
             std::string error;
             std::vector<std::shared_ptr<rtidb::api::ProcedureInfo>> sp_infos;
-            if (!cs->GetProcedureInfo("", "", &sp_infos, &error) || sp_infos.empty()) {
+            if (!cs->GetProcedureInfo(&sp_infos, &error) || sp_infos.empty()) {
                 std::cout << "Fail to show procdure. error msg: " << error << std::endl;
                 return;
             }

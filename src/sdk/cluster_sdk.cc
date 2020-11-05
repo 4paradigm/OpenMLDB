@@ -482,13 +482,16 @@ bool ClusterSDK::GetRealEndpoint(const std::string& endpoint,
 }
 
 bool ClusterSDK::GetProcedureInfo(const std::string& db, const std::string& sp_name,
-        std::vector<std::shared_ptr<::rtidb::api::ProcedureInfo>>* sp_infos, std::string* msg) {
-    if (msg == nullptr || sp_infos == nullptr) {
+        ::rtidb::api::ProcedureInfo* sp_info, std::string* msg) {
+    if (msg == nullptr || sp_info == nullptr) {
         *msg = "null ptr";
         return false;
     }
-    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-    if (!db.empty() && !sp_name.empty()) {
+    if (db.empty() || sp_name.empty()) {
+        *msg = "db or sp_name is empty";
+        return false;
+    } else {
+        std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         auto it = sp_map_.find(db);
         if (it == sp_map_.end()) {
             *msg = sp_name + " does not exist in sp_map";
@@ -499,17 +502,27 @@ bool ClusterSDK::GetProcedureInfo(const std::string& db, const std::string& sp_n
             *msg = db + " does not exist in sp_map";
             return false;
         }
-        sp_infos->push_back(sit->second);
-    } else {
-        for (const auto& db_kv : sp_map_) {
-            for (const auto& sp_kv : db_kv.second) {
-                sp_infos->push_back(sp_kv.second);
-            }
+        *sp_info = *(sit->second.get());
+    }
+    return true;
+}
+
+bool ClusterSDK::GetProcedureInfo(
+        std::vector<std::shared_ptr<::rtidb::api::ProcedureInfo>>* sp_infos,
+        std::string* msg) {
+    if (msg == nullptr || sp_infos == nullptr) {
+        *msg = "null ptr";
+        return false;
+    }
+    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+    for (const auto& db_kv : sp_map_) {
+        for (const auto& sp_kv : db_kv.second) {
+            sp_infos->push_back(sp_kv.second);
         }
-        if (sp_infos->empty()) {
-            *msg = "procedure set is empty";
-            return false;
-        }
+    }
+    if (sp_infos->empty()) {
+        *msg = "procedure set is empty";
+        return false;
     }
     return true;
 }

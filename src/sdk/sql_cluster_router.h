@@ -148,6 +148,9 @@ class SQLClusterRouter : public SQLRouter {
             const std::string& db, const std::string& sp_name, fesql::sdk::Status* status);
 
     bool ShowProcedure(const std::string& db, const std::string& sp_name,
+            ::rtidb::api::ProcedureInfo* sp_info, std::string* msg);
+
+    bool ShowProcedure(
             std::vector<std::shared_ptr<::rtidb::api::ProcedureInfo>>* sp_infos, std::string* msg);
 
  private:

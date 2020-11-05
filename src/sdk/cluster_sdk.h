@@ -84,6 +84,9 @@ class ClusterSDK {
             std::string* real_endpoint);
 
     bool GetProcedureInfo(const std::string& db, const std::string& sp_name,
+        ::rtidb::api::ProcedureInfo* sp_info, std::string* msg);
+
+    bool GetProcedureInfo(
             std::vector<std::shared_ptr<::rtidb::api::ProcedureInfo>>* sp_infos, std::string* msg);
 
  private:
