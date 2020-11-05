@@ -42,14 +42,16 @@ TabletTableHandler::TabletTableHandler(const ::rtidb::api::TableMeta& meta,
       table_client_manager_(),
       local_tablet_(local_tablet) {}
 
-TabletTableHandler::TabletTableHandler(const ::rtidb::nameserver::TableInfo& meta)
+TabletTableHandler::TabletTableHandler(const ::rtidb::nameserver::TableInfo& meta,
+                                       std::shared_ptr<fesql::vm::Tablet> local_tablet)
     : schema_(),
       table_st_(meta),
       tables_(std::make_shared<Tables>()),
       types_(),
       index_list_(),
       index_hint_(),
-      table_client_manager_() {}
+      table_client_manager_(),
+      local_tablet_(local_tablet){}
 
 bool TabletTableHandler::Init(const ClientManager& client_manager) {
     bool ok = SchemaAdapter::ConvertSchema(table_st_.GetColumns(), &schema_);
@@ -209,7 +211,7 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
     return table_client_manager_->GetTablet(pid);
 }
 
-TabletCatalog::TabletCatalog() : mu_(), tables_(), db_(), client_manager_(), version_(1) {}
+TabletCatalog::TabletCatalog() : mu_(), tables_(), db_(), client_manager_(), version_(1), local_tablet_() {}
 
 TabletCatalog::~TabletCatalog() {}
 
@@ -238,8 +240,7 @@ std::shared_ptr<::fesql::vm::TableHandler> TabletCatalog::GetTable(const std::st
     return it->second;
 }
 
-bool TabletCatalog::AddTable(const ::rtidb::api::TableMeta& meta, std::shared_ptr<::rtidb::storage::Table> table,
-                             std::shared_ptr<fesql::vm::Tablet> local_tablet) {
+bool TabletCatalog::AddTable(const ::rtidb::api::TableMeta& meta, std::shared_ptr<::rtidb::storage::Table> table) {
     if (!table) {
         LOG(WARNING) << "input table is null";
         return false;
@@ -255,7 +256,7 @@ bool TabletCatalog::AddTable(const ::rtidb::api::TableMeta& meta, std::shared_pt
     const std::string& table_name = meta.name();
     auto it = db_it->second.find(table_name);
     if (it == db_it->second.end()) {
-        handler = std::make_shared<TabletTableHandler>(meta, local_tablet);
+        handler = std::make_shared<TabletTableHandler>(meta, local_tablet_);
         if (!handler->Init(client_manager_)) {
             LOG(WARNING) << "tablet handler init failed";
             return false;
@@ -347,7 +348,7 @@ void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInf
             }
             auto it = db_it->second.find(table_name);
             if (it == db_it->second.end()) {
-                handler = std::make_shared<TabletTableHandler>(table_info);
+                handler = std::make_shared<TabletTableHandler>(table_info, local_tablet_);
                 if (!handler->Init(client_manager_)) {
                     LOG(WARNING) << "tablet handler init failed";
                     return;

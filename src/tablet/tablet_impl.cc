@@ -113,11 +113,12 @@ TabletImpl::TabletImpl()
       follower_(false),
       catalog_(new ::rtidb::catalog::TabletCatalog()),
       engine_(catalog_, fesql::vm::EngineOptions::NewEngineOptionWithClusterEnable(FLAGS_cluster_job_enable)),
-      local_tablet_(new ::fesql::vm::LocalTablet(&engine_)),
       zk_cluster_(),
       zk_path_(),
       endpoint_(),
-      notify_path_() {}
+      notify_path_() {
+    catalog_->SetLocalTablet(std::shared_ptr<::fesql::vm::Tablet>(new ::fesql::vm::LocalTablet(&engine_)));
+}
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
