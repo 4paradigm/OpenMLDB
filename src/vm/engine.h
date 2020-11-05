@@ -72,6 +72,12 @@ class EngineOptions {
     inline void set_max_sql_cache_size(uint32_t size) {
         max_sql_cache_size_ = size;
     }
+    static EngineOptions NewEngineOptionWithClusterEnable(bool flag) {
+        EngineOptions options;
+        options.set_cluster_optimized(flag);
+        return options;
+    }
+
 
  private:
     bool keep_ir_;
