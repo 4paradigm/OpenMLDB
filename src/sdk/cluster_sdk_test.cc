@@ -116,7 +116,7 @@ TEST_F(ClusterSDKTest, smoketest) {
     std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>> tablet;
     ok = sdk.GetTablet(db, name, &tablet);
     ASSERT_TRUE(ok);
-    ASSERT_EQ(2u, tablet.size());
+    ASSERT_EQ(8u, tablet.size());
     uint32_t tid = sdk.GetTableId(db, name);
     ASSERT_NE(tid, 0u);
     auto table_ptr = sdk.GetTableInfo(db, name);
