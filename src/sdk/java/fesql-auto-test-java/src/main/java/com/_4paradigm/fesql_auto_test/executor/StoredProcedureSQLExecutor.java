@@ -25,7 +25,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
         boolean dbOk = executor.createDB(dbName);
         log.info("create db:{},{}", dbName, dbOk);
         FesqlResult res = FesqlUtil.createAndInsert(
-                executor, dbName, fesqlCase.getInputs(), !isBatchRequest, 3);
+                executor, dbName, fesqlCase.getInputs(), !isBatchRequest, 1);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run SQLExecutor: prepare fail");
         }

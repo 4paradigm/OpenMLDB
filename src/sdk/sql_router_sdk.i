@@ -17,6 +17,7 @@
 %shared_ptr(rtidb::sdk::ExplainInfo);
 %shared_ptr(rtidb::sdk::ProcedureInfo);
 %template(VectorUint32) std::vector<uint32_t>;
+%template(VectorString) std::vector<std::string>;
 
 %{
 #include "sdk/sql_router.h"
