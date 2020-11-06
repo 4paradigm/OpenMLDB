@@ -209,7 +209,7 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
         DLOG(INFO) << "pid num " << pid_num << " local tablet_";
         return local_tablet_;
     }
-    DLOG(INFO) << "pid num " << pid_num << " local tablet_";
+    DLOG(INFO) << "pid num " << pid_num << " get tablet with pid = " << pid;
     return table_client_manager_->GetTablet(pid);
 }
 
