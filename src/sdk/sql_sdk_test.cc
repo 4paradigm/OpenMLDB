@@ -753,7 +753,7 @@ int main(int argc, char** argv) {
     int ok = ::rtidb::sdk::mc_->SetUp();
     sleep(1);
 
-    ::rtidb::sdk::MiniCluster multi_partition_mc(6182);
+    ::rtidb::sdk::MiniCluster multi_partition_mc(6181);
     ::rtidb::sdk::multi_partition_mc_ = &multi_partition_mc;
     ok = ::rtidb::sdk::multi_partition_mc_->SetUp(2);
     sleep(1);
