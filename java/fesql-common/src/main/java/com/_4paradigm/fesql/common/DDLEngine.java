@@ -12,6 +12,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import lombok.Data;
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,6 +25,8 @@ public class DDLEngine {
         FeSqlLibrary.initCore();
         Engine.InitializeGlobalLLVM();
     }
+
+    private static final Logger logger = LoggerFactory.getLogger(DDLEngine.class);
 
     public static int resolveColumnIndex(ExprNode expr, PhysicalOpNode planNode) throws FesqlException {
         if (expr.getExpr_type_() == ExprType.kExprColumnRef) {
@@ -69,9 +73,55 @@ public class DDLEngine {
         }
         return "xx";
     }
+    /**
+     * 只对window op做解析，因为fesql node类型太多了，暂时没办法做通用性解析
+     */
+    public void parseWindowOp(PhysicalRequestUnionNode node, Map<String, RtidbTable> rtidbTables) {
+        logger.info("begin to pares window op");
+        List<String> keys = new ArrayList<>();
+        PhysicalRequestUnionNode castNode = PhysicalRequestUnionNode.CastFrom(node);
+        for (int i = 0; i < castNode.window().partition().keys().GetChildNum(); i++) {
+            keys.add(castNode.window().partition().keys().GetChild(i).GetExprString());
+        }
+        String ts = castNode.window().sort().orders().order_by().GetChild(0).GetExprString();
+        long start = -1;
+        long end = -1;
+        long cntStart = -1;
+        long cntEnd = -1;
+        if (castNode.window().range().frame().frame_range() != null) {
+//            System.out.println(castNode.window().range().frame().frame_range().start().GetExprString());
+//            System.out.println(castNode.window().range().frame().frame_range().end().GetExprString());
+            start = Math.abs(Long.valueOf(castNode.window().range().frame().frame_range().start().GetExprString()));
+            end = Math.abs(Long.valueOf(castNode.window().range().frame().frame_range().end().GetExprString()));
+        } else {
+//            System.out.println(castNode.window().range().frame().frame_rows().start().GetExprString());
+//            System.out.println(castNode.window().range().frame().frame_rows().end().GetExprString());
+            cntStart = Long.valueOf(castNode.window().range().frame().frame_rows().start().GetExprString());
+            cntEnd = Long.valueOf(castNode.window().range().frame().frame_rows().end().GetExprString());
+        }
 
-    public static List<RtidbTable> parseRtidbIndex(List<PhysicalOpNode> nodes, Map<String, TypeOuterClass.TableDef> tableDefMap) throws FesqlException {
-        List<RtidbTable> rtidbTables = new ArrayList<>();
+        for (int i = 0; i < castNode.window_unions().GetSize(); i++) {
+            // System.out.println(castNode.window_unions().GetKey(j).GetTypeName());
+            PhysicalDataProviderNode unionTable = findDataProviderNode(castNode.window_unions().GetKey(i));
+            System.out.println("union table = " + unionTable.GetName());
+            String table = unionTable.GetName();
+            RtidbTable rtidbTable = rtidbTables.get(table);
+            RtidbIndex index = new RtidbIndex();
+            index.getKeys().addAll(keys);
+            index.setTs(ts);
+            if (start != -1) {
+                index.setExpire(start);
+            }
+            if (cntStart != -1) {
+                index .setAtmost(cntStart);
+            }
+            rtidbTable.addIndex(index);
+        }
+        logger.info("end to pares window op");
+    }
+
+    public static Map<String, RtidbTable> parseRtidbIndex(List<PhysicalOpNode> nodes, Map<String, TypeOuterClass.TableDef> tableDefMap) throws FesqlException {
+        Map<String, RtidbTable> rtidbTables = new HashMap<>();
         Map<String, String> table2OrgTable = new HashMap<>();
         for (PhysicalOpNode node : nodes) {
             System.out.println("node type = " + node.GetTypeName());
@@ -79,11 +129,18 @@ public class DDLEngine {
             if (type.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
                 PhysicalDataProviderNode castNode = PhysicalDataProviderNode.CastFrom(node);
                 System.out.println("PhysicalDataProviderNode = " + castNode.GetName());
+                RtidbTable rtidbTable = rtidbTables.get(castNode.GetName());
+                if (rtidbTable == null) {
+                    rtidbTable = new RtidbTable();
+                    rtidbTable.setTableName(castNode.GetName());
+                    rtidbTables.put(castNode.GetName(), rtidbTable);
+                }
                 continue;
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpSimpleProject.swigValue()) {
                 PhysicalSimpleProjectNode castNode = PhysicalSimpleProjectNode.CastFrom(node);
                 System.out.println("PhysicalSimpleProjectNode ");
+                System.out.println(castNode.SchemaToString());
                 continue;
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpConstProject.swigValue()) {
@@ -91,6 +148,42 @@ public class DDLEngine {
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpRequestUnoin.swigValue()) {
                 System.out.println("kPhysicalOpRequestUnoin ");
+                PhysicalRequestUnionNode castNode = PhysicalRequestUnionNode.CastFrom(node);
+                
+                // System.out.println(castNode.SchemaToString());
+                
+                for (int i = 0; i < castNode.GetProducerCnt(); i++) {
+                    // RequestWindowUnionList wu = castNode.window_unions()
+                    for (int j = 0; j < castNode.window_unions().GetSize(); j++) {
+                        System.out.println(castNode.window_unions().GetKey(j).GetTypeName());
+                        PhysicalDataProviderNode unionTable = findDataProviderNode(castNode.window_unions().GetKey(j));
+                        System.out.println("union table = " + unionTable.GetName());
+                    }
+                    
+                    System.out.println("kPhysicalOpRequestUnoin " + castNode.GetProducer(i).GetTypeName());
+                    // PhysicalDataProviderNode unionTable = findDataProviderNode(castNode.GetProducer(i));
+                }
+
+                System.out.println(castNode.window().ToString());
+                System.out.println(castNode.window().partition().keys().GetChild(0).GetExprString());
+                System.out.println(castNode.window().partition().keys().GetChild(1).GetExprString());
+        
+                System.out.println(castNode.window().sort().orders().order_by().GetChild(0).GetExprString());
+                System.out.println(castNode.window().range().range_key().GetExprString());
+                if (castNode.window().range().frame().frame_range() != null) {
+                    System.out.println(castNode.window().range().frame().frame_range().start().GetExprString());
+                    System.out.println(castNode.window().range().frame().frame_range().end().GetExprString());
+                } else {
+                    System.out.println(castNode.window().range().frame().frame_rows().start().GetExprString());
+                    System.out.println(castNode.window().range().frame().frame_rows().end().GetExprString());
+                }
+                
+                // for (int i = 0; i < castNode.window().index_key().keys().GetChildNum(); i++) {
+                //     System.out.println(castNode.window().index_key().keys().GetChild(i).GetTypeName());
+                // }
+                
+                System.out.println(castNode.window_unions().FnDetail());
+                System.out.println("kPhysicalOpRequestUnoin end");
                 continue;
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpProject.swigValue()) {
@@ -111,7 +204,6 @@ public class DDLEngine {
                 if (projectNode.getProject_type_().swigValue() == ProjectType.kTableProject.swigValue()) {
                     continue;
                 }
-
                 // PhysicalWindowAggrerationNode.CastFrom(node)
                 continue;
             }
@@ -122,14 +214,6 @@ public class DDLEngine {
                 PhysicalRequestJoinNode join = PhysicalRequestJoinNode.CastFrom(node);
                 System.out.println(join.GetProducer(0).GetTypeName());
                 System.out.println(join.GetProducer(1).GetTypeName());
-                System.out.println("leftkey type = " + join.join().left_key().getKeys_().GetChild(0).GetTypeName());
-                System.out.println("rightkey type = " + join.join().right_key().getKeys_().GetChild(0).GetTypeName());
-                ColumnRefNode columnNode = ColumnRefNode.CastFrom(join.getJoin_().left_key().getKeys_().GetChild(0));
-                System.out.println("leftkey name = " + columnNode.GetColumnName());
-                System.out.println("leftkey name = " + columnNode.GetRelationName());
-                columnNode = ColumnRefNode.CastFrom(join.getJoin_().right_key().getKeys_().GetChild(0));
-                System.out.println("rightKey name = " + columnNode.GetColumnName());
-                System.out.println("rightKey name = " + columnNode.GetRelationName());
 //                System.out.println(join.getJoin_().FnDetail());
                 PhysicalDataProviderNode dataNode = findDataProviderNode(join.GetProducer(0));
                 if (dataNode != null) {
@@ -140,6 +224,14 @@ public class DDLEngine {
                 if (dataNode != null) {
                     // PhysicalDataProviderNode dataNode = PhysicalDataProviderNode.CastFrom(join.GetProducer(1));
                     System.out.println(dataNode.GetName());
+                    System.out.println("leftkey type = " + join.join().left_key().getKeys_().GetChild(0).GetTypeName());
+                    System.out.println("rightkey type = " + join.join().right_key().getKeys_().GetChild(0).GetTypeName());
+                    ColumnRefNode columnNode = ColumnRefNode.CastFrom(join.getJoin_().left_key().getKeys_().GetChild(0));
+                    System.out.println("leftkey name = " + columnNode.GetColumnName());
+                    System.out.println("leftkey name = " + columnNode.GetRelationName());
+                    columnNode = ColumnRefNode.CastFrom(join.getJoin_().right_key().getKeys_().GetChild(0));
+                    System.out.println("rightKey name = " + columnNode.GetColumnName());
+                    System.out.println("rightKey name = " + columnNode.GetRelationName());
                 }
 
                 ExprListNode rightNode = join.getJoin_().right_key().getKeys_();
@@ -203,9 +295,6 @@ public class DDLEngine {
             dagToList(node.GetProducer(i), list);
         }
         list.add(node);
-
-
-
     }
 
     public static TypeOuterClass.Type getFesqlType(String type) {
@@ -275,10 +364,31 @@ public class DDLEngine {
     }
 }
 
-
+@Data
 class RtidbTable {
+    String tableName;
     TypeOuterClass.TableDef schema;
     Set<RtidbIndex> indexs = new HashSet<RtidbIndex>();
+
+    // 需要考虑重复的index，并且找到范围最大ttl值
+    public void addIndex(RtidbIndex index) {
+        boolean flag = true;
+        for (RtidbIndex e : indexs) {
+            if (indexs.equals(e)) {
+                flag = false;
+                if (index.getAtmost() > e.getAtmost()) {
+                    e.setAtmost(index.getAtmost());
+                }
+                if (index.getExpire() > e.getExpire()) {
+                    e.setExpire(index.getExpire());
+                }
+                break;
+            }
+        }
+        if (flag) {
+            indexs.add(index);
+        }
+    }
 }
 
 enum TTLType {
@@ -292,7 +402,8 @@ enum TTLType {
 class RtidbIndex {
     private List<String> keys = new ArrayList<>();
     private String ts = "";
-    private TTLType type = TTLType.kAbsOrLat;
+    // 因为fesql支持任意范围的窗口，所以需要kAbsAndLat这个类型。确保窗口中本该有数据，而没有被淘汰出去
+    private TTLType type = TTLType.kAbsAndLat;
     // 映射到ritdb是最多保留多少条数据，不是最少
     private long atmost = 0;
     private long expire = 0;
@@ -300,5 +411,5 @@ class RtidbIndex {
     public boolean equals(RtidbIndex e) {
         return  this.getType() == e.getType() && this.getKeys().equals(e.getKeys()) && this.ts.equals(e.getTs());
     }
-
 }
+
