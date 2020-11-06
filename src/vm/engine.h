@@ -75,6 +75,7 @@ class EngineOptions {
     static EngineOptions NewEngineOptionWithClusterEnable(bool flag) {
         EngineOptions options;
         options.set_cluster_optimized(flag);
+        DLOG(INFO) << "Engine Options with cluster_optimized_ " << flag;
         return options;
     }
 
