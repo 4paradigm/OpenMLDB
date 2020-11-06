@@ -33,6 +33,7 @@
 #include "sdk/mini_cluster.h"
 #include "timer.h"  // NOLINT
 #include "vm/catalog.h"
+#include "case/sql_case.h"
 
 namespace rtidb {
 namespace sdk {
@@ -791,6 +792,7 @@ TEST_F(SQLRouterTest, smoketest_on_sql) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
+    sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
     std::string name = "test" + GenRand();
