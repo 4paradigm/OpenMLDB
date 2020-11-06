@@ -37,6 +37,7 @@ namespace rtidb {
 namespace sdk {
 
 MiniCluster* mc_ = nullptr;
+MiniCluster* multi_partition_mc_ = nullptr;
 
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> RtiDBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> RtiDBIndex;
@@ -414,10 +415,8 @@ void SQLSDKBatchRequestQueryTest::BatchRequestExecuteSQL(fesql::sqlcase::SQLCase
     auto& batch_request = sql_case.batch_request();
     fesql::type::TableDef batch_request_table;
     std::vector<::fesql::codec::Row> request_rows;
-    ASSERT_TRUE(sql_case.ExtractTableDef(
-        batch_request.columns_, batch_request.indexs_, batch_request_table));
-    ASSERT_TRUE(sql_case.ExtractRows(
-        batch_request_table.columns(), batch_request.rows_, request_rows));
+    ASSERT_TRUE(sql_case.ExtractTableDef(batch_request.columns_, batch_request.indexs_, batch_request_table));
+    ASSERT_TRUE(sql_case.ExtractRows(batch_request_table.columns(), batch_request.rows_, request_rows));
 
     CheckSchema(batch_request_table.columns(), *(request_row->GetSchema().get()));
 
@@ -425,13 +424,11 @@ void SQLSDKBatchRequestQueryTest::BatchRequestExecuteSQL(fesql::sqlcase::SQLCase
     PrintRows(batch_request_table.columns(), request_rows);
 
     fesql::codec::RowView row_view(batch_request_table.columns());
-    auto common_column_indices = std::make_shared<ColumnIndicesSet>(
-        request_row->GetSchema());
+    auto common_column_indices = std::make_shared<ColumnIndicesSet>(request_row->GetSchema());
     for (size_t idx : batch_request.common_column_indices_) {
         common_column_indices->AddCommonColumnIdx(idx);
     }
-    auto row_batch = std::make_shared<SQLRequestRowBatch>(
-        request_row->GetSchema(), common_column_indices);
+    auto row_batch = std::make_shared<SQLRequestRowBatch>(request_row->GetSchema(), common_column_indices);
 
     LOG(INFO) << "Request execute sql start!";
     for (size_t i = 0; i < request_rows.size(); i++) {
@@ -453,8 +450,7 @@ void SQLSDKBatchRequestQueryTest::BatchRequestExecuteSQL(fesql::sqlcase::SQLCase
         CheckRows(output_table.columns(), sql_case.expect().order_, rows, results);
     }
     if (sql_case.expect().count_ > 0) {
-        ASSERT_EQ(sql_case.expect().count_,
-                  static_cast<int64_t>(results->Size()));
+        ASSERT_EQ(sql_case.expect().count_, static_cast<int64_t>(results->Size()));
     }
 }
 
@@ -526,6 +522,13 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter(const fesql::sqlcase::SQLCase&
     sql_opt.enable_debug = sql_case.debug() || fesql::sqlcase::SQLCase::IS_DEBUG();
     return NewClusterSQLRouter(sql_opt);
 }
+static std::shared_ptr<SQLRouter> GetNewSQLRouterWithMultiPartitions(const fesql::sqlcase::SQLCase& sql_case) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = multi_partition_mc_->GetZkCluster();
+    sql_opt.zk_path = multi_partition_mc_->GetZkPath();
+    sql_opt.enable_debug = sql_case.debug() || fesql::sqlcase::SQLCase::IS_DEBUG();
+    return NewClusterSQLRouter(sql_opt);
+}
 
 TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
     auto sql_case = GetParam();
@@ -561,6 +564,21 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_test) {
     LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
+TEST_P(SQLSDKQueryTest, sql_sdk_cluster_request_test) {
+    auto sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport") ||
+        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    auto router = GetNewSQLRouterWithMultiPartitions(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router with multi partitions";
+    RunRequestModeSDK(sql_case, router);
+    LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+}
 TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
@@ -734,6 +752,12 @@ int main(int argc, char** argv) {
     ::rtidb::sdk::mc_ = &mc;
     int ok = ::rtidb::sdk::mc_->SetUp();
     sleep(1);
+
+    ::rtidb::sdk::MiniCluster multi_partition_mc(6182);
+    ::rtidb::sdk::multi_partition_mc_ = &multi_partition_mc;
+    ok = ::rtidb::sdk::multi_partition_mc_->SetUp(2);
+    sleep(1);
+
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ok = RUN_ALL_TESTS();
     ::rtidb::sdk::mc_->Close();
