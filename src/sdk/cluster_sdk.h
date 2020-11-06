@@ -54,18 +54,10 @@ class ClusterSDK {
         return cluster_version_.load(std::memory_order_relaxed);
     }
 
-    inline std::shared_ptr<::fesql::vm::Catalog> GetCatalog() {
+    inline std::shared_ptr<::rtidb::catalog::SDKCatalog> GetCatalog() {
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         return catalog_;
     }
-    bool GetTabletByTable(
-        const std::string& db, const std::string& tname,
-        std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets);
-
-    std::shared_ptr<::rtidb::client::TabletClient> PickOneTablet();
-    std::shared_ptr<::rtidb::client::TabletClient> GetLeaderTabletByTable(
-        const std::string& db, const std::string& name);
-
     uint32_t GetTableId(const std::string& db, const std::string& tname);
 
     std::shared_ptr<::rtidb::nameserver::TableInfo> GetTableInfo(
@@ -81,6 +73,15 @@ class ClusterSDK {
     }
     bool GetRealEndpoint(const std::string& endpoint,
             std::string* real_endpoint);
+
+    std::shared_ptr<::rtidb::catalog::TabletAccessor> GetTablet();
+    bool GetTablet(const std::string& db, const  std::string& name,
+            std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>>* tablets);
+    std::shared_ptr<::rtidb::catalog::TabletAccessor> GetTablet(const std::string& db,
+                                                                   const  std::string& name);
+    std::shared_ptr<::rtidb::catalog::TabletAccessor> GetTablet(const std::string& db,
+                                                                   const  std::string& name,
+                                                                   uint32_t pid);
 
  private:
     bool InitCatalog();
@@ -98,8 +99,7 @@ class ClusterSDK {
     std::string notify_path_;
     ::rtidb::zk::ZkClient* zk_client_;
     ::rtidb::base::SpinMutex mu_;
-    std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>
-        alive_tablets_;
+    std::shared_ptr<::rtidb::catalog::ClientManager> client_manager_;
     std::map<
         std::string,
         std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>>
@@ -108,7 +108,7 @@ class ClusterSDK {
     std::shared_ptr<::rtidb::client::NsClient> ns_client_;
     ::baidu::common::ThreadPool pool_;
     uint64_t session_id_;
-    std::atomic<bool> running_;
+    ::rtidb::base::Random rand_;
 };
 
 }  // namespace sdk

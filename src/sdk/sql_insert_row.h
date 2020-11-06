@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/hash.h"
 #include "boost/lexical_cast.hpp"
 #include "codec/codec.h"
 #include "codec/fe_row_codec.h"
@@ -81,7 +82,7 @@ class SQLInsertRow {
     bool AppendDate(int32_t date);
     bool AppendNULL();
     bool IsComplete();
-    const std::vector<std::pair<std::string, uint32_t>>& GetDimensions();
+    const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& GetDimensions();
     inline const std::vector<uint64_t>& GetTs() { return ts_; }
     inline const std::string& GetRow() { return val_; }
     inline const std::shared_ptr<fesql::sdk::Schema> GetSchema() {
@@ -118,7 +119,7 @@ class SQLInsertRow {
     std::map<uint32_t, std::vector<uint32_t>> index_map_;
     std::set<uint32_t> ts_set_;
     std::map<uint32_t, std::string> raw_dimensions_;
-    std::vector<std::pair<std::string, uint32_t>> dimensions_;
+    std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>> dimensions_;
     std::vector<uint64_t> ts_;
     ::rtidb::codec::RowBuilder rb_;
     std::string val_;

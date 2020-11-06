@@ -78,8 +78,15 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
         return "TabletTableHandler";
     }
 
-    bool GetTablets(const std::string& index_name, const std::string& pk,
-            std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets);
+    std::shared_ptr<::fesql::vm::Tablet> GetTablet(const std::string& index_name, const std::string& pk) override;
+
+    std::shared_ptr<TabletAccessor> GetTablet(uint32_t pid);
+
+    bool GetTablet(std::vector<std::shared_ptr<TabletAccessor>>* tablets);
+
+    inline uint32_t GetTid() const { return meta_.tid(); }
+
+    inline uint32_t GetPartitionNum() const { return meta_.table_partition_size(); }
 
  private:
     inline int32_t GetColumnIndex(const std::string& column) {
@@ -100,7 +107,6 @@ class SDKTableHandler : public ::fesql::vm::TableHandler {
     ::fesql::vm::IndexHint index_hint_;
     uint64_t cnt_;
     std::shared_ptr<TableClientManager> table_client_manager_;
-    std::vector<std::string> partition_key_;
 };
 
 typedef std::map<std::string,
@@ -110,12 +116,12 @@ typedef std::map<std::string, std::shared_ptr<::fesql::type::Database>> SDKDB;
 
 class SDKCatalog : public ::fesql::vm::Catalog {
  public:
-    SDKCatalog() : table_metas_(), tables_(), db_(), client_manager_() {}
+    explicit SDKCatalog(std::shared_ptr<ClientManager> client_manager) :
+        tables_(), db_(), client_manager_(client_manager) {}
 
     ~SDKCatalog() {}
 
-    bool Init(const std::vector<::rtidb::nameserver::TableInfo>& tables,
-        const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients);
+    bool Init(const std::vector<::rtidb::nameserver::TableInfo>& tables);
 
     std::shared_ptr<::fesql::type::Database> GetDatabase(const std::string& db) override {
         return std::shared_ptr<::fesql::type::Database>();
@@ -126,11 +132,12 @@ class SDKCatalog : public ::fesql::vm::Catalog {
 
     bool IndexSupport() override { return true; }
 
+    std::shared_ptr<TabletAccessor> GetTablet() const;
+
  private:
-    std::vector<::rtidb::nameserver::TableInfo> table_metas_;
     SDKTables tables_;
     SDKDB db_;
-    ClientManager client_manager_;
+    std::shared_ptr<ClientManager> client_manager_;
 };
 
 }  // namespace catalog

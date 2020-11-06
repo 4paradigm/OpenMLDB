@@ -113,14 +113,10 @@ TEST_F(ClusterSDKTest, smoketest) {
     ok = ns_client->CreateTable(table_info, error);
     ASSERT_TRUE(ok);
     sleep(5);
-    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablet;
-    ok = sdk.GetTabletByTable(db, name, &tablet);
+    std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>> tablet;
+    ok = sdk.GetTablet(db, name, &tablet);
     ASSERT_TRUE(ok);
     ASSERT_EQ(2u, tablet.size());
-    auto leader_tablet = sdk.GetLeaderTabletByTable(db, name);
-    if (!leader_tablet) {
-        ASSERT_TRUE(false);
-    }
     uint32_t tid = sdk.GetTableId(db, name);
     ASSERT_NE(tid, 0u);
     auto table_ptr = sdk.GetTableInfo(db, name);

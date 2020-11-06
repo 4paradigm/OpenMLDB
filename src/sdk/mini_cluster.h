@@ -20,7 +20,7 @@
 
 #include <sched.h>
 #include <unistd.h>
-
+#include <map>
 #include <string>
 #include <vector>
 
@@ -127,6 +127,14 @@ class MiniCluster {
 
     ::rtidb::client::NsClient* GetNsClient() { return ns_client_; }
 
+    ::rtidb::tablet::TabletImpl* GetTablet(const std::string& endpoint) {
+        auto iter = tablets_.find(endpoint);
+        if (iter != tablets_.end()) {
+            return iter->second;
+        }
+        return nullptr;
+    }
+
     std::string GenRand() {
         return std::to_string(rand() % 1000 + 10000);  // NOLINT
     }
@@ -157,6 +165,7 @@ class MiniCluster {
             return false;
         }
         tb_servers_.push_back(tb_server);
+        tablets_.emplace(tb_endpoint, tablet);
         return true;
     }
 
@@ -167,6 +176,7 @@ class MiniCluster {
     std::string zk_cluster_;
     std::string zk_path_;
     ::rtidb::client::NsClient* ns_client_;
+    std::map<std::string, ::rtidb::tablet::TabletImpl*> tablets_;
 };
 
 }  // namespace sdk

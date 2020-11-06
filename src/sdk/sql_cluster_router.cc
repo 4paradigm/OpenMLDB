@@ -554,36 +554,32 @@ bool SQLClusterRouter::DropDB(const std::string& db,
     return true;
 }
 
-bool SQLClusterRouter::GetTablet(
-    const std::string& db, const std::string& sql,
-    std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets) {
-    if (tablets == NULL) return false;
+std::shared_ptr<::rtidb::client::TabletClient> SQLClusterRouter::GetTabletClient(
+    const std::string& db, const std::string& sql) {
     // TODO(wangtaize) cache compile result
     std::set<std::string> tables;
     ::fesql::base::Status status;
     if (!engine_->GetDependentTables(sql, db, ::fesql::vm::kBatchMode, &tables, status)) {
         LOG(WARNING) << "fail to get tablet: " << status.msg;
-        return false;
+        return std::shared_ptr<::rtidb::client::TabletClient>();
     }
 
     // pick one tablet for const query sql
     if (tables.empty()) {
-        auto tablet = cluster_sdk_->PickOneTablet();
+        auto tablet = cluster_sdk_->GetTablet();
         if (!tablet) {
-            LOG(WARNING) << "fail to pack a tablet";
-            return false;
+            LOG(WARNING) << "fail to pick a tablet";
+            return std::shared_ptr<::rtidb::client::TabletClient>();
         }
-        tablets->push_back(tablet);
-        return true;
+        return tablet->GetClient();
     }
-    auto it = tables.begin();
-    for (; it != tables.end(); ++it) {
-        if (!cluster_sdk_->GetTabletByTable(db, *it, tablets)) {
-            LOG(WARNING) << "fail to get table " << *it << " tablet";
-            return false;
-        }
+    const std::string& name = *tables.begin();
+    auto tablet = cluster_sdk_->GetTablet(db, name);
+    if (!tablet) {
+        LOG(WARNING) << "fail to get table " << name << " tablet";
+        return std::shared_ptr<::rtidb::client::TabletClient>();
     }
-    return true;
+    return tablet->GetClient();
 }
 
 bool SQLClusterRouter::IsConstQuery(::fesql::vm::PhysicalOpNode* node) {
@@ -633,16 +629,13 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
     std::unique_ptr<::rtidb::api::QueryResponse> response(
         new ::rtidb::api::QueryResponse());
-    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
-    bool ok = GetTablet(db, sql, &tablets);
-    if (!ok || tablets.size() <= 0) {
+    auto client = GetTabletClient(db, sql);
+    if (!client) {
         status->msg = "not tablet found";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
-    uint32_t idx = rand_.Uniform(tablets.size());
-    ok = tablets[idx]->Query(db, sql, row->GetRow(), cntl.get(), response.get(),
-                             options_.enable_debug);
-    if (!ok) {
+    if (client->Query(db, sql, row->GetRow(), cntl.get(), response.get(),
+                             options_.enable_debug)) {
         status->msg = "request server error";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
@@ -651,8 +644,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     }
     std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs(
         new rtidb::sdk::ResultSetSQL(std::move(response), std::move(cntl)));
-    ok = rs->Init();
-    if (!ok) {
+    if (!rs->Init()) {
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     return rs;
@@ -664,22 +656,19 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
     std::unique_ptr<::rtidb::api::QueryResponse> response(
         new ::rtidb::api::QueryResponse());
-    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
-    bool ok = GetTablet(db, sql, &tablets);
-    if (!ok || tablets.size() <= 0) {
+    auto client = GetTabletClient(db, sql);
+    if (!client) {
         DLOG(INFO) << "no tablet avilable for sql " << sql;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
-    DLOG(INFO) << " send query to tablet " << tablets[0]->GetEndpoint();
-    ok = tablets[0]->Query(db, sql, cntl.get(), response.get(),
-                           options_.enable_debug);
-    if (!ok) {
+    DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
+    if (!client->Query(db, sql, cntl.get(), response.get(),
+                           options_.enable_debug)) {
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs(
         new rtidb::sdk::ResultSetSQL(std::move(response), std::move(cntl)));
-    ok = rs->Init();
-    if (!ok) {
+    if (!rs->Init()) {
         DLOG(INFO) << "fail to init result set for sql " << sql;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
@@ -696,17 +685,14 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchRequest(
     std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
     std::unique_ptr<::rtidb::api::SQLBatchRequestQueryResponse> response(
         new ::rtidb::api::SQLBatchRequestQueryResponse());
-    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
-    bool ok = GetTablet(db, sql, &tablets);
-    if (!ok || tablets.size() <= 0) {
+    auto client = GetTabletClient(db, sql);
+    if (!client) {
         status->msg = "no tablet found";
         return nullptr;
     }
-    uint32_t idx = rand_.Uniform(tablets.size());
-    ok = tablets[idx]->SQLBatchRequestQuery(db, sql, row_batch, cntl.get(),
+    if (client->SQLBatchRequestQuery(db, sql, row_batch, cntl.get(),
                                             response.get(),
-                                            options_.enable_debug);
-    if (!ok) {
+                                            options_.enable_debug)) {
         status->msg = "request server error " + response->msg();
         return nullptr;
     }
@@ -716,8 +702,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchRequest(
     }
     std::shared_ptr<::rtidb::sdk::SQLBatchRequestResultSet> rs(
         new rtidb::sdk::SQLBatchRequestResultSet(std::move(response), std::move(cntl)));
-    ok = rs->Init();
-    if (!ok) {
+    if (!rs->Init()) {
         return nullptr;
     }
     return rs;
@@ -754,19 +739,42 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
         LOG(WARNING) << status->msg;
         return false;
     }
-    std::shared_ptr<::rtidb::client::TabletClient> tablet =
-        cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
-    if (!tablet) {
+    std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>> tablets;
+    bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
+    if (!ret || tablets.empty()) {
         status->msg = "fail to get table " + table_info->name() + " tablet";
         LOG(WARNING) << status->msg;
         return false;
     }
-    DLOG(INFO) << "put data to endpoint " << tablet->GetEndpoint()
-               << " with dimensions size " << row->GetDimensions().size();
-    bool ok = tablet->Put(table_info->tid(), 0, row->GetDimensions(),
-                          row->GetTs(), row->GetRow(), 1);
-    if (!ok) {
-        status->msg = "fail to make a put request to table " + table_info->name();
+    return PutRow(table_info->tid(), row, tablets, status);
+}
+
+bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>& row,
+        const std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>>& tablets,
+        ::fesql::sdk::Status* status) {
+    if (status == nullptr) {
+        return false;
+    }
+    auto dimensions = row->GetDimensions();
+    for (const auto& kv : dimensions) {
+        uint32_t pid = kv.first;
+        if (pid < tablets.size()) {
+            auto tablet = tablets[pid];
+            if (tablet) {
+                auto client = tablet->GetClient();
+                if (client) {
+                    DLOG(INFO) << "put data to endpoint " << client->GetEndpoint()
+                               << " with dimensions size " << kv.second.size();
+                    if (!client->Put(tid, pid, kv.second, row->GetTs(), row->GetRow(), 1)) {
+                        status->msg = "fail to make a put request to table. tid " + std::to_string(tid);
+                        LOG(WARNING) << status->msg;
+                        return false;
+                    }
+                    continue;
+                }
+            }
+        }
+        status->msg = "fail to get tablet client. pid " + std::to_string(pid);
         LOG(WARNING) << status->msg;
         return false;
     }
@@ -785,22 +793,16 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     if (cache) {
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info =
             cache->table_info;
-        std::shared_ptr<::rtidb::client::TabletClient> tablet =
-            cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
-        if (!tablet) {
+        std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>> tablets;
+        bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
+        if (!ret || tablets.empty()) {
             status->msg = "fail to get table " + table_info->name() + " tablet";
             LOG(WARNING) << status->msg;
             return false;
         }
-        DLOG(INFO) << "put data to endpoint " << tablet->GetEndpoint();
         for (uint32_t i = 0; i < rows->GetCnt(); ++i) {
             std::shared_ptr<SQLInsertRow> row = rows->GetRow(i);
-            bool ok = tablet->Put(table_info->tid(), 0, row->GetDimensions(),
-                                  row->GetTs(), row->GetRow(), 1);
-            if (!ok) {
-                status->msg =
-                    "fail to get table " + table_info->name() + " tablet";
-                LOG(WARNING) << status->msg;
+            if (!PutRow(table_info->tid(), row, tablets, status)) {
                 return false;
             }
         }
@@ -824,22 +826,17 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
     std::shared_ptr<RouterCache> cache = GetCache(db, sql);
     if (cache) {
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info = cache->table_info;
-        std::shared_ptr<::rtidb::client::TabletClient> tablet =
-            cluster_sdk_->GetLeaderTabletByTable(db, table_info->name());
-        if (!tablet) {
+        std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>> tablets;
+        bool ret = cluster_sdk_->GetTablet(db, table_info->name(), &tablets);
+        if (!ret || tablets.empty()) {
             status->msg = "fail to get table " + table_info->name() + " tablet";
             LOG(WARNING) << status->msg;
             return false;
         }
-        DLOG(INFO) << "put data to endpoint " << tablet->GetEndpoint();
-        bool ok = tablet->Put(table_info->tid(), 0, row->GetDimensions(),
-                              row->GetTs(), row->GetRow(), 1);
-        if (!ok) {
-            status->msg = "fail to get table " + table_info->name() + " tablet";
-            LOG(WARNING) << status->msg;
+        if (!PutRow(table_info->tid(), row, tablets, status)) {
             return false;
         }
-        return ok;
+        return true;
     } else {
         status->msg = "please use getInsertRow with " + sql + " first";
         LOG(WARNING) << status->msg;
@@ -939,18 +936,15 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
     std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
     std::unique_ptr<::rtidb::api::QueryResponse> response(
         new ::rtidb::api::QueryResponse());
-    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
-    ok = GetTablet(db, sql, &tablets);
-    if (!ok || tablets.size() <= 0) {
+    auto client = GetTabletClient(db, sql);
+    if (!client) {
         status->code = -1;
         status->msg = "not tablet found";
         LOG(WARNING) << status->msg;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
-    uint32_t idx = rand_.Uniform(tablets.size());
-    ok = tablets[idx]->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(),
-                             options_.enable_debug);
-    if (!ok) {
+    if (client->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(),
+                             options_.enable_debug)) {
         status->code = -1;
         status->msg = "request server error";
         LOG(WARNING) << status->msg;
@@ -1007,18 +1001,15 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProc
     std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
     std::unique_ptr<::rtidb::api::SQLBatchRequestQueryResponse> response(
         new ::rtidb::api::SQLBatchRequestQueryResponse());
-    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
-    ok = GetTablet(db, sql, &tablets);
-    if (!ok || tablets.size() <= 0) {
+    auto client = GetTabletClient(db, sql);
+    if (!client) {
         status->code = -1;
         status->msg = "not tablet found";
         return nullptr;
     }
-    uint32_t idx = rand_.Uniform(tablets.size());
-    ok = tablets[idx]->CallSQLBatchRequestProcedure(
+    if (client->CallSQLBatchRequestProcedure(
         db, sp_name, row_batch, cntl.get(), response.get(),
-        options_.enable_debug);
-    if (!ok) {
+        options_.enable_debug)) {
         status->code = -1;
         status->msg = "request server error";
         return nullptr;
