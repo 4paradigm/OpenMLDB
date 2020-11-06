@@ -1,7 +1,9 @@
 #! /bin/sh
 #
 # compile.sh
-
+if [[ "${CMAKE_TYPE}" != "Debug" ]]; then
+        CMAKE_TYPE="Release"
+fi
 WORK_DIR=`pwd`
 sh steps/gen_code.sh
 mkdir -p $WORK_DIR/build

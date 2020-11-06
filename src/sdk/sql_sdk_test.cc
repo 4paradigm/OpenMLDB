@@ -589,7 +589,7 @@ TEST_P(SQLSDKQueryTest, sql_sdk_cluster_request_test) {
     }
     auto router = GetNewSQLRouterWithMultiPartitions(sql_case);
     ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router with multi partitions";
-    RunRequestModeSDK(sql_case, router);
+    ClusterRunRequestModeSDK(sql_case, router);
     LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
