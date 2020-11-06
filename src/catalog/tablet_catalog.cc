@@ -51,7 +51,7 @@ TabletTableHandler::TabletTableHandler(const ::rtidb::nameserver::TableInfo& met
       index_list_(),
       index_hint_(),
       table_client_manager_(),
-      local_tablet_(local_tablet){}
+      local_tablet_(local_tablet) {}
 
 bool TabletTableHandler::Init(const ClientManager& client_manager) {
     bool ok = SchemaAdapter::ConvertSchema(table_st_.GetColumns(), &schema_);
