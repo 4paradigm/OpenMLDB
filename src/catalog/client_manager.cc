@@ -16,20 +16,26 @@
  */
 
 #include "catalog/client_manager.h"
+
 #include <utility>
+
 #include "codec/fe_schema_codec.h"
 
 namespace rtidb {
 namespace catalog {
 
-TabletRowHandler::TabletRowHandler(const std::string& db,
-                                   std::unique_ptr<brpc::Controller> cntl,
+TabletRowHandler::TabletRowHandler(const std::string& db, std::unique_ptr<brpc::Controller> cntl,
                                    std::unique_ptr<::rtidb::api::QueryResponse> response)
-    : db_(db), name_(), status_(::fesql::base::Status::OK()), schema_(),
-    buf_(), row_(), cntl_(std::move(cntl)), response_(std::move(response)) {}
+    : db_(db),
+      name_(),
+      status_(::fesql::base::Status::OK()),
+      buf_(),
+      row_(),
+      cntl_(std::move(cntl)),
+      response_(std::move(response)) {}
 
-TabletRowHandler::TabletRowHandler(::fesql::base::Status status) :
-    db_(), name_(), status_(status), schema_(), buf_(), row_(), cntl_(), response_() {}
+TabletRowHandler::TabletRowHandler(::fesql::base::Status status)
+    : db_(), name_(), status_(status), buf_(), row_(), cntl_(), response_() {}
 
 const ::fesql::codec::Row& TabletRowHandler::GetValue() {
     if (!cntl_ || !response_) {
@@ -38,10 +44,6 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
     brpc::Join(cntl_->call_id());
     if (cntl_->Failed()) {
         status_ = ::fesql::base::Status(::fesql::common::kRpcError, "request error. " + cntl_->ErrorText());
-        return row_;
-    }
-    if (!::fesql::codec::SchemaCodec::Decode(response_->schema(), &schema_)) {
-        status_ = ::fesql::base::Status(::fesql::common::kSchemaCodecError, "decode schema error");
         return row_;
     }
     // TODO(denglong) do not copy data

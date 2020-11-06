@@ -54,7 +54,6 @@ class TabletRowHandler : public ::fesql::vm::RowHandler {
     std::string db_;
     std::string name_;
     ::fesql::base::Status status_;
-    ::fesql::vm::Schema schema_;
     std::string buf_;
     ::fesql::codec::Row row_;
     std::unique_ptr<brpc::Controller> cntl_;

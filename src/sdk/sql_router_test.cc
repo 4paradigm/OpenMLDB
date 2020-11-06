@@ -593,6 +593,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_column_key_2) {
     int32_t day;
     std::string select = "select * from " + name + ";";
     auto rs = router->ExecuteSQL(db, select, &status);
+    ASSERT_TRUE(nullptr != rs);
     ASSERT_EQ(5, rs->Size());
 
     ASSERT_TRUE(rs->Next());
