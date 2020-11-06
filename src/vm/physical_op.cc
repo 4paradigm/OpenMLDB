@@ -406,6 +406,34 @@ bool PhysicalRequestProviderNodeWithCommonColumn::
     }
 }
 
+std::string PhysicalOpNode::SchemaToString() {
+    std::stringstream ss;
+    ss << PhysicalOpTypeName(type_) << " output name schema list: \n";
+    for (auto pair : GetOutputNameSchemaList().schema_source_list_) {
+        ss << "pair table: " << pair.table_name_ << "\n";
+        for (int32_t i = 0; i < pair.schema_->size(); i++) {
+            if (i > 0) {
+                ss << "\n";
+            }
+            const type::ColumnDef& column = pair.schema_->Get(i);
+            ss << column.name() << " " << type::Type_Name(column.type());
+            if (nullptr != pair.sources_) {
+                ss << " " << pair.sources_->at(i).ToString();
+            }
+        }
+        ss << "\n";
+    }
+    ss << "output schema\n";
+    for (int32_t i = 0; i < output_schema_.size(); i++) {
+        if (i > 0) {
+            ss << "\n";
+        }
+        const type::ColumnDef& column = output_schema_.Get(i);
+        ss << column.name() << " " << type::Type_Name(column.type());
+    }
+    return ss.str();
+}
+
 void PhysicalOpNode::PrintSchema() {
     std::stringstream ss;
     ss << PhysicalOpTypeName(type_) << " output name schema list: \n";
@@ -478,6 +506,11 @@ bool PhysicalRequestUnionNode::InitSchema() {
     PrintSchema();
     return true;
 }
+
+PhysicalRequestUnionNode* PhysicalRequestUnionNode::CastFrom(PhysicalOpNode *node) {
+    return dynamic_cast<PhysicalRequestUnionNode*>(node);
+}
+
 bool PhysicalRenameNode::InitSchema() {
     output_schema_.CopyFrom(producers_[0]->output_schema_);
     for (auto source :

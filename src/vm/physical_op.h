@@ -286,6 +286,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
                                const std::string &tab) const;
     virtual bool InitSchema() = 0;
     virtual void PrintSchema();
+    virtual std::string SchemaToString();
     const std::vector<PhysicalOpNode *> &GetProducers() const {
         return producers_;
     }
@@ -322,7 +323,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
         return fn_info_.fn_schema_;
     }
 
-    const vm::SchemaSourceList &GetOutputNameSchemaList() {
+    const fesql::vm::SchemaSourceList &GetOutputNameSchemaList() {
         return output_name_schema_list_;
     }
 
@@ -857,7 +858,7 @@ class WindowUnionList {
         }
         return iter->first;
     }
-    std::list<std::pair<PhysicalOpNode *, WindowOp>> window_unions_;
+    std::vector<std::pair<PhysicalOpNode *, WindowOp>> window_unions_;
 };
 
 class RequestWindowUnionList {
@@ -867,6 +868,18 @@ class RequestWindowUnionList {
     void AddWindowUnion(PhysicalOpNode *node, const RequestWindowOp &window) {
         window_unions_.push_back(std::make_pair(node, window));
     }
+    const PhysicalOpNode* GetKey(uint32_t index) {
+        return window_unions_[index].first;
+    }
+
+    const RequestWindowOp& GetValue(uint32_t index) {
+        return window_unions_[index].second;
+    }
+
+    const uint32_t GetSize() {
+        return window_unions_.size();
+    }
+
     const std::string FnDetail() const {
         std::ostringstream oss;
         for (auto &window_union : window_unions_) {
@@ -875,7 +888,7 @@ class RequestWindowUnionList {
         return oss.str();
     }
     const bool Empty() const { return window_unions_.empty(); }
-    std::list<std::pair<PhysicalOpNode *, RequestWindowOp>> window_unions_;
+    std::vector<std::pair<PhysicalOpNode *, RequestWindowOp>> window_unions_;
 };
 
 class PhysicalWindowNode : public PhysicalUnaryNode, public WindowOp {
@@ -1131,6 +1144,7 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const bool Valid() { return true; }
+    static PhysicalRequestUnionNode *CastFrom(PhysicalOpNode *node);
     bool AddWindowUnion(PhysicalOpNode *node) {
         if (nullptr == node) {
             LOG(WARNING) << "Fail to add window union : table is null";
