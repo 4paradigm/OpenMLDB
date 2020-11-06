@@ -67,8 +67,7 @@ TestArgs *PrepareTable(const std::string &tname) {
     key1->add_ts_name("col2");
     args->idx_name = "index0";
 
-    ::rtidb::storage::MemTable *table =
-        new ::rtidb::storage::MemTable(meta);
+    ::rtidb::storage::MemTable *table = new ::rtidb::storage::MemTable(meta);
     table->Init();
     ::fesql::vm::Schema fe_schema;
     SchemaAdapter::ConvertSchema(meta.column_desc(), &fe_schema);
@@ -180,7 +179,7 @@ TEST_F(TabletCatalogTest, tablet_smoke_test) {
 TEST_F(TabletCatalogTest, segment_handler_test) {
     TestArgs *args = PrepareTable("t1");
     auto handler = std::shared_ptr<TabletTableHandler>(
-        new TabletTableHandler(args->meta[0]), std::shared_ptr<fesql::vm::Tablet>());
+        new TabletTableHandler(args->meta[0], std::shared_ptr<fesql::vm::Tablet>()));
     ClientManager client_manager;
     ASSERT_TRUE(handler->Init(client_manager));
     handler->AddTable(args->tables[0]);
@@ -201,7 +200,7 @@ TEST_F(TabletCatalogTest, segment_handler_test) {
 TEST_F(TabletCatalogTest, segment_handler_pk_not_exist_test) {
     TestArgs *args = PrepareTable("t1");
     auto handler = std::shared_ptr<TabletTableHandler>(
-        new TabletTableHandler(args->meta[0]), std::shared_ptr<fesql::vm::Tablet>());
+        new TabletTableHandler(args->meta[0], std::shared_ptr<fesql::vm::Tablet>()));
     ClientManager client_manager;
     ASSERT_TRUE(handler->Init(client_manager));
     handler->AddTable(args->tables[0]);
