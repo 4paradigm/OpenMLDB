@@ -326,6 +326,7 @@ static bool ExtractSingleRow(std::shared_ptr<DataHandler> handler,
 }
 
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
+    DLOG(INFO) << "Request Row Run with main task";
     return Run(compile_info_->get_sql_context().cluster_job.main_task_id(),
                in_row, out_row);
 }
@@ -338,6 +339,7 @@ int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
                      << " not exist!";
         return -2;
     }
+    DLOG(INFO) << "Request Row Run with task_id " << task_id;
     RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, in_row,
                       is_debug_);
     auto output = task->RunWithCache(ctx);
