@@ -363,7 +363,7 @@ std::shared_ptr<::rtidb::catalog::TabletAccessor> ClusterSDK::GetTablet(const st
         }
     }
     return std::shared_ptr<::rtidb::catalog::TabletAccessor>();
-}    
+}
 
 bool ClusterSDK::GetProcedureInfo(const std::string& db, const std::string& sp_name,
         ::rtidb::api::ProcedureInfo* sp_info, std::string* msg) {
