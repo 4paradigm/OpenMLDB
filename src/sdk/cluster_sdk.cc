@@ -75,7 +75,7 @@ bool ClusterSDK::Init() {
                      << options_.zk_path << " and session timeout " << options_.session_timeout;
         return false;
     }
-    LOG(WARNING) << "init zk client with zk cluster " << options_.zk_cluster << " , zk path " << options_.zk_path
+    LOG(INFO) << "init zk client with zk cluster " << options_.zk_cluster << " , zk path " << options_.zk_path
                  << ",session timeout " << options_.session_timeout << " and session id "
                  << zk_client_->GetSessionTerm();
     ok = InitCatalog();

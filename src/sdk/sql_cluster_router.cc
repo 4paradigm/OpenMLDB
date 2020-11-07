@@ -690,7 +690,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchRequest(
         status->msg = "no tablet found";
         return nullptr;
     }
-    if (client->SQLBatchRequestQuery(db, sql, row_batch, cntl.get(),
+    if (!client->SQLBatchRequestQuery(db, sql, row_batch, cntl.get(),
                                             response.get(),
                                             options_.enable_debug)) {
         status->msg = "request server error " + response->msg();
@@ -943,7 +943,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
         LOG(WARNING) << status->msg;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
-    if (client->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(),
+    if (!client->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(),
                              options_.enable_debug)) {
         status->code = -1;
         status->msg = "request server error";
@@ -1007,7 +1007,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProc
         status->msg = "not tablet found";
         return nullptr;
     }
-    if (client->CallSQLBatchRequestProcedure(
+    if (!client->CallSQLBatchRequestProcedure(
         db, sp_name, row_batch, cntl.get(), response.get(),
         options_.enable_debug)) {
         status->code = -1;
