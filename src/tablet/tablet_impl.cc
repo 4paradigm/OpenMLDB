@@ -5991,43 +5991,6 @@ bool TabletImpl::GetRealEp(uint64_t tid, uint64_t pid,
     return true;
 }
 
-void TabletImpl::GetSchema(RpcController* controller,
-        const rtidb::api::GetSchemaRequest* request,
-        rtidb::api::GetSchemaResponse* response, Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    const std::string& db = request->db_name();
-    const std::string& sql = request->sql();
-    ::fesql::base::Status vm_status;
-    ::fesql::vm::ExplainOutput explain_output;
-    bool ok = engine_.Explain(sql, db, ::fesql::vm::kRequestMode, &explain_output, &vm_status);
-    if (!ok) {
-        response->set_code(::rtidb::base::ReturnCode::kExplainFailed);
-        response->set_msg("fail to explain sql:" + sql + " in db:" + db);
-        LOG(WARNING) << "fail to explain sql:" << sql << " in db:" << db;
-        return;
-    }
-    ::fesql::sdk::SchemaImpl input_schema(explain_output.input_schema);
-    ::fesql::sdk::SchemaImpl output_schema(explain_output.output_schema);
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>* rtidb_input_schema =
-        response->mutable_input_schema();
-    if (!rtidb::catalog::SchemaAdapter::ConvertSchema(input_schema.GetSchema(), rtidb_input_schema)) {
-        response->set_code(::rtidb::base::ReturnCode::kExplainFailed);
-        response->set_msg("convert input schema failed, sql:" + sql + " in db:" + db);
-        LOG(WARNING) << "convert input schema failed, sql:" << sql << " in db:" << db;
-        return;
-    }
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>* rtidb_output_schema =
-        response->mutable_output_schema();
-    if (!rtidb::catalog::SchemaAdapter::ConvertSchema(output_schema.GetSchema(), rtidb_output_schema)) {
-        response->set_code(::rtidb::base::ReturnCode::kConvertSchemaFailed);
-        response->set_msg("convert output schema failed, sql:" + sql + " in db:" + db);
-        LOG(WARNING) << "convert output schema failed, sql:" << sql << " in db:" << db;
-        return;
-    }
-    response->set_code(::rtidb::base::ReturnCode::kOk);
-    response->set_msg("ok");
-}
-
 void TabletImpl::CreateProcedure(RpcController* controller,
         const rtidb::api::CreateProcedureRequest* request,
         rtidb::api::GeneralResponse* response,

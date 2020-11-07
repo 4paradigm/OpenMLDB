@@ -4089,7 +4089,9 @@ void HandleNSClientSetTablePartition(const std::vector<std::string>& parts,
 void HandleNsClientSQL(const std::string sql,
                        ::rtidb::client::NsClient* client) {
     std::string msg;
-    client->ExecuteSQL(sql, msg);
+    if (!client->ExecuteSQL(sql, msg)) {
+        std::cout << "execute sql failed, sql:" << sql << " , msg: " << msg << std::endl;
+    }
 }
 
 void HandleNSClientGetTablePartition(const std::vector<std::string>& parts,
