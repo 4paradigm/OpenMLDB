@@ -335,7 +335,7 @@ bool TabletCatalog::DropProcedure(const std::string& db, const std::string& sp_n
         LOG(WARNING) << "procedure " << sp_name << "not exist";
         return false;
     }
-    sp_map.erase(sp_name);
+    sp_map.erase(it);
     return true;
 }
 

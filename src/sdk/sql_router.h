@@ -47,6 +47,7 @@ class ExplainInfo {
     virtual const std::string& GetLogicalPlan() = 0;
     virtual const std::string& GetPhysicalPlan() = 0;
     virtual const std::string& GetIR() = 0;
+    virtual const std::string& GetRequestName() = 0;
 };
 
 class ProcedureInfo {
@@ -58,6 +59,8 @@ class ProcedureInfo {
     virtual const std::string& GetSql() = 0;
     virtual const ::fesql::sdk::Schema& GetInputSchema() = 0;
     virtual const ::fesql::sdk::Schema& GetOutputSchema() = 0;
+    virtual const std::vector<std::string>& GetTables() = 0;
+    virtual const std::string& GetMainTable() = 0;
 };
 
 class SQLRouter {

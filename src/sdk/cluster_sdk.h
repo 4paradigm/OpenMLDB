@@ -18,6 +18,7 @@
 #ifndef SRC_SDK_CLUSTER_SDK_H_
 #define SRC_SDK_CLUSTER_SDK_H_
 
+#include <snappy.h>
 #include <map>
 #include <memory>
 #include <string>
@@ -83,9 +84,16 @@ class ClusterSDK {
                                                                    const  std::string& name,
                                                                    uint32_t pid);
 
+    bool GetProcedureInfo(const std::string& db, const std::string& sp_name,
+        ::rtidb::api::ProcedureInfo* sp_info, std::string* msg);
+
+    bool GetProcedureInfo(
+            std::vector<std::shared_ptr<::rtidb::api::ProcedureInfo>>* sp_infos, std::string* msg);
+
  private:
     bool InitCatalog();
-    bool RefreshCatalog(const std::vector<std::string>& table_datas);
+    bool RefreshCatalog(const std::vector<std::string>& table_datas,
+            const std::vector<std::string>& sp_datas);
     bool InitTabletClient();
     bool CreateNsClient();
     void WatchNotify();
@@ -109,6 +117,11 @@ class ClusterSDK {
     ::baidu::common::ThreadPool pool_;
     uint64_t session_id_;
     ::rtidb::base::Random rand_;
+    std::string sp_root_path_;
+    std::map<
+        std::string,
+        std::map<std::string, std::shared_ptr<::rtidb::api::ProcedureInfo>>>
+        sp_map_;
 };
 
 }  // namespace sdk
