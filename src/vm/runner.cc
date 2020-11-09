@@ -96,6 +96,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 cluster_job_.AddRunnerToTask(
                     nm_->RegisterNode(runner),
                     dynamic_cast<ProxyRequestRunner*>(input)->task_id());
+                input->set_output_schemas(runner->output_schemas());
                 return RegisterTask(node, cluster_task);
             }
             runner->AddProducer(input);
@@ -136,6 +137,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                             nm_->RegisterNode(runner),
                             dynamic_cast<ProxyRequestRunner*>(input)
                                 ->task_id());
+                        input->set_output_schemas(runner->output_schemas());
                         return RegisterTask(node, cluster_task);
                     }
                     runner->AddProducer(input);
@@ -217,6 +219,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                             nm_->RegisterNode(runner),
                             dynamic_cast<ProxyRequestRunner*>(input)
                                 ->task_id());
+                        input->set_output_schemas(runner->output_schemas());
                         return RegisterTask(node, cluster_task);
                     } else {
                         runner->AddProducer(input);

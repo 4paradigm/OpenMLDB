@@ -431,6 +431,9 @@ class Runner : public node::NodeBase<Runner> {
     const vm::SchemaSourceList& output_schemas() const {
         return output_schemas_;
     }
+    void set_output_schemas(const vm::SchemaSourceList& output_schema) {
+        this->output_schemas_ = output_schema;
+    }
     virtual const std::string GetTypeName() const {
         return RunnerTypeName(type_);
     }
@@ -440,7 +443,7 @@ class Runner : public node::NodeBase<Runner> {
     bool need_cache_;
     bool need_batch_cache_;
     std::vector<Runner*> producers_;
-    const vm::SchemaSourceList output_schemas_;
+    vm::SchemaSourceList output_schemas_;
 };
 class IteratorStatus {
  public:
