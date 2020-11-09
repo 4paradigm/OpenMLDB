@@ -436,16 +436,20 @@ class FuncDefPlanNode : public LeafPlanNode {
     FnNodeFnDef *fn_def_;
 };
 
-class CreateProcedurePlanNode : public LeafPlanNode {
+class CreateProcedurePlanNode : public MultiChildPlanNode {
  public:
-    CreateProcedurePlanNode(const std::string &sp_name,
-                            const NodePointVector &input_parameter_list,
-                            const PlanNodeList &inner_plan_node_list)
-        : LeafPlanNode(kPlanTypeCreateSp),
-          database_(""),
-          sp_name_(sp_name),
-          input_parameter_list_(input_parameter_list),
-          inner_plan_node_list_(inner_plan_node_list) {}
+     CreateProcedurePlanNode(const std::string &sp_name,
+             const NodePointVector &input_parameter_list,
+             const PlanNodeList &inner_plan_node_list)
+         : MultiChildPlanNode(kPlanTypeCreateSp),
+         database_(""),
+         sp_name_(sp_name),
+         input_parameter_list_(input_parameter_list),
+         inner_plan_node_list_(inner_plan_node_list) {
+             for (auto inner_plan_node : inner_plan_node_list) {
+                 AddChild(inner_plan_node);
+             }
+         }
     ~CreateProcedurePlanNode() {}
 
     const std::string &GetDatabase() const { return database_; }
