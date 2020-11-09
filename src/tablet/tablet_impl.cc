@@ -39,10 +39,10 @@
 #include "timer.h"  // NOLINT
 
 using google::protobuf::RepeatedPtrField;
-using ::rtidb::base::ReturnCode;
-using ::rtidb::codec::SchemaCodec;
 using ::rtidb::storage::DataBlock;
 using ::rtidb::storage::Table;
+using ::rtidb::base::ReturnCode;
+using ::rtidb::codec::SchemaCodec;
 
 DECLARE_int32(gc_interval);
 DECLARE_int32(disk_gc_interval);
@@ -132,13 +132,12 @@ TabletImpl::~TabletImpl() {
 }
 
 bool TabletImpl::Init(const std::string& real_endpoint) {
-    return Init(FLAGS_zk_cluster, FLAGS_zk_root_path, FLAGS_endpoint,
-                real_endpoint);
+    return Init(FLAGS_zk_cluster, FLAGS_zk_root_path,
+            FLAGS_endpoint, real_endpoint);
 }
 
 bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
-                      const std::string& endpoint,
-                      const std::string& real_endpoint) {
+        const std::string& endpoint, const std::string& real_endpoint) {
     zk_cluster_ = zk_cluster;
     zk_path_ = zk_path;
     endpoint_ = endpoint;
@@ -161,7 +160,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
 
     if (!zk_cluster.empty()) {
         zk_client_ = new ZkClient(zk_cluster, real_endpoint,
-                                  FLAGS_zk_session_timeout, endpoint, zk_path);
+                FLAGS_zk_session_timeout, endpoint, zk_path);
         bool ok = zk_client_->Init();
         if (!ok) {
             PDLOG(WARNING, "fail to init zookeeper with cluster %s",
@@ -338,9 +337,7 @@ bool TabletImpl::RegisterZK() {
         if (zk_client_->IsExistNode(notify_path_) != 0) {
             zk_client_->CreateNode(notify_path_, "1");
         }
-        if (!zk_client_->WatchItem(
-                notify_path_,
-                boost::bind(&TabletImpl::RefreshTableInfo, this))) {
+        if (!zk_client_->WatchItem(notify_path_, boost::bind(&TabletImpl::RefreshTableInfo, this))) {
             LOG(WARNING) << "add notify watcher failed";
             return false;
         }
@@ -382,11 +379,11 @@ bool TabletImpl::CheckGetDone(::rtidb::api::GetType type, uint64_t ts,
     return false;
 }
 
-int32_t TabletImpl::GetIndex(
-    const ::rtidb::api::GetRequest* request,
-    const ::rtidb::api::TableMeta& meta,
-    const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
-    CombineIterator* it, std::string* value, uint64_t* ts) {
+int32_t TabletImpl::GetIndex(const ::rtidb::api::GetRequest* request,
+                             const ::rtidb::api::TableMeta& meta,
+                             const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
+                             CombineIterator* it, std::string* value,
+                             uint64_t* ts) {
     if (it == nullptr || value == nullptr || ts == nullptr) {
         PDLOG(WARNING, "invalid args");
         return -1;
@@ -441,10 +438,8 @@ int32_t TabletImpl::GetIndex(
                 int8_t* ptr = nullptr;
                 uint32_t size = 0;
                 rtidb::base::Slice data = it->GetValue();
-                const int8_t* row_ptr =
-                    reinterpret_cast<const int8_t*>(data.data());
-                bool ok =
-                    row_project.Project(row_ptr, data.size(), &ptr, &size);
+                const int8_t* row_ptr = reinterpret_cast<const int8_t*>(data.data());
+                bool ok = row_project.Project(row_ptr, data.size(), &ptr, &size);
                 if (!ok) {
                     PDLOG(WARNING, "fail to make a projection");
                     return -4;
@@ -487,8 +482,7 @@ int32_t TabletImpl::GetIndex(
             int8_t* ptr = nullptr;
             uint32_t size = 0;
             rtidb::base::Slice data = it->GetValue();
-            const int8_t* row_ptr =
-                reinterpret_cast<const int8_t*>(data.data());
+            const int8_t* row_ptr = reinterpret_cast<const int8_t*>(data.data());
             bool ok = row_project.Project(row_ptr, data.size(), &ptr, &size);
             if (!ok) {
                 PDLOG(WARNING, "fail to make a projection");
@@ -579,17 +573,13 @@ void TabletImpl::Get(RpcController* controller,
             expire_cnt = ttl.lat_ttl;
         }
     }
-    const ::rtidb::api::TableMeta& table_meta =
-        query_its.begin()->table->GetTableMeta();
-    const std::map<int32_t, std::shared_ptr<Schema>> vers_schema =
-        query_its.begin()->table->GetAllVersionSchema();
-    CombineIterator combine_it(std::move(query_its), request->ts(),
-                               request->type(), expire_time, expire_cnt);
+    const ::rtidb::api::TableMeta& table_meta = query_its.begin()->table->GetTableMeta();
+    const std::map<int32_t, std::shared_ptr<Schema>> vers_schema = query_its.begin()->table->GetAllVersionSchema();
+    CombineIterator combine_it(std::move(query_its), request->ts(), request->type(), expire_time, expire_cnt);
     combine_it.SeekToFirst();
     std::string* value = response->mutable_value();
     uint64_t ts = 0;
-    int32_t code =
-        GetIndex(request, table_meta, vers_schema, &combine_it, value, &ts);
+    int32_t code = GetIndex(request, table_meta, vers_schema, &combine_it, value, &ts);
     response->set_ts(ts);
     response->set_code(code);
     uint64_t end_time = ::baidu::common::timer::get_micros();
@@ -1006,11 +996,11 @@ int TabletImpl::CheckTableMeta(const rtidb::api::TableMeta* table_meta,
     return 0;
 }
 
-int32_t TabletImpl::ScanIndex(
-    const ::rtidb::api::ScanRequest* request,
-    const ::rtidb::api::TableMeta& meta,
-    const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
-    CombineIterator* combine_it, std::string* pairs, uint32_t* count) {
+int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
+                              const ::rtidb::api::TableMeta& meta,
+                              const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
+                              CombineIterator* combine_it, std::string* pairs,
+                              uint32_t* count) {
     uint32_t limit = request->limit();
     uint32_t atleast = request->atleast();
     if (combine_it == NULL || pairs == NULL || count == NULL ||
@@ -1042,8 +1032,7 @@ int32_t TabletImpl::ScanIndex(
     ::rtidb::codec::RowProject row_project(vers_schema, request->projection());
     if (request->projection().size() > 0 && meta.format_version() == 1) {
         if (meta.compress_type() == api::kSnappy) {
-            LOG(WARNING)
-                << "project on compress row data do not eing supported";
+            LOG(WARNING) << "project on compress row data do not eing supported";
             return -1;
         }
         bool ok = row_project.Init();
@@ -1053,9 +1042,8 @@ int32_t TabletImpl::ScanIndex(
         }
         enable_project = true;
     }
-    bool remove_duplicated_record =
-        request->has_enable_remove_duplicated_record() &&
-        request->enable_remove_duplicated_record();
+    bool remove_duplicated_record = request->has_enable_remove_duplicated_record() &&
+                                    request->enable_remove_duplicated_record();
     uint64_t last_time = 0;
     boost::container::deque<std::pair<uint64_t, ::rtidb::base::Slice>> tmp;
     uint32_t total_block_size = 0;
@@ -1100,15 +1088,13 @@ int32_t TabletImpl::ScanIndex(
             int8_t* ptr = nullptr;
             uint32_t size = 0;
             rtidb::base::Slice data = combine_it->GetValue();
-            const int8_t* row_ptr =
-                reinterpret_cast<const int8_t*>(data.data());
+            const int8_t* row_ptr = reinterpret_cast<const int8_t*>(data.data());
             bool ok = row_project.Project(row_ptr, data.size(), &ptr, &size);
             if (!ok) {
                 PDLOG(WARNING, "fail to make a projection");
                 return -4;
             }
-            tmp.emplace_back(ts,
-                             Slice(reinterpret_cast<char*>(ptr), size, true));
+            tmp.emplace_back(ts, Slice(reinterpret_cast<char*>(ptr), size, true));
             total_block_size += size;
         } else {
             rtidb::base::Slice data = combine_it->GetValue();
@@ -1116,9 +1102,7 @@ int32_t TabletImpl::ScanIndex(
             tmp.emplace_back(ts, data);
         }
         if (total_block_size > FLAGS_scan_max_bytes_size) {
-            LOG(WARNING) << "reach the max byte size "
-                         << FLAGS_scan_max_bytes_size << " cur is "
-                         << total_block_size;
+            LOG(WARNING) << "reach the max byte size " << FLAGS_scan_max_bytes_size << " cur is " << total_block_size;
             return -3;
         }
         combine_it->Next();
@@ -1335,18 +1319,14 @@ void TabletImpl::Scan(RpcController* controller,
             expire_cnt = ttl.lat_ttl;
         }
     }
-    const ::rtidb::api::TableMeta& table_meta =
-        query_its.begin()->table->GetTableMeta();
-    const std::map<int32_t, std::shared_ptr<Schema>> vers_schema =
-        query_its.begin()->table->GetAllVersionSchema();
-    CombineIterator combine_it(std::move(query_its), request->st(),
-                               request->st_type(), expire_time, expire_cnt);
+    const ::rtidb::api::TableMeta& table_meta = query_its.begin()->table->GetTableMeta();
+    const std::map<int32_t, std::shared_ptr<Schema>> vers_schema = query_its.begin()->table->GetAllVersionSchema();
+    CombineIterator combine_it(std::move(query_its), request->st(), request->st_type(), expire_time, expire_cnt);
 
     std::string* pairs = response->mutable_pairs();
     uint32_t count = 0;
     int32_t code = 0;
-    code =
-        ScanIndex(request, table_meta, vers_schema, &combine_it, pairs, &count);
+    code = ScanIndex(request, table_meta, vers_schema, &combine_it, pairs, &count);
     response->set_code(code);
     response->set_count(count);
     uint64_t end_time = ::baidu::common::timer::get_micros();
@@ -1950,48 +1930,42 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
                 std::lock_guard<std::mutex> lock(mu_);
                 auto db_it = sp_map_.find(db_name);
                 if (db_it == sp_map_.end()) {
-                    response->set_code(
-                        ::rtidb::base::ReturnCode::kDatabaseNotFound);
+                    response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
                     response->set_msg("db not found");
                     PDLOG(WARNING, "db[%s] not found", db_name.c_str());
                     return;
                 }
                 auto sp_it = db_it->second.find(sp_name);
                 if (sp_it == db_it->second.end()) {
-                    response->set_code(
-                        ::rtidb::base::ReturnCode::kProcedureNotFound);
+                    response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
                     response->set_msg("store procedure not found");
                     PDLOG(WARNING, "store procedure[%s] not found in db[%s]",
-                          sp_name.c_str(), db_name.c_str());
+                            sp_name.c_str(), db_name.c_str());
                     return;
                 }
                 request_compile_info = sp_it->second.request_info;
                 if (request_compile_info == nullptr) {
-                    response->set_code(
-                        ::rtidb::base::ReturnCode::kProcedureNotFound);
+                    response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
                     response->set_msg("invalid procedure compile info");
-                    PDLOG(WARNING,
-                          "invalid procedure compile info of [%s] in db[%s]",
-                          sp_name.c_str(), db_name.c_str());
+                    PDLOG(WARNING, "invalid procedure compile info of [%s] in db[%s]",
+                            sp_name.c_str(), db_name.c_str());
                     return;
                 }
             }
             session.SetCompileInfo(request_compile_info);
             RunRequestQuery(*request, session, *response, *buf);
         } else {
-            bool ok =
-                engine_.Get(request->sql(), request->db(), session, status);
+            bool ok = engine_.Get(request->sql(), request->db(), session, status);
             if (!ok || session.GetCompileInfo() == nullptr) {
                 response->set_msg(status.msg);
                 response->set_code(::rtidb::base::kSQLCompileError);
                 DLOG(WARNING) << "fail to compile sql in request mode:\n"
-                              << request->sql();
+                    << request->sql();
                 return;
             }
             RunRequestQuery(*request, session, *response, *buf);
         }
-        const std::string& sql =
-            session.GetCompileInfo()->get_sql_context().sql;
+        const std::string& sql = session.GetCompileInfo()->get_sql_context().sql;
         if (response->code() != ::rtidb::base::kOk) {
             DLOG(WARNING) << "fail to run sql " << sql;
         } else {
@@ -2001,17 +1975,18 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
 }
 
 void TabletImpl::SubQuery(RpcController* ctrl,
-                          const rtidb::api::QueryRequest* request,
-                          rtidb::api::QueryResponse* response, Closure* done) {
+                       const rtidb::api::QueryRequest* request,
+                       rtidb::api::QueryResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
     ProcessQuery(request, response, &buf);
 }
 
-void TabletImpl::SQLBatchRequestQuery(
-    RpcController* ctrl, const rtidb::api::SQLBatchRequestQueryRequest* request,
-    rtidb::api::SQLBatchRequestQueryResponse* response, Closure* done) {
+void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
+                                      const rtidb::api::SQLBatchRequestQueryRequest* request,
+                                      rtidb::api::SQLBatchRequestQueryResponse* response,
+                                      Closure* done) {
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
@@ -2025,29 +2000,25 @@ void TabletImpl::SQLBatchRequestQuery(
             std::lock_guard<std::mutex> lock(mu_);
             auto db_it = sp_map_.find(request->db());
             if (db_it == sp_map_.end()) {
-                response->set_code(
-                    ::rtidb::base::ReturnCode::kDatabaseNotFound);
+                response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
                 response->set_msg("db not found");
                 PDLOG(WARNING, "db[%s] not found", request->db().c_str());
                 return;
             }
             auto sp_it = db_it->second.find(request->sp_name());
             if (sp_it == db_it->second.end()) {
-                response->set_code(
-                    ::rtidb::base::ReturnCode::kProcedureNotFound);
+                response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
                 response->set_msg("store procedure not found");
                 PDLOG(WARNING, "store procedure[%s] not found in db[%s]",
-                      request->sp_name().c_str(), request->db().c_str());
+                        request->sp_name().c_str(), request->db().c_str());
                 return;
             }
             request_compile_info = sp_it->second.batch_request_info;
             if (request_compile_info == nullptr) {
-                response->set_code(
-                    ::rtidb::base::ReturnCode::kProcedureNotFound);
+                response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
                 response->set_msg("invalid procedure compile info");
-                PDLOG(WARNING,
-                      "invalid procedure compile info of [%s] in db[%s]",
-                      request->sp_name().c_str(), request->db().c_str());
+                PDLOG(WARNING, "invalid procedure compile info of [%s] in db[%s]",
+                        request->sp_name().c_str(), request->db().c_str());
                 return;
             }
             session.SetCompileInfo(request_compile_info);
@@ -2063,8 +2034,7 @@ void TabletImpl::SQLBatchRequestQuery(
             response->set_msg(status.msg);
             response->set_code(::rtidb::base::kSQLCompileError);
             DLOG(WARNING) << "fail to get sql engine: \n"
-                          << request->sql() << "\n"
-                          << status.str();
+                << request->sql() << "\n" << status.str();
             return;
         }
     }
@@ -2077,22 +2047,18 @@ void TabletImpl::SQLBatchRequestQuery(
         return;
     }
     size_t input_row_num = request->non_common_rows().size();
-    size_t common_column_num =
-        compile_info->get_sql_context().common_column_indices.size();
+    size_t common_column_num = compile_info->get_sql_context().common_column_indices.size();
     std::vector<::fesql::codec::Row> input_rows(input_row_num);
     if (common_column_num > 0 &&
-        common_column_num <
-            static_cast<size_t>(session.GetRequestSchema().size())) {
+        common_column_num < static_cast<size_t>(session.GetRequestSchema().size())) {
         ::fesql::codec::Row common_row(request->common_row());
         for (size_t i = 0; i < input_row_num; ++i) {
             input_rows[i] = ::fesql::codec::Row(
-                1, common_row, 1,
-                ::fesql::codec::Row(request->non_common_rows().Get(i)));
+                1, common_row, 1, ::fesql::codec::Row(request->non_common_rows().Get(i)));
         }
     } else {
         for (size_t i = 0; i < input_row_num; ++i) {
-            input_rows[i] =
-                ::fesql::codec::Row(request->non_common_rows().Get(i));
+            input_rows[i] = ::fesql::codec::Row(request->non_common_rows().Get(i));
         }
     }
 
@@ -2211,7 +2177,8 @@ void TabletImpl::ChangeRole(RpcController* controller,
     }
     if (FLAGS_use_name) {
         if (!GetRealEp(tid, pid, &real_ep_map)) {
-            response->set_code(::rtidb::base::ReturnCode::kServerNameNotFound);
+            response->set_code(
+                ::rtidb::base::ReturnCode::kServerNameNotFound);
             response->set_msg("name not found in real_ep_map");
             return;
         }
@@ -2242,7 +2209,7 @@ void TabletImpl::ChangeRole(RpcController* controller,
             if (FLAGS_use_name) {
                 if (!GetRealEp(tid, pid, &r_real_ep_map)) {
                     response->set_code(
-                        ::rtidb::base::ReturnCode::kServerNameNotFound);
+                            ::rtidb::base::ReturnCode::kServerNameNotFound);
                     response->set_msg("name not found in r_real_ep_map");
                     return;
                 }
@@ -2311,7 +2278,7 @@ void TabletImpl::AddReplica(RpcController* controller,
         if (FLAGS_use_name) {
             if (!GetRealEp(request->tid(), request->pid(), &real_ep_map)) {
                 response->set_code(
-                    ::rtidb::base::ReturnCode::kServerNameNotFound);
+                        ::rtidb::base::ReturnCode::kServerNameNotFound);
                 response->set_msg("name not found in real_ep_map");
                 break;
             }
@@ -2319,7 +2286,7 @@ void TabletImpl::AddReplica(RpcController* controller,
         int ret = -1;
         if (request->has_remote_tid()) {
             ret = replicator->AddReplicateNode(real_ep_map,
-                                               request->remote_tid());
+                    request->remote_tid());
         } else {
             ret = replicator->AddReplicateNode(real_ep_map);
         }
@@ -2483,8 +2450,7 @@ void TabletImpl::GetTableSchema(
     response->mutable_table_meta()->CopyFrom(table->GetTableMeta());
 }
 
-void TabletImpl::UpdateTableMetaForAddField(
-    RpcController* controller,
+void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
     const ::rtidb::api::UpdateTableMetaForAddFieldRequest* request,
     ::rtidb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
@@ -2513,8 +2479,7 @@ void TabletImpl::UpdateTableMetaForAddField(
             if (table->CheckFieldExist(col.name())) {
                 continue;
             }
-            rtidb::common::ColumnDesc* column_desc =
-                table_meta.add_added_column_desc();
+            rtidb::common::ColumnDesc* column_desc = table_meta.add_added_column_desc();
             column_desc->CopyFrom(col);
         } else {
             bool do_continue = false;
@@ -2529,8 +2494,7 @@ void TabletImpl::UpdateTableMetaForAddField(
                 continue;
             }
             for (const auto& col : cols) {
-                rtidb::common::ColumnDesc* column_desc =
-                    table_meta.add_added_column_desc();
+                rtidb::common::ColumnDesc* column_desc = table_meta.add_added_column_desc();
                 column_desc->CopyFrom(col);
             }
         }
@@ -2549,29 +2513,25 @@ void TabletImpl::UpdateTableMetaForAddField(
         if (!ok) {
             response->set_code(ReturnCode::kFailToGetDbRootPath);
             response->set_msg("fail to get db root path");
-            LOG(WARNING) << "fail to get table db root path for tid " << tid
-                         << " pid " << pid;
+            LOG(WARNING) << "fail to get table db root path for tid " << tid << " pid " << pid;
             return;
         }
         std::string db_path = db_root_path + "/" + std::to_string(tid) + "_" +
                               std::to_string(pid);
         if (!::rtidb::base::IsExists(db_path)) {
-            LOG(WARNING) << "table db path doesn't exist. tid " << tid
-                         << " pid " << pid;
+            LOG(WARNING) << "table db path doesn't exist. tid " << tid << " pid " << pid;
             response->set_code(ReturnCode::kTableDbPathIsNotExist);
             response->set_msg("table db path is not exist");
             return;
         }
         UpdateTableMeta(db_path, &table_meta, true);
         if (WriteTableMeta(db_path, &table_meta) < 0) {
-            LOG(WARNING) << " write table_meta failed. tid[" << tid << "] pid ["
-                         << pid << "]";
+            LOG(WARNING) << " write table_meta failed. tid[" << tid << "] pid [" << pid << "]";
             response->set_code(ReturnCode::kWriteDataFailed);
             response->set_msg("write data failed");
             return;
         }
-        LOG(INFO) << "success update table meta for table " << tid << " pid "
-                  << pid;
+        LOG(INFO) << "success update table meta for table " << tid << " pid " << pid;
     }
     response->set_code(ReturnCode::kOk);
     response->set_msg("ok");
@@ -2653,7 +2613,7 @@ void TabletImpl::GetTableStatus(
                                 record_idx_cnt += stats[i];
                             }
                         }
-                        delete[] stats;
+                        delete []stats;
                     }
                     status->set_idx_cnt(record_idx_cnt);
                 }
@@ -3188,19 +3148,17 @@ void TabletImpl::SendSnapshotInternal(
         std::string real_endpoint = endpoint;
         if (FLAGS_use_name) {
             auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
-                                                     std::memory_order_acquire);
+                    std::memory_order_acquire);
             auto iter = tmp_map->find(endpoint);
             if (iter == tmp_map->end()) {
-                PDLOG(WARNING,
-                      "name %s not found in real_ep_map."
-                      "tid[%u] pid[%u]",
-                      endpoint.c_str(), tid, pid);
+                PDLOG(WARNING, "name %s not found in real_ep_map."
+                        "tid[%u] pid[%u]", endpoint.c_str(), tid, pid);
                 break;
             }
             real_endpoint = iter->second;
         }
-        FileSender sender(remote_tid, pid, table->GetStorageMode(),
-                          real_endpoint);
+        FileSender sender(
+                remote_tid, pid, table->GetStorageMode(), real_endpoint);
         if (!sender.Init()) {
             PDLOG(WARNING,
                   "Init FileSender failed. tid[%u] pid[%u] endpoint[%s]", tid,
@@ -4158,13 +4116,12 @@ void TabletImpl::GetAllSnapshotOffset(
 }
 
 void TabletImpl::GetCatalog(RpcController* controller,
-                            const ::rtidb::api::GetCatalogRequest* request,
-                            ::rtidb::api::GetCatalogResponse* response,
-                            Closure* done) {
+                             const ::rtidb::api::GetCatalogRequest* request,
+                             ::rtidb::api::GetCatalogResponse* response,
+                             Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (catalog_) {
-        ::rtidb::common::CatalogInfo* catalog_info =
-            response->mutable_catalog();
+        ::rtidb::common::CatalogInfo* catalog_info = response->mutable_catalog();
         catalog_info->set_version(catalog_->GetVersion());
         catalog_info->set_endpoint(FLAGS_endpoint);
         response->set_code(0);
@@ -4513,15 +4470,15 @@ int TabletImpl::CreateTableInternal(const ::rtidb::api::TableMeta* table_meta,
     replicators_[table_meta->tid()].insert(
         std::make_pair(table_meta->pid(), replicator));
     if (table_meta->format_version() == 1 &&
-        table_meta->storage_mode() == ::rtidb::common::kMemory) {
+            table_meta->storage_mode() == ::rtidb::common::kMemory) {
         bool ok = catalog_->AddTable(*table_meta, table);
         engine_.ClearCacheLocked(table_meta->db());
         if (ok) {
             LOG(INFO) << "add table " << table_meta->name()
-                      << " to catalog with db " << table_meta->db();
+                << " to catalog with db " << table_meta->db();
         } else {
             LOG(WARNING) << "fail to add table " << table_meta->name()
-                         << " to catalog with db " << table_meta->db();
+                << " to catalog with db " << table_meta->db();
         }
     }
     return 0;
@@ -5074,8 +5031,7 @@ void TabletImpl::RefreshTableInfo() {
     std::string db_table_notify_path = zk_path_ + "/table/notify";
     std::string value;
     if (!zk_client_->GetNodeValue(db_table_notify_path, value)) {
-        LOG(WARNING) << "fail to get node value. node is "
-                     << db_table_notify_path;
+        LOG(WARNING) << "fail to get node value. node is " << db_table_notify_path;
         return;
     }
     uint64_t version = 0;
@@ -5105,8 +5061,7 @@ void TabletImpl::RefreshTableInfo() {
         }
         ::rtidb::nameserver::TableInfo table_info;
         if (!table_info.ParseFromString(value)) {
-            LOG(WARNING) << "fail to parse table proto. node: " << node
-                         << " value: " << value;
+            LOG(WARNING) << "fail to parse table proto. node: " << node << " value: "<< value;
             continue;
         }
         table_info_vec.push_back(std::move(table_info));
@@ -5481,14 +5436,12 @@ void TabletImpl::SendIndexDataInternal(
         } else {
             std::string real_endpoint = kv.second;
             if (FLAGS_use_name) {
-                auto tmp_map = std::atomic_load_explicit(
-                    &real_ep_map_, std::memory_order_acquire);
+                auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+                        std::memory_order_acquire);
                 auto iter = tmp_map->find(kv.second);
                 if (iter == tmp_map->end()) {
-                    PDLOG(WARNING,
-                          "name %s not found in real_ep_map."
-                          "tid[%u] pid[%u]",
-                          kv.second.c_str(), tid, pid);
+                    PDLOG(WARNING, "name %s not found in real_ep_map."
+                            "tid[%u] pid[%u]", kv.second.c_str(), tid, pid);
                     break;
                 }
                 real_endpoint = iter->second;
@@ -5603,23 +5556,19 @@ void TabletImpl::DumpIndexDataInternal(
         SetTaskStatus(task, ::rtidb::api::kFailed);
         return;
     }
-    std::string index_path = db_root_path + "/" + std::to_string(tid) + "_" +
-                             std::to_string(pid) + "/index/";
+    std::string index_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid) + "/index/";
     if (!::rtidb::base::MkdirRecur(index_path)) {
-        LOG(WARNING) << "fail to create path " << index_path << ". tid " << tid
-                     << " pid " << pid;
+        LOG(WARNING) << "fail to create path " << index_path << ". tid " << tid << " pid " << pid;
         SetTaskStatus(task, ::rtidb::api::kFailed);
         return;
     }
     std::vector<::rtidb::log::WriteHandle*> whs;
     for (uint32_t i = 0; i < partition_num; i++) {
-        std::string index_file_name =
-            std::to_string(pid) + "_" + std::to_string(i) + "_index.data";
+        std::string index_file_name = std::to_string(pid) + "_" + std::to_string(i) + "_index.data";
         std::string index_data_path = index_path + index_file_name;
         FILE* fd = fopen(index_data_path.c_str(), "wb+");
         if (fd == NULL) {
-            LOG(WARNING) << "fail to create file " << index_data_path
-                         << ". tid " << tid << " pid " << pid;
+            LOG(WARNING) << "fail to create file " << index_data_path << ". tid " << tid << " pid " << pid;
             SetTaskStatus(task, ::rtidb::api::kFailed);
             for (auto& wh : whs) {
                 delete wh;
@@ -5627,8 +5576,7 @@ void TabletImpl::DumpIndexDataInternal(
             }
             return;
         }
-        ::rtidb::log::WriteHandle* wh =
-            new ::rtidb::log::WriteHandle(index_file_name, fd);
+        ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd);
         whs.push_back(wh);
     }
     if (memtable_snapshot->DumpIndexData(table, column_key, idx, whs)) {
@@ -5761,8 +5709,7 @@ void TabletImpl::LoadIndexDataInternal(
         SetTaskStatus(task, ::rtidb::api::TaskStatus::kFailed);
         return;
     }
-    ::rtidb::log::SequentialFile* seq_file =
-        ::rtidb::log::NewSeqFile(index_file_path, fd);
+    ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(index_file_path, fd);
     ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
     std::string buffer;
     uint64_t succ_cnt = 0;
@@ -5797,25 +5744,20 @@ void TabletImpl::LoadIndexDataInternal(
         succ_cnt++;
     }
     delete seq_file;
-    if (cur_pid == partition_num - 1 ||
-        (cur_pid + 1 == pid && pid == partition_num - 1)) {
+    if (cur_pid == partition_num - 1 || (cur_pid + 1 == pid && pid == partition_num - 1)) {
         if (FLAGS_recycle_bin_enabled) {
             std::string recycle_bin_root_path;
-            ok = ChooseRecycleBinRootPath(tid, pid, table->GetStorageMode(),
-                                          recycle_bin_root_path);
+            ok = ChooseRecycleBinRootPath(tid, pid, table->GetStorageMode(), recycle_bin_root_path);
             if (!ok) {
-                LOG(WARNING) << "fail to get recycle bin root path. tid " << tid
-                             << " pid " << pid;
+                LOG(WARNING) << "fail to get recycle bin root path. tid " << tid << " pid " << pid;
                 rtidb::base::RemoveDirRecursive(index_path);
             } else {
-                std::string recycle_path = recycle_bin_root_path + "/" +
-                                           std::to_string(tid) + "_" +
+                std::string recycle_path = recycle_bin_root_path + "/" + std::to_string(tid) + "_" +
                                            std::to_string(pid);
                 if (!rtidb::base::IsExists(recycle_path)) {
                     rtidb::base::Mkdir(recycle_path);
                 }
-                std::string dst =
-                    recycle_path + "/index" + rtidb::base::GetNowTime();
+                std::string dst = recycle_path + "/index" + rtidb::base::GetNowTime();
                 rtidb::base::Rename(index_path, dst);
             }
         } else {
@@ -5953,17 +5895,14 @@ void TabletImpl::AddIndex(RpcController* controller,
         return;
     }
     std::string db_root_path;
-    bool ok = ChooseDBRootPath(tid, pid, ::rtidb::common::StorageMode::kMemory,
-                               db_root_path);
+    bool ok = ChooseDBRootPath(tid, pid, ::rtidb::common::StorageMode::kMemory, db_root_path);
     if (!ok) {
         response->set_code(::rtidb::base::ReturnCode::kFailToGetDbRootPath);
         response->set_msg("fail to get db root path");
-        PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid,
-              pid);
+        PDLOG(WARNING, "fail to get table db root path for tid %u, pid %u", tid, pid);
         return;
     }
-    std::string db_path =
-        db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+    std::string db_path = db_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
     if (!::rtidb::base::IsExists(db_path)) {
         PDLOG(WARNING, "table db path doesn't exist. tid %u, pid %u", tid, pid);
         response->set_code(::rtidb::base::ReturnCode::kTableDbPathIsNotExist);
@@ -6008,10 +5947,9 @@ void TabletImpl::CancelOP(RpcController* controller,
     response->set_msg("ok");
 }
 
-void TabletImpl::UpdateRealEndpointMap(
-    RpcController* controller,
-    const rtidb::api::UpdateRealEndpointMapRequest* request,
-    rtidb::api::GeneralResponse* response, Closure* done) {
+void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
+        const rtidb::api::UpdateRealEndpointMapRequest* request,
+        rtidb::api::GeneralResponse* response, Closure* done) {
     DLOG(INFO) << "UpdateRealEndpointMap";
     brpc::ClosureGuard done_guard(done);
     if (FLAGS_zk_cluster.empty()) {
@@ -6031,29 +5969,28 @@ void TabletImpl::UpdateRealEndpointMap(
     for (int i = 0; i < request->real_endpoint_map_size(); i++) {
         auto& pair = request->real_endpoint_map(i);
         tmp_real_ep_map->insert(
-            std::make_pair(pair.name(), pair.real_endpoint()));
+                std::make_pair(pair.name(), pair.real_endpoint()));
     }
     std::atomic_store_explicit(&real_ep_map_, tmp_real_ep_map,
-                               std::memory_order_release);
+            std::memory_order_release);
     catalog_->UpdateClient(*tmp_real_ep_map);
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
 bool TabletImpl::GetRealEp(uint64_t tid, uint64_t pid,
-                           std::map<std::string, std::string>* real_ep_map) {
+        std::map<std::string, std::string>* real_ep_map) {
     if (real_ep_map == nullptr) {
         return false;
     }
-    auto tmp_map =
-        std::atomic_load_explicit(&real_ep_map_, std::memory_order_acquire);
-    for (auto rit = real_ep_map->begin(); rit != real_ep_map->end(); ++rit) {
+    auto tmp_map = std::atomic_load_explicit(&real_ep_map_,
+            std::memory_order_acquire);
+    for (auto rit = real_ep_map->begin();
+            rit != real_ep_map->end(); ++rit) {
         auto iter = tmp_map->find(rit->first);
         if (iter == tmp_map->end()) {
-            PDLOG(WARNING,
-                  "name %s not found in real_ep_map."
-                  "tid[%u] pid[%u]",
-                  rit->first.c_str(), tid, pid);
+            PDLOG(WARNING, "name %s not found in real_ep_map."
+                    "tid[%u] pid[%u]", rit->first.c_str(), tid, pid);
             return false;
         }
         rit->second = iter->second;
@@ -6061,55 +5998,10 @@ bool TabletImpl::GetRealEp(uint64_t tid, uint64_t pid,
     return true;
 }
 
-void TabletImpl::GetSchema(RpcController* controller,
-                           const rtidb::api::GetSchemaRequest* request,
-                           rtidb::api::GetSchemaResponse* response,
-                           Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    const std::string& db = request->db_name();
-    const std::string& sql = request->sql();
-    ::fesql::base::Status vm_status;
-    ::fesql::vm::ExplainOutput explain_output;
-    bool ok = engine_.Explain(sql, db, ::fesql::vm::kRequestMode,
-                              &explain_output, &vm_status);
-    if (!ok) {
-        response->set_code(::rtidb::base::ReturnCode::kExplainFailed);
-        response->set_msg("fail to explain sql:" + sql + " in db:" + db);
-        LOG(WARNING) << "fail to explain sql:" << sql << " in db:" << db;
-        return;
-    }
-    ::fesql::sdk::SchemaImpl input_schema(explain_output.input_schema);
-    ::fesql::sdk::SchemaImpl output_schema(explain_output.output_schema);
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>*
-        rtidb_input_schema = response->mutable_input_schema();
-    if (!rtidb::catalog::SchemaAdapter::ConvertSchema(input_schema.GetSchema(),
-                                                      rtidb_input_schema)) {
-        response->set_code(::rtidb::base::ReturnCode::kExplainFailed);
-        response->set_msg("convert input schema failed, sql:" + sql +
-                          " in db:" + db);
-        LOG(WARNING) << "convert input schema failed, sql:" << sql
-                     << " in db:" << db;
-        return;
-    }
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>*
-        rtidb_output_schema = response->mutable_output_schema();
-    if (!rtidb::catalog::SchemaAdapter::ConvertSchema(output_schema.GetSchema(),
-                                                      rtidb_output_schema)) {
-        response->set_code(::rtidb::base::ReturnCode::kConvertSchemaFailed);
-        response->set_msg("convert output schema failed, sql:" + sql +
-                          " in db:" + db);
-        LOG(WARNING) << "convert output schema failed, sql:" << sql
-                     << " in db:" << db;
-        return;
-    }
-    response->set_code(::rtidb::base::ReturnCode::kOk);
-    response->set_msg("ok");
-}
-
-void TabletImpl::CreateProcedure(
-    RpcController* controller,
-    const rtidb::api::CreateProcedureRequest* request,
-    rtidb::api::GeneralResponse* response, Closure* done) {
+void TabletImpl::CreateProcedure(RpcController* controller,
+        const rtidb::api::CreateProcedureRequest* request,
+        rtidb::api::GeneralResponse* response,
+        Closure* done) {
     brpc::ClosureGuard done_guard(done);
     auto& sp_info = request->sp_info();
     const std::string& db_name = sp_info.db_name();
@@ -6145,11 +6037,11 @@ void TabletImpl::CreateProcedure(
 
     ok = catalog_->AddProcedure(db_name, sp_name, sql);
     if (ok) {
-        LOG(INFO) << "add procedure " << sp_name << " to catalog with db "
-                  << db_name;
+        LOG(INFO) << "add procedure " << sp_name
+            << " to catalog with db " << db_name;
     } else {
         LOG(WARNING) << "fail to add procedure " << sp_name
-                     << " to catalog with db " << db_name;
+            << " to catalog with db " << db_name;
     }
 
     {
@@ -6157,28 +6049,24 @@ void TabletImpl::CreateProcedure(
         auto& sp_map_of_db = sp_map_[db_name];
         auto sp_it = sp_map_of_db.find(sp_name);
         if (sp_it != sp_map_of_db.end()) {
-            response->set_code(
-                ::rtidb::base::ReturnCode::kProcedureAlreadyExists);
+            response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
             response->set_msg("store procedure already exists");
             PDLOG(WARNING, "store procedure[%s] already exists in db[%s]",
-                  sp_name.c_str(), db_name.c_str());
+                    sp_name.c_str(), db_name.c_str());
             return;
         } else {
-            sp_map_of_db.insert(
-                sp_it,
-                std::make_pair(sp_name, SQLProcedureCacheEntry(
-                                            sp_info, session.GetCompileInfo(),
-                                            batch_session.GetCompileInfo())));
+            sp_map_of_db.insert(sp_it, std::make_pair(sp_name, SQLProcedureCacheEntry(
+                sp_info, session.GetCompileInfo(), batch_session.GetCompileInfo())));
         }
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
 
-void TabletImpl::DropProcedure(
-    RpcController* controller,
-    const ::rtidb::api::DropProcedureRequest* request,
-    ::rtidb::api::GeneralResponse* response, Closure* done) {
+void TabletImpl::DropProcedure(RpcController* controller,
+        const ::rtidb::api::DropProcedureRequest* request,
+        ::rtidb::api::GeneralResponse* response,
+        Closure* done) {
     brpc::ClosureGuard done_guard(done);
     const std::string& db_name = request->db_name();
     const std::string& sp_name = request->sp_name();
@@ -6187,13 +6075,13 @@ void TabletImpl::DropProcedure(
         sp_map_[db_name].erase(sp_name);
     }
     if (!catalog_->DropProcedure(db_name, sp_name)) {
-        LOG(WARNING) << "drop procedure" << db_name << "." << sp_name
-                     << " in catalog failed";
+        LOG(WARNING) << "drop procedure" << db_name << "."
+            << sp_name << " in catalog failed";
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
     PDLOG(INFO, "drop procedure success. db_name[%s] sp_name[%s]",
-          db_name.c_str(), sp_name.c_str());
+        db_name.c_str(), sp_name.c_str());
 }
 
 void TabletImpl::RunRequestQuery(const rtidb::api::QueryRequest& request,
