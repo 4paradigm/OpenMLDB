@@ -14,6 +14,7 @@ import lombok.Data;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -62,10 +63,15 @@ public class DDLEngine {
             PhysicalOpNode plan = engine.getPlan();
             List<PhysicalOpNode> listNodes = new ArrayList<PhysicalOpNode>();
             dagToList(plan, listNodes);
-            parseRtidbIndex(listNodes, tableDefMap);
-            plan.Print();
-            System.out.println("plan info");
-            System.out.println(plan.GetProducerCnt());
+            printDagListInfo(listNodes);
+            Map<String, RtidbTable> rtidbTables = parseRtidbIndex(listNodes, tableDefMap);
+            for (Map.Entry<String, RtidbTable> e : rtidbTables.entrySet()) {
+                System.out.println(e.getValue().toDDL());
+                System.out.println(";");
+            }
+            // plan.Print();
+            // System.out.println("plan info");
+            // System.out.println(plan.GetProducerCnt());
         } catch (UnsupportedFesqlException e) {
             e.printStackTrace();
         } catch (FesqlException e) {
@@ -76,46 +82,60 @@ public class DDLEngine {
     /**
      * 只对window op做解析，因为fesql node类型太多了，暂时没办法做通用性解析
      */
-    public void parseWindowOp(PhysicalRequestUnionNode node, Map<String, RtidbTable> rtidbTables) {
+    public static void parseWindowOp(PhysicalOpNode node, Map<String, RtidbTable> rtidbTables) {
         logger.info("begin to pares window op");
-        List<String> keys = new ArrayList<>();
+        // List<String> keys = new ArrayList<>();
         PhysicalRequestUnionNode castNode = PhysicalRequestUnionNode.CastFrom(node);
-        for (int i = 0; i < castNode.window().partition().keys().GetChildNum(); i++) {
-            keys.add(castNode.window().partition().keys().GetChild(i).GetExprString());
-        }
+        
         String ts = castNode.window().sort().orders().order_by().GetChild(0).GetExprString();
         long start = -1;
         long end = -1;
         long cntStart = -1;
         long cntEnd = -1;
         if (castNode.window().range().frame().frame_range() != null) {
-//            System.out.println(castNode.window().range().frame().frame_range().start().GetExprString());
-//            System.out.println(castNode.window().range().frame().frame_range().end().GetExprString());
             start = Math.abs(Long.valueOf(castNode.window().range().frame().frame_range().start().GetExprString()));
             end = Math.abs(Long.valueOf(castNode.window().range().frame().frame_range().end().GetExprString()));
         } else {
-//            System.out.println(castNode.window().range().frame().frame_rows().start().GetExprString());
-//            System.out.println(castNode.window().range().frame().frame_rows().end().GetExprString());
             cntStart = Long.valueOf(castNode.window().range().frame().frame_rows().start().GetExprString());
             cntEnd = Long.valueOf(castNode.window().range().frame().frame_rows().end().GetExprString());
         }
-
+        List<PhysicalOpNode> nodes = new ArrayList<>();
+        for (int i = 0; i < castNode.GetProducerCnt(); i++) {
+            nodes.add(castNode.GetProducer(i));
+        }
         for (int i = 0; i < castNode.window_unions().GetSize(); i++) {
-            // System.out.println(castNode.window_unions().GetKey(j).GetTypeName());
-            PhysicalDataProviderNode unionTable = findDataProviderNode(castNode.window_unions().GetKey(i));
+            nodes.add(castNode.window_unions().GetKey(i));
+        }
+
+        for (PhysicalOpNode e : nodes) {
+            PhysicalDataProviderNode unionTable = findDataProviderNode(e);
             System.out.println("union table = " + unionTable.GetName());
+
             String table = unionTable.GetName();
             RtidbTable rtidbTable = rtidbTables.get(table);
+
             RtidbIndex index = new RtidbIndex();
-            index.getKeys().addAll(keys);
+            List<String> keys = index.getKeys();
+            for (int keyIndex = 0; keyIndex < castNode.window().partition().keys().GetChildNum(); keyIndex++) {
+                String key = CoreAPI.ResolvedSourceColumnName(e, castNode.window().partition().keys().GetChild(keyIndex));
+                System.out.println(key);
+                keys.add(key);
+            }
+
             index.setTs(ts);
             if (start != -1) {
                 index.setExpire(start);
+            } else {
+                // 60秒
+                index.setExpire(60 * 1000);
             }
             if (cntStart != -1) {
                 index .setAtmost(cntStart);
+            } else {
+                index.setAtmost(1);
             }
             rtidbTable.addIndex(index);
+            // System.out.println(rtidbTable.toDDL());
         }
         logger.info("end to pares window op");
     }
@@ -133,6 +153,7 @@ public class DDLEngine {
                 if (rtidbTable == null) {
                     rtidbTable = new RtidbTable();
                     rtidbTable.setTableName(castNode.GetName());
+                    rtidbTable.setSchema(tableDefMap.get(castNode.GetName()));
                     rtidbTables.put(castNode.GetName(), rtidbTable);
                 }
                 continue;
@@ -147,43 +168,7 @@ public class DDLEngine {
                 continue;
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpRequestUnoin.swigValue()) {
-                System.out.println("kPhysicalOpRequestUnoin ");
-                PhysicalRequestUnionNode castNode = PhysicalRequestUnionNode.CastFrom(node);
-                
-                // System.out.println(castNode.SchemaToString());
-                
-                for (int i = 0; i < castNode.GetProducerCnt(); i++) {
-                    // RequestWindowUnionList wu = castNode.window_unions()
-                    for (int j = 0; j < castNode.window_unions().GetSize(); j++) {
-                        System.out.println(castNode.window_unions().GetKey(j).GetTypeName());
-                        PhysicalDataProviderNode unionTable = findDataProviderNode(castNode.window_unions().GetKey(j));
-                        System.out.println("union table = " + unionTable.GetName());
-                    }
-                    
-                    System.out.println("kPhysicalOpRequestUnoin " + castNode.GetProducer(i).GetTypeName());
-                    // PhysicalDataProviderNode unionTable = findDataProviderNode(castNode.GetProducer(i));
-                }
-
-                System.out.println(castNode.window().ToString());
-                System.out.println(castNode.window().partition().keys().GetChild(0).GetExprString());
-                System.out.println(castNode.window().partition().keys().GetChild(1).GetExprString());
-        
-                System.out.println(castNode.window().sort().orders().order_by().GetChild(0).GetExprString());
-                System.out.println(castNode.window().range().range_key().GetExprString());
-                if (castNode.window().range().frame().frame_range() != null) {
-                    System.out.println(castNode.window().range().frame().frame_range().start().GetExprString());
-                    System.out.println(castNode.window().range().frame().frame_range().end().GetExprString());
-                } else {
-                    System.out.println(castNode.window().range().frame().frame_rows().start().GetExprString());
-                    System.out.println(castNode.window().range().frame().frame_rows().end().GetExprString());
-                }
-                
-                // for (int i = 0; i < castNode.window().index_key().keys().GetChildNum(); i++) {
-                //     System.out.println(castNode.window().index_key().keys().GetChild(i).GetTypeName());
-                // }
-                
-                System.out.println(castNode.window_unions().FnDetail());
-                System.out.println("kPhysicalOpRequestUnoin end");
+                parseWindowOp(node, rtidbTables);
                 continue;
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpProject.swigValue()) {
@@ -290,11 +275,31 @@ public class DDLEngine {
     }
 
     public static void dagToList(PhysicalOpNode node, List<PhysicalOpNode> list) {
-//        com._4paradigm.fesql.vm.PhysicalOpType type = node.getType_();
+        PhysicalOpType type = node.getType_();
+        // 需要针对union node做特殊处理
+        if (type.swigValue() == PhysicalOpType.kPhysicalOpRequestUnoin.swigValue()) {
+            PhysicalRequestUnionNode castNode = PhysicalRequestUnionNode.CastFrom(node);
+            for (int i = 0; i < castNode.window_unions().GetSize(); i++) {
+                dagToList(castNode.window_unions().GetKey(i), list);
+            }
+        }
+
         for (long i = 0; i < node.GetProducerCnt(); i++) {
             dagToList(node.GetProducer(i), list);
         }
         list.add(node);
+    }
+
+    public static void printDagListInfo(List<PhysicalOpNode> list) {
+        for (PhysicalOpNode node : list) {
+            System.out.println("dagToList node type = " + node.GetTypeName());
+            PhysicalOpType type = node.getType_();
+             if (type.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
+                 PhysicalDataProviderNode castNode = PhysicalDataProviderNode.CastFrom(node);
+                System.out.println("PhysicalDataProviderNode = " + castNode.GetName());
+             }
+            
+        }
     }
 
     public static TypeOuterClass.Type getFesqlType(String type) {
@@ -328,6 +333,54 @@ public class DDLEngine {
         return null;
     }
 
+    public static String getDDLType(TypeOuterClass.Type type) {
+        if (TypeOuterClass.Type.kInt64 == type) {
+            return "bigint";
+        }
+        if (TypeOuterClass.Type.kInt16 == type) {
+            return "smallint";
+        }
+        if (TypeOuterClass.Type.kInt32 == type) {
+            return "int";
+        }
+        if (TypeOuterClass.Type.kFloat == type) {
+            return "float";
+        }
+        if (TypeOuterClass.Type.kDouble == type) {
+            return "double";
+        }
+        if (TypeOuterClass.Type.kVarchar == type) {
+            return "string";
+        }
+        if (TypeOuterClass.Type.kBool == type) {
+            return "bool";
+        }
+        if (TypeOuterClass.Type.kTimestamp == type) {
+            return "timestamp";
+        }
+        if (TypeOuterClass.Type.kDate == type) {
+            return "date";
+        }
+        return null;
+    }
+
+    public static String getRtidbIndexType(TTLType type) {
+        if (TTLType.kAbsAndLat == type) {
+            return "absandlat";
+        }
+        if (TTLType.kAbsolute == type) {
+            return "absolute";
+        }
+        if (TTLType.kLatest == type) {
+            return "latest";
+        }
+        if (TTLType.kAbsOrLat == type) {
+            return "absorlat";
+        }
+        return null;
+
+    }
+
     public static List<TypeOuterClass.TableDef> getTableDefs(String jsonObject) {
         List<TypeOuterClass.TableDef> tableDefs = new ArrayList<>();
 //        Gson gson = new Gson();
@@ -345,6 +398,15 @@ public class DDLEngine {
             tableDefs.add(table.build());
         }
         return tableDefs;
+    }
+
+    public static List<String> addEscapeChar(List<String> list, String singleChar) {
+        List<String> newList = new ArrayList<>();
+        for (String e : list) {
+            String str = String.format("%s%s%s", singleChar, e, singleChar);
+            newList.add(str);
+        }
+        return newList;
     }
 
 
@@ -374,7 +436,7 @@ class RtidbTable {
     public void addIndex(RtidbIndex index) {
         boolean flag = true;
         for (RtidbIndex e : indexs) {
-            if (indexs.equals(e)) {
+            if (index.equals(e)) {
                 flag = false;
                 if (index.getAtmost() > e.getAtmost()) {
                     e.setAtmost(index.getAtmost());
@@ -388,6 +450,29 @@ class RtidbTable {
         if (flag) {
             indexs.add(index);
         }
+    }
+
+    public String toDDL() {
+        StringBuilder str = new StringBuilder();
+        str.append("create table ");
+        String newTableName = String.format("`%s`", tableName);
+        str.append(newTableName);
+        str.append("(\n");
+        for (int i = 0; i < schema.getColumnsCount(); i++) {
+            String name = String.format("`%s`", schema.getColumns(i).getName());
+            str.append(name);
+            str.append(" ");
+            str.append(DDLEngine.getDDLType(schema.getColumns(i).getType()));
+            str.append(",\n");
+        }
+        List<String> indexsList = new ArrayList<>();
+        for (RtidbIndex e : indexs) {
+            indexsList.add(e.toIndexString());
+        }
+        str.append(StringUtils.join(indexsList, ",\n"));
+        str.append("\n)");
+        // str.append(schema);
+        return str.toString();
     }
 }
 
@@ -406,7 +491,34 @@ class RtidbIndex {
     private TTLType type = TTLType.kAbsAndLat;
     // 映射到ritdb是最多保留多少条数据，不是最少
     private long atmost = 0;
+    // 毫秒单位
     private long expire = 0;
+    public String toIndexString() {
+        List<String> newKeys = DDLEngine.addEscapeChar(keys, "`");
+        String key = StringUtils.join(newKeys, ",");
+        String ttlType = DDLEngine.getRtidbIndexType(type);
+        String index = String.format("index(key=(%s), ts=`%s`, ttl=(%s), ttl_type=%s)", key, ts, getTTL(), ttlType);
+        return index;
+    }
+
+    public String getTTL() {
+        if (TTLType.kAbsAndLat == type) {
+            long expireStr = expire / (60 * 1000);
+            return expireStr + "m, " + atmost;
+        }
+        if (TTLType.kAbsolute == type) {
+            long expireStr = expire / (60 * 1000);
+            return String.valueOf(expireStr);
+        }
+        if (TTLType.kLatest == type) {
+            return String.valueOf(atmost);
+        }
+        if (TTLType.kAbsOrLat == type) {
+            long expireStr = expire / (60 * 1000);
+            return expireStr + "m, " + atmost;
+        }
+        return null;
+    }
 //    @Override
     public boolean equals(RtidbIndex e) {
         return  this.getType() == e.getType() && this.getKeys().equals(e.getKeys()) && this.ts.equals(e.getTs());

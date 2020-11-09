@@ -99,6 +99,10 @@ class CoreAPI {
                                   fesql::node::ColumnRefNode* expr);
     static int ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                   int32_t schema_idx, int32_t column_idx);
+    // 获取原始列名的接口
+    static std::string ResolvedSourceColumnName(fesql::vm::PhysicalOpNode* node, fesql::node::ExprNode* expr);
+    // 获取列名的接口
+    static std::string ResolvedColumnName(fesql::vm::PhysicalOpNode* node, fesql::node::ExprNode* expr);
     static fesql::codec::Row RowProject(const fesql::vm::RawPtrHandle fn,
                                         const fesql::codec::Row row,
                                         const bool need_free = false);
