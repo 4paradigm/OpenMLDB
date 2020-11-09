@@ -140,6 +140,11 @@ public class SqlClusterExecutor implements SqlExecutor {
         return impl;
     }
 
+    public CallablePreparedStatementImpl getCallablePreparedStmt(String db, String spName)  throws SQLException {
+        CallablePreparedStatementImpl impl = new CallablePreparedStatementImpl(db, spName, this.sqlRouter);
+        return impl;
+    }
+
     @Override
     public SQLInsertRows getInsertRows(String db, String sql) {
         Status status = new Status();
