@@ -212,6 +212,11 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
               FLAGS_recycle_hdd_bin_root_path.c_str());
         return false;
     }
+    std::map<std::string, std::string> real_endpoint_map = { {endpoint, real_endpoint} };
+    if (!catalog_->UpdateClient(real_endpoint_map)) {
+        PDLOG(WARNING, "update client failed");
+        return false;
+    }
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval,
                              boost::bind(&TabletImpl::SchedMakeSnapshot, this));
@@ -333,6 +338,10 @@ bool TabletImpl::RegisterZK() {
         }
         if (!zk_client_->WatchItem(notify_path_, boost::bind(&TabletImpl::RefreshTableInfo, this))) {
             LOG(WARNING) << "add notify watcher failed";
+            return false;
+        }
+        if (!zk_client_->WatchChildren(zk_path_ + "/nodes", boost::bind(&TabletImpl::RefreshTablet, this, _1))) {
+            LOG(WARNING) << "add nodes watcher failed";
             return false;
         }
         keep_alive_pool_.DelayTask(
@@ -5061,6 +5070,23 @@ void TabletImpl::RefreshTableInfo() {
         table_info_vec.push_back(std::move(table_info));
     }
     catalog_->RefreshTable(table_info_vec, version);
+}
+
+void TabletImpl::RefreshTablet(const std::vector<std::string>& children) {
+    std::map<std::string, std::string> real_endpoint_map;
+    for (const auto& endpoint : children) {
+        if (FLAGS_use_name) {
+            std::string real_ep;
+            if (!zk_client_->GetNodeValue(zk_path_ + "/map/names/" + endpoint, real_ep)) {
+                PDLOG(WARNING, "get tablet names value failed");
+                continue;
+            }
+            real_endpoint_map.emplace(endpoint, real_ep);
+        } else {
+            real_endpoint_map.emplace(endpoint, endpoint);
+        }
+    }
+    catalog_->UpdateClient(real_endpoint_map);
 }
 
 int TabletImpl::CheckDimessionPut(const ::rtidb::api::PutRequest* request,

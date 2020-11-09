@@ -186,6 +186,10 @@ std::shared_ptr<TabletAccessor> ClientManager::GetTablet() const {
 }
 
 bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpoint_map) {
+    if (endpoint_map.empty()) {
+        DLOG(INFO) << "endpoint_map is empty";
+        return true;
+    }
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     for (const auto& kv : endpoint_map) {
         auto it = real_endpoint_map_.find(kv.first);
