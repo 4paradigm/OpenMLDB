@@ -98,6 +98,7 @@ std::shared_ptr<TabletAccessor> PartitionClientManager::GetFollower() {
 }
 
 TableClientManager::TableClientManager(const TablePartitions& partitions, const ClientManager& client_manager) {
+    DLOG(INFO) << "TableClientManager partitions, client manager";
     for (const auto& table_partition : partitions) {
         uint32_t pid = table_partition.pid();
         if (pid > partition_managers_.size()) {
@@ -118,11 +119,15 @@ TableClientManager::TableClientManager(const TablePartitions& partitions, const 
                 }
             }
         }
+        DLOG(INFO) << "partition managers add (pid, leader) " << pid << ", "
+                   << (leader ? leader->GetName() : "null leader");
         partition_managers_.push_back(std::make_shared<PartitionClientManager>(pid, leader, follower));
     }
+    Show();
 }
 
 TableClientManager::TableClientManager(const ::rtidb::storage::TableSt& table_st, const ClientManager& client_manager) {
+    DLOG(INFO) << "TableClientManager tabletSt, client manager";
     for (const auto& partition_st : *(table_st.GetPartitions())) {
         uint32_t pid = partition_st.GetPid();
         if (pid > partition_managers_.size()) {
@@ -136,8 +141,12 @@ TableClientManager::TableClientManager(const ::rtidb::storage::TableSt& table_st
                 follower.push_back(client);
             }
         }
+        DLOG(INFO) << "partition st leader name " << partition_st.GetLeader();
+        DLOG(INFO) << "partition managers add (pid, leader) " << pid << ", "
+                   << (leader ? leader->GetName() : "null leader");
         partition_managers_.push_back(std::make_shared<PartitionClientManager>(pid, leader, follower));
     }
+    Show();
 }
 
 bool TableClientManager::UpdatePartitionClientManager(const ::rtidb::storage::PartitionSt& partition,
@@ -189,6 +198,7 @@ std::shared_ptr<TabletAccessor> ClientManager::GetTablet() const {
 }
 
 bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpoint_map) {
+    DLOG(INFO) << "UpdateClient >>";
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     for (const auto& kv : endpoint_map) {
         auto it = real_endpoint_map_.find(kv.first);

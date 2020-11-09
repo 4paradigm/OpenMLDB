@@ -187,6 +187,7 @@ void SQLSDKTest::InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
             }
         }
     }
+    ASSERT_TRUE(router->RefreshCatalog());
 }
 
 void SQLSDKTest::CovertFesqlRowToRequestRow(fesql::codec::RowView* row_view,
@@ -763,7 +764,7 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::rtidb::sdk::MiniCluster mc(6181);
     ::rtidb::sdk::mc_ = &mc;
-    int ok = ::rtidb::sdk::mc_->SetUp();
+    int ok = ::rtidb::sdk::mc_->SetUp(1);
     sleep(1);
 
     ::rtidb::sdk::MiniCluster multi_partition_mc(6181);

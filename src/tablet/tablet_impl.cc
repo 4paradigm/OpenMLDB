@@ -6012,6 +6012,7 @@ void TabletImpl::UpdateRealEndpointMap(
     RpcController* controller,
     const rtidb::api::UpdateRealEndpointMapRequest* request,
     rtidb::api::GeneralResponse* response, Closure* done) {
+    DLOG(INFO) << "UpdateRealEndpointMap";
     brpc::ClosureGuard done_guard(done);
     if (FLAGS_zk_cluster.empty()) {
         response->set_code(-1);

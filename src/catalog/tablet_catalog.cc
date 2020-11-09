@@ -210,7 +210,14 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
         return local_tablet_;
     }
     DLOG(INFO) << "pid num " << pid_num << " get tablet with pid = " << pid;
-    return table_client_manager_->GetTablet(pid);
+    auto client_tablet = table_client_manager_->GetTablet(pid);
+    if (!client_tablet) {
+        DLOG(INFO) << "get tablet index_name " << index_name << ", pk " << pk << ", tablet nullptr";
+    } else {
+        DLOG(INFO) << "get tablet index_name " << index_name << ", pk " << pk << ", tablet "
+                   << client_tablet->GetName();
+    }
+    return client_tablet;
 }
 
 TabletCatalog::TabletCatalog() : mu_(), tables_(), db_(), client_manager_(), version_(1), local_tablet_() {}
