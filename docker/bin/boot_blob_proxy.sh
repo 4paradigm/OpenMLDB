@@ -14,7 +14,7 @@ function detect_zk_change() {
     sleep 30
     getzk
     if [[ ${zk_cluster} != ${zkservers} ]] || [[ ${zk_root_path} != ${zkpath} ]]; then
-      ps -ef | grep ${Endpoint} | grep -v grep | awk '{print "kill "$1}' | bash
+      ps -ef | grep ${Endpoint} | grep -v grep | awk '{print "kill "$2}' | bash
       break
     fi
   done
