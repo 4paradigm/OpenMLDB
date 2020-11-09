@@ -7,6 +7,7 @@ import com._4paradigm.sql.*;
 import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.jdbc.SQLResultSet;
 import com._4paradigm.sql.sdk.SqlExecutor;
+import com._4paradigm.sql.sdk.impl.BatchCallablePreparedStatementImpl;
 import com._4paradigm.sql.sdk.impl.CallablePreparedStatementImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
@@ -20,7 +21,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -580,19 +580,44 @@ public class FesqlUtil {
                 rowArray[i][j] = row.get(j);
             }
         }
-        List<List<Object>> result = Lists.newArrayList();
+        BatchCallablePreparedStatementImpl rps = null;
+        java.sql.ResultSet sqlResultSet = null;
         try {
-            java.sql.ResultSet resultSet = executor.callProcedure(dbName, spName, rowArray);
-            result.addAll(convertRestultSetToList((SQLResultSet) resultSet));
-            fesqlResult.setMetaData(resultSet.getMetaData());
-            resultSet.close();
+            rps = executor.getCallablePreparedStmtBatch(dbName, spName);
+            if (rps == null) {
+                fesqlResult.setOk(false);
+                return fesqlResult;
+            }
+            for (List<Object> row : rows) {
+                boolean ok = setRequestData(rps, row);
+                if (ok) {
+                    rps.addBatch();
+                }
+            }
+
+            sqlResultSet = rps.executeQuery();
+            List<List<Object>> result = Lists.newArrayList();
+            result.addAll(convertRestultSetToList((SQLResultSet) sqlResultSet));
+            fesqlResult.setResult(result);
+            fesqlResult.setMetaData(sqlResultSet.getMetaData());
+            fesqlResult.setCount(result.size());
+
         } catch (SQLException e) {
             log.error("Call procedure failed", e);
             fesqlResult.setOk(false);
             return fesqlResult;
+        } finally {
+            try {
+                if (rps != null) {
+                    rps.close();
+                }
+                if (sqlResultSet != null) {
+                    sqlResultSet.close();
+                }
+            } catch (SQLException closeException) {
+                closeException.printStackTrace();
+            }
         }
-        fesqlResult.setResult(result);
-        fesqlResult.setCount(result.size());
         fesqlResult.setOk(true);
         log.info("select result:{}", fesqlResult);
         return fesqlResult;

@@ -15,7 +15,7 @@ import java.sql.ResultSet;
 import java.util.*;
 
 public class RequestPreparedStatement implements PreparedStatement {
-    private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
+    private static final Logger logger = LoggerFactory.getLogger(RequestPreparedStatement.class);
     protected String db;
     protected String currentSql;
     protected SQLRouter router;
