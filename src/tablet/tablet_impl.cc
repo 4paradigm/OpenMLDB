@@ -326,6 +326,10 @@ bool TabletImpl::RegisterZK() {
                 return false;
             }
         }
+        /*if (!zk_client_->WatchChildren(zk_path_ + "/nodes", boost::bind(&TabletImpl::RefreshTablet, this, _1))) {
+            LOG(WARNING) << "add nodes watcher failed";
+            return false;
+        }*/
         if (!zk_client_->Register(true)) {
             PDLOG(WARNING, "fail to register tablet with endpoint %s",
                   endpoint_.c_str());
@@ -338,10 +342,6 @@ bool TabletImpl::RegisterZK() {
         }
         if (!zk_client_->WatchItem(notify_path_, boost::bind(&TabletImpl::RefreshTableInfo, this))) {
             LOG(WARNING) << "add notify watcher failed";
-            return false;
-        }
-        if (!zk_client_->WatchChildren(zk_path_ + "/nodes", boost::bind(&TabletImpl::RefreshTablet, this, _1))) {
-            LOG(WARNING) << "add nodes watcher failed";
             return false;
         }
         keep_alive_pool_.DelayTask(
@@ -5075,10 +5075,11 @@ void TabletImpl::RefreshTableInfo() {
 void TabletImpl::RefreshTablet(const std::vector<std::string>& children) {
     std::map<std::string, std::string> real_endpoint_map;
     for (const auto& endpoint : children) {
+        DLOG(INFO) << "refresh tablet. endpoint " << endpoint;
         if (FLAGS_use_name) {
             std::string real_ep;
             if (!zk_client_->GetNodeValue(zk_path_ + "/map/names/" + endpoint, real_ep)) {
-                PDLOG(WARNING, "get tablet names value failed");
+                LOG(WARNING) << "get tablet names value failed. endpoint is " << endpoint;
                 continue;
             }
             real_endpoint_map.emplace(endpoint, real_ep);
@@ -5977,12 +5978,12 @@ void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
         PDLOG(WARNING, "tablet is not run in cluster mode");
         return;
     }
-    if (!FLAGS_use_name) {
+    /*if (!FLAGS_use_name) {
         response->set_code(::rtidb::base::ReturnCode::kUseNameIsFalse);
         response->set_msg("FLAGS_use_name is false");
         PDLOG(WARNING, "FLAGS_use_name is false");
         return;
-    }
+    }*/
     decltype(real_ep_map_) tmp_real_ep_map =
         std::make_shared<std::map<std::string, std::string>>();
     for (int i = 0; i < request->real_endpoint_map_size(); i++) {
@@ -5992,6 +5993,7 @@ void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
     }
     std::atomic_store_explicit(&real_ep_map_, tmp_real_ep_map,
             std::memory_order_release);
+    DLOG(INFO) << "real_ep_map size is " << tmp_real_ep_map->size();
     catalog_->UpdateClient(*tmp_real_ep_map);
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
