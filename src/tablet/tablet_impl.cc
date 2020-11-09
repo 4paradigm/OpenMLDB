@@ -326,10 +326,6 @@ bool TabletImpl::RegisterZK() {
                 return false;
             }
         }
-        /*if (!zk_client_->WatchChildren(zk_path_ + "/nodes", boost::bind(&TabletImpl::RefreshTablet, this, _1))) {
-            LOG(WARNING) << "add nodes watcher failed";
-            return false;
-        }*/
         if (!zk_client_->Register(true)) {
             PDLOG(WARNING, "fail to register tablet with endpoint %s",
                   endpoint_.c_str());
@@ -5072,24 +5068,6 @@ void TabletImpl::RefreshTableInfo() {
     catalog_->RefreshTable(table_info_vec, version);
 }
 
-void TabletImpl::RefreshTablet(const std::vector<std::string>& children) {
-    std::map<std::string, std::string> real_endpoint_map;
-    for (const auto& endpoint : children) {
-        DLOG(INFO) << "refresh tablet. endpoint " << endpoint;
-        if (FLAGS_use_name) {
-            std::string real_ep;
-            if (!zk_client_->GetNodeValue(zk_path_ + "/map/names/" + endpoint, real_ep)) {
-                LOG(WARNING) << "get tablet names value failed. endpoint is " << endpoint;
-                continue;
-            }
-            real_endpoint_map.emplace(endpoint, real_ep);
-        } else {
-            real_endpoint_map.emplace(endpoint, endpoint);
-        }
-    }
-    catalog_->UpdateClient(real_endpoint_map);
-}
-
 int TabletImpl::CheckDimessionPut(const ::rtidb::api::PutRequest* request,
                                   uint32_t idx_cnt) {
     for (int32_t i = 0; i < request->dimensions_size(); i++) {
@@ -5978,12 +5956,6 @@ void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
         PDLOG(WARNING, "tablet is not run in cluster mode");
         return;
     }
-    /*if (!FLAGS_use_name) {
-        response->set_code(::rtidb::base::ReturnCode::kUseNameIsFalse);
-        response->set_msg("FLAGS_use_name is false");
-        PDLOG(WARNING, "FLAGS_use_name is false");
-        return;
-    }*/
     decltype(real_ep_map_) tmp_real_ep_map =
         std::make_shared<std::map<std::string, std::string>>();
     for (int i = 0; i < request->real_endpoint_map_size(); i++) {

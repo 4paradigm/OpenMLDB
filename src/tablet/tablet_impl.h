@@ -418,7 +418,6 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     void CheckZkClient();
 
     void RefreshTableInfo();
-    void RefreshTablet(const std::vector<std::string>& children);
 
     int32_t DeleteTableInternal(
         uint32_t tid, uint32_t pid,
