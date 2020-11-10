@@ -28,7 +28,7 @@ TabletRowHandler::TabletRowHandler(const std::string& db, std::unique_ptr<brpc::
                                    std::unique_ptr<::rtidb::api::QueryResponse> response)
     : db_(db),
       name_(),
-      status_(::fesql::base::Status::OK()),
+      status_(::fesql::base::Status::Running()),
       buf_(),
       row_(),
       cntl_(std::move(cntl)),
@@ -51,6 +51,7 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
         status_ = ::fesql::base::Status(::fesql::common::kRpcError, "request error. " + cntl_->ErrorText());
         return row_;
     }
+    status_.code = ::fesql::common::kOk;
     // TODO(denglong) do not copy data xxxx need copy pointer
     auto buf_size = cntl_->response_attachment().size();
     int8_t* out_buf = new int8_t [buf_size];
