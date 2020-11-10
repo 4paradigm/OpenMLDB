@@ -68,13 +68,15 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
 
 std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                   const std::string& sql,
-                                                                  const ::fesql::codec::Row& row) {
+                                                                  const ::fesql::codec::Row& row,
+                                                                  const bool is_debug) {
     DLOG(INFO) << "SubQuery taskid: " << task_id;
     ::rtidb::api::QueryRequest request;
     request.set_sql(sql);
     request.set_db(db);
     request.set_is_batch(false);
     request.set_task_id(task_id);
+    request.set_is_debug(is_debug);
     if (!row.empty()) {
         std::string* input_row = request.mutable_input_row();
         input_row->assign(reinterpret_cast<const char*>(row.buf()), row.size());
@@ -95,7 +97,8 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
 
 std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                   const std::string& sql,
-                                                                  const std::vector<::fesql::codec::Row>& row) {
+                                                                  const std::vector<::fesql::codec::Row>& row,
+                                                                  const bool is_debug) {
     return std::shared_ptr<::fesql::vm::RowHandler>();
 }
 
