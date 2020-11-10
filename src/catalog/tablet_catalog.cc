@@ -399,7 +399,6 @@ void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInf
 }
 
 bool TabletCatalog::UpdateClient(const std::map<std::string, std::string>& real_ep_map) {
-    DLOG(INFO) << "update client";
     return client_manager_.UpdateClient(real_ep_map);
 }
 

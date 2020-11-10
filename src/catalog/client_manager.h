@@ -121,7 +121,7 @@ class TableClientManager {
 
     void Show() const {
         DLOG(INFO) << "show client manager ";
-        for (auto id = 0; id < partition_managers_.size(); id++) {
+        for (size_t id = 0; id < partition_managers_.size(); id++) {
             auto pmg = std::atomic_load_explicit(&partition_managers_[id], std::memory_order_relaxed);
             if (pmg) {
                 if (pmg->GetLeader()) {
@@ -135,7 +135,6 @@ class TableClientManager {
         }
     }
     std::shared_ptr<PartitionClientManager> GetPartitionClientManager(uint32_t pid) const {
-        Show();
         if (pid < partition_managers_.size()) {
             return std::atomic_load_explicit(&partition_managers_[pid], std::memory_order_relaxed);
         }
@@ -147,7 +146,6 @@ class TableClientManager {
                                       const ClientManager& client_manager);
 
     std::shared_ptr<TabletAccessor> GetTablet(uint32_t pid) const {
-        DLOG(INFO) << "TableClientManager GetTablet pid = " << pid;
         auto partition_manager = GetPartitionClientManager(pid);
         if (partition_manager) {
             return partition_manager->GetLeader();

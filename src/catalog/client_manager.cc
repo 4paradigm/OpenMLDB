@@ -58,8 +58,6 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
     uint32_t tmp_size = 0;
     cntl_->response_attachment().copy_to(reinterpret_cast<void*>(&tmp_size), codec::SIZE_LENGTH,
                  codec::VERSION_LENGTH);
-    DLOG(INFO) << "response size " <<cntl_->response_attachment().size() << " buf size : " << tmp_size;
-
     // TODO(denglong) do not copy data xxxx need copy pointer
     int8_t* out_buf = new int8_t [tmp_size];
     cntl_->response_attachment().copy_to(out_buf, tmp_size);
@@ -139,7 +137,6 @@ TableClientManager::TableClientManager(const TablePartitions& partitions, const 
                    << (leader ? leader->GetName() : "null leader");
         partition_managers_.push_back(std::make_shared<PartitionClientManager>(pid, leader, follower));
     }
-    Show();
 }
 
 TableClientManager::TableClientManager(const ::rtidb::storage::TableSt& table_st, const ClientManager& client_manager) {
@@ -162,7 +159,6 @@ TableClientManager::TableClientManager(const ::rtidb::storage::TableSt& table_st
                    << (leader ? leader->GetName() : "null leader");
         partition_managers_.push_back(std::make_shared<PartitionClientManager>(pid, leader, follower));
     }
-    Show();
 }
 
 bool TableClientManager::UpdatePartitionClientManager(const ::rtidb::storage::PartitionSt& partition,
@@ -198,6 +194,7 @@ std::shared_ptr<TabletAccessor> ClientManager::GetTablet(const std::string& name
 }
 
 std::shared_ptr<TabletAccessor> ClientManager::GetTablet() const {
+    DLOG(INFO) << "ClientManager Get random tablet >>";
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     if (clients_.empty()) {
         return std::shared_ptr<TabletAccessor>();
@@ -210,6 +207,7 @@ std::shared_ptr<TabletAccessor> ClientManager::GetTablet() const {
         }
         cnt++;
     }
+    DLOG(INFO) << "ClientManager Get random tablet << ";
     return std::shared_ptr<TabletAccessor>();
 }
 
@@ -218,7 +216,7 @@ bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpo
         DLOG(INFO) << "endpoint_map is empty";
         return true;
     }
-    DLOG(INFO) << "UpdateClient >>";
+    DLOG(INFO) << "UpdateClient>>";
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     for (const auto& kv : endpoint_map) {
         auto it = real_endpoint_map_.find(kv.first);
@@ -243,6 +241,7 @@ bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpo
             it->second = kv.second;
         }
     }
+    DLOG(INFO) << "UpdateClient<<";
     return true;
 }
 
