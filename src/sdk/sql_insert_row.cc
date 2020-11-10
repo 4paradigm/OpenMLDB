@@ -105,23 +105,32 @@ bool SQLInsertRow::PackTs(uint64_t ts) {
     return false;
 }
 
-const std::vector<std::pair<std::string, uint32_t>>&
+const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>&
 SQLInsertRow::GetDimensions() {
-    if (dimensions_.size() > 0) {
-        return dimensions_;
-    } else {
-        for (const auto& kv : index_map_) {
-            std::string key;
-            for (uint32_t idx : kv.second) {
-                if (!key.empty()) {
-                    key += "|";
-                }
-                key += raw_dimensions_[idx];
-            }
-            dimensions_.push_back(std::make_pair(key, kv.first));
-        }
+    if (!dimensions_.empty()) {
         return dimensions_;
     }
+    uint32_t pid_num = table_info_->table_partition_size();
+    uint32_t pid = 0;
+    for (const auto& kv : index_map_) {
+        std::string key;
+        for (uint32_t idx : kv.second) {
+            if (!key.empty()) {
+                key += "|";
+            }
+            key += raw_dimensions_[idx];
+        }
+        if (pid_num > 0) {
+            pid = (uint32_t)(::rtidb::base::hash64(key) % pid_num);
+        }
+        auto iter = dimensions_.find(pid);
+        if (iter == dimensions_.end()) {
+            auto result = dimensions_.emplace(pid, std::vector<std::pair<std::string, uint32_t>>());
+            iter = result.first;
+        }
+        iter->second.push_back(std::make_pair(key, kv.first));
+    }
+    return dimensions_;
 }
 
 bool SQLInsertRow::MakeDefault() {
