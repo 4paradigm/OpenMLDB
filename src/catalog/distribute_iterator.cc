@@ -45,8 +45,11 @@ bool FullTableIterator::Valid() const {
 void FullTableIterator::Next() {
     it_->Next();
     if (!it_->Valid()) {
-        cur_pid_++;
-        for (auto iter = tables_->find(cur_pid_); iter != tables_->end(); iter++) {
+        auto iter = tables_->find(cur_pid_);
+        if (iter == tables_->end()) {
+            return;
+        }
+        for (iter++; iter != tables_->end(); iter++) {
             it_.reset(iter->second->NewTraverseIterator(0));
             it_->SeekToFirst();
             if (it_->Valid()) {
@@ -114,10 +117,10 @@ void DistributeWindowIterator::SeekToFirst() {
 void DistributeWindowIterator::Next() {
     it_->Next();
     if (!it_->Valid()) {
-		auto iter = tables_->find(cur_pid_);
-		if (iter == tables_->end()) {
+        auto iter = tables_->find(cur_pid_);
+        if (iter == tables_->end()) {
             return;
-		}
+        }
         for (iter++; iter != tables_->end(); iter++) {
             it_.reset(iter->second->NewWindowIterator(index_));
             it_->SeekToFirst();

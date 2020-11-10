@@ -447,6 +447,51 @@ TEST_F(TabletCatalogTest, iterator_test) {
     ASSERT_EQ(record_num, 500);
 }
 
+TEST_F(TabletCatalogTest, iterator_test_discontinuous) {
+    std::vector<std::shared_ptr<TabletCatalog>> catalog_vec;
+    for (int i = 0; i < 2; i++) {
+        std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
+        ASSERT_TRUE(catalog->Init());
+        catalog_vec.push_back(catalog);
+    }
+    uint32_t pid_num = 8;
+    TestArgs *args = PrepareMultiPartitionTable("t1", pid_num);
+    for (uint32_t pid = 0; pid < pid_num; pid++) {
+        if (pid % 2 == 0) {
+            ASSERT_TRUE(catalog_vec[0]->AddTable(args->meta[pid], args->tables[pid]));
+        } else {
+            ASSERT_TRUE(catalog_vec[1]->AddTable(args->meta[pid], args->tables[pid]));
+        }
+    }
+    int pk_cnt = 0;
+    int record_num = 0;
+    int full_record_num = 0;
+    for (int i = 0; i < 2; i++) {
+        auto handler = catalog_vec[i]->GetTable("db1", "t1");
+        auto iterator = handler->GetWindowIterator("index0");
+        iterator->SeekToFirst();
+        while (iterator->Valid()) {
+            pk_cnt++;
+            auto row_iterator = iterator->GetValue();
+            row_iterator->SeekToFirst();
+            while (row_iterator->Valid()) {
+                record_num++;
+                row_iterator->Next();
+            }
+            iterator->Next();
+        }
+        auto full_iterator = handler->GetIterator();
+        full_iterator->SeekToFirst();
+        while (full_iterator->Valid()) {
+            full_record_num++;
+            full_iterator->Next();
+        }
+    }
+    ASSERT_EQ(pk_cnt, 100);
+    ASSERT_EQ(record_num, 500);
+    ASSERT_EQ(full_record_num, 500);
+}
+
 }  // namespace catalog
 }  // namespace rtidb
 

@@ -44,7 +44,7 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
         status_.code = fesql::common::kRpcError;
         return row_;
     }
-    //TODO(denglong) timeout handle
+    // TODO(denglong) timeout handle
     brpc::Join(cntl_->call_id());
     if (cntl_->Failed()) {
         status_ = ::fesql::base::Status(::fesql::common::kRpcError, "request error. " + cntl_->ErrorText());
@@ -59,7 +59,7 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
     cntl_->response_attachment().copy_to(reinterpret_cast<void*>(&tmp_size), codec::SIZE_LENGTH,
                  codec::VERSION_LENGTH);
     // TODO(denglong) do not copy data xxxx need copy pointer
-    int8_t* out_buf = new int8_t [tmp_size];
+    int8_t* out_buf = new int8_t[tmp_size];
     cntl_->response_attachment().copy_to(out_buf, tmp_size);
     row_ = fesql::codec::Row(fesql::base::RefCountedSlice::CreateManaged(out_buf, tmp_size));
     status_.code = ::fesql::common::kOk;
