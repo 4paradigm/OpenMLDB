@@ -71,6 +71,7 @@ class MiniCluster {
         FLAGS_cluster_job_enable = tablet_num >= 2 ? true : false;
         FLAGS_db_root_path = "/tmp/mini_cluster" + GenRand();
         zk_cluster_ = "127.0.0.1:" + std::to_string(zk_port_);
+        FLAGS_zk_cluster = zk_cluster_;
         std::string ns_endpoint = "127.0.0.1:" + GenRand();
         zk_path_ = "/mini_cluster_" + GenRand();
         sleep(1);

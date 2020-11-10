@@ -1353,6 +1353,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                     n_it->second = real_ep;
                 }
             } else {
+                real_ep_map_.emplace(*it, *it);
                 tablet->client_ = std::make_shared<::rtidb::client::TabletClient>(*it, "", true);
             }
             if (tablet->client_->Init() != 0) {

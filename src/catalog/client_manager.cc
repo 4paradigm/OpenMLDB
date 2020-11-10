@@ -16,9 +16,7 @@
  */
 
 #include "catalog/client_manager.h"
-
 #include <utility>
-
 #include "codec/fe_schema_codec.h"
 
 namespace rtidb {
@@ -198,6 +196,10 @@ std::shared_ptr<TabletAccessor> ClientManager::GetTablet() const {
 }
 
 bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpoint_map) {
+    if (endpoint_map.empty()) {
+        DLOG(INFO) << "endpoint_map is empty";
+        return true;
+    }
     DLOG(INFO) << "UpdateClient >>";
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     for (const auto& kv : endpoint_map) {

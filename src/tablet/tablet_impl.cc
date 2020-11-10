@@ -218,6 +218,11 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
               FLAGS_recycle_hdd_bin_root_path.c_str());
         return false;
     }
+    std::map<std::string, std::string> real_endpoint_map = { {endpoint, real_endpoint} };
+    if (!catalog_->UpdateClient(real_endpoint_map)) {
+        PDLOG(WARNING, "update client failed");
+        return false;
+    }
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval,
                              boost::bind(&TabletImpl::SchedMakeSnapshot, this));
@@ -5958,12 +5963,6 @@ void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
         PDLOG(WARNING, "tablet is not run in cluster mode");
         return;
     }
-    if (!FLAGS_use_name) {
-        response->set_code(::rtidb::base::ReturnCode::kUseNameIsFalse);
-        response->set_msg("FLAGS_use_name is false");
-        PDLOG(WARNING, "FLAGS_use_name is false");
-        return;
-    }
     decltype(real_ep_map_) tmp_real_ep_map =
         std::make_shared<std::map<std::string, std::string>>();
     for (int i = 0; i < request->real_endpoint_map_size(); i++) {
@@ -5973,6 +5972,7 @@ void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
     }
     std::atomic_store_explicit(&real_ep_map_, tmp_real_ep_map,
             std::memory_order_release);
+    DLOG(INFO) << "real_ep_map size is " << tmp_real_ep_map->size();
     catalog_->UpdateClient(*tmp_real_ep_map);
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
