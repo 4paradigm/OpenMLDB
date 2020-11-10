@@ -53,7 +53,6 @@ class TabletRowHandler : public ::fesql::vm::RowHandler {
     std::string db_;
     std::string name_;
     ::fesql::base::Status status_;
-    std::string buf_;
     ::fesql::codec::Row row_;
     std::unique_ptr<brpc::Controller> cntl_;
     std::unique_ptr<::rtidb::api::QueryResponse> response_;

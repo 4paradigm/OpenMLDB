@@ -29,13 +29,12 @@ TabletRowHandler::TabletRowHandler(const std::string& db, std::unique_ptr<brpc::
     : db_(db),
       name_(),
       status_(::fesql::base::Status::Running()),
-      buf_(),
       row_(),
       cntl_(std::move(cntl)),
       response_(std::move(response)) {}
 
 TabletRowHandler::TabletRowHandler(::fesql::base::Status status)
-    : db_(), name_(), status_(status), buf_(), row_(), cntl_(), response_() {}
+    : db_(), name_(), status_(status), row_(), cntl_(), response_() {}
 
 const ::fesql::codec::Row& TabletRowHandler::GetValue() {
     if (!status_.isRunning()) {
@@ -51,12 +50,21 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
         status_ = ::fesql::base::Status(::fesql::common::kRpcError, "request error. " + cntl_->ErrorText());
         return row_;
     }
-    status_.code = ::fesql::common::kOk;
+    if (cntl_->response_attachment().size() <= codec::HEADER_LENGTH) {
+        status_.code = fesql::common::kSchemaCodecError;
+        status_.msg = "response content decode fail";
+        return row_;
+    }
+    uint32_t tmp_size = 0;
+    cntl_->response_attachment().copy_to(reinterpret_cast<void*>(&tmp_size), codec::SIZE_LENGTH,
+                 codec::VERSION_LENGTH);
+    DLOG(INFO) << "response size " <<cntl_->response_attachment().size() << " buf size : " << tmp_size;
+
     // TODO(denglong) do not copy data xxxx need copy pointer
-    auto buf_size = cntl_->response_attachment().size();
-    int8_t* out_buf = new int8_t [buf_size];
-    cntl_->response_attachment().copy_to(out_buf, buf_size);
-    row_ = fesql::codec::Row(fesql::base::RefCountedSlice::CreateManaged(out_buf, buf_size));
+    int8_t* out_buf = new int8_t [tmp_size];
+    cntl_->response_attachment().copy_to(out_buf, tmp_size);
+    row_ = fesql::codec::Row(fesql::base::RefCountedSlice::CreateManaged(out_buf, tmp_size));
+    status_.code = ::fesql::common::kOk;
     return row_;
 }
 
