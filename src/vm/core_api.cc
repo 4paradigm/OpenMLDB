@@ -30,17 +30,25 @@ WindowInterface::WindowInterface(bool instance_not_in_window,
 void WindowInterface::BufferData(uint64_t key, const Row& row) {
     window_impl_->BufferData(key, row);
 }
-int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
-                                int32_t schema_idx, int32_t column_idx) {
-    SchemasContext schema_ctx(node->GetOutputNameSchemaList());
-    return schema_ctx.ColumnOffsetResolved(schema_idx, column_idx);
-}
+
 int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                 fesql::node::ColumnRefNode* expr) {
-    SchemasContext schema_ctx(node->GetOutputNameSchemaList());
+    const SchemasContext* schemas_ctx = node->schemas_ctx();
     auto column_expr = dynamic_cast<const node::ColumnRefNode*>(expr);
-    return schema_ctx.ColumnOffsetResolved(column_expr->GetRelationName(),
-                                           column_expr->GetColumnName());
+    size_t schema_idx;
+    size_t col_idx;
+    auto status =
+        schemas_ctx->ResolveColumnRefIndex(column_expr, &schema_idx, &col_idx);
+    if (!status.isOK()) {
+        LOG(WARNING) << "Fail to resolve column "
+                     << column_expr->GetExprString();
+        return -1;
+    }
+    size_t total_offset = col_idx;
+    for (size_t i = 0; i < schema_idx; ++i) {
+        total_offset += node->GetOutputSchemaSource(i)->size();
+    }
+    return total_offset;
 }
 
 GroupbyInterface::GroupbyInterface(const fesql::codec::Schema& schema)

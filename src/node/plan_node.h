@@ -352,8 +352,7 @@ class ProjectPlanNode : public UnaryPlanNode {
 class CreatePlanNode : public LeafPlanNode {
  public:
     CreatePlanNode(const std::string &table_name, int replica_num,
-                   int partition_num,
-                   NodePointVector column_list,
+                   int partition_num, NodePointVector column_list,
                    NodePointVector distribution_list)
         : LeafPlanNode(kPlanTypeCreate),
           database_(""),
@@ -438,18 +437,18 @@ class FuncDefPlanNode : public LeafPlanNode {
 
 class CreateProcedurePlanNode : public MultiChildPlanNode {
  public:
-     CreateProcedurePlanNode(const std::string &sp_name,
-             const NodePointVector &input_parameter_list,
-             const PlanNodeList &inner_plan_node_list)
-         : MultiChildPlanNode(kPlanTypeCreateSp),
-         database_(""),
-         sp_name_(sp_name),
-         input_parameter_list_(input_parameter_list),
-         inner_plan_node_list_(inner_plan_node_list) {
-             for (auto inner_plan_node : inner_plan_node_list) {
-                 AddChild(inner_plan_node);
-             }
-         }
+    CreateProcedurePlanNode(const std::string &sp_name,
+                            const NodePointVector &input_parameter_list,
+                            const PlanNodeList &inner_plan_node_list)
+        : MultiChildPlanNode(kPlanTypeCreateSp),
+          database_(""),
+          sp_name_(sp_name),
+          input_parameter_list_(input_parameter_list),
+          inner_plan_node_list_(inner_plan_node_list) {
+        for (auto inner_plan_node : inner_plan_node_list) {
+            AddChild(inner_plan_node);
+        }
+    }
     ~CreateProcedurePlanNode() {}
 
     const std::string &GetDatabase() const { return database_; }

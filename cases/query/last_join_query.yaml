@@ -3,14 +3,8 @@ cases:
     desc: LAST JOIN 右表未命中索引
     mode: rtidb-unsupport
     sql: |
-      %%fun
-      def test(a:i32,b:i32):i32
-          c=a+b
-          d=c+1
-          return d
-      end
       %%sql
-      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col1 + t2.col1 + 1 as test_col1, t1.col2 as t1_col2, str1 FROM t1
       last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 = t2.col5;
     inputs:
       - name: t1
@@ -44,14 +38,8 @@ cases:
     desc: LAST JOIN 右表成功命中索引
     db: db1
     sql: |
-      %%fun
-      def test(a:i32,b:i32):i32
-          c=a+b
-          d=c+1
-          return d
-      end
       %%sql
-      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col1 + t2.col1 + 1 as test_col1, t1.col2 as t1_col2, str1 FROM t1
       last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 = t2.col5;
 
     inputs:
@@ -87,14 +75,8 @@ cases:
     desc: LAST JOIN 右表成功命中一个索引
     db: db1
     sql: |
-      %%fun
-      def test(a:i32,b:i32):i32
-          c=a+b
-          d=c+1
-          return d
-      end
       %%sql
-      SELECT t1.col1 as id, t1.col0 as t1_col0, test(t1.col1,t2.col1) test_col1, t1.col2 as t1_col2, str1 FROM t1
+      SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col1 + t2.col1 + 1 as test_col1, t1.col2 as t1_col2, str1 FROM t1
       last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 >= t2.col5;
 
     inputs:

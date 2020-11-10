@@ -103,19 +103,19 @@ void PhysicalPlanCheck(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::fesql::udf::DefaultUDFLibrary::get();
-    RequestModeransformer transform(&manager, "db", catalog, m.get(), lib, {},
-                                    false, false);
+    RequestModeTransformer transform(&manager, "db", catalog, m.get(), lib, {},
+                                     false, false);
 
     transform.AddDefaultPasses();
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
-                                                base_status));
+    ASSERT_TRUE(
+        transform.TransformPhysicalPlan(plan_trees, &physical_plan).isOK());
     //    m->print(::llvm::errs(), NULL);
     std::ostringstream oss;
     physical_plan->Print(oss, "");
     LOG(INFO) << "physical plan:\n" << sql << "\n" << oss.str() << std::endl;
     std::ostringstream ss;
-    PrintSchema(ss, physical_plan->output_schema_);
+    PrintSchema(ss, *physical_plan->GetOutputSchema());
     LOG(INFO) << "schema:\n" << ss.str() << std::endl;
     ASSERT_EQ(oss.str(), exp);
 }
@@ -250,17 +250,17 @@ void CheckTransformPhysicalPlan(const SQLCase& sql_case,
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_op_generator", *ctx);
     auto lib = ::fesql::udf::DefaultUDFLibrary::get();
-    RequestModeransformer transform(nm, "db", catalog, m.get(), lib, {},
-                                    false, false);
+    RequestModeTransformer transform(nm, "db", catalog, m.get(), lib, {}, false,
+                                     false);
 
     PhysicalOpNode* physical_plan = nullptr;
-    ASSERT_TRUE(transform.TransformPhysicalPlan(plan_trees, &physical_plan,
-                                                base_status));
+    ASSERT_TRUE(
+        transform.TransformPhysicalPlan(plan_trees, &physical_plan).isOK());
     std::ostringstream oss;
     physical_plan->Print(oss, "");
     std::cout << "physical plan:\n" << sqlstr << "\n" << oss.str() << std::endl;
     std::ostringstream ss;
-    PrintSchema(ss, physical_plan->output_schema_);
+    PrintSchema(ss, *physical_plan->GetOutputSchema());
     std::cout << "schema:\n" << ss.str() << std::endl;
     //    m->print(::llvm::errs(), NULL);
 }
@@ -305,7 +305,7 @@ INSTANTIATE_TEST_CASE_P(
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=Aggregation, limit=10)\n"
             "    REQUEST_UNION(partition_keys=(), orders=() ASC, "
-            "range=(col5, -3, 0), index_keys=(col1,col2))\n"
+            "range=(col5, -3, 0), index_keys=(col2,col1))\n"
             "      DATA_PROVIDER(request=t1)\n"
             "      DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         std::make_pair(
@@ -350,7 +350,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT sum(col1) as col1sum FROM t1 group by col3, col2, col1;",
             "PROJECT(type=Aggregation)\n"
             "  REQUEST_UNION(partition_keys=(col3), orders=, "
-            "index_keys=(col1,col2))\n"
+            "index_keys=(col2,col1))\n"
             "    DATA_PROVIDER(request=t1)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
 
@@ -361,7 +361,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 order by t2.col5 on "
             " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
-            "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
+            "SIMPLE_PROJECT(sources=(#8, #30))\n"
             "  REQUEST_JOIN(type=LastJoin, right_sort=(t2.col5) ASC, "
             "condition=t2.col5 >= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col2), index_keys=)\n"
@@ -371,7 +371,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 order by t2.col5 on "
             " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
-            "SIMPLE_PROJECT(sources=([0]<-[0:1], [1]<-[1:2])\n"
+            "SIMPLE_PROJECT(sources=(#8, #30))\n"
             "  REQUEST_JOIN(type=LastJoin, right_sort=() ASC, "
             "condition=t2.col5 >= t1.col5, "
             "left_keys=(), right_keys=(), index_keys=(t1.col1))\n"

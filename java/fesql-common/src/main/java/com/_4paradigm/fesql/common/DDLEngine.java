@@ -57,7 +57,7 @@ public class DDLEngine {
     public static List<RtidbTable> parseRtidbIndex(List<PhysicalOpNode> nodes, Map<String, TypeOuterClass.TableDef> tableDefMap) {
         List<RtidbTable> rtidbTables = new ArrayList<>();
         for (PhysicalOpNode node : nodes) {
-            PhysicalOpType type = node.getType_();
+            PhysicalOpType type = node.GetOpType();
             if (type.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
                 continue;
             }
@@ -79,7 +79,6 @@ public class DDLEngine {
 //                System.out.println(join.getJoin_().getRight_sort_().orders().GetExprString());
                 System.out.println(join.getJoin_().right_key().keys().GetExprString());
                 System.out.println(join.getJoin_().left_key().keys().GetExprString());
-                System.out.println(node.GetFnInfo().getFn_name_());
                 continue;
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpLimit.swigValue()) {
@@ -193,5 +192,4 @@ class RtidbIndex {
     public boolean equals(RtidbIndex e) {
         return  this.getType() == e.getType() && this.getKeys().equals(e.getKeys()) && this.ts.equals(e.getTs());
     }
-
 }

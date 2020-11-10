@@ -101,6 +101,8 @@ std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     if (!AddTable(catalog, table_def, table)) {
         return std::shared_ptr<tablet::TabletCatalog>();
     }
+    type::Database database;
+    *database.add_tables() = table_def;
     return catalog;
 }
 

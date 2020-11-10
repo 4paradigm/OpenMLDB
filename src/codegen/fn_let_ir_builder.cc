@@ -29,16 +29,14 @@ using ::fesql::base::Status;
 namespace fesql {
 namespace codegen {
 
-RowFnLetIRBuilder::RowFnLetIRBuilder(CodeGenContext* ctx,
-                                     const node::FrameNode* frame)
-    : ctx_(ctx), frame_(frame) {}
+RowFnLetIRBuilder::RowFnLetIRBuilder(CodeGenContext* ctx) : ctx_(ctx) {}
 RowFnLetIRBuilder::~RowFnLetIRBuilder() {}
 
 Status RowFnLetIRBuilder::Build(
-    const std::string& name, node::LambdaNode* compile_func,
-    const std::vector<std::string>& project_names,
-    const std::vector<node::FrameNode*>& project_frames,
-    vm::Schema* output_schema, vm::ColumnSourceList* output_column_sources) {
+    const std::string& name, const node::LambdaNode* compile_func,
+    const node::FrameNode* primary_frame,
+    const std::vector<const node::FrameNode*>& project_frames,
+    const vm::Schema& output_schema) {
     ::llvm::Function* fn = NULL;
 
     ::llvm::Module* module = ctx_->GetModule();
@@ -79,11 +77,12 @@ Status RowFnLetIRBuilder::Build(
     ::llvm::BasicBlock* block = ctx_->GetCurrentBlock();
     VariableIRBuilder variable_ir_builder(block, sv);
 
-    NativeValue window;
-    variable_ir_builder.LoadWindow("", &window, status);
-    variable_ir_builder.StoreWindow(
-        nullptr == frame_ ? "" : frame_->GetExprString(), window.GetRaw(),
-        status);
+    if (primary_frame != nullptr) {
+        NativeValue window;
+        variable_ir_builder.LoadWindow("", &window, status);
+        variable_ir_builder.StoreWindow(primary_frame->GetExprString(),
+                                        window.GetRaw(), status);
+    }
 
     ExprIRBuilder expr_ir_builder(ctx_);
 
@@ -96,13 +95,9 @@ Status RowFnLetIRBuilder::Build(
     auto expr_list = compile_func->body();
     CHECK_TRUE(project_frames.size() == expr_list->GetChildNum(), kCodegenError,
                "Frame num should match expr num");
-    CHECK_TRUE(project_names.size() == expr_list->GetChildNum(), kCodegenError,
-               "Output name num should match expr num");
 
     for (size_t i = 0; i < expr_list->GetChildNum(); ++i) {
         const ::fesql::node::ExprNode* expr = expr_list->GetChild(i);
-
-        std::string project_name = project_names[i];
         auto frame = project_frames[i];
         const std::string frame_str =
             frame == nullptr ? "" : frame->GetExprString();
@@ -118,8 +113,6 @@ Status RowFnLetIRBuilder::Build(
             agg_iter = window_agg_builder.find(frame_str);
         }
         if (agg_iter->second.CollectAggColumn(expr, i, &col_agg_type)) {
-            AddOutputColumnInfo(project_name, col_agg_type, expr, output_schema,
-                                output_column_sources);
             continue;
         }
 
@@ -130,10 +123,8 @@ Status RowFnLetIRBuilder::Build(
         CHECK_STATUS(
             BindProjectFrame(&expr_ir_builder, frame, compile_func, block, sv));
 
-        CHECK_STATUS(
-            BuildProject(&expr_ir_builder, i, expr, project_name, &outputs,
-                         output_schema, output_column_sources),
-            "Build expr failed at ", i, ":\n", expr->GetTreeString());
+        CHECK_STATUS(BuildProject(&expr_ir_builder, i, expr, &outputs),
+                     "Build expr failed at ", i, ":\n", expr->GetTreeString());
     }
 
     CHECK_TRUE(EncodeBuf(&outputs, output_schema, variable_ir_builder, block,
@@ -164,11 +155,11 @@ Status RowFnLetIRBuilder::Build(
 }
 
 bool RowFnLetIRBuilder::EncodeBuf(
-    const std::map<uint32_t, NativeValue>* values, const vm::Schema* schema,
+    const std::map<uint32_t, NativeValue>* values, const vm::Schema& schema,
     VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
     ::llvm::BasicBlock* block, const std::string& output_ptr_name) {
     base::Status status;
-    BufNativeEncoderIRBuilder encoder(values, schema, block);
+    BufNativeEncoderIRBuilder encoder(values, &schema, block);
     NativeValue row_ptr;
     bool ok = variable_ir_builder.LoadValue(output_ptr_name, &row_ptr, status);
     if (!ok) {
@@ -218,10 +209,7 @@ bool RowFnLetIRBuilder::FillArgs(const std::vector<std::string>& args,
 
 Status RowFnLetIRBuilder::BuildProject(
     ExprIRBuilder* expr_ir_builder, const uint32_t index,
-    const node::ExprNode* expr, const std::string& col_name,
-    std::map<uint32_t, NativeValue>* outputs,
-    vm::Schema* output_schema,  // NOLINT
-    vm::ColumnSourceList* output_column_sources) {
+    const node::ExprNode* expr, std::map<uint32_t, NativeValue>* outputs) {
     NativeValue expr_out_val;
 
     CHECK_STATUS(expr_ir_builder->Build(expr, &expr_out_val),
@@ -240,25 +228,12 @@ Status RowFnLetIRBuilder::BuildProject(
     CHECK_TRUE(DataType2SchemaType(*data_type, &ctype), kCodegenError);
 
     outputs->insert(std::make_pair(index, expr_out_val));
-    AddOutputColumnInfo(col_name, ctype, expr, output_schema,
-                        output_column_sources);
     return Status::OK();
-}
-bool RowFnLetIRBuilder::AddOutputColumnInfo(
-    const std::string& col_name, ::fesql::type::Type ctype,
-    const node::ExprNode* expr, vm::Schema* output_schema,
-    vm::ColumnSourceList* output_column_sources) {
-    ::fesql::type::ColumnDef* cdef = output_schema->Add();
-    cdef->set_name(col_name);
-    cdef->set_type(ctype);
-    output_column_sources->push_back(
-        ctx_->schemas_context()->ColumnSourceResolved(expr));
-    return true;
 }
 
 Status RowFnLetIRBuilder::BindProjectFrame(ExprIRBuilder* expr_ir_builder,
-                                           node::FrameNode* frame,
-                                           node::LambdaNode* compile_func,
+                                           const node::FrameNode* frame,
+                                           const node::LambdaNode* compile_func,
                                            ::llvm::BasicBlock* block,
                                            ScopeVar* sv) {
     Status status;

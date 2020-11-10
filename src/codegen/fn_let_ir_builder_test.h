@@ -48,6 +48,7 @@
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/jit.h"
+#include "vm/simple_catalog.h"
 #include "vm/sql_compiler.h"
 #include "vm/transform.h"
 
@@ -106,13 +107,14 @@ void AddFunc(const std::string& fn, ::fesql::node::NodeManager* manager,
 }
 
 void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
-                       const vm::SchemaSourceList& name_schemas,
-                       std::string udf_str, std::string sql, int8_t* row_ptr,
-                       int8_t* window_ptr, vm::Schema* output_schema,
-                       vm::ColumnSourceList* column_sources, int8_t** output) {
+                       vm::SchemasContext* schemas_ctx, std::string udf_str,
+                       std::string sql, int8_t* row_ptr, int8_t* window_ptr,
+                       vm::Schema* output_schema, int8_t** output) {
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_project", *ctx);
+
+    // Parse SQL
     ::fesql::node::NodePointVector list;
     ::fesql::parser::FeSQLParser parser;
     ::fesql::base::Status status;
@@ -128,27 +130,36 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     ASSERT_EQ(0, ret);
     fesql::node::ProjectListNode* pp_node_ptr = GetPlanNodeList(plan);
 
-    node::LambdaNode* to_compile_func = nullptr;
-    std::vector<std::string> project_names;
-    std::vector<node::FrameNode*> project_frames;
-    status = vm::ResolveProjects(name_schemas, pp_node_ptr->GetProjects(),
-                                 false, manager, lib, &to_compile_func,
-                                 &project_names, &project_frames);
-    if (!status.isOK()) {
-        LOG(WARNING) << status;
+    // Create physical function def
+    schemas_ctx->Build();
+    vm::ColumnProjects column_projects;
+    const node::FrameNode* frame_node = nullptr;
+    if (pp_node_ptr->GetW() != nullptr) {
+        frame_node = pp_node_ptr->GetW()->frame_node();
     }
-    ASSERT_TRUE(status.isOK());
+    status = vm::ExtractProjectInfos(pp_node_ptr->GetProjects(), frame_node,
+                                     schemas_ctx, manager, &column_projects);
+    ASSERT_TRUE(status.isOK()) << status.str();
 
-    vm::SchemasContext schemas_ctx(name_schemas);
-    CodeGenContext codegen_ctx(m.get(), &schemas_ctx, manager);
-    RowFnLetIRBuilder ir_builder(&codegen_ctx,
-                                 nullptr == pp_node_ptr->GetW()
-                                     ? nullptr
-                                     : pp_node_ptr->GetW()->frame_node());
-    status = ir_builder.Build("test_at_fn", to_compile_func, project_names,
-                              project_frames, output_schema, column_sources);
+    bool is_agg = window_ptr != nullptr;
+    vm::PhysicalPlanContext plan_ctx(manager, lib, "db",
+                                     std::make_shared<vm::SimpleCatalog>());
+    status = plan_ctx.InitFnDef(column_projects, schemas_ctx, !is_agg,
+                                &column_projects);
+    ASSERT_TRUE(status.isOK()) << status.str();
+
+    // Instantiate llvm function
+    const auto& fn_info = column_projects.fn_info();
+    codegen::CodeGenContext codegen_ctx(m.get(), fn_info.schemas_ctx(),
+                                        manager);
+    codegen::RowFnLetIRBuilder builder(&codegen_ctx);
+    status =
+        builder.Build("test_at_fn", fn_info.fn_def(), fn_info.GetPrimaryFrame(),
+                      fn_info.GetFrames(), *fn_info.fn_schema());
     LOG(INFO) << "fn let ir build status: " << status;
     ASSERT_TRUE(status.isOK());
+    *output_schema = *fn_info.fn_schema();
+
     m->print(::llvm::errs(), NULL);
     ExitOnError ExitOnErr;
     auto J = ExitOnErr(LLJITBuilder().create());
@@ -172,21 +183,16 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
                        type::TableDef& table, std::string udf_str,  // NOLINT
                        std::string sql, int8_t* row_ptr, int8_t* window_ptr,
                        vm::Schema* output_schema, int8_t** output) {
-    vm::SchemaSourceList name_schema_list;
-    name_schema_list.AddSchemaSource(table.name(), &table.columns());
-    vm::ColumnSourceList column_sources;
-    CheckFnLetBuilder(manager, name_schema_list, udf_str, sql, row_ptr,
-                      window_ptr, output_schema, &column_sources, output);
-}
-void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
-                       type::TableDef& table, std::string udf_str,  // NOLINT
-                       std::string sql, int8_t* row_ptr, int8_t* window_ptr,
-                       vm::Schema* output_schema,
-                       vm::ColumnSourceList* column_sources, int8_t** output) {
-    vm::SchemaSourceList name_schema_list;
-    name_schema_list.AddSchemaSource(table.name(), &table.columns());
-    CheckFnLetBuilder(manager, name_schema_list, udf_str, sql, row_ptr,
-                      window_ptr, output_schema, column_sources, output);
+    vm::SchemasContext schemas_ctx;
+    auto source = schemas_ctx.AddSource();
+    source->SetSourceName(table.name());
+    source->SetSchema(&table.columns());
+    for (int i = 0; i < table.columns().size(); ++i) {
+        source->SetColumnID(i, i);
+    }
+    schemas_ctx.Build();
+    CheckFnLetBuilder(manager, &schemas_ctx, udf_str, sql, row_ptr, window_ptr,
+                      output_schema, output);
 }
 
 }  // namespace codegen

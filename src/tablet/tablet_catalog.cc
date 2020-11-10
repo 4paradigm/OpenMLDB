@@ -201,6 +201,7 @@ bool TabletCatalog::AddDB(const type::Database& db) {
     tables_.insert(std::make_pair(
         db.name(),
         std::map<std::string, std::shared_ptr<TabletTableHandler>>()));
+    db_.insert(std::make_pair(db.name(), std::make_shared<type::Database>(db)));
     return true;
 }
 bool TabletCatalog::IndexSupport() { return true; }
