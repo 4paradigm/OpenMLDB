@@ -1875,7 +1875,7 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(RunnerContext& ctx) {
                 } else {
                     return tablet->SubQuery(task_id_,
                                             table_handler->GetDatabase(),
-                                            cluster_job->sql(), row);
+                                            cluster_job->sql(), row, ctx.is_debug());
                 }
             }
         }
