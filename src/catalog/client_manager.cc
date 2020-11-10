@@ -16,7 +16,9 @@
  */
 
 #include "catalog/client_manager.h"
+
 #include <utility>
+
 #include "codec/fe_schema_codec.h"
 
 namespace rtidb {
@@ -36,17 +38,24 @@ TabletRowHandler::TabletRowHandler(::fesql::base::Status status)
     : db_(), name_(), status_(status), buf_(), row_(), cntl_(), response_() {}
 
 const ::fesql::codec::Row& TabletRowHandler::GetValue() {
-    if (!cntl_ || !response_) {
+    if (!status_.isRunning()) {
         return row_;
     }
+    if (!cntl_ || !response_) {
+        status_.code = fesql::common::kRpcError;
+        return row_;
+    }
+    //TODO(denglong) timeout handle
     brpc::Join(cntl_->call_id());
     if (cntl_->Failed()) {
         status_ = ::fesql::base::Status(::fesql::common::kRpcError, "request error. " + cntl_->ErrorText());
         return row_;
     }
-    // TODO(denglong) do not copy data
-    buf_ = cntl_->response_attachment().to_string();
-    row_.Reset(reinterpret_cast<const int8_t*>(buf_.c_str()), buf_.length());
+    // TODO(denglong) do not copy data xxxx need copy pointer
+    auto buf_size = cntl_->response_attachment().size();
+    int8_t* out_buf = new int8_t [buf_size];
+    cntl_->response_attachment().copy_to(out_buf, buf_size);
+    row_ = fesql::codec::Row(fesql::base::RefCountedSlice::CreateManaged(out_buf, buf_size));
     return row_;
 }
 
