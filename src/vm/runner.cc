@@ -265,6 +265,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     runner->AddWindowUnion(window_union.second, union_table);
                     if (!index_key.ValidKey()) {
                         index_key = window_union.second.index_key_;
+                        right_task = union_task;
+                        right_task.SetRoot(right);
                     }
                 }
             }

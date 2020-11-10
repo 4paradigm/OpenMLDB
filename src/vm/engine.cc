@@ -195,6 +195,12 @@ bool Engine::Get(const std::string& sql, const std::string& db,
 
     SetCacheLocked(db, sql, session.engine_mode(), info);
     session.SetCompileInfo(info);
+    if (session.is_debug_) {
+        std::ostringstream oss;
+        sql_context.cluster_job.Print(oss, "");
+        LOG(INFO) << "cluster job:\n"
+                  << oss.str() << std::endl;
+    }
     return true;
 }
 

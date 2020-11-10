@@ -141,6 +141,9 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     EngineTestFzSQLFunction, EngineTest,
     testing::ValuesIn(InitCases("/cases/integration/v1/test_fz_sql.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestWindowAndLastJoin, EngineTest,
+    testing::ValuesIn(InitCases("/cases/integration/cluster/window_and_lastjoin.yaml")));
 
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
