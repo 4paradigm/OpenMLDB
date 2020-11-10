@@ -71,6 +71,7 @@ DistributeWindowIterator::DistributeWindowIterator(std::shared_ptr<Tables> table
 
 void DistributeWindowIterator::Seek(const std::string& key) {
     // assume all partitions in one tablet
+    DLOG(INFO) << "seek to key " << key;
     it_.reset();
     uint32_t pid_num = tables_->size();
     if (pid_num > 0) {
@@ -80,10 +81,25 @@ void DistributeWindowIterator::Seek(const std::string& key) {
     if (iter != tables_->end()) {
         it_.reset(iter->second->NewWindowIterator(index_));
         it_->Seek(key);
+        if (it_->Valid()) {
+            return;
+        }
+    }
+    for (const auto& kv : *tables_) {
+        if (kv.first <= cur_pid_) {
+            continue;
+        }
+        it_.reset(kv.second->NewWindowIterator(index_));
+        it_->SeekToFirst();
+        if (it_->Valid()) {
+            cur_pid_ = kv.first;
+            break;
+        }
     }
 }
 
 void DistributeWindowIterator::SeekToFirst() {
+    DLOG(INFO) << "seek to first";
     it_.reset();
     for (const auto& kv : *tables_) {
         it_.reset(kv.second->NewWindowIterator(index_));
@@ -98,8 +114,11 @@ void DistributeWindowIterator::SeekToFirst() {
 void DistributeWindowIterator::Next() {
     it_->Next();
     if (!it_->Valid()) {
-        cur_pid_++;
-        for (auto iter = tables_->find(cur_pid_); iter != tables_->end(); iter++) {
+		auto iter = tables_->find(cur_pid_);
+		if (iter == tables_->end()) {
+            return;
+		}
+        for (iter++; iter != tables_->end(); iter++) {
             it_.reset(iter->second->NewWindowIterator(index_));
             it_->SeekToFirst();
             if (it_->Valid()) {
