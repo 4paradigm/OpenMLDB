@@ -68,7 +68,6 @@ class MiniCluster {
     bool SetUp(int tablet_num = 2) {
         ns_ = new brpc::Server();
         srand(time(NULL));
-        FLAGS_enable_distsql = tablet_num >= 2 ? true : false;
         FLAGS_db_root_path = "/tmp/mini_cluster" + GenRand();
         zk_cluster_ = "127.0.0.1:" + std::to_string(zk_port_);
         FLAGS_zk_cluster = zk_cluster_;

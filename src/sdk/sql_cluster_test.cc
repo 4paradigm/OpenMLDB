@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-#include "sdk/sql_router.h"
-
 #include <sched.h>
 #include <unistd.h>
 
@@ -31,6 +29,8 @@
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
+#include "sdk/sql_router.h"
+#include "sdk/sql_sdk_test.h"
 #include "timer.h"  // NOLINT
 #include "vm/catalog.h"
 
@@ -38,10 +38,6 @@ namespace rtidb {
 namespace sdk {
 
 ::rtidb::sdk::MiniCluster* mc_;
-
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);  // NOLINT
-}
 
 class SQLClusterTest : public ::testing::Test {
  public:
@@ -106,6 +102,51 @@ TEST_F(SQLClusterTest, cluster_insert) {
     ASSERT_TRUE(ok);
 }
 
+
+static std::shared_ptr<SQLRouter> GetNewSQLRouter(const fesql::sqlcase::SQLCase& sql_case) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    sql_opt.enable_debug = sql_case.debug() || fesql::sqlcase::SQLCase::IS_DEBUG();
+    return NewClusterSQLRouter(sql_opt);
+}
+
+TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_test) {
+    auto sql_case = GetParam();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport") ||
+        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    if (sql_case.batch_request().columns_.empty()) {
+        LOG(WARNING) << "No batch request specified";
+        return;
+    }
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
+    DistributeRunBatchRequestModeSDK(sql_case, router);
+    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+}
+
+TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_test) {
+    auto sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport") ||
+        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router with multi partitions";
+    DistributeRunRequestModeSDK(sql_case, router);
+    LOG(INFO) << "Finish sql_sdk_distribute_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+}
+
 }  // namespace sdk
 }  // namespace rtidb
 
@@ -113,6 +154,7 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::rtidb::sdk::MiniCluster mc(6181);
     ::rtidb::sdk::mc_ = &mc;
+    FLAGS_enable_distsql = true;
     int ok = ::rtidb::sdk::mc_->SetUp(2);
     sleep(1);
     ::testing::InitGoogleTest(&argc, argv);
