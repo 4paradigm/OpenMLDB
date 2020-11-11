@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import java.sql.*;
 import java.sql.Date;
+import java.util.concurrent.TimeUnit;
 
 public class StorageProcedureExample extends BaseExample {
 
@@ -158,7 +159,7 @@ public class StorageProcedureExample extends BaseExample {
                 return;
             }
         }
-        QueryFuture future = callablePreparedStmt.executeQeuryAsyn(100);
+        QueryFuture future = callablePreparedStmt.executeQeuryAsyn(100, TimeUnit.MILLISECONDS);
         System.out.println("done: " + future.isDone());
         ResultSet sqlResultSet = future.get();
         Assert.assertTrue(sqlResultSet.next());

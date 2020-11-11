@@ -16,8 +16,8 @@ import java.util.List;
 @Slf4j
 public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
 
-    public StoredProcedureSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest) {
-        super(executor, fesqlCase, isBatchRequest);
+    public StoredProcedureSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest, boolean isAsyn) {
+        super(executor, fesqlCase, isBatchRequest, isAsyn);
     }
 
     @Override
@@ -49,15 +49,15 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
         if (fesqlCase.getBatch_request() != null) {
             return executeBatch(sql);
         } else {
-            return executeSingle(sql);
+            return executeSingle(sql, this.isAsyn);
         }
     }
 
-    private FesqlResult executeSingle(String sql) throws SQLException {
+    private FesqlResult executeSingle(String sql, boolean isAsyn) throws SQLException {
         String spSql = FesqlUtil.getStoredProcedureSql(sql, fesqlCase.getInputs());
         log.info("spSql: {}", spSql);
         return FesqlUtil.sqlRequestModeWithSp(
-                executor, dbName, tableNames.get(0), spSql, fesqlCase.getInputs().get(0));
+                executor, dbName, tableNames.get(0), spSql, fesqlCase.getInputs().get(0), isAsyn);
     }
 
     private FesqlResult executeBatch(String sql) throws SQLException {

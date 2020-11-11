@@ -641,7 +641,6 @@ public class ComplexSqlExample extends BaseExample {
 
     public static void main(String[] args) {
         run();
-//        System.out.println("aaa");
     }
 
 }

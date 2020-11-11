@@ -22,6 +22,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -195,10 +196,10 @@ public class FesqlUtil {
         return fesqlResult;
     }
 
-    public static FesqlResult sqlRequestModeWithSp(SqlExecutor executor, String dbName, String spName, String sql, InputDesc rows) throws SQLException {
+    public static FesqlResult sqlRequestModeWithSp(SqlExecutor executor, String dbName, String spName, String sql, InputDesc rows, boolean isAsyn) throws SQLException {
         FesqlResult fesqlResult = null;
         if (sql.toLowerCase().startsWith("create procedure")) {
-            fesqlResult = selectRequestModeWithSp(executor, dbName, spName, sql, rows);
+            fesqlResult = selectRequestModeWithSp(executor, dbName, spName, sql, rows, isAsyn);
         } else {
             logger.error("unsupport sql: {}", sql);
         }
@@ -373,7 +374,7 @@ public class FesqlUtil {
             }
             if (resultSet == null) {
                 fesqlResult.setOk(false);
-                log.info("select result:{}", fesqlResult);
+                log.error("select result:{}", fesqlResult);
                 return fesqlResult;
             }
             try {
@@ -475,7 +476,7 @@ public class FesqlUtil {
     }
 
     private static FesqlResult selectRequestModeWithSp(SqlExecutor executor, String dbName, String spName,
-                String sql, InputDesc input) {
+                String sql, InputDesc input, boolean isAsyn) {
         if (sql.isEmpty()) {
             logger.error("fail to execute sql in request mode: select sql is empty");
             return null;
@@ -517,11 +518,14 @@ public class FesqlUtil {
                     fesqlResult.setOk(false);
                     return fesqlResult;
                 }
-                resultSet = buildRequestPreparedStatment(rps, rows.get(i));
-//                resultSet = buildRequestPreparedStatmentAsyn(rps, rows.get(i));
+                if (!isAsyn) {
+                    resultSet = buildRequestPreparedStatment(rps, rows.get(i));
+                } else {
+                    resultSet = buildRequestPreparedStatmentAsyn(rps, rows.get(i));
+                }
                 if (resultSet == null) {
                     fesqlResult.setOk(false);
-                    log.info("select result:{}", fesqlResult);
+                    log.error("select result:{}", fesqlResult);
                     return fesqlResult;
                 }
                 result.addAll(convertRestultSetToList((SQLResultSet) resultSet));
@@ -820,7 +824,7 @@ public class FesqlUtil {
                                                                    List<Object> objects) throws SQLException {
         boolean success = setRequestData(requestPs, objects);
         if (success) {
-            com._4paradigm.sql.sdk.QueryFuture future = requestPs.executeQeuryAsyn(1000);
+            com._4paradigm.sql.sdk.QueryFuture future = requestPs.executeQeuryAsyn(100, TimeUnit.MILLISECONDS);
             java.sql.ResultSet sqlResultSet = null;
             try {
                 sqlResultSet = future.get();
