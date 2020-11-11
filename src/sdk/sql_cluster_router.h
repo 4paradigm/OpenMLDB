@@ -153,6 +153,10 @@ class SQLClusterRouter : public SQLRouter {
     bool ShowProcedure(
             std::vector<std::shared_ptr<::rtidb::api::ProcedureInfo>>* sp_infos, std::string* msg);
 
+    std::shared_ptr<rtidb::sdk::QueryFuture> CallProcedure(
+            const std::string& db, const std::string& sp_name, int64_t timeout_ms,
+            std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status);
+
  private:
     bool GetTablet(
         const std::string& db, const std::string& sql,

@@ -1,5 +1,6 @@
 package com._4paradigm.sql.sdk.impl;
 
+import com._4paradigm.sql.QueryFuture;
 import com._4paradigm.sql.SQLRouter;
 import com._4paradigm.sql.Status;
 import com._4paradigm.sql.jdbc.CallablePreparedStatement;
@@ -32,6 +33,18 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
             closed = true;
         }
         return rs;
+    }
+
+    public com._4paradigm.sql.sdk.QueryFuture executeQeuryAsyn(long timeOutMillseconds) throws SQLException {
+        checkClosed();
+        dataBuild();
+        Status status = new Status();
+        QueryFuture queryFuture = router.CallProcedure(db, spName, timeOutMillseconds, currentRow, status);
+        if (status.getCode() != 0 || queryFuture == null) {
+            logger.error("call procedure failed: {}", status.getMsg());
+            throw new SQLException("call procedure fail, msg: " + status.getMsg());
+        }
+        return new com._4paradigm.sql.sdk.QueryFuture(queryFuture);
     }
 
 }

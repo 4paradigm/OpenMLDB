@@ -21,6 +21,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -517,6 +518,7 @@ public class FesqlUtil {
                     return fesqlResult;
                 }
                 resultSet = buildRequestPreparedStatment(rps, rows.get(i));
+//                resultSet = buildRequestPreparedStatmentAsyn(rps, rows.get(i));
                 if (resultSet == null) {
                     fesqlResult.setOk(false);
                     log.info("select result:{}", fesqlResult);
@@ -809,6 +811,25 @@ public class FesqlUtil {
         boolean success = setRequestData(requestPs, objects);
         if (success) {
             return requestPs.executeQuery();
+        } else {
+            return null;
+        }
+    }
+
+    private static java.sql.ResultSet buildRequestPreparedStatmentAsyn(CallablePreparedStatementImpl requestPs,
+                                                                   List<Object> objects) throws SQLException {
+        boolean success = setRequestData(requestPs, objects);
+        if (success) {
+            com._4paradigm.sql.sdk.QueryFuture future = requestPs.executeQeuryAsyn(1000);
+            java.sql.ResultSet sqlResultSet = null;
+            try {
+                sqlResultSet = future.get();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            }
+            return sqlResultSet;
         } else {
             return null;
         }

@@ -32,6 +32,7 @@
 #include "sdk/batch_request_result_set_sql.h"
 #include "timer.h"  //NOLINT
 #include "boost/none.hpp"
+#include "rpc/rpc_client.h"
 
 namespace rtidb {
 namespace sdk {
@@ -113,6 +114,44 @@ class ProcedureInfoImpl : public ProcedureInfo {
     std::vector<std::string> tables_;
     std::string main_table_;
 };
+
+class QueryFutureImpl : public QueryFuture {
+ public:
+    explicit QueryFutureImpl(std::unique_ptr<rtidb::RpcCallback> callback)
+        : callback_(std::move(callback)) {}
+    ~QueryFutureImpl() {}
+
+    std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(fesql::sdk::Status* status) {
+        if (!callback_->response_ || !callback_->cntl_) {
+            status->code = fesql::common::kRpcError;
+            status->msg = "response or controller null";
+            return std::shared_ptr<::fesql::sdk::ResultSet>();
+        }
+        brpc::Join(callback_->cntl_->call_id());
+        if (callback_->cntl_->Failed()) {
+            status->code = fesql::common::kRpcError;
+            status->msg = "request error. " + callback_->cntl_->ErrorText();
+            return std::shared_ptr<::fesql::sdk::ResultSet>();
+        }
+        std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs(
+                new rtidb::sdk::ResultSetSQL(std::move(callback_->response_), std::move(callback_->cntl_)));
+        bool ok = rs->Init();
+        if (!ok) {
+            status->code = -1;
+            status->msg = "resuletSetSQL init failed";
+            return std::shared_ptr<::fesql::sdk::ResultSet>();
+        }
+        return rs;
+    }
+
+    bool IsDone() {
+        return callback_->is_done_.load(std::memory_order_relaxed);
+    }
+
+ private:
+    std::unique_ptr<rtidb::RpcCallback> callback_;
+};
+
 
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
     : options_(options),
@@ -1268,6 +1307,62 @@ bool SQLClusterRouter::ShowProcedure(const std::string& db, const std::string& s
         return false;
     }
     return true;
+}
+
+std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
+    const std::string& db, const std::string& sp_name, int64_t timeout_ms,
+    std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) {
+    if (!row || status == NULL) {
+        status->code = -1;
+        status->msg = "input is invalid";
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<rtidb::sdk::QueryFuture>();
+    }
+    if (!row->OK()) {
+        status->code = -1;
+        status->msg = "make sure the request row is built before execute sql";
+        LOG(WARNING) << "make sure the request row is built before execute sql";
+        return std::shared_ptr<rtidb::sdk::QueryFuture>();
+    }
+    ::rtidb::api::ProcedureInfo sp_info;
+    if (!cluster_sdk_->GetProcedureInfo(db, sp_name, &sp_info, &status->msg)) {
+        status->code = -1;
+        status->msg = "procedure not found, msg: " + status->msg;
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<rtidb::sdk::QueryFuture>();
+    }
+    const std::string& table = sp_info.main_table();
+    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
+    if (!cluster_sdk_->GetTabletByTable(db, table, &tablets)) {
+        status->code = -1;
+        status->msg = "fail to get tablet, table "  + table;
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<rtidb::sdk::QueryFuture>();
+    }
+    if (tablets.size() <= 0) {
+        status->code = -1;
+        status->msg = "not tablet found";
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<rtidb::sdk::QueryFuture>();
+    }
+    uint32_t idx = rand_.Uniform(tablets.size());
+
+    std::unique_ptr<rtidb::api::QueryResponse> response(new rtidb::api::QueryResponse());
+    std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
+    std::unique_ptr<rtidb::RpcCallback> callback(new rtidb::RpcCallback(
+                std::move(response), std::move(cntl)));
+
+    bool ok = tablets[idx]->CallProcedure(db, sp_name, row->GetRow(), timeout_ms,
+            options_.enable_debug, callback.get());
+    if (!ok) {
+        status->code = -1;
+        status->msg = "request server error";
+        LOG(WARNING) << status->msg;
+        return std::shared_ptr<rtidb::sdk::QueryFuture>();
+    }
+    std::shared_ptr<rtidb::sdk::QueryFutureImpl> future(
+        new rtidb::sdk::QueryFutureImpl(std::move(callback)));
+    return future;
 }
 
 }  // namespace sdk

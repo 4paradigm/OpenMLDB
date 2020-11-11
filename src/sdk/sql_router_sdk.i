@@ -16,6 +16,7 @@
 %shared_ptr(rtidb::sdk::SQLInsertRows);
 %shared_ptr(rtidb::sdk::ExplainInfo);
 %shared_ptr(rtidb::sdk::ProcedureInfo);
+%shared_ptr(rtidb::sdk::QueryFuture);
 %template(VectorUint32) std::vector<uint32_t>;
 %template(VectorString) std::vector<std::string>;
 
@@ -37,6 +38,7 @@ using rtidb::sdk::SQLInsertRow;
 using rtidb::sdk::SQLInsertRows;
 using rtidb::sdk::ExplainInfo;
 using rtidb::sdk::ProcedureInfo;
+using rtidb::sdk::QueryFuture;
 %}
 
 %include "sdk/sql_router.h"

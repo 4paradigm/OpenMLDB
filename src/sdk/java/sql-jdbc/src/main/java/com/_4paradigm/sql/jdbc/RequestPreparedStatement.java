@@ -1,7 +1,6 @@
 package com._4paradigm.sql.jdbc;
 
 import com._4paradigm.sql.*;
-import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

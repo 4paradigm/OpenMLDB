@@ -116,6 +116,62 @@ public class StorageProcedureExample extends BaseExample {
         callablePreparedStmt.close();
     }
 
+    public void callProcedureWithPstmsAsyn() throws Exception {
+        Object[] requestRow = new Object[7];
+        requestRow[0] = "bb";
+        requestRow[1] = 24;
+        requestRow[2] = 34l;
+        requestRow[3] = 1.5f;
+        requestRow[4] = 2.5;
+        requestRow[5] = new Timestamp(1590738994000l);
+        requestRow[6] = Date.valueOf("2020-05-05");
+
+        CallablePreparedStatementImpl callablePreparedStmt = sqlExecutor.getCallablePreparedStmt(db, spName);
+        ResultSetMetaData metaData = callablePreparedStmt.getMetaData();
+        for (int i = 0; i < metaData.getColumnCount(); i++) {
+            Object obj = requestRow[i];
+            if (obj == null) {
+                callablePreparedStmt.setNull(i + 1, 0);
+                continue;
+            }
+            int columnType = metaData.getColumnType(i + 1);
+            if (columnType == Types.BOOLEAN) {
+                callablePreparedStmt.setBoolean(i + 1, Boolean.parseBoolean(obj.toString()));
+            } else if (columnType == Types.SMALLINT) {
+                callablePreparedStmt.setShort(i + 1, Short.parseShort(obj.toString()));
+            } else if (columnType == Types.INTEGER) {
+                callablePreparedStmt.setInt(i + 1, Integer.parseInt(obj.toString()));
+            } else if (columnType == Types.BIGINT) {
+                callablePreparedStmt.setLong(i + 1, Long.parseLong(obj.toString()));
+            } else if (columnType == Types.FLOAT) {
+                callablePreparedStmt.setFloat(i + 1, Float.parseFloat(obj.toString()));
+            } else if (columnType == Types.DOUBLE) {
+                callablePreparedStmt.setDouble(i + 1, Double.parseDouble(obj.toString()));
+            } else if (columnType == Types.TIMESTAMP) {
+                callablePreparedStmt.setTimestamp(i + 1, (Timestamp)obj);
+            } else if (columnType == Types.DATE) {
+                callablePreparedStmt.setDate(i + 1, (Date) obj);
+            } else if (columnType == Types.VARCHAR) {
+                callablePreparedStmt.setString(i + 1, (String)obj);
+            } else {
+                logger.error("fail to build request row: invalid data type {]", columnType);
+                return;
+            }
+        }
+        QueryFuture future = callablePreparedStmt.executeQeuryAsyn(100);
+        System.out.println("done: " + future.isDone());
+        ResultSet sqlResultSet = future.get();
+        Assert.assertTrue(sqlResultSet.next());
+
+        Assert.assertEquals(sqlResultSet.getMetaData().getColumnCount(), 3);
+        Assert.assertEquals(sqlResultSet.getString(1), "bb");
+        Assert.assertEquals(sqlResultSet.getInt(2), 24);
+        Assert.assertEquals(sqlResultSet.getLong(3), 34);
+        System.out.println("ok");
+        sqlResultSet.close();
+        callablePreparedStmt.close();
+    }
+
     public static void run() {
         final StorageProcedureExample example = new StorageProcedureExample();
         try {
@@ -124,7 +180,8 @@ public class StorageProcedureExample extends BaseExample {
             example.initSample();
             example.createProcedure();
             System.out.println("create ok");
-            example.callProcedureWithPstms();
+//            example.callProcedureWithPstms();
+            example.callProcedureWithPstmsAsyn();
         } catch (Exception e) {
             e.printStackTrace();
         }

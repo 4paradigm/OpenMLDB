@@ -1723,5 +1723,24 @@ bool TabletClient::DropProcedure(const std::string& db_name, const std::string& 
     return true;
 }
 
+bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name,
+        const std::string& row, int64_t timeout_ms, bool is_debug,
+        rtidb::RpcCallback* callback) {
+    if (callback == nullptr) {
+        return false;
+    }
+    ::rtidb::api::QueryRequest request;
+    request.set_db(db);
+    request.set_sp_name(sp_name);
+    request.set_is_debug(is_debug);
+    request.set_input_row(row);
+    request.set_is_batch(false);
+    request.set_is_procedure(true);
+
+    callback->cntl_->set_timeout_ms(timeout_ms);
+    return client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query,
+            callback->cntl_.get(), &request, callback->response_.get(), callback);
+}
+
 }  // namespace client
 }  // namespace rtidb

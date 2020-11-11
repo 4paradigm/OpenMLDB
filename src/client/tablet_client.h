@@ -356,6 +356,10 @@ class TabletClient {
             brpc::Controller* cntl,
             ::rtidb::api::QueryResponse* response);
 
+    bool CallProcedure(const std::string& db, const std::string& sp_name,
+            const std::string& row, int64_t timeout_ms, bool is_debug,
+            rtidb::RpcCallback* callback);
+
  private:
     std::string endpoint_;
     std::string real_endpoint_;
