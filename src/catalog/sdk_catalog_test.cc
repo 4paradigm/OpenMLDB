@@ -57,8 +57,9 @@ TEST_F(SDKCatalogTest, sdk_smoke_test) {
     TestArgs* args = PrepareTable("t1", "db1");
     std::vector<::rtidb::nameserver::TableInfo> tables;
     tables.push_back(args->meta);
-    std::shared_ptr<SDKCatalog> catalog(new SDKCatalog());
-    ASSERT_TRUE(catalog->Init(tables, std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>()));
+    auto client_manager = std::make_shared<ClientManager>();
+    std::shared_ptr<SDKCatalog> catalog(new SDKCatalog(client_manager));
+    ASSERT_TRUE(catalog->Init(tables));
     ::fesql::vm::EngineOptions options;
     options.set_compile_only(true);
     ::fesql::vm::Engine engine(catalog, options);
@@ -75,8 +76,9 @@ TEST_F(SDKCatalogTest, sdk_window_smoke_test) {
     TestArgs* args = PrepareTable("t1", "db1");
     std::vector<::rtidb::nameserver::TableInfo> tables;
     tables.push_back(args->meta);
-    std::shared_ptr<SDKCatalog> catalog(new SDKCatalog());
-    ASSERT_TRUE(catalog->Init(tables, std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>()));
+    auto client_manager = std::make_shared<ClientManager>();
+    std::shared_ptr<SDKCatalog> catalog(new SDKCatalog(client_manager));
+    ASSERT_TRUE(catalog->Init(tables));
     ::fesql::vm::EngineOptions options;
     options.set_compile_only(true);
     ::fesql::vm::Engine engine(catalog, options);
@@ -98,8 +100,9 @@ TEST_F(SDKCatalogTest, sdk_lastjoin_smoke_test) {
     std::vector<::rtidb::nameserver::TableInfo> tables;
     tables.push_back(args->meta);
     tables.push_back(args2->meta);
-    std::shared_ptr<SDKCatalog> catalog(new SDKCatalog());
-    ASSERT_TRUE(catalog->Init(tables, std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>()));
+    auto client_manager = std::make_shared<ClientManager>();
+    std::shared_ptr<SDKCatalog> catalog(new SDKCatalog(client_manager));
+    ASSERT_TRUE(catalog->Init(tables));
     ::fesql::vm::EngineOptions options;
     options.set_compile_only(true);
     ::fesql::vm::Engine engine(catalog, options);
