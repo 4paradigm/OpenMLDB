@@ -1725,7 +1725,7 @@ bool TabletClient::DropProcedure(const std::string& db_name, const std::string& 
 
 bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name,
         const std::string& row, int64_t timeout_ms, bool is_debug,
-        rtidb::RpcCallback* callback) {
+        rtidb::RpcCallback<rtidb::api::QueryResponse>* callback) {
     if (callback == nullptr) {
         return false;
     }
@@ -1741,6 +1741,31 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
     return client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query,
             callback->cntl_.get(), &request, callback->response_.get(), callback);
 }
+
+bool TabletClient::CallSQLBatchRequestProcedure(
+        const std::string& db, const std::string& sp_name,
+        std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
+        bool is_debug, int64_t timeout_ms,
+        rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback) {
+    if (callback == nullptr) {
+        return false;
+    }
+    ::rtidb::api::SQLBatchRequestQueryRequest request;
+    request.set_sp_name(sp_name);
+    request.set_is_procedure(true);
+    request.set_sql("");
+    request.set_db(db);
+    request.set_is_debug(is_debug);
+    request.set_common_row(*row_batch->GetCommonSlice());
+    for (int i = 0; i < row_batch->Size(); ++i) {
+        request.add_non_common_rows(*row_batch->GetNonCommonSlice(i));
+    }
+
+    callback->cntl_->set_timeout_ms(timeout_ms);
+    return client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
+            callback->cntl_.get(), &request, callback->response_.get(), callback);
+}
+
 
 }  // namespace client
 }  // namespace rtidb

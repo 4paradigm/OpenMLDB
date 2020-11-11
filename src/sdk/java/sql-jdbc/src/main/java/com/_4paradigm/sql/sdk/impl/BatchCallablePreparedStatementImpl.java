@@ -1,9 +1,6 @@
 package com._4paradigm.sql.sdk.impl;
 
-import com._4paradigm.sql.ColumnIndicesSet;
-import com._4paradigm.sql.SQLRequestRowBatch;
-import com._4paradigm.sql.SQLRouter;
-import com._4paradigm.sql.Status;
+import com._4paradigm.sql.*;
 import com._4paradigm.sql.jdbc.CallablePreparedStatement;
 import com._4paradigm.sql.jdbc.SQLResultSet;
 import org.slf4j.Logger;
@@ -11,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.concurrent.TimeUnit;
 
 public class BatchCallablePreparedStatementImpl extends CallablePreparedStatement {
     private static final Logger logger = LoggerFactory.getLogger(BatchCallablePreparedStatementImpl.class);
@@ -42,6 +40,17 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
             closed = true;
         }
         return rs;
+    }
+
+    public com._4paradigm.sql.sdk.QueryFuture executeQeuryAsyn(long timeOut, TimeUnit unit) throws SQLException {
+        checkClosed();
+        Status status = new Status();
+        QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, spName, unit.toMillis(timeOut), currentRowBatch, status);
+        if (status.getCode() != 0 || queryFuture == null) {
+            logger.error("call procedure failed: {}", status.getMsg());
+            throw new SQLException("call procedure fail, msg: " + status.getMsg());
+        }
+        return new com._4paradigm.sql.sdk.QueryFuture(queryFuture);
     }
 
     @Override

@@ -157,6 +157,10 @@ class SQLClusterRouter : public SQLRouter {
             const std::string& db, const std::string& sp_name, int64_t timeout_ms,
             std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status);
 
+    std::shared_ptr<rtidb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
+            const std::string& db, const std::string& sp_name, int64_t timeout_ms,
+            std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status);
+
  private:
     bool GetTablet(
         const std::string& db, const std::string& sql,
@@ -195,6 +199,9 @@ class SQLClusterRouter : public SQLRouter {
             fesql::node::NodeManager* node_manager, std::string* msg);
 
     inline bool CheckParameter(const RtidbSchema& parameter, const RtidbSchema& input_schema);
+
+    std::shared_ptr<rtidb::client::TabletClient> GetTablet(
+            const std::string& db, const std::string& sp_name, fesql::sdk::Status* status);
 
  private:
     SQLRouterOptions options_;

@@ -202,9 +202,10 @@ class RpcClient {
     brpc::Channel* channel_;
 };
 
+template<class Response>
 class RpcCallback : public google::protobuf::Closure {
  public:
-    RpcCallback(std::unique_ptr<rtidb::api::QueryResponse> response,
+    RpcCallback(std::unique_ptr<Response> response,
             std::unique_ptr<::brpc::Controller> cntl) :
         response_(std::move(response)),
         cntl_(std::move(cntl)),
@@ -216,7 +217,7 @@ class RpcCallback : public google::protobuf::Closure {
         is_done_.store(true, std::memory_order_relaxed);
     }
 
-    std::unique_ptr<rtidb::api::QueryResponse> response_;
+    std::unique_ptr<Response> response_;
     std::unique_ptr<brpc::Controller> cntl_;
     std::atomic<bool> is_done_;
 };

@@ -117,7 +117,7 @@ class ProcedureInfoImpl : public ProcedureInfo {
 
 class QueryFutureImpl : public QueryFuture {
  public:
-    explicit QueryFutureImpl(std::unique_ptr<rtidb::RpcCallback> callback)
+    explicit QueryFutureImpl(std::unique_ptr<rtidb::RpcCallback<rtidb::api::QueryResponse>> callback)
         : callback_(std::move(callback)) {}
     ~QueryFutureImpl() {}
 
@@ -125,13 +125,13 @@ class QueryFutureImpl : public QueryFuture {
         if (!callback_->response_ || !callback_->cntl_) {
             status->code = fesql::common::kRpcError;
             status->msg = "response or controller null";
-            return std::shared_ptr<::fesql::sdk::ResultSet>();
+            return nullptr;
         }
         brpc::Join(callback_->cntl_->call_id());
         if (callback_->cntl_->Failed()) {
             status->code = fesql::common::kRpcError;
             status->msg = "request error. " + callback_->cntl_->ErrorText();
-            return std::shared_ptr<::fesql::sdk::ResultSet>();
+            return nullptr;
         }
         std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs(
                 new rtidb::sdk::ResultSetSQL(std::move(callback_->response_), std::move(callback_->cntl_)));
@@ -149,9 +149,48 @@ class QueryFutureImpl : public QueryFuture {
     }
 
  private:
-    std::unique_ptr<rtidb::RpcCallback> callback_;
+    std::unique_ptr<rtidb::RpcCallback<rtidb::api::QueryResponse>> callback_;
 };
 
+class BatchQueryFutureImpl : public QueryFuture {
+ public:
+    explicit BatchQueryFutureImpl(
+            std::unique_ptr<rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>> callback)
+        : callback_(std::move(callback)) {}
+
+    ~BatchQueryFutureImpl() {}
+
+    std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(fesql::sdk::Status* status) {
+        if (!callback_->response_ || !callback_->cntl_) {
+            status->code = fesql::common::kRpcError;
+            status->msg = "response or controller null";
+            return nullptr;
+        }
+        brpc::Join(callback_->cntl_->call_id());
+        if (callback_->cntl_->Failed()) {
+            status->code = fesql::common::kRpcError;
+            status->msg = "request error. " + callback_->cntl_->ErrorText();
+            return nullptr;
+        }
+        std::shared_ptr<::rtidb::sdk::SQLBatchRequestResultSet> rs(
+                new rtidb::sdk::SQLBatchRequestResultSet(
+                    std::move(callback_->response_), std::move(callback_->cntl_)));
+        bool ok = rs->Init();
+        if (!ok) {
+            status->code = -1;
+            status->msg = "resuletSetSQL init failed";
+            return std::shared_ptr<::fesql::sdk::ResultSet>();
+        }
+        return rs;
+    }
+
+    bool IsDone() {
+        return callback_->is_done_.load(std::memory_order_relaxed);
+    }
+
+ private:
+    std::unique_ptr<rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>> callback_;
+};
 
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
     : options_(options),
@@ -665,6 +704,34 @@ bool SQLClusterRouter::GetTablet(
     return true;
 }
 
+std::shared_ptr<rtidb::client::TabletClient> SQLClusterRouter::GetTablet(
+        const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) {
+    if (status == nullptr) return nullptr;
+    ::rtidb::api::ProcedureInfo sp_info;
+    if (!cluster_sdk_->GetProcedureInfo(db, sp_name, &sp_info, &status->msg)) {
+        status->code = -1;
+        status->msg = "procedure not found, msg: " + status->msg;
+        LOG(WARNING) << status->msg;
+        return nullptr;
+    }
+    const std::string& table = sp_info.main_table();
+    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
+    if (!cluster_sdk_->GetTabletByTable(db, table, &tablets)) {
+        status->code = -1;
+        status->msg = "fail to get tablet, table "  + table;
+        LOG(WARNING) << status->msg;
+        return nullptr;
+    }
+    if (tablets.size() <= 0) {
+        status->code = -1;
+        status->msg = "not tablet found";
+        LOG(WARNING) << status->msg;
+        return nullptr;
+    }
+    uint32_t idx = rand_.Uniform(tablets.size());
+    return tablets[idx];
+}
+
 bool SQLClusterRouter::IsConstQuery(::fesql::vm::PhysicalOpNode* node) {
     if (node->type_ == ::fesql::vm::kPhysicalOpConstProject) {
         return true;
@@ -701,7 +768,7 @@ void SQLClusterRouter::GetTables(::fesql::vm::PhysicalOpNode* node,
 std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     const std::string& db, const std::string& sql,
     std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) {
-    if (!row || status == NULL) {
+    if (!row || !status) {
         LOG(WARNING) << "input is invalid";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
@@ -768,7 +835,7 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
 std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchRequest(
     const std::string& db, const std::string& sql,
     std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) {
-    if (!row_batch || status == NULL) {
+    if (!row_batch || !status) {
         LOG(WARNING) << "input is invalid";
         return nullptr;
     }
@@ -856,7 +923,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
                                      const std::string& sql,
                                      std::shared_ptr<SQLInsertRows> rows,
                                      fesql::sdk::Status* status) {
-    if (!rows || status == NULL) {
+    if (!rows || !status) {
         LOG(WARNING) << "input is invalid";
         return false;
     }
@@ -895,7 +962,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db,
                                      const std::string& sql,
                                      std::shared_ptr<SQLInsertRow> row,
                                      fesql::sdk::Status* status) {
-    if (!row || status == NULL) {
+    if (!row || !status) {
         status->msg = "input is invalid";
         LOG(WARNING) << "input is invalid";
         return false;
@@ -978,56 +1045,39 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(
 std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
     const std::string& db, const std::string& sp_name,
     std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) {
-    if (!row || status == NULL) {
+    if (!row || !status) {
         status->code = -1;
         status->msg = "input is invalid";
         LOG(WARNING) << status->msg;
-        return std::shared_ptr<::fesql::sdk::ResultSet>();
+        return nullptr;
     }
     if (!row->OK()) {
         status->code = -1;
         status->msg = "make sure the request row is built before execute sql";
         LOG(WARNING) << "make sure the request row is built before execute sql";
-        return std::shared_ptr<::fesql::sdk::ResultSet>();
+        return nullptr;
     }
-    ::rtidb::api::ProcedureInfo sp_info;
-    if (!cluster_sdk_->GetProcedureInfo(db, sp_name, &sp_info, &status->msg)) {
-        status->code = -1;
-        status->msg = "procedure not found, msg: " + status->msg;
-        LOG(WARNING) << status->msg;
-        return std::shared_ptr<::fesql::sdk::ResultSet>();
+    auto tablet = GetTablet(db, sp_name, status);
+    if (!tablet) {
+        return nullptr;
     }
+
     std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
     std::unique_ptr<::rtidb::api::QueryResponse> response(
         new ::rtidb::api::QueryResponse());
-    const std::string& table = sp_info.main_table();
-    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
-    if (!cluster_sdk_->GetTabletByTable(db, table, &tablets)) {
-        status->code = -1;
-        status->msg = "fail to get tablet, table "  + table;
-        LOG(WARNING) << status->msg;
-        return std::shared_ptr<::fesql::sdk::ResultSet>();
-    }
-    if (tablets.size() <= 0) {
-        status->code = -1;
-        status->msg = "not tablet found";
-        LOG(WARNING) << status->msg;
-        return std::shared_ptr<::fesql::sdk::ResultSet>();
-    }
-    uint32_t idx = rand_.Uniform(tablets.size());
-    bool ok = tablets[idx]->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(),
+    bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(),
                              options_.enable_debug);
     if (!ok) {
         status->code = -1;
         status->msg = "request server error";
         LOG(WARNING) << status->msg;
-        return std::shared_ptr<::fesql::sdk::ResultSet>();
+        return nullptr;
     }
     if (response->code() != ::rtidb::base::kOk) {
         status->code = -1;
         status->msg = response->msg();
         LOG(WARNING) << status->msg;
-        return std::shared_ptr<::fesql::sdk::ResultSet>();
+        return nullptr;
     }
     std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs(
         new rtidb::sdk::ResultSetSQL(std::move(response), std::move(cntl)));
@@ -1036,52 +1086,28 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
         status->code = -1;
         status->msg = "resuletSetSQL init failed";
         LOG(WARNING) << status->msg;
-        return std::shared_ptr<::fesql::sdk::ResultSet>();
+        return nullptr;
     }
     return rs;
 }
 
 std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProcedure(
-    const std::string& db, const std::string& sp_name,
-    std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) {
-    if (!row_batch || status == NULL) {
+        const std::string& db, const std::string& sp_name,
+        std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) {
+    if (!row_batch || !status) {
         status->code = -1;
         status->msg = "input is invalid";
         return nullptr;
     }
-    auto ns_ptr = cluster_sdk_->GetNsClient();
-    if (!ns_ptr) {
-        status->code = -1;
-        status->msg = "no nameserver exist";
-        return nullptr;
-    }
-    ::rtidb::api::ProcedureInfo sp_info;
-    if (!cluster_sdk_->GetProcedureInfo(db, sp_name, &sp_info, &status->msg)) {
-        status->code = -1;
-        status->msg = "procedure not found, msg: " + status->msg;
-        LOG(WARNING) << status->msg;
+    auto tablet = GetTablet(db, sp_name, status);
+    if (!tablet) {
         return nullptr;
     }
 
     std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
     std::unique_ptr<::rtidb::api::SQLBatchRequestQueryResponse> response(
         new ::rtidb::api::SQLBatchRequestQueryResponse());
-    const std::string& table = sp_info.main_table();
-    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
-    if (!cluster_sdk_->GetTabletByTable(db, table, &tablets)) {
-        status->code = -1;
-        status->msg = "fail to get tablet, table "  + table;
-        LOG(WARNING) << status->msg;
-        return std::shared_ptr<::fesql::sdk::ResultSet>();
-    }
-    if (tablets.size() <= 0) {
-        status->code = -1;
-        status->msg = "not tablet found";
-        LOG(WARNING) << status->msg;
-        return std::shared_ptr<::fesql::sdk::ResultSet>();
-    }
-    uint32_t idx = rand_.Uniform(tablets.size());
-    bool ok = tablets[idx]->CallSQLBatchRequestProcedure(
+    bool ok = tablet->CallSQLBatchRequestProcedure(
         db, sp_name, row_batch, cntl.get(), response.get(),
         options_.enable_debug);
     if (!ok) {
@@ -1312,7 +1338,7 @@ bool SQLClusterRouter::ShowProcedure(const std::string& db, const std::string& s
 std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
     const std::string& db, const std::string& sp_name, int64_t timeout_ms,
     std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) {
-    if (!row || status == NULL) {
+    if (!row || !status) {
         status->code = -1;
         status->msg = "input is invalid";
         LOG(WARNING) << status->msg;
@@ -1324,35 +1350,17 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
         LOG(WARNING) << "make sure the request row is built before execute sql";
         return std::shared_ptr<rtidb::sdk::QueryFuture>();
     }
-    ::rtidb::api::ProcedureInfo sp_info;
-    if (!cluster_sdk_->GetProcedureInfo(db, sp_name, &sp_info, &status->msg)) {
-        status->code = -1;
-        status->msg = "procedure not found, msg: " + status->msg;
-        LOG(WARNING) << status->msg;
+    auto tablet = GetTablet(db, sp_name, status);
+    if (!tablet) {
         return std::shared_ptr<rtidb::sdk::QueryFuture>();
     }
-    const std::string& table = sp_info.main_table();
-    std::vector<std::shared_ptr<::rtidb::client::TabletClient>> tablets;
-    if (!cluster_sdk_->GetTabletByTable(db, table, &tablets)) {
-        status->code = -1;
-        status->msg = "fail to get tablet, table "  + table;
-        LOG(WARNING) << status->msg;
-        return std::shared_ptr<rtidb::sdk::QueryFuture>();
-    }
-    if (tablets.size() <= 0) {
-        status->code = -1;
-        status->msg = "not tablet found";
-        LOG(WARNING) << status->msg;
-        return std::shared_ptr<rtidb::sdk::QueryFuture>();
-    }
-    uint32_t idx = rand_.Uniform(tablets.size());
 
     std::unique_ptr<rtidb::api::QueryResponse> response(new rtidb::api::QueryResponse());
-    std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
-    std::unique_ptr<rtidb::RpcCallback> callback(new rtidb::RpcCallback(
-                std::move(response), std::move(cntl)));
+    std::unique_ptr<brpc::Controller> cntl(new brpc::Controller());
+    std::unique_ptr<rtidb::RpcCallback<rtidb::api::QueryResponse>> callback(
+            new rtidb::RpcCallback<rtidb::api::QueryResponse>(std::move(response), std::move(cntl)));
 
-    bool ok = tablets[idx]->CallProcedure(db, sp_name, row->GetRow(), timeout_ms,
+    bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), timeout_ms,
             options_.enable_debug, callback.get());
     if (!ok) {
         status->code = -1;
@@ -1362,6 +1370,37 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
     }
     std::shared_ptr<rtidb::sdk::QueryFutureImpl> future(
         new rtidb::sdk::QueryFutureImpl(std::move(callback)));
+    return future;
+}
+
+std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestProcedure(
+        const std::string& db, const std::string& sp_name, int64_t timeout_ms,
+        std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) {
+    if (!row_batch || !status) {
+        status->code = -1;
+        status->msg = "input is invalid";
+        return nullptr;
+    }
+    auto tablet = GetTablet(db, sp_name, status);
+    if (!tablet) {
+        return nullptr;
+    }
+
+    std::unique_ptr<brpc::Controller> cntl(new brpc::Controller());
+    std::unique_ptr<rtidb::api::SQLBatchRequestQueryResponse> response(
+        new rtidb::api::SQLBatchRequestQueryResponse());
+    std::unique_ptr<rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>> callback(
+            new rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>(std::move(response), std::move(cntl)));
+    bool ok = tablet->CallSQLBatchRequestProcedure(
+            db, sp_name, row_batch, options_.enable_debug, timeout_ms, callback.get());
+    if (!ok) {
+        status->code = -1;
+        status->msg = "request server error";
+        LOG(WARNING) << status->msg;
+        return nullptr;
+    }
+    std::shared_ptr<rtidb::sdk::BatchQueryFutureImpl> future(
+        new rtidb::sdk::BatchQueryFutureImpl(std::move(callback)));
     return future;
 }
 

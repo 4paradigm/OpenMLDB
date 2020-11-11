@@ -358,7 +358,13 @@ class TabletClient {
 
     bool CallProcedure(const std::string& db, const std::string& sp_name,
             const std::string& row, int64_t timeout_ms, bool is_debug,
-            rtidb::RpcCallback* callback);
+            rtidb::RpcCallback<rtidb::api::QueryResponse>* callback);
+
+    bool CallSQLBatchRequestProcedure(
+            const std::string& db, const std::string& sp_name,
+            std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
+            bool is_debug, int64_t timeout_ms,
+            rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback);
 
  private:
     std::string endpoint_;

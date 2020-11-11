@@ -562,7 +562,7 @@ public class FesqlUtil {
     }
 
     public static FesqlResult selectBatchRequestModeWithSp(SqlExecutor executor, String dbName, String spName,
-                                                            String sql, InputDesc input) {
+                                                            String sql, InputDesc input, boolean isAsyn) {
         if (sql.isEmpty()) {
             logger.error("fail to execute sql in batch request mode: select sql is empty");
             return null;
@@ -601,7 +601,18 @@ public class FesqlUtil {
                 }
             }
 
-            sqlResultSet = rps.executeQuery();
+            if (!isAsyn) {
+                sqlResultSet = rps.executeQuery();
+            } else {
+                com._4paradigm.sql.sdk.QueryFuture future = rps.executeQeuryAsyn(10000, TimeUnit.MILLISECONDS);
+                try {
+                    sqlResultSet = future.get();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                }
+            }
             List<List<Object>> result = Lists.newArrayList();
             result.addAll(convertRestultSetToList((SQLResultSet) sqlResultSet));
             fesqlResult.setResult(result);

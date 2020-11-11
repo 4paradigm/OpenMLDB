@@ -47,7 +47,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
             return null;
         }
         if (fesqlCase.getBatch_request() != null) {
-            return executeBatch(sql);
+            return executeBatch(sql, this.isAsyn);
         } else {
             return executeSingle(sql, this.isAsyn);
         }
@@ -60,12 +60,12 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
                 executor, dbName, tableNames.get(0), spSql, fesqlCase.getInputs().get(0), isAsyn);
     }
 
-    private FesqlResult executeBatch(String sql) throws SQLException {
+    private FesqlResult executeBatch(String sql, boolean isAsyn) throws SQLException {
         String spName = "sp_" + tableNames.get(0) + "_" + System.currentTimeMillis();
         String spSql = buildSpSQLWithConstColumns(spName, sql, fesqlCase.getBatch_request());
         log.info("spSql: {}", spSql);
         return FesqlUtil.selectBatchRequestModeWithSp(
-                executor, dbName, spName, spSql, fesqlCase.getBatch_request());
+                executor, dbName, spName, spSql, fesqlCase.getBatch_request(), isAsyn);
     }
 
     private String buildSpSQLWithConstColumns(String spName,
