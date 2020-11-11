@@ -14,12 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef SRC_SDK_SQL_SDK_TEST_H_
+#define SRC_SDK_SQL_SDK_TEST_H_
 
 #include <sched.h>
 #include <timer.h>
 #include <unistd.h>
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -52,8 +55,7 @@ class SQLSDKTest : public rtidb::test::SQLCaseTest {
 
     static void CreateDB(const fesql::sqlcase::SQLCase& sql_case, std::shared_ptr<SQLRouter> router);
     static void CreateTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                             std::shared_ptr<SQLRouter> router,
-                             int partition_num = 1);
+                             std::shared_ptr<SQLRouter> router, int partition_num = 1);
 
     static void DropTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                            std::shared_ptr<SQLRouter> router);
@@ -63,11 +65,9 @@ class SQLSDKTest : public rtidb::test::SQLCaseTest {
     static void CovertFesqlRowToRequestRow(fesql::codec::RowView* row_view,
                                            std::shared_ptr<rtidb::sdk::SQLRequestRow> request_row);
     static void BatchExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                std::shared_ptr<SQLRouter> router,
-                                const std::vector<std::string>& tbEndpoints);
+                                std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints);
     static void RunBatchModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                std::shared_ptr<SQLRouter> router,
-                                const std::vector<std::string>& tbEndpoints);
+                                std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints);
 };
 
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestCreate, SQLSDKTest,
@@ -85,7 +85,7 @@ class SQLSDKQueryTest : public SQLSDKTest {
     static void RunRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                   std::shared_ptr<SQLRouter> router);
     static void DistributeRunRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                  std::shared_ptr<SQLRouter> router);
+                                            std::shared_ptr<SQLRouter> router);
 };
 
 class SQLSDKBatchRequestQueryTest : public SQLSDKTest {
@@ -97,7 +97,7 @@ class SQLSDKBatchRequestQueryTest : public SQLSDKTest {
     static void RunBatchRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                        std::shared_ptr<SQLRouter> router);
     static void DistributeRunBatchRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                       std::shared_ptr<SQLRouter> router);
+                                                 std::shared_ptr<SQLRouter> router);
 };
 
 void SQLSDKTest::CreateDB(const fesql::sqlcase::SQLCase& sql_case, std::shared_ptr<SQLRouter> router) {
@@ -115,8 +115,7 @@ void SQLSDKTest::CreateDB(const fesql::sqlcase::SQLCase& sql_case, std::shared_p
 }
 
 void SQLSDKTest::CreateTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                              std::shared_ptr<SQLRouter> router,
-                              int partition_num) {
+                              std::shared_ptr<SQLRouter> router, int partition_num) {
     DLOG(INFO) << "Create Tables BEGIN";
     fesql::sdk::Status status;
     // create and insert inputs
@@ -237,8 +236,7 @@ void SQLSDKTest::CovertFesqlRowToRequestRow(fesql::codec::RowView* row_view,
 }
 
 void SQLSDKTest::BatchExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                 std::shared_ptr<SQLRouter> router,
-                                 const std::vector<std::string>& tbEndpoints) {
+                                 std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints) {
     DLOG(INFO) << "BatchExecuteSQL BEGIN";
     fesql::sdk::Status status;
     DLOG(INFO) << "format sql begin";
@@ -298,8 +296,7 @@ void SQLSDKTest::BatchExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
 }
 
 void SQLSDKTest::RunBatchModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                 std::shared_ptr<SQLRouter> router,
-                                 const std::vector<std::string>& tbEndpoints) {
+                                 std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints) {
     fesql::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router);
@@ -473,7 +470,7 @@ void SQLSDKQueryTest::RunRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // N
     LOG(INFO) << "RequestExecuteSQL ID: " << sql_case.id() << ", DESC: " << sql_case.desc() << " done!";
 }
 void SQLSDKQueryTest::DistributeRunRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                        std::shared_ptr<SQLRouter> router) {
+                                                  std::shared_ptr<SQLRouter> router) {
     fesql::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router, 8);
@@ -494,14 +491,15 @@ void SQLSDKBatchRequestQueryTest::RunBatchRequestModeSDK(fesql::sqlcase::SQLCase
 }
 
 void SQLSDKBatchRequestQueryTest::DistributeRunBatchRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                                         std::shared_ptr<SQLRouter> router) {
+                                                                   std::shared_ptr<SQLRouter> router) {
     fesql::sdk::Status status;
     CreateDB(sql_case, router);
     CreateTables(sql_case, router, 8);
     InsertTables(sql_case, router, true);
     BatchRequestExecuteSQL(sql_case, router);
     DropTables(sql_case, router);
-    LOG(INFO) << "DistributeRunBatchRequestExecuteSQL ID: " << sql_case.id() << ", DESC: " << sql_case.desc() << " done!";
+    LOG(INFO) << "DistributeRunBatchRequestExecuteSQL ID: " << sql_case.id() << ", DESC: " << sql_case.desc()
+              << " done!";
 }
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestConstsSelect, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/const_query.yaml")));
@@ -543,15 +541,13 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(SQLSDKBatchRequestQueryTest::InitCases("/cases/integration/v1/test_batch_request.yaml")));
 INSTANTIATE_TEST_CASE_P(
     SQLSDKClusterCaseWindowAndLastJoin, SQLSDKQueryTest,
-    testing::ValuesIn(
-        SQLSDKQueryTest::InitCases("/cases/integration/cluster/window_and_lastjoin.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/cluster/window_and_lastjoin.yaml")));
 INSTANTIATE_TEST_CASE_P(
     SQLSDKClusterCaseWindowRow, SQLSDKQueryTest,
-    testing::ValuesIn(
-        SQLSDKQueryTest::InitCases("/cases/integration/cluster/test_window_row.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/cluster/test_window_row.yaml")));
 INSTANTIATE_TEST_CASE_P(
     SQLSDKClusterCaseWindowRowRange, SQLSDKQueryTest,
-    testing::ValuesIn(
-        SQLSDKQueryTest::InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
 }  // namespace sdk
 }  // namespace rtidb
+#endif  // SRC_SDK_SQL_SDK_TEST_H_
