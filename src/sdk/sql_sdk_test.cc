@@ -547,6 +547,14 @@ INSTANTIATE_TEST_CASE_P(
     SQLSDKClusterCaseWindowAndLastJoin, SQLSDKQueryTest,
     testing::ValuesIn(
         SQLSDKQueryTest::InitCases("/cases/integration/cluster/window_and_lastjoin.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    SQLSDKClusterCaseWindowRow, SQLSDKQueryTest,
+    testing::ValuesIn(
+        SQLSDKQueryTest::InitCases("/cases/integration/cluster/test_window_row.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    SQLSDKClusterCaseWindowRowRange, SQLSDKQueryTest,
+    testing::ValuesIn(
+        SQLSDKQueryTest::InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
 
 static std::shared_ptr<SQLRouter> GetNewSQLRouter(const fesql::sqlcase::SQLCase& sql_case) {
     SQLRouterOptions sql_opt;
@@ -783,7 +791,7 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::rtidb::sdk::MiniCluster mc(6181);
     ::rtidb::sdk::mc_ = &mc;
-    int ok = ::rtidb::sdk::mc_->SetUp(1);
+    int ok = ::rtidb::sdk::mc_->SetUp(2);
     sleep(1);
 
     ::rtidb::sdk::MiniCluster multi_partition_mc(6181);
