@@ -429,6 +429,7 @@ TEST_F(TabletCatalogTest, iterator_test) {
         pk_cnt++;
         auto row_iterator = iterator->GetValue();
         row_iterator->SeekToFirst();
+        DLOG(INFO) << "window key " << iterator->GetKey().ToString();
         while (row_iterator->Valid()) {
             record_num++;
             row_iterator->Next();
@@ -437,6 +438,7 @@ TEST_F(TabletCatalogTest, iterator_test) {
     }
     ASSERT_EQ(pk_cnt, 100);
     ASSERT_EQ(record_num, 500);
+
     auto full_iterator = handler->GetIterator();
     full_iterator->SeekToFirst();
     record_num = 0;
@@ -446,7 +448,83 @@ TEST_F(TabletCatalogTest, iterator_test) {
     }
     ASSERT_EQ(record_num, 500);
 }
+TEST_F(TabletCatalogTest, window_iterator_seek_test_discontinuous) {
+    std::vector<std::shared_ptr<TabletCatalog>> catalog_vec;
+    for (int i = 0; i < 2; i++) {
+        std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
+        ASSERT_TRUE(catalog->Init());
+        catalog_vec.push_back(catalog);
+    }
+    uint32_t pid_num = 8;
+    TestArgs *args = PrepareMultiPartitionTable("t1", pid_num);
+    for (uint32_t pid = 0; pid < pid_num; pid++) {
+        if (pid % 2 == 0) {
+            ASSERT_TRUE(catalog_vec[0]->AddTable(args->meta[pid], args->tables[pid]));
+        } else {
+            ASSERT_TRUE(catalog_vec[1]->AddTable(args->meta[pid], args->tables[pid]));
+        }
+    }
+    // WindowIterator Seek key Test
+    {
+        auto handler = catalog_vec[0]->GetTable("db1", "t1");
+        auto iterator = handler->GetWindowIterator("index0");
+        iterator->SeekToFirst();
+        while (iterator->Valid()) {
+            auto row_iterator = iterator->GetValue();
+            DLOG(INFO) << "window key " << iterator->GetKey().ToString();
+            row_iterator->SeekToFirst();
+            while (row_iterator->Valid()) {
+                row_iterator->Next();
+            }
+            iterator->Next();
+        }
+        {
+            iterator->SeekToFirst();
+            int segment_cnt = 0;
+            iterator->Seek("pk190");
+            auto row_iterator = iterator->GetValue();
+            DLOG(INFO) << "window key " << iterator->GetKey().ToString();
+            ASSERT_EQ("pk190", iterator->GetKey().ToString());
+            row_iterator->SeekToFirst();
+            while (row_iterator->Valid()) {
+                segment_cnt++;
+                row_iterator->Next();
+            }
+            ASSERT_EQ(5, segment_cnt);
+        }
+        {
+            iterator->SeekToFirst();
+            int segment_cnt = 0;
+            iterator->Seek("pk195");
+            auto row_iterator = iterator->GetValue();
+            DLOG(INFO) << "window key " << iterator->GetKey().ToString();
+            ASSERT_EQ("pk195", iterator->GetKey().ToString());
+            row_iterator->SeekToFirst();
+            while (row_iterator->Valid()) {
+                segment_cnt++;
+                row_iterator->Next();
+            }
+            ASSERT_EQ(5, segment_cnt);
+        }
 
+
+    }
+    {
+        auto handler = catalog_vec[1]->GetTable("db1", "t1");
+        auto iterator = handler->GetWindowIterator("index0");
+        int segment_cnt = 0;
+        iterator->Seek("pk180");
+        auto row_iterator = iterator->GetValue();
+        DLOG(INFO) << "window key " << iterator->GetKey().ToString();
+        ASSERT_EQ("pk180", iterator->GetKey().ToString());
+        row_iterator->SeekToFirst();
+        while (row_iterator->Valid()) {
+            segment_cnt++;
+            row_iterator->Next();
+        }
+        ASSERT_EQ(5, segment_cnt);
+    }
+}
 TEST_F(TabletCatalogTest, iterator_test_discontinuous) {
     std::vector<std::shared_ptr<TabletCatalog>> catalog_vec;
     for (int i = 0; i < 2; i++) {
@@ -473,6 +551,7 @@ TEST_F(TabletCatalogTest, iterator_test_discontinuous) {
         while (iterator->Valid()) {
             pk_cnt++;
             auto row_iterator = iterator->GetValue();
+            DLOG(INFO) << "window key " << iterator->GetKey().ToString();
             row_iterator->SeekToFirst();
             while (row_iterator->Valid()) {
                 record_num++;

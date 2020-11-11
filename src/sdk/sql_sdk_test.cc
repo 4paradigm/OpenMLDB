@@ -115,6 +115,7 @@ class SQLSDKBatchRequestQueryTest : public SQLSDKTest {
 };
 
 void SQLSDKTest::CreateDB(const fesql::sqlcase::SQLCase& sql_case, std::shared_ptr<SQLRouter> router) {
+    DLOG(INFO) << "Create DB BEGIN";
     fesql::sdk::Status status;
     std::vector<std::string> dbs;
     ASSERT_TRUE(router->ShowDB(&dbs, &status));
@@ -124,11 +125,13 @@ void SQLSDKTest::CreateDB(const fesql::sqlcase::SQLCase& sql_case, std::shared_p
     if (db_set.find(sql_case.db()) == db_set.cend()) {
         ASSERT_TRUE(router->CreateDB(sql_case.db(), &status));
     }
+    DLOG(INFO) << "Create DB DONE!";
 }
 
 void SQLSDKTest::CreateTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                               std::shared_ptr<SQLRouter> router,
                               int partition_num) {
+    DLOG(INFO) << "Create Tables BEGIN";
     fesql::sdk::Status status;
     // create and insert inputs
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
@@ -146,6 +149,7 @@ void SQLSDKTest::CreateTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
             ASSERT_TRUE(router->RefreshCatalog());
         }
     }
+    DLOG(INFO) << "Create Tables DONE";
 }
 
 void SQLSDKTest::DropTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
@@ -169,6 +173,7 @@ void SQLSDKTest::DropTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
 
 void SQLSDKTest::InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                               std::shared_ptr<SQLRouter> router, bool is_bath) {
+    DLOG(INFO) << "Insert Tables BEGIN";
     fesql::sdk::Status status;
     // insert inputs
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
@@ -188,6 +193,7 @@ void SQLSDKTest::InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         }
     }
     ASSERT_TRUE(router->RefreshCatalog());
+    DLOG(INFO) << "Insert Tables DONE";
 }
 
 void SQLSDKTest::CovertFesqlRowToRequestRow(fesql::codec::RowView* row_view,
@@ -246,16 +252,24 @@ void SQLSDKTest::CovertFesqlRowToRequestRow(fesql::codec::RowView* row_view,
 
 void SQLSDKTest::BatchExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                  std::shared_ptr<SQLRouter> router) {
+    DLOG(INFO) << "BatchExecuteSQL BEGIN";
     fesql::sdk::Status status;
+    DLOG(INFO) << "format sql begin";
     // execute SQL
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
+    DLOG(INFO) << "format sql 1";
     boost::replace_all(sql, "{auto}", fesql::sqlcase::SQLCase::GenRand("auto_t"));
-    boost::replace_all(sql, "{tb_endpoint_0}", mc_->GetTbEndpoint().at(0));
-    boost::replace_all(sql, "{tb_endpoint_1}", mc_->GetTbEndpoint().at(1));
+    if (mc_->GetTbEndpoint().size() > 0) {
+        boost::replace_all(sql, "{tb_endpoint_0}", mc_->GetTbEndpoint().at(0));
+    }
+    if (mc_->GetTbEndpoint().size() > 1) {
+        boost::replace_all(sql, "{tb_endpoint_1}", mc_->GetTbEndpoint().at(1));
+    }
+    DLOG(INFO) << "format sql done";
     LOG(INFO) << sql;
     boost::to_lower(sql);
     if (boost::algorithm::starts_with(sql, "select")) {
@@ -293,6 +307,7 @@ void SQLSDKTest::BatchExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
     } else {
         FAIL() << "sql not support in request mode";
     }
+    DLOG(INFO) << "BatchExecuteSQL DONE";
 }
 
 void SQLSDKTest::RunBatchModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
@@ -528,6 +543,10 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestBatchRequest, SQLSDKBatchRequestQueryTest,
     testing::ValuesIn(SQLSDKBatchRequestQueryTest::InitCases("/cases/integration/v1/test_batch_request.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    SQLSDKClusterCaseWindowAndLastJoin, SQLSDKQueryTest,
+    testing::ValuesIn(
+        SQLSDKQueryTest::InitCases("/cases/integration/cluster/window_and_lastjoin.yaml")));
 
 static std::shared_ptr<SQLRouter> GetNewSQLRouter(const fesql::sqlcase::SQLCase& sql_case) {
     SQLRouterOptions sql_opt;

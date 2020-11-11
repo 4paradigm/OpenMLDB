@@ -696,7 +696,10 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     std::unique_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
     std::unique_ptr<::rtidb::api::QueryResponse> response(
         new ::rtidb::api::QueryResponse());
+    DLOG(INFO) << "ExecuteSQL >> ";
+    DLOG(INFO) << "GetTabletClient >>";
     auto client = GetTabletClient(db, sql);
+    DLOG(INFO) << "GetTabletClient <<";
     if (!client) {
         DLOG(INFO) << "no tablet avilable for sql " << sql;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
@@ -712,7 +715,8 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         DLOG(INFO) << "fail to init result set for sql " << sql;
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
-    return rs;
+    DLOG(INFO) << "ExecuteSQL <<";
+ return rs;
 }
 
 std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchRequest(
