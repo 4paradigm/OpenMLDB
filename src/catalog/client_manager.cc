@@ -115,7 +115,6 @@ std::shared_ptr<TabletAccessor> PartitionClientManager::GetFollower() {
 }
 
 TableClientManager::TableClientManager(const TablePartitions& partitions, const ClientManager& client_manager) {
-    DLOG(INFO) << "TableClientManager partitions, client manager";
     for (const auto& table_partition : partitions) {
         uint32_t pid = table_partition.pid();
         if (pid > partition_managers_.size()) {
@@ -136,14 +135,11 @@ TableClientManager::TableClientManager(const TablePartitions& partitions, const 
                 }
             }
         }
-        DLOG(INFO) << "partition managers add (pid, leader) " << pid << ", "
-                   << (leader ? leader->GetName() : "null leader");
         partition_managers_.push_back(std::make_shared<PartitionClientManager>(pid, leader, follower));
     }
 }
 
 TableClientManager::TableClientManager(const ::rtidb::storage::TableSt& table_st, const ClientManager& client_manager) {
-    DLOG(INFO) << "TableClientManager tabletSt, client manager";
     for (const auto& partition_st : *(table_st.GetPartitions())) {
         uint32_t pid = partition_st.GetPid();
         if (pid > partition_managers_.size()) {
@@ -157,9 +153,6 @@ TableClientManager::TableClientManager(const ::rtidb::storage::TableSt& table_st
                 follower.push_back(client);
             }
         }
-        DLOG(INFO) << "partition st leader name " << partition_st.GetLeader();
-        DLOG(INFO) << "partition managers add (pid, leader) " << pid << ", "
-                   << (leader ? leader->GetName() : "null leader");
         partition_managers_.push_back(std::make_shared<PartitionClientManager>(pid, leader, follower));
     }
 }
@@ -197,7 +190,6 @@ std::shared_ptr<TabletAccessor> ClientManager::GetTablet(const std::string& name
 }
 
 std::shared_ptr<TabletAccessor> ClientManager::GetTablet() const {
-    DLOG(INFO) << "ClientManager Get random tablet >>";
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     if (clients_.empty()) {
         return std::shared_ptr<TabletAccessor>();
@@ -210,7 +202,6 @@ std::shared_ptr<TabletAccessor> ClientManager::GetTablet() const {
         }
         cnt++;
     }
-    DLOG(INFO) << "ClientManager Get random tablet << ";
     return std::shared_ptr<TabletAccessor>();
 }
 
@@ -219,7 +210,6 @@ bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpo
         DLOG(INFO) << "endpoint_map is empty";
         return true;
     }
-    DLOG(INFO) << "UpdateClient>>";
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     for (const auto& kv : endpoint_map) {
         auto it = real_endpoint_map_.find(kv.first);
@@ -244,7 +234,6 @@ bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpo
             it->second = kv.second;
         }
     }
-    DLOG(INFO) << "UpdateClient<<";
     return true;
 }
 

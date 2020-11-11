@@ -89,7 +89,8 @@ TestArgs *PrepareTable(const std::string &tname) {
     return args;
 }
 
-TestArgs *PrepareMultiPartitionTable(const std::string &tname, int partition_num) {
+TestArgs *PrepareMultiPartitionTable(const std::string &tname,
+                                     int partition_num) {
     TestArgs *args = new TestArgs();
     ::rtidb::api::TableMeta meta;
     meta.set_name(tname);
@@ -151,7 +152,8 @@ TestArgs *PrepareMultiPartitionTable(const std::string &tname, int partition_num
 
 TEST_F(TabletCatalogTest, tablet_smoke_test) {
     TestArgs *args = PrepareTable("t1");
-    TabletTableHandler handler(args->meta[0], std::shared_ptr<fesql::vm::Tablet>());
+    TabletTableHandler handler(args->meta[0],
+                               std::shared_ptr<fesql::vm::Tablet>());
     ClientManager client_manager;
     ASSERT_TRUE(handler.Init(client_manager));
     handler.AddTable(args->tables[0]);
@@ -181,8 +183,8 @@ TEST_F(TabletCatalogTest, tablet_smoke_test) {
 
 TEST_F(TabletCatalogTest, segment_handler_test) {
     TestArgs *args = PrepareTable("t1");
-    auto handler = std::shared_ptr<TabletTableHandler>(
-        new TabletTableHandler(args->meta[0], std::shared_ptr<fesql::vm::Tablet>()));
+    auto handler = std::shared_ptr<TabletTableHandler>(new TabletTableHandler(
+        args->meta[0], std::shared_ptr<fesql::vm::Tablet>()));
     ClientManager client_manager;
     ASSERT_TRUE(handler->Init(client_manager));
     handler->AddTable(args->tables[0]);
@@ -202,8 +204,8 @@ TEST_F(TabletCatalogTest, segment_handler_test) {
 
 TEST_F(TabletCatalogTest, segment_handler_pk_not_exist_test) {
     TestArgs *args = PrepareTable("t1");
-    auto handler = std::shared_ptr<TabletTableHandler>(
-        new TabletTableHandler(args->meta[0], std::shared_ptr<fesql::vm::Tablet>()));
+    auto handler = std::shared_ptr<TabletTableHandler>(new TabletTableHandler(
+        args->meta[0], std::shared_ptr<fesql::vm::Tablet>()));
     ClientManager client_manager;
     ASSERT_TRUE(handler->Init(client_manager));
     handler->AddTable(args->tables[0]);
@@ -432,7 +434,6 @@ TEST_F(TabletCatalogTest, iterator_test) {
         pk_cnt++;
         auto row_iterator = iterator->GetValue();
         row_iterator->SeekToFirst();
-        DLOG(INFO) << "window key " << iterator->GetKey().ToString();
         while (row_iterator->Valid()) {
             record_num++;
             row_iterator->Next();
@@ -462,9 +463,11 @@ TEST_F(TabletCatalogTest, window_iterator_seek_test_discontinuous) {
     TestArgs *args = PrepareMultiPartitionTable("t1", pid_num);
     for (uint32_t pid = 0; pid < pid_num; pid++) {
         if (pid % 2 == 0) {
-            ASSERT_TRUE(catalog_vec[0]->AddTable(args->meta[pid], args->tables[pid]));
+            ASSERT_TRUE(
+                catalog_vec[0]->AddTable(args->meta[pid], args->tables[pid]));
         } else {
-            ASSERT_TRUE(catalog_vec[1]->AddTable(args->meta[pid], args->tables[pid]));
+            ASSERT_TRUE(
+                catalog_vec[1]->AddTable(args->meta[pid], args->tables[pid]));
         }
     }
     // WindowIterator Seek key Test
@@ -476,7 +479,6 @@ TEST_F(TabletCatalogTest, window_iterator_seek_test_discontinuous) {
             iterator->Seek("pk190");
             ASSERT_TRUE(iterator->Valid());
             auto row_iterator = iterator->GetValue();
-            DLOG(INFO) << "window key " << iterator->GetKey().ToString();
             ASSERT_EQ("pk190", iterator->GetKey().ToString());
             row_iterator->SeekToFirst();
             while (row_iterator->Valid()) {
@@ -524,9 +526,11 @@ TEST_F(TabletCatalogTest, iterator_test_discontinuous) {
     TestArgs *args = PrepareMultiPartitionTable("t1", pid_num);
     for (uint32_t pid = 0; pid < pid_num; pid++) {
         if (pid % 2 == 0) {
-            ASSERT_TRUE(catalog_vec[0]->AddTable(args->meta[pid], args->tables[pid]));
+            ASSERT_TRUE(
+                catalog_vec[0]->AddTable(args->meta[pid], args->tables[pid]));
         } else {
-            ASSERT_TRUE(catalog_vec[1]->AddTable(args->meta[pid], args->tables[pid]));
+            ASSERT_TRUE(
+                catalog_vec[1]->AddTable(args->meta[pid], args->tables[pid]));
         }
     }
     int pk_cnt = 0;

@@ -139,7 +139,6 @@ class TableClientManager {
         if (pid < partition_managers_.size()) {
             return std::atomic_load_explicit(&partition_managers_[pid], std::memory_order_relaxed);
         }
-        DLOG(INFO) << "GetPartitionClientManager pid " << pid << " pid > partition manager size";
         return std::shared_ptr<PartitionClientManager>();
     }
 
@@ -151,7 +150,6 @@ class TableClientManager {
         if (partition_manager) {
             return partition_manager->GetLeader();
         }
-        DLOG(INFO) << "partition manager is null with pid " << pid;
         return std::shared_ptr<TabletAccessor>();
     }
 
