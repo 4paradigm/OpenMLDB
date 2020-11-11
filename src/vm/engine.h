@@ -79,7 +79,6 @@ class EngineOptions {
         return options;
     }
 
-
  private:
     bool keep_ir_;
     bool compile_only_;
@@ -279,8 +278,7 @@ class LocalTablet : public Tablet {
     ~LocalTablet() {}
     std::shared_ptr<RowHandler> SubQuery(uint32_t task_id,
                                          const std::string& db,
-                                         const std::string& sql,
-                                         const Row& row,
+                                         const std::string& sql, const Row& row,
                                          const bool is_debug) override {
         DLOG(INFO) << "Local tablet SubQuery: task id " << task_id;
         RequestRunSession session;
@@ -302,7 +300,8 @@ class LocalTablet : public Tablet {
     }
     std::shared_ptr<RowHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
-        const std::vector<fesql::codec::Row>& rows,const bool is_debug) override {
+        const std::vector<fesql::codec::Row>& rows,
+        const bool is_debug) override {
         return std::shared_ptr<RowHandler>();
     }
 
