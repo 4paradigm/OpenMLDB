@@ -113,6 +113,9 @@ TestArgs *PrepareMultiPartitionTable(const std::string &tname, int partition_num
     key1->add_col_name("col1");
     key1->add_ts_name("col2");
     args->idx_name = "index0";
+    for (int i = 0; i < partition_num; i++) {
+        meta.add_table_partition();
+    }
 
     for (int i = 0; i < partition_num; i++) {
         ::rtidb::api::TableMeta cur_meta(meta);
@@ -468,20 +471,10 @@ TEST_F(TabletCatalogTest, window_iterator_seek_test_discontinuous) {
     {
         auto handler = catalog_vec[0]->GetTable("db1", "t1");
         auto iterator = handler->GetWindowIterator("index0");
-        iterator->SeekToFirst();
-        while (iterator->Valid()) {
-            auto row_iterator = iterator->GetValue();
-            DLOG(INFO) << "window key " << iterator->GetKey().ToString();
-            row_iterator->SeekToFirst();
-            while (row_iterator->Valid()) {
-                row_iterator->Next();
-            }
-            iterator->Next();
-        }
         {
-            iterator->SeekToFirst();
             int segment_cnt = 0;
             iterator->Seek("pk190");
+            ASSERT_TRUE(iterator->Valid());
             auto row_iterator = iterator->GetValue();
             DLOG(INFO) << "window key " << iterator->GetKey().ToString();
             ASSERT_EQ("pk190", iterator->GetKey().ToString());
@@ -493,11 +486,9 @@ TEST_F(TabletCatalogTest, window_iterator_seek_test_discontinuous) {
             ASSERT_EQ(5, segment_cnt);
         }
         {
-            iterator->SeekToFirst();
             int segment_cnt = 0;
             iterator->Seek("pk195");
             auto row_iterator = iterator->GetValue();
-            DLOG(INFO) << "window key " << iterator->GetKey().ToString();
             ASSERT_EQ("pk195", iterator->GetKey().ToString());
             row_iterator->SeekToFirst();
             while (row_iterator->Valid()) {
@@ -506,8 +497,6 @@ TEST_F(TabletCatalogTest, window_iterator_seek_test_discontinuous) {
             }
             ASSERT_EQ(5, segment_cnt);
         }
-
-
     }
     {
         auto handler = catalog_vec[1]->GetTable("db1", "t1");
@@ -515,7 +504,6 @@ TEST_F(TabletCatalogTest, window_iterator_seek_test_discontinuous) {
         int segment_cnt = 0;
         iterator->Seek("pk180");
         auto row_iterator = iterator->GetValue();
-        DLOG(INFO) << "window key " << iterator->GetKey().ToString();
         ASSERT_EQ("pk180", iterator->GetKey().ToString());
         row_iterator->SeekToFirst();
         while (row_iterator->Valid()) {
@@ -551,7 +539,6 @@ TEST_F(TabletCatalogTest, iterator_test_discontinuous) {
         while (iterator->Valid()) {
             pk_cnt++;
             auto row_iterator = iterator->GetValue();
-            DLOG(INFO) << "window key " << iterator->GetKey().ToString();
             row_iterator->SeekToFirst();
             while (row_iterator->Valid()) {
                 record_num++;

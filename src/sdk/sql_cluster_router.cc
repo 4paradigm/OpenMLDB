@@ -716,7 +716,7 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     DLOG(INFO) << "ExecuteSQL <<";
- return rs;
+    return rs;
 }
 
 std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchRequest(
