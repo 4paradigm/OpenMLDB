@@ -58,7 +58,7 @@ DEFINE_int32(task_pool_size, 3, "the size of tablet task thread pool");
 DEFINE_int32(io_pool_size, 2, "the size of tablet io task thread pool");
 DEFINE_bool(use_name, false, "enable or disable use server name");
 DEFINE_string(data_dir, "./data", "the path of data dir");
-DEFINE_bool(cluster_job_enable, false, "enable or disable cluster job");
+DEFINE_bool(enable_distsql, false, "enable or disable distribute sql");
 
 // scan configuration
 DEFINE_uint32(scan_max_bytes_size, 2 * 1024 * 1024,

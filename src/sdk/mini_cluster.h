@@ -51,7 +51,7 @@ DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_bool(auto_failover);
 DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
-DECLARE_bool(cluster_job_enable);
+DECLARE_bool(enable_distsql);
 
 namespace rtidb {
 namespace sdk {
@@ -68,7 +68,7 @@ class MiniCluster {
     bool SetUp(int tablet_num = 2) {
         ns_ = new brpc::Server();
         srand(time(NULL));
-        FLAGS_cluster_job_enable = tablet_num >= 2 ? true : false;
+        FLAGS_enable_distsql = tablet_num >= 2 ? true : false;
         FLAGS_db_root_path = "/tmp/mini_cluster" + GenRand();
         zk_cluster_ = "127.0.0.1:" + std::to_string(zk_port_);
         FLAGS_zk_cluster = zk_cluster_;

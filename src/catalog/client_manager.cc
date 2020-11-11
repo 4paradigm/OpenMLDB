@@ -16,9 +16,7 @@
  */
 
 #include "catalog/client_manager.h"
-
 #include <utility>
-
 #include "codec/fe_schema_codec.h"
 
 namespace rtidb {

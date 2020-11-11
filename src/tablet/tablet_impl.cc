@@ -71,7 +71,7 @@ DECLARE_uint32(get_table_diskused_interval);
 DECLARE_uint32(task_check_interval);
 DECLARE_uint32(load_index_max_wait_time);
 DECLARE_bool(use_name);
-DECLARE_bool(cluster_job_enable);
+DECLARE_bool(enable_distsql);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -114,7 +114,7 @@ TabletImpl::TabletImpl()
       catalog_(new ::rtidb::catalog::TabletCatalog()),
       engine_(catalog_,
               fesql::vm::EngineOptions::NewEngineOptionWithClusterEnable(
-                  FLAGS_cluster_job_enable)),
+                  FLAGS_enable_distsql)),
       zk_cluster_(),
       zk_path_(),
       endpoint_(),
