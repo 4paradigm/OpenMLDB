@@ -442,7 +442,7 @@ void SQLSDKBatchRequestQueryTest::BatchRequestExecuteSQL(fesql::sqlcase::SQLCase
         ASSERT_TRUE(row_batch->AddRow(request_row));
     }
     auto results = router->ExecuteSQLBatchRequest(sql_case.db(), sql, row_batch, &status);
-    ASSERT_EQ(0, status.code);
+    ASSERT_NO_FATAL_FAILURE(ASSERT_EQ(0, status.code));
     LOG(INFO) << "Batch request execute sql done!";
     ASSERT_GT(results->Size(), 0);
     std::vector<fesql::codec::Row> rows;
