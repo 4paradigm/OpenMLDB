@@ -56,8 +56,7 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
     uint32_t tmp_size = 0;
     cntl_->response_attachment().copy_to(reinterpret_cast<void*>(&tmp_size), codec::SIZE_LENGTH,
                  codec::VERSION_LENGTH);
-    // TODO(denglong) do not copy data xxxx need copy pointer
-    int8_t* out_buf = new int8_t[tmp_size];
+    int8_t* out_buf = reinterpret_cast<int8_t*>(malloc(tmp_size));
     cntl_->response_attachment().copy_to(out_buf, tmp_size);
     row_ = fesql::codec::Row(fesql::base::RefCountedSlice::CreateManaged(out_buf, tmp_size));
     status_.code = ::fesql::common::kOk;
