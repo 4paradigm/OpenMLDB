@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#include <stdio.h>
 #include "benchmark/benchmark.h"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
@@ -256,6 +256,69 @@ static void BM_InsertPlaceHolderBatchFunction(
         }
     }
 }
+
+static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
+    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc->GetZkCluster();
+    sql_opt.zk_path = mc->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (router == nullptr) {
+        std::cout << "fail to init sql cluster router" << std::endl;
+        return;
+    }
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    router->CreateDB(db, &status);
+    std::string create = "create table " + name +
+                         "(id int, c1 string, c6 double, c7 timestamp, index(key=(c1), ts=c7)) partitionnum=8;";
+    router->ExecuteDDL(db, create, &status);
+    if (status.msg != "ok") {
+        std::cout << "fail to create table" << std::endl;
+        return;
+    }
+    sleep(2);
+    router->RefreshCatalog();
+    std::vector<std::string> sample;
+    std::string base_sql = "insert into " + name;
+    sample.push_back(base_sql + " values(1, 'aa', 1.0, 1590738990000);");
+    sample.push_back(base_sql + " values(2, 'aa', 2.0, 1590738991000);");
+    sample.push_back(base_sql + " values(3, 'aa', 3.0, 1590738992000);");
+    sample.push_back(base_sql + " values(4, 'aa', 4.0, 1590738993000);");
+    sample.push_back(base_sql + " values(5, 'bb', 5.0, 1590738994000);");
+    sample.push_back(base_sql + " values(6, 'bb', 6.0, 1590738995000);");
+    sample.push_back(base_sql + " values(7, 'bb', 7.0, 1590738996000);");
+    sample.push_back(base_sql + " values(8, 'bb', 8.0, 1590738997000);");
+    sample.push_back(base_sql + " values(9, 'bb', 9.0, 1590738998000);");
+    sample.push_back(base_sql + " values(10, 'cc', 1.0, 1590738993000);");
+    sample.push_back(base_sql + " values(11, 'cc', 2.0, 1590738994000);");
+    sample.push_back(base_sql + " values(12, 'cc', 3.0, 1590738995000);");
+    sample.push_back(base_sql + " values(13, 'cc', 4.0, 1590738996000);");
+    sample.push_back(base_sql + " values(14, 'cc', 5.0, 1590738997000);");
+    sample.push_back(base_sql + " values(15, 'dd', 6.0, 1590738998000);");
+    sample.push_back(base_sql + " values(16, 'dd', 7.0, 1590738999000);");
+    for (const auto& sql : sample) {
+        router->ExecuteInsert(db, sql, &status);
+    }
+    char sql[1000];
+    int size = snprintf(sql, sizeof(sql), "SELECT id, c1, c6, c7,  min(c6) OVER w1 as w1_c6_min, count(id) "
+                                         "OVER w1 as w1_cnt FROM %s WINDOW w1 AS (PARTITION BY %s.c1 "
+                                         "ORDER BY %s.c7 ROWS BETWEEN 4 PRECEDING AND CURRENT ROW);",
+                                          name.c_str(), name.c_str(), name.c_str());
+    std::string exe_sql(sql, size);
+    auto request_row = router->GetRequestRow(db, exe_sql, &status);
+    request_row->Init(2);
+    request_row->AppendInt32(1);
+    request_row->AppendString("aa");
+    request_row->AppendDouble(1.0);
+    request_row->AppendTimestamp(1590738993000l);
+    request_row->Build();
+    for (auto _ : state) {
+        benchmark::DoNotOptimize(router->ExecuteSQL(db, exe_sql, request_row, &status));
+    }
+}
+
+BENCHMARK(BM_SimpleRowWindow);
 
 BENCHMARK(BM_SimpleQueryFunction);
 
