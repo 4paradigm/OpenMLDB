@@ -189,6 +189,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     if (!options_.is_compile_only()) {
         ok = compiler.BuildClusterJob(info->get_sql_context(), status);
         if (!ok || 0 != status.code) {
+            LOG(WARNING) << "fail to build cluster job: " << status.msg;
             return false;
         }
     }
@@ -198,8 +199,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     if (session.is_debug_) {
         std::ostringstream oss;
         sql_context.cluster_job.Print(oss, "");
-        LOG(INFO) << "cluster job:\n"
-                  << oss.str() << std::endl;
+        LOG(INFO) << "cluster job:\n" << oss.str() << std::endl;
     }
     return true;
 }

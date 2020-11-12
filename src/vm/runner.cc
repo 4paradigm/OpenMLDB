@@ -84,7 +84,10 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto cluster_task =  // NOLINT
                 Build(node->producers().at(0), status);
             if (!cluster_task.IsValid()) {
-                return RegisterTask(node, fail);
+                status.msg = "fail to build input runner";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
             }
             auto input = cluster_task.GetRoot();
             auto op = dynamic_cast<const PhysicalSimpleProjectNode*>(node);
@@ -114,12 +117,22 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto cluster_task =  // NOLINT
                 Build(node->producers().at(0), status);
             if (!cluster_task.IsValid()) {
-                return RegisterTask(node, fail);
+                status.msg = "fail to build runner";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
             }
             auto input = cluster_task.GetRoot();
             auto op = dynamic_cast<const PhysicalProjectNode*>(node);
             switch (op->project_type_) {
                 case kTableProject: {
+                    if (support_cluster_optimized_) {
+                        // 边界检查, 分布式计划暂时不支持表拼接
+                        status.msg = "fail to build cluster with table project";
+                        status.code = common::kOpGenError;
+                        LOG(WARNING) << status;
+                        return fail;
+                    }
                     auto runner = new TableProjectRunner(
                         id_++, node->GetOutputNameSchemaList(),
                         op->GetLimitCnt(), op->project_);
@@ -155,6 +168,14 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     return RegisterTask(node, cluster_task);
                 }
                 case kWindowAggregation: {
+                    if (support_cluster_optimized_) {
+                        // 边界检查, 分布式计划暂时不支持表滑动窗口聚合
+                        status.msg =
+                            "fail to build cluster with window agg project";
+                        status.code = common::kOpGenError;
+                        LOG(WARNING) << status;
+                        return fail;
+                    }
                     auto op =
                         dynamic_cast<const PhysicalWindowAggrerationNode*>(
                             node);
@@ -239,12 +260,18 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         case kPhysicalOpRequestUnoin: {
             auto left_task = Build(node->producers().at(0), status);
             if (!left_task.IsValid()) {
-                return RegisterTask(node, fail);
+                status.msg = "fail to build left input runner";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
             }
             auto right_task = Build(node->producers().at(1), status);
             auto right = right_task.GetRoot();
             if (!right_task.IsValid()) {
-                return RegisterTask(node, fail);
+                status.msg = "fail to build right input runner";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
             }
             auto op = dynamic_cast<const PhysicalRequestUnionNode*>(node);
             auto runner =
@@ -279,13 +306,19 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto left_task =  // NOLINT
                 Build(node->producers().at(0), status);
             if (!left_task.IsValid()) {
-                return RegisterTask(node, fail);
+                status.msg = "fail to build left input runner";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
             }
             auto left = left_task.GetRoot();
             auto right_task =  // NOLINT
                 Build(node->producers().at(1), status);
             if (!right_task.IsValid()) {
-                return RegisterTask(node, fail);
+                status.msg = "fail to build right input runner";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
             }
             auto right = right_task.GetRoot();
             auto op = dynamic_cast<const PhysicalRequestJoinNode*>(node);
@@ -322,14 +355,27 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             }
         }
         case kPhysicalOpJoin: {
+            if (support_cluster_optimized_) {
+                // 边界检查, 分布式计划暂时不支持表拼接
+                status.msg = "fail to build cluster with table join node";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
+            }
             auto left_task = Build(node->producers().at(0), status);
             if (!left_task.IsValid()) {
-                return RegisterTask(node, fail);
+                status.msg = "fail to build left input runner";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
             }
             auto left = left_task.GetRoot();
             auto right_task = Build(node->producers().at(1), status);
             if (!right_task.IsValid()) {
-                return RegisterTask(node, fail);
+                status.msg = "fail to build right input runner";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
             }
             auto right = right_task.GetRoot();
             auto op = dynamic_cast<const PhysicalJoinNode*>(node);
@@ -356,9 +402,19 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             }
         }
         case kPhysicalOpGroupBy: {
+            if (support_cluster_optimized_) {
+                // 边界检查, 分布式计划暂时不支持表分组处理
+                status.msg = "fail to build cluster with group by node";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
+            }
             auto cluster_task = Build(node->producers().at(0), status);
             if (!cluster_task.IsValid()) {
-                return RegisterTask(node, fail);
+                status.msg = "fail to build input runner";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
             }
             auto input = cluster_task.GetRoot();
             auto op = dynamic_cast<const PhysicalGroupNode*>(node);
@@ -374,7 +430,10 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 Build(node->producers().at(0), status);
             auto input = cluster_task.GetRoot();
             if (!cluster_task.IsValid()) {
-                return RegisterTask(node, fail);
+                status.msg = "fail to build input runner";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
             }
             auto op = dynamic_cast<const PhysicalFliterNode*>(node);
             auto runner =
@@ -388,7 +447,10 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto cluster_task =  // NOLINT
                 Build(node->producers().at(0), status);
             if (!cluster_task.IsValid()) {
-                return RegisterTask(node, fail);
+                status.msg = "fail to build input runner";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
             }
             auto input = cluster_task.GetRoot();
             auto op = dynamic_cast<const PhysicalLimitNode*>(node);

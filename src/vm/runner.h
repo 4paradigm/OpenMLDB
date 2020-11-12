@@ -954,6 +954,9 @@ class RunnerBuilder {
         cluster_job_.Reset();
         auto task =  // NOLINT whitespace/braces
             Build(node, status);
+        if (!status.isOK()) {
+            return cluster_job_;
+        }
         cluster_job_.AddMainTask(task);
         return cluster_job_;
     }
