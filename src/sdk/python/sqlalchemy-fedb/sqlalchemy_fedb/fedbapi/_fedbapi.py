@@ -212,7 +212,7 @@ class Cursor(object):
                 raise DatabaseError(error)
         elif selectRE.match("select"):
             if len(parameters) > 0:
-                ok, requestRow = executor.getRequestBuilder(dbName, command)
+                ok, requestRow = executor.getRequestBuilder(self.db, command)
                 if not ok:
                     raise DatabaseError("execute select fail")
                 schema = requestRow.GetSchema()
