@@ -246,12 +246,12 @@ class Cursor(object):
                     if parameters[i] == None:
                         builder.AppendNULL()
                         continue
-                     colType = schema.GetColumnType(i)
-                     ok = appendMap[colType](parameters[i])
-                     if not ok:
-                         raise DatabaseError("erred at append data seq {}".format(i))
-               ok = requestRow.Build()
-               if not ok:
+                    colType = schema.GetColumnType(i)
+                    ok = appendMap[colType](parameters[i])
+                    if not ok:
+                        raise DatabaseError("erred at append data seq {}".format(i))
+                ok = requestRow.Build()
+                if not ok:
                    raise DatabaseError("erred at build request row data")
                 ok = self.connection._sdk.executeQuery(self.db, command, requestRow)
             else:
