@@ -179,7 +179,7 @@ class BatchQueryFutureImpl : public QueryFuture {
         if (!ok) {
             status->code = -1;
             status->msg = "request error, resuletSetSQL init failed";
-            return std::shared_ptr<::fesql::sdk::ResultSet>();
+            return nullptr;
         }
         return rs;
     }
