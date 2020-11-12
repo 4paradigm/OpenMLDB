@@ -95,7 +95,7 @@ TEST_F(SQLClusterTest, cluster_insert) {
             ASSERT_EQ(iter->second.size(), table_status.record_cnt());
         }
     }
-    ASSERT_EQ(100, count);
+    ASSERT_EQ(100u, count);
     ok = router->ExecuteDDL(db, "drop table " + name + ";", &status);
     ASSERT_TRUE(ok);
     ok = router->DropDB(db, &status);
