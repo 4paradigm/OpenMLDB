@@ -33,8 +33,8 @@ namespace sdk {
 
 class ResultSetSQL : public ::fesql::sdk::ResultSet {
  public:
-    ResultSetSQL(std::unique_ptr<::rtidb::api::QueryResponse> response,
-                 std::unique_ptr<brpc::Controller> cntl);
+    ResultSetSQL(std::shared_ptr<::rtidb::api::QueryResponse> response,
+                 std::shared_ptr<brpc::Controller> cntl);
     ~ResultSetSQL();
 
     bool Init();
@@ -76,14 +76,14 @@ class ResultSetSQL : public ::fesql::sdk::ResultSet {
     inline uint32_t GetRecordSize() { return response_->count(); }
 
  private:
-    std::unique_ptr<::rtidb::api::QueryResponse> response_;
+    std::shared_ptr<::rtidb::api::QueryResponse> response_;
     int32_t index_;
     uint32_t byte_size_;
     uint32_t position_;
     std::unique_ptr<::fesql::sdk::RowIOBufView> row_view_;
     ::fesql::vm::Schema internal_schema_;
     ::fesql::sdk::SchemaImpl schema_;
-    std::unique_ptr<brpc::Controller> cntl_;
+    std::shared_ptr<brpc::Controller> cntl_;
 };
 
 }  // namespace sdk

@@ -36,8 +36,8 @@ namespace sdk {
 class SQLBatchRequestResultSet : public ::fesql::sdk::ResultSet {
  public:
     SQLBatchRequestResultSet(
-        std::unique_ptr<::rtidb::api::SQLBatchRequestQueryResponse> response,
-        std::unique_ptr<brpc::Controller> cntl);
+        std::shared_ptr<::rtidb::api::SQLBatchRequestQueryResponse> response,
+        std::shared_ptr<brpc::Controller> cntl);
     ~SQLBatchRequestResultSet();
 
     bool Init();
@@ -83,7 +83,7 @@ class SQLBatchRequestResultSet : public ::fesql::sdk::ResultSet {
     bool IsValidColumnIdx(size_t index) const;
     size_t GetCommonColumnNum() const;
 
-    std::unique_ptr<::rtidb::api::SQLBatchRequestQueryResponse> response_;
+    std::shared_ptr<::rtidb::api::SQLBatchRequestQueryResponse> response_;
     int32_t index_;
     uint32_t byte_size_;
     uint32_t position_;
@@ -99,7 +99,7 @@ class SQLBatchRequestResultSet : public ::fesql::sdk::ResultSet {
     ::fesql::codec::Schema non_common_schema_;
 
     butil::IOBuf common_buf_;
-    std::unique_ptr<brpc::Controller> cntl_;
+    std::shared_ptr<brpc::Controller> cntl_;
 };
 
 

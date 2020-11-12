@@ -41,7 +41,7 @@ public class QueryFuture implements Future<java.sql.ResultSet>{
         com._4paradigm.sql.ResultSet resultSet = queryFuture.GetResultSet(status);
         if (status.getCode() != 0 || resultSet == null) {
             logger.error("call procedure failed: {}", status.getMsg());
-            return null;
+            throw new ExecutionException(new SqlException("call procedure failed: " + status.getMsg()));
         }
         return new SQLResultSet(resultSet);
     }
