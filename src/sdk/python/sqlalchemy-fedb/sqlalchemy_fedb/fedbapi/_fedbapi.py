@@ -147,19 +147,18 @@ class Cursor(object):
             raise Exception("None operation")
         semicolonCount = command.count(';')
         escapeSemicolonCount = command.count("\;")
-        lowerCmd = command.lower()
-        if createTableRE.match("create table"):
+        if createTableRE.match(command):
             if escapeSemicolonCount > 1:
                 raise Exception("invalid table name")
             ok, error = self.connection._sdk.executeDDL(self.db, command)
             if not ok:
                 raise DatabaseError(error)
-        elif createDBRE.match("create database"):
+        elif createDBRE.match(command):
             db = command.split()[-1].rstrip(";")
             ok, error = self.connection._sdk.createDB(db)
             if not ok:
                 raise DatabaseError(error)
-        elif insertRE.match("insert into") == 0:
+        elif insertRE.match(command):
             questionMarkCount = command.count('?');
             if questionMarkCount > 0:
                 if len(parameters) != questionMarkCount:
@@ -210,9 +209,9 @@ class Cursor(object):
                 ok, error = self.connection._sdk.executeInsert(self.db, command)
             if not ok:
                 raise DatabaseError(error)
-        elif selectRE.match("select"):
+        elif selectRE.match(command):
             if len(parameters) > 0:
-                ok, requestRow = executor.getRequestBuilder(dbName, command)
+                ok, requestRow = executor.getRequestBuilder(self.db, command)
                 if not ok:
                     raise DatabaseError("execute select fail")
                 schema = requestRow.GetSchema()
