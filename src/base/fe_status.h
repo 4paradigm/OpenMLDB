@@ -76,8 +76,10 @@ struct Status {
         : code(status_code), msg(msg_str), trace(trace_str) {}
 
     static Status OK() { return Status(); }
+    static Status Running() { return Status(common::kRunning, "running"); }
 
     inline bool isOK() const { return code == common::kOk; }
+    inline bool isRunning() const { return code == common::kRunning; }
 
     const std::string str() const { return msg + "\n" + trace; }
 

@@ -53,8 +53,8 @@
 #include "sys/time.h"
 #include "vm/engine.h"
 #include "vm/test_base.h"
-#define MAX_DEBUG_LINES_CNT 100 * 100 * 100
-#define MAX_DEBUG_COLUMN_CNT 100 * 100 * 100
+#define MAX_DEBUG_LINES_CNT 20
+#define MAX_DEBUG_COLUMN_CNT 20
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
@@ -118,48 +118,8 @@ void CheckSchema(const vm::Schema& schema, const vm::Schema& exp_schema) {
             << "Fail column type at " << i;
     }
 }
-// enum Type {
-//   kBool = 0,
-//   kInt16 = 1,
-//   kInt32 = 3,
-//   kInt64 = 5,
-//   kFloat = 7,
-//   kDouble = 8,
-//   kVarchar = 9,
-//   kDate = 10,
-//   kTimestamp = 11,
-//   kBlob = 12,
-//   kNull = 101
-// };
 std::string YamlTypeName(type::Type type) {
-    if (type == 0) {
-        return "bool";
-    }
-    if (type == 1) {
-        return "int16";
-    }
-    if (type == 3) {
-        return "int32";
-    }
-    if (type == 5) {
-        return "int64";
-    }
-    if (type == 7) {
-        return "float";
-    }
-    if (type == 8) {
-        return "double";
-    }
-    if (type == 9) {
-        return "string";
-    }
-    if (type == 10) {
-        return "date";
-    }
-    if (type == 11) {
-        return "timestamp";
-    }
-    return "null";
+    return fesql::sqlcase::SQLCase::TypeString(type);
 }
 
 // 打印符合yaml测试框架格式的预期结果
@@ -413,12 +373,13 @@ const std::string GenerateTableName(int32_t id) {
     return "auto_t" + std::to_string(id);
 }
 
-std::shared_ptr<tablet::TabletCatalog> InitEngineCatalog(
-    const SQLCase& sql_case,
+void InitEngineCatalog(
+    const SQLCase& sql_case, const EngineOptions& engine_options,
     std::map<std::string, std::shared_ptr<::fesql::storage::Table>>&  // NOLINT
         name_table_map,                                               // NOLINT
-    std::map<size_t, std::string>& idx_table_name_map) {              // NOLINT
-    auto catalog = BuildCommonCatalog();
+    std::map<size_t, std::string>& idx_table_name_map,                // NOLINT
+    std::shared_ptr<vm::Engine> engine,
+    std::shared_ptr<tablet::TabletCatalog> catalog) {
     for (int32_t i = 0; i < sql_case.CountInputs(); i++) {
         std::string actual_name = sql_case.inputs()[i].name_;
         if (actual_name.empty()) {
@@ -430,12 +391,14 @@ std::shared_ptr<tablet::TabletCatalog> InitEngineCatalog(
         std::shared_ptr<::fesql::storage::Table> table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
         name_table_map[table_def.name()] = table;
-        if (!AddTable(catalog, table_def, table)) {
-            return nullptr;
+        if (engine_options.is_cluster_optimzied()) {
+            // add table with local tablet
+            ASSERT_TRUE(AddTable(catalog, table_def, table, engine.get()));
+        } else {
+            ASSERT_TRUE(AddTable(catalog, table_def, table));
         }
         idx_table_name_map[i] = actual_name;
     }
-    return catalog;
 }
 
 void DoEngineCheckExpect(const SQLCase& sql_case, const vm::Schema& schema,
@@ -554,10 +517,13 @@ void CheckSQLiteCompatible(const SQLCase& sql_case, const vm::Schema& schema,
 
 class EngineTestRunner {
  public:
-    explicit EngineTestRunner(const SQLCase& sql_case) : sql_case_(sql_case) {
-        catalog_ =
-            InitEngineCatalog(sql_case_, name_table_map_, idx_table_name_map_);
-        engine_ = std::make_shared<Engine>(catalog_);
+    explicit EngineTestRunner(const SQLCase& sql_case,
+                              const EngineOptions options)
+        : sql_case_(sql_case), options_(options) {
+        catalog_ = BuildCommonCatalog();
+        engine_ = std::make_shared<Engine>(catalog_, options_);
+        InitEngineCatalog(sql_case_, options_, name_table_map_,
+                          idx_table_name_map_, engine_, catalog_);
     }
 
     void SetSession(std::shared_ptr<RunSession> session) { session_ = session; }
@@ -576,6 +542,7 @@ class EngineTestRunner {
 
  protected:
     SQLCase sql_case_;
+    EngineOptions options_;
 
     std::map<std::string, std::shared_ptr<::fesql::storage::Table>>
         name_table_map_;
@@ -621,7 +588,7 @@ Status EngineTestRunner::Compile() {
         LOG(INFO) << "Physical plan:\n" << oss.str() << std::endl;
 
         std::ostringstream runner_oss;
-        session_->GetMainTask()->Print(runner_oss, "");
+        session_->GetClusterJob().Print(runner_oss, "");
         LOG(INFO) << "Runner plan:\n" << runner_oss.str() << std::endl;
     }
     return status;
@@ -707,8 +674,9 @@ void EngineTestRunner::RunBenchmark(size_t iters) {
 
 class BatchEngineTestRunner : public EngineTestRunner {
  public:
-    explicit BatchEngineTestRunner(const SQLCase& sql_case)
-        : EngineTestRunner(sql_case) {
+    explicit BatchEngineTestRunner(const SQLCase& sql_case,
+                                   const EngineOptions options)
+        : EngineTestRunner(sql_case, options) {
         session_ = std::make_shared<BatchRunSession>();
     }
 
@@ -750,8 +718,9 @@ class BatchEngineTestRunner : public EngineTestRunner {
 
 class RequestEngineTestRunner : public EngineTestRunner {
  public:
-    explicit RequestEngineTestRunner(const SQLCase& sql_case)
-        : EngineTestRunner(sql_case) {
+    explicit RequestEngineTestRunner(const SQLCase& sql_case,
+                                     const EngineOptions options)
+        : EngineTestRunner(sql_case, options) {
         session_ = std::make_shared<RequestRunSession>();
     }
 
@@ -810,8 +779,9 @@ class RequestEngineTestRunner : public EngineTestRunner {
 class BatchRequestEngineTestRunner : public EngineTestRunner {
  public:
     BatchRequestEngineTestRunner(const SQLCase& sql_case,
+                                 const EngineOptions options,
                                  const std::set<size_t>& common_column_indices)
-        : EngineTestRunner(sql_case) {
+        : EngineTestRunner(sql_case, options) {
         auto request_session = std::make_shared<BatchRequestRunSession>();
         for (size_t idx : common_column_indices) {
             request_session->AddCommonColumnIdx(idx);
@@ -928,30 +898,33 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
 };
 
 void BatchRequestEngineCheckWithCommonColumnIndices(
-    const SQLCase& sql_case, const std::set<size_t>& common_column_indices) {
-    BatchRequestEngineTestRunner engine_test(sql_case, common_column_indices);
+    const SQLCase& sql_case, const EngineOptions options,
+    const std::set<size_t>& common_column_indices) {
+    BatchRequestEngineTestRunner engine_test(sql_case, options,
+                                             common_column_indices);
     engine_test.RunCheck();
 }
 
-void BatchRequestEngineCheck(const SQLCase& sql_case) {
+void BatchRequestEngineCheck(const SQLCase& sql_case,
+                             const EngineOptions options) {
     bool has_batch_request = !sql_case.batch_request().columns_.empty();
     if (has_batch_request) {
         BatchRequestEngineCheckWithCommonColumnIndices(
-            sql_case, sql_case.batch_request().common_column_indices_);
+            sql_case, options, sql_case.batch_request().common_column_indices_);
     } else if (!sql_case.inputs().empty()) {
         // set different common column conf
         size_t schema_size = sql_case.inputs()[0].columns_.size();
         std::set<size_t> common_column_indices;
 
         // empty
-        BatchRequestEngineCheckWithCommonColumnIndices(sql_case,
+        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
                                                        common_column_indices);
 
         // full
         for (size_t i = 0; i < schema_size; ++i) {
             common_column_indices.insert(i);
         }
-        BatchRequestEngineCheckWithCommonColumnIndices(sql_case,
+        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
                                                        common_column_indices);
         common_column_indices.clear();
 
@@ -967,16 +940,17 @@ void BatchRequestEngineCheck(const SQLCase& sql_case) {
     }
 }
 
-void EngineCheck(const SQLCase& sql_case, EngineMode engine_mode) {
+void EngineCheck(const SQLCase& sql_case, const EngineOptions& options,
+                 EngineMode engine_mode) {
     if (engine_mode == kBatchMode) {
-        BatchEngineTestRunner engine_test(sql_case);
+        BatchEngineTestRunner engine_test(sql_case, options);
         engine_test.RunCheck();
         engine_test.RunSQLiteCheck();
     } else if (engine_mode == kRequestMode) {
-        RequestEngineTestRunner engine_test(sql_case);
+        RequestEngineTestRunner engine_test(sql_case, options);
         engine_test.RunCheck();
     } else {
-        BatchRequestEngineCheck(sql_case);
+        BatchRequestEngineCheck(sql_case, options);
     }
 }
 

@@ -39,8 +39,22 @@ TabletTableHandler::TabletTableHandler(const vm::Schema schema,
       db_(db),
       table_(table),
       types_(),
-      index_list_(index_list) {}
+      index_list_(index_list),
+      tablet_() {}
 
+TabletTableHandler::TabletTableHandler(const vm::Schema schema,
+                                       const std::string& name,
+                                       const std::string& db,
+                                       const vm::IndexList& index_list,
+                                       std::shared_ptr<storage::Table> table,
+                                       std::shared_ptr<vm::Tablet> tablet)
+    : schema_(schema),
+      name_(name),
+      db_(db),
+      table_(table),
+      types_(),
+      index_list_(index_list),
+      tablet_(tablet) {}
 TabletTableHandler::~TabletTableHandler() {}
 
 bool TabletTableHandler::Init() {

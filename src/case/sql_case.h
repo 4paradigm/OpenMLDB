@@ -73,7 +73,8 @@ class SQLCase {
     // name:type|name:type|name:type|
     bool ExtractInputTableDef(type::TableDef& table,  // NOLINT
                               int32_t input_idx = 0) const;
-    bool BuildCreateSQLFromInput(int32_t input_idx, std::string* sql) const;
+    bool BuildCreateSQLFromInput(int32_t input_idx, std::string* sql,
+                                 int partition_num = 1) const;
     bool BuildInsertSQLFromInput(int32_t input_idx, std::string* sql) const;
     bool BuildInsertSQLListFromInput(int32_t input_idx,
                                      std::vector<std::string>* sql_list) const;
@@ -90,9 +91,10 @@ class SQLCase {
                               type::TableDef& table);  // NOLINT
     static bool ExtractSchema(const std::string& schema_str,
                               type::TableDef& table);  // NOLINT
-    static bool BuildCreateSQLFromSchema(
-        const type::TableDef& table, std::string* create_sql,
-        bool isGenerateIndex = true);  // NOLINT
+    static bool BuildCreateSQLFromSchema(const type::TableDef& table,
+                                         std::string* create_sql,
+                                         bool isGenerateIndex = true,
+                                         int partition_num = 1);  // NOLINT
     static bool ExtractIndex(const std::string& index_str,
                              type::TableDef& table);  // NOLINT
     static bool ExtractIndex(const std::vector<std::string>& indexs,

@@ -72,10 +72,15 @@ class Row {
     int32_t GetRowPtrCnt() const;
     int32_t *GetRowSizes() const;
 
+    fesql::base::RefCountedSlice GetSlice(uint32_t slice_index) {
+        if (slice_index < 0 || slice_index >= slices_.size() + 1) {
+            return RefCountedSlice();
+        }
+        return 0 == slice_index ? slice_ : slices_[slice_index - 1];
+    }
     inline void Append(const fesql::base::RefCountedSlice &slice) {
         slices_.emplace_back(slice);
     }
-
     // Return a string that contains the copy of the referenced data.
     std::string ToString() const;
 

@@ -211,7 +211,8 @@ bool SQLCase::ExtractSchema(const std::vector<std::string>& columns,
 }
 bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
                                        std::string* create_sql,
-                                       bool isGenerateIndex) {
+                                       bool isGenerateIndex,
+                                       int partition_num) {
     std::string sql = "CREATE TABLE " + table.name() + "(\n";
     for (int i = 0; i < table.columns_size(); i++) {
         auto column = table.columns(i);
@@ -274,7 +275,13 @@ bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
         }
         // end each index
     }
-    sql.append(");");
+    if (1 != partition_num) {
+        sql.append(") partitionnum=");
+        sql.append(std::to_string(partition_num));
+        sql.append(";");
+    } else {
+        sql.append(");");
+    }
     *create_sql = sql;
     return true;
 }
@@ -632,8 +639,8 @@ bool SQLCase::ExtractInputTableDef(type::TableDef& table,
 // Build Create SQL
 // schema + index --> create sql
 // columns + indexs --> create sql
-bool SQLCase::BuildCreateSQLFromInput(int32_t input_idx,
-                                      std::string* sql) const {
+bool SQLCase::BuildCreateSQLFromInput(int32_t input_idx, std::string* sql,
+                                      int partition_num) const {
     if (!inputs_[input_idx].create_.empty()) {
         *sql = inputs_[input_idx].create_;
         return true;
@@ -643,7 +650,7 @@ bool SQLCase::BuildCreateSQLFromInput(int32_t input_idx,
         LOG(WARNING) << "Fail to extract table schema";
         return false;
     }
-    if (!BuildCreateSQLFromSchema(table, sql)) {
+    if (!BuildCreateSQLFromSchema(table, sql, true, partition_num)) {
         LOG(WARNING) << "Fail to build create sql string";
         return false;
     }

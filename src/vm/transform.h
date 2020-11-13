@@ -237,6 +237,18 @@ class LeftJoinOptimized : public TransformUpPysicalPass {
     bool CheckExprListFromSchema(const node::ExprListNode* expr_list,
                                  const Schema& schema);
 };
+
+class ClusterOptimized : public TransformUpPysicalPass {
+ public:
+    ClusterOptimized(node::NodeManager* node_manager, const std::string& db,
+                     const std::shared_ptr<Catalog>& catalog)
+        : TransformUpPysicalPass(node_manager, db, catalog) {}
+
+ private:
+    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+    bool SimplifyJoinLeftInput(PhysicalBinaryNode* join_op, const Join& join,
+                               PhysicalOpNode** out);
+};
 typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
     LogicalGraph;
 
@@ -245,6 +257,7 @@ enum PhysicalPlanPassType {
     kPassFilterOptimized,
     kPassGroupAndSortOptimized,
     kPassLeftJoinOptimized,
+    kPassClusterOptimized,
     kPassLimitOptimized,
 };
 
@@ -273,7 +286,8 @@ class BatchModeTransformer {
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog,
                          ::llvm::Module* module, udf::UDFLibrary* library,
-                         bool performance_sensitive);
+                         const bool performance_sensitive,
+                         const bool cluster_optimized_mode);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
     bool TransformPhysicalPlan(const ::fesql::node::PlanNodeList& trees,
@@ -423,6 +437,7 @@ class BatchModeTransformer {
     // `index_opt_strict_mode_` join key should be optimized under
     // `index_opt_strict_mode_`
     bool performance_sensitive_mode_;
+    bool cluster_optimized_mode_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
     udf::UDFLibrary* library_;
@@ -435,7 +450,8 @@ class RequestModeransformer : public BatchModeTransformer {
                           const std::shared_ptr<Catalog>& catalog,
                           ::llvm::Module* module, udf::UDFLibrary* library,
                           const std::set<size_t>& common_column_indices,
-                          const bool performance_sensitive);
+                          const bool performance_sensitive,
+                          const bool cluster_optimized);
     virtual ~RequestModeransformer();
 
     const Schema& request_schema() const { return request_schema_; }

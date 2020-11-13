@@ -131,6 +131,10 @@ class TabletTableHandler
     TabletTableHandler(const vm::Schema schema, const std::string& name,
                        const std::string& db, const vm::IndexList& index_list,
                        std::shared_ptr<storage::Table> table);
+    TabletTableHandler(const vm::Schema schema, const std::string& name,
+                       const std::string& db, const vm::IndexList& index_list,
+                       std::shared_ptr<storage::Table> table,
+                       std::shared_ptr<fesql::vm::Tablet> tablet);
 
     ~TabletTableHandler();
 
@@ -171,6 +175,10 @@ class TabletTableHandler
     const std::string GetHandlerTypeName() override {
         return "TabletTableHandler";
     }
+    virtual std::shared_ptr<fesql::vm::Tablet> GetTablet(
+        const std::string& index_name, const std::string& pk) {
+        return tablet_;
+    }
 
  private:
     inline int32_t GetColumnIndex(const std::string& column) {
@@ -186,9 +194,11 @@ class TabletTableHandler
     std::string name_;
     std::string db_;
     std::shared_ptr<storage::Table> table_;
+
     vm::Types types_;
     vm::IndexList index_list_;
     vm::IndexHint index_hint_;
+    std::shared_ptr<fesql::vm::Tablet> tablet_;
 };
 
 typedef std::map<std::string,
