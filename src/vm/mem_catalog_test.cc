@@ -237,13 +237,13 @@ TEST_F(MemCataLogTest, partition_hander_wrapper_test) {
         ASSERT_EQ(7.5f, row_view.GetFloatUnsafe(1));
     }
 }
-TEST_F(MemCataLogTest, mem_segment_handler_test) {
+TEST_F(MemCataLogTest, mem_time_table_handler_test) {
     std::vector<Row> rows;
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
     vm::MemTimeTableHandler table_handler("t1", "temp", &(table.columns()));
-    for (auto row : rows) {
-        table_handler.AddRow(row);
+    for (int i = 0; i < rows.size(); i++) {
+        table_handler.AddRow(i, rows[i]);
     }
     auto iter = table_handler.GetIterator();
 

@@ -53,42 +53,6 @@ class GroupbyInterface {
     fesql::vm::MemTableHandler* mem_table_handler_;
 };
 
-class RunnerContext {
- public:
-    explicit RunnerContext(const bool is_debug = false)
-        : request_(),
-          is_debug_(is_debug),
-          cache_(),
-          catalog_() {}
-    explicit RunnerContext(const fesql::codec::Row& request,
-                           const bool is_debug = false)
-        : request_(request),
-          is_debug_(is_debug),
-          cache_(),
-          catalog_() {}
-
-    RunnerContext(const fesql::codec::Row& request, bool is_debug,
-                  std::shared_ptr<Catalog> catalog)
-        : request_(request),
-          is_debug_(is_debug),
-          cache_(),
-          catalog_(catalog) {}
-
-    const fesql::codec::Row& request() const { return request_; }
-    void SetRequest(const fesql::codec::Row& request);
-    bool is_debug() const { return is_debug_; }
-
-    std::shared_ptr<DataHandler> GetCache(int64_t id) const;
-    void SetCache(int64_t id, std::shared_ptr<DataHandler>);
-    std::shared_ptr<Catalog> GetCatalog() const { return catalog_; }
-
- private:
-    fesql::codec::Row request_;
-    const bool is_debug_;
-    std::map<int64_t, std::shared_ptr<DataHandler>> cache_;
-    std::shared_ptr<Catalog> catalog_;
-};
-
 class CoreAPI {
  public:
     static fesql::codec::Row* NewRow(size_t bytes);

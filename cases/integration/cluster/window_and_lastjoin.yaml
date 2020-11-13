@@ -1,0 +1,53 @@
+db: test_zw
+debugs: []
+cases:
+  -
+    id: 0
+    desc: 窗口特征拼接副表
+    inputs:
+      -
+        columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
+
+        indexs: ["index1:card_no:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa",1, 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa",1, 1590738990000, 2.2]
+          - [3, "bb",2, 1590738990000, 3.3]
+          - [4, "cc",3, 1590738990000, 4.0]
+          - [5, "cc",3, 1590738991000, 5.0]
+          - [6, "cc",3, 1590738992000, 6.0]
+          - [7, "cc",2, 1590738993000, 7.0]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "merchant_nbr int"]
+        indexs: ["index2:merchant_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, 1]
+          - [1590738990000, 1]
+          - [1590738991000, 2]
+          - [1590738989000, 3]
+          - [1590738992000, 3]
+    sql: select * from
+      (select
+      id,
+      card_no,
+      merchant_id,
+      trx_time,
+      sum(trx_amt) over w30d,
+      count(merchant_id) over w10d
+      from  {0}
+      window w30d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW),
+      w10d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)) as trx_fe
+      last join {1} order by {1}.crd_lst_isu_dte on trx_fe.merchant_id = {1}.merchant_nbr and trx_fe.trx_time >= {1}.crd_lst_isu_dte;
+    expect:
+      columns: ["id int", "card_no string", "merchant_id int", "trx_time timestamp",
+                "sum(trx_amt)over w30d float", "count(merchant_id)over w10d int64", "crd_lst_isu_dte timestamp",
+                "merchant_nbr int"]
+      order: id
+      rows:
+        - [1, "aaaaaaaaaa", 1, 1590738989000, 1.1, 1, 1590738988000, 1]
+        - [2, "aaaaaaaaaa", 1, 1590738990000, 3.3, 2, 1590738990000, 1]
+        - [3, "bb", 2, 1590738990000, 3.3, 1, null, null]
+        - [4, "cc", 3, 1590738990000, 4.0, 1, 1590738989000, 3]
+        - [5, "cc", 3, 1590738991000, 9.0, 2, 1590738989000, 3]
+        - [6, "cc", 3, 1590738992000, 15.0, 3, 1590738992000, 3]
+        - [7, "cc", 2, 1590738993000, 22.0, 4, 1590738991000, 2]

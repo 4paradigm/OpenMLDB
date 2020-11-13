@@ -64,6 +64,7 @@ cases:
 
   - id: 2
     desc: batch request with non-trival common columns
+    mode: cluster-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]

@@ -28,14 +28,15 @@ using vm::Engine;
 using vm::RequestRunSession;
 using vm::Runner;
 using vm::RunnerContext;
+using vm::RunSession;
 using vm::TableHandler;
 
 using namespace ::llvm;  // NOLINT
 
 static Runner* GetRunner(Runner* root, int id);
 static bool RunnerRun(
-    Runner* runner, std::shared_ptr<TableHandler> table_handler,
-    int64_t limit_cnt,
+    RunSession* session, Runner* runner,
+    std::shared_ptr<TableHandler> table_handler, int64_t limit_cnt,
     std::vector<std::shared_ptr<DataHandler>>& result);  // NOLINT
 static void RequestUnionRunnerCase(const std::string& sql, int runner_id,
                                    benchmark::State* state, MODE mode,
@@ -62,7 +63,7 @@ static void RequestUnionRunnerCase(const std::string& sql, int runner_id,
     session.GetPhysicalPlan()->Print(plan_oss, "");
     LOG(INFO) << "physical plan:\n" << plan_oss.str() << std::endl;
     std::ostringstream runner_oss;
-    session.GetMainTask()->Print(runner_oss, "");
+    session.GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::unique_ptr<codec::RowView> row_view = std::unique_ptr<codec::RowView>(
         new codec::RowView(session.GetSchema()));
@@ -74,12 +75,13 @@ static void RequestUnionRunnerCase(const std::string& sql, int runner_id,
             for (auto _ : *state) {
                 std::vector<std::shared_ptr<DataHandler>> res;
                 benchmark::DoNotOptimize(
-                    RunnerRun(start_runner, table, limit_cnt, res));
+                    RunnerRun(&session, start_runner, table, limit_cnt, res));
             }
         }
         case TEST: {
             std::vector<std::shared_ptr<DataHandler>> res;
-            ASSERT_TRUE(RunnerRun(start_runner, table, limit_cnt, res));
+            ASSERT_TRUE(
+                RunnerRun(&session, start_runner, table, limit_cnt, res));
             ASSERT_EQ(res.size(), static_cast<size_t>(limit_cnt));
             for (auto data : res) {
                 //                ASSERT_EQ(static_cast<int64_t >(1 + size),
@@ -131,12 +133,13 @@ void IndexSeekRunnerCase(const std::string sql, int runner_id,
             for (auto _ : *state) {
                 std::vector<std::shared_ptr<DataHandler>> res;
                 benchmark::DoNotOptimize(
-                    RunnerRun(start_runner, table, limit_cnt, res));
+                    RunnerRun(&session, start_runner, table, limit_cnt, res));
             }
         }
         case TEST: {
             std::vector<std::shared_ptr<DataHandler>> res;
-            ASSERT_TRUE(RunnerRun(start_runner, table, limit_cnt, res));
+            ASSERT_TRUE(
+                RunnerRun(&session, start_runner, table, limit_cnt, res));
         }
     }
 }
@@ -173,25 +176,26 @@ void AggRunnerCase(const std::string sql, int runner_id,
             for (auto _ : *state) {
                 std::vector<std::shared_ptr<DataHandler>> res;
                 benchmark::DoNotOptimize(
-                    RunnerRun(start_runner, table, limit_cnt, res));
+                    RunnerRun(&session, start_runner, table, limit_cnt, res));
             }
         }
         case TEST: {
             std::vector<std::shared_ptr<DataHandler>> res;
-            ASSERT_TRUE(RunnerRun(start_runner, table, limit_cnt, res));
+            ASSERT_TRUE(
+                RunnerRun(&session, start_runner, table, limit_cnt, res));
         }
     }
 }
 
 static bool RunnerRun(
-    Runner* runner, std::shared_ptr<TableHandler> table_handler,
-    int64_t limit_cnt,
+    RunSession* session, Runner* runner,
+    std::shared_ptr<TableHandler> table_handler, int64_t limit_cnt,
     std::vector<std::shared_ptr<DataHandler>>& result) {  // NOLINT
     auto iter = table_handler->GetIterator();
     int64_t cnt = 0;
     while (cnt < limit_cnt && iter->Valid()) {
         cnt++;
-        RunnerContext ctx(iter->GetValue());
+        RunnerContext ctx(&session->GetClusterJob(), iter->GetValue());
         auto data = runner->Run(ctx);
         iter->Next();
         result.push_back(data);

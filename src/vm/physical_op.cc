@@ -136,7 +136,7 @@ bool PhysicalConstProjectNode::InitSchema() {
     return true;
 }
 bool PhysicalSimpleProjectNode::InitSchema() {
-    output_name_schema_list_.AddSchemaSource("", &output_schema_,
+    output_name_schema_list_.AddSchemaSource(schema_name_, &output_schema_,
                                              &project_.column_sources());
     PrintSchema();
     return true;
@@ -492,7 +492,11 @@ bool PhysicalRenameNode::InitSchema() {
 void PhysicalRequestJoinNode::Print(std::ostream& output,
                                     const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
-    output << "(" << join_.ToString();
+    output << "(";
+    if (output_right_only_) {
+        output << "OUTPUT_RIGHT_ONLY, ";
+    }
+    output << join_.ToString();
     if (limit_cnt_ > 0) {
         output << ", limit=" << limit_cnt_;
     }
@@ -508,17 +512,21 @@ bool PhysicalRequestJoinNode::InitSchema() {
                         "producer is null";
         return false;
     }
-    output_schema_.CopyFrom(producers_[0]->output_schema_);
-    output_schema_.MergeFrom(producers_[1]->output_schema_);
-    output_name_schema_list_.AddSchemaSources(
-        producers_[0]->GetOutputNameSchemaList());
-    output_name_schema_list_.AddSchemaSources(
-        producers_[1]->GetOutputNameSchemaList());
-
+    if (output_right_only_) {
+        output_schema_.CopyFrom(producers_[1]->output_schema_);
+        output_name_schema_list_.AddSchemaSources(
+            producers_[1]->GetOutputNameSchemaList());
+    } else {
+        output_schema_.CopyFrom(producers_[0]->output_schema_);
+        output_schema_.MergeFrom(producers_[1]->output_schema_);
+        output_name_schema_list_.AddSchemaSources(
+            producers_[0]->GetOutputNameSchemaList());
+        output_name_schema_list_.AddSchemaSources(
+            producers_[1]->GetOutputNameSchemaList());
+    }
     PrintSchema();
     return true;
 }
-
 void PhysicalWindowNode::Print(std::ostream& output,
                                const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);

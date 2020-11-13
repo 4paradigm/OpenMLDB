@@ -72,18 +72,21 @@ BatchModeTransformer::BatchModeTransformer(
       module_(module),
       id_(0),
       performance_sensitive_mode_(false),
+      cluster_optimized_mode_(false),
       library_(library) {}
 
 BatchModeTransformer::BatchModeTransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
-    udf::UDFLibrary* library, bool performance_sensitive)
+    udf::UDFLibrary* library, const bool performance_sensitive,
+    const bool cluster_optimized_mode)
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
       module_(module),
       id_(0),
       performance_sensitive_mode_(performance_sensitive),
+      cluster_optimized_mode_(cluster_optimized_mode),
       library_(library) {}
 BatchModeTransformer::~BatchModeTransformer() {}
 
@@ -465,7 +468,7 @@ bool BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
     if (!CheckHistoryWindowFrame(w_ptr, status)) {
         return false;
     }
-    LOG(INFO) << "Check " << *depend;
+    DLOG(INFO) << "Check " << *depend;
     auto check_status = CheckTimeOrIntegerOrderColumn(
         w_ptr->GetOrders(), depend->GetOutputNameSchemaList());
     if (!check_status.isOK()) {
@@ -746,7 +749,7 @@ bool BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,
     *output = new PhysicalJoinNode(left, right, node->join_type_, node->orders_,
                                    node->condition_);
     node_manager_->RegisterNode(*output);
-    LOG(INFO) << "Check " << **output;
+    DLOG(INFO) << "Check " << **output;
     auto check_status = CheckTimeOrIntegerOrderColumn(
         node->orders_, (*output)->GetOutputNameSchemaList());
     if (!check_status.isOK()) {
@@ -1007,6 +1010,7 @@ bool BatchModeTransformer::AddDefaultPasses() {
     AddPass(kPassLeftJoinOptimized);
     AddPass(kPassGroupAndSortOptimized);
     AddPass(kPassLimitOptimized);
+    AddPass(kPassClusterOptimized);
     return false;
 }
 
@@ -1207,7 +1211,7 @@ bool BatchModeTransformer::TransformProjectOp(
                 if (!CheckHistoryWindowFrame(project_list->w_ptr_, status)) {
                     return false;
                 }
-                LOG(INFO) << "Check " << *depend;
+                DLOG(INFO) << "Check " << *depend;
                 auto check_status = CheckTimeOrIntegerOrderColumn(
                     project_list->w_ptr_->GetOrders(),
                     depend->GetOutputNameSchemaList());
@@ -1263,6 +1267,15 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
                     }
                 }
                 break;
+            }
+            case kPassClusterOptimized: {
+                if (cluster_optimized_mode_) {
+                    ClusterOptimized pass(node_manager_, db_, catalog_);
+                    PhysicalOpNode* new_op = nullptr;
+                    if (pass.Apply(physical_plan, &new_op)) {
+                        physical_plan = new_op;
+                    }
+                }
             }
             case kPassLimitOptimized: {
                 LimitOptimized pass(node_manager_, db_, catalog_);
@@ -1532,8 +1545,12 @@ bool BatchModeTransformer::CodeGenExprList(
 
 bool BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in,
                                    base::Status& status) {
-    if (!GenConditionFilter(&join->condition_, in->GetOutputNameSchemaList(),
-                            status)) {
+    vm::SchemaSourceList join_input_schema;
+    join_input_schema.AddSchemaSources(
+        in->producers()[0]->GetOutputNameSchemaList());
+    join_input_schema.AddSchemaSources(
+        in->producers()[1]->GetOutputNameSchemaList());
+    if (!GenConditionFilter(&join->condition_, join_input_schema, status)) {
         return false;
     }
     if (!GenKey(&join->left_key_, in->producers()[0]->GetOutputNameSchemaList(),
@@ -2956,14 +2973,111 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
     }
     return true;
 }
+bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
+                                             const Join& join,
+                                             PhysicalOpNode** out) {
+    auto left = join_op->GetProducer(0);
+    std::vector<const fesql::node::ColumnRefNode*> columns;
+    join.ResolvedRelatedColumns(&columns);
+    std::ostringstream oss;
+    for (auto column : columns) {
+        oss << node::ExprString(column) << ",";
+    }
+    DLOG(INFO) << "join resolved related columns: \n" << oss.str();
+    auto schema_context = SchemasContext(join_op->GetOutputNameSchemaList());
+    auto left_schema_list_size = left->GetOutputSchemaListSize();
+    std::unordered_map<uint64_t, ColumnSource> column_source_map_;
+    for (auto expr : columns) {
+        auto column_source = schema_context.ColumnSourceResolved(expr);
+        if (column_source.type() != vm::kSourceColumn) {
+            LOG(WARNING) << "fail to resolve column " << node::ExprString(expr);
+            return false;
+        }
+        if (column_source.schema_idx() < left_schema_list_size) {
+            uint64_t id =
+                (static_cast<uint64_t>(column_source.schema_idx()) << 32) +
+                column_source.column_idx();
+            if (column_source_map_.find(id) == column_source_map_.end()) {
+                column_source_map_.insert(std::make_pair(id, column_source));
+            }
+        }
+    }
 
+    auto left_schema_list =
+        left->GetOutputNameSchemaList().schema_source_list();
+    ColumnSourceList simplify_column_source_list;
+    Schema simplily_schema;
+
+    std::string schema_name = left_schema_list[0].table_name_;
+    for (size_t i = 0; i < left_schema_list.size(); i++) {
+        auto org_schema = left_schema_list[i].schema_;
+        for (int column_id = 0; column_id < org_schema->size(); column_id++) {
+            uint64_t key_id = (static_cast<uint64_t>(i) << 32) + column_id;
+            if (column_source_map_.find(key_id) != column_source_map_.end()) {
+                auto column = simplily_schema.Add();
+                column->CopyFrom(org_schema->Get(column_id));
+                simplify_column_source_list.push_back(
+                    column_source_map_[key_id]);
+            }
+        }
+    }
+
+    if (column_source_map_.size() < left->GetOutputSchema()->size()) {
+        *out = node_manager_->RegisterNode(new PhysicalSimpleProjectNode(
+            left, simplily_schema, simplify_column_source_list, schema_name));
+    } else {
+        *out = left;
+    }
+    return true;
+}
+bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
+    if (nullptr == in) {
+        LOG(WARNING) << "LeftJoin optimized skip: node is null";
+        return false;
+    }
+    switch (in->type_) {
+        case kPhysicalOpRequestJoin: {
+            auto join_op = dynamic_cast<PhysicalRequestJoinNode*>(in);
+            switch (join_op->join().join_type()) {
+                case node::kJoinTypeLeft:
+                case node::kJoinTypeLast: {
+                    auto left = join_op->producers()[0];
+                    auto right = join_op->producers()[1];
+                    auto simplify_left = left;
+                    if (!SimplifyJoinLeftInput(join_op, join_op->join(),
+                                               &simplify_left)) {
+                        return false;
+                    }
+                    auto request_join_right_only =
+                        node_manager_->RegisterNode(new PhysicalRequestJoinNode(
+                            simplify_left, right, join_op->join(), true));
+
+                    auto concat_op =
+                        node_manager_->RegisterNode(new PhysicalRequestJoinNode(
+                            left, request_join_right_only,
+                            fesql::node::kJoinTypeConcat));
+                    *output = concat_op;
+                    return true;
+                    break;
+                }
+                default: {
+                    // do nothing
+                }
+            }
+        }
+        default: {
+            return false;
+        }
+    }
+    return false;
+}
 RequestModeransformer::RequestModeransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
     udf::UDFLibrary* library, const std::set<size_t>& common_column_indices,
-    const bool performance_sensitive)
+    const bool performance_sensitive, const bool cluster_optimized)
     : BatchModeTransformer(node_manager, db, catalog, module, library,
-                           performance_sensitive),
+                           performance_sensitive, cluster_optimized),
       common_column_indices_(common_column_indices) {}
 
 RequestModeransformer::~RequestModeransformer() {}
@@ -3077,7 +3191,7 @@ bool RequestModeransformer::TransformJoinOp(const node::JoinPlanNode* node,
                                           node->orders_, node->condition_);
 
     node_manager_->RegisterNode(*output);
-    LOG(INFO) << "Check " << **output;
+    DLOG(INFO) << "Check " << **output;
     auto check_status = CheckTimeOrIntegerOrderColumn(
         node->orders_, (*output)->GetOutputNameSchemaList());
     if (!check_status.isOK()) {
