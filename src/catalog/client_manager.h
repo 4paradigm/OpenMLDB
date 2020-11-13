@@ -20,10 +20,10 @@
 #ifndef SRC_CATALOG_CLIENT_MANAGER_H_
 #define SRC_CATALOG_CLIENT_MANAGER_H_
 
-#include <unordered_map>
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "base/random.h"
@@ -39,9 +39,8 @@ using TablePartitions = ::google::protobuf::RepeatedPtrField<::rtidb::nameserver
 
 class TabletRowHandler : public ::fesql::vm::RowHandler {
  public:
-    TabletRowHandler(const std::string& db,
-            std::unique_ptr<brpc::Controller> cntl,
-            std::unique_ptr<::rtidb::api::QueryResponse> response);
+    TabletRowHandler(const std::string& db, std::unique_ptr<brpc::Controller> cntl,
+                     std::unique_ptr<::rtidb::api::QueryResponse> response);
     explicit TabletRowHandler(::fesql::base::Status status);
     const ::fesql::vm::Schema* GetSchema() override { return nullptr; }
     const std::string& GetName() override { return name_; }
@@ -54,8 +53,6 @@ class TabletRowHandler : public ::fesql::vm::RowHandler {
     std::string db_;
     std::string name_;
     ::fesql::base::Status status_;
-    ::fesql::vm::Schema schema_;
-    std::string buf_;
     ::fesql::codec::Row row_;
     std::unique_ptr<brpc::Controller> cntl_;
     std::unique_ptr<::rtidb::api::QueryResponse> response_;
@@ -87,10 +84,12 @@ class TabletAccessor : public ::fesql::vm::Tablet {
     }
 
     std::shared_ptr<::fesql::vm::RowHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
-                                                      const ::fesql::codec::Row& row) override;
+                                                      const ::fesql::codec::Row& row, const bool is_debug) override;
 
     std::shared_ptr<::fesql::vm::RowHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
-                                                      const std::vector<::fesql::codec::Row>& row) override;
+                                                      const std::vector<::fesql::codec::Row>& row,
+                                                      const bool is_debug) override;
+    const std::string& GetName() const { return name_; }
 
  private:
     std::string name_;
@@ -121,6 +120,21 @@ class TableClientManager {
 
     TableClientManager(const ::rtidb::storage::TableSt& table_st, const ClientManager& client_manager);
 
+    void Show() const {
+        DLOG(INFO) << "show client manager ";
+        for (size_t id = 0; id < partition_managers_.size(); id++) {
+            auto pmg = std::atomic_load_explicit(&partition_managers_[id], std::memory_order_relaxed);
+            if (pmg) {
+                if (pmg->GetLeader()) {
+                    DLOG(INFO) << "partition managers (pid, leader) " << id << ", " << pmg->GetLeader()->GetName();
+                } else {
+                    DLOG(INFO) << "partition managers (pid, leader) " << id << ", null leader";
+                }
+            } else {
+                DLOG(INFO) << "partition managers (pid, leader) " << id << ", null mamanger";
+            }
+        }
+    }
     std::shared_ptr<PartitionClientManager> GetPartitionClientManager(uint32_t pid) const {
         if (pid < partition_managers_.size()) {
             return std::atomic_load_explicit(&partition_managers_[pid], std::memory_order_relaxed);

@@ -727,22 +727,27 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchRequest(
         new ::rtidb::api::SQLBatchRequestQueryResponse());
     auto client = GetTabletClient(db, sql);
     if (!client) {
+        status->code = -1;
         status->msg = "no tablet found";
         return nullptr;
     }
     if (!client->SQLBatchRequestQuery(db, sql, row_batch, cntl.get(),
                                             response.get(),
                                             options_.enable_debug)) {
+        status->code = -1;
         status->msg = "request server error " + response->msg();
         return nullptr;
     }
     if (response->code() != ::rtidb::base::kOk) {
+        status->code = -1;
         status->msg = response->msg();
         return nullptr;
     }
     std::shared_ptr<::rtidb::sdk::SQLBatchRequestResultSet> rs(
         new rtidb::sdk::SQLBatchRequestResultSet(std::move(response), std::move(cntl)));
     if (!rs->Init()) {
+        status->code = -1;
+        status->msg = "batch request result set init fail";
         return nullptr;
     }
     return rs;

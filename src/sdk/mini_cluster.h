@@ -51,6 +51,7 @@ DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_bool(auto_failover);
 DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
+DECLARE_bool(enable_distsql);
 
 namespace rtidb {
 namespace sdk {

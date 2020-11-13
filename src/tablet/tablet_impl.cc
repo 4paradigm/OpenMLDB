@@ -71,6 +71,7 @@ DECLARE_uint32(get_table_diskused_interval);
 DECLARE_uint32(task_check_interval);
 DECLARE_uint32(load_index_max_wait_time);
 DECLARE_bool(use_name);
+DECLARE_bool(enable_distsql);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -111,11 +112,16 @@ TabletImpl::TabletImpl()
       mode_recycle_root_paths_(),
       follower_(false),
       catalog_(new ::rtidb::catalog::TabletCatalog()),
-      engine_(catalog_),
+      engine_(catalog_,
+              fesql::vm::EngineOptions::NewEngineOptionWithClusterEnable(
+                  FLAGS_enable_distsql)),
       zk_cluster_(),
       zk_path_(),
       endpoint_(),
-      notify_path_() {}
+      notify_path_() {
+    catalog_->SetLocalTablet(std::shared_ptr<::fesql::vm::Tablet>(
+        new ::fesql::vm::LocalTablet(&engine_)));
+}
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
@@ -1860,6 +1866,9 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
     ::fesql::base::Status status;
     if (request->is_batch()) {
         ::fesql::vm::BatchRunSession session;
+        if (request->is_debug()) {
+            session.EnableDebug();
+        }
         {
             bool ok =
                 engine_.Get(request->sql(), request->db(), session, status);
@@ -1870,9 +1879,7 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
                 return;
             }
         }
-        if (request->is_debug()) {
-            session.EnableDebug();
-        }
+
         auto table = session.Run();
         if (!table) {
             DLOG(WARNING) << "fail to run sql " << request->sql();
@@ -1921,6 +1928,9 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
             return;
         }
         ::fesql::vm::RequestRunSession session;
+        if (request->is_debug()) {
+            session.EnableDebug();
+        }
         if (request->is_procedure()) {
             const std::string& db_name = request->db();
             const std::string& sp_name = request->sp_name();
@@ -1992,6 +2002,10 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
     ::fesql::base::Status status;
 
     ::fesql::vm::BatchRequestRunSession session;
+    // run session
+    if (request->is_debug()) {
+        session.EnableDebug();
+    }
     bool is_procedure = request->is_procedure();
     if (is_procedure) {
         std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
@@ -2061,10 +2075,6 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
         }
     }
 
-    // run session
-    if (request->is_debug()) {
-        session.EnableDebug();
-    }
     std::vector<::fesql::codec::Row> output_rows;
     int32_t run_ret = session.Run(input_rows, output_rows);
     if (run_ret != 0) {
@@ -5949,6 +5959,7 @@ void TabletImpl::CancelOP(RpcController* controller,
 void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
         const rtidb::api::UpdateRealEndpointMapRequest* request,
         rtidb::api::GeneralResponse* response, Closure* done) {
+    DLOG(INFO) << "UpdateRealEndpointMap";
     brpc::ClosureGuard done_guard(done);
     if (FLAGS_zk_cluster.empty()) {
         response->set_code(-1);
