@@ -1692,7 +1692,6 @@ bool TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std
     ::rtidb::api::SQLBatchRequestQueryRequest request;
     request.set_sp_name(sp_name);
     request.set_is_procedure(true);
-    request.set_sql("");
     request.set_db(db);
     request.set_is_debug(is_debug);
     request.set_common_row(*row_batch->GetCommonSlice());
@@ -1737,9 +1736,9 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
     request.set_is_batch(false);
     request.set_is_procedure(true);
 
-    callback->cntl_->set_timeout_ms(timeout_ms);
+    callback->GetController()->set_timeout_ms(timeout_ms);
     return client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query,
-            callback->cntl_.get(), &request, callback->response_.get(), callback);
+            callback->GetController(), &request, callback->GetResponse(), callback);
 }
 
 bool TabletClient::CallSQLBatchRequestProcedure(
@@ -1753,7 +1752,6 @@ bool TabletClient::CallSQLBatchRequestProcedure(
     ::rtidb::api::SQLBatchRequestQueryRequest request;
     request.set_sp_name(sp_name);
     request.set_is_procedure(true);
-    request.set_sql("");
     request.set_db(db);
     request.set_is_debug(is_debug);
     request.set_common_row(*row_batch->GetCommonSlice());
@@ -1761,9 +1759,9 @@ bool TabletClient::CallSQLBatchRequestProcedure(
         request.add_non_common_rows(*row_batch->GetNonCommonSlice(i));
     }
 
-    callback->cntl_->set_timeout_ms(timeout_ms);
+    callback->GetController()->set_timeout_ms(timeout_ms);
     return client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
-            callback->cntl_.get(), &request, callback->response_.get(), callback);
+            callback->GetController(), &request, callback->GetResponse(), callback);
 }
 
 

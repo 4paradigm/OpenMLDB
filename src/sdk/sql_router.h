@@ -69,7 +69,7 @@ class QueryFuture {
     virtual ~QueryFuture() {}
 
     virtual std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(fesql::sdk::Status* status) = 0;
-    virtual bool IsDone() = 0;
+    virtual bool IsDone() const = 0;
 };
 
 class SQLRouter {

@@ -205,21 +205,52 @@ class RpcClient {
 template<class Response>
 class RpcCallback : public google::protobuf::Closure {
  public:
-    RpcCallback(std::shared_ptr<Response> response,
-            std::shared_ptr<brpc::Controller> cntl) :
-        response_(std::move(response)),
-        cntl_(std::move(cntl)),
-        is_done_(false) {}
+     RpcCallback(Response* response, brpc::Controller* cntl)
+         : response_(response),
+           cntl_(cntl),
+           is_done_(false),
+           ref_count_(0) {
+        ref_count_.fetch_add(1, std::memory_order_acq_rel);
+     }
 
-    ~RpcCallback() {}
+     ~RpcCallback() {
+         delete cntl_;
+         delete response_;
+     }
 
     void Run() override {
         is_done_.store(true, std::memory_order_release);
+        this->UnRef();
     }
 
-    std::shared_ptr<Response> response_;
-    std::shared_ptr<brpc::Controller> cntl_;
+    inline Response* GetResponse() const {
+        return response_;
+    }
+
+    inline brpc::Controller* GetController() const {
+        return cntl_;
+    }
+
+    inline bool IsDone() const {
+        return is_done_.load(std::memory_order_acquire);
+    }
+
+    void Ref() {
+        ref_count_.fetch_add(1, std::memory_order_acq_rel);
+    }
+
+    void UnRef() {
+        ref_count_.fetch_sub(1, std::memory_order_acq_rel);
+        if (ref_count_.load(std::memory_order_acquire) == 0) {
+            delete this;
+        }
+    }
+
+ private:
+    Response* response_;
+    brpc::Controller* cntl_;
     std::atomic<bool> is_done_;
+    std::atomic<uint32_t> ref_count_;
 };
 
 }  // namespace rtidb

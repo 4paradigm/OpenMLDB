@@ -33,8 +33,8 @@ namespace sdk {
 
 class ResultSetSQL : public ::fesql::sdk::ResultSet {
  public:
-    ResultSetSQL(std::shared_ptr<::rtidb::api::QueryResponse> response,
-                 std::shared_ptr<brpc::Controller> cntl);
+    ResultSetSQL(const std::shared_ptr<::rtidb::api::QueryResponse>& response,
+                 const std::shared_ptr<brpc::Controller>& cntl);
     ~ResultSetSQL();
 
     bool Init();

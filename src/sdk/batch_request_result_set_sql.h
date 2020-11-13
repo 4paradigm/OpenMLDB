@@ -36,8 +36,8 @@ namespace sdk {
 class SQLBatchRequestResultSet : public ::fesql::sdk::ResultSet {
  public:
     SQLBatchRequestResultSet(
-        std::shared_ptr<::rtidb::api::SQLBatchRequestQueryResponse> response,
-        std::shared_ptr<brpc::Controller> cntl);
+        const std::shared_ptr<::rtidb::api::SQLBatchRequestQueryResponse>& response,
+        const std::shared_ptr<brpc::Controller>& cntl);
     ~SQLBatchRequestResultSet();
 
     bool Init();
