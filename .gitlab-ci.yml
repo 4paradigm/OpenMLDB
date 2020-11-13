@@ -135,7 +135,7 @@ deploy_jar:
     stage: deploy
     script:
         - bash tools/cicd/extract_intermediate_cicd_artifacts.sh linux
-        - bash tools/cicd/extract_intermediate_cicd_artifacts.sh mac
+#        - bash tools/cicd/extract_intermediate_cicd_artifacts.sh mac
         - bash tools/cicd/deploy_fesql_spark_jar.sh
     dependencies:
         - build_fesql_on_linux
