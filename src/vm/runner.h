@@ -511,10 +511,10 @@ class JoinGenerator {
     virtual ~JoinGenerator() {}
     bool TableJoin(std::shared_ptr<TableHandler> left,
                    std::shared_ptr<TableHandler> right,
-                   std::shared_ptr<MemTableHandler> output);  // NOLINT
+                   std::shared_ptr<MemTimeTableHandler> output);  // NOLINT
     bool TableJoin(std::shared_ptr<TableHandler> left,
                    std::shared_ptr<PartitionHandler> right,
-                   std::shared_ptr<MemTableHandler> output);  // NOLINT
+                   std::shared_ptr<MemTimeTableHandler> output);  // NOLINT
     bool PartitionJoin(std::shared_ptr<PartitionHandler> left,
                        std::shared_ptr<TableHandler> right,
                        std::shared_ptr<MemPartitionHandler> output);  // NOLINT

@@ -785,9 +785,10 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(RunnerContext& ctx) {
     }
 
     if (kTableHandler == left->GetHanlderType()) {
-        auto output_table =
-            std::shared_ptr<MemTableHandler>(new MemTableHandler());
         auto left_table = std::dynamic_pointer_cast<TableHandler>(left);
+
+        auto output_table =
+            std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
         output_table->SetOrderType(left_table->GetOrderType());
         if (kPartitionHandler == right->GetHanlderType()) {
             if (!join_gen_.TableJoin(
@@ -1048,8 +1049,8 @@ Row JoinGenerator::RowLastJoin(const Row& left_row,
 Row JoinGenerator::RowLastJoinPartition(
     const Row& left_row, std::shared_ptr<PartitionHandler> partition) {
     if (!index_key_gen_.Valid()) {
-        LOG(WARNING)
-            << "can't join right partition table when partition keys is empty";
+        LOG(WARNING) << "can't join right partition table when partition "
+                        "keys is empty";
         return Row();
     }
     std::string partition_key = index_key_gen_.Gen(left_row);
@@ -1110,7 +1111,7 @@ Row JoinGenerator::RowLastJoinTable(const Row& left_row,
 
 bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
                               std::shared_ptr<TableHandler> right,
-                              std::shared_ptr<MemTableHandler> output) {
+                              std::shared_ptr<MemTimeTableHandler> output) {
     auto left_iter = left->GetIterator();
     if (!left_iter) {
         LOG(WARNING) << "Table Join with empty left table";
@@ -1120,6 +1121,7 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
     while (left_iter->Valid()) {
         const Row& left_row = left_iter->GetValue();
         output->AddRow(
+            left_iter->GetKey(),
             Runner::RowLastJoinTable(left_slices_, left_row, right_slices_,
                                      right, right_sort_gen_, condition_gen_));
         left_iter->Next();
@@ -1129,7 +1131,7 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
 
 bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
                               std::shared_ptr<PartitionHandler> right,
-                              std::shared_ptr<MemTableHandler> output) {
+                              std::shared_ptr<MemTimeTableHandler> output) {
     if (!left_key_gen_.Valid() && !index_key_gen_.Valid()) {
         LOG(WARNING) << "can't join right partition table when join "
                         "left_key_gen_ and index_key_gen_ is invalid";
@@ -1154,9 +1156,10 @@ bool JoinGenerator::TableJoin(std::shared_ptr<TableHandler> left,
         }
         DLOG(INFO) << "key_str " << key_str;
         auto right_table = right->GetSegment(key_str);
-        output->AddRow(Runner::RowLastJoinTable(
-            left_slices_, left_row, right_slices_, right_table, right_sort_gen_,
-            condition_gen_));
+        output->AddRow(left_iter->GetKey(),
+                       Runner::RowLastJoinTable(
+                           left_slices_, left_row, right_slices_, right_table,
+                           right_sort_gen_, condition_gen_));
         left_iter->Next();
     }
     return true;
