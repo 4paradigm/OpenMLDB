@@ -650,8 +650,7 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("bool", "null", "timestamp", "null"),
                     std::make_tuple("bool", "null", "string", "null"),
                     std::make_tuple("bool", "null", "string", "abc"),
-                    std::make_tuple("bool", "null", "string", "")
-                    ));
+                    std::make_tuple("bool", "null", "string", "")));
 // SafeCastNumber: bool, int16, int32
 // UnSafeCst: int64, float, double
 INSTANTIATE_TEST_SUITE_P(
