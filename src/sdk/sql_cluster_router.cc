@@ -137,10 +137,8 @@ class QueryFutureImpl : public QueryFuture {
             status->msg = "request error, " + callback_->GetController()->ErrorText();
             return nullptr;
         }
-        std::shared_ptr<rtidb::api::QueryResponse> response(callback_->GetResponse());
-        std::shared_ptr<brpc::Controller> cntl(callback_->GetController());
         std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs = std::make_shared<rtidb::sdk::ResultSetSQL>(
-                    response, cntl);
+                    callback_->GetResponse(), callback_->GetController());
         bool ok = rs->Init();
         if (!ok) {
             status->code = -1;
@@ -182,10 +180,9 @@ class BatchQueryFutureImpl : public QueryFuture {
             status->msg = "request error. " + callback_->GetController()->ErrorText();
             return nullptr;
         }
-        std::shared_ptr<rtidb::api::SQLBatchRequestQueryResponse> response(callback_->GetResponse());
-        std::shared_ptr<brpc::Controller> cntl(callback_->GetController());
         std::shared_ptr<::rtidb::sdk::SQLBatchRequestResultSet> rs =
-                std::make_shared<rtidb::sdk::SQLBatchRequestResultSet>(response, cntl);
+            std::make_shared<rtidb::sdk::SQLBatchRequestResultSet>(
+                    callback_->GetResponse(), callback_->GetController());
         bool ok = rs->Init();
         if (!ok) {
             status->code = -1;
@@ -1353,8 +1350,9 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
         return std::shared_ptr<rtidb::sdk::QueryFuture>();
     }
 
-    rtidb::api::QueryResponse* response = new rtidb::api::QueryResponse();
-    brpc::Controller* cntl = new brpc::Controller();
+    std::shared_ptr<rtidb::api::QueryResponse> response =
+        std::make_shared<rtidb::api::QueryResponse>();
+    std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
     rtidb::RpcCallback<rtidb::api::QueryResponse>* callback =
             new rtidb::RpcCallback<rtidb::api::QueryResponse>(response, cntl);
 
@@ -1384,8 +1382,9 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestPr
         return nullptr;
     }
 
-    brpc::Controller* cntl = new brpc::Controller();
-    rtidb::api::SQLBatchRequestQueryResponse* response = new rtidb::api::SQLBatchRequestQueryResponse();
+    std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
+    std::shared_ptr<rtidb::api::SQLBatchRequestQueryResponse> response =
+        std::make_shared<rtidb::api::SQLBatchRequestQueryResponse>();
     rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback =
            new rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>(response, cntl);
     bool ok = tablet->CallSQLBatchRequestProcedure(

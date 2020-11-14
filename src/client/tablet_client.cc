@@ -1738,7 +1738,7 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
 
     callback->GetController()->set_timeout_ms(timeout_ms);
     return client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query,
-            callback->GetController(), &request, callback->GetResponse(), callback);
+            callback->GetController().get(), &request, callback->GetResponse().get(), callback);
 }
 
 bool TabletClient::CallSQLBatchRequestProcedure(
@@ -1761,7 +1761,7 @@ bool TabletClient::CallSQLBatchRequestProcedure(
 
     callback->GetController()->set_timeout_ms(timeout_ms);
     return client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
-            callback->GetController(), &request, callback->GetResponse(), callback);
+            callback->GetController().get(), &request, callback->GetResponse().get(), callback);
 }
 
 

@@ -205,17 +205,15 @@ class RpcClient {
 template<class Response>
 class RpcCallback : public google::protobuf::Closure {
  public:
-     RpcCallback(Response* response, brpc::Controller* cntl)
+     RpcCallback(const std::shared_ptr<Response>& response,
+             const std::shared_ptr<brpc::Controller>& cntl)
          : response_(response),
            cntl_(cntl),
            is_done_(false),
-           ref_count_(0) {
-        ref_count_.fetch_add(1, std::memory_order_acq_rel);
+           ref_count_(1) {
      }
 
      ~RpcCallback() {
-         delete cntl_;
-         delete response_;
      }
 
     void Run() override {
@@ -223,11 +221,11 @@ class RpcCallback : public google::protobuf::Closure {
         this->UnRef();
     }
 
-    inline Response* GetResponse() const {
+    inline const std::shared_ptr<Response>& GetResponse() const {
         return response_;
     }
 
-    inline brpc::Controller* GetController() const {
+    inline const std::shared_ptr<brpc::Controller>& GetController() const {
         return cntl_;
     }
 
@@ -247,8 +245,8 @@ class RpcCallback : public google::protobuf::Closure {
     }
 
  private:
-    Response* response_;
-    brpc::Controller* cntl_;
+    std::shared_ptr<Response> response_;
+    std::shared_ptr<brpc::Controller> cntl_;
     std::atomic<bool> is_done_;
     std::atomic<uint32_t> ref_count_;
 };
