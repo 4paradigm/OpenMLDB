@@ -623,7 +623,11 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("bool", "true", "double", "1"),
                     std::make_tuple("bool", "true", "timestamp", "1"),
                     std::make_tuple("bool", "true", "date", "2020-05-20"),
-                    std::make_tuple("bool", "true", "string", "000"),
+                    std::make_tuple("bool", "true", "string", "true"),
+                    std::make_tuple("bool", "true", "string", "t"),
+                    std::make_tuple("bool", "true", "string", "yes"),
+                    std::make_tuple("bool", "true", "string", "y"),
+                    std::make_tuple("bool", "true", "string", "1"),
                     std::make_tuple("bool", "false", "bool", "false"),
                     std::make_tuple("bool", "false", "int16", "0"),
                     std::make_tuple("bool", "false", "int32", "0"),
@@ -631,7 +635,11 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("bool", "false", "float", "0"),
                     std::make_tuple("bool", "false", "double", "0"),
                     std::make_tuple("bool", "false", "timestamp", "0"),
-                    std::make_tuple("bool", "false", "string", ""),
+                    std::make_tuple("bool", "false", "string", "false"),
+                    std::make_tuple("bool", "false", "string", "f"),
+                    std::make_tuple("bool", "false", "string", "no"),
+                    std::make_tuple("bool", "false", "string", "n"),
+                    std::make_tuple("bool", "false", "string", "0"),
                     std::make_tuple("bool", "null", "bool", "null"),
                     std::make_tuple("bool", "null", "int16", "null"),
                     std::make_tuple("bool", "null", "int32", "null"),
@@ -640,7 +648,10 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("bool", "null", "double", "null"),
                     std::make_tuple("bool", "null", "date", "null"),
                     std::make_tuple("bool", "null", "timestamp", "null"),
-                    std::make_tuple("bool", "null", "string", "null")));
+                    std::make_tuple("bool", "null", "string", "null"),
+                    std::make_tuple("bool", "null", "string", "abc"),
+                    std::make_tuple("bool", "null", "string", "")
+                    ));
 // SafeCastNumber: bool, int16, int32
 // UnSafeCst: int64, float, double
 INSTANTIATE_TEST_SUITE_P(
