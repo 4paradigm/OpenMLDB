@@ -119,13 +119,17 @@ class QueryFutureImpl : public QueryFuture {
  public:
     explicit QueryFutureImpl(rtidb::RpcCallback<rtidb::api::QueryResponse>* callback)
         : callback_(callback) {
-        callback_->Ref();
+            if (callback_) {
+                callback_->Ref();
+            }
     }
     ~QueryFutureImpl() {
-        callback_->UnRef();
+        if (callback_) {
+            callback_->UnRef();
+        }
     }
 
-    std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(fesql::sdk::Status* status) {
+    std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(fesql::sdk::Status* status) override {
         if (!callback_ || !status || !callback_->GetResponse() || !callback_->GetController()) {
             status->code = fesql::common::kRpcError;
             status->msg = "request error, response or controller null";
@@ -161,14 +165,18 @@ class BatchQueryFutureImpl : public QueryFuture {
     explicit BatchQueryFutureImpl(
             rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback)
         : callback_(callback) {
-        callback_->Ref();
+            if (callback_) {
+                callback_->Ref();
+            }
     }
 
     ~BatchQueryFutureImpl() {
-        callback_->UnRef();
+        if (callback_) {
+            callback_->UnRef();
+        }
     }
 
-    std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(fesql::sdk::Status* status) {
+    std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(fesql::sdk::Status* status) override {
         if (!callback_ || !status || !callback_->GetResponse() || !callback_->GetController()) {
             status->code = fesql::common::kRpcError;
             status->msg = "request error, response or controller null";
@@ -1356,6 +1364,8 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
     rtidb::RpcCallback<rtidb::api::QueryResponse>* callback =
             new rtidb::RpcCallback<rtidb::api::QueryResponse>(response, cntl);
 
+    std::shared_ptr<rtidb::sdk::QueryFutureImpl> future =
+        std::make_shared<rtidb::sdk::QueryFutureImpl>(callback);
     bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), timeout_ms,
             options_.enable_debug, callback);
     if (!ok) {
@@ -1364,8 +1374,6 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
         LOG(WARNING) << status->msg;
         return std::shared_ptr<rtidb::sdk::QueryFuture>();
     }
-    std::shared_ptr<rtidb::sdk::QueryFutureImpl> future(
-        new rtidb::sdk::QueryFutureImpl(callback));
     return future;
 }
 
@@ -1387,6 +1395,9 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestPr
         std::make_shared<rtidb::api::SQLBatchRequestQueryResponse>();
     rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback =
            new rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>(response, cntl);
+
+    std::shared_ptr<rtidb::sdk::BatchQueryFutureImpl> future =
+        std::make_shared<rtidb::sdk::BatchQueryFutureImpl>(callback);
     bool ok = tablet->CallSQLBatchRequestProcedure(
             db, sp_name, row_batch, options_.enable_debug, timeout_ms, callback);
     if (!ok) {
@@ -1395,8 +1406,6 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestPr
         LOG(WARNING) << status->msg;
         return nullptr;
     }
-    std::shared_ptr<rtidb::sdk::BatchQueryFutureImpl> future(
-        new rtidb::sdk::BatchQueryFutureImpl(callback));
     return future;
 }
 

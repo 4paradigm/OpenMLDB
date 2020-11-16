@@ -218,7 +218,7 @@ class RpcCallback : public google::protobuf::Closure {
 
     void Run() override {
         is_done_.store(true, std::memory_order_release);
-        this->UnRef();
+        UnRef();
     }
 
     inline const std::shared_ptr<Response>& GetResponse() const {
@@ -238,8 +238,7 @@ class RpcCallback : public google::protobuf::Closure {
     }
 
     void UnRef() {
-        ref_count_.fetch_sub(1, std::memory_order_acq_rel);
-        if (ref_count_.load(std::memory_order_acquire) == 0) {
+        if (ref_count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
             delete this;
         }
     }
