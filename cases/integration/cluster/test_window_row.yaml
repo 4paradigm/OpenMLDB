@@ -89,3 +89,34 @@ cases:
         - [ 5, "cc", 1.0, 1590738993000, 1.0, 1]
         - [ 6, "cc", 5.0, 1590738997000, 3.0, 3]
         - [ 7, "dd", 7.0, 1590738999000, 6.0, 2]
+  -
+    id: 2
+    desc: 2 window,pk不同
+    mode: rtidb-batch-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c7 timestamp"]
+        indexs: ["index1:c3:c7", "index2:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1590738990000]
+          - [2,"aa",20,31,1590738991000]
+          - [3,"bb",20,32,1590738992000]
+          - [4,"bb",20,33,1590738993000]
+          - [5,"cc",21,34,1590738994000]
+          - [6,"aa",21,35,1590738995000]
+          - [7,"aa",21,36,1590738996000]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum, count(c4) OVER w2 as w2_c4_count FROM {0} WINDOW
+      w1 AS (PARTITION BY c3 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint","w2_c4_count bigint"]
+      rows:
+        - [1,"aa",20,30,1]
+        - [2,"aa",20,61,2]
+        - [3,"bb",20,93,1]
+        - [4,"bb",20,96,2]
+        - [5,"cc",21,34,1]
+        - [6,"aa",21,69,3]
+        - [7,"aa",21,105,3]
