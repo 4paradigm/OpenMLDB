@@ -1866,6 +1866,9 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
     ::fesql::base::Status status;
     if (request->is_batch()) {
         ::fesql::vm::BatchRunSession session;
+        if (request->is_debug()) {
+            session.EnableDebug();
+        }
         {
             bool ok =
                 engine_.Get(request->sql(), request->db(), session, status);
@@ -1876,9 +1879,7 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
                 return;
             }
         }
-        if (request->is_debug()) {
-            session.EnableDebug();
-        }
+
         auto table = session.Run();
         if (!table) {
             DLOG(WARNING) << "fail to run sql " << request->sql();
@@ -1927,6 +1928,9 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
             return;
         }
         ::fesql::vm::RequestRunSession session;
+        if (request->is_debug()) {
+            session.EnableDebug();
+        }
         if (request->is_procedure()) {
             const std::string& db_name = request->db();
             const std::string& sp_name = request->sp_name();
@@ -1998,6 +2002,10 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
     ::fesql::base::Status status;
 
     ::fesql::vm::BatchRequestRunSession session;
+    // run session
+    if (request->is_debug()) {
+        session.EnableDebug();
+    }
     bool is_procedure = request->is_procedure();
     if (is_procedure) {
         std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
@@ -2067,10 +2075,6 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
         }
     }
 
-    // run session
-    if (request->is_debug()) {
-        session.EnableDebug();
-    }
     std::vector<::fesql::codec::Row> output_rows;
     int32_t run_ret = session.Run(input_rows, output_rows);
     if (run_ret != 0) {

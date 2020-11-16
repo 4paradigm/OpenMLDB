@@ -30,16 +30,16 @@ namespace rtidb {
 namespace sdk {
 
 ResultSetSQL::ResultSetSQL(
-    std::unique_ptr<::rtidb::api::QueryResponse> response,
-    std::unique_ptr<brpc::Controller> cntl)
-    : response_(std::move(response)),
+    const std::shared_ptr<::rtidb::api::QueryResponse>& response,
+    const std::shared_ptr<brpc::Controller>& cntl)
+    : response_(response),
       index_(-1),
       byte_size_(0),
       position_(0),
       row_view_(),
       internal_schema_(),
       schema_(),
-      cntl_(std::move(cntl)) {}
+      cntl_(cntl) {}
 
 ResultSetSQL::~ResultSetSQL() {}
 

@@ -397,7 +397,7 @@ class RtidbClient {
  public:
     RtidbClient();
     ~RtidbClient();
-    GeneralResult Init(const std::string& zk_cluster, const std::string& zk_path);
+    GeneralResult Init(const std::string& zk_cluster, const std::string& zk_path, uint32_t zk_session_timeout);
     PutResult Put(const std::string& name, const std::map<std::string, std::string>& value, const WriteOption& wo);
 
     UpdateResult Delete(const std::string& name, const std::map<std::string, std::string>& values);

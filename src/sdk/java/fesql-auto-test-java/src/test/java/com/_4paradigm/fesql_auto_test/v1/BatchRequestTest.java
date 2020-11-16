@@ -19,7 +19,12 @@ public class BatchRequestTest extends FesqlTest {
 
     @Test(dataProvider = "testBatchRequestData")
     public void testSPBatchRequest(SQLCase testCase) {
-        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase).run();
+        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, false).run();
+    }
+
+    @Test(dataProvider = "testBatchRequestData")
+    public void testSPBatchRequestAsyn(SQLCase testCase) {
+        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, true).run();
     }
 
     @DataProvider
