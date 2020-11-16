@@ -900,6 +900,23 @@ cases:
         - [10, false]
         - [11, NULL]
         - [12, NULL]
+  - id: 20-10
+    desc: cast float as string
+    mode: offline-unsupport
+    tags: ["TODO", "@chenjing c++ and java cast rules",
+           "@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 float"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, 1.0]
+    sql: |
+      select id, string(c6) as string_c6 from {0};
+    expect:
+      order: id
+      columns: ["id int64", "string_c6 string"]
+      rows:
+        - [1, "1.0"]
   - id: 21-1
     desc: column name prefix with _
     mode: offline-unsupport
@@ -915,3 +932,99 @@ cases:
       columns: ["_c1 int", "_c2_sec bigint"]
       rows:
         - [1, 1590115420]
+  - id: 22-1
+    desc: cast int to date raise error
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 int32"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, 1]
+    sql: |
+      select id, date(c6) as date_c6 from {0};
+    expect:
+      success: false
+  - id: 22-2
+    desc: cast bigint to date raise error
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 int64"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, 1]
+    sql: |
+      select id, date(c6) as date_c6 from {0};
+    expect:
+      success: false
+  - id: 22-3
+    desc: cast smallint to date raise error
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 int16"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, 1]
+    sql: |
+      select id, date(c6) as date_c6 from {0};
+    expect:
+      success: false
+  - id: 22-3
+    desc: cast float to date raise error
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 float"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, 1.0]
+    sql: |
+      select id, date(c6) as date_c6 from {0};
+    expect:
+      success: false
+  - id: 22-3
+    desc: cast double to date raise error
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 double"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, 1.0]
+    sql: |
+      select id, date(c6) as date_c6 from {0};
+    expect:
+      success: false
+  - id: 22-4
+    desc: cast double to date raise error
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 bool"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, true]
+    sql: |
+      select id, date(c6) as date_c6 from {0};
+    expect:
+      success: false
+  - id: 22-4
+    desc: cast date numbers
+    mode: offline-unsupport
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["id int64", "c2 int32", "c6 date"]
+        indexs: ["index1:c2:id"]
+        rows:
+          - [1, 1, "2020-10-12"]
+    sql: |
+      select id, int16(c6) as int16_c6, int32(c6) as int32_c6, int64(c6) as int64_c6,
+      float(c6) as float_c6, double(c6) as double_c6, bool(c6) as bool_c6 from {0};
+    expect:
+      columns: [ "id int64", "int16_c6 int16", "int32_c6 int32", "int64_c6 int64",
+                 "float_c6 float", "double_c6 double", "bool_c6 bool" ]
+
+      rows:
+        - [ 1, NULL, NULL, NULL, NULL, NULL, NULL]

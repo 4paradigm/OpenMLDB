@@ -95,6 +95,7 @@ void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     sql_context.db = "db";
     sql_context.engine_mode = engine_mode;
     sql_context.is_performance_sensitive = false;
+    sql_context.is_cluster_optimized = false;
     base::Status compile_status;
     bool ok = sql_compiler.Compile(sql_context, compile_status);
     ASSERT_TRUE(ok);
