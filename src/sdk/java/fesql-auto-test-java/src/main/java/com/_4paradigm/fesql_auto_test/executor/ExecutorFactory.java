@@ -32,21 +32,21 @@ public class ExecutorFactory {
 
     private static BaseExecutor getFeRequestQueryExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase) {
         BaseExecutor executor = null;
-        executor = new RequestQuerySQLExecutor(sqlExecutor, fesqlCase, false);
+        executor = new RequestQuerySQLExecutor(sqlExecutor, fesqlCase, false, false);
         return executor;
     }
 
     public static BaseExecutor getSQLBatchRequestQueryExecutor(SqlExecutor sqlExecutor,
                                                                SQLCase fesqlCase) {
         RequestQuerySQLExecutor executor = new RequestQuerySQLExecutor(
-                sqlExecutor, fesqlCase, true);
+                sqlExecutor, fesqlCase, true, false);
         return executor;
     }
 
-    public static BaseExecutor getFeRequestQueryWithSpExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase) {
+    public static BaseExecutor getFeRequestQueryWithSpExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase, boolean isAsyn) {
         BaseExecutor executor = null;
         executor = new StoredProcedureSQLExecutor(
-                sqlExecutor, fesqlCase, fesqlCase.getBatch_request() != null);
+                sqlExecutor, fesqlCase, fesqlCase.getBatch_request() != null, isAsyn);
         return executor;
     }
 
