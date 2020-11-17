@@ -423,7 +423,7 @@ deploy-fedb-rdma:
     - source /root/.bashrc && bash steps/simple_compile_fpga.sh
     - source /root/.bashrc && bash steps/package_and_upload_fedb_rdma.sh
   dependencies:
-    - build
+    - rdma-build
 
 #deploy-package:
 #  stage: deploy
