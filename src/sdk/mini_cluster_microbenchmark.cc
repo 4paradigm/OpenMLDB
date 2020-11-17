@@ -326,13 +326,15 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     request_row->AppendDouble(1.0);
     request_row->AppendTimestamp(ts + 1000);
     request_row->Build();
-    for (auto _ : state) {
-        benchmark::DoNotOptimize(router->ExecuteSQL(db, exe_sql, request_row, &status));
-    }
+
     if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
         for (auto _ : state) {
         }
         router->ExecuteSQL(db, exe_sql, request_row, &status);
+    } else {
+        for (auto _ : state) {
+            benchmark::DoNotOptimize(router->ExecuteSQL(db, exe_sql, request_row, &status));
+        }
     }
 }
 
