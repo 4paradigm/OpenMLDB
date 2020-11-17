@@ -422,9 +422,8 @@ deploy-fedb-rdma:
     - source /root/.bashrc && sh tools/install_fesql.sh
     - source /root/.bashrc && bash steps/simple_compile_fpga.sh
     - source /root/.bashrc && bash steps/package_and_upload_fedb_rdma.sh
-  only:
-    variables:
-      - $ENV_BUILD == "daily"
+  dependencies:
+    - build
 
 #deploy-package:
 #  stage: deploy
