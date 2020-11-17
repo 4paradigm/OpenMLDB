@@ -330,7 +330,8 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
         benchmark::DoNotOptimize(router->ExecuteSQL(db, exe_sql, request_row, &status));
     }
     if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
-
+        for (auto _ : state) {
+        }
         router->ExecuteSQL(db, exe_sql, request_row, &status);
     }
 }
@@ -359,7 +360,6 @@ BENCHMARK(BM_InsertPlaceHolderBatchFunction)
 
 int main(int argc, char** argv) {
     ::benchmark::Initialize(&argc, argv);
-    if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
     ::rtidb::sdk::MiniCluster mini_cluster(6181);
     mc = &mini_cluster;
     mini_cluster.SetUp();
