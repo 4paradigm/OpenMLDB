@@ -28,6 +28,12 @@ fetype_to_py = {
     driver.sql_router_sdk.kTypeTimestamp: Type.Timestamp,
 }
 
+createTableRE = re.compile("^create table", re.I)
+createDBRE = re.compile("^create database", re.I)
+insertRE = re.compile("^insert", re.I)
+selectRE = re.compile("^select", re.I)
+
+
 class Error(Exception):
 
     def __init__(self, message):
@@ -141,19 +147,18 @@ class Cursor(object):
             raise Exception("None operation")
         semicolonCount = command.count(';')
         escapeSemicolonCount = command.count("\;")
-        lowerCmd = command.lower()
-        if lowerCmd.find("create table") == 0:
+        if createTableRE.match(command):
             if escapeSemicolonCount > 1:
                 raise Exception("invalid table name")
             ok, error = self.connection._sdk.executeDDL(self.db, command)
             if not ok:
                 raise DatabaseError(error)
-        elif lowerCmd.find("create database") == 0:
+        elif createDBRE.match(command):
             db = command.split()[-1].rstrip(";")
             ok, error = self.connection._sdk.createDB(db)
             if not ok:
                 raise DatabaseError(error)
-        elif lowerCmd.find("insert into") == 0:
+        elif insertRE.match(command):
             questionMarkCount = command.count('?');
             if questionMarkCount > 0:
                 if len(parameters) != questionMarkCount:
@@ -165,15 +170,15 @@ class Cursor(object):
                 holdIdxs = builder.GetHoleIdx()
                 strSize = 0
                 for i in range(len(holdIdxs)):
-                    idx = holdIdxs[i];
-                    colType = schema.GetColumnType(idx)
-                    if colType != driver.sql_router_sdk.kTypeString:
-                        continue
                     if parameters[i] == None:
                         if schema.get(idx).IsColumnNotNull:
                             raise DatabaseError("column seq {} not allow null".format(idx))
                         else:
                             continue
+                    idx = holdIdxs[i];
+                    colType = schema.GetColumnType(idx)
+                    if colType != driver.sql_router_sdk.kTypeString:
+                        continue
                     if isinstance(parameters[i], str):
                         strSize += len(parameters[i])
                     else:
@@ -200,14 +205,56 @@ class Cursor(object):
                     if not ok:
                         raise DatabaseError("erred at append data seq {}".format(i));
                 ok, error = self.connection._sdk.executeInsert(self.db, command, builder)
-                if not ok:
-                    raise DatabaseError(error)
             else:
                 ok, error = self.connection._sdk.executeInsert(self.db, command)
+            if not ok:
+                raise DatabaseError(error)
+        elif selectRE.match(command):
+            if len(parameters) > 0:
+                ok, requestRow = executor.getRequestBuilder(self.db, command)
                 if not ok:
-                    raise DatabaseError(error)
-        elif lowerCmd.find("select") == 0:
-            ok, rs = self.connection._sdk.executeQuery(self.db, command)
+                    raise DatabaseError("execute select fail")
+                schema = requestRow.GetSchema()
+                count = schema.GetColumnCnt()
+                appendMap = {
+                    driver.sql_router_sdk.kTypeBool: requestRow.AppendBool,
+                    driver.sql_router_sdk.kTypeInt16: requestRow.AppendInt16,
+                    driver.sql_router_sdk.kTypeInt32: requestRow.AppendInt32,
+                    driver.sql_router_sdk.kTypeInt64: requestRow.AppendInt64,
+                    driver.sql_router_sdk.kTypeFloat: requestRow.AppendFloat,
+                    driver.sql_router_sdk.kTypeDouble: requestRow.AppendDouble,
+                    driver.sql_router_sdk.kTypeString: requestRow.AppendString,
+                    driver.sql_router_sdk.kTypeDate: requestRow.AppendDate,
+                    driver.sql_router_sdk.kTypeTimestamp: requestRow.AppendTimestamp
+                    }
+                strSize = 0
+                for i in range(count):
+                    if parameters[i] == None:
+                        if schema.get(idx).IsColumnNotNull:
+                            raise DatabaseError("column seq {} not allow null".format(i))
+                        continue
+                    colType = schema.GetColumnType(i)
+                    if colType != driver.sql_router_sdk.kTypeString:
+                        continue
+                    if isinstance(parameters[i], str):
+                        strSize += len(parameters[i])
+                    else:
+                        raise DatabaseError("value {} type is not str".format(parameters[i]))
+                requestRow.Init(strSize)
+                for i in range(count):
+                    if parameters[i] == None:
+                        builder.AppendNULL()
+                        continue
+                    colType = schema.GetColumnType(i)
+                    ok = appendMap[colType](parameters[i])
+                    if not ok:
+                        raise DatabaseError("erred at append data seq {}".format(i))
+                ok = requestRow.Build()
+                if not ok:
+                   raise DatabaseError("erred at build request row data")
+                ok = self.connection._sdk.executeQuery(self.db, command, requestRow)
+            else:
+                ok, rs = self.connection._sdk.executeQuery(self.db, command)
             if not ok:
                 raise DatabaseError("execute select fail")
             self.rowcount = rs.Size()
