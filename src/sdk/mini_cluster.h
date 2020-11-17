@@ -92,14 +92,15 @@ class MiniCluster {
         sleep(2);
         ns_client_ = new ::rtidb::client::NsClient(ns_endpoint, "");
         if (ns_client_->Init() != 0) {
+            LOG(WARNING) << "fail to init ns client";
             return false;
         }
         for (int i = 0; i < tablet_num; i++) {
             brpc::Server* tb = new brpc::Server();
             if (!StartTablet(tb)) {
+               LOG(WARNING) << "fail to start tablet";
                return false;
             }
-            sleep(2);
         }
         LOG(INFO) << "start mini cluster with zk cluster " << zk_cluster_
                   << " and zk path " << zk_path_;
@@ -119,6 +120,9 @@ class MiniCluster {
         for (auto tb : tb_servers_) {
             delete tb;
         }
+        for (const auto& kv : tb_clients_) {
+            delete kv.second;
+        }
     }
 
     std::string GetZkCluster() { return zk_cluster_; }
@@ -130,6 +134,14 @@ class MiniCluster {
     ::rtidb::tablet::TabletImpl* GetTablet(const std::string& endpoint) {
         auto iter = tablets_.find(endpoint);
         if (iter != tablets_.end()) {
+            return iter->second;
+        }
+        return nullptr;
+    }
+
+    ::rtidb::client::TabletClient* GetTabletClient(const std::string& endpoint) {
+        auto iter = tb_clients_.find(endpoint);
+        if (iter != tb_clients_.end()) {
             return iter->second;
         }
         return nullptr;
@@ -166,6 +178,13 @@ class MiniCluster {
         }
         tb_servers_.push_back(tb_server);
         tablets_.emplace(tb_endpoint, tablet);
+        sleep(2);
+        ::rtidb::client::TabletClient* client = new ::rtidb::client::TabletClient(tb_endpoint, tb_endpoint);
+        if (client->Init() < 0) {
+            LOG(WARNING) << "fail to init client";
+            return false;
+        }
+        tb_clients_.emplace(tb_endpoint, client);
         return true;
     }
 
@@ -177,6 +196,7 @@ class MiniCluster {
     std::string zk_path_;
     ::rtidb::client::NsClient* ns_client_;
     std::map<std::string, ::rtidb::tablet::TabletImpl*> tablets_;
+    std::map<std::string, ::rtidb::client::TabletClient*> tb_clients_;
 };
 
 }  // namespace sdk
