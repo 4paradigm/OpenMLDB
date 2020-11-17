@@ -151,7 +151,7 @@ TEST_F(WindowIteratorTest, MemColumnIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
-        table.AddRow(Row(base::RefCountedSlice::Create(ptr, 28)));
+        table.AddRow(0, Row(base::RefCountedSlice::Create(ptr, 28)));
     }
 
     {
@@ -161,7 +161,7 @@ TEST_F(WindowIteratorTest, MemColumnIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 33.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 44.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
-        table.AddRow(Row(base::RefCountedSlice::Create(ptr, 28)));
+        table.AddRow(1, Row(base::RefCountedSlice::Create(ptr, 28)));
     }
 
     {
@@ -171,7 +171,7 @@ TEST_F(WindowIteratorTest, MemColumnIteratorImplTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 333.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 444.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
-        table.AddRow(Row(base::RefCountedSlice::Create(ptr, 28)));
+        table.AddRow(2, Row(base::RefCountedSlice::Create(ptr, 28)));
     }
 
     auto column = new ColumnImpl<int32_t>(&table, 0, 0, 2);
@@ -199,7 +199,7 @@ TEST_F(WindowIteratorTest, MemGetColTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
-        table.AddRow(Row(base::RefCountedSlice::Create(ptr, 28)));
+        table.AddRow(0, Row(base::RefCountedSlice::Create(ptr, 28)));
     }
 
     {
@@ -209,7 +209,7 @@ TEST_F(WindowIteratorTest, MemGetColTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 33.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 44.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 55;
-        table.AddRow(Row(base::RefCountedSlice::Create(ptr, 28)));
+        table.AddRow(1, Row(base::RefCountedSlice::Create(ptr, 28)));
     }
 
     {
@@ -219,7 +219,7 @@ TEST_F(WindowIteratorTest, MemGetColTest) {
         *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 333.1f;
         *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 444.1;
         *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 555;
-        table.AddRow(Row(base::RefCountedSlice::Create(ptr, 28)));
+        table.AddRow(2, Row(base::RefCountedSlice::Create(ptr, 28)));
     }
 
     const uint32_t size = sizeof(ColumnImpl<int32_t>);

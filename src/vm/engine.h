@@ -51,6 +51,7 @@ class EngineOptions {
           compile_only_(false),
           plan_only_(false),
           performance_sensitive_(true),
+          cluster_optimized_(false),
           max_sql_cache_size_(50) {}
     inline void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
     inline bool is_keep_ir() const { return this->keep_ir_; }
@@ -66,8 +67,16 @@ class EngineOptions {
         performance_sensitive_ = flag;
     }
 
+    inline bool is_cluster_optimzied() const { return cluster_optimized_; }
+    inline void set_cluster_optimized(bool flag) { cluster_optimized_ = flag; }
     inline void set_max_sql_cache_size(uint32_t size) {
         max_sql_cache_size_ = size;
+    }
+    static EngineOptions NewEngineOptionWithClusterEnable(bool flag) {
+        EngineOptions options;
+        options.set_cluster_optimized(flag);
+        DLOG(INFO) << "Engine Options with cluster_optimized_ " << flag;
+        return options;
     }
 
  private:
@@ -75,6 +84,7 @@ class EngineOptions {
     bool compile_only_;
     bool plan_only_;
     bool performance_sensitive_;
+    bool cluster_optimized_;
     uint32_t max_sql_cache_size_;
 };
 
@@ -112,7 +122,9 @@ class RunSession {
     }
 
     virtual fesql::vm::Runner* GetMainTask() {
-        return compile_info_->get_sql_context().cluster_job.GetTask(0);
+        return compile_info_->get_sql_context()
+            .cluster_job.GetMainTask()
+            .GetRoot();
     }
     virtual fesql::vm::ClusterJob& GetClusterJob() {
         return compile_info_->get_sql_context().cluster_job;
@@ -204,6 +216,7 @@ struct ExplainOutput {
     std::string physical_plan;
     std::string ir;
     vm::Schema output_schema;
+    std::string request_name;
 };
 
 typedef std::map<
@@ -259,6 +272,42 @@ class Engine {
     EngineLRUCache lru_cache_;
 };
 
+class LocalTablet : public Tablet {
+ public:
+    explicit LocalTablet(vm::Engine* engine) : Tablet(), engine_((engine)) {}
+    ~LocalTablet() {}
+    std::shared_ptr<RowHandler> SubQuery(uint32_t task_id,
+                                         const std::string& db,
+                                         const std::string& sql, const Row& row,
+                                         const bool is_debug) override {
+        DLOG(INFO) << "Local tablet SubQuery: task id " << task_id;
+        RequestRunSession session;
+        if (is_debug) {
+            session.EnableDebug();
+        }
+        base::Status status;
+        if (!engine_->Get(sql, db, session, status)) {
+            return std::shared_ptr<RowHandler>(new ErrorRowHandler(
+                common::kCallMethodError, "SubQuery fail: compile sql fail"));
+        }
+
+        Row out;
+        if (0 != session.Run(task_id, row, &out)) {
+            return std::shared_ptr<RowHandler>(new ErrorRowHandler(
+                common::kCallMethodError, "sub query fail: session run fail"));
+        }
+        return std::shared_ptr<RowHandler>(new MemRowHandler(out));
+    }
+    std::shared_ptr<RowHandler> SubQuery(
+        uint32_t task_id, const std::string& db, const std::string& sql,
+        const std::vector<fesql::codec::Row>& rows,
+        const bool is_debug) override {
+        return std::shared_ptr<RowHandler>();
+    }
+
+ private:
+    vm::Engine* engine_;
+};
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_ENGINE_H_

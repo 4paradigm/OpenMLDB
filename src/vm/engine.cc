@@ -171,6 +171,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     sql_context.db = db;
     sql_context.engine_mode = session.engine_mode();
     sql_context.is_performance_sensitive = options_.is_performance_sensitive();
+    sql_context.is_cluster_optimized = options_.is_cluster_optimzied();
 
     auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
     if (batch_req_sess) {
@@ -188,12 +189,18 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     if (!options_.is_compile_only()) {
         ok = compiler.BuildClusterJob(info->get_sql_context(), status);
         if (!ok || 0 != status.code) {
+            LOG(WARNING) << "fail to build cluster job: " << status.msg;
             return false;
         }
     }
 
     SetCacheLocked(db, sql, session.engine_mode(), info);
     session.SetCompileInfo(info);
+    if (session.is_debug_) {
+        std::ostringstream oss;
+        sql_context.cluster_job.Print(oss, "");
+        LOG(INFO) << "cluster job:\n" << oss.str() << std::endl;
+    }
     return true;
 }
 
@@ -209,6 +216,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     ctx.sql = sql;
     ctx.db = db;
     ctx.is_performance_sensitive = options_.is_performance_sensitive();
+    ctx.is_cluster_optimized = options_.is_cluster_optimzied();
     SQLCompiler compiler(
         std::atomic_load_explicit(&cl_, std::memory_order_acquire), true, true);
     bool ok = compiler.Compile(ctx, *status);
@@ -222,6 +230,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     explain_output->logical_plan = ctx.logical_plan_str;
     explain_output->physical_plan = ctx.physical_plan_str;
     explain_output->ir = ctx.ir;
+    explain_output->request_name = ctx.request_name;
     return true;
 }
 
@@ -324,17 +333,22 @@ static bool ExtractSingleRow(std::shared_ptr<DataHandler> handler,
 }
 
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
-    return Run(0, in_row, out_row);
+    DLOG(INFO) << "Request Row Run with main task";
+    return Run(compile_info_->get_sql_context().cluster_job.main_task_id(),
+               in_row, out_row);
 }
 int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
                                Row* out_row) {
-    auto task = compile_info_->get_sql_context().cluster_job.GetTask(task_id);
+    auto task =
+        compile_info_->get_sql_context().cluster_job.GetTask(task_id).GetRoot();
     if (nullptr == task) {
         LOG(WARNING) << "fail to run request plan: taskid" << task_id
                      << " not exist!";
         return -2;
     }
-    RunnerContext ctx(in_row, is_debug_);
+    DLOG(INFO) << "Request Row Run with task_id " << task_id;
+    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, in_row,
+                      is_debug_);
     auto output = task->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run request plan output is null";
@@ -349,12 +363,13 @@ int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
 
 int32_t BatchRequestRunSession::Run(const std::vector<Row>& request_batch,
                                     std::vector<Row>& output) {
-    return Run(0, request_batch, output);
+    return Run(compile_info_->get_sql_context().cluster_job.main_task_id(),
+               request_batch, output);
 }
 int32_t BatchRequestRunSession::Run(const uint32_t id,
                                     const std::vector<Row>& request_batch,
                                     std::vector<Row>& output) {
-    RunnerContext ctx(is_debug_);
+    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, is_debug_);
     for (size_t i = 0; i < request_batch.size(); ++i) {
         output.push_back(Row());
         int32_t ok = RunSingle(ctx, id, request_batch[i], &output.back());
@@ -362,19 +377,23 @@ int32_t BatchRequestRunSession::Run(const uint32_t id,
             return -1;
         }
     }
+    ctx.ClearCache();
     return 0;
 }
 
 int32_t BatchRequestRunSession::RunSingle(RunnerContext& ctx,  // NOLINT
                                           const Row& request,
                                           Row* output) {  // NOLINT
-    return RunSingle(ctx, 0, request, output);
+    return RunSingle(
+        ctx, compile_info_->get_sql_context().cluster_job.main_task_id(),
+        request, output);
 }
 int32_t BatchRequestRunSession::RunSingle(RunnerContext& ctx,  // NOLINT
                                           const uint32_t task_id,
                                           const Row& request,
                                           Row* output) {  // NOLINT
-    auto task = compile_info_->get_sql_context().cluster_job.GetTask(task_id);
+    auto task =
+        compile_info_->get_sql_context().cluster_job.GetTask(task_id).GetRoot();
     if (nullptr == task) {
         LOG(WARNING) << "fail to run request plan: taskid" << task_id
                      << " not exist!";
@@ -394,10 +413,11 @@ int32_t BatchRequestRunSession::RunSingle(RunnerContext& ctx,  // NOLINT
 }
 
 std::shared_ptr<TableHandler> BatchRunSession::Run() {
-    RunnerContext ctx(is_debug_);
-    auto output =
-        compile_info_->get_sql_context().cluster_job.GetTask(0)->RunWithCache(
-            ctx);
+    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, is_debug_);
+    auto output = compile_info_->get_sql_context()
+                      .cluster_job.GetMainTask()
+                      .GetRoot()
+                      ->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
         return std::shared_ptr<TableHandler>();
@@ -422,10 +442,11 @@ std::shared_ptr<TableHandler> BatchRunSession::Run() {
 }
 
 int32_t BatchRunSession::Run(std::vector<Row>& rows, uint64_t limit) {
-    RunnerContext ctx(is_debug_);
-    auto output =
-        compile_info_->get_sql_context().cluster_job.GetTask(0)->RunWithCache(
-            ctx);
+    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, is_debug_);
+    auto output = compile_info_->get_sql_context()
+                      .cluster_job.GetTask(0)
+                      .GetRoot()
+                      ->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run batch plan output is null";
         return -1;

@@ -5,6 +5,7 @@ option java_outer_classname = "Common";
 
 enum StatusCode {
     kOk = 0;
+    kRunning = 1;
     kTypeError = 8;
     kFileIOError = 9;
     kUnSupport = 10;
@@ -17,6 +18,7 @@ enum StatusCode {
     kNullPointer = 17;
     kConnError = 20;
     kRpcError = 21;
+    kTimeoutError = 22;
     kSQLError = 30;
     kPlanError = 31;
     kCallMethodError = 32;
@@ -27,6 +29,7 @@ enum StatusCode {
     kOpGenError = 60;
     kJitError = 70;
     kSchemaCodecError = 71;
+
 }
 
 message Status {

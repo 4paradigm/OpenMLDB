@@ -512,6 +512,51 @@ TEST_F(SqlNodeTest, WindowAndFrameNodeMergeTest) {
         ASSERT_FALSE(w1->CanMergeWith(w));
     }
 }
+
+TEST_F(SqlNodeTest, ColumnOfExpressionTest) {
+    {
+        std::vector<const node::ColumnRefNode *> columns;
+        node::ColumnOfExpression(
+            dynamic_cast<ExprNode *>(
+                node_manager_->MakeColumnRefNode("c1", "t1")),
+            &columns);
+        ASSERT_EQ(1, columns.size());
+        ASSERT_TRUE(ExprEquals(node_manager_->MakeColumnRefNode("c1", "t1"),
+                               columns[0]));
+    }
+    {
+        std::vector<const node::ColumnRefNode *> columns;
+        node::ColumnOfExpression(
+            dynamic_cast<ExprNode *>(node_manager_->MakeCastNode(
+                kDouble, node_manager_->MakeColumnRefNode("c2", "t1"))),
+            &columns);
+        ASSERT_EQ(1, columns.size());
+        ASSERT_TRUE(ExprEquals(node_manager_->MakeColumnRefNode("c2", "t1"),
+                               columns[0]));
+    }
+    {
+        std::vector<const node::ColumnRefNode *> columns;
+        node::ColumnOfExpression(
+            dynamic_cast<ExprNode *>(node_manager_->MakeBinaryExprNode(
+                node_manager_->MakeColumnRefNode("c1", "t1"),
+                node_manager_->MakeColumnRefNode("c2", "t1"), node::kFnOpEq)),
+            &columns);
+        ASSERT_EQ(2, columns.size());
+        ASSERT_TRUE(ExprEquals(node_manager_->MakeColumnRefNode("c1", "t1"),
+                               columns[0]));
+        ASSERT_TRUE(ExprEquals(node_manager_->MakeColumnRefNode("c2", "t1"),
+                               columns[1]));
+    }
+    {
+        std::vector<const node::ColumnRefNode *> columns;
+        node::ColumnOfExpression(
+            dynamic_cast<ExprNode *>(node_manager_->MakeBinaryExprNode(
+                node_manager_->MakeConstNode(1),
+                node_manager_->MakeConstNode(2), node::kFnOpAdd)),
+            &columns);
+        ASSERT_EQ(0, columns.size());
+    }
+}
 }  // namespace node
 }  // namespace fesql
 

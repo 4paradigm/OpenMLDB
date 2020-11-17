@@ -41,6 +41,7 @@ using fesql::codec::WindowIterator;
 
 enum SourceType { kSourceColumn, kSourceConst, kSourceNone };
 class ColumnSource;
+class Tablet;
 typedef std::vector<ColumnSource> ColumnSourceList;
 class ColumnSource {
  public:
@@ -214,14 +215,42 @@ class RowHandler : public DataHandler {
     const std::string GetHandlerTypeName() override { return "RowHandler"; }
 };
 
+class ErrorRowHandler : public RowHandler {
+ public:
+    ErrorRowHandler(common::StatusCode status_code, const std::string& msg_str)
+        : status_(status_code, msg_str),
+          table_name_(""),
+          db_(""),
+          schema_(nullptr),
+          row_() {}
+    ~ErrorRowHandler() {}
+    virtual const Row& GetValue() { return row_; }
+    const std::string GetHandlerTypeName() override {
+        return "ErrorRowHandler";
+    }
+    const Schema* GetSchema() override { return nullptr; }
+    const std::string& GetName() override { return table_name_; }
+    const std::string& GetDatabase() override { return db_; }
+
+ private:
+    base::Status status_;
+    std::string table_name_;
+    std::string db_;
+    const Schema* schema_;
+    Row row_;
+};
+
 class Tablet {
  public:
+    Tablet() {}
+    virtual ~Tablet() {}
     virtual std::shared_ptr<RowHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
-        const fesql::codec::Row& row) = 0;
+        const fesql::codec::Row& row, const bool is_debug) = 0;
     virtual std::shared_ptr<RowHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
-        const std::vector<fesql::codec::Row>& rows) = 0;
+        const std::vector<fesql::codec::Row>& rows,
+        const bool is_debug) = 0;
 };
 
 class TableHandler : public DataHandler {

@@ -141,39 +141,79 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     EngineTestFzSQLFunction, EngineTest,
     testing::ValuesIn(InitCases("/cases/integration/v1/test_fz_sql.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestClusterWindowAndLastJoin, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/cluster/window_and_lastjoin.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestClusterWindowRow, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/cluster/test_window_row.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    EngineTestClusterWindowRowRange, EngineTest,
+    testing::ValuesIn(
+        InitCases("/cases/integration/cluster/test_window_row_range.yaml")));
 
 TEST_P(EngineTest, test_request_engine) {
     ParamType sql_case = GetParam();
+    EngineOptions options;
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
-        EngineCheck(sql_case, kRequestMode);
+        EngineCheck(sql_case, options, kRequestMode);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
     }
 }
 TEST_P(EngineTest, test_batch_engine) {
     ParamType sql_case = GetParam();
+    EngineOptions options;
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "batch-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-batch-unsupport")) {
-        EngineCheck(sql_case, kBatchMode);
+        EngineCheck(sql_case, options, kBatchMode);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
     }
 }
 TEST_P(EngineTest, test_batch_request_engine_for_last_row) {
     ParamType sql_case = GetParam();
+    EngineOptions options;
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
-        EngineCheck(sql_case, kBatchRequestMode);
+        EngineCheck(sql_case, options, kBatchRequestMode);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
     }
 }
-
+TEST_P(EngineTest, test_cluster_request_engine) {
+    ParamType sql_case = GetParam();
+    EngineOptions options;
+    options.set_cluster_optimized(true);
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (!boost::contains(sql_case.mode(), "request-unsupport") &&
+        !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        EngineCheck(sql_case, options, kRequestMode);
+    } else {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
+    }
+}
+TEST_P(EngineTest, test_cluster_batch_request_engine) {
+    ParamType sql_case = GetParam();
+    EngineOptions options;
+    options.set_cluster_optimized(true);
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (!boost::contains(sql_case.mode(), "request-unsupport") &&
+        !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        EngineCheck(sql_case, options, kBatchRequestMode);
+    } else {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
+    }
+}
 INSTANTIATE_TEST_CASE_P(BatchRequestEngineTest, BatchRequestEngineTest,
                         testing::ValuesIn(InitCases(
                             "/cases/integration/v1/test_batch_request.yaml")));
@@ -181,13 +221,26 @@ INSTANTIATE_TEST_CASE_P(BatchRequestEngineTest, BatchRequestEngineTest,
 TEST_P(BatchRequestEngineTest, test_batch_request_engine) {
     ParamType sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    EngineOptions options;
+    options.set_cluster_optimized(false);
     if (!boost::contains(sql_case.mode(), "batch-request-unsupport")) {
-        EngineCheck(sql_case, kBatchRequestMode);
+        EngineCheck(sql_case, options, kBatchRequestMode);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
     }
 }
-
+TEST_P(BatchRequestEngineTest, test_cluster_batch_request_engine) {
+    ParamType sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    EngineOptions options;
+    options.set_cluster_optimized(true);
+    if (!boost::contains(sql_case.mode(), "batch-request-unsupport") &&
+        !boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        EngineCheck(sql_case, options, kBatchRequestMode);
+    } else {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
+    }
+}
 TEST_F(EngineTest, EngineCacheTest) {
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
     fesql::type::TableDef table_def;

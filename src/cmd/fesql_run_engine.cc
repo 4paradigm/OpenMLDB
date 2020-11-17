@@ -20,21 +20,24 @@
 DEFINE_string(yaml_path, "", "Yaml filepath to load cases from");
 DEFINE_string(runner_mode, "batch",
               "Specify runner mode, can be batch or request");
+DEFINE_string(cluster_mode, "standalone",
+              "Specify cluster mode, can be standalone or cluster");
 DEFINE_int32(run_iters, 0, "Measure the approximate run time if specified");
 DEFINE_int32(case_id, -1, "Specify the case id to run and skip others");
 
 namespace fesql {
 namespace vm {
 
-int DoRunEngine(const SQLCase& sql_case, EngineMode engine_mode) {
+int DoRunEngine(const SQLCase& sql_case, const EngineOptions& options,
+                EngineMode engine_mode) {
     std::shared_ptr<EngineTestRunner> runner;
     if (engine_mode == kBatchMode) {
-        runner = std::make_shared<BatchEngineTestRunner>(sql_case);
+        runner = std::make_shared<BatchEngineTestRunner>(sql_case, options);
     } else if (engine_mode == kRequestMode) {
-        runner = std::make_shared<RequestEngineTestRunner>(sql_case);
+        runner = std::make_shared<RequestEngineTestRunner>(sql_case, options);
     } else {
         runner = std::make_shared<BatchRequestEngineTestRunner>(
-            sql_case, sql_case.batch_request().common_column_indices_);
+            sql_case, options, sql_case.batch_request().common_column_indices_);
     }
     if (FLAGS_run_iters > 0) {
         runner->RunBenchmark(FLAGS_run_iters);
@@ -50,6 +53,8 @@ int RunSingle(const std::string& yaml_path) {
         LOG(WARNING) << "Load cases from " << yaml_path << " failed";
         return ENGINE_TEST_RET_INVALID_CASE;
     }
+    EngineOptions options;
+    options.set_cluster_optimized(FLAGS_cluster_mode == "cluster");
     for (auto& sql_case : cases) {
         if (FLAGS_case_id >= 0 &&
             std::to_string(FLAGS_case_id) != sql_case.id()) {
@@ -63,7 +68,7 @@ int RunSingle(const std::string& yaml_path) {
         } else {
             mode = kBatchRequestMode;
         }
-        int ret = DoRunEngine(sql_case, mode);
+        int ret = DoRunEngine(sql_case, options, mode);
         if (ret != ENGINE_TEST_RET_SUCCESS) {
             return ret;
         }
