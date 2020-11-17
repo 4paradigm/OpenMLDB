@@ -22,6 +22,7 @@
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_router.h"
 #include "vm/catalog.h"
+#include "test/base_test.h"
 
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
     RtiDBSchema;
@@ -313,6 +314,10 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     request_row->AppendDouble(1.0);
     request_row->AppendTimestamp(1590738993000l);
     request_row->Build();
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        router->ExecuteSQL(db, exe_sql, request_row, &status);
+        return;
+    }
     for (auto _ : state) {
         benchmark::DoNotOptimize(router->ExecuteSQL(db, exe_sql, request_row, &status));
     }
