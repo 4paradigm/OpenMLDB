@@ -30,6 +30,7 @@
 #include "base/glog_wapper.h"  // NOLINT
 
 DECLARE_int32(request_sleep_time);
+DECLARE_bool(use_rdma);
 
 namespace rtidb {
 
@@ -82,6 +83,9 @@ class RpcClient {
     int Init() {
         channel_ = new brpc::Channel();
         brpc::ChannelOptions options;
+#ifdef __rdma__
+        options.use_rdma = FLAGS_use_rdma;
+#endif
         if (use_sleep_policy_) {
             options.retry_policy = &sleep_retry_policy;
         }
