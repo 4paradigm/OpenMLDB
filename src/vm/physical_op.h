@@ -898,17 +898,15 @@ class RequestWindowUnionList {
     void AddWindowUnion(PhysicalOpNode *node, const RequestWindowOp &window) {
         window_unions_.push_back(std::make_pair(node, window));
     }
-    const PhysicalOpNode* GetKey(uint32_t index) {
+    const PhysicalOpNode *GetKey(uint32_t index) {
         return window_unions_[index].first;
     }
 
-    const RequestWindowOp& GetValue(uint32_t index) {
+    const RequestWindowOp &GetValue(uint32_t index) {
         return window_unions_[index].second;
     }
 
-    const uint32_t GetSize() {
-        return window_unions_.size();
-    }
+    const uint32_t GetSize() { return window_unions_.size(); }
 
     const std::string FnDetail() const {
         std::ostringstream oss;

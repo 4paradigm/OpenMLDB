@@ -43,16 +43,16 @@ int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                            column_expr->GetColumnName());
 }
 
-std::string CoreAPI::ResolvedSourceColumnName(fesql::vm::PhysicalOpNode* node, fesql::node::ExprNode* expr) {
+std::string CoreAPI::ResolvedSourceColumnName(fesql::vm::PhysicalOpNode* node,
+                                              fesql::node::ExprNode* expr) {
     SchemasContext schema_ctx(node->GetOutputNameSchemaList());
     return schema_ctx.SourceColumnNameResolved(expr);
 }
-std::string CoreAPI::ResolvedColumnName(fesql::vm::PhysicalOpNode* node, fesql::node::ExprNode* expr) {
+std::string CoreAPI::ResolvedColumnName(fesql::vm::PhysicalOpNode* node,
+                                        fesql::node::ExprNode* expr) {
     SchemasContext schema_ctx(node->GetOutputNameSchemaList());
     return schema_ctx.ColumnNameResolved(expr);
 }
-
-
 
 GroupbyInterface::GroupbyInterface(const fesql::codec::Schema& schema)
     : mem_table_handler_(new vm::MemTableHandler(&schema)) {}

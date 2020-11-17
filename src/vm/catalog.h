@@ -244,13 +244,14 @@ class Tablet {
  public:
     Tablet() {}
     virtual ~Tablet() {}
+    virtual std::shared_ptr<RowHandler> SubQuery(uint32_t task_id,
+                                                 const std::string& db,
+                                                 const std::string& sql,
+                                                 const fesql::codec::Row& row,
+                                                 const bool is_debug) = 0;
     virtual std::shared_ptr<RowHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
-        const fesql::codec::Row& row, const bool is_debug) = 0;
-    virtual std::shared_ptr<RowHandler> SubQuery(
-        uint32_t task_id, const std::string& db, const std::string& sql,
-        const std::vector<fesql::codec::Row>& rows,
-        const bool is_debug) = 0;
+        const std::vector<fesql::codec::Row>& rows, const bool is_debug) = 0;
 };
 
 class TableHandler : public DataHandler {

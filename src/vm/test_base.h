@@ -24,8 +24,8 @@
 #include "glog/logging.h"
 #include "plan/planner.h"
 #include "tablet/tablet_catalog.h"
-#include "vm/engine.h"
 #include "vm/catalog.h"
+#include "vm/engine.h"
 
 namespace fesql {
 namespace vm {
@@ -438,8 +438,7 @@ bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
 }
 bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
               const fesql::type::TableDef& table_def,
-              std::shared_ptr<fesql::storage::Table> table,
-              Engine* engine) {
+              std::shared_ptr<fesql::storage::Table> table, Engine* engine) {
     auto local_tablet =
         std::shared_ptr<vm::Tablet>(new vm::LocalTablet(engine));
     std::shared_ptr<tablet::TabletTableHandler> handler(

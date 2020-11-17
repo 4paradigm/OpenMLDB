@@ -507,7 +507,8 @@ bool PhysicalRequestUnionNode::InitSchema() {
     return true;
 }
 
-PhysicalRequestUnionNode* PhysicalRequestUnionNode::CastFrom(PhysicalOpNode *node) {
+PhysicalRequestUnionNode* PhysicalRequestUnionNode::CastFrom(
+    PhysicalOpNode* node) {
     return dynamic_cast<PhysicalRequestUnionNode*>(node);
 }
 
@@ -538,7 +539,8 @@ void PhysicalRequestJoinNode::Print(std::ostream& output,
     PrintChildren(output, tab);
 }
 
-PhysicalRequestJoinNode* PhysicalRequestJoinNode::CastFrom(PhysicalOpNode* node) {
+PhysicalRequestJoinNode* PhysicalRequestJoinNode::CastFrom(
+    PhysicalOpNode* node) {
     return dynamic_cast<PhysicalRequestJoinNode*>(node);
 }
 

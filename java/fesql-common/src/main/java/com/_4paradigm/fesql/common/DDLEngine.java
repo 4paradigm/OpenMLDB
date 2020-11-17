@@ -25,6 +25,8 @@ public class DDLEngine {
         // Ensure native initialized
         FeSqlLibrary.initCore();
         Engine.InitializeGlobalLLVM();
+        FeSqlLibrary.initCore();
+        Engine.InitializeGlobalLLVM();
     }
 
     private static final Logger logger = LoggerFactory.getLogger(DDLEngine.class);
@@ -45,7 +47,7 @@ public class DDLEngine {
      *
      * @param sql
      * @param schema json format
-     * @return
+     * @return 
      */
     public static String genDDL(String sql, String schema) {
         String tempDB = "temp_" + System.currentTimeMillis();
@@ -63,21 +65,21 @@ public class DDLEngine {
             PhysicalOpNode plan = engine.getPlan();
             List<PhysicalOpNode> listNodes = new ArrayList<PhysicalOpNode>();
             dagToList(plan, listNodes);
-            printDagListInfo(listNodes);
+//            printDagListInfo(listNodes);
             Map<String, RtidbTable> rtidbTables = parseRtidbIndex(listNodes, tableDefMap);
+            StringBuilder sb = new StringBuilder();
             for (Map.Entry<String, RtidbTable> e : rtidbTables.entrySet()) {
-                System.out.println(e.getValue().toDDL());
-                System.out.println(";");
+                sb.append(e.getValue().toDDL());
+                sb.append(";\n");
             }
-            // plan.Print();
-            // System.out.println("plan info");
-            // System.out.println(plan.GetProducerCnt());
-        } catch (UnsupportedFesqlException e) {
-            e.printStackTrace();
-        } catch (FesqlException e) {
+            String res = sb.toString();
+            logger.info("gen ddl:" +  res);
+            System.out.printf(res);
+            return res;
+        } catch (UnsupportedFesqlException | FesqlException e) {
             e.printStackTrace();
         }
-        return "xx";
+        return "";
     }
     /**
      * 只对window op做解析，因为fesql node类型太多了，暂时没办法做通用性解析
@@ -109,7 +111,7 @@ public class DDLEngine {
 
         for (PhysicalOpNode e : nodes) {
             PhysicalDataProviderNode unionTable = findDataProviderNode(e);
-            System.out.println("union table = " + unionTable.GetName());
+            logger.info("union table = " + unionTable.GetName());
 
             String table = unionTable.GetName();
             RtidbTable rtidbTable = rtidbTables.get(table);
@@ -118,7 +120,6 @@ public class DDLEngine {
             List<String> keys = index.getKeys();
             for (int keyIndex = 0; keyIndex < castNode.window().partition().keys().GetChildNum(); keyIndex++) {
                 String key = CoreAPI.ResolvedSourceColumnName(e, castNode.window().partition().keys().GetChild(keyIndex));
-                System.out.println(key);
                 keys.add(key);
             }
 
@@ -135,20 +136,61 @@ public class DDLEngine {
                 index.setAtmost(1);
             }
             rtidbTable.addIndex(index);
-            // System.out.println(rtidbTable.toDDL());
         }
         logger.info("end to pares window op");
+    }
+
+    public static void parseLastJoinOp(PhysicalOpNode node, Map<String, RtidbTable> rtidbTables) {
+        logger.info("begin to pares lastjoin op");
+        PhysicalRequestJoinNode join = PhysicalRequestJoinNode.CastFrom(node);
+        PhysicalDataProviderNode dataNode = findDataProviderNode(join.GetProducer(0));
+        String leftName = "";
+        String rightName = "";
+        if (dataNode != null) {
+            // PhysicalDataProviderNode dataNode = PhysicalDataProviderNode.CastFrom(join.GetProducer(0));
+            logger.info(dataNode.GetName());
+            leftName = dataNode.GetName();
+        }
+        dataNode = findDataProviderNode(join.GetProducer(1));
+        if (dataNode != null) {
+            // PhysicalDataProviderNode dataNode = PhysicalDataProviderNode.CastFrom(join.GetProducer(0));
+            logger.info(dataNode.GetName());
+            rightName = dataNode.GetName();
+        } else {
+            return;
+        }
+        // RtidbTable leftTable = rtidbTables.get(leftName);
+        RtidbTable rightTable = rtidbTables.get(rightName);
+        // RtidbIndex leftIndex = new RtidbIndex();
+        RtidbIndex rightIndex = new RtidbIndex();
+
+        Key conditionKey = join.join().right_key();
+        Sort sort = join.join().right_sort();
+        if (sort != null && sort.orders() != null) {
+            String ts = sort.orders().order_by().GetChild(0).GetExprString();
+            rightIndex.setTs(ts);
+            rightIndex.setAtmost(1);
+        }
+        List<String> keys = rightIndex.getKeys();
+        for (int i = 0; i < conditionKey.keys().GetChildNum(); i++) {
+            ColumnRefNode columnNode = ColumnRefNode.CastFrom(conditionKey.keys().GetChild(i));
+            String keyName = CoreAPI.ResolvedSourceColumnName(node, conditionKey.keys().GetChild(i));
+            keys.add(keyName);
+        }
+        rightIndex.setType(TTLType.kLatest);
+        rightTable.addIndex(rightIndex);
+        logger.info("begin to pares lastjoin op");
     }
 
     public static Map<String, RtidbTable> parseRtidbIndex(List<PhysicalOpNode> nodes, Map<String, TypeOuterClass.TableDef> tableDefMap) throws FesqlException {
         Map<String, RtidbTable> rtidbTables = new HashMap<>();
         Map<String, String> table2OrgTable = new HashMap<>();
         for (PhysicalOpNode node : nodes) {
-            System.out.println("node type = " + node.GetTypeName());
+//            System.out.println("node type = " + node.GetTypeName());
             PhysicalOpType type = node.getType_();
             if (type.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
                 PhysicalDataProviderNode castNode = PhysicalDataProviderNode.CastFrom(node);
-                System.out.println("PhysicalDataProviderNode = " + castNode.GetName());
+//                System.out.println("PhysicalDataProviderNode = " + castNode.GetName());
                 RtidbTable rtidbTable = rtidbTables.get(castNode.GetName());
                 if (rtidbTable == null) {
                     rtidbTable = new RtidbTable();
@@ -158,90 +200,21 @@ public class DDLEngine {
                 }
                 continue;
             }
-            if (type.swigValue() == PhysicalOpType.kPhysicalOpSimpleProject.swigValue()) {
-                PhysicalSimpleProjectNode castNode = PhysicalSimpleProjectNode.CastFrom(node);
-                System.out.println("PhysicalSimpleProjectNode ");
-                System.out.println(castNode.SchemaToString());
-                continue;
-            }
-            if (type.swigValue() == PhysicalOpType.kPhysicalOpConstProject.swigValue()) {
-                continue;
-            }
+//            if (type.swigValue() == PhysicalOpType.kPhysicalOpSimpleProject.swigValue()) {
+//                PhysicalSimpleProjectNode castNode = PhysicalSimpleProjectNode.CastFrom(node);
+//                System.out.println("PhysicalSimpleProjectNode ");
+//                System.out.println(castNode.SchemaToString());
+//                continue;
+//            }
+//            if (type.swigValue() == PhysicalOpType.kPhysicalOpConstProject.swigValue()) {
+//                continue;
+//            }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpRequestUnoin.swigValue()) {
                 parseWindowOp(node, rtidbTables);
                 continue;
             }
-            if (type.swigValue() == PhysicalOpType.kPhysicalOpProject.swigValue()) {
-                PhysicalProjectNode projectNode = PhysicalProjectNode.CastFrom(node);
-                if (projectNode.getProject_type_().swigValue() == ProjectType.kRowProject.swigValue()) {
-                    continue;
-                }
-                if (projectNode.getProject_type_().swigValue() == ProjectType.kWindowAggregation.swigValue()) {
-                    System.out.println("kWindowAggregation ");
-                    PhysicalWindowAggrerationNode castNode = PhysicalWindowAggrerationNode.CastFrom(projectNode);
-                    WindowUnionList wuList = castNode.window_unions();
-                    for (int i = 0; i < wuList.GetSize(); i++) {
-                        PhysicalOpNode unionNode = castNode.window_unions().GetUnionNode(i);
-                        System.out.println("window union = " + unionNode.GetTypeName());
-                    }
-                    continue;
-                }
-                if (projectNode.getProject_type_().swigValue() == ProjectType.kTableProject.swigValue()) {
-                    continue;
-                }
-                // PhysicalWindowAggrerationNode.CastFrom(node)
-                continue;
-            }
-            if (type.swigValue() == PhysicalOpType.kPhysicalOpGroupBy.swigValue()) {
-                continue;
-            }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpRequestJoin.swigValue()) {
-                PhysicalRequestJoinNode join = PhysicalRequestJoinNode.CastFrom(node);
-                System.out.println(join.GetProducer(0).GetTypeName());
-                System.out.println(join.GetProducer(1).GetTypeName());
-//                System.out.println(join.getJoin_().FnDetail());
-                PhysicalDataProviderNode dataNode = findDataProviderNode(join.GetProducer(0));
-                if (dataNode != null) {
-                    // PhysicalDataProviderNode dataNode = PhysicalDataProviderNode.CastFrom(join.GetProducer(0));
-                    System.out.println(dataNode.GetName());
-                }
-                dataNode = findDataProviderNode(join.GetProducer(1));
-                if (dataNode != null) {
-                    // PhysicalDataProviderNode dataNode = PhysicalDataProviderNode.CastFrom(join.GetProducer(1));
-                    System.out.println(dataNode.GetName());
-                    System.out.println("leftkey type = " + join.join().left_key().getKeys_().GetChild(0).GetTypeName());
-                    System.out.println("rightkey type = " + join.join().right_key().getKeys_().GetChild(0).GetTypeName());
-                    ColumnRefNode columnNode = ColumnRefNode.CastFrom(join.getJoin_().left_key().getKeys_().GetChild(0));
-                    System.out.println("leftkey name = " + columnNode.GetColumnName());
-                    System.out.println("leftkey name = " + columnNode.GetRelationName());
-                    columnNode = ColumnRefNode.CastFrom(join.getJoin_().right_key().getKeys_().GetChild(0));
-                    System.out.println("rightKey name = " + columnNode.GetColumnName());
-                    System.out.println("rightKey name = " + columnNode.GetRelationName());
-                }
-
-                ExprListNode rightNode = join.getJoin_().right_key().getKeys_();
-
-                for (int i = 0; i < rightNode.GetChildNum(); i++) {
-                    // System.out.println(join.GetProducer(1));
-                    int index = resolveColumnIndex(rightNode.GetChild(i), join.GetProducer(1));
-                    System.out.println(index);
-
-                }
-
-                ExprListNode leftNode = join.getJoin_().left_key().getKeys_();
-
-                for (int i = 0; i < leftNode.GetChildNum(); i++) {
-                    // System.out.println(join.GetProducer(0));
-                    int index = resolveColumnIndex(leftNode.GetChild(i), join.GetProducer(0));
-                    // System.out.println(index);
-                    
-                }
-//                System.out.println(join.getJoin_().getRight_sort_().orders().GetExprString());
-                // System.out.println(join.getJoin_().right_key().getKeys_().GetChild(0));
-                // System.out.println(join.GetFnName());
-                // System.out.println(join.getJoin_().left_key().getKeys_().getChildren_());
-                // System.out.println(node.GetFnInfo().getFn_name_());
-                // System.out.println("over");
+                parseLastJoinOp(node, rtidbTables);
                 continue;
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpLimit.swigValue()) {
@@ -249,10 +222,11 @@ public class DDLEngine {
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpRename.swigValue()) {
                 PhysicalRenameNode castNode = PhysicalRenameNode.CastFrom(node);
-                System.out.println("rename = " + castNode.getName_());
+                logger.info("rename = " + castNode.getName_());
                 PhysicalDataProviderNode dataNode = findDataProviderNode(node.GetProducer(0));
                 if (dataNode != null) {
                     table2OrgTable.put(castNode.getName_(), dataNode.GetName());
+                    rtidbTables.put(castNode.getName_(), rtidbTables.get(dataNode.GetName()));
                 }
                 continue;
             }
@@ -411,8 +385,8 @@ public class DDLEngine {
 
 
     public static void main(String[] args) {
-//        String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.json";
-//        String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.txt";
+    //    String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.json";
+    //    String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.txt";
         String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/rong_e.json";
         String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/rong_e.txt";
         File file = new File(schemaPath);
@@ -497,7 +471,13 @@ class RtidbIndex {
         List<String> newKeys = DDLEngine.addEscapeChar(keys, "`");
         String key = StringUtils.join(newKeys, ",");
         String ttlType = DDLEngine.getRtidbIndexType(type);
-        String index = String.format("index(key=(%s), ts=`%s`, ttl=(%s), ttl_type=%s)", key, ts, getTTL(), ttlType);
+        String index = "";
+        if (ts.equals("")) {
+             index = String.format("index(key=(%s), ttl=(%s), ttl_type=%s)", key, getTTL(), ttlType);
+        } else {
+             index = String.format("index(key=(%s), ts=`%s`, ttl=(%s), ttl_type=%s)", key, ts, getTTL(), ttlType);
+        }
+
         return index;
     }
 

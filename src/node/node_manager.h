@@ -264,8 +264,7 @@ class NodeManager {
     PlanNode *MakeLimitPlanNode(PlanNode *node, int limit_cnt);
 
     CreatePlanNode *MakeCreateTablePlanNode(
-        const std::string &table_name, int replica_num,
-        int partition_num,
+        const std::string &table_name, int replica_num, int partition_num,
         const NodePointVector &column_list,
         const NodePointVector &partition_meta_list);
 
