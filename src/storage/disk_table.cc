@@ -285,16 +285,13 @@ bool DiskTable::Put(const Dimensions& dimensions,
                 ts_vec.end()) {
                 continue;
             }
-            rocksdb::Slice spk;
+            std::string combine_key;
             if (ts_vec.size() == 1) {
-                std::string combine_key = CombineKeyTs(it->key(), cur_ts.ts());
-                spk = rocksdb::Slice(combine_key);
+                combine_key = CombineKeyTs(it->key(), cur_ts.ts());
             } else {
-                std::string combine_key =
-                    CombineKeyTs(it->key(), cur_ts.ts(), (uint8_t)cur_ts.idx());
-                spk = rocksdb::Slice(combine_key);
+               combine_key = CombineKeyTs(it->key(), cur_ts.ts(), (uint8_t)cur_ts.idx());
             }
-            batch.Put(cf_hs_[it->idx() + 1], spk, value);
+            batch.Put(cf_hs_[it->idx() + 1], rocksdb::Slice(combine_key), value);
         }
     }
     rocksdb::Status s = db_->Write(write_opts_, &batch);
