@@ -959,8 +959,8 @@ void WindowAggRunner::RunWindowAggOnKey(
 std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
     RunnerContext& ctx) {  // NOLINT
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    auto left = producers_[0]->RunWithCache(ctx);
     auto right = producers_[1]->RunWithCache(ctx);
+    auto left = producers_[0]->RunWithCache(ctx);
     if (!left || !right) {
         return std::shared_ptr<DataHandler>();
     }
@@ -979,8 +979,8 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
 
 std::shared_ptr<DataHandler> LastJoinRunner::Run(RunnerContext& ctx) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    auto left = producers_[0]->RunWithCache(ctx);
     auto right = producers_[1]->RunWithCache(ctx);
+    auto left = producers_[0]->RunWithCache(ctx);
     if (!left || !right) {
         LOG(WARNING) << "fail to run last join: left|right input is empty";
         return fail_ptr;
@@ -1656,8 +1656,8 @@ void Runner::PrintData(const vm::SchemaSourceList& schema_list,
 
 std::shared_ptr<DataHandler> ConcatRunner::Run(RunnerContext& ctx) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    auto left = producers_[0]->RunWithCache(ctx);
     auto right = producers_[1]->RunWithCache(ctx);
+    auto left = producers_[0]->RunWithCache(ctx);
     size_t left_slices =
         producers_[0]->output_schemas().GetSchemaSourceListSize();
     size_t right_slices =
