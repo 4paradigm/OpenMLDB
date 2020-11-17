@@ -1854,6 +1854,7 @@ void TabletImpl::Delete(RpcController* controller,
 void TabletImpl::Query(RpcController* ctrl,
                        const rtidb::api::QueryRequest* request,
                        rtidb::api::QueryResponse* response, Closure* done) {
+    DLOG(INFO) << "handle request begin!";
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
