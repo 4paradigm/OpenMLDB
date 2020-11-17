@@ -262,6 +262,11 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        sql_opt.enable_debug = true;
+    } else {
+        sql_opt.enable_debug = false;
+    }
     auto router = NewClusterSQLRouter(sql_opt);
     if (router == nullptr) {
         std::cout << "fail to init sql cluster router" << std::endl;
@@ -282,48 +287,55 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     router->RefreshCatalog();
     std::vector<std::string> sample;
     std::string base_sql = "insert into " + name;
-    sample.push_back(base_sql + " values(1, 'aa', 1.0, 1590738990000);");
-    sample.push_back(base_sql + " values(2, 'aa', 2.0, 1590738991000);");
-    sample.push_back(base_sql + " values(3, 'aa', 3.0, 1590738992000);");
-    sample.push_back(base_sql + " values(4, 'aa', 4.0, 1590738993000);");
-    sample.push_back(base_sql + " values(5, 'bb', 5.0, 1590738994000);");
-    sample.push_back(base_sql + " values(6, 'bb', 6.0, 1590738995000);");
-    sample.push_back(base_sql + " values(7, 'bb', 7.0, 1590738996000);");
-    sample.push_back(base_sql + " values(8, 'bb', 8.0, 1590738997000);");
-    sample.push_back(base_sql + " values(9, 'bb', 9.0, 1590738998000);");
-    sample.push_back(base_sql + " values(10, 'cc', 1.0, 1590738993000);");
-    sample.push_back(base_sql + " values(11, 'cc', 2.0, 1590738994000);");
-    sample.push_back(base_sql + " values(12, 'cc', 3.0, 1590738995000);");
-    sample.push_back(base_sql + " values(13, 'cc', 4.0, 1590738996000);");
-    sample.push_back(base_sql + " values(14, 'cc', 5.0, 1590738997000);");
-    sample.push_back(base_sql + " values(15, 'dd', 6.0, 1590738998000);");
-    sample.push_back(base_sql + " values(16, 'dd', 7.0, 1590738999000);");
+    size_t window_size = state.range(0);
+    int id = 1;
+    int64_t ts = 1590738991000;
+    for(int i = 0; i < window_size; i++) {
+        sample.push_back(base_sql + " values(" + std::to_string(id++)
+                         + ", 'aa', "
+                         + std::to_string(i)
+                         + ", "
+                         + std::to_string(ts-i*1000)
+                         +");");
+        sample.push_back(base_sql + " values(" + std::to_string(id++)
+                         + ", 'bb', "
+                         + std::to_string(i)
+                         + ", "
+                         + std::to_string(ts-i*1000)
+                         +");");
+        sample.push_back(base_sql + " values(" + std::to_string(id++)
+                         + ", 'cc', "
+                         + std::to_string(i)
+                         + ", "
+                         + std::to_string(ts-i*1000)
+                         +");");
+    }
     for (const auto& sql : sample) {
         router->ExecuteInsert(db, sql, &status);
     }
     char sql[1000];
     int size = snprintf(sql, sizeof(sql), "SELECT id, c1, c6, c7,  min(c6) OVER w1 as w1_c6_min, count(id) "
                                          "OVER w1 as w1_cnt FROM %s WINDOW w1 AS (PARTITION BY %s.c1 "
-                                         "ORDER BY %s.c7 ROWS BETWEEN 4 PRECEDING AND CURRENT ROW);",
-                                          name.c_str(), name.c_str(), name.c_str());
+                                         "ORDER BY %s.c7 ROWS BETWEEN %d PRECEDING AND CURRENT ROW);",
+                                          name.c_str(), name.c_str(), name.c_str(), window_size-1);
     std::string exe_sql(sql, size);
     auto request_row = router->GetRequestRow(db, exe_sql, &status);
     request_row->Init(2);
-    request_row->AppendInt32(1);
+    request_row->AppendInt32(id);
     request_row->AppendString("aa");
     request_row->AppendDouble(1.0);
-    request_row->AppendTimestamp(1590738993000l);
+    request_row->AppendTimestamp(ts + 1000);
     request_row->Build();
-    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
-        router->ExecuteSQL(db, exe_sql, request_row, &status);
-        return;
-    }
     for (auto _ : state) {
         benchmark::DoNotOptimize(router->ExecuteSQL(db, exe_sql, request_row, &status));
     }
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+
+        router->ExecuteSQL(db, exe_sql, request_row, &status);
+    }
 }
 
-BENCHMARK(BM_SimpleRowWindow);
+BENCHMARK(BM_SimpleRowWindow)->Args({4});
 
 BENCHMARK(BM_SimpleQueryFunction);
 
