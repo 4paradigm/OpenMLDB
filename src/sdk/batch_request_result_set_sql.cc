@@ -31,16 +31,16 @@ namespace sdk {
 
 static const std::string EMPTY_STR;  // NOLINT
 SQLBatchRequestResultSet::SQLBatchRequestResultSet(
-    std::unique_ptr<::rtidb::api::SQLBatchRequestQueryResponse> response,
-    std::unique_ptr<brpc::Controller> cntl)
-    : response_(std::move(response)),
+    const std::shared_ptr<::rtidb::api::SQLBatchRequestQueryResponse>& response,
+    const std::shared_ptr<brpc::Controller>& cntl)
+    : response_(response),
       index_(-1),
       byte_size_(0),
       position_(0),
       common_row_view_(),
       non_common_row_view_(),
       external_schema_(),
-      cntl_(std::move(cntl)) {}
+      cntl_(cntl) {}
 
 SQLBatchRequestResultSet::~SQLBatchRequestResultSet() {}
 

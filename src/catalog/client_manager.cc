@@ -22,42 +22,58 @@
 namespace rtidb {
 namespace catalog {
 
-TabletRowHandler::TabletRowHandler(const std::string& db,
-                                   std::unique_ptr<brpc::Controller> cntl,
+TabletRowHandler::TabletRowHandler(const std::string& db, std::unique_ptr<brpc::Controller> cntl,
                                    std::unique_ptr<::rtidb::api::QueryResponse> response)
-    : db_(db), name_(), status_(::fesql::base::Status::OK()), schema_(),
-    buf_(), row_(), cntl_(std::move(cntl)), response_(std::move(response)) {}
+    : db_(db),
+      name_(),
+      status_(::fesql::base::Status::Running()),
+      row_(),
+      cntl_(std::move(cntl)),
+      response_(std::move(response)) {}
 
-TabletRowHandler::TabletRowHandler(::fesql::base::Status status) :
-    db_(), name_(), status_(status), schema_(), buf_(), row_(), cntl_(), response_() {}
+TabletRowHandler::TabletRowHandler(::fesql::base::Status status)
+    : db_(), name_(), status_(status), row_(), cntl_(), response_() {}
 
 const ::fesql::codec::Row& TabletRowHandler::GetValue() {
-    if (!cntl_ || !response_) {
+    if (!status_.isRunning()) {
         return row_;
     }
+    if (!cntl_ || !response_) {
+        status_.code = fesql::common::kRpcError;
+        return row_;
+    }
+    // TODO(denglong) timeout handle
     brpc::Join(cntl_->call_id());
     if (cntl_->Failed()) {
         status_ = ::fesql::base::Status(::fesql::common::kRpcError, "request error. " + cntl_->ErrorText());
         return row_;
     }
-    if (!::fesql::codec::SchemaCodec::Decode(response_->schema(), &schema_)) {
-        status_ = ::fesql::base::Status(::fesql::common::kSchemaCodecError, "decode schema error");
+    if (cntl_->response_attachment().size() <= codec::HEADER_LENGTH) {
+        status_.code = fesql::common::kSchemaCodecError;
+        status_.msg = "response content decode fail";
         return row_;
     }
-    // TODO(denglong) do not copy data
-    buf_ = cntl_->response_attachment().to_string();
-    row_.Reset(reinterpret_cast<const int8_t*>(buf_.c_str()), buf_.length());
+    uint32_t tmp_size = 0;
+    cntl_->response_attachment().copy_to(reinterpret_cast<void*>(&tmp_size), codec::SIZE_LENGTH,
+                 codec::VERSION_LENGTH);
+    int8_t* out_buf = reinterpret_cast<int8_t*>(malloc(tmp_size));
+    cntl_->response_attachment().copy_to(out_buf, tmp_size);
+    row_ = fesql::codec::Row(fesql::base::RefCountedSlice::CreateManaged(out_buf, tmp_size));
+    status_.code = ::fesql::common::kOk;
     return row_;
 }
 
 std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                   const std::string& sql,
-                                                                  const ::fesql::codec::Row& row) {
+                                                                  const ::fesql::codec::Row& row,
+                                                                  const bool is_debug) {
+    DLOG(INFO) << "SubQuery taskid: " << task_id;
     ::rtidb::api::QueryRequest request;
     request.set_sql(sql);
     request.set_db(db);
     request.set_is_batch(false);
     request.set_task_id(task_id);
+    request.set_is_debug(is_debug);
     if (!row.empty()) {
         std::string* input_row = request.mutable_input_row();
         input_row->assign(reinterpret_cast<const char*>(row.buf()), row.size());
@@ -78,7 +94,8 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
 
 std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                   const std::string& sql,
-                                                                  const std::vector<::fesql::codec::Row>& row) {
+                                                                  const std::vector<::fesql::codec::Row>& row,
+                                                                  const bool is_debug) {
     return std::shared_ptr<::fesql::vm::RowHandler>();
 }
 
@@ -169,7 +186,27 @@ std::shared_ptr<TabletAccessor> ClientManager::GetTablet(const std::string& name
     return it->second;
 }
 
+std::shared_ptr<TabletAccessor> ClientManager::GetTablet() const {
+    std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
+    if (clients_.empty()) {
+        return std::shared_ptr<TabletAccessor>();
+    }
+    uint32_t seq = rand_.Uniform(clients_.size());
+    uint32_t cnt = 0;
+    for (const auto& kv : clients_) {
+        if (cnt == seq) {
+            return kv.second;
+        }
+        cnt++;
+    }
+    return std::shared_ptr<TabletAccessor>();
+}
+
 bool ClientManager::UpdateClient(const std::map<std::string, std::string>& endpoint_map) {
+    if (endpoint_map.empty()) {
+        DLOG(INFO) << "endpoint_map is empty";
+        return true;
+    }
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
     for (const auto& kv : endpoint_map) {
         auto it = real_endpoint_map_.find(kv.first);

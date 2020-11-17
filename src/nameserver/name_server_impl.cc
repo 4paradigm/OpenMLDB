@@ -1353,6 +1353,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                     n_it->second = real_ep;
                 }
             } else {
+                real_ep_map_.emplace(*it, *it);
                 tablet->client_ = std::make_shared<::rtidb::client::TabletClient>(*it, "", true);
             }
             if (tablet->client_->Init() != 0) {
@@ -10536,7 +10537,6 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
     sp_info->CopyFrom(request->sp_info());
     const std::string& db_name = sp_info->db_name();
     const std::string& sp_name = sp_info->sp_name();
-    const std::string& sql = sp_info->sql();
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (databases_.find(db_name) == databases_.end()) {
@@ -10555,39 +10555,6 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
         }
     }
     do {
-        std::vector<std::shared_ptr<rtidb::client::TabletClient>> tb_client_set;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            for (const auto& kv : tablets_) {
-                if (kv.second->state_ == ::rtidb::api::TabletState::kTabletHealthy) {
-                    tb_client_set.push_back(kv.second->client_);
-                }
-            }
-        }
-        if (tb_client_set.empty()) {
-            response->set_code(::rtidb::base::ReturnCode::kTabletIsNotHealthy);
-            response->set_msg("tablet is not healthy");
-            PDLOG(WARNING, "tablet is not healthy");
-            return;
-        }
-        Schema rtidb_input_schema;
-        Schema rtidb_output_schema;
-        std::shared_ptr<rtidb::client::TabletClient> tb_client =
-            tb_client_set.at(rand_.Next() % tb_client_set.size());
-        if (!tb_client->GetSchema(db_name, sql, &rtidb_input_schema, &rtidb_output_schema)) {
-            response->set_code(::rtidb::base::ReturnCode::kGetSchemaFailed);
-            response->set_msg("get schema from tablet failed");
-            PDLOG(WARNING, "get scheam tablet from failed, db[%s], sp_name[%s], sql[%s]",
-                    db_name.c_str(), sp_name.c_str(), sql.c_str());
-            return;
-        }
-        if (!CheckParameter(sp_info->input_schema(), rtidb_input_schema)) {
-            response->set_code(::rtidb::base::ReturnCode::kCheckParameterFailed);
-            response->set_msg("check parameter failed");
-            PDLOG(WARNING, "check parameter failed, db[%s], sp_name[%s], sql[%s]",
-                    db_name.c_str(), sp_name.c_str(), sql.c_str());
-            return;
-        }
         if (!CreateProcedureOnTablet(*request)) {
             response->set_code(::rtidb::base::ReturnCode::kCreateProcedureFailedOnTablet);
             response->set_msg("create procedure failed on tablet");
@@ -10595,7 +10562,6 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
         }
 
         std::string sp_value;
-        sp_info->mutable_output_schema()->CopyFrom(rtidb_output_schema);
         sp_info->SerializeToString(&sp_value);
         std::string compressed;
         ::snappy::Compress(sp_value.c_str(), sp_value.length(), &compressed);
@@ -10622,6 +10588,7 @@ void NameServerImpl::CreateProcedure(RpcController* controller,
         {
             std::lock_guard<std::mutex> lock(mu_);
             db_sp_info_[db_name].insert(std::make_pair(sp_name, sp_info));
+            NotifyTableChanged();
         }
         response->set_code(::rtidb::base::ReturnCode::kOk);
         response->set_msg("ok");
@@ -10672,28 +10639,7 @@ bool NameServerImpl::RecoverProcedureInfo() {
     return true;
 }
 
-bool NameServerImpl::CheckParameter(const Schema& parameter, const Schema& input_schema) {
-    if (parameter.size() != input_schema.size()) {
-        return false;
-    }
-    for (int32_t i = 0; i < parameter.size(); i++) {
-        if (parameter.Get(i).name() != input_schema.Get(i).name()) {
-            PDLOG(WARNING, "check column name failed, expect[%s], but[%s]", input_schema.Get(i).name().c_str(),
-                    parameter.Get(i).name().c_str());
-            return false;
-        }
-        if (parameter.Get(i).data_type() != input_schema.Get(i).data_type()) {
-            PDLOG(WARNING, "check column type failed, expect[%s], but[%s]",
-                    rtidb::type::DataType_Name(input_schema.Get(i).data_type()).c_str(),
-                    rtidb::type::DataType_Name(parameter.Get(i).data_type()).c_str());
-            return false;
-        }
-    }
-    return true;
-}
-
 bool NameServerImpl::CreateProcedureOnTablet(const ::rtidb::api::CreateProcedureRequest& sp_request) {
-    // TODO(wangbao): find tablet that table exist
     std::vector<std::shared_ptr<TabletClient>> tb_client_vec;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -10720,57 +10666,6 @@ bool NameServerImpl::CreateProcedureOnTablet(const ::rtidb::api::CreateProcedure
                 tb_client->GetEndpoint().c_str());
     }
     return true;
-}
-
-void NameServerImpl::ShowProcedure(RpcController* controller,
-        const ShowProcedureRequest* request, ShowProcedureResponse* response,
-        Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    if (!running_.load(std::memory_order_acquire)) {
-        response->set_code(::rtidb::base::ReturnCode::kNameserverIsNotLeader);
-        response->set_msg("nameserver is not leader");
-        PDLOG(WARNING, "cur nameserver is not leader");
-        return;
-    }
-    if (request->has_db_name() && request->has_sp_name()) {
-        ::rtidb::nameserver::ProcedureInfo* sp_info = response->add_sp_info();
-        const std::string& db_name = request->db_name();
-        const std::string& sp_name = request->sp_name();
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            if (databases_.find(db_name) == databases_.end()) {
-                response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
-                response->set_msg("database not found");
-                PDLOG(WARNING, "database[%s] not found", db_name.c_str());
-                return;
-            } else {
-                auto sp_infos = db_sp_info_[db_name];
-                auto sp_it = sp_infos.find(sp_name);
-                if (sp_it == sp_infos.end()) {
-                    response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
-                    response->set_msg("store procedure not found");
-                    PDLOG(WARNING, "store procedure[%s] not in db[%s]", sp_name.c_str(), db_name.c_str());
-                    return;
-                }
-                sp_info->CopyFrom(*(sp_it->second));
-                DLOG(INFO) << "show sql: " << sp_info->sql();
-            }
-        }
-    } else {
-        decltype(db_sp_info_) db_sp_info_tmp;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            db_sp_info_tmp = db_sp_info_;
-        }
-        for (auto& db_kv : db_sp_info_tmp) {
-            for (auto& sp_kv : db_kv.second) {
-                ::rtidb::nameserver::ProcedureInfo* sp_info = response->add_sp_info();
-                sp_info->CopyFrom(*sp_kv.second);
-            }
-        }
-    }
-    response->set_code(::rtidb::base::ReturnCode::kOk);
-    response->set_msg("ok");
 }
 
 void NameServerImpl::DropProcedureOnTablet(const std::string& db_name,
@@ -10823,6 +10718,7 @@ void NameServerImpl::DropProcedure(RpcController* controller,
             PDLOG(INFO, "delete storage procedure node[%s]", sp_data_path.c_str());
             db_sp_info_[request->db_name()].erase(sp_name);
         }
+        NotifyTableChanged();
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");

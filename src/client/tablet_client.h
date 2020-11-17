@@ -336,11 +336,8 @@ class TabletClient {
 
     bool UpdateRealEndpointMap(const std::map<std::string, std::string>& map);
 
-    bool GetSchema(const std::string& db_name, const std::string& sql,
-            Schema* input_schema, Schema* output_schema);
-
     bool CreateProcedure(const rtidb::api::CreateProcedureRequest& sp_request,
-                         std::string& msg); // NOLINT
+            std::string& msg); // NOLINT
 
     bool CallProcedure(const std::string& db, const std::string& sp_name,
             const std::string& row, brpc::Controller* cntl,
@@ -358,6 +355,16 @@ class TabletClient {
     bool SubQuery(const ::rtidb::api::QueryRequest& request,
             brpc::Controller* cntl,
             ::rtidb::api::QueryResponse* response);
+
+    bool CallProcedure(const std::string& db, const std::string& sp_name,
+            const std::string& row, int64_t timeout_ms, bool is_debug,
+            rtidb::RpcCallback<rtidb::api::QueryResponse>* callback);
+
+    bool CallSQLBatchRequestProcedure(
+            const std::string& db, const std::string& sp_name,
+            std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
+            bool is_debug, int64_t timeout_ms,
+            rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback);
 
  private:
     std::string endpoint_;

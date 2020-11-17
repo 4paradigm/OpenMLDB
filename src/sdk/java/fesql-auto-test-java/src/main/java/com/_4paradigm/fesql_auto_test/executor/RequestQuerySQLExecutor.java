@@ -15,10 +15,12 @@ import java.util.List;
 public class RequestQuerySQLExecutor extends SQLExecutor {
 
     protected boolean isBatchRequest;
+    protected boolean isAsyn;
 
-    public RequestQuerySQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest) {
+    public RequestQuerySQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest, boolean isAsyn) {
         super(executor, fesqlCase);
         this.isBatchRequest = isBatchRequest;
+        this.isAsyn = isAsyn;
     }
 
     @Override

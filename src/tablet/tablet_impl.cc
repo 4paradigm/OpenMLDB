@@ -71,6 +71,7 @@ DECLARE_uint32(get_table_diskused_interval);
 DECLARE_uint32(task_check_interval);
 DECLARE_uint32(load_index_max_wait_time);
 DECLARE_bool(use_name);
+DECLARE_bool(enable_distsql);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -111,11 +112,16 @@ TabletImpl::TabletImpl()
       mode_recycle_root_paths_(),
       follower_(false),
       catalog_(new ::rtidb::catalog::TabletCatalog()),
-      engine_(catalog_),
+      engine_(catalog_,
+              fesql::vm::EngineOptions::NewEngineOptionWithClusterEnable(
+                  FLAGS_enable_distsql)),
       zk_cluster_(),
       zk_path_(),
       endpoint_(),
-      notify_path_() {}
+      notify_path_() {
+    catalog_->SetLocalTablet(std::shared_ptr<::fesql::vm::Tablet>(
+        new ::fesql::vm::LocalTablet(&engine_)));
+}
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
@@ -210,6 +216,11 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     if (!CreateMultiDir(mode_recycle_root_paths_[::rtidb::common::kHDD])) {
         PDLOG(WARNING, "fail to create recycle bin root path %s",
               FLAGS_recycle_hdd_bin_root_path.c_str());
+        return false;
+    }
+    std::map<std::string, std::string> real_endpoint_map = { {endpoint, real_endpoint} };
+    if (!catalog_->UpdateClient(real_endpoint_map)) {
+        PDLOG(WARNING, "update client failed");
         return false;
     }
 
@@ -1855,6 +1866,9 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
     ::fesql::base::Status status;
     if (request->is_batch()) {
         ::fesql::vm::BatchRunSession session;
+        if (request->is_debug()) {
+            session.EnableDebug();
+        }
         {
             bool ok =
                 engine_.Get(request->sql(), request->db(), session, status);
@@ -1865,9 +1879,7 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
                 return;
             }
         }
-        if (request->is_debug()) {
-            session.EnableDebug();
-        }
+
         auto table = session.Run();
         if (!table) {
             DLOG(WARNING) << "fail to run sql " << request->sql();
@@ -1916,6 +1928,9 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
             return;
         }
         ::fesql::vm::RequestRunSession session;
+        if (request->is_debug()) {
+            session.EnableDebug();
+        }
         if (request->is_procedure()) {
             const std::string& db_name = request->db();
             const std::string& sp_name = request->sp_name();
@@ -1987,6 +2002,10 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
     ::fesql::base::Status status;
 
     ::fesql::vm::BatchRequestRunSession session;
+    // run session
+    if (request->is_debug()) {
+        session.EnableDebug();
+    }
     bool is_procedure = request->is_procedure();
     if (is_procedure) {
         std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
@@ -2056,10 +2075,6 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
         }
     }
 
-    // run session
-    if (request->is_debug()) {
-        session.EnableDebug();
-    }
     std::vector<::fesql::codec::Row> output_rows;
     int32_t run_ret = session.Run(input_rows, output_rows);
     if (run_ret != 0) {
@@ -5944,17 +5959,12 @@ void TabletImpl::CancelOP(RpcController* controller,
 void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
         const rtidb::api::UpdateRealEndpointMapRequest* request,
         rtidb::api::GeneralResponse* response, Closure* done) {
+    DLOG(INFO) << "UpdateRealEndpointMap";
     brpc::ClosureGuard done_guard(done);
     if (FLAGS_zk_cluster.empty()) {
         response->set_code(-1);
         response->set_msg("tablet is not run in cluster mode");
         PDLOG(WARNING, "tablet is not run in cluster mode");
-        return;
-    }
-    if (!FLAGS_use_name) {
-        response->set_code(::rtidb::base::ReturnCode::kUseNameIsFalse);
-        response->set_msg("FLAGS_use_name is false");
-        PDLOG(WARNING, "FLAGS_use_name is false");
         return;
     }
     decltype(real_ep_map_) tmp_real_ep_map =
@@ -5966,6 +5976,7 @@ void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
     }
     std::atomic_store_explicit(&real_ep_map_, tmp_real_ep_map,
             std::memory_order_release);
+    DLOG(INFO) << "real_ep_map size is " << tmp_real_ep_map->size();
     catalog_->UpdateClient(*tmp_real_ep_map);
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -5989,43 +6000,6 @@ bool TabletImpl::GetRealEp(uint64_t tid, uint64_t pid,
         rit->second = iter->second;
     }
     return true;
-}
-
-void TabletImpl::GetSchema(RpcController* controller,
-        const rtidb::api::GetSchemaRequest* request,
-        rtidb::api::GetSchemaResponse* response, Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    const std::string& db = request->db_name();
-    const std::string& sql = request->sql();
-    ::fesql::base::Status vm_status;
-    ::fesql::vm::ExplainOutput explain_output;
-    bool ok = engine_.Explain(sql, db, ::fesql::vm::kRequestMode, &explain_output, &vm_status);
-    if (!ok) {
-        response->set_code(::rtidb::base::ReturnCode::kExplainFailed);
-        response->set_msg("fail to explain sql:" + sql + " in db:" + db);
-        LOG(WARNING) << "fail to explain sql:" << sql << " in db:" << db;
-        return;
-    }
-    ::fesql::sdk::SchemaImpl input_schema(explain_output.input_schema);
-    ::fesql::sdk::SchemaImpl output_schema(explain_output.output_schema);
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>* rtidb_input_schema =
-        response->mutable_input_schema();
-    if (!rtidb::catalog::SchemaAdapter::ConvertSchema(input_schema.GetSchema(), rtidb_input_schema)) {
-        response->set_code(::rtidb::base::ReturnCode::kExplainFailed);
-        response->set_msg("convert input schema failed, sql:" + sql + " in db:" + db);
-        LOG(WARNING) << "convert input schema failed, sql:" << sql << " in db:" << db;
-        return;
-    }
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>* rtidb_output_schema =
-        response->mutable_output_schema();
-    if (!rtidb::catalog::SchemaAdapter::ConvertSchema(output_schema.GetSchema(), rtidb_output_schema)) {
-        response->set_code(::rtidb::base::ReturnCode::kConvertSchemaFailed);
-        response->set_msg("convert output schema failed, sql:" + sql + " in db:" + db);
-        LOG(WARNING) << "convert output schema failed, sql:" << sql << " in db:" << db;
-        return;
-    }
-    response->set_code(::rtidb::base::ReturnCode::kOk);
-    response->set_msg("ok");
 }
 
 void TabletImpl::CreateProcedure(RpcController* controller,

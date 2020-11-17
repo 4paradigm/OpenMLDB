@@ -1,32 +1,29 @@
 package com._4paradigm.sql.sdk.impl;
 
 import com._4paradigm.sql.*;
+import com._4paradigm.sql.jdbc.CallablePreparedStatement;
 import com._4paradigm.sql.jdbc.SQLResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.*;
 import java.sql.ResultSet;
-import java.util.List;
+import java.sql.SQLException;
+import java.util.concurrent.TimeUnit;
 
-
-public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementImpl {
-    private static final Logger logger = LoggerFactory.getLogger(BatchRequestPreparedStatementImpl.class);
-
+public class BatchCallablePreparedStatementImpl extends CallablePreparedStatement {
+    private static final Logger logger = LoggerFactory.getLogger(BatchCallablePreparedStatementImpl.class);
     private ColumnIndicesSet commonColumnIndices;
     private SQLRequestRowBatch currentRowBatch;
 
-    public BatchRequestPreparedStatementImpl(String db, String sql,
-                                             SQLRouter router,
-                                             List<Integer> commonColumnIdxList) throws SQLException {
-        super(db, sql, router);
-        this.commonColumnIndices = new ColumnIndicesSet(currentSchema);
-        for (Integer idx : commonColumnIdxList) {
-            if (idx != null) {
-                this.commonColumnIndices.AddCommonColumnIdx(idx);
+    public BatchCallablePreparedStatementImpl(String db, String spName, SQLRouter router) throws SQLException {
+        super(db, spName, router);
+        this.commonColumnIndices = new ColumnIndicesSet(this.currentSchema);
+        for (int i = 0; i < this.currentSchema.GetColumnCnt(); i++) {
+            if (this.currentSchema.IsConstant(i)) {
+                this.commonColumnIndices.AddCommonColumnIdx(i);
             }
         }
-        this.currentRowBatch = new SQLRequestRowBatch(currentSchema, commonColumnIndices);
+        this.currentRowBatch = new SQLRequestRowBatch(this.currentSchema, this.commonColumnIndices);
     }
 
     @Override
@@ -35,7 +32,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
         Status status = new Status();
         com._4paradigm.sql.ResultSet resultSet = router.ExecuteSQLBatchRequest(
                 db, currentSql, currentRowBatch, status);
-        if (resultSet == null) {
+        if (status.getCode() != 0 || resultSet == null) {
             throw new SQLException("execute sql fail: " + status.getMsg());
         }
         ResultSet rs = new SQLResultSet(resultSet);
@@ -43,6 +40,17 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
             closed = true;
         }
         return rs;
+    }
+
+    public com._4paradigm.sql.sdk.QueryFuture executeQeuryAsyn(long timeOut, TimeUnit unit) throws SQLException {
+        checkClosed();
+        Status status = new Status();
+        QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, spName, unit.toMillis(timeOut), currentRowBatch, status);
+        if (status.getCode() != 0 || queryFuture == null) {
+            logger.error("call procedure failed: {}", status.getMsg());
+            throw new SQLException("call procedure fail, msg: " + status.getMsg());
+        }
+        return new com._4paradigm.sql.sdk.QueryFuture(queryFuture);
     }
 
     @Override

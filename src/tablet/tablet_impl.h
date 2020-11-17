@@ -331,10 +331,6 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                        const ::rtidb::api::CountRequest* request,
                        uint32_t* count);
 
-    void GetSchema(RpcController* controller,
-            const rtidb::api::GetSchemaRequest* request,
-            rtidb::api::GetSchemaResponse* response, Closure* done);
-
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
 
     void CreateProcedure(RpcController* controller,
@@ -548,6 +544,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::shared_ptr<::rtidb::catalog::TabletCatalog> catalog_;
     // thread safe
     ::fesql::vm::Engine engine_;
+    std::shared_ptr<::fesql::vm::LocalTablet> local_tablet_;
     std::string zk_cluster_;
     std::string zk_path_;
     std::string endpoint_;

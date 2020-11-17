@@ -74,3 +74,4 @@ src/sdk/python/fesql-auto-test-python/logs
 src/sdk/python/fesql-auto-test-python/report
 src/sdk/python/logs
 .vscode/settings.json
+rsync_src.sh

@@ -67,8 +67,7 @@ TestArgs *PrepareTable(const std::string &tname) {
     key1->add_ts_name("col2");
     args->idx_name = "index0";
 
-    ::rtidb::storage::MemTable *table =
-        new ::rtidb::storage::MemTable(meta);
+    ::rtidb::storage::MemTable *table = new ::rtidb::storage::MemTable(meta);
     table->Init();
     ::fesql::vm::Schema fe_schema;
     SchemaAdapter::ConvertSchema(meta.column_desc(), &fe_schema);
@@ -90,7 +89,8 @@ TestArgs *PrepareTable(const std::string &tname) {
     return args;
 }
 
-TestArgs *PrepareMultiPartitionTable(const std::string &tname, int partition_num) {
+TestArgs *PrepareMultiPartitionTable(const std::string &tname,
+                                     int partition_num) {
     TestArgs *args = new TestArgs();
     ::rtidb::api::TableMeta meta;
     meta.set_name(tname);
@@ -114,6 +114,9 @@ TestArgs *PrepareMultiPartitionTable(const std::string &tname, int partition_num
     key1->add_col_name("col1");
     key1->add_ts_name("col2");
     args->idx_name = "index0";
+    for (int i = 0; i < partition_num; i++) {
+        meta.add_table_partition();
+    }
 
     for (int i = 0; i < partition_num; i++) {
         ::rtidb::api::TableMeta cur_meta(meta);
@@ -149,7 +152,8 @@ TestArgs *PrepareMultiPartitionTable(const std::string &tname, int partition_num
 
 TEST_F(TabletCatalogTest, tablet_smoke_test) {
     TestArgs *args = PrepareTable("t1");
-    TabletTableHandler handler(args->meta[0]);
+    TabletTableHandler handler(args->meta[0],
+                               std::shared_ptr<fesql::vm::Tablet>());
     ClientManager client_manager;
     ASSERT_TRUE(handler.Init(client_manager));
     handler.AddTable(args->tables[0]);
@@ -179,8 +183,8 @@ TEST_F(TabletCatalogTest, tablet_smoke_test) {
 
 TEST_F(TabletCatalogTest, segment_handler_test) {
     TestArgs *args = PrepareTable("t1");
-    auto handler = std::shared_ptr<TabletTableHandler>(
-        new TabletTableHandler(args->meta[0]));
+    auto handler = std::shared_ptr<TabletTableHandler>(new TabletTableHandler(
+        args->meta[0], std::shared_ptr<fesql::vm::Tablet>()));
     ClientManager client_manager;
     ASSERT_TRUE(handler->Init(client_manager));
     handler->AddTable(args->tables[0]);
@@ -200,8 +204,8 @@ TEST_F(TabletCatalogTest, segment_handler_test) {
 
 TEST_F(TabletCatalogTest, segment_handler_pk_not_exist_test) {
     TestArgs *args = PrepareTable("t1");
-    auto handler = std::shared_ptr<TabletTableHandler>(
-        new TabletTableHandler(args->meta[0]));
+    auto handler = std::shared_ptr<TabletTableHandler>(new TabletTableHandler(
+        args->meta[0], std::shared_ptr<fesql::vm::Tablet>()));
     ClientManager client_manager;
     ASSERT_TRUE(handler->Init(client_manager));
     handler->AddTable(args->tables[0]);
@@ -438,6 +442,7 @@ TEST_F(TabletCatalogTest, iterator_test) {
     }
     ASSERT_EQ(pk_cnt, 100);
     ASSERT_EQ(record_num, 500);
+
     auto full_iterator = handler->GetIterator();
     full_iterator->SeekToFirst();
     record_num = 0;
@@ -446,6 +451,115 @@ TEST_F(TabletCatalogTest, iterator_test) {
         full_iterator->Next();
     }
     ASSERT_EQ(record_num, 500);
+}
+TEST_F(TabletCatalogTest, window_iterator_seek_test_discontinuous) {
+    std::vector<std::shared_ptr<TabletCatalog>> catalog_vec;
+    for (int i = 0; i < 2; i++) {
+        std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
+        ASSERT_TRUE(catalog->Init());
+        catalog_vec.push_back(catalog);
+    }
+    uint32_t pid_num = 8;
+    TestArgs *args = PrepareMultiPartitionTable("t1", pid_num);
+    for (uint32_t pid = 0; pid < pid_num; pid++) {
+        if (pid % 2 == 0) {
+            ASSERT_TRUE(
+                catalog_vec[0]->AddTable(args->meta[pid], args->tables[pid]));
+        } else {
+            ASSERT_TRUE(
+                catalog_vec[1]->AddTable(args->meta[pid], args->tables[pid]));
+        }
+    }
+    // WindowIterator Seek key Test
+    {
+        auto handler = catalog_vec[0]->GetTable("db1", "t1");
+        auto iterator = handler->GetWindowIterator("index0");
+        {
+            int segment_cnt = 0;
+            iterator->Seek("pk190");
+            ASSERT_TRUE(iterator->Valid());
+            auto row_iterator = iterator->GetValue();
+            ASSERT_EQ("pk190", iterator->GetKey().ToString());
+            row_iterator->SeekToFirst();
+            while (row_iterator->Valid()) {
+                segment_cnt++;
+                row_iterator->Next();
+            }
+            ASSERT_EQ(5, segment_cnt);
+        }
+        {
+            int segment_cnt = 0;
+            iterator->Seek("pk195");
+            auto row_iterator = iterator->GetValue();
+            ASSERT_EQ("pk195", iterator->GetKey().ToString());
+            row_iterator->SeekToFirst();
+            while (row_iterator->Valid()) {
+                segment_cnt++;
+                row_iterator->Next();
+            }
+            ASSERT_EQ(5, segment_cnt);
+        }
+    }
+    {
+        auto handler = catalog_vec[1]->GetTable("db1", "t1");
+        auto iterator = handler->GetWindowIterator("index0");
+        int segment_cnt = 0;
+        iterator->Seek("pk180");
+        auto row_iterator = iterator->GetValue();
+        ASSERT_EQ("pk180", iterator->GetKey().ToString());
+        row_iterator->SeekToFirst();
+        while (row_iterator->Valid()) {
+            segment_cnt++;
+            row_iterator->Next();
+        }
+        ASSERT_EQ(5, segment_cnt);
+    }
+}
+TEST_F(TabletCatalogTest, iterator_test_discontinuous) {
+    std::vector<std::shared_ptr<TabletCatalog>> catalog_vec;
+    for (int i = 0; i < 2; i++) {
+        std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
+        ASSERT_TRUE(catalog->Init());
+        catalog_vec.push_back(catalog);
+    }
+    uint32_t pid_num = 8;
+    TestArgs *args = PrepareMultiPartitionTable("t1", pid_num);
+    for (uint32_t pid = 0; pid < pid_num; pid++) {
+        if (pid % 2 == 0) {
+            ASSERT_TRUE(
+                catalog_vec[0]->AddTable(args->meta[pid], args->tables[pid]));
+        } else {
+            ASSERT_TRUE(
+                catalog_vec[1]->AddTable(args->meta[pid], args->tables[pid]));
+        }
+    }
+    int pk_cnt = 0;
+    int record_num = 0;
+    int full_record_num = 0;
+    for (int i = 0; i < 2; i++) {
+        auto handler = catalog_vec[i]->GetTable("db1", "t1");
+        auto iterator = handler->GetWindowIterator("index0");
+        iterator->SeekToFirst();
+        while (iterator->Valid()) {
+            pk_cnt++;
+            auto row_iterator = iterator->GetValue();
+            row_iterator->SeekToFirst();
+            while (row_iterator->Valid()) {
+                record_num++;
+                row_iterator->Next();
+            }
+            iterator->Next();
+        }
+        auto full_iterator = handler->GetIterator();
+        full_iterator->SeekToFirst();
+        while (full_iterator->Valid()) {
+            full_record_num++;
+            full_iterator->Next();
+        }
+    }
+    ASSERT_EQ(pk_cnt, 100);
+    ASSERT_EQ(record_num, 500);
+    ASSERT_EQ(full_record_num, 500);
 }
 
 }  // namespace catalog

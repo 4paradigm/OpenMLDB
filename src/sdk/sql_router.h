@@ -47,6 +47,7 @@ class ExplainInfo {
     virtual const std::string& GetLogicalPlan() = 0;
     virtual const std::string& GetPhysicalPlan() = 0;
     virtual const std::string& GetIR() = 0;
+    virtual const std::string& GetRequestName() = 0;
 };
 
 class ProcedureInfo {
@@ -58,6 +59,17 @@ class ProcedureInfo {
     virtual const std::string& GetSql() = 0;
     virtual const ::fesql::sdk::Schema& GetInputSchema() = 0;
     virtual const ::fesql::sdk::Schema& GetOutputSchema() = 0;
+    virtual const std::vector<std::string>& GetTables() = 0;
+    virtual const std::string& GetMainTable() = 0;
+};
+
+class QueryFuture {
+ public:
+    QueryFuture() {}
+    virtual ~QueryFuture() {}
+
+    virtual std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(fesql::sdk::Status* status) = 0;
+    virtual bool IsDone() const = 0;
 };
 
 class SQLRouter {
@@ -128,6 +140,14 @@ class SQLRouter {
 
     virtual std::shared_ptr<ProcedureInfo> ShowProcedure(
             const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<rtidb::sdk::QueryFuture> CallProcedure(
+            const std::string& db, const std::string& sp_name, int64_t timeout_ms,
+            std::shared_ptr<rtidb::sdk::SQLRequestRow> row, fesql::sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<rtidb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
+            const std::string& db, const std::string& sp_name, int64_t timeout_ms,
+            std::shared_ptr<rtidb::sdk::SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) = 0;
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);

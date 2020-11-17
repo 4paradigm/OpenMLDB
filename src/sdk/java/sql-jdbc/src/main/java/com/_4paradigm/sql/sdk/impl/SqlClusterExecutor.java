@@ -140,6 +140,17 @@ public class SqlClusterExecutor implements SqlExecutor {
         return impl;
     }
 
+    public CallablePreparedStatementImpl getCallablePreparedStmt(String db, String spName)  throws SQLException {
+        CallablePreparedStatementImpl impl = new CallablePreparedStatementImpl(db, spName, this.sqlRouter);
+        return impl;
+    }
+
+    @Override
+    public BatchCallablePreparedStatementImpl getCallablePreparedStmtBatch(String db, String spName) throws SQLException {
+        BatchCallablePreparedStatementImpl impl = new BatchCallablePreparedStatementImpl(db, spName, this.sqlRouter);
+        return impl;
+    }
+
     @Override
     public SQLInsertRows getInsertRows(String db, String sql) {
         Status status = new Status();
@@ -162,16 +173,6 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
-    public ResultSet executeSQLBatchRequest(String db, String sql, SQLRequestRowBatch row_batch) {
-        Status status = new Status();
-        ResultSet rs = sqlRouter.ExecuteSQLBatchRequest(db, sql, row_batch, status);
-        if (status.getCode() != 0) {
-            logger.error("executeSQLBatchRequest fail: {}", status.getMsg());
-        }
-        return rs;
-    }
-
-    @Override
     public Schema getInputSchema(String dbName, String sql) throws SQLException {
         Status status = new Status();
         ExplainInfo explain = sqlRouter.Explain(dbName, sql, status);
@@ -189,48 +190,6 @@ public class SqlClusterExecutor implements SqlExecutor {
             columnList.add(column);
         }
         return new Schema(columnList);
-    }
-
-    @Override
-    public SQLResultSet callProcedure(String dbName, String spName, Object[] requestRow) throws SQLException {
-        if (requestRow == null || requestRow.length == 0) {
-            throw new SQLException("requestRows is null or empty");
-        }
-        com._4paradigm.sql.ProcedureInfo procedureInfo = prepareProcedure(dbName, spName);
-        return callProcedureWithSingleRow(
-                dbName, spName, procedureInfo, requestRow);
-    }
-
-    @Override
-    public SQLResultSet callProcedure(String dbName, String spName, Object[][] requestRows) throws SQLException {
-        if (requestRows == null || requestRows.length == 0) {
-            throw new SQLException("requestRows is null or empty");
-        }
-        com._4paradigm.sql.ProcedureInfo procedureInfo = prepareProcedure(dbName, spName);
-        com._4paradigm.sql.Schema inputSchema = procedureInfo.GetInputSchema();
-        logger.info("Create sql batch1!!!");
-        ColumnIndicesSet columnIndices = new ColumnIndicesSet(inputSchema);
-        for (int i = 0; i < procedureInfo.GetInputSchema().GetColumnCnt(); ++i) {
-            if (procedureInfo.GetInputSchema().IsConstant(i)) {
-                logger.info("input " + i + " is const");
-                columnIndices.AddCommonColumnIdx(i);
-            }
-        }
-        SQLRequestRowBatch batch = new SQLRequestRowBatch(inputSchema, columnIndices);
-        for (Object[] requestRow : requestRows) {
-            if (requestRow == null || requestRow.length == 0) {
-                throw new SQLException("requestRow is null or empty");
-            }
-            SQLRequestRow sqlRequestRow = getProcedureRequestRow(dbName, procedureInfo, requestRow);
-            boolean addOk = batch.AddRow(sqlRequestRow);
-            if (!addOk) {
-                throw new SQLException("Add request row to batch failed");
-            }
-        }
-        Status status = new Status();
-        ResultSet resultSet = sqlRouter.CallSQLBatchRequestProcedure(
-                dbName, spName, batch, status);
-        return new SQLResultSet(resultSet);
     }
 
     private com._4paradigm.sql.ProcedureInfo prepareProcedure(String dbName, String spName) throws SQLException {
@@ -350,11 +309,6 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
-    public boolean dropProcedure(String dbName, String proName) throws SQLException {
-        return false;
-    }
-
-    @Override
     public ProcedureInfo showProcedure(String dbName, String proName) throws SQLException{
         Status status = new Status();
         com._4paradigm.sql.ProcedureInfo procedureInfo = sqlRouter.ShowProcedure(dbName, proName, status);
@@ -367,6 +321,8 @@ public class SqlClusterExecutor implements SqlExecutor {
         spInfo.setSql(procedureInfo.GetSql());
         spInfo.setInputSchema(Common.convertSchema(procedureInfo.GetInputSchema()));
         spInfo.setOutputSchema(Common.convertSchema(procedureInfo.GetOutputSchema()));
+        spInfo.setMainTable(procedureInfo.GetMainTable());
+        spInfo.setInputTables(procedureInfo.GetTables());
         return spInfo;
     }
 

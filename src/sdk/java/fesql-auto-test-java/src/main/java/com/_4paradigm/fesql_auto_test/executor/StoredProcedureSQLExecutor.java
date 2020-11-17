@@ -16,8 +16,8 @@ import java.util.List;
 @Slf4j
 public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
 
-    public StoredProcedureSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest) {
-        super(executor, fesqlCase, isBatchRequest);
+    public StoredProcedureSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest, boolean isAsyn) {
+        super(executor, fesqlCase, isBatchRequest, isAsyn);
     }
 
     @Override
@@ -25,7 +25,7 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
         boolean dbOk = executor.createDB(dbName);
         log.info("create db:{},{}", dbName, dbOk);
         FesqlResult res = FesqlUtil.createAndInsert(
-                executor, dbName, fesqlCase.getInputs(), !isBatchRequest, 3);
+                executor, dbName, fesqlCase.getInputs(), !isBatchRequest, 1);
         if (!res.isOk()) {
             throw new RuntimeException("fail to run SQLExecutor: prepare fail");
         }
@@ -47,25 +47,25 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
             return null;
         }
         if (fesqlCase.getBatch_request() != null) {
-            return executeBatch(sql);
+            return executeBatch(sql, this.isAsyn);
         } else {
-            return executeSingle(sql);
+            return executeSingle(sql, this.isAsyn);
         }
     }
 
-    private FesqlResult executeSingle(String sql) throws SQLException {
+    private FesqlResult executeSingle(String sql, boolean isAsyn) throws SQLException {
         String spSql = FesqlUtil.getStoredProcedureSql(sql, fesqlCase.getInputs());
         log.info("spSql: {}", spSql);
         return FesqlUtil.sqlRequestModeWithSp(
-                executor, dbName, tableNames.get(0), spSql, fesqlCase.getInputs().get(0));
+                executor, dbName, tableNames.get(0), spSql, fesqlCase.getInputs().get(0), isAsyn);
     }
 
-    private FesqlResult executeBatch(String sql) throws SQLException {
+    private FesqlResult executeBatch(String sql, boolean isAsyn) throws SQLException {
         String spName = "sp_" + tableNames.get(0) + "_" + System.currentTimeMillis();
         String spSql = buildSpSQLWithConstColumns(spName, sql, fesqlCase.getBatch_request());
         log.info("spSql: {}", spSql);
         return FesqlUtil.selectBatchRequestModeWithSp(
-                executor, dbName, spName, spSql, fesqlCase.getBatch_request());
+                executor, dbName, spName, spSql, fesqlCase.getBatch_request(), isAsyn);
     }
 
     private String buildSpSQLWithConstColumns(String spName,

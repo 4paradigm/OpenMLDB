@@ -38,6 +38,9 @@
 namespace rtidb {
 namespace sdk {
 
+typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
+    RtidbSchema;
+
 static std::shared_ptr<::fesql::sdk::Schema> ConvertToSchema(
     std::shared_ptr<::rtidb::nameserver::TableInfo> table_info) {
     ::fesql::vm::Schema schema;
@@ -82,75 +85,92 @@ class SQLClusterRouter : public SQLRouter {
 
     bool Init();
 
-    bool CreateDB(const std::string& db, fesql::sdk::Status* status);
+    bool CreateDB(const std::string& db, fesql::sdk::Status* status) override;
 
-    bool DropDB(const std::string& db, fesql::sdk::Status* status);
+    bool DropDB(const std::string& db, fesql::sdk::Status* status) override;
 
-    bool ShowDB(std::vector<std::string>* dbs, fesql::sdk::Status* status);
+    bool ShowDB(std::vector<std::string>* dbs, fesql::sdk::Status* status) override;
 
     bool ExecuteDDL(const std::string& db, const std::string& sql,
-                    fesql::sdk::Status* status);
+                    fesql::sdk::Status* status) override;
 
     bool ExecuteInsert(const std::string& db, const std::string& sql,
-                       ::fesql::sdk::Status* status);
+                       ::fesql::sdk::Status* status) override;
 
     bool ExecuteInsert(const std::string& db, const std::string& sql,
                        std::shared_ptr<SQLInsertRow> row,
-                       fesql::sdk::Status* status);
+                       fesql::sdk::Status* status) override;
 
     bool ExecuteInsert(const std::string& db, const std::string& sql,
                        std::shared_ptr<SQLInsertRows> rows,
-                       fesql::sdk::Status* status);
+                       fesql::sdk::Status* status) override;
 
     std::shared_ptr<ExplainInfo> Explain(const std::string& db,
                                          const std::string& sql,
-                                         ::fesql::sdk::Status* status);
+                                         ::fesql::sdk::Status* status) override;
 
     std::shared_ptr<SQLRequestRow> GetRequestRow(const std::string& db,
                                                  const std::string& sql,
-                                                 ::fesql::sdk::Status* status);
+                                                 ::fesql::sdk::Status* status) override;
 
     std::shared_ptr<SQLInsertRow> GetInsertRow(const std::string& db,
                                                const std::string& sql,
-                                               ::fesql::sdk::Status* status);
+                                               ::fesql::sdk::Status* status) override;
 
     std::shared_ptr<SQLInsertRows> GetInsertRows(const std::string& db,
                                                  const std::string& sql,
-                                                 ::fesql::sdk::Status* status);
+                                                 ::fesql::sdk::Status* status) override;
 
     std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
-        std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status);
+        std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) override;
 
     std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQL(
         const std::string& db, const std::string& sql,
-        ::fesql::sdk::Status* status);
+        ::fesql::sdk::Status* status) override;
 
     std::shared_ptr<fesql::sdk::ResultSet> ExecuteSQLBatchRequest(
         const std::string& db, const std::string& sql,
         std::shared_ptr<SQLRequestRowBatch> row_batch,
-        ::fesql::sdk::Status* status);
+        ::fesql::sdk::Status* status) override;
 
-    bool RefreshCatalog();
+    bool RefreshCatalog() override;
 
     std::shared_ptr<fesql::sdk::ResultSet> CallProcedure(
             const std::string& db, const std::string& sp_name,
-            std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status);
+            std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status) override;
 
     std::shared_ptr<fesql::sdk::ResultSet> CallSQLBatchRequestProcedure(
             const std::string& db, const std::string& sp_name,
-            std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status);
+            std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) override;
 
     std::shared_ptr<ProcedureInfo> ShowProcedure(
-            const std::string& db, const std::string& sp_name, fesql::sdk::Status* status);
+            const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) override;
+
+    bool ShowProcedure(const std::string& db, const std::string& sp_name,
+            ::rtidb::api::ProcedureInfo* sp_info, std::string* msg);
+
+    bool ShowProcedure(
+            std::vector<std::shared_ptr<::rtidb::api::ProcedureInfo>>* sp_infos, std::string* msg);
+
+    std::shared_ptr<rtidb::sdk::QueryFuture> CallProcedure(
+            const std::string& db, const std::string& sp_name, int64_t timeout_ms,
+            std::shared_ptr<SQLRequestRow> row, fesql::sdk::Status* status);
+
+    std::shared_ptr<rtidb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
+            const std::string& db, const std::string& sp_name, int64_t timeout_ms,
+            std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status);
 
  private:
-    bool GetTablet(
-        const std::string& db, const std::string& sql,
-        std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets);
+    std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
+        const std::string& db, const std::string& sql);
 
     void GetTables(::fesql::vm::PhysicalOpNode* node,
                    std::set<std::string>* tables);
+
+    bool PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>& row,
+            const std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>>& tablets,
+            ::fesql::sdk::Status* status);
 
     bool IsConstQuery(::fesql::vm::PhysicalOpNode* node);
     std::shared_ptr<RouterCache> GetCache(const std::string& db,
@@ -175,6 +195,16 @@ class SQLClusterRouter : public SQLRouter {
         std::shared_ptr<::rtidb::nameserver::TableInfo> table_info,
         const std::map<uint32_t, uint32_t>& column_map,
         ::fesql::node::ExprListNode* row, uint32_t* str_length);
+
+    bool HandleSQLCreateProcedure(const fesql::node::NodePointVector& parser_trees,
+            const std::string& db, const std::string& sql,
+            std::shared_ptr<::rtidb::client::NsClient> ns_ptr,
+            fesql::node::NodeManager* node_manager, std::string* msg);
+
+    inline bool CheckParameter(const RtidbSchema& parameter, const RtidbSchema& input_schema);
+
+    std::shared_ptr<rtidb::client::TabletClient> GetTablet(
+            const std::string& db, const std::string& sp_name, fesql::sdk::Status* status);
 
  private:
     SQLRouterOptions options_;

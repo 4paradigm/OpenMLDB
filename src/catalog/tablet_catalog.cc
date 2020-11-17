@@ -31,23 +31,27 @@
 namespace rtidb {
 namespace catalog {
 
-TabletTableHandler::TabletTableHandler(const ::rtidb::api::TableMeta& meta)
+TabletTableHandler::TabletTableHandler(const ::rtidb::api::TableMeta& meta,
+                                       std::shared_ptr<fesql::vm::Tablet> local_tablet)
     : schema_(),
       table_st_(meta),
       tables_(std::make_shared<Tables>()),
       types_(),
       index_list_(),
       index_hint_(),
-      table_client_manager_() {}
+      table_client_manager_(),
+      local_tablet_(local_tablet) {}
 
-TabletTableHandler::TabletTableHandler(const ::rtidb::nameserver::TableInfo& meta)
+TabletTableHandler::TabletTableHandler(const ::rtidb::nameserver::TableInfo& meta,
+                                       std::shared_ptr<fesql::vm::Tablet> local_tablet)
     : schema_(),
       table_st_(meta),
       tables_(std::make_shared<Tables>()),
       types_(),
       index_list_(),
       index_hint_(),
-      table_client_manager_() {}
+      table_client_manager_(),
+      local_tablet_(local_tablet) {}
 
 bool TabletTableHandler::Init(const ClientManager& client_manager) {
     bool ok = SchemaAdapter::ConvertSchema(table_st_.GetColumns(), &schema_);
@@ -200,10 +204,23 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
     if (pid_num > 0) {
         pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
     }
-    return table_client_manager_->GetTablet(pid);
+    // TODO(denglong): return local_tablet if pid is in local
+    if (pid_num < 2) {
+        DLOG(INFO) << "pid num " << pid_num << " local tablet_";
+        return local_tablet_;
+    }
+    DLOG(INFO) << "pid num " << pid_num << " get tablet with pid = " << pid;
+    auto client_tablet = table_client_manager_->GetTablet(pid);
+    if (!client_tablet) {
+        DLOG(INFO) << "get tablet index_name " << index_name << ", pk " << pk << ", tablet nullptr";
+    } else {
+        DLOG(INFO) << "get tablet index_name " << index_name << ", pk " << pk << ", tablet "
+                   << client_tablet->GetName();
+    }
+    return client_tablet;
 }
 
-TabletCatalog::TabletCatalog() : mu_(), tables_(), db_(), client_manager_(), version_(1) {}
+TabletCatalog::TabletCatalog() : mu_(), tables_(), db_(), client_manager_(), version_(1), local_tablet_() {}
 
 TabletCatalog::~TabletCatalog() {}
 
@@ -248,7 +265,7 @@ bool TabletCatalog::AddTable(const ::rtidb::api::TableMeta& meta, std::shared_pt
     const std::string& table_name = meta.name();
     auto it = db_it->second.find(table_name);
     if (it == db_it->second.end()) {
-        handler = std::make_shared<TabletTableHandler>(meta);
+        handler = std::make_shared<TabletTableHandler>(meta, local_tablet_);
         if (!handler->Init(client_manager_)) {
             LOG(WARNING) << "tablet handler init failed";
             return false;
@@ -318,7 +335,7 @@ bool TabletCatalog::DropProcedure(const std::string& db, const std::string& sp_n
         LOG(WARNING) << "procedure " << sp_name << "not exist";
         return false;
     }
-    sp_map.erase(sp_name);
+    sp_map.erase(it);
     return true;
 }
 
@@ -340,7 +357,7 @@ void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInf
             }
             auto it = db_it->second.find(table_name);
             if (it == db_it->second.end()) {
-                handler = std::make_shared<TabletTableHandler>(table_info);
+                handler = std::make_shared<TabletTableHandler>(table_info, local_tablet_);
                 if (!handler->Init(client_manager_)) {
                     LOG(WARNING) << "tablet handler init failed";
                     return;
@@ -382,7 +399,6 @@ void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInf
 }
 
 bool TabletCatalog::UpdateClient(const std::map<std::string, std::string>& real_ep_map) {
-    DLOG(INFO) << "update client";
     return client_manager_.UpdateClient(real_ep_map);
 }
 

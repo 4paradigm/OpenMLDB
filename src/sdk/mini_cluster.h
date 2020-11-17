@@ -20,7 +20,7 @@
 
 #include <sched.h>
 #include <unistd.h>
-
+#include <map>
 #include <string>
 #include <vector>
 
@@ -51,6 +51,7 @@ DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_bool(auto_failover);
 DECLARE_string(ssd_root_path);
 DECLARE_string(hdd_root_path);
+DECLARE_bool(enable_distsql);
 
 namespace rtidb {
 namespace sdk {
@@ -69,6 +70,7 @@ class MiniCluster {
         srand(time(NULL));
         FLAGS_db_root_path = "/tmp/mini_cluster" + GenRand();
         zk_cluster_ = "127.0.0.1:" + std::to_string(zk_port_);
+        FLAGS_zk_cluster = zk_cluster_;
         std::string ns_endpoint = "127.0.0.1:" + GenRand();
         zk_path_ = "/mini_cluster_" + GenRand();
         sleep(1);
@@ -125,6 +127,14 @@ class MiniCluster {
 
     ::rtidb::client::NsClient* GetNsClient() { return ns_client_; }
 
+    ::rtidb::tablet::TabletImpl* GetTablet(const std::string& endpoint) {
+        auto iter = tablets_.find(endpoint);
+        if (iter != tablets_.end()) {
+            return iter->second;
+        }
+        return nullptr;
+    }
+
     std::string GenRand() {
         return std::to_string(rand() % 1000 + 10000);  // NOLINT
     }
@@ -155,6 +165,7 @@ class MiniCluster {
             return false;
         }
         tb_servers_.push_back(tb_server);
+        tablets_.emplace(tb_endpoint, tablet);
         return true;
     }
 
@@ -165,6 +176,7 @@ class MiniCluster {
     std::string zk_cluster_;
     std::string zk_path_;
     ::rtidb::client::NsClient* ns_client_;
+    std::map<std::string, ::rtidb::tablet::TabletImpl*> tablets_;
 };
 
 }  // namespace sdk

@@ -21,7 +21,10 @@ endif ()
 
 project(rtidb)
 
-set(CMAKE_BUILD_TYPE RelWithDebInfo)
+if (CMAKE_BUILD_TYPE STREQUAL "")
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif ()
+message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 set(RTIDB_VERSION_MAJOR 1)
 set(RTIDB_VERSION_MEDIUM 6)
 set(RTIDB_VERSION_MINOR 2)
