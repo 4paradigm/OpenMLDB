@@ -140,14 +140,14 @@ cases:
       SELECT id, c1, c2, c3,
       count(id) OVER w1 as w1_count,
       count(id) OVER w2 as w2_count,
-      sum(c4) OVER w3 as w3_c4_sum,
+      sum(c4) OVER w3 as w3_c4_sum
       FROM {0} WINDOW
       w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),
       w2 AS (PARTITION BY c2 ORDER BY c7 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW),
       w3 AS (PARTITION BY c3 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int","c1 string","c3 int","w1_count bigint","w2_count bigint", "w3_c4_sum bigint"]
+      columns: ["id int","c1 string", "c2 string", "c3 int","w1_count bigint","w2_count bigint", "w3_c4_sum bigint"]
       rows:
         - [1,"aa", "1", 20, 1, 1, 30]
         - [2,"aa", "2", 20, 2, 1, 61]
