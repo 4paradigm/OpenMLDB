@@ -4,6 +4,12 @@
 #
 
 WORKDIR=`pwd`
+VERSION=`git describe --always --tag`
+VERSION=${VERSION:1}
+if [[ ! ($VERSION =~ ^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$) ]]; then
+    echo "$VERSION is not release version"
+    exit 0
+fi
 set -e
 package=rtdb-cluster-rdma-$VERSION
 rm -rf ${package} || :
