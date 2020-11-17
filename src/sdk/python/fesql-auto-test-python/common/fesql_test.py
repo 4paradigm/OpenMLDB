@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from fedb.driver import Driver,DriverOptions
 import common.fesql_config as config
 import yaml
 import sqlalchemy as db
@@ -40,12 +39,6 @@ def getCases(yamlPath: str) -> list:
                     case['db'] = db
                 testCases.append(case)
         return testCases
-
-def getDriver():
-    options = DriverOptions(config.zk_cluster, config.zk_root_path)
-    driver = Driver(options)
-    driver.init()
-    return driver
 
 def getEngine():
     engine = db.create_engine('fedb://@/test_zw?zk={}&zkPath={}'.format(config.zk_cluster, config.zk_root_path))
