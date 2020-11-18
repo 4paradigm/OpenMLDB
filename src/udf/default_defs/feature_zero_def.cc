@@ -425,6 +425,8 @@ struct FZTop1Ratio {
 
 template <typename K>
 struct FZTopNFrequency {
+    static const size_t MAXIMUM_TOPN = 1024;
+
     // we need store top_n config in state
     class TopNContainer
         : public udf::container::BoundedGroupByDict<K, int64_t> {
@@ -471,6 +473,7 @@ struct FZTopNFrequency {
             output->size_ = 0;
             return;
         }
+        size_t top_n = ptr->top_n_ < MAXIMUM_TOPN ? ptr->top_n_ : MAXIMUM_TOPN;
         auto& map = ptr->map();
         using StorageK = typename container::ContainerStorageTypeTrait<K>::type;
         using Entry = std::pair<StorageK, size_t>;
@@ -489,7 +492,7 @@ struct FZTopNFrequency {
             queue.push({iter->first, iter->second});
         }
         std::vector<StorageK> keys;
-        for (size_t i = 0; i < ptr->top_n_; ++i) {
+        for (size_t i = 0; i < top_n; ++i) {
             if (queue.empty()) {
                 break;
             }
@@ -499,7 +502,7 @@ struct FZTopNFrequency {
 
         // estimate output length
         uint32_t str_len = 0;
-        for (size_t i = 0; i < ptr->top_n_; ++i) {
+        for (size_t i = 0; i < top_n; ++i) {
             if (i < keys.size()) {
                 str_len += v1::format_string(keys[i], nullptr, 0) + 1;  // "k,"
             } else {
@@ -513,7 +516,7 @@ struct FZTopNFrequency {
         // fill string buffer
         char* cur = buffer;
         uint32_t remain_space = str_len;
-        for (size_t i = 0; i < ptr->top_n_; ++i) {
+        for (size_t i = 0; i < top_n; ++i) {
             uint32_t key_len;
             if (i < keys.size()) {
                 key_len = v1::format_string(keys[i], cur, remain_space);
