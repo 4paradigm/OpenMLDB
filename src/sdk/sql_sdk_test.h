@@ -173,7 +173,7 @@ void SQLSDKTest::InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
             boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
             LOG(INFO) << insert;
             if (!insert.empty()) {
-                for(int j = 0; j < sql_case.inputs()[i].repeat_; j++) {
+                for (int j = 0; j < sql_case.inputs()[i].repeat_; j++) {
                     ASSERT_TRUE(router->ExecuteInsert(sql_case.db(), insert, &status));
                 }
             }
