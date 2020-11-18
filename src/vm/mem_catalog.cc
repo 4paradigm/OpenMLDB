@@ -321,13 +321,11 @@ void GetRowIter(int8_t* input, int8_t* iter_addr) {
 bool RowIterHasNext(int8_t* iter_ptr) {
     auto& local_iter =
         *reinterpret_cast<std::unique_ptr<RowIterator>*>(iter_ptr);
-    DLOG(INFO) << "RowIterHasNext >> ";
     return local_iter->Valid();
 }
 void RowIterNext(int8_t* iter_ptr) {
     auto& local_iter =
         *reinterpret_cast<std::unique_ptr<RowIterator>*>(iter_ptr);
-    DLOG(INFO) << "RowIterNext >> ";
     local_iter->Next();
 }
 int8_t* RowIterGetCurSlice(int8_t* iter_ptr, size_t idx) {
