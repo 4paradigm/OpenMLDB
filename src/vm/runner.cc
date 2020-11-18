@@ -1870,7 +1870,6 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
         max_union_pos =
             IteratorStatus::PickIteratorWithMaximizeKey(&union_segment_status);
     }
-    DLOG(INFO) << "request union window table size " << window_table->GetCount();
     return window_table;
 }
 
