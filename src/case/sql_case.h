@@ -33,6 +33,7 @@ class SQLCase {
         std::string create_;
         std::string insert_;
         std::set<size_t> common_column_indices_;
+        int64_t repeat_ = 1;
     };
     struct ExpectInfo {
         int64_t count_ = -1;

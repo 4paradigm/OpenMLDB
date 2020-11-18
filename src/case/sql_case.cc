@@ -799,6 +799,9 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
         boost::trim(table->data_);
     }
 
+    if (schema_data["repeat"]) {
+        table->repeat_ = schema_data["repeat"].as<int64_t>();
+    }
     if (schema_data["rows"]) {
         table->rows_.clear();
         if (!CreateRowsFromYamlNode(schema_data["rows"], table->rows_)) {

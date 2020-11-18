@@ -1874,6 +1874,7 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
     }
     {
         auto iter = window_table->GetIterator();
+        iter->SeekToFirst();
         int cnt = 0;
         while(iter->Valid()) {
             iter->Next();
