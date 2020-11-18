@@ -25,6 +25,7 @@
 #include "sdk/sql_router.h"
 #include "test/base_test.h"
 #include "vm/catalog.h"
+DECLARE_bool(enable_distsql);
 
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> RtiDBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> RtiDBIndex;
@@ -343,8 +344,16 @@ BENCHMARK(BM_SimpleInsertFunction)->Args({10})->Args({100})->Args({1000})->Args(
 BENCHMARK(BM_InsertPlaceHolderFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
 
 BENCHMARK(BM_InsertPlaceHolderBatchFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
-
+static bool IS_CLUSTER() {
+    const char* env_name = "FESQL_CLUSTER";
+    char* value = getenv(env_name);
+    if (value != nullptr && strcmp(value, "true") == 0) {
+        return true;
+    }
+    return false;
+}
 int main(int argc, char** argv) {
+    FLAGS_enable_distsql  = IS_CLUSTER();
     ::benchmark::Initialize(&argc, argv);
     ::rtidb::sdk::MiniCluster mini_cluster(6181);
     mc = &mini_cluster;
