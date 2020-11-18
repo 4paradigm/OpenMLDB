@@ -664,7 +664,7 @@ TEST_F(TabletCatalogTest, iterator_test_discontinuous_4w) {
         }
     }
     ASSERT_EQ(pk_cnt, 3);
-    ASSERT_EQ(record_num, 40000);
+    ASSERT_EQ(record_num, 120000);
     ASSERT_EQ(full_record_num, 120000);
 }
 

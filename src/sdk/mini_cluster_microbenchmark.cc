@@ -311,8 +311,8 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     int size = snprintf(sql, sizeof(sql),
                         "SELECT id, c1, c6, c7,  min(c6) OVER w1 as w1_c6_min, count(id) "
                         "OVER w1 as w1_cnt FROM %s WINDOW w1 AS (PARTITION BY %s.c1 "
-                        "ORDER BY %s.c7 ROWS BETWEEN %d PRECEDING AND CURRENT ROW);",
-                        name.c_str(), name.c_str(), name.c_str(), window_size - 1);
+                        "ORDER BY %s.c7 ROWS BETWEEN 32625 PRECEDING AND CURRENT ROW);",
+                        name.c_str(), name.c_str(), name.c_str());
     std::string exe_sql(sql, size);
     auto request_row = router->GetRequestRow(db, exe_sql, &status);
     request_row->Init(2);
