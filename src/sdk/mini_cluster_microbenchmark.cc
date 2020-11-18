@@ -16,6 +16,7 @@
  */
 #include <stdio.h>
 
+#include <gflags/gflags.h>
 #include "benchmark/benchmark.h"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"

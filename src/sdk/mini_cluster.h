@@ -75,7 +75,7 @@ class MiniCluster {
         zk_path_ = "/mini_cluster_" + GenRand();
         sleep(1);
         LOG(INFO) << "zk cluster " << zk_cluster_ << " zk path " << zk_path_
-            << "enable_distsql = " << FLAGS_enable_distsql;
+            << " enable_distsql = " << FLAGS_enable_distsql;
         ::rtidb::nameserver::NameServerImpl* nameserver =
             new ::rtidb::nameserver::NameServerImpl();
         bool ok = nameserver->Init(zk_cluster_, zk_path_, ns_endpoint, "");

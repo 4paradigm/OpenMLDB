@@ -21,7 +21,7 @@ target_link_libraries(sql_request_row_test gtest ${BIN_LIBS})
 
 set(SDK_LIBS rtidb_sdk rtidb_catalog client zk_client rtidb_flags rtidb_codec rtidb_proto base fesql_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS})
 add_executable(mini_cluster_bm mini_cluster_microbenchmark.cc)
-target_link_libraries(mini_cluster_bm benchmark_main benchmark ${BIN_LIBS})
+target_link_libraries(mini_cluster_bm benchmark_main benchmark rtidb_flags ${BIN_LIBS})
 
 if(SQL_PYSDK_ENABLE)
 	find_package(Python3 COMPONENTS Interpreter Development)
