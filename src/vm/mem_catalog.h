@@ -72,6 +72,7 @@ class MemTimeTableIterator : public RowIterator {
     const MemTimeTable::const_iterator start_iter_;
     const MemTimeTable::const_iterator end_iter_;
     MemTimeTable::const_iterator iter_;
+    uint64_t counter_;
 };
 
 class MemTableIterator : public RowIterator {

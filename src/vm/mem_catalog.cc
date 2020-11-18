@@ -16,7 +16,8 @@ MemTimeTableIterator::MemTimeTableIterator(const MemTimeTable* table,
       schema_(schema),
       start_iter_(table->cbegin()),
       end_iter_(table->cend()),
-      iter_(table->cbegin()) {
+      iter_(table->cbegin()),
+      counter_(0) {
     DLOG(INFO) << "MemTimeTableIterator Init 1";
 }
 MemTimeTableIterator::MemTimeTableIterator(const MemTimeTable* table,
@@ -26,7 +27,8 @@ MemTimeTableIterator::MemTimeTableIterator(const MemTimeTable* table,
       schema_(schema),
       start_iter_(table_->begin() + start),
       end_iter_(table_->begin() + end),
-      iter_(start_iter_) {
+      iter_(start_iter_),
+      counter_(0) {
     DLOG(INFO) << "MemTimeTableIterator Init 2 start " << start << " end "
                << end;
 }
@@ -42,10 +44,10 @@ void MemTimeTableIterator::Seek(const uint64_t& ts) {
         iter_++;
     }
 }
-void MemTimeTableIterator::SeekToFirst() { iter_ = start_iter_; }
+void MemTimeTableIterator::SeekToFirst() { iter_ = start_iter_; counter_ =0;}
 const uint64_t& MemTimeTableIterator::GetKey() const { return iter_->first; }
 const Row& fesql::vm::MemTimeTableIterator::GetValue() { return iter_->second; }
-void MemTimeTableIterator::Next() { iter_++; }
+void MemTimeTableIterator::Next() { iter_++; counter_++;}
 bool MemTimeTableIterator::Valid() const { return end_iter_ > iter_; }
 bool MemTimeTableIterator::IsSeekable() const { return true; }
 MemWindowIterator::MemWindowIterator(const MemSegmentMap* partitions,
