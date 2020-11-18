@@ -15,19 +15,18 @@
  * limitations under the License.
  */
 #include <stdio.h>
+
 #include "benchmark/benchmark.h"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
 #include "sdk/base.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_router.h"
-#include "vm/catalog.h"
 #include "test/base_test.h"
+#include "vm/catalog.h"
 
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
-    RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>
-    RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> RtiDBIndex;
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
@@ -79,8 +78,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     ok = ns_client->CreateTable(table_info, error);
 
     ::fesql::vm::Schema fe_schema;
-    ::rtidb::catalog::SchemaAdapter::ConvertSchema(table_info.column_desc_v1(),
-                                                   &fe_schema);
+    ::rtidb::catalog::SchemaAdapter::ConvertSchema(table_info.column_desc_v1(), &fe_schema);
     ::fesql::codec::RowBuilder rb(fe_schema);
     std::string pk = "pk1";
     uint64_t ts = 1589780888000l;
@@ -107,8 +105,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
             ok = tablet[0]->GetClient()->Put(tid, 0, pk, ts + i, value, 1);
         }
     }
-    std::string sql =
-        "select col1, col2 + 1, col3, col4, col5 from " + name + " ;";
+    std::string sql = "select col1, col2 + 1, col3, col4, col5 from " + name + " ;";
     ::fesql::sdk::Status status;
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
@@ -117,17 +114,19 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     if (!router) return;
     for (auto _ : state) {
         benchmark::DoNotOptimize(router->ExecuteSQL(db, sql, &status));
+        if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+            state.SkipWithError("benchmark case debug");
+            break;
+        }
     }
 }
 
-static void GenerateInsertSQLSample(uint32_t size, std::string name,
-                                    std::vector<std::string>* sample) {
+static void GenerateInsertSQLSample(uint32_t size, std::string name, std::vector<std::string>* sample) {
     uint64_t time = 1589780888000l;
     for (uint64_t i = 0; i < size; ++i) {
-        std::string insert_sql =
-            "insert into " + name + " values('hello'," +
-            std::to_string(time + i) + "," + std::to_string(i) + "," +
-            std::to_string(2.7 + i) + "," + std::to_string(3.14 + i) + ");";
+        std::string insert_sql = "insert into " + name + " values('hello'," + std::to_string(time + i) + "," +
+                                 std::to_string(i) + "," + std::to_string(2.7 + i) + "," + std::to_string(3.14 + i) +
+                                 ");";
         sample->push_back(insert_sql);
     }
 }
@@ -159,8 +158,11 @@ static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
     GenerateInsertSQLSample(state.range(0), name, &sample);
     for (auto _ : state) {
         for (uint64_t i = 0; i < sample.size(); ++i) {
-            benchmark::DoNotOptimize(
-                router->ExecuteInsert(db, sample[i], &status));
+            benchmark::DoNotOptimize(router->ExecuteInsert(db, sample[i], &status));
+            if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+                state.SkipWithError("benchmark case debug");
+                break;
+            }
         }
     }
 }
@@ -192,8 +194,7 @@ static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
     for (auto _ : state) {
         std::string insert = "insert into " + name + " values(?, ?, ?, ?, ?);";
         for (int i = 0; i < state.range(0); ++i) {
-            std::shared_ptr<::rtidb::sdk::SQLInsertRow> row =
-                router->GetInsertRow(db, insert, &status);
+            std::shared_ptr<::rtidb::sdk::SQLInsertRow> row = router->GetInsertRow(db, insert, &status);
             if (row != nullptr) {
                 row->Init(5);
                 row->AppendString("hello");
@@ -201,17 +202,19 @@ static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
                 row->AppendInt32(i);
                 row->AppendFloat(3.14 + i);
                 row->AppendDouble(2.7 + i);
-                benchmark::DoNotOptimize(
-                    router->ExecuteInsert(db, insert, row, &status));
+                benchmark::DoNotOptimize(router->ExecuteInsert(db, insert, row, &status));
             } else {
                 std::cout << "get insert row failed" << std::endl;
+            }
+            if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+                state.SkipWithError("benchmark case debug");
+                break;
             }
         }
     }
 }
 
-static void BM_InsertPlaceHolderBatchFunction(
-    benchmark::State& state) {  // NOLINT
+static void BM_InsertPlaceHolderBatchFunction(benchmark::State& state) {  // NOLINT
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
@@ -237,12 +240,10 @@ static void BM_InsertPlaceHolderBatchFunction(
     uint64_t time = 1589780888000l;
     for (auto _ : state) {
         std::string insert = "insert into " + name + " values(?, ?, ?, ?, ?);";
-        std::shared_ptr<::rtidb::sdk::SQLInsertRows> rows =
-            router->GetInsertRows(db, insert, &status);
+        std::shared_ptr<::rtidb::sdk::SQLInsertRows> rows = router->GetInsertRows(db, insert, &status);
         if (rows != nullptr) {
             for (int i = 0; i < state.range(0); ++i) {
-                std::shared_ptr<::rtidb::sdk::SQLInsertRow> row =
-                    rows->NewRow();
+                std::shared_ptr<::rtidb::sdk::SQLInsertRow> row = rows->NewRow();
                 row->Init(5);
                 row->AppendString("hello");
                 row->AppendInt64(i + time);
@@ -250,10 +251,13 @@ static void BM_InsertPlaceHolderBatchFunction(
                 row->AppendFloat(3.14 + i);
                 row->AppendDouble(2.7 + i);
             }
-            benchmark::DoNotOptimize(
-                router->ExecuteInsert(db, insert, rows, &status));
+            benchmark::DoNotOptimize(router->ExecuteInsert(db, insert, rows, &status));
         } else {
             std::cout << "get insert row failed" << std::endl;
+        }
+        if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+            state.SkipWithError("benchmark case debug");
+            break;
         }
     }
 }
@@ -276,8 +280,8 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     std::string db = "db" + GenRand();
     ::fesql::sdk::Status status;
     router->CreateDB(db, &status);
-    std::string create = "create table " + name +
-                         "(id int, c1 string, c6 double, c7 timestamp, index(key=(c1), ts=c7)) partitionnum=8;";
+    std::string create =
+        "create table " + name + "(id int, c1 string, c6 double, c7 timestamp, index(key=(c1), ts=c7)) partitionnum=8;";
     router->ExecuteDDL(db, create, &status);
     if (status.msg != "ok") {
         std::cout << "fail to create table" << std::endl;
@@ -290,34 +294,23 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     size_t window_size = state.range(0);
     int id = 1;
     int64_t ts = 1590738991000;
-    for(int i = 0; i < window_size; i++) {
-        sample.push_back(base_sql + " values(" + std::to_string(id++)
-                         + ", 'aa', "
-                         + std::to_string(i)
-                         + ", "
-                         + std::to_string(ts-i*1000)
-                         +");");
-        sample.push_back(base_sql + " values(" + std::to_string(id++)
-                         + ", 'bb', "
-                         + std::to_string(i)
-                         + ", "
-                         + std::to_string(ts-i*1000)
-                         +");");
-        sample.push_back(base_sql + " values(" + std::to_string(id++)
-                         + ", 'cc', "
-                         + std::to_string(i)
-                         + ", "
-                         + std::to_string(ts-i*1000)
-                         +");");
+    for (int i = 0; i < window_size; i++) {
+        sample.push_back(base_sql + " values(" + std::to_string(id++) + ", 'aa', " + std::to_string(i) + ", " +
+                         std::to_string(ts - i * 1000) + ");");
+        sample.push_back(base_sql + " values(" + std::to_string(id++) + ", 'bb', " + std::to_string(i) + ", " +
+                         std::to_string(ts - i * 1000) + ");");
+        sample.push_back(base_sql + " values(" + std::to_string(id++) + ", 'cc', " + std::to_string(i) + ", " +
+                         std::to_string(ts - i * 1000) + ");");
     }
     for (const auto& sql : sample) {
         router->ExecuteInsert(db, sql, &status);
     }
     char sql[1000];
-    int size = snprintf(sql, sizeof(sql), "SELECT id, c1, c6, c7,  min(c6) OVER w1 as w1_c6_min, count(id) "
-                                         "OVER w1 as w1_cnt FROM %s WINDOW w1 AS (PARTITION BY %s.c1 "
-                                         "ORDER BY %s.c7 ROWS BETWEEN %d PRECEDING AND CURRENT ROW);",
-                                          name.c_str(), name.c_str(), name.c_str(), window_size-1);
+    int size = snprintf(sql, sizeof(sql),
+                        "SELECT id, c1, c6, c7,  min(c6) OVER w1 as w1_c6_min, count(id) "
+                        "OVER w1 as w1_cnt FROM %s WINDOW w1 AS (PARTITION BY %s.c1 "
+                        "ORDER BY %s.c7 ROWS BETWEEN %d PRECEDING AND CURRENT ROW);",
+                        name.c_str(), name.c_str(), name.c_str(), window_size - 1);
     std::string exe_sql(sql, size);
     auto request_row = router->GetRequestRow(db, exe_sql, &status);
     request_row->Init(2);
@@ -329,8 +322,10 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
 
     if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
         for (auto _ : state) {
+            router->ExecuteSQL(db, exe_sql, request_row, &status);
+            state.SkipWithError("benchmark case debug");
+            break;
         }
-        router->ExecuteSQL(db, exe_sql, request_row, &status);
     } else {
         for (auto _ : state) {
             benchmark::DoNotOptimize(router->ExecuteSQL(db, exe_sql, request_row, &status));
@@ -342,23 +337,11 @@ BENCHMARK(BM_SimpleRowWindow)->Args({4});
 
 BENCHMARK(BM_SimpleQueryFunction);
 
-BENCHMARK(BM_SimpleInsertFunction)
-    ->Args({10})
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
+BENCHMARK(BM_SimpleInsertFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
 
-BENCHMARK(BM_InsertPlaceHolderFunction)
-    ->Args({10})
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
+BENCHMARK(BM_InsertPlaceHolderFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
 
-BENCHMARK(BM_InsertPlaceHolderBatchFunction)
-    ->Args({10})
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
+BENCHMARK(BM_InsertPlaceHolderBatchFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
 
 int main(int argc, char** argv) {
     ::benchmark::Initialize(&argc, argv);
