@@ -121,7 +121,7 @@ typedef std::map<std::string,
 class SDKCatalog : public ::fesql::vm::Catalog {
  public:
     explicit SDKCatalog(std::shared_ptr<ClientManager> client_manager) :
-        tables_(), db_(), client_manager_(client_manager) {}
+        tables_(), db_(), client_manager_(client_manager), sp_map_() {}
 
     ~SDKCatalog() {}
 
@@ -153,7 +153,6 @@ class SDKCatalog : public ::fesql::vm::Catalog {
 
 class ProcedureInfoImpl : public fesql::sdk::ProcedureInfo {
  public:
-     ProcedureInfoImpl() {}
      ProcedureInfoImpl(const std::string& db_name, const std::string& sp_name,
              const std::string& sql,
              const ::fesql::sdk::SchemaImpl& input_schema,

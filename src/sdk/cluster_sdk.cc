@@ -212,7 +212,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
                      sp_in_db = {{sp_info_impl->GetSpName(), sp_info_impl}};
             sp_map.insert(std::make_pair(sp_info_impl->GetDbName(), sp_in_db));
         } else {
-            it->second.insert(std::make_pair(sp_info_impl->GetDbName(), sp_info_impl));
+            it->second.insert(std::make_pair(sp_info_impl->GetSpName(), sp_info_impl));
         }
         DLOG(INFO) << "load procedure info with sp name " << sp_info_impl->GetSpName()
             << " in db " << sp_info_impl->GetDbName();
