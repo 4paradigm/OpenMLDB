@@ -152,6 +152,17 @@ void EngineWindowSumFeature1(benchmark::State* state, MODE mode,
         std::to_string(limit_cnt) + ";";
     EngineRequestMode(sql, mode, limit_cnt, size, state);
 }
+void EngineWindowRowsSumFeature1(benchmark::State* state, MODE mode,
+                             int64_t limit_cnt, int64_t size) {  // NOLINT
+    // prepare data into table
+    const std::string sql =
+        "SELECT "
+        "sum(col4) OVER w1 as w1_col4_sum "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "40000 PRECEDING AND CURRENT ROW) limit " +
+        std::to_string(limit_cnt) + ";";
+    EngineRequestMode(sql, mode, limit_cnt, size, state);
+}
 
 void EngineRunBatchWindowSumFeature1(benchmark::State* state, MODE mode,
                                      int64_t limit_cnt,
