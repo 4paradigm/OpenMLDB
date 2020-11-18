@@ -1855,6 +1855,7 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
             break;
         }
 
+        DLOG(INFO) << "RequestUnionRunner AddRow " << request_key;
         window_table->AddRow(union_segment_status[max_union_pos].key_,
                              union_segment_iters[max_union_pos]->GetValue());
         cnt++;
