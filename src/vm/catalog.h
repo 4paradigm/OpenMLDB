@@ -28,6 +28,7 @@
 #include "codec/list_iterator_codec.h"
 #include "codec/row.h"
 #include "proto/fe_type.pb.h"
+#include "sdk/base.h"
 
 namespace fesql {
 namespace vm {
@@ -331,6 +332,12 @@ class Catalog {
     // get table handler
     virtual std::shared_ptr<TableHandler> GetTable(
         const std::string& db, const std::string& table_name) = 0;
+
+    // get ProcedureInfo
+    virtual const std::shared_ptr<fesql::sdk::ProcedureInfo> GetProcedureInfo(
+            const std::string& db, const std::string& sp_name) {
+        return nullptr;
+    }
 };
 
 }  // namespace vm
