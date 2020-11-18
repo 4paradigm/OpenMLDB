@@ -33,6 +33,7 @@
 #include "udf/udf.h"
 #include "udf/udf_test.h"
 #include "vm/sql_compiler.h"
+#include "vm/mem_catalog.h"
 
 using namespace llvm;       // NOLINT (build/namespaces)
 using namespace llvm::orc;  // NOLINT (build/namespaces)
@@ -823,7 +824,6 @@ TEST_F(UDFIRBuilderTest, string_to_float_2) {
     CheckUDF<Nullable<float>, Nullable<StringRef>>("float", nullptr,
                                                    codec::StringRef("abc"));
 }
-
 }  // namespace codegen
 }  // namespace fesql
 
