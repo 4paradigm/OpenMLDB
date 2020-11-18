@@ -149,6 +149,66 @@ TestArgs *PrepareMultiPartitionTable(const std::string &tname,
     }
     return args;
 }
+TestArgs *PrepareMultiPartitionTableWith3Pk4wRecord(const std::string &tname,
+                                     int partition_num) {
+    TestArgs *args = new TestArgs();
+    ::rtidb::api::TableMeta meta;
+    meta.set_name(tname);
+    meta.set_db("db1");
+    meta.set_tid(1);
+    meta.set_pid(0);
+    meta.set_seg_cnt(8);
+    meta.set_ttl(0);
+    meta.set_mode(::rtidb::api::TableMode::kTableLeader);
+    RtiDBSchema *schema = meta.mutable_column_desc();
+    auto col1 = schema->Add();
+    col1->set_name("col1");
+    col1->set_data_type(::rtidb::type::kVarchar);
+    auto col2 = schema->Add();
+    col2->set_name("col2");
+    col2->set_data_type(::rtidb::type::kBigInt);
+
+    RtiDBIndex *index = meta.mutable_column_key();
+    auto key1 = index->Add();
+    key1->set_index_name("index0");
+    key1->add_col_name("col1");
+    key1->add_ts_name("col2");
+    args->idx_name = "index0";
+    for (int i = 0; i < partition_num; i++) {
+        meta.add_table_partition();
+    }
+
+    for (int i = 0; i < partition_num; i++) {
+        ::rtidb::api::TableMeta cur_meta(meta);
+        cur_meta.set_pid(i);
+        auto table = std::make_shared<::rtidb::storage::MemTable>(cur_meta);
+        table->Init();
+        args->tables.push_back(table);
+        args->meta.push_back(cur_meta);
+    }
+    ::fesql::vm::Schema fe_schema;
+    SchemaAdapter::ConvertSchema(meta.column_desc(), &fe_schema);
+    ::fesql::codec::RowBuilder rb(fe_schema);
+    uint32_t base = 100;
+    for (int i = 0; i < 3; i++) {
+        std::string pk = "pk" + std::to_string(base + i);
+        uint32_t size = rb.CalTotalLength(pk.size());
+        uint32_t pid = 0;
+        if (partition_num > 0) {
+            pid = (uint32_t)(::rtidb::base::hash64(pk) % partition_num);
+        }
+        uint64_t ts = 1589780888000l;
+        for (int j = 0; j < 40000; j++) {
+            std::string value;
+            value.resize(size);
+            rb.SetBuffer(reinterpret_cast<int8_t *>(&(value[0])), size);
+            rb.AppendString(pk.c_str(), pk.size());
+            rb.AppendInt64(ts + j);
+            args->tables[pid]->Put(pk, ts + j, value.c_str(), value.size());
+        }
+    }
+    return args;
+}
 
 TEST_F(TabletCatalogTest, tablet_smoke_test) {
     TestArgs *args = PrepareTable("t1");
@@ -560,6 +620,52 @@ TEST_F(TabletCatalogTest, iterator_test_discontinuous) {
     ASSERT_EQ(pk_cnt, 100);
     ASSERT_EQ(record_num, 500);
     ASSERT_EQ(full_record_num, 500);
+}
+TEST_F(TabletCatalogTest, iterator_test_discontinuous_4w) {
+    std::vector<std::shared_ptr<TabletCatalog>> catalog_vec;
+    for (int i = 0; i < 2; i++) {
+        std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
+        ASSERT_TRUE(catalog->Init());
+        catalog_vec.push_back(catalog);
+    }
+    uint32_t pid_num = 8;
+    TestArgs *args = PrepareMultiPartitionTableWith3Pk4wRecord("t1", pid_num);
+    for (uint32_t pid = 0; pid < pid_num; pid++) {
+        if (pid % 2 == 0) {
+            ASSERT_TRUE(
+                catalog_vec[0]->AddTable(args->meta[pid], args->tables[pid]));
+        } else {
+            ASSERT_TRUE(
+                catalog_vec[1]->AddTable(args->meta[pid], args->tables[pid]));
+        }
+    }
+    int pk_cnt = 0;
+    int record_num = 0;
+    int full_record_num = 0;
+    for (int i = 0; i < 2; i++) {
+        auto handler = catalog_vec[i]->GetTable("db1", "t1");
+        auto iterator = handler->GetWindowIterator("index0");
+        iterator->SeekToFirst();
+        while (iterator->Valid()) {
+            pk_cnt++;
+            auto row_iterator = iterator->GetValue();
+            row_iterator->SeekToFirst();
+            while (row_iterator->Valid()) {
+                record_num++;
+                row_iterator->Next();
+            }
+            iterator->Next();
+        }
+        auto full_iterator = handler->GetIterator();
+        full_iterator->SeekToFirst();
+        while (full_iterator->Valid()) {
+            full_record_num++;
+            full_iterator->Next();
+        }
+    }
+    ASSERT_EQ(pk_cnt, 3);
+    ASSERT_EQ(record_num, 40000);
+    ASSERT_EQ(full_record_num, 120000);
 }
 
 }  // namespace catalog

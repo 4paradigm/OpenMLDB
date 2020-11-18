@@ -283,7 +283,7 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     ::fesql::sdk::Status status;
     router->CreateDB(db, &status);
     std::string create =
-        "create table " + name + "(id int, c1 string, c6 double, c7 timestamp, index(key=(c1), ts=c7)) partitionnum=8;";
+        "create table " + name + "(id int, c1 string, c6 double, c7 timestamp, index(key=(c1), ts=c7, ttl=30d)) partitionnum=8;";
     router->ExecuteDDL(db, create, &status);
     if (status.msg != "ok") {
         std::cout << "fail to create table" << std::endl;
@@ -338,6 +338,9 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
 BENCHMARK(BM_SimpleRowWindow)->Args({4})
     ->Args({100})
     ->Args({1000})
+    ->Args({32625})
+    ->Args({32626})
+    ->Args({40000})
     ->Args({10000})
     ->Args({100000});
 
