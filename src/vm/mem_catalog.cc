@@ -16,10 +16,7 @@ MemTimeTableIterator::MemTimeTableIterator(const MemTimeTable* table,
       schema_(schema),
       start_iter_(table->cbegin()),
       end_iter_(table->cend()),
-      iter_(table->cbegin()),
-      counter_(0) {
-    DLOG(INFO) << "MemTimeTableIterator Init 1";
-}
+      iter_(table->cbegin()) {}
 MemTimeTableIterator::MemTimeTableIterator(const MemTimeTable* table,
                                            const vm::Schema* schema,
                                            int32_t start, int32_t end)
@@ -27,11 +24,7 @@ MemTimeTableIterator::MemTimeTableIterator(const MemTimeTable* table,
       schema_(schema),
       start_iter_(table_->begin() + start),
       end_iter_(table_->begin() + end),
-      iter_(start_iter_),
-      counter_(0) {
-    DLOG(INFO) << "MemTimeTableIterator Init 2 start " << start << " end "
-               << end;
-}
+      iter_(start_iter_) {}
 MemTimeTableIterator::~MemTimeTableIterator() {}
 
 // TODO(chenjing): speed up seek for memory iterator
@@ -44,10 +37,10 @@ void MemTimeTableIterator::Seek(const uint64_t& ts) {
         iter_++;
     }
 }
-void MemTimeTableIterator::SeekToFirst() { iter_ = start_iter_; counter_ =0;}
+void MemTimeTableIterator::SeekToFirst() { iter_ = start_iter_; }
 const uint64_t& MemTimeTableIterator::GetKey() const { return iter_->first; }
 const Row& fesql::vm::MemTimeTableIterator::GetValue() { return iter_->second; }
-void MemTimeTableIterator::Next() { iter_++; counter_++;}
+void MemTimeTableIterator::Next() { iter_++; }
 bool MemTimeTableIterator::Valid() const { return end_iter_ > iter_; }
 bool MemTimeTableIterator::IsSeekable() const { return true; }
 MemWindowIterator::MemWindowIterator(const MemSegmentMap* partitions,
@@ -145,9 +138,9 @@ void MemTimeTableHandler::Sort(const bool is_asc) {
 }
 void MemTimeTableHandler::Reverse() {
     std::reverse(table_.begin(), table_.end());
-    order_type_ = kAscOrder == order_type_    ? kDescOrder
-                  : kDescOrder == order_type_ ? kAscOrder
-                                              : kNoneOrder;
+    order_type_ = kAscOrder == order_type_
+                  ? kDescOrder
+                  : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
 }
 RowIterator* MemTimeTableHandler::GetRawIterator() const {
     return new MemTimeTableIterator(&table_, schema_);
@@ -214,9 +207,9 @@ void MemPartitionHandler::Reverse() {
     for (auto& segment : partitions_) {
         std::reverse(segment.second.begin(), segment.second.end());
     }
-    order_type_ = kAscOrder == order_type_    ? kDescOrder
-                  : kDescOrder == order_type_ ? kAscOrder
-                                              : kNoneOrder;
+    order_type_ = kAscOrder == order_type_
+                  ? kDescOrder
+                  : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
 }
 void MemPartitionHandler::Print() {
     for (auto iter = partitions_.cbegin(); iter != partitions_.cend(); iter++) {
@@ -275,9 +268,9 @@ void MemTableHandler::AddRow(const Row& row) {
 }
 void MemTableHandler::Reverse() {
     std::reverse(table_.begin(), table_.end());
-    order_type_ = kAscOrder == order_type_    ? kDescOrder
-                  : kDescOrder == order_type_ ? kAscOrder
-                                              : kNoneOrder;
+    order_type_ = kAscOrder == order_type_
+                  ? kDescOrder
+                  : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
 }
 MemTableHandler::~MemTableHandler() {}
 MemTableIterator::MemTableIterator(const MemTable* table,

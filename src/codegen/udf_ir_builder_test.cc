@@ -823,6 +823,7 @@ TEST_F(UDFIRBuilderTest, string_to_float_2) {
     CheckUDF<Nullable<float>, Nullable<StringRef>>("float", nullptr,
                                                    codec::StringRef("abc"));
 }
+
 }  // namespace codegen
 }  // namespace fesql
 

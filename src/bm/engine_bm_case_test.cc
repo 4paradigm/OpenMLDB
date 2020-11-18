@@ -26,9 +26,6 @@ TEST_F(EngineBMCaseTest, EngineWindowSumFeature1_TEST) {
     EngineWindowSumFeature1(nullptr, TEST, 100L, 100L);
     EngineWindowSumFeature1(nullptr, TEST, 1000L, 1000L);
 }
-TEST_F(EngineBMCaseTest, EngineWindowSumFeature1_4w_TEST) {
-    EngineWindowRowsSumFeature1(nullptr, TEST, 40000L, 40000);
-}
 
 TEST_F(EngineBMCaseTest, EngineWindowSumFeature5_TEST) {
     EngineWindowSumFeature5(nullptr, TEST, 1L, 2L);
