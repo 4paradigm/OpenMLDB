@@ -602,7 +602,7 @@ TEST_P(FilterGenTest, GenFilter) {
     plan_ctx->CreateOp<PhysicalTableProviderNode>(
         &table_provider2, catalog->GetTable("db", "t2"));
 
-    PhysicalJoinNode* join_node;
+    PhysicalJoinNode* join_node = nullptr;
     plan_ctx->CreateOp<PhysicalJoinNode>(
         &join_node, table_provider1, table_provider2, node::kJoinTypeConcat);
 
