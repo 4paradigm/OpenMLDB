@@ -1815,6 +1815,7 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
                   : (request_key + range_gen_.end_offset_);
         rows_start_preceding = range_gen_.start_row_;
     }
+    DLOG(INFO) << "RequestUnionRunner AddRow " << request_key;
     window_table->AddRow(request_key, request);
     // Prepare Union Window
     auto union_inputs = windows_union_gen_.RunInputs(ctx);
@@ -1871,6 +1872,7 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
         max_union_pos =
             IteratorStatus::PickIteratorWithMaximizeKey(&union_segment_status);
     }
+    DLOG(INFO) << "request union window table size " << window_table->GetCount();
     return window_table;
 }
 
