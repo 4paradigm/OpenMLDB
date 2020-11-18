@@ -339,7 +339,7 @@ BENCHMARK(BM_SimpleRowWindow)->Args({4})
     ->Args({100})
     ->Args({1000})
     ->Args({10000})
-    ->Args({100000})
+    ->Args({100000});
 
 BENCHMARK(BM_SimpleQueryFunction);
 
