@@ -12,7 +12,6 @@ class TestSelect(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.driver = fesql_test.getDriver()
         cls.engine = fesql_test.getEngine()
         cls.connection = cls.engine.connect()
 
