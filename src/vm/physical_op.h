@@ -888,7 +888,7 @@ class WindowUnionList {
         }
         return iter->first;
     }
-    std::vector<std::pair<PhysicalOpNode *, WindowOp>> window_unions_;
+    std::list<std::pair<PhysicalOpNode *, WindowOp>> window_unions_;
 };
 
 class RequestWindowUnionList {
@@ -899,11 +899,20 @@ class RequestWindowUnionList {
         window_unions_.push_back(std::make_pair(node, window));
     }
     const PhysicalOpNode *GetKey(uint32_t index) {
-        return window_unions_[index].first;
+        auto iter = window_unions_.begin();
+        for (uint32_t i = 0; i < index; ++i) {
+            ++iter;
+        }
+        return iter->first;
+        // return window_unions_[index].first;
     }
 
-    const RequestWindowOp &GetValue(uint32_t index) {
-        return window_unions_[index].second;
+    const RequestWindowOp &G                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    etValue(uint32_t index) {
+        auto iter = window_unions_.begin();
+        for (uint32_t i = 0; i < index; ++i) {
+            ++iter;
+        }
+        return iter->second;
     }
 
     const uint32_t GetSize() { return window_unions_.size(); }
@@ -916,7 +925,7 @@ class RequestWindowUnionList {
         return oss.str();
     }
     const bool Empty() const { return window_unions_.empty(); }
-    std::vector<std::pair<PhysicalOpNode *, RequestWindowOp>> window_unions_;
+    std::list<std::pair<PhysicalOpNode *, RequestWindowOp>> window_unions_;
 };
 
 class PhysicalWindowNode : public PhysicalUnaryNode, public WindowOp {
