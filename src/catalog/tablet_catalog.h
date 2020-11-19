@@ -270,6 +270,11 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     void SetLocalTablet(std::shared_ptr<::fesql::vm::Tablet> local_tablet) { local_tablet_ = local_tablet; }
 
+    const std::shared_ptr<::fesql::sdk::ProcedureInfo> GetProcedureInfo(const std::string& db,
+            const std::string& sp_name) override;
+
+    const Procedures& GetProcedures();
+
  private:
     ::rtidb::base::SpinMutex mu_;
     TabletTables tables_;

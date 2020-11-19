@@ -317,7 +317,7 @@ bool TabletCatalog::AddProcedure(const std::string& db, const std::string& sp_na
     std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
     auto& sp_map = db_sp_map_[db];
     if (sp_map.find(sp_name) != sp_map.end()) {
-        LOG(WARNING) << "procedure " << sp_name << "already exist in db " << db;
+        LOG(WARNING) << "procedure " << sp_name << " already exist in db " << db;
         return false;
     }
     sp_map.insert({sp_name, sp_info});
@@ -328,13 +328,13 @@ bool TabletCatalog::DropProcedure(const std::string& db, const std::string& sp_n
     std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
     auto db_it = db_sp_map_.find(db);
     if (db_it == db_sp_map_.end()) {
-        LOG(WARNING) << "db " << db << "not exist";
+        LOG(WARNING) << "db " << db << " not exist";
         return false;
     }
     auto& sp_map = db_it->second;
     auto it = sp_map.find(sp_name);
     if (it == sp_map.end()) {
-        LOG(WARNING) << "procedure " << sp_name << "not exist in db " << db;
+        LOG(WARNING) << "procedure " << sp_name << " not exist in db " << db;
         return false;
     }
     sp_map.erase(it);
@@ -407,6 +407,26 @@ bool TabletCatalog::UpdateClient(const std::map<std::string, std::string>& real_
 }
 
 uint64_t TabletCatalog::GetVersion() const { return version_.load(std::memory_order_relaxed); }
+
+const std::shared_ptr<::fesql::sdk::ProcedureInfo> TabletCatalog::GetProcedureInfo(
+        const std::string& db, const std::string& sp_name) {
+    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    auto db_sp_it = db_sp_map_.find(db);
+    if (db_sp_it == db_sp_map_.end()) {
+        return nullptr;
+    }
+    auto& map = db_sp_it->second;
+    auto sp_it = map.find(sp_name);
+    if (sp_it == map.end()) {
+        return nullptr;
+    }
+    return sp_it->second;
+}
+
+const Procedures& TabletCatalog::GetProcedures() {
+    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    return db_sp_map_;
+}
 
 }  // namespace catalog
 }  // namespace rtidb

@@ -444,8 +444,6 @@ class NameServerImpl : public NameServer {
 
     bool RecoverTableInfo();
 
-    bool RecoverProcedureInfo();
-
     void RecoverClusterInfo();
 
     bool RecoverOPTask();
