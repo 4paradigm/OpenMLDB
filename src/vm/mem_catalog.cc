@@ -139,8 +139,8 @@ void MemTimeTableHandler::Sort(const bool is_asc) {
 void MemTimeTableHandler::Reverse() {
     std::reverse(table_.begin(), table_.end());
     order_type_ = kAscOrder == order_type_
-                  ? kDescOrder
-                  : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
+                      ? kDescOrder
+                      : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
 }
 RowIterator* MemTimeTableHandler::GetRawIterator() const {
     return new MemTimeTableIterator(&table_, schema_);
@@ -208,8 +208,8 @@ void MemPartitionHandler::Reverse() {
         std::reverse(segment.second.begin(), segment.second.end());
     }
     order_type_ = kAscOrder == order_type_
-                  ? kDescOrder
-                  : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
+                      ? kDescOrder
+                      : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
 }
 void MemPartitionHandler::Print() {
     for (auto iter = partitions_.cbegin(); iter != partitions_.cend(); iter++) {
@@ -269,8 +269,8 @@ void MemTableHandler::AddRow(const Row& row) {
 void MemTableHandler::Reverse() {
     std::reverse(table_.begin(), table_.end());
     order_type_ = kAscOrder == order_type_
-                  ? kDescOrder
-                  : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
+                      ? kDescOrder
+                      : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
 }
 MemTableHandler::~MemTableHandler() {}
 MemTableIterator::MemTableIterator(const MemTable* table,
