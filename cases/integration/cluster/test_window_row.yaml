@@ -159,7 +159,7 @@ cases:
 
   - id: 4
     desc: 简单rows window, union副表, 主表不进入窗口 40w
-    mode: batch-unsupport
+    tags: ["TODO", "@baoxinqi, batch request unsupport"]
     inputs:
       - columns: [ "id int", "c1 string","c6 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]
@@ -181,7 +181,7 @@ cases:
         - [ 2, "aa", 4.0, 1590738993000, 400001, 2 ]
   - id: 5
     desc: 简单rows window, union副表, 主表不进入窗口3 40w
-    mode: batch-unsupport
+    mode: batch-request-unsupport
     tags: ["TODO", "@baoxinqi, @chenjing大窗口编译发生core"]
     inputs:
       - columns: [ "id int", "c1 string","c6 double","c7 timestamp" ]
