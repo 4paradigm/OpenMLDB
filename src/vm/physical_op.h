@@ -907,7 +907,7 @@ class RequestWindowUnionList {
         // return window_unions_[index].first;
     }
 
-    const RequestWindowOp &G                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    etValue(uint32_t index) {
+    const RequestWindowOp &GetValue(uint32_t index) {
         auto iter = window_unions_.begin();
         for (uint32_t i = 0; i < index; ++i) {
             ++iter;
