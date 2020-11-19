@@ -72,7 +72,6 @@ public class DDLEngine {
             }
             String res = sb.toString();
             logger.info("gen ddl:" +  res);
-            System.out.printf(res);
             return res;
         } catch (UnsupportedFesqlException | FesqlException e) {
             e.printStackTrace();
