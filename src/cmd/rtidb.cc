@@ -81,6 +81,9 @@ DECLARE_uint32(max_col_display_length);
 DECLARE_bool(version);
 DECLARE_bool(use_name);
 DECLARE_string(data_dir);
+#ifdef __rdma__
+DECLARE_bool(use_rdma);
+#endif
 
 static std::map<std::string, std::string> real_ep_map;
 
@@ -149,6 +152,9 @@ void StartNameServer() {
     }
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
+#ifdef __rdma__
+    options.use_rdma = FLAGS_use_rdma;
+#endif
     brpc::Server server;
     if (server.AddService(name_server, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
@@ -251,6 +257,9 @@ void StartTablet() {
     }
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
+#ifdef __rdma__
+    options.use_rdma = FLAGS_use_rdma;
+#endif
     brpc::Server server;
     if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
@@ -300,6 +309,9 @@ void StartBlobProxy() {
     }
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
+#ifdef __rdma__
+    options.use_rdma = FLAGS_use_rdma;
+#endif
     brpc::Server server;
     if (server.AddService(proxy, brpc::SERVER_DOESNT_OWN_SERVICE,
                           "/v1/get/* => Get") != 0) {
@@ -339,6 +351,9 @@ void StartBlob() {
     }
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
+#ifdef __rdma__
+    options.use_rdma = FLAGS_use_rdma;
+#endif
     brpc::Server server;
     if (server.AddService(server_impl, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
@@ -6627,6 +6642,9 @@ void StartBsClient() {
 }
 
 int main(int argc, char* argv[]) {
+    #ifdef __rdma__
+    std::cout << "rdma is enabled" << std::endl;
+    #endif
     {
         std::ostringstream ss;
         ss << RTIDB_VERSION_MAJOR << ".";
