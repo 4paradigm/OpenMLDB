@@ -37,7 +37,7 @@
     对于每一列的column id可能有几种情况：
     - `child_idx == -1` 该列为当前物理节点新产生的列
     - `child_idx >= 0 && column_id == child_column_id` 从第`child_idx`个输入节点而来的值溯源列
-    - `child_idx >= 0 && column_id == child_column_id` 从第`child_idx`个输入节点而来的非值溯源列
+    - `child_idx >= 0 && column_id != child_column_id` 从第`child_idx`个输入节点而来的非值溯源列
 
 - 理论上可以从节点的SchemaSource做任何列解析工作
 

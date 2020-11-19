@@ -1046,7 +1046,8 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const node::JoinType join_type)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
-          join_(join_type) {
+          join_(join_type),
+          joined_schemas_ctx_(this) {
         output_type_ = left->GetOutputType();
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
@@ -1054,7 +1055,8 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::OrderByNode *orders,
                      const node::ExprNode *condition)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
-          join_(join_type, orders, condition) {
+          join_(join_type, orders, condition),
+          joined_schemas_ctx_(this) {
         output_type_ = left->GetOutputType();
 
         RegisterFunctionInfo();
@@ -1065,7 +1067,8 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprListNode *left_keys,
                      const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
-          join_(join_type, condition, left_keys, right_keys) {
+          join_(join_type, condition, left_keys, right_keys),
+          joined_schemas_ctx_(this) {
         output_type_ = left->GetOutputType();
 
         RegisterFunctionInfo();
@@ -1077,14 +1080,17 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprListNode *left_keys,
                      const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
-          join_(join_type, orders, condition, left_keys, right_keys) {
+          join_(join_type, orders, condition, left_keys, right_keys),
+          joined_schemas_ctx_(this) {
         output_type_ = left->GetOutputType();
 
         RegisterFunctionInfo();
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const Join &join)
-        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false), join_(join) {
+        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
+          join_(join),
+          joined_schemas_ctx_(this) {
         output_type_ = left->GetOutputType();
 
         RegisterFunctionInfo();
@@ -1102,7 +1108,11 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     static PhysicalJoinNode *CastFrom(PhysicalOpNode *node);
     const bool Valid() { return true; }
     const Join &join() const { return join_; }
+    const SchemasContext *joined_schemas_ctx() const {
+        return &joined_schemas_ctx_;
+    }
     Join join_;
+    SchemasContext joined_schemas_ctx_;
 };
 
 class PhysicalRequestJoinNode : public PhysicalBinaryNode {
@@ -1111,6 +1121,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
                             const node::JoinType join_type)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false),
           join_(join_type),
+          joined_schemas_ctx_(this),
           output_right_only_(false) {
         output_type_ = kSchemaTypeRow;
         RegisterFunctionInfo();
@@ -1121,6 +1132,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
                             const node::ExprNode *condition)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false),
           join_(join_type, orders, condition),
+          joined_schemas_ctx_(this),
           output_right_only_(false) {
         output_type_ = kSchemaTypeRow;
         RegisterFunctionInfo();
@@ -1129,6 +1141,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
                             const Join &join, const bool output_right_only)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false),
           join_(join),
+          joined_schemas_ctx_(this),
           output_right_only_(output_right_only) {
         output_type_ = kSchemaTypeRow;
         RegisterFunctionInfo();
@@ -1142,6 +1155,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
                             const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false),
           join_(join_type, condition, left_keys, right_keys),
+          joined_schemas_ctx_(this),
           output_right_only_(false) {
         output_type_ = kSchemaTypeRow;
         RegisterFunctionInfo();
@@ -1154,6 +1168,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
                             const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false),
           join_(join_type, orders, condition, left_keys, right_keys),
+          joined_schemas_ctx_(this),
           output_right_only_(false) {
         output_type_ = kSchemaTypeRow;
         RegisterFunctionInfo();
@@ -1172,7 +1187,11 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const Join &join() const { return join_; }
     const bool output_right_only() const { return output_right_only_; }
+    const SchemasContext *joined_schemas_ctx() const {
+        return &joined_schemas_ctx_;
+    }
     Join join_;
+    SchemasContext joined_schemas_ctx_;
     const bool output_right_only_;
 };
 

@@ -19,11 +19,11 @@ using fesql::common::kColumnNotFound;
 
 size_t SchemaSource::GetColumnID(size_t idx) const { return column_ids_[idx]; }
 
-const std::string& SchemaSource::GetName(size_t idx) const {
+const std::string& SchemaSource::GetColumnName(size_t idx) const {
     return schema_->Get(idx).name();
 }
 
-const fesql::type::Type SchemaSource::GetType(size_t idx) const {
+const fesql::type::Type SchemaSource::GetColumnType(size_t idx) const {
     return schema_->Get(idx).type();
 }
 
@@ -32,9 +32,9 @@ bool SchemaSource::IsSourceColumn(size_t idx) const {
 }
 
 bool SchemaSource::IsStrictSourceColumn(size_t idx) const {
-    int column_id = GetSourceColumnID(idx);
-    return GetSourceChildIdx(idx) >= 0 && column_id >= 0 &&
-           static_cast<size_t>(column_id) == GetColumnID(idx);
+    size_t column_id = source_child_column_ids_[idx];
+    return GetSourceChildIdx(idx) >= 0 && column_id > 0 &&
+           column_id == GetColumnID(idx);
 }
 
 int SchemaSource::GetSourceChildIdx(size_t idx) const {
@@ -42,7 +42,7 @@ int SchemaSource::GetSourceChildIdx(size_t idx) const {
 }
 
 int SchemaSource::GetSourceColumnID(size_t idx) const {
-    return source_child_column_ids_[idx];
+    return source_child_idxs_[idx] >= 0 ? source_child_column_ids_[idx] : 0;
 }
 
 bool SchemaSource::CheckSourceSetIndex(size_t idx) const {
@@ -64,7 +64,7 @@ void SchemaSource::SetSchema(const codec::Schema* schema) {
     schema_ = schema;
     column_ids_.resize(schema->size(), 0);
     source_child_idxs_ = std::vector<int>(schema->size(), -1);
-    source_child_column_ids_ = std::vector<int>(schema->size(), -1);
+    source_child_column_ids_ = std::vector<size_t>(schema->size(), 0);
 }
 
 void SchemaSource::SetSourceName(const std::string& name) {
@@ -87,7 +87,7 @@ void SchemaSource::SetNonSource(size_t idx) {
         return;
     }
     source_child_idxs_[idx] = -1;
-    source_child_column_ids_[idx] = -1;
+    source_child_column_ids_[idx] = 0;
 }
 
 void SchemaSource::SetColumnID(size_t idx, size_t column_id) {
@@ -474,8 +474,6 @@ Status SchemasContext::ResolveColumnID(
             while (path_idx >= 0 && child_column_id >= 0 &&
                    cur_node != nullptr) {
                 cur_node = cur_node->GetProducer(path_idx);
-
-                // LOG(INFO) << "trace: " << cur_node->GetTreeString();
                 auto child_ctx = cur_node->schemas_ctx();
                 size_t child_schema_idx;
                 size_t child_col_idx;

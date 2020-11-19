@@ -51,6 +51,33 @@ int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
     return total_offset;
 }
 
+const std::string* CoreAPI::ResolveSourceColumnName(
+    fesql::vm::PhysicalOpNode* node, fesql::node::ColumnRefNode* expr) {
+    const SchemasContext* schemas_ctx = node->schemas_ctx();
+    auto column_expr = dynamic_cast<const node::ColumnRefNode*>(expr);
+    size_t column_id;
+    int child_path_idx;
+    size_t child_column_id;
+    size_t source_column_id;
+    const PhysicalOpNode* source_node = nullptr;
+    auto status = schemas_ctx->ResolveColumnID(
+        column_expr->GetRelationName(), column_expr->GetColumnName(),
+        &column_id, &child_path_idx, &child_column_id, &source_column_id,
+        &source_node);
+    if (!status.isOK() || source_node == nullptr) {
+        LOG(WARNING) << "Fail to resolve column "
+                     << column_expr->GetExprString();
+        return nullptr;
+    }
+    size_t schema_idx;
+    size_t col_idx;
+    status = source_node->schemas_ctx()->ResolveColumnIndexByID(
+        source_column_id, &schema_idx, &col_idx);
+    return &source_node->schemas_ctx()
+                ->GetSchemaSource(schema_idx)
+                ->GetColumnName(col_idx);
+}
+
 GroupbyInterface::GroupbyInterface(const fesql::codec::Schema& schema)
     : mem_table_handler_(new vm::MemTableHandler(&schema)) {}
 

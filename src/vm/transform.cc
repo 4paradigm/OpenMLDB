@@ -795,7 +795,7 @@ Status ExtractProjectInfos(const node::PlanNodeList& projects,
                  ++slice) {
                 auto schema_source = schemas_ctx->GetSchemaSource(slice);
                 for (size_t k = 0; k < schema_source->size(); ++k) {
-                    auto col_name = schema_source->GetName(k);
+                    auto col_name = schema_source->GetColumnName(k);
                     auto col_ref = node_manager->MakeColumnRefNode(
                         col_name, all_expr->GetRelationName());
                     output->Add(col_name, col_ref, nullptr);
@@ -1292,7 +1292,15 @@ Status BatchModeTransformer::GenFnDef(const node::FuncDefPlanNode* fn_plan) {
 }
 
 Status BatchModeTransformer::GenJoin(Join* join, PhysicalOpNode* in) {
-    CHECK_STATUS(GenConditionFilter(&join->condition_, in->schemas_ctx()));
+    const SchemasContext* joined_ctx = nullptr;
+    if (in->GetOpType() == kPhysicalOpJoin) {
+        joined_ctx = dynamic_cast<PhysicalJoinNode*>(in)->joined_schemas_ctx();
+    } else if (in->GetOpType() == kPhysicalOpRequestJoin) {
+        joined_ctx =
+            dynamic_cast<PhysicalRequestJoinNode*>(in)->joined_schemas_ctx();
+    }
+    CHECK_TRUE(joined_ctx != nullptr, kPlanError);
+    CHECK_STATUS(GenConditionFilter(&join->condition_, joined_ctx));
     CHECK_STATUS(GenKey(&join->left_key_, in->producers()[0]->schemas_ctx()));
     CHECK_STATUS(GenKey(&join->index_key_, in->producers()[0]->schemas_ctx()));
     CHECK_STATUS(GenKey(&join->right_key_, in->producers()[1]->schemas_ctx()));
@@ -2657,7 +2665,11 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
     DLOG(INFO) << "join resolved related columns: \n" << oss.str();
     ColumnProjects simplified_projects;
     for (auto column : columns) {
-        simplified_projects.Add(column->GetExprString(), column, nullptr);
+        Status status = CheckExprDependOnChildOnly(column, left->schemas_ctx());
+        if (status.isOK()) {
+            // column depend on left
+            simplified_projects.Add(column->GetExprString(), column, nullptr);
+        }
     }
     if (simplified_projects.size() < left->GetOutputSchemaSize()) {
         PhysicalSimpleProjectNode* simplify_project_op = nullptr;
@@ -2690,7 +2702,7 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     auto simplify_left = left;
                     if (!SimplifyJoinLeftInput(join_op, join_op->join(),
                                                &simplify_left)) {
-                        return false;
+                        LOG(WARNING) << "Simplify join left input failed";
                     }
                     Status status;
                     PhysicalRequestJoinNode* request_join_right_only = nullptr;

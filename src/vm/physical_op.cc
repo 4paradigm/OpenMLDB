@@ -424,6 +424,12 @@ Status PhysicalJoinNode::InitSchema(PhysicalPlanContext* ctx) {
     schemas_ctx_.Clear();
     schemas_ctx_.Merge(0, producers_[0]->schemas_ctx());
     schemas_ctx_.MergeWithNewID(1, producers_[1]->schemas_ctx(), ctx);
+
+    // join input schema context
+    joined_schemas_ctx_.Clear();
+    joined_schemas_ctx_.Merge(0, producers_[0]->schemas_ctx());
+    joined_schemas_ctx_.Merge(1, producers_[1]->schemas_ctx());
+    joined_schemas_ctx_.Build();
     return Status::OK();
 }
 
@@ -709,6 +715,12 @@ Status PhysicalRequestJoinNode::InitSchema(PhysicalPlanContext* ctx) {
     } else {
         schemas_ctx_.MergeWithNewID(1, producers_[1]->schemas_ctx(), ctx);
     }
+
+    // join input schema context
+    joined_schemas_ctx_.Clear();
+    joined_schemas_ctx_.Merge(0, producers_[0]->schemas_ctx());
+    joined_schemas_ctx_.Merge(1, producers_[1]->schemas_ctx());
+    joined_schemas_ctx_.Build();
     return Status::OK();
 }
 

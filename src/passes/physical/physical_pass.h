@@ -93,7 +93,7 @@ class PhysicalPlanContext {
     Status InitializeSourceIdMappings(const std::string& table_name);
 
     // manage column unique ids
-    size_t column_id_counter_ = 0;
+    size_t column_id_counter_ = 1;
     std::map<std::string, std::map<std::string, size_t>> table_column_id_map_;
     // TODO(xxx): pass in request name
     std::map<std::string, std::map<std::string, size_t>> request_column_id_map_;

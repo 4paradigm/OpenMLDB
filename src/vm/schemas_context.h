@@ -29,8 +29,8 @@ class SchemaSource {
  public:
     const fesql::codec::Schema* GetSchema() const { return schema_; }
     size_t GetColumnID(size_t idx) const;
-    const std::string& GetName(size_t idx) const;
-    const fesql::type::Type GetType(size_t idx) const;
+    const std::string& GetColumnName(size_t idx) const;
+    const fesql::type::Type GetColumnType(size_t idx) const;
     const std::string& GetSourceName() const;
 
     // build utility
@@ -64,7 +64,7 @@ class SchemaSource {
     // trace which child and which column id each column come from
     // -1 means the column is created from current node
     std::vector<int> source_child_idxs_;
-    std::vector<int> source_child_column_ids_;
+    std::vector<size_t> source_child_column_ids_;
 };
 
 /**

@@ -47,3 +47,18 @@ cases:
         - doc: 不能解析非当前表的源表列
           column_name: t1.col1
           is_error: true
+  - id: 2
+    desc: 对输入表做列筛选
+    db: db1
+    sql: select * from (select col1 as col11 from t1);
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string, std_ts:timestamp
+        index: index2:col2:col5
+    expect:
+      resolve_column:
+        - doc: 使用源表名解析源表列名
+          relation_name: t1
+          column_name: col1
+          is_error: true
+       
