@@ -31,9 +31,12 @@
 #include "codec/row.h"
 #include "storage/schema.h"
 #include "storage/table.h"
+#include "catalog/sdk_catalog.h"
 
 namespace rtidb {
 namespace catalog {
+
+using rtidb::catalog::Procedures;
 
 class TabletPartitionHandler;
 class TabletTableHandler;
@@ -230,7 +233,6 @@ class TabletTableHandler : public ::fesql::vm::TableHandler,
 
 typedef std::map<std::string, std::map<std::string, std::shared_ptr<TabletTableHandler>>> TabletTables;
 typedef std::map<std::string, std::shared_ptr<::fesql::type::Database>> TabletDB;
-typedef std::map<std::string, std::map<std::string, std::string>> TabletProcedures;
 
 class TabletCatalog : public ::fesql::vm::Catalog {
  public:
@@ -254,9 +256,11 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     bool DeleteDB(const std::string &db);
 
-    void RefreshTable(const std::vector<::rtidb::nameserver::TableInfo> &table_info_vec, uint64_t version);
+    void Refresh(const std::vector<::rtidb::nameserver::TableInfo> &table_info_vec, uint64_t version,
+            const Procedures& db_sp_map);
 
-    bool AddProcedure(const std::string &db, const std::string &sp_name, const std::string &sql);
+    bool AddProcedure(const std::string &db, const std::string &sp_name,
+            const std::shared_ptr<rtidb::catalog::ProcedureInfoImpl>& sp_info);
 
     bool DropProcedure(const std::string &db, const std::string &sp_name);
 
@@ -270,7 +274,7 @@ class TabletCatalog : public ::fesql::vm::Catalog {
     ::rtidb::base::SpinMutex mu_;
     TabletTables tables_;
     TabletDB db_;
-    TabletProcedures procedures_;
+    Procedures db_sp_map_;
     ClientManager client_manager_;
     std::atomic<uint64_t> version_;
     std::shared_ptr<::fesql::vm::Tablet> local_tablet_;

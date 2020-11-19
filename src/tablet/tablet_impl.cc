@@ -5075,7 +5075,55 @@ void TabletImpl::RefreshTableInfo() {
         }
         table_info_vec.push_back(std::move(table_info));
     }
-    catalog_->RefreshTable(table_info_vec, version);
+    // procedure part
+    std::string sp_root_path = zk_path_ + "/store_procedure/db_sp_data";
+    std::vector<std::string> sp_datas;
+    if (zk_client_->IsExistNode(sp_root_path) == 0) {
+        bool ok = zk_client_->GetChildren(sp_root_path, sp_datas);
+        if (!ok) {
+            LOG(WARNING) << "fail to get procedure list with path " << sp_root_path;
+            return;
+        }
+    } else {
+        LOG(INFO) << "no procedures in db";
+    }
+    rtidb::catalog::Procedures db_sp_map;
+    for (const auto& node : sp_datas) {
+        if (node.empty()) continue;
+        std::string value;
+        bool ok = zk_client_->GetNodeValue(
+                sp_root_path + "/" + node, value);
+        if (!ok) {
+            LOG(WARNING) << "fail to get procedure data. node: " << node;
+            continue;
+        }
+        std::string uncompressed;
+        ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
+        ::rtidb::api::ProcedureInfo sp_info;
+        ok = sp_info.ParseFromString(uncompressed);
+        if (!ok) {
+            LOG(WARNING) << "fail to parse procedure proto. node: " << node << " value: "<< value;
+            continue;
+        }
+        // conver to ProcedureInfoImpl
+        auto sp_info_impl = rtidb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info);
+        if (!sp_info_impl) {
+            LOG(WARNING) << "convert procedure info failed, sp_name: "
+                << sp_info.sp_name() << " db: " << sp_info.db_name();
+            continue;
+        }
+        auto it = db_sp_map.find(sp_info_impl->GetDbName());
+        if (it == db_sp_map.end()) {
+            std::map<std::string,
+                std::shared_ptr<fesql::sdk::ProcedureInfo>>
+                    sp_in_db = {{sp_info_impl->GetSpName(), sp_info_impl}};
+            db_sp_map.insert(std::make_pair(sp_info_impl->GetDbName(), sp_in_db));
+        } else {
+            it->second.insert(std::make_pair(sp_info_impl->GetSpName(), sp_info_impl));
+        }
+    }
+
+    catalog_->Refresh(table_info_vec, version, db_sp_map);
 }
 
 int TabletImpl::CheckDimessionPut(const ::rtidb::api::PutRequest* request,
@@ -6019,7 +6067,7 @@ void TabletImpl::CreateProcedure(RpcController* controller,
     if (!ok || session.GetCompileInfo() == nullptr) {
         response->set_msg(status.str());
         response->set_code(::rtidb::base::kSQLCompileError);
-        DLOG(WARNING) << "fail to compile sql " << sql;
+        LOG(WARNING) << "fail to compile sql " << sql;
         return;
     }
 
@@ -6035,11 +6083,18 @@ void TabletImpl::CreateProcedure(RpcController* controller,
     if (!ok || batch_session.GetCompileInfo() == nullptr) {
         response->set_msg(status.str());
         response->set_code(::rtidb::base::kSQLCompileError);
-        DLOG(WARNING) << "fail to compile batch request for sql " << sql;
+        LOG(WARNING) << "fail to compile batch request for sql " << sql;
         return;
     }
 
-    ok = catalog_->AddProcedure(db_name, sp_name, sql);
+    auto sp_info_impl = rtidb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info);
+    if (!sp_info_impl) {
+        response->set_msg(status.str());
+        response->set_code(::rtidb::base::kCreateProcedureFailedOnTablet);
+        LOG(WARNING) << "convert procedure info failed, sp_name: " << sp_name << " db: " << db_name;
+        return;
+    }
+    ok = catalog_->AddProcedure(db_name, sp_name, sp_info_impl);
     if (ok) {
         LOG(INFO) << "add procedure " << sp_name
             << " to catalog with db " << db_name;

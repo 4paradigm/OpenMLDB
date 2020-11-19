@@ -21,11 +21,15 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <vector>
+#include <memory>
 
 #include "glog/logging.h"
 #include "proto/common.pb.h"
 #include "vm/catalog.h"
 #include "proto/tablet.pb.h"
+#include "catalog/sdk_catalog.h"
+#include "sdk/base_impl.h"
 
 namespace rtidb {
 namespace catalog {
@@ -258,6 +262,32 @@ class SchemaAdapter {
                 return false;
         }
         return true;
+    }
+
+    static std::shared_ptr<rtidb::catalog::ProcedureInfoImpl> ConvertProcedureInfo(
+            const rtidb::api::ProcedureInfo& sp_info) {
+        ::fesql::vm::Schema fesql_in_schema;
+        if (!rtidb::catalog::SchemaAdapter::ConvertSchema(sp_info.input_schema(), &fesql_in_schema)) {
+            LOG(WARNING) << "fail to convert input schema";
+            return nullptr;
+        }
+        ::fesql::vm::Schema fesql_out_schema;
+        if (!rtidb::catalog::SchemaAdapter::ConvertSchema(sp_info.output_schema(), &fesql_out_schema)) {
+            LOG(WARNING) << "fail to convert output schema";
+            return nullptr;
+        }
+        ::fesql::sdk::SchemaImpl input_schema(fesql_in_schema);
+        ::fesql::sdk::SchemaImpl output_schema(fesql_out_schema);
+        std::vector<std::string> table_vec;
+        auto& tables = sp_info.tables();
+        for (const auto& table : tables) {
+            table_vec.push_back(table);
+        }
+        std::shared_ptr<rtidb::catalog::ProcedureInfoImpl> sp_info_impl =
+            std::make_shared<rtidb::catalog::ProcedureInfoImpl>(
+                    sp_info.db_name(), sp_info.sp_name(), sp_info.sql(), input_schema, output_schema,
+                    table_vec, sp_info.main_table());
+        return sp_info_impl;
     }
 };
 

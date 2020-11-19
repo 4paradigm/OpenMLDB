@@ -143,7 +143,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         ok = table_info->ParseFromString(value);
         if (!ok) {
             LOG(WARNING) << "fail to parse table proto with " << value;
-            return false;
+            continue;
         }
         DLOG(INFO) << "parse table " << table_info->name() << " ok";
         if (table_info->format_version() != 1) {
@@ -161,14 +161,14 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         DLOG(INFO) << "load table info with name " << table_info->name() << " in db " << table_info->db();
     }
 
-    Procedures sp_map;
-    for (uint32_t i = 0; i < sp_datas.size(); i++) {
-        if (sp_datas[i].empty()) continue;
+    Procedures db_sp_map;
+    for (const auto& node : sp_datas) {
+        if (node.empty()) continue;
         std::string value;
         bool ok = zk_client_->GetNodeValue(
-                sp_root_path_ + "/" + sp_datas[i], value);
+                sp_root_path_ + "/" + node, value);
         if (!ok) {
-            LOG(WARNING) << "fail to get procedure data";
+            LOG(WARNING) << "fail to get procedure data. node: " << node;
             continue;
         }
         std::string uncompressed;
@@ -176,48 +176,30 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         ::rtidb::api::ProcedureInfo sp_info;
         ok = sp_info.ParseFromString(uncompressed);
         if (!ok) {
-            LOG(WARNING) << "fail to parse procedure proto with " << value;
-            return false;
+            LOG(WARNING) << "fail to parse procedure proto. node: " << node << " value: "<< value;
+            continue;
         }
         DLOG(INFO) << "parse procedure " << sp_info.sp_name() << " ok";
         // conver to ProcedureInfoImpl
-        ::fesql::vm::Schema fesql_in_schema;
-        if (!rtidb::catalog::SchemaAdapter::ConvertSchema(
-                    sp_info.input_schema(), &fesql_in_schema)) {
-            LOG(WARNING) << "fail to convert input schema";
+        auto sp_info_impl = rtidb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info);
+        if (!sp_info_impl) {
+            LOG(WARNING) << "convert procedure info failed, sp_name: "
+                << sp_info.sp_name() << " db: " << sp_info.db_name();
             continue;
         }
-        ::fesql::vm::Schema fesql_out_schema;
-        if (!rtidb::catalog::SchemaAdapter::ConvertSchema(
-                    sp_info.output_schema(), &fesql_out_schema)) {
-            LOG(WARNING) << "fail to convert output schema";
-            continue;
-        }
-        ::fesql::sdk::SchemaImpl input_schema(fesql_in_schema);
-        ::fesql::sdk::SchemaImpl output_schema(fesql_out_schema);
-        std::vector<std::string> table_vec;
-        const auto& tables = sp_info.tables();
-        for (const auto& table : tables) {
-            table_vec.push_back(table);
-        }
-        std::shared_ptr<rtidb::catalog::ProcedureInfoImpl> sp_info_impl =
-            std::make_shared<rtidb::catalog::ProcedureInfoImpl>(
-                    sp_info.db_name(), sp_info.sp_name(), sp_info.sql(), input_schema, output_schema,
-                    table_vec, sp_info.main_table());
-
-        auto it = sp_map.find(sp_info_impl->GetDbName());
-        if (it == sp_map.end()) {
+        auto it = db_sp_map.find(sp_info_impl->GetDbName());
+        if (it == db_sp_map.end()) {
             std::map<std::string,
                      std::shared_ptr<fesql::sdk::ProcedureInfo>>
                      sp_in_db = {{sp_info_impl->GetSpName(), sp_info_impl}};
-            sp_map.insert(std::make_pair(sp_info_impl->GetDbName(), sp_in_db));
+            db_sp_map.insert(std::make_pair(sp_info_impl->GetDbName(), sp_in_db));
         } else {
             it->second.insert(std::make_pair(sp_info_impl->GetSpName(), sp_info_impl));
         }
         DLOG(INFO) << "load procedure info with sp name " << sp_info_impl->GetSpName()
             << " in db " << sp_info_impl->GetDbName();
     }
-    if (!new_catalog->Init(tables, sp_map)) {
+    if (!new_catalog->Init(tables, db_sp_map)) {
         LOG(WARNING) << "fail to init catalog";
         return false;
     }
@@ -412,8 +394,8 @@ std::vector<std::shared_ptr<fesql::sdk::ProcedureInfo>> ClusterSDK::GetProcedure
         return std::move(sp_infos);
     }
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-    auto& sp_map = catalog_->GetProcedures();
-    for (const auto& db_kv : sp_map) {
+    auto& db_sp_map = catalog_->GetProcedures();
+    for (const auto& db_kv : db_sp_map) {
         for (const auto& sp_kv : db_kv.second) {
             sp_infos.push_back(sp_kv.second);
         }

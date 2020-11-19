@@ -121,12 +121,12 @@ typedef std::map<std::string,
 class SDKCatalog : public ::fesql::vm::Catalog {
  public:
     explicit SDKCatalog(std::shared_ptr<ClientManager> client_manager) :
-        tables_(), db_(), client_manager_(client_manager), sp_map_() {}
+        tables_(), db_(), client_manager_(client_manager), db_sp_map_() {}
 
     ~SDKCatalog() {}
 
     bool Init(const std::vector<::rtidb::nameserver::TableInfo>& tables,
-            const Procedures& sp_map);
+            const Procedures& db_sp_map);
 
     std::shared_ptr<::fesql::type::Database> GetDatabase(const std::string& db) override {
         return std::shared_ptr<::fesql::type::Database>();
@@ -142,13 +142,13 @@ class SDKCatalog : public ::fesql::vm::Catalog {
     const std::shared_ptr<::fesql::sdk::ProcedureInfo> GetProcedureInfo(const std::string& db,
             const std::string& sp_name) override;
 
-    const Procedures& GetProcedures() { return sp_map_; }
+    const Procedures& GetProcedures() { return db_sp_map_; }
 
  private:
     SDKTables tables_;
     SDKDB db_;
     std::shared_ptr<ClientManager> client_manager_;
-    Procedures sp_map_;
+    Procedures db_sp_map_;
 };
 
 class ProcedureInfoImpl : public fesql::sdk::ProcedureInfo {

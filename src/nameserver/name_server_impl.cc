@@ -1363,9 +1363,7 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             tablet->ctime_ = ::baidu::common::timer::get_micros() / 1000;
             tablets_.insert(std::make_pair(*it, tablet));
             PDLOG(INFO, "add tablet client. endpoint[%s]", it->c_str());
-            tit = tablets_.find(*it);
-            thread_pool_.DelayTask(FLAGS_get_task_status_interval,
-                    boost::bind(&NameServerImpl::RecoverProcedureOnTablet, this, tit->second->client_->GetEndpoint()));
+            NotifyTableChanged();
         } else {
             if (tit->second->state_ != ::rtidb::api::TabletState::kTabletHealthy) {
                 if (FLAGS_use_name) {
@@ -1392,10 +1390,6 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
                 tit->second->ctime_ = ::baidu::common::timer::get_micros() / 1000;
                 PDLOG(INFO, "tablet is online. endpoint[%s]", tit->first.c_str());
                 thread_pool_.AddTask(boost::bind(&NameServerImpl::OnTabletOnline, this, tit->first));
-                tit = tablets_.find(*it);
-                thread_pool_.DelayTask(FLAGS_get_task_status_interval,
-                        boost::bind(&NameServerImpl::RecoverProcedureOnTablet, this,
-                            tit->second->client_->GetEndpoint()));
             }
         }
         PDLOG(INFO, "healthy tablet with endpoint[%s]", it->c_str());
@@ -10722,46 +10716,6 @@ void NameServerImpl::DropProcedure(RpcController* controller,
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
-}
-
-void NameServerImpl::RecoverProcedureOnTablet(const std::string& endpoint) {
-    std::shared_ptr<::rtidb::client::TabletClient> tb_client;
-    decltype(db_sp_info_) db_sp_info_tmp;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        auto it = tablets_.find(endpoint);
-        if (it == tablets_.end()) {
-            PDLOG(WARNING, "tablet [%s] not exist!", endpoint.c_str());
-            return;
-        }
-        tb_client = it->second->client_;
-        for (const auto& op_list : task_vec_) {
-            if (!op_list.empty()) {
-                thread_pool_.DelayTask(FLAGS_get_task_status_interval,
-                        boost::bind(&NameServerImpl::RecoverProcedureOnTablet, this, endpoint));
-                return;
-            }
-        }
-        db_sp_info_tmp = db_sp_info_;
-    }
-    for (auto& db_kv : db_sp_info_tmp) {
-        const std::string& db_name = db_kv.first;
-        for (auto& sp_kv : db_kv.second) {
-            const std::string& sp_name = sp_kv.first;
-            const std::string& sql = sp_kv.second->sql();
-            std::string msg;
-            ::rtidb::api::CreateProcedureRequest sp_request;
-            *sp_request.mutable_sp_info() = *sp_kv.second;
-            if (!tb_client->CreateProcedure(sp_request, msg)) {
-                PDLOG(WARNING,
-                        "create procedure on tablet failed. db_name[%s], sp_name[%s], sql[%s], endpoint[%s], msg[%s]",
-                        db_name.c_str(), sp_name.c_str(), sql.c_str(), tb_client->GetEndpoint().c_str(), msg.c_str());
-                continue;
-            }
-            PDLOG(INFO, "create procedure on tablet success. db_name[%s], sp_name[%s], sql[%s], endpoint[%s]",
-                    db_name.c_str(), sp_name.c_str(), sql.c_str(), tb_client->GetEndpoint().c_str());
-        }
-    }
 }
 
 }  // namespace nameserver

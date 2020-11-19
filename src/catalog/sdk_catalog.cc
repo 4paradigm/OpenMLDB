@@ -112,7 +112,7 @@ bool SDKTableHandler::GetTablet(std::vector<std::shared_ptr<TabletAccessor>>* ta
     return true;
 }
 
-bool SDKCatalog::Init(const std::vector<::rtidb::nameserver::TableInfo>& tables, const Procedures& sp_map) {
+bool SDKCatalog::Init(const std::vector<::rtidb::nameserver::TableInfo>& tables, const Procedures& db_sp_map) {
     for (size_t i = 0; i < tables.size(); i++) {
         const ::rtidb::nameserver::TableInfo& table_meta = tables[i];
         std::shared_ptr<SDKTableHandler> table = std::make_shared<SDKTableHandler>(table_meta, *client_manager_);
@@ -129,7 +129,7 @@ bool SDKCatalog::Init(const std::vector<::rtidb::nameserver::TableInfo>& tables,
         }
         db_it->second.insert(std::make_pair(table->GetName(), table));
     }
-    sp_map_ = sp_map;
+    db_sp_map_ = db_sp_map;
     return true;
 }
 
@@ -152,8 +152,8 @@ std::shared_ptr<TabletAccessor> SDKCatalog::GetTablet() const {
 
 const std::shared_ptr<::fesql::sdk::ProcedureInfo> SDKCatalog::GetProcedureInfo(
         const std::string& db, const std::string& sp_name) {
-    auto db_sp_it = sp_map_.find(db);
-    if (db_sp_it == sp_map_.end()) {
+    auto db_sp_it = db_sp_map_.find(db);
+    if (db_sp_it == db_sp_map_.end()) {
         return nullptr;
     }
     auto& map = db_sp_it->second;

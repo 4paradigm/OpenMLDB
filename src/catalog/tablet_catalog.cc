@@ -220,7 +220,8 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
     return client_tablet;
 }
 
-TabletCatalog::TabletCatalog() : mu_(), tables_(), db_(), client_manager_(), version_(1), local_tablet_() {}
+TabletCatalog::TabletCatalog()
+    : mu_(), tables_(), db_(), db_sp_map_(), client_manager_(), version_(1), local_tablet_() {}
 
 TabletCatalog::~TabletCatalog() {}
 
@@ -311,35 +312,37 @@ bool TabletCatalog::DeleteDB(const std::string& db) {
 
 bool TabletCatalog::IndexSupport() { return true; }
 
-bool TabletCatalog::AddProcedure(const std::string& db, const std::string& sp_name, const std::string& sql) {
+bool TabletCatalog::AddProcedure(const std::string& db, const std::string& sp_name,
+        const std::shared_ptr<rtidb::catalog::ProcedureInfoImpl>& sp_info) {
     std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
-    auto& sp_map = procedures_[db];
+    auto& sp_map = db_sp_map_[db];
     if (sp_map.find(sp_name) != sp_map.end()) {
-        LOG(WARNING) << "procedure " << sp_name << "already exist";
+        LOG(WARNING) << "procedure " << sp_name << "already exist in db " << db;
         return false;
     }
-    sp_map.insert({sp_name, sql});
+    sp_map.insert({sp_name, sp_info});
     return true;
 }
 
 bool TabletCatalog::DropProcedure(const std::string& db, const std::string& sp_name) {
     std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
-    auto db_it = procedures_.find(db);
-    if (db_it == procedures_.end()) {
+    auto db_it = db_sp_map_.find(db);
+    if (db_it == db_sp_map_.end()) {
         LOG(WARNING) << "db " << db << "not exist";
         return false;
     }
     auto& sp_map = db_it->second;
     auto it = sp_map.find(sp_name);
     if (it == sp_map.end()) {
-        LOG(WARNING) << "procedure " << sp_name << "not exist";
+        LOG(WARNING) << "procedure " << sp_name << "not exist in db " << db;
         return false;
     }
     sp_map.erase(it);
     return true;
 }
 
-void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInfo>& table_info_vec, uint64_t version) {
+void TabletCatalog::Refresh(const std::vector<::rtidb::nameserver::TableInfo>& table_info_vec,
+        uint64_t version, const Procedures& db_sp_map) {
     std::map<std::string, std::set<std::string>> table_map;
     for (const auto& table_info : table_info_vec) {
         const std::string& db_name = table_info.db();
@@ -394,6 +397,7 @@ void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInf
         }
         ++db_it;
     }
+    db_sp_map_ = db_sp_map;
     version_.store(version, std::memory_order_relaxed);
     LOG(INFO) << "refresh catalog. version " << version;
 }
