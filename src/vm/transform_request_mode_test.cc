@@ -361,7 +361,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 order by t2.col5 on "
             " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
-            "SIMPLE_PROJECT(sources=(#8, #30))\n"
+            "SIMPLE_PROJECT(sources=(#9, #31))\n"
             "  REQUEST_JOIN(type=LastJoin, right_sort=(t2.col5) ASC, "
             "condition=t2.col5 >= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col2), index_keys=)\n"
@@ -371,7 +371,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 order by t2.col5 on "
             " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
-            "SIMPLE_PROJECT(sources=(#8, #30))\n"
+            "SIMPLE_PROJECT(sources=(#9, #31))\n"
             "  REQUEST_JOIN(type=LastJoin, right_sort=() ASC, "
             "condition=t2.col5 >= t1.col5, "
             "left_keys=(), right_keys=(), index_keys=(t1.col1))\n"

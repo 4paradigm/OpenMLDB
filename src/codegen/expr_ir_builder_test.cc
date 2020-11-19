@@ -699,7 +699,7 @@ TEST_F(ExprIRBuilderTest, test_get_field) {
         auto row_type =
             dynamic_cast<const node::RowTypeNode *>(input->GetOutputType());
         auto source = row_type->schemas_ctx()->GetSchemaSource(0);
-        auto column_name = source->GetName(idx);
+        auto column_name = source->GetColumnName(idx);
         auto column_id = source->GetColumnID(idx);
         return nm->MakeGetFieldExpr(input, column_name, column_id);
     };

@@ -647,7 +647,7 @@ INSTANTIATE_TEST_CASE_P(
             "c3 as col3 from tc) group by col3, col2, col1;",
             "PROJECT(type=GroupAggregation, group_keys=(col3,col2,col1))\n"
             "  GROUP_BY(group_keys=(col3))\n"
-            "    SIMPLE_PROJECT(sources=(#1, #2, #3))\n"
+            "    SIMPLE_PROJECT(sources=(#2, #3, #4))\n"
             "      DATA_PROVIDER(type=Partition, table=tc, "
             "index=index12_tc)")));
 
@@ -703,7 +703,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 order by t2.col5 on "
             " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
-            "SIMPLE_PROJECT(sources=(#1, #30))\n"
+            "SIMPLE_PROJECT(sources=(#2, #31))\n"
             "  JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=t2.col5 "
             ">= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col2), index_keys=)\n"
@@ -714,7 +714,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 order by t2.col5 on "
             " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
-            "SIMPLE_PROJECT(sources=(#1, #30))\n"
+            "SIMPLE_PROJECT(sources=(#2, #31))\n"
             "  JOIN(type=LastJoin, right_sort=() ASC, condition=t2.col5 >= "
             "t1.col5, left_keys=(), "
             "right_keys=(), index_keys=(t1.col1))\n"
@@ -873,14 +873,14 @@ INSTANTIATE_TEST_CASE_P(
         // SIMPLE SELECT COLUMNS
         std::make_pair("SELECT COL0, COL1, COL2, COL6 FROM t1 LIMIT 10;",
                        "LIMIT(limit=10)\n"
-                       "  SIMPLE_PROJECT(sources=(#0, #1, #2, #6))\n"
+                       "  SIMPLE_PROJECT(sources=(#1, #2, #3, #7))\n"
                        "    DATA_PROVIDER(table=t1)"),
         // SIMPLE SELECT COLUMNS and CONST VALUES
         std::make_pair(
             "SELECT c0 as col0, c1 as col1, c2 as col2, 0.0f as col3, 0.0 as "
             "col4, c5 as col5, c6 as col6 from tb LIMIT 10;\n",
             "LIMIT(limit=10)\n"
-            "  SIMPLE_PROJECT(sources=(#0, #1, #2, #14, #15, #5, #6))\n"
+            "  SIMPLE_PROJECT(sources=(#1, #2, #3, #15, #16, #6, #7))\n"
             "    DATA_PROVIDER(table=tb)"),
         // SIMPLE SELECT FROM SIMPLE SELECT FROM SIMPLE SELECT
         std::make_pair(
@@ -889,7 +889,7 @@ INSTANTIATE_TEST_CASE_P(
             "as col2, 0.0f as col3, 0.0 as "
             "col4, c5 as col5, c6 as col6 from tb)) LIMIT 10;\n",
             "LIMIT(limit=10)\n"
-            "  SIMPLE_PROJECT(sources=(#0, #1, #2, #18, #19))\n"
+            "  SIMPLE_PROJECT(sources=(#1, #2, #3, #19, #20))\n"
             "    DATA_PROVIDER(table=tb)"),
         // SIMPLE SELECT COLUMNS and CONST VALUES
         std::make_pair(
@@ -898,7 +898,7 @@ INSTANTIATE_TEST_CASE_P(
             "col4, c5 as col5, c6 as col6 from tb) LIMIT 10;\n",
             "LIMIT(limit=10, optimized)\n"
             "  PROJECT(type=TableProject, limit=10)\n"
-            "    SIMPLE_PROJECT(sources=(#0, #1, #2, #14, #15, #5, #6))\n"
+            "    SIMPLE_PROJECT(sources=(#1, #2, #3, #15, #16, #6, #7))\n"
             "      DATA_PROVIDER(table=tb)"),
         // SIMPLE SELECT COLUMNS and CONST VALUES
         std::make_pair(
@@ -914,8 +914,8 @@ INSTANTIATE_TEST_CASE_P(
             "0))\n"
             "    +-UNION(partition_keys=(col1,col2), orders=(col5) ASC, "
             "range=(col5, -3, 0))\n"
-            "        SIMPLE_PROJECT(sources=(#15, #16, #17, #29, #30, #20, "
-            "#21))\n"
+            "        SIMPLE_PROJECT(sources=(#16, #17, #18, #30, #31, #21, "
+            "#22))\n"
             "          DATA_PROVIDER(table=tb)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)"),
         // SIMPLE SELECT COLUMNS and CONST VALUES
@@ -932,8 +932,8 @@ INSTANTIATE_TEST_CASE_P(
             "0))\n"
             "    +-UNION(partition_keys=(), orders=() ASC, range=(col5, -3, "
             "0))\n"
-            "        SIMPLE_PROJECT(sources=(#15, #16, #17, #31, #32, #20, "
-            "#21))\n"
+            "        SIMPLE_PROJECT(sources=(#16, #17, #18, #32, #33, #21, "
+            "#22))\n"
             "          DATA_PROVIDER(type=Partition, table=tc, "
             "index=index12_tc)\n"
             "    DATA_PROVIDER(type=Partition, table=t1, index=index12)")));
@@ -1027,7 +1027,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 order by t2.col5 on "
             " t1.col1 = t2.col2 and t2.col5 >= t1.col5;",
-            "SIMPLE_PROJECT(sources=(#1, #30))\n"
+            "SIMPLE_PROJECT(sources=(#2, #31))\n"
             "  JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=t2.col5 "
             ">= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col2), index_keys=)\n"
@@ -1038,7 +1038,7 @@ INSTANTIATE_TEST_CASE_P(
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join "
             "t2 order by t2.col5 on "
             " t1.col1 = t2.col1 and t2.col5 >= t1.col5;",
-            "SIMPLE_PROJECT(sources=(#1, #30))\n"
+            "SIMPLE_PROJECT(sources=(#2, #31))\n"
             "  JOIN(type=LastJoin, right_sort=(t2.col5) ASC, condition=t2.col5 "
             ">= t1.col5, "
             "left_keys=(t1.col1), right_keys=(t2.col1), index_keys=)\n"
