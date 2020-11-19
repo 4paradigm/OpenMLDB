@@ -21,7 +21,7 @@ import java.util.ArrayList;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @State(Scope.Benchmark)
-@Threads(10)
+@Threads(2)
 @Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
 @Warmup(iterations = 1)
 
@@ -31,8 +31,8 @@ public class FESQLClusterBenchmark {
     private String db = "db" + System.nanoTime();
     private Map<String, Map<String, String>> tables = new HashMap<>();
     private String partitionNum = "1";
-    private int pkNum = 1;
-    private int windowNum = 1;
+    private int pkNum = 10;
+    private int windowNum = 10;
     private String previousApplication = "create table `previous_application`(" +
             "`SK_ID_PREV` bigint," +
             "`SK_ID_CURR` bigint," +
@@ -420,12 +420,12 @@ public class FESQLClusterBenchmark {
             "    AMT_REQ_CREDIT_BUREAU_MON as main_AMT_REQ_CREDIT_BUREAU_MON_119," +
             "    AMT_REQ_CREDIT_BUREAU_QRT as main_AMT_REQ_CREDIT_BUREAU_QRT_120," +
             "    AMT_REQ_CREDIT_BUREAU_YEAR as main_AMT_REQ_CREDIT_BUREAU_YEAR_121," +
-            "    `time` as main_time_122" +
+            "    `time` as main_time_122 " +
             "from" +
             "    main" +
             "    )" +
-            "as out0" +
-            "last join" +
+            "as out0 " +
+            "last join " +
             "(" +
             "select" +
             "    SK_ID_CURR as SK_ID_CURR_124," +
@@ -440,13 +440,13 @@ public class FESQLClusterBenchmark {
             "    max(SK_DPD_DEF) over POS_CASH_balance_SK_ID_CURR_time_0s_32d as POS_CASH_balance_SK_DPD_DEF_131," +
             "    avg(SK_DPD_DEF) over POS_CASH_balance_SK_ID_CURR_time_0s_32d as POS_CASH_balance_SK_DPD_DEF_132," +
             "    distinct_count(NAME_CONTRACT_STATUS) over POS_CASH_balance_SK_ID_CURR_time_0s_32d as POS_CASH_balance_NAME_CONTRACT_STATUS_133," +
-            "    distinct_count(SK_ID_PREV) over POS_CASH_balance_SK_ID_CURR_time_0s_32d as POS_CASH_balance_SK_ID_PREV_134" +
+            "    distinct_count(SK_ID_PREV) over POS_CASH_balance_SK_ID_CURR_time_0s_32d as POS_CASH_balance_SK_ID_PREV_134 " +
             "from" +
             "    (select bigint(0) as SK_ID_PREV, SK_ID_CURR as SK_ID_CURR, bigint(0) as MONTHS_BALANCE, double(0) as CNT_INSTALMENT, double(0) as CNT_INSTALMENT_FUTURE, '' as NAME_CONTRACT_STATUS, bigint(0) as SK_DPD, bigint(0) as SK_DPD_DEF, `time` as `time` from main)" +
             "    window POS_CASH_balance_SK_ID_CURR_time_0s_32d as (" +
             "UNION POS_CASH_balance partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
-            "as out1" +
-            "on out0.SK_ID_CURR_1 = out1.SK_ID_CURR_124" +
+            "as out1 " +
+            "on out0.SK_ID_CURR_1 = out1.SK_ID_CURR_124 " +
             "last join" +
             "(" +
             "select" +
@@ -477,26 +477,26 @@ public class FESQLClusterBenchmark {
             "    min(DAYS_ENDDATE_FACT) over bureau_SK_ID_CURR_time_0s_32d as bureau_DAYS_ENDDATE_FACT_158," +
             "    distinct_count(CREDIT_ACTIVE) over bureau_SK_ID_CURR_time_0s_32d as bureau_CREDIT_ACTIVE_159," +
             "    distinct_count(CREDIT_CURRENCY) over bureau_SK_ID_CURR_time_0s_32d as bureau_CREDIT_CURRENCY_160," +
-            "    distinct_count(CREDIT_TYPE) over bureau_SK_ID_CURR_time_0s_32d as bureau_CREDIT_TYPE_161" +
+            "    distinct_count(CREDIT_TYPE) over bureau_SK_ID_CURR_time_0s_32d as bureau_CREDIT_TYPE_161 " +
             "from" +
             "    (select SK_ID_CURR as SK_ID_CURR, bigint(0) as SK_ID_BUREAU, '' as CREDIT_ACTIVE, '' as CREDIT_CURRENCY, bigint(0) as DAYS_CREDIT, bigint(0) as CREDIT_DAY_OVERDUE, double(0) as DAYS_CREDIT_ENDDATE, double(0) as DAYS_ENDDATE_FACT, double(0) as AMT_CREDIT_MAX_OVERDUE, bigint(0) as CNT_CREDIT_PROLONG, double(0) as AMT_CREDIT_SUM, double(0) as AMT_CREDIT_SUM_DEBT, double(0) as AMT_CREDIT_SUM_LIMIT, double(0) as AMT_CREDIT_SUM_OVERDUE, '' as CREDIT_TYPE, bigint(0) as DAYS_CREDIT_UPDATE, double(0) as AMT_ANNUITY, `time` as `time` from main)" +
             "    window bureau_SK_ID_CURR_time_0s_32d as (" +
             "UNION bureau partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
-            "as out2" +
-            "on out0.SK_ID_CURR_1 = out2.SK_ID_CURR_136" +
+            "as out2 " +
+            "on out0.SK_ID_CURR_1 = out2.SK_ID_CURR_136 " +
             "last join" +
             "(" +
             "select" +
             "    SK_ID_CURR as SK_ID_CURR_163," +
             "    max(MONTHS_BALANCE) over bureau_balance_SK_ID_CURR_time_0s_32d as bureau_balance_MONTHS_BALANCE_162," +
             "    avg(MONTHS_BALANCE) over bureau_balance_SK_ID_CURR_time_0s_32d as bureau_balance_MONTHS_BALANCE_163," +
-            "    distinct_count(`STATUS`) over bureau_balance_SK_ID_CURR_time_0s_32d as bureau_balance_STATUS_164" +
+            "    distinct_count(`STATUS`) over bureau_balance_SK_ID_CURR_time_0s_32d as bureau_balance_STATUS_164 " +
             "from" +
             "    (select bigint(0) as SK_ID_BUREAU, bigint(0) as MONTHS_BALANCE, '' as `STATUS`, SK_ID_CURR as SK_ID_CURR, `time` as `time` from main)" +
             "    window bureau_balance_SK_ID_CURR_time_0s_32d as (" +
             "UNION bureau_balance partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
-            "as out3" +
-            "on out0.SK_ID_CURR_1 = out3.SK_ID_CURR_163" +
+            "as out3 " +
+            "on out0.SK_ID_CURR_1 = out3.SK_ID_CURR_163 " +
             "last join" +
             "(" +
             "select" +
@@ -542,14 +542,14 @@ public class FESQLClusterBenchmark {
             "    min(SK_DPD_DEF) over credit_card_balance_SK_ID_CURR_time_0s_32d as credit_card_balance_SK_DPD_DEF_203," +
             "    avg(SK_DPD_DEF) over credit_card_balance_SK_ID_CURR_time_0s_32d as credit_card_balance_SK_DPD_DEF_204," +
             "    distinct_count(NAME_CONTRACT_STATUS) over credit_card_balance_SK_ID_CURR_time_0s_32d as credit_card_balance_NAME_CONTRACT_STATUS_205," +
-            "    distinct_count(SK_ID_PREV) over credit_card_balance_SK_ID_CURR_time_0s_32d as credit_card_balance_SK_ID_PREV_206" +
+            "    distinct_count(SK_ID_PREV) over credit_card_balance_SK_ID_CURR_time_0s_32d as credit_card_balance_SK_ID_PREV_206 " +
             "from" +
             "    (select bigint(0) as SK_ID_PREV, SK_ID_CURR as SK_ID_CURR, bigint(0) as MONTHS_BALANCE, double(0) as AMT_BALANCE, bigint(0) as AMT_CREDIT_LIMIT_ACTUAL, double(0) as AMT_DRAWINGS_ATM_CURRENT, double(0) as AMT_DRAWINGS_CURRENT, double(0) as AMT_DRAWINGS_OTHER_CURRENT, double(0) as AMT_DRAWINGS_POS_CURRENT, double(0) as AMT_INST_MIN_REGULARITY, double(0) as AMT_PAYMENT_CURRENT, double(0) as AMT_PAYMENT_TOTAL_CURRENT, double(0) as AMT_RECEIVABLE_PRINCIPAL, double(0) as AMT_RECIVABLE, double(0) as AMT_TOTAL_RECEIVABLE, double(0) as CNT_DRAWINGS_ATM_CURRENT, bigint(0) as CNT_DRAWINGS_CURRENT, double(0) as CNT_DRAWINGS_OTHER_CURRENT, double(0) as CNT_DRAWINGS_POS_CURRENT, double(0) as CNT_INSTALMENT_MATURE_CUM, '' as NAME_CONTRACT_STATUS, bigint(0) as SK_DPD, bigint(0) as SK_DPD_DEF, `time` as `time` from main)" +
             "    window credit_card_balance_SK_ID_CURR_time_0s_32d as (" +
             "UNION credit_card_balance partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
-            "as out4" +
-            "on out0.SK_ID_CURR_1 = out4.SK_ID_CURR_166" +
-            "last join" +
+            "as out4 " +
+            "on out0.SK_ID_CURR_1 = out4.SK_ID_CURR_166 " +
+            "last join " +
             "(" +
             "select" +
             "    SK_ID_CURR as SK_ID_CURR_208," +
@@ -565,13 +565,13 @@ public class FESQLClusterBenchmark {
             "    avg(NUM_INSTALMENT_NUMBER) over installments_payments_SK_ID_CURR_time_0s_32d as installments_payments_NUM_INSTALMENT_NUMBER_216," +
             "    avg(NUM_INSTALMENT_VERSION) over installments_payments_SK_ID_CURR_time_0s_32d as installments_payments_NUM_INSTALMENT_VERSION_217," +
             "    min(NUM_INSTALMENT_VERSION) over installments_payments_SK_ID_CURR_time_0s_32d as installments_payments_NUM_INSTALMENT_VERSION_218," +
-            "    distinct_count(SK_ID_PREV) over installments_payments_SK_ID_CURR_time_0s_32d as installments_payments_SK_ID_PREV_219" +
+            "    distinct_count(SK_ID_PREV) over installments_payments_SK_ID_CURR_time_0s_32d as installments_payments_SK_ID_PREV_219 " +
             "from" +
             "    (select bigint(0) as SK_ID_PREV, SK_ID_CURR as SK_ID_CURR, double(0) as NUM_INSTALMENT_VERSION, bigint(0) as NUM_INSTALMENT_NUMBER, double(0) as DAYS_INSTALMENT, double(0) as DAYS_ENTRY_PAYMENT, double(0) as AMT_INSTALMENT, double(0) as AMT_PAYMENT, `time` as `time` from main)" +
             "    window installments_payments_SK_ID_CURR_time_0s_32d as (" +
             "UNION installments_payments partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
-            "as out5" +
-            "on out0.SK_ID_CURR_1 = out5.SK_ID_CURR_208" +
+            "as out5 " +
+            "on out0.SK_ID_CURR_1 = out5.SK_ID_CURR_208 " +
             "last join" +
             "(" +
             "select" +
@@ -630,12 +630,12 @@ public class FESQLClusterBenchmark {
             "    distinct_count(NAME_YIELD_GROUP) over previous_application_SK_ID_CURR_time_0s_32d as previous_application_NAME_YIELD_GROUP_271," +
             "    distinct_count(PRODUCT_COMBINATION) over previous_application_SK_ID_CURR_time_0s_32d as previous_application_PRODUCT_COMBINATION_272," +
             "    distinct_count(SK_ID_PREV) over previous_application_SK_ID_CURR_time_0s_32d as previous_application_SK_ID_PREV_273," +
-            "    distinct_count(WEEKDAY_APPR_PROCESS_START) over previous_application_SK_ID_CURR_time_0s_32d as previous_application_WEEKDAY_APPR_PROCESS_START_274" +
+            "    distinct_count(WEEKDAY_APPR_PROCESS_START) over previous_application_SK_ID_CURR_time_0s_32d as previous_application_WEEKDAY_APPR_PROCESS_START_274 " +
             "from" +
             "    (select bigint(0) as SK_ID_PREV, SK_ID_CURR as SK_ID_CURR, '' as NAME_CONTRACT_TYPE, double(0) as AMT_ANNUITY, double(0) as AMT_APPLICATION, double(0) as AMT_CREDIT, double(0) as AMT_DOWN_PAYMENT, double(0) as AMT_GOODS_PRICE, '' as WEEKDAY_APPR_PROCESS_START, bigint(0) as HOUR_APPR_PROCESS_START, '' as FLAG_LAST_APPL_PER_CONTRACT, bigint(0) as NFLAG_LAST_APPL_IN_DAY, double(0) as RATE_DOWN_PAYMENT, double(0) as RATE_INTEREST_PRIMARY, double(0) as RATE_INTEREST_PRIVILEGED, '' as NAME_CASH_LOAN_PURPOSE, '' as NAME_CONTRACT_STATUS, bigint(0) as DAYS_DECISION, '' as NAME_PAYMENT_TYPE, '' as CODE_REJECT_REASON, '' as NAME_TYPE_SUITE, '' as NAME_CLIENT_TYPE, '' as NAME_GOODS_CATEGORY, '' as NAME_PORTFOLIO, '' as NAME_PRODUCT_TYPE, '' as CHANNEL_TYPE, bigint(0) as SELLERPLACE_AREA, '' as NAME_SELLER_INDUSTRY, double(0) as CNT_PAYMENT, '' as NAME_YIELD_GROUP, '' as PRODUCT_COMBINATION, double(0) as DAYS_FIRST_DRAWING, double(0) as DAYS_FIRST_DUE, double(0) as DAYS_LAST_DUE_1ST_VERSION, double(0) as DAYS_LAST_DUE, double(0) as DAYS_TERMINATION, double(0) as NFLAG_INSURED_ON_APPROVAL, `time` as `time` from main)" +
             "    window previous_application_SK_ID_CURR_time_0s_32d as (" +
             "UNION previous_application partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
-            "as out6" +
+            "as out6 " +
             "on out0.SK_ID_CURR_1 = out6.SK_ID_CURR_221" +
             ";";
 
@@ -800,17 +800,11 @@ public class FESQLClusterBenchmark {
 
     @Benchmark
     public void execSQL() {
-        executor.executeDDL(db, benSql);
+        executor.executeSQL(db, benSql);
     }
 
     public static void main(String[] args) throws RunnerException {
         FESQLClusterBenchmark ben = new FESQLClusterBenchmark();
-        /*try {
-            ben.setup();
-            ben.teardown();
-        } catch (Exception e) {
-            int i = 1;
-        }*/
         Options opt = new OptionsBuilder()
                 .include(FESQLClusterBenchmark.class.getSimpleName())
                 .forks(1)
