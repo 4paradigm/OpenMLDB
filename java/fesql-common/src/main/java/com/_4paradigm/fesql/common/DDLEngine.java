@@ -25,8 +25,6 @@ public class DDLEngine {
         // Ensure native initialized
         FeSqlLibrary.initCore();
         Engine.InitializeGlobalLLVM();
-        FeSqlLibrary.initCore();
-        Engine.InitializeGlobalLLVM();
     }
 
     private static final Logger logger = LoggerFactory.getLogger(DDLEngine.class);
@@ -86,7 +84,6 @@ public class DDLEngine {
      */
     public static void parseWindowOp(PhysicalOpNode node, Map<String, RtidbTable> rtidbTables) {
         logger.info("begin to pares window op");
-        // List<String> keys = new ArrayList<>();
         PhysicalRequestUnionNode castNode = PhysicalRequestUnionNode.CastFrom(node);
         
         String ts = castNode.window().sort().orders().order_by().GetChild(0).GetExprString();
@@ -111,7 +108,7 @@ public class DDLEngine {
 
         for (PhysicalOpNode e : nodes) {
             PhysicalDataProviderNode unionTable = findDataProviderNode(e);
-            logger.info("union table = " + unionTable.GetName());
+            logger.info("union table = {}", unionTable.GetName());
 
             String table = unionTable.GetName();
             RtidbTable rtidbTable = rtidbTables.get(table);
@@ -125,15 +122,21 @@ public class DDLEngine {
 
             index.setTs(ts);
             if (start != -1) {
-                index.setExpire(start);
-            } else {
-                // 60秒
-                index.setExpire(60 * 1000);
+                if (start < 60 * 1000) {
+                    // 60秒
+                    index.setExpire(60 * 1000);
+                } else {
+                    index.setExpire(start);
+                }
             }
             if (cntStart != -1) {
-                index .setAtmost(cntStart);
-            } else {
-                index.setAtmost(1);
+                index.setAtmost(cntStart);
+            }
+            if (index.getAtmost() > 0 && index.getExpire() == 0) {
+                index.setType(TTLType.kLatest);
+            }
+            if (index.getAtmost() == 0 && index.getExpire() > 0) {
+                index.setType(TTLType.kAbsolute);
             }
             rtidbTable.addIndex(index);
         }
@@ -173,7 +176,6 @@ public class DDLEngine {
         }
         List<String> keys = rightIndex.getKeys();
         for (int i = 0; i < conditionKey.keys().GetChildNum(); i++) {
-            ColumnRefNode columnNode = ColumnRefNode.CastFrom(conditionKey.keys().GetChild(i));
             String keyName = CoreAPI.ResolvedSourceColumnName(node, conditionKey.keys().GetChild(i));
             keys.add(keyName);
         }
@@ -186,11 +188,9 @@ public class DDLEngine {
         Map<String, RtidbTable> rtidbTables = new HashMap<>();
         Map<String, String> table2OrgTable = new HashMap<>();
         for (PhysicalOpNode node : nodes) {
-//            System.out.println("node type = " + node.GetTypeName());
             PhysicalOpType type = node.getType_();
             if (type.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
                 PhysicalDataProviderNode castNode = PhysicalDataProviderNode.CastFrom(node);
-//                System.out.println("PhysicalDataProviderNode = " + castNode.GetName());
                 RtidbTable rtidbTable = rtidbTables.get(castNode.GetName());
                 if (rtidbTable == null) {
                     rtidbTable = new RtidbTable();
@@ -200,15 +200,6 @@ public class DDLEngine {
                 }
                 continue;
             }
-//            if (type.swigValue() == PhysicalOpType.kPhysicalOpSimpleProject.swigValue()) {
-//                PhysicalSimpleProjectNode castNode = PhysicalSimpleProjectNode.CastFrom(node);
-//                System.out.println("PhysicalSimpleProjectNode ");
-//                System.out.println(castNode.SchemaToString());
-//                continue;
-//            }
-//            if (type.swigValue() == PhysicalOpType.kPhysicalOpConstProject.swigValue()) {
-//                continue;
-//            }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpRequestUnoin.swigValue()) {
                 parseWindowOp(node, rtidbTables);
                 continue;
@@ -264,6 +255,10 @@ public class DDLEngine {
         list.add(node);
     }
 
+    /**
+     *
+     * @param list
+     */
     public static void printDagListInfo(List<PhysicalOpNode> list) {
         for (PhysicalOpNode node : list) {
             System.out.println("dagToList node type = " + node.GetTypeName());
@@ -272,7 +267,6 @@ public class DDLEngine {
                  PhysicalDataProviderNode castNode = PhysicalDataProviderNode.CastFrom(node);
                 System.out.println("PhysicalDataProviderNode = " + castNode.GetName());
              }
-            
         }
     }
 
@@ -418,6 +412,9 @@ class RtidbTable {
                 if (index.getExpire() > e.getExpire()) {
                     e.setExpire(index.getExpire());
                 }
+                if (index.getType() == TTLType.kAbsAndLat || index.getType() != e.getType()) {
+                    e.setType(TTLType.kAbsAndLat);
+                }
                 break;
             }
         }
@@ -477,7 +474,6 @@ class RtidbIndex {
         } else {
              index = String.format("index(key=(%s), ts=`%s`, ttl=(%s), ttl_type=%s)", key, ts, getTTL(), ttlType);
         }
-
         return index;
     }
 
