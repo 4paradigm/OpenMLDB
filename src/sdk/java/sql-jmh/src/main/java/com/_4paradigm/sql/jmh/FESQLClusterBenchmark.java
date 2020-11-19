@@ -193,6 +193,7 @@ public class FESQLClusterBenchmark {
             "`YEARS_BUILD_MEDI` double," +
             "`COMMONAREA_MEDI` double," +
             "`ELEVATORS_MEDI` double," +
+            "`ENTRANCES_MEDI` double," +
             "`FLOORSMAX_MEDI` double," +
             "`FLOORSMIN_MEDI` double," +
             "`LANDAREA_MEDI` double," +
