@@ -706,7 +706,7 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     auto res = Run(ctx);
     clock_gettime(CLOCK_REALTIME, &tn2);
     LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
-              << " consume: " << tn2.tv_nsec - tn1.tv_nsec;
+              << " consume: " << (tn2.tv_sec - tn1.tv_sec)*1000000000 + tn2.tv_nsec - tn1.tv_nsec;
     if (ctx.is_debug()) {
         LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
                   << "\n";
