@@ -340,22 +340,18 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     request_row->AppendDouble(1.0);
     request_row->AppendTimestamp(ts + 1000);
     request_row->Build();
-
+    for (int i = 0; i < 10; i++) {
+        router->ExecuteSQL(db, exe_sql, request_row, &status);
+    }
+    LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
     if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
-        for(int i = 0; i < 10; i++) {
-            router->ExecuteSQL(db, exe_sql, request_row, &status);
-        }
-        LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
+
         for (auto _ : state) {
             router->ExecuteSQL(db, exe_sql, request_row, &status);
             state.SkipWithError("benchmark case debug");
             break;
         }
     } else {
-        // warming
-        for(int i = 0; i < 10; i++) {
-            router->ExecuteSQL(db, exe_sql, request_row, &status);
-        }
         for (auto _ : state) {
             benchmark::DoNotOptimize(
                 router->ExecuteSQL(db, exe_sql, request_row, &status));
