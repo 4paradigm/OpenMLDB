@@ -700,7 +700,13 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
             return batch_cached;
         }
     }
+    struct timespec tn1;
+    struct timespec tn2;
+    clock_gettime(CLOCK_REALTIME, &tn1);
     auto res = Run(ctx);
+    clock_gettime(CLOCK_REALTIME, &tn2);
+    LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+              << " consume: " << tn2.tv_nsec - tn1.tv_nsec;
     if (ctx.is_debug()) {
         LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
                   << "\n";
