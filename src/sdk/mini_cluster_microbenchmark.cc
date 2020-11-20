@@ -342,6 +342,9 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     request_row->Build();
 
     if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        for(int i = 0; i < 10; i++) {
+            router->ExecuteSQL(db, exe_sql, request_row, &status);
+        }
         for (auto _ : state) {
             struct timespec tn1;
             struct timespec tn2;
