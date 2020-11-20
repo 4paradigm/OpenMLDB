@@ -345,7 +345,6 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     }
     LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
     if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
-
         for (auto _ : state) {
             router->ExecuteSQL(db, exe_sql, request_row, &status);
             state.SkipWithError("benchmark case debug");
