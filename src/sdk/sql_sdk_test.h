@@ -171,10 +171,12 @@ void SQLSDKTest::InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         for (auto insert : inserts) {
             std::string placeholder = "{" + std::to_string(i) + "}";
             boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
-            LOG(INFO) << insert;
-            if (!insert.empty()) {
-                for (int j = 0; j < sql_case.inputs()[i].repeat_; j++) {
-                    ASSERT_TRUE(router->ExecuteInsert(sql_case.db(), insert, &status));
+            if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+                LOG(INFO) << insert;
+                if (!insert.empty()) {
+                    for (int j = 0; j < sql_case.inputs()[i].repeat_; j++) {
+                        ASSERT_TRUE(router->ExecuteInsert(sql_case.db(), insert, &status));
+                    }
                 }
             }
         }
@@ -193,7 +195,7 @@ void SQLSDKTest::CovertFesqlRowToRequestRow(fesql::codec::RowView* row_view,
             init_size += row_view->GetStringUnsafe(i).size();
         }
     }
-    LOG(INFO) << "Build Request Row: init string size " << init_size;
+    DLOG(INFO) << "Build Request Row: init string size " << init_size;
     request_row->Init(init_size);
     for (int i = 0; i < row_view->GetSchema()->size(); i++) {
         if (row_view->IsNULL(i)) {
