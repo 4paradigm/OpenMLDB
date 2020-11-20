@@ -18,6 +18,7 @@
 #include <stdio.h>
 
 #include "benchmark/benchmark.h"
+#include "boost/algorithm/string.hpp"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
 #include "sdk/base.h"
@@ -461,6 +462,140 @@ static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
         }
     }
 }
+
+static void BM_SimpleLastJoin(benchmark::State& state) {  // NOLINT
+    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc->GetZkCluster();
+    sql_opt.zk_path = mc->GetZkPath();
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        sql_opt.enable_debug = true;
+    } else {
+        sql_opt.enable_debug = false;
+    }
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (router == nullptr) {
+        std::cout << "fail to init sql cluster router" << std::endl;
+        return;
+    }
+    std::string db = "db" + GenRand();
+    std::string t0 = "test" + GenRand();
+    std::string t1 = "test" + GenRand();
+    int window_size = state.range(0);
+
+    ::fesql::sdk::Status status;
+    router->CreateDB(db, &status);
+    int request_id = 0;
+    int64_t request_ts = 0;
+    {
+        std::string create = R"(
+    create table {0} (
+        id int, c1 string, c2 string, c3 string, c4 string, c6 double, c7 timestamp,
+        index(key=(c1), ts=c7, ttl=3650d)) partitionnum=8;
+    )";
+        boost::replace_all(create, "{0}", t0);
+
+        router->ExecuteDDL(db, create, &status);
+        if (status.msg != "ok") {
+            std::cout << "fail to create table" << std::endl;
+            return;
+        }
+        sleep(2);
+        router->RefreshCatalog();
+
+        std::vector<std::string> sample;
+        std::string base_sql = "insert into " + t0;
+        int id = 1;
+        int64_t ts = 1590738991000;
+        request_ts = ts+1000;
+        for (int i = 0; i < window_size; i++) {
+            sample.push_back(base_sql + " values(" + std::to_string(id++) +
+                             ", 'a', 'aa', 'aaa', 'aaaa', " + std::to_string(i) +
+                             ", " + std::to_string(ts - i * 1000) + ");");
+            sample.push_back(base_sql + " values(" + std::to_string(id++) +
+                             ", 'b', 'bb', 'bbb', 'bbbb', " + std::to_string(i) +
+                             ", " + std::to_string(ts - i * 1000) + ");");
+            sample.push_back(base_sql + " values(" + std::to_string(id++) +
+                             ", 'c', 'cc', 'ccc', 'cccc', " + std::to_string(i) +
+                             ", " + std::to_string(ts - i * 1000) + ");");
+        }
+        for (const auto& sql : sample) {
+            router->ExecuteInsert(db, sql, &status);
+        }
+        request_id = id;
+    }
+
+    {
+        std::string create = R"(
+    create table {1} (
+        id int, x1 string, x2 string, x3 string, x4 string, x6 double, x7 timestamp,
+        index(key=(x1), ts=x7, ttl=3650d)) partitionnum=8;
+    )";
+        boost::replace_all(create, "{1}", t1);
+
+        router->ExecuteDDL(db, create, &status);
+        if (status.msg != "ok") {
+            std::cout << "fail to create table" << std::endl;
+            return;
+        }
+        sleep(2);
+        router->RefreshCatalog();
+
+        std::vector<std::string> sample;
+        std::string base_sql = "insert into " + t1;
+        int id = 1;
+        int64_t ts = 1590738991000;
+        for (int i = 0; i < window_size; i++) {
+            sample.push_back(base_sql + " values(" + std::to_string(id++) +
+                             ", 'a', 'aa', 'aaa', 'aaaa', " + std::to_string(i) +
+                             ", " + std::to_string(ts - i * 1000) + ");");
+            sample.push_back(base_sql + " values(" + std::to_string(id++) +
+                             ", 'b', 'bb', 'bbb', 'bbbb', " + std::to_string(i) +
+                             ", " + std::to_string(ts - i * 1000) + ");");
+            sample.push_back(base_sql + " values(" + std::to_string(id++) +
+                             ", 'c', 'cc', 'ccc', 'cccc', " + std::to_string(i) +
+                             ", " + std::to_string(ts - i * 1000) + ");");
+        }
+        for (const auto& sql : sample) {
+            router->ExecuteInsert(db, sql, &status);
+        }
+    }
+
+    std::string preceding = std::to_string(window_size - 1);
+    std::string exe_sql = R"(
+    SELECT id, c1, c2, c3, c4, c6, c7
+FROM {0} last join {1} order by {1}.c7 on {0}.c1 = {1}.c1 and {0}.c7 - 10s >= {1}.c7;
+)";
+    boost::replace_all(exe_sql, "{0}", t0);
+    boost::replace_all(exe_sql, "{1}", t1);
+    auto request_row = router->GetRequestRow(db, exe_sql, &status);
+    request_row->Init(10);
+    request_row->AppendInt32(request_id);
+    request_row->AppendString("a");
+    request_row->AppendString("bb");
+    request_row->AppendString("ccc");
+    request_row->AppendString("dddd");
+    request_row->AppendDouble(1.0);
+    request_row->AppendTimestamp(request_ts);
+    request_row->Build();
+    for (int i = 0; i < 10; i++) {
+        router->ExecuteSQL(db, exe_sql, request_row, &status);
+    }
+    LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
+    if (fesql::sqlcase::SQLCase::IS_DEBUG() ||
+        fesql::sqlcase::SQLCase::IS_PERF()) {
+        for (auto _ : state) {
+            router->ExecuteSQL(db, exe_sql, request_row, &status);
+            state.SkipWithError("benchmark case debug");
+            break;
+        }
+    } else {
+        for (auto _ : state) {
+            benchmark::DoNotOptimize(
+                router->ExecuteSQL(db, exe_sql, request_row, &status));
+        }
+    }
+}
+BENCHMARK(BM_SimpleLastJoin);
 BENCHMARK(BM_SimpleRowWindow)
     ->Args({4})
     ->Args({100})
