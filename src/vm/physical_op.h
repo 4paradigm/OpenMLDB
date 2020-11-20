@@ -300,6 +300,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
                                const std::string &tab) const;
     virtual bool InitSchema() = 0;
     virtual void PrintSchema();
+    virtual std::string SchemaToString();
     const std::vector<PhysicalOpNode *> &GetProducers() const {
         return producers_;
     }
@@ -336,7 +337,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
         return fn_info_.fn_schema_;
     }
 
-    const vm::SchemaSourceList &GetOutputNameSchemaList() {
+    const fesql::vm::SchemaSourceList &GetOutputNameSchemaList() {
         return output_name_schema_list_;
     }
 
@@ -897,6 +898,25 @@ class RequestWindowUnionList {
     void AddWindowUnion(PhysicalOpNode *node, const RequestWindowOp &window) {
         window_unions_.push_back(std::make_pair(node, window));
     }
+    const PhysicalOpNode *GetKey(uint32_t index) {
+        auto iter = window_unions_.begin();
+        for (uint32_t i = 0; i < index; ++i) {
+            ++iter;
+        }
+        return iter->first;
+        // return window_unions_[index].first;
+    }
+
+    const RequestWindowOp &GetValue(uint32_t index) {
+        auto iter = window_unions_.begin();
+        for (uint32_t i = 0; i < index; ++i) {
+            ++iter;
+        }
+        return iter->second;
+    }
+
+    const uint32_t GetSize() { return window_unions_.size(); }
+
     const std::string FnDetail() const {
         std::ostringstream oss;
         for (auto &window_union : window_unions_) {
@@ -1122,6 +1142,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
 
  public:
     virtual ~PhysicalRequestJoinNode() {}
+    static PhysicalRequestJoinNode *CastFrom(PhysicalOpNode *node);
     bool InitSchema() override;
     void RegisterFunctionInfo() {
         fn_infos_.push_back(&join_.right_sort_.fn_info_);
@@ -1179,6 +1200,7 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
     bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const bool Valid() { return true; }
+    static PhysicalRequestUnionNode *CastFrom(PhysicalOpNode *node);
     bool AddWindowUnion(PhysicalOpNode *node) {
         if (nullptr == node) {
             LOG(WARNING) << "Fail to add window union : table is null";
