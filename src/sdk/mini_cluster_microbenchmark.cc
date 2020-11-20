@@ -449,7 +449,7 @@ static void SimpleLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_case) {  // NOL
         request.columns_ = {"id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"};
         request.indexs_ = {"index1:c1:c7"};
         request.rows_.push_back(
-            {std::to_string(request_id), "a", "bb", "ccc", "dddd", "1.0", std::to_string(1590738991000 + 1000)});
+            {std::to_string(request_id), "a", "bb", "ccc", "aaaa", "1.0", std::to_string(1590738991000 + 1000)});
         sql_case.batch_request_ = request;
     }
     // table {0}
