@@ -574,7 +574,7 @@ static void BM_SimpleLastJoin1Table(benchmark::State& state) {  // NOLINT
     SimpleLastJoinNCaseData(sql_case);
 
     sql_case.sql_str_ = R"(
-    SELECT *
+    SELECT {0}.*, {1}.x1, {1}.x7
 FROM {0} last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10000 >= {1}.x7;
 )";
     BM_RequestQuery(state, sql_case);
@@ -585,7 +585,7 @@ static void BM_SimpleLastJoin2Table(benchmark::State& state) {  // NOLINT
     SimpleLastJoinNCaseData(sql_case);
 
     sql_case.sql_str_ = (R"(
-    SELECT *
+    SELECT {0}.*, {1}.x1, {1}.x7, {2}.x2, {2}.x7
 FROM {0}
 last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10000 >= {1}.x7
 last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - 10000 >= {2}.x7;
@@ -598,7 +598,7 @@ static void BM_SimpleLastJoin3Table(benchmark::State& state) {  // NOLINT
     SimpleLastJoinNCaseData(sql_case);
 
     sql_case.sql_str_ = (R"(
-    SELECT *
+    SELECT {0}.*, {1}.x1, {1}.x7, {2}.x2, {2}.x7, {3}.x3, {3}.x7
 FROM {0}
 last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10000 >= {1}.x7
 last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - 10000 >= {2}.x7
@@ -611,7 +611,7 @@ static void BM_SimpleLastJoin4Table(benchmark::State& state) {  // NOLINT
     sql_case.desc_ = "BM_SimpleLastJoin3Table";
     SimpleLastJoinNCaseData(sql_case);
     sql_case.sql_str_ = R"(
-    SELECT *
+    SELECT {0}.*, {1}.x1, {1}.x7, {2}.x2, {2}.x7, {3}.x3, {3}.x7, {4}.x4, {4}.x7
 FROM {0}
 last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10000 >= {1}.x7
 last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - 10000 >= {2}.x7
