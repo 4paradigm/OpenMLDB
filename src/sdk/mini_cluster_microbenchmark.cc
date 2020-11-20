@@ -348,6 +348,10 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
             break;
         }
     } else {
+        // warming
+        for(int i = 0; i < 10; i++) {
+            router->ExecuteSQL(db, exe_sql, request_row, &status);
+        }
         for (auto _ : state) {
             benchmark::DoNotOptimize(
                 router->ExecuteSQL(db, exe_sql, request_row, &status));

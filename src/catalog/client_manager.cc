@@ -42,7 +42,7 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
         status_.code = fesql::common::kRpcError;
         return row_;
     }
-    DLOG(INFO) << "TabletRowHandler get value by brpc join " << cntl_->call_id();
+    DLOG(INFO) << "TabletRowHandler get value by brpc join";
     // TODO(denglong) timeout handle
     brpc::Join(cntl_->call_id());
     if (cntl_->Failed()) {
