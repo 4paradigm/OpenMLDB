@@ -552,11 +552,13 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
 
         for(int i = 0; i < 10; i++) {
             auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
+            rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
         }
         LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
         if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
             for (auto _ : state) {
                 auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
+                rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
                 state.SkipWithError("benchmark case debug");
                 if (!rs) FAIL() << "sql case expect success == true";
                 break;
