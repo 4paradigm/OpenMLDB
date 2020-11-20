@@ -345,6 +345,7 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
         for(int i = 0; i < 10; i++) {
             router->ExecuteSQL(db, exe_sql, request_row, &status);
         }
+        LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
         for (auto _ : state) {
             struct timespec tn1;
             struct timespec tn2;
