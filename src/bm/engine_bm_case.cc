@@ -71,7 +71,11 @@ static void EngineRequestMode(const std::string sql, MODE mode,
     InitializeNativeTargetAsmPrinter();
     // prepare data into table
     auto catalog = BuildOnePkTableStorage(size);
-    Engine engine(catalog);
+    vm::EngineOptions options;
+    if (fesql::sqlcase::SQLCase::IS_CLUSTER()) {
+        options.set_cluster_optimized(true);
+    }
+    Engine engine(catalog, options);
     RequestRunSession session;
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
@@ -87,7 +91,7 @@ static void EngineRequestMode(const std::string sql, MODE mode,
 
     LOG(INFO) << "physical plan:\n" << plan_oss.str() << std::endl;
     std::ostringstream runner_oss;
-    session.GetMainTask()->Print(runner_oss, "");
+    session.GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::unique_ptr<codec::RowView> row_view = std::unique_ptr<codec::RowView>(
         new codec::RowView(session.GetSchema()));

@@ -166,6 +166,14 @@ class SQLCase {
         }
         return false;
     }
+    static bool IS_CLUSTER() {
+        const char* env_name = "FESQL_CLUSTER";
+        char* value = getenv(env_name);
+        if (value != nullptr && strcmp(value, "true") == 0) {
+            return true;
+        }
+        return false;
+    }
 
  private:
     std::string id_;
