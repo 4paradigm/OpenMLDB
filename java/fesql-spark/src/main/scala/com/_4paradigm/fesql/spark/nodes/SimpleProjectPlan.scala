@@ -6,6 +6,7 @@ import com._4paradigm.fesql.vm.{PhysicalSimpleProjectNode, SourceType}
 import org.slf4j.LoggerFactory
 import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, TimestampType}
 import com._4paradigm.fesql.node.{DataType => FesqlDataType}
+import org.apache.spark.sql.Column
 import org.apache.spark.sql.functions.to_date
 import org.apache.spark.sql.functions.to_timestamp
 
@@ -60,8 +61,16 @@ object SimpleProjectPlan {
                 sparkColType = ShortType
               }
               case FesqlDataType.kInt32 => {
-                sparkCol = sparkCol.cast(IntegerType)
                 sparkColType = IntegerType
+
+                sparkColType match {
+                  case DateType => {
+                    sparkCol = sparkCol.cast(IntegerType)
+                  }
+                  case _ => {
+                    sparkCol = sparkCol.cast(IntegerType)
+                  }
+                }
               }
               case FesqlDataType.kInt64 => {
                 sparkCol = sparkCol.cast(LongType)
@@ -80,21 +89,37 @@ object SimpleProjectPlan {
                 sparkColType = BooleanType
               }
               case FesqlDataType.kDate => {
-                sparkColType match {
+                sparkCol = sparkColType match {
+                  case DateType => {
+                    sparkCol
+                  }
                   case StringType => {
                     // TODO: may support "yyyyMMdd", "yyyy-MM-dd HH:mm:ss"
-                    sparkCol = to_date(sparkCol, "yyyy-MM-dd")
-                    sparkColType = DateType
+                    to_date(sparkCol, "yyyy-MM-dd")
+                  }
+                  case TimestampType => {
+                    sparkCol
                   }
                 }
+                sparkColType = DateType
               }
               case FesqlDataType.kTimestamp => {
-                sparkColType match {
+                sparkCol = sparkColType match {
+                  case ShortType | IntegerType | LongType | FloatType | DoubleType | DateType => {
+                    sparkCol.cast(TimestampType)
+                  }
+                  case BooleanType => {
+                    // TODO: Got "java.lang.Integer cannot be cast to java.lang.Long" if cast to timestamp directly
+                    sparkCol.cast(LongType).cast(TimestampType)
+                  }
+                  case TimestampType => {
+                    sparkCol
+                  }
                   case StringType => {
-                    sparkCol = to_timestamp(sparkCol) // format "yyyy/MM/dd HH:mm:ss"
-                    sparkColType = TimestampType
+                    to_timestamp(sparkCol) // format "yyyy/MM/dd HH:mm:ss"
                   }
                 }
+                sparkColType = TimestampType
               }
               case FesqlDataType.kVarchar => {
                 sparkCol = sparkCol.cast(StringType)
