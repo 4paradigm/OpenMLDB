@@ -10,8 +10,7 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.Map;
@@ -27,6 +26,7 @@ import java.util.ArrayList;
 
 public class FESQLClusterBenchmark {
     private SqlExecutor executor;
+    PreparedStatement requestPs;
     private SdkOption option;
     private String db = "db" + System.nanoTime();
     private Map<String, Map<String, String>> tables = new HashMap<>();
@@ -735,7 +735,11 @@ public class FESQLClusterBenchmark {
                         } else if (pos == tsPos) {
                             builder.append(ts + tsCnt);
                         } else {
-                            builder.append(pos);
+                            if (type.equals("timestamp"))  {
+                                builder.append(ts);
+                            } else {
+                                builder.append(pos);
+                            }
                         }
                     } else if (type.equals("bool")) {
                         builder.append(true);
@@ -746,10 +750,29 @@ public class FESQLClusterBenchmark {
                 builder.append(");");
                 String exeSql = builder.toString();
                 executor.executeInsert(db, exeSql);
-
             }
         }
+    }
 
+    private void setPreparedStatement() throws SQLException {
+        requestPs = executor.getRequestPreparedStmt(db, benSql);
+        ResultSetMetaData metaData = requestPs.getMetaData();
+        long pkBase = 1000000l;
+        for (int i = 0; i < metaData.getColumnCount(); i++) {
+            String columnName = metaData.getColumnName(i + 1);
+            int columnType = metaData.getColumnType(i + 1);
+            if (columnName.equals("SK_ID_CURR")) {
+                requestPs.setLong(i + 1, pkBase);
+            } else if (columnType == Types.VARCHAR) {
+                requestPs.setString(i + 1, "col" + String.valueOf(i));
+            } else if (columnType == Types.DOUBLE) {
+                requestPs.setDouble(i + 1, 1.4);
+            } else if (columnType == Types.INTEGER || columnType == Types.BIGINT) {
+                requestPs.setInt(i + 1, i);
+            } else if (columnType == Types.TIMESTAMP) {
+                requestPs.setTimestamp(i + 1, new Timestamp(System.currentTimeMillis()));
+            }
+        }
     }
 
     @Setup
@@ -785,6 +808,7 @@ public class FESQLClusterBenchmark {
         putData(main,pkNum,windowNum);
         putData(creditCardBalance,pkNum,windowNum);
         putData(bureau,pkNum,windowNum);
+        setPreparedStatement();
     }
 
     @TearDown
@@ -801,7 +825,10 @@ public class FESQLClusterBenchmark {
 
     @Benchmark
     public void execSQL() {
-        executor.executeSQL(db, benSql);
+        try {
+            requestPs.executeQuery();
+        } catch (Exception e) {
+        }
     }
 
     public static void main(String[] args) throws RunnerException {
