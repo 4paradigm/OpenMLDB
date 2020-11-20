@@ -554,7 +554,7 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
             auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
         }
         LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
-        if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
             for (auto _ : state) {
                 auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
                 state.SkipWithError("benchmark case debug");
