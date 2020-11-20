@@ -409,7 +409,11 @@ int main(int argc, char** argv) {
     if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
     ::rtidb::sdk::MiniCluster mini_cluster(6181);
     mc = &mini_cluster;
-    mini_cluster.SetUp();
+    if (!IS_CLUSTER()) {
+        mini_cluster.SetUp(1);
+    } else {
+        mini_cluster.SetUp();
+    }
     sleep(2);
     ::benchmark::RunSpecifiedBenchmarks();
     mini_cluster.Close();
