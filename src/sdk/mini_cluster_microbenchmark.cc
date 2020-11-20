@@ -281,11 +281,11 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
-//    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
-//        sql_opt.enable_debug = true;
-//    } else {
-//        sql_opt.enable_debug = false;
-//    }
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        sql_opt.enable_debug = true;
+    } else {
+        sql_opt.enable_debug = false;
+    }
     auto router = NewClusterSQLRouter(sql_opt);
     if (router == nullptr) {
         std::cout << "fail to init sql cluster router" << std::endl;
@@ -341,7 +341,7 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     request_row->AppendTimestamp(ts + 1000);
     request_row->Build();
 
-    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+    if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
         for(int i = 0; i < 10; i++) {
             router->ExecuteSQL(db, exe_sql, request_row, &status);
         }
