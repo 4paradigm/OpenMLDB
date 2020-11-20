@@ -296,8 +296,10 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     ::fesql::sdk::Status status;
     router->CreateDB(db, &status);
     std::string create = "create table " + name +
-                         "(id int, c1 string, c6 double, c7 timestamp, "
-                         "index(key=(c1), ts=c7, ttl=3650d)) partitionnum=8;";
+                         "(id int, c1 string, c2 string, c3 string, c4 string, "
+                         "c6 double, c7 timestamp, "
+                         "index(key=(c1), ts=c7, ttl=3650d)"
+                         ") partitionnum=8;";
     router->ExecuteDDL(db, create, &status);
     if (status.msg != "ok") {
         std::cout << "fail to create table" << std::endl;
@@ -312,31 +314,35 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     int64_t ts = 1590738991000;
     for (int i = 0; i < window_size; i++) {
         sample.push_back(base_sql + " values(" + std::to_string(id++) +
-                         ", 'aa', " + std::to_string(i) + ", " +
-                         std::to_string(ts - i * 1000) + ");");
+                         ", 'a', 'aa', 'aaa', 'aaaa', " + std::to_string(i) +
+                         ", " + std::to_string(ts - i * 1000) + ");");
         sample.push_back(base_sql + " values(" + std::to_string(id++) +
-                         ", 'bb', " + std::to_string(i) + ", " +
-                         std::to_string(ts - i * 1000) + ");");
+                         ", 'b', 'bb', 'bbb', 'bbbb', " + std::to_string(i) +
+                         ", " + std::to_string(ts - i * 1000) + ");");
         sample.push_back(base_sql + " values(" + std::to_string(id++) +
-                         ", 'cc', " + std::to_string(i) + ", " +
-                         std::to_string(ts - i * 1000) + ");");
+                         ", 'c', 'cc', 'ccc', 'cccc', " + std::to_string(i) +
+                         ", " + std::to_string(ts - i * 1000) + ");");
     }
     for (const auto& sql : sample) {
         router->ExecuteInsert(db, sql, &status);
     }
+    std::string preceding = std::to_string(window_size - 1);
     char sql[1000];
-    int size = snprintf(
-        sql, sizeof(sql),
-        "SELECT id, c1, c6, c7,  min(c6) OVER w1 as w1_c6_min, count(id) "
-        "OVER w1 as w1_cnt FROM %s WINDOW w1 AS (PARTITION BY %s.c1 "
-        "ORDER BY %s.c7 ROWS BETWEEN %s PRECEDING AND CURRENT ROW);",
-        name.c_str(), name.c_str(), name.c_str(),
-        std::to_string(window_size - 1).c_str());
+    int size =
+        snprintf(sql, sizeof(sql),
+                 "SELECT id, c1, c2, c3, c4, c6, c7 "
+                 ", min(c6) OVER w1 as w1_c6_min, count(id) OVER w1 as w1_cnt "
+                 "FROM %s WINDOW "
+                 "w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN %s PRECEDING AND CURRENT ROW);",
+                 name.c_str(), preceding.c_str());
     std::string exe_sql(sql, size);
     auto request_row = router->GetRequestRow(db, exe_sql, &status);
-    request_row->Init(2);
+    request_row->Init(10);
     request_row->AppendInt32(id);
+    request_row->AppendString("a");
     request_row->AppendString("aa");
+    request_row->AppendString("aaa");
+    request_row->AppendString("aaaa");
     request_row->AppendDouble(1.0);
     request_row->AppendTimestamp(ts + 1000);
     request_row->Build();
