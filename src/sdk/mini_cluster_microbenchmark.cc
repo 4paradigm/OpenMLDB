@@ -443,12 +443,27 @@ static void SimpleLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_case) {  // NOL
 
     sql_case.db_ = fesql::sqlcase::SQLCase::GenRand("db");
     int request_id = 0;
+    // request table {0}
+    {
+        fesql::sqlcase::SQLCase::TableInfo request;
+        request.columns_ = {"id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"};
+        request.indexs_ = {"index1:c1:c7"};
+        request.rows_.push_back(
+            {std::to_string(request_id), "a", "bb", "ccc", "dddd", "1.0", std::to_string(1590738991000 + 1000)});
+        sql_case.batch_request_ = request;
+    }
     // table {0}
+    {
+        fesql::sqlcase::SQLCase::TableInfo input = sql_case.batch_request_;
+        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        sql_case.inputs_.push_back(input);
+    }
+    // table {1}
     {
         fesql::sqlcase::SQLCase::TableInfo input;
         input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
-        input.columns_ = {"id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"};
-        input.indexs_ = {"index1:c1:c7"};
+        input.columns_ = {"rid int", "x1 string", "x2 string", "x3 string", "x4 string", "x6 double", "x7 timestamp"};
+        input.indexs_ = {"index1:x1:x7"};
         int id = 0;
         int64_t ts = 1590738991000;
         for (int i = 1; i <= 100; i++) {
@@ -465,37 +480,29 @@ static void SimpleLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_case) {  // NOL
         request_id = id;
     }
 
-    // table {1}
-    {
-        fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[0];
-        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
-        input.indexs_ = {"index2:c2:c7"};
-        sql_case.inputs_.push_back(input);
-    }
     // table {2}
     {
         fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[0];
         input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
-        input.indexs_ = {"index3:c3:c7"};
+        input.indexs_ = {"index2:x2:x7"};
         sql_case.inputs_.push_back(input);
     }
     // table {3}
     {
         fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[0];
         input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
-        input.indexs_ = {"index4:c4:c7"};
+        input.indexs_ = {"index3:x3:x7"};
+        sql_case.inputs_.push_back(input);
+    }
+    // table {4}
+    {
+        fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[0];
+        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        input.indexs_ = {"index4:x4:x7"};
         sql_case.inputs_.push_back(input);
     }
 
-    // request
-    {
-        fesql::sqlcase::SQLCase::TableInfo request;
-        request.columns_ = {"id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"};
-        request.indexs_ = {"index1:c1:c7"};
-        request.rows_.push_back(
-            {std::to_string(request_id), "a", "bb", "ccc", "dddd", "1.0", std::to_string(1590738991000 + 1000)});
-        sql_case.batch_request_ = request;
-    }
+
 }
 
 static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case) {
@@ -568,7 +575,7 @@ static void BM_SimpleLastJoin1Table(benchmark::State& state) {  // NOLINT
 
     sql_case.sql_str_ = R"(
     SELECT *
-FROM {0} last join {1} order by {1}.c7 on {0}.c1 = {1}.c1 and {0}.c7 - 10s >= {1}.c7;
+FROM {0} last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10s >= {1}.x7;
 )";
     BM_RequestQuery(state, sql_case);
 }
@@ -580,8 +587,8 @@ static void BM_SimpleLastJoin2Table(benchmark::State& state) {  // NOLINT
     sql_case.sql_str_ = (R"(
     SELECT *
 FROM {0}
-last join {1} order by {1}.c7 on {0}.c1 = {1}.c1 and {0}.c7 - 10s >= {1}.c7
-last join {2} order by {2}.c7 on {0}.c2 = {2}.c2 and {0}.c7 - 10s >= {2}.c7;
+last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10s >= {1}.x7
+last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - 10s >= {2}.x7;
 )");
     BM_RequestQuery(state, sql_case);
 }
@@ -593,9 +600,9 @@ static void BM_SimpleLastJoin3Table(benchmark::State& state) {  // NOLINT
     sql_case.sql_str_ = (R"(
     SELECT *
 FROM {0}
-last join {1} order by {1}.c7 on {0}.c1 = {1}.c1 and {0}.c7 - 10s >= {1}.c7
-last join {2} order by {2}.c7 on {0}.c2 = {2}.c2 and {0}.c7 - 10s >= {2}.c7
-last join {3} order by {3}.c7 on {0}.c3 = {3}.c3 and {0}.c7 - 10s >= {3}.c7;
+last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10s >= {1}.x7
+last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - 10s >= {2}.x7
+last join {3} order by {3}.x7 on {0}.c3 = {3}.x3 and {0}.c7 - 10s >= {3}.x7;
 )");
     BM_RequestQuery(state, sql_case);
 }
@@ -606,10 +613,10 @@ static void BM_SimpleLastJoin4Table(benchmark::State& state) {  // NOLINT
     sql_case.sql_str_ = R"(
     SELECT *
 FROM {0}
-last join {1} order by {1}.c7 on {0}.c1 = {1}.c1 and {0}.c7 - 10s >= {1}.c7
-last join {2} order by {2}.c7 on {0}.c2 = {2}.c2 and {0}.c7 - 10s >= {2}.c7
-last join {3} order by {3}.c7 on {0}.c3 = {3}.c3 and {0}.c7 - 10s >= {3}.c7
-last join {4} order by {4}.c7 on {0}.c4 = {4}.c3 and {0}.c7 - 10s >= {4}.c7;
+last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10s >= {1}.x7
+last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - 10s >= {2}.x7
+last join {3} order by {3}.x7 on {0}.c3 = {3}.x3 and {0}.c7 - 10s >= {3}.x7
+last join {4} order by {4}.x7 on {0}.c4 = {4}.x3 and {0}.c7 - 10s >= {4}.x7;
 )";
     BM_RequestQuery(state, sql_case);
 }
