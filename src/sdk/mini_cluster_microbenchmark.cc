@@ -550,6 +550,10 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
         row_view.Reset(request_rows[0].buf());
         rtidb::sdk::SQLSDKTest::CovertFesqlRowToRequestRow(&row_view, request_row);
 
+        for(int i = 0; i < 10; i++) {
+            auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
+        }
+        LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
         if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
             for (auto _ : state) {
                 auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
