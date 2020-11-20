@@ -1863,7 +1863,7 @@ void TabletImpl::Query(RpcController* ctrl,
     clock_gettime(CLOCK_REALTIME, &tn1);
     ProcessQuery(request, response, &buf);
     clock_gettime(CLOCK_REALTIME, &tn2);
-    LOG(INFO) << "Query::ProcessQuery consume: " << tn2.tv_nsec - tn1.tv_nsec;
+    LOG(INFO) << "Query::ProcessQuery consume: " << (tn2.tv_sec - tn1.tv_sec)*1000000000 + tn2.tv_nsec - tn1.tv_nsec;
 }
 
 void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
@@ -2001,7 +2001,7 @@ void TabletImpl::SubQuery(RpcController* ctrl,
     clock_gettime(CLOCK_REALTIME, &tn1);
     ProcessQuery(request, response, &buf);
     clock_gettime(CLOCK_REALTIME, &tn2);
-    LOG(INFO) << "SubQuery::ProcessQuery consume: " << tn2.tv_nsec - tn1.tv_nsec;
+    LOG(INFO) << "SubQuery::ProcessQuery consume: " << (tn2.tv_sec - tn1.tv_sec)*1000000000 + tn2.tv_nsec - tn1.tv_nsec;
 }
 
 void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,

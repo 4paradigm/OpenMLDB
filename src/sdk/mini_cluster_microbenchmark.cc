@@ -352,7 +352,7 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
             clock_gettime(CLOCK_REALTIME, &tn1);
             router->ExecuteSQL(db, exe_sql, request_row, &status);
             clock_gettime(CLOCK_REALTIME, &tn2);
-            LOG(INFO) << "ExecuteSQL consume: " << tn2.tv_nsec - tn1.tv_nsec;
+            LOG(INFO) << "ExecuteSQL consume: " << (tn2.tv_sec - tn1.tv_sec)*1000000000 + tn2.tv_nsec - tn1.tv_nsec;
             state.SkipWithError("benchmark case debug");
             break;
         }
