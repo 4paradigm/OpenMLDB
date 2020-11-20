@@ -281,11 +281,11 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
-    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
-        sql_opt.enable_debug = true;
-    } else {
-        sql_opt.enable_debug = false;
-    }
+//    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+//        sql_opt.enable_debug = true;
+//    } else {
+//        sql_opt.enable_debug = false;
+//    }
     auto router = NewClusterSQLRouter(sql_opt);
     if (router == nullptr) {
         std::cout << "fail to init sql cluster router" << std::endl;
@@ -343,7 +343,12 @@ static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
 
     if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
         for (auto _ : state) {
+            struct timespec tn1;
+            struct timespec tn2;
+            clock_gettime(CLOCK_REALTIME, &tn1);
             router->ExecuteSQL(db, exe_sql, request_row, &status);
+            clock_gettime(CLOCK_REALTIME, &tn2);
+            LOG(INFO) << "ExecuteSQL consume: " << tn2.tv_nsec - tn1.tv_nsec;
             state.SkipWithError("benchmark case debug");
             break;
         }
