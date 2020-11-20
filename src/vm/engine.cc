@@ -354,7 +354,12 @@ int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
         LOG(WARNING) << "run request plan output is null";
         return -1;
     }
+    struct timespec tn1;
+    struct timespec tn2;
+    clock_gettime(CLOCK_REALTIME, &tn1);
     bool ok = ExtractSingleRow(output, out_row);
+    clock_gettime(CLOCK_REALTIME, &tn2);
+    LOG(INFO) << "ExtractSingleRow consume: " << tn2.tv_nsec - tn1.tv_nsec;
     if (ok) {
         return 0;
     }
