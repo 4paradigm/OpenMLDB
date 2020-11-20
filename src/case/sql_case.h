@@ -69,11 +69,14 @@ class SQLCase {
             inputs_[idx].name_ = name;
         }
     }
+
     const int32_t CountInputs() const { return inputs_.size(); }
     // extract schema from schema string
     // name:type|name:type|name:type|
     bool ExtractInputTableDef(type::TableDef& table,  // NOLINT
                               int32_t input_idx = 0) const;
+    bool ExtractInputTableDef(const TableInfo& info,
+                              type::TableDef& table) const;  // NOLINT
     bool BuildCreateSQLFromInput(int32_t input_idx, std::string* sql,
                                  int partition_num = 1) const;
     bool BuildInsertSQLFromInput(int32_t input_idx, std::string* sql) const;
@@ -82,6 +85,9 @@ class SQLCase {
     bool ExtractOutputSchema(type::TableDef& table) const;       // NOLINT
     bool ExtractInputData(std::vector<fesql::codec::Row>& rows,  // NOLINT
                           int32_t input_idx = 0) const;
+    bool ExtractInputData(
+        const TableInfo& info,
+        std::vector<fesql::codec::Row>& rows) const;  // NOLINT
     bool ExtractOutputData(
         std::vector<fesql::codec::Row>& rows) const;  // NOLINT
 
@@ -183,7 +189,6 @@ class SQLCase {
         return false;
     }
 
- private:
     std::string id_;
     std::string mode_;
     std::string desc_;
