@@ -418,8 +418,12 @@ static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
                  ", min(c6) OVER w2 as w2_c6_min, count(id) OVER w2 as w2_cnt "
                  ", min(c6) OVER w3 as w3_c6_min, count(id) OVER w3 as w3_cnt "
                  ", min(c6) OVER w4 as w4_c6_min, count(id) OVER w4 as w4_cnt "
-                 "FROM %s WINDOW w1 AS (PARTITION BY %s.c1 "
-                 "ORDER BY %s.c7 ROWS BETWEEN %s PRECEDING AND CURRENT ROW);",
+                 "FROM %s WINDOW "
+                 "w1 AS (PARTITION BY %s.c1 ORDER BY %s.c7 ROWS BETWEEN %s PRECEDING AND CURRENT ROW)"
+                 ", w2 AS (PARTITION BY %s.c2 ORDER BY %s.c7 ROWS BETWEEN %s PRECEDING AND CURRENT ROW)"
+                 ", w3 AS (PARTITION BY %s.c3 ORDER BY %s.c7 ROWS BETWEEN %s PRECEDING AND CURRENT ROW)"
+                 ", w4 AS (PARTITION BY %s.c4 ORDER BY %s.c7 ROWS BETWEEN %s PRECEDING AND CURRENT ROW)"
+                 ";",
                  name.c_str(), name.c_str(), name.c_str(),
                  std::to_string(window_size - 1).c_str());
     std::string exe_sql(sql, size);
