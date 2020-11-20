@@ -600,6 +600,10 @@ Status PhysicalRequestProviderNodeWithCommonColumn::InitSchema(
 }
 
 void PhysicalOpNode::PrintSchema() const {
+    std::cout << SchemaToString() << std::endl;
+}
+
+std::string PhysicalOpNode::SchemaToString() const {
     std::stringstream ss;
     ss << "[";
     if (!schemas_ctx_.GetName().empty()) {
@@ -627,7 +631,7 @@ void PhysicalOpNode::PrintSchema() const {
         }
         ss << "} ";
     }
-    std::cout << ss.str() << std::endl;
+    return ss.str();
 }
 
 base::Status PhysicalUnionNode::InitSchema(PhysicalPlanContext* ctx) {
@@ -684,6 +688,11 @@ base::Status PhysicalRenameNode::InitSchema(PhysicalPlanContext* ctx) {
     return Status::OK();
 }
 
+PhysicalRequestUnionNode* PhysicalRequestUnionNode::CastFrom(
+    PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalRequestUnionNode*>(node);
+}
+
 void PhysicalRequestJoinNode::Print(std::ostream& output,
                                     const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
@@ -698,6 +707,11 @@ void PhysicalRequestJoinNode::Print(std::ostream& output,
     output << ")";
     output << "\n";
     PrintChildren(output, tab);
+}
+
+PhysicalRequestJoinNode* PhysicalRequestJoinNode::CastFrom(
+    PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalRequestJoinNode*>(node);
 }
 
 Status PhysicalRequestJoinNode::InitSchema(PhysicalPlanContext* ctx) {

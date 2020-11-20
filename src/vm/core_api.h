@@ -61,7 +61,8 @@ class CoreAPI {
 
     static int ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                   fesql::node::ColumnRefNode* expr);
-    static const std::string* ResolveSourceColumnName(
+
+    static std::string ResolveSourceColumnName(
         fesql::vm::PhysicalOpNode* node, fesql::node::ColumnRefNode* expr);
 
     static fesql::codec::Row RowProject(const fesql::vm::RawPtrHandle fn,

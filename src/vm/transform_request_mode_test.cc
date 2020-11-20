@@ -252,7 +252,6 @@ void CheckTransformPhysicalPlan(const SQLCase& sql_case,
     auto lib = ::fesql::udf::DefaultUDFLibrary::get();
     RequestModeTransformer transform(nm, "db", catalog, m.get(), lib, {}, false,
                                      false);
-
     PhysicalOpNode* physical_plan = nullptr;
     ASSERT_TRUE(
         transform.TransformPhysicalPlan(plan_trees, &physical_plan).isOK());
