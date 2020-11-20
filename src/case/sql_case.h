@@ -158,6 +158,14 @@ class SQLCase {
     }
     friend SQLCaseBuilder;
     friend std::ostream& operator<<(std::ostream& output, const SQLCase& thiz);
+    static bool IS_PERF() {
+        const char* env_name = "FESQL_PERF";
+        char* value = getenv(env_name);
+        if (value != nullptr && strcmp(value, "true") == 0) {
+            return true;
+        }
+        return false;
+    }
     static bool IS_DEBUG() {
         const char* env_name = "FESQL_DEV";
         char* value = getenv(env_name);
