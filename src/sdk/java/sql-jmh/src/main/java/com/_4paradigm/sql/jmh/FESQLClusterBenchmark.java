@@ -1,6 +1,5 @@
 package com._4paradigm.sql.jmh;
 
-import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
@@ -17,8 +16,8 @@ import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
 
-@BenchmarkMode(Mode.Throughput)
-@OutputTimeUnit(TimeUnit.SECONDS)
+@BenchmarkMode(Mode.All)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
 @Threads(2)
 @Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
@@ -26,12 +25,11 @@ import java.util.ArrayList;
 
 public class FESQLClusterBenchmark {
     private SqlExecutor executor;
-    PreparedStatement requestPs;
     private SdkOption option;
     private String db = "db" + System.nanoTime();
     private Map<String, Map<String, String>> tables = new HashMap<>();
-    private String partitionNum = "1";
-    private int pkNum = 10;
+    private String partitionNum = "7";
+    private int pkNum = 1;
     private int windowNum = 10;
     private String previousApplication = "create table `previous_application`(" +
             "`SK_ID_PREV` bigint," +
@@ -754,8 +752,8 @@ public class FESQLClusterBenchmark {
         }
     }
 
-    private void setPreparedStatement() throws SQLException {
-        requestPs = executor.getRequestPreparedStmt(db, benSql);
+    private PreparedStatement getPreparedStatement() throws SQLException {
+        PreparedStatement requestPs = executor.getRequestPreparedStmt(db, benSql);
         ResultSetMetaData metaData = requestPs.getMetaData();
         long pkBase = 1000000l;
         for (int i = 0; i < metaData.getColumnCount(); i++) {
@@ -766,13 +764,16 @@ public class FESQLClusterBenchmark {
             } else if (columnType == Types.VARCHAR) {
                 requestPs.setString(i + 1, "col" + String.valueOf(i));
             } else if (columnType == Types.DOUBLE) {
-                requestPs.setDouble(i + 1, 1.4);
-            } else if (columnType == Types.INTEGER || columnType == Types.BIGINT) {
+                requestPs.setDouble(i + 1, 1.4d);
+            } else if (columnType == Types.INTEGER) {
                 requestPs.setInt(i + 1, i);
+            } else if (columnType == Types.BIGINT) {
+                requestPs.setLong(i + 1, i);
             } else if (columnType == Types.TIMESTAMP) {
-                requestPs.setTimestamp(i + 1, new Timestamp(System.currentTimeMillis()));
+                requestPs.setTimestamp(i + 1, new Timestamp(System.currentTimeMillis() + 1000));
             }
         }
+        return  requestPs;
     }
 
     @Setup
@@ -808,7 +809,6 @@ public class FESQLClusterBenchmark {
         putData(main,pkNum,windowNum);
         putData(creditCardBalance,pkNum,windowNum);
         putData(bureau,pkNum,windowNum);
-        setPreparedStatement();
     }
 
     @TearDown
@@ -826,13 +826,41 @@ public class FESQLClusterBenchmark {
     @Benchmark
     public void execSQL() {
         try {
-            requestPs.executeQuery();
+            PreparedStatement ps = getPreparedStatement();
+            ResultSet resultSet = ps.executeQuery();
+            /*resultSet.next();
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            Map<String, String> val = new HashMap<>();
+            for (int i = 0; i < metaData.getColumnCount(); i++) {
+                String columnName = metaData.getColumnName(i + 1);
+                int columnType = metaData.getColumnType(i + 1);
+                if (columnType == Types.VARCHAR) {
+                    val.put(columnName, String.valueOf(resultSet.getString(i + 1)));
+                } else if (columnType == Types.DOUBLE) {
+                    val.put(columnName, String.valueOf(resultSet.getDouble(i + 1)));
+                } else if (columnType == Types.INTEGER) {
+                    val.put(columnName, String.valueOf(resultSet.getInt(i + 1)));
+                } else if (columnType == Types.BIGINT) {
+                    val.put(columnName, String.valueOf(resultSet.getLong(i + 1)));
+                } else if (columnType == Types.TIMESTAMP) {
+                    val.put(columnName, String.valueOf(resultSet.getTimestamp(i + 1)));
+                }
+            }*/
+            ps.close();
         } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
     public static void main(String[] args) throws RunnerException {
-        FESQLClusterBenchmark ben = new FESQLClusterBenchmark();
+      /*  FESQLClusterBenchmark ben = new FESQLClusterBenchmark();
+        try {
+            ben.setup();
+            ben.execSQL();
+            ben.teardown();
+        } catch (Exception e) {
+
+        }*/
         Options opt = new OptionsBuilder()
                 .include(FESQLClusterBenchmark.class.getSimpleName())
                 .forks(1)
