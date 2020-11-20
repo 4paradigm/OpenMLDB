@@ -575,7 +575,7 @@ static void BM_SimpleLastJoin1Table(benchmark::State& state) {  // NOLINT
 
     sql_case.sql_str_ = R"(
     SELECT *
-FROM {0} last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10s >= {1}.x7;
+FROM {0} last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10000 >= {1}.x7;
 )";
     BM_RequestQuery(state, sql_case);
 }
@@ -587,8 +587,8 @@ static void BM_SimpleLastJoin2Table(benchmark::State& state) {  // NOLINT
     sql_case.sql_str_ = (R"(
     SELECT *
 FROM {0}
-last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10s >= {1}.x7
-last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - 10s >= {2}.x7;
+last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10000 >= {1}.x7
+last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - 10000 >= {2}.x7;
 )");
     BM_RequestQuery(state, sql_case);
 }
@@ -600,9 +600,9 @@ static void BM_SimpleLastJoin3Table(benchmark::State& state) {  // NOLINT
     sql_case.sql_str_ = (R"(
     SELECT *
 FROM {0}
-last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10s >= {1}.x7
-last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - 10s >= {2}.x7
-last join {3} order by {3}.x7 on {0}.c3 = {3}.x3 and {0}.c7 - 10s >= {3}.x7;
+last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10000 >= {1}.x7
+last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - 10000 >= {2}.x7
+last join {3} order by {3}.x7 on {0}.c3 = {3}.x3 and {0}.c7 - 10000 >= {3}.x7;
 )");
     BM_RequestQuery(state, sql_case);
 }
@@ -613,10 +613,10 @@ static void BM_SimpleLastJoin4Table(benchmark::State& state) {  // NOLINT
     sql_case.sql_str_ = R"(
     SELECT *
 FROM {0}
-last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10s >= {1}.x7
-last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - 10s >= {2}.x7
-last join {3} order by {3}.x7 on {0}.c3 = {3}.x3 and {0}.c7 - 10s >= {3}.x7
-last join {4} order by {4}.x7 on {0}.c4 = {4}.x3 and {0}.c7 - 10s >= {4}.x7;
+last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - 10000 >= {1}.x7
+last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - 10000 >= {2}.x7
+last join {3} order by {3}.x7 on {0}.c3 = {3}.x3 and {0}.c7 - 10000 >= {3}.x7
+last join {4} order by {4}.x7 on {0}.c4 = {4}.x3 and {0}.c7 - 10000 >= {4}.x7;
 )";
     BM_RequestQuery(state, sql_case);
 }
