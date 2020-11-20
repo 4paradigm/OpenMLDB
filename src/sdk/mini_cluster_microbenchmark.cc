@@ -428,7 +428,7 @@ static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
                  name.c_str(), preceding.c_str(), preceding.c_str(), preceding.c_str(), preceding.c_str());
     std::string exe_sql(sql, size);
     auto request_row = router->GetRequestRow(db, exe_sql, &status);
-    request_row->Init(2);
+    request_row->Init(10);
     request_row->AppendInt32(id);
     request_row->AppendString("a");
     request_row->AppendString("aa");
