@@ -482,21 +482,21 @@ static void SimpleLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_case) {  // NOL
 
     // table {2}
     {
-        fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[0];
+        fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[1];
         input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
         input.indexs_ = {"index2:x2:x7"};
         sql_case.inputs_.push_back(input);
     }
     // table {3}
     {
-        fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[0];
+        fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[1];
         input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
         input.indexs_ = {"index3:x3:x7"};
         sql_case.inputs_.push_back(input);
     }
     // table {4}
     {
-        fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[0];
+        fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[1];
         input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
         input.indexs_ = {"index4:x4:x7"};
         sql_case.inputs_.push_back(input);
