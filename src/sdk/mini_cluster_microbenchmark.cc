@@ -382,7 +382,7 @@ static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
                          "index(key=(c1), ts=c7, ttl=3650d), "
                          "index(key=(c2), ts=c7, ttl=3650d), "
                          "index(key=(c3), ts=c7, ttl=3650d), "
-                         "index(key=(c4), ts=c7, ttl=3650d), "
+                         "index(key=(c4), ts=c7, ttl=3650d) "
                          ") partitionnum=8;";
     router->ExecuteDDL(db, create, &status);
     if (status.msg != "ok") {
