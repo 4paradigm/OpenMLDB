@@ -546,7 +546,6 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
         }
 
         fesql::codec::RowView row_view(request_table.columns());
-        std::vector<std::shared_ptr<fesql::sdk::ResultSet>> results;
         ASSERT_EQ(1, request_rows.size());
         row_view.Reset(request_rows[0].buf());
         rtidb::sdk::SQLSDKTest::CovertFesqlRowToRequestRow(&row_view, request_row);
@@ -556,7 +555,6 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
                 auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
                 state.SkipWithError("benchmark case debug");
                 if (!rs) FAIL() << "sql case expect success == true";
-                ASSERT_FALSE(results.empty());
                 break;
             }
         } else {
