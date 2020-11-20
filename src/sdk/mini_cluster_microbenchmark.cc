@@ -439,7 +439,7 @@ static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
     }
 }
 
-static void SimpleLastJoinDate(fesql::sqlcase::SQLCase& sql_case) {  // NOLINT
+static void SimpleLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_case) {  // NOLINT
 
     sql_case.db_ = fesql::sqlcase::SQLCase::GenRand("db");
     int request_id = 0;
@@ -564,7 +564,7 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
 static void BM_SimpleLastJoin1Table(benchmark::State& state) {  // NOLINT
     fesql::sqlcase::SQLCase sql_case;
     sql_case.desc_ = "BM_SimpleLastJoinOneRight";
-    SimpleLastJoinDate(sql_case);
+    SimpleLastJoinNCaseData(sql_case);
 
     sql_case.sql_str_ = R"(
     SELECT id, c1, c2, c3, c4, c6, c7
@@ -575,7 +575,7 @@ FROM {0} last join {1} order by {1}.c7 on {0}.c1 = {1}.c1 and {0}.c7 - 10s >= {1
 static void BM_SimpleLastJoin2Table(benchmark::State& state) {  // NOLINT
     fesql::sqlcase::SQLCase sql_case;
     sql_case.desc_ = "BM_SimpleLastJoin2Right";
-    SimpleLastJoinDate(sql_case);
+    SimpleLastJoinNCaseData(sql_case);
 
     sql_case.sql_str_ = (R"(
     SELECT id, c1, c2, c3, c4, c6, c7
@@ -588,7 +588,7 @@ last join {2} order by {2}.c7 on {0}.c2 = {2}.c2 and {0}.c7 - 10s >= {2}.c7;
 static void BM_SimpleLastJoin3Table(benchmark::State& state) {  // NOLINT
     fesql::sqlcase::SQLCase sql_case;
     sql_case.desc_ = "BM_SimpleLastJoin3Table";
-    SimpleLastJoinDate(sql_case);
+    SimpleLastJoinNCaseData(sql_case);
 
     sql_case.sql_str_ = (R"(
     SELECT id, c1, c2, c3, c4, c6, c7
@@ -602,7 +602,7 @@ last join {3} order by {3}.c7 on {0}.c3 = {3}.c3 and {0}.c7 - 10s >= {3}.c7;
 static void BM_SimpleLastJoin4Table(benchmark::State& state) {  // NOLINT
     fesql::sqlcase::SQLCase sql_case;
     sql_case.desc_ = "BM_SimpleLastJoin3Table";
-    SimpleLastJoinDate(sql_case);
+    SimpleLastJoinNCaseData(sql_case);
     sql_case.sql_str_ = R"(
     SELECT id, c1, c2, c3, c4, c6, c7
 FROM {0}
