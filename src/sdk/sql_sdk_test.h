@@ -171,12 +171,10 @@ void SQLSDKTest::InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         for (auto insert : inserts) {
             std::string placeholder = "{" + std::to_string(i) + "}";
             boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
-            if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
-                DLOG(INFO) << insert;
-                if (!insert.empty()) {
-                    for (int j = 0; j < sql_case.inputs()[i].repeat_; j++) {
-                        ASSERT_TRUE(router->ExecuteInsert(sql_case.db(), insert, &status));
-                    }
+            DLOG(INFO) << insert;
+            if (!insert.empty()) {
+                for (int j = 0; j < sql_case.inputs()[i].repeat_; j++) {
+                    ASSERT_TRUE(router->ExecuteInsert(sql_case.db(), insert, &status));
                 }
             }
         }
