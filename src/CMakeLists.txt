@@ -188,6 +188,134 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         target_link_libraries(blobserver_impl_test gtest ${BIN_LIBS})
         add_library(replica STATIC replica/replicate_node.cc
                 replica/log_replicator.cc)
+        add_executable(tablet_catalog_test catalog/tablet_catalog_test.cc)
+        target_link_libraries(tablet_catalog_test gtest ${BIN_LIBS})
+
+        add_executable(tablet_engine_test catalog/tablet_engine_test.cc)
+        target_link_libraries(tablet_engine_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+
+        add_executable(sdk_catalog_test catalog/sdk_catalog_test.cc flags.cc)
+        target_link_libraries(sdk_catalog_test gtest ${BIN_LIBS})
+
+        add_executable(client_manager_test catalog/client_manager_test.cc)
+        target_link_libraries(client_manager_test gtest ${BIN_LIBS})
+
+        add_executable(strings_test base/strings_test.cc)
+        target_link_libraries(strings_test gtest ${BIN_LIBS})
+
+        add_executable(file_util_test base/file_util_test.cc)
+        target_link_libraries(file_util_test gtest ${BIN_LIBS})
+
+        add_executable(slice_test base/slice_test.cc)
+        target_link_libraries(slice_test gtest ${BIN_LIBS})
+
+        add_executable(zk_test zk/zk_client_test.cc)
+        target_link_libraries(zk_test gtest ${BIN_LIBS})
+
+        add_executable(dist_lock_test zk/dist_lock_test.cc)
+        target_link_libraries(dist_lock_test gtest ${BIN_LIBS})
+
+        add_executable(replica_test replica/log_replicator_test.cc flags.cc base/status.cc)
+        target_link_libraries(replica_test gtest ${BIN_LIBS})
+
+        add_executable(skiplist_test base/skiplist_test.cc)
+        target_link_libraries(skiplist_test gtest ${BIN_LIBS})
+
+        add_executable(flat_array_test codec/flat_array_test.cc)
+        target_link_libraries(flat_array_test gtest ${BIN_LIBS})
+
+        add_executable(schema_codec_test codec/schema_codec_test.cc proto/tablet.pb.cc proto/name_server.pb.cc proto/common.pb.cc proto/type.pb.cc)
+        target_link_libraries(schema_codec_test gtest ${BIN_LIBS})
+
+        add_executable(count_down_latch_test base/count_down_latch_test.cc)
+        target_link_libraries(count_down_latch_test  gtest ${BIN_LIBS})
+
+        add_executable(ringqueue_test base/ringqueue_test.cc)
+        target_link_libraries(ringqueue_test gtest ${BIN_LIBS})
+
+        add_executable(segment_test storage/segment_test.cc flags.cc)
+        target_link_libraries(segment_test gtest ${BIN_LIBS})
+
+        add_executable(table_test  storage/table_test.cc proto/tablet.pb.cc proto/common.pb.cc proto/type.pb.cc flags.cc)
+        target_link_libraries(table_test gtest ${BIN_LIBS})
+
+        add_executable(disk_table_test  storage/disk_table_test.cc proto/tablet.pb.cc proto/common.pb.cc proto/type.pb.cc flags.cc)
+        target_link_libraries(disk_table_test gtest ${BIN_LIBS})
+
+        add_executable(snapshot_test  storage/snapshot_test.cc proto/tablet.pb.cc proto/common.pb.cc proto/type.pb.cc flags.cc base/status.cc)
+        target_link_libraries(snapshot_test gtest ${BIN_LIBS})
+
+        add_executable(table_mem_test  storage/table_mem_test.cc)
+        target_link_libraries(table_mem_test gtest ${BIN_LIBS})
+
+        add_executable(kv_iterator_test  base/kv_iterator_test.cc proto/tablet.pb.cc proto/common.pb.cc proto/type.pb.cc)
+        target_link_libraries(kv_iterator_test gtest ${BIN_LIBS})
+
+        add_executable(tablet_impl_test  tablet/tablet_impl_test.cc base/status.cc)
+        target_link_libraries(tablet_impl_test  gtest ${BIN_LIBS})
+
+        add_executable(tablet_func_test  tablet/tablet_impl_func_test.cc base/status.cc)
+        target_link_libraries(tablet_func_test  gtest ${BIN_LIBS})
+
+        add_executable(tablet_impl_keep_alive_test tablet/tablet_impl_keep_alive_test.cc base/status.cc)
+        target_link_libraries(tablet_impl_keep_alive_test  gtest ${BIN_LIBS})
+
+        add_executable(tablet_impl_mem_test  tablet/tablet_impl_mem_test.cc base/status.cc)
+        target_link_libraries(tablet_impl_mem_test   gtest tcmalloc ${BIN_LIBS})
+
+        add_executable(tablet_impl_multi_path_test  tablet/tablet_impl_multi_path_test.cc base/status.cc)
+        target_link_libraries(tablet_impl_multi_path_test  gtest ${BIN_LIBS})
+
+        add_executable(tablet_impl_projection_test  tablet/tablet_impl_projection_test.cc base/status.cc)
+        target_link_libraries(tablet_impl_projection_test   gtest ${BIN_LIBS})
+
+        add_executable(codec_bench_test  codec/codec_bench_test.cc proto/common.pb.cc proto/type.pb.cc)
+        target_link_libraries(codec_bench_test gtest ${BIN_LIBS})
+
+        add_executable(codec_test  codec/codec_test.cc proto/common.pb.cc proto/type.pb.cc)
+        target_link_libraries(codec_test gtest ${BIN_LIBS})
+
+        add_executable(project_codec_test  codec/codec_project_test.cc proto/common.pb.cc proto/type.pb.cc)
+        target_link_libraries(project_codec_test gtest ${BIN_LIBS})
+
+        add_executable(log_test  log/log_test.cc)
+        target_link_libraries(log_test gtest ${BIN_LIBS})
+
+        add_executable(snapshot_replica_test  replica/snapshot_replica_test.cc client/tablet_client.cc base/status.cc flags.cc)
+        target_link_libraries(snapshot_replica_test gtest ${BIN_LIBS})
+
+        add_executable(binlog_test  replica/binlog_test.cc client/tablet_client.cc base/status.cc flags.cc)
+        target_link_libraries(binlog_test gtest ${BIN_LIBS})
+
+        add_executable(nameserver_test nameserver/name_server_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc)
+        target_link_libraries(nameserver_test  gtest  ${BIN_LIBS})
+
+        add_executable(blob_proxy_impl_test blob_proxy/blob_proxy_impl_test.cc proto/common.pb.cc proto/client.pb.cc proto/tablet.pb.cc flags.cc)
+        target_link_libraries(blob_proxy_impl_test gtest ${BIN_LIBS})
+
+        add_executable(nameserver_create_remote_test nameserver/name_server_create_remote_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc)
+        target_link_libraries(nameserver_create_remote_test gtest ${BIN_LIBS})
+
+        add_executable(nameserver_object_store_test nameserver/name_server_object_store_test.cc base/status.cc)
+        target_link_libraries(nameserver_object_store_test gtest ${BIN_LIBS})
+
+        add_executable(memcomparable_format_test codec/memcomparable_format_test.cc)
+        target_link_libraries(memcomparable_format_test gtest ${BIN_LIBS})
+
+        add_executable(field_codec_test codec/field_codec_test.cc)
+        target_link_libraries(field_codec_test gtest ${BIN_LIBS})
+
+        add_executable(glog_wapper_test base/glog_wapper_test.cc)
+        target_link_libraries(glog_wapper_test  gtest ${BIN_LIBS})
+
+        add_executable(server_name_test base/server_name_test.cc)
+        target_link_libraries(server_name_test gtest ${BIN_LIBS})
+
+        add_executable(new_server_env_test nameserver/new_server_env_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc)
+        target_link_libraries(new_server_env_test gtest ${BIN_LIBS})
+
+        add_executable(parse_log tools/parse_log.cc)
+        target_link_libraries(parse_log ${BIN_LIBS})
         add_library(blob_proxy STATIC proto/blob_proxy.pb.cc blob_proxy/blob_proxy_impl.cc flags.cc client/client.cc)
     else ()
         set(BIN_LIBS client  rtidb_sdk client  rtidb_catalog zk_client  rtidb_flags base rtidb_codec common rtidb_proto zookeeper_mt
