@@ -501,8 +501,6 @@ static void SimpleLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_case) {  // NOL
         input.indexs_ = {"index4:x4:x7"};
         sql_case.inputs_.push_back(input);
     }
-
-
 }
 
 static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case) {
@@ -550,7 +548,7 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
         row_view.Reset(request_rows[0].buf());
         rtidb::sdk::SQLSDKTest::CovertFesqlRowToRequestRow(&row_view, request_row);
 
-        for(int i = 0; i < 10; i++) {
+        for (int i = 0; i < 10; i++) {
             auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
             rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
         }
