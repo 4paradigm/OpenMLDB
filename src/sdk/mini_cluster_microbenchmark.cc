@@ -440,7 +440,6 @@ static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
 }
 
 static void SimpleLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_case) {  // NOLINT
-
     sql_case.db_ = fesql::sqlcase::SQLCase::GenRand("db");
     int request_id = 0;
     // request table {0}
@@ -503,7 +502,7 @@ static void SimpleLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_case) {  // NOL
     }
 }
 
-static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case) {
+static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case) {  // NOLINT
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
