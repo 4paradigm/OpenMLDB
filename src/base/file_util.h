@@ -26,6 +26,9 @@ namespace base {
 static constexpr uint32_t BOLCK_SIZE = 4 * 1024;
 
 inline static bool Mkdir(const std::string& path) {
+    if ("/" == path) {
+        return true;
+    }
     const int dir_mode = 0777;
     int ret = ::mkdir(path.c_str(), dir_mode);
     if (ret == 0 || errno == EEXIST) {

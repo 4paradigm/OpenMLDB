@@ -521,7 +521,7 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
     }
     fesql::sdk::Status status;
     rtidb::sdk::SQLSDKTest::CreateDB(sql_case, router);
-    rtidb::sdk::SQLSDKTest::CreateTables(sql_case, router);
+    rtidb::sdk::SQLSDKTest::CreateTables(sql_case, router, 8);
     rtidb::sdk::SQLSDKTest::InsertTables(sql_case, router, false);
     {
         // execute SQL

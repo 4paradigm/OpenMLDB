@@ -167,10 +167,34 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
     add_library(blob_proxy STATIC proto/blob_proxy.pb.cc blob_proxy/blob_proxy_impl.cc flags.cc client/client.cc)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(BIN_LIBS client  rtidb_sdk client  rtidb_catalog zk_client  rtidb_flags base rtidb_codec common rtidb_proto zookeeper_mt
-    ${VM_LIBS}
-    ${LLVM_LIBS}
-    ${BRPC_LIBS})
+    if (MAC_TABLET_ENABLE)
+        add_library(tablet STATIC tablet/tablet_impl.cc flags.cc tablet/file_receiver.cc tablet/file_sender.cc tablet/combine_iterator.cc)
+        add_library(nameserver STATIC nameserver/name_server_impl.cc flags.cc)
+        add_library(beans storage/beans/bitcask.c storage/beans/mac_clock_gettime_stub.c storage/beans/codec.c storage/beans/common.c storage/beans/crc32.c storage/beans/diskmgr.c storage/beans/hint.c storage/beans/hstore.c storage/beans/htree.c storage/beans/mfile.c storage/beans/quicklz.c storage/beans/record.c)
+        add_library(blobserver STATIC storage/object_store.cc proto/type.pb.cc blobserver/blobserver_impl.cc flags.cc)
+        add_library(storage STATIC storage/object_store.cc storage/mem_table.cc storage/disk_table.cc storage/relational_table.cc storage/segment.cc storage/ticket.cc storage/mem_table_snapshot.cc storage/disk_table_snapshot.cc storage/snapshot.cc storage/table.cc storage/binlog.cc storage/schema.cc)
+        add_library(log STATIC log/crc32c.cc
+                log/sequential_file.cc
+                log/log_writer.cc
+                log/log_reader.cc
+                log/writable_file.cc flags.cc)
+        enable_testing()
+        set(BIN_LIBS nameserver tablet rtidb_sdk blobserver blob_proxy rtidb_catalog client zk_client replica base beans storage rtidb_codec rtidb_proto log common rocksdb zookeeper_mt tcmalloc_minimal
+                ${VM_LIBS}
+                ${LLVM_LIBS}
+                ${BRPC_LIBS})
+        set(FESQL_CASE_LIBS base_test fesql_core yaml-cpp boost_filesystem)
+        add_executable(blobserver_impl_test blobserver/blobserver_impl_test.cc proto/common.pb.cc proto/tablet.pb.cc flags.cc)
+        target_link_libraries(blobserver_impl_test gtest ${BIN_LIBS})
+        add_library(replica STATIC replica/replicate_node.cc
+                replica/log_replicator.cc)
+        add_library(blob_proxy STATIC proto/blob_proxy.pb.cc blob_proxy/blob_proxy_impl.cc flags.cc client/client.cc)
+    else ()
+        set(BIN_LIBS client  rtidb_sdk client  rtidb_catalog zk_client  rtidb_flags base rtidb_codec common rtidb_proto zookeeper_mt
+                ${VM_LIBS}
+                ${LLVM_LIBS}
+                ${BRPC_LIBS})
+    endif ()
 endif ()
 
 add_executable(rtidb cmd/rtidb.cc base/status.cc proto/client.pb.cc base/linenoise.cc)
