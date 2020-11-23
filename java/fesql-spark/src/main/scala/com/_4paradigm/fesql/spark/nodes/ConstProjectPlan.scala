@@ -171,6 +171,8 @@ object ConstProjectPlan {
             to_timestamp(inputCol)
           case FesqlDataType.kNull =>
             inputCol.cast(TimestampType)
+          case FesqlDataType.kBool =>
+            inputCol.cast(LongType).cast(TimestampType)
           case _ => throw new UnsupportedFesqlException(
             s"FESQL type from $fromType to $targetType is not supported")
         }
