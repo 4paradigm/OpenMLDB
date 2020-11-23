@@ -1177,5 +1177,38 @@ std::string FindFesqlDirPath() {
     return std::string();
 }
 
+bool SQLCase::BuildCreateSpSQLFromInput(int32_t input_idx,
+        const std::string& select_sql, std::string* create_sp_sql) {
+    type::TableDef table;
+    if (!ExtractInputTableDef(table, input_idx)) {
+        LOG(WARNING) << "Fail to extract table schema";
+        return false;
+    }
+    if (!BuildCreateSpSQLFromSchema(table, select_sql, create_sp_sql)) {
+        LOG(WARNING) << "Fail to build create sql string";
+        return false;
+    }
+    return true;
+}
+
+bool SQLCase::BuildCreateSpSQLFromSchema(const type::TableDef& table,
+        const std::string& select_sql, std::string* create_sql) {
+    std::string sql = "CREATE Procedure " + table.name() + "(\n";
+    for (int i = 0; i < table.columns_size(); i++) {
+        auto column = table.columns(i);
+        sql.append(column.name()).append(" ").append(TypeString(column.type()));
+        if (i < table.columns_size() - 1) {
+            sql.append(",\n");
+        }
+    }
+    sql.append(")\n");
+    sql.append("BEGIN\n");
+    sql.append(select_sql);
+    sql.append("\n");
+    sql.append("END;");
+    *create_sql = sql;
+    return true;
+}
+
 }  // namespace sqlcase
 }  // namespace fesql
