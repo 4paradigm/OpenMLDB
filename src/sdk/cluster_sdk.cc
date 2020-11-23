@@ -253,7 +253,7 @@ bool ClusterSDK::InitCatalog() {
             return false;
         }
     } else {
-        LOG(INFO) << "no procedures in db";
+        DLOG(INFO) << "no procedures in db";
     }
     bool ok = InitTabletClient();
     if (!ok) return false;

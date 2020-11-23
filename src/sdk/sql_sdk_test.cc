@@ -107,6 +107,39 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
     RunBatchModeSDK(sql_case, router, mc_->GetTbEndpoint());
 }
+
+TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_test) {
+    auto sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
+    RunRequestProcedureModeSDK(sql_case, router);
+    LOG(INFO) << "Finish sql_sdk_request_procedure_test: ID: "
+        << sql_case.id() << ", DESC: " << sql_case.desc();
+}
+
+TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_asyn_test) {
+    auto sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
+    RunRequestProcedureAsynModeSDK(sql_case, router);
+    LOG(INFO) << "Finish sql_sdk_request_procedure_asyn_test: ID: "
+        << sql_case.id() << ", DESC: " << sql_case.desc();
+}
+
 TEST_F(SQLSDKQueryTest, execute_where_test) {
     std::string ddl =
         "create table trans(c_sk_seq string,\n"
