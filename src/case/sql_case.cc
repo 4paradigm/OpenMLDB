@@ -293,7 +293,8 @@ bool SQLCase::ExtractInputData(std::vector<Row>& rows,
                                int32_t input_idx) const {
     return ExtractInputData(inputs_[input_idx], rows);
 }
-bool SQLCase::ExtractInputData(const TableInfo& input, std::vector<Row>& rows) const {
+bool SQLCase::ExtractInputData(const TableInfo& input,
+                               std::vector<Row>& rows) const {
     if (input.data_.empty() && input.rows_.empty()) {
         LOG(WARNING) << "Empty Data String";
         return false;
