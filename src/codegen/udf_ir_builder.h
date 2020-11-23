@@ -27,7 +27,7 @@ using base::Status;
 class UDFIRBuilder {
  public:
     UDFIRBuilder(CodeGenContext* ctx, node::ExprNode* frame_arg,
-                 node::FrameNode* frame);
+                 const node::FrameNode* frame);
 
     ~UDFIRBuilder() {}
 
@@ -95,7 +95,7 @@ class UDFIRBuilder {
 
     CodeGenContext* ctx_;
     node::ExprNode* frame_arg_;
-    node::FrameNode* frame_;
+    const node::FrameNode* frame_;
 };
 
 }  // namespace codegen

@@ -105,9 +105,8 @@ void RunListIteratorCase(T expected, const type::TableDef& table,
                 BasicBlock* entry_block = ctx->GetCurrentBlock();
                 ScopeVar sv;
 
-                vm::SchemaSourceList schema_sources;
-                schema_sources.AddSchemaSource(&table.columns());
-                vm::SchemasContext schemas_context(schema_sources);
+                vm::SchemasContext schemas_context;
+                schemas_context.BuildTrivial({&table});
                 MemoryWindowDecodeIRBuilder buf_builder(&schemas_context,
                                                         entry_block);
 
@@ -119,10 +118,16 @@ void RunListIteratorCase(T expected, const type::TableDef& table,
                 Argument* arg0 = &*it;
 
                 // build column
+                size_t schema_idx;
+                size_t col_idx;
+                schemas_context.ResolveColumnIndexByName("", col, &schema_idx,
+                                                         &col_idx);
+
                 ::llvm::Value* column = NULL;
                 ::llvm::Value* list_ptr = builder.CreatePointerCast(
                     arg0, builder.getInt8Ty()->getPointerTo());
-                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column),
+                CHECK_TRUE(buf_builder.BuildGetCol(schema_idx, col_idx,
+                                                   list_ptr, &column),
                            kCodegenError);
 
                 ::llvm::Value* iterator = nullptr;
@@ -228,11 +233,14 @@ void RunInnerListIteratorCase(T expected, const type::TableDef& table,
                 BasicBlock* entry_block = ctx->GetCurrentBlock();
                 ScopeVar sv;
 
-                vm::SchemaSourceList schema_sources;
-                schema_sources.AddSchemaSource(&table.columns());
-                vm::SchemasContext schemas_context(schema_sources);
+                vm::SchemasContext schemas_context;
+                schemas_context.BuildTrivial({&table});
                 MemoryWindowDecodeIRBuilder buf_builder(&schemas_context,
                                                         entry_block);
+                size_t schema_idx;
+                size_t col_idx;
+                schemas_context.ResolveColumnIndexByName("", col, &schema_idx,
+                                                         &col_idx);
 
                 ListIRBuilder list_builder(entry_block, &sv);
 
@@ -273,9 +281,9 @@ void RunInnerListIteratorCase(T expected, const type::TableDef& table,
                 builder.CreateStore(inner_list, list_ref_gep_0);
                 inner_list_ref =
                     builder.CreatePointerCast(inner_list_ref, i8_ptr_ty);
-                CHECK_TRUE(
-                    buf_builder.BuildGetCol(col, inner_list_ref, &column),
-                    kCodegenError);
+                CHECK_TRUE(buf_builder.BuildGetCol(schema_idx, col_idx,
+                                                   inner_list_ref, &column),
+                           kCodegenError);
 
                 ::llvm::Value* iterator = nullptr;
                 node::NodeManager* nm = ctx->node_manager();
@@ -337,11 +345,14 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 BasicBlock* entry_block = ctx->GetCurrentBlock();
                 ScopeVar sv;
 
-                vm::SchemaSourceList schema_sources;
-                schema_sources.AddSchemaSource(&table.columns());
-                vm::SchemasContext schemas_context(schema_sources);
+                vm::SchemasContext schemas_context;
+                schemas_context.BuildTrivial({&table});
                 MemoryWindowDecodeIRBuilder buf_builder(&schemas_context,
                                                         entry_block);
+                size_t schema_idx;
+                size_t col_idx;
+                schemas_context.ResolveColumnIndexByName("", col, &schema_idx,
+                                                         &col_idx);
 
                 ListIRBuilder list_builder(entry_block, &sv);
 
@@ -357,7 +368,8 @@ void RunListIteratorSumCase(T expected, const type::TableDef& table,
                 ::llvm::Value* column = NULL;
                 ::llvm::Value* list_ptr = builder.CreatePointerCast(
                     arg0, builder.getInt8Ty()->getPointerTo());
-                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column),
+                CHECK_TRUE(buf_builder.BuildGetCol(schema_idx, col_idx,
+                                                   list_ptr, &column),
                            kCodegenError);
 
                 ::llvm::Value* iter = nullptr;
@@ -422,11 +434,14 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
                 BasicBlock* entry_block = ctx->GetCurrentBlock();
                 ScopeVar sv;
 
-                vm::SchemaSourceList schema_sources;
-                schema_sources.AddSchemaSource(&table.columns());
-                vm::SchemasContext schemas_context(schema_sources);
+                vm::SchemasContext schemas_context;
+                schemas_context.BuildTrivial({&table});
                 MemoryWindowDecodeIRBuilder buf_builder(&schemas_context,
                                                         entry_block);
+                size_t schema_idx;
+                size_t col_idx;
+                schemas_context.ResolveColumnIndexByName("", col, &schema_idx,
+                                                         &col_idx);
 
                 ListIRBuilder list_builder(entry_block, &sv);
 
@@ -439,7 +454,8 @@ void RunListIteratorNextCase(T expected, const type::TableDef& table,
                 ::llvm::Value* column = NULL;
                 ::llvm::Value* list_ptr = builder.CreatePointerCast(
                     arg0, builder.getInt8Ty()->getPointerTo());
-                CHECK_TRUE(buf_builder.BuildGetCol(col, list_ptr, &column),
+                CHECK_TRUE(buf_builder.BuildGetCol(schema_idx, col_idx,
+                                                   list_ptr, &column),
                            kCodegenError);
 
                 node::NodeManager* nm = ctx->node_manager();

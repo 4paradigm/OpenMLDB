@@ -63,11 +63,10 @@ TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
 
 TEST_F(SqlNodeTest, MakeGetFieldExprTest) {
     auto row = node_manager_->MakeExprIdNode("row");
-    auto node = node_manager_->MakeGetFieldExpr(row, "col", "t");
+    auto node = node_manager_->MakeGetFieldExpr(row, 0);
     std::cout << *node << std::endl;
     ASSERT_EQ(kExprGetField, node->GetExprType());
-    ASSERT_EQ("t", node->GetRelationName());
-    ASSERT_EQ("col", node->GetColumnName());
+    ASSERT_EQ("0", node->GetColumnName());
     ASSERT_EQ(kExprId, node->GetRow()->GetExprType());
 }
 

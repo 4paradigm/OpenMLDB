@@ -404,7 +404,7 @@ TEST_F(CodecTest, ManyCol) {
     }
 }
 
-TEST_F(CodecTest, RowDecoderTest) {
+TEST_F(CodecTest, RowFormatTest) {
     std::vector<int> num_vec = {10, 20, 50, 100, 1000};
     for (auto col_num : num_vec) {
         ::fesql::type::TableDef def;
@@ -420,33 +420,29 @@ TEST_F(CodecTest, RowDecoderTest) {
             }
         }
 
-        RowDecoder decoder(&def.columns());
+        RowFormat decoder(&def.columns());
         for (int i = 0; i < col_num; i++) {
             if (i % 3 == 0) {
-                codec::ColInfo info;
-                ASSERT_TRUE(
-                    decoder.ResolveColumn("col" + std::to_string(i), &info));
-                ASSERT_EQ(::fesql::type::kVarchar, info.type);
+                const codec::ColInfo* info = decoder.GetColumnInfo(i);
+                ASSERT_TRUE(info != nullptr);
+                ASSERT_EQ(::fesql::type::kVarchar, info->type);
 
                 codec::StringColInfo str_info;
-                ASSERT_TRUE(decoder.ResolveStringCol("col" + std::to_string(i),
-                                                     &str_info));
+                ASSERT_TRUE(decoder.GetStringColumnInfo(i, &str_info));
             } else if (i % 3 == 1) {
-                codec::ColInfo info;
-                ASSERT_TRUE(
-                    decoder.ResolveColumn("col" + std::to_string(i), &info));
-                ASSERT_EQ(::fesql::type::kInt64, info.type);
+                const codec::ColInfo* info = decoder.GetColumnInfo(i);
+                ASSERT_TRUE(info != nullptr);
+                ASSERT_EQ(::fesql::type::kInt64, info->type);
             } else if (i % 3 == 2) {
-                codec::ColInfo info;
-                ASSERT_TRUE(
-                    decoder.ResolveColumn("col" + std::to_string(i), &info));
-                ASSERT_EQ(::fesql::type::kDouble, info.type);
+                const codec::ColInfo* info = decoder.GetColumnInfo(i);
+                ASSERT_TRUE(info != nullptr);
+                ASSERT_EQ(::fesql::type::kDouble, info->type);
             }
         }
     }
 }
 
-TEST_F(CodecTest, RowDecoderOffsetTest) {
+TEST_F(CodecTest, RowFormatOffsetTest) {
     type::TableDef table;
     table.set_name("t1");
     {
@@ -487,49 +483,43 @@ TEST_F(CodecTest, RowDecoderOffsetTest) {
         column->set_name("col7");
     }
 
-    RowDecoder decoder(&table.columns());
+    RowFormat decoder(&table.columns());
     {
-        codec::ColInfo info;
-        decoder.ResolveColumn("col1", &info);
-        ASSERT_EQ(::fesql::type::kInt32, info.type);
-        LOG(INFO) << "offset: " << info.offset;
-        ASSERT_EQ(7u, info.offset);
+        const codec::ColInfo* info = decoder.GetColumnInfo(0);
+        ASSERT_EQ(::fesql::type::kInt32, info->type);
+        LOG(INFO) << "offset: " << info->offset;
+        ASSERT_EQ(7u, info->offset);
     }
     {
-        codec::ColInfo info;
-        decoder.ResolveColumn("col2", &info);
-        ASSERT_EQ(::fesql::type::kInt16, info.type);
-        LOG(INFO) << "offset: " << info.offset;
-        ASSERT_EQ(7u + 4u, info.offset);
+        const codec::ColInfo* info = decoder.GetColumnInfo(1);
+        ASSERT_EQ(::fesql::type::kInt16, info->type);
+        LOG(INFO) << "offset: " << info->offset;
+        ASSERT_EQ(7u + 4u, info->offset);
     }
     {
-        codec::ColInfo info;
-        decoder.ResolveColumn("col3", &info);
-        ASSERT_EQ(::fesql::type::kFloat, info.type);
-        LOG(INFO) << "offset: " << info.offset;
-        ASSERT_EQ(7u + 4u + 2u, info.offset);
+        const codec::ColInfo* info = decoder.GetColumnInfo(2);
+        ASSERT_EQ(::fesql::type::kFloat, info->type);
+        LOG(INFO) << "offset: " << info->offset;
+        ASSERT_EQ(7u + 4u + 2u, info->offset);
     }
     {
-        codec::ColInfo info;
-        decoder.ResolveColumn("col4", &info);
-        ASSERT_EQ(::fesql::type::kDouble, info.type);
-        LOG(INFO) << "offset: " << info.offset;
-        ASSERT_EQ(7u + 4u + 2u + 4u, info.offset);
+        const codec::ColInfo* info = decoder.GetColumnInfo(3);
+        ASSERT_EQ(::fesql::type::kDouble, info->type);
+        LOG(INFO) << "offset: " << info->offset;
+        ASSERT_EQ(7u + 4u + 2u + 4u, info->offset);
     }
     {
-        codec::ColInfo info;
-        decoder.ResolveColumn("col5", &info);
-        ASSERT_EQ(::fesql::type::kInt64, info.type);
-        LOG(INFO) << "offset: " << info.offset;
-        ASSERT_EQ(7u + 4u + 2u + 4u + 8u, info.offset);
+        const codec::ColInfo* info = decoder.GetColumnInfo(4);
+        ASSERT_EQ(::fesql::type::kInt64, info->type);
+        LOG(INFO) << "offset: " << info->offset;
+        ASSERT_EQ(7u + 4u + 2u + 4u + 8u, info->offset);
     }
     {
-        codec::ColInfo info;
-        decoder.ResolveColumn("col6", &info);
-        ASSERT_EQ(::fesql::type::kVarchar, info.type);
+        const codec::ColInfo* info = decoder.GetColumnInfo(5);
+        ASSERT_EQ(::fesql::type::kVarchar, info->type);
 
         codec::StringColInfo str_info;
-        decoder.ResolveStringCol("col6", &str_info);
+        decoder.GetStringColumnInfo(5, &str_info);
         LOG(INFO) << "offset: " << str_info.offset
                   << " next_offset: " << str_info.str_next_offset
                   << " str_start_offset " << str_info.str_start_offset;
@@ -538,12 +528,11 @@ TEST_F(CodecTest, RowDecoderOffsetTest) {
         ASSERT_EQ(33u, str_info.str_start_offset);
     }
     {
-        codec::ColInfo info;
-        decoder.ResolveColumn("col7", &info);
-        ASSERT_EQ(::fesql::type::kVarchar, info.type);
+        const codec::ColInfo* info = decoder.GetColumnInfo(6);
+        ASSERT_EQ(::fesql::type::kVarchar, info->type);
 
         codec::StringColInfo str_info;
-        decoder.ResolveStringCol("col7", &str_info);
+        decoder.GetStringColumnInfo(6, &str_info);
         LOG(INFO) << "offset: " << str_info.offset
                   << " next_offset: " << str_info.str_next_offset
                   << " str_start_offset " << str_info.str_start_offset;
@@ -552,7 +541,7 @@ TEST_F(CodecTest, RowDecoderOffsetTest) {
         ASSERT_EQ(33u, str_info.str_start_offset);
     }
 }
-TEST_F(CodecTest, RowDecoderOffsetLongHeaderTest) {
+TEST_F(CodecTest, RowFormatOffsetLongHeaderTest) {
     type::TableDef table;
     table.set_name("t1");
     {
@@ -603,49 +592,43 @@ TEST_F(CodecTest, RowDecoderOffsetLongHeaderTest) {
         column->set_name("col9");
     }
 
-    RowDecoder decoder(&table.columns());
+    RowFormat decoder(&table.columns());
     {
-        codec::ColInfo info;
-        decoder.ResolveColumn("col1", &info);
-        ASSERT_EQ(::fesql::type::kInt32, info.type);
-        LOG(INFO) << "offset: " << info.offset;
-        ASSERT_EQ(8u, info.offset);
+        const codec::ColInfo* info = decoder.GetColumnInfo(0);
+        ASSERT_EQ(::fesql::type::kInt32, info->type);
+        LOG(INFO) << "offset: " << info->offset;
+        ASSERT_EQ(8u, info->offset);
     }
     {
-        codec::ColInfo info;
-        decoder.ResolveColumn("col2", &info);
-        ASSERT_EQ(::fesql::type::kInt16, info.type);
-        LOG(INFO) << "offset: " << info.offset;
-        ASSERT_EQ(8u + 4u, info.offset);
+        const codec::ColInfo* info = decoder.GetColumnInfo(1);
+        ASSERT_EQ(::fesql::type::kInt16, info->type);
+        LOG(INFO) << "offset: " << info->offset;
+        ASSERT_EQ(8u + 4u, info->offset);
     }
     {
-        codec::ColInfo info;
-        decoder.ResolveColumn("col3", &info);
-        ASSERT_EQ(::fesql::type::kFloat, info.type);
-        LOG(INFO) << "offset: " << info.offset;
-        ASSERT_EQ(8u + 4u + 2u, info.offset);
+        const codec::ColInfo* info = decoder.GetColumnInfo(2);
+        ASSERT_EQ(::fesql::type::kFloat, info->type);
+        LOG(INFO) << "offset: " << info->offset;
+        ASSERT_EQ(8u + 4u + 2u, info->offset);
     }
     {
-        codec::ColInfo info;
-        decoder.ResolveColumn("col4", &info);
-        ASSERT_EQ(::fesql::type::kDouble, info.type);
-        LOG(INFO) << "offset: " << info.offset;
-        ASSERT_EQ(8u + 4u + 2u + 4u, info.offset);
+        const codec::ColInfo* info = decoder.GetColumnInfo(3);
+        ASSERT_EQ(::fesql::type::kDouble, info->type);
+        LOG(INFO) << "offset: " << info->offset;
+        ASSERT_EQ(8u + 4u + 2u + 4u, info->offset);
     }
     {
-        codec::ColInfo info;
-        decoder.ResolveColumn("col5", &info);
-        ASSERT_EQ(::fesql::type::kInt64, info.type);
-        LOG(INFO) << "offset: " << info.offset;
-        ASSERT_EQ(8u + 4u + 2u + 4u + 8u, info.offset);
+        const codec::ColInfo* info = decoder.GetColumnInfo(4);
+        ASSERT_EQ(::fesql::type::kInt64, info->type);
+        LOG(INFO) << "offset: " << info->offset;
+        ASSERT_EQ(8u + 4u + 2u + 4u + 8u, info->offset);
     }
     {
-        codec::ColInfo info;
-        decoder.ResolveColumn("col6", &info);
-        ASSERT_EQ(::fesql::type::kVarchar, info.type);
+        const codec::ColInfo* info = decoder.GetColumnInfo(5);
+        ASSERT_EQ(::fesql::type::kVarchar, info->type);
 
         codec::StringColInfo str_info;
-        decoder.ResolveStringCol("col6", &str_info);
+        decoder.GetStringColumnInfo(5, &str_info);
         LOG(INFO) << "offset: " << str_info.offset
                   << " next_offset: " << str_info.str_next_offset
                   << " str_start_offset " << str_info.str_start_offset;
@@ -654,12 +637,11 @@ TEST_F(CodecTest, RowDecoderOffsetLongHeaderTest) {
         ASSERT_EQ(50u, str_info.str_start_offset);
     }
     {
-        codec::ColInfo info;
-        decoder.ResolveColumn("col7", &info);
-        ASSERT_EQ(::fesql::type::kVarchar, info.type);
+        const codec::ColInfo* info = decoder.GetColumnInfo(6);
+        ASSERT_EQ(::fesql::type::kVarchar, info->type);
 
         codec::StringColInfo str_info;
-        decoder.ResolveStringCol("col7", &str_info);
+        decoder.GetStringColumnInfo(6, &str_info);
         LOG(INFO) << "offset: " << str_info.offset
                   << " next_offset: " << str_info.str_next_offset
                   << " str_start_offset " << str_info.str_start_offset;

@@ -369,7 +369,7 @@ void GetFieldExpr::Print(std::ostream &output,
     output << "\n";
     PrintValue(output, tab, GetChild(0)->GetExprString(), "input", true);
     output << "\n";
-    PrintValue(output, tab, relation_name_, "relation_name", true);
+    PrintValue(output, tab, std::to_string(column_id_), "column_id", true);
     output << "\n";
     PrintValue(output, tab, column_name_, "column_name", true);
 }
@@ -382,9 +382,9 @@ const std::string GetFieldExpr::GenerateExpressionName() const {
 }
 const std::string GetFieldExpr::GetExprString() const {
     std::string str = "";
-    if (!relation_name_.empty()) {
-        str.append(relation_name_).append(".");
-    }
+    str.append("#");
+    str.append(std::to_string(column_id_));
+    str.append(":");
     str.append(column_name_);
     return str;
 }
@@ -397,7 +397,7 @@ bool GetFieldExpr::Equals(const ExprNode *node) const {
     }
     auto that = dynamic_cast<const GetFieldExpr *>(node);
     return this->GetRow()->Equals(that->GetRow()) &&
-           this->relation_name_ == that->relation_name_ &&
+           this->column_id_ == that->column_id_ &&
            this->column_name_ == that->column_name_ && ExprNode::Equals(node);
 }
 
@@ -535,6 +535,9 @@ bool CastExprNode::Equals(const ExprNode *node) const {
     const CastExprNode *that = dynamic_cast<const CastExprNode *>(node);
     return this->cast_type_ == that->cast_type_ &&
            ExprEquals(expr(), that->expr());
+}
+CastExprNode *CastExprNode::CastFrom(ExprNode *node) {
+    return dynamic_cast<CastExprNode *>(node);
 }
 
 void WhenExprNode::Print(std::ostream &output,

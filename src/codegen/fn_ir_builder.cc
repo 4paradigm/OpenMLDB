@@ -53,9 +53,8 @@ bool FnIRBuilder::Build(::fesql::node::FnNodeFnDef *root,
         return false;
     }
 
-    vm::SchemaSourceList empty_source;
     node::NodeManager nm;
-    vm::SchemasContext empty_schema(empty_source);
+    vm::SchemasContext empty_schema;
     CodeGenContext ctx(module_, &empty_schema, &nm);
 
     ::llvm::Function *fn = NULL;

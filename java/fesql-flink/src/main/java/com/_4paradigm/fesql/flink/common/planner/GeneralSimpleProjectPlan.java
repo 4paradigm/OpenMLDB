@@ -3,11 +3,11 @@ package com._4paradigm.fesql.flink.common.planner;
 import com._4paradigm.fesql.common.FesqlException;
 import com._4paradigm.fesql.flink.common.FesqlUtil;
 import com._4paradigm.fesql.node.ConstNode;
+import com._4paradigm.fesql.node.ExprNode;
+import com._4paradigm.fesql.node.ExprType;
 import com._4paradigm.fesql.type.TypeOuterClass;
-import com._4paradigm.fesql.vm.ColumnSource;
+import com._4paradigm.fesql.vm.ColumnProjects;
 import com._4paradigm.fesql.vm.PhysicalSimpleProjectNode;
-import com._4paradigm.fesql.vm.SourceType;
-import com._4paradigm.std.ColumnSourceList;
 import org.apache.flink.table.api.ApiExpression;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Table;
@@ -24,7 +24,7 @@ public class GeneralSimpleProjectPlan {
 
     public static Table gen(GeneralPlanContext planContext, PhysicalSimpleProjectNode node, Table childTable) throws FesqlException {
 
-        ColumnSourceList columnSourceList = node.getProject_().getColumn_sources_();
+        ColumnProjects projects = node.project();
 
         // Get the output column names from output schema
         List<String> outputColNameList = new ArrayList<>();
@@ -39,20 +39,18 @@ public class GeneralSimpleProjectPlan {
             inputColNameList.add(columnDef.getName());
         }
 
-
         List<ApiExpression> selectColumnList = new ArrayList<>();
 
-        for (int i=0; i < columnSourceList.size(); ++i) {
+        for (int i=0; i < projects.size(); ++i) {
+            ExprNode expr = projects.GetExpr(i);
 
-            ColumnSource columnSource = columnSourceList.get(i);
-
-            if (columnSource.type().swigValue() == SourceType.kSourceColumn.swigValue()) {
-                int colIndex = FesqlUtil.resolveColumnIndex(columnSource.schema_idx(), columnSource.column_idx(), node.GetProducer(0));
+            if (expr.GetExprType().swigValue() == ExprType.kExprColumnRef.swigValue()) {
+                int colIndex = FesqlUtil.resolveColumnIndex(expr, node.GetProducer(0));
                 ApiExpression newCol = $(inputColNameList.get(colIndex)).as(outputColNameList.get(i));
                 selectColumnList.add(newCol);
 
-            } else if (columnSource.type().swigValue() == SourceType.kSourceConst.swigValue()) {
-                ConstNode constNode = columnSource.const_value();
+            } else if (expr.GetExprType().swigValue() == ExprType.kExprPrimary.swigValue()) {
+                ConstNode constNode = ConstNode.CastFrom(expr);
                 String outputColName = outputColNameList.get(i);
                 TypeOuterClass.Type columnType = outputColTypeList.get(i);
 
@@ -71,15 +69,11 @@ public class GeneralSimpleProjectPlan {
                 } else {
                     throw new FesqlException(String.format("FESQL type %s is not support as constant column", columnType));
                 }
-
             }
-
         }
-
 
         // Java list to varargs
         return childTable.select(selectColumnList.toArray(new ApiExpression[0]));
-
     }
 
 }

@@ -29,18 +29,17 @@
 namespace fesql {
 namespace codegen {
 
-BufNativeIRBuilder::BufNativeIRBuilder(const vm::Schema* schema,
+BufNativeIRBuilder::BufNativeIRBuilder(const codec::RowFormat* format,
                                        ::llvm::BasicBlock* block,
                                        ScopeVar* scope_var)
     : block_(block),
       sv_(scope_var),
-      decoder_(schema),
+      format_(format),
       variable_ir_builder_(block, scope_var) {}
 
 BufNativeIRBuilder::~BufNativeIRBuilder() {}
 
-bool BufNativeIRBuilder::BuildGetField(const std::string& name,
-                                       ::llvm::Value* row_ptr,
+bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* row_ptr,
                                        ::llvm::Value* row_size,
                                        NativeValue* output) {
     if (row_ptr == NULL || row_size == NULL || output == NULL) {
@@ -49,13 +48,17 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
     }
 
     node::TypeNode data_type;
-    codec::ColInfo col_info;
-    if (!ResolveFieldInfo(name, &col_info, &data_type)) {
-        LOG(WARNING) << "fail to resolve field info " << name;
+    const codec::ColInfo* col_info = format_->GetColumnInfo(col_idx);
+    if (col_info == nullptr) {
+        LOG(WARNING) << "fail to resolve field info at " << col_idx;
         return false;
     }
-    uint32_t col_idx = col_info.idx;
-    uint32_t offset = col_info.offset;
+    if (!SchemaType2DataType(col_info->type, &data_type)) {
+        LOG(WARNING) << "unrecognized data type " +
+                            fesql::type::Type_Name(col_info->type);
+        return false;
+    }
+    uint32_t offset = col_info->offset;
 
     ::llvm::IRBuilder<> builder(block_);
     switch (data_type.base_) {
@@ -129,13 +132,13 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
 
         case ::fesql::node::kVarchar: {
             codec::StringColInfo str_info;
-            if (!decoder_.ResolveStringCol(name, &str_info)) {
+            if (!format_->GetStringColumnInfo(col_idx, &str_info)) {
                 LOG(WARNING)
                     << "fail to get string filed offset and next offset"
-                    << name;
+                    << col_info->name;
             }
             DLOG(INFO) << "get string with offset " << offset << " next offset "
-                       << str_info.str_next_offset << " for col " << name;
+                       << str_info.str_next_offset << " for col " << col_idx;
             return BuildGetStringField(
                 col_idx, offset, str_info.str_next_offset,
                 str_info.str_start_offset, row_ptr, row_size, output);
@@ -258,21 +261,6 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t col_idx, uint32_t offset,
 
     ::llvm::Value* is_null = builder.CreateLoad(is_null_alloca);
     *output = NativeValue::CreateWithFlag(string_ref, is_null);
-    return true;
-}
-
-bool BufNativeIRBuilder::ResolveFieldInfo(const std::string& name,
-                                          codec::ColInfo* col_info_ptr,
-                                          node::TypeNode* data_type_ptr) {
-    if (!decoder_.ResolveColumn(name, col_info_ptr)) {
-        return false;
-    }
-
-    if (!SchemaType2DataType(col_info_ptr->type, data_type_ptr)) {
-        LOG(WARNING) << "unrecognized data type " +
-                            fesql::type::Type_Name(col_info_ptr->type);
-        return false;
-    }
     return true;
 }
 

@@ -76,9 +76,11 @@ class NodeBase : public base::FeBaseObject {
         }
     }
 
-    virtual T* ShadowCopy(NodeManager*) { return nullptr; }
+    virtual T* ShadowCopy(NodeManager*) const { return nullptr; }
 
-    virtual T* DeepCopy(NodeManager*) { return nullptr; }
+    virtual T* DeepCopy(NodeManager*) const { return nullptr; }
+
+    virtual bool UpdateChild(size_t idx, T* new_child) { return false; }
 
     size_t node_id() const { return node_id_; }
 

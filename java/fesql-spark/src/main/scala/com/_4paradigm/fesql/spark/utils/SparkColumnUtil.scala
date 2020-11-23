@@ -1,7 +1,5 @@
 package com._4paradigm.fesql.spark.utils
 
-import java.util
-
 import com._4paradigm.fesql.common.{FesqlException, UnsupportedFesqlException}
 import com._4paradigm.fesql.node.{ColumnRefNode, ConstNode, ExprNode, ExprType}
 import com._4paradigm.fesql.spark.PlanContext
@@ -71,7 +69,7 @@ object SparkColumnUtil {
   // Resolve FESQL expr node to get Spark column
   def resolveExprNodeToColumn(expr: ExprNode, planNode: PhysicalOpNode, inputDf: DataFrame): Column = {
     expr.getExpr_type_ match {
-      case ExprType.kExprColumnRef => {
+      case ExprType.kExprColumnRef =>
         val index = CoreAPI.ResolveColumnIndex(planNode, ColumnRefNode.CastFrom(expr))
         if (index < 0) {
           throw new FesqlException(s"Fail to resolve ${expr.GetExprString()}")
@@ -79,8 +77,8 @@ object SparkColumnUtil {
           throw new FesqlException(s"Column index out of bounds: $index")
         }
         getColumnFromIndex(inputDf, index)
-      }
-      case ExprType.kExprPrimary => {
+
+      case ExprType.kExprPrimary =>
         val constNode = ConstNode.CastFrom(expr)
         constNode.GetDataType() match {
           case FesqlDataType.kInt16 | FesqlDataType.kInt32 | FesqlDataType.kInt64 => lit(constNode.GetAsInt64())
@@ -88,21 +86,11 @@ object SparkColumnUtil {
           case FesqlDataType.kVarchar => lit(constNode.GetAsString())
           case _ => throw new UnsupportedFesqlException(s"Fail to support const node ${constNode.GetExprString()}")
         }
-      }
+
       case _ => throw new UnsupportedFesqlException(
         s"Fail to resolve expr node ${expr.GetExprString()}")
     }
 
-  }
-
-  def resolveColumnIndex(schema_idx: Int, column_idx: Int, planNode: PhysicalOpNode): Int = {
-    val index = CoreAPI.ResolveColumnIndex(planNode, schema_idx, column_idx)
-    if (index < 0) {
-      throw new FesqlException(s"Fail to resolve schema_idx: $schema_idx, column_idx: $column_idx")
-    } else if (index >= planNode.GetOutputSchema().size()) {
-      throw new FesqlException(s"Column index out of bounds: $index")
-    }
-    index
   }
 
   def getColumnFromIndex(df: DataFrame, index: Int): Column = {
@@ -111,7 +99,7 @@ object SparkColumnUtil {
 
   def getColumnsFromDataFrame(df: DataFrame): mutable.ArrayBuffer[Column] = {
     val columnList = new mutable.ArrayBuffer[Column]()
-    for (i <- 0 until df.schema.size) {
+    for (i <- df.schema.indices) {
       columnList += getColumnFromIndex(df, i)
     }
     columnList
