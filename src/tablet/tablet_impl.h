@@ -551,6 +551,7 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::string endpoint_;
     std::map<std::string, std::map<std::string, SQLProcedureCacheEntry>> db_sp_map_;
     std::string notify_path_;
+    std::string sp_root_path_;
 };
 
 }  // namespace tablet

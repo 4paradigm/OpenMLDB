@@ -142,6 +142,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     zk_path_ = zk_path;
     endpoint_ = endpoint;
     notify_path_ = zk_path + "/table/notify";
+    sp_root_path_ = zk_path + "/store_procedure/db_sp_data";
     std::lock_guard<std::mutex> lock(mu_);
     ::rtidb::base::SplitString(FLAGS_db_root_path, ",",
                                mode_root_paths_[::rtidb::common::kMemory]);
@@ -5076,12 +5077,11 @@ void TabletImpl::RefreshTableInfo() {
         table_info_vec.push_back(std::move(table_info));
     }
     // procedure part
-    std::string sp_root_path = zk_path_ + "/store_procedure/db_sp_data";
     std::vector<std::string> sp_datas;
-    if (zk_client_->IsExistNode(sp_root_path) == 0) {
-        bool ok = zk_client_->GetChildren(sp_root_path, sp_datas);
+    if (zk_client_->IsExistNode(sp_root_path_) == 0) {
+        bool ok = zk_client_->GetChildren(sp_root_path_, sp_datas);
         if (!ok) {
-            LOG(WARNING) << "fail to get procedure list with path " << sp_root_path;
+            LOG(WARNING) << "fail to get procedure list with path " << sp_root_path_;
             return;
         }
     } else {
@@ -5092,7 +5092,7 @@ void TabletImpl::RefreshTableInfo() {
         if (node.empty()) continue;
         std::string value;
         bool ok = zk_client_->GetNodeValue(
-                sp_root_path + "/" + node, value);
+                sp_root_path_ + "/" + node, value);
         if (!ok) {
             LOG(WARNING) << "fail to get procedure data. node: " << node;
             continue;
