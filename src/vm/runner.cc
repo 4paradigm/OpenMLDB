@@ -1607,7 +1607,9 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
                     t.endOfRow();
                     break;
                 } else {
-                    while (segment_iter->Valid()) {
+                    int partition_row_cnt = 0;
+                    while (segment_iter->Valid() &&
+                           partition_row_cnt++ < MAX_DEBUG_LINES_CNT) {
                         auto row = segment_iter->GetValue();
                         t.add(std::to_string(segment_iter->GetKey()));
                         for (size_t id = 0; id < row_view_list.size(); id++) {
@@ -1859,6 +1861,7 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
         max_union_pos =
             IteratorStatus::PickIteratorWithMaximizeKey(&union_segment_status);
     }
+    DLOG(INFO) << "REQUEST UNION cnt = " << cnt;
     return window_table;
 }
 
