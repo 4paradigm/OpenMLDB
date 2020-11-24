@@ -94,6 +94,7 @@ void AsyncTableHandler::SyncRpcResponse() {
     if (!cntl_ || !response_) {
         status_.code = fesql::common::kRpcError;
         status_.msg = "rpc controller or response is null";
+        LOG(WARNING) << status_.msg;
         return;
     }
     DLOG(INFO) << "AsyncTableHandler sync data brpc join";
@@ -101,6 +102,7 @@ void AsyncTableHandler::SyncRpcResponse() {
     brpc::Join(cntl_->call_id());
     if (cntl_->Failed()) {
         status_ = ::fesql::base::Status(::fesql::common::kRpcError, "request error. " + cntl_->ErrorText());
+        LOG(WARNING) << status_.msg;
         return;
     }
     int32_t position = 0;
@@ -108,6 +110,7 @@ void AsyncTableHandler::SyncRpcResponse() {
         if (row_size < 0) {
             LOG(WARNING) << "illegal row size field";
             status_ = ::fesql::base::Status(::fesql::common::kResponseError, "illegal row size field.");
+            LOG(WARNING) << status_.msg;
             return;
         }
         int8_t* out_buf = reinterpret_cast<int8_t*>(malloc(row_size));
@@ -132,7 +135,6 @@ std::unique_ptr<fesql::vm::RowIterator> AsyncTablesHandler::GetIterator() {
     if (status_.isOK()) {
         return fesql::vm::MemTableHandler::GetIterator();
     }
-
     return std::unique_ptr<fesql::vm::RowIterator>();
 }
 fesql::vm::RowIterator* AsyncTablesHandler::GetRawIterator() {
@@ -145,6 +147,7 @@ fesql::vm::RowIterator* AsyncTablesHandler::GetRawIterator() {
     return nullptr;
 }
 bool AsyncTablesHandler::SyncAllTableHandlers() {
+    DLOG(INFO) << "SyncAllTableHandlers";
     Reserve(rows_cnt_);
     for(size_t handler_idx = 0; handler_idx < handlers_.size(); handler_idx++) {
         auto& handler = handlers_[handler_idx];
@@ -173,6 +176,7 @@ bool AsyncTablesHandler::SyncAllTableHandlers() {
             pos_idx++;
         }
     }
+    DLOG(INFO) << "SyncAllTableHandlers OK";
     return true;
 }
 

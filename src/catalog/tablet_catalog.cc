@@ -207,6 +207,7 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
     auto client_tablet = table_client_manager_->GetTablet(pid);
     if (!client_tablet) {
         LOG(WARNING) << "get tablet index_name " << index_name << ", pk " << pk << ", tablet nullptr";
+        return std::shared_ptr<::fesql::vm::Tablet>();
     }
     if (client_tablet->GetName() == GetName()) {
         return local_tablet_;
