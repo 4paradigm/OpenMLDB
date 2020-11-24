@@ -79,10 +79,6 @@ INSTANTIATE_TEST_CASE_P(
     testing::ValuesIn(InitCases("/cases/query/last_join_window_query.yaml")));
 
 INSTANTIATE_TEST_CASE_P(
-    EngineRequestLastJoinWindowQuery, EngineTest,
-    testing::ValuesIn(InitCases("/cases/query/last_join_window_query.yaml")));
-
-INSTANTIATE_TEST_CASE_P(
     EngineWindowQuery, EngineTest,
     testing::ValuesIn(InitCases("/cases/query/window_query.yaml")));
 

@@ -280,7 +280,7 @@ class LocalTablet : public Tablet {
                                          const std::string& db,
                                          const std::string& sql, const Row& row,
                                          const bool is_debug) override {
-        DLOG(INFO) << "Local tablet SubQuery: task id " << task_id;
+        DLOG(INFO) << "Local tablet SubQuery request: task id " << task_id;
         RequestRunSession session;
         if (is_debug) {
             session.EnableDebug();

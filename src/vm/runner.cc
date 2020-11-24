@@ -94,11 +94,10 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto runner = new SimpleProjectRunner(
                 id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
                 op->project_.fn_info_);
-            if (kRunnerRequestRunProxy == input->type_ &&
-                !input->need_cache()) {
+            if (Runner::IsProxyRunner(input->type_) && !input->need_cache()) {
                 cluster_job_.AddRunnerToTask(
                     nm_->RegisterNode(runner),
-                    dynamic_cast<ProxyRequestRunner*>(input)->task_id());
+                    dynamic_cast<ProxyRunner*>(input)->task_id());
                 input->set_output_schemas(runner->output_schemas());
                 return RegisterTask(node, cluster_task);
             }
@@ -144,7 +143,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto runner =
                         new AggRunner(id_++, node->GetOutputNameSchemaList(),
                                       op->GetLimitCnt(), op->project_);
-                    if (kRunnerRequestRunProxy == input->type_ &&
+                    if (Runner::IsProxyRunner(input->type_) &&
                         !input->need_cache()) {
                         cluster_job_.AddRunnerToTask(
                             nm_->RegisterNode(runner),
@@ -297,9 +296,9 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     }
                 }
             }
-            auto cluster_task =
-                BuildRunnerWithProxy(nm_->RegisterNode(runner), left_task,
-                                     right_task, index_key, status);
+            auto cluster_task = BuildRequestRunnerWithProxy(
+                nm_->RegisterNode(runner), left_task, right_task, index_key,
+                status);
             return RegisterTask(node, cluster_task);
         }
         case kPhysicalOpRequestJoin: {
@@ -331,7 +330,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         right->output_schemas().GetSchemaSourceListSize(),
                         op->output_right_only());
 
-                    auto cluster_task = BuildRunnerWithProxy(
+                    auto cluster_task = BuildRequestRunnerWithProxy(
                         nm_->RegisterNode(runner), left_task, right_task,
                         op->join().index_key(), status);
                     return RegisterTask(node, cluster_task);
@@ -340,7 +339,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto runner =
                         new ConcatRunner(id_++, node->GetOutputNameSchemaList(),
                                          op->GetLimitCnt());
-                    auto cluster_task = BuildRunnerWithProxy(
+                    auto cluster_task = BuildRequestRunnerWithProxy(
                         nm_->RegisterNode(runner), left_task, right_task, Key(),
                         status);
                     return RegisterTask(node, cluster_task);
@@ -355,13 +354,13 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             }
         }
         case kPhysicalOpJoin: {
-            if (support_cluster_optimized_) {
-                // 边界检查, 分布式计划暂时不支持表拼接
-                status.msg = "fail to build cluster with table join node";
-                status.code = common::kOpGenError;
-                LOG(WARNING) << status;
-                return fail;
-            }
+            //            if (support_cluster_optimized_) {
+            //                // 边界检查, 分布式计划暂时不支持表拼接
+            //                status.msg = "fail to build cluster with table
+            //                join node"; status.code = common::kOpGenError;
+            //                LOG(WARNING) << status;
+            //                return fail;
+            //            }
             auto left_task = Build(node->producers().at(0), status);
             if (!left_task.IsValid()) {
                 status.msg = "fail to build left input runner";
@@ -386,11 +385,27 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         op->GetLimitCnt(), op->join_,
                         left->output_schemas().GetSchemaSourceListSize(),
                         right->output_schemas().GetSchemaSourceListSize());
-                    runner->AddProducer(left);
-                    runner->AddProducer(right);
+                    //                    runner->AddProducer(left);
+                    //                    runner->AddProducer(right);
+                    //                    if (kRunnerRequestRunProxy ==
+                    //                    left->type_ &&
+                    //                        !left->need_cache()) {
+                    //                        cluster_job_.AddRunnerToTask(
+                    //                            nm_->RegisterNode(runner),
+                    //                            dynamic_cast<ProxyRequestRunner*>(left)
+                    //                                ->task_id());
+                    //                        left->set_output_schemas(runner->output_schemas());
+                    //                        runner->AddProducer(right);
+                    //                    } else {
+                    //                        runner->AddProducer(left);
+                    //                        runner->AddProducer(right);
+                    //                    }
                     // TODO(chenjing): support join+window
-                    left_task.SetRoot(nm_->RegisterNode(runner));
-                    return RegisterTask(node, left_task);
+                    //                    left_task.SetRoot(nm_->RegisterNode(runner));
+                    auto cluster_task = BuildBatchRequestRunnerWithProxy(
+                        nm_->RegisterNode(runner), left_task, right_task,
+                        op->join().index_key(), status);
+                    return RegisterTask(node, cluster_task);
                 }
                 default: {
                     status.code = common::kOpGenError;
@@ -475,13 +490,26 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         }
     }
 }
-// runner(left,right) -->
+// runner(left_row,right) -->
 // proxy_request_run(left, task_id) : task[runner(request, right)]
-ClusterTask RunnerBuilder::BuildRunnerWithProxy(Runner* runner,
-                                                const ClusterTask& left_task,
-                                                const ClusterTask& right_task,
-                                                const Key& index_key,
-                                                Status& status) {
+ClusterTask RunnerBuilder::BuildRequestRunnerWithProxy(
+    Runner* runner, const ClusterTask& left_task, const ClusterTask& right_task,
+    const Key& index_key, Status& status) {
+    return BuildProxyRunner(runner, left_task, right_task, index_key, false,
+                            status);
+}
+
+// runner(left_table,right) -->
+// proxy_batch_request_run(left, task_id) : task[runner(batch_request, right)]
+ClusterTask RunnerBuilder::BuildBatchRequestRunnerWithProxy(
+    Runner* runner, const ClusterTask& left_task, const ClusterTask& right_task,
+    const Key& index_key, Status& status) {
+    return BuildProxyRunner(runner, left_task, right_task, index_key, true,
+                            status);
+}
+ClusterTask RunnerBuilder::BuildProxyRunner(
+    Runner* runner, const ClusterTask& left_task, const ClusterTask& right_task,
+    const Key& index_key, const bool is_batch_request, Status& status) {
     auto left = left_task.GetRoot();
     auto right = right_task.GetRoot();
     auto task = left_task;
@@ -497,11 +525,28 @@ ClusterTask RunnerBuilder::BuildRunnerWithProxy(Runner* runner,
             LOG(WARNING) << "fail to add remote task id";
             return ClusterTask();
         }
-        auto proxy_runner = nm_->RegisterNode(
-            new ProxyRequestRunner(id_++, static_cast<uint32_t>(remote_task_id),
-                                   runner->output_schemas()));
-        proxy_runner->AddProducer(left);
-        return ClusterTask(proxy_runner);
+        if (is_batch_request) {
+            auto proxy_runner = nm_->RegisterNode(new ProxyBatchRequestRunner(
+                id_++, static_cast<uint32_t>(remote_task_id),
+                runner->output_schemas()));
+
+            if (Runner::IsProxyRunner(left->type_) && !left->need_cache()) {
+                cluster_job_.AddRunnerToTask(
+                    proxy_runner,
+                    dynamic_cast<ProxyRequestRunner*>(left)->task_id());
+                left->set_output_schemas(proxy_runner->output_schemas());
+                return left_task;
+            } else {
+                proxy_runner->AddProducer(left);
+                return ClusterTask(proxy_runner);
+            }
+        } else {
+            auto proxy_runner = nm_->RegisterNode(new ProxyRequestRunner(
+                id_++, static_cast<uint32_t>(remote_task_id),
+                runner->output_schemas()));
+            proxy_runner->AddProducer(left);
+            return ClusterTask(proxy_runner);
+        }
     } else {
         runner->AddProducer(left);
         runner->AddProducer(right);
