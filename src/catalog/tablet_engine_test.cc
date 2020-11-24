@@ -246,7 +246,7 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
     LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
 
     std::ostringstream runner_oss;
-    session.GetMainTask()->Print(runner_oss, "");
+    session.GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::vector<fesql::codec::Row> request_data;
     const std::string &request_name = session.GetRequestName();
@@ -339,9 +339,6 @@ INSTANTIATE_TEST_SUITE_P(EngineLastJoinQuery, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinWindowQuery, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_window_query.yaml")));
-
-INSTANTIATE_TEST_SUITE_P(EngineRequestLastJoinWindowQuery, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_window_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineWindowQuery, TabletEngineTest,
