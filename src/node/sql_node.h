@@ -1485,21 +1485,27 @@ class ExprIdNode : public ExprNode {
 class ColumnRefNode : public ExprNode {
  public:
     ColumnRefNode()
-        : ExprNode(kExprColumnRef), column_name_(""), relation_name_("") {}
+        : ExprNode(kExprColumnRef),
+          column_name_(""),
+          relation_name_(""),
+          db_name_(""),
+          column_id_(0) {}
 
     ColumnRefNode(const std::string &column_name,
                   const std::string &relation_name)
         : ExprNode(kExprColumnRef),
           column_name_(column_name),
           relation_name_(relation_name),
-          db_name_("") {}
+          db_name_(""),
+          column_id_(0) {}
 
     ColumnRefNode(const std::string &column_name,
                   const std::string &relation_name, const std::string &db_name)
         : ExprNode(kExprColumnRef),
           column_name_(column_name),
           relation_name_(relation_name),
-          db_name_(db_name) {}
+          db_name_(db_name),
+          column_id_(0) {}
 
     std::string GetDBName() const { return db_name_; }
 
@@ -1515,6 +1521,12 @@ class ColumnRefNode : public ExprNode {
 
     void SetColumnName(const std::string &column_name) {
         column_name_ = column_name;
+    }
+    void SetColumnId(size_t column_id) {
+        column_id_ = column_id;
+    }
+    void GetColumnId() {
+        return column_id_;
     }
 
     static ColumnRefNode *CastFrom(ExprNode *node);
@@ -1532,6 +1544,7 @@ class ColumnRefNode : public ExprNode {
     std::string column_name_;
     std::string relation_name_;
     std::string db_name_;
+    size_t column_id_;
 };
 
 class GetFieldExpr : public ExprNode {

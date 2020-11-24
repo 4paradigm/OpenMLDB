@@ -451,7 +451,6 @@ static Status CheckExprDependOnChildOnly(
     std::set<size_t> column_ids;
     return child_schemas_ctx->ResolveExprDependentColumns(expr, &column_ids);
 }
-
 Status BatchModeTransformer::TransformWindowOp(
     PhysicalOpNode* depend, const node::WindowPlanNode* w_ptr,
     PhysicalOpNode** output) {
@@ -2651,7 +2650,6 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
     }
     return true;
 }
-
 bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
                                              const Join& join,
                                              PhysicalOpNode** output) {
@@ -2663,18 +2661,58 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
         oss << node::ExprString(column) << ",";
     }
     DLOG(INFO) << "join resolved related columns: \n" << oss.str();
-    ColumnProjects simplified_projects;
+    std::vector<std::pair<size_t ,const fesql::node::ColumnRefNode*>> left_condition_columns;
     for (auto column : columns) {
-        Status status = CheckExprDependOnChildOnly(column, left->schemas_ctx());
+        size_t column_id;
+        Status status = left->schemas_ctx()->ResolveColumnID(column->GetRelationName(), column->GetColumnName(), &column_id);
         if (status.isOK()) {
             // column depend on left
-            simplified_projects.Add(column->GetExprString(), column, nullptr);
+            left_condition_columns.push_back(std::make_pair(column_id, column));
         }
     }
-    if (simplified_projects.size() < left->GetOutputSchemaSize()) {
+
+    auto depend = left;
+    while (depend->GetProducerCnt() > 0) {
+        Status status;
+        for (auto column : left_condition_columns) {
+            size_t schema_idx;
+            size_t col_idx;
+            status = depend->GetProducer(0)->schemas_ctx()->ResolveColumnIndexByID(
+                    column.first, &schema_idx, &col_idx);
+            if (!status.isOK()) {
+                break;
+            }
+        }
+        if (!status.isOK()) {
+            break;
+        }
+        depend = depend->GetProducer(0);
+    }
+    ColumnProjects simplified_projects;
+    for (auto column : left_condition_columns) {
+        size_t schema_idx = 0;
+        size_t col_idx = 0;
+        Status status = depend->schemas_ctx()->ResolveColumnIndexByID(
+            column.first, &schema_idx, &col_idx);
+        if (!status.isOK()) {
+            LOG(WARNING) << "Simplify join left input failed: " << status;
+            return false;
+        }
+        DLOG(INFO) << "schema idx " << schema_idx << ", col idx " << col_idx;
+        auto source_name =
+            depend->schemas_ctx()->GetSchemaSource(schema_idx)->GetSourceName();
+        auto column_name = depend->schemas_ctx()
+                               ->GetSchemaSource(schema_idx)
+                               ->GetColumnName(col_idx);
+        simplified_projects.Add(
+            node::ExprString(column.second),
+            node_manager_->MakeColumnRefNode(column_name, source_name),
+            nullptr);
+    }
+    if (simplified_projects.size() < depend->GetOutputSchemaSize()) {
         PhysicalSimpleProjectNode* simplify_project_op = nullptr;
         Status status = plan_ctx_->CreateOp<PhysicalSimpleProjectNode>(
-            &simplify_project_op, left, simplified_projects);
+            &simplify_project_op, depend, simplified_projects);
         if (!status.isOK()) {
             LOG(WARNING) << "Simplify join left input failed: " << status;
             return false;

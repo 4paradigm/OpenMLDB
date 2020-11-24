@@ -190,3 +190,108 @@ cases:
         - [5, "cc", 3, 1590738991000, 9.0, 2, 1590738989000, 3]
         - [6, "cc", 3, 1590738992000, 15.0, 3, 1590738992000, 3]
         - [7, "cc", 2, 1590738993000, 22.0, 4, 1590738991000, 2]
+  -
+    id: 4
+    desc: 3组窗口特征ID拼接
+    inputs:
+      -
+        columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
+        indexs: ["index1:c1:c7", "index2:c2:c7", "index3:c3:c7", "index4:c4:c7"]
+        rows:
+          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000]
+          - [ 2, "a", "aa", "aaa", "aaaa", "1.0", 1590738991000]
+          - [ 3, "a", "aa", "aaa", "bbbb", "1.0", 1590738992000]
+          - [ 4, "a", "aa", "aaa", "bbbb", "1.0", 1590738993000]
+          - [ 5, "a", "aa", "bbb", "bbbb", "1.0", 1590738994000]
+          - [ 6, "a", "aa", "bbb", "bbbb", "1.0", 1590738995000]
+          - [ 7, "a", "bb", "bbb", "bbbb", "1.0", 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", "1.0", 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", "1.0", 1590739998000 ]
+          - [10, "b", "bb", "bbb", "bbbb", "1.0", 1590739999000 ]
+    sql: |
+      select * from
+      (
+        select id as out1_id, c1, c6 from {0}
+      ) as out1 last join
+      (
+        select id as out2_id, c2, sum(c6) over w2 as w2_sum_c6 from {0}
+        window w2 as (PARTITION BY {0}.c2 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as out2 on out1_id=out2_id last join
+      (
+        select id as out3_id, c3, sum(c6) over w3 as w3_sum_c6 from {0}
+        window w3 as (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as out3 on out1_id=out3_id last join
+      (
+        select id as out4_id, c4, sum(c6) over w4 as w4_sum_c6 from {0}
+        window w4 as (PARTITION BY {0}.c4 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as out4 on out1_id=out4_id;
+    expect:
+      columns: ["out1_id int", "c1 string", "c6 double",
+                "out2_id int", "c2 string", "w2_sum_c6 double",
+                "out3_id int", "c3 string", "w3_sum_c6 double",
+                "out4_id int", "c4 string", "w4_sum_c6 double",]
+      order: id
+      rows:
+        - [ 1, "a", 1.0, 1, "aa", 1.0, 1, "aaa", 1.0, 1, "aaaa", 1.0]
+        - [ 2, "a", 1.0, 2, "aa", 2.0, 2, "aaa", 2.0, 2, "aaaa", 2.0]
+        - [ 3, "a", 1.0, 3, "aa", 3.0, 3, "aaa", 3.0, 3, "bbbb", 1.0]
+        - [ 4, "a", 1.0, 4, "aa", 4.0, 4, "aaa", 4.0, 4, "bbbb", 2.0]
+        - [ 5, "a", 1.0, 5, "aa", 5.0, 5, "bbb", 1.0, 5, "bbbb", 3.0]
+        - [ 6, "a", 1.0, 6, "aa", 6.0, 6, "bbb", 2.0, 6, "bbbb", 4.0]
+        - [ 7, "a", 1.0, 7, "bb", 1.0, 7, "bbb", 3.0, 7, "bbbb", 5.0]
+        - [ 8, "a", 1.0, 8, "bb", 2.0, 8, "bbb", 4.0, 8, "bbbb", 6.0]
+        - [ 9, "b", 1.0, 9, "bb", 3.0, 9, "bbb", 5.0, 9, "bbbb", 7.0]
+        - [10, "b", 1.0, 10, "bb", 4.0, 10, "bbb", 6.0, 10, "bbbb", 8.0]
+  -
+    id: 5
+    desc: 4组窗口特征ID拼接
+    inputs:
+      -
+        columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
+        indexs: ["index1:c1:c7", "index2:c2:c7", "index3:c3:c7", "index4:c4:c7"]
+        rows:
+          - [ 1, "a", "aa", "aaa", "aaaa", "1.0", 1590738990000]
+          - [ 2, "a", "aa", "aaa", "aaaa", "1.0", 1590738991000]
+          - [ 3, "a", "aa", "aaa", "bbbb", "1.0", 1590738992000]
+          - [ 4, "a", "aa", "aaa", "bbbb", "1.0", 1590738993000]
+          - [ 5, "a", "aa", "bbb", "bbbb", "1.0", 1590738994000]
+          - [ 6, "a", "aa", "bbb", "bbbb", "1.0", 1590738995000]
+          - [ 7, "a", "bb", "bbb", "bbbb", "1.0", 1590738996000 ]
+          - [ 8, "a", "bb", "bbb", "bbbb", "1.0", 1590738997000 ]
+          - [ 9, "b", "bb", "bbb", "bbbb", "1.0", 1590739998000 ]
+          - [10, "b", "bb", "bbb", "bbbb", "1.0", 1590739999000 ]
+    sql: |
+      select * from
+      (
+        select id as out1_id, c1, sum(c6) over w1 as w1_sum_c6 from {0}
+        window w1 as (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as out1 last join
+      (
+        select id as out2_id, c2, sum(c6) over w2 as w2_sum_c6 from {0}
+        window w2 as (PARTITION BY {0}.c2 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as out2 on out1_id=out2_id last join
+      (
+        select id as out3_id, c3, sum(c6) over w3 as w3_sum_c6 from {0}
+        window w3 as (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as out3 on out1_id=out3_id last join
+      (
+        select id as out4_id, c4, sum(c6) over w4 as w4_sum_c6 from {0}
+        window w4 as (PARTITION BY {0}.c4 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as out4 on out1_id=out4_id;
+    expect:
+      columns: ["out1_id int", "c1 string", "w1_sum_c6 double",
+                "out2_id int", "c2 string", "w2_sum_c6 double",
+                "out3_id int", "c3 string", "w3_sum_c6 double",
+                "out4_id int", "c4 string", "w4_sum_c6 double",]
+      order: id
+      rows:
+        - [ 1, "a", 1.0, 1, "aa", 1.0, 1, "aaa", 1.0, 1, "aaaa", 1.0]
+        - [ 2, "a", 2.0, 2, "aa", 2.0, 2, "aaa", 2.0, 2, "aaaa", 2.0]
+        - [ 3, "a", 3.0, 3, "aa", 3.0, 3, "aaa", 3.0, 3, "bbbb", 1.0]
+        - [ 4, "a", 4.0, 4, "aa", 4.0, 4, "aaa", 4.0, 4, "bbbb", 2.0]
+        - [ 5, "a", 5.0, 5, "aa", 5.0, 5, "bbb", 1.0, 5, "bbbb", 3.0]
+        - [ 6, "a", 6.0, 6, "aa", 6.0, 6, "bbb", 2.0, 6, "bbbb", 4.0]
+        - [ 7, "a", 7.0, 7, "bb", 1.0, 7, "bbb", 3.0, 7, "bbbb", 5.0]
+        - [ 8, "a", 8.0, 8, "bb", 2.0, 8, "bbb", 4.0, 8, "bbbb", 6.0]
+        - [ 9, "b", 1.0, 9, "bb", 3.0, 9, "bbb", 5.0, 9, "bbbb", 7.0]
+        - [10, "b", 2.0, 10, "bb", 4.0, 10, "bbb", 6.0, 10, "bbbb", 8.0]
