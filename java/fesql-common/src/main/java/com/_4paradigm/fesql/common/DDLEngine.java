@@ -115,7 +115,8 @@ public class DDLEngine {
             RtidbIndex index = new RtidbIndex();
             List<String> keys = index.getKeys();
             for (int keyIndex = 0; keyIndex < castNode.window().partition().keys().GetChildNum(); keyIndex++) {
-                String key = CoreAPI.ResolvedSourceColumnName(e, castNode.window().partition().keys().GetChild(keyIndex));
+                String key = CoreAPI.ResolveSourceColumnName(e,
+                        ColumnRefNode.CastFrom(castNode.window().partition().keys().GetChild(keyIndex)));
                 keys.add(key);
             }
 
@@ -175,7 +176,8 @@ public class DDLEngine {
         }
         List<String> keys = rightIndex.getKeys();
         for (int i = 0; i < conditionKey.keys().GetChildNum(); i++) {
-            String keyName = CoreAPI.ResolvedSourceColumnName(node, conditionKey.keys().GetChild(i));
+            String keyName = CoreAPI.ResolveSourceColumnName(node,
+                    ColumnRefNode.CastFrom(conditionKey.keys().GetChild(i)));
             keys.add(keyName);
         }
         rightIndex.setType(TTLType.kLatest);
@@ -187,7 +189,7 @@ public class DDLEngine {
         Map<String, RtidbTable> rtidbTables = new HashMap<>();
         Map<String, String> table2OrgTable = new HashMap<>();
         for (PhysicalOpNode node : nodes) {
-            PhysicalOpType type = node.getType_();
+            PhysicalOpType type = node.GetOpType();
             if (type.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
                 PhysicalDataProviderNode castNode = PhysicalDataProviderNode.CastFrom(node);
                 RtidbTable rtidbTable = rtidbTables.get(castNode.GetName());
@@ -225,13 +227,13 @@ public class DDLEngine {
     }
     
     public static PhysicalDataProviderNode findDataProviderNode(PhysicalOpNode node) {
-        if (node.getType_() == PhysicalOpType.kPhysicalOpDataProvider) {
+        if (node.GetOpType() == PhysicalOpType.kPhysicalOpDataProvider) {
             return PhysicalDataProviderNode.CastFrom(node);
         }
-        if (node.getType_() == PhysicalOpType.kPhysicalOpSimpleProject) {
+        if (node.GetOpType() == PhysicalOpType.kPhysicalOpSimpleProject) {
             return findDataProviderNode(node.GetProducer(0));
         }
-        if (node.getType_() == PhysicalOpType.kPhysicalOpRename) {
+        if (node.GetOpType() == PhysicalOpType.kPhysicalOpRename) {
             return findDataProviderNode(node.GetProducer(0));
         }
         return null;
@@ -239,7 +241,7 @@ public class DDLEngine {
     }
 
     public static void dagToList(PhysicalOpNode node, List<PhysicalOpNode> list) {
-        PhysicalOpType type = node.getType_();
+        PhysicalOpType type = node.GetOpType();
         // 需要针对union node做特殊处理
         if (type.swigValue() == PhysicalOpType.kPhysicalOpRequestUnoin.swigValue()) {
             PhysicalRequestUnionNode castNode = PhysicalRequestUnionNode.CastFrom(node);
@@ -261,7 +263,7 @@ public class DDLEngine {
     public static void printDagListInfo(List<PhysicalOpNode> list) {
         for (PhysicalOpNode node : list) {
             System.out.println("dagToList node type = " + node.GetTypeName());
-            PhysicalOpType type = node.getType_();
+            PhysicalOpType type = node.GetOpType();
              if (type.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
                  PhysicalDataProviderNode castNode = PhysicalDataProviderNode.CastFrom(node);
                 System.out.println("PhysicalDataProviderNode = " + castNode.GetName());

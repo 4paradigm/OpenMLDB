@@ -93,28 +93,13 @@ public class FesqlUtil {
     public static List<List<TypeOuterClass.ColumnDef>> getNodeOutputColumnLists(PhysicalOpNode node) {
         List<List<TypeOuterClass.ColumnDef>> outputLists = new ArrayList<List<TypeOuterClass.ColumnDef>>();
 
-        for (int i=0; i < node.GetOutputSchemaListSize(); ++i) {
-            List<TypeOuterClass.ColumnDef> columnDefs = node.GetOutputSchemaSlice(i);
+        for (int i=0; i < node.GetOutputSchemaSourceSize(); ++i) {
+            List<TypeOuterClass.ColumnDef> columnDefs = node.GetOutputSchemaSource(i).GetSchema();
             outputLists.add(columnDefs);
         }
 
         return outputLists;
     }
-
-    /**
-     * Get the merged node output schema as list of column def.
-     */
-    public static List<TypeOuterClass.ColumnDef> getMergedNodeOutputColumnList(PhysicalOpNode node) {
-        List<TypeOuterClass.ColumnDef> outputList = new ArrayList<TypeOuterClass.ColumnDef>();
-
-        for (int i=0; i < node.GetOutputSchemaListSize(); ++i) {
-            List<TypeOuterClass.ColumnDef> columnDefs = node.GetOutputSchemaSlice(i);
-            outputList.addAll(columnDefs);
-        }
-
-        return outputList;
-    }
-
 
     public static RowTypeInfo generateRowTypeInfo(List<TypeOuterClass.ColumnDef> columnDefs) throws FesqlException {
         int fieldNum = columnDefs.size();
@@ -158,7 +143,7 @@ public class FesqlUtil {
             int index = CoreAPI.ResolveColumnIndex(physicalOpNode, ColumnRefNode.CastFrom(exprNode));
             if (index < 0) {
                 throw new FesqlException("Fail to resolve column ref expression node and get index " + index);
-            } else if (index > physicalOpNode.GetOutputSchema().size()) {
+            } else if (index >= physicalOpNode.GetOutputSchema().size()) {
                 throw new FesqlException("Fail to resolve column ref  expression node and get index " + index);
             } else {
                 return index;
@@ -167,15 +152,4 @@ public class FesqlUtil {
             throw new FesqlException("Do not support nono-columnref expression");
         }
     }
-
-    public static int resolveColumnIndex(int schemaIdx, int columnIdx, PhysicalOpNode planNode) throws FesqlException {
-        int index = CoreAPI.ResolveColumnIndex(planNode, schemaIdx, columnIdx);
-        if (index < 0) {
-            throw new FesqlException("Fail to resolve schema_idx: " + schemaIdx + ", column_idx" + columnIdx);
-        } else if (index >= planNode.GetOutputSchema().size()) {
-            throw new FesqlException("Column index out of bounds: " + index);
-        }
-        return index;
-    }
-
 }

@@ -44,7 +44,7 @@ using fesql::vm::FnInfo;
 using fesql::vm::Sort;
 using fesql::vm::Range;
 using fesql::vm::ConditionFilter;
-using fesql::vm::ColumnProject;
+using fesql::vm::ColumnProjects;
 using fesql::vm::Key;
 using fesql::vm::WindowOp;
 using fesql::vm::EngineMode;
@@ -52,7 +52,8 @@ using fesql::base::Iterator;
 using fesql::base::ConstIterator;
 using fesql::codec::RowIterator;
 using fesql::codec::Row;
-using fesql::vm::ColumnSource;
+using fesql::vm::SchemasContext;
+using fesql::vm::SchemaSource;
 using fesql::node::PlanType;
 using fesql::sdk::ExplainInfo;
 %}

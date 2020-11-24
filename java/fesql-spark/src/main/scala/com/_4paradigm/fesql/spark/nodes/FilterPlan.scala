@@ -5,7 +5,7 @@ import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.nodes.JoinPlan.JoinConditionUDF
 import com._4paradigm.fesql.spark.utils.SparkColumnUtil.getColumnFromIndex
 import com._4paradigm.fesql.spark.utils.{FesqlUtil, SparkColumnUtil}
-import com._4paradigm.fesql.vm.PhysicalFliterNode
+import com._4paradigm.fesql.vm.PhysicalFilterNode
 import org.apache.spark.sql.{Column, functions}
 
 import scala.collection.mutable
@@ -13,7 +13,7 @@ import scala.collection.mutable
 
 object FilterPlan {
 
-  def gen(ctx: PlanContext, node: PhysicalFliterNode, input: SparkInstance): SparkInstance = {
+  def gen(ctx: PlanContext, node: PhysicalFilterNode, input: SparkInstance): SparkInstance = {
     val inputDf = input.getDf(ctx.getSparkSession)
 
     var outputDf = inputDf
@@ -37,7 +37,7 @@ object FilterPlan {
 
     // Handle non-equal condiction
     if (filter.condition() != null) {
-      val regName = "FESQL_FILTER_CONDITION_" + node.GetFnName()
+      val regName = "FESQL_FILTER_CONDITION_" + node.filter().condition().fn_info().fn_name()
       val conditionUDF = new JoinConditionUDF(
         functionName = filter.fn_info().fn_name(),
         inputSchemaSlices = inputSchemaSlices,

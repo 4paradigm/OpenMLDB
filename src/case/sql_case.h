@@ -11,6 +11,7 @@
 #define SRC_CASE_SQL_CASE_H_
 #include <vm/catalog.h>
 #include <yaml-cpp/node/node.h>
+#include <yaml-cpp/yaml.h>
 #include <set>
 #include <string>
 #include <vector>
@@ -166,6 +167,8 @@ class SQLCase {
         return false;
     }
 
+    const YAML::Node raw_node() const { return raw_node_; }
+
  private:
     std::string id_;
     std::string mode_;
@@ -182,6 +185,7 @@ class SQLCase {
     std::vector<TableInfo> inputs_;
     TableInfo batch_request_;
     ExpectInfo expect_;
+    YAML::Node raw_node_;
 };
 std::string FindFesqlDirPath();
 

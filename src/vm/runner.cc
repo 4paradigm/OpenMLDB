@@ -37,25 +37,23 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         iter->second.GetRoot()->EnableCache();
         return ClusterTask((iter->second));
     }
-    switch (node->type_) {
+    switch (node->GetOpType()) {
         case kPhysicalOpDataProvider: {
             auto op = dynamic_cast<const PhysicalDataProviderNode*>(node);
             switch (op->provider_type_) {
                 case kProviderTypeTable: {
                     auto provider =
                         dynamic_cast<const PhysicalTableProviderNode*>(node);
-                    auto runner = nm_->RegisterNode(
-                        new DataRunner(id_++, node->GetOutputNameSchemaList(),
-                                       provider->table_handler_));
+                    auto runner = nm_->RegisterNode(new DataRunner(
+                        id_++, node->schemas_ctx(), provider->table_handler_));
                     return RegisterTask(node, ClusterTask(runner));
                 }
                 case kProviderTypePartition: {
                     auto provider =
                         dynamic_cast<const PhysicalPartitionProviderNode*>(
                             node);
-
                     auto runner = nm_->RegisterNode(
-                        new DataRunner(id_++, node->GetOutputNameSchemaList(),
+                        new DataRunner(id_++, node->schemas_ctx(),
                                        provider->table_handler_->GetPartition(
                                            provider->index_name_)));
                     if (support_cluster_optimized_) {
@@ -67,8 +65,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     }
                 }
                 case kProviderTypeRequest: {
-                    auto runner = nm_->RegisterNode(new RequestRunner(
-                        id_++, node->GetOutputNameSchemaList()));
+                    auto runner = nm_->RegisterNode(
+                        new RequestRunner(id_++, node->schemas_ctx()));
                     return RegisterTask(node, ClusterTask(runner));
                 }
                 default: {
@@ -91,9 +89,9 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             }
             auto input = cluster_task.GetRoot();
             auto op = dynamic_cast<const PhysicalSimpleProjectNode*>(node);
-            auto runner = new SimpleProjectRunner(
-                id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt(),
-                op->project_.fn_info_);
+            auto runner = new SimpleProjectRunner(id_++, node->schemas_ctx(),
+                                                  op->GetLimitCnt(),
+                                                  op->project().fn_info());
             if (kRunnerRequestRunProxy == input->type_ &&
                 !input->need_cache()) {
                 cluster_job_.AddRunnerToTask(
@@ -108,9 +106,9 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         }
         case kPhysicalOpConstProject: {
             auto op = dynamic_cast<const PhysicalConstProjectNode*>(node);
-            auto runner =
-                new ConstProjectRunner(id_++, node->GetOutputNameSchemaList(),
-                                       op->GetLimitCnt(), op->project_);
+            auto runner = new ConstProjectRunner(id_++, node->schemas_ctx(),
+                                                 op->GetLimitCnt(),
+                                                 op->project().fn_info());
             return RegisterTask(node, ClusterTask(nm_->RegisterNode(runner)));
         }
         case kPhysicalOpProject: {
@@ -134,16 +132,16 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         return fail;
                     }
                     auto runner = new TableProjectRunner(
-                        id_++, node->GetOutputNameSchemaList(),
-                        op->GetLimitCnt(), op->project_);
+                        id_++, node->schemas_ctx(), op->GetLimitCnt(),
+                        op->project().fn_info());
                     runner->AddProducer(input);
                     cluster_task.SetRoot(nm_->RegisterNode(runner));
                     return RegisterTask(node, cluster_task);
                 }
                 case kAggregation: {
-                    auto runner =
-                        new AggRunner(id_++, node->GetOutputNameSchemaList(),
-                                      op->GetLimitCnt(), op->project_);
+                    auto runner = new AggRunner(id_++, node->schemas_ctx(),
+                                                op->GetLimitCnt(),
+                                                op->project().fn_info());
                     if (kRunnerRequestRunProxy == input->type_ &&
                         !input->need_cache()) {
                         cluster_job_.AddRunnerToTask(
@@ -161,8 +159,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto op =
                         dynamic_cast<const PhysicalGroupAggrerationNode*>(node);
                     auto runner = new GroupAggRunner(
-                        id_++, node->GetOutputNameSchemaList(),
-                        op->GetLimitCnt(), op->group_, op->project_);
+                        id_++, node->schemas_ctx(), op->GetLimitCnt(),
+                        op->group_, op->project().fn_info());
                     runner->AddProducer(input);
                     cluster_task.SetRoot(nm_->RegisterNode(runner));
                     return RegisterTask(node, cluster_task);
@@ -180,12 +178,12 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         dynamic_cast<const PhysicalWindowAggrerationNode*>(
                             node);
                     auto runner = new WindowAggRunner(
-                        id_++, node->GetOutputNameSchemaList(),
-                        op->GetLimitCnt(), op->window_, op->project_,
+                        id_++, node->schemas_ctx(), op->GetLimitCnt(),
+                        op->window_, op->project().fn_info(),
                         op->instance_not_in_window(), op->need_append_input());
                     runner->AddProducer(input);
                     size_t input_slices =
-                        input->output_schemas().GetSchemaSourceListSize();
+                        input->output_schemas()->GetSchemaSourceSize();
 
                     if (!op->window_unions_.Empty()) {
                         for (auto window_union :
@@ -205,7 +203,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         }
                     }
                     if (!op->window_joins_.Empty()) {
-                        for (auto window_join :
+                        for (auto& window_join :
                              op->window_joins_.window_joins_) {
                             auto join_task =  // NOLINT
                                 Build(window_join.first, status);
@@ -232,9 +230,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 }
                 case kRowProject: {
                     auto runner = new RowProjectRunner(
-                        id_++, node->GetOutputNameSchemaList(),
-                        op->GetLimitCnt(), op->project_);
-
+                        id_++, node->schemas_ctx(), op->GetLimitCnt(),
+                        op->project().fn_info());
                     if (kRunnerRequestRunProxy == input->type_) {
                         cluster_job_.AddRunnerToTask(
                             nm_->RegisterNode(runner),
@@ -275,7 +272,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             }
             auto op = dynamic_cast<const PhysicalRequestUnionNode*>(node);
             auto runner =
-                new RequestUnionRunner(id_++, node->GetOutputNameSchemaList(),
+                new RequestUnionRunner(id_++, node->schemas_ctx(),
                                        op->GetLimitCnt(), op->window().range_);
             Key index_key;
             if (!op->instance_not_in_window()) {
@@ -325,10 +322,10 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             switch (op->join().join_type()) {
                 case node::kJoinTypeLast: {
                     auto runner = new RequestLastJoinRunner(
-                        id_++, node->GetOutputNameSchemaList(),
-                        op->GetLimitCnt(), op->join_,
-                        left->output_schemas().GetSchemaSourceListSize(),
-                        right->output_schemas().GetSchemaSourceListSize(),
+                        id_++, node->schemas_ctx(), op->GetLimitCnt(),
+                        op->join_,
+                        left->output_schemas()->GetSchemaSourceSize(),
+                        right->output_schemas()->GetSchemaSourceSize(),
                         op->output_right_only());
 
                     auto cluster_task = BuildRunnerWithProxy(
@@ -337,9 +334,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     return RegisterTask(node, cluster_task);
                 }
                 case node::kJoinTypeConcat: {
-                    auto runner =
-                        new ConcatRunner(id_++, node->GetOutputNameSchemaList(),
-                                         op->GetLimitCnt());
+                    auto runner = new ConcatRunner(id_++, node->schemas_ctx(),
+                                                   op->GetLimitCnt());
                     auto cluster_task = BuildRunnerWithProxy(
                         nm_->RegisterNode(runner), left_task, right_task, Key(),
                         status);
@@ -382,10 +378,10 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             switch (op->join().join_type()) {
                 case node::kJoinTypeLast: {
                     auto runner = new LastJoinRunner(
-                        id_++, node->GetOutputNameSchemaList(),
-                        op->GetLimitCnt(), op->join_,
-                        left->output_schemas().GetSchemaSourceListSize(),
-                        right->output_schemas().GetSchemaSourceListSize());
+                        id_++, node->schemas_ctx(), op->GetLimitCnt(),
+                        op->join_,
+                        left->output_schemas()->GetSchemaSourceSize(),
+                        right->output_schemas()->GetSchemaSourceSize());
                     runner->AddProducer(left);
                     runner->AddProducer(right);
                     // TODO(chenjing): support join+window
@@ -418,9 +414,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             }
             auto input = cluster_task.GetRoot();
             auto op = dynamic_cast<const PhysicalGroupNode*>(node);
-            auto runner =
-                new GroupRunner(id_++, node->GetOutputNameSchemaList(),
-                                op->GetLimitCnt(), op->group());
+            auto runner = new GroupRunner(id_++, node->schemas_ctx(),
+                                          op->GetLimitCnt(), op->group());
             runner->AddProducer(input);
             cluster_task.SetRoot(nm_->RegisterNode(runner));
             return RegisterTask(node, cluster_task);
@@ -435,10 +430,9 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 LOG(WARNING) << status;
                 return fail;
             }
-            auto op = dynamic_cast<const PhysicalFliterNode*>(node);
-            auto runner =
-                new FilterRunner(id_++, node->GetOutputNameSchemaList(),
-                                 op->GetLimitCnt(), op->filter_);
+            auto op = dynamic_cast<const PhysicalFilterNode*>(node);
+            auto runner = new FilterRunner(id_++, node->schemas_ctx(),
+                                           op->GetLimitCnt(), op->filter_);
             runner->AddProducer(input);
             cluster_task.SetRoot(nm_->RegisterNode(runner));
             return RegisterTask(node, cluster_task);
@@ -457,8 +451,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             if (op->GetLimitCnt() == 0 || op->GetLimitOptimized()) {
                 return RegisterTask(node, cluster_task);
             }
-            auto runner = new LimitRunner(
-                id_++, node->GetOutputNameSchemaList(), op->GetLimitCnt());
+            auto runner =
+                new LimitRunner(id_++, node->schemas_ctx(), op->GetLimitCnt());
             runner->AddProducer(input);
             cluster_task.SetRoot(nm_->RegisterNode(runner));
             return RegisterTask(node, cluster_task);
@@ -468,8 +462,9 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         }
         default: {
             status.code = common::kOpGenError;
-            status.msg = "can't handle node " + std::to_string(node->type_) +
-                         " " + PhysicalOpTypeName(node->type_);
+            status.msg = "can't handle node " +
+                         std::to_string(node->GetOpType()) + " " +
+                         PhysicalOpTypeName(node->GetOpType());
             LOG(WARNING) << status;
             return RegisterTask(node, fail);
         }
@@ -1231,7 +1226,7 @@ Row JoinGenerator::RowLastJoinDropLeftSlices(
     const Row& left_row, std::shared_ptr<DataHandler> right) {
     Row joined = RowLastJoin(left_row, right);
     Row right_row(joined.GetSlice(left_slices_));
-    for (int offset = 0; offset < right_slices_; offset++) {
+    for (size_t offset = 0; offset < right_slices_; offset++) {
         right_row.Append(joined.GetSlice(left_slices_ + offset));
     }
     return right_row;
@@ -1479,26 +1474,27 @@ const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
     }
     return Row(left_slices, left_row, right_slices, Row());
 }
-void Runner::PrintData(const vm::SchemaSourceList& schema_list,
+void Runner::PrintData(const vm::SchemasContext* schema_list,
                        std::shared_ptr<DataHandler> data) {
     std::ostringstream oss;
     std::vector<RowView> row_view_list;
     ::fesql::base::TextTable t('-', '|', '+');
     // Add Header
     t.add("Order");
-    for (auto source : schema_list.schema_source_list_) {
-        for (int i = 0; i < source.schema_->size(); i++) {
-            if (source.table_name_.empty()) {
-                t.add(source.schema_->Get(i).name());
+    for (size_t i = 0; i < schema_list->GetSchemaSourceSize(); ++i) {
+        auto source = schema_list->GetSchemaSource(i);
+        for (int j = 0; j < source->GetSchema()->size(); j++) {
+            if (source->GetSourceName().empty()) {
+                t.add(source->GetSchema()->Get(j).name());
             } else {
-                t.add(source.table_name_ + "." + source.schema_->Get(i).name());
+                t.add(source->GetSourceName() + "." +
+                      source->GetSchema()->Get(j).name());
             }
-
             if (t.current_columns_size() >= MAX_DEBUG_COLUMN_MAX) {
                 break;
             }
         }
-        row_view_list.push_back(RowView(*source.schema_));
+        row_view_list.push_back(RowView(*source->GetSchema()));
         if (t.current_columns_size() >= MAX_DEBUG_COLUMN_MAX) {
             t.add("...");
             break;
@@ -1522,8 +1518,7 @@ void Runner::PrintData(const vm::SchemaSourceList& schema_list,
             for (size_t id = 0; id < row_view_list.size(); id++) {
                 RowView& row_view = row_view_list[id];
                 row_view.Reset(row.buf(id), row.size(id));
-                for (int idx = 0;
-                     idx < schema_list.schema_source_list_[id].schema_->size();
+                for (int idx = 0; idx < schema_list->GetSchema(id)->size();
                      idx++) {
                     std::string str = row_view.GetAsString(idx);
                     t.add(str);
@@ -1562,9 +1557,7 @@ void Runner::PrintData(const vm::SchemaSourceList& schema_list,
                         RowView& row_view = row_view_list[id];
                         row_view.Reset(row.buf(id));
                         for (int idx = 0;
-                             idx < schema_list.schema_source_list_[id]
-                                       .schema_->size();
-                             idx++) {
+                             idx < schema_list->GetSchema(id)->size(); idx++) {
                             std::string str = row_view.GetAsString(idx);
                             t.add(str);
                             if (t.current_columns_size() >=
@@ -1621,8 +1614,7 @@ void Runner::PrintData(const vm::SchemaSourceList& schema_list,
                             RowView& row_view = row_view_list[id];
                             row_view.Reset(row.buf(id));
                             for (int idx = 0;
-                                 idx < schema_list.schema_source_list_[id]
-                                           .schema_->size();
+                                 idx < schema_list->GetSchema(id)->size();
                                  idx++) {
                                 std::string str = row_view.GetAsString(idx);
                                 t.add(str);
@@ -1658,10 +1650,9 @@ std::shared_ptr<DataHandler> ConcatRunner::Run(RunnerContext& ctx) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
     auto right = producers_[1]->RunWithCache(ctx);
     auto left = producers_[0]->RunWithCache(ctx);
-    size_t left_slices =
-        producers_[0]->output_schemas().GetSchemaSourceListSize();
+    size_t left_slices = producers_[0]->output_schemas()->GetSchemaSourceSize();
     size_t right_slices =
-        producers_[1]->output_schemas().GetSchemaSourceListSize();
+        producers_[1]->output_schemas()->GetSchemaSourceSize();
     if (!left || !right) {
         return std::shared_ptr<DataHandler>();
     }
@@ -1877,7 +1868,6 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
         LOG(WARNING) << "input is empty";
         return std::shared_ptr<DataHandler>();
     }
-
     if (kTableHandler != input->GetHanlderType()) {
         return std::shared_ptr<DataHandler>();
     }
@@ -2048,7 +2038,6 @@ Row Runner::GroupbyProject(const int8_t* fn, TableHandler* table) {
 
     codec::ListRef<Row> window_ref;
     window_ref.list = reinterpret_cast<int8_t*>(table);
-
     auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
 
     uint32_t ret = udf(row_ptr, window_ptr, &buf);
