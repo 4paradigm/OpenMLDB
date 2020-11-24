@@ -93,7 +93,6 @@ cases:
   -
     id: 2
     desc: 三表拼表2
-    tags: ["TODO", "@chenjing, cluster unsupport"]
     inputs:
       -
         columns : ["id int", "card_no string","merchant_id int", "user string", "trx_time timestamp", "trx_amt float"]
