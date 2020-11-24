@@ -92,6 +92,57 @@ cases:
         - [7, "cc", 2, "user7", 1590738993000, 1590738991000, 2, null, null]
   -
     id: 2
+    desc: 三表拼表2
+    tags: ["TODO", "@chenjing, cluster unsupport"]
+    inputs:
+      -
+        columns : ["id int", "card_no string","merchant_id int", "user string", "trx_time timestamp", "trx_amt float"]
+
+        indexs: ["index1:card_no:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa",1, "user1", 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa",1, "user2", 1590738990000, 2.2]
+          - [3, "bb",2, "user3", 1590738990000, 3.3]
+          - [4, "cc",3, "user4", 1590738990000, 4.0]
+          - [5, "cc",3, "user5", 1590738991000, 5.0]
+          - [6, "cc",3, "user6", 1590738992000, 6.0]
+          - [7, "cc",2, "user7", 1590738993000, 7.0]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "merchant_nbr int", "product_nbr bigint"]
+        indexs: ["index2:merchant_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, 1, 1001]
+          - [1590738990000, 1, 1002]
+          - [1590738991000, 2, 1003]
+          - [1590738989000, 3, 1004]
+          - [1590738992000, 3, 1005]
+      - columns: [ "std_ts timestamp", "product_id bigint" ]
+        indexs: [ "index2:product_id:std_ts" ]
+        rows:
+          - [ 1590738988000, 1001]
+          - [ 1590738990000, 1001]
+          - [ 1590738991000, 1001]
+          - [ 1590738989000, 1002]
+          - [ 1590738992000, 1002]
+          - [ 1590738993000, 1005]
+    sql: |
+      select id, card_no, merchant_id, user, trx_time, crd_lst_isu_dte, merchant_nbr, product_nbr, std_ts, product_id from {0}
+      last join {1} order by {1}.crd_lst_isu_dte on {0}.merchant_id = {1}.merchant_nbr and {0}.trx_time >= {1}.crd_lst_isu_dte
+      last join {2} order by {2}.std_ts on {1}.product_nbr = {2}.product_id;
+    expect:
+      columns: ["id int", "card_no string", "merchant_id int", "user string", "trx_time timestamp",
+                "crd_lst_isu_dte timestamp", "merchant_nbr int", "product_nbr bigint", "std_ts timestamp", "product_id bigint"]
+      order: id
+      rows:
+        - [1, "aaaaaaaaaa", 1, "user1", 1590738989000, 1590738988000, 1, 1001, 1590738991000, 1001]
+        - [2, "aaaaaaaaaa", 1, "user2", 1590738990000, 1590738990000, 1, 1002, 1590738992000, 1002]
+        - [3, "bb", 2, "user3", 1590738990000, null, null, null,  null, null]
+        - [4, "cc", 3, "user4", 1590738990000, 1590738989000, 3, 1004, null, null]
+        - [5, "cc", 3, "user5", 1590738991000, 1590738989000, 3, 1004, null, null]
+        - [6, "cc", 3, "user6", 1590738992000, 1590738992000, 3, 1005, 1590738993000, 1005]
+        - [7, "cc", 2, "user7", 1590738993000, 1590738991000, 2, 1003, null, null]
+  -
+    id: 3
     desc: 窗口特征拼接副表
     inputs:
       -
