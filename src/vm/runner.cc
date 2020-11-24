@@ -369,17 +369,30 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto op = dynamic_cast<const PhysicalJoinNode*>(node);
             switch (op->join().join_type()) {
                 case node::kJoinTypeLast: {
-                    auto runner = new LastJoinRunner(
-                        id_++, node->schemas_ctx(), op->GetLimitCnt(),
-                        op->join_,
-                        left->output_schemas()->GetSchemaSourceSize(),
-                        right->output_schemas()->GetSchemaSourceSize());
-                    runner->AddProducer(left);
-                    runner->AddProducer(right);
-                    auto cluster_task = BuildBatchRequestRunnerWithProxy(
-                        nm_->RegisterNode(runner), left_task, right_task,
-                        op->join().index_key(), status);
-                    return RegisterTask(node, cluster_task);
+                    // 分布式模式下, TableLastJoin convert to
+                    // Batch Request RequestLastJoin
+                    if (support_cluster_optimized_) {
+                        auto runner = new RequestLastJoinRunner(
+                            id_++, node->schemas_ctx(), op->GetLimitCnt(),
+                            op->join_,
+                            left->output_schemas()->GetSchemaSourceSize(),
+                            right->output_schemas()->GetSchemaSourceSize(),
+                            false);
+                        auto cluster_task = BuildBatchRequestRunnerWithProxy(
+                            nm_->RegisterNode(runner), left_task, right_task,
+                            op->join().index_key(), status);
+                        return RegisterTask(node, cluster_task);
+                    } else {
+                        auto runner = new LastJoinRunner(
+                            id_++, node->schemas_ctx(), op->GetLimitCnt(),
+                            op->join_,
+                            left->output_schemas()->GetSchemaSourceSize(),
+                            right->output_schemas()->GetSchemaSourceSize());
+                        runner->AddProducer(left);
+                        runner->AddProducer(right);
+                        left_task.SetRoot(nm_->RegisterNode(runner));
+                        return RegisterTask(node, left_task);
+                    }
                 }
                 default: {
                     status.code = common::kOpGenError;
@@ -506,7 +519,7 @@ ClusterTask RunnerBuilder::BuildProxyRunner(
             if (Runner::IsProxyRunner(left->type_) && !left->need_cache()) {
                 cluster_job_.AddRunnerToTask(
                     proxy_runner,
-                    dynamic_cast<ProxyRequestRunner*>(left)->task_id());
+                    dynamic_cast<ProxyRunner*>(left)->task_id());
                 left->set_output_schemas(proxy_runner->output_schemas());
                 return left_task;
             } else {

@@ -396,6 +396,7 @@ int32_t BatchRequestRunSession::Run(
         if (ok != 0) {
             return -1;
         }
+        iter->Next();
     }
     ctx.ClearCache();
     return 0;
