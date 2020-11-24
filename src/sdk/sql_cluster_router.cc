@@ -915,7 +915,12 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
     if (status == nullptr) {
         return false;
     }
-    auto dimensions = row->GetDimensions();
+    const auto& dimensions = row->GetDimensions();
+    const auto& ts_dimensions = row->GetTs();
+    uint64_t cur_ts = 0;
+    if (ts_dimensions.empty()) {
+        cur_ts = ::baidu::common::timer::get_micros() / 1000;
+    }
     for (const auto& kv : dimensions) {
         uint32_t pid = kv.first;
         if (pid < tablets.size()) {
@@ -925,7 +930,13 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
                 if (client) {
                     DLOG(INFO) << "put data to endpoint " << client->GetEndpoint()
                                << " with dimensions size " << kv.second.size();
-                    if (!client->Put(tid, pid, kv.second, row->GetTs(), row->GetRow(), 1)) {
+                    bool ret = false;
+                    if (ts_dimensions.empty()) {
+                        ret = client->Put(tid, pid, cur_ts, row->GetRow(), kv.second, 1);
+                    } else {
+                        ret = client->Put(tid, pid, kv.second, row->GetTs(), row->GetRow(), 1);
+                    }
+                    if (!ret) {
                         status->msg = "fail to make a put request to table. tid " + std::to_string(tid);
                         LOG(WARNING) << status->msg;
                         return false;
