@@ -388,7 +388,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     auto rs = router->CallProcedure(db, sp_name, request_row, &status);
     if (!rs) FAIL() << "call procedure failed";
     auto schema = rs->GetSchema();
-    ASSERT_EQ(schema->GetColumnCnt(), 3);
+    ASSERT_EQ(schema->GetColumnCnt(), 3u);
     ASSERT_TRUE(rs->Next());
     ASSERT_EQ(rs->GetStringUnsafe(0), "bb");
     ASSERT_EQ(rs->GetInt32Unsafe(1), 23);
@@ -401,10 +401,10 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_EQ(sp_info->GetDbName(), db);
     ASSERT_EQ(sp_info->GetSpName(), sp_name);
     ASSERT_EQ(sp_info->GetMainTable(), "trans");
-    ASSERT_EQ(sp_info->GetTables().size(), 1);
+    ASSERT_EQ(sp_info->GetTables().size(), 1u);
     ASSERT_EQ(sp_info->GetTables().at(0), "trans");
     auto& input_schema = sp_info->GetInputSchema();
-    ASSERT_EQ(input_schema.GetColumnCnt(), 7);
+    ASSERT_EQ(input_schema.GetColumnCnt(), 7u);
     ASSERT_EQ(input_schema.GetColumnName(0), "c1");
     ASSERT_EQ(input_schema.GetColumnName(1), "c3");
     ASSERT_EQ(input_schema.GetColumnName(2), "c4");
@@ -421,7 +421,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_EQ(input_schema.GetColumnType(6), fesql::sdk::kTypeDate);
 
     auto& output_schema = sp_info->GetOutputSchema();
-    ASSERT_EQ(output_schema.GetColumnCnt(), 3);
+    ASSERT_EQ(output_schema.GetColumnCnt(), 3u);
     ASSERT_EQ(output_schema.GetColumnName(0), "c1");
     ASSERT_EQ(output_schema.GetColumnName(1), "c3");
     ASSERT_EQ(output_schema.GetColumnName(2), "w1_c4_sum");

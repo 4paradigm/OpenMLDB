@@ -124,6 +124,7 @@ TabletImpl::TabletImpl()
 }
 
 TabletImpl::~TabletImpl() {
+    delete zk_client_;
     task_pool_.Stop(true);
     keep_alive_pool_.Stop(true);
     gc_pool_.Stop(true);
