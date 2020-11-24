@@ -4,7 +4,6 @@ cases:
     mode: rtidb-unsupport
     db: db1
     sql: |
-      %%sql
       SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5,
       sum(t1.col1) OVER w1 as w1_col1_sum, sum(t1.col3) OVER w1 as w1_col3_sum,
       sum(t2.col4) OVER w1 as w1_t2_col4_sum, sum(t2.col2) OVER w1 as w1_t2_col2_sum,
@@ -44,7 +43,6 @@ cases:
     desc: LAST JOIN Window, Join成功命中索引
     db: db1
     sql: |
-      %%sql
       SELECT t1.col1 as id, t1.col2 as t1_col2, t1.col5 as t1_col5,
       sum(t1.col1) OVER w1 as w1_col1_sum, sum(t1.col3) OVER w1 as w1_col3_sum,
       sum(t2.col4) OVER w1 as w1_t2_col4_sum, sum(t2.col2) OVER w1 as w1_t2_col2_sum,
