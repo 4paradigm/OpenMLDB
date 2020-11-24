@@ -741,7 +741,16 @@ class RequestEngineTestRunner : public EngineTestRunner {
             } else {
                 std::vector<Row> rows;
                 sql_case_.ExtractInputData(rows, i);
-                if (!rows.empty()) {
+                if (sql_case_.inputs()[i].repeat_ > 1) {
+                    std::vector<Row> repeat_rows;
+                    for (int64_t j = 0; j < sql_case_.inputs()[i].repeat_;
+                         j++) {
+                        for (auto row : rows) {
+                            repeat_rows.push_back(row);
+                        }
+                    }
+                    StoreData(name_table_map_[input_name].get(), repeat_rows);
+                } else {
                     StoreData(name_table_map_[input_name].get(), rows);
                 }
             }

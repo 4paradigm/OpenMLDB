@@ -178,7 +178,8 @@ TEST_P(EngineTest, test_batch_request_engine_for_last_row) {
     EngineOptions options;
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
-        !boost::contains(sql_case.mode(), "rtidb-unsupport")) {
+        !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "batch-request-unsupport")) {
         EngineCheck(sql_case, options, kBatchRequestMode);
     } else {
         LOG(INFO) << "Skip mode " << sql_case.mode();
@@ -204,6 +205,7 @@ TEST_P(EngineTest, test_cluster_batch_request_engine) {
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (!boost::contains(sql_case.mode(), "request-unsupport") &&
         !boost::contains(sql_case.mode(), "rtidb-unsupport") &&
+        !boost::contains(sql_case.mode(), "batch-request-unsupport") &&
         !boost::contains(sql_case.mode(), "cluster-unsupport")) {
         EngineCheck(sql_case, options, kBatchRequestMode);
     } else {

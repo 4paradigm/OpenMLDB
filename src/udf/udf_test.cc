@@ -167,6 +167,49 @@ TEST_F(UDFTest, UDF_mem_time_table_handler_sum_test) {
     }
     SumTest(&window);
 }
+TEST_F(UDFTest, UDF_mem_table_handler_large_size_sum_test) {
+    vm::MemTableHandler window;
+    int64_t w_size = 4000000;
+    for (int i = 0; i < w_size; i++) {
+        window.AddRow(rows[0]);
+    }
+    {
+        ListRef<int32_t> list;
+        ASSERT_TRUE(FetchColList(&window, 0, 2, &list));
+
+        auto sum = UDFFunctionBuilder("sum")
+                       .args<ListRef<int32_t>>()
+                       .returns<int32_t>()
+                       .build();
+        ASSERT_TRUE(sum.valid());
+        ASSERT_EQ(w_size, sum(list));
+    }
+}
+TEST_F(UDFTest, UDF_mem_time_table_handler_large_size_sum_test) {
+    vm::MemTimeTableHandler window;
+    uint64_t ts = 1000;
+    int64_t w_size = 4000000;
+    for (int i = 0; i < w_size; i++) {
+        int8_t* ptr = reinterpret_cast<int8_t*>(malloc(28));
+        *(reinterpret_cast<int32_t*>(ptr + 2)) = 1;
+        *(reinterpret_cast<int16_t*>(ptr + 2 + 4)) = 2;
+        *(reinterpret_cast<float*>(ptr + 2 + 4 + 2)) = 3.1f;
+        *(reinterpret_cast<double*>(ptr + 2 + 4 + 2 + 4)) = 4.1;
+        *(reinterpret_cast<int64_t*>(ptr + 2 + 4 + 2 + 4 + 8)) = 5;
+        window.AddRow(ts++, Row(base::RefCountedSlice::Create(ptr, 28)));
+    }
+    {
+        ListRef<int32_t> list;
+        ASSERT_TRUE(FetchColList(&window, 0, 2, &list));
+
+        auto sum = UDFFunctionBuilder("sum")
+                       .args<ListRef<int32_t>>()
+                       .returns<int32_t>()
+                       .build();
+        ASSERT_TRUE(sum.valid());
+        ASSERT_EQ(w_size, sum(list));
+    }
+}
 
 TEST_F(UDFTest, UDF_sum_test) {
     ArrayListV<Row> window(&rows);
