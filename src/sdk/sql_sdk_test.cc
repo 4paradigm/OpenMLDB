@@ -291,26 +291,6 @@ TEST_F(SQLSDKQueryTest, create_no_ts) {
     ASSERT_EQ(rs->Size(), 0);
 }
 
-TEST_F(SQLSDKQueryTest, create_no_ts_failed) {
-    std::string ddl =
-        "create table t1(c1 string,\n"
-        "                c2 bigint,\n"
-        "                c3 string,\n"
-        "                index(key=c1, ts=c2, ttl=14400m, ttl_type=absolute),\n"
-        "                index(key=c1, ttl=14400m, ttl_type=absolute));";
-    SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_->GetZkCluster();
-    sql_opt.zk_path = mc_->GetZkPath();
-    sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
-    auto router = NewClusterSQLRouter(sql_opt);
-    if (!router) {
-        FAIL() << "Fail new cluster sql router";
-    }
-    std::string db = "create_no_ts_failed";
-    fesql::sdk::Status status;
-    ASSERT_TRUE(router->CreateDB(db, &status));
-    ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status));
-}
 }  // namespace sdk
 }  // namespace rtidb
 
