@@ -697,7 +697,7 @@ std::shared_ptr<rtidb::client::TabletClient> SQLClusterRouter::GetTablet(
 }
 
 bool SQLClusterRouter::IsConstQuery(::fesql::vm::PhysicalOpNode* node) {
-    if (node->type_ == ::fesql::vm::kPhysicalOpConstProject) {
+    if (node->GetOpType() == ::fesql::vm::kPhysicalOpConstProject) {
         return true;
     }
 
@@ -715,7 +715,7 @@ bool SQLClusterRouter::IsConstQuery(::fesql::vm::PhysicalOpNode* node) {
 void SQLClusterRouter::GetTables(::fesql::vm::PhysicalOpNode* node,
                                  std::set<std::string>* tables) {
     if (node == NULL || tables == NULL) return;
-    if (node->type_ == ::fesql::vm::kPhysicalOpDataProvider) {
+    if (node->GetOpType() == ::fesql::vm::kPhysicalOpDataProvider) {
         ::fesql::vm::PhysicalDataProviderNode* data_node =
             reinterpret_cast<::fesql::vm::PhysicalDataProviderNode*>(node);
         if (data_node->provider_type_ == ::fesql::vm::kProviderTypeTable ||

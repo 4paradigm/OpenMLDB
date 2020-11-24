@@ -3,9 +3,8 @@
 import fedb
 
 from entity.fesql_result import FesqlResult
-from fedb.sql_router_sdk import DataTypeName
-from fedb.sql_router_sdk import SQLRequestRow
 from nb_log import LogManager
+from sqlalchemy_fedb.fedbapi import Type as feType
 import re
 import random
 import string
@@ -135,13 +134,6 @@ def sqlRequestMode(executor,dbName:str,sql:str,input):
 def insert(executor,dbName:str,sql:str):
     log.info("insert sql:" + sql)
     fesqlResult = FesqlResult()
-    if hasattr(executor, "executeInsert"):
-        insertOk,msg = executor.executeInsert(dbName, sql)
-        fesqlResult.ok = insertOk
-        fesqlResult.msg = msg
-        log.info("insert result:" + str(fesqlResult))
-        return fesqlResult
-
     try:
         executor.execute(sql)
         fesqlResult.ok = True
@@ -155,13 +147,6 @@ def insert(executor,dbName:str,sql:str):
 def ddl(executor, dbName: str, sql: str):
     log.info("ddl sql:"+sql)
     fesqlResult = FesqlResult()
-    if hasattr(executor, "executeDDL"):
-        createOk,msg = executor.executeDDL(dbName, sql)
-        fesqlResult.ok = createOk
-        fesqlResult.msg = msg
-        log.info("ddl result:"+str(fesqlResult))
-        return fesqlResult
- 
     try:
         executor.execute(sql)
         fesqlResult.ok = True
@@ -210,52 +195,24 @@ def convertExpectTypes(expectTypes:list):
         elif dataType == 'int64':
             expectTypes[index] = expectType[0:-len(dataType)]+"bigint"
 
-def getColumnType(dataType:str):
-    if dataType == 'bool':
-        return 'bool'
-    elif dataType == 'date':
-        return 'date'
-    elif dataType == 'double':
-        return 'double'
-    elif dataType == 'float':
-        return 'float'
-    elif dataType == 'int16':
-        return 'smallint'
-    elif dataType == 'int32':
-        return 'int'
-    elif dataType == 'int64':
-        return 'bigint'
-    elif dataType == 'string':
-        return 'string'
-    elif dataType == 'timestamp':
-        return 'timestamp'
-    return None
+def getColumnType(dataType:int):
+    dataT = {feType.Bool:"bool", feType.Int16:"smallint", feType.Int32:"int", feType.Int64:"bigint", feType.Float:"float", feType.Double:"double", feType.String:"string", feType.Date:"date", feType.Timestamp:"timestamp"}
+    return dataT.get(dataType, None)
 
 def select(executor, dbName: str, sql: str):
     log.info("select sql:"+sql)
     fesqlResult = FesqlResult()
-    if hasattr(executor, "executeQuery"):
-        ok,rs = executor.executeQuery(dbName,sql)
-        if ok == False or rs == None:
-            fesqlResult.ok = False
-        else:
-            fesqlResult.ok = True
-            fesqlResult.count = rs.Size()
-            fesqlResult.rs = rs
-            schema = rs.GetSchema()
-            fesqlResult.resultSchema = schema
-            fesqlResult.result = convertRestultSetToList(rs,schema)
-    else:
-        try:
-            rs = executor.execute(sql)
-            fesqlResult.ok = True
-            fesqlResult.msg = "ok"
-            fesqlResult.rs = rs
-            fesqlResult.count = rs.rowcount
-            fesqlResult.result = convertRestultSetToListRS(rs)
-        except Exception as e:
-            fesqlResult.ok = False
-            fesqlResult.msg = str(e)
+    try:
+        rs = executor.execute(sql)
+        fesqlResult.ok = True
+        fesqlResult.msg = "ok"
+        fesqlResult.rs = rs
+        fesqlResult.count = rs.rowcount
+        fesqlResult.result = convertRestultSetToListRS(rs)
+    except Exception as e:
+        log.info("select exception is {}".format(e))
+        fesqlResult.ok = False
+        fesqlResult.msg = str(e)
     log.info("select result:"+str(fesqlResult))
     return fesqlResult
 
@@ -346,7 +303,7 @@ def buildInsertSQLFromRows(tableName:str,columns:list,datas:list):
             else:
                 insertSql += ");"
     return insertSql
-
+"""
 def buildRequestRow(requestRow:SQLRequestRow,objects:list):
     schema = requestRow.GetSchema()
     totalSize = 0
@@ -390,6 +347,7 @@ def buildRequestRow(requestRow:SQLRequestRow,objects:list):
             return False
     ok = requestRow.Build()
     return ok
+"""
 
 def convertRestultSetToListRS(rs):
     result = []
