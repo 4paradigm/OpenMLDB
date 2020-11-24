@@ -68,6 +68,9 @@ static inline std::initializer_list<int> __output_literal_args(
 struct Status {
     Status() : code(common::kOk), msg("ok") {}
 
+    explicit Status(common::StatusCode status_code)
+        : code(status_code), msg("") {}
+
     Status(common::StatusCode status_code, const std::string& msg_str)
         : code(status_code), msg(msg_str) {}
 

@@ -326,6 +326,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         m->print(::llvm::errs(), NULL, true, true);
         return false;
     }
+    // ::llvm::errs() << *(m.get());
 
     ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(
         FeSQLJITBuilder().create());
@@ -363,7 +364,7 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
     if (!ResolvePlanFnAddress(ctx.physical_plan, ctx.jit, status)) {
         return false;
     }
-    ctx.schema = ctx.physical_plan->output_schema_;
+    ctx.schema = *ctx.physical_plan->GetOutputSchema();
     ok = codec::SchemaCodec::Encode(ctx.schema, &ctx.encoded_schema);
     if (!ok) {
         LOG(WARNING) << "fail to encode output schema";
@@ -401,25 +402,23 @@ Status SQLCompiler::BuildPhysicalPlan(
                 &ctx->nm, ctx->db, cl_, llvm_module, library,
                 ctx->is_performance_sensitive, ctx->is_cluster_optimized);
             transformer.AddDefaultPasses();
-            CHECK_TRUE(
-                transformer.TransformPhysicalPlan(plan_list, output, status),
-                kPlanError,
+            CHECK_STATUS(
+                transformer.TransformPhysicalPlan(plan_list, output),
                 "Fail to generate physical plan (batch mode) for sql: \n",
-                ctx->sql, "\n", status.str());
+                ctx->sql);
             return Status::OK();
         }
         case kRequestMode:
         case kBatchRequestMode: {
-            vm::RequestModeransformer transformer(
+            vm::RequestModeTransformer transformer(
                 &ctx->nm, ctx->db, cl_, llvm_module, library,
                 ctx->common_column_indices, ctx->is_performance_sensitive,
                 ctx->is_cluster_optimized);
             transformer.AddDefaultPasses();
-            CHECK_TRUE(
-                transformer.TransformPhysicalPlan(plan_list, output, status),
-                kPlanError,
+            CHECK_STATUS(
+                transformer.TransformPhysicalPlan(plan_list, output),
                 "Fail to generate physical plan (request mode) for sql: \n",
-                ctx->sql, "\n", status.str());
+                ctx->sql);
 
             ctx->request_schema = transformer.request_schema();
             CHECK_TRUE(codec::SchemaCodec::Encode(transformer.request_schema(),
@@ -495,7 +494,7 @@ bool SQLCompiler::ResolvePlanFnAddress(vm::PhysicalOpNode* node,
     // TODO(chenjing):
     // 待优化，内嵌子查询的Resolved不适合特别处理，需要把子查询的function信息注册到主查询中，
     // 函数指针的注册需要整体优化一下设计
-    switch (node->type_) {
+    switch (node->GetOpType()) {
         case kPhysicalOpRequestUnoin: {
             auto request_union_op =
                 dynamic_cast<PhysicalRequestUnionNode*>(node);
@@ -541,19 +540,19 @@ bool SQLCompiler::ResolvePlanFnAddress(vm::PhysicalOpNode* node,
     }
     if (!node->GetFnInfos().empty()) {
         for (auto info_ptr : node->GetFnInfos()) {
-            if (!info_ptr->fn_name_.empty()) {
+            if (!info_ptr->fn_name().empty()) {
                 DLOG(INFO) << "start to resolve fn address "
-                           << info_ptr->fn_name_;
+                           << info_ptr->fn_name();
                 ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(
-                    jit->lookup(info_ptr->fn_name_));
+                    jit->lookup(info_ptr->fn_name()));
                 ::llvm::Error e = symbol.takeError();
                 if (e) {
                     LOG(WARNING) << "fail to resolve fn address "
-                                 << info_ptr->fn_name_ << " not found in jit";
+                                 << info_ptr->fn_name() << " not found in jit";
                     return false;
                 }
-                info_ptr->fn_ =
-                    (reinterpret_cast<int8_t*>(symbol->getAddress()));
+                const_cast<FnInfo*>(info_ptr)->SetFnPtr(
+                    reinterpret_cast<int8_t*>(symbol->getAddress()));
             }
         }
     }

@@ -30,29 +30,54 @@ WindowInterface::WindowInterface(bool instance_not_in_window,
 void WindowInterface::BufferData(uint64_t key, const Row& row) {
     window_impl_->BufferData(key, row);
 }
-int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
-                                int32_t schema_idx, int32_t column_idx) {
-    SchemasContext schema_ctx(node->GetOutputNameSchemaList());
-    return schema_ctx.ColumnOffsetResolved(schema_idx, column_idx);
-}
+
 int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                 fesql::node::ColumnRefNode* expr) {
-    SchemasContext schema_ctx(node->GetOutputNameSchemaList());
+    const SchemasContext* schemas_ctx = node->schemas_ctx();
     auto column_expr = dynamic_cast<const node::ColumnRefNode*>(expr);
-    return schema_ctx.ColumnOffsetResolved(column_expr->GetRelationName(),
-                                           column_expr->GetColumnName());
+    size_t schema_idx;
+    size_t col_idx;
+    auto status =
+        schemas_ctx->ResolveColumnRefIndex(column_expr, &schema_idx, &col_idx);
+    if (!status.isOK()) {
+        LOG(WARNING) << "Fail to resolve column "
+                     << column_expr->GetExprString();
+        return -1;
+    }
+    size_t total_offset = col_idx;
+    for (size_t i = 0; i < schema_idx; ++i) {
+        total_offset += node->GetOutputSchemaSource(i)->size();
+    }
+    return total_offset;
 }
 
-std::string CoreAPI::ResolvedSourceColumnName(fesql::vm::PhysicalOpNode* node,
-                                              fesql::node::ExprNode* expr) {
-    SchemasContext schema_ctx(node->GetOutputNameSchemaList());
-    return schema_ctx.SourceColumnNameResolved(expr);
+std::string CoreAPI::ResolveSourceColumnName(
+    fesql::vm::PhysicalOpNode* node, fesql::node::ColumnRefNode* expr) {
+    const SchemasContext* schemas_ctx = node->schemas_ctx();
+    auto column_expr = dynamic_cast<const node::ColumnRefNode*>(expr);
+    size_t column_id;
+    int child_path_idx;
+    size_t child_column_id;
+    size_t source_column_id;
+    const PhysicalOpNode* source_node = nullptr;
+    auto status = schemas_ctx->ResolveColumnID(
+        column_expr->GetRelationName(), column_expr->GetColumnName(),
+        &column_id, &child_path_idx, &child_column_id, &source_column_id,
+        &source_node);
+    if (!status.isOK() || source_node == nullptr) {
+        LOG(WARNING) << "Fail to resolve column "
+                     << column_expr->GetExprString();
+        return "";
+    }
+    size_t schema_idx;
+    size_t col_idx;
+    status = source_node->schemas_ctx()->ResolveColumnIndexByID(
+        source_column_id, &schema_idx, &col_idx);
+    return source_node->schemas_ctx()
+                ->GetSchemaSource(schema_idx)
+                ->GetColumnName(col_idx);
 }
-std::string CoreAPI::ResolvedColumnName(fesql::vm::PhysicalOpNode* node,
-                                        fesql::node::ExprNode* expr) {
-    SchemasContext schema_ctx(node->GetOutputNameSchemaList());
-    return schema_ctx.ColumnNameResolved(expr);
-}
+
 
 GroupbyInterface::GroupbyInterface(const fesql::codec::Schema& schema)
     : mem_table_handler_(new vm::MemTableHandler(&schema)) {}

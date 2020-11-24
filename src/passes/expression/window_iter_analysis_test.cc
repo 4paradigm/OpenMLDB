@@ -22,7 +22,7 @@ namespace passes {
 class WindowIterAnalysisTest : public ::testing::Test {};
 
 void InitFunctionLet(const std::string& sql,
-                     const vm::SchemaSourceList& input_schemas,
+                     const vm::SchemasContext* schemas_ctx,
                      node::NodeManager* nm, node::LambdaNode** result) {
     parser::FeSQLParser parser;
     Status status;
@@ -46,16 +46,18 @@ void InitFunctionLet(const std::string& sql,
     auto project_list_node = dynamic_cast<node::ProjectListNode*>(
         project_plan->project_list_vec_[0]);
     ASSERT_TRUE(project_list_node != nullptr);
+    std::vector<const node::ExprNode*> exprs;
+    for (auto pp : project_list_node->GetProjects()) {
+        auto pp_node = dynamic_cast<node::ProjectNode*>(pp);
+        exprs.push_back(pp_node->GetExpression());
+    }
 
     auto lib = udf::DefaultUDFLibrary::get();
-    LambdafyProjects transformer(nm, lib, input_schemas, false);
+    LambdafyProjects transformer(nm, lib, schemas_ctx, false);
 
     std::vector<int> is_agg_vec;
-    std::vector<std::string> names;
-    std::vector<node::FrameNode*> frames;
     node::LambdaNode* lambda;
-    status = transformer.Transform(project_list_node->GetProjects(), &lambda,
-                                   &is_agg_vec, &names, &frames);
+    status = transformer.Transform(exprs, &lambda, &is_agg_vec);
     LOG(WARNING) << status;
     ASSERT_TRUE(status.isOK());
     *result = lambda;
@@ -64,9 +66,9 @@ void InitFunctionLet(const std::string& sql,
 TEST_F(WindowIterAnalysisTest, Test) {
     Status status;
     node::NodeManager nm;
-    vm::SchemaSourceList input_schemas;
+    vm::SchemasContext schemas_ctx;
     auto schema = udf::MakeLiteralSchema<int32_t, float, double>();
-    input_schemas.AddSchemaSource(&schema);
+    schemas_ctx.BuildTrivial({&schema});
 
     std::vector<std::tuple<std::string, size_t>> cases = {
         {"0", 0},
@@ -90,20 +92,19 @@ TEST_F(WindowIterAnalysisTest, Test) {
     sql.append("from t1;");
 
     node::LambdaNode* function_let = nullptr;
-    InitFunctionLet(sql, input_schemas, &nm, &function_let);
+    InitFunctionLet(sql, &schemas_ctx, &nm, &function_let);
     auto row_type = function_let->GetArgType(0);
     auto window_type = function_let->GetArgType(1);
 
     auto lib = udf::DefaultUDFLibrary::get();
-    vm::SchemasContext schemas_context(input_schemas);
 
     node::LambdaNode* resolved_function_let = nullptr;
-    passes::ResolveFnAndAttrs resolver(&nm, lib, schemas_context);
+    passes::ResolveFnAndAttrs resolver(&nm, lib, &schemas_ctx);
     status = resolver.VisitLambda(function_let, {row_type, window_type},
                                   &resolved_function_let);
     ASSERT_TRUE(status.isOK()) << status.str();
 
-    node::ExprAnalysisContext ctx(&nm, lib, &schemas_context);
+    node::ExprAnalysisContext ctx(&nm, lib, &schemas_ctx);
     passes::WindowIterAnalysis window_dep_analyzer(&ctx);
     status = window_dep_analyzer.VisitFunctionLet(function_let);
     ASSERT_TRUE(status.isOK()) << status.str();

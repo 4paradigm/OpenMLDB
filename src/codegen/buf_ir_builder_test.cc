@@ -247,7 +247,8 @@ void LoadValue(T* result, bool* is_null,
         Function::ExternalLinkage, "fn", m.get());
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
-    BufNativeIRBuilder buf_builder(&table.columns(), entry_block, &sv);
+    codec::RowFormat buf_format(&table.columns());
+    BufNativeIRBuilder buf_builder(&buf_format, entry_block, &sv);
     IRBuilder<> builder(entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;
@@ -257,7 +258,15 @@ void LoadValue(T* result, bool* is_null,
     Argument* arg2 = &*it;
 
     NativeValue val;
-    bool ok = buf_builder.BuildGetField(col, arg0, arg1, &val);
+    int col_idx = -1;
+    for (int i = 0; i < table.columns_size(); ++i) {
+        if (table.columns(i).name() == col) {
+            col_idx = i;
+            break;
+        }
+    }
+    ASSERT_GE(col_idx, 0);
+    bool ok = buf_builder.BuildGetField(col_idx, arg0, arg1, &val);
     ASSERT_TRUE(ok);
 
     // if null
@@ -371,16 +380,22 @@ void RunColCase(T expected, type::TableDef& table,  // NOLINT
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
 
-    vm::SchemaSourceList schema_sources;
-    schema_sources.AddSchemaSource(&table.columns());
-    vm::SchemasContext schemas_context(schema_sources);
+    vm::SchemasContext schemas_context;
+    schemas_context.BuildTrivial({&table});
+    size_t schema_idx;
+    size_t col_idx;
+
+    ASSERT_TRUE(
+        schemas_context.ResolveColumnIndexByName("", col, &schema_idx, &col_idx)
+            .isOK());
+
     MemoryWindowDecodeIRBuilder buf_builder(&schemas_context, entry_block);
 
     IRBuilder<> builder(entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;
     ::llvm::Value* val = NULL;
-    bool ok = buf_builder.BuildGetCol(col, arg0, &val);
+    bool ok = buf_builder.BuildGetCol(schema_idx, col_idx, arg0, &val);
     ASSERT_TRUE(ok);
 
     ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();

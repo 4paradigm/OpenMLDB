@@ -24,11 +24,11 @@ using base::Status;
 class ResolveFnAndAttrs {
  public:
     ResolveFnAndAttrs(node::NodeManager* nm, const udf::UDFLibrary* library,
-                      const vm::SchemasContext& schemas_context)
+                      const vm::SchemasContext* schemas_context)
         : nm_(nm),
           library_(library),
           schemas_context_(schemas_context),
-          analysis_context_(nm, library, &schemas_context_) {}
+          analysis_context_(nm, library, schemas_context_) {}
 
     Status VisitFnDef(node::FnDefNode* fn,
                       const std::vector<const node::TypeNode*>& arg_types,
@@ -55,7 +55,7 @@ class ResolveFnAndAttrs {
     node::NodeManager* nm_;
     const udf::UDFLibrary* library_;
 
-    vm::SchemasContext schemas_context_;
+    const vm::SchemasContext* schemas_context_;
     node::ExprAnalysisContext analysis_context_;
 
     std::unordered_map<node::ExprNode*, node::ExprNode*> cache_;

@@ -22,6 +22,7 @@
 #include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
+#include "passes/physical/physical_pass.h"
 #include "udf/udf_library.h"
 #include "vm/physical_op.h"
 #include "vm/schemas_context.h"
@@ -79,192 +80,172 @@ struct EqualPhysicalOp {
     }
 };
 
-template <class T>
-class TransformPass {
+using fesql::base::Status;
+
+class TransformUpPysicalPass : public PhysicalPass {
  public:
-    TransformPass(node::NodeManager* node_manager, const std::string& db,
-                  const std::shared_ptr<Catalog>& catalog)
-        : db_(db), catalog_(catalog), node_manager_(node_manager) {}
-    virtual ~TransformPass() {}
-    const std::string db_;
-    const std::shared_ptr<Catalog> catalog_;
+    explicit TransformUpPysicalPass(PhysicalPlanContext* plan_ctx)
+        : plan_ctx_(plan_ctx),
+          node_manager_(plan_ctx->node_manager()),
+          db_(plan_ctx->db()),
+          catalog_(plan_ctx->catalog()) {}
+    ~TransformUpPysicalPass() {}
+
+    virtual bool Apply(PhysicalOpNode* in, PhysicalOpNode** out);
+    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** out) = 0;
+
+    Status Apply(PhysicalPlanContext* ctx, PhysicalOpNode* in,
+                 PhysicalOpNode** out) override {
+        return base::Status(common::kPlanError, "Not implemented");
+    }
 
  protected:
+    PhysicalPlanContext* plan_ctx_;
     node::NodeManager* node_manager_;
-    virtual bool Transform(T in, T* output) = 0;
-    virtual bool Apply(T in, T* out) = 0;
-};
-class TransformUpPysicalPass : public TransformPass<PhysicalOpNode*> {
- public:
-    TransformUpPysicalPass(node::NodeManager* node_manager,
-                           const std::string& db,
-                           const std::shared_ptr<Catalog>& catalog)
-        : TransformPass<PhysicalOpNode*>(node_manager, db, catalog) {}
-    ~TransformUpPysicalPass() {}
-    virtual bool Apply(PhysicalOpNode* in, PhysicalOpNode** out);
-};
-
-class ExprTransformPass : public TransformPass<node::ExprNode*> {
- public:
-    ExprTransformPass(node::NodeManager* node_manager, const std::string& db,
-                      const std::shared_ptr<Catalog>& catalog)
-        : TransformPass<node::ExprNode*>(node_manager, db, catalog) {}
-    ~ExprTransformPass() {}
-};
-
-class CanonicalizeExprTransformPass : public ExprTransformPass {
- public:
-    CanonicalizeExprTransformPass(node::NodeManager* node_manager,
-                                  const std::string& db,
-                                  const std::shared_ptr<Catalog>& catalog)
-        : ExprTransformPass(node_manager, db, catalog) {}
-    ~CanonicalizeExprTransformPass() {}
-    virtual bool Transform(node::ExprNode* in, node::ExprNode** output);
+    const std::string db_;
+    std::shared_ptr<Catalog> catalog_;
 };
 
 class GroupAndSortOptimized : public TransformUpPysicalPass {
  public:
-    GroupAndSortOptimized(node::NodeManager* node_manager,
-                          const std::string& db,
-                          const std::shared_ptr<Catalog>& catalog)
-        : TransformUpPysicalPass(node_manager, db, catalog) {}
+    explicit GroupAndSortOptimized(PhysicalPlanContext* plan_ctx)
+        : TransformUpPysicalPass(plan_ctx) {}
 
     ~GroupAndSortOptimized() {}
 
  private:
-    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+    bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
-    bool FilterOptimized(const vm::SchemaSourceList& column_sources,
+    bool FilterOptimized(const SchemasContext* root_schemas_ctx,
                          PhysicalOpNode* in, Filter* filter,
                          PhysicalOpNode** new_in);
-    bool JoinKeysOptimized(const vm::SchemaSourceList& column_sources,
+    bool JoinKeysOptimized(const SchemasContext* schemas_ctx,
                            PhysicalOpNode* in, Join* join,
                            PhysicalOpNode** new_in);
-    bool KeysFilterOptimized(const vm::SchemaSourceList& column_sources,
+    bool KeysFilterOptimized(const SchemasContext* root_schemas_ctx,
                              PhysicalOpNode* in, Key* group, Key* hash,
                              PhysicalOpNode** new_in);
-    bool GroupOptimized(const vm::SchemaSourceList& column_sources,
+    bool GroupOptimized(const SchemasContext* root_schemas_ctx,
                         PhysicalOpNode* in, Key* group,
                         PhysicalOpNode** new_in);
-    bool SortOptimized(const vm::SchemaSourceList& column_sources,
+    bool SortOptimized(const SchemasContext* root_schemas_ctx,
                        PhysicalOpNode* in, Sort* sort);
-    bool TransformGroupExpr(const vm::SchemaSourceList& column_sources,
+    bool TransformGroupExpr(const SchemasContext* schemas_ctx,
                             const node::ExprListNode* group,
+                            const std::string& table_name,
                             const IndexHint& index_hint, std::string* index,
-                            const node::ExprListNode** keys,
-                            const node::ExprListNode** output);
-    bool TransformOrderExpr(const vm::SchemaSourceList& column_sources,
+                            std::vector<bool>* best_bitmap);
+    bool TransformOrderExpr(const SchemasContext* schemas_ctx,
                             const node::OrderByNode* order,
                             const Schema& schema, const IndexSt& index_st,
                             const node::OrderByNode** output);
     bool MatchBestIndex(const std::vector<std::string>& columns,
-                        const IndexHint& catalog, std::vector<bool>* bitmap,
-                        std::string* index_name);  // NOLINT
+                        const std::string& table_name, const IndexHint& catalog,
+                        std::vector<bool>* bitmap, std::string* index_name,
+                        std::vector<bool>* best_bitmap);  // NOLINT
 };
 
 class LimitOptimized : public TransformUpPysicalPass {
  public:
-    LimitOptimized(node::NodeManager* node_manager, const std::string& db,
-                   const std::shared_ptr<Catalog>& catalog)
-        : TransformUpPysicalPass(node_manager, db, catalog) {}
+    explicit LimitOptimized(PhysicalPlanContext* plan_ctx)
+        : TransformUpPysicalPass(plan_ctx) {}
     ~LimitOptimized() {}
 
  private:
-    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+    bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
     static bool ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt);
 };
 
 class SimpleProjectOptimized : public TransformUpPysicalPass {
  public:
-    SimpleProjectOptimized(node::NodeManager* node_manager,
-                           const std::string& db,
-                           const std::shared_ptr<Catalog>& catalog)
-        : TransformUpPysicalPass(node_manager, db, catalog) {}
+    explicit SimpleProjectOptimized(PhysicalPlanContext* plan_ctx)
+        : TransformUpPysicalPass(plan_ctx) {}
     ~SimpleProjectOptimized() {}
 
  private:
-    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+    bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 };
+
 struct ExprPair {
     node::ExprNode* left_expr_ = nullptr;
     node::ExprNode* right_expr_ = nullptr;
 };
+
 // Optimize filter condition
 // for FilterNode, JoinNode
 class ConditionOptimized : public TransformUpPysicalPass {
  public:
-    ConditionOptimized(node::NodeManager* node_manager, const std::string& db,
-                       const std::shared_ptr<Catalog>& catalog)
-        : TransformUpPysicalPass(node_manager, db, catalog) {}
+    explicit ConditionOptimized(PhysicalPlanContext* plan_ctx)
+        : TransformUpPysicalPass(plan_ctx) {}
+
     static bool TransfromAndConditionList(
         const node::ExprNode* condition,
         node::ExprListNode* and_condition_list);
     static bool ExtractEqualExprPair(
         node::ExprNode* condition,
         std::pair<node::ExprNode*, node::ExprNode*>* expr_pair);
-    static bool MakeConstEqualExprPair(
-        const std::pair<node::ExprNode*, node::ExprNode*> expr_pair,
-        const vm::SchemasContext& ctx, const size_t left_schema_cnt,
-        ExprPair* output);
-    static bool TransformEqualExprPair(
-        const SchemaSourceList& name_schema_list, const size_t left_schema_cnt,
+    static bool TransformJoinEqualExprPair(
+        const SchemasContext* left_schemas_ctx,
+        const SchemasContext* right_schemas_ctx,
         node::ExprListNode* and_conditions,
         node::ExprListNode* out_condition_list,
         std::vector<ExprPair>& condition_eq_pair);  // NOLINT
     static bool TransformConstEqualExprPair(
-        const SchemaSourceList& name_schema_list,
         node::ExprListNode* and_conditions,
         node::ExprListNode* out_condition_list,
         std::vector<ExprPair>& condition_eq_pair);  // NOLINT
+    static bool MakeConstEqualExprPair(
+        const std::pair<node::ExprNode*, node::ExprNode*> expr_pair,
+        const SchemasContext* right_schemas_ctx, ExprPair* output);
 
  private:
-    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
-    bool JoinConditionOptimized(PhysicalOpNode* in, Join* join);
+    bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+    bool JoinConditionOptimized(PhysicalBinaryNode* in, Join* join);
     void SkipConstExpression(node::ExprListNode input,
                              node::ExprListNode* output);
     bool FilterConditionOptimized(PhysicalOpNode* in, Filter* filter);
 };
+
 class LeftJoinOptimized : public TransformUpPysicalPass {
  public:
-    LeftJoinOptimized(node::NodeManager* node_manager, const std::string& db,
-                      const std::shared_ptr<Catalog>& catalog)
-        : TransformUpPysicalPass(node_manager, db, catalog) {}
+    explicit LeftJoinOptimized(PhysicalPlanContext* plan_ctx)
+        : TransformUpPysicalPass(plan_ctx) {}
 
  private:
-    virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
+    bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
     bool ColumnExist(const Schema& schema, const std::string& column);
     bool CheckExprListFromSchema(const node::ExprListNode* expr_list,
-                                 const Schema& schema);
+                                 const Schema* schema);
 };
 
 class ClusterOptimized : public TransformUpPysicalPass {
  public:
-    ClusterOptimized(node::NodeManager* node_manager, const std::string& db,
-                     const std::shared_ptr<Catalog>& catalog)
-        : TransformUpPysicalPass(node_manager, db, catalog) {}
+    explicit ClusterOptimized(PhysicalPlanContext* plan_ctx)
+        : TransformUpPysicalPass(plan_ctx) {}
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
     bool SimplifyJoinLeftInput(PhysicalBinaryNode* join_op, const Join& join,
                                PhysicalOpNode** out);
 };
+
 typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
     LogicalGraph;
 
 enum PhysicalPlanPassType {
-    kPassColumnProjectOptimized,
+    kPassColumnProjectsOptimized,
     kPassFilterOptimized,
     kPassGroupAndSortOptimized,
     kPassLeftJoinOptimized,
     kPassClusterOptimized,
-    kPassLimitOptimized,
+    kPassLimitOptimized
 };
 
 inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
     switch (type) {
-        case kPassColumnProjectOptimized:
-            return "PassColumnProjectOptimized";
+        case kPassColumnProjectsOptimized:
+            return "PassColumnProjectsOptimized";
         case kPassFilterOptimized:
             return "PassFilterOptimized";
         case kPassGroupAndSortOptimized:
@@ -278,105 +259,85 @@ inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
     }
     return "";
 }
+
 class BatchModeTransformer {
  public:
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog,
-                         ::llvm::Module* module, udf::UDFLibrary* library);
+                         ::llvm::Module* module,
+                         const udf::UDFLibrary* library);
     BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                          const std::shared_ptr<Catalog>& catalog,
-                         ::llvm::Module* module, udf::UDFLibrary* library,
-                         const bool performance_sensitive,
-                         const bool cluster_optimized_mode);
+                         ::llvm::Module* module, const udf::UDFLibrary* library,
+                         bool performance_sensitive,
+                         bool cluster_optimized_mode);
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
-    bool TransformPhysicalPlan(const ::fesql::node::PlanNodeList& trees,
-                               ::fesql::vm::PhysicalOpNode** output,
-                               ::fesql::base::Status& status);  // NOLINT
-    virtual bool TransformQueryPlan(const ::fesql::node::PlanNode* node,
-                                    ::fesql::vm::PhysicalOpNode** output,
-                                    ::fesql::base::Status& status);  // NOLINT
+    virtual Status TransformPhysicalPlan(
+        const ::fesql::node::PlanNodeList& trees,
+        ::fesql::vm::PhysicalOpNode** output);
+    virtual Status TransformQueryPlan(const ::fesql::node::PlanNode* node,
+                                      ::fesql::vm::PhysicalOpNode** output);
 
     bool AddPass(PhysicalPlanPassType type);
 
     typedef std::unordered_map<LogicalOp, ::fesql::vm::PhysicalOpNode*,
                                HashLogicalOp, EqualLogicalOp>
         LogicalOpMap;
-    bool GenPlanNode(PhysicalOpNode* node, base::Status& status);  // NOLINT
-    bool GenJoin(Join* join, PhysicalOpNode* in,
-                 base::Status& status);  // NOLINT
-    bool GenFilter(Filter* filter, PhysicalOpNode* in,
-                   base::Status& status);  // NOLINT
-    bool GenConditionFilter(ConditionFilter* filter,
-                            const SchemaSourceList& input_name_schema_list,
-                            base::Status& status);  // NOLINT
-    bool GenKey(Key* hash, const SchemaSourceList& input_name_schema_list,
-                base::Status& status);  // NOLINT
-    bool GenWindow(WindowOp* window, PhysicalOpNode* in,
-                   base::Status& status);  // NOLINT
-    bool GenRequestWindow(RequestWindowOp* window, PhysicalOpNode* in,
-                          base::Status& status);  // NOLINT
 
-    bool GenSort(Sort* sort, const SchemaSourceList& input_name_schema_list,
-                 base::Status& status);  // NOLINT
-    bool GenRange(Range* sort, const SchemaSourceList& input_name_schema_list,
-                  base::Status& status);  // NOLINT
-    bool GenSimpleProject(ColumnProject* project, PhysicalOpNode* in,
-                          base::Status& status);  // NOLINT
+    // Generate function info for node's all components
+    Status InitFnInfo(PhysicalOpNode* node, std::set<PhysicalOpNode*>* visited);
 
-    base::Status ValidatePartitionDataProvider(PhysicalOpNode* physical_plan);
-    base::Status ValidateWindowIndexOptimization(const WindowOp& window,
-                                                 PhysicalOpNode* in);
-    base::Status ValidateJoinIndexOptimization(const Join& join,
-                                               PhysicalOpNode* in);
-    base::Status ValidateRequestJoinIndexOptimization(const Join& join,
-                                                      PhysicalOpNode* in);
-    base::Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
+    Status GenJoin(Join* join, PhysicalOpNode* in);
+    Status GenFilter(Filter* filter, PhysicalOpNode* in);
+    Status GenConditionFilter(ConditionFilter* filter,
+                              const SchemasContext* schemas_ctx);
+    Status GenKey(Key* hash, const SchemasContext* schemas_ctx);
+    Status GenWindow(WindowOp* window, PhysicalOpNode* in);
+    Status GenRequestWindow(RequestWindowOp* window, PhysicalOpNode* in);
+
+    Status GenSort(Sort* sort, const SchemasContext* schemas_ctx);
+    Status GenRange(Range* sort, const SchemasContext* schemas_ctx);
+
+    Status ValidatePartitionDataProvider(PhysicalOpNode* physical_plan);
+    Status ValidateWindowIndexOptimization(const WindowOp& window,
+                                           PhysicalOpNode* in);
+    Status ValidateJoinIndexOptimization(const Join& join, PhysicalOpNode* in);
+    Status ValidateRequestJoinIndexOptimization(const Join& join,
+                                                PhysicalOpNode* in);
+    Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
+
+    PhysicalPlanContext* GetPlanContext() { return &plan_ctx_; }
 
  protected:
-    virtual bool TransformPlanOp(const ::fesql::node::PlanNode* node,
-                                 ::fesql::vm::PhysicalOpNode** ouput,
-                                 ::fesql::base::Status& status);  // NOLINT
-    virtual bool TransformLimitOp(const node::LimitPlanNode* node,
-                                  PhysicalOpNode** output,
-                                  base::Status& status);  // NOLINT
+    virtual Status TransformPlanOp(const ::fesql::node::PlanNode* node,
+                                   ::fesql::vm::PhysicalOpNode** ouput);
+    virtual Status TransformLimitOp(const node::LimitPlanNode* node,
+                                    PhysicalOpNode** output);
+    virtual Status TransformProjectPlanOp(const node::ProjectPlanNode* node,
+                                          PhysicalOpNode** output);
+    virtual Status TransformWindowOp(PhysicalOpNode* depend,
+                                     const node::WindowPlanNode* w_ptr,
+                                     PhysicalOpNode** output);
+    virtual Status TransformJoinOp(const node::JoinPlanNode* node,
+                                   PhysicalOpNode** output);
+    virtual Status TransformUnionOp(const node::UnionPlanNode* node,
+                                    PhysicalOpNode** output);
+    virtual Status TransformGroupOp(const node::GroupPlanNode* node,
+                                    PhysicalOpNode** output);
+    virtual Status TransformSortOp(const node::SortPlanNode* node,
+                                   PhysicalOpNode** output);
+    virtual Status TransformFilterOp(const node::FilterPlanNode* node,
+                                     PhysicalOpNode** output);
+    virtual Status TransformScanOp(const node::TablePlanNode* node,
+                                   PhysicalOpNode** output);
+    virtual Status TransformRenameOp(const node::RenamePlanNode* node,
+                                     PhysicalOpNode** output);
+    virtual Status TransformDistinctOp(const node::DistinctPlanNode* node,
+                                       PhysicalOpNode** output);
 
-    virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
-                                        PhysicalOpNode** output,
-                                        base::Status& status);  // NOLINT
-    virtual bool TransformWindowOp(PhysicalOpNode* depend,
-                                   const node::WindowPlanNode* w_ptr,
-                                   PhysicalOpNode** output,
-                                   base::Status& status);  // NOLINT
-
-    virtual bool TransformJoinOp(const node::JoinPlanNode* node,
-                                 PhysicalOpNode** output,
-                                 base::Status& status);  // NOLINT
-    virtual bool TransformUnionOp(const node::UnionPlanNode* node,
-                                  PhysicalOpNode** output,
-                                  base::Status& status);  // NOLINT
-    virtual bool TransformGroupOp(const node::GroupPlanNode* node,
-                                  PhysicalOpNode** output,
-                                  base::Status& status);  // NOLINT
-    virtual bool TransformSortOp(const node::SortPlanNode* node,
-                                 PhysicalOpNode** output,
-                                 base::Status& status);  // NOLINT
-    virtual bool TransformFilterOp(const node::FilterPlanNode* node,
-                                   PhysicalOpNode** output,
-                                   base::Status& status);  // NOLINT
-    virtual bool TransformScanOp(const node::TablePlanNode* node,
-                                 PhysicalOpNode** output,
-                                 base::Status& status);  // NOLINT
-    virtual bool TransformRenameOp(const node::RenamePlanNode* node,
-                                   PhysicalOpNode** output,
-                                   base::Status& status);  // NOLINT
-    virtual bool TransformDistinctOp(const node::DistinctPlanNode* node,
-                                     PhysicalOpNode** output,
-                                     base::Status& status);  // NOLINT
-
-    virtual bool CreatePhysicalConstProjectNode(
-        node::ProjectListNode* project_list, PhysicalOpNode** output,
-        base::Status& status);  // NOLINT
+    virtual Status CreatePhysicalConstProjectNode(
+        node::ProjectListNode* project_list, PhysicalOpNode** output);
 
     base::Status CreateRequestUnionNode(PhysicalOpNode* request,
                                         PhysicalOpNode* right,
@@ -386,46 +347,41 @@ class BatchModeTransformer {
                                         const node::WindowPlanNode* window_plan,
                                         PhysicalRequestUnionNode** output);
 
-    virtual bool CreatePhysicalProjectNode(const ProjectType project_type,
-                                           PhysicalOpNode* node,
-                                           node::ProjectListNode* project_list,
-                                           PhysicalOpNode** output,
-                                           base::Status& status);  // NOLINT
-    virtual bool TransformProjectOp(node::ProjectListNode* node,
-                                    PhysicalOpNode* depend,
-                                    PhysicalOpNode** output,
-                                    base::Status& status);  // NOLINT
+    virtual Status CreatePhysicalProjectNode(
+        const ProjectType project_type, PhysicalOpNode* node,
+        node::ProjectListNode* project_list, bool append_input,
+        PhysicalOpNode** output);
+
+    virtual Status TransformProjectOp(node::ProjectListNode* node,
+                                      PhysicalOpNode* depend, bool append_input,
+                                      PhysicalOpNode** output);
     virtual void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output);
-    bool GenFnDef(const node::FuncDefPlanNode* fn_plan,
-                  base::Status& status);  // NOLINT
-    bool CodeGenExprList(const SchemaSourceList& input_name_schema_list,
-                         const node::ExprListNode* expr_list, bool row_mode,
-                         FnInfo* fn_info,
-                         base::Status& status);  // NOLINT
-    bool GenProjects(const SchemaSourceList& input_name_schema_list,
-                     const node::PlanNodeList& projects, const bool row_mode,
-                     const node::FrameNode* frame,
-                     std::string& fn_name,   // NOLINT
-                     Schema* output_schema,  // NOLINT
-                     ColumnSourceList* output_column_sources,
-                     base::Status& status);  // NOLINT
-    bool GenWindowJoinList(WindowJoinList* window_join_list, PhysicalOpNode* in,
-                           base::Status& status);  // NOLINT
-    bool GenWindowUnionList(WindowUnionList* window_union_list,
-                            PhysicalOpNode* in,
-                            base::Status& status);  // NOLINT
-    bool GenRequestWindowUnionList(RequestWindowUnionList* window_unions,
-                                   PhysicalOpNode* in,
-                                   base::Status& status);  // NOLINT
-    bool IsSimpleProject(const ColumnSourceList& source);
-    bool BuildExprListFromSchemaSource(const ColumnSourceList column_sources,
-                                       const SchemaSourceList& schema_souces,
-                                       node::ExprListNode* expr_list);
-    bool CheckHistoryWindowFrame(const node::WindowPlanNode* w_ptr,
-                                 base::Status& status);  // NOLINT
+
+    template <typename Op, typename... Args>
+    Status CreateOp(Op** op, Args&&... args) {
+        return plan_ctx_.CreateOp<Op>(op, args...);
+    }
+
+    Status GenFnDef(const node::FuncDefPlanNode* fn_plan);
+
+    /**
+     * Instantiate underlying llvm function with specified fn info.
+     */
+    Status InstantiateLLVMFunction(const FnInfo& fn_info);
+
+    Status GenWindowJoinList(PhysicalWindowAggrerationNode* window_agg_op,
+                             PhysicalOpNode* in);
+    Status GenWindowUnionList(WindowUnionList* window_union_list,
+                              PhysicalOpNode* in);
+    Status GenRequestWindowUnionList(RequestWindowUnionList* window_unions,
+                                     PhysicalOpNode* in);
+    bool IsSimpleProject(const ColumnProjects& project);
+
+    Status CheckHistoryWindowFrame(const node::WindowPlanNode* w_ptr);
+
     base::Status CheckTimeOrIntegerOrderColumn(
-        const node::OrderByNode* orders,
-        const vm::SchemaSourceList& schema_source_list);  // NOLINT
+        const node::OrderByNode* orders, const SchemasContext* schemas_ctx);
+
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
@@ -440,37 +396,34 @@ class BatchModeTransformer {
     bool cluster_optimized_mode_;
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
-    udf::UDFLibrary* library_;
+    const udf::UDFLibrary* library_;
+    PhysicalPlanContext plan_ctx_;
 };
 
-class RequestModeransformer : public BatchModeTransformer {
+class RequestModeTransformer : public BatchModeTransformer {
  public:
-    RequestModeransformer(node::NodeManager* node_manager,
-                          const std::string& db,
-                          const std::shared_ptr<Catalog>& catalog,
-                          ::llvm::Module* module, udf::UDFLibrary* library,
-                          const std::set<size_t>& common_column_indices,
-                          const bool performance_sensitive,
-                          const bool cluster_optimized);
-    virtual ~RequestModeransformer();
+    RequestModeTransformer(node::NodeManager* node_manager,
+                           const std::string& db,
+                           const std::shared_ptr<Catalog>& catalog,
+                           ::llvm::Module* module, udf::UDFLibrary* library,
+                           const std::set<size_t>& common_column_indices,
+                           const bool performance_sensitive,
+                           const bool cluster_optimized);
+    virtual ~RequestModeTransformer();
 
     const Schema& request_schema() const { return request_schema_; }
     const std::string& request_name() const { return request_name_; }
 
  protected:
-    virtual bool TransformProjectOp(node::ProjectListNode* node,
-                                    PhysicalOpNode* depend,
-                                    PhysicalOpNode** output,
-                                    base::Status& status);  // NOLINT
-    virtual bool TransformProjecPlantOp(const node::ProjectPlanNode* node,
-                                        PhysicalOpNode** output,
-                                        base::Status& status);  // NOLINT
-    virtual bool TransformJoinOp(const node::JoinPlanNode* node,
-                                 PhysicalOpNode** output,
-                                 base::Status& status);  // NOLINT
-    virtual bool TransformScanOp(const node::TablePlanNode* node,
-                                 PhysicalOpNode** output,
-                                 base::Status& status);  // NOLINT
+    virtual Status TransformProjectOp(node::ProjectListNode* node,
+                                      PhysicalOpNode* depend, bool append_input,
+                                      PhysicalOpNode** output);
+    virtual Status TransformProjectPlanOp(const node::ProjectPlanNode* node,
+                                          PhysicalOpNode** output);
+    virtual Status TransformJoinOp(const node::JoinPlanNode* node,
+                                   PhysicalOpNode** output);
+    virtual Status TransformScanOp(const node::TablePlanNode* node,
+                                   PhysicalOpNode** output);
 
  private:
     vm::Schema request_schema_;
@@ -526,16 +479,15 @@ inline bool SchemaType2DataType(const ::fesql::type::Type type,
     return true;
 }
 
-// TODO(xxx): make it common step before all codegen
-fesql::base::Status ResolveProjects(
-    const SchemaSourceList& input_schemas, const node::PlanNodeList& projects,
-    bool row_project, node::NodeManager* node_manager, udf::UDFLibrary* library,
-    node::LambdaNode** output_func, std::vector<std::string>* output_names,
-    std::vector<node::FrameNode*>* output_frames);
-
 bool TransformLogicalTreeToLogicalGraph(const ::fesql::node::PlanNode* node,
                                         LogicalGraph* graph,
                                         fesql::base::Status& status);  // NOLINT
+
+Status ExtractProjectInfos(const node::PlanNodeList& projects,
+                           const node::FrameNode* primary_frame,
+                           const SchemasContext* schemas_ctx,
+                           node::NodeManager* node_manager,
+                           ColumnProjects* output);
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_TRANSFORM_H_

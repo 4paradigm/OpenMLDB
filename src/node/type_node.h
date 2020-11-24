@@ -19,8 +19,9 @@
 
 #include <string>
 #include <vector>
+#include "codec/fe_row_codec.h"
 #include "node/sql_node.h"
-#include "vm/catalog.h"
+#include "vm/schemas_context.h"
 
 namespace fesql {
 namespace node {
@@ -79,6 +80,8 @@ class TypeNode : public SQLNode {
     std::vector<int> generics_nullable_;
     void Print(std::ostream &output, const std::string &org_tab) const override;
     virtual bool Equals(const SQLNode *node) const;
+    TypeNode *ShadowCopy(NodeManager *) const override;
+    TypeNode *DeepCopy(NodeManager *) const override;
 
     bool IsBaseType() const;
     bool IsTuple() const;
@@ -107,19 +110,33 @@ class OpaqueTypeNode : public TypeNode {
         return "opaque<" + std::to_string(bytes_) + ">";
     }
 
+    OpaqueTypeNode *ShadowCopy(NodeManager *) const override;
+
  private:
     size_t bytes_;
 };
 
 class RowTypeNode : public TypeNode {
  public:
-    explicit RowTypeNode(const vm::SchemaSourceList &schema_source)
-        : TypeNode(node::kRow), schema_source_(schema_source) {}
+    // Initialize with external schemas context
+    explicit RowTypeNode(const vm::SchemasContext *schemas_ctx);
 
-    const vm::SchemaSourceList &schema_source() const { return schema_source_; }
+    // Initialize with schema
+    explicit RowTypeNode(const std::vector<const codec::Schema *> &schemas);
+
+    ~RowTypeNode();
+
+    const vm::SchemasContext *schemas_ctx() const { return schemas_ctx_; }
+
+    RowTypeNode *ShadowCopy(NodeManager *) const override;
 
  private:
-    const vm::SchemaSourceList schema_source_;
+    bool IsOwnedSchema() const { return is_own_schema_ctx_; }
+
+    // if initialized without a physical node context
+    // hold a self-owned schemas context
+    const vm::SchemasContext *schemas_ctx_;
+    bool is_own_schema_ctx_;
 };
 
 }  // namespace node

@@ -34,19 +34,17 @@ namespace fesql {
 namespace codegen {
 
 using fesql::base::Status;
-using fesql::vm::RowSchemaInfo;
 
 class RowFnLetIRBuilder {
  public:
-    RowFnLetIRBuilder(CodeGenContext* ctx, const node::FrameNode* frame);
+    explicit RowFnLetIRBuilder(CodeGenContext* ctx);
 
     ~RowFnLetIRBuilder();
 
-    Status Build(const std::string& name, node::LambdaNode* project_func,
-                 const std::vector<std::string>& project_names,
-                 const std::vector<node::FrameNode*>& project_frames,
-                 vm::Schema* output_schema,
-                 vm::ColumnSourceList* output_column_sources);
+    Status Build(const std::string& name, const node::LambdaNode* project_func,
+                 const node::FrameNode* primary_frame,
+                 const std::vector<const node::FrameNode*>& project_frames,
+                 const vm::Schema& output_schema);
 
  private:
     bool BuildFnHeader(const std::string& name,
@@ -57,30 +55,21 @@ class RowFnLetIRBuilder {
                   ScopeVar* sv);
 
     bool EncodeBuf(
-        const std::map<uint32_t, NativeValue>* values, const vm::Schema* schema,
+        const std::map<uint32_t, NativeValue>* values, const vm::Schema& schema,
         VariableIRBuilder& variable_ir_builder,  // NOLINT (runtime/references)
         ::llvm::BasicBlock* block, const std::string& output_ptr_name);
 
     Status BuildProject(ExprIRBuilder* expr_ir_builder, const uint32_t index,
-                        const node::ExprNode* expr, const std::string& col_name,
-                        std::map<uint32_t, NativeValue>* output,
-                        vm::Schema* output_schema,
-                        vm::ColumnSourceList* output_column_sources);
-
-    bool AddOutputColumnInfo(const std::string& col_name,
-                             ::fesql::type::Type ctype,
-                             const node::ExprNode* expr,
-                             vm::Schema* output_schema,
-                             vm::ColumnSourceList* output_column_sources);
+                        const node::ExprNode* expr,
+                        std::map<uint32_t, NativeValue>* output);
 
     Status BindProjectFrame(ExprIRBuilder* expr_ir_builder,
-                            node::FrameNode* frame,
-                            node::LambdaNode* compile_func,
+                            const node::FrameNode* frame,
+                            const node::LambdaNode* compile_func,
                             ::llvm::BasicBlock* block, ScopeVar* sv);
 
  private:
     CodeGenContext* ctx_;
-    const node::FrameNode* frame_;
 };
 
 }  // namespace codegen

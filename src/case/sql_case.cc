@@ -206,6 +206,7 @@ bool SQLCase::ExtractSchema(const std::vector<std::string>& columns,
             return false;
         }
         column->set_type(type);
+        column->set_is_not_null(false);
     }
     return true;
 }
@@ -911,7 +912,7 @@ bool SQLCase::CreateTableInfoFromYaml(const std::string& cases_dir,
     } else {
         resouces_path = yaml_path;
     }
-    LOG(INFO) << "Resource path: " << resouces_path;
+    DLOG(INFO) << "Resource path: " << resouces_path;
     if (!boost::filesystem::is_regular_file(resouces_path)) {
         LOG(WARNING) << resouces_path << ": No such file";
         return false;
@@ -956,7 +957,7 @@ bool SQLCase::CreateSQLCasesFromYaml(
     } else {
         sql_case_path = yaml_path;
     }
-    LOG(INFO) << "SQL Cases Path: " << sql_case_path;
+    DLOG(INFO) << "SQL Cases Path: " << sql_case_path;
     if (!boost::filesystem::is_regular_file(sql_case_path)) {
         LOG(WARNING) << sql_case_path << ": No such file";
         return false;
@@ -989,7 +990,8 @@ bool SQLCase::CreateSQLCasesFromYaml(
     for (auto case_iter = sql_cases_node.begin();
          case_iter != sql_cases_node.end(); case_iter++) {
         SQLCase sql_case;
-        auto sql_case_node = *case_iter;
+        YAML::Node& sql_case_node = sql_case.raw_node_;
+        sql_case_node = (YAML::Node)(*case_iter);
 
         if (sql_case_node["id"]) {
             sql_case.id_ = sql_case_node["id"].as<std::string>();

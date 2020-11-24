@@ -676,8 +676,6 @@ TEST_F(ExprIRBuilderTest, test_get_field) {
     auto schema = udf::MakeLiteralSchema<int16_t, int32_t, int64_t, float,
                                          double, codec::Timestamp, codec::Date,
                                          codec::StringRef>();
-    vm::SchemaSourceList schema_sources;
-    schema_sources.AddSchemaSource("t", &schema);
     codec::RowBuilder row_builder(schema);
     size_t row_size = row_builder.CalTotalLength(5);
     int8_t *buf = reinterpret_cast<int8_t *>(malloc(row_size));
@@ -696,46 +694,40 @@ TEST_F(ExprIRBuilderTest, test_get_field) {
                          codec::Timestamp, codec::Date, codec::StringRef>
         typed_row(reinterpret_cast<int8_t *>(row));
 
-    ExprCheck(
-        [](node::NodeManager *nm, ExprNode *input) {
-            return nm->MakeGetFieldExpr(input, "col_0", "t");
-        },
-        (int16_t)16, typed_row);
-    ExprCheck(
-        [](node::NodeManager *nm, ExprNode *input) {
-            return nm->MakeGetFieldExpr(input, "col_1", "t");
-        },
-        32, typed_row);
-    ExprCheck(
-        [](node::NodeManager *nm, ExprNode *input) {
-            return nm->MakeGetFieldExpr(input, "col_2", "t");
-        },
-        (int64_t)64L, typed_row);
-    ExprCheck(
-        [](node::NodeManager *nm, ExprNode *input) {
-            return nm->MakeGetFieldExpr(input, "col_3", "t");
-        },
-        3.14f, typed_row);
-    ExprCheck(
-        [](node::NodeManager *nm, ExprNode *input) {
-            return nm->MakeGetFieldExpr(input, "col_4", "t");
-        },
-        1.0, typed_row);
-    ExprCheck(
-        [](node::NodeManager *nm, ExprNode *input) {
-            return nm->MakeGetFieldExpr(input, "col_5", "t");
-        },
-        codec::Timestamp(1590115420000L), typed_row);
-    ExprCheck(
-        [](node::NodeManager *nm, ExprNode *input) {
-            return nm->MakeGetFieldExpr(input, "col_6", "t");
-        },
-        codec::Date(2009, 7, 1), typed_row);
-    ExprCheck(
-        [](node::NodeManager *nm, ExprNode *input) {
-            return nm->MakeGetFieldExpr(input, "col_7", "t");
-        },
-        codec::StringRef(5, "hello"), typed_row);
+    auto make_get_field = [](node::NodeManager *nm, node::ExprNode *input,
+                             size_t idx) {
+        auto row_type =
+            dynamic_cast<const node::RowTypeNode *>(input->GetOutputType());
+        auto source = row_type->schemas_ctx()->GetSchemaSource(0);
+        auto column_name = source->GetColumnName(idx);
+        auto column_id = source->GetColumnID(idx);
+        return nm->MakeGetFieldExpr(input, column_name, column_id);
+    };
+
+    ExprCheck([&](node::NodeManager *nm,
+                  ExprNode *input) { return make_get_field(nm, input, 0); },
+              (int16_t)16, typed_row);
+    ExprCheck([&](node::NodeManager *nm,
+                  ExprNode *input) { return make_get_field(nm, input, 1); },
+              32, typed_row);
+    ExprCheck([&](node::NodeManager *nm,
+                  ExprNode *input) { return make_get_field(nm, input, 2); },
+              (int64_t)64L, typed_row);
+    ExprCheck([&](node::NodeManager *nm,
+                  ExprNode *input) { return make_get_field(nm, input, 3); },
+              3.14f, typed_row);
+    ExprCheck([&](node::NodeManager *nm,
+                  ExprNode *input) { return make_get_field(nm, input, 4); },
+              1.0, typed_row);
+    ExprCheck([&](node::NodeManager *nm,
+                  ExprNode *input) { return make_get_field(nm, input, 5); },
+              codec::Timestamp(1590115420000L), typed_row);
+    ExprCheck([&](node::NodeManager *nm,
+                  ExprNode *input) { return make_get_field(nm, input, 6); },
+              codec::Date(2009, 7, 1), typed_row);
+    ExprCheck([&](node::NodeManager *nm,
+                  ExprNode *input) { return make_get_field(nm, input, 7); },
+              codec::StringRef(5, "hello"), typed_row);
 }
 
 TEST_F(ExprIRBuilderTest, test_build_lambda) {

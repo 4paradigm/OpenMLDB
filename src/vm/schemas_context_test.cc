@@ -7,190 +7,241 @@
  *--------------------------------------------------------------------------
  **/
 #include "vm/schemas_context.h"
+#include <memory>
+#include "case/sql_case.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "passes/physical/physical_pass.h"
+#include "vm/engine.h"
+#include "vm/engine_test.h"
+#include "vm/simple_catalog.h"
+#include "yaml-cpp/yaml.h"
+
 namespace fesql {
 namespace vm {
-void BuildTableDef(::fesql::type::TableDef& table) {  // NOLINT
-    table.set_name("t1");
-    table.set_catalog("db");
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col0");
+
+class SchemasContextTest : public ::testing::Test {
+ public:
+    SchemasContextTest()
+        : catalog(new vm::SimpleCatalog()),
+          plan_ctx(&nm, &lib, "db", catalog) {}
+    node::NodeManager nm;
+    udf::UDFLibrary lib;
+    std::shared_ptr<vm::SimpleCatalog> catalog;
+    vm::PhysicalPlanContext plan_ctx;
+};
+
+struct ColumnNameResolveResult {
+    int schema_idx = -1;
+    int col_idx = -1;
+    int path_idx = -9999;
+    int source_col_idx = -1;
+    std::string source_name = "";
+    bool is_error = false;
+};
+
+class SchemasContextResolveTest : public ::testing::TestWithParam<SQLCase> {
+ public:
+    SchemasContextResolveTest() {}
+};
+
+void CheckColumnResolveCase(const std::string& relation_name,
+                            const std::string& column_name,
+                            PhysicalOpNode* node,
+                            const ColumnNameResolveResult& expect) {
+    Status status;
+    const auto schemas_context = node->schemas_ctx();
+
+    // check simple resolve
+    size_t schema_idx;
+    size_t col_idx;
+    status = schemas_context->ResolveColumnIndexByName(
+        relation_name, column_name, &schema_idx, &col_idx);
+    if (expect.is_error) {
+        LOG(INFO) << status;
+        ASSERT_FALSE(status.isOK());
+        return;
     }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
+    ASSERT_TRUE(status.isOK()) << status;
+
+    if (expect.schema_idx >= 0) {
+        ASSERT_EQ(static_cast<size_t>(expect.schema_idx), schema_idx);
     }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
-    }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
+    if (expect.col_idx >= 0) {
+        ASSERT_EQ(static_cast<size_t>(expect.col_idx), col_idx);
     }
 
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col5");
-    }
+    // check detailed resolve
+    size_t column_id;
+    int child_path_idx;
+    size_t child_column_id;
+    size_t source_column_id;
+    const PhysicalOpNode* source_node = nullptr;
+    status = schemas_context->ResolveColumnID(
+        relation_name, column_name, &column_id, &child_path_idx,
+        &child_column_id, &source_column_id, &source_node);
+    ASSERT_TRUE(status.isOK()) << status;
+    ASSERT_EQ(
+        schemas_context->GetSchemaSource(schema_idx)->GetColumnID(col_idx),
+        column_id);
 
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("col6");
+    if (expect.path_idx >= -1) {
+        ASSERT_EQ(expect.path_idx, child_path_idx);
+    }
+    if (expect.source_col_idx >= 0) {
+        ASSERT_TRUE(source_node != nullptr);
+        size_t source_schema_idx;
+        size_t source_col_idx;
+        status = source_node->schemas_ctx()->ResolveColumnIndexByID(
+            source_column_id, &source_schema_idx, &source_col_idx);
+        ASSERT_EQ(static_cast<size_t>(expect.source_col_idx), source_col_idx);
+    }
+    if (!expect.source_name.empty()) {
+        ASSERT_TRUE(source_node != nullptr);
+        ASSERT_EQ(expect.source_name, source_node->schemas_ctx()->GetName());
     }
 }
 
-void BuildTableT2Def(::fesql::type::TableDef& table) {  // NOLINT
-    table.set_name("t2");
-    table.set_catalog("db");
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("str0");
+void CheckColumnResolveCase(const YAML::Node& resolve_case,
+                            PhysicalOpNode* node) {
+    ColumnNameResolveResult expect;
+    std::string relation_name = "";
+    if (resolve_case["relation_name"]) {
+        relation_name = resolve_case["relation_name"].as<std::string>();
     }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kVarchar);
-        column->set_name("str1");
+    std::string column_name = resolve_case["column_name"].as<std::string>();
+    if (resolve_case["is_error"]) {
+        if (boost::lexical_cast<int32_t>(
+                resolve_case["is_error"].as<std::string>() == "true")) {
+            expect.is_error = true;
+        }
     }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kFloat);
-        column->set_name("col3");
+    if (resolve_case["schema_idx"]) {
+        expect.schema_idx = boost::lexical_cast<int32_t>(
+            resolve_case["schema_idx"].as<std::string>());
     }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kDouble);
-        column->set_name("col4");
+    if (resolve_case["col_idx"]) {
+        expect.col_idx = boost::lexical_cast<int32_t>(
+            resolve_case["col_idx"].as<std::string>());
     }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt16);
-        column->set_name("col2");
+    if (resolve_case["path_idx"]) {
+        expect.path_idx = boost::lexical_cast<int32_t>(
+            resolve_case["path_idx"].as<std::string>());
     }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt32);
-        column->set_name("col1");
+    if (resolve_case["source_col_idx"]) {
+        expect.source_col_idx = boost::lexical_cast<int32_t>(
+            resolve_case["source_col_idx"].as<std::string>());
     }
-    {
-        ::fesql::type::ColumnDef* column = table.add_columns();
-        column->set_type(::fesql::type::kInt64);
-        column->set_name("col5");
+    if (resolve_case["source_name"]) {
+        expect.source_name = resolve_case["source_name"].as<std::string>();
+    }
+    CheckColumnResolveCase(relation_name, column_name, node, expect);
+}
+
+void CheckColumnResolveCases(const SQLCase& sql_case, PhysicalOpNode* node) {
+    LOG(INFO) << "Physical plan:\n" << *node;
+    node->PrintSchema();
+
+    auto& raw_node = sql_case.raw_node();
+    const auto& expect = raw_node["expect"];
+    if (!expect) {
+        return;
+    }
+    const auto& resolve_cases = expect["resolve_column"];
+    if (!resolve_cases) {
+        return;
+    }
+    for (size_t i = 0; i < resolve_cases.size(); i++) {
+        CheckColumnResolveCase(resolve_cases[i], node);
     }
 }
 
-class SchemasContextTest : public ::testing::Test {};
+PhysicalOpNode* GetTestSQLPlan(const SQLCase& sql_case, RunSession* session) {
+    std::map<std::string, std::shared_ptr<::fesql::storage::Table>> table_dict;
+    std::map<size_t, std::string> idx_to_table_dict;
+    auto catalog = std::make_shared<tablet::TabletCatalog>();
+
+    EngineOptions options;
+    options.set_plan_only(true);
+    auto engine = std::make_shared<vm::Engine>(catalog, options);
+    InitEngineCatalog(sql_case, options, table_dict, idx_to_table_dict, engine,
+                      catalog);
+
+    // Compile sql plan
+    base::Status status;
+    bool ok = engine->Get(sql_case.sql_str(), sql_case.db(), *session, status);
+    if (!ok) {
+        LOG(WARNING) << status;
+        return nullptr;
+    }
+    return session->GetCompileInfo()->get_sql_context().physical_plan;
+}
+
+INSTANTIATE_TEST_CASE_P(
+    ResolveNameTest, SchemasContextResolveTest,
+    testing::ValuesIn(
+        InitCases("/cases/schemas_context/resolve_column_name.yaml")));
+
+TEST_P(SchemasContextResolveTest, test_request_column_resolve) {
+    const SQLCase& sql_case = GetParam();
+    LOG(INFO) << "Test resolve request mode sql root of: "
+              << sql_case.sql_str();
+
+    RequestRunSession session;
+    auto plan = GetTestSQLPlan(sql_case, &session);
+    CheckColumnResolveCases(sql_case, plan);
+}
+
+TEST_P(SchemasContextResolveTest, test_batch_column_resolve) {
+    const SQLCase& sql_case = GetParam();
+    LOG(INFO) << "Test resolve request mode sql root of: "
+              << sql_case.sql_str();
+
+    BatchRunSession session;
+    auto plan = GetTestSQLPlan(sql_case, &session);
+    CheckColumnResolveCases(sql_case, plan);
+}
 
 TEST_F(SchemasContextTest, NewSchemasContextTest) {
-    vm::SchemaSourceList name_schemas;
     type::TableDef t1;
+    BuildTableDef(t1);
+    t1.set_name("t1");
+
     type::TableDef t2;
-    {
-        BuildTableDef(t1);
-        name_schemas.AddSchemaSource("t1", &t1.columns());
-    }
-    {
-        BuildTableT2Def(t2);
-        name_schemas.AddSchemaSource("t2", &t2.columns());
-    }
-    SchemasContext ctx(name_schemas);
+    BuildTableDef(t2);
+    t2.set_name("t2");
 
-    ASSERT_EQ(0u, ctx.table_context_id_map_["t1"][0]);
-    ASSERT_EQ(1u, ctx.table_context_id_map_["t2"][0]);
+    auto init_source = [](SchemaSource* source, const type::TableDef& table,
+                          size_t offset) {
+        source->SetSourceName(table.name());
+        source->SetSchema(&table.columns());
+        for (int i = 0; i < table.columns_size(); ++i) {
+            source->SetColumnID(i, offset);
+            offset += 1;
+        }
+    };
 
-    ASSERT_EQ(std::vector<uint32_t>({0u, 1u}), ctx.col_context_id_map_["col1"]);
-    ASSERT_EQ(std::vector<uint32_t>({1u}), ctx.col_context_id_map_["str0"]);
+    vm::SchemasContext schemas_context;
+    auto source1 = schemas_context.AddSource();
+    init_source(source1, t1, 0);
+    auto source2 = schemas_context.AddSource();
+    init_source(source2, t2, t1.columns_size());
+    schemas_context.Build();
 
-    ASSERT_EQ(0u, ctx.row_schema_info_list_[0].idx_);
-    ASSERT_EQ(name_schemas.schema_source_list_[0].schema_,
-              ctx.row_schema_info_list_[0].schema_);
-    ASSERT_EQ("t1", ctx.row_schema_info_list_[0].table_name_);
+    size_t column_id;
+    Status status;
+    status = schemas_context.ResolveColumnID("t1", "col1", &column_id);
+    ASSERT_TRUE(status.isOK()) << status;
+    ASSERT_EQ(1u, column_id);
 
-    ASSERT_EQ(1u, ctx.row_schema_info_list_[1].idx_);
-    ASSERT_EQ(name_schemas.schema_source_list_[1].schema_,
-              ctx.row_schema_info_list_[1].schema_);
-    ASSERT_EQ("t2", ctx.row_schema_info_list_[1].table_name_);
+    status = schemas_context.ResolveColumnID("t2", "col1", &column_id);
+    ASSERT_TRUE(status.isOK()) << status;
+    ASSERT_EQ(8u, column_id);
 }
 
-TEST_F(SchemasContextTest, ColumnResolvedTest) {
-    vm::SchemaSourceList name_schemas;
-    type::TableDef t1;
-    type::TableDef t2;
-    {
-        BuildTableDef(t1);
-        name_schemas.AddSchemaSource("t1", &t1.columns());
-    }
-    {
-        BuildTableT2Def(t2);
-        name_schemas.AddSchemaSource("t2", &t2.columns());
-    }
-    SchemasContext ctx(name_schemas);
-    RowSchemaInfo* info_t1 = &ctx.row_schema_info_list_[0];
-    RowSchemaInfo* info_t2 = &ctx.row_schema_info_list_[1];
-    {
-        const RowSchemaInfo* info;
-        ASSERT_TRUE(ctx.ColumnRefResolved("t1", "col1", &info));
-        ASSERT_EQ(info, info_t1);
-    }
-    {
-        const RowSchemaInfo* info;
-        ASSERT_TRUE(ctx.ColumnRefResolved("t2", "col1", &info));
-        ASSERT_EQ(info, info_t2);
-    }
-
-    {
-        const RowSchemaInfo* info;
-        ASSERT_TRUE(ctx.ColumnRefResolved("", "str0", &info));
-        ASSERT_EQ(info, info_t2);
-    }
-
-    {
-        const RowSchemaInfo* info;
-        ASSERT_FALSE(ctx.ColumnRefResolved("", "col1", &info));
-    }
-
-    {
-        const RowSchemaInfo* info;
-        ASSERT_FALSE(ctx.ColumnRefResolved("", "col2", &info));
-    }
-}
-
-TEST_F(SchemasContextTest, ColumnOffsetResolvedTest) {
-    vm::SchemaSourceList name_schemas;
-    type::TableDef t1;
-    type::TableDef t2;
-    {
-        BuildTableDef(t1);
-        name_schemas.AddSchemaSource("t1", &t1.columns());
-    }
-    {
-        BuildTableT2Def(t2);
-        name_schemas.AddSchemaSource("t2", &t2.columns());
-    }
-    SchemasContext ctx(name_schemas);
-    ASSERT_EQ(0, ctx.ColumnOffsetResolved(0, 0));
-    ASSERT_EQ(1, ctx.ColumnOffsetResolved(0, 1));
-    ASSERT_EQ(2, ctx.ColumnOffsetResolved(0, 2));
-    ASSERT_EQ(3, ctx.ColumnOffsetResolved(0, 3));
-    ASSERT_EQ(7, ctx.ColumnOffsetResolved(1, 0));
-    ASSERT_EQ(8, ctx.ColumnOffsetResolved(1, 1));
-}
 }  // namespace vm
 }  // namespace fesql
+
 int main(int argc, char** argv) {
     ::testing::GTEST_FLAG(color) = "yes";
     ::testing::InitGoogleTest(&argc, argv);

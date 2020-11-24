@@ -468,7 +468,7 @@ struct DataTypeTrait<LiteralTypedRow<LiteralArgTypes...>> {
     static codec::Schema schema;
     static node::DataType to_type_enum() { return node::kRow; }
     static node::TypeNode* to_type_node(node::NodeManager* nm) {
-        return nm->MakeRowType("t", &schema);
+        return nm->MakeRowType({&schema});
     }
 };
 

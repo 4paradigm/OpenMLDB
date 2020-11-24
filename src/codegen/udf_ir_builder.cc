@@ -30,7 +30,7 @@ namespace codegen {
 using TypeNodeVec = std::vector<const node::TypeNode*>;
 
 UDFIRBuilder::UDFIRBuilder(CodeGenContext* ctx, node::ExprNode* frame_arg,
-                           node::FrameNode* frame)
+                           const node::FrameNode* frame)
     : ctx_(ctx), frame_arg_(frame_arg), frame_(frame) {}
 
 Status UDFIRBuilder::BuildCall(

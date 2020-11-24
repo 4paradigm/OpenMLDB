@@ -436,6 +436,7 @@ bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     }
     return catalog->AddTable(handler);
 }
+
 bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
               const fesql::type::TableDef& table_def,
               std::shared_ptr<fesql::storage::Table> table, Engine* engine) {
@@ -451,6 +452,7 @@ bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     }
     return catalog->AddTable(handler);
 }
+
 std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     const fesql::type::TableDef& table_def,
     std::shared_ptr<fesql::storage::Table> table) {
@@ -462,6 +464,10 @@ std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     if (!AddTable(catalog, table_def, table)) {
         return std::shared_ptr<tablet::TabletCatalog>();
     }
+    type::Database database;
+    database.set_name(table_def.catalog());
+    *database.add_tables() = table_def;
+    catalog->AddDB(database);
     return catalog;
 }
 
