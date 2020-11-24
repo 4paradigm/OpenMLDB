@@ -169,19 +169,19 @@ class ProcedureInfoImpl : public fesql::sdk::ProcedureInfo {
 
     ~ProcedureInfoImpl() {}
 
-    const ::fesql::sdk::Schema& GetInputSchema() const { return input_schema_; }
+    const ::fesql::sdk::Schema& GetInputSchema() const override { return input_schema_; }
 
-    const ::fesql::sdk::Schema& GetOutputSchema() const { return output_schema_; }
+    const ::fesql::sdk::Schema& GetOutputSchema() const override { return output_schema_; }
 
-    const std::string& GetDbName() const { return db_name_; }
+    const std::string& GetDbName() const override { return db_name_; }
 
-    const std::string& GetSpName() const { return sp_name_; }
+    const std::string& GetSpName() const override { return sp_name_; }
 
-    const std::string& GetSql() const { return sql_; }
+    const std::string& GetSql() const override { return sql_; }
 
-    const std::vector<std::string>& GetTables() const { return tables_; }
+    const std::vector<std::string>& GetTables() const override { return tables_; }
 
-    const std::string& GetMainTable() const { return main_table_; }
+    const std::string& GetMainTable() const override { return main_table_; }
 
  private:
     std::string db_name_;
