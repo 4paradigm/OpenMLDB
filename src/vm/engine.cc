@@ -380,6 +380,27 @@ int32_t BatchRequestRunSession::Run(const uint32_t id,
     ctx.ClearCache();
     return 0;
 }
+int32_t BatchRequestRunSession::Run(
+    const uint32_t id, const std::shared_ptr<TableHandler> request_batch,
+    std::vector<Row>& output) {
+    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, is_debug_);
+    auto iter = request_batch->GetIterator();
+    if (!iter) {
+        LOG(WARNING) << "request batch is empty";
+        return -1;
+    }
+    iter->SeekToFirst();
+    while(iter->Valid()) {
+        output.push_back(Row());
+        int32_t ok = RunSingle(ctx, id, iter->GetValue(), &output.back());
+        if (ok != 0) {
+            return -1;
+        }
+    }
+    ctx.ClearCache();
+    return 0;
+}
+
 
 int32_t BatchRequestRunSession::RunSingle(RunnerContext& ctx,  // NOLINT
                                           const Row& request,

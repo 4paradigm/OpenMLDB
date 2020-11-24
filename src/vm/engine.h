@@ -190,6 +190,9 @@ class BatchRequestRunSession : public RunSession {
                 std::vector<Row>& output);  // NOLINT
     int32_t Run(const std::vector<Row>& request_batch,
                 std::vector<Row>& output);  // NOLINT
+    int32_t Run(const uint32_t id,
+                const std::shared_ptr<TableHandler> request_batch,
+                std::vector<Row>& output);  // NOLINT
     // TODO(baoxinqi): remove
     int32_t RunSingle(fesql::vm::RunnerContext& ctx,  // NOLINT
                       const Row& request,
@@ -298,11 +301,31 @@ class LocalTablet : public Tablet {
         }
         return std::shared_ptr<RowHandler>(new MemRowHandler(out));
     }
-    std::shared_ptr<RowHandler> SubQuery(
+    virtual std::shared_ptr<TableHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
-        const std::vector<fesql::codec::Row>& rows,
-        const bool is_debug) override {
-        return std::shared_ptr<RowHandler>();
+        const std::shared_ptr<TableHandler> table, const bool is_debug) {
+        DLOG(INFO) << "Local tablet SubQuery batch request: task id " << task_id;
+        BatchRequestRunSession session;
+        if (is_debug) {
+            session.EnableDebug();
+        }
+        base::Status status;
+        if (!engine_->Get(sql, db, session, status)) {
+            return std::shared_ptr<TableHandler>(new ErrorTableHandler(
+                common::kCallMethodError, "SubQuery fail: compile sql fail"));
+        }
+
+        std::vector<Row> out_rows;
+        std::shared_ptr<MemTableHandler> out_table =
+            std::shared_ptr<MemTableHandler>(new MemTableHandler());
+        if (0 != session.Run(task_id, table, out_rows)) {
+            return std::shared_ptr<TableHandler>(new ErrorTableHandler(
+                common::kCallMethodError, "sub query fail: session run fail"));
+        }
+        for (Row& row : out_rows) {
+            out_table->AddRow(row);
+        }
+        return out_table;
     }
 
  private:

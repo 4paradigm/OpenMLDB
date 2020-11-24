@@ -92,8 +92,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto runner = new SimpleProjectRunner(id_++, node->schemas_ctx(),
                                                   op->GetLimitCnt(),
                                                   op->project().fn_info());
-            if (Runner::IsProxyRunner(input->type_) &&
-                !input->need_cache()) {
+            if (Runner::IsProxyRunner(input->type_) && !input->need_cache()) {
                 cluster_job_.AddRunnerToTask(
                     nm_->RegisterNode(runner),
                     dynamic_cast<ProxyRunner*>(input)->task_id());
@@ -1900,6 +1899,73 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
     return row_handler;
 }
 
+std::shared_ptr<DataHandler> ProxyBatchRequestRunner::Run(RunnerContext& ctx) {
+    auto input = producers_[0]->RunWithCache(ctx);
+    if (!input) {
+        LOG(WARNING) << "input is empty";
+        return std::shared_ptr<DataHandler>();
+    }
+
+    auto cluster_job = ctx.cluster_job();
+    auto fail_ptr = std::shared_ptr<DataHandler>();
+    if (nullptr == cluster_job) {
+        LOG(WARNING) << "fail to run proxy runner: invalid cluster job ptr";
+        return fail_ptr;
+    }
+
+    auto task = cluster_job->GetTask(task_id_);
+    if (!task.IsValid()) {
+        LOG(WARNING)
+            << "fail to run batch proxy runner: invalid task of taskid "
+            << task_id_;
+        return fail_ptr;
+    }
+    if (!task.GetIndexKey().ValidKey()) {
+        LOG(WARNING) << "fail to run batch proxy runner: invalid index key"
+                     << task_id_;
+        return fail_ptr;
+    }
+    std::string pk = "";
+    switch (input->GetHanlderType()) {
+        case kTableHandler: {
+            auto iter =
+                std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
+            if (!iter) {
+                LOG(WARNING)
+                    << "fail to run batch proxy runner: table iter null"
+                    << task_id_;
+                return fail_ptr;
+            }
+            iter->SeekToFirst();
+
+            KeyGenerator generator(task.GetIndexKey().fn_info());
+            std::vector<std::string> pks;
+            while (iter->Valid()) {
+                const Row& row = iter->GetValue();
+                pks.push_back(generator.Gen(row));
+                iter->Next();
+            }
+            auto table_handler = task.table_handler();
+            if (!table_handler) {
+                LOG(WARNING) << "table handler is null";
+                return std::shared_ptr<DataHandler>();
+            }
+            auto tablet = table_handler->GetTablet(task.index(), pk);
+            if (!tablet) {
+                LOG(WARNING) << "fail to run batch proxy: tablet is null";
+                return fail_ptr;
+            }
+            return tablet->SubQuery(
+                task_id_, table_handler->GetDatabase(), cluster_job->sql(),
+                std::dynamic_pointer_cast<TableHandler>(input), ctx.is_debug());
+        }
+        default: {
+            LOG(WARNING) << "invalid key row, key generator input type is "
+                         << input->GetHandlerTypeName();
+            return fail_ptr;
+        }
+    }
+}
 std::shared_ptr<DataHandler> ProxyRequestRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);
     if (!input) {
@@ -1978,12 +2044,10 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -2003,12 +2067,10 @@ const std::string KeyGenerator::Gen(const Row& row) {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }

@@ -806,7 +806,6 @@ class LimitRunner : public Runner {
 };
 class ProxyRunner : public Runner {
  public:
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
     ProxyRunner(int32_t id, uint32_t task_id, const RunnerType type,
                 const SchemasContext* schema_ctx)
         : Runner(id, type, schema_ctx), task_id_(task_id) {}
@@ -825,6 +824,7 @@ class ProxyRunner : public Runner {
             }
         }
     }
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override = 0;
 
  protected:
     uint32_t task_id_;
