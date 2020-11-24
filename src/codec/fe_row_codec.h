@@ -222,19 +222,19 @@ class RowSelector {
     RowBuilder target_row_builder_;
 };
 
-class RowDecoder {
+class RowFormat {
  public:
-    explicit RowDecoder(const fesql::codec::Schema* schema);
-    virtual ~RowDecoder() {}
+    explicit RowFormat(const fesql::codec::Schema* schema);
+    virtual ~RowFormat() {}
 
-    virtual bool ResolveColumn(const std::string& name, ColInfo* res) const;
+    bool GetStringColumnInfo(size_t idx, StringColInfo* res) const;
 
-    virtual bool ResolveStringCol(const std::string& name,
-                                  StringColInfo* res) const;
+    const ColInfo* GetColumnInfo(size_t idx) const;
 
  private:
     const fesql::codec::Schema* schema_;
-    std::map<std::string, ColInfo> infos_;
+    std::vector<ColInfo> infos_;
+    std::map<std::string, size_t> infos_dict_;
     std::map<uint32_t, uint32_t> next_str_pos_;
     uint32_t str_field_start_offset_;
 };

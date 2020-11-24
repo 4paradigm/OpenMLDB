@@ -77,9 +77,8 @@ class UDFTypeExtractor {
                 return;
             }
             node::ExprNode* resolved = nullptr;
-            vm::SchemaSourceList schemas_source_list;
-            vm::SchemasContext schemas_context(schemas_source_list);
-            passes::ResolveFnAndAttrs resolver(nm, library, schemas_context);
+            vm::SchemasContext schemas_ctx;
+            passes::ResolveFnAndAttrs resolver(nm, library, &schemas_ctx);
             status = resolver.VisitExpr(call, &resolved);
             if (!status.isOK() || resolved == nullptr ||
                 resolved->GetOutputType() == nullptr) {

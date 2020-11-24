@@ -97,7 +97,7 @@ void UDFLibrary::InsertRegistry(
     }
 }
 
-bool UDFLibrary::IsUDAF(const std::string& name, size_t args) {
+bool UDFLibrary::IsUDAF(const std::string& name, size_t args) const {
     auto iter = table_.find(name);
     if (iter == table_.end()) {
         return false;

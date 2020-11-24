@@ -86,7 +86,7 @@ class UDFLibrary {
     std::shared_ptr<ArgSignatureTable<std::shared_ptr<UDFRegistry>>> FindAll(
         const std::string& name) const;
 
-    bool IsUDAF(const std::string& name, size_t args);
+    bool IsUDAF(const std::string& name, size_t args) const;
     void SetIsUDAF(const std::string& name, size_t args);
 
     bool RequireListAt(const std::string& name, size_t index) const;

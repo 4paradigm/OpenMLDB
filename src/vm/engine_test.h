@@ -388,6 +388,7 @@ void InitEngineCatalog(
         type::TableDef table_def;
         sql_case.ExtractInputTableDef(table_def, i);
         table_def.set_name(actual_name);
+
         std::shared_ptr<::fesql::storage::Table> table(
             new ::fesql::storage::Table(i + 1, 1, table_def));
         name_table_map[table_def.name()] = table;
@@ -578,6 +579,7 @@ Status EngineTestRunner::Compile() {
     LOG(INFO) << "SQL Compile take " << mill << " milliseconds";
 
     if (!ok || !status.isOK()) {
+        LOG(INFO) << status;
         return_code_ = ENGINE_TEST_RET_COMPILE_ERROR;
     } else {
         LOG(INFO) << "SQL output schema:";

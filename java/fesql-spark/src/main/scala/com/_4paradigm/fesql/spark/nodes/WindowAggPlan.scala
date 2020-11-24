@@ -123,7 +123,7 @@ object WindowAggPlan {
       rowPreceding = -1 * node.window.range.frame.GetHistoryRowsStart(),
       orderIdx = orderIdx,
       groupIdxs = groupIdxs.toArray,
-      functionName = node.project.fn_name,
+      functionName = node.project.fn_info().fn_name(),
       moduleTag = ctx.getTag,
       moduleNoneBroadcast = ctx.getSerializableModuleBuffer,
       inputSchema = inputSchema,

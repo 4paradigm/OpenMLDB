@@ -24,8 +24,8 @@
 #include "glog/logging.h"
 #include "plan/planner.h"
 #include "tablet/tablet_catalog.h"
-#include "vm/engine.h"
 #include "vm/catalog.h"
+#include "vm/engine.h"
 
 namespace fesql {
 namespace vm {
@@ -436,10 +436,10 @@ bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     }
     return catalog->AddTable(handler);
 }
+
 bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
               const fesql::type::TableDef& table_def,
-              std::shared_ptr<fesql::storage::Table> table,
-              Engine* engine) {
+              std::shared_ptr<fesql::storage::Table> table, Engine* engine) {
     auto local_tablet =
         std::shared_ptr<vm::Tablet>(new vm::LocalTablet(engine));
     std::shared_ptr<tablet::TabletTableHandler> handler(
@@ -452,6 +452,7 @@ bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
     }
     return catalog->AddTable(handler);
 }
+
 std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     const fesql::type::TableDef& table_def,
     std::shared_ptr<fesql::storage::Table> table) {
@@ -463,6 +464,10 @@ std::shared_ptr<tablet::TabletCatalog> BuildCommonCatalog(
     if (!AddTable(catalog, table_def, table)) {
         return std::shared_ptr<tablet::TabletCatalog>();
     }
+    type::Database database;
+    database.set_name(table_def.catalog());
+    *database.add_tables() = table_def;
+    catalog->AddDB(database);
     return catalog;
 }
 

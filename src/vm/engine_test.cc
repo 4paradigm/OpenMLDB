@@ -536,6 +536,6 @@ int main(int argc, char** argv) {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     ::testing::InitGoogleTest(&argc, argv);
-    ::fesql::vm::CoreAPI::EnableSignalTraceback();
+    // ::fesql::vm::CoreAPI::EnableSignalTraceback();
     return RUN_ALL_TESTS();
 }

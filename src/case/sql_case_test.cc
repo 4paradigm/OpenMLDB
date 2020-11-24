@@ -25,38 +25,45 @@ TEST_F(SQLCaseTest, ExtractTableDefTest) {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kVarchar);
         column->set_name("col0");
+        column->set_is_not_null(false);
     }
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kInt32);
         column->set_name("col1");
+        column->set_is_not_null(false);
     }
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kInt16);
         column->set_name("col2");
+        column->set_is_not_null(false);
     }
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kFloat);
         column->set_name("col3");
+        column->set_is_not_null(false);
     }
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kDouble);
         column->set_name("col4");
+        column->set_is_not_null(false);
     }
 
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kInt64);
         column->set_name("col5");
+        column->set_is_not_null(false);
     }
 
     {
         ::fesql::type::ColumnDef* column = table.add_columns();
         column->set_type(::fesql::type::kVarchar);
         column->set_name("col6");
+        column->set_is_not_null(false);
     }
 
     {
@@ -129,16 +136,19 @@ TEST_F(SQLCaseTest, ExtractTableDefTest) {
         ::fesql::type::ColumnDef* column = table2.add_columns();
         column->set_type(::fesql::type::kVarchar);
         column->set_name("col0");
+        column->set_is_not_null(false);
     }
     {
         ::fesql::type::ColumnDef* column = table2.add_columns();
         column->set_type(::fesql::type::kInt32);
         column->set_name("col1");
+        column->set_is_not_null(false);
     }
     {
         ::fesql::type::ColumnDef* column = table2.add_columns();
         column->set_type(::fesql::type::kTimestamp);
         column->set_name("coltime");
+        column->set_is_not_null(false);
     }
 
     // column with timestamp
@@ -432,38 +442,45 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
             ::fesql::type::ColumnDef* column = table.add_columns();
             column->set_type(::fesql::type::kVarchar);
             column->set_name("col0");
+            column->set_is_not_null(false);
         }
         {
             ::fesql::type::ColumnDef* column = table.add_columns();
             column->set_type(::fesql::type::kInt32);
             column->set_name("col1");
+            column->set_is_not_null(false);
         }
         {
             ::fesql::type::ColumnDef* column = table.add_columns();
             column->set_type(::fesql::type::kInt16);
             column->set_name("col2");
+            column->set_is_not_null(false);
         }
         {
             ::fesql::type::ColumnDef* column = table.add_columns();
             column->set_type(::fesql::type::kFloat);
             column->set_name("col3");
+            column->set_is_not_null(false);
         }
         {
             ::fesql::type::ColumnDef* column = table.add_columns();
             column->set_type(::fesql::type::kDouble);
             column->set_name("col4");
+            column->set_is_not_null(false);
         }
 
         {
             ::fesql::type::ColumnDef* column = table.add_columns();
             column->set_type(::fesql::type::kInt64);
             column->set_name("col5");
+            column->set_is_not_null(false);
         }
 
         {
             ::fesql::type::ColumnDef* column = table.add_columns();
             column->set_type(::fesql::type::kVarchar);
             column->set_name("col6");
+            column->set_is_not_null(false);
         }
         auto index = table.add_indexes();
         index->set_name("index1");
@@ -590,37 +607,44 @@ TEST_F(SQLCaseTest, ExtractSQLCase) {
             ::fesql::type::ColumnDef* column = table.add_columns();
             column->set_type(::fesql::type::kVarchar);
             column->set_name("f0");
+            column->set_is_not_null(false);
         }
         {
             ::fesql::type::ColumnDef* column = table.add_columns();
             column->set_type(::fesql::type::kFloat);
             column->set_name("f1");
+            column->set_is_not_null(false);
         }
         {
             ::fesql::type::ColumnDef* column = table.add_columns();
             column->set_type(::fesql::type::kDouble);
             column->set_name("f2");
+            column->set_is_not_null(false);
         }
         {
             ::fesql::type::ColumnDef* column = table.add_columns();
             column->set_type(::fesql::type::kInt16);
             column->set_name("f3");
+            column->set_is_not_null(false);
         }
         {
             ::fesql::type::ColumnDef* column = table.add_columns();
             column->set_type(::fesql::type::kInt32);
             column->set_name("f4");
+            column->set_is_not_null(false);
         }
         {
             ::fesql::type::ColumnDef* column = table.add_columns();
             column->set_type(::fesql::type::kInt64);
             column->set_name("f5");
+            column->set_is_not_null(false);
         }
 
         {
             ::fesql::type::ColumnDef* column = table.add_columns();
             column->set_type(::fesql::type::kTimestamp);
             column->set_name("f6");
+            column->set_is_not_null(false);
         }
         output_table.set_name(table.name());
         output_table.set_catalog(table.catalog());

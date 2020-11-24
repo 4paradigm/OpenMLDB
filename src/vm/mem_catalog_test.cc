@@ -242,7 +242,7 @@ TEST_F(MemCataLogTest, mem_time_table_handler_test) {
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
     vm::MemTimeTableHandler table_handler("t1", "temp", &(table.columns()));
-    for (int i = 0; i < rows.size(); i++) {
+    for (size_t i = 0; i < rows.size(); i++) {
         table_handler.AddRow(i, rows[i]);
     }
     auto iter = table_handler.GetIterator();

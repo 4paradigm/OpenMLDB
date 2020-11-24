@@ -11,13 +11,11 @@ namespace passes {
 
 using ::fesql::common::kCodegenError;
 
-Status LambdafyProjects::Transform(const node::PlanNodeList& projects,
-                                   node::LambdaNode** out_lambda,
-                                   std::vector<int>* require_agg_vec,
-                                   std::vector<std::string>* out_names,
-                                   std::vector<node::FrameNode*>* out_frames) {
+Status LambdafyProjects::Transform(
+    const std::vector<const node::ExprNode*>& exprs,
+    node::LambdaNode** out_lambda, std::vector<int>* require_agg_vec) {
     // arg1: current input row
-    auto row_type = nm_->MakeRowType(input_schemas_);
+    auto row_type = nm_->MakeRowType(schemas_ctx_);
     auto row_arg = nm_->MakeExprIdNode("row");
     row_arg->SetOutputType(row_type);
 
@@ -29,34 +27,30 @@ Status LambdafyProjects::Transform(const node::PlanNodeList& projects,
     // iterate project exprs
     auto out_list = nm_->MakeExprList();
     require_agg_vec->clear();
-    for (node::PlanNode* plan_node : projects) {
-        auto pp_node = dynamic_cast<node::ProjectNode*>(plan_node);
-        CHECK_TRUE(pp_node != nullptr, kCodegenError);
-        auto expr = pp_node->GetExpression();
-        if (expr->GetExprType() == node::kExprAll) {
+    for (auto origin_expr : exprs) {
+        CHECK_TRUE(origin_expr != nullptr, kCodegenError);
+        if (origin_expr->GetExprType() == node::kExprAll) {
             // expand *
-            for (size_t slice = 0;
-                 slice < input_schemas_.GetSchemaSourceListSize(); ++slice) {
-                auto schema_slice = input_schemas_.GetSchemaSourceSlice(slice);
-                std::string rel_name = schema_slice.table_name_;
-                for (int k = 0; k < schema_slice.schema_->size(); ++k) {
-                    auto col_name = schema_slice.schema_->Get(k).name();
-
+            for (size_t slice = 0; slice < schemas_ctx_->GetSchemaSourceSize();
+                 ++slice) {
+                auto schema_source = schemas_ctx_->GetSchemaSource(slice);
+                for (size_t k = 0; k < schema_source->size(); ++k) {
+                    auto col_name = schema_source->GetSchema()->Get(k).name();
+                    size_t col_id = schema_source->GetColumnID(k);
                     auto get_col =
-                        nm_->MakeGetFieldExpr(row_arg, col_name, rel_name);
+                        nm_->MakeGetFieldExpr(row_arg, col_name, col_id);
                     out_list->AddChild(get_col);
                     require_agg_vec->push_back(false);
-                    out_frames->push_back(nullptr);
-                    out_names->push_back(col_name);
                 }
             }
-        } else if (legacy_agg_opt_ && FallBackToLegacyAgg(expr)) {
+        } else if (legacy_agg_opt_ && FallBackToLegacyAgg(origin_expr)) {
+            auto expr = origin_expr->DeepCopy(nm_);
+            CHECK_TRUE(expr != nullptr, kCodegenError);
             out_list->AddChild(expr);
             require_agg_vec->push_back(true);
-            out_frames->push_back(pp_node->frame());
-            out_names->push_back(pp_node->GetName());
-
         } else {
+            auto expr = origin_expr->DeepCopy(nm_);
+            CHECK_TRUE(expr != nullptr, kCodegenError);
             bool has_agg;
             node::ExprNode* transformed = nullptr;
             CHECK_STATUS(
@@ -64,8 +58,6 @@ Status LambdafyProjects::Transform(const node::PlanNodeList& projects,
                 "Lambdafy ", expr->GetExprString(), " failed");
             out_list->AddChild(transformed);
             require_agg_vec->push_back(has_agg);
-            out_frames->push_back(pp_node->frame());
-            out_names->push_back(pp_node->GetName());
         }
     }
 
@@ -164,8 +156,14 @@ Status LambdafyProjects::VisitLeafExpr(node::ExprNode* expr,
         case node::kExprColumnRef: {
             // column ref -> row => row.c
             auto column_ref = dynamic_cast<node::ColumnRefNode*>(expr);
+            size_t schema_idx;
+            size_t col_idx;
+            CHECK_STATUS(schemas_ctx_->ResolveColumnRefIndex(
+                column_ref, &schema_idx, &col_idx));
+            size_t column_id =
+                schemas_ctx_->GetSchemaSource(schema_idx)->GetColumnID(col_idx);
             *out = nm_->MakeGetFieldExpr(row_arg, column_ref->GetColumnName(),
-                                         column_ref->GetRelationName());
+                                         column_id);
             break;
         }
         default:
@@ -352,7 +350,7 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
     return Status::OK();
 }
 
-bool LambdafyProjects::FallBackToLegacyAgg(node::ExprNode* expr) {
+bool LambdafyProjects::FallBackToLegacyAgg(const node::ExprNode* expr) {
     switch (expr->expr_type_) {
         case node::kExprCall: {
             auto call = dynamic_cast<const node::CallExprNode*>(expr);
@@ -383,22 +381,16 @@ bool LambdafyProjects::FallBackToLegacyAgg(node::ExprNode* expr) {
                 const_cast<node::ExprNode*>(input_expr));
             const std::string& rel_name = col->GetRelationName();
             const std::string& col_name = col->GetColumnName();
-            const vm::RowSchemaInfo* info;
-            vm::SchemasContext schema_context(input_schemas_);
-            if (!schema_context.ColumnRefResolved(rel_name, col_name, &info)) {
+            size_t schema_idx;
+            size_t col_idx;
+            auto status =
+                schemas_ctx_->ResolveColumnRefIndex(col, &schema_idx, &col_idx);
+            if (!status.isOK()) {
                 LOG(WARNING)
                     << "fail to resolve column " << rel_name + "." + col_name;
                 return false;
             }
-            const codec::RowDecoder* decoder =
-                schema_context.GetDecoder(info->idx_);
-            codec::ColInfo col_info;
-            if (!decoder->ResolveColumn(col_name, &col_info)) {
-                LOG(WARNING)
-                    << "fail to resolve column " << rel_name + "." + col_name;
-                return false;
-            }
-            switch (col_info.type) {
+            switch (schemas_ctx_->GetSchema(schema_idx)->Get(col_idx).type()) {
                 case fesql::type::kInt16:
                 case fesql::type::kInt32:
                 case fesql::type::kInt64:

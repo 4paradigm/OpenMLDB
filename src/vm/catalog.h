@@ -39,7 +39,7 @@ using fesql::codec::RowIterator;
 using fesql::codec::Schema;
 using fesql::codec::WindowIterator;
 
-enum SourceType { kSourceColumn, kSourceConst, kSourceNone };
+/*enum SourceType { kSourceColumn, kSourceConst, kSourceNone };
 class ColumnSource;
 class Tablet;
 typedef std::vector<ColumnSource> ColumnSourceList;
@@ -113,7 +113,7 @@ class ColumnSource {
     std::string column_name_;
     std::vector<node::DataType> cast_type_chains_;
     const node::ConstNode* const_value_;
-};
+};*/
 
 struct IndexSt {
     std::string name;
@@ -126,21 +126,18 @@ typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
 
-struct SchemaSource {
+/*struct SchemaSource {
  public:
     explicit SchemaSource(const vm::Schema* schema)
         : table_name_(""), schema_(schema), sources_(nullptr) {}
     SchemaSource(const std::string& table_name, const vm::Schema* schema)
         : table_name_(table_name), schema_(schema), sources_(nullptr) {}
-    SchemaSource(const std::string& table_name, const vm::Schema* schema,
-                 const vm::ColumnSourceList* sources)
-        : table_name_(table_name), schema_(schema), sources_(sources) {}
+
     std::string table_name_;
     const vm::Schema* schema_;
-    const vm::ColumnSourceList* sources_;
 };
 
-struct SchemaSourceList {
+struct NamedSchemaSourceList {
     void AddSchemaSource(const vm::Schema* schema) {
         schema_source_list_.push_back(SchemaSource("", schema));
     }
@@ -155,7 +152,7 @@ struct SchemaSourceList {
         schema_source_list_.push_back(
             SchemaSource(table_name, schema, sources));
     }
-    void AddSchemaSources(const SchemaSourceList& sources) {
+    void AddSchemaSources(const NamedSchemaSourceList& sources) {
         for (auto source : sources.schema_source_list_) {
             schema_source_list_.push_back(source);
         }
@@ -171,12 +168,12 @@ struct SchemaSourceList {
     const vm::Schema* GetSchemaSlice(size_t idx) const {
         return schema_source_list_[idx].schema_;
     }
-    const size_t GetSchemaSourceListSize() const {
+    const size_t size() const {
         return schema_source_list_.size();
     }
 
     std::vector<SchemaSource> schema_source_list_;
-};
+};*/
 
 class PartitionHandler;
 
@@ -244,13 +241,14 @@ class Tablet {
  public:
     Tablet() {}
     virtual ~Tablet() {}
+    virtual std::shared_ptr<RowHandler> SubQuery(uint32_t task_id,
+                                                 const std::string& db,
+                                                 const std::string& sql,
+                                                 const fesql::codec::Row& row,
+                                                 const bool is_debug) = 0;
     virtual std::shared_ptr<RowHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
-        const fesql::codec::Row& row, const bool is_debug) = 0;
-    virtual std::shared_ptr<RowHandler> SubQuery(
-        uint32_t task_id, const std::string& db, const std::string& sql,
-        const std::vector<fesql::codec::Row>& rows,
-        const bool is_debug) = 0;
+        const std::vector<fesql::codec::Row>& rows, const bool is_debug) = 0;
 };
 
 class TableHandler : public DataHandler {

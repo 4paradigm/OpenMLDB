@@ -182,7 +182,7 @@ class ModuleTestFunction {
 
     bool valid() const { return jit != nullptr && fn_ptr != nullptr; }
 
-    void* GetApplyFn() const { return fn_ptr; }
+    void* GetApplyfn_ptr() const { return fn_ptr; }
 
     ModuleTestFunction(ModuleTestFunction&& inst)
         : jit(std::move(inst.jit)), fn_ptr(inst.fn_ptr) {}
@@ -450,8 +450,7 @@ ModuleFunctionBuilderWithFullInfo<Ret, Args...>::build(
     auto module =
         std::unique_ptr<::llvm::Module>(new ::llvm::Module("Test", *llvm_ctx));
 
-    vm::SchemaSourceList empty_sources;
-    vm::SchemasContext schemas_context(empty_sources);
+    vm::SchemasContext schemas_context;
     CodeGenContext context(module.get(), &schemas_context, &state->nm);
 
     auto arg_types = state->arg_types;
@@ -623,9 +622,8 @@ ModuleTestFunction<Ret, Args...> BuildExprFunction(
                        "Build output expr failed");
 
             // type infer
-            vm::SchemaSourceList empty;
-            vm::SchemasContext empty_context(empty);
-            passes::ResolveFnAndAttrs resolver(&nm, library, empty_context);
+            vm::SchemasContext empty_context;
+            passes::ResolveFnAndAttrs resolver(&nm, library, &empty_context);
             node::ExprNode* resolved_body = nullptr;
             auto status = resolver.VisitExpr(body, &resolved_body);
             if (!status.isOK()) {

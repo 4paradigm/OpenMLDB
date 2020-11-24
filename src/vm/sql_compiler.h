@@ -43,19 +43,19 @@ std::string EngineModeName(EngineMode mode);
 struct SQLContext {
     // mode: batch|request|batch request
     EngineMode engine_mode;
-    bool is_performance_sensitive;
-    bool is_cluster_optimized;
+    bool is_performance_sensitive = false;
+    bool is_cluster_optimized = false;
     // the sql content
     std::string sql;
     // the database
     std::string db;
     // the logical plan
     ::fesql::node::PlanNodeList logical_plan;
-    PhysicalOpNode* physical_plan;
+    PhysicalOpNode* physical_plan = nullptr;
     fesql::vm::ClusterJob cluster_job;
     // TODO(wangtaize) add a light jit engine
     // eg using bthead to compile ir
-    std::unique_ptr<FeSQLJIT> jit;
+    std::unique_ptr<FeSQLJIT> jit = nullptr;
     Schema schema;
     Schema request_schema;
     std::string request_name;
@@ -66,7 +66,7 @@ struct SQLContext {
     std::string encoded_schema;
     std::string encoded_request_schema;
     ::fesql::node::NodeManager nm;
-    ::fesql::udf::UDFLibrary* udf_library;
+    ::fesql::udf::UDFLibrary* udf_library = nullptr;
 
     // common column indices in batch request mode
     std::set<size_t> common_column_indices;
