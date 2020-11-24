@@ -1403,6 +1403,8 @@ bool NsClient::TransformToTableDef(
                         it->second->set_abs_ttl(table->ttl_desc().abs_ttl());
                         it->second->set_lat_ttl(table->ttl_desc().lat_ttl());
                     }
+                } else {
+                    no_ts_cnt++;
                 }
                 break;
             }
@@ -1418,7 +1420,7 @@ bool NsClient::TransformToTableDef(
         }
     }
     if (no_ts_cnt > 0 && no_ts_cnt != table->column_key_size()) {
-        status->msg = "CREATE common: need set ts col";
+        status->msg = "CREATE common: need to set ts col";
         status->code = fesql::common::kSQLError;
         return false;
     }
