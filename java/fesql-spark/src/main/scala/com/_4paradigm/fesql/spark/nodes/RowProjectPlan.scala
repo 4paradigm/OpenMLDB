@@ -29,7 +29,7 @@ object RowProjectPlan {
     // spark closure
     val limitCnt = node.GetLimitCnt
     val projectConfig = ProjectConfig(
-      functionName = node.project().fn_name(),
+      functionName = node.project().fn_info().fn_name(),
       moduleTag = ctx.getTag,
       moduleNoneBroadcast = ctx.getSerializableModuleBuffer,
       inputSchemaSlices = inputSchemaSlices,

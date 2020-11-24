@@ -29,13 +29,13 @@ public class BatchTableProjectPlan {
         DataSet<Row> inputDataset = planContext.getBatchTableEnvironment().toDataSet(childTable, Row.class);
 
         // Take out the serializable objects
-        String functionName = node.project().fn_name();
+        String functionName = node.project().fn_info().fn_name();
         String moduleTag = planContext.getTag();
         SerializableByteBuffer moduleBuffer = planContext.getModuleBuffer();
 
         List<List<TypeOuterClass.ColumnDef>> inputSchemaLists = FesqlUtil.getNodeOutputColumnLists(node.GetProducer(0));
         List<List<TypeOuterClass.ColumnDef>> outputSchemaLists = FesqlUtil.getNodeOutputColumnLists(node);
-        List<TypeOuterClass.ColumnDef> finalOutputSchema = FesqlUtil.getMergedNodeOutputColumnList(node);
+        List<TypeOuterClass.ColumnDef> finalOutputSchema = node.GetOutputSchema();
         RowTypeInfo finalOutputTypeInfo = FesqlUtil.generateRowTypeInfo(finalOutputSchema);
 
         DataSet<Row> outputDataset = inputDataset.map(new RichMapFunction<Row, Row>() {

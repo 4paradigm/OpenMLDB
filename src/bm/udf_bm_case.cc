@@ -299,21 +299,29 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
     codec::ListRef<Row> list_table_ref;
     list_table_ref.list = reinterpret_cast<int8_t*>(&list_table);
 
-    vm::SchemaSourceList schema_sources;
-    schema_sources.AddSchemaSource(&table_def.columns());
-    vm::SchemasContext schemas_context(schema_sources);
+    vm::SchemasContext schemas_context;
+    schemas_context.BuildTrivial({&table_def});
+    size_t schema_idx;
+    size_t col_idx;
+    ASSERT_TRUE(
+        schemas_context
+            .ResolveColumnIndexByName("", col_name, &schema_idx, &col_idx)
+            .isOK());
+    const codec::ColInfo* info =
+        schemas_context.GetRowFormat(schema_idx)->GetColumnInfo(col_idx);
+
     codegen::MemoryWindowDecodeIRBuilder builder(&schemas_context, nullptr);
-    codec::ColInfo info;
     node::TypeNode type;
+    codegen::SchemaType2DataType(info->type, &type);
+
     uint32_t col_size;
-    ASSERT_TRUE(builder.ResolveFieldInfo(col_name, 0, &info, &type));
     ASSERT_TRUE(codegen::GetLLVMColumnSize(&type, &col_size));
+
     int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
-    type::Type storage_type;
-    ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
+
     ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-                     reinterpret_cast<int8_t*>(&list_table_ref), 0, info.idx,
-                     info.offset, storage_type, buf));
+                     reinterpret_cast<int8_t*>(&list_table_ref), 0, info->idx,
+                     info->offset, info->type, buf));
 
     {
         switch (mode) {
@@ -398,30 +406,39 @@ void SumArrayListCol(benchmark::State* state, MODE mode, int64_t data_size,
         }
     }
 }
+
 void SumMemTableCol(benchmark::State* state, MODE mode, int64_t data_size,
                     const std::string& col_name) {
     vm::MemTableHandler window;
     type::TableDef table_def;
     BuildData(table_def, window, data_size);
 
-    vm::SchemaSourceList schema_sources;
-    schema_sources.AddSchemaSource(&table_def.columns());
-    vm::SchemasContext schemas_context(schema_sources);
+    vm::SchemasContext schemas_context;
+    schemas_context.BuildTrivial({&table_def});
     codegen::MemoryWindowDecodeIRBuilder builder(&schemas_context, nullptr);
-    codec::ColInfo info;
-    node::TypeNode type;
-    uint32_t col_size;
-    ASSERT_TRUE(builder.ResolveFieldInfo(col_name, 0, &info, &type));
-    ASSERT_TRUE(codegen::GetLLVMColumnSize(&type, &col_size));
-    int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
-    type::Type storage_type;
 
+    size_t schema_idx;
+    size_t col_idx;
+    ASSERT_TRUE(
+        schemas_context
+            .ResolveColumnIndexByName("", col_name, &schema_idx, &col_idx)
+            .isOK());
+
+    const codec::ColInfo* info =
+        schemas_context.GetRowFormat(schema_idx)->GetColumnInfo(col_idx);
+
+    node::TypeNode type;
+    ASSERT_TRUE(codegen::SchemaType2DataType(info->type, &type));
+
+    uint32_t col_size;
+    ASSERT_TRUE(codegen::GetLLVMColumnSize(&type, &col_size));
+
+    int8_t* buf = reinterpret_cast<int8_t*>(alloca(col_size));
     codec::ListRef<> window_ref;
     window_ref.list = reinterpret_cast<int8_t*>(&window);
-    ASSERT_TRUE(codegen::DataType2SchemaType(type, &storage_type));
     ASSERT_EQ(0, ::fesql::codec::v1::GetCol(
-                     reinterpret_cast<int8_t*>(&window_ref), 0, info.idx,
-                     info.offset, storage_type, buf));
+                     reinterpret_cast<int8_t*>(&window_ref), 0, info->idx,
+                     info->offset, info->type, buf));
     {
         switch (mode) {
             case BENCHMARK: {

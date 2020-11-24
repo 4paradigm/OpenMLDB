@@ -1034,11 +1034,11 @@ void DefaultUDFLibrary::InitAggByCateUDAFs() {
 
     RegisterUDAFTemplate<SumCateWhereDef>("sum_cate_where")
         .doc(R"(
-            Compute sum of values matching specified condition grouped by category key
-            and output string. Each group is represented as 'K:V' and separated by comma in 
-            outputs and are sorted by key in ascend order.
+            Compute sum of values matching specified condition grouped by
+    category key and output string. Each group is represented as 'K:V' and
+    separated by comma in outputs and are sorted by key in ascend order.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
 
@@ -1060,11 +1060,11 @@ void DefaultUDFLibrary::InitAggByCateUDAFs() {
 
     RegisterUDAFTemplate<CountCateWhereDef>("count_cate_where")
         .doc(R"(
-            Compute count of values matching specified condition grouped by category key
-            and output string. Each group is represented as 'K:V' and separated by comma in 
-            outputs and are sorted by key in ascend order.
+            Compute count of values matching specified condition grouped by
+    category key and output string. Each group is represented as 'K:V' and
+    separated by comma in outputs and are sorted by key in ascend order.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
 
@@ -1086,11 +1086,11 @@ void DefaultUDFLibrary::InitAggByCateUDAFs() {
 
     RegisterUDAFTemplate<MaxCateWhereDef>("max_cate_where")
         .doc(R"(
-            Compute maximum of values matching specified condition grouped by category key
-            and output string. Each group is represented as 'K:V' and separated by comma in 
-            outputs and are sorted by key in ascend order.
+            Compute maximum of values matching specified condition grouped by
+    category key and output string. Each group is represented as 'K:V' and
+    separated by comma in outputs and are sorted by key in ascend order.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
 
@@ -1112,11 +1112,11 @@ void DefaultUDFLibrary::InitAggByCateUDAFs() {
 
     RegisterUDAFTemplate<MinCateWhereDef>("min_cate_where")
         .doc(R"(
-            Compute minimum of values matching specified condition grouped by category key
-            and output string. Each group is represented as 'K:V' and separated by comma in 
-            outputs and are sorted by key in ascend order.
+            Compute minimum of values matching specified condition grouped by
+    category key and output string. Each group is represented as 'K:V' and
+    separated by comma in outputs and are sorted by key in ascend order.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
 
@@ -1139,11 +1139,11 @@ void DefaultUDFLibrary::InitAggByCateUDAFs() {
 
     RegisterUDAFTemplate<AvgCateWhereDef>("avg_cate_where")
         .doc(R"(
-            Compute average of values matching specified condition grouped by category key
-            and output string. Each group is represented as 'K:V' and separated by comma in 
-            outputs and are sorted by key in ascend order.
+            Compute average of values matching specified condition grouped by
+    category key and output string. Each group is represented as 'K:V' and
+    separated by comma in outputs and are sorted by key in ascend order.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
 
@@ -1165,11 +1165,11 @@ void DefaultUDFLibrary::InitAggByCateUDAFs() {
 
     RegisterUDAFTemplate<TopKCountCateWhereDef>("top_n_key_count_cate_where")
         .doc(R"(
-            Compute count of values matching specified condition grouped by category key.
-            Output string for top N keys in descend order. Each group is represented as 'K:V'
-            and separated by comma.
+            Compute count of values matching specified condition grouped by
+    category key. Output string for top N keys in descend order. Each group is
+    represented as 'K:V' and separated by comma.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
             @param n  Fetch top n keys.
@@ -1185,7 +1185,8 @@ void DefaultUDFLibrary::InitAggByCateUDAFs() {
             5|true|z
             6|true|z
             @code{.sql}
-                SELECT top_n_key_count_cate_where(value, condition, catagory, 2) OVER w;
+                SELECT top_n_key_count_cate_where(value, condition, catagory, 2)
+    OVER w;
                 -- output "z:2,y:2"
             @endcode
             )")
@@ -1193,11 +1194,11 @@ void DefaultUDFLibrary::InitAggByCateUDAFs() {
 
     RegisterUDAFTemplate<TopKSumCateWhereDef>("top_n_key_sum_cate_where")
         .doc(R"(
-            Compute sum of values matching specified condition grouped by category key.
-            Output string for top N keys in descend order. Each group is represented as 'K:V'
-            and separated by comma.
+            Compute sum of values matching specified condition grouped by
+    category key. Output string for top N keys in descend order. Each group is
+    represented as 'K:V' and separated by comma.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
             @param n  Fetch top n keys.
@@ -1213,7 +1214,8 @@ void DefaultUDFLibrary::InitAggByCateUDAFs() {
             5|true|z
             6|true|z
             @code{.sql}
-                SELECT top_n_key_sum_cate_where(value, condition, catagory, 2) OVER w;
+                SELECT top_n_key_sum_cate_where(value, condition, catagory, 2)
+    OVER w;
                 -- output "z:11,y:4"
             @endcode
             )")
@@ -1221,11 +1223,11 @@ void DefaultUDFLibrary::InitAggByCateUDAFs() {
 
     RegisterUDAFTemplate<TopKMinCateWhereDef>("top_n_key_min_cate_where")
         .doc(R"(
-            Compute minimum of values matching specified condition grouped by category key.
-            Output string for top N keys in descend order. Each group is represented as 'K:V'
-            and separated by comma.
+            Compute minimum of values matching specified condition grouped by
+    category key. Output string for top N keys in descend order. Each group is
+    represented as 'K:V' and separated by comma.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
             @param n  Fetch top n keys.
@@ -1241,7 +1243,8 @@ void DefaultUDFLibrary::InitAggByCateUDAFs() {
             5|true|z
             6|true|z
             @code{.sql}
-                SELECT top_n_key_min_cate_where(value, condition, catagory, 2) OVER w;
+                SELECT top_n_key_min_cate_where(value, condition, catagory, 2)
+    OVER w;
                 -- output "z:5,y:1"
             @endcode
             )")
@@ -1249,11 +1252,11 @@ void DefaultUDFLibrary::InitAggByCateUDAFs() {
 
     RegisterUDAFTemplate<TopKMaxCateWhereDef>("top_n_key_max_cate_where")
         .doc(R"(
-            Compute maximum of values matching specified condition grouped by category key.
-            Output string for top N keys in descend order. Each group is represented as 'K:V'
-            and separated by comma.
+            Compute maximum of values matching specified condition grouped by
+    category key. Output string for top N keys in descend order. Each group is
+    represented as 'K:V' and separated by comma.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
             @param n  Fetch top n keys.
@@ -1269,7 +1272,8 @@ void DefaultUDFLibrary::InitAggByCateUDAFs() {
             5|true|z
             6|false|z
             @code{.sql}
-                SELECT top_n_key_max_cate_where(value, condition, catagory, 2) OVER w;
+                SELECT top_n_key_max_cate_where(value, condition, catagory, 2)
+    OVER w;
                 -- output "z:5,y:3"
             @endcode
             )")
@@ -1277,11 +1281,11 @@ void DefaultUDFLibrary::InitAggByCateUDAFs() {
 
     RegisterUDAFTemplate<TopKAvgCateWhereDef>("top_n_key_avg_cate_where")
         .doc(R"(
-            Compute average of values matching specified condition grouped by category key.
-            Output string for top N keys in descend order. Each group is represented as 'K:V'
-            and separated by comma.
+            Compute average of values matching specified condition grouped by
+    category key. Output string for top N keys in descend order. Each group is
+    represented as 'K:V' and separated by comma.
 
-            @param catagory  Specify catagory column to group by. 
+            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
             @param n  Fetch top n keys.
@@ -1297,7 +1301,8 @@ void DefaultUDFLibrary::InitAggByCateUDAFs() {
             5|true|z
             6|false|z
             @code{.sql}
-                SELECT top_n_key_avg_cate_where(value, condition, catagory, 2) OVER w;
+                SELECT top_n_key_avg_cate_where(value, condition, catagory, 2)
+    OVER w;
                 -- output "z:5,y:3"
             @endcode
             )")

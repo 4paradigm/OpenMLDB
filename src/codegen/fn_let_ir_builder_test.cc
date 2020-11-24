@@ -73,26 +73,10 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
     int8_t* window_ptr = nullptr;
     vm::Schema schema;
-    vm::ColumnSourceList column_sources;
     CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
-                      &column_sources, &output);
+                      &output);
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
     ASSERT_EQ(4, schema.size());
-    ASSERT_EQ(4, column_sources.size());
-
-    ASSERT_EQ(vm::kSourceColumn, column_sources[0].type());
-    ASSERT_EQ(0, column_sources[0].column_idx());
-    ASSERT_EQ(0, column_sources[0].schema_idx());
-
-    ASSERT_EQ(vm::kSourceColumn, column_sources[1].type());
-    ASSERT_EQ(5, column_sources[1].column_idx());
-    ASSERT_EQ(0, column_sources[1].schema_idx());
-
-    ASSERT_EQ(vm::kSourceConst, column_sources[2].type());
-    ASSERT_EQ(1.0, column_sources[2].const_value()->GetDouble());
-
-    ASSERT_EQ(vm::kSourceConst, column_sources[3].type());
-    ASSERT_EQ("hello", column_sources[3].const_value()->GetExprString());
 
     ASSERT_EQ(out_size, 27u);
     ASSERT_EQ(32u, *reinterpret_cast<uint32_t*>(output + 7));
@@ -105,6 +89,7 @@ TEST_F(FnLetIRBuilderTest, test_primary) {
     ASSERT_EQ("hello", str2);
     free(buf);
 }
+
 TEST_F(FnLetIRBuilderTest, test_column_cast_and_const_cast) {
     // Create an LLJIT instance.
     std::string sql =
@@ -122,42 +107,29 @@ TEST_F(FnLetIRBuilderTest, test_column_cast_and_const_cast) {
     int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
     int8_t* window_ptr = nullptr;
     vm::Schema schema;
-    vm::ColumnSourceList column_sources;
     CheckFnLetBuilder(&manager, table1, "", sql, row_ptr, window_ptr, &schema,
-                      &column_sources, &output);
+                      &output);
     fesql::codec::RowView row_view(schema);
     row_view.Reset(output);
     ASSERT_EQ(5, schema.size());
-    ASSERT_EQ(5, column_sources.size());
 
-    ASSERT_EQ(vm::kSourceColumn, column_sources[0].type());
-    ASSERT_EQ(0, column_sources[0].column_idx());
-    ASSERT_EQ(0, column_sources[0].schema_idx());
-    ASSERT_EQ(node::kInt64, column_sources[0].cast_types()[0]);
+    ASSERT_EQ(type::kInt64, schema.Get(0).type());
     ASSERT_EQ(32L, row_view.GetInt64Unsafe(0));
 
-    ASSERT_EQ(vm::kSourceColumn, column_sources[1].type());
-    ASSERT_EQ(5, column_sources[1].column_idx());
-    ASSERT_EQ(0, column_sources[1].schema_idx());
+    ASSERT_EQ(type::kVarchar, schema.Get(1).type());
     ASSERT_EQ("1", row_view.GetStringUnsafe(1));
 
-    ASSERT_EQ(vm::kSourceConst, column_sources[2].type());
-    ASSERT_EQ(1.0, column_sources[2].const_value()->GetDouble());
+    ASSERT_EQ(type::kDouble, schema.Get(2).type());
     ASSERT_EQ(1.0, row_view.GetDoubleUnsafe(2));
 
-    ASSERT_EQ(vm::kSourceConst, column_sources[3].type());
-    ASSERT_EQ("2020-10-01", column_sources[3].const_value()->GetExprString());
-    ASSERT_EQ(node::kDate, column_sources[3].cast_types()[0]);
+    ASSERT_EQ(type::kDate, schema.Get(3).type());
     ASSERT_EQ(codec::Date(2020, 10, 01).date_, row_view.GetDateUnsafe(3));
 
-    ASSERT_EQ(vm::kSourceConst, column_sources[4].type());
-    ASSERT_EQ("2020-05-22 10:43:40",
-              column_sources[4].const_value()->GetExprString());
-    ASSERT_EQ(node::kTimestamp, column_sources[4].cast_types()[0]);
-    ASSERT_EQ(node::kInt64, column_sources[4].cast_types()[1]);
+    ASSERT_EQ(type::kInt64, schema.Get(4).type());
     ASSERT_EQ(1590115420000L, row_view.GetInt64Unsafe(4));
     free(buf);
 }
+
 TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
     // Create an LLJIT instance.
     std::string sql =
@@ -182,14 +154,14 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
             Row(base::RefCountedSlice::Create(buf2, size2)));
     int8_t* window_ptr = nullptr;
     int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
-    vm::Schema schema;
-    vm::ColumnSourceList column_sources;
 
-    vm::SchemaSourceList name_schema_list;
-    name_schema_list.AddSchemaSource(table1.name(), &table1.columns());
-    name_schema_list.AddSchemaSource(table2.name(), &table2.columns());
-    CheckFnLetBuilder(&manager, name_schema_list, "", sql, row_ptr, window_ptr,
-                      &schema, &column_sources, &output);
+    vm::SchemasContext schemas_ctx;
+    schemas_ctx.BuildTrivial(
+        std::vector<const fesql::type::TableDef*>({&table1, &table2}));
+
+    vm::Schema schema;
+    CheckFnLetBuilder(&manager, &schemas_ctx, "", sql, row_ptr, window_ptr,
+                      &schema, &output);
 
     ASSERT_EQ(4, schema.size());
     uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
@@ -219,33 +191,6 @@ TEST_F(FnLetIRBuilderTest, test_multi_row_simple_query) {
     }
     free(buf);
     free(buf2);
-}
-
-TEST_F(FnLetIRBuilderTest, test_udf) {
-    // Create an LLJIT instance.
-    const std::string udf_sql =
-        "%%fun\ndef test(a:i32,b:i32):i32\n    c=a+b\n    d=c+1\n    return "
-        "d\nend";
-    const std::string sql = "SELECT test(col1,col1), col6 FROM t1 limit 10;";
-    int8_t* buf = NULL;
-    uint32_t size = 0;
-    type::TableDef table1;
-    BuildT1Buf(table1, &buf, &size);
-    Row row(base::RefCountedSlice::Create(buf, size));
-    int8_t* row_ptr = reinterpret_cast<int8_t*>(&row);
-    int8_t* output = NULL;
-    int8_t* window_ptr = nullptr;
-    vm::Schema schema;
-    CheckFnLetBuilder(&manager, table1, udf_sql, sql, row_ptr, window_ptr,
-                      &schema, &output);
-    ASSERT_EQ(2, schema.size());
-    uint32_t out_size = *reinterpret_cast<uint32_t*>(output + 2);
-    ASSERT_EQ(out_size, 13u);
-    ASSERT_EQ(65u, *reinterpret_cast<uint32_t*>(output + 7));
-    ASSERT_EQ(12u, *reinterpret_cast<uint8_t*>(output + 11));
-    std::string str(reinterpret_cast<char*>(output + 12), 1);
-    ASSERT_EQ("1", str);
-    free(buf);
 }
 
 TEST_F(FnLetIRBuilderTest, test_simple_project) {
@@ -404,48 +349,18 @@ TEST_F(FnLetIRBuilderTest, test_join_window_project_mix) {
         reinterpret_cast<int8_t*>(&window_t12[window_t12.size() - 1]);
     codec::ListRef<> window_ref({reinterpret_cast<int8_t*>(w)});
     int8_t* window_ptr = reinterpret_cast<int8_t*>(&window_ref);
+
+    vm::SchemasContext schemas_ctx;
+    schemas_ctx.BuildTrivial(
+        std::vector<const type::TableDef*>({&table1, &table2}));
+    size_t sid = 111, cid = 222;
+    Status status =
+        schemas_ctx.ResolveColumnIndexByName("t1", "col1", &sid, &cid);
+    LOG(INFO) << status << " " << sid << " " << cid;
+
     vm::Schema schema;
-
-    vm::SchemaSourceList name_schema_list;
-    name_schema_list.AddSchemaSource(table1.name(), &table1.columns());
-    name_schema_list.AddSchemaSource(table2.name(), &table2.columns());
-
-    vm::ColumnSourceList column_sources;
-    CheckFnLetBuilder(&manager, name_schema_list, "", sql, row_ptr, window_ptr,
-                      &schema, &column_sources, &output);
-
-    ASSERT_EQ(8u, column_sources.size());
-    {
-        // t1.col1
-        ASSERT_EQ(vm::kSourceColumn, column_sources[0].type());
-        ASSERT_EQ(0, column_sources[0].column_idx());
-        ASSERT_EQ(0, column_sources[0].schema_idx());
-    }
-
-    // sum(t1.col1)
-    { ASSERT_EQ(vm::kSourceNone, column_sources[1].type()); }
-
-    // t1.col3
-    {
-        ASSERT_EQ(vm::kSourceColumn, column_sources[2].type());
-        ASSERT_EQ(2, column_sources[2].column_idx());
-        ASSERT_EQ(0, column_sources[2].schema_idx());
-    }
-    // sum(t1.col3)
-    { ASSERT_EQ(vm::kSourceNone, column_sources[3].type()); }
-
-    // t2.col4
-    {
-        ASSERT_EQ(vm::kSourceColumn, column_sources[4].type());
-        ASSERT_EQ(3, column_sources[4].column_idx());
-        ASSERT_EQ(1, column_sources[4].schema_idx());
-    }
-    // sum(t2.col4)
-    { ASSERT_EQ(vm::kSourceNone, column_sources[5].type()); }
-    // sum(t2.col2)
-    { ASSERT_EQ(vm::kSourceNone, column_sources[6].type()); }
-    // sum(t1.col5)
-    { ASSERT_EQ(vm::kSourceNone, column_sources[7].type()); }
+    CheckFnLetBuilder(&manager, &schemas_ctx, "", sql, row_ptr, window_ptr,
+                      &schema, &output);
 
     // t1.col1
     ASSERT_EQ(11111u, *reinterpret_cast<uint32_t*>(output + 7));
@@ -499,6 +414,7 @@ TEST_F(FnLetIRBuilderTest, test_extern_agg_min_project) {
     ASSERT_EQ(5L, *reinterpret_cast<int64_t*>(output + 7 + 4 + 4 + 8 + 2));
     free(ptr);
 }
+
 TEST_F(FnLetIRBuilderTest, test_extern_agg_max_project) {
     std::string sql =
         "SELECT "

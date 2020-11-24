@@ -282,9 +282,10 @@ struct CountWhereDef {
             .update([](UDFResolveContext* ctx, ExprNode* cnt, ExprNode* elem,
                        ExprNode* cond) {
                 auto nm = ctx->node_manager();
-                auto is_null = nm->MakeUnaryExprNode(elem, node::kFnOpIsNull);
-                auto new_cnt = nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(1),
-                                                      node::kFnOpAdd);
+                ExprNode* is_null =
+                    nm->MakeUnaryExprNode(elem, node::kFnOpIsNull);
+                ExprNode* new_cnt = nm->MakeBinaryExprNode(
+                    cnt, nm->MakeConstNode(1), node::kFnOpAdd);
                 new_cnt = nm->MakeCondExpr(is_null, cnt, new_cnt);
                 ExprNode* update = nm->MakeCondExpr(cond, new_cnt, cnt);
                 return update;
@@ -301,23 +302,24 @@ struct AvgWhereDef {
             .update([](UDFResolveContext* ctx, ExprNode* state, ExprNode* elem,
                        ExprNode* cond) {
                 auto nm = ctx->node_manager();
-                auto cnt = nm->MakeGetFieldExpr(state, 0);
-                auto sum = nm->MakeGetFieldExpr(state, 1);
-                auto is_null = nm->MakeUnaryExprNode(elem, node::kFnOpIsNull);
+                ExprNode* cnt = nm->MakeGetFieldExpr(state, 0);
+                ExprNode* sum = nm->MakeGetFieldExpr(state, 1);
+                ExprNode* is_null =
+                    nm->MakeUnaryExprNode(elem, node::kFnOpIsNull);
 
-                auto new_cnt = nm->MakeBinaryExprNode(cnt, nm->MakeConstNode(1),
-                                                      node::kFnOpAdd);
+                ExprNode* new_cnt = nm->MakeBinaryExprNode(
+                    cnt, nm->MakeConstNode(1), node::kFnOpAdd);
                 new_cnt = nm->MakeCondExpr(is_null, cnt, new_cnt);
 
                 if (elem->GetOutputType()->base() == node::kTimestamp) {
                     elem = nm->MakeCastNode(node::kInt64, elem);
                 }
 
-                auto new_sum =
+                ExprNode* new_sum =
                     nm->MakeBinaryExprNode(sum, elem, node::kFnOpAdd);
                 new_sum = nm->MakeCondExpr(is_null, sum, new_sum);
 
-                auto new_state =
+                ExprNode* new_state =
                     nm->MakeFuncNode("make_tuple", {new_cnt, new_sum}, nullptr);
                 return nm->MakeCondExpr(cond, new_state, state);
             })

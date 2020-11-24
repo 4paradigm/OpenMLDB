@@ -13,6 +13,7 @@
 #include "codegen/type_ir_builder.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
+#include "passes/expression/expr_pass.h"
 #include "passes/resolve_fn_and_attrs.h"
 #include "vm/schemas_context.h"
 #include "vm/transform.h"
@@ -23,23 +24,18 @@ namespace fesql {
 namespace node {
 
 Status ColumnRefNode::InferAttr(ExprAnalysisContext* ctx) {
-    LOG(WARNING) << "ColumnRef should be transformed out before infer pass";
-
-    const vm::RowSchemaInfo* schema_info = nullptr;
-    bool ok = ctx->schemas_context()->ColumnRefResolved(
-        relation_name_, column_name_, &schema_info);
-    CHECK_TRUE(ok, kTypeError, "Fail to resolve column ", GetExprString());
-
-    const codec::RowDecoder* decoder =
-        ctx->schemas_context()->GetDecoder(schema_info->idx_);
-    codec::ColInfo col_info;
-    CHECK_TRUE(decoder->ResolveColumn(column_name_, &col_info), kTypeError,
-               "Fail to resolve column ", GetExprString());
-
+    DLOG(WARNING) << "ColumnRef should be transformed out before infer pass";
+    auto schemas_ctx = ctx->schemas_context();
+    size_t schema_idx;
+    size_t col_idx;
+    CHECK_STATUS(
+        schemas_ctx->ResolveColumnRefIndex(this, &schema_idx, &col_idx),
+        "Fail to resolve column ", GetExprString());
+    type::Type col_type =
+        schemas_ctx->GetSchema(schema_idx)->Get(col_idx).type();
     node::DataType dtype;
-    CHECK_TRUE(vm::SchemaType2DataType(col_info.type, &dtype), kTypeError,
-               "Fail to convert type: ", col_info.type);
-
+    CHECK_TRUE(vm::SchemaType2DataType(col_type, &dtype), kTypeError,
+               "Fail to convert type: ", col_type);
     auto nm = ctx->node_manager();
     SetOutputType(nm->MakeTypeNode(node::kList, dtype));
     return Status::OK();
@@ -84,7 +80,7 @@ Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
     auto input_type = GetRow()->GetOutputType();
     if (input_type->base() == node::kTuple) {
         try {
-            size_t idx = std::stoi(this->GetColumnName());
+            size_t idx = GetColumnID();
             CHECK_TRUE(0 <= idx && idx < input_type->GetGenericSize(),
                        kTypeError, "Tuple idx out of range: ", idx);
             SetOutputType(input_type->GetGenericType(idx));
@@ -96,22 +92,19 @@ Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
 
     } else if (input_type->base() == node::kRow) {
         auto row_type = dynamic_cast<const RowTypeNode*>(input_type);
-        vm::SchemasContext schemas_context(row_type->schema_source());
+        const auto schemas_context = row_type->schemas_ctx();
 
-        const vm::RowSchemaInfo* schema_info = nullptr;
-        bool ok = schemas_context.ColumnRefResolved(relation_name_,
-                                                    column_name_, &schema_info);
-        CHECK_TRUE(ok, kTypeError, "Fail to resolve column ", GetExprString());
+        size_t schema_idx;
+        size_t col_idx;
+        CHECK_STATUS(schemas_context->ResolveColumnIndexByID(
+                         GetColumnID(), &schema_idx, &col_idx),
+                     "Fail to resolve column ", GetExprString());
 
-        const codec::RowDecoder* decoder =
-            schemas_context.GetDecoder(schema_info->idx_);
-        codec::ColInfo col_info;
-        CHECK_TRUE(decoder->ResolveColumn(column_name_, &col_info), kTypeError,
-                   "Fail to resolve column ", GetExprString());
-
+        type::Type col_type =
+            schemas_context->GetSchema(schema_idx)->Get(col_idx).type();
         node::DataType dtype;
-        CHECK_TRUE(vm::SchemaType2DataType(col_info.type, &dtype), kTypeError,
-                   "Fail to convert type: ", col_info.type);
+        CHECK_TRUE(vm::SchemaType2DataType(col_type, &dtype), kTypeError,
+                   "Fail to convert type: ", col_type);
 
         auto nm = ctx->node_manager();
         SetOutputType(nm->MakeTypeNode(dtype));
@@ -317,7 +310,7 @@ Status ExprNode::SubTypeAccept(node::NodeManager* nm, const TypeNode* lhs,
         kTypeError,
         "Invalid Sub Op type: lhs " + lhs->GetName() + " rhs " + rhs->GetName())
     if (lhs->IsNull()) {
-        *output_type = lhs;
+        *output_type = rhs;
     } else if (rhs->IsNull()) {
         *output_type = lhs;
     } else if (lhs->IsTimestamp() && rhs->IsTimestamp()) {
@@ -342,7 +335,7 @@ Status ExprNode::MultiTypeAccept(node::NodeManager* nm, const TypeNode* lhs,
                "Invalid Multi Op type: lhs " + lhs->GetName() + " rhs " +
                    rhs->GetName())
     if (lhs->IsNull()) {
-        *output_type = lhs;
+        *output_type = rhs;
     } else if (rhs->IsNull()) {
         *output_type = lhs;
     } else {
@@ -359,13 +352,7 @@ Status ExprNode::FDivTypeAccept(node::NodeManager* nm, const TypeNode* lhs,
                kTypeError,
                "Invalid FDiv Op type: lhs " + lhs->GetName() + " rhs " +
                    rhs->GetName())
-    if (lhs->IsNull()) {
-        *output_type = lhs;
-    } else if (rhs->IsNull()) {
-        *output_type = lhs;
-    } else {
-        *output_type = nm->MakeTypeNode(kDouble);
-    }
+    *output_type = nm->MakeTypeNode(kDouble);
     return Status::OK();
 }
 Status ExprNode::SDivTypeAccept(node::NodeManager* nm, const TypeNode* lhs,
@@ -377,7 +364,7 @@ Status ExprNode::SDivTypeAccept(node::NodeManager* nm, const TypeNode* lhs,
                kTypeError, "Invalid SDiv type: lhs ", lhs->GetName(), " rhs ",
                rhs->GetName())
     if (lhs->IsNull()) {
-        *output_type = lhs;
+        *output_type = rhs;
     } else if (rhs->IsNull()) {
         *output_type = lhs;
     } else {
@@ -394,7 +381,7 @@ Status ExprNode::ModTypeAccept(node::NodeManager* nm, const TypeNode* lhs,
                kTypeError, "Invalid Mod type: lhs ", lhs->GetName(), " rhs ",
                rhs->GetName())
     if (lhs->IsNull()) {
-        *output_type = lhs;
+        *output_type = rhs;
     } else if (rhs->IsNull()) {
         *output_type = lhs;
     } else {
@@ -620,13 +607,206 @@ Status ExprAnalysisContext::InferAsUDF(node::ExprNode* expr,
                  "\" failed");
 
     node::ExprNode* target_expr = nullptr;
-    passes::ResolveFnAndAttrs resolver(nm, library(), *schemas_context());
+    passes::ResolveFnAndAttrs resolver(nm, library(), schemas_context());
     CHECK_STATUS(resolver.VisitExpr(transformed, &target_expr), "Infer ",
                  expr->GetExprString(), " as \"", name, "\" failed");
 
     expr->SetOutputType(target_expr->GetOutputType());
     expr->SetNullable(target_expr->nullable());
     return Status::OK();
+}
+
+UnaryExpr* UnaryExpr::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeUnaryExprNode(GetChild(0), GetOp());
+}
+
+BinaryExpr* BinaryExpr::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeBinaryExprNode(GetChild(0), GetChild(1), GetOp());
+}
+
+ExprListNode* ExprListNode::ShadowCopy(NodeManager* nm) const {
+    auto list = nm->MakeExprList();
+    list->children_ = this->children_;
+    return list;
+}
+
+OrderByNode* OrderByNode::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeOrderByNode(order_by(), is_asc());
+}
+
+ExprIdNode* ExprIdNode::ShadowCopy(NodeManager* nm) const {
+    auto expr_id = nm->MakeUnresolvedExprId(GetName());
+    expr_id->SetId(GetId());
+    return expr_id;
+}
+
+CastExprNode* CastExprNode::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeCastNode(cast_type_, GetChild(0));
+}
+
+WhenExprNode* WhenExprNode::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeWhenNode(when_expr(), then_expr());
+}
+
+CaseWhenExprNode* CaseWhenExprNode::ShadowCopy(NodeManager* nm) const {
+    auto node = new CaseWhenExprNode(when_expr_list(), else_expr());
+    return nm->RegisterNode(node);
+}
+
+AllNode* AllNode::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeAllNode(GetRelationName(), GetDBName());
+}
+
+BetweenExpr* BetweenExpr::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeBetweenExpr(expr_, left_, right_);
+}
+
+QueryExpr* QueryExpr::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeQueryExprNode(query_);
+}
+
+CondExpr* CondExpr::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeCondExpr(GetCondition(), GetLeft(), GetRight());
+}
+
+CallExprNode* CallExprNode::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeFuncNode(GetFnDef(), children_, GetOver());
+}
+
+CallExprNode* CallExprNode::DeepCopy(NodeManager* nm) const {
+    std::vector<ExprNode*> new_args;
+    FnDefNode* new_fn = GetFnDef()->DeepCopy(nm);
+    for (auto child : children_) {
+        new_args.push_back(child->DeepCopy(nm));
+    }
+    return nm->MakeFuncNode(new_fn, new_args, GetOver());
+}
+
+ConstNode* ConstNode::ShadowCopy(NodeManager* nm) const {
+    switch (this->GetDataType()) {
+        case node::kInt16:
+            return nm->MakeConstNode(GetSmallInt());
+        case node::kInt32:
+            return nm->MakeConstNode(GetInt());
+        case node::kInt64:
+            return nm->MakeConstNode(GetLong());
+        case node::kFloat:
+            return nm->MakeConstNode(GetFloat());
+        case node::kDouble:
+            return nm->MakeConstNode(GetDouble());
+        case node::kVarchar:
+            return nm->MakeConstNode(std::string(GetStr()));
+        case node::kDate:
+            return nm->MakeConstNode(GetLong(), GetDataType());
+        case node::kTimestamp:
+            return nm->MakeConstNode(GetLong(), GetDataType());
+        case node::kNull:
+            return nm->MakeConstNode();
+        default: {
+            LOG(WARNING) << "Fail to copy primary expr of type " +
+                                node::DataTypeName(GetDataType());
+            return nm->MakeConstNode();
+        }
+    }
+}
+
+ColumnRefNode* ColumnRefNode::ShadowCopy(NodeManager* nm) const {
+    auto col =
+        nm->MakeColumnRefNode(GetColumnName(), GetRelationName(), GetDBName());
+    return col;
+}
+
+GetFieldExpr* GetFieldExpr::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeGetFieldExpr(GetChild(0), GetColumnName(), GetColumnID());
+}
+
+StructExpr* StructExpr::ShadowCopy(NodeManager* nm) const {
+    auto node = new StructExpr(GetName());
+    node->SetFileds(fileds_);
+    node->SetMethod(methods_);
+    return nm->RegisterNode(node);
+}
+
+LambdaNode* LambdaNode::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeLambdaNode(args_, body_);
+}
+
+LambdaNode* LambdaNode::DeepCopy(NodeManager* nm) const {
+    std::vector<ExprIdNode*> new_args;
+    passes::ExprReplacer replacer;
+    for (auto origin_arg : args_) {
+        auto new_arg = nm->MakeExprIdNode(origin_arg->GetName());
+        if (origin_arg->IsResolved()) {
+            replacer.AddReplacement(origin_arg, new_arg);
+        }
+        new_args.push_back(new_arg);
+    }
+    auto cloned_body = body()->DeepCopy(nm);
+    node::ExprNode* new_body = nullptr;
+    auto status = replacer.Replace(cloned_body, &new_body);
+    if (status.isOK()) {
+        return nm->MakeLambdaNode(new_args, new_body);
+    } else {
+        LOG(WARNING) << "Deep copy lambda body failed: " << status.msg;
+        return nm->MakeLambdaNode(new_args, cloned_body);
+    }
+}
+
+ExternalFnDefNode* ExternalFnDefNode::ShadowCopy(NodeManager* nm) const {
+    return DeepCopy(nm);
+}
+
+ExternalFnDefNode* ExternalFnDefNode::DeepCopy(NodeManager* nm) const {
+    if (IsResolved()) {
+        return nm->MakeExternalFnDefNode(function_name(), function_ptr(),
+                                         GetReturnType(), IsReturnNullable(),
+                                         arg_types_, arg_nullable_,
+                                         variadic_pos(), return_by_arg());
+    } else {
+        return nm->MakeUnresolvedFnDefNode(function_name());
+    }
+}
+
+UDFDefNode* UDFDefNode::ShadowCopy(NodeManager* nm) const {
+    return DeepCopy(nm);
+}
+
+UDFDefNode* UDFDefNode::DeepCopy(NodeManager* nm) const {
+    return nm->MakeUDFDefNode(def_);
+}
+
+UDFByCodeGenDefNode* UDFByCodeGenDefNode::ShadowCopy(NodeManager* nm) const {
+    return DeepCopy(nm);
+}
+
+UDFByCodeGenDefNode* UDFByCodeGenDefNode::DeepCopy(NodeManager* nm) const {
+    auto def_node = nm->MakeUDFByCodeGenDefNode(arg_types_, arg_nullable_,
+                                                ret_type_, ret_nullable_);
+    def_node->SetGenImpl(this->GetGenImpl());
+    return def_node;
+}
+
+UDAFDefNode* UDAFDefNode::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeUDAFDefNode(name_, arg_types_, init_expr_, update_, merge_,
+                               output_);
+}
+
+UDAFDefNode* UDAFDefNode::DeepCopy(NodeManager* nm) const {
+    ExprNode* new_init = init_expr_ ? init_expr_->DeepCopy(nm) : nullptr;
+    FnDefNode* new_update = update_ ? update_->DeepCopy(nm) : nullptr;
+    FnDefNode* new_merge = merge_ ? merge_->DeepCopy(nm) : nullptr;
+    FnDefNode* new_output = output_ ? output_->DeepCopy(nm) : nullptr;
+    return nm->MakeUDAFDefNode(name_, arg_types_, new_init, new_update,
+                               new_merge, new_output);
+}
+
+// Default expr deep copy: shadow copy self and deep copy children
+ExprNode* ExprNode::DeepCopy(NodeManager* nm) const {
+    auto root = this->ShadowCopy(nm);
+    for (size_t i = 0; i < this->GetChildNum(); ++i) {
+        root->SetChild(i, root->GetChild(i)->DeepCopy(nm));
+    }
+    return root;
 }
 
 }  // namespace node
