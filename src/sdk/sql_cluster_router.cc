@@ -34,6 +34,8 @@
 #include "boost/none.hpp"
 #include "rpc/rpc_client.h"
 
+DECLARE_int32(request_timeout_ms);
+
 namespace rtidb {
 namespace sdk {
 
@@ -781,9 +783,9 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         LOG(WARNING) << "make sure the request row is built before execute sql";
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
-    std::shared_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
-    std::shared_ptr<::rtidb::api::QueryResponse> response(
-        new ::rtidb::api::QueryResponse());
+    auto cntl = std::make_shared<::brpc::Controller>();
+    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
+    auto response = std::make_shared<::rtidb::api::QueryResponse>();
     auto client = GetTabletClient(db, sql);
     if (!client) {
         status->msg = "not tablet found";
@@ -808,9 +810,9 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
 std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     const std::string& db, const std::string& sql,
     ::fesql::sdk::Status* status) {
-    std::shared_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
-    std::shared_ptr<::rtidb::api::QueryResponse> response(
-        new ::rtidb::api::QueryResponse());
+    auto cntl = std::make_shared<::brpc::Controller>();
+    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
+    auto response = std::make_shared<::rtidb::api::QueryResponse>();
     auto client = GetTabletClient(db, sql);
     if (!client) {
         DLOG(INFO) << "no tablet avilable for sql " << sql;
@@ -837,9 +839,9 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQLBatchRequest(
         LOG(WARNING) << "input is invalid";
         return nullptr;
     }
-    std::shared_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
-    std::shared_ptr<::rtidb::api::SQLBatchRequestQueryResponse> response(
-        new ::rtidb::api::SQLBatchRequestQueryResponse());
+    auto cntl = std::make_shared<::brpc::Controller>();
+    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
+    auto response = std::make_shared<::rtidb::api::SQLBatchRequestQueryResponse>();
     auto client = GetTabletClient(db, sql);
     if (!client) {
         status->code = -1;
@@ -1073,9 +1075,9 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
         return nullptr;
     }
 
-    std::shared_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
-    std::shared_ptr<::rtidb::api::QueryResponse> response(
-        new ::rtidb::api::QueryResponse());
+    auto cntl = std::make_shared<::brpc::Controller>();
+    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
+    auto response = std::make_shared<::rtidb::api::QueryResponse>();
     bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(),
                              options_.enable_debug);
     if (!ok) {
@@ -1114,9 +1116,9 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProc
         return nullptr;
     }
 
-    std::shared_ptr<::brpc::Controller> cntl(new ::brpc::Controller());
-    std::shared_ptr<::rtidb::api::SQLBatchRequestQueryResponse> response(
-        new ::rtidb::api::SQLBatchRequestQueryResponse());
+    auto cntl = std::make_shared<::brpc::Controller>();
+    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
+    auto response = std::make_shared<::rtidb::api::SQLBatchRequestQueryResponse>();
     bool ok = tablet->CallSQLBatchRequestProcedure(
             db, sp_name, row_batch, cntl.get(), response.get(),
             options_.enable_debug);
@@ -1366,6 +1368,7 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
     std::shared_ptr<rtidb::api::QueryResponse> response =
         std::make_shared<rtidb::api::QueryResponse>();
     std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
+    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
     rtidb::RpcCallback<rtidb::api::QueryResponse>* callback =
             new rtidb::RpcCallback<rtidb::api::QueryResponse>(response, cntl);
 
@@ -1396,8 +1399,8 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestPr
     }
 
     std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
-    std::shared_ptr<rtidb::api::SQLBatchRequestQueryResponse> response =
-        std::make_shared<rtidb::api::SQLBatchRequestQueryResponse>();
+    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
+    auto response = std::make_shared<rtidb::api::SQLBatchRequestQueryResponse>();
     rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback =
            new rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>(response, cntl);
 

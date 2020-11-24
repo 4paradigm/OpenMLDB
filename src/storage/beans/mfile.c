@@ -9,6 +9,11 @@
 #include <unistd.h>
 #endif
 
+#ifdef __APPLE__
+#include <fcntl.h> // for open
+#include <unistd.h> // for close
+#endif
+
 #include "mfile.h"
 #include "util.h"
 
