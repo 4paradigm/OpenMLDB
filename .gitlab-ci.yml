@@ -308,6 +308,7 @@ tablet_one_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
+  when: manual      
 
 tablet_multi_demension:
   stage: ts_integration_test
@@ -329,6 +330,7 @@ tablet_multi_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
+  when: manual      
 
 ns_one_demension:
   stage: ns_integration_test
@@ -350,6 +352,7 @@ ns_one_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
+  when: manual      
 
 ns_multi_demension:
   stage: ns_integration_test

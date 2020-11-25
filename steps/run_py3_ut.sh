@@ -1,7 +1,10 @@
 #!/bin/bash
 WORKDIR=$(pwd)
+sh tools/install_fesql.sh
+bash steps/gen_code.sh
 mkdir -p build && cd build
-cd python && python3 -m pip install dist/rtidb-1.0-py3-none-any.whl
+cmake .. && make -j8 python_package
+cd python && python3 -m pip install .
 python3 -m pip install nose
 cd ${WORKDIR}
 cp steps/zoo.cfg thirdsrc/zookeeper-3.4.14/conf
