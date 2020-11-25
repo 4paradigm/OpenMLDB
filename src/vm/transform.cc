@@ -2747,7 +2747,8 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
         &root_simplify_project_op, root, root_simplified_projects);
     if (!status.isOK()) {
         LOG(WARNING) << status.msg;
-        LOG(WARNING) << "Simplify root left input failed: apply left node simplify";
+        LOG(WARNING)
+            << "Simplify root left input failed: apply left node simplify";
         return false;
     }
     for (auto column : left_condition_columns) {
