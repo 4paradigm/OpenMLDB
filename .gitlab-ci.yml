@@ -8,8 +8,7 @@ stages:
   - build
   - daily
   - test
-  - ts_integration_test
-  - ns_integration_test
+  - integration_test
   - deploy
 
 style_check:
@@ -40,7 +39,7 @@ rdma-build:
     expire_in: 4h
     paths:
       - build/bin/rtidb_rdma
-  when: manual      
+  when: manual
 
 fpga-build:
   image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
@@ -59,7 +58,7 @@ fpga-build:
     expire_in: 4h
     paths:
       - build/bin
-  when: manual      
+  when: manual
 
 build:
   stage: build
@@ -112,7 +111,7 @@ fpga_c++_ut:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual      
+  when: manual
 
 #fpga_java_ut:
 #  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
@@ -198,7 +197,7 @@ fesql_auto_test:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
-  when: manual      
+  when: manual
 
 auto_test:
   stage: test
@@ -229,7 +228,7 @@ auto_test:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
-  when: manual      
+  when: manual
 
 c++_ut:
   stage: test
@@ -286,10 +285,10 @@ fesql_auto_test_python:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
-  when: manual      
+  when: manual
 
 tablet_one_demension:
-  stage: ts_integration_test
+  stage: integration_test
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -308,10 +307,10 @@ tablet_one_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual      
+  when: manual
 
 tablet_multi_demension:
-  stage: ts_integration_test
+  stage: integration_test
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -330,10 +329,9 @@ tablet_multi_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual      
 
 ns_one_demension:
-  stage: ns_integration_test
+  stage: integration_test
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -352,10 +350,10 @@ ns_one_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  when: manual      
+  when: manual
 
 ns_multi_demension:
-  stage: ns_integration_test
+  stage: integration_test
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -395,6 +393,7 @@ disk_table:
   except:
     variables:
       - $ENV_BUILD == "daily"
+  when: manual
 
 deploy-fedb:
   stage: daily
