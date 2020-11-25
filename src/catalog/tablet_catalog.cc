@@ -81,7 +81,7 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
         const ::fesql::type::IndexDef& index_def = index_list_.Get(i);
         ::fesql::vm::IndexSt index_st;
         index_st.index = i;
-        index_st.ts_pos = 0;
+        index_st.ts_pos = ::fesql::vm::INVALID_POS;
         if (!index_def.second_key().empty()) {
             int32_t pos = GetColumnIndex(index_def.second_key());
             if (pos < 0) {
