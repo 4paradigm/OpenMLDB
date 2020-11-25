@@ -33,6 +33,9 @@
 #include "thread_pool.h"  // NOLINT
 #include "vm/engine.h"
 #include "zk/zk_client.h"
+#include "catalog/schema_adapter.h"
+#include "sdk/base.h"
+#include "sdk/base_impl.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -61,6 +64,18 @@ typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator>>>
     Replicators;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot>>>
     Snapshots;
+
+// tablet cache entry for sql procedure
+struct SQLProcedureCacheEntry {
+    rtidb::api::ProcedureInfo procedure_info;
+    std::shared_ptr<fesql::vm::CompileInfo> request_info;
+    std::shared_ptr<fesql::vm::CompileInfo> batch_request_info;
+
+    SQLProcedureCacheEntry(const rtidb::api::ProcedureInfo& pinfo,
+                           std::shared_ptr<fesql::vm::CompileInfo> rinfo,
+                           std::shared_ptr<fesql::vm::CompileInfo> brinfo)
+      : procedure_info(pinfo), request_info(rinfo), batch_request_info(brinfo) {}
+};
 
 class TabletImpl : public ::rtidb::api::TabletServer {
  public:
@@ -209,6 +224,11 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                      ::rtidb::api::GetTermPairResponse* response,
                      Closure* done);
 
+    void GetCatalog(RpcController* controller,
+                     const ::rtidb::api::GetCatalogRequest* request,
+                     ::rtidb::api::GetCatalogResponse* response,
+                     Closure* done);
+
     void GetTableFollower(RpcController* controller,
                           const ::rtidb::api::GetTableFollowerRequest* request,
                           ::rtidb::api::GetTableFollowerResponse* response,
@@ -272,6 +292,15 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                const rtidb::api::QueryRequest* request,
                rtidb::api::QueryResponse* response, Closure* done);
 
+    void SubQuery(RpcController* controller,
+               const rtidb::api::QueryRequest* request,
+               rtidb::api::QueryResponse* response, Closure* done);
+
+    void SQLBatchRequestQuery(RpcController* controller,
+                              const rtidb::api::SQLBatchRequestQueryRequest* request,
+                              rtidb::api::SQLBatchRequestQueryResponse* response,
+                              Closure* done);
+
     void CancelOP(RpcController* controller,
                   const rtidb::api::CancelOPRequest* request,
                   rtidb::api::GeneralResponse* response, Closure* done);
@@ -303,6 +332,15 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                        uint32_t* count);
 
     std::shared_ptr<Table> GetTable(uint32_t tid, uint32_t pid);
+
+    void CreateProcedure(RpcController* controller,
+            const rtidb::api::CreateProcedureRequest* request,
+            rtidb::api::GeneralResponse* response, Closure* done);
+
+    void DropProcedure(RpcController* controller,
+            const ::rtidb::api::DropProcedureRequest* request,
+            ::rtidb::api::GeneralResponse* response,
+            Closure* done);
 
  private:
     bool CreateMultiDir(const std::vector<std::string>& dirs);
@@ -378,6 +416,8 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     void GetDiskused();
 
     void CheckZkClient();
+
+    void RefreshTableInfo();
 
     int32_t DeleteTableInternal(
         uint32_t tid, uint32_t pid,
@@ -468,7 +508,15 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     bool GetRealEp(uint64_t tid, uint64_t pid,
             std::map<std::string, std::string>* real_ep_map);
 
+    void ProcessQuery(const rtidb::api::QueryRequest* request,
+            ::rtidb::api::QueryResponse* response,
+            butil::IOBuf* buf);
+
  private:
+    void RunRequestQuery(const rtidb::api::QueryRequest& request,
+        ::fesql::vm::RequestRunSession& session, // NOLINT 
+        rtidb::api::QueryResponse& response, butil::IOBuf& buf); // NOLINT
+
     RelationalTables relational_tables_;
     Tables tables_;
     std::mutex mu_;
@@ -496,9 +544,12 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::shared_ptr<::rtidb::catalog::TabletCatalog> catalog_;
     // thread safe
     ::fesql::vm::Engine engine_;
+    std::shared_ptr<::fesql::vm::LocalTablet> local_tablet_;
     std::string zk_cluster_;
     std::string zk_path_;
     std::string endpoint_;
+    std::map<std::string, std::map<std::string, SQLProcedureCacheEntry>> sp_map_;
+    std::string notify_path_;
 };
 
 }  // namespace tablet

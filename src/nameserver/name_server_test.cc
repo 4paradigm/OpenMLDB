@@ -112,6 +112,17 @@ bool StartTablet(const std::string& endpoint,
     return true;
 }
 
+bool CreateDB(::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub>& name_server_client, // NOLINT
+        const std::string& db_name) {
+    ::rtidb::nameserver::CreateDatabaseRequest request;
+    request.set_db(db_name);
+    ::rtidb::nameserver::GeneralResponse response;
+    bool ret = name_server_client.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::CreateDatabase, &request, &response,
+        FLAGS_request_timeout_ms, 1);
+    return ret;
+}
+
 TEST_F(NameServerImplTest, CreateDisallowedTable) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_enable_timeseries_table = false;
@@ -549,7 +560,7 @@ TEST_F(NameServerImplTest, Offline) {
         FLAGS_request_timeout_ms, 1);
     ASSERT_TRUE(ok);
     ASSERT_EQ(0, response.code());
-
+    sleep(2);
     {
         ::rtidb::api::ConnectZKRequest request;
         ::rtidb::api::GeneralResponse response;
@@ -1639,6 +1650,110 @@ TEST_F(NameServerImplTest, CreateRelationalTable) {
     }
     delete nameserver;
     delete tablet;
+}
+
+TEST_F(NameServerImplTest, ShowCatalogVersion) {
+    FLAGS_zk_cluster = "127.0.0.1:6181";
+    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+
+    brpc::ServerOptions options;
+    brpc::Server server;
+    ASSERT_TRUE(StartNS("127.0.0.1:9634", &server, &options));
+    ::rtidb::RpcClient<::rtidb::nameserver::NameServer_Stub> name_server_client(
+        "127.0.0.1:9634", "");
+    name_server_client.Init();
+
+    brpc::ServerOptions options1;
+    brpc::Server server1;
+    ASSERT_TRUE(StartTablet("127.0.0.1:9535", &server1, &options1));
+
+    brpc::ServerOptions options2;
+    brpc::Server server2;
+    ASSERT_TRUE(StartTablet("127.0.0.1:9536", &server2, &options2));
+    std::string db_name = "db1";
+    ASSERT_TRUE(CreateDB(name_server_client, db_name));
+
+    {
+        CreateTableRequest request;
+        GeneralResponse response;
+        TableInfo* table_info = request.mutable_table_info();
+        std::string name = "test" + GenRand();
+        table_info->set_name(name);
+        table_info->set_db(db_name);
+        TablePartition* partion = table_info->add_table_partition();
+        partion->set_pid(0);
+        PartitionMeta* meta = partion->add_partition_meta();
+        meta->set_endpoint("127.0.0.1:9535");
+        meta->set_is_leader(true);
+        partion = table_info->add_table_partition();
+        partion->set_pid(1);
+        meta = partion->add_partition_meta();
+        meta->set_endpoint("127.0.0.1:9536");
+        meta->set_is_leader(true);
+        ::rtidb::common::ColumnDesc* desc = table_info->add_column_desc_v1();
+        desc->set_name("col1");
+        desc->set_type("string");
+        desc->set_add_ts_idx(true);
+        bool ok = name_server_client.SendRequest(
+            &::rtidb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+            FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, response.code());
+    }
+    sleep(1);
+
+    std::map<std::string, uint64_t> version_map;
+    ShowCatalogRequest request;
+    ShowCatalogResponse response;
+    bool ok = name_server_client.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::ShowCatalog, &request, &response,
+        FLAGS_request_timeout_ms, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(response.catalog_size(), 2);
+    for (const auto& cur_catalog : response.catalog()) {
+        version_map.emplace(cur_catalog.endpoint(), cur_catalog.version());
+        PDLOG(INFO, "endpoint %s version %lu", cur_catalog.endpoint().c_str(), cur_catalog.version());
+    }
+
+    {
+        CreateTableRequest request;
+        GeneralResponse response;
+        TableInfo* table_info = request.mutable_table_info();
+        std::string name = "test" + GenRand();
+        table_info->set_name(name);
+        table_info->set_db(db_name);
+        TablePartition* partion = table_info->add_table_partition();
+        partion->set_pid(0);
+        PartitionMeta* meta = partion->add_partition_meta();
+        meta->set_endpoint("127.0.0.1:9535");
+        meta->set_is_leader(true);
+        partion = table_info->add_table_partition();
+        partion->set_pid(1);
+        meta = partion->add_partition_meta();
+        meta->set_endpoint("127.0.0.1:9536");
+        meta->set_is_leader(true);
+        ::rtidb::common::ColumnDesc* desc = table_info->add_column_desc_v1();
+        desc->set_name("col1");
+        desc->set_type("string");
+        desc->set_add_ts_idx(true);
+        bool ok = name_server_client.SendRequest(
+            &::rtidb::nameserver::NameServer_Stub::CreateTable, &request, &response,
+            FLAGS_request_timeout_ms, 1);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(0, response.code());
+    }
+    sleep(2);
+    ShowCatalogRequest request1;
+    ShowCatalogResponse response1;
+    ok = name_server_client.SendRequest(
+        &::rtidb::nameserver::NameServer_Stub::ShowCatalog, &request1, &response1,
+        FLAGS_request_timeout_ms, 1);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(response1.catalog_size(), 2);
+    for (const auto& cur_catalog : response1.catalog()) {
+        ASSERT_EQ(cur_catalog.version(), version_map[cur_catalog.endpoint()] + 1);
+        PDLOG(INFO, "endpoint %s version %lu", cur_catalog.endpoint().c_str(), cur_catalog.version());
+    }
 }
 
 }  // namespace nameserver

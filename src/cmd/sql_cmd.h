@@ -20,6 +20,9 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <utility>
+#include <map>
+#include <memory>
 
 #include "base/linenoise.h"
 #include "base/texttable.h"
@@ -35,6 +38,8 @@
 DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_bool(interactive);
+
+using ::rtidb::catalog::TTL_TYPE_MAP;
 
 namespace rtidb {
 namespace cmd {
@@ -144,6 +149,8 @@ void PrintTableIndex(std::ostream &stream,
     t.add("name");
     t.add("keys");
     t.add("ts");
+    t.add("ttl");
+    t.add("ttl_type");
     t.endOfRow();
     for (int i = 0; i < index_list.size(); i++) {
         const ::fesql::type::IndexDef &index = index_list.Get(i);
@@ -151,13 +158,30 @@ void PrintTableIndex(std::ostream &stream,
         t.add(index.name());
         t.add(index.first_keys(0));
         t.add(index.second_key());
+        std::ostringstream oss;
+        for (int i = 0; i < index.ttl_size(); i++) {
+            oss << index.ttl(i);
+            if (i != index.ttl_size() - 1) {
+                oss << "m" << ",";
+            }
+        }
+        t.add(oss.str());
+        if (index.ttl_type() == ::fesql::type::kTTLTimeLive) {
+            t.add("kAbsolute");
+        } else if (index.ttl_type() == ::fesql::type::kTTLCountLive) {
+            t.add("kLatest");
+        } else if (index.ttl_type() == ::fesql::type::kTTLTimeLiveAndCountLive) {
+            t.add("kAbsAndLat");
+        } else {
+            t.add("kAbsOrLat");
+        }
         t.endOfRow();
     }
     stream << t;
 }
 
 void PrintTableSchema(std::ostream &stream, const ::fesql::vm::Schema &schema) {
-    if (schema.size() == 0) {
+    if (schema.empty()) {
         stream << "Empty set" << std::endl;
         return;
     }
@@ -203,6 +227,72 @@ void PrintItems(std::ostream &stream, const std::string &head,
     }
 }
 
+void PrintItems(const std::vector<std::pair<std::string, std::string>> &items,
+        std::ostream &stream) {
+    if (items.empty()) {
+        stream << "Empty set" << std::endl;
+        return;
+    }
+
+    ::fesql::base::TextTable t('-', ' ', ' ');
+    t.add("DB");
+    t.add("SP");
+    t.endOfRow();
+    for (auto item : items) {
+        t.add(item.first);
+        t.add(item.second);
+        t.endOfRow();
+    }
+    stream << t;
+    auto items_size = items.size();
+    if (items_size > 1) {
+        stream << items_size << " rows in set" << std::endl;
+    } else {
+        stream << items_size << " row in set" << std::endl;
+    }
+}
+
+void PrintProcedureSchema(const std::string& head,
+        const ::fesql::vm::Schema &schema, std::ostream &stream) {
+    if (schema.empty()) {
+        stream << "Empty set" << std::endl;
+        return;
+    }
+    uint32_t items_size = schema.size();
+    ::fesql::base::TextTable t('-', ' ', ' ');
+
+    t.add("#");
+    t.add("Field");
+    t.add("Type");
+    t.add("IsConstant");
+    t.endOfRow();
+
+    for (uint32_t i = 0; i < items_size; i++) {
+        auto column = schema.Get(i);
+        t.add(std::to_string(i + 1));
+        t.add(column.name());
+        t.add(::fesql::type::Type_Name(column.type()));
+        t.add(column.is_constant() ? "YES" : "NO");
+        t.endOfRow();
+    }
+    stream << t << std::endl;
+}
+
+void PrintProcedureInfo(const rtidb::api::ProcedureInfo& sp_info) {
+    std::vector<std::pair<std::string, std::string>> vec;
+    std::pair<std::string, std::string> pair = std::make_pair(sp_info.db_name(), sp_info.sp_name());
+    vec.push_back(pair);
+    PrintItems(vec, std::cout);
+    std::vector<std::string> items{sp_info.sql()};
+    PrintItems(std::cout, "SQL", items);
+    ::fesql::vm::Schema input_schema;
+    ::rtidb::catalog::SchemaAdapter::ConvertSchema(sp_info.input_schema(), &input_schema);
+    PrintProcedureSchema("Input Schema", input_schema, std::cout);
+    ::fesql::vm::Schema output_schema;
+    ::rtidb::catalog::SchemaAdapter::ConvertSchema(sp_info.output_schema(), &output_schema);
+    PrintProcedureSchema("Output Schema", output_schema, std::cout);
+}
+
 void HandleCmd(const fesql::node::CmdNode *cmd_node) {
     switch (cmd_node->GetCmdType()) {
         case fesql::node::kCmdShowDatabases: {
@@ -245,6 +335,37 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             ::fesql::vm::IndexList index_list;
             ::rtidb::catalog::SchemaAdapter::ConvertIndex(table->column_key(),
                                                           &index_list);
+            auto ttl_type = table->ttl_desc().ttl_type();
+            auto ttl_it = TTL_TYPE_MAP.find(ttl_type);
+            if (ttl_it == TTL_TYPE_MAP.end()) {
+                std::cout << "not found " <<  ::rtidb::api::TTLType_Name(ttl_type)
+                    << " in TTL_TYPE_MAP" << std::endl;
+                return;
+            }
+
+            std::map<std::string, ::rtidb::common::ColumnDesc> col_map;
+            for (auto& col : table->column_desc_v1()) {
+                col_map.insert(std::make_pair(col.name(), col));
+            }
+            for (int i = 0; i < index_list.size(); i++) {
+                ::fesql::type::IndexDef* index_def = index_list.Mutable(i);
+                index_def->set_ttl_type(ttl_it->second);
+                const std::string& ts_name = index_def->second_key();
+                auto col_it = col_map.find(ts_name);
+                if (col_it == col_map.end()) {
+                    std::cout << "ts name not found in col_map" << std::endl;
+                    return;
+                }
+                auto& col = col_it->second;
+                if (ttl_type == ::rtidb::api::kAbsAndLat || ttl_type == ::rtidb::api::kAbsOrLat) {
+                    index_def->add_ttl(col.abs_ttl());
+                    index_def->add_ttl(col.lat_ttl());
+                } else if (ttl_type == ::rtidb::api::kAbsoluteTime) {
+                    index_def->add_ttl(col.abs_ttl());
+                } else {
+                    index_def->add_ttl(col.lat_ttl());
+                }
+            }
             PrintTableIndex(std::cout, index_list);
             break;
         }
@@ -276,6 +397,10 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             break;
         }
         case fesql::node::kCmdDropTable: {
+            if (db.empty()) {
+                std::cout << "please enter database first" << std::endl;
+                return;
+            }
             std::string name = cmd_node->GetArgs()[0];
             std::string error;
             printf("Drop table %s? yes/no\n", name.c_str());
@@ -319,6 +444,59 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
                 std::cout << "drop index ok" << std::endl;
             } else {
                 std::cout << "Fail to drop index. error msg: " << error
+                          << std::endl;
+            }
+            break;
+        }
+        case fesql::node::kCmdShowCreateSp: {
+            std::string db_name = cmd_node->GetArgs()[0];
+            std::string sp_name = cmd_node->GetArgs()[1];
+            std::string error;
+            rtidb::api::ProcedureInfo sp_info;
+            if (!cs->GetProcedureInfo(db_name, sp_name, &sp_info, &error)) {
+                std::cout << "Fail to show procdure. error msg: " << error << std::endl;
+                return;
+            }
+            PrintProcedureInfo(sp_info);
+            break;
+        }
+        case fesql::node::kCmdShowProcedures: {
+            std::string error;
+            std::vector<std::shared_ptr<rtidb::api::ProcedureInfo>> sp_infos;
+            if (!cs->GetProcedureInfo(&sp_infos, &error) || sp_infos.empty()) {
+                std::cout << "Fail to show procdure. error msg: " << error << std::endl;
+                return;
+            }
+            std::vector<std::pair<std::string, std::string>> pairs;
+            for (uint32_t i = 0; i < sp_infos.size(); i++) {
+                auto& sp_info = sp_infos.at(i);
+                pairs.push_back(std::make_pair(sp_info->db_name(), sp_info->sp_name()));
+            }
+            PrintItems(pairs, std::cout);
+            break;
+        }
+        case fesql::node::kCmdDropSp: {
+            if (db.empty()) {
+                std::cout << "please enter database first" << std::endl;
+                return;
+            }
+            std::string sp_name = cmd_node->GetArgs()[0];
+            std::string error;
+            printf("Drop store procedure %s? yes/no\n", sp_name.c_str());
+            std::string input;
+            std::cin >> input;
+            std::transform(input.begin(), input.end(), input.begin(),
+                           ::tolower);
+            if (input != "yes") {
+                printf("'drop %s' cmd is canceled!\n", sp_name.c_str());
+                return;
+            }
+            auto ns = cs->GetNsClient();
+            bool ok = ns->DropProcedure(db, sp_name, error);
+            if (ok) {
+                std::cout << "drop ok" << std::endl;
+            } else {
+                std::cout << "failed to drop. error msg: " << error
                           << std::endl;
             }
             break;
@@ -383,7 +561,8 @@ void HandleSQL(const std::string &sql) {
             std::cout << info->GetPhysicalPlan() << std::endl;
             return;
         }
-        case fesql::node::kCreateStmt: {
+        case fesql::node::kCreateStmt:
+        case fesql::node::kCreateSpStmt: {
             if (db.empty()) {
                 std::cout << "please use database first" << std::endl;
                 return;

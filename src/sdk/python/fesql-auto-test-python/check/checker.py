@@ -41,8 +41,10 @@ class RowsChecker(BaseChecker):
             log.info("convert expect:{}".format(expect))
         orderName = self.fesqlCase['expect'].get('order')
         if orderName!=None and len(orderName)>0:
-            schema = self.fesqlResult.resultSchema
-            index = fesql_util.getIndexByColumnName(schema,orderName)
+            desc = self.fesqlResult.rs._cursor_description()
+            index = fesql_util.getIndexByColumnName(desc ,orderName)
+            log.info("old data: {}".format(actual))
+            log.info("old data: {}".format(expect))
             expect = sorted(expect,key= lambda x:x[index])
             actual = sorted(actual, key=lambda x: x[index])
             log.info("order expect:{}".format(expect))
@@ -69,6 +71,7 @@ class RowsChecker(BaseChecker):
             else:
                 data = str(value);
                 column = columns[index]
+                log.info("column is:{}".format(column))
                 list.append(self.convertData(data,column))
         return list
 
@@ -78,11 +81,13 @@ class RowsChecker(BaseChecker):
         obj = None
         if data == 'None':
             return 'None'
-        if type == 'int' :
+        if type == 'int' or type == 'int32':
+            obj = int(data)
+        elif type == 'int64':
             obj = int(data)
         elif type == 'bigint':
             obj = int(data)
-        elif type == 'smallint':
+        elif type == 'smallint' or type == 'int16':
             obj = int(data)
         elif type == 'float':
             obj = float(data)
@@ -105,13 +110,15 @@ class ColumnsChecker(BaseChecker):
         super(ColumnsChecker,self).__init__(fesqlCase,fesqlResult)
 
     def check(self):
-        log.info("columns check")
         expect = self.fesqlCase['expect'].get('columns')
         fesql_util.convertExpectTypes(expect)
         schema = self.fesqlResult.resultSchema
-        assert schema.GetColumnCnt() == len(expect),"actual:"+str(schema.GetColumnCnt())+",expect:"+str(len(expect))
+        cursor_description = self.fesqlResult.rs._cursor_description()
+        result_schema_count = len(cursor_description)
+        assert result_schema_count == len(expect),"actual: {}, expect: {}".format(result_schema_count, len(expect))
         for index,value in enumerate(expect):
-            actual = schema.GetColumnName(index)+" "+str(fesql_util.getColumnType(DataTypeName(schema.GetColumnType(index))))
+            log.info("tpye id is {}".format(cursor_description[index][1]))
+            actual = "{} {}".format(cursor_description[index][0], fesql_util.getColumnType(cursor_description[index][1]))
             assert actual == value,'actual:{},expect:{}'.format(actual,value)
 
 class CountChecker(BaseChecker):

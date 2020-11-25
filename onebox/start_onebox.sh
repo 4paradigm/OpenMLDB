@@ -4,7 +4,7 @@ ulimit -c unlimited
 # start_onebox.sh
 
 # first start zookeeper
-IP=`hostname -i`
+IP=127.0.0.1
 
 ZK_CLUSTER=$IP:6181
 NS1=$IP:9622

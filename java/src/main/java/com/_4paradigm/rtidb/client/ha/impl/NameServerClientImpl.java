@@ -374,8 +374,13 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
     public boolean addIndex(String tableName, String indexName, List<String> tss, Map<String, String> cols) {
         Common.ColumnKey.Builder keyBuilder = Common.ColumnKey.newBuilder();
         keyBuilder.setIndexName(indexName);
-        for (String ts : tss) {
-            keyBuilder.addTsName(ts);
+        if (tss != null) {
+            if (tss.size() > 1) {
+                return false;
+            }
+            for (String ts : tss) {
+                keyBuilder.addTsName(ts);
+            }
         }
         AddIndexRequest.Builder builder = AddIndexRequest.newBuilder();
         builder.setName(tableName);
@@ -468,6 +473,18 @@ public class NameServerClientImpl implements NameServerClient, Watcher {
             tablets.add(ts.getEndpoint());
         }
         return tablets;
+    }
+
+    @Override
+    public List<OPStatus> showOPStatus(String tname) {
+        ShowOPStatusRequest request = null;
+        if (tname == null || tname.isEmpty()) {
+            request = ShowOPStatusRequest.newBuilder().build();
+        } else {
+            request = ShowOPStatusRequest.newBuilder().setName(tname).build();
+        }
+        ShowOPStatusResponse response = ns.showOPStatus(request);
+        return response.getOpStatusList();
     }
 
     public Map<String, String> showNs() throws Exception {

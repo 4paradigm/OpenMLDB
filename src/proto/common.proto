@@ -30,6 +30,7 @@ message ColumnDesc {
     optional uint64 lat_ttl = 7 [default = 0];
     optional rtidb.type.DataType data_type = 8;
     optional bool not_null = 9 [default = false];
+    optional bool is_constant = 10 [default = false];
 }
 
 message ColumnKey {
@@ -49,4 +50,20 @@ enum StorageMode {
 message EndpointAndTid {
     optional string endpoint = 1;
     optional uint32 tid = 2;
+}
+
+message PartitionMeta {
+    optional string endpoint = 1;
+    optional bool is_leader = 2;
+    optional bool is_alive = 3 [default = true];
+}
+
+message TablePartition {
+    optional uint32 pid = 1;
+    repeated PartitionMeta partition_meta = 2;
+}
+
+message CatalogInfo {
+    optional uint64 version = 1;
+    optional string endpoint = 2;
 }

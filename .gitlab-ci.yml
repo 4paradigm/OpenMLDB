@@ -14,6 +14,9 @@ stages:
 
 style_check:
   stage: precheck
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
   script:
     - source /root/.bashrc && bash tools/style_check.sh
   artifacts:
@@ -21,11 +24,32 @@ style_check:
       junit:
         - ./reports/style.xml
 
+rdma-build:
+  image: develop-registry.4pd.io/centos6_gcc7_fesql_rdma:0.0.12
+  stage: build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && RDMA=1 bash steps/simple_compile.sh
+    - mv build/bin/rtidb build/bin/rtidb_rdma
+  artifacts:
+    expire_in: 4h
+    paths:
+      - build/bin/rtidb_rdma
+  when: manual      
+
 fpga-build:
   image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
   stage: build
   tags:
     - fpga
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
   script:
     - source /root/.bashrc && sh tools/install_fesql.sh
     - ln -sf /depends/thirdparty thirdparty
@@ -35,6 +59,7 @@ fpga-build:
     expire_in: 4h
     paths:
       - build/bin
+  when: manual      
 
 build:
   stage: build
@@ -49,23 +74,23 @@ build:
       - build/bin/rtidb
       - build/src/sdk/libsql_jsdk.so
       - build/sql_pysdk/dist/*.whl
-      - build/python/dist/rtidb-1.0-py3-none-any.whl
+      - build/python/dist/*.whl
 
-mac_build:
-  variables:
-    CICD_RUNNER_TAG: "rtidb_mac"
-  tags:
-    - rtidb_mac
-  stage: build
-  script:
-    - bash steps/simple_compile_mac.sh
-    - mv build/bin/rtidb build/bin/rtidb_mac
-  artifacts:
-    expire_in: 4h
-    paths:
-      - build/bin/rtidb_mac
-      - build/src/sdk/libsql_jsdk.dylib
-      - build/sql_pysdk/dist/*.whl
+#mac_build:
+#  variables:
+#    CICD_RUNNER_TAG: "rtidb_mac"
+#  tags:
+#    - rtidb_mac
+#  stage: build
+#  script:
+#    - bash steps/simple_compile_mac.sh
+#    - mv build/bin/rtidb build/bin/rtidb_mac
+#  artifacts:
+#    expire_in: 4h
+#    paths:
+#      - build/bin/rtidb_mac
+#      - build/src/sdk/libsql_jsdk.dylib
+#      - build/sql_pysdk/dist/*.whl
 
 fpga_c++_ut:
   image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
@@ -87,6 +112,7 @@ fpga_c++_ut:
   except:
     variables:
       - $ENV_BUILD == "daily"
+  when: manual      
 
 #fpga_java_ut:
 #  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
@@ -143,6 +169,8 @@ java_ut:
         - java/target/surefire-reports/TEST-*.xml
         - java/target/failsafe-reports/junitreports/TEST-*.xml
         - java/target/failsafe-reports/TEST-*.xml
+  dependencies:
+    - build
 
 fesql_auto_test:
   stage: test
@@ -170,6 +198,7 @@ fesql_auto_test:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
+  when: manual      
 
 auto_test:
   stage: test
@@ -200,6 +229,7 @@ auto_test:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
+  when: manual      
 
 c++_ut:
   stage: test
@@ -238,6 +268,26 @@ py3_ut:
     variables:
       - $ENV_BUILD == "daily"
 
+fesql_auto_test_python:
+  stage: test
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test_python.sh
+  artifacts:
+    reports:
+      junit:
+        - src/sdk/python/fesql-auto-test-python/report/TEST-test_*.xml
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies:
+    - build
+  when: manual      
+
 tablet_one_demension:
   stage: ts_integration_test
   before_script:
@@ -248,7 +298,6 @@ tablet_one_demension:
     - ln -sf /depends/thirdsrc thirdsrc
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "test" "ns_client"
-  after_script:
     - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
@@ -270,7 +319,6 @@ tablet_multi_demension:
     - ln -sf /depends/thirdsrc thirdsrc
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "test" "ns_client"
-  after_script:
     - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
@@ -292,7 +340,6 @@ ns_one_demension:
     - ln -sf /depends/thirdsrc thirdsrc
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "ns_client" "disk"
-  after_script:
     - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
@@ -314,7 +361,6 @@ ns_multi_demension:
     - ln -sf /depends/thirdsrc thirdsrc
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 1 "ns_client" "disk"
-  after_script:
     - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
@@ -336,7 +382,6 @@ disk_table:
     - ln -sf /depends/thirdsrc thirdsrc
     - sed -i 's/log_level\ =\ debug/log_level\ =\ info/g' test-common/integrationtest/conf/test.conf
     - source /root/.bashrc && source /opt/rh/python27/enable && sh steps/integration_test_on_ramdir.sh 0 "disk"
-  after_script:
     - cp -r /rambuild/rtidb/test-output/integrationtest/test-reports ./
   artifacts:
     reports:
@@ -358,6 +403,34 @@ deploy-fedb:
     variables:
       - $ENV_BUILD == "daily"
 
+deploy-fedb-fpga:
+  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
+  tags:
+    - fpga
+  stage: daily
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - source /root/.bashrc && bash steps/simple_compile_fpga.sh
+    - source /root/.bashrc && bash steps/package_and_upload_fedb_fpga.sh
+  only:
+    variables:
+      - $ENV_BUILD == "daily"
+
+#TODO(kongquan) python support enable rdma switch
+deploy-fedb-rdma:
+  image: develop-registry.4pd.io/centos6_gcc7_fesql_rdma:0.0.12
+  stage: deploy
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - source /root/.bashrc && bash steps/simple_compile_fpga.sh
+    - source /root/.bashrc && bash steps/package_and_upload_fedb_rdma.sh
+  dependencies:
+    - rdma-build
+
 deploy-package:
   stage: deploy
   script:
@@ -378,7 +451,6 @@ docker-image:
     - source /root/.bashrc && sh tools/install_fesql.sh
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
-    - sh steps/simple_compile.sh
     - sh docker/copy_file.sh
     - make blob_proxy
     - bash docker/push_meta.sh
@@ -386,25 +458,7 @@ docker-image:
     - tags
     - develop
     - release/*
-    - feat/push-nexus-meta
-  except:
-    variables:
-      - $ENV_BUILD == "daily"
-  dependencies: []
-
-fesql_auto_test_python:
-  stage: test
-  before_script:
-    - mkdir /rambuild
-    - mount -t tmpfs -o size=3G tmpfs /rambuild
-  script:
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_test_python.sh
-  artifacts:
-    reports:
-      junit:
-        - src/sdk/python/fesql-auto-test-python/report/TEST-test_*.xml
+    - feat/335-fix-blob-proxy-startup-script-in-docker
   except:
     variables:
       - $ENV_BUILD == "daily"

@@ -1,6 +1,6 @@
 include_directories(${INCLUDE_DIRECTORIES} ${PROJECT_SOURCE_DIR}/src)
 
-add_library(rtidb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/blob_server.pb.cc proto/name_server.pb.cc)
+add_library(rtidb_proto STATIC proto/type.pb.cc proto/client.pb.cc proto/common.pb.cc proto/tablet.pb.cc proto/blob_server.pb.cc proto/name_server.pb.cc proto/sql_procedure.pb.cc)
 add_library(rtidb_codec STATIC codec/codec.cc codec/sdk_codec.cc)
 add_library(rtidb_catalog STATIC catalog/tablet_catalog.cc catalog/sdk_catalog.cc catalog/distribute_iterator.cc catalog/client_manager.cc)
 add_library(client STATIC client/tablet_client.cc client/ns_client.cc client/bs_client.cc)
@@ -44,6 +44,9 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
     add_executable(sdk_catalog_test catalog/sdk_catalog_test.cc flags.cc)
     target_link_libraries(sdk_catalog_test gtest ${BIN_LIBS})
+
+    add_executable(client_manager_test catalog/client_manager_test.cc)
+    target_link_libraries(client_manager_test gtest ${BIN_LIBS})
 
     add_executable(strings_test base/strings_test.cc)
     target_link_libraries(strings_test gtest ${BIN_LIBS})
@@ -135,7 +138,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_executable(nameserver_test nameserver/name_server_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc)
     target_link_libraries(nameserver_test  gtest  ${BIN_LIBS})
 
-    add_executable(blob_proxy_impl_test blob_proxy/blob_proxy_impl_test.cc proto/common.pb.cc proto/tablet.pb.cc flags.cc)
+    add_executable(blob_proxy_impl_test blob_proxy/blob_proxy_impl_test.cc proto/common.pb.cc proto/client.pb.cc proto/tablet.pb.cc flags.cc)
     target_link_libraries(blob_proxy_impl_test gtest ${BIN_LIBS})
 
     add_executable(nameserver_create_remote_test nameserver/name_server_create_remote_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc)

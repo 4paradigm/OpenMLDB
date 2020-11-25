@@ -74,4 +74,40 @@ public class WindowTest extends FesqlTest {
     public void testWindowUnionRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, true).run();
     }
+
+    /*
+        stored procedure syn case
+     */
+    @Test(dataProvider = "testRowData")
+    public void testRowRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, false).run();
+    }
+
+    @Test(dataProvider = "testRowRangeData")
+    public void testRowRangeRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, false).run();
+    }
+
+    @Test(dataProvider = "testWindowUnionData")
+    public void testWindowUnionRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, false).run();
+    }
+
+    /*
+        stored procedure asyn case
+     */
+    @Test(dataProvider = "testRowData")
+    public void testRowRequestModeWithSpAsyn(SQLCase testCase) throws Exception {
+        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, true).run();
+    }
+
+    @Test(dataProvider = "testRowRangeData")
+    public void testRowRangeRequestModeWithSpAsyn(SQLCase testCase) throws Exception {
+        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, true).run();
+    }
+
+    @Test(dataProvider = "testWindowUnionData")
+    public void testWindowUnionRequestModeWithSpAsyn(SQLCase testCase) throws Exception {
+        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, true).run();
+    }
 }

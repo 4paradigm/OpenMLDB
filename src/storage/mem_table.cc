@@ -879,7 +879,7 @@ bool MemTableKeyIterator::Valid() {
 
 void MemTableKeyIterator::Next() { NextPK(); }
 
-::fesql::vm::RowIterator* MemTableKeyIterator::GetValue(int8_t* addr) {
+::fesql::vm::RowIterator* MemTableKeyIterator::GetRawValue() {
     TimeEntries::Iterator* it = NULL;
     if (segments_[seg_idx_]->GetTsCnt() > 1) {
         KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[0];  // NOLINT
@@ -891,12 +891,7 @@ void MemTableKeyIterator::Next() { NextPK(); }
         ticket_.Push((KeyEntry*)pk_it_->GetValue());  // NOLINT
     }
     it->SeekToFirst();
-    if (addr == nullptr) {
-        return new MemTableWindowIterator(it, ttl_type_, expire_time_, expire_cnt_);
-    } else {
-        // dangerous, naver go to there
-        return new (addr) MemTableWindowIterator(it, ttl_type_, expire_time_, expire_cnt_);
-    }
+    return new MemTableWindowIterator(it, ttl_type_, expire_time_, expire_cnt_);
 }
 
 std::unique_ptr<::fesql::vm::RowIterator> MemTableKeyIterator::GetValue() {

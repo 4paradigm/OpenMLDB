@@ -5,6 +5,8 @@
 
 #include "storage/relational_table.h"
 
+#include <rocksdb/sst_file_manager.h>
+
 #include <algorithm>
 #include <set>
 #include <utility>
@@ -75,9 +77,11 @@ void RelationalTable::initOptionTemplate() {
     ssd_option_template.level0_file_num_compaction_trigger = 10;
     ssd_option_template.level0_slowdown_writes_trigger = 20;
     ssd_option_template.level0_stop_writes_trigger = 40;
-    ssd_option_template.write_buffer_size = 256 << 20;
     ssd_option_template.target_file_size_base = 256 << 20;
     ssd_option_template.max_bytes_for_level_base = 1024 << 20;
+    ssd_option_template.stats_dump_period_sec = 0;
+    std::shared_ptr<rocksdb::SstFileManager> ssd_sfm(rocksdb::NewSstFileManager(ssd_option_template.env));
+    ssd_option_template.sst_file_manager = ssd_sfm;
     rocksdb::BlockBasedTableOptions table_options;
     table_options.cache_index_and_filter_blocks = true;
     table_options.pin_l0_filter_and_index_blocks_in_cache = true;
@@ -107,11 +111,13 @@ void RelationalTable::initOptionTemplate() {
     hdd_option_template.level0_file_num_compaction_trigger = 10;
     hdd_option_template.level0_slowdown_writes_trigger = 20;
     hdd_option_template.level0_stop_writes_trigger = 40;
-    hdd_option_template.write_buffer_size = 256 << 20;
     hdd_option_template.target_file_size_base = 256 << 20;
     hdd_option_template.max_bytes_for_level_base = 1024 << 20;
     hdd_option_template.table_factory.reset(
         rocksdb::NewBlockBasedTableFactory(table_options));
+    hdd_option_template.stats_dump_period_sec = 0;
+    std::shared_ptr<rocksdb::SstFileManager> hdd_sfm(rocksdb::NewSstFileManager(hdd_option_template.env));
+    hdd_option_template.sst_file_manager = hdd_sfm;
 
     options_template_initialized = true;
 }

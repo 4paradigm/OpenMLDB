@@ -7,6 +7,7 @@
 #ifndef SRC_NAMESERVER_NAME_SERVER_IMPL_H_
 #define SRC_NAMESERVER_NAME_SERVER_IMPL_H_
 
+#include <snappy.h>
 #include <brpc/server.h>
 
 #include <atomic>
@@ -46,6 +47,9 @@ using ::rtidb::client::NsClient;
 using ::rtidb::client::TabletClient;
 using ::rtidb::zk::DistLock;
 using ::rtidb::zk::ZkClient;
+using ::rtidb::api::ProcedureInfo;
+using ::rtidb::api::CreateProcedureRequest;
+using ::rtidb::api::DropProcedureRequest;
 
 const uint64_t INVALID_PARENT_ID = UINT64_MAX;
 const uint32_t INVALID_PID = UINT32_MAX;
@@ -182,12 +186,16 @@ class NameServerImpl : public NameServer {
                                Closure* done);
 
     void CreateTableInfo(RpcController* controller,
-                         const CreateTableInfoRequest* request,
-                         CreateTableInfoResponse* response, Closure* done);
+            const CreateTableInfoRequest* request,
+            CreateTableInfoResponse* response, Closure* done);
 
     void CreateTable(RpcController* controller,
                      const CreateTableRequest* request,
                      GeneralResponse* response, Closure* done);
+
+    void CreateProcedure(RpcController* controller,
+                         const CreateProcedureRequest* request,
+                         GeneralResponse* response, Closure* done);
 
     void DropTableInternel(
         const DropTableRequest& request, GeneralResponse& response,  // NOLINT
@@ -246,6 +254,10 @@ class NameServerImpl : public NameServer {
     void ShowOPStatus(RpcController* controller,
                       const ShowOPStatusRequest* request,
                       ShowOPStatusResponse* response, Closure* done);
+
+    void ShowCatalog(RpcController* controller,
+                      const ShowCatalogRequest* request,
+                      ShowCatalogResponse* response, Closure* done);
 
     void ConfSet(RpcController* controller, const ConfSetRequest* request,
                  GeneralResponse* response, Closure* done);
@@ -417,6 +429,11 @@ class NameServerImpl : public NameServer {
 
     bool RegisterName();
 
+    bool CreateProcedureOnTablet(const ::rtidb::api::CreateProcedureRequest& sp_request);
+
+    void DropProcedure(RpcController* controller, const DropProcedureRequest* request,
+            GeneralResponse* response, Closure* done);
+
  private:
     // Recover all memory status, the steps
     // 1.recover table meta from zookeeper
@@ -426,6 +443,8 @@ class NameServerImpl : public NameServer {
     bool RecoverDb();
 
     bool RecoverTableInfo();
+
+    bool RecoverProcedureInfo();
 
     void RecoverClusterInfo();
 
@@ -927,12 +946,17 @@ class NameServerImpl : public NameServer {
                           std::shared_ptr<TableInfo> table_info,
                           rtidb::common::VersionPair* new_pair);
 
+    void DropProcedureOnTablet(const std::string& db_name, const std::string& sp_name);
+
+    void RecoverProcedureOnTablet(const std::string& endpoint);
+
  private:
     std::mutex mu_;
     Tablets tablets_;
     BlobServers blob_servers_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>> table_info_;
     std::map< std::string, std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>> db_table_info_;
+    std::map< std::string, std::map<std::string, std::shared_ptr<::rtidb::nameserver::ProcedureInfo>>> db_sp_info_;
     std::map<std::string, std::shared_ptr<::rtidb::nameserver::ClusterInfo>> nsc_;
     ZoneInfo zone_info_;
     ZkClient* zk_client_;
@@ -944,6 +968,7 @@ class NameServerImpl : public NameServer {
     std::string zk_table_data_path_;
     std::string zk_db_path_;
     std::string zk_db_table_data_path_;
+    std::string zk_db_sp_data_path_;
     std::string zk_auto_failover_node_;
     std::string zk_auto_recover_table_node_;
     std::string zk_table_changed_notify_node_;

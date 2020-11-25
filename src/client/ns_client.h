@@ -15,6 +15,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include "base/status.h"
 #include "node/node_manager.h"
@@ -25,6 +26,7 @@
 #include "rpc/rpc_client.h"
 #include "sdk/dbms_sdk.h"
 #include "sdk/result_set_impl.h"
+#include "catalog/schema_adapter.h"
 
 namespace rtidb {
 namespace client {
@@ -79,6 +81,8 @@ class NsClient {
         const std::string& name, const std::string& db, bool show_all,
         std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT
         std::string& msg);                                    // NOLINT
+
+    bool ShowCatalogVersion(std::map<std::string, uint64_t>* version_map, std::string* msg);
 
     bool ShowAllTable(
         std::vector<::rtidb::nameserver::TableInfo>& tables,  // NOLINT
@@ -246,12 +250,15 @@ class NsClient {
     bool DeleteIndex(const std::string& db, const std::string& table_name,
                      const std::string& idx_name, std::string& msg);  // NOLINT
 
+    bool DropProcedure(const std::string& db_name, const std::string& sp_name,
+            std::string& msg); // NOLINT
+
+    bool CreateProcedure(const ::rtidb::api::ProcedureInfo& sp_info,
+            std::string* msg);
+
  private:
     bool TransformToTableDef(
-        const std::string& table_name,
-        int replica_num,
-        const fesql::node::NodePointVector& column_desc_list,
-        const fesql::node::NodePointVector& partition_meta_list,
+        ::fesql::node::CreatePlanNode* create_node,
         ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status);
 
     bool HandleSQLCmd(const fesql::node::CmdNode* cmd_node,
