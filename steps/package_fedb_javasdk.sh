@@ -8,7 +8,7 @@ sdk_vesion=$1-SNAPSHOT
 mkdir -p src/sdk/java/sql-native/src/main/resources/
 sh tools/install_fesql.sh
 sh steps/gen_code.sh
-cp build/src/sdk/libsql_jsdk.dylib  src/sdk/java/sql-native/src/main/resources/
+test -f build/src/sdk/libsql_jsdk.dylib && cp build/src/sdk/libsql_jsdk.dylib  src/sdk/java/sql-native/src/main/resources/
 mkdir -p build && cd build &&  cmake .. && make -j4 sql_jsdk
 cd ${WORKDIR}
 cp build/src/sdk/libsql_jsdk.so  src/sdk/java/sql-native/src/main/resources/
