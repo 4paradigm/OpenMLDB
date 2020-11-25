@@ -2772,7 +2772,7 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
 
 bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     if (nullptr == in) {
-        LOG(WARNING) << "LeftJoin optimized skip: node is null";
+        LOG(WARNING) << "cluster optimized skip: node is null";
         return false;
     }
     switch (in->GetOpType()) {
@@ -2783,6 +2783,11 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                 case node::kJoinTypeLast: {
                     auto left = join_op->producers()[0];
                     auto right = join_op->producers()[1];
+                    if (kSchemaTypeRow == right->GetOutputType()) {
+                        DLOG(INFO)
+                            << "request join optimized skip: row and row join";
+                        return false;
+                    }
                     auto simplify_left = left;
                     if (!SimplifyJoinLeftInput(join_op, join_op->join(),
                                                &simplify_left)) {

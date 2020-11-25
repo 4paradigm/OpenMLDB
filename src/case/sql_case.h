@@ -191,8 +191,6 @@ class SQLCase {
     }
 
     const YAML::Node raw_node() const { return raw_node_; }
-
- private:
     std::string id_;
     std::string mode_;
     std::string desc_;
