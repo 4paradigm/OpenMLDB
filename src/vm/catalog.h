@@ -115,6 +115,8 @@ class ColumnSource {
     const node::ConstNode* const_value_;
 };*/
 
+constexpr uint32_t INVALID_POS = UINT32_MAX;
+
 struct IndexSt {
     std::string name;
     uint32_t index;

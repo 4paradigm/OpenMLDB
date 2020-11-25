@@ -2456,7 +2456,10 @@ bool GroupAndSortOptimized::TransformOrderExpr(
                         "or output is null";
         return false;
     }
-
+    if (index_st.ts_pos == INVALID_POS) {
+        LOG(WARNING) << "not set ts col";
+        return false;
+    }
     auto& ts_column = schema.Get(index_st.ts_pos);
     *output = order;
     int succ_match = -1;
