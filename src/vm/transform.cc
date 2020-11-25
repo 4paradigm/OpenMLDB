@@ -451,6 +451,7 @@ static Status CheckExprDependOnChildOnly(
     std::set<size_t> column_ids;
     return child_schemas_ctx->ResolveExprDependentColumns(expr, &column_ids);
 }
+
 Status BatchModeTransformer::TransformWindowOp(
     PhysicalOpNode* depend, const node::WindowPlanNode* w_ptr,
     PhysicalOpNode** output) {
@@ -2650,6 +2651,7 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
     }
     return true;
 }
+
 bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
                                              const Join& join,
                                              PhysicalOpNode** output) {
@@ -2663,25 +2665,46 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
     DLOG(INFO) << "join resolved related columns: \n" << oss.str();
     std::vector<std::pair<size_t, const fesql::node::ColumnRefNode*>>
         left_condition_columns;
+    ColumnProjects simplified_projects;
     for (auto column : columns) {
         size_t column_id;
         Status status = left->schemas_ctx()->ResolveColumnID(
             column->GetRelationName(), column->GetColumnName(), &column_id);
         if (status.isOK()) {
+            simplified_projects.Add(column->GetExprString(), column, nullptr);
             // column depend on left
             left_condition_columns.push_back(std::make_pair(column_id, column));
         }
     }
+    if (simplified_projects.size() < left->GetOutputSchemaSize()) {
+        PhysicalSimpleProjectNode* simplify_project_op = nullptr;
+        Status status = plan_ctx_->CreateOp<PhysicalSimpleProjectNode>(
+            &simplify_project_op, left, simplified_projects);
+        if (!status.isOK()) {
+            LOG(WARNING) << "Simplify join left input failed: " << status;
+            return false;
+        }
+        *output = simplify_project_op;
+    } else {
+        LOG(WARNING) << "Simplify columns size == left output columns";
+        return false;
+    }
 
-    auto depend = left;
-    while (depend->GetProducerCnt() > 0) {
+    auto root = left;
+    while (root->GetProducerCnt() > 0) {
         Status status;
+        auto schemas_ctx = root->GetProducer(0)->schemas_ctx();
         for (auto column : left_condition_columns) {
-            size_t schema_idx;
-            size_t col_idx;
-            status =
-                depend->GetProducer(0)->schemas_ctx()->ResolveColumnIndexByID(
+            size_t column_id;
+            status = schemas_ctx->ResolveColumnID(
+                column.second->GetRelationName(),
+                column.second->GetColumnName(), &column_id);
+            if (!status.isOK() && column.second->GetRelationName().empty()) {
+                size_t schema_idx;
+                size_t col_idx;
+                status = schemas_ctx->ResolveColumnIndexByID(
                     column.first, &schema_idx, &col_idx);
+            }
             if (!status.isOK()) {
                 break;
             }
@@ -2689,42 +2712,60 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
         if (!status.isOK()) {
             break;
         }
-        depend = depend->GetProducer(0);
+        root = root->GetProducer(0);
     }
-    ColumnProjects simplified_projects;
+    if (root == left) {
+        // simplify left node directly
+        return true;
+    }
+    // try to simplify depend node
+    ColumnProjects root_simplified_projects;
     for (auto column : left_condition_columns) {
         size_t schema_idx = 0;
         size_t col_idx = 0;
-        Status status = depend->schemas_ctx()->ResolveColumnIndexByID(
+        Status status = root->schemas_ctx()->ResolveColumnIndexByID(
             column.first, &schema_idx, &col_idx);
-
         if (!status.isOK()) {
-            LOG(WARNING) << "Simplify join left input failed: " << status;
-            return false;
+            LOG(WARNING)
+                << "Simplify root left input failed, apply left node simplify: "
+                << status;
+            return true;
         }
         DLOG(INFO) << "schema idx " << schema_idx << ", col idx " << col_idx;
-        simplified_projects.Add(
+        root_simplified_projects.Add(
             node::ExprString(column.second),
-            node_manager_->MakeColumnRefNode(depend->schemas_ctx()
+            node_manager_->MakeColumnRefNode(root->schemas_ctx()
                                                  ->GetSchemaSource(schema_idx)
                                                  ->GetColumnName(col_idx),
-                                             depend->schemas_ctx()
+                                             root->schemas_ctx()
                                                  ->GetSchemaSource(schema_idx)
                                                  ->GetSourceName()),
             nullptr);
     }
-    if (simplified_projects.size() < depend->GetOutputSchemaSize()) {
-        PhysicalSimpleProjectNode* simplify_project_op = nullptr;
-        Status status = plan_ctx_->CreateOp<PhysicalSimpleProjectNode>(
-            &simplify_project_op, depend, simplified_projects);
-        if (!status.isOK()) {
-            LOG(WARNING) << "Simplify join left input failed: " << status;
-            return false;
-        }
-        *output = simplify_project_op;
-    } else {
-        *output = left;
+    PhysicalSimpleProjectNode* root_simplify_project_op = nullptr;
+    auto status = plan_ctx_->CreateOp<PhysicalSimpleProjectNode>(
+        &root_simplify_project_op, root, root_simplified_projects);
+    if (!status.isOK()) {
+        LOG(WARNING) << status.msg;
+        LOG(WARNING) << "Simplify root left input failed: apply left node simplify";
+        return false;
     }
+    for (auto column : left_condition_columns) {
+        size_t schema_idx;
+        size_t col_idx;
+        size_t column_id;
+        status = root_simplify_project_op->schemas_ctx()->ResolveColumnID(
+            column.second->GetRelationName(), column.second->GetColumnName(),
+            &column_id);
+        if (!status.isOK() || column_id != column.first) {
+            LOG(WARNING) << "Can't Resolved " << node::ExprString(column.second)
+                         << "with column id " << column.first
+                         << " from root node, apply left node simplify";
+            return true;
+        }
+    }
+    DLOG(INFO) << "apply root node simplify!";
+    *output = root_simplify_project_op;
     return true;
 }
 

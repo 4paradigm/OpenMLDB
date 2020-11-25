@@ -221,7 +221,7 @@ cases:
         PROJECT(type=Aggregation, limit=10)
           REQUEST_UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
             +-UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
-                SIMPLE_PROJECT(sources=(#22, #23, #24, #25, #44, #27, #45))
+                SIMPLE_PROJECT(sources=(#15, #16, #17, #18, #37, #20, #38))
                   DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
             DATA_PROVIDER(request=t1)
             DATA_PROVIDER(type=Partition, table=t1, index=index_col25)
@@ -286,11 +286,11 @@ cases:
         PROJECT(type=Aggregation, limit=10)
           REQUEST_UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
             +-UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
-                SIMPLE_PROJECT(sources=(#22, #23, #24, #25, #45, #27, #46))
+                SIMPLE_PROJECT(sources=(#15, #16, #17, #18, #38, #20, #39))
                   DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
             SIMPLE_PROJECT(sources=(#13, #7, #8, #9, #10, #11, #12))
               DATA_PROVIDER(request=tx)
-            SIMPLE_PROJECT(sources=(#44, #1, #2, #3, #4, #5, #6))
+            SIMPLE_PROJECT(sources=(#37, #1, #2, #3, #4, #5, #6))
               DATA_PROVIDER(type=Partition, table=tx, index=index_x25)
     inputs:
       - name: tx

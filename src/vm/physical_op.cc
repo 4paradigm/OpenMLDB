@@ -184,12 +184,10 @@ static Status InitProjectSchemaSource(const ColumnProjects& projects,
                    "* should be extend before generate projects");
         if (expr->GetExprType() == node::kExprColumnRef) {
             auto col_ref = dynamic_cast<const node::ColumnRefNode*>(expr);
-            column_id = plan_ctx->ResolvedColumnID(col_ref->node_id());
-            if (column_id == 0) {
-                CHECK_STATUS(schemas_ctx->ResolveColumnID(
-                    col_ref->GetRelationName(), col_ref->GetColumnName(),
-                    &column_id));
-            }
+
+            CHECK_STATUS(schemas_ctx->ResolveColumnID(
+                col_ref->GetRelationName(), col_ref->GetColumnName(),
+                &column_id));
             project_source->SetColumnID(i, column_id);
             project_source->SetSource(i, 0, column_id);
         } else {
