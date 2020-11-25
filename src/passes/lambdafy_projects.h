@@ -29,8 +29,18 @@ class LambdafyProjects {
           library_(library),
           schemas_ctx_(schemas_ctx),
           analysis_ctx_(nm_, library_, schemas_ctx_),
+          node_id_to_column_id_(nullptr),
           legacy_agg_opt_(legacy_agg_opt) {}
-
+    LambdafyProjects(node::NodeManager* nm, const udf::UDFLibrary* library,
+                     const vm::SchemasContext* schemas_ctx,
+                     const std::map<size_t, size_t>* node_id_to_column_id,
+                     bool legacy_agg_opt)
+        : nm_(nm),
+          library_(library),
+          schemas_ctx_(schemas_ctx),
+          analysis_ctx_(nm_, library_, schemas_ctx_),
+          node_id_to_column_id_(node_id_to_column_id),
+          legacy_agg_opt_(legacy_agg_opt) {}
     /**
      * Create a virtual lambda representation for all project
      * expressions to codegen, which take signature: {
@@ -80,6 +90,7 @@ class LambdafyProjects {
 
     // to make compatible with legacy agg builder
     bool FallBackToLegacyAgg(const node::ExprNode* expr);
+    const std::map<size_t, size_t>* node_id_to_column_id_;
     bool legacy_agg_opt_;
     std::unordered_set<std::string> agg_opt_fn_names_ = {"sum", "min", "max",
                                                          "count", "avg"};
