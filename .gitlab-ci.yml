@@ -433,6 +433,9 @@ deploy-fedb-rdma:
     - source /root/.bashrc && bash steps/package_and_upload_fedb_rdma.sh
   dependencies:
     - rdma-build
+  only:
+    variables:
+      - $ENV_BUILD == "daily"
 
 deploy-package:
   stage: deploy
