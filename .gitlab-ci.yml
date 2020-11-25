@@ -7,9 +7,8 @@ stages:
   - precheck
   - build
   - daily
-  - test
-  - ts_integration_test
-  - ns_integration_test
+  - quick
+  - manual
   - deploy
 
 style_check:
@@ -40,6 +39,7 @@ rdma-build:
     expire_in: 4h
     paths:
       - build/bin/rtidb_rdma
+  when: manual
 
 fpga-build:
   image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
@@ -58,6 +58,7 @@ fpga-build:
     expire_in: 4h
     paths:
       - build/bin
+  when: manual
 
 build:
   stage: build
@@ -94,7 +95,7 @@ fpga_c++_ut:
   image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
   tags:
     - fpga
-  stage: test
+  stage: manual
   script:
     - source /root/.bashrc && sh tools/install_fesql.sh
     - ln -sf /depends/thirdparty thirdparty
@@ -110,6 +111,7 @@ fpga_c++_ut:
   except:
     variables:
       - $ENV_BUILD == "daily"
+  when: manual
 
 #fpga_java_ut:
 #  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
@@ -142,7 +144,7 @@ fpga_c++_ut:
 #        - java/target/failsafe-reports/TEST-*.xml
 
 java_ut:
-  stage: test
+  stage: quick
   except:
     variables:
       - $ENV_BUILD == "daily"
@@ -170,7 +172,7 @@ java_ut:
     - build
 
 fesql_auto_test:
-  stage: test
+  stage: manual
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -195,9 +197,10 @@ fesql_auto_test:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
+  when: manual
 
 auto_test:
-  stage: test
+  stage: manual
   except:
     variables:
       - $ENV_BUILD == "daily"
@@ -225,9 +228,10 @@ auto_test:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
+  when: manual
 
 c++_ut:
-  stage: test
+  stage: quick
   script:
     - source /root/.bashrc && sh tools/install_fesql.sh
     - ln -sf /depends/thirdparty thirdparty
@@ -245,7 +249,7 @@ c++_ut:
       - $ENV_BUILD == "daily"
 
 py3_ut:
-  stage: test
+  stage: quick
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -264,7 +268,7 @@ py3_ut:
       - $ENV_BUILD == "daily"
 
 fesql_auto_test_python:
-  stage: test
+  stage: manual
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -281,9 +285,10 @@ fesql_auto_test_python:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
+  when: manual
 
 tablet_one_demension:
-  stage: ts_integration_test
+  stage: manual
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -302,9 +307,10 @@ tablet_one_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
+  when: manual
 
 tablet_multi_demension:
-  stage: ts_integration_test
+  stage: quick
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -325,7 +331,7 @@ tablet_multi_demension:
       - $ENV_BUILD == "daily"
 
 ns_one_demension:
-  stage: ns_integration_test
+  stage: manual
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -344,9 +350,10 @@ ns_one_demension:
   except:
     variables:
       - $ENV_BUILD == "daily"
+  when: manual
 
 ns_multi_demension:
-  stage: ns_integration_test
+  stage: quick
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -367,7 +374,7 @@ ns_multi_demension:
       - $ENV_BUILD == "daily"
 
 disk_table:
-  stage: ns_integration_test
+  stage: manual
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -386,6 +393,7 @@ disk_table:
   except:
     variables:
       - $ENV_BUILD == "daily"
+  when: manual
 
 deploy-fedb:
   stage: daily
@@ -424,6 +432,9 @@ deploy-fedb-rdma:
     - source /root/.bashrc && bash steps/package_and_upload_fedb_rdma.sh
   dependencies:
     - rdma-build
+  only:
+    variables:
+      - $ENV_BUILD == "daily"
 
 deploy-package:
   stage: deploy
