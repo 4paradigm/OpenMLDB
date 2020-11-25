@@ -46,7 +46,6 @@ Status PhysicalPlanContext::InitFnDef(const ColumnProjects& projects,
     const bool enable_legacy_agg_opt = true;
     passes::LambdafyProjects lambdafy_pass(node_manager(), library(),
                                            schemas_ctx,
-                                           &node_id_to_column_id_,
                                            enable_legacy_agg_opt);
     node::LambdaNode* lambdafy_func = nullptr;
     std::vector<int> require_agg;

@@ -177,16 +177,19 @@ static Status InitProjectSchemaSource(const ColumnProjects& projects,
 
     for (size_t i = 0; i < projects.size(); ++i) {
         // set column id and source info
-        size_t column_id;
+        size_t column_id = 0;
         const node::ExprNode* expr = projects.GetExpr(i);
         CHECK_TRUE(expr != nullptr, common::kPlanError);
         CHECK_TRUE(expr->GetExprType() != node::kExprAll, common::kPlanError,
                    "* should be extend before generate projects");
         if (expr->GetExprType() == node::kExprColumnRef) {
             auto col_ref = dynamic_cast<const node::ColumnRefNode*>(expr);
-            CHECK_STATUS(schemas_ctx->ResolveColumnID(
-                col_ref->GetRelationName(), col_ref->GetColumnName(),
-                &column_id));
+            column_id = plan_ctx->ResolvedColumnID(col_ref->node_id());
+            if (column_id == 0) {
+                CHECK_STATUS(schemas_ctx->ResolveColumnID(
+                    col_ref->GetRelationName(), col_ref->GetColumnName(),
+                    &column_id));
+            }
             project_source->SetColumnID(i, column_id);
             project_source->SetSource(i, 0, column_id);
         } else {
@@ -676,7 +679,7 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
 base::Status PhysicalRequestUnionNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty request union");
     schemas_ctx_.Clear();
-    schemas_ctx_.MergeWithNewID(0, producers_[0]->schemas_ctx(), ctx);
+    schemas_ctx_.Merge(0, producers_[0]->schemas_ctx());
     return Status::OK();
 }
 

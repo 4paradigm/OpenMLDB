@@ -74,10 +74,6 @@ class PhysicalPlanContext {
         *result_op = nm_->RegisterNode(op);
         return Status::OK();
     }
-
-    void RegisterColumnRefColumnID(size_t node_id, size_t column_id) {
-        node_id_to_column_id_.insert(std::make_pair(node_id, column_id));
-    }
     node::NodeManager* node_manager() const { return nm_; }
     const udf::UDFLibrary* library() const { return library_; }
     const std::string& db() { return db_; }
@@ -109,8 +105,6 @@ class PhysicalPlanContext {
 
     // unique id counter for codegen function name id
     size_t codegen_func_id_counter_ = 0;
-
-    std::map<size_t, size_t> node_id_to_column_id_;
 };
 
 class PhysicalPass

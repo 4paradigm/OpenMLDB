@@ -2669,7 +2669,6 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
             column->GetRelationName(), column->GetColumnName(), &column_id);
         if (status.isOK()) {
             // column depend on left
-            plan_ctx_->RegisterColumnRefColumnID(column->node_id(), column_id);
             left_condition_columns.push_back(std::make_pair(column_id, column));
         }
     }
@@ -2698,13 +2697,21 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
         size_t col_idx = 0;
         Status status = depend->schemas_ctx()->ResolveColumnIndexByID(
             column.first, &schema_idx, &col_idx);
+
         if (!status.isOK()) {
             LOG(WARNING) << "Simplify join left input failed: " << status;
             return false;
         }
         DLOG(INFO) << "schema idx " << schema_idx << ", col idx " << col_idx;
-        simplified_projects.Add(node::ExprString(column.second), column.second,
-                                nullptr);
+        simplified_projects.Add(
+            node::ExprString(column.second),
+            node_manager_->MakeColumnRefNode(depend->schemas_ctx()
+                                                 ->GetSchemaSource(schema_idx)
+                                                 ->GetColumnName(col_idx),
+                                             depend->schemas_ctx()
+                                                 ->GetSchemaSource(schema_idx)
+                                                 ->GetSourceName()),
+            nullptr);
     }
     if (simplified_projects.size() < depend->GetOutputSchemaSize()) {
         PhysicalSimpleProjectNode* simplify_project_op = nullptr;

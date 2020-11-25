@@ -158,17 +158,10 @@ Status LambdafyProjects::VisitLeafExpr(node::ExprNode* expr,
             auto column_ref = dynamic_cast<node::ColumnRefNode*>(expr);
             size_t schema_idx;
             size_t col_idx;
-            size_t column_id = 0;
-            if (nullptr != node_id_to_column_id_ &&
-                node_id_to_column_id_->find(column_ref->node_id()) !=
-                node_id_to_column_id_->cend()) {
-                column_id = node_id_to_column_id_->at(column_ref->node_id());
-            } else {
-                CHECK_STATUS(schemas_ctx_->ResolveColumnRefIndex(
-                    column_ref, &schema_idx, &col_idx));
-                column_id = schemas_ctx_->GetSchemaSource(schema_idx)
-                                       ->GetColumnID(col_idx);
-            }
+            CHECK_STATUS(schemas_ctx_->ResolveColumnRefIndex(
+                column_ref, &schema_idx, &col_idx));
+            size_t column_id =
+                schemas_ctx_->GetSchemaSource(schema_idx)->GetColumnID(col_idx);
             *out = nm_->MakeGetFieldExpr(row_arg, column_ref->GetColumnName(),
                                          column_id);
             break;
@@ -390,27 +383,13 @@ bool LambdafyProjects::FallBackToLegacyAgg(const node::ExprNode* expr) {
             const std::string& col_name = col->GetColumnName();
             size_t schema_idx;
             size_t col_idx;
-            if (nullptr != node_id_to_column_id_ &&
-                node_id_to_column_id_->find(col->node_id()) !=
-                    node_id_to_column_id_->cend()) {
-                size_t column_id = node_id_to_column_id_->at(col->node_id());
-                auto status = schemas_ctx_->ResolveColumnIndexByID(
-                    column_id, &schema_idx, &col_idx);
-                if (!status.isOK()) {
-                    LOG(WARNING) << "fail to resolve column "
-                                 << rel_name + "." + col_name;
-                    return false;
-                }
-            } else {
-                auto status = schemas_ctx_->ResolveColumnRefIndex(
-                    col, &schema_idx, &col_idx);
-                if (!status.isOK()) {
-                    LOG(WARNING) << "fail to resolve column "
-                                 << rel_name + "." + col_name;
-                    return false;
-                }
+            auto status =
+                schemas_ctx_->ResolveColumnRefIndex(col, &schema_idx, &col_idx);
+            if (!status.isOK()) {
+                LOG(WARNING)
+                    << "fail to resolve column " << rel_name + "." + col_name;
+                return false;
             }
-
             switch (schemas_ctx_->GetSchema(schema_idx)->Get(col_idx).type()) {
                 case fesql::type::kInt16:
                 case fesql::type::kInt32:
