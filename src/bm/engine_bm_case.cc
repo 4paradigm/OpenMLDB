@@ -122,7 +122,7 @@ static void EngineBatchMode(const std::string sql, MODE mode, int64_t limit_cnt,
     base::Status query_status;
     engine.Get(sql, "db", session, query_status);
     std::ostringstream runner_oss;
-    session.GetMainTask()->Print(runner_oss, "");
+    session.GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     switch (mode) {
         case BENCHMARK: {
@@ -498,7 +498,7 @@ void EngineRequestModeSimpleQueryBM(const std::string& db,
     base::Status query_status;
     engine.Get(sql, db, session, query_status);
     std::ostringstream runner_oss;
-    session.GetMainTask()->Print(runner_oss, "");
+    session.GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     auto table_handler = catalog->GetTable(db, query_table);
     switch (mode) {
@@ -545,7 +545,7 @@ void EngineBatchModeSimpleQueryBM(const std::string& db, const std::string& sql,
     base::Status query_status;
     engine.Get(sql, db, session, query_status);
     std::ostringstream runner_oss;
-    session.GetMainTask()->Print(runner_oss, "");
+    session.GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     switch (mode) {
         case BENCHMARK: {
