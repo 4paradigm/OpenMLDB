@@ -141,6 +141,7 @@ public class FESQLInsertPreparedStatementBenchmark {
             e.printStackTrace();
         }
     }
+
     @Benchmark
     public void insert500Bm() {
         String key = "500_"+ String.valueOf(counter.incrementAndGet());
