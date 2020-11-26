@@ -28,8 +28,7 @@
 #include "proto/common.pb.h"
 #include "vm/catalog.h"
 #include "proto/tablet.pb.h"
-#include "catalog/sdk_catalog.h"
-#include "sdk/base_impl.h"
+#include "catalog/base.h"
 
 namespace rtidb {
 namespace catalog {
@@ -264,7 +263,7 @@ class SchemaAdapter {
         return true;
     }
 
-    static std::shared_ptr<rtidb::catalog::ProcedureInfoImpl> ConvertProcedureInfo(
+    static std::shared_ptr<fesql::sdk::ProcedureInfo> ConvertProcedureInfo(
             const rtidb::api::ProcedureInfo& sp_info) {
         ::fesql::vm::Schema fesql_in_schema;
         if (!rtidb::catalog::SchemaAdapter::ConvertSchema(sp_info.input_schema(), &fesql_in_schema)) {

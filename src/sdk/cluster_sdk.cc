@@ -173,31 +173,31 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         }
         std::string uncompressed;
         ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
-        ::rtidb::api::ProcedureInfo sp_info;
-        ok = sp_info.ParseFromString(uncompressed);
+        ::rtidb::api::ProcedureInfo sp_info_pb;
+        ok = sp_info_pb.ParseFromString(uncompressed);
         if (!ok) {
             LOG(WARNING) << "fail to parse procedure proto. node: " << node << " value: "<< value;
             continue;
         }
-        DLOG(INFO) << "parse procedure " << sp_info.sp_name() << " ok";
+        DLOG(INFO) << "parse procedure " << sp_info_pb.sp_name() << " ok";
         // conver to ProcedureInfoImpl
-        auto sp_info_impl = rtidb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info);
-        if (!sp_info_impl) {
+        auto sp_info = rtidb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info_pb);
+        if (!sp_info) {
             LOG(WARNING) << "convert procedure info failed, sp_name: "
-                << sp_info.sp_name() << " db: " << sp_info.db_name();
+                << sp_info->GetSpName() << " db: " << sp_info->GetDbName();
             continue;
         }
-        auto it = db_sp_map.find(sp_info_impl->GetDbName());
+        auto it = db_sp_map.find(sp_info->GetDbName());
         if (it == db_sp_map.end()) {
             std::map<std::string,
                      std::shared_ptr<fesql::sdk::ProcedureInfo>>
-                     sp_in_db = {{sp_info_impl->GetSpName(), sp_info_impl}};
-            db_sp_map.insert(std::make_pair(sp_info_impl->GetDbName(), sp_in_db));
+                     sp_in_db = {{sp_info->GetSpName(), sp_info}};
+            db_sp_map.insert(std::make_pair(sp_info->GetDbName(), sp_in_db));
         } else {
-            it->second.insert(std::make_pair(sp_info_impl->GetSpName(), sp_info_impl));
+            it->second.insert(std::make_pair(sp_info->GetSpName(), sp_info));
         }
-        DLOG(INFO) << "load procedure info with sp name " << sp_info_impl->GetSpName()
-            << " in db " << sp_info_impl->GetDbName();
+        DLOG(INFO) << "load procedure info with sp name " << sp_info->GetSpName()
+            << " in db " << sp_info->GetDbName();
     }
     if (!new_catalog->Init(tables, db_sp_map)) {
         LOG(WARNING) << "fail to init catalog";

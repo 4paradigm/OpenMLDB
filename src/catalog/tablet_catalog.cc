@@ -313,7 +313,7 @@ bool TabletCatalog::DeleteDB(const std::string& db) {
 bool TabletCatalog::IndexSupport() { return true; }
 
 bool TabletCatalog::AddProcedure(const std::string& db, const std::string& sp_name,
-        const std::shared_ptr<rtidb::catalog::ProcedureInfoImpl>& sp_info) {
+        const std::shared_ptr<fesql::sdk::ProcedureInfo>& sp_info) {
     std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
     auto& sp_map = db_sp_map_[db];
     if (sp_map.find(sp_name) != sp_map.end()) {
@@ -408,7 +408,7 @@ bool TabletCatalog::UpdateClient(const std::map<std::string, std::string>& real_
 
 uint64_t TabletCatalog::GetVersion() const { return version_.load(std::memory_order_relaxed); }
 
-const std::shared_ptr<::fesql::sdk::ProcedureInfo> TabletCatalog::GetProcedureInfo(
+std::shared_ptr<::fesql::sdk::ProcedureInfo> TabletCatalog::GetProcedureInfo(
         const std::string& db, const std::string& sp_name) {
     std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
     auto db_sp_it = db_sp_map_.find(db);

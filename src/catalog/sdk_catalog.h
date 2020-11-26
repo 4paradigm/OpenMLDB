@@ -29,8 +29,7 @@
 #include "client/tablet_client.h"
 #include "proto/name_server.pb.h"
 #include "vm/catalog.h"
-#include "sdk/base.h"
-#include "sdk/base_impl.h"
+#include "catalog/base.h"
 
 namespace rtidb {
 namespace catalog {
@@ -139,7 +138,7 @@ class SDKCatalog : public ::fesql::vm::Catalog {
 
     std::shared_ptr<TabletAccessor> GetTablet() const;
 
-    const std::shared_ptr<::fesql::sdk::ProcedureInfo> GetProcedureInfo(const std::string& db,
+    std::shared_ptr<::fesql::sdk::ProcedureInfo> GetProcedureInfo(const std::string& db,
             const std::string& sp_name) override;
 
     const Procedures& GetProcedures() { return db_sp_map_; }
@@ -149,48 +148,6 @@ class SDKCatalog : public ::fesql::vm::Catalog {
     SDKDB db_;
     std::shared_ptr<ClientManager> client_manager_;
     Procedures db_sp_map_;
-};
-
-class ProcedureInfoImpl : public fesql::sdk::ProcedureInfo {
- public:
-     ProcedureInfoImpl(const std::string& db_name, const std::string& sp_name,
-             const std::string& sql,
-             const ::fesql::sdk::SchemaImpl& input_schema,
-             const ::fesql::sdk::SchemaImpl& output_schema,
-             const std::vector<std::string>& tables,
-             const std::string& main_table)
-        : db_name_(db_name),
-          sp_name_(sp_name),
-          sql_(sql),
-          input_schema_(input_schema),
-          output_schema_(output_schema),
-          tables_(tables),
-          main_table_(main_table) {}
-
-    ~ProcedureInfoImpl() {}
-
-    const ::fesql::sdk::Schema& GetInputSchema() const override { return input_schema_; }
-
-    const ::fesql::sdk::Schema& GetOutputSchema() const override { return output_schema_; }
-
-    const std::string& GetDbName() const override { return db_name_; }
-
-    const std::string& GetSpName() const override { return sp_name_; }
-
-    const std::string& GetSql() const override { return sql_; }
-
-    const std::vector<std::string>& GetTables() const override { return tables_; }
-
-    const std::string& GetMainTable() const override { return main_table_; }
-
- private:
-    std::string db_name_;
-    std::string sp_name_;
-    std::string sql_;
-    ::fesql::sdk::SchemaImpl input_schema_;
-    ::fesql::sdk::SchemaImpl output_schema_;
-    std::vector<std::string> tables_;
-    std::string main_table_;
 };
 
 }  // namespace catalog

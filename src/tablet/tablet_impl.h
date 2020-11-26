@@ -34,7 +34,6 @@
 #include "vm/engine.h"
 #include "zk/zk_client.h"
 #include "catalog/schema_adapter.h"
-#include "sdk/base_impl.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;

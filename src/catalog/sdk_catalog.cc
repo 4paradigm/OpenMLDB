@@ -150,7 +150,7 @@ std::shared_ptr<TabletAccessor> SDKCatalog::GetTablet() const {
     return client_manager_->GetTablet();
 }
 
-const std::shared_ptr<::fesql::sdk::ProcedureInfo> SDKCatalog::GetProcedureInfo(
+std::shared_ptr<::fesql::sdk::ProcedureInfo> SDKCatalog::GetProcedureInfo(
         const std::string& db, const std::string& sp_name) {
     auto db_sp_it = db_sp_map_.find(db);
     if (db_sp_it == db_sp_map_.end()) {
