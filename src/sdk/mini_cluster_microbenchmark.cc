@@ -625,8 +625,9 @@ last join {4} order by {4}.x7 on {0}.c4 = {4}.x4 and {0}.c7 - 10000 >= {4}.x7;
 static void LastJoinNWindowOutputCase(fesql::sqlcase::SQLCase& sql_case, int32_t window_size) {  // NOLINT
     sql_case.db_ = fesql::sqlcase::SQLCase::GenRand("db");
     int request_id = 0;
-    std::vector<std::string> columns = {"id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"};
-    std::vector<std::string>  indexs = {"index1:c1:c7", "index2:c2:c7", "index3:c3:c7", "index4:c4:c7"};
+    std::vector<std::string> columns = {"id int",    "c1 string", "c2 string",   "c3 string",
+                                        "c4 string", "c6 double", "c7 timestamp"};
+    std::vector<std::string> indexs = {"index1:c1:c7", "index2:c2:c7", "index3:c3:c7", "index4:c4:c7"};
     // table {0}
     {
         fesql::sqlcase::SQLCase::TableInfo input;
