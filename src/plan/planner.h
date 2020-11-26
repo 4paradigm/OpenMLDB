@@ -31,8 +31,11 @@ using node::SQLNode;
 
 class Planner {
  public:
-    Planner(node::NodeManager *manager, const bool is_batch_mode)
-        : is_batch_mode_(is_batch_mode), node_manager_(manager) {}
+    Planner(node::NodeManager *manager, const bool is_batch_mode,
+            const bool is_cluster_optimized)
+        : is_batch_mode_(is_batch_mode),
+          is_cluster_optimized_(is_cluster_optimized),
+          node_manager_(manager) {}
     virtual ~Planner() {}
     virtual int CreatePlanTree(
         const NodePointVector &parser_trees,
@@ -44,6 +47,7 @@ class Planner {
     bool ExpandCurrentHistoryWindow(
         std::vector<const node::WindowDefNode *> *windows);
     const bool is_batch_mode_;
+    const bool is_cluster_optimized_;
 
  protected:
     bool IsTable(node::PlanNode *node);
@@ -94,9 +98,9 @@ class Planner {
 class SimplePlanner : public Planner {
  public:
     explicit SimplePlanner(node::NodeManager *manager)
-        : Planner(manager, true) {}
-    explicit SimplePlanner(node::NodeManager *manager, bool is_batch_mode)
-        : Planner(manager, is_batch_mode) {}
+        : Planner(manager, true, false) {}
+    SimplePlanner(node::NodeManager *manager, bool is_batch_mode, bool is_cluster_optimized = false)
+        : Planner(manager, is_batch_mode, is_cluster_optimized) {}
     int CreatePlanTree(const NodePointVector &parser_trees,
                        PlanNodeList &plan_trees,
                        Status &status);  // NOLINT (runtime/references)

@@ -391,15 +391,26 @@ class Runner : public node::NodeBase<Runner> {
     virtual ~Runner() {}
     void AddProducer(Runner* runner) { producers_.push_back(runner); }
     const std::vector<Runner*>& GetProducers() const { return producers_; }
-    virtual void Print(std::ostream& output, const std::string& tab) const {
+    virtual void PrintRunnerInfo(std::ostream& output,
+                                 const std::string& tab) const {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_);
+    }
+    virtual void Print(std::ostream& output, const std::string& tab,
+                       std::set<int32_t>& visited_ids) const {  // NOLINT
+        PrintRunnerInfo(output, tab);
         if (need_cache_) {
             output << "(cache_enable)";
         }
+        if (visited_ids.find(id_) != visited_ids.cend()) {
+            output << "\n";
+            output << "  " << tab << "...";
+            return;
+        }
+        visited_ids.insert(id_);
         if (!producers_.empty()) {
             for (auto producer : producers_) {
                 output << "\n";
-                producer->Print(output, "  " + tab);
+                producer->Print(output, "  " + tab, visited_ids);
             }
         }
     }
@@ -764,20 +775,11 @@ class RequestLastJoinRunner : public Runner {
     ~RequestLastJoinRunner() {}
 
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    virtual void Print(std::ostream& output, const std::string& tab) const {
+    virtual void PrintRunnerInfo(std::ostream& output,
+                                 const std::string& tab) const {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_);
         if (output_right_only_) {
             output << " OUTPUT_RIGHT_ONLY";
-        }
-
-        if (need_cache_) {
-            output << "(cache_enable)";
-        }
-        if (!producers_.empty()) {
-            for (auto producer : producers_) {
-                output << "\n";
-                producer->Print(output, "  " + tab);
-            }
         }
     }
     JoinGenerator join_gen_;
@@ -806,19 +808,12 @@ class ProxyRequestRunner : public Runner {
         : Runner(id, kRunnerRequestRunProxy, schema_ctx), task_id_(task_id) {}
     ~ProxyRequestRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
-    virtual void Print(std::ostream& output, const std::string& tab) const {
+    virtual void PrintRunnerInfo(std::ostream& output,
+                                 const std::string& tab) const {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_)
                << "(TASK_ID=" << task_id_ << ")";
-        if (need_cache_) {
-            output << "(cache_enable)";
-        }
-        if (!producers_.empty()) {
-            for (auto producer : producers_) {
-                output << "\n";
-                producer->Print(output, "  " + tab);
-            }
-        }
     }
+
     const int32_t task_id() const { return task_id_; }
 
  private:
@@ -853,7 +848,8 @@ class ClusterTask {
         if (nullptr == root_) {
             output << tab << "NULL RUNNER\n";
         } else {
-            root_->Print(output, tab);
+            std::set<int32_t> visited_ids;
+            root_->Print(output, tab, visited_ids);
         }
     }
     Runner* GetRoot() const { return root_; }

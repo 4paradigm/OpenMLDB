@@ -223,7 +223,8 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         node::ProjectListNode *merged_project =
             node_manager_->MakeProjectListPlanNode(first_window_project->GetW(),
                                                    true);
-        if (node::ProjectListNode::MergeProjectList(
+        if (!is_cluster_optimized_ &&
+            node::ProjectListNode::MergeProjectList(
                 simple_project, first_window_project, merged_project)) {
             project_list_vec[0] = nullptr;
             project_list_vec[1] = merged_project;
@@ -521,6 +522,8 @@ int SimplePlanner::CreatePlanTree(
                     ::fesql::node::PlanNode *primary_node;
                     if (!ValidatePrimaryPath(query_plan, &primary_node,
                                              status)) {
+                        DLOG(INFO) << "primay check fail, logical plan:\n"
+                                   << *query_plan;
                         return status.code;
                     }
                     dynamic_cast<node::TablePlanNode *>(primary_node)

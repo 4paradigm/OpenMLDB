@@ -415,11 +415,15 @@ void DoEngineCheckExpect(const SQLCase& sql_case, const vm::Schema& schema,
         // Check Output Schema
         type::TableDef case_output_table;
         ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
-        std::vector<Row> case_output_data;
-        ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
         ASSERT_NO_FATAL_FAILURE(
             CheckSchema(schema, case_output_table.columns()));
 
+
+        LOG(INFO) << "Real result:\n";
+        PrintRows(schema, sorted_output);
+
+        std::vector<Row> case_output_data;
+        ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
         // for batch request mode, trivally compare last result
         if (is_batch_request && sql_case.batch_request().columns_.empty()) {
             if (!case_output_data.empty()) {
@@ -430,8 +434,6 @@ void DoEngineCheckExpect(const SQLCase& sql_case, const vm::Schema& schema,
         LOG(INFO) << "Expect result:\n";
         PrintRows(schema, case_output_data);
 
-        LOG(INFO) << "Real result:\n";
-        PrintRows(schema, sorted_output);
 
         ASSERT_NO_FATAL_FAILURE(
             CheckRows(schema, sorted_output, case_output_data));
