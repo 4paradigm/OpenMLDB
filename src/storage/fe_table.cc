@@ -7,12 +7,12 @@
 //
 
 #include "storage/fe_table.h"
+#include <sys/time.h>
 #include <algorithm>
 #include <string>
 #include "base/fe_hash.h"
 #include "base/fe_slice.h"
 #include "glog/logging.h"
-#include <sys/time.h>
 
 namespace fesql {
 namespace storage {
