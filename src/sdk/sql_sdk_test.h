@@ -60,7 +60,7 @@ class SQLSDKTest : public rtidb::test::SQLCaseTest {
     static void DropTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                            std::shared_ptr<SQLRouter> router);
     static void InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                             std::shared_ptr<SQLRouter> router, bool is_bath);
+                             std::shared_ptr<SQLRouter> router, bool insert_first_input);
 
     static void CovertFesqlRowToRequestRow(fesql::codec::RowView* row_view,
                                            std::shared_ptr<rtidb::sdk::SQLRequestRow> request_row);
@@ -157,12 +157,12 @@ void SQLSDKTest::DropTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
 }
 
 void SQLSDKTest::InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                              std::shared_ptr<SQLRouter> router, bool is_bath) {
+                              std::shared_ptr<SQLRouter> router, bool insert_first_input) {
     DLOG(INFO) << "Insert Tables BEGIN";
     fesql::sdk::Status status;
     // insert inputs
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
-        if (0 == i && !is_bath) {
+        if (0 == i && !insert_first_input) {
             continue;
         }
         // insert into table

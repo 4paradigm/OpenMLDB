@@ -519,7 +519,7 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
     fesql::sdk::Status status;
     rtidb::sdk::SQLSDKTest::CreateDB(sql_case, router);
     rtidb::sdk::SQLSDKTest::CreateTables(sql_case, router, 8);
-    rtidb::sdk::SQLSDKTest::InsertTables(sql_case, router, false);
+    rtidb::sdk::SQLSDKTest::InsertTables(sql_case, router, true);
     {
         // execute SQL
         std::string sql = sql_case.sql_str();
@@ -622,13 +622,118 @@ last join {4} order by {4}.x7 on {0}.c4 = {4}.x4 and {0}.c7 - 10000 >= {4}.x7;
     BM_RequestQuery(state, sql_case);
 }
 
+static void LastJoinNWindowOutputCase(fesql::sqlcase::SQLCase& sql_case, int32_t window_size) {  // NOLINT
+    sql_case.db_ = fesql::sqlcase::SQLCase::GenRand("db");
+    int request_id = 0;
+    std::vector<std::string> columns = {"id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"};
+    std::vector<std::string>  indexs = {"index1:c1:c7", "index2:c2:c7", "index3:c3:c7", "index4:c4:c7"};
+    // table {0}
+    {
+        fesql::sqlcase::SQLCase::TableInfo input;
+        input.columns_ = columns;
+        input.indexs_ = indexs;
+        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        int id = 0;
+        int64_t ts = 1590738991000;
+        for (int i = 1; i < window_size; i++) {
+            ts -= 1000;
+            // prepare row {id, c1, c2, c3, c4, c5, c6, c7};
+            input.rows_.push_back(
+                {std::to_string(id++), "a", "aa", "aaa", "aaaa", std::to_string(i), std::to_string(ts)});
+            input.rows_.push_back(
+                {std::to_string(id++), "b", "bb", "bbb", "bbbb", std::to_string(i), std::to_string(ts)});
+            input.rows_.push_back(
+                {std::to_string(id++), "c", "cc", "ccc", "cccc", std::to_string(i), std::to_string(ts)});
+        }
+        sql_case.inputs_.push_back(input);
+        request_id = id;
+    }
+    // request table {0}
+    {
+        fesql::sqlcase::SQLCase::TableInfo request;
+        request.columns_ = columns;
+        request.indexs_ = indexs;
+        request.rows_.push_back(
+            {std::to_string(request_id), "a", "bb", "ccc", "aaaa", "1.0", std::to_string(1590738991000 + 1000)});
+        sql_case.batch_request_ = request;
+    }
+}
+static void BM_LastJoin4WindowOutput(benchmark::State& state) {  // NOLINT
+    fesql::sqlcase::SQLCase sql_case;
+    LastJoinNWindowOutputCase(sql_case, state.range(0));
+    sql_case.desc_ = "BM_LastJoin4WindowOutput";
+    sql_case.sql_str_ = R"(
+select * from
+(
+select id as out1_id, c1, sum(c6) over w1 as w1_sum_c6, count(c6) over w1 as w1_cnt_c6 from {0}
+window w1 as (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out1 last join
+(
+select id as out2_id, c2, sum(c6) over w2 as w2_sum_c6, count(c6) over w2 as w2_cnt_c6 from {0}
+window w2 as (PARTITION BY {0}.c2 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out2 on out1_id=out2_id last join
+(
+select id as out3_id, c3, sum(c6) over w3 as w3_sum_c6, count(c6) over w3 as w3_cnt_c6 from {0}
+window w3 as (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out3 on out1_id=out3_id last join
+(
+select id as out4_id, c4, sum(c6) over w4 as w4_sum_c6, count(c6) over w4 as w4_cnt_c6 from {0}
+window w4 as (PARTITION BY {0}.c4 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out4 on out1_id=out4_id;
+)";
+    BM_RequestQuery(state, sql_case);
+}
+static void BM_LastJoin8WindowOutput(benchmark::State& state) {  // NOLINT
+    fesql::sqlcase::SQLCase sql_case;
+    LastJoinNWindowOutputCase(sql_case, state.range(0));
+    sql_case.desc_ = "BM_LastJoin4WindowOutput";
+    sql_case.sql_str_ = R"(
+select * from
+(
+select id as out1_id, c1, sum(c6) over w1 as w1_sum_c6, count(c6) over w1 as w1_cnt_c6 from {0}
+window w1 as (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out1 last join
+(
+select id as out2_id, c2, sum(c6) over w2 as w2_sum_c6, count(c6) over w2 as w2_cnt_c6 from {0}
+window w2 as (PARTITION BY {0}.c2 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out2 on out1_id=out2_id last join
+(
+select id as out3_id, c3, sum(c6) over w3 as w3_sum_c6, count(c6) over w3 as w3_cnt_c6 from {0}
+window w3 as (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out3 on out1_id=out3_id last join
+(
+select id as out4_id, c4, sum(c6) over w4 as w4_sum_c6, count(c6) over w4 as w4_cnt_c6 from {0}
+window w4 as (PARTITION BY {0}.c4 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out4 on out1_id=out4_id last join
+(
+select id as out5_id, c1, sum(c6) over w5 as w5_sum_c6, count(c6) over w5 as w5_cnt_c6 from {0}
+window w5 as (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW)
+) as out5 on out1_id=out5_id last join
+(
+select id as out6_id, c2, sum(c6) over w6 as w6_sum_c6, count(c6) over w6 as w6_cnt_c6 from {0}
+window w6 as (PARTITION BY {0}.c2 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW)
+) as out6 on out1_id=out6_id last join
+(
+select id as out7_id, c3, sum(c6) over w7 as w7_sum_c6, count(c6) over w7 as w7_cnt_c6 from {0}
+window w7 as (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW)
+) as out7 on out1_id=out7_id last join
+(
+select id as out8_id, c4, sum(c6) over w8 as w8_sum_c6, count(c6) over w8 as w8_cnt_c6 from {0}
+window w8 as (PARTITION BY {0}.c4 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW)
+) as out8 on out1_id=out8_id
+;
+)";
+    BM_RequestQuery(state, sql_case);
+}
+
 BENCHMARK(BM_SimpleLastJoin1Table);
 BENCHMARK(BM_SimpleLastJoin2Table);
 BENCHMARK(BM_SimpleLastJoin3Table);
 BENCHMARK(BM_SimpleLastJoin4Table);
-BENCHMARK(BM_SimpleRowWindow)->Args({4})->Args({100})->Args({1000})->Args({10000})->Args({20000})->Args({100000});
-BENCHMARK(BM_SimpleRow4Window)->Args({4})->Args({100})->Args({1000})->Args({10000})->Args({20000})->Args({100000});
-
+BENCHMARK(BM_SimpleRowWindow)->Args({10})->Args({100})->Args({1000})->Args({10000});
+BENCHMARK(BM_SimpleRow4Window)->Args({10})->Args({100})->Args({1000})->Args({10000});
+BENCHMARK(BM_LastJoin4WindowOutput)->Args({10})->Args({100})->Args({1000})->Args({10000});
+BENCHMARK(BM_LastJoin8WindowOutput)->Args({10})->Args({100})->Args({1000})->Args({10000});
 BENCHMARK(BM_SimpleQueryFunction);
 
 BENCHMARK(BM_SimpleInsertFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
