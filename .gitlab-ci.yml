@@ -5,7 +5,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 stages:
 #  - precheck
-#  - build
+  - build
 #  - daily
   - test
 #  - ts_integration_test
@@ -58,21 +58,21 @@ stages:
 #    expire_in: 4h
 #    paths:
 #      - build/bin
-#
-#build:
-#  stage: build
-#  script:
-#    - source /root/.bashrc && sh tools/install_fesql.sh
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && bash steps/simple_compile.sh
-#  artifacts:
-#    expire_in: 4h
-#    paths:
-#      - build/bin/rtidb
-#      - build/src/sdk/libsql_jsdk.so
-#      - build/sql_pysdk/dist/*.whl
-#      - build/python/dist/*.whl
+
+build:
+  stage: build
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/simple_compile.sh
+  artifacts:
+    expire_in: 4h
+    paths:
+      - build/bin/rtidb
+      - build/src/sdk/libsql_jsdk.so
+      - build/sql_pysdk/dist/*.whl
+      - build/python/dist/*.whl
 
 #mac_build:
 #  variables:
