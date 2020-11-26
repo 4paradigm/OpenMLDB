@@ -124,6 +124,7 @@ public class SqlClusterExecutor implements SqlExecutor {
             InsertPreparedStatementImpl impl = new InsertPreparedStatementImpl(db, sql, this.sqlRouter);
             return impl;
         } catch (Exception e) {
+            logger.error("fail to build insert prepared statement ", e);
             return null;
         }
     }

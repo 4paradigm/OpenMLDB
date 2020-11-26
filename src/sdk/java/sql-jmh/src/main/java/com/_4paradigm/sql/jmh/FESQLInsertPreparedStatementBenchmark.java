@@ -1,6 +1,5 @@
 package com._4paradigm.sql.jmh;
 
-import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
@@ -12,33 +11,31 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
-@BenchmarkMode(Mode.Throughput)
+@BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @State(Scope.Benchmark)
-@Threads(10)
+@Threads(1)
 @Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
 @Warmup(iterations = 1)
 public class FESQLInsertPreparedStatementBenchmark {
+    private AtomicLong counter = new AtomicLong(0l);
     private SqlExecutor executor;
     private SdkOption option;
-    private String db = "db" + System.nanoTime();
-    private String ddl = "create table perf (col1 string, col2 bigint, " +
-            "col3 float," +
-            "col4 double," +
-            "col5 string," +
-            "index(key=col1, ts=col2));";
-    private String ddl1 = "create table perf2 (col1 string, col2 bigint, " +
-            "col3 float," +
-            "col4 double," +
-            "col5 string," +
-            "index(key=col1, ts=col2));";
-    private boolean setupOk = false;
+    private String db = "db_insert_benchmark" + System.nanoTime();
     private int recordSize = 10000;
-    private String format = "insert into perf values(?, ?, 100.0, 200.0, 'hello world');";
-    private String format2 = "insert into %s values('%s', %d, 100.0, 200.0, 'hello world');";
-    private long counter = 0;
+    private String ddl100;
+    private String ddl100Insert;
+
+    private String ddl200;
+    private String ddl200Insert;
+
+    private String ddl500;
+    private String ddl500Insert;
+
     public FESQLInsertPreparedStatementBenchmark() {
         SdkOption sdkOption = new SdkOption();
         sdkOption.setSessionTimeout(30000);
@@ -54,87 +51,128 @@ public class FESQLInsertPreparedStatementBenchmark {
 
     @Setup
     public void setup() throws SQLException {
-        setupOk = executor.createDB(db);
+        boolean setupOk = executor.createDB(db);
         if (!setupOk) {
             return;
         }
-        setupOk = executor.executeDDL(db, ddl);
+        StringBuilder ddl100Builder = new StringBuilder();
+        StringBuilder ddl100InsertBuilder = new StringBuilder();
+        ddl100InsertBuilder.append("insert into ddl100 values(");
+        ddl100Builder.append("create table ddl100(");
+        for (int i = 0;  i < 99; i++) {
+            if (i > 0) {
+                ddl100Builder.append(",");
+                ddl100InsertBuilder.append(",");
+            }
+            ddl100Builder.append("col" + String.valueOf(i) + " string");
+            ddl100InsertBuilder.append("?");
+        }
+        ddl100Builder.append(", col99 timestamp, index(key=col98, ts=col99));");
+        ddl100InsertBuilder.append(", ?);");
+        ddl100 = ddl100Builder.toString();
+        ddl100Insert = ddl100InsertBuilder.toString();
+        setupOk = executor.executeDDL(db, ddl100);
         if (!setupOk) {
             return;
         }
-        setupOk = executor.executeDDL(db, ddl1);
-        if (!setupOk) {
-            return;
+        {
+            StringBuilder ddl200Builder = new StringBuilder();
+            StringBuilder ddl200InsertBuilder = new StringBuilder();
+            ddl200InsertBuilder.append("insert into ddl200 values(");
+            ddl200Builder.append("create table ddl200(");
+            for (int i = 0;  i < 199; i++) {
+                if (i > 0) {
+                    ddl200Builder.append(",");
+                    ddl200InsertBuilder.append(",");
+                }
+                ddl200Builder.append("col" + String.valueOf(i) + " string");
+                ddl200InsertBuilder.append("?");
+            }
+            ddl200Builder.append(", col199 timestamp, index(key=col198, ts=col199));");
+            ddl200InsertBuilder.append(", ?);");
+            ddl200 = ddl200Builder.toString();
+            ddl200Insert = ddl200InsertBuilder.toString();
+            setupOk = executor.executeDDL(db, ddl200);
+            if (!setupOk) {
+                return;
+            }
         }
-        for (int i = 0; i < recordSize/100; i++) {
-            String sql = String.format(format2, "perf2", "pkxxx" + i, System.currentTimeMillis());
-            executor.executeInsert(db, sql);
-        }
-    }
-
-    @Benchmark
-    public void insertBm() {
-        /*
-        long idx = counter;
-        PreparedStatement impl = executor.getInsertPrepareStmt(db, format);
-        try {
-            impl.setString(1, "pkxxx" + counter);
-            impl.setLong(2, System.currentTimeMillis());
-            impl.execute();
-        } catch (Exception e) {
-
-        }
-        counter ++;
-         */
-        long idx = counter;
-        PreparedStatement impl = executor.getInsertPreparedStmt(db, format);
-        for (int i = 0; i < 10; i++) {
-            String s1 = "pkxxx" + idx + i;
-            try {
-                impl.setString(1, s1);
-                impl.setLong(2, System.currentTimeMillis());
-                impl.addBatch();
-            } catch (Exception e) {
-
+        {
+            StringBuilder ddl500Builder = new StringBuilder();
+            StringBuilder ddl500InsertBuilder = new StringBuilder();
+            ddl500InsertBuilder.append("insert into ddl500 values(");
+            ddl500Builder.append("create table ddl500(");
+            for (int i = 0;  i < 499; i++) {
+                if (i > 0) {
+                    ddl500Builder.append(",");
+                    ddl500InsertBuilder.append(",");
+                }
+                ddl500Builder.append("col" + String.valueOf(i) + " string");
+                ddl500InsertBuilder.append("?");
+            }
+            ddl500Builder.append(", col499 timestamp, index(key=col498, ts=col499));");
+            ddl500InsertBuilder.append(", ?);");
+            ddl500 = ddl500Builder.toString();
+            ddl500Insert = ddl500InsertBuilder.toString();
+            setupOk = executor.executeDDL(db, ddl500);
+            if (!setupOk) {
+                return;
             }
         }
         try {
-            impl.executeBatch();
+            Thread.sleep(2000);
         } catch (Exception e) {
 
         }
-        counter += 10;
     }
 
     @Benchmark
-    public void selectSimpleBm() {
-        String sql = "select col1, col2, col3 from perf2 limit 10;";
-        ResultSet rs = executor.executeSQL(db, sql);
-    }
-
-    @Benchmark
-    public void select150Feature() {
-        String sql = "select col1, col2, col3";
-        for (int i = 0; i < 50; i++) {
-            sql += String.format(", col1 as col1%d, col2 as col2%d, col3 as col3%d", i, i, i);
+    public void insert100Bm() {
+        String key = "100_"+ String.valueOf(counter.incrementAndGet());
+        PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl100Insert);
+        try {
+            for (int i = 0; i < 98; i++) {
+                impl.setString(i+1, "value0");
+            }
+            impl.setString(99, key);
+            impl.setTimestamp(100, new Timestamp(System.currentTimeMillis()));
+            impl.execute();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        sql += " from perf2 limit 1;";
-        ResultSet rs = executor.executeSQL(db, sql);
     }
-
     @Benchmark
-    public void select510Feature() {
-        String sql = "select col1, col2, col3";
-        for (int i = 0; i < 170; i++) {
-            sql += String.format(", col1 as col1%d, col2 as col2%d, col3 as col3%d", i, i, i);
+    public void insert500Bm() {
+        String key = "500_"+ String.valueOf(counter.incrementAndGet());
+        PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl500Insert);
+        try {
+            for (int i = 0; i < 498; i++) {
+                impl.setString(i+1, "value0");
+            }
+            impl.setString(499, key);
+            impl.setTimestamp(500, new Timestamp(System.currentTimeMillis()));
+            impl.execute();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        sql += " from perf2 limit 1;";
-        ResultSet rs = executor.executeSQL(db, sql);
     }
-
+    @Benchmark
+    public void insert200Bm() {
+        String key = "200_"+ String.valueOf(counter.incrementAndGet());
+        PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl200Insert);
+        try {
+            for (int i = 0; i < 198; i++) {
+                impl.setString(i+1, "value0");
+            }
+            impl.setString(199, key);
+            impl.setTimestamp(200, new Timestamp(System.currentTimeMillis()));
+            impl.execute();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
     public static void main(String[] args) throws RunnerException {
-
-        Options opt = new OptionsBuilder()
+       Options opt = new OptionsBuilder()
                 .include(FESQLInsertPreparedStatementBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
