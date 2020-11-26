@@ -8,6 +8,7 @@ cases:
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
+        index: index2:col2
     expect:
       schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string, std_ts:timestamp
       order: col1
@@ -28,6 +29,7 @@ cases:
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
+        index: index2:col2
     expect:
       schema: col0:string, id:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string, std_ts:timestamp
       order: id
@@ -93,6 +95,7 @@ cases:
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
+        index: index2:col2
     expect:
       schema: id:int32, std_ts:timestamp, inc_sec_ts:timestamp, flag:bool
       order: id
@@ -114,6 +117,7 @@ cases:
     inputs:
       - name: t1
         resource: cases/resource/simple_t1_ts.yaml
+        index: index2:col2
     expect:
       schema: id:int32, std_ts:timestamp, inc_sec_ts:timestamp, flag:bool
       order: id
