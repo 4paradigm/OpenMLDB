@@ -331,8 +331,7 @@ class Catalog {
     virtual std::shared_ptr<TableHandler> GetTable(
         const std::string& db, const std::string& table_name) = 0;
 
-    // get ProcedureInfo
-    virtual const std::shared_ptr<fesql::sdk::ProcedureInfo> GetProcedureInfo(
+    virtual std::shared_ptr<fesql::sdk::ProcedureInfo> GetProcedureInfo(
             const std::string& db, const std::string& sp_name) {
         return nullptr;
     }
