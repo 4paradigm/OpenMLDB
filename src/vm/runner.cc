@@ -1537,6 +1537,11 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
         }
         case kTableHandler: {
             auto table_handler = std::dynamic_pointer_cast<TableHandler>(data);
+            if (!table_handler) {
+                t.add("Empty set");
+                t.endOfRow();
+                break;
+            }
             auto iter = table_handler->GetIterator();
             if (!iter) {
                 t.add("Empty set");

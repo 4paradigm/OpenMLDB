@@ -2450,10 +2450,10 @@ bool GroupAndSortOptimized::TransformOrderExpr(
     const SchemasContext* schemas_ctx, const node::OrderByNode* order,
     const Schema& schema, const IndexSt& index_st,
     const node::OrderByNode** output) {
+    *output = order;
     if (nullptr == order || nullptr == output) {
-        LOG(WARNING) << "fail to transform order expr : order expr or "
-                        "data_provider op "
-                        "or output is null";
+        LOG(WARNING)
+            << "fail to optimize order expr : order expr or output is null";
         return false;
     }
 
