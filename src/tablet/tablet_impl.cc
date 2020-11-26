@@ -124,12 +124,12 @@ TabletImpl::TabletImpl()
 }
 
 TabletImpl::~TabletImpl() {
-    delete zk_client_;
     task_pool_.Stop(true);
     keep_alive_pool_.Stop(true);
     gc_pool_.Stop(true);
     io_pool_.Stop(true);
     snapshot_pool_.Stop(true);
+    delete zk_client_;
 }
 
 bool TabletImpl::Init(const std::string& real_endpoint) {
