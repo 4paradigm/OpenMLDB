@@ -171,10 +171,10 @@ cases:
   - id: 20
     desc: 表达式嵌套窗口函数
     sql: |
-      select bigint(sum(c1) over w1) + 10 as f1 from t1 window
-      w1 as (partition by key1 order by ts1 rows between 10 preceding and current row);
+      select bigint(sum(col2) over w1) + 10 as f1 from t1 window
+      w1 as (partition by col1 order by col5 rows between 10 preceding and current row);
   - id: 21
     desc: 函数嵌套函数窗口
     sql: |
-      select sum(sum(c1) over w1) as f1 from t1 window
-      w1 as (partition by key1 order by ts1 rows between 10 preceding and current row);
+      select bigint(sum(col2) over w1) as f1 from t1 window
+      w1 as (partition by col1 order by col5 rows between 10 preceding and current row);
