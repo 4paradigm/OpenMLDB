@@ -502,7 +502,7 @@ docker-image:
     - build
 
 fesql_auto_gen_case:
-  stage: test
+  stage: manual
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -515,3 +515,4 @@ fesql_auto_gen_case:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
+  when: manual
