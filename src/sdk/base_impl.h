@@ -35,7 +35,7 @@ class SchemaImpl : public Schema {
 
     ~SchemaImpl();
 
-    const vm::Schema& GetSchema() { return schema_; }
+    const vm::Schema& GetSchema() const { return schema_; }
     inline void SetSchema(const vm::Schema& schema) { schema_ = schema; }
     int32_t GetColumnCnt() const;
 
