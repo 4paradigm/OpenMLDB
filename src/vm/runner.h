@@ -12,6 +12,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -396,17 +397,20 @@ class Runner : public node::NodeBase<Runner> {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_);
     }
     virtual void Print(std::ostream& output, const std::string& tab,
-                       std::set<int32_t>& visited_ids) const {  // NOLINT
+                       std::set<int32_t>* visited_ids) const {  // NOLINT
         PrintRunnerInfo(output, tab);
         if (need_cache_) {
             output << "(cache_enable)";
         }
-        if (visited_ids.find(id_) != visited_ids.cend()) {
+        if (nullptr != visited_ids &&
+            visited_ids->find(id_) != visited_ids->cend()) {
             output << "\n";
             output << "  " << tab << "...";
             return;
         }
-        visited_ids.insert(id_);
+        if (nullptr != visited_ids) {
+            visited_ids->insert(id_);
+        }
         if (!producers_.empty()) {
             for (auto producer : producers_) {
                 output << "\n";
@@ -849,7 +853,7 @@ class ClusterTask {
             output << tab << "NULL RUNNER\n";
         } else {
             std::set<int32_t> visited_ids;
-            root_->Print(output, tab, visited_ids);
+            root_->Print(output, tab, &visited_ids);
         }
     }
     Runner* GetRoot() const { return root_; }

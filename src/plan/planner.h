@@ -99,7 +99,8 @@ class SimplePlanner : public Planner {
  public:
     explicit SimplePlanner(node::NodeManager *manager)
         : Planner(manager, true, false) {}
-    SimplePlanner(node::NodeManager *manager, bool is_batch_mode, bool is_cluster_optimized = false)
+    SimplePlanner(node::NodeManager *manager, bool is_batch_mode,
+                  bool is_cluster_optimized = false)
         : Planner(manager, is_batch_mode, is_cluster_optimized) {}
     int CreatePlanTree(const NodePointVector &parser_trees,
                        PlanNodeList &plan_trees,
