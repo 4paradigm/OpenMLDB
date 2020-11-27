@@ -144,14 +144,13 @@ class SQLClusterRouter : public SQLRouter {
             const std::string& db, const std::string& sp_name,
             std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) override;
 
-    std::shared_ptr<ProcedureInfo> ShowProcedure(
+    std::shared_ptr<fesql::sdk::ProcedureInfo> ShowProcedure(
             const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) override;
 
-    bool ShowProcedure(const std::string& db, const std::string& sp_name,
-            ::rtidb::api::ProcedureInfo* sp_info, std::string* msg);
+    std::shared_ptr<fesql::sdk::ProcedureInfo> ShowProcedure(
+            const std::string& db, const std::string& sp_name, std::string* msg);
 
-    bool ShowProcedure(
-            std::vector<std::shared_ptr<::rtidb::api::ProcedureInfo>>* sp_infos, std::string* msg);
+    std::vector<std::shared_ptr<fesql::sdk::ProcedureInfo>> ShowProcedure(std::string* msg);
 
     std::shared_ptr<rtidb::sdk::QueryFuture> CallProcedure(
             const std::string& db, const std::string& sp_name, int64_t timeout_ms,
