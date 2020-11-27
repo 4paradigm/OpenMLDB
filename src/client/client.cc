@@ -547,7 +547,7 @@ bool BaseClient::GetRealEndpoint(const std::string& endpoint,
 BaseClient::BaseClient(
     const std::map<std::string, std::shared_ptr<rtidb::client::TabletClient>>&
         tablets)
-    : tablets_(tablets) {}
+    : tablets_(tablets), zk_session_timeout_(60*1000) {}
 
 
 RtidbClient::RtidbClient() : client_(nullptr), empty_vector_() {}
@@ -563,14 +563,17 @@ void RtidbClient::SetZkCheckInterval(int32_t interval) {
 }
 
 GeneralResult RtidbClient::Init(const std::string& zk_cluster,
-                                const std::string& zk_path) {
+                                const std::string& zk_path, uint32_t zk_session_timeout) {
     GeneralResult result;
     std::shared_ptr<rtidb::zk::ZkClient> zk_client;
     if (zk_cluster.empty()) {
         result.SetError(-1, "initial failed! not set zk_cluster");
         return result;
     }
-    client_ = new BaseClient(zk_cluster, zk_path, "", 1000, 15000);
+    if (zk_session_timeout < 1) {
+        zk_session_timeout = 60;
+    }
+    client_ = new BaseClient(zk_cluster, zk_path, "", 1000 * zk_session_timeout, 15000);
 
     std::string msg;
     bool ok = client_->Init(&msg);
@@ -952,6 +955,14 @@ int RtidbClient::CreateTable(const std::string& table_meta) {
 
     ns_tbinfo.set_name(table_info.name());
     ns_tbinfo.set_table_type(rtidb::type::TableType::kRelational);
+    std::string storage_mode = table_info.storage_mode();
+    if (storage_mode == "kssd" || storage_mode == "ssd") {
+        ns_tbinfo.set_storage_mode(::rtidb::common::kSSD);
+    } else if (storage_mode == "khdd" || storage_mode == "hdd") {
+        ns_tbinfo.set_storage_mode(::rtidb::common::kHDD);
+    } else {
+        return -3;
+    }
     std::map<std::string, std::string> name_map;
     for (const auto& col : table_info.column_desc()) {
         const std::string& type = col.type();

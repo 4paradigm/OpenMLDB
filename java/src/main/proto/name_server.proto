@@ -1,6 +1,7 @@
 import "common.proto";
 import "tablet.proto";
 import "type.proto";
+import "sql_procedure.proto";
 package rtidb.nameserver;
 
 option cc_generic_services = true;
@@ -524,4 +525,9 @@ service NameServer {
     rpc SetSdkEndpoint(SetSdkEndpointRequest) returns (GeneralResponse);
     rpc ShowBlobServer(ShowBlobServerRequest) returns (ShowBlobServerResponse);
     rpc ShowSdkEndpoint(ShowSdkEndpointRequest) returns (ShowSdkEndpointResponse);
+
+    // sql procedure interfaces
+    rpc CreateProcedure(rtidb.api.CreateProcedureRequest) returns (GeneralResponse);
+    rpc ShowProcedure(rtidb.api.ShowProcedureRequest) returns (rtidb.api.ShowProcedureResponse);
+    rpc DropProcedure(rtidb.api.DropProcedureRequest) returns (GeneralResponse);
 }

@@ -58,6 +58,7 @@ DEFINE_int32(task_pool_size, 3, "the size of tablet task thread pool");
 DEFINE_int32(io_pool_size, 2, "the size of tablet io task thread pool");
 DEFINE_bool(use_name, false, "enable or disable use server name");
 DEFINE_string(data_dir, "./data", "the path of data dir");
+DEFINE_bool(enable_distsql, false, "enable or disable distribute sql");
 
 // scan configuration
 DEFINE_uint32(scan_max_bytes_size, 2 * 1024 * 1024,
@@ -162,10 +163,11 @@ DEFINE_uint32(absolute_default_skiplist_height, 4,
 DEFINE_bool(enable_show_tp, false, "enable show tp");
 DEFINE_uint32(max_col_display_length, 256,
               "config the max length of column display");
+DEFINE_bool(use_rdma, false, "use rdma");
 
 // rocksdb
 DEFINE_bool(disable_wal, true, "If true, do not write WAL for write.");
-DEFINE_string(file_compression, "pz",
+DEFINE_string(file_compression, "off",
               "Type of compression, can be off, pz, lz4, zlib");
 DEFINE_uint32(block_cache_mb, 4096,
               "Memory allocated for caching uncompressed block (OS page cache "
@@ -186,4 +188,5 @@ DEFINE_uint32(get_replica_status_interval, 10000,
 // object sotre
 DEFINE_uint32(oss_flush_size, 0, "set oss cache flush kilobyte size");
 DEFINE_int32(oss_flush_period, 0, "set oss cache flush period seconds");
+DEFINE_uint32(oss_flush_delay, 1, "set oss cache flush delay seconds");
 DEFINE_string(mime_conf, "", "set mime db conf path");

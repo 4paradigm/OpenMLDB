@@ -47,6 +47,9 @@ using ::rtidb::client::NsClient;
 using ::rtidb::client::TabletClient;
 using ::rtidb::zk::DistLock;
 using ::rtidb::zk::ZkClient;
+using ::rtidb::api::ProcedureInfo;
+using ::rtidb::api::CreateProcedureRequest;
+using ::rtidb::api::DropProcedureRequest;
 
 const uint64_t INVALID_PARENT_ID = UINT64_MAX;
 const uint32_t INVALID_PID = UINT32_MAX;
@@ -252,6 +255,10 @@ class NameServerImpl : public NameServer {
                       const ShowOPStatusRequest* request,
                       ShowOPStatusResponse* response, Closure* done);
 
+    void ShowCatalog(RpcController* controller,
+                      const ShowCatalogRequest* request,
+                      ShowCatalogResponse* response, Closure* done);
+
     void ConfSet(RpcController* controller, const ConfSetRequest* request,
                  GeneralResponse* response, Closure* done);
 
@@ -422,12 +429,7 @@ class NameServerImpl : public NameServer {
 
     bool RegisterName();
 
-    bool CreateProcedureOnTablet(const std::string& db_name, const std::string& sp_name,
-            const std::string& sql);
-
-    void ShowProcedure(RpcController* controller,
-            const ShowProcedureRequest* request, ShowProcedureResponse* response,
-            Closure* done);
+    bool CreateProcedureOnTablet(const ::rtidb::api::CreateProcedureRequest& sp_request);
 
     void DropProcedure(RpcController* controller, const DropProcedureRequest* request,
             GeneralResponse* response, Closure* done);
@@ -943,8 +945,6 @@ class NameServerImpl : public NameServer {
     bool AddFieldToTablet(const std::vector<rtidb::common::ColumnDesc>& cols,
                           std::shared_ptr<TableInfo> table_info,
                           rtidb::common::VersionPair* new_pair);
-
-    bool CheckParameter(const Schema& parameter, const Schema& input_schema);
 
     void DropProcedureOnTablet(const std::string& db_name, const std::string& sp_name);
 

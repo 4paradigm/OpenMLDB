@@ -71,6 +71,7 @@ DECLARE_uint32(get_table_diskused_interval);
 DECLARE_uint32(task_check_interval);
 DECLARE_uint32(load_index_max_wait_time);
 DECLARE_bool(use_name);
+DECLARE_bool(enable_distsql);
 
 // cluster config
 DECLARE_string(endpoint);
@@ -111,11 +112,16 @@ TabletImpl::TabletImpl()
       mode_recycle_root_paths_(),
       follower_(false),
       catalog_(new ::rtidb::catalog::TabletCatalog()),
-      engine_(catalog_),
+      engine_(catalog_,
+              fesql::vm::EngineOptions::NewEngineOptionWithClusterEnable(
+                  FLAGS_enable_distsql)),
       zk_cluster_(),
       zk_path_(),
       endpoint_(),
-      notify_path_() {}
+      notify_path_() {
+    catalog_->SetLocalTablet(std::shared_ptr<::fesql::vm::Tablet>(
+        new ::fesql::vm::LocalTablet(&engine_)));
+}
 
 TabletImpl::~TabletImpl() {
     task_pool_.Stop(true);
@@ -210,6 +216,11 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     if (!CreateMultiDir(mode_recycle_root_paths_[::rtidb::common::kHDD])) {
         PDLOG(WARNING, "fail to create recycle bin root path %s",
               FLAGS_recycle_hdd_bin_root_path.c_str());
+        return false;
+    }
+    std::map<std::string, std::string> real_endpoint_map = { {endpoint, real_endpoint} };
+    if (!catalog_->UpdateClient(real_endpoint_map)) {
+        PDLOG(WARNING, "update client failed");
         return false;
     }
 
@@ -1843,12 +1854,22 @@ void TabletImpl::Delete(RpcController* controller,
 void TabletImpl::Query(RpcController* ctrl,
                        const rtidb::api::QueryRequest* request,
                        rtidb::api::QueryResponse* response, Closure* done) {
+    DLOG(INFO) << "handle query request begin!";
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
+    ProcessQuery(request, response, &buf);
+}
+
+void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
+                              ::rtidb::api::QueryResponse* response,
+                              butil::IOBuf* buf) {
     ::fesql::base::Status status;
     if (request->is_batch()) {
         ::fesql::vm::BatchRunSession session;
+        if (request->is_debug()) {
+            session.EnableDebug();
+        }
         {
             bool ok =
                 engine_.Get(request->sql(), request->db(), session, status);
@@ -1859,9 +1880,7 @@ void TabletImpl::Query(RpcController* ctrl,
                 return;
             }
         }
-        if (request->is_debug()) {
-            session.EnableDebug();
-        }
+
         auto table = session.Run();
         if (!table) {
             DLOG(WARNING) << "fail to run sql " << request->sql();
@@ -1870,6 +1889,13 @@ void TabletImpl::Query(RpcController* ctrl,
             return;
         }
         auto iter = table->GetIterator();
+        if (!iter) {
+            response->set_schema(session.GetEncodedSchema());
+            response->set_byte_size(0);
+            response->set_count(0);
+            response->set_code(::rtidb::base::kOk);
+            return;
+        }
         iter->SeekToFirst();
         uint32_t byte_size = 0;
         uint32_t count = 0;
@@ -1885,7 +1911,7 @@ void TabletImpl::Query(RpcController* ctrl,
             }
             byte_size += row.size();
             iter->Next();
-            buf.append(reinterpret_cast<void*>(row.buf()), row.size());
+            buf->append(reinterpret_cast<void*>(row.buf()), row.size());
             count += 1;
         }
         response->set_schema(session.GetEncodedSchema());
@@ -1903,11 +1929,13 @@ void TabletImpl::Query(RpcController* ctrl,
             return;
         }
         ::fesql::vm::RequestRunSession session;
+        if (request->is_debug()) {
+            session.EnableDebug();
+        }
         if (request->is_procedure()) {
-            session.SetIsProcedure(true);
             const std::string& db_name = request->db();
             const std::string& sp_name = request->sp_name();
-            std::string sql = "";
+            std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
             {
                 std::lock_guard<std::mutex> lock(mu_);
                 auto db_it = sp_map_.find(db_name);
@@ -1925,13 +1953,158 @@ void TabletImpl::Query(RpcController* ctrl,
                             sp_name.c_str(), db_name.c_str());
                     return;
                 }
-                sql = sp_it->second;
+                request_compile_info = sp_it->second.request_info;
+                if (request_compile_info == nullptr) {
+                    response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
+                    response->set_msg("invalid procedure compile info");
+                    PDLOG(WARNING, "invalid procedure compile info of [%s] in db[%s]",
+                            sp_name.c_str(), db_name.c_str());
+                    return;
+                }
             }
-            RequestQuery(*request, sql, status, session, *response, buf);
+            session.SetCompileInfo(request_compile_info);
+            RunRequestQuery(*request, session, *response, *buf);
         } else {
-            RequestQuery(*request, request->sql(), status, session, *response, buf);
+            bool ok = engine_.Get(request->sql(), request->db(), session, status);
+            if (!ok || session.GetCompileInfo() == nullptr) {
+                response->set_msg(status.msg);
+                response->set_code(::rtidb::base::kSQLCompileError);
+                DLOG(WARNING) << "fail to compile sql in request mode:\n"
+                    << request->sql();
+                return;
+            }
+            RunRequestQuery(*request, session, *response, *buf);
+        }
+        const std::string& sql = session.GetCompileInfo()->get_sql_context().sql;
+        if (response->code() != ::rtidb::base::kOk) {
+            DLOG(WARNING) << "fail to run sql " << sql;
+        } else {
+            DLOG(INFO) << "handle request sql " << sql;
         }
     }
+}
+
+void TabletImpl::SubQuery(RpcController* ctrl,
+                       const rtidb::api::QueryRequest* request,
+                       rtidb::api::QueryResponse* response, Closure* done) {
+    DLOG(INFO) << "handle subquery request begin!";
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
+    butil::IOBuf& buf = cntl->response_attachment();
+    ProcessQuery(request, response, &buf);
+}
+
+void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
+                                      const rtidb::api::SQLBatchRequestQueryRequest* request,
+                                      rtidb::api::SQLBatchRequestQueryResponse* response,
+                                      Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
+    butil::IOBuf& buf = cntl->response_attachment();
+    ::fesql::base::Status status;
+
+    ::fesql::vm::BatchRequestRunSession session;
+    // run session
+    if (request->is_debug()) {
+        session.EnableDebug();
+    }
+    bool is_procedure = request->is_procedure();
+    if (is_procedure) {
+        std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
+        {
+            std::lock_guard<std::mutex> lock(mu_);
+            auto db_it = sp_map_.find(request->db());
+            if (db_it == sp_map_.end()) {
+                response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
+                response->set_msg("db not found");
+                PDLOG(WARNING, "db[%s] not found", request->db().c_str());
+                return;
+            }
+            auto sp_it = db_it->second.find(request->sp_name());
+            if (sp_it == db_it->second.end()) {
+                response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
+                response->set_msg("store procedure not found");
+                PDLOG(WARNING, "store procedure[%s] not found in db[%s]",
+                        request->sp_name().c_str(), request->db().c_str());
+                return;
+            }
+            request_compile_info = sp_it->second.batch_request_info;
+            if (request_compile_info == nullptr) {
+                response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
+                response->set_msg("invalid procedure compile info");
+                PDLOG(WARNING, "invalid procedure compile info of [%s] in db[%s]",
+                        request->sp_name().c_str(), request->db().c_str());
+                return;
+            }
+            session.SetCompileInfo(request_compile_info);
+        }
+    } else {
+        size_t common_column_num = request->common_column_indices().size();
+        for (size_t i = 0; i < common_column_num; ++i) {
+            auto col_idx = request->common_column_indices().Get(i);
+            session.AddCommonColumnIdx(col_idx);
+        }
+        bool ok = engine_.Get(request->sql(), request->db(), session, status);
+        if (!ok || session.GetCompileInfo() == nullptr) {
+            response->set_msg(status.msg);
+            response->set_code(::rtidb::base::kSQLCompileError);
+            DLOG(WARNING) << "fail to get sql engine: \n"
+                << request->sql() << "\n" << status.str();
+            return;
+        }
+    }
+
+    // fill input data
+    auto compile_info = session.GetCompileInfo();
+    if (compile_info == nullptr) {
+        response->set_msg("compile info is null, should never happen");
+        response->set_code(::rtidb::base::kSQLCompileError);
+        return;
+    }
+    size_t input_row_num = request->non_common_rows().size();
+    size_t common_column_num = compile_info->get_sql_context().common_column_indices.size();
+    std::vector<::fesql::codec::Row> input_rows(input_row_num);
+    if (common_column_num > 0 &&
+        common_column_num < static_cast<size_t>(session.GetRequestSchema().size())) {
+        ::fesql::codec::Row common_row(request->common_row());
+        for (size_t i = 0; i < input_row_num; ++i) {
+            input_rows[i] = ::fesql::codec::Row(
+                1, common_row, 1, ::fesql::codec::Row(request->non_common_rows().Get(i)));
+        }
+    } else {
+        for (size_t i = 0; i < input_row_num; ++i) {
+            input_rows[i] = ::fesql::codec::Row(request->non_common_rows().Get(i));
+        }
+    }
+
+    std::vector<::fesql::codec::Row> output_rows;
+    int32_t run_ret = session.Run(input_rows, output_rows);
+    if (run_ret != 0) {
+        response->set_msg(status.msg);
+        response->set_code(::rtidb::base::kSQLRunError);
+        DLOG(WARNING) << "fail to run sql: " << request->sql();
+        return;
+    }
+
+    // fill output data
+    for (auto& output_row : output_rows) {
+        if (output_row.GetRowPtrCnt() != 1) {
+            response->set_msg("illegal row ptrs: expect 1");
+            response->set_code(::rtidb::base::kSQLRunError);
+            LOG(WARNING) << "illegal row ptrs: expect 1";
+            return;
+        }
+        buf.append(output_row.buf(0), output_row.size(0));
+        response->add_row_sizes(output_row.size(0));
+    }
+
+    // fill response
+    response->set_schema(session.GetEncodedSchema());
+    response->set_count(output_rows.size());
+    response->set_code(::rtidb::base::kOk);
+    DLOG(INFO) << "handle batch request sql " << request->sql()
+               << " with record cnt " << output_rows.size()
+               << " with schema size " << session.GetSchema().size();
 }
 
 void TabletImpl::BatchQuery(RpcController* controller,
@@ -3953,6 +4126,24 @@ void TabletImpl::GetAllSnapshotOffset(
     response->set_code(::rtidb::base::ReturnCode::kOk);
 }
 
+void TabletImpl::GetCatalog(RpcController* controller,
+                             const ::rtidb::api::GetCatalogRequest* request,
+                             ::rtidb::api::GetCatalogResponse* response,
+                             Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+    if (catalog_) {
+        ::rtidb::common::CatalogInfo* catalog_info = response->mutable_catalog();
+        catalog_info->set_version(catalog_->GetVersion());
+        catalog_info->set_endpoint(FLAGS_endpoint);
+        response->set_code(0);
+        response->set_msg("ok");
+        return;
+    }
+    response->set_code(-1);
+    response->set_msg("catalog is not exist");
+    PDLOG(WARNING, "catalog is not exist");
+}
+
 void TabletImpl::GetTermPair(RpcController* controller,
                              const ::rtidb::api::GetTermPairRequest* request,
                              ::rtidb::api::GetTermPairResponse* response,
@@ -4848,6 +5039,18 @@ void TabletImpl::CheckZkClient() {
 }
 
 void TabletImpl::RefreshTableInfo() {
+    std::string db_table_notify_path = zk_path_ + "/table/notify";
+    std::string value;
+    if (!zk_client_->GetNodeValue(db_table_notify_path, value)) {
+        LOG(WARNING) << "fail to get node value. node is " << db_table_notify_path;
+        return;
+    }
+    uint64_t version = 0;
+    try {
+        version = std::stoull(value);
+    } catch (const std::exception& e) {
+        LOG(WARNING) << "value is not integer";
+    }
     std::string db_table_data_path = zk_path_ + "/table/db_table_data";
     std::vector<std::string> table_datas;
     if (zk_client_->IsExistNode(db_table_data_path) == 0) {
@@ -4874,7 +5077,7 @@ void TabletImpl::RefreshTableInfo() {
         }
         table_info_vec.push_back(std::move(table_info));
     }
-    catalog_->RefreshTable(table_info_vec);
+    catalog_->RefreshTable(table_info_vec, version);
 }
 
 int TabletImpl::CheckDimessionPut(const ::rtidb::api::PutRequest* request,
@@ -5758,17 +5961,12 @@ void TabletImpl::CancelOP(RpcController* controller,
 void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
         const rtidb::api::UpdateRealEndpointMapRequest* request,
         rtidb::api::GeneralResponse* response, Closure* done) {
+    DLOG(INFO) << "UpdateRealEndpointMap";
     brpc::ClosureGuard done_guard(done);
     if (FLAGS_zk_cluster.empty()) {
         response->set_code(-1);
         response->set_msg("tablet is not run in cluster mode");
         PDLOG(WARNING, "tablet is not run in cluster mode");
-        return;
-    }
-    if (!FLAGS_use_name) {
-        response->set_code(::rtidb::base::ReturnCode::kUseNameIsFalse);
-        response->set_msg("FLAGS_use_name is false");
-        PDLOG(WARNING, "FLAGS_use_name is false");
         return;
     }
     decltype(real_ep_map_) tmp_real_ep_map =
@@ -5780,6 +5978,7 @@ void TabletImpl::UpdateRealEndpointMap(RpcController* controller,
     }
     std::atomic_store_explicit(&real_ep_map_, tmp_real_ep_map,
             std::memory_order_release);
+    DLOG(INFO) << "real_ep_map size is " << tmp_real_ep_map->size();
     catalog_->UpdateClient(*tmp_real_ep_map);
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -5805,89 +6004,66 @@ bool TabletImpl::GetRealEp(uint64_t tid, uint64_t pid,
     return true;
 }
 
-void TabletImpl::GetSchema(RpcController* controller,
-        const rtidb::api::GetSchemaRequest* request,
-        rtidb::api::GetSchemaResponse* response, Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    const std::string& db = request->db_name();
-    const std::string& sql = request->sql();
-    ::fesql::base::Status vm_status;
-    ::fesql::vm::ExplainOutput explain_output;
-    bool ok = engine_.Explain(sql, db, ::fesql::vm::kRequestMode, &explain_output, &vm_status);
-    if (!ok) {
-        response->set_code(::rtidb::base::ReturnCode::kExplainFailed);
-        response->set_msg("fail to explain sql:" + sql + " in db:" + db);
-        LOG(WARNING) << "fail to explain sql:" << sql << " in db:" << db;
-        return;
-    }
-    ::fesql::sdk::SchemaImpl input_schema(explain_output.input_schema);
-    ::fesql::sdk::SchemaImpl output_schema(explain_output.output_schema);
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>* rtidb_input_schema =
-        response->mutable_input_schema();
-    if (!rtidb::catalog::SchemaAdapter::ConvertSchema(input_schema.GetSchema(), rtidb_input_schema)) {
-        response->set_code(::rtidb::base::ReturnCode::kExplainFailed);
-        response->set_msg("convert input schema failed, sql:" + sql + " in db:" + db);
-        LOG(WARNING) << "convert input schema failed, sql:" << sql << " in db:" << db;
-        return;
-    }
-    ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>* rtidb_output_schema =
-        response->mutable_output_schema();
-    if (!rtidb::catalog::SchemaAdapter::ConvertSchema(output_schema.GetSchema(), rtidb_output_schema)) {
-        response->set_code(::rtidb::base::ReturnCode::kConvertSchemaFailed);
-        response->set_msg("convert output schema failed, sql:" + sql + " in db:" + db);
-        LOG(WARNING) << "convert output schema failed, sql:" << sql << " in db:" << db;
-        return;
-    }
-    response->set_code(::rtidb::base::ReturnCode::kOk);
-    response->set_msg("ok");
-}
-
 void TabletImpl::CreateProcedure(RpcController* controller,
         const rtidb::api::CreateProcedureRequest* request,
         rtidb::api::GeneralResponse* response,
         Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    const std::string& db_name = request->db_name();
-    const std::string& sp_name = request->sp_name();
-    const std::string& sql = request->sql();
-    {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        auto db_it = sp_map_.find(db_name);
-        if (db_it == sp_map_.end()) {
-            sp_map_.insert(std::make_pair(db_name, std::map<std::string, std::string>()));
-            db_it = sp_map_.find(db_name);
-        }
-        auto sp_it = db_it->second.find(sp_name);
-        if (sp_it != db_it->second.end()) {
-            response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
-            response->set_msg("store procedure already exists");
-            PDLOG(WARNING, "store procedure[%s] already exists in db[%s]",
-                    sp_name.c_str(), db_name.c_str());
-            return;
-        } else {
-            db_it->second.insert(std::make_pair(sp_name, sql));
-        }
+    auto& sp_info = request->sp_info();
+    const std::string& db_name = sp_info.db_name();
+    const std::string& sp_name = sp_info.sp_name();
+    const std::string& sql = sp_info.sql();
+    ::fesql::base::Status status;
+
+    // build for single request
+    ::fesql::vm::RequestRunSession session;
+    bool ok = engine_.Get(sql, db_name, session, status);
+    if (!ok || session.GetCompileInfo() == nullptr) {
+        response->set_msg(status.str());
+        response->set_code(::rtidb::base::kSQLCompileError);
+        DLOG(WARNING) << "fail to compile sql " << sql;
+        return;
     }
 
-    ::fesql::base::Status status;
-    ::fesql::vm::RequestRunSession session;
-    session.SetIsProcedure(true);
-    {
-        bool ok = engine_.Get(sql, db_name, session, status);
-        if (!ok) {
-            response->set_msg(status.msg);
-            response->set_code(::rtidb::base::kSQLCompileError);
-            DLOG(WARNING) << "fail to run sql " << sql;
-            return;
+    // build for batch request
+    ::fesql::vm::BatchRequestRunSession batch_session;
+    for (auto i = 0; i < sp_info.input_schema_size(); ++i) {
+        bool is_constant = sp_info.input_schema().Get(i).is_constant();
+        if (is_constant) {
+            batch_session.AddCommonColumnIdx(i);
         }
     }
-    bool ok = catalog_->AddProcedure(db_name, sp_name, sql);
+    ok = engine_.Get(sql, db_name, batch_session, status);
+    if (!ok || batch_session.GetCompileInfo() == nullptr) {
+        response->set_msg(status.str());
+        response->set_code(::rtidb::base::kSQLCompileError);
+        DLOG(WARNING) << "fail to compile batch request for sql " << sql;
+        return;
+    }
+
+    ok = catalog_->AddProcedure(db_name, sp_name, sql);
     if (ok) {
         LOG(INFO) << "add procedure " << sp_name
             << " to catalog with db " << db_name;
     } else {
         LOG(WARNING) << "fail to add procedure " << sp_name
             << " to catalog with db " << db_name;
+    }
+
+    {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        auto& sp_map_of_db = sp_map_[db_name];
+        auto sp_it = sp_map_of_db.find(sp_name);
+        if (sp_it != sp_map_of_db.end()) {
+            response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
+            response->set_msg("store procedure already exists");
+            PDLOG(WARNING, "store procedure[%s] already exists in db[%s]",
+                    sp_name.c_str(), db_name.c_str());
+            return;
+        } else {
+            sp_map_of_db.insert(sp_it, std::make_pair(sp_name, SQLProcedureCacheEntry(
+                sp_info, session.GetCompileInfo(), batch_session.GetCompileInfo())));
+        }
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -5908,33 +6084,28 @@ void TabletImpl::DropProcedure(RpcController* controller,
         LOG(WARNING) << "drop procedure" << db_name << "."
             << sp_name << " in catalog failed";
     }
-    engine_.ClearSpCacheLocked(db_name, sp_name);
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
-    PDLOG(INFO, "drop procedure success. db_name[%s] sp_name[%s]", db_name.c_str(), sp_name.c_str());
+    PDLOG(INFO, "drop procedure success. db_name[%s] sp_name[%s]",
+        db_name.c_str(), sp_name.c_str());
 }
 
-void TabletImpl::RequestQuery(const rtidb::api::QueryRequest& request,
-        const std::string& sql,
-        ::fesql::base::Status& status,
-        ::fesql::vm::RequestRunSession& session,
-        rtidb::api::QueryResponse& response, butil::IOBuf& buf) {
-    bool ok =
-        engine_.Get(sql, request.db(), session, status);
-    if (!ok) {
-        response.set_msg(status.msg);
-        response.set_code(::rtidb::base::kSQLCompileError);
-        DLOG(WARNING) << "fail to run sql " << sql;
-        return;
-    }
+void TabletImpl::RunRequestQuery(const rtidb::api::QueryRequest& request,
+                                 ::fesql::vm::RequestRunSession& session,
+                                 rtidb::api::QueryResponse& response,
+                                 butil::IOBuf& buf) {
     if (request.is_debug()) {
         session.EnableDebug();
     }
     ::fesql::codec::Row row(request.input_row());
     ::fesql::codec::Row output;
-    int32_t ret = session.Run(row, &output);
+    int32_t ret = 0;
+    if (request.has_task_id()) {
+        ret = session.Run(request.task_id(), row, &output);
+    } else {
+        ret = session.Run(row, &output);
+    }
     if (ret != 0) {
-        DLOG(WARNING) << "fail to run sql " << sql;
         response.set_code(::rtidb::base::kSQLRunError);
         response.set_msg("fail to run sql");
         return;
@@ -5944,8 +6115,6 @@ void TabletImpl::RequestQuery(const rtidb::api::QueryRequest& request,
     response.set_byte_size(output.size());
     response.set_count(1);
     response.set_code(::rtidb::base::kOk);
-    DLOG(INFO) << "handle request sql " << sql
-        << " with record cnt 1";
 }
 
 }  // namespace tablet

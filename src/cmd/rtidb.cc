@@ -81,6 +81,9 @@ DECLARE_uint32(max_col_display_length);
 DECLARE_bool(version);
 DECLARE_bool(use_name);
 DECLARE_string(data_dir);
+#ifdef __rdma__
+DECLARE_bool(use_rdma);
+#endif
 
 static std::map<std::string, std::string> real_ep_map;
 
@@ -149,6 +152,9 @@ void StartNameServer() {
     }
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
+#ifdef __rdma__
+    options.use_rdma = FLAGS_use_rdma;
+#endif
     brpc::Server server;
     if (server.AddService(name_server, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
@@ -251,6 +257,9 @@ void StartTablet() {
     }
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
+#ifdef __rdma__
+    options.use_rdma = FLAGS_use_rdma;
+#endif
     brpc::Server server;
     if (server.AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
@@ -300,6 +309,9 @@ void StartBlobProxy() {
     }
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
+#ifdef __rdma__
+    options.use_rdma = FLAGS_use_rdma;
+#endif
     brpc::Server server;
     if (server.AddService(proxy, brpc::SERVER_DOESNT_OWN_SERVICE,
                           "/v1/get/* => Get") != 0) {
@@ -339,6 +351,9 @@ void StartBlob() {
     }
     brpc::ServerOptions options;
     options.num_threads = FLAGS_thread_pool_size;
+#ifdef __rdma__
+    options.use_rdma = FLAGS_use_rdma;
+#endif
     brpc::Server server;
     if (server.AddService(server_impl, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         PDLOG(WARNING, "Fail to add service");
@@ -1842,6 +1857,30 @@ bool GetCondAndPrintColumns(
     }
     get_type = static_cast<rtidb::api::GetType>(first_type);
     return true;
+}
+
+void HandleNSShowCatalogVersion(::rtidb::client::NsClient* client) {
+    std::map<std::string, uint64_t> catalog_version;
+    std::string error;
+    client->ShowCatalogVersion(&catalog_version, &error);
+    std::unique_ptr<baidu::common::TPrinter> tp(new baidu::common::TPrinter(3,
+                        FLAGS_max_col_display_length));
+    std::vector<std::string> row;
+    row.push_back("#");
+    row.push_back("endpoint");
+    row.push_back("version");
+    tp->AddRow(row);
+    row.clear();
+    int row_num = 0;
+    for (const auto& kv : catalog_version) {
+        row_num++;
+        row.push_back(std::to_string(row_num));
+        row.push_back(kv.first);
+        row.push_back(std::to_string(kv.second));
+        tp->AddRow(row);
+        row.clear();
+    }
+    tp->Print(true);
 }
 
 void HandleNSShowDB(::rtidb::client::NsClient* client) {
@@ -3727,6 +3766,7 @@ void HandleNSClientHelp(const std::vector<std::string>& parts,
         printf("update - update record of specified table\n");
         printf("query - query record from relational table\n");
         printf("setsdkendpoint - set sdkendpoint for external network sdk\n");
+        printf("showcatalogversion - show catalog version\n");
     } else if (parts.size() == 2) {
         if (parts[1] == "create") {
             printf("desc: create table\n");
@@ -4064,7 +4104,9 @@ void HandleNSClientSetTablePartition(const std::vector<std::string>& parts,
 void HandleNsClientSQL(const std::string sql,
                        ::rtidb::client::NsClient* client) {
     std::string msg;
-    client->ExecuteSQL(sql, msg);
+    if (!client->ExecuteSQL(sql, msg)) {
+        std::cout << "execute sql failed, sql:" << sql << " , msg: " << msg << std::endl;
+    }
 }
 
 void HandleNSClientGetTablePartition(const std::vector<std::string>& parts,
@@ -6520,6 +6562,8 @@ void StartNsClient() {
             HandleNSQuery(parts, &client);
         } else if (parts[0] == "showdb") {
             HandleNSShowDB(&client);
+        } else if (parts[0] == "showcatalogversion") {
+            HandleNSShowCatalogVersion(&client);
         } else if (parts[0] == "use") {
             HandleNsUseDb(parts, &client);
         } else if (parts[0] == "sql") {
@@ -6598,6 +6642,9 @@ void StartBsClient() {
 }
 
 int main(int argc, char* argv[]) {
+    #ifdef __rdma__
+    std::cout << "rdma is enabled" << std::endl;
+    #endif
     {
         std::ostringstream ss;
         ss << RTIDB_VERSION_MAJOR << ".";
@@ -6624,8 +6671,6 @@ int main(int argc, char* argv[]) {
     } else if (FLAGS_role == "blob") {
         StartBlob();
 #endif
-    } else if (FLAGS_role == "ns_client") {
-        StartNsClient();
     } else if (FLAGS_role == "bs_client") {
         StartBsClient();
     } else {

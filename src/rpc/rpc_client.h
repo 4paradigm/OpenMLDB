@@ -21,6 +21,8 @@
 #include <brpc/controller.h>
 #include <brpc/retry_policy.h>
 #include <gflags/gflags.h>
+#include <utility>
+#include <memory>
 
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
@@ -28,8 +30,10 @@
 #include <thread>  // NOLINT
 
 #include "base/glog_wapper.h"  // NOLINT
+#include "proto/tablet.pb.h"
 
 DECLARE_int32(request_sleep_time);
+DECLARE_bool(use_rdma);
 
 namespace rtidb {
 
@@ -82,6 +86,9 @@ class RpcClient {
     int Init() {
         channel_ = new brpc::Channel();
         brpc::ChannelOptions options;
+#ifdef __rdma__
+        options.use_rdma = FLAGS_use_rdma;
+#endif
         if (use_sleep_policy_) {
             options.retry_policy = &sleep_retry_policy;
         }
@@ -91,6 +98,21 @@ class RpcClient {
         stub_ = new T(channel_);
         return 0;
     }
+
+    template <class Request, class Response, class Callback>
+    bool SendRequest(void (T::*func)(google::protobuf::RpcController*,
+                                     const Request*, Response*, Callback*),
+                     brpc::Controller* cntl, const Request* request,
+                     Response* response, Callback* callback) {
+        if (stub_ == NULL) {
+            PDLOG(WARNING,
+                  "stub is null. client must be init before send request");
+            return false;
+        }
+        (stub_->*func)(cntl, request, response, callback);
+        return true;
+    }
+
     template <class Request, class Response, class Callback>
     bool SendRequest(void (T::*func)(google::protobuf::RpcController*,
                                      const Request*, Response*, Callback*),
@@ -162,12 +184,74 @@ class RpcClient {
         return true;
     }
 
+    template <class Request, class Response>
+    bool SendRequest(void (T::*func)(google::protobuf::RpcController*,
+                                     const Request*, Response*, google::protobuf::Closure*),
+                     brpc::Controller* cntl, const Request* request,
+                     Response* response, google::protobuf::Closure* callback) {
+        if (stub_ == NULL) {
+            PDLOG(WARNING,
+                  "stub is null. client must be init before send request");
+            return false;
+        }
+        (stub_->*func)(cntl, request, response, callback);
+        return true;
+    }
+
  private:
     std::string endpoint_;
     bool use_sleep_policy_;
     uint64_t log_id_;
     T* stub_;
     brpc::Channel* channel_;
+};
+
+template<class Response>
+class RpcCallback : public google::protobuf::Closure {
+ public:
+     RpcCallback(const std::shared_ptr<Response>& response,
+             const std::shared_ptr<brpc::Controller>& cntl)
+         : response_(response),
+           cntl_(cntl),
+           is_done_(false),
+           ref_count_(1) {
+     }
+
+     ~RpcCallback() {
+     }
+
+    void Run() override {
+        is_done_.store(true, std::memory_order_release);
+        UnRef();
+    }
+
+    inline const std::shared_ptr<Response>& GetResponse() const {
+        return response_;
+    }
+
+    inline const std::shared_ptr<brpc::Controller>& GetController() const {
+        return cntl_;
+    }
+
+    inline bool IsDone() const {
+        return is_done_.load(std::memory_order_acquire);
+    }
+
+    void Ref() {
+        ref_count_.fetch_add(1, std::memory_order_acq_rel);
+    }
+
+    void UnRef() {
+        if (ref_count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+            delete this;
+        }
+    }
+
+ private:
+    std::shared_ptr<Response> response_;
+    std::shared_ptr<brpc::Controller> cntl_;
+    std::atomic<bool> is_done_;
+    std::atomic<uint32_t> ref_count_;
 };
 
 }  // namespace rtidb

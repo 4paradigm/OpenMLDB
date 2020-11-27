@@ -86,6 +86,8 @@ class ZkClient {
     bool SetNodeWatcher(const std::string& node, watcher_fn watcher,
                         void* watcherCtx);
 
+    bool Increment(const std::string&node);
+
     bool WatchChildren(const std::string& node, NodesChangedCallback callback);
 
     void CancelWatchChildren(const std::string& node);

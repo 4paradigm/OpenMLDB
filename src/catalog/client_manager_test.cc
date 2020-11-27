@@ -57,18 +57,20 @@ TEST_F(ClientManagerTest, client_manager_test) {
     tablet_clients.emplace("name2", client2);
     ClientManager manager;
     manager.UpdateClient(tablet_clients);
-    ASSERT_EQ("name0", manager.GetClient("name0")->GetClient()->GetEndpoint());
-    ASSERT_EQ("endpoint0", manager.GetClient("name0")->GetClient()->GetRealEndpoint());
+    ASSERT_EQ("name0", manager.GetTablet("name0")->GetClient()->GetEndpoint());
+    ASSERT_EQ("endpoint0", manager.GetTablet("name0")->GetClient()->GetRealEndpoint());
 
     TableClientManager table_client_manager(table_st, manager);
-    ASSERT_EQ("name0", table_client_manager.GetPartitionClientManager(0)->GetLeader()->GetEndpoint());
-    ASSERT_EQ("endpoint0", table_client_manager.GetPartitionClientManager(0)->GetLeader()->GetRealEndpoint());
+    ASSERT_EQ("name0", table_client_manager.GetPartitionClientManager(0)->GetLeader()->GetClient()->GetEndpoint());
+    ASSERT_EQ("endpoint0",
+              table_client_manager.GetPartitionClientManager(0)->GetLeader()->GetClient()->GetRealEndpoint());
 
     auto client3 = std::make_shared<::rtidb::client::TabletClient>("name0", "endpoint3");
     tablet_clients["name0"] = client3;
     manager.UpdateClient(tablet_clients);
-    ASSERT_EQ("name0", table_client_manager.GetPartitionClientManager(0)->GetLeader()->GetEndpoint());
-    ASSERT_EQ("endpoint3", table_client_manager.GetPartitionClientManager(0)->GetLeader()->GetRealEndpoint());
+    ASSERT_EQ("name0", table_client_manager.GetPartitionClientManager(0)->GetLeader()->GetClient()->GetEndpoint());
+    ASSERT_EQ("endpoint3",
+              table_client_manager.GetPartitionClientManager(0)->GetLeader()->GetClient()->GetRealEndpoint());
 }
 
 }  // namespace catalog

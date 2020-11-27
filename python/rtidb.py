@@ -133,6 +133,7 @@ class tableBuilder:
     output = io.StringIO()
     output.write("name : \"{}\"\n".format(self.name))
     output.write("table_type : \"{}\"\n".format(self.tableType))
+    output.write("storage_mode : \"{}\"\n".format(self.sm))
     for col in self.columns:
       output.write(col.SerializeToString())
     for idx in self.idxs:
@@ -272,9 +273,21 @@ ReadOptions = List[ReadOption]
 defaultWriteOption = WriteOption()
 
 class RTIDBClient:
-  def __init__(self, zk_cluster: str, zk_path: str):
+  def __init__(self, zk_cluster: str, zk_path: str, session_timeout: int = 60):
+    """
+    Parameters:
+    zk_cluster : str
+        host comma separated host:port pairs, each corresponding to a zk
+        server. e.g. "127.0.0.1:3000,127.0.0.1:3001,127.0.0.1:3002"
+    zk_path : str
+        path the name of the node. Expressed as a file name with slashes 
+        separating ancestors of the node.
+    session timeout : int
+        zk session timeout. unit is second
+    """
     client = interclient.RtidbClient()
-    ok = client.Init(zk_cluster, zk_path)
+    if session_timeout < 1: session_timeout = 60
+    ok = client.Init(zk_cluster, zk_path, session_timeout)
     if ok.code != 0:
       raise Exception(ok.code, ok.msg)
     self.__client = client

@@ -281,7 +281,7 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
     fesql::base::Status sql_status;
     fesql::node::NodePointVector parser_trees;
     parser.parse(script, parser_trees, &node_manager, sql_status);
-    if (0 != sql_status.code) {
+    if (parser_trees.empty() || 0 != sql_status.code) {
         msg = sql_status.msg;
         return false;
     }
@@ -299,14 +299,6 @@ bool NsClient::ExecuteSQL(const std::string& db, const std::string& script,
         case fesql::node::kCreateStmt: {
             bool ok = HandleSQLCreateTable(parser_trees, db, &node_manager,
                                            &sql_status);
-            if (!ok) {
-                msg = sql_status.msg;
-            }
-            return ok;
-        }
-        case fesql::node::kCreateSpStmt: {
-            bool ok = HandleSQLCreateProcedure(parser_trees, db, script,
-                &node_manager, &sql_status);
             if (!ok) {
                 msg = sql_status.msg;
             }
@@ -371,7 +363,7 @@ bool NsClient::HandleSQLCreateTable(
     fesql::plan::SimplePlanner planner(node_manager);
     fesql::node::PlanNodeList plan_trees;
     planner.CreatePlanTree(parser_trees, plan_trees, *sql_status);
-    if (0 != sql_status->code) {
+    if (plan_trees.empty() || 0 != sql_status->code) {
         return false;
     }
 
@@ -390,9 +382,7 @@ bool NsClient::HandleSQLCreateTable(
             ::rtidb::nameserver::TableInfo* table_info =
                 request.mutable_table_info();
             table_info->set_db(db);
-            TransformToTableDef(create->GetTableName(), create->GetReplicaNum(),
-                    create->GetColumnDescList(), create->GetDistributionList(),
-                    table_info, sql_status);
+            TransformToTableDef(create, table_info, sql_status);
             if (0 != sql_status->code) {
                 return false;
             }
@@ -414,79 +404,19 @@ bool NsClient::HandleSQLCreateTable(
     return true;
 }
 
-bool NsClient::HandleSQLCreateProcedure(const fesql::node::NodePointVector& parser_trees,
-        const std::string& db, const std::string& sql,
-        fesql::node::NodeManager* node_manager, fesql::base::Status* sql_status) {
-    fesql::plan::SimplePlanner planner(node_manager);
-    fesql::node::PlanNodeList plan_trees;
-    planner.CreatePlanTree(parser_trees, plan_trees, *sql_status);
-    if (0 != sql_status->code) {
+bool NsClient::CreateProcedure(const ::rtidb::api::ProcedureInfo& sp_info,
+        std::string* msg) {
+    if (msg == nullptr) return false;
+    ::rtidb::api::CreateProcedureRequest request;
+    ::rtidb::nameserver::GeneralResponse response;
+    ::rtidb::api::ProcedureInfo* sp_info_ptr = request.mutable_sp_info();
+    sp_info_ptr->CopyFrom(sp_info);
+    bool ok = client_.SendRequest(
+            &::rtidb::nameserver::NameServer_Stub::CreateProcedure, &request,
+            &response, FLAGS_request_timeout_ms, 1);
+    *msg = response.msg();
+    if (!ok || response.code() != 0) {
         return false;
-    }
-
-    fesql::node::PlanNode* plan = plan_trees[0];
-    if (nullptr == plan) {
-        sql_status->msg = "fail to execute plan : plan null";
-        return false;
-    }
-    switch (plan->GetType()) {
-        case fesql::node::kPlanTypeCreateSp: {
-            fesql::node::CreateProcedurePlanNode* create_sp =
-                dynamic_cast<fesql::node::CreateProcedurePlanNode*>(plan);
-            if (create_sp == nullptr) {
-                return false;
-            }
-            ::rtidb::nameserver::CreateProcedureRequest request;
-            ::rtidb::nameserver::GeneralResponse response;
-            ::rtidb::nameserver::ProcedureInfo* sp_info =
-                request.mutable_sp_info();
-            sp_info->set_db_name(db);
-            sp_info->set_sp_name(create_sp->GetSpName());
-            sp_info->set_sql(sql);
-
-            google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>* schema =
-                sp_info->mutable_input_schema();
-            for (auto input : create_sp->GetInputParameterList()) {
-                if (input == nullptr) {
-                    return false;
-                }
-                if (input->GetType() == fesql::node::kInputParameter) {
-                    fesql::node::InputParameterNode* input_ptr =
-                        (fesql::node::InputParameterNode*)input;
-                    if (input_ptr == nullptr) {
-                        return false;
-                    }
-                    ::rtidb::common::ColumnDesc* col_desc = schema->Add();
-                    col_desc->set_name(input_ptr->GetColumnName());
-                    rtidb::type::DataType rtidb_type;
-                    bool ok = ::rtidb::catalog::SchemaAdapter::ConvertType(input_ptr->GetColumnType(),
-                            &rtidb_type);
-                    if (!ok) {
-                        sql_status->msg = "convert type failed";
-                        return false;
-                    }
-                    col_desc->set_data_type(rtidb_type);
-                    col_desc->set_is_constant(input_ptr->GetIsConstant());
-                } else {
-                    sql_status->msg = "fail to execute script with unSuppurt type" +
-                        fesql::node::NameOfSQLNodeType(input->GetType());
-                    return false;
-                }
-            }
-            bool ok = client_.SendRequest(
-                &::rtidb::nameserver::NameServer_Stub::CreateProcedure, &request,
-                &response, FLAGS_request_timeout_ms, 1);
-            sql_status->msg = response.msg();
-            if (!ok || 0 != response.code()) {
-                return false;
-            }
-            break;
-        }
-        default: {
-            sql_status->msg = "fail to execute script with unSuppurt type" +
-                              fesql::node::NameOfPlanNodeType(plan->GetType());
-            return false;
-        }
     }
     return true;
 }
@@ -1211,24 +1141,51 @@ bool NsClient::DeleteIndex(const std::string& table_name,
     return DeleteIndex(GetDb(), table_name, idx_name, msg);
 }
 
+bool NsClient::ShowCatalogVersion(std::map<std::string, uint64_t>* version_map, std::string* msg) {
+    if (version_map == nullptr || msg == nullptr) {
+        return false;
+    }
+    version_map->clear();
+    ::rtidb::nameserver::ShowCatalogRequest request;
+    ::rtidb::nameserver::ShowCatalogResponse response;
+    bool ok = client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowCatalog, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    int code = response.code();
+    if (ok && code == 0) {
+        for (const auto& catalog_info : response.catalog()) {
+            version_map->emplace(catalog_info.endpoint(), catalog_info.version());
+        }
+        return true;
+    }
+    *msg = response.msg();
+    return false;
+}
+
 bool NsClient::TransformToTableDef(
-    const std::string& table_name,
-    int replica_num,
-    const fesql::node::NodePointVector& column_desc_list,
-    const fesql::node::NodePointVector& distribution_list,
+    ::fesql::node::CreatePlanNode* create_node,
     ::rtidb::nameserver::TableInfo* table, fesql::plan::Status* status) {
-    if (table == NULL || status == NULL) return false;
+    if (create_node == NULL || table == NULL || status == NULL) return false;
+    std::string table_name = create_node->GetTableName();
+    const fesql::node::NodePointVector& column_desc_list = create_node->GetColumnDescList();
+    const fesql::node::NodePointVector& distribution_list = create_node->GetDistributionList();
     std::set<std::string> index_names;
     std::map<std::string, ::rtidb::common::ColumnDesc*> column_names;
     table->set_name(table_name);
     // todo: change default setting
-    table->set_partition_num(1);
+    int replica_num = create_node->GetReplicaNum();
     if (replica_num <= 0) {
         status->msg = "CREATE common: replica_num should be bigger than 0";
         status->code = fesql::common::kSQLError;
         return false;
     }
     table->set_replica_num((uint32_t)replica_num);
+    int partition_num = create_node->GetPartitionNum();
+    if (partition_num <= 0) {
+        status->msg = "CREATE common: partition_num should be greater than 0";
+        status->code = fesql::common::kSQLError;
+        return false;
+    }
+    table->set_partition_num(create_node->GetPartitionNum());
     table->set_format_version(1);
     ::rtidb::api::TTLDesc* ttl_desc = table->mutable_ttl_desc();
     ttl_desc->set_ttl_type(::rtidb::api::TTLType::kAbsoluteTime);
@@ -1371,13 +1328,20 @@ bool NsClient::TransformToTableDef(
                             }
                         }
                         if (!column_index->ttl_type().empty()) {
-                            if (column_index->ttl_type() == "absolute") {
+                            std::string ttl_type = column_index->ttl_type();
+                            std::transform(ttl_type.begin(), ttl_type.end(), ttl_type.begin(), ::tolower);
+                            if (ttl_type == "absolute") {
                                 table->mutable_ttl_desc()->set_ttl_type(
-                                    rtidb::api::kAbsoluteTime);
-
-                            } else if (column_index->ttl_type() == "latest") {
+                                        rtidb::api::kAbsoluteTime);
+                            } else if (ttl_type == "latest") {
                                 table->mutable_ttl_desc()->set_ttl_type(
-                                    rtidb::api::kLatestTime);
+                                        rtidb::api::kLatestTime);
+                            } else if (ttl_type == "absorlat") {
+                                table->mutable_ttl_desc()->set_ttl_type(
+                                        rtidb::api::kAbsOrLat);
+                            } else if (ttl_type == "absandlat") {
+                                table->mutable_ttl_desc()->set_ttl_type(
+                                        rtidb::api::kAbsAndLat);
                             } else {
                                 status->msg = "CREATE common: ttl_type " +
                                               column_index->ttl_type() +
@@ -1386,14 +1350,48 @@ bool NsClient::TransformToTableDef(
                                 return false;
                             }
                         }
-                        if (-1 != column_index->GetTTL()) {
-                            // todo: support multi ttl
-                            if (table->ttl_desc().ttl_type() ==
-                                rtidb::api::kAbsoluteTime) {
-                                it->second->set_abs_ttl(column_index->GetTTL() /
-                                                        60000);
+                        if (table->ttl_desc().ttl_type() == rtidb::api::kAbsoluteTime) {
+                            if (column_index->GetAbsTTL() == -1 || column_index->GetLatTTL() != -2) {
+                                status->msg = "CREATE common: abs ttl format error";
+                                status->code = fesql::common::kSQLError;
+                                return false;
+                            }
+                            if (column_index->GetAbsTTL() == -2) {
+                                it->second->set_abs_ttl(0);
                             } else {
-                                it->second->set_lat_ttl(column_index->GetTTL());
+                                it->second->set_abs_ttl(column_index->GetAbsTTL() / 60000);
+                            }
+                        } else if (table->ttl_desc().ttl_type() == rtidb::api::kLatestTime) {
+                            if (column_index->GetLatTTL() == -1 || column_index->GetAbsTTL() != -2) {
+                                status->msg = "CREATE common: lat ttl format error";
+                                status->code = fesql::common::kSQLError;
+                                return false;
+                            }
+                            if (column_index->GetLatTTL() == -2) {
+                                it->second->set_lat_ttl(0);
+                            } else {
+                                it->second->set_lat_ttl(column_index->GetLatTTL());
+                            }
+                        } else {
+                            if (column_index->GetAbsTTL() == -1) {
+                                status->msg = "CREATE common: abs ttl format error";
+                                status->code = fesql::common::kSQLError;
+                                return false;
+                            }
+                            if (column_index->GetAbsTTL() == -2) {
+                                it->second->set_abs_ttl(0);
+                            } else {
+                                it->second->set_abs_ttl(column_index->GetAbsTTL() / 60000);
+                            }
+                            if (column_index->GetLatTTL() == -1) {
+                                status->msg = "CREATE common: lat ttl format error";
+                                status->code = fesql::common::kSQLError;
+                                return false;
+                            }
+                            if (column_index->GetLatTTL() == -2) {
+                                it->second->set_lat_ttl(0);
+                            } else {
+                                it->second->set_lat_ttl(column_index->GetLatTTL());
                             }
                         }
                     }
@@ -1470,40 +1468,9 @@ bool NsClient::TransformToTableDef(
     return true;
 }
 
-bool NsClient::ShowProcedure(std::vector<rtidb::nameserver::ProcedureInfo>& sp_infos,
-        std::string& msg) {
-    return ShowProcedure("", "", sp_infos, msg);
-}
-
-bool NsClient::ShowProcedure(const std::string& db_name, const std::string& sp_name,
-        std::vector<rtidb::nameserver::ProcedureInfo>& sp_infos, std::string& msg) {
-    ::rtidb::nameserver::ShowProcedureRequest request;
-    ::rtidb::nameserver::ShowProcedureResponse response;
-    if (!db_name.empty()) {
-        request.set_db_name(db_name);
-    }
-    if (!sp_name.empty()) {
-        request.set_sp_name(sp_name);
-    }
-    bool ok =
-        client_.SendRequest(&::rtidb::nameserver::NameServer_Stub::ShowProcedure,
-                            &request, &response, FLAGS_request_timeout_ms, 1);
-    msg = response.msg();
-    if (ok && response.code() == 0) {
-        for (int32_t i = 0; i < response.sp_info_size(); i++) {
-            const rtidb::nameserver::ProcedureInfo& sp_info = response.sp_info(i);
-            rtidb::nameserver::ProcedureInfo sp_info_tmp;
-            sp_info_tmp.CopyFrom(sp_info);
-            sp_infos.push_back(sp_info_tmp);
-        }
-        return true;
-    }
-    return false;
-}
-
 bool NsClient::DropProcedure(const std::string& db_name,
         const std::string& sp_name, std::string& msg) {
-    ::rtidb::nameserver::DropProcedureRequest request;
+    ::rtidb::api::DropProcedureRequest request;
     ::rtidb::nameserver::GeneralResponse response;
     request.set_db_name(db_name);
     request.set_sp_name(sp_name);

@@ -27,8 +27,7 @@ namespace catalog {
 SDKTableHandler::SDKTableHandler(const ::rtidb::nameserver::TableInfo& meta,
         const ClientManager& client_manager)
     : meta_(meta), schema_(), name_(meta.name()), db_(meta.db()),
-    table_client_manager_(std::make_shared<TableClientManager>(meta.table_partition(), client_manager)),
-    partition_key_() {}
+    table_client_manager_(std::make_shared<TableClientManager>(meta.table_partition(), client_manager)) {}
 
 bool SDKTableHandler::Init() {
     if (meta_.format_version() != 1) {
@@ -81,59 +80,42 @@ bool SDKTableHandler::Init() {
         }
         index_hint_.insert(std::make_pair(index_st.name, index_st));
     }
-
-    for (const auto& name : meta_.partition_key()) {
-        partition_key_.push_back(name);
-    }
     DLOG(INFO) << "init table handler for table " << name_ << " in db " << db_
                << " done";
     return true;
 }
 
-bool SDKTableHandler::GetTablets(const std::string& index_name, const std::string& pk,
-        std::vector<std::shared_ptr<::rtidb::client::TabletClient>>* tablets) {
-    if (index_name.empty() || pk.empty() || tablets == nullptr) {
-        return false;
-    }
-    tablets->clear();
-    uint32_t pid_num = (uint32_t)meta_.table_partition_size();
-    if (!partition_key_.empty()) {
-        auto iter = index_hint_.find(index_name);
-        if (iter == index_hint_.end()) {
-            return false;
-        }
-        bool match_partition_key = true;
-        if (partition_key_.size() == iter->second.keys.size()) {
-            for (const auto& col : iter->second.keys) {
-                if (std::find(partition_key_.begin(), partition_key_.end(), col.name) == partition_key_.end()) {
-                    match_partition_key = false;
-                    break;
-                }
-            }
-        }
-        if (!match_partition_key) {
-            for (uint32_t pid = 0; pid < pid_num; pid++) {
-                tablets->push_back(table_client_manager_->GetTablets(pid));
-            }
-            return true;
-        }
+std::shared_ptr<::fesql::vm::Tablet> SDKTableHandler::GetTablet(const std::string& index_name, const std::string& pk) {
+    if (index_name.empty() || pk.empty()) {
+        return std::shared_ptr<::fesql::vm::Tablet>();
     }
     uint32_t pid = 0;
+    uint32_t pid_num = meta_.table_partition_size();
     if (pid_num > 0) {
         pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
     }
-    tablets->push_back(table_client_manager_->GetTablets(pid));
+    return table_client_manager_->GetTablet(pid);
+}
+
+std::shared_ptr<TabletAccessor> SDKTableHandler::GetTablet(uint32_t pid) {
+    return table_client_manager_->GetTablet(pid);
+}
+
+bool SDKTableHandler::GetTablet(std::vector<std::shared_ptr<TabletAccessor>>* tablets) {
+    if (tablets == nullptr) {
+        return false;
+    }
+    tablets->clear();
+    for (uint32_t pid = 0; pid < (uint32_t)meta_.table_partition_size(); pid++) {
+        tablets->push_back(table_client_manager_->GetTablet(pid));
+    }
     return true;
 }
 
-bool SDKCatalog::Init(
-    const std::vector<::rtidb::nameserver::TableInfo>& tables,
-    const std::map<std::string, std::shared_ptr<::rtidb::client::TabletClient>>& tablet_clients) {
-    table_metas_ = tables;
-    client_manager_.UpdateClient(tablet_clients);
+bool SDKCatalog::Init(const std::vector<::rtidb::nameserver::TableInfo>& tables) {
     for (size_t i = 0; i < tables.size(); i++) {
         const ::rtidb::nameserver::TableInfo& table_meta = tables[i];
-        std::shared_ptr<SDKTableHandler> table = std::make_shared<SDKTableHandler>(table_meta, client_manager_);
+        std::shared_ptr<SDKTableHandler> table = std::make_shared<SDKTableHandler>(table_meta, *client_manager_);
         if (!table->Init()) {
             LOG(WARNING) << "fail to init table " << table_meta.name();
             return false;
@@ -161,6 +143,10 @@ std::shared_ptr<::fesql::vm::TableHandler> SDKCatalog::GetTable(
         return std::shared_ptr<::fesql::vm::TableHandler>();
     }
     return it->second;
+}
+
+std::shared_ptr<TabletAccessor> SDKCatalog::GetTablet() const {
+    return client_manager_->GetTablet();
 }
 
 }  // namespace catalog
