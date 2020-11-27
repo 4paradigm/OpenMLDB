@@ -26,10 +26,43 @@ public class LastJoinTest extends FesqlTest {
 
     @Test(dataProvider = "testLastJoinData")
     public void testLastJoin(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor,testCase).run();
+        ExecutorFactory.build(executor,testCase, ExecutorFactory.ExecutorType.kBatch).run();
     }
     @Test(dataProvider = "testLastJoinData")
     public void testLastJoinRequestMode(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor,testCase, true).run();
+        ExecutorFactory.build(executor,testCase, ExecutorFactory.ExecutorType.kRequest).run();
     }
+    @Test(dataProvider = "testLastJoinData")
+    public void testLastJoinRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
+    }
+    @Test(dataProvider = "testLastJoinData")
+    public void testLastJoinRequestModeWithSpAsync(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
+    }
+
+    @DataProvider
+    public Object[] testClusterWindowAndLastJoinData() throws FileNotFoundException {
+        FesqlDataProvider dp = FesqlDataProvider
+                .dataProviderGenerator("/integration/cluster/window_and_lastjoin.yaml");
+        return dp.getCases().toArray();
+    }
+
+    @Test(dataProvider = "testWindowAndLastJoinData")
+    public void testWindowAndLastJoin(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, ExecutorFactory.ExecutorType.kBatch).run();
+    }
+    @Test(dataProvider = "testClusterWindowAndLastJoinData")
+    public void testWindowAndLastJoinRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, ExecutorFactory.ExecutorType.kRequest).run();
+    }
+    @Test(dataProvider = "testClusterWindowAndLastJoinData")
+    public void testWindowAndLastJoinDataRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
+    }
+    @Test(dataProvider = "testClusterWindowAndLastJoinData")
+    public void testWindowAndLastJoinDataRequestModeWithSpAsync(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
+    }
+
 }

@@ -17,7 +17,7 @@ import java.util.List;
 public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor{
 
     public StoredProcedureSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest, boolean isAsyn) {
-        super(executor, fesqlCase, isBatchRequest, isAsyn);
+        super(executor, fesqlCase, isBatchRequest, false, isAsyn);
     }
 
     @Override

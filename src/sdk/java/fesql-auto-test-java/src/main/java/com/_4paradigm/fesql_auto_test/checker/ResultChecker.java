@@ -74,7 +74,7 @@ public class ResultChecker extends BaseChecker {
                 if (actual_val != null && actual_val instanceof Float) {
                     Assert.assertTrue(expect_val != null && expect_val instanceof Float);
                     Assert.assertEquals(
-                            (Float) actual_val, (Float) expect_val, 1e-10,
+                            (Float) actual_val, (Float) expect_val, 1e-6,
                             String.format("ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
                                 i, j, expect_val, actual_val,
                                 Table.getTableString(fesqlCase.getExpect().getColumns(), expect),

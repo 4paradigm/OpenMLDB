@@ -16,12 +16,16 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
 
     protected boolean isBatchRequest;
     protected boolean isAsyn;
+    protected boolean isCluster;
 
-    public RequestQuerySQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest, boolean isAsyn) {
+    public RequestQuerySQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest, boolean isCluster, boolean isAsyn
+    ) {
         super(executor, fesqlCase);
         this.isBatchRequest = isBatchRequest;
         this.isAsyn = isAsyn;
+        this.isCluster = isCluster;
     }
+
 
     @Override
     protected void prepare() throws Exception {
