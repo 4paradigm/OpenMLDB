@@ -2,6 +2,9 @@
 set -x
 ROOT_DIR=`pwd`
 
+cicd_properties_path=$1
+echo "cicd_properties_path:$cicd_properties_path"
+
 PROTO_BIN=$ROOT_DIR/thirdparty/bin/protoc
 ulimit -c unlimited
 sed -i "/protocExecutable/c\<protocExecutable>${PROTO_BIN}<\/protocExecutable>" java/pom.xml
@@ -11,7 +14,7 @@ cp -a src/proto/{tablet,name_server,common}.proto java/src/main/proto/
 ls -al build/bin
 rtidb_path=$ROOT_DIR/build/bin/rtidb
 echo "rtidb_path:$rtidb_path"
-source steps/read_properties.sh
+source steps/read_properties.sh $cicd_properties_path
 
 echo "java_client_version:${java_client_version}"
 echo "test_case_xml:${test_case_xml}"

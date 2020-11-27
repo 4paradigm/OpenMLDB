@@ -50,19 +50,6 @@ class ExplainInfo {
     virtual const std::string& GetRequestName() = 0;
 };
 
-class ProcedureInfo {
- public:
-    ProcedureInfo() {}
-    virtual ~ProcedureInfo() {}
-    virtual const std::string& GetDbName() = 0;
-    virtual const std::string& GetSpName() = 0;
-    virtual const std::string& GetSql() = 0;
-    virtual const ::fesql::sdk::Schema& GetInputSchema() = 0;
-    virtual const ::fesql::sdk::Schema& GetOutputSchema() = 0;
-    virtual const std::vector<std::string>& GetTables() = 0;
-    virtual const std::string& GetMainTable() = 0;
-};
-
 class QueryFuture {
  public:
     QueryFuture() {}
@@ -138,7 +125,7 @@ class SQLRouter {
             const std::string& db, const std::string& sp_name,
             std::shared_ptr<rtidb::sdk::SQLRequestRowBatch> row_batch, fesql::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<ProcedureInfo> ShowProcedure(
+    virtual std::shared_ptr<fesql::sdk::ProcedureInfo> ShowProcedure(
             const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<rtidb::sdk::QueryFuture> CallProcedure(

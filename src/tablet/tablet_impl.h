@@ -34,8 +34,6 @@
 #include "vm/engine.h"
 #include "zk/zk_client.h"
 #include "catalog/schema_adapter.h"
-#include "sdk/base.h"
-#include "sdk/base_impl.h"
 
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
@@ -67,11 +65,11 @@ typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Snapshot>>>
 
 // tablet cache entry for sql procedure
 struct SQLProcedureCacheEntry {
-    rtidb::api::ProcedureInfo procedure_info;
+    std::shared_ptr<fesql::sdk::ProcedureInfo> procedure_info;
     std::shared_ptr<fesql::vm::CompileInfo> request_info;
     std::shared_ptr<fesql::vm::CompileInfo> batch_request_info;
 
-    SQLProcedureCacheEntry(const rtidb::api::ProcedureInfo& pinfo,
+    SQLProcedureCacheEntry(const std::shared_ptr<fesql::sdk::ProcedureInfo> pinfo,
                            std::shared_ptr<fesql::vm::CompileInfo> rinfo,
                            std::shared_ptr<fesql::vm::CompileInfo> brinfo)
       : procedure_info(pinfo), request_info(rinfo), batch_request_info(brinfo) {}
@@ -517,6 +515,8 @@ class TabletImpl : public ::rtidb::api::TabletServer {
         ::fesql::vm::RequestRunSession& session, // NOLINT 
         rtidb::api::QueryResponse& response, butil::IOBuf& buf); // NOLINT
 
+    void CreateProcedure(const std::shared_ptr<fesql::sdk::ProcedureInfo> sp_info);
+
     RelationalTables relational_tables_;
     Tables tables_;
     std::mutex mu_;
@@ -548,8 +548,9 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     std::string zk_cluster_;
     std::string zk_path_;
     std::string endpoint_;
-    std::map<std::string, std::map<std::string, SQLProcedureCacheEntry>> sp_map_;
+    std::map<std::string, std::map<std::string, SQLProcedureCacheEntry>> db_sp_map_;
     std::string notify_path_;
+    std::string sp_root_path_;
 };
 
 }  // namespace tablet
