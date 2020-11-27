@@ -222,7 +222,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     bool ok = compiler.Compile(ctx, *status);
     if (!ok || 0 != status->code) {
         LOG(WARNING) << "fail to compile sql " << sql << " in db " << db
-                     << " with error " << status;
+                     << " with error " << *status;
         return false;
     }
     explain_output->input_schema.CopyFrom(ctx.request_schema);
