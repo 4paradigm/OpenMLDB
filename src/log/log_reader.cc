@@ -20,9 +20,9 @@
 #include "log/crc32c.h"
 #include "log/log_format.h"
 #include "base/glog_wapper.h" // NOLINT
-#include "gflags/gflags.h"
+#include "config.h" // NOLINT
 #ifdef PZFPGA_ENABLE
-#include "pz.h"
+#include "pz.h" // NOLINT
 #endif
 
 
@@ -36,6 +36,10 @@ namespace rtidb {
 namespace log {
 
 Reader::Reporter::~Reporter() {}
+
+#ifdef PZFPGA_ENABLE
+    static FPGA_env * fpga_ctx_;
+#endif
 
 Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
                uint64_t initial_offset)

@@ -9,14 +9,19 @@
 #include "log/crc32c.h"
 #include "base/glog_wapper.h" // NOLINT
 #include "gflags/gflags.h"
+#include "config.h" // NOLINT
 #ifdef PZFPGA_ENABLE
-#include "pz.h"
+#include "pz.h" // NOLINT
 #endif
 
 DECLARE_bool(compress_snapshot);
 
 namespace rtidb {
 namespace log {
+
+#ifdef PZFPGA_ENABLE
+    static FPGA_env * fpga_ctx_;
+#endif
 
 static void InitTypeCrc(uint32_t* type_crc) {
     for (int i = 0; i <= kMaxRecordType; i++) {

@@ -44,10 +44,6 @@ class Writer {
     // record type stored in the header.
     uint32_t type_crc_[kMaxRecordType + 1];
 
-#ifdef PZFPGA_ENABLE
-    FPGA_env * fpga_ctx_;
-#endif
-
     Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);
 
     // No copying allowed
