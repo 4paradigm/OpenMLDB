@@ -551,7 +551,6 @@ static void SimpleWindowOutputLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_cas
         }
         sql_case.inputs_.push_back(input);
     }
-
 }
 static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case) {  // NOLINT
     ::rtidb::sdk::SQLRouterOptions sql_opt;
@@ -588,7 +587,7 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
         // success check
 
         fesql::type::TableDef request_table;
-        if(!sql_case.ExtractInputTableDef(sql_case.batch_request_, request_table)) {
+        if (!sql_case.ExtractInputTableDef(sql_case.batch_request_, request_table)) {
             state.SkipWithError("benchmark error: fesql case input schema invalid");
             return;
         }
