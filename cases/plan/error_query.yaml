@@ -1,0 +1,13 @@
+cases:
+  - id: 0
+    desc: 表达式依赖多个窗口
+    sql: |
+        select (sum(c1) over w1 + sum(c1) over w2) as f1 from t1 window
+        w1 as (partition by key1 order by ts1 rows between 10 preceding and current row),
+        w2 as (partition by key2 order by ts2 rows between 10 preceding and current row);
+  - id: 1
+    desc: 函数表达式依赖多个窗口
+    sql: |
+      select testudf(sum(c1) over w1 + sum(c1) over w2) as f1 from t1 window
+      w1 as (partition by key1 order by ts1 rows between 10 preceding and current row),
+      w2 as (partition by key2 order by ts2 rows between 10 preceding and current row);

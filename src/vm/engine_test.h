@@ -610,6 +610,9 @@ void EngineTestRunner::RunCheck() {
     session_->GetPhysicalPlan()->Print(oss, "");
     if (!sql_case_.batch_plan().empty() && engine_mode == kBatchMode) {
         ASSERT_EQ(oss.str(), sql_case_.batch_plan());
+    } else if (!sql_case_.cluster_request_plan().empty() &&
+               engine_mode == kRequestMode && options_.is_cluster_optimzied()) {
+        ASSERT_EQ(oss.str(), sql_case_.cluster_request_plan());
     } else if (!sql_case_.request_plan().empty() &&
                engine_mode == kRequestMode) {
         ASSERT_EQ(oss.str(), sql_case_.request_plan());

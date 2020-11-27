@@ -136,6 +136,12 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
         for (auto node : root->GetWindowList()->GetList()) {
             const node::WindowDefNode *w =
                 dynamic_cast<node::WindowDefNode *>(node);
+            if (windows.find(w->GetName()) != windows.cend()) {
+                status.msg = "fail to resolve window, window name duplicate: " +
+                             w->GetName();
+                status.code = common::kPlanError;
+                return false;
+            }
             windows[w->GetName()] = w;
         }
     }

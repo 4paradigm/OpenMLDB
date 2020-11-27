@@ -1077,7 +1077,11 @@ bool SQLCase::CreateSQLCasesFromYaml(
                 sql_case_node["request_plan"].as<std::string>();
             boost::trim(sql_case.request_plan_);
         }
-
+        if (sql_case_node["cluster_request_plan"]) {
+            sql_case.cluster_request_plan_ =
+                sql_case_node["cluster_request_plan"].as<std::string>();
+            boost::trim(sql_case.cluster_request_plan_);
+        }
         if (sql_case_node["db"]) {
             sql_case.db_ = sql_case_node["db"].as<std::string>();
         } else {

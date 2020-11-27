@@ -52,6 +52,9 @@ class SQLCase {
     const std::string& desc() const { return desc_; }
     const std::string case_name() const;
     const std::string& mode() const { return mode_; }
+    const std::string& cluster_request_plan() const {
+        return cluster_request_plan_;
+    }
     const std::string& request_plan() const { return request_plan_; }
     const std::string& batch_plan() const { return batch_plan_; }
     const std::string& sql_str() const { return sql_str_; }
@@ -203,6 +206,7 @@ class SQLCase {
     bool standard_sql_compatible_;
     std::string batch_plan_;
     std::string request_plan_;
+    std::string cluster_request_plan_;
     std::vector<TableInfo> inputs_;
     TableInfo batch_request_;
     ExpectInfo expect_;
