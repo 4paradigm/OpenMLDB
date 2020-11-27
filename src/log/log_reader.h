@@ -110,6 +110,10 @@ class Reader {
         kWaitRecord = kMaxRecordType + 3
     };
 
+#ifdef PZFPGA_ENABLE
+    FPGA_env * fpga_ctx_;
+#endif
+
     // Skips all blocks that are completely before "initial_offset_".
     //
     // Returns true on success. Handles reporting.

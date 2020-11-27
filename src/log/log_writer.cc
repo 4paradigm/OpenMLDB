@@ -8,7 +8,12 @@
 #include "log/coding.h"
 #include "log/crc32c.h"
 #include "base/glog_wapper.h" // NOLINT
+#include "gflags/gflags.h"
+#ifdef PZFPGA_ENABLE
+#include "pz.h"
+#endif
 
+DECLARE_bool(compress_snapshot);
 
 namespace rtidb {
 namespace log {
@@ -27,9 +32,20 @@ Writer::Writer(WritableFile* dest) : dest_(dest), block_offset_(0) {
 Writer::Writer(WritableFile* dest, uint64_t dest_length)
     : dest_(dest), block_offset_(dest_length % kBlockSize) {
     InitTypeCrc(type_crc_);
+#ifdef PZFPGA_ENABLE
+          if (FLAGS_compress_snapshot) {
+              fpga_ctx_ = gzipfpga_init_titanse();
+          }
+#endif
 }
 
-Writer::~Writer() {}
+Writer::~Writer() {
+#ifdef PZFPGA_ENABLE
+    if (FLAGS_compress_snapshot && fpga_ctx_) {
+        gzipfpga_end(fpga_ctx_);
+    }
+#endif
+}
 
 Status Writer::EndLog() {
     Slice slice;

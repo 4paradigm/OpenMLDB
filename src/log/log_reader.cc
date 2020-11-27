@@ -20,12 +20,17 @@
 #include "log/crc32c.h"
 #include "log/log_format.h"
 #include "base/glog_wapper.h" // NOLINT
+#include "gflags/gflags.h"
+#ifdef PZFPGA_ENABLE
+#include "pz.h"
+#endif
 
 
 using ::rtidb::base::Status;
 
 DECLARE_bool(binlog_enable_crc);
 DECLARE_int32(binlog_name_length);
+DECLARE_bool(compress_snapshot);
 
 namespace rtidb {
 namespace log {
@@ -44,9 +49,22 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
       end_of_buffer_offset_(0),
       last_end_of_buffer_offset_(0),
       initial_offset_(initial_offset),
-      resyncing_(initial_offset > 0) {}
+      resyncing_(initial_offset > 0) {
+#ifdef PZFPGA_ENABLE
+          if (FLAGS_compress_snapshot) {
+              fpga_ctx_ = gzipfpga_init_titanse();
+          }
+#endif
+      }
 
-Reader::~Reader() { delete[] backing_store_; }
+Reader::~Reader() {
+    delete[] backing_store_;
+#ifdef PZFPGA_ENABLE
+    if (FLAGS_compress_snapshot && fpga_ctx_) {
+        gzipfpga_end(fpga_ctx_);
+    }
+#endif
+}
 
 bool Reader::SkipToInitialBlock() {
     size_t offset_in_block = initial_offset_ % kBlockSize;
