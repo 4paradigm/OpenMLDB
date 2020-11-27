@@ -16,12 +16,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 @BenchmarkMode(Mode.SampleTime)
-@OutputTimeUnit(TimeUnit.SECONDS)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
-@Threads(1)
-@Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
+@Threads(5)
+@Fork(value = 1, jvmArgs = {"-Xms32G", "-Xmx32G"})
 @Warmup(iterations = 1)
-public class FESQLInsertPreparedStatementBenchmark {
+public class FESQLRedisWorkloadBenchmark {
     private AtomicLong counter = new AtomicLong(0l);
     private SqlExecutor executor;
     private SdkOption option;
@@ -36,7 +36,11 @@ public class FESQLInsertPreparedStatementBenchmark {
     private String ddl500;
     private String ddl500Insert;
 
-    public FESQLInsertPreparedStatementBenchmark() {
+    private String query100 = "select * from ddl100 where col98='100_key';";
+    private String query200 = "select * from ddl200 where col198='200_key';";
+    private String query500 = "select * from ddl500 where col498='500_key';";
+
+    public FESQLRedisWorkloadBenchmark() {
         SdkOption sdkOption = new SdkOption();
         sdkOption.setSessionTimeout(30000);
         sdkOption.setZkCluster(BenchmarkConfig.ZK_CLUSTER);
@@ -119,6 +123,48 @@ public class FESQLInsertPreparedStatementBenchmark {
                 return;
             }
         }
+        {
+            String key = "100_key";
+            PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl100Insert);
+            try {
+                for (int i = 0; i < 98; i++) {
+                    impl.setString(i+1, "value10000000000");
+                }
+                impl.setString(99, key);
+                impl.setTimestamp(100, new Timestamp(System.currentTimeMillis()));
+                impl.execute();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        {
+            String key = "200_key";
+            PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl200Insert);
+            try {
+                for (int i = 0; i < 198; i++) {
+                    impl.setString(i+1, "value10000000000");
+                }
+                impl.setString(199, key);
+                impl.setTimestamp(200, new Timestamp(System.currentTimeMillis()));
+                impl.execute();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        {
+            String key = "500_key";
+            PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl500Insert);
+            try {
+                for (int i = 0; i < 498; i++) {
+                    impl.setString(i+1, "value10000000000");
+                }
+                impl.setString(499, key);
+                impl.setTimestamp(500, new Timestamp(System.currentTimeMillis()));
+                impl.execute();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
         try {
             Thread.sleep(2000);
         } catch (Exception e) {
@@ -127,12 +173,27 @@ public class FESQLInsertPreparedStatementBenchmark {
     }
 
     @Benchmark
+    public void read100bm() {
+        executor.executeSQL(db, query100);
+    }
+
+    @Benchmark
+    public void read200bm() {
+        executor.executeSQL(db, query200);
+    }
+
+    @Benchmark
+    public void read500bm() {
+        executor.executeSQL(db, query500);
+    }
+
+    @Benchmark
     public void insert100Bm() {
         String key = "100_"+ String.valueOf(counter.incrementAndGet());
         PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl100Insert);
         try {
             for (int i = 0; i < 98; i++) {
-                impl.setString(i+1, "value0");
+                impl.setString(i+1, "value10000000000");
             }
             impl.setString(99, key);
             impl.setTimestamp(100, new Timestamp(System.currentTimeMillis()));
@@ -148,7 +209,7 @@ public class FESQLInsertPreparedStatementBenchmark {
         PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl500Insert);
         try {
             for (int i = 0; i < 498; i++) {
-                impl.setString(i+1, "value0");
+                impl.setString(i+1, "value10000000000");
             }
             impl.setString(499, key);
             impl.setTimestamp(500, new Timestamp(System.currentTimeMillis()));
@@ -163,7 +224,7 @@ public class FESQLInsertPreparedStatementBenchmark {
         PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl200Insert);
         try {
             for (int i = 0; i < 198; i++) {
-                impl.setString(i+1, "value0");
+                impl.setString(i+1, "value10000000000");
             }
             impl.setString(199, key);
             impl.setTimestamp(200, new Timestamp(System.currentTimeMillis()));
@@ -174,7 +235,7 @@ public class FESQLInsertPreparedStatementBenchmark {
     }
     public static void main(String[] args) throws RunnerException {
        Options opt = new OptionsBuilder()
-                .include(FESQLInsertPreparedStatementBenchmark.class.getSimpleName())
+                .include(FESQLRedisWorkloadBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
         new Runner(opt).run();

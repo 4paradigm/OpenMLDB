@@ -32,7 +32,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     private Map<String, SQLInsertRows> sqlRowsMap = new HashMap<>();
     private List<Integer> scehmaIdxs = null;
     private Map<Integer, Integer> stringsLen = new HashMap<>();
-
     public InsertPreparedStatementImpl(String db, String sql, SQLRouter router) throws SQLException {
         Status status = new Status();
         SQLInsertRows rows = router.GetInsertRows(db, sql, status);
@@ -262,62 +261,61 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     private void dataBuild() throws SQLException {
-        for (int i = 0; i < hasSet.size(); i++) {
-            if (!hasSet.get(i)) {
-                throw new SQLException("data not enough");
-            }
-        }
         if (currentRows == null) {
             throw new SQLException("null rows");
         }
         if (currentRow == null) {
             currentRow = currentRows.NewRow();
         }
+
+        for (int i = 0; i < hasSet.size(); i++) {
+            if (!hasSet.get(i)) {
+                throw new SQLException("data not enough");
+            }
+        }
+
         int strLen = 0;
-        if (!stringsLen.isEmpty()) {
-            for (Integer k : stringsLen.keySet()) {
-                Integer len = stringsLen.get(k);
-                strLen += len;
-            }
+        for (Integer k : stringsLen.keySet()) {
+            Integer len = stringsLen.get(k);
+            strLen += len;
         }
-        for (int i = 0; i < currentDatasType.size(); i++) {
-            if (currentDatasType.get(i) != DataType.kTypeString) {
-                continue;
-            }
-            strLen += currentDatasLen.get(i);
-        }
+
         boolean ok = currentRow.Init(strLen);
         if (!ok) {
             throw new SQLException("build data row failed");
         }
+
         for (int i = 0; i < currentDatasType.size(); i++) {
             Object data = currentDatas.get(i);
             if (data == null) {
                 ok = currentRow.AppendNULL();
-            } else if (DataType.kTypeBool.equals(currentDatasType.get(i))) {
+                if (!ok) {
+                    throw new SQLException("put data faile idx is " + i);
+                }
+                continue;
+            }
+            DataType dt = currentDatasType.get(i);
+            if (DataType.kTypeBool == dt) {
                 ok = currentRow.AppendBool((boolean) data);
-            } else if (DataType.kTypeDate.equals(currentDatasType.get(i))) {
+            } else if (DataType.kTypeDate == dt) {
                 java.sql.Date date = (java.sql.Date)data;
                 ok = currentRow.AppendDate(date.getYear() + 1900, date.getMonth(), date.getDate());
-            } else if (DataType.kTypeDouble.equals(currentDatasType.get(i))) {
+            } else if (DataType.kTypeDouble == dt) {
                 ok = currentRow.AppendDouble((double) data);
-            } else if (DataType.kTypeFloat.equals(currentDatasType.get(i))) {
+            } else if (DataType.kTypeFloat == dt) {
                 ok = currentRow.AppendFloat((float) data);
-            } else if (DataType.kTypeInt16.equals(currentDatasType.get(i))) {
+            } else if (DataType.kTypeInt16 == dt) {
                 ok = currentRow.AppendInt16((short) data);
-            } else if (DataType.kTypeInt32.equals(currentDatasType.get(i))) {
+            } else if (DataType.kTypeInt32 == dt) {
                 ok = currentRow.AppendInt32((int) data);
-            } else if (DataType.kTypeInt64.equals(currentDatasType.get(i))) {
+            } else if (DataType.kTypeInt64 == dt) {
                 ok = currentRow.AppendInt64((long) data);
-            } else if (DataType.kTypeString.equals(currentDatasType.get(i))) {
+            } else if (DataType.kTypeString == dt) {
                 ok = currentRow.AppendString((String) data);
-            } else if (DataType.kTypeTimestamp.equals(currentDatasType.get(i))) {
+            } else if (DataType.kTypeTimestamp == dt) {
                 ok = currentRow.AppendTimestamp((long) data);
             } else {
                 throw new SQLException("unkown data type");
-            }
-            if (!ok) {
-                throw new SQLException("put data faile idx is " + i);
             }
         }
         currentRow = null;
