@@ -7,9 +7,8 @@ stages:
   - precheck
   - build
   - daily
-  - test
-  - ts_integration_test
-  - ns_integration_test
+  - quick
+  - manual
   - deploy
 
 style_check:
@@ -24,23 +23,42 @@ style_check:
       junit:
         - ./reports/style.xml
 
-#fpga-build:
-#  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
-#  stage: build
-#  tags:
-#    - fpga
-#  except:
-#    variables:
-#      - $ENV_BUILD == "daily"
-#  script:
-#    - source /root/.bashrc && sh tools/install_fesql.sh
-#    - ln -sf /depends/thirdparty thirdparty
-#    - ln -sf /depends/thirdsrc thirdsrc
-#    - source /root/.bashrc && bash steps/simple_compile_fpga.sh
-#  artifacts:
-#    expire_in: 4h
-#    paths:
-#      - build/bin
+rdma-build:
+  image: develop-registry.4pd.io/centos6_gcc7_fesql_rdma:0.0.12
+  stage: build
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && RDMA=1 bash steps/simple_compile.sh
+    - mv build/bin/rtidb build/bin/rtidb_rdma
+  artifacts:
+    expire_in: 4h
+    paths:
+      - build/bin/rtidb_rdma
+  when: manual
+
+fpga-build:
+  image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
+  stage: build
+  tags:
+    - fpga
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  script:
+    - source /root/.bashrc && sh tools/install_fesql.sh
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && bash steps/simple_compile_fpga.sh
+  artifacts:
+    expire_in: 4h
+    paths:
+      - build/bin
+  when: manual
 
 build:
   stage: build
@@ -482,6 +500,7 @@ docker-image:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
+
 fesql_auto_gen_case:
   stage: test
   before_script:
