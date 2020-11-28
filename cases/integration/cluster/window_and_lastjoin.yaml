@@ -1,5 +1,5 @@
 db: test_zw
-debugs: []
+debugs: ["4组窗口特征ID拼接"]
 cases:
   -
     id: 0
@@ -231,7 +231,7 @@ cases:
                 "out2_id int", "c2 string", "w2_sum_c6 double",
                 "out3_id int", "c3 string", "w3_sum_c6 double",
                 "out4_id int", "c4 string", "w4_sum_c6 double",]
-      order: id
+      order: out1_id
       rows:
         - [ 1, "a", 1.0, 1, "aa", 1.0, 1, "aaa", 1.0, 1, "aaaa", 1.0]
         - [ 2, "a", 1.0, 2, "aa", 2.0, 2, "aaa", 2.0, 2, "aaaa", 2.0]
@@ -285,7 +285,7 @@ cases:
                 "out2_id int", "c2 string", "w2_sum_c6 double",
                 "out3_id int", "c3 string", "w3_sum_c6 double",
                 "out4_id int", "c4 string", "w4_sum_c6 double",]
-      order: id
+      order: out1_id
       rows:
         - [ 1, "a", 1.0, 1, "aa", 1.0, 1, "aaa", 1.0, 1, "aaaa", 1.0]
         - [ 2, "a", 2.0, 2, "aa", 2.0, 2, "aaa", 2.0, 2, "aaaa", 2.0]
