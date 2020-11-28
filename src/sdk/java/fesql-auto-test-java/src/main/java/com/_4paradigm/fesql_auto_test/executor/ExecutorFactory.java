@@ -2,16 +2,18 @@ package com._4paradigm.fesql_auto_test.executor;
 
 
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.sql.sdk.SqlExecutor;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class ExecutorFactory {
 
     public enum ExecutorType {
-        kGenenal,
+        kDDL,
         kBatch,
         kRequest,
         kBatchRequest,
-        kClusterRequest,
-        kClusterBatchRequest,
         kRequestWithSp,
         kRequestWithSpAsync,
         kBatchRequestWithSp,
@@ -19,23 +21,17 @@ public class ExecutorFactory {
     }
     public static BaseExecutor build(SqlExecutor executor, SQLCase fesqlCase, ExecutorType type) {
         switch (type) {
-            case kGenenal: {
-                return getGeneratorExecutor(executor, fesqlCase);
+            case kDDL: {
+                return getDDLExecutor(executor, fesqlCase);
             }
             case kBatch: {
-                return getFeExecutor(executor, fesqlCase);
+                return getFeBatchQueryExecutor(executor, fesqlCase);
             }
             case kRequest: {
                 return getFeRequestQueryExecutor(executor, fesqlCase);
             }
             case kBatchRequest: {
                 return getFeBatchRequestQueryExecutor(executor, fesqlCase);
-            }
-            case kClusterRequest: {
-                return getClusterFeRequestQueryExecutor(executor, fesqlCase);
-            }
-            case kClusterBatchRequest: {
-                return getClusterFeBatchRequestQueryExecutor(executor, fesqlCase);
             }
             case kRequestWithSp: {
                 return getFeRequestQueryWithSpExecutor(executor, fesqlCase, false);
@@ -53,26 +49,30 @@ public class ExecutorFactory {
         }
         return null;
     }
-    private static BaseExecutor getGeneratorExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase) {
+    private static BaseExecutor getDDLExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase) {
         BaseExecutor executor = null;
         executor = new SQLExecutor(sqlExecutor, fesqlCase);
         return executor;
     }
-    private static BaseExecutor getFeExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase) {
+    private static BaseExecutor getFeBatchQueryExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase) {
+        if (FesqlConfig.isCluster()) {
+            log.info("cluster unsupport batch query mode");
+            return new NullExecutor(sqlExecutor, fesqlCase);
+        }
         BaseExecutor executor = null;
         executor = new SQLExecutor(sqlExecutor, fesqlCase);
         return executor;
     }
     private static BaseExecutor getFeRequestQueryExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase) {
         BaseExecutor executor = null;
-        executor = new RequestQuerySQLExecutor(sqlExecutor, fesqlCase, false, false, false);
+        executor = new RequestQuerySQLExecutor(sqlExecutor, fesqlCase, false, false);
         return executor;
     }
 
     private static BaseExecutor getFeBatchRequestQueryExecutor(SqlExecutor sqlExecutor,
                                                                SQLCase fesqlCase) {
         RequestQuerySQLExecutor executor = new RequestQuerySQLExecutor(
-                sqlExecutor, fesqlCase, true, false, false);
+                sqlExecutor, fesqlCase, true, false);
         return executor;
     }
 
@@ -92,14 +92,14 @@ public class ExecutorFactory {
 
     private static BaseExecutor getClusterFeRequestQueryExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase) {
         BaseExecutor executor = null;
-        executor = new RequestQuerySQLExecutor(sqlExecutor, fesqlCase, false, true, false);
+        executor = new RequestQuerySQLExecutor(sqlExecutor, fesqlCase, false, true);
         return executor;
     }
 
     private static BaseExecutor getClusterFeBatchRequestQueryExecutor(SqlExecutor sqlExecutor,
                                                                SQLCase fesqlCase) {
         RequestQuerySQLExecutor executor = new RequestQuerySQLExecutor(
-                sqlExecutor, fesqlCase, true, true, false);
+                sqlExecutor, fesqlCase, true, true);
         return executor;
     }
 }

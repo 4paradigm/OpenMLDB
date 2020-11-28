@@ -26,7 +26,7 @@ public class CreateTest extends FesqlTest {
 
     @Test(dataProvider = "getCreateData")
     public void testCreate(SQLCase testCase) {
-        ExecutorFactory.build(executor,testCase, ExecutorFactory.ExecutorType.kGenenal).run();
+        ExecutorFactory.build(executor,testCase, ExecutorFactory.ExecutorType.kDDL).run();
     }
 
 }

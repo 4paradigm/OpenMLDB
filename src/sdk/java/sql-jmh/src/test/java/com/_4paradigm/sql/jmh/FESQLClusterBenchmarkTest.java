@@ -1,8 +1,8 @@
 package com._4paradigm.sql.jmh;
 
-import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.sql.SQLException;

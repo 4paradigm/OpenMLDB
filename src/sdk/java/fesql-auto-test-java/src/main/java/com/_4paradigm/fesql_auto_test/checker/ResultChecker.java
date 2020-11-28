@@ -108,10 +108,17 @@ public class ResultChecker extends BaseChecker {
 
         public RowsSort(int index) {
             this.index = index;
+            if (-1 == index) {
+                log.warn("compare without index");
+            }
         }
 
         @Override
         public int compare(List o1, List o2) {
+            if (-1 == index) {
+
+                return 0;
+            }
             Object obj1 = o1.get(index);
             Object obj2 = o2.get(index);
             if (obj1 == obj2) {
