@@ -18,13 +18,14 @@ import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
 
+import static java.lang.Thread.sleep;
+
 @BenchmarkMode(Mode.All)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
 @Threads(2)
 @Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
 @Warmup(iterations = 1)
-
 public class FESQLClusterBenchmark {
     private static Logger logger = LoggerFactory.getLogger(FESQLClusterBenchmark.class);
     private SqlExecutor executor;
@@ -33,6 +34,7 @@ public class FESQLClusterBenchmark {
     private Map<String, Map<String, String>> tables = new HashMap<>();
     private String partitionNum = "7";
     private int pkNum = 1;
+    @Param({"10", "100", "1000"})
     private int windowNum = 10;
     private String previousApplication = "create table `previous_application`(" +
             "`SK_ID_PREV` bigint," +

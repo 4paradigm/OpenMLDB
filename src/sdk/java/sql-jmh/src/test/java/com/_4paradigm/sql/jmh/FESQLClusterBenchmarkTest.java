@@ -1,9 +1,9 @@
 package com._4paradigm.sql.jmh;
 
+import org.junit.Assert;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.Assert;
-import org.testng.annotations.Test;
 
 import java.sql.SQLException;
 import java.util.Map;
@@ -15,7 +15,8 @@ public class FESQLClusterBenchmarkTest {
         FESQLClusterBenchmark benchmark = new FESQLClusterBenchmark();
         benchmark.setWindowNum(1000);
         benchmark.setup();
-        for(int i = 0; i< 10; i++) {
+        for(int i = 0; i< 100
+                ; i++) {
             Map<String, String> result = benchmark.execSQLTest();
             Assert.assertNotNull(result);
             Assert.assertTrue(result.size() > 0);
