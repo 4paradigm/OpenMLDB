@@ -449,7 +449,7 @@ public class FESQLClusterBenchmark {
             "    window POS_CASH_balance_SK_ID_CURR_time_0s_32d as (" +
             "UNION POS_CASH_balance partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
             "as out1 " +
-            "on out0.SK_ID_CURR_1 = out1.SK_ID_CURR_124 " +
+            "on SK_ID_CURR_1 = out1.SK_ID_CURR_124 " +
             "last join" +
             "(" +
             "select" +
@@ -487,7 +487,7 @@ public class FESQLClusterBenchmark {
             "    window bureau_SK_ID_CURR_time_0s_32d as (" +
             "UNION bureau partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
             "as out2 " +
-            "on out0.SK_ID_CURR_1 = out2.SK_ID_CURR_136 " +
+            "on SK_ID_CURR_1 = out2.SK_ID_CURR_136 " +
             "last join" +
             "(" +
             "select" +
@@ -501,7 +501,7 @@ public class FESQLClusterBenchmark {
             "    window bureau_balance_SK_ID_CURR_time_0s_32d as (" +
             "UNION bureau_balance partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
             "as out3 " +
-            "on out0.SK_ID_CURR_1 = out3.SK_ID_CURR_163 " +
+            "on SK_ID_CURR_1 = out3.SK_ID_CURR_163 " +
             "last join" +
             "(" +
             "select" +
@@ -554,7 +554,7 @@ public class FESQLClusterBenchmark {
             "    window credit_card_balance_SK_ID_CURR_time_0s_32d as (" +
             "UNION credit_card_balance partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
             "as out4 " +
-            "on out0.SK_ID_CURR_1 = out4.SK_ID_CURR_166 " +
+            "on SK_ID_CURR_1 = out4.SK_ID_CURR_166 " +
             "last join " +
             "(" +
             "select" +
@@ -578,7 +578,7 @@ public class FESQLClusterBenchmark {
             "    window installments_payments_SK_ID_CURR_time_0s_32d as (" +
             "UNION installments_payments partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
             "as out5 " +
-            "on out0.SK_ID_CURR_1 = out5.SK_ID_CURR_208 " +
+            "on SK_ID_CURR_1 = out5.SK_ID_CURR_208 " +
             "last join" +
             "(" +
             "select" +
@@ -644,14 +644,18 @@ public class FESQLClusterBenchmark {
             "    window previous_application_SK_ID_CURR_time_0s_32d as (" +
             "UNION previous_application partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
             "as out6 " +
-            "on out0.SK_ID_CURR_1 = out6.SK_ID_CURR_221" +
+            "on SK_ID_CURR_1 = out6.SK_ID_CURR_221" +
             ";";
 
     public FESQLClusterBenchmark() {
+        this(false);
+    }
+    public FESQLClusterBenchmark(boolean enableDebug) {
         SdkOption sdkOption = new SdkOption();
         sdkOption.setSessionTimeout(30000);
         sdkOption.setZkCluster(BenchmarkConfig.ZK_CLUSTER);
         sdkOption.setZkPath(BenchmarkConfig.ZK_PATH);
+        sdkOption.setEnableDebug(enableDebug);
         this.option = sdkOption;
         try {
             executor = new SqlClusterExecutor(option);

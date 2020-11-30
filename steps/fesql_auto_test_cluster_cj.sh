@@ -13,7 +13,7 @@ else
     make -j16 || { echo "compile error"; exit 1; }
 fi
 cd ${ROOT_DIR}
-test -d ~/rambuild/ut_zookeeper && rm -rf ~/rambuild/ut_zookeeper/*
+test -d ~/tmp/rambuild/ut_zookeeper && rm -rf ~/tmp/rambuild/ut_zookeeper/*
 cp steps/cjzoo.cfg thirdsrc/zookeeper-3.4.14/conf/zoo.cjg
 cd thirdsrc/zookeeper-3.4.14
 #netstat -atn | grep 6181 | awk '{print $NF}' | awk -F '/' '{print $1}'| xargs kill -9

@@ -1,10 +1,10 @@
 package com._4paradigm.sql.jmh;
 
 public class BenchmarkConfig {
-//    public static String ZK_CLUSTER="127.0.0.1:6181";
-    public static String ZK_CLUSTER="172.27.128.32:12200";
-    public static String ZK_PATH="/standalone";
-    //public static String ZK_PATH="/cluster";
+    public static String ZK_CLUSTER="127.0.0.1:6181";
+//    public static String ZK_CLUSTER="172.27.128.32:12200";
+//    public static String ZK_PATH="/standalone";
+    public static String ZK_PATH="/cluster";
 //    public static String ZK_PATH="/onebox";
 //    public static String ZK_CLUSTER="172.27.128.81:16181";
 //    public static String ZK_PATH="/fedb_cluster";

@@ -1,7 +1,12 @@
 package com._4paradigm.sql.jmh;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.openjdk.jmh.runner.Runner;
+import org.openjdk.jmh.runner.RunnerException;
+import org.openjdk.jmh.runner.options.Options;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,11 +17,11 @@ public class FESQLClusterBenchmarkTest {
     private static Logger logger = LoggerFactory.getLogger(FESQLClusterBenchmark.class);
     @Test
     public void windowLastJoinTest() throws SQLException {
-        FESQLClusterBenchmark benchmark = new FESQLClusterBenchmark();
+        FESQLClusterBenchmark benchmark = new FESQLClusterBenchmark(true);
         benchmark.setWindowNum(1000);
         benchmark.setup();
-        for(int i = 0; i< 100
-                ; i++) {
+        int loops = 10;
+        for (int i = 0; i < loops; i++) {
             Map<String, String> result = benchmark.execSQLTest();
             Assert.assertNotNull(result);
             Assert.assertTrue(result.size() > 0);
@@ -29,8 +34,15 @@ public class FESQLClusterBenchmarkTest {
             System.out.println("----------------------------");
         }
         benchmark.teardown();
-//        for(Map.Entry entry: result.entrySet()) {
-//            System.out.println(entry.getKey() + ": " + entry.getValue());
-//        }
+    }
+
+    @Test
+    @Ignore
+    public void benchmark() throws RunnerException {
+        Options opt = new OptionsBuilder()
+                .include(FESQLClusterBenchmark.class.getSimpleName())
+                .forks(1)
+                .build();
+        new Runner(opt).run();
     }
 }
