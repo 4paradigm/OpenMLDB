@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace fesql {
 namespace sdk {
@@ -103,6 +104,19 @@ class TableSet {
         return std::shared_ptr<Table>();
     }
     virtual int32_t Size() { return 0; }
+};
+
+class ProcedureInfo {
+ public:
+    ProcedureInfo() {}
+    virtual ~ProcedureInfo() {}
+    virtual const std::string& GetDbName() const = 0;
+    virtual const std::string& GetSpName() const = 0;
+    virtual const std::string& GetSql() const = 0;
+    virtual const fesql::sdk::Schema& GetInputSchema() const = 0;
+    virtual const fesql::sdk::Schema& GetOutputSchema() const = 0;
+    virtual const std::vector<std::string>& GetTables() const = 0;
+    virtual const std::string& GetMainTable() const = 0;
 };
 
 }  // namespace sdk
