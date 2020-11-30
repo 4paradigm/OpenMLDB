@@ -320,6 +320,38 @@ bool TableNode::Equals(const SQLNode *node) const {
     return this->org_table_name_ == that->org_table_name_;
 }
 
+void ColumnIdNode::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, std::to_string(this->GetColumnID()), "column_id",
+               false);
+}
+
+ColumnIdNode *ColumnIdNode::CastFrom(ExprNode *node) {
+    return dynamic_cast<ColumnIdNode *>(node);
+}
+
+const std::string ColumnIdNode::GenerateExpressionName() const {
+    return "#" + std::to_string(this->GetColumnID());
+}
+
+const std::string ColumnIdNode::GetExprString() const {
+    return "#" + std::to_string(this->GetColumnID());
+}
+
+bool ColumnIdNode::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    const ColumnIdNode *that = dynamic_cast<const ColumnIdNode *>(node);
+    return this->GetColumnID() == that->GetColumnID();
+}
+
 void ColumnRefNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
@@ -915,7 +947,7 @@ void FillSQLNodeList2NodeVector(
     }
 }
 void ColumnOfExpression(const ExprNode *node_ptr,
-                        std::vector<const node::ColumnRefNode *> *columns) {
+                        std::vector<const node::ExprNode *> *columns) {
     if (nullptr == columns || nullptr == node_ptr) {
         return;
     }
@@ -926,6 +958,11 @@ void ColumnOfExpression(const ExprNode *node_ptr,
         case kExprColumnRef: {
             columns->push_back(
                 dynamic_cast<const node::ColumnRefNode *>(node_ptr));
+            return;
+        }
+        case kExprColumnId: {
+            columns->push_back(
+                dynamic_cast<const node::ColumnIdNode *>(node_ptr));
             return;
         }
         default: {

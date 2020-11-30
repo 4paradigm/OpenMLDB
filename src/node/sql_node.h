@@ -195,6 +195,8 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "between";
         case kExprColumnRef:
             return "column ref";
+        case kExprColumnId:
+            return "column id";
         case kExprCast:
             return "cast";
         case kExprAll:
@@ -1118,22 +1120,23 @@ class FrameNode : public SQLNode {
         if (nullptr == frame_rows_) {
             return nullptr == frame_range_ || nullptr == frame_range_->start()
                        ? INT64_MIN
-                   : frame_range_->start()->GetSignedOffset() > 0
-                       ? 0
-                       : frame_range_->start()->GetSignedOffset();
+                       : frame_range_->start()->GetSignedOffset() > 0
+                             ? 0
+                             : frame_range_->start()->GetSignedOffset();
         } else {
             return nullptr == frame_range_ || nullptr == frame_range_->start()
                        ? 0
-                   : frame_range_->start()->GetSignedOffset() > 0
-                       ? 0
-                       : frame_range_->start()->GetSignedOffset();
+                       : frame_range_->start()->GetSignedOffset() > 0
+                             ? 0
+                             : frame_range_->start()->GetSignedOffset();
         }
     }
     int64_t GetHistoryRangeEnd() const {
-        return nullptr == frame_range_ || nullptr == frame_range_->end() ? 0
-               : frame_range_->end()->GetSignedOffset() > 0
+        return nullptr == frame_range_ || nullptr == frame_range_->end()
                    ? 0
-                   : frame_range_->end()->GetSignedOffset();
+                   : frame_range_->end()->GetSignedOffset() > 0
+                         ? 0
+                         : frame_range_->end()->GetSignedOffset();
     }
 
     int64_t GetHistoryRowsStart() const {
@@ -1143,14 +1146,15 @@ class FrameNode : public SQLNode {
         if (nullptr == frame_range_) {
             return nullptr == frame_rows_ || nullptr == frame_rows_->start()
                        ? INT64_MIN
-                   : frame_rows_->start()->GetSignedOffset() > 0
-                       ? 0
-                       : frame_rows_->start()->GetSignedOffset();
+                       : frame_rows_->start()->GetSignedOffset() > 0
+                             ? 0
+                             : frame_rows_->start()->GetSignedOffset();
         } else {
-            return nullptr == frame_rows_ || nullptr == frame_rows_->start() ? 0
-                   : frame_rows_->start()->GetSignedOffset() > 0
+            return nullptr == frame_rows_ || nullptr == frame_rows_->start()
                        ? 0
-                       : frame_rows_->start()->GetSignedOffset();
+                       : frame_rows_->start()->GetSignedOffset() > 0
+                             ? 0
+                             : frame_rows_->start()->GetSignedOffset();
         }
     }
     int64_t GetHistoryRowsEnd() const {
@@ -1162,10 +1166,11 @@ class FrameNode : public SQLNode {
                        ? INT64_MIN
                        : frame_rows_->end()->GetSignedOffset();
         } else {
-            return nullptr == frame_rows_ || nullptr == frame_rows_->start() ? 0
-                   : frame_rows_->end()->GetSignedOffset() > 0
+            return nullptr == frame_rows_ || nullptr == frame_rows_->start()
                        ? 0
-                       : frame_rows_->end()->GetSignedOffset();
+                       : frame_rows_->end()->GetSignedOffset() > 0
+                             ? 0
+                             : frame_rows_->end()->GetSignedOffset();
         }
     }
     inline const bool IsHistoryFrame() const {
@@ -1529,6 +1534,26 @@ class ColumnRefNode : public ExprNode {
     std::string column_name_;
     std::string relation_name_;
     std::string db_name_;
+};
+
+class ColumnIdNode : public ExprNode {
+ public:
+    explicit ColumnIdNode(size_t column_id)
+        : ExprNode(kExprColumnId), column_id_(column_id) {}
+
+    size_t GetColumnID() const { return column_id_; }
+
+    static ColumnIdNode *CastFrom(ExprNode *node);
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    const std::string GenerateExpressionName() const;
+    virtual bool Equals(const ExprNode *node) const;
+    ColumnIdNode *ShadowCopy(NodeManager *) const override;
+
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+
+ private:
+    size_t column_id_;
 };
 
 class GetFieldExpr : public ExprNode {
@@ -2490,7 +2515,7 @@ bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
                         ExprNode *node_ptr, const WindowDefNode **output);
 void ColumnOfExpression(
     const ExprNode *node_ptr,
-    std::vector<const node::ColumnRefNode *> *columns);  // NOLINT
+    std::vector<const node::ExprNode *> *columns);  // NOLINT
 void FillSQLNodeList2NodeVector(
     SQLNodeList *node_list_ptr,
     std::vector<SQLNode *> &node_list);  // NOLINT (runtime/references)

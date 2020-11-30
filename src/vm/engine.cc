@@ -144,7 +144,8 @@ bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
         if (batch_req_sess == nullptr) {
             return false;
         }
-        auto& cache_indices = cache_ctx.common_column_indices;
+        auto& cache_indices =
+            cache_ctx.batch_request_info.common_column_indices;
         auto& sess_indices = batch_req_sess->common_column_indices();
         if (cache_indices != sess_indices) {
             status =
@@ -175,7 +176,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
 
     auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
     if (batch_req_sess) {
-        sql_context.common_column_indices =
+        sql_context.batch_request_info.common_column_indices =
             batch_req_sess->common_column_indices();
     }
 
