@@ -197,9 +197,14 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     SetCacheLocked(db, sql, session.engine_mode(), info);
     session.SetCompileInfo(info);
     if (session.is_debug_) {
-        std::ostringstream oss;
-        sql_context.cluster_job.Print(oss, "");
-        LOG(INFO) << "cluster job:\n" << oss.str() << std::endl;
+        std::ostringstream plan_oss;
+        if (nullptr != sql_context.physical_plan) {
+            sql_context.physical_plan->Print(plan_oss, "");
+            LOG(INFO) << "physical plan:\n" << plan_oss.str() << std::endl;
+        }
+        std::ostringstream runner_oss;
+        sql_context.cluster_job.Print(runner_oss, "");
+        LOG(INFO) << "cluster job:\n" << runner_oss.str() << std::endl;
     }
     return true;
 }
