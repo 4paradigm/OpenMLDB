@@ -18,8 +18,6 @@ import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
 
-import static java.lang.Thread.sleep;
-
 @BenchmarkMode(Mode.All)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
@@ -34,7 +32,7 @@ public class FESQLClusterBenchmark {
     private Map<String, Map<String, String>> tables = new HashMap<>();
     private String partitionNum = "7";
     private int pkNum = 1;
-    @Param({"10", "100", "1000"})
+    @Param({"10", "100", "1000", "5000"})
     private int windowNum = 10;
     private String previousApplication = "create table `previous_application`(" +
             "`SK_ID_PREV` bigint," +
