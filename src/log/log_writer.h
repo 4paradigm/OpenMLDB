@@ -11,6 +11,7 @@
 #include "base/status.h"
 #include "log/log_format.h"
 #include "log/writable_file.h"
+#include "config.h" // NOLINT
 
 using ::rtidb::base::Slice;
 using ::rtidb::base::Status;
@@ -43,6 +44,12 @@ class Writer {
     // pre-computed to reduce the overhead of computing the crc of the
     // record type stored in the header.
     uint32_t type_crc_[kMaxRecordType + 1];
+
+#ifdef PZFPGA_ENABLE
+    // buffer of kBlockSize
+    char* buffer_;
+    Status CompressRecord();
+#endif
 
     Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);
 

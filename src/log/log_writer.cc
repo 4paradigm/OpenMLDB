@@ -9,7 +9,6 @@
 #include "log/crc32c.h"
 #include "base/glog_wapper.h" // NOLINT
 #include "gflags/gflags.h"
-#include "config.h" // NOLINT
 #ifdef PZFPGA_ENABLE
 #include "pz.h" // NOLINT
 #endif
@@ -32,6 +31,12 @@ static void InitTypeCrc(uint32_t* type_crc) {
 
 Writer::Writer(WritableFile* dest) : dest_(dest), block_offset_(0) {
     InitTypeCrc(type_crc_);
+#ifdef PZFPGA_ENABLE
+          if (FLAGS_compress_snapshot) {
+              fpga_ctx_ = gzipfpga_init_titanse();
+              buffer_ = new char[kBlockSize];
+          }
+#endif
 }
 
 Writer::Writer(WritableFile* dest, uint64_t dest_length)
@@ -40,6 +45,7 @@ Writer::Writer(WritableFile* dest, uint64_t dest_length)
 #ifdef PZFPGA_ENABLE
           if (FLAGS_compress_snapshot) {
               fpga_ctx_ = gzipfpga_init_titanse();
+              buffer_ = new char[kBlockSize];
           }
 #endif
 }
@@ -48,6 +54,7 @@ Writer::~Writer() {
 #ifdef PZFPGA_ENABLE
     if (FLAGS_compress_snapshot && fpga_ctx_) {
         gzipfpga_end(fpga_ctx_);
+        delete[] buffer_;
     }
 #endif
 }
@@ -66,7 +73,17 @@ Status Writer::EndLog() {
                 // Fill the trailer (literal below relies on kHeaderSize being
                 // 7)
                 assert(kHeaderSize == 7);
-                dest_->Append(Slice("\x00\x00\x00\x00\x00\x00", leftover));
+                Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
+#ifdef PZFPGA_ENABLE
+                if (!FLAGS_compress_snapshot) {
+#endif
+                    dest_->Append(fill_slice);
+#ifdef PZFPGA_ENABLE
+                } else {
+                    memcpy(buffer_ + block_offset_, fill_slice.data(), leftover);
+                    CompressRecord();
+                }
+#endif
             }
             block_offset_ = 0;
         }
@@ -101,7 +118,17 @@ Status Writer::AddRecord(const Slice& slice) {
                 // Fill the trailer (literal below relies on kHeaderSize being
                 // 7)
                 assert(kHeaderSize == 7);
-                dest_->Append(Slice("\x00\x00\x00\x00\x00\x00", leftover));
+                Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
+#ifdef PZFPGA_ENABLE
+                if (!FLAGS_compress_snapshot) {
+#endif
+                    dest_->Append(fill_slice);
+#ifdef PZFPGA_ENABLE
+                } else {
+                    memcpy(buffer_ + block_offset_, fill_slice.data(), leftover);
+                    CompressRecord();
+                }
+#endif
             }
             block_offset_ = 0;
         }
@@ -144,10 +171,63 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
     crc = Mask(crc);  // Adjust for storage
     EncodeFixed32(buf, crc);
 
-    // Write the header and the payload
-    Status s = dest_->Append(Slice(buf, kHeaderSize));
+#ifdef PZFPGA_ENABLE
+    if (!FLAGS_compress_snapshot) {
+#endif
+        // Write the header and the payload
+        Status s = dest_->Append(Slice(buf, kHeaderSize));
+        if (s.ok()) {
+            s = dest_->Append(Slice(ptr, n));
+            if (s.ok()) {
+                s = dest_->Flush();
+            }
+        }
+        if (!s.ok()) {
+            PDLOG(WARNING, "write error. %s", s.ToString().c_str());
+        }
+
+        block_offset_ += kHeaderSize + n;
+        return s;
+#ifdef PZFPGA_ENABLE
+    } else {
+        memcpy(buffer_ + block_offset_, &buf, kHeaderSize);
+        memcpy(buffer_ + block_offset_ + kHeaderSize, ptr, n);
+        block_offset_ += kHeaderSize + n;
+        // fill the trailer if kEofType
+        if (t == kEofType) {
+            memset(buffer_ + block_offset_, 0, kBlockSize - block_offset_);
+            block_offset_ = kBlockSize;
+        }
+        if (block_offset_ == kBlockSize) {
+            return CompressRecord();
+        }
+        return Status::OK();
+    }
+#endif
+}
+
+#ifdef PZFPGA_ENABLE
+Status Writer::CompressRecord() {
+    Status s;
+    // compress
+    char compress_record[kBlockSize];
+    int compress_len = gzipfpga_compress_nohuff(
+            fpga_ctx_, buffer_, compress_record, kBlockSize, kBlockSize, 0);
+    if (compress_len < 0)  {
+        s = Status::InvalidRecord(Slice("compress failed"));
+        PDLOG(WARNING, "write error. %s", s.ToString().c_str());
+        return s;
+    }
+    // fill compressed record's header
+    char compress_header[64];
+    memcpy(compress_header, &compress_len, sizeof(int));
+    // memcpy(compress_header + 8, &kBlockSize, sizeof(int));
+    // memset(compress_header + 8, 0, 56);
+    memset(compress_header + sizeof(int), 0, 64 - sizeof(int));
+    // write header and compressed data
+    s = dest_->Append(Slice(compress_header, 64));
     if (s.ok()) {
-        s = dest_->Append(Slice(ptr, n));
+        s = dest_->Append(Slice(compress_record, compress_len));
         if (s.ok()) {
             s = dest_->Flush();
         }
@@ -155,10 +235,9 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
     if (!s.ok()) {
         PDLOG(WARNING, "write error. %s", s.ToString().c_str());
     }
-
-    block_offset_ += kHeaderSize + n;
     return s;
 }
+#endif
 
 }  // namespace log
 }  // namespace rtidb
