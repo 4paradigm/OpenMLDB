@@ -627,14 +627,13 @@ bool SQLCase::ExtractInputTableDef(type::TableDef& table,
     return ExtractInputTableDef(inputs_[input_idx], table);
 }
 bool SQLCase::ExtractInputTableDef(const TableInfo& input,
-                          type::TableDef& table) const {
+                                   type::TableDef& table) const {
     if (!input.schema_.empty()) {
         if (!ExtractTableDef(input.schema_, input.index_, table)) {
             return false;
         }
     } else if (!input.columns_.empty()) {
-        if (!ExtractTableDef(input.columns_,
-                             input.indexs_, table)) {
+        if (!ExtractTableDef(input.columns_, input.indexs_, table)) {
             return false;
         }
     }
@@ -1194,15 +1193,16 @@ std::string FindFesqlDirPath() {
 }
 
 bool SQLCase::BuildCreateSpSQLFromInput(int32_t input_idx,
-        const std::string& select_sql, const std::set<size_t>& common_idx,
-        std::string* create_sp_sql) {
+                                        const std::string& select_sql,
+                                        const std::set<size_t>& common_idx,
+                                        std::string* create_sp_sql) {
     type::TableDef table;
     if (!ExtractInputTableDef(table, input_idx)) {
         LOG(WARNING) << "Fail to extract table schema";
         return false;
     }
-    if (!BuildCreateSpSQLFromSchema(
-                table, select_sql, common_idx, create_sp_sql)) {
+    if (!BuildCreateSpSQLFromSchema(table, select_sql, common_idx,
+                                    create_sp_sql)) {
         LOG(WARNING) << "Fail to build create sql string";
         return false;
     }
@@ -1210,8 +1210,9 @@ bool SQLCase::BuildCreateSpSQLFromInput(int32_t input_idx,
 }
 
 bool SQLCase::BuildCreateSpSQLFromSchema(const type::TableDef& table,
-        const std::string& select_sql, const std::set<size_t>& common_idx,
-        std::string* create_sql) {
+                                         const std::string& select_sql,
+                                         const std::set<size_t>& common_idx,
+                                         std::string* create_sql) {
     std::string sql = "CREATE Procedure " + table.name() + "(\n";
     for (int i = 0; i < table.columns_size(); i++) {
         auto column = table.columns(i);

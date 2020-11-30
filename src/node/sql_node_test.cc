@@ -514,7 +514,7 @@ TEST_F(SqlNodeTest, WindowAndFrameNodeMergeTest) {
 
 TEST_F(SqlNodeTest, ColumnOfExpressionTest) {
     {
-        std::vector<const node::ColumnRefNode *> columns;
+        std::vector<const node::ExprNode *> columns;
         node::ColumnOfExpression(
             dynamic_cast<ExprNode *>(
                 node_manager_->MakeColumnRefNode("c1", "t1")),
@@ -524,7 +524,7 @@ TEST_F(SqlNodeTest, ColumnOfExpressionTest) {
                                columns[0]));
     }
     {
-        std::vector<const node::ColumnRefNode *> columns;
+        std::vector<const node::ExprNode *> columns;
         node::ColumnOfExpression(
             dynamic_cast<ExprNode *>(node_manager_->MakeCastNode(
                 kDouble, node_manager_->MakeColumnRefNode("c2", "t1"))),
@@ -534,7 +534,7 @@ TEST_F(SqlNodeTest, ColumnOfExpressionTest) {
                                columns[0]));
     }
     {
-        std::vector<const node::ColumnRefNode *> columns;
+        std::vector<const node::ExprNode *> columns;
         node::ColumnOfExpression(
             dynamic_cast<ExprNode *>(node_manager_->MakeBinaryExprNode(
                 node_manager_->MakeColumnRefNode("c1", "t1"),
@@ -547,7 +547,7 @@ TEST_F(SqlNodeTest, ColumnOfExpressionTest) {
                                columns[1]));
     }
     {
-        std::vector<const node::ColumnRefNode *> columns;
+        std::vector<const node::ExprNode *> columns;
         node::ColumnOfExpression(
             dynamic_cast<ExprNode *>(node_manager_->MakeBinaryExprNode(
                 node_manager_->MakeConstNode(1),

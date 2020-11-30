@@ -309,6 +309,7 @@ enum RunnerType {
     kRunnerAgg,
     kRunnerWindowAgg,
     kRunnerRequestUnion,
+    kRunnerPostRequestUnion,
     kRunnerIndexSeek,
     kRunnerLastJoin,
     kRunnerConcat,
@@ -345,6 +346,8 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "WINDOW_AGG_PROJECT";
         case kRunnerRequestUnion:
             return "REQUEST_UNION";
+        case kRunnerPostRequestUnion:
+            return "POST_REQUEST_UNION";
         case kRunnerIndexSeek:
             return "INDEX_SEEK";
         case kRunnerLastJoin:
@@ -399,15 +402,13 @@ class Runner : public node::NodeBase<Runner> {
                                  const std::string& tab) const {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_);
         if (is_lazy_) {
-            output <<" lazy";
+            output << " lazy";
         }
     }
     virtual void Print(std::ostream& output, const std::string& tab,
                        std::set<int32_t>* visited_ids) const {  // NOLINT
         PrintRunnerInfo(output, tab);
-        if (need_cache_) {
-            output << "(cache_enable)";
-        }
+        PrintCacheInfo(output);
         if (nullptr != visited_ids &&
             visited_ids->find(id_) != visited_ids->cend()) {
             output << "\n";
@@ -427,6 +428,9 @@ class Runner : public node::NodeBase<Runner> {
     const bool need_cache() { return need_cache_; }
     void EnableCache() { need_cache_ = true; }
     void DisableCache() { need_cache_ = false; }
+    void EnableBatchCache() { need_batch_cache_ = true; }
+    void DisableBatchCache() { need_batch_cache_ = false; }
+
     const int32_t id_;
     const RunnerType type_;
     const int32_t limit_cnt_;
@@ -464,6 +468,17 @@ class Runner : public node::NodeBase<Runner> {
 
  protected:
     bool is_lazy_;
+
+    void PrintCacheInfo(std::ostream& output) const {
+        if (need_cache_ && need_batch_cache_) {
+            output << " (cache_enable, batch_common)";
+        } else if (need_cache_) {
+            output << " (cache_enable)";
+        } else if (need_batch_cache_) {
+            output << " (batch_common)";
+        }
+    }
+
     bool need_cache_;
     bool need_batch_cache_;
     std::vector<Runner*> producers_;
@@ -752,12 +767,15 @@ class WindowAggRunner : public Runner {
     WindowJoinGenerator windows_join_gen_;
     WindowProjectGenerator window_project_gen_;
 };
+
 class RequestUnionRunner : public Runner {
  public:
     RequestUnionRunner(const int32_t id, const SchemasContext* schema,
-                       const int32_t limit_cnt, const Range& range)
+                       const int32_t limit_cnt, const Range& range,
+                       bool output_request_row)
         : Runner(id, kRunnerRequestUnion, schema, limit_cnt),
-          range_gen_(range) {}
+          range_gen_(range),
+          output_request_row_(output_request_row) {}
 
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
@@ -765,7 +783,22 @@ class RequestUnionRunner : public Runner {
     }
     RequestWindowUnionGenerator windows_union_gen_;
     RangeGenerator range_gen_;
+    bool output_request_row_;
 };
+
+class PostRequestUnionRunner : public Runner {
+ public:
+    PostRequestUnionRunner(const int32_t id, const SchemasContext* schema,
+                           const Range& request_ts)
+        : Runner(id, kRunnerPostRequestUnion, schema),
+          request_ts_gen_(request_ts.fn_info()) {}
+
+    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+
+ private:
+    OrderGenerator request_ts_gen_;
+};
+
 class LastJoinRunner : public Runner {
  public:
     LastJoinRunner(const int32_t id, const SchemasContext* schema,
@@ -794,7 +827,7 @@ class RequestLastJoinRunner : public Runner {
                                  const std::string& tab) const {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_);
         if (is_lazy_) {
-            output <<" lazy";
+            output << " lazy";
         }
         if (output_right_only_) {
             output << " OUTPUT_RIGHT_ONLY";
@@ -835,7 +868,7 @@ class ProxyRequestRunner : public Runner {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_)
                << "(TASK_ID=" << task_id_ << ")";
         if (is_lazy_) {
-            output <<" lazy";
+            output << " lazy";
         }
     }
 
@@ -957,15 +990,21 @@ class ClusterJob {
 class RunnerBuilder {
  public:
     explicit RunnerBuilder(node::NodeManager* nm, const std::string& sql,
-                           bool support_cluster_optimized)
+                           bool support_cluster_optimized,
+                           const std::set<size_t>& batch_common_node_set)
         : nm_(nm),
           support_cluster_optimized_(support_cluster_optimized),
           id_(0),
           cluster_job_(sql),
-          task_map_() {}
+          task_map_(),
+          batch_common_node_set_(batch_common_node_set) {}
     virtual ~RunnerBuilder() {}
     ClusterTask RegisterTask(PhysicalOpNode* node, ClusterTask task) {
         task_map_[node] = task;
+        if (batch_common_node_set_.find(node->node_id()) !=
+            batch_common_node_set_.end()) {
+            task.GetRoot()->EnableBatchCache();
+        }
         return task;
     }
     ClusterTask Build(PhysicalOpNode* node,  // NOLINT
@@ -999,6 +1038,8 @@ class RunnerBuilder {
     }
     std::unordered_map<::fesql::vm::PhysicalOpNode*, ::fesql::vm::ClusterTask>
         task_map_;
+
+    std::set<size_t> batch_common_node_set_;
 };
 
 class RunnerContext {

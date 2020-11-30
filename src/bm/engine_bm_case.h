@@ -26,9 +26,8 @@ void EngineWindowSumFeature1(benchmark::State* state, MODE mode,
                              int64_t limit_cnt,
                              int64_t size);  // NOLINT
 void EngineWindowRowsSumFeature1(benchmark::State* state, MODE mode,
-                             int64_t limit_cnt,
-                             int64_t size);  // NOLINT
-
+                                 int64_t limit_cnt,
+                                 int64_t size);  // NOLINT
 
 void EngineRunBatchWindowSumFeature1(benchmark::State* state, MODE mode,
                                      int64_t limit_cnt,

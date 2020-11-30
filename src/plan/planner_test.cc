@@ -1418,7 +1418,6 @@ TEST_F(PlannerTest, CreateSpParseTest) {
     ASSERT_EQ(1, ret);
 }
 
-
 class PlannerErrorTest : public ::testing::TestWithParam<SQLCase> {
  public:
     PlannerErrorTest() {

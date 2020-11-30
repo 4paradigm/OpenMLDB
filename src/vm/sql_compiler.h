@@ -40,6 +40,14 @@ enum EngineMode { kBatchMode, kRequestMode, kBatchRequestMode };
 
 std::string EngineModeName(EngineMode mode);
 
+struct BatchRequestInfo {
+    // common column indices in batch request mode
+    std::set<size_t> common_column_indices;
+
+    // common physical node ids during batch request
+    std::set<size_t> common_node_set;
+};
+
 struct SQLContext {
     // mode: batch|request|batch request
     EngineMode engine_mode;
@@ -68,8 +76,7 @@ struct SQLContext {
     ::fesql::node::NodeManager nm;
     ::fesql::udf::UDFLibrary* udf_library = nullptr;
 
-    // common column indices in batch request mode
-    std::set<size_t> common_column_indices;
+    BatchRequestInfo batch_request_info;
 
     SQLContext() {}
     ~SQLContext() {}
