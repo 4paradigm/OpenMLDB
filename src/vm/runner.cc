@@ -1666,26 +1666,9 @@ std::shared_ptr<DataHandler> ConcatRunner::Run(RunnerContext& ctx) {
     if (kRowHandler != left->GetHanlderType()) {
         return std::shared_ptr<DataHandler>();
     }
-
-    if (kRowHandler == right->GetHanlderType()) {
-        auto left_row = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
-        auto right_row =
-            std::dynamic_pointer_cast<RowHandler>(right)->GetValue();
-        return std::shared_ptr<RowHandler>(new MemRowHandler(
-            Row(left_slices, left_row, right_slices, right_row)));
-    } else if (kTableHandler == right->GetHanlderType()) {
-        auto left_row = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
-        auto right_table = std::dynamic_pointer_cast<TableHandler>(right);
-        auto right_iter = right_table->GetIterator();
-        if (!right_iter) {
-            return std::shared_ptr<RowHandler>(new MemRowHandler(
-                Row(left_slices, left_row, right_slices, Row())));
-        }
-        return std::shared_ptr<RowHandler>(new MemRowHandler(
-            Row(left_slices, left_row, right_slices, right_iter->GetValue())));
-    } else {
-        return std::shared_ptr<DataHandler>();
-    }
+    return std::shared_ptr<RowHandler>(new RowCombineWrapper(
+        std::dynamic_pointer_cast<RowHandler>(left), left_slices,
+        std::dynamic_pointer_cast<RowHandler>(right), right_slices));
 }
 std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
     auto input = producers_[0]->RunWithCache(ctx);

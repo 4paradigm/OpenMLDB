@@ -1,5 +1,5 @@
 db: test_zw
-debugs: ["4组窗口特征ID拼接"]
+debugs:
 cases:
   -
     id: 0
@@ -280,6 +280,73 @@ cases:
         select id as out4_id, c4, sum(c6) over w4 as w4_sum_c6 from {0}
         window w4 as (PARTITION BY {0}.c4 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
       ) as out4 on out1_id=out4_id;
+    request_plan: |
+      SIMPLE_PROJECT(sources=(#15, #16, #22, #31, #32, #33, #42, #43, #44, #53, #54, #55))
+        REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out4_id), index_keys=)
+          REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out3_id), index_keys=)
+            REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out2_id), index_keys=)
+              RENAME(name=out1)
+                PROJECT(type=Aggregation)
+                  REQUEST_UNION(partition_keys=(), orders=() ASC, range=(auto_t0.c7, -864000000, 0), index_keys=(auto_t0.c1))
+                    DATA_PROVIDER(request=auto_t0)
+                    DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+              RENAME(name=out2)
+                PROJECT(type=Aggregation)
+                  REQUEST_UNION(partition_keys=(), orders=() ASC, range=(auto_t0.c7, -864000000, 0), index_keys=(auto_t0.c2))
+                    DATA_PROVIDER(request=auto_t0)
+                    DATA_PROVIDER(type=Partition, table=auto_t0, index=index2)
+            RENAME(name=out3)
+              PROJECT(type=Aggregation)
+                REQUEST_UNION(partition_keys=(), orders=() ASC, range=(auto_t0.c7, -864000000, 0), index_keys=(auto_t0.c3))
+                  DATA_PROVIDER(request=auto_t0)
+                  DATA_PROVIDER(type=Partition, table=auto_t0, index=index3)
+          RENAME(name=out4)
+            PROJECT(type=Aggregation)
+              REQUEST_UNION(partition_keys=(), orders=() ASC, range=(auto_t0.c7, -864000000, 0), index_keys=(auto_t0.c4))
+                DATA_PROVIDER(request=auto_t0)
+                DATA_PROVIDER(type=Partition, table=auto_t0, index=index4)
+
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(#8, #9, #22, #31, #32, #33, #42, #43, #44, #53, #54, #55))
+        REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out4_id), index_keys=)
+          REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out3_id), index_keys=)
+            REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out2_id), index_keys=)
+              RENAME(name=out1)
+                SIMPLE_PROJECT(sources=(#8, #9, #22))
+                  REQUEST_JOIN(type=kJoinTypeConcat, condition=, left_keys=, right_keys=, index_keys=)
+                    SIMPLE_PROJECT(sources=(#8, #9))
+                      DATA_PROVIDER(request=auto_t0)
+                    PROJECT(type=Aggregation)
+                      REQUEST_UNION(partition_keys=(), orders=() ASC, range=(auto_t0.c7, -864000000, 0), index_keys=(auto_t0.c1))
+                        DATA_PROVIDER(request=auto_t0)
+                        DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+              RENAME(name=out2)
+                SIMPLE_PROJECT(sources=(#8, #10, #30))
+                  REQUEST_JOIN(type=kJoinTypeConcat, condition=, left_keys=, right_keys=, index_keys=)
+                    SIMPLE_PROJECT(sources=(#8, #10))
+                      DATA_PROVIDER(request=auto_t0)
+                    PROJECT(type=Aggregation)
+                      REQUEST_UNION(partition_keys=(), orders=() ASC, range=(auto_t0.c7, -864000000, 0), index_keys=(auto_t0.c2))
+                        DATA_PROVIDER(request=auto_t0)
+                        DATA_PROVIDER(type=Partition, table=auto_t0, index=index2)
+            RENAME(name=out3)
+              SIMPLE_PROJECT(sources=(#8, #11, #41))
+                REQUEST_JOIN(type=kJoinTypeConcat, condition=, left_keys=, right_keys=, index_keys=)
+                  SIMPLE_PROJECT(sources=(#8, #11))
+                    DATA_PROVIDER(request=auto_t0)
+                  PROJECT(type=Aggregation)
+                    REQUEST_UNION(partition_keys=(), orders=() ASC, range=(auto_t0.c7, -864000000, 0), index_keys=(auto_t0.c3))
+                      DATA_PROVIDER(request=auto_t0)
+                      DATA_PROVIDER(type=Partition, table=auto_t0, index=index3)
+          RENAME(name=out4)
+            SIMPLE_PROJECT(sources=(#8, #12, #52))
+              REQUEST_JOIN(type=kJoinTypeConcat, condition=, left_keys=, right_keys=, index_keys=)
+                SIMPLE_PROJECT(sources=(#8, #12))
+                  DATA_PROVIDER(request=auto_t0)
+                PROJECT(type=Aggregation)
+                  REQUEST_UNION(partition_keys=(), orders=() ASC, range=(auto_t0.c7, -864000000, 0), index_keys=(auto_t0.c4))
+                    DATA_PROVIDER(request=auto_t0)
+                    DATA_PROVIDER(type=Partition, table=auto_t0, index=index4)
     expect:
       columns: ["out1_id int", "c1 string", "w1_sum_c6 double",
                 "out2_id int", "c2 string", "w2_sum_c6 double",

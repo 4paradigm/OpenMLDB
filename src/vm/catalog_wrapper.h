@@ -387,6 +387,61 @@ class RowProjectWrapper : public RowHandler {
     Row value_;
     const ProjectFun* fun_;
 };
+class RowCombineWrapper : public RowHandler {
+ public:
+    RowCombineWrapper(std::shared_ptr<RowHandler> left, size_t left_slices,
+                      std::shared_ptr<RowHandler> right, size_t right_slices)
+        : RowHandler(),
+          status_(base::Status::Running()),
+          table_name_(""),
+          db_(""),
+          schema_(nullptr),
+          left_(left),
+          left_slices_(left_slices),
+          right_(right),
+          right_slices_(right_slices),
+          value_() {}
+    virtual ~RowCombineWrapper() {}
+    const Row& GetValue() override {
+        if (!status_.isRunning()) {
+            return value_;
+        }
+        auto left_row =
+            std::dynamic_pointer_cast<RowHandler>(left_)->GetValue();
+        if (kRowHandler == right_->GetHanlderType()) {
+            auto right_row =
+                std::dynamic_pointer_cast<RowHandler>(right_)->GetValue();
+            value_ = Row(left_slices_, left_row, right_slices_, right_row);
+        } else if (kTableHandler == right_->GetHanlderType()) {
+            auto right_table = std::dynamic_pointer_cast<TableHandler>(right_);
+            auto right_iter = right_table->GetIterator();
+            if (!right_iter) {
+                value_ = Row(left_slices_, left_row, right_slices_, Row());
+            } else {
+                right_iter->SeekToFirst();
+                value_ = Row(left_slices_, left_row, right_slices_,
+                             right_iter->GetValue());
+            }
+        } else {
+            value_ = Row(left_slices_, left_row, right_slices_, Row());
+        }
+        status_ = base::Status::OK();
+        return value_;
+    }
+    const Schema* GetSchema() override { return schema_; }
+    const std::string& GetName() override { return table_name_; }
+    const std::string& GetDatabase() override { return db_; }
+    base::Status status_;
+    std::string table_name_;
+    std::string db_;
+    const Schema* schema_;
+    std::shared_ptr<RowHandler> left_;
+    size_t left_slices_;
+    std::shared_ptr<RowHandler> right_;
+    size_t right_slices_;
+    Row value_;
+    const ProjectFun* fun_;
+};
 }  // namespace vm
 }  // namespace fesql
 
