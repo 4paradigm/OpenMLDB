@@ -3,6 +3,7 @@ package com._4paradigm.sql.jmh;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
@@ -20,7 +21,7 @@ public class FESQLClusterBenchmarkTest {
         FESQLClusterBenchmark benchmark = new FESQLClusterBenchmark(true);
         benchmark.setWindowNum(1000);
         benchmark.setup();
-        int loops = 10;
+        int loops = 1;
         for (int i = 0; i < loops; i++) {
             Map<String, String> result = benchmark.execSQLTest();
             Assert.assertNotNull(result);
@@ -41,6 +42,26 @@ public class FESQLClusterBenchmarkTest {
     public void benchmark() throws RunnerException {
         Options opt = new OptionsBuilder()
                 .include(FESQLClusterBenchmark.class.getSimpleName())
+                .forks(1)
+                .build();
+        new Runner(opt).run();
+    }
+    @Test
+    @Ignore
+    public void benchmarkSampleTime() throws RunnerException {
+        Options opt = new OptionsBuilder()
+                .include(FESQLClusterBenchmark.class.getSimpleName())
+                .mode(Mode.SampleTime)
+                .forks(1)
+                .build();
+        new Runner(opt).run();
+    }
+    @Test
+    @Ignore
+    public void benchmarkAverageTime() throws RunnerException {
+        Options opt = new OptionsBuilder()
+                .include(FESQLClusterBenchmark.class.getSimpleName())
+                .mode(Mode.AverageTime)
                 .forks(1)
                 .build();
         new Runner(opt).run();
