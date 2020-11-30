@@ -21,7 +21,7 @@ public class FESQLClusterBenchmarkTest {
         FESQLClusterBenchmark benchmark = new FESQLClusterBenchmark(true);
         benchmark.setWindowNum(1000);
         benchmark.setup();
-        int loops = 1;
+        int loops = 100;
         for (int i = 0; i < loops; i++) {
             Map<String, String> result = benchmark.execSQLTest();
             Assert.assertNotNull(result);
