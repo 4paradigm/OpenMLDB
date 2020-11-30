@@ -48,7 +48,7 @@ public class LastJoinTest extends FesqlTest {
         return dp.getCases().toArray();
     }
 
-    @Test(dataProvider = "testWindowAndLastJoinData")
+    @Test(dataProvider = "testClusterWindowAndLastJoinData")
     public void testWindowAndLastJoin(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor,testCase, ExecutorFactory.ExecutorType.kBatch).run();
     }
