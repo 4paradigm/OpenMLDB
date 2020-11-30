@@ -45,7 +45,7 @@ public class DDLEngine {
      *
      * @param sql
      * @param schema json format
-     * @return 
+     * @return
      */
     public static String genDDL(String sql, String schema) {
         String tempDB = "temp_" + System.currentTimeMillis();
@@ -84,7 +84,7 @@ public class DDLEngine {
     public static void parseWindowOp(PhysicalOpNode node, Map<String, RtidbTable> rtidbTables) {
         logger.info("begin to pares window op");
         PhysicalRequestUnionNode castNode = PhysicalRequestUnionNode.CastFrom(node);
-        
+
         String ts = castNode.window().sort().orders().order_by().GetChild(0).GetExprString();
         long start = -1;
         long end = -1;
@@ -225,7 +225,7 @@ public class DDLEngine {
         }
         return rtidbTables;
     }
-    
+
     public static PhysicalDataProviderNode findDataProviderNode(PhysicalOpNode node) {
         if (node.GetOpType() == PhysicalOpType.kPhysicalOpDataProvider) {
             return PhysicalDataProviderNode.CastFrom(node);
@@ -264,10 +264,10 @@ public class DDLEngine {
         for (PhysicalOpNode node : list) {
             System.out.println("dagToList node type = " + node.GetTypeName());
             PhysicalOpType type = node.GetOpType();
-             if (type.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
-                 PhysicalDataProviderNode castNode = PhysicalDataProviderNode.CastFrom(node);
+            if (type.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
+                PhysicalDataProviderNode castNode = PhysicalDataProviderNode.CastFrom(node);
                 System.out.println("PhysicalDataProviderNode = " + castNode.GetName());
-             }
+            }
         }
     }
 
@@ -380,10 +380,12 @@ public class DDLEngine {
 
 
     public static void main(String[] args) {
-    //    String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.json";
-    //    String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.txt";
-        String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/rong_e.json";
-        String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/rong_e.txt";
+        //    String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.json";
+        //    String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.txt";
+//        String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/rong_e.json";
+//        String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/rong_e.txt";
+        String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/performance/all_op.json";
+        String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/performance/all_op.txt";
         File file = new File(schemaPath);
         File sql = new File(sqlPath);
         try {
@@ -443,7 +445,6 @@ class RtidbTable {
         }
         str.append(StringUtils.join(indexsList, ",\n"));
         str.append("\n)");
-        // str.append(schema);
         return str.toString();
     }
 }
@@ -471,9 +472,9 @@ class RtidbIndex {
         String ttlType = DDLEngine.getRtidbIndexType(type);
         String index = "";
         if (ts.equals("")) {
-             index = String.format("index(key=(%s), ttl=(%s), ttl_type=%s)", key, getTTL(), ttlType);
+            index = String.format("index(key=(%s), ttl=%s, ttl_type=%s)", key, getTTL(), ttlType);
         } else {
-             index = String.format("index(key=(%s), ts=`%s`, ttl=(%s), ttl_type=%s)", key, ts, getTTL(), ttlType);
+            index = String.format("index(key=(%s), ts=`%s`, ttl=%s, ttl_type=%s)", key, ts, getTTL(), ttlType);
         }
         return index;
     }
@@ -481,22 +482,22 @@ class RtidbIndex {
     public String getTTL() {
         if (TTLType.kAbsAndLat == type) {
             long expireStr = expire / (60 * 1000);
-            return expireStr + "m, " + atmost;
+            return "(" + expireStr + "m, " + atmost + ")";
         }
         if (TTLType.kAbsolute == type) {
             long expireStr = expire / (60 * 1000);
-            return String.valueOf(expireStr);
+            return expireStr + "m";
         }
         if (TTLType.kLatest == type) {
             return String.valueOf(atmost);
         }
         if (TTLType.kAbsOrLat == type) {
             long expireStr = expire / (60 * 1000);
-            return expireStr + "m, " + atmost;
+            return "(" + expireStr + "m, " + atmost + ")";
         }
         return null;
     }
-//    @Override
+    //    @Override
     public boolean equals(RtidbIndex e) {
         return  this.getType() == e.getType() && this.getKeys().equals(e.getKeys()) && this.ts.equals(e.getTs());
     }
