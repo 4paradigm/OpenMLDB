@@ -1513,6 +1513,11 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
     switch (data->GetHanlderType()) {
         case kRowHandler: {
             auto row_handler = std::dynamic_pointer_cast<RowHandler>(data);
+            if (!row_handler) {
+                t.add("NULL Row");
+                t.endOfRow();
+                break;
+            }
             auto row = row_handler->GetValue();
             t.add("0");
             for (size_t id = 0; id < row_view_list.size(); id++) {
@@ -1589,11 +1594,13 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
             if (!iter) {
                 t.add("Empty set");
                 t.endOfRow();
+                break;
             }
             iter->SeekToFirst();
             if (!iter->Valid()) {
                 t.add("Empty set");
                 t.endOfRow();
+                break;
             }
             while (iter->Valid() && cnt++ < MAX_DEBUG_LINES_CNT) {
                 t.add("KEY: " + std::string(reinterpret_cast<const char*>(
