@@ -3,7 +3,7 @@
 # compile.sh
 CMAKE_TYPE=$1
 if [[ "${CMAKE_TYPE}" != "Debug" ]]; then
-        CMAKE_TYPE="Release"
+        CMAKE_TYPE="RelWithDebInfo"
 fi
 WORK_DIR=`pwd`
 

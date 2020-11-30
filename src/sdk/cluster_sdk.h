@@ -35,6 +35,8 @@
 namespace rtidb {
 namespace sdk {
 
+using rtidb::catalog::Procedures;
+
 struct ClusterOptions {
     std::string zk_cluster;
     std::string zk_path;
@@ -84,11 +86,10 @@ class ClusterSDK {
                                                                    const  std::string& name,
                                                                    uint32_t pid);
 
-    bool GetProcedureInfo(const std::string& db, const std::string& sp_name,
-        ::rtidb::api::ProcedureInfo* sp_info, std::string* msg);
+    std::shared_ptr<fesql::sdk::ProcedureInfo> GetProcedureInfo(
+            const std::string& db, const std::string& sp_name, std::string* msg);
 
-    bool GetProcedureInfo(
-            std::vector<std::shared_ptr<::rtidb::api::ProcedureInfo>>* sp_infos, std::string* msg);
+    std::vector<std::shared_ptr<fesql::sdk::ProcedureInfo>> GetProcedureInfo(std::string* msg);
 
  private:
     bool InitCatalog();
@@ -118,10 +119,6 @@ class ClusterSDK {
     uint64_t session_id_;
     ::rtidb::base::Random rand_;
     std::string sp_root_path_;
-    std::map<
-        std::string,
-        std::map<std::string, std::shared_ptr<::rtidb::api::ProcedureInfo>>>
-        sp_map_;
 };
 
 }  // namespace sdk

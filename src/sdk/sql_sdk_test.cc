@@ -108,6 +108,77 @@ TEST_P(SQLSDKQueryTest, sql_sdk_batch_test) {
     ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
     RunBatchModeSDK(sql_case, router, mc_->GetTbEndpoint());
 }
+
+TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_test) {
+    auto sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
+    RunRequestProcedureModeSDK(sql_case, router, false);
+    LOG(INFO) << "Finish sql_sdk_request_procedure_test: ID: "
+        << sql_case.id() << ", DESC: " << sql_case.desc();
+}
+
+TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_asyn_test) {
+    auto sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
+    RunRequestProcedureModeSDK(sql_case, router, true);
+    LOG(INFO) << "Finish sql_sdk_request_procedure_asyn_test: ID: "
+        << sql_case.id() << ", DESC: " << sql_case.desc();
+}
+
+TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_test) {
+    auto sql_case = GetParam();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    if (sql_case.batch_request().columns_.empty()) {
+        LOG(WARNING) << "No batch request specified";
+        return;
+    }
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
+    RunBatchRequestProcedureModeSDK(sql_case, router, false);
+    LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+}
+
+TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_asyn_test) {
+    auto sql_case = GetParam();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    if (sql_case.batch_request().columns_.empty()) {
+        LOG(WARNING) << "No batch request specified";
+        return;
+    }
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
+    RunBatchRequestProcedureModeSDK(sql_case, router, true);
+    LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+}
+
 TEST_F(SQLSDKQueryTest, execute_where_test) {
     std::string ddl =
         "create table trans(c_sk_seq string,\n"
@@ -257,6 +328,111 @@ TEST_F(SQLSDKQueryTest, execute_insert_loops_test) {
         break;
     }
 }
+
+TEST_F(SQLSDKQueryTest, request_procedure_test) {
+    // create table
+    std::string ddl =
+        "create table trans(c1 string,\n"
+        "                   c3 int,\n"
+        "                   c4 bigint,\n"
+        "                   c5 float,\n"
+        "                   c6 double,\n"
+        "                   c7 timestamp,\n"
+        "                   c8 date,\n"
+        "                   index(key=c1, ts=c7));";
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (!router) {
+        FAIL() << "Fail new cluster sql router";
+    }
+    std::string db = "test";
+    fesql::sdk::Status status;
+    router->CreateDB(db, &status);
+    router->ExecuteDDL(db, "drop table trans;", &status);
+    ASSERT_TRUE(router->RefreshCatalog());
+    if (!router->ExecuteDDL(db, ddl, &status)) {
+        FAIL() << "fail to create table";
+    }
+    ASSERT_TRUE(router->RefreshCatalog());
+    // insert
+    std::string insert_sql =
+        "insert into trans values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
+    ASSERT_TRUE(router->ExecuteInsert(db, insert_sql, &status));
+    // create procedure
+    std::string sp_name = "sp";
+    std::string sql =
+        "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS"
+        " (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    std::string sp_ddl =
+        "create procedure " + sp_name +
+        " (const c1 string, const c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
+        " begin " + sql + " end;";
+    if (!router->ExecuteDDL(db, sp_ddl, &status)) {
+        FAIL() << "fail to create procedure";
+    }
+    // call procedure
+    ASSERT_TRUE(router->RefreshCatalog());
+    auto request_row = router->GetRequestRow(db, sql, &status);
+    ASSERT_TRUE(request_row);
+    request_row->Init(2);
+    ASSERT_TRUE(request_row->AppendString("bb"));
+    ASSERT_TRUE(request_row->AppendInt32(23));
+    ASSERT_TRUE(request_row->AppendInt64(33));
+    ASSERT_TRUE(request_row->AppendFloat(1.5f));
+    ASSERT_TRUE(request_row->AppendDouble(2.5));
+    ASSERT_TRUE(request_row->AppendTimestamp(1590738994000));
+    ASSERT_TRUE(request_row->AppendDate(1234));
+    ASSERT_TRUE(request_row->Build());
+    auto rs = router->CallProcedure(db, sp_name, request_row, &status);
+    if (!rs) FAIL() << "call procedure failed";
+    auto schema = rs->GetSchema();
+    ASSERT_EQ(schema->GetColumnCnt(), 3u);
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ(rs->GetStringUnsafe(0), "bb");
+    ASSERT_EQ(rs->GetInt32Unsafe(1), 23);
+    ASSERT_EQ(rs->GetInt64Unsafe(2), 67);
+    ASSERT_FALSE(rs->Next());
+    // show procedure
+    std::string msg;
+    auto sp_info = router->ShowProcedure(db, sp_name, &status);
+    ASSERT_TRUE(sp_info);
+    ASSERT_EQ(sp_info->GetDbName(), db);
+    ASSERT_EQ(sp_info->GetSpName(), sp_name);
+    ASSERT_EQ(sp_info->GetMainTable(), "trans");
+    ASSERT_EQ(sp_info->GetTables().size(), 1u);
+    ASSERT_EQ(sp_info->GetTables().at(0), "trans");
+    auto& input_schema = sp_info->GetInputSchema();
+    ASSERT_EQ(input_schema.GetColumnCnt(), 7u);
+    ASSERT_EQ(input_schema.GetColumnName(0), "c1");
+    ASSERT_EQ(input_schema.GetColumnName(1), "c3");
+    ASSERT_EQ(input_schema.GetColumnName(2), "c4");
+    ASSERT_EQ(input_schema.GetColumnName(3), "c5");
+    ASSERT_EQ(input_schema.GetColumnName(4), "c6");
+    ASSERT_EQ(input_schema.GetColumnName(5), "c7");
+    ASSERT_EQ(input_schema.GetColumnName(6), "c8");
+    ASSERT_EQ(input_schema.GetColumnType(0), fesql::sdk::kTypeString);
+    ASSERT_EQ(input_schema.GetColumnType(1), fesql::sdk::kTypeInt32);
+    ASSERT_EQ(input_schema.GetColumnType(2), fesql::sdk::kTypeInt64);
+    ASSERT_EQ(input_schema.GetColumnType(3), fesql::sdk::kTypeFloat);
+    ASSERT_EQ(input_schema.GetColumnType(4), fesql::sdk::kTypeDouble);
+    ASSERT_EQ(input_schema.GetColumnType(5), fesql::sdk::kTypeTimestamp);
+    ASSERT_EQ(input_schema.GetColumnType(6), fesql::sdk::kTypeDate);
+
+    auto& output_schema = sp_info->GetOutputSchema();
+    ASSERT_EQ(output_schema.GetColumnCnt(), 3u);
+    ASSERT_EQ(output_schema.GetColumnName(0), "c1");
+    ASSERT_EQ(output_schema.GetColumnName(1), "c3");
+    ASSERT_EQ(output_schema.GetColumnName(2), "w1_c4_sum");
+    ASSERT_EQ(output_schema.GetColumnType(0), fesql::sdk::kTypeString);
+    ASSERT_EQ(output_schema.GetColumnType(1), fesql::sdk::kTypeInt32);
+    ASSERT_EQ(output_schema.GetColumnType(2), fesql::sdk::kTypeInt64);
+    // drop procedure
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table trans;", &status));
+}
+
 }  // namespace sdk
 }  // namespace rtidb
 

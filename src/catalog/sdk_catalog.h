@@ -29,6 +29,7 @@
 #include "client/tablet_client.h"
 #include "proto/name_server.pb.h"
 #include "vm/catalog.h"
+#include "catalog/base.h"
 
 namespace rtidb {
 namespace catalog {
@@ -113,15 +114,18 @@ typedef std::map<std::string,
                  std::map<std::string, std::shared_ptr<SDKTableHandler>>>
     SDKTables;
 typedef std::map<std::string, std::shared_ptr<::fesql::type::Database>> SDKDB;
+typedef std::map<std::string,
+        std::map<std::string, std::shared_ptr<::fesql::sdk::ProcedureInfo>>> Procedures;
 
 class SDKCatalog : public ::fesql::vm::Catalog {
  public:
     explicit SDKCatalog(std::shared_ptr<ClientManager> client_manager) :
-        tables_(), db_(), client_manager_(client_manager) {}
+        tables_(), db_(), client_manager_(client_manager), db_sp_map_() {}
 
     ~SDKCatalog() {}
 
-    bool Init(const std::vector<::rtidb::nameserver::TableInfo>& tables);
+    bool Init(const std::vector<::rtidb::nameserver::TableInfo>& tables,
+            const Procedures& db_sp_map);
 
     std::shared_ptr<::fesql::type::Database> GetDatabase(const std::string& db) override {
         return std::shared_ptr<::fesql::type::Database>();
@@ -134,10 +138,16 @@ class SDKCatalog : public ::fesql::vm::Catalog {
 
     std::shared_ptr<TabletAccessor> GetTablet() const;
 
+    std::shared_ptr<::fesql::sdk::ProcedureInfo> GetProcedureInfo(const std::string& db,
+            const std::string& sp_name) override;
+
+    const Procedures& GetProcedures() { return db_sp_map_; }
+
  private:
     SDKTables tables_;
     SDKDB db_;
     std::shared_ptr<ClientManager> client_manager_;
+    Procedures db_sp_map_;
 };
 
 }  // namespace catalog
