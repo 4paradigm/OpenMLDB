@@ -1589,6 +1589,11 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
         }
         case kPartitionHandler: {
             auto partition = std::dynamic_pointer_cast<PartitionHandler>(data);
+            if (!partition) {
+                t.add("Empty set");
+                t.endOfRow();
+                break;
+            }
             auto iter = partition->GetWindowIterator();
             int cnt = 0;
             if (!iter) {
