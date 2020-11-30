@@ -19,6 +19,7 @@
 
 #include "passes/expression/expr_pass.h"
 #include "passes/lambdafy_projects.h"
+#include "passes/physical/batch_request_optimize.h"
 #include "passes/resolve_fn_and_attrs.h"
 
 using ::fesql::base::Status;
@@ -250,11 +251,11 @@ Status BatchModeTransformer::InitFnInfo(PhysicalOpNode* node,
             CHECK_STATUS(GenJoin(&request_join_op->join_, node));
             break;
         }
-        case kPhysicalOpRequestUnoin: {
+        case kPhysicalOpRequestUnion: {
             auto request_union_op =
                 dynamic_cast<PhysicalRequestUnionNode*>(node);
             CHECK_STATUS(GenRequestWindow(&request_union_op->window_,
-                                          node->producers()[1]));
+                                          node->producers()[0]));
             for (auto& window_union :
                  request_union_op->window_unions_.window_unions_) {
                 CHECK_STATUS(InitFnInfo(window_union.first, visited),
@@ -263,6 +264,12 @@ Status BatchModeTransformer::InitFnInfo(PhysicalOpNode* node,
             CHECK_STATUS(
                 GenRequestWindowUnionList(&request_union_op->window_unions_,
                                           request_union_op->producers()[0]));
+            break;
+        }
+        case kPhysicalOpPostRequestUnion: {
+            auto union_op = dynamic_cast<PhysicalPostRequestUnionNode*>(node);
+            CHECK_STATUS(GenRange(union_op->mutable_request_ts(),
+                                  node->GetProducer(0)->schemas_ctx()));
             break;
         }
         default:
@@ -1159,7 +1166,7 @@ Status BatchModeTransformer::ValidateIndexOptimization(PhysicalOpNode* in) {
             }
             break;
         }
-        case kPhysicalOpRequestUnoin: {
+        case kPhysicalOpRequestUnion: {
             PhysicalRequestUnionNode* union_op =
                 dynamic_cast<PhysicalRequestUnionNode*>(in);
             if (!union_op->instance_not_in_window()) {
@@ -1867,7 +1874,7 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
             }
             break;
         }
-        case kPhysicalOpRequestUnoin: {
+        case kPhysicalOpRequestUnion: {
             PhysicalRequestUnionNode* union_op =
                 dynamic_cast<PhysicalRequestUnionNode*>(in);
             PhysicalOpNode* new_producer;
@@ -2655,29 +2662,54 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
     return true;
 }
 
-bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
+bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalRequestJoinNode* join_op,
                                              const Join& join,
                                              PhysicalOpNode** output) {
     auto left = join_op->GetProducer(0);
-    std::vector<const fesql::node::ColumnRefNode*> columns;
+    std::vector<const fesql::node::ExprNode*> columns;
+    std::vector<std::string> column_names;
     join.ResolvedRelatedColumns(&columns);
+
     std::ostringstream oss;
     for (auto column : columns) {
         oss << node::ExprString(column) << ",";
     }
-    DLOG(INFO) << "join resolved related columns: \n" << oss.str();
-    std::vector<std::pair<size_t, const fesql::node::ColumnRefNode*>>
-        left_condition_columns;
-    ColumnProjects simplified_projects;
-    for (auto column : columns) {
-        size_t column_id;
-        Status status = left->schemas_ctx()->ResolveColumnID(
-            column->GetRelationName(), column->GetColumnName(), &column_id);
-        if (status.isOK()) {
-            simplified_projects.Add(column->GetExprString(), column, nullptr);
-            // column depend on left
-            left_condition_columns.push_back(std::make_pair(column_id, column));
+    LOG(INFO) << "join resolved related columns: \n" << oss.str();
+
+    // find columns belong to left side
+    std::vector<size_t> left_indices;
+    for (size_t i = 0; i < columns.size(); ++i) {
+        if (CheckExprDependOnChildOnly(columns[i], left->schemas_ctx())
+                .isOK()) {
+            left_indices.push_back(i);
         }
+    }
+
+    // replace with column id expression
+    for (size_t i = 0; i < columns.size(); ++i) {
+        auto column_expr = columns[i];
+        column_names.push_back(column_expr->GetExprString());
+        if (column_expr->GetExprType() == node::kExprColumnRef) {
+            size_t column_id;
+            auto column_ref =
+                dynamic_cast<const node::ColumnRefNode*>(column_expr);
+            Status status = join_op->joined_schemas_ctx()->ResolveColumnID(
+                column_ref->GetRelationName(), column_ref->GetColumnName(),
+                &column_id);
+            if (!status.isOK()) {
+                LOG(WARNING)
+                    << "Resolve join column " << column_ref->GetExprString()
+                    << " failed: " << status;
+                return false;
+            }
+            columns[i] = node_manager_->MakeColumnIdNode(column_id);
+        }
+    }
+
+    ColumnProjects simplified_projects;
+    for (size_t idx : left_indices) {
+        auto column_expr = columns[idx];
+        simplified_projects.Add(column_names[idx], column_expr, nullptr);
     }
     if (simplified_projects.size() < left->GetOutputSchemaSize()) {
         PhysicalSimpleProjectNode* simplify_project_op = nullptr;
@@ -2697,22 +2729,14 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
     while (root->GetProducerCnt() > 0) {
         Status status;
         auto schemas_ctx = root->GetProducer(0)->schemas_ctx();
-        for (auto column : left_condition_columns) {
-            size_t column_id;
-            status = schemas_ctx->ResolveColumnID(
-                column.second->GetRelationName(),
-                column.second->GetColumnName(), &column_id);
-            if (!status.isOK() && column.second->GetRelationName().empty()) {
-                size_t schema_idx;
-                size_t col_idx;
-                status = schemas_ctx->ResolveColumnIndexByID(
-                    column.first, &schema_idx, &col_idx);
-            }
-            if (!status.isOK()) {
+        bool flag = true;
+        for (auto column_expr : columns) {
+            if (!CheckExprDependOnChildOnly(column_expr, schemas_ctx).isOK()) {
+                flag = false;
                 break;
             }
         }
-        if (!status.isOK()) {
+        if (!flag) {
             break;
         }
         root = root->GetProducer(0);
@@ -2722,51 +2746,14 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
         return true;
     }
     // try to simplify depend node
-    ColumnProjects root_simplified_projects;
-    for (auto column : left_condition_columns) {
-        size_t schema_idx = 0;
-        size_t col_idx = 0;
-        Status status = root->schemas_ctx()->ResolveColumnIndexByID(
-            column.first, &schema_idx, &col_idx);
-        if (!status.isOK()) {
-            LOG(WARNING)
-                << "Simplify root left input failed, apply left node simplify: "
-                << status;
-            return true;
-        }
-        DLOG(INFO) << "schema idx " << schema_idx << ", col idx " << col_idx;
-        root_simplified_projects.Add(
-            node::ExprString(column.second),
-            node_manager_->MakeColumnRefNode(root->schemas_ctx()
-                                                 ->GetSchemaSource(schema_idx)
-                                                 ->GetColumnName(col_idx),
-                                             root->schemas_ctx()
-                                                 ->GetSchemaSource(schema_idx)
-                                                 ->GetSourceName()),
-            nullptr);
-    }
     PhysicalSimpleProjectNode* root_simplify_project_op = nullptr;
     auto status = plan_ctx_->CreateOp<PhysicalSimpleProjectNode>(
-        &root_simplify_project_op, root, root_simplified_projects);
+        &root_simplify_project_op, root, simplified_projects);
     if (!status.isOK()) {
         LOG(WARNING) << status.msg;
         LOG(WARNING)
             << "Simplify root left input failed: apply left node simplify";
         return false;
-    }
-    for (auto column : left_condition_columns) {
-        size_t schema_idx;
-        size_t col_idx;
-        size_t column_id;
-        status = root_simplify_project_op->schemas_ctx()->ResolveColumnID(
-            column.second->GetRelationName(), column.second->GetColumnName(),
-            &column_id);
-        if (!status.isOK() || column_id != column.first) {
-            LOG(WARNING) << "Can't Resolved " << node::ExprString(column.second)
-                         << "with column id " << column.first
-                         << " from root node, apply left node simplify";
-            return true;
-        }
     }
     DLOG(INFO) << "apply root node simplify!";
     *output = root_simplify_project_op;
@@ -2804,6 +2791,14 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     if (!status.isOK()) {
                         return false;
                     }
+                    status = ReplaceComponentExpr(
+                        join_op->join(), join_op->joined_schemas_ctx(),
+                        request_join_right_only->joined_schemas_ctx(),
+                        plan_ctx_->node_manager(),
+                        &request_join_right_only->join_);
+                    if (!status.isOK()) {
+                        return false;
+                    }
 
                     PhysicalRequestJoinNode* concat_op = nullptr;
                     status = plan_ctx_->CreateOp<PhysicalRequestJoinNode>(
@@ -2832,8 +2827,9 @@ RequestModeTransformer::RequestModeTransformer(
     udf::UDFLibrary* library, const std::set<size_t>& common_column_indices,
     const bool performance_sensitive, const bool cluster_optimized)
     : BatchModeTransformer(node_manager, db, catalog, module, library,
-                           performance_sensitive, cluster_optimized),
-      common_column_indices_(common_column_indices) {}
+                           performance_sensitive, cluster_optimized) {
+    batch_request_info_.common_column_indices = common_column_indices;
+}
 
 RequestModeTransformer::~RequestModeTransformer() {}
 
@@ -2944,17 +2940,9 @@ Status RequestModeTransformer::TransformScanOp(const node::TablePlanNode* node,
                    "Fail to transform data_provider op: table " + db_ + "." +
                        node->table_ + " not exist!");
 
-        if (common_column_indices_.empty()) {
-            PhysicalRequestProviderNode* provider = nullptr;
-            CHECK_STATUS(
-                CreateOp<PhysicalRequestProviderNode>(&provider, table));
-            *output = provider;
-        } else {
-            PhysicalRequestProviderNodeWithCommonColumn* provider = nullptr;
-            CHECK_STATUS(CreateOp<PhysicalRequestProviderNodeWithCommonColumn>(
-                &provider, table, common_column_indices_));
-            *output = provider;
-        }
+        PhysicalRequestProviderNode* provider = nullptr;
+        CHECK_STATUS(CreateOp<PhysicalRequestProviderNode>(&provider, table));
+        *output = provider;
         request_schema_ = *(*output)->GetOutputSchema();
         request_name_ = table->GetName();
         return Status::OK();
@@ -2992,6 +2980,38 @@ Status RequestModeTransformer::TransformProjectOp(
         default:
             return Status(kPlanError, "Unknown op output type");
     }
+}
+
+void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
+                                         PhysicalOpNode** output) {
+    PhysicalOpNode* optimized = nullptr;
+    this->BatchModeTransformer::ApplyPasses(node, &optimized);
+    if (optimized == nullptr) {
+        *output = node;
+        LOG(WARNING) << "Final optimized result is null";
+        return;
+    }
+    if (batch_request_info_.common_column_indices.empty()) {
+        *output = optimized;
+        return;
+    }
+    LOG(INFO) << "Before batch request optimization:\n" << *optimized;
+    PhysicalOpNode* batch_request_plan = nullptr;
+    CommonColumnOptimize batch_request_optimizer(
+        batch_request_info_.common_column_indices);
+    Status status = batch_request_optimizer.Apply(
+        this->GetPlanContext(), optimized, &batch_request_plan);
+    if (!status.isOK()) {
+        LOG(WARNING) << "Fail to perform batch request optimization: "
+                     << status;
+        *output = optimized;
+        return;
+    }
+    LOG(INFO) << "After batch request optimization:\n" << *batch_request_plan;
+    batch_request_optimizer.ExtractCommonNodeSet(
+        &batch_request_info_.common_node_set);
+    *output = batch_request_plan;
+    return;
 }
 
 static Status BuildColumnMapping(

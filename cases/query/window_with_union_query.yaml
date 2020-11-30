@@ -4,15 +4,7 @@ cases:
     mode: rtidb-unsupport
     db: db1
     sql: |
-      %%fun
-      def test_sum(col:list<int>):int
-          result = 0
-          for x in col
-              result += x
-          return result
-      end
-      %%sql
-      SELECT col2, col5, test_sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
+      SELECT col2, col5, sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
       sum(col5) OVER w1 as w1_col5_sum, count(col1) as w1_col1_cnt, col1,
       col6 as col6 FROM t1
@@ -51,15 +43,7 @@ cases:
     mode: rtidb-unsupport
     db: db1
     sql: |
-      %%fun
-      def test_sum(col:list<int>):int
-          result = 0
-          for x in col
-              result += x
-          return result
-      end
-      %%sql
-      SELECT col2, col5, test_sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
+      SELECT col2, col5, sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
       sum(col5) OVER w1 as w1_col5_sum, count(col1) as w1_col1_cnt, col1,
       col6 as col6 FROM t1
@@ -99,15 +83,7 @@ cases:
     mode: rtidb-unsupport
     db: db1
     sql: |
-      %%fun
-      def test_sum(col:list<int>):int
-          result = 0
-          for x in col
-              result += x
-          return result
-      end
-      %%sql
-      SELECT col2, col5, test_sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
+      SELECT col2, col5, sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
       sum(col5) OVER w1 as w1_col5_sum, count(col1) as w1_col1_cnt, col1,
       col6 as col6 FROM t1
@@ -147,15 +123,7 @@ cases:
     mode: rtidb-unsupport
     db: db1
     sql: |
-      %%fun
-      def test_sum(col:list<int>):int
-          result = 0
-          for x in col
-              result += x
-          return result
-      end
-      %%sql
-      SELECT col2, col5, test_sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
+      SELECT col2, col5, sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
       sum(col5) OVER w1 as w1_col5_sum, count(col1) as w1_col1_cnt, col1,
       col6 as col6 FROM t1
@@ -194,15 +162,7 @@ cases:
     desc: Window SQL WITH UNION 子查询, 样本表PK命中, UNION表PK命中
     db: db1
     sql: |
-      %%fun
-      def test_sum(col:list<int>):int
-          result = 0
-          for x in col
-              result += x
-          return result
-      end
-      %%sql
-      SELECT col2, col5, test_sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
+      SELECT col2, col5, sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
       sum(col5) OVER w1 as w1_col5_sum, count(col1) OVER w1 as w1_col1_cnt, col1,
       col6 as col6 FROM t1
@@ -213,7 +173,7 @@ cases:
         PROJECT(type=WindowAggregation, limit=10)
           +-WINDOW(partition_keys=(), orders=() ASC, range=(col5, -2, 0))
           +-UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0))
-              SIMPLE_PROJECT(sources=(#21, #22, #23, #24, #37, #26, #38))
+              SIMPLE_PROJECT(sources=(c0 -> col0, c1 -> col1, c2 -> col2, c3 -> col3, 0.000000 -> col4, c5 -> col5, NA_STR -> col6))
                 DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
           DATA_PROVIDER(type=Partition, table=t1, index=index_col25)
     request_plan: |
@@ -221,20 +181,20 @@ cases:
         PROJECT(type=Aggregation, limit=10)
           REQUEST_UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
             +-UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
-                SIMPLE_PROJECT(sources=(#22, #23, #24, #25, #44, #27, #45))
+                SIMPLE_PROJECT(sources=(c0 -> col0, c1 -> col1, c2 -> col2, c3 -> col3, 0.000000 -> col4, c5 -> col5, NA_STR -> col6))
                   DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
             DATA_PROVIDER(request=t1)
             DATA_PROVIDER(type=Partition, table=t1, index=index_col25)
     cluster_request_plan: |
       LIMIT(limit=10)
-        SIMPLE_PROJECT(sources=(#10, #13, #38, #39, #40, #41, #42, #43, #9, #14))
-          REQUEST_JOIN(type=kJoinTypeConcat, condition=, left_keys=, right_keys=, index_keys=)
-            SIMPLE_PROJECT(sources=(#10, #13, #9, #14))
+        SIMPLE_PROJECT(sources=(col2, col5, w1_col1_sum, w1_col3_sum, w1_col4_sum, w1_col2_sum, w1_col5_sum, w1_col1_cnt, col1, col6))
+          REQUEST_JOIN(type=kJoinTypeConcat)
+            SIMPLE_PROJECT(sources=(col2, col5, col1, col6))
               DATA_PROVIDER(request=t1)
             PROJECT(type=Aggregation)
               REQUEST_UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
                 +-UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
-                    SIMPLE_PROJECT(sources=(#22, #23, #24, #25, #44, #27, #45))
+                    SIMPLE_PROJECT(sources=(c0 -> col0, c1 -> col1, c2 -> col2, c3 -> col3, 0.000000 -> col4, c5 -> col5, NA_STR -> col6))
                       DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
                 DATA_PROVIDER(request=t1)
                 DATA_PROVIDER(type=Partition, table=t1, index=index_col25)
@@ -271,15 +231,7 @@ cases:
     desc: Window SQL WITH UNION 子查询, 样本表PK命中, UNION表PK命中
     db: db1
     sql: |
-      %%fun
-      def test_sum(col:list<int>):int
-          result = 0
-          for x in col
-              result += x
-          return result
-      end
-      %%sql
-      SELECT col2, col5, test_sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
+      SELECT col2, col5, sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
       sum(col4) OVER w1 as w1_col4_sum, sum(col2) OVER w1 as w1_col2_sum,
       sum(col5) OVER w1 as w1_col5_sum, count(col1) OVER w1 as w1_col1_cnt, col1,
       col6 as col6 FROM (select "tx_col0" as col0, x1 as col1, x2 as col2, x3 as col3, x4 as col4, x5 as col5, x6 as col6 from tx)
@@ -290,35 +242,35 @@ cases:
         PROJECT(type=WindowAggregation, limit=10)
           +-WINDOW(partition_keys=(), orders=() ASC, range=(col5, -2, 0))
           +-UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0))
-              SIMPLE_PROJECT(sources=(#20, #21, #22, #23, #37, #25, #38))
+              SIMPLE_PROJECT(sources=(c0 -> col0, c1 -> col1, c2 -> col2, c3 -> col3, 0.000000 -> col4, c5 -> col5, NA_STR -> col6))
                 DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
-          SIMPLE_PROJECT(sources=(#36, #1, #2, #3, #4, #5, #6))
+          SIMPLE_PROJECT(sources=(tx_col0 -> col0, x1 -> col1, x2 -> col2, x3 -> col3, x4 -> col4, x5 -> col5, x6 -> col6))
             DATA_PROVIDER(type=Partition, table=tx, index=index_x25)
     request_plan: |
       LIMIT(limit=10, optimized)
         PROJECT(type=Aggregation, limit=10)
           REQUEST_UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
             +-UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
-                SIMPLE_PROJECT(sources=(#22, #23, #24, #25, #45, #27, #46))
+                SIMPLE_PROJECT(sources=(c0 -> col0, c1 -> col1, c2 -> col2, c3 -> col3, 0.000000 -> col4, c5 -> col5, NA_STR -> col6))
                   DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
-            SIMPLE_PROJECT(sources=(#13, #7, #8, #9, #10, #11, #12))
+            SIMPLE_PROJECT(sources=(tx_col0 -> col0, x1 -> col1, x2 -> col2, x3 -> col3, x4 -> col4, x5 -> col5, x6 -> col6))
               DATA_PROVIDER(request=tx)
-            SIMPLE_PROJECT(sources=(#44, #1, #2, #3, #4, #5, #6))
+            SIMPLE_PROJECT(sources=(tx_col0 -> col0, x1 -> col1, x2 -> col2, x3 -> col3, x4 -> col4, x5 -> col5, x6 -> col6))
               DATA_PROVIDER(type=Partition, table=tx, index=index_x25)
     cluster_request_plan: |
       LIMIT(limit=10)
-        SIMPLE_PROJECT(sources=(#8, #11, #38, #39, #40, #41, #42, #43, #7, #12))
-          REQUEST_JOIN(type=kJoinTypeConcat, condition=, left_keys=, right_keys=, index_keys=)
-            SIMPLE_PROJECT(sources=(#8, #11, #7, #12))
+        SIMPLE_PROJECT(sources=(col2, col5, w1_col1_sum, w1_col3_sum, w1_col4_sum, w1_col2_sum, w1_col5_sum, w1_col1_cnt, col1, col6))
+          REQUEST_JOIN(type=kJoinTypeConcat)
+            SIMPLE_PROJECT(sources=(x2 -> col2, x5 -> col5, x1 -> col1, x6 -> col6))
               DATA_PROVIDER(request=tx)
             PROJECT(type=Aggregation)
               REQUEST_UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
                 +-UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
-                    SIMPLE_PROJECT(sources=(#22, #23, #24, #25, #45, #27, #46))
+                    SIMPLE_PROJECT(sources=(c0 -> col0, c1 -> col1, c2 -> col2, c3 -> col3, 0.000000 -> col4, c5 -> col5, NA_STR -> col6))
                       DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
-                SIMPLE_PROJECT(sources=(#13, #7, #8, #9, #10, #11, #12))
+                SIMPLE_PROJECT(sources=(tx_col0 -> col0, x1 -> col1, x2 -> col2, x3 -> col3, x4 -> col4, x5 -> col5, x6 -> col6))
                   DATA_PROVIDER(request=tx)
-                SIMPLE_PROJECT(sources=(#44, #1, #2, #3, #4, #5, #6))
+                SIMPLE_PROJECT(sources=(tx_col0 -> col0, x1 -> col1, x2 -> col2, x3 -> col3, x4 -> col4, x5 -> col5, x6 -> col6))
                   DATA_PROVIDER(type=Partition, table=tx, index=index_x25)
     inputs:
       - name: tx

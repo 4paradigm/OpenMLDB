@@ -41,6 +41,23 @@ Status ColumnRefNode::InferAttr(ExprAnalysisContext* ctx) {
     return Status::OK();
 }
 
+Status ColumnIdNode::InferAttr(ExprAnalysisContext* ctx) {
+    auto schemas_ctx = ctx->schemas_context();
+    size_t schema_idx;
+    size_t col_idx;
+    CHECK_STATUS(schemas_ctx->ResolveColumnIndexByID(this->GetColumnID(),
+                                                     &schema_idx, &col_idx),
+                 "Fail to resolve column ", GetExprString());
+    type::Type col_type =
+        schemas_ctx->GetSchema(schema_idx)->Get(col_idx).type();
+    node::DataType dtype;
+    CHECK_TRUE(vm::SchemaType2DataType(col_type, &dtype), kTypeError,
+               "Fail to convert type: ", col_type);
+    auto nm = ctx->node_manager();
+    SetOutputType(nm->MakeTypeNode(node::kList, dtype));
+    return Status::OK();
+}
+
 Status ConstNode::InferAttr(ExprAnalysisContext* ctx) {
     SetOutputType(ctx->node_manager()->MakeTypeNode(data_type_));
     if (kNull == data_type_) {
@@ -714,6 +731,10 @@ ColumnRefNode* ColumnRefNode::ShadowCopy(NodeManager* nm) const {
     auto col =
         nm->MakeColumnRefNode(GetColumnName(), GetRelationName(), GetDBName());
     return col;
+}
+
+ColumnIdNode* ColumnIdNode::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeColumnIdNode(this->GetColumnID());
 }
 
 GetFieldExpr* GetFieldExpr::ShadowCopy(NodeManager* nm) const {

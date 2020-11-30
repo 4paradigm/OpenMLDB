@@ -418,7 +418,6 @@ void DoEngineCheckExpect(const SQLCase& sql_case, const vm::Schema& schema,
         ASSERT_NO_FATAL_FAILURE(
             CheckSchema(schema, case_output_table.columns()));
 
-
         LOG(INFO) << "Real result:\n";
         PrintRows(schema, sorted_output);
 
@@ -433,7 +432,6 @@ void DoEngineCheckExpect(const SQLCase& sql_case, const vm::Schema& schema,
 
         LOG(INFO) << "Expect result:\n";
         PrintRows(schema, case_output_data);
-
 
         ASSERT_NO_FATAL_FAILURE(
             CheckRows(schema, sorted_output, case_output_data));
@@ -944,15 +942,25 @@ void BatchRequestEngineCheck(const SQLCase& sql_case,
                                                        common_column_indices);
         common_column_indices.clear();
 
+        if (options.is_cluster_optimzied()) {
+            return;
+        }
+
         // partial
-        // TODO(bxq): use transform pass to resolve all problems
-        // of changing the request schema
-        // for (size_t i = 0; i < schema_size; i += 2) {
-        //    common_column_indices.insert(i);
-        // }
-        // BatchRequestEngineCheckWithCommonColumnIndices(
-        //    sql_case, common_column_indices, return_status);
-        // common_column_indices.clear();
+        // 0, 2, 4, ...
+        for (size_t i = 0; i < schema_size; i += 2) {
+            common_column_indices.insert(i);
+        }
+        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
+                                                       common_column_indices);
+        common_column_indices.clear();
+        return;
+        // 1, 3, 5, ...
+        for (size_t i = 1; i < schema_size; i += 2) {
+            common_column_indices.insert(i);
+        }
+        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
+                                                       common_column_indices);
     }
 }
 

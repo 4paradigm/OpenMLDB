@@ -64,14 +64,7 @@ cases:
     mode: request
     db: db1
     sql: |
-      %%fun
-      def test(a:i32,b:i32):i32
-          c=a+b
-          d=c+1
-          return d
-      end
-      %%sql
-      SELECT col1 as id, col0, test(col1,col1) as test_col1, col2 , col6 FROM t1;
+      SELECT col1 as id, col0, abs(col1) as test_col1, col2 , col6 FROM t1;
     inputs:
       - name: t1
         resource: cases/resource/simple_t1.yaml
@@ -79,11 +72,11 @@ cases:
       schema: id:int32, col0:string, test_col1:int32, col2:int16, col6:string
       order: id
       data: |
-        1, 0, 3, 5, 1
-        2, 0, 5, 5, 22
-        3, 1, 7, 55, 333
-        4, 1, 9, 55, 4444
-        5, 2, 11, 55, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        1, 0, 1, 5, 1
+        2, 0, 2, 5, 22
+        3, 1, 3, 55, 333
+        4, 1, 4, 55, 4444
+        5, 2, 5, 55, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
   - id: 4-1
     desc: SELECT简单timestamp加减表达式
     mode: request
