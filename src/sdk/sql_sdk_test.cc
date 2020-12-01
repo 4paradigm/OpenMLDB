@@ -360,7 +360,7 @@ TEST_F(SQLSDKQueryTest, create_no_ts) {
         FAIL() << "fail to execute sql";
     }
     ASSERT_EQ(rs->Size(), 0);
-}    
+}
 
 TEST_F(SQLSDKQueryTest, request_procedure_test) {
     // create table
