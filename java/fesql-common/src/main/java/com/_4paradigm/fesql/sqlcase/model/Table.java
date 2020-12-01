@@ -24,6 +24,7 @@ public class Table {
     List<List<Object>> rows;
     String create;
     String insert;
+    int repeat = 1;
     List<String> common_column_indices;
 
     private static final Logger logger = LoggerFactory.getLogger(Table.class);

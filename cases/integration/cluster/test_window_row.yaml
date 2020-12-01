@@ -157,3 +157,48 @@ cases:
         - [6,"aa", "1", 21, 3, 4, 69]
         - [7,"aa", "1", 21, 3, 4, 105]
 
+  - id: 4
+    desc: 简单rows window, union副表, 主表不进入窗口 40w
+    tags: ["TODO", "@baoxinqi, batch request unsupport"]
+    inputs:
+      - columns: [ "id int", "c1 string","c6 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ 2, "aa", 4.0, 1590738993000 ]
+      - columns: [ "x1 string","x6 double","x7 timestamp" ]
+        indexs: [ "index1:x1:x7" ]
+        repeat: 400000
+        rows:
+          - [ "aa", 2.0, 1590738991000 ]
+
+    sql: |
+      SELECT id, c1, c6, c7, count(id) OVER w1 as w1_cnt, distinct_count(id) OVER w1 as w1_dis_cnt FROM {0} WINDOW
+      w1 AS (UNION (select 0 as id, x1 as c1, x6 as c6, x7 as c7 from {1}) as t2 PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 400000 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: [ "id int", "c1 string", "c6 double", "c7 timestamp", "w1_cnt bigint", "w1_dis_cnt bigint" ]
+      rows:
+        - [ 2, "aa", 4.0, 1590738993000, 400001, 2 ]
+  - id: 5
+    desc: 简单rows window, union副表, 主表不进入窗口3 40w
+    mode: batch-request-unsupport
+    tags: ["TODO", "@baoxinqi, @chenjing大窗口编译发生core"]
+    inputs:
+      - columns: [ "id int", "c1 string","c6 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ 2, "aa", 4.0, 1590738993000 ]
+      - columns: [ "x1 string","x6 double","x7 timestamp" ]
+        indexs: [ "index1:x1:x7" ]
+        repeat: 400000
+        rows:
+          - [ "aa", 2.0, 1590738991000 ]
+
+    sql: |
+      SELECT id, c1, c6, c7, min(c6) OVER w1 as w1_min_c6, count(id) OVER w1 as w1_cnt FROM {0} WINDOW
+      w1 AS (UNION (select 0 as id, x1 as c1, x6 as c6, x7 as c7 from {1}) as t2 PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 400000 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: [ "id int", "c1 string", "c6 double", "c7 timestamp", "w1_min_c6 double", "w1_cnt bigint" ]
+      rows:
+        - [ 2, "aa", 4.0, 1590738993000, 2.0, 400001 ]

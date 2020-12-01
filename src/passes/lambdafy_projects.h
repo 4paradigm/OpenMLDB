@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include <map>
 
 #include "node/expr_node.h"
 #include "node/plan_node.h"
@@ -30,7 +31,6 @@ class LambdafyProjects {
           schemas_ctx_(schemas_ctx),
           analysis_ctx_(nm_, library_, schemas_ctx_),
           legacy_agg_opt_(legacy_agg_opt) {}
-
     /**
      * Create a virtual lambda representation for all project
      * expressions to codegen, which take signature: {

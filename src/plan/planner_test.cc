@@ -133,10 +133,16 @@ TEST_P(PlannerTest, PlannerSucessTest) {
     }
 }
 
-TEST_P(PlannerTest, PlannerWindowOptTest) {
-    std::string sqlstr = GetParam().sql_str();
+TEST_P(PlannerTest, PlannerClusterOptTest) {
+    auto sql_case = GetParam();
+    std::string sqlstr = sql_case.sql_str();
     std::cout << sqlstr << std::endl;
-
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "request-unsupport") ||
+        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
+        return;
+    }
     NodePointVector trees;
     base::Status status;
     int ret = parser_->parse(sqlstr.c_str(), trees, manager_, status);
@@ -147,7 +153,7 @@ TEST_P(PlannerTest, PlannerWindowOptTest) {
     ASSERT_EQ(0, ret);
     //    ASSERT_EQ(1, trees.size());
     //    std::cout << *(trees.front()) << std::endl;
-    Planner *planner_ptr = new SimplePlanner(manager_);
+    Planner *planner_ptr = new SimplePlanner(manager_, false, true);
     node::PlanNodeList plan_trees;
     ASSERT_EQ(0, planner_ptr->CreatePlanTree(trees, plan_trees, status));
     LOG(INFO) << "logical plan:\n";
@@ -1096,25 +1102,6 @@ TEST_F(PlannerTest, FunDefForInPlanTest) {
     ASSERT_EQ(1, limit_plan->GetLimitCnt());
 }
 
-TEST_F(PlannerTest, RequestModePlanErrorTest) {
-    const std::vector<std::string> sql_list = {
-        "select col1, col2 from t1 union select c1 + c2 as col1, col2 from t2;",
-        "select col1, col2 from t1 left join (select col1+col2 as add12 from "
-        "tt) as t2 "
-        "on t1.col1 = t2.col1;"};
-
-    for (auto sql : sql_list) {
-        base::Status status;
-        node::NodePointVector parser_trees;
-        int ret = parser_->parse(sql, parser_trees, manager_, status);
-        ASSERT_EQ(0, ret);
-        SimplePlanner planner_ptr(manager_, false);
-        node::PlanNodeList plan_trees;
-        ASSERT_EQ(common::kPlanError,
-                  planner_ptr.CreatePlanTree(parser_trees, plan_trees, status));
-    }
-}
-
 TEST_F(PlannerTest, MergeWindowsTest) {
     SimplePlanner planner_ptr(manager_, false);
     auto partitions =
@@ -1429,6 +1416,85 @@ TEST_F(PlannerTest, CreateSpParseTest) {
         "end;";
     ret = parser_->parse(sql, parser_trees, manager_, status);
     ASSERT_EQ(1, ret);
+}
+
+
+class PlannerErrorTest : public ::testing::TestWithParam<SQLCase> {
+ public:
+    PlannerErrorTest() {
+        manager_ = new NodeManager();
+        parser_ = new parser::FeSQLParser();
+    }
+
+    ~PlannerErrorTest() {
+        delete parser_;
+        delete manager_;
+    }
+
+ protected:
+    parser::FeSQLParser *parser_;
+    NodeManager *manager_;
+};
+INSTANTIATE_TEST_CASE_P(
+    SqlErrorQuery, PlannerErrorTest,
+    testing::ValuesIn(InitCases("cases/plan/error_query.yaml")));
+INSTANTIATE_TEST_CASE_P(
+    SqlErrorRequestQuery, PlannerErrorTest,
+    testing::ValuesIn(InitCases("cases/plan/error_request_query.yaml")));
+TEST_P(PlannerErrorTest, ClusterRequestModePlanErrorTest) {
+    auto sql_case = GetParam();
+    std::string sqlstr = sql_case.sql_str();
+    std::cout << sqlstr << std::endl;
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "request-unsupport") ||
+        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
+        return;
+    }
+    base::Status status;
+    node::NodePointVector parser_trees;
+    int ret = parser_->parse(sqlstr, parser_trees, manager_, status);
+    ASSERT_EQ(0, ret);
+    SimplePlanner planner_ptr(manager_, false, true);
+    node::PlanNodeList plan_trees;
+    ASSERT_EQ(common::kPlanError,
+              planner_ptr.CreatePlanTree(parser_trees, plan_trees, status));
+}
+TEST_P(PlannerErrorTest, RequestModePlanErrorTest) {
+    auto sql_case = GetParam();
+    std::string sqlstr = sql_case.sql_str();
+    std::cout << sqlstr << std::endl;
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "request-unsupport")) {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
+        return;
+    }
+    base::Status status;
+    node::NodePointVector parser_trees;
+    int ret = parser_->parse(sqlstr, parser_trees, manager_, status);
+    ASSERT_EQ(0, ret);
+    SimplePlanner planner_ptr(manager_, false, false);
+    node::PlanNodeList plan_trees;
+    ASSERT_EQ(common::kPlanError,
+              planner_ptr.CreatePlanTree(parser_trees, plan_trees, status));
+}
+TEST_P(PlannerErrorTest, BatchModePlanErrorTest) {
+    auto sql_case = GetParam();
+    std::string sqlstr = sql_case.sql_str();
+    std::cout << sqlstr << std::endl;
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "batch-unsupport")) {
+        LOG(INFO) << "Skip mode " << sql_case.mode();
+        return;
+    }
+    base::Status status;
+    node::NodePointVector parser_trees;
+    int ret = parser_->parse(sqlstr, parser_trees, manager_, status);
+    ASSERT_EQ(0, ret);
+    SimplePlanner planner_ptr(manager_, true, false);
+    node::PlanNodeList plan_trees;
+    ASSERT_EQ(common::kPlanError,
+              planner_ptr.CreatePlanTree(parser_trees, plan_trees, status));
 }
 
 }  // namespace plan

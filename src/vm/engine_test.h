@@ -415,11 +415,15 @@ void DoEngineCheckExpect(const SQLCase& sql_case, const vm::Schema& schema,
         // Check Output Schema
         type::TableDef case_output_table;
         ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
-        std::vector<Row> case_output_data;
-        ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
         ASSERT_NO_FATAL_FAILURE(
             CheckSchema(schema, case_output_table.columns()));
 
+
+        LOG(INFO) << "Real result:\n";
+        PrintRows(schema, sorted_output);
+
+        std::vector<Row> case_output_data;
+        ASSERT_TRUE(sql_case.ExtractOutputData(case_output_data));
         // for batch request mode, trivally compare last result
         if (is_batch_request && sql_case.batch_request().columns_.empty()) {
             if (!case_output_data.empty()) {
@@ -430,8 +434,6 @@ void DoEngineCheckExpect(const SQLCase& sql_case, const vm::Schema& schema,
         LOG(INFO) << "Expect result:\n";
         PrintRows(schema, case_output_data);
 
-        LOG(INFO) << "Real result:\n";
-        PrintRows(schema, sorted_output);
 
         ASSERT_NO_FATAL_FAILURE(
             CheckRows(schema, sorted_output, case_output_data));
@@ -608,6 +610,9 @@ void EngineTestRunner::RunCheck() {
     session_->GetPhysicalPlan()->Print(oss, "");
     if (!sql_case_.batch_plan().empty() && engine_mode == kBatchMode) {
         ASSERT_EQ(oss.str(), sql_case_.batch_plan());
+    } else if (!sql_case_.cluster_request_plan().empty() &&
+               engine_mode == kRequestMode && options_.is_cluster_optimzied()) {
+        ASSERT_EQ(oss.str(), sql_case_.cluster_request_plan());
     } else if (!sql_case_.request_plan().empty() &&
                engine_mode == kRequestMode) {
         ASSERT_EQ(oss.str(), sql_case_.request_plan());
@@ -741,7 +746,16 @@ class RequestEngineTestRunner : public EngineTestRunner {
             } else {
                 std::vector<Row> rows;
                 sql_case_.ExtractInputData(rows, i);
-                if (!rows.empty()) {
+                if (sql_case_.inputs()[i].repeat_ > 1) {
+                    std::vector<Row> repeat_rows;
+                    for (int64_t j = 0; j < sql_case_.inputs()[i].repeat_;
+                         j++) {
+                        for (auto row : rows) {
+                            repeat_rows.push_back(row);
+                        }
+                    }
+                    StoreData(name_table_map_[input_name].get(), repeat_rows);
+                } else {
                     StoreData(name_table_map_[input_name].get(), rows);
                 }
             }

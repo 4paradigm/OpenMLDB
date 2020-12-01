@@ -197,9 +197,14 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     SetCacheLocked(db, sql, session.engine_mode(), info);
     session.SetCompileInfo(info);
     if (session.is_debug_) {
-        std::ostringstream oss;
-        sql_context.cluster_job.Print(oss, "");
-        LOG(INFO) << "cluster job:\n" << oss.str() << std::endl;
+        std::ostringstream plan_oss;
+        if (nullptr != sql_context.physical_plan) {
+            sql_context.physical_plan->Print(plan_oss, "");
+            LOG(INFO) << "physical plan:\n" << plan_oss.str() << std::endl;
+        }
+        std::ostringstream runner_oss;
+        sql_context.cluster_job.Print(runner_oss, "");
+        LOG(INFO) << "cluster job:\n" << runner_oss.str() << std::endl;
     }
     return true;
 }
@@ -222,7 +227,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     bool ok = compiler.Compile(ctx, *status);
     if (!ok || 0 != status->code) {
         LOG(WARNING) << "fail to compile sql " << sql << " in db " << db
-                     << " with error " << status;
+                     << " with error " << *status;
         return false;
     }
     explain_output->input_schema.CopyFrom(ctx.request_schema);
@@ -376,8 +381,8 @@ int32_t BatchRequestRunSession::Run(const uint32_t id,
         if (ok != 0) {
             return -1;
         }
+        ctx.ClearCache();
     }
-    ctx.ClearCache();
     return 0;
 }
 
