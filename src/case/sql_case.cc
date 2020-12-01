@@ -293,22 +293,26 @@ bool SQLCase::AddInput(const TableInfo& table_data) {
 }
 bool SQLCase::ExtractInputData(std::vector<Row>& rows,
                                int32_t input_idx) const {
-    if (inputs_[input_idx].data_.empty() && inputs_[input_idx].rows_.empty()) {
+    return ExtractInputData(inputs_[input_idx], rows);
+}
+bool SQLCase::ExtractInputData(const TableInfo& input,
+                               std::vector<Row>& rows) const {
+    if (input.data_.empty() && input.rows_.empty()) {
         LOG(WARNING) << "Empty Data String";
         return false;
     }
     type::TableDef table;
-    if (!ExtractInputTableDef(table, input_idx)) {
+    if (!ExtractInputTableDef(input, table)) {
         LOG(WARNING) << "Invalid Schema";
         return false;
     }
 
-    if (!inputs_[input_idx].data_.empty()) {
-        if (!ExtractRows(table.columns(), inputs_[input_idx].data_, rows)) {
+    if (!input.data_.empty()) {
+        if (!ExtractRows(table.columns(), input.data_, rows)) {
             return false;
         }
-    } else if (!inputs_[input_idx].columns_.empty()) {
-        if (!ExtractRows(table.columns(), inputs_[input_idx].rows_, rows)) {
+    } else if (!input.columns_.empty()) {
+        if (!ExtractRows(table.columns(), input.rows_, rows)) {
             return false;
         }
     } else {
@@ -621,20 +625,23 @@ const std::string SQLCase::case_name() const {
 }
 bool SQLCase::ExtractInputTableDef(type::TableDef& table,
                                    int32_t input_idx) const {
-    if (!inputs_[input_idx].schema_.empty()) {
-        if (!ExtractTableDef(inputs_[input_idx].schema_,
-                             inputs_[input_idx].index_, table)) {
+    return ExtractInputTableDef(inputs_[input_idx], table);
+}
+bool SQLCase::ExtractInputTableDef(const TableInfo& input,
+                          type::TableDef& table) const {
+    if (!input.schema_.empty()) {
+        if (!ExtractTableDef(input.schema_, input.index_, table)) {
             return false;
         }
-    } else if (!inputs_[input_idx].columns_.empty()) {
-        if (!ExtractTableDef(inputs_[input_idx].columns_,
-                             inputs_[input_idx].indexs_, table)) {
+    } else if (!input.columns_.empty()) {
+        if (!ExtractTableDef(input.columns_,
+                             input.indexs_, table)) {
             return false;
         }
     }
 
     table.set_catalog(db_);
-    table.set_name(inputs_[input_idx].name_);
+    table.set_name(input.name_);
     return true;
 }
 
@@ -801,6 +808,9 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
         boost::trim(table->data_);
     }
 
+    if (schema_data["repeat"]) {
+        table->repeat_ = schema_data["repeat"].as<int64_t>();
+    }
     if (schema_data["rows"]) {
         table->rows_.clear();
         if (!CreateRowsFromYamlNode(schema_data["rows"], table->rows_)) {
@@ -1068,7 +1078,11 @@ bool SQLCase::CreateSQLCasesFromYaml(
                 sql_case_node["request_plan"].as<std::string>();
             boost::trim(sql_case.request_plan_);
         }
-
+        if (sql_case_node["cluster_request_plan"]) {
+            sql_case.cluster_request_plan_ =
+                sql_case_node["cluster_request_plan"].as<std::string>();
+            boost::trim(sql_case.cluster_request_plan_);
+        }
         if (sql_case_node["db"]) {
             sql_case.db_ = sql_case_node["db"].as<std::string>();
         } else {

@@ -2450,10 +2450,10 @@ bool GroupAndSortOptimized::TransformOrderExpr(
     const SchemasContext* schemas_ctx, const node::OrderByNode* order,
     const Schema& schema, const IndexSt& index_st,
     const node::OrderByNode** output) {
+    *output = order;
     if (nullptr == order || nullptr == output) {
-        LOG(WARNING) << "fail to transform order expr : order expr or "
-                        "data_provider op "
-                        "or output is null";
+        LOG(WARNING)
+            << "fail to optimize order expr : order expr or output is null";
         return false;
     }
     if (index_st.ts_pos == INVALID_POS) {
@@ -2666,12 +2666,17 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
         oss << node::ExprString(column) << ",";
     }
     DLOG(INFO) << "join resolved related columns: \n" << oss.str();
+    std::vector<std::pair<size_t, const fesql::node::ColumnRefNode*>>
+        left_condition_columns;
     ColumnProjects simplified_projects;
     for (auto column : columns) {
-        Status status = CheckExprDependOnChildOnly(column, left->schemas_ctx());
+        size_t column_id;
+        Status status = left->schemas_ctx()->ResolveColumnID(
+            column->GetRelationName(), column->GetColumnName(), &column_id);
         if (status.isOK()) {
-            // column depend on left
             simplified_projects.Add(column->GetExprString(), column, nullptr);
+            // column depend on left
+            left_condition_columns.push_back(std::make_pair(column_id, column));
         }
     }
     if (simplified_projects.size() < left->GetOutputSchemaSize()) {
@@ -2684,14 +2689,93 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalBinaryNode* join_op,
         }
         *output = simplify_project_op;
     } else {
-        *output = left;
+        LOG(WARNING) << "Simplify columns size == left output columns";
+        return false;
     }
+
+    auto root = left;
+    while (root->GetProducerCnt() > 0) {
+        Status status;
+        auto schemas_ctx = root->GetProducer(0)->schemas_ctx();
+        for (auto column : left_condition_columns) {
+            size_t column_id;
+            status = schemas_ctx->ResolveColumnID(
+                column.second->GetRelationName(),
+                column.second->GetColumnName(), &column_id);
+            if (!status.isOK() && column.second->GetRelationName().empty()) {
+                size_t schema_idx;
+                size_t col_idx;
+                status = schemas_ctx->ResolveColumnIndexByID(
+                    column.first, &schema_idx, &col_idx);
+            }
+            if (!status.isOK()) {
+                break;
+            }
+        }
+        if (!status.isOK()) {
+            break;
+        }
+        root = root->GetProducer(0);
+    }
+    if (root == left) {
+        // simplify left node directly
+        return true;
+    }
+    // try to simplify depend node
+    ColumnProjects root_simplified_projects;
+    for (auto column : left_condition_columns) {
+        size_t schema_idx = 0;
+        size_t col_idx = 0;
+        Status status = root->schemas_ctx()->ResolveColumnIndexByID(
+            column.first, &schema_idx, &col_idx);
+        if (!status.isOK()) {
+            LOG(WARNING)
+                << "Simplify root left input failed, apply left node simplify: "
+                << status;
+            return true;
+        }
+        DLOG(INFO) << "schema idx " << schema_idx << ", col idx " << col_idx;
+        root_simplified_projects.Add(
+            node::ExprString(column.second),
+            node_manager_->MakeColumnRefNode(root->schemas_ctx()
+                                                 ->GetSchemaSource(schema_idx)
+                                                 ->GetColumnName(col_idx),
+                                             root->schemas_ctx()
+                                                 ->GetSchemaSource(schema_idx)
+                                                 ->GetSourceName()),
+            nullptr);
+    }
+    PhysicalSimpleProjectNode* root_simplify_project_op = nullptr;
+    auto status = plan_ctx_->CreateOp<PhysicalSimpleProjectNode>(
+        &root_simplify_project_op, root, root_simplified_projects);
+    if (!status.isOK()) {
+        LOG(WARNING) << status.msg;
+        LOG(WARNING)
+            << "Simplify root left input failed: apply left node simplify";
+        return false;
+    }
+    for (auto column : left_condition_columns) {
+        size_t schema_idx;
+        size_t col_idx;
+        size_t column_id;
+        status = root_simplify_project_op->schemas_ctx()->ResolveColumnID(
+            column.second->GetRelationName(), column.second->GetColumnName(),
+            &column_id);
+        if (!status.isOK() || column_id != column.first) {
+            LOG(WARNING) << "Can't Resolved " << node::ExprString(column.second)
+                         << "with column id " << column.first
+                         << " from root node, apply left node simplify";
+            return true;
+        }
+    }
+    DLOG(INFO) << "apply root node simplify!";
+    *output = root_simplify_project_op;
     return true;
 }
 
 bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     if (nullptr == in) {
-        LOG(WARNING) << "LeftJoin optimized skip: node is null";
+        LOG(WARNING) << "cluster optimized skip: node is null";
         return false;
     }
     switch (in->GetOpType()) {
@@ -2702,6 +2786,11 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                 case node::kJoinTypeLast: {
                     auto left = join_op->producers()[0];
                     auto right = join_op->producers()[1];
+                    if (kSchemaTypeRow == right->GetOutputType()) {
+                        DLOG(INFO)
+                            << "request join optimized skip: row and row join";
+                        return false;
+                    }
                     auto simplify_left = left;
                     if (!SimplifyJoinLeftInput(join_op, join_op->join(),
                                                &simplify_left)) {

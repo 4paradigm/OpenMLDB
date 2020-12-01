@@ -19,6 +19,7 @@ public class SQLCase {
     List<String> common_column_indices;
     String batch_plan;
     String request_plan;
+    String cluster_request_plan;
     List<InputDesc> inputs;
     InputDesc batch_request;
     ExpectDesc expect;
