@@ -34,6 +34,7 @@ class SQLCase {
         std::string create_;
         std::string insert_;
         std::set<size_t> common_column_indices_;
+        int64_t repeat_ = 1;
     };
     struct ExpectInfo {
         int64_t count_ = -1;
@@ -51,6 +52,9 @@ class SQLCase {
     const std::string& desc() const { return desc_; }
     const std::string case_name() const;
     const std::string& mode() const { return mode_; }
+    const std::string& cluster_request_plan() const {
+        return cluster_request_plan_;
+    }
     const std::string& request_plan() const { return request_plan_; }
     const std::string& batch_plan() const { return batch_plan_; }
     const std::string& sql_str() const { return sql_str_; }
@@ -69,11 +73,14 @@ class SQLCase {
             inputs_[idx].name_ = name;
         }
     }
+
     const int32_t CountInputs() const { return inputs_.size(); }
     // extract schema from schema string
     // name:type|name:type|name:type|
     bool ExtractInputTableDef(type::TableDef& table,  // NOLINT
                               int32_t input_idx = 0) const;
+    bool ExtractInputTableDef(const TableInfo& info,
+                              type::TableDef& table) const;  // NOLINT
     bool BuildCreateSQLFromInput(int32_t input_idx, std::string* sql,
                                  int partition_num = 1) const;
     bool BuildInsertSQLFromInput(int32_t input_idx, std::string* sql) const;
@@ -82,6 +89,9 @@ class SQLCase {
     bool ExtractOutputSchema(type::TableDef& table) const;       // NOLINT
     bool ExtractInputData(std::vector<fesql::codec::Row>& rows,  // NOLINT
                           int32_t input_idx = 0) const;
+    bool ExtractInputData(
+        const TableInfo& info,
+        std::vector<fesql::codec::Row>& rows) const;  // NOLINT
     bool ExtractOutputData(
         std::vector<fesql::codec::Row>& rows) const;  // NOLINT
 
@@ -165,6 +175,14 @@ class SQLCase {
 
     friend SQLCaseBuilder;
     friend std::ostream& operator<<(std::ostream& output, const SQLCase& thiz);
+    static bool IS_PERF() {
+        const char* env_name = "FESQL_PERF";
+        char* value = getenv(env_name);
+        if (value != nullptr && strcmp(value, "true") == 0) {
+            return true;
+        }
+        return false;
+    }
     static bool IS_DEBUG() {
         const char* env_name = "FESQL_DEV";
         char* value = getenv(env_name);
@@ -173,10 +191,16 @@ class SQLCase {
         }
         return false;
     }
+    static bool IS_CLUSTER() {
+        const char* env_name = "FESQL_CLUSTER";
+        char* value = getenv(env_name);
+        if (value != nullptr && strcmp(value, "true") == 0) {
+            return true;
+        }
+        return false;
+    }
 
     const YAML::Node raw_node() const { return raw_node_; }
-
- private:
     std::string id_;
     std::string mode_;
     std::string desc_;
@@ -189,6 +213,7 @@ class SQLCase {
     bool standard_sql_compatible_;
     std::string batch_plan_;
     std::string request_plan_;
+    std::string cluster_request_plan_;
     std::vector<TableInfo> inputs_;
     TableInfo batch_request_;
     ExpectInfo expect_;
