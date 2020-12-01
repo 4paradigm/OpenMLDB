@@ -174,7 +174,12 @@ int FileSender::SendFileInternal(const std::string& file_name,
             break;
         }
         block_count++;
+
+#ifdef __APPLE__
+        size_t len = fread(buffer, 1, FLAGS_stream_block_size, file);
+#else
         size_t len = fread_unlocked(buffer, 1, FLAGS_stream_block_size, file);
+#endif
         if (len < FLAGS_stream_block_size) {
             if (feof(file)) {
                 if (len > 0) {

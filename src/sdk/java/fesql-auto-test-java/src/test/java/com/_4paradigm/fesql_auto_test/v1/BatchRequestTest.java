@@ -14,17 +14,17 @@ public class BatchRequestTest extends FesqlTest {
 
     @Test(dataProvider = "testBatchRequestData")
     public void testBatchRequest(SQLCase testCase) {
-        ExecutorFactory.getSQLBatchRequestQueryExecutor(executor, testCase).run();
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatchRequest).run();
     }
 
     @Test(dataProvider = "testBatchRequestData")
     public void testSPBatchRequest(SQLCase testCase) {
-        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, false).run();
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatchRequestWithSp).run();
     }
 
     @Test(dataProvider = "testBatchRequestData")
     public void testSPBatchRequestAsyn(SQLCase testCase) {
-        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, true).run();
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatchRequestWithSpAsync).run();
     }
 
     @DataProvider

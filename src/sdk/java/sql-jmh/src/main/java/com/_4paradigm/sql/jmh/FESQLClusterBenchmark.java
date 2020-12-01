@@ -8,6 +8,8 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.util.HashMap;
@@ -22,14 +24,15 @@ import java.util.ArrayList;
 @Threads(2)
 @Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
 @Warmup(iterations = 1)
-
 public class FESQLClusterBenchmark {
+    private static Logger logger = LoggerFactory.getLogger(FESQLClusterBenchmark.class);
     private SqlExecutor executor;
     private SdkOption option;
     private String db = "db" + System.nanoTime();
     private Map<String, Map<String, String>> tables = new HashMap<>();
     private String partitionNum = "7";
     private int pkNum = 1;
+    @Param({"10", "100", "1000"})
     private int windowNum = 10;
     private String previousApplication = "create table `previous_application`(" +
             "`SK_ID_PREV` bigint," +
@@ -240,7 +243,7 @@ public class FESQLClusterBenchmark {
             ")" +
             "partitionnum=" + partitionNum +
             ";";
-    private String creditCardBalance="create table `credit_card_balance`(" +
+    private String creditCardBalance = "create table `credit_card_balance`(" +
             "`SK_ID_PREV` bigint," +
             "`SK_ID_CURR` bigint," +
             "`MONTHS_BALANCE` bigint," +
@@ -428,6 +431,7 @@ public class FESQLClusterBenchmark {
             "(" +
             "select" +
             "    SK_ID_CURR as SK_ID_CURR_124," +
+            "    count(CNT_INSTALMENT) over POS_CASH_balance_SK_ID_CURR_time_0s_32d as POS_CASH_balance_SK_ID_CURR_time_0s_32d_CNT," +
             "    max(CNT_INSTALMENT) over POS_CASH_balance_SK_ID_CURR_time_0s_32d as POS_CASH_balance_CNT_INSTALMENT_123," +
             "    avg(CNT_INSTALMENT) over POS_CASH_balance_SK_ID_CURR_time_0s_32d as POS_CASH_balance_CNT_INSTALMENT_124," +
             "    max(CNT_INSTALMENT_FUTURE) over POS_CASH_balance_SK_ID_CURR_time_0s_32d as POS_CASH_balance_CNT_INSTALMENT_FUTURE_125," +
@@ -445,11 +449,12 @@ public class FESQLClusterBenchmark {
             "    window POS_CASH_balance_SK_ID_CURR_time_0s_32d as (" +
             "UNION POS_CASH_balance partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
             "as out1 " +
-            "on out0.SK_ID_CURR_1 = out1.SK_ID_CURR_124 " +
+            "on SK_ID_CURR_1 = out1.SK_ID_CURR_124 " +
             "last join" +
             "(" +
             "select" +
             "    SK_ID_CURR as SK_ID_CURR_136," +
+            "    count(AMT_ANNUITY) over bureau_SK_ID_CURR_time_0s_32d as bureau_SK_ID_CURR_time_0s_32d_CNT," +
             "    min(AMT_ANNUITY) over bureau_SK_ID_CURR_time_0s_32d as bureau_AMT_ANNUITY_135," +
             "    avg(AMT_ANNUITY) over bureau_SK_ID_CURR_time_0s_32d as bureau_AMT_ANNUITY_136," +
             "    max(AMT_CREDIT_MAX_OVERDUE) over bureau_SK_ID_CURR_time_0s_32d as bureau_AMT_CREDIT_MAX_OVERDUE_137," +
@@ -482,11 +487,12 @@ public class FESQLClusterBenchmark {
             "    window bureau_SK_ID_CURR_time_0s_32d as (" +
             "UNION bureau partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
             "as out2 " +
-            "on out0.SK_ID_CURR_1 = out2.SK_ID_CURR_136 " +
+            "on SK_ID_CURR_1 = out2.SK_ID_CURR_136 " +
             "last join" +
             "(" +
             "select" +
             "    SK_ID_CURR as SK_ID_CURR_163," +
+            "    count(MONTHS_BALANCE) over bureau_balance_SK_ID_CURR_time_0s_32d as bureau_balance_SK_ID_CURR_time_0s_32d_CNT," +
             "    max(MONTHS_BALANCE) over bureau_balance_SK_ID_CURR_time_0s_32d as bureau_balance_MONTHS_BALANCE_162," +
             "    avg(MONTHS_BALANCE) over bureau_balance_SK_ID_CURR_time_0s_32d as bureau_balance_MONTHS_BALANCE_163," +
             "    distinct_count(`STATUS`) over bureau_balance_SK_ID_CURR_time_0s_32d as bureau_balance_STATUS_164 " +
@@ -495,11 +501,12 @@ public class FESQLClusterBenchmark {
             "    window bureau_balance_SK_ID_CURR_time_0s_32d as (" +
             "UNION bureau_balance partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
             "as out3 " +
-            "on out0.SK_ID_CURR_1 = out3.SK_ID_CURR_163 " +
+            "on SK_ID_CURR_1 = out3.SK_ID_CURR_163 " +
             "last join" +
             "(" +
             "select" +
             "    SK_ID_CURR as SK_ID_CURR_166," +
+            "    count(AMT_BALANCE) over credit_card_balance_SK_ID_CURR_time_0s_32d as credit_card_balance_SK_ID_CURR_time_0s_32d_CNT," +
             "    avg(AMT_BALANCE) over credit_card_balance_SK_ID_CURR_time_0s_32d as credit_card_balance_AMT_BALANCE_165," +
             "    max(AMT_BALANCE) over credit_card_balance_SK_ID_CURR_time_0s_32d as credit_card_balance_AMT_BALANCE_166," +
             "    max(AMT_CREDIT_LIMIT_ACTUAL) over credit_card_balance_SK_ID_CURR_time_0s_32d as credit_card_balance_AMT_CREDIT_LIMIT_ACTUAL_167," +
@@ -547,11 +554,12 @@ public class FESQLClusterBenchmark {
             "    window credit_card_balance_SK_ID_CURR_time_0s_32d as (" +
             "UNION credit_card_balance partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
             "as out4 " +
-            "on out0.SK_ID_CURR_1 = out4.SK_ID_CURR_166 " +
+            "on SK_ID_CURR_1 = out4.SK_ID_CURR_166 " +
             "last join " +
             "(" +
             "select" +
             "    SK_ID_CURR as SK_ID_CURR_208," +
+            "    count(AMT_INSTALMENT) over installments_payments_SK_ID_CURR_time_0s_32d as installments_payments_SK_ID_CURR_time_0s_32d_CNT," +
             "    max(AMT_INSTALMENT) over installments_payments_SK_ID_CURR_time_0s_32d as installments_payments_AMT_INSTALMENT_207," +
             "    avg(AMT_INSTALMENT) over installments_payments_SK_ID_CURR_time_0s_32d as installments_payments_AMT_INSTALMENT_208," +
             "    max(AMT_PAYMENT) over installments_payments_SK_ID_CURR_time_0s_32d as installments_payments_AMT_PAYMENT_209," +
@@ -570,11 +578,12 @@ public class FESQLClusterBenchmark {
             "    window installments_payments_SK_ID_CURR_time_0s_32d as (" +
             "UNION installments_payments partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
             "as out5 " +
-            "on out0.SK_ID_CURR_1 = out5.SK_ID_CURR_208 " +
+            "on SK_ID_CURR_1 = out5.SK_ID_CURR_208 " +
             "last join" +
             "(" +
             "select" +
             "    SK_ID_CURR as SK_ID_CURR_221," +
+            "    count(AMT_ANNUITY) over previous_application_SK_ID_CURR_time_0s_32d as previous_application_SK_ID_CURR_time_0s_32d_CNT," +
             "    max(AMT_ANNUITY) over previous_application_SK_ID_CURR_time_0s_32d as previous_application_AMT_ANNUITY_220," +
             "    min(AMT_ANNUITY) over previous_application_SK_ID_CURR_time_0s_32d as previous_application_AMT_ANNUITY_221," +
             "    max(AMT_APPLICATION) over previous_application_SK_ID_CURR_time_0s_32d as previous_application_AMT_APPLICATION_222," +
@@ -635,14 +644,18 @@ public class FESQLClusterBenchmark {
             "    window previous_application_SK_ID_CURR_time_0s_32d as (" +
             "UNION previous_application partition by SK_ID_CURR order by `time` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))" +
             "as out6 " +
-            "on out0.SK_ID_CURR_1 = out6.SK_ID_CURR_221" +
+            "on SK_ID_CURR_1 = out6.SK_ID_CURR_221" +
             ";";
 
     public FESQLClusterBenchmark() {
+        this(false);
+    }
+    public FESQLClusterBenchmark(boolean enableDebug) {
         SdkOption sdkOption = new SdkOption();
         sdkOption.setSessionTimeout(30000);
         sdkOption.setZkCluster(BenchmarkConfig.ZK_CLUSTER);
         sdkOption.setZkPath(BenchmarkConfig.ZK_PATH);
+        sdkOption.setEnableDebug(enableDebug);
         this.option = sdkOption;
         try {
             executor = new SqlClusterExecutor(option);
@@ -698,6 +711,7 @@ public class FESQLClusterBenchmark {
     }
 
     private void putData(String sql, int pkNum, int windowNum) {
+        logger.info("putData sql {}, pkNum {}, windowNum {}", sql, pkNum, windowNum);
         String name = getTableName(sql);
         int indexPos = getIndexPos(sql);
         int tsPos = getTsPos(sql);
@@ -733,7 +747,7 @@ public class FESQLClusterBenchmark {
                         } else if (pos == tsPos) {
                             builder.append(ts + tsCnt);
                         } else {
-                            if (type.equals("timestamp"))  {
+                            if (type.equals("timestamp")) {
                                 builder.append(ts);
                             } else {
                                 builder.append(pos);
@@ -773,7 +787,7 @@ public class FESQLClusterBenchmark {
                 requestPs.setTimestamp(i + 1, new Timestamp(System.currentTimeMillis() + 1000));
             }
         }
-        return  requestPs;
+        return requestPs;
     }
 
     @Setup
@@ -803,12 +817,12 @@ public class FESQLClusterBenchmark {
             return;
         }
         putData(previousApplication, pkNum, windowNum);
-        putData(posCashBalance,pkNum,windowNum);
-        putData(installmentsPayments, pkNum,windowNum);
-        putData(bureauBalance,pkNum,windowNum);
-        putData(main,pkNum,windowNum);
-        putData(creditCardBalance,pkNum,windowNum);
-        putData(bureau,pkNum,windowNum);
+        putData(posCashBalance, pkNum, windowNum);
+        putData(installmentsPayments, pkNum, windowNum);
+        putData(bureauBalance, pkNum, windowNum);
+        putData(main, pkNum, windowNum);
+        putData(creditCardBalance, pkNum, windowNum);
+        putData(bureau, pkNum, windowNum);
     }
 
     @TearDown
@@ -822,7 +836,39 @@ public class FESQLClusterBenchmark {
         executor.executeDDL(db, "drop table bureau;");
         executor.dropDB(db);
     }
-
+    public void setWindowNum(int windowNum) {
+        this.windowNum = windowNum;
+    }
+    public Map<String, String> execSQLTest() {
+        try {
+            PreparedStatement ps = getPreparedStatement();
+            ResultSet resultSet = ps.executeQuery();
+            resultSet.next();
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            Map<String, String> val = new HashMap<>();
+            for (int i = 0; i < metaData.getColumnCount(); i++) {
+                String columnName = metaData.getColumnName(i + 1);
+                int columnType = metaData.getColumnType(i + 1);
+                if (columnType == Types.VARCHAR) {
+                    val.put(columnName, String.valueOf(resultSet.getString(i + 1)));
+                } else if (columnType == Types.DOUBLE) {
+                    val.put(columnName, String.valueOf(resultSet.getDouble(i + 1)));
+                } else if (columnType == Types.INTEGER) {
+                    val.put(columnName, String.valueOf(resultSet.getInt(i + 1)));
+                } else if (columnType == Types.BIGINT) {
+                    val.put(columnName, String.valueOf(resultSet.getLong(i + 1)));
+                } else if (columnType == Types.TIMESTAMP) {
+                    val.put(columnName, String.valueOf(resultSet.getTimestamp(i + 1)));
+                }
+            }
+            logger.info("result map: {}", val);
+            ps.close();
+            return val;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
     @Benchmark
     public void execSQL() {
         try {
