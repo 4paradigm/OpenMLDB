@@ -258,44 +258,46 @@ void PrintItems(const std::vector<std::pair<std::string, std::string>> &items,
 }
 
 void PrintProcedureSchema(const std::string& head,
-        const ::fesql::vm::Schema &schema, std::ostream &stream) {
-    if (schema.empty()) {
-        stream << "Empty set" << std::endl;
+        const ::fesql::sdk::Schema &sdk_schema, std::ostream &stream) {
+    try {
+        const ::fesql::sdk::SchemaImpl& schema_impl = dynamic_cast<const ::fesql::sdk::SchemaImpl&>(sdk_schema);
+        auto& schema = schema_impl.GetSchema();
+        if (schema.empty()) {
+            stream << "Empty set" << std::endl;
+            return;
+        }
+        uint32_t items_size = schema.size();
+        ::fesql::base::TextTable t('-', ' ', ' ');
+
+        t.add("#");
+        t.add("Field");
+        t.add("Type");
+        t.add("IsConstant");
+        t.endOfRow();
+
+        for (uint32_t i = 0; i < items_size; i++) {
+            auto column = schema.Get(i);
+            t.add(std::to_string(i + 1));
+            t.add(column.name());
+            t.add(::fesql::type::Type_Name(column.type()));
+            t.add(column.is_constant() ? "YES" : "NO");
+            t.endOfRow();
+        }
+        stream << t << std::endl;
+    } catch(std::bad_cast) {
         return;
     }
-    uint32_t items_size = schema.size();
-    ::fesql::base::TextTable t('-', ' ', ' ');
-
-    t.add("#");
-    t.add("Field");
-    t.add("Type");
-    t.add("IsConstant");
-    t.endOfRow();
-
-    for (uint32_t i = 0; i < items_size; i++) {
-        auto column = schema.Get(i);
-        t.add(std::to_string(i + 1));
-        t.add(column.name());
-        t.add(::fesql::type::Type_Name(column.type()));
-        t.add(column.is_constant() ? "YES" : "NO");
-        t.endOfRow();
-    }
-    stream << t << std::endl;
 }
 
-void PrintProcedureInfo(const rtidb::api::ProcedureInfo& sp_info) {
+void PrintProcedureInfo(const fesql::sdk::ProcedureInfo& sp_info) {
     std::vector<std::pair<std::string, std::string>> vec;
-    std::pair<std::string, std::string> pair = std::make_pair(sp_info.db_name(), sp_info.sp_name());
+    std::pair<std::string, std::string> pair = std::make_pair(sp_info.GetDbName(), sp_info.GetSpName());
     vec.push_back(pair);
     PrintItems(vec, std::cout);
-    std::vector<std::string> items{sp_info.sql()};
+    std::vector<std::string> items{sp_info.GetSql()};
     PrintItems(std::cout, "SQL", items);
-    ::fesql::vm::Schema input_schema;
-    ::rtidb::catalog::SchemaAdapter::ConvertSchema(sp_info.input_schema(), &input_schema);
-    PrintProcedureSchema("Input Schema", input_schema, std::cout);
-    ::fesql::vm::Schema output_schema;
-    ::rtidb::catalog::SchemaAdapter::ConvertSchema(sp_info.output_schema(), &output_schema);
-    PrintProcedureSchema("Output Schema", output_schema, std::cout);
+    PrintProcedureSchema("Input Schema", sp_info.GetInputSchema(), std::cout);
+    PrintProcedureSchema("Output Schema", sp_info.GetOutputSchema(), std::cout);
 }
 
 void HandleCmd(const fesql::node::CmdNode *cmd_node) {
@@ -468,25 +470,27 @@ void HandleCmd(const fesql::node::CmdNode *cmd_node) {
             std::string db_name = cmd_node->GetArgs()[0];
             std::string sp_name = cmd_node->GetArgs()[1];
             std::string error;
-            rtidb::api::ProcedureInfo sp_info;
-            if (!cs->GetProcedureInfo(db_name, sp_name, &sp_info, &error)) {
+            std::shared_ptr<fesql::sdk::ProcedureInfo> sp_info =
+                cs->GetProcedureInfo(db_name, sp_name, &error);
+            if (!sp_info) {
                 std::cout << "Fail to show procdure. error msg: " << error << std::endl;
                 return;
             }
-            PrintProcedureInfo(sp_info);
+            PrintProcedureInfo(*sp_info);
             break;
         }
         case fesql::node::kCmdShowProcedures: {
             std::string error;
-            std::vector<std::shared_ptr<rtidb::api::ProcedureInfo>> sp_infos;
-            if (!cs->GetProcedureInfo(&sp_infos, &error) || sp_infos.empty()) {
+            std::vector<std::shared_ptr<fesql::sdk::ProcedureInfo>> sp_infos =
+                cs->GetProcedureInfo(&error);
+            if (sp_infos.empty()) {
                 std::cout << "Fail to show procdure. error msg: " << error << std::endl;
                 return;
             }
             std::vector<std::pair<std::string, std::string>> pairs;
             for (uint32_t i = 0; i < sp_infos.size(); i++) {
                 auto& sp_info = sp_infos.at(i);
-                pairs.push_back(std::make_pair(sp_info->db_name(), sp_info->sp_name()));
+                pairs.push_back(std::make_pair(sp_info->GetDbName(), sp_info->GetSpName()));
             }
             PrintItems(pairs, std::cout);
             break;
