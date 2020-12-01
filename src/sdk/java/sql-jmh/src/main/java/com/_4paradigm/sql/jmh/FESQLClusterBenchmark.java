@@ -18,11 +18,11 @@ import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
 
-@BenchmarkMode(Mode.All)
+@BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
-@Threads(2)
-@Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
+@Threads(1)
+@Fork(value = 1, jvmArgs = {"-Xms8G", "-Xmx8G"})
 @Warmup(iterations = 1)
 public class FESQLClusterBenchmark {
     private static Logger logger = LoggerFactory.getLogger(FESQLClusterBenchmark.class);

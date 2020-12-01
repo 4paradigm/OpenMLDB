@@ -501,3 +501,19 @@ docker-image:
       - $ENV_BUILD == "daily"
   dependencies:
     - build
+
+fesql_auto_gen_case:
+  stage: manual
+  before_script:
+    - mkdir /rambuild
+    - mount -t tmpfs -o size=3G tmpfs /rambuild
+  script:
+    - ln -sf /depends/thirdparty thirdparty
+    - ln -sf /depends/thirdsrc thirdsrc
+    - source /root/.bashrc && LD_LIBRARY_PATH=/depends/thirdparty/lib:$LD_LIBRARY_PATH bash steps/fesql_auto_gen_test.sh
+  except:
+    variables:
+      - $ENV_BUILD == "daily"
+  dependencies:
+    - build
+  when: manual
