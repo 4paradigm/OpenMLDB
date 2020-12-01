@@ -1,7 +1,8 @@
 package com._4paradigm.sql.jmh;
 
-import org.testng.Assert;
-import org.testng.annotations.Test;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
