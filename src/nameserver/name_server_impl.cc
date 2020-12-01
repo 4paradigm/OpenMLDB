@@ -2622,14 +2622,7 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     std::map<std::string, uint64_t> endpoint_leader = endpoint_pid_bucked;
     {
         std::lock_guard<std::mutex> lock(mu_);
-        std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>* cur_table_info = &table_info_;
-        if (!table_info.db().empty()) {
-            auto it = db_table_info_.find(table_info.db());
-            if (it != db_table_info_.end()) {
-                cur_table_info = &(it->second);
-            }
-        }
-        for (const auto& iter : *cur_table_info) {
+        for (const auto& iter : table_info_) {
             auto table_info = iter.second;
             for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
                 for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
