@@ -60,7 +60,7 @@ class SQLSDKTest : public rtidb::test::SQLCaseTest {
     static void DropTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                            std::shared_ptr<SQLRouter> router);
     static void InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                             std::shared_ptr<SQLRouter> router, bool is_bath);
+                             std::shared_ptr<SQLRouter> router, bool insert_first_input);
 
     static void CovertFesqlRowToRequestRow(fesql::codec::RowView* row_view,
                                            std::shared_ptr<rtidb::sdk::SQLRequestRow> request_row);
@@ -221,12 +221,12 @@ void SQLSDKTest::DropProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
 }
 
 void SQLSDKTest::InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                              std::shared_ptr<SQLRouter> router, bool is_bath) {
+                              std::shared_ptr<SQLRouter> router, bool insert_first_input) {
     DLOG(INFO) << "Insert Tables BEGIN";
     fesql::sdk::Status status;
     // insert inputs
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
-        if (0 == i && !is_bath) {
+        if (0 == i && !insert_first_input) {
             continue;
         }
         // insert into table
@@ -235,9 +235,11 @@ void SQLSDKTest::InsertTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         for (auto insert : inserts) {
             std::string placeholder = "{" + std::to_string(i) + "}";
             boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
-            LOG(INFO) << insert;
+            DLOG(INFO) << insert;
             if (!insert.empty()) {
-                ASSERT_TRUE(router->ExecuteInsert(sql_case.db(), insert, &status));
+                for (int j = 0; j < sql_case.inputs()[i].repeat_; j++) {
+                    ASSERT_TRUE(router->ExecuteInsert(sql_case.db(), insert, &status));
+                }
             }
         }
     }
@@ -255,7 +257,7 @@ void SQLSDKTest::CovertFesqlRowToRequestRow(fesql::codec::RowView* row_view,
             init_size += row_view->GetStringUnsafe(i).size();
         }
     }
-    LOG(INFO) << "Build Request Row: init string size " << init_size;
+    DLOG(INFO) << "Build Request Row: init string size " << init_size;
     request_row->Init(init_size);
     for (int i = 0; i < row_view->GetSchema()->size(); i++) {
         if (row_view->IsNULL(i)) {

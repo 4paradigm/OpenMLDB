@@ -25,16 +25,6 @@ public class WindowTest extends FesqlTest {
         return dp.getCases().toArray();
     }
 
-    @Test(dataProvider = "testRowRangeData")
-    public void testRowRange(SQLCase testCase) throws Exception {
-            ExecutorFactory.build(executor, testCase).run();
-    }
-
-    @Test(dataProvider = "testRowRangeData")
-    public void testRowRangeRequestMode(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, true).run();
-    }
-
     @DataProvider
     public Object[] testRowData() throws FileNotFoundException {
         try {
@@ -47,17 +37,6 @@ public class WindowTest extends FesqlTest {
         }
         return null;
     }
-
-    @Test(dataProvider = "testRowData")
-    public void testRow(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase).run();
-    }
-
-    @Test(dataProvider = "testRowData")
-    public void testRowRequestMode(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, true).run();
-    }
-
     @DataProvider
     public Object[] testWindowUnionData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
@@ -65,49 +44,56 @@ public class WindowTest extends FesqlTest {
         return dp.getCases().toArray();
     }
 
-    @Test(dataProvider = "testWindowUnionData")
-    public void testWindowUnion(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase).run();
-    }
 
-    @Test(dataProvider = "testWindowUnionData")
-    public void testWindowUnionRequestMode(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, true).run();
+    @Test(dataProvider = "testRowData")
+    public void testRow(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
     }
-
-    /*
-        stored procedure syn case
-     */
+    @Test(dataProvider = "testRowData")
+    public void testRowRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
+    }
     @Test(dataProvider = "testRowData")
     public void testRowRequestModeWithSp(SQLCase testCase) throws Exception {
-        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, false).run();
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
     }
-
-    @Test(dataProvider = "testRowRangeData")
-    public void testRowRangeRequestModeWithSp(SQLCase testCase) throws Exception {
-        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, false).run();
-    }
-
-    @Test(dataProvider = "testWindowUnionData")
-    public void testWindowUnionRequestModeWithSp(SQLCase testCase) throws Exception {
-        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, false).run();
-    }
-
-    /*
-        stored procedure asyn case
-     */
     @Test(dataProvider = "testRowData")
     public void testRowRequestModeWithSpAsyn(SQLCase testCase) throws Exception {
-        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, true).run();
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
     }
 
     @Test(dataProvider = "testRowRangeData")
+    public void testRowRange(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
+    }
+    @Test(dataProvider = "testRowRangeData")
+    public void testRowRangeRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
+    }
+    @Test(dataProvider = "testRowRangeData")
+    public void testRowRangeRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
+    }
+    @Test(dataProvider = "testRowRangeData")
     public void testRowRangeRequestModeWithSpAsyn(SQLCase testCase) throws Exception {
-        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, true).run();
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
     }
 
+
+    @Test(dataProvider = "testWindowUnionData")
+    public void testWindowUnion(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
+    }
+    @Test(dataProvider = "testWindowUnionData")
+    public void testWindowUnionRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
+    }
+    @Test(dataProvider = "testWindowUnionData")
+    public void testWindowUnionRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
+    }
     @Test(dataProvider = "testWindowUnionData")
     public void testWindowUnionRequestModeWithSpAsyn(SQLCase testCase) throws Exception {
-        ExecutorFactory.getFeRequestQueryWithSpExecutor(executor, testCase, true).run();
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
     }
 }

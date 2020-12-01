@@ -131,7 +131,7 @@ TEST_F(MemComFormatTest, TestFloatingNum) {
 
 TEST_F(MemComFormatTest, TestVarchar) {
     std::vector<std::string> vec;
-    int arr_len = 6;
+    const int arr_len = 6;
     std::string arr[arr_len] = {"12345678", "123456789", "1234567890123456789",
                                 "",         " ",         "1234567"};
     for (int i = 0; i < arr_len; i++) {

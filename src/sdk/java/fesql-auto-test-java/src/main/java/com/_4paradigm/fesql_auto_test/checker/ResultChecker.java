@@ -74,7 +74,7 @@ public class ResultChecker extends BaseChecker {
                 if (actual_val != null && actual_val instanceof Float) {
                     Assert.assertTrue(expect_val != null && expect_val instanceof Float);
                     Assert.assertEquals(
-                            (Float) actual_val, (Float) expect_val, 1e-10,
+                            (Float) actual_val, (Float) expect_val, 1e-6,
                             String.format("ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
                                 i, j, expect_val, actual_val,
                                 Table.getTableString(fesqlCase.getExpect().getColumns(), expect),
@@ -108,10 +108,17 @@ public class ResultChecker extends BaseChecker {
 
         public RowsSort(int index) {
             this.index = index;
+            if (-1 == index) {
+                log.warn("compare without index");
+            }
         }
 
         @Override
         public int compare(List o1, List o2) {
+            if (-1 == index) {
+
+                return 0;
+            }
             Object obj1 = o1.get(index);
             Object obj2 = o2.get(index);
             if (obj1 == obj2) {
