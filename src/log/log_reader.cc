@@ -20,6 +20,7 @@
 #include "log/crc32c.h"
 #include "log/log_format.h"
 #include "base/glog_wapper.h" // NOLINT
+#include "base/endianconv.h"
 #include "config.h" // NOLINT
 #ifdef PZFPGA_ENABLE
 #include "pz.h" // NOLINT
@@ -281,7 +282,42 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
     if (buffer_.size() < kHeaderSize) {
         // Last read was a full read, so this is a trailer to skip
         buffer_.clear();
-        Status status = file_->Read(kBlockSize, &buffer_, backing_store_);
+        Status status;
+#ifdef PZFPGA_ENABLE
+        if (!FLAGS_compress_snapshot) {
+#endif
+            status = file_->Read(kBlockSize, &buffer_, backing_store_);
+#ifdef PZFPGA_ENABLE
+        } else {
+            // read header of compressed data
+            Slice header_of_compress;
+            status = file_->Read(kHeaderSizeOfCompressData, &header_of_compress, backing_store_);
+            if (!status.ok()) {
+                PDLOG(WARNING, "fail to read file %s when reading header", status.ToString().c_str());
+                return kWaitRecord;
+            }
+            const char* data = header_of_compress.data();
+            int block_size = 0;
+            memcpy(static_cast<void*>(&block_size), data, sizeof(int));
+            memrev32ifbe(static_cast<void*>(&block_size));
+            // read compressed data
+            Slice block;
+            status = file_->Read(block_size, &block, backing_store_);
+            if (!status.ok()) {
+                PDLOG(WARNING, "fail to read file %s when reading block", status.ToString().c_str());
+                return kWaitRecord;
+            }
+            const char* block_data = block.data();
+            char uncompress[kBlockSize];
+            int decompress_size = gzipfpga_uncompress_nohuff(
+                    NULL, block_data, uncompress, block_size, kBlockSize);
+            if (decompress_size != kBlockSize) {
+                PDLOG(WARNING, "bad record with uncompress block");
+                return kBadRecord;
+            }
+            buffer_ = Slice(uncompress, kBlockSize);
+        }
+#endif
         offset = end_of_buffer_offset_;
         end_of_buffer_offset_ += buffer_.size();
         // Read log error

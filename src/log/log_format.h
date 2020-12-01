@@ -27,10 +27,14 @@ enum RecordType {
 
 static const int kMaxRecordType = kEofType;
 
-static const int kBlockSize = 4 * 1024;
+static const int kBlockSize = 4 * 1024 * 1024;
 
 // Header is checksum (4 bytes), length (2 bytes), type (1 byte).
 static const int kHeaderSize = 4 + 2 + 1;
+
+// CompressHeader + CompressData
+// kHeaderSizeOfCompressData should be multiple of 64
+static const int kHeaderSizeOfCompressData = 64;
 
 }  // namespace log
 }  // namespace rtidb

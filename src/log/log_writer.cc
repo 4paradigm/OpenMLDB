@@ -9,6 +9,7 @@
 #include "log/crc32c.h"
 #include "base/glog_wapper.h" // NOLINT
 #include "gflags/gflags.h"
+#include "base/endianconv.h"
 #ifdef PZFPGA_ENABLE
 #include "pz.h" // NOLINT
 #endif
@@ -210,24 +211,23 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
 Status Writer::CompressRecord() {
     Status s;
     // compress
-    char compress_record[kBlockSize];
+    char compress_data[kBlockSize];
     int compress_len = gzipfpga_compress_nohuff(
-            fpga_ctx_, buffer_, compress_record, kBlockSize, kBlockSize, 0);
+            fpga_ctx_, buffer_, compress_data, kBlockSize, kBlockSize, 0);
     if (compress_len < 0)  {
         s = Status::InvalidRecord(Slice("compress failed"));
         PDLOG(WARNING, "write error. %s", s.ToString().c_str());
         return s;
     }
-    // fill compressed record's header
-    char compress_header[64];
-    memcpy(compress_header, &compress_len, sizeof(int));
-    // memcpy(compress_header + 8, &kBlockSize, sizeof(int));
-    // memset(compress_header + 8, 0, 56);
-    memset(compress_header + sizeof(int), 0, 64 - sizeof(int));
+    // fill compressed data's header
+    char head_of_compress[kHeaderSizeOfCompressData];
+    memrev32ifbe(static_cast<void*>(&compress_len));
+    memcpy(head_of_compress, static_cast<void*>(&compress_len), sizeof(int));
+    memset(head_of_compress + sizeof(int), 0, kHeaderSizeOfCompressData - sizeof(int));
     // write header and compressed data
-    s = dest_->Append(Slice(compress_header, 64));
+    s = dest_->Append(Slice(head_of_compress, kHeaderSizeOfCompressData));
     if (s.ok()) {
-        s = dest_->Append(Slice(compress_record, compress_len));
+        s = dest_->Append(Slice(compress_data, compress_len));
         if (s.ok()) {
             s = dest_->Flush();
         }
