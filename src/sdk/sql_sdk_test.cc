@@ -43,6 +43,7 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter(const fesql::sqlcase::SQLCase&
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
+    sql_opt.session_timeout = 30000;
     sql_opt.enable_debug = sql_case.debug() || fesql::sqlcase::SQLCase::IS_DEBUG();
     return NewClusterSQLRouter(sql_opt);
 }
@@ -52,6 +53,7 @@ TEST_P(SQLSDKTest, sql_sdk_batch_test) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_multi_->GetZkCluster();
     sql_opt.zk_path = mc_multi_->GetZkPath();
+    sql_opt.session_timeout = 30000;
     sql_opt.enable_debug = sql_case.debug() || fesql::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
@@ -209,6 +211,7 @@ TEST_F(SQLSDKQueryTest, execute_where_test) {
         "                   index(key=pay_card_no, ts=txn_time),\n"
         "                   index(key=merch_id, ts=txn_time));";
     SQLRouterOptions sql_opt;
+    sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
@@ -284,6 +287,7 @@ TEST_F(SQLSDKQueryTest, execute_insert_loops_test) {
     int64_t error_cnt = 0;
     int64_t cnt = 0;
     SQLRouterOptions sql_opt;
+    sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
@@ -335,6 +339,7 @@ TEST_F(SQLSDKQueryTest, create_no_ts) {
         "                c2 bigint,\n"
         "                index(key=c1, ttl=14400m, ttl_type=absolute));";
     SQLRouterOptions sql_opt;
+    sql_opt.session_timeout = 30000;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
@@ -377,6 +382,7 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
+    sql_opt.session_timeout = 30000;
     sql_opt.enable_debug = fesql::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
