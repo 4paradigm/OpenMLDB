@@ -38,6 +38,7 @@ namespace rtidb {
 namespace sdk {
 
 MiniCluster* mc_ = nullptr;
+MiniCluster* mc_multi_ = nullptr;
 static std::shared_ptr<SQLRouter> GetNewSQLRouter(const fesql::sqlcase::SQLCase& sql_case) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
@@ -49,15 +50,15 @@ TEST_P(SQLSDKTest, sql_sdk_batch_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_->GetZkCluster();
-    sql_opt.zk_path = mc_->GetZkPath();
+    sql_opt.zk_cluster = mc_multi_->GetZkCluster();
+    sql_opt.zk_path = mc_multi_->GetZkPath();
     sql_opt.enable_debug = sql_case.debug() || fesql::sqlcase::SQLCase::IS_DEBUG();
     auto router = NewClusterSQLRouter(sql_opt);
     if (!router) {
         FAIL() << "Fail new cluster sql router";
         return;
     }
-    SQLSDKTest::RunBatchModeSDK(sql_case, router, mc_->GetTbEndpoint());
+    SQLSDKTest::RunBatchModeSDK(sql_case, router, mc_multi_->GetTbEndpoint());
 }
 
 TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
@@ -475,7 +476,11 @@ int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::rtidb::sdk::MiniCluster mc(6181);
     ::rtidb::sdk::mc_ = &mc;
-    int ok = ::rtidb::sdk::mc_->SetUp(2);
+    int ok = ::rtidb::sdk::mc_->SetUp(1);
+    sleep(1);
+    ::rtidb::sdk::MiniCluster mc_multi(6181);
+    ::rtidb::sdk::mc_multi_ = &mc_multi;
+    ok = ::rtidb::sdk::mc_multi_->SetUp(2);
     sleep(1);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ok = RUN_ALL_TESTS();

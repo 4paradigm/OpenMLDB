@@ -23,28 +23,11 @@ public class SelectTest extends FesqlTest {
                 .dataProviderGenerator("/query/const_query.yaml");
         return dp.getCases().toArray();
     }
-
-    @Test(dataProvider = "testConstSelectData")
-    public void testConstSelect(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase).run();
-    }
-
-
     @DataProvider
     public Object[] testSampleSelectData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
                 .dataProviderGenerator("/integration/v1/test_select_sample.yaml");
         return dp.getCases().toArray();
-    }
-
-    @Test(dataProvider = "testSampleSelectData")
-    public void testSampleSelect(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase).run();
-    }
-
-    @Test(dataProvider = "testSampleSelectData")
-    public void testSampleSelectRequestMode(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, true).run();
     }
 
     @DataProvider
@@ -54,32 +37,11 @@ public class SelectTest extends FesqlTest {
         return dp.getCases().toArray();
     }
 
-    @Test(enabled = false, dataProvider = "testExpressionData")
-    public void testExpression(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase).run();
-    }
-
-    @Test(enabled = false, dataProvider = "testExpressionData")
-    public void testExpressionRequestMode(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, true).run();
-    }
-
-
     @DataProvider
     public Object[] testUDAFFunctionData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
                 .dataProviderGenerator("/integration/v1/test_udaf_function.yaml");
         return dp.getCases().toArray();
-    }
-
-    @Test(enabled = false, dataProvider = "testUDAFFunctionData")
-    public void testUDAFFunction(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase).run();
-    }
-
-    @Test(enabled = false, dataProvider = "testUDAFFunctionData")
-    public void testUDAFFunctionRequestMode(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, true).run();
     }
 
     @DataProvider
@@ -89,16 +51,6 @@ public class SelectTest extends FesqlTest {
         return dp.getCases().toArray();
     }
 
-    @Test(enabled = false, dataProvider = "testUDFFunctionData")
-    public void testUDFFunction(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase).run();
-    }
-
-    @Test(enabled = false, dataProvider = "testUDFFunctionData")
-    public void testUDFFunctionRequestMode(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, true).run();
-    }
-
     @DataProvider
     public Object[] testSubSelectData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
@@ -106,25 +58,108 @@ public class SelectTest extends FesqlTest {
         return dp.getCases().toArray();
     }
 
-    @Test(enabled = false, dataProvider = "testSubSelectData")
-    public void testSubSelect(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase).run();
-    }
-
-    @Test(enabled = false, dataProvider = "testSubSelectData")
-    public void testSubSelectRequestMode(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, true).run();
-    }
-
     @DataProvider
     public Object[] testWhereData() throws FileNotFoundException {
         FesqlDataProvider dp = FesqlDataProvider
-                    .dataProviderGenerator("/integration/v1/test_where.yaml");
+                .dataProviderGenerator("/integration/v1/test_where.yaml");
         return dp.getCases().toArray();
+    }
+
+
+    @Test(dataProvider = "testConstSelectData")
+    public void testConstSelect(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
+    }
+
+
+    @Test(dataProvider = "testSampleSelectData")
+    public void testSampleSelect(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
+    }
+    @Test(dataProvider = "testSampleSelectData")
+    public void testSampleSelectRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
+    }
+    @Test(dataProvider = "testSampleSelectData")
+    public void testSampleSelectRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
+    }
+    @Test(dataProvider = "testSampleSelectData")
+    public void testSampleSelectRequestModeWithSpAysn(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
+    }
+
+
+    @Test(enabled = false, dataProvider = "testExpressionData")
+    public void testExpression(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
+    }
+    @Test(enabled = false, dataProvider = "testExpressionData")
+    public void testExpressionRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
+    }
+    @Test(enabled = false, dataProvider = "testExpressionData")
+    public void testExpressionRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
+    }
+    @Test(enabled = false, dataProvider = "testExpressionData")
+    public void testExpressionRequestModeWithSpAysnc(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
+    }
+
+    @Test(enabled = false, dataProvider = "testUDAFFunctionData")
+    public void testUDAFFunction(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
+    }
+    @Test(enabled = false, dataProvider = "testUDAFFunctionData")
+    public void testUDAFFunctionRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
+    }
+    @Test(enabled = false, dataProvider = "testUDAFFunctionData")
+    public void testUDAFFunctionRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
+    }
+    @Test(enabled = false, dataProvider = "testUDAFFunctionData")
+    public void testUDAFFunctionRequestModeWithSpAsync(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
+    }
+
+    @Test(enabled = false, dataProvider = "testUDFFunctionData")
+    public void testUDFFunction(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
+    }
+    @Test(enabled = false, dataProvider = "testUDFFunctionData")
+    public void testUDFFunctionRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
+    }
+    @Test(enabled = false, dataProvider = "testUDFFunctionData")
+    public void testUDFFunctionRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
+    }
+    @Test(enabled = false, dataProvider = "testUDFFunctionData")
+    public void testUDFFunctionRequestModeWithSpAysnc(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
+    }
+
+    @Test(enabled = false, dataProvider = "testSubSelectData")
+    public void testSubSelect(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
+    }
+    @Test(enabled = false, dataProvider = "testSubSelectData")
+    public void testSubSelectRequestMode(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequest).run();
+    }
+    @Test(enabled = false, dataProvider = "testSubSelectData")
+    public void testSubSelectRequestModeWithSp(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSp).run();
+    }
+    @Test(enabled = false, dataProvider = "testSubSelectData")
+    public void testSubSelectRequestModeWithSpAysnc(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kRequestWithSpAsync).run();
     }
 
     @Test(enabled = false, dataProvider = "testWhereData")
     public void testWhere(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase).run();
+        ExecutorFactory.build(executor, testCase, ExecutorFactory.ExecutorType.kBatch).run();
     }
 }

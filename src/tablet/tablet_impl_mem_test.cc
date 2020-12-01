@@ -38,6 +38,7 @@ class TabletImplMemTest : public ::testing::Test {
 };
 
 TEST_F(TabletImplMemTest, TestMem) {
+#ifndef __APPLE__
 #ifdef TCMALLOC_ENABLE
     MockClosure closure;
     HeapLeakChecker checker("test_mem");
@@ -110,6 +111,7 @@ TEST_F(TabletImplMemTest, TestMem) {
     }
     delete tablet;
     ASSERT_EQ(true, checker.NoLeaks());
+#endif
 #endif
 }
 
