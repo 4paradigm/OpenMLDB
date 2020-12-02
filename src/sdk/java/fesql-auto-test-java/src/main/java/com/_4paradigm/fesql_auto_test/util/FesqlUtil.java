@@ -684,12 +684,22 @@ public class FesqlUtil {
             case "bigint":
                 obj = Long.parseLong(data);
                 break;
-            case "float":
-                obj = Float.parseFloat(data);
+            case "float": {
+                if (data.equalsIgnoreCase("nan")) {
+                    obj = Float.NaN;
+                } else {
+                    obj = Float.parseFloat(data);
+                }
                 break;
-            case "double":
-                obj = Double.parseDouble(data);
+            }
+            case "double": {
+                if (data.equalsIgnoreCase("nan")) {
+                    obj = Double.NaN;
+                } else {
+                    obj = Double.parseDouble(data);
+                }
                 break;
+            }
             case "bool":
                 obj = Boolean.parseBoolean(data);
                 break;
