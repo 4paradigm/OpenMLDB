@@ -353,8 +353,7 @@ class TabletClient {
     bool DropProcedure(const std::string& db_name, const std::string& sp_name);
 
     bool SubQuery(const ::rtidb::api::QueryRequest& request,
-            brpc::Controller* cntl,
-            ::rtidb::api::QueryResponse* response);
+            rtidb::RpcCallback<rtidb::api::QueryResponse>* callback);
 
     bool CallProcedure(const std::string& db, const std::string& sp_name,
             const std::string& row, int64_t timeout_ms, bool is_debug,

@@ -205,6 +205,11 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
         pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
     }
     DLOG(INFO) << "pid num " << pid_num << " get tablet with pid = " << pid;
+    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
+    if (tables->find(pid) != tables->end()) {
+        DLOG(INFO) << "get tablet index_name " << index_name << ", pk " << pk << ", local_tablet_";
+        return local_tablet_;
+    }
     auto client_tablet = table_client_manager_->GetTablet(pid);
     if (!client_tablet) {
         DLOG(INFO) << "get tablet index_name " << index_name << ", pk " << pk << ", tablet nullptr";

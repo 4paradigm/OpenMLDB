@@ -1672,13 +1672,13 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
 }
 
 bool TabletClient::SubQuery(const ::rtidb::api::QueryRequest& request,
-        brpc::Controller* cntl,
-        ::rtidb::api::QueryResponse* response) {
-    if (cntl == nullptr || response == nullptr) {
+        rtidb::RpcCallback<rtidb::api::QueryResponse>* callback) {
+    if (callback == nullptr) {
         return false;
     }
-    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
-    return client_.SendRequest(&::rtidb::api::TabletServer_Stub::SubQuery, cntl, &request, response, brpc::DoNothing());
+    return client_.SendRequest(&::rtidb::api::TabletServer_Stub::SubQuery,
+            callback->GetController().get(), &request, 
+            callback->GetResponse().get(), callback);
 }
 
 bool TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
