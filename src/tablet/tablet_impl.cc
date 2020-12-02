@@ -5657,7 +5657,7 @@ void TabletImpl::DumpIndexDataInternal(
             }
             return;
         }
-        ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd);
+        ::rtidb::log::WriteHandle* wh = new ::rtidb::log::WriteHandle(index_file_name, fd, false);
         whs.push_back(wh);
     }
     if (memtable_snapshot->DumpIndexData(table, column_key, idx, whs)) {
@@ -5791,7 +5791,7 @@ void TabletImpl::LoadIndexDataInternal(
         return;
     }
     ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(index_file_path, fd);
-    ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+    ::rtidb::log::Reader reader(seq_file, NULL, false, 0, false);
     std::string buffer;
     uint64_t succ_cnt = 0;
     uint64_t failed_cnt = 0;

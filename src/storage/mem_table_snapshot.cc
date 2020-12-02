@@ -125,7 +125,7 @@ void MemTableSnapshot::RecoverSingleSnapshot(
         }
         ::rtidb::log::SequentialFile* seq_file =
             ::rtidb::log::NewSeqFile(path, fd);
-        ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+        ::rtidb::log::Reader reader(seq_file, NULL, false, 0, true);
         std::string buffer;
         // second
         uint64_t consumed = ::baidu::common::timer::now_time();
@@ -217,7 +217,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
     }
     ::rtidb::log::SequentialFile* seq_file =
         ::rtidb::log::NewSeqFile(manifest.name(), fd);
-    ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+    ::rtidb::log::Reader reader(seq_file, NULL, false, 0, true);
 
     std::string buffer;
     std::string tmp_buf;
@@ -292,7 +292,7 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table,
 
 uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
     deleted_keys_.clear();
-    ::rtidb::log::LogReader log_reader(log_part_, log_path_);
+    ::rtidb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
     std::string buffer;
@@ -394,7 +394,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
     }
     uint64_t collected_offset = CollectDeletedKey(end_offset);
     uint64_t start_time = ::baidu::common::timer::now_time();
-    WriteHandle* wh = new WriteHandle(snapshot_name_tmp, fd);
+    WriteHandle* wh = new WriteHandle(snapshot_name_tmp, fd, true);
     ::rtidb::api::Manifest manifest;
     bool has_error = false;
     uint64_t write_count = 0;
@@ -422,7 +422,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table,
             deleted_index.insert(it->GetId());
         }
     }
-    ::rtidb::log::LogReader log_reader(log_part_, log_path_);
+    ::rtidb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
     std::string buffer;
@@ -617,7 +617,7 @@ int MemTableSnapshot::ExtractIndexFromSnapshot(
     }
     ::rtidb::log::SequentialFile* seq_file =
         ::rtidb::log::NewSeqFile(manifest.name(), fd);
-    ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+    ::rtidb::log::Reader reader(seq_file, NULL, false, 0, true);
     std::string buffer;
     ::rtidb::api::LogEntry entry;
     bool has_error = false;
@@ -797,7 +797,7 @@ int MemTableSnapshot::ExtractIndexData(
     }
     uint64_t collected_offset = CollectDeletedKey(0);
     uint64_t start_time = ::baidu::common::timer::now_time();
-    WriteHandle* wh = new WriteHandle(snapshot_name_tmp, fd);
+    WriteHandle* wh = new WriteHandle(snapshot_name_tmp, fd, true);
     ::rtidb::api::Manifest manifest;
     bool has_error = false;
     uint64_t write_count = 0;
@@ -855,7 +855,7 @@ int MemTableSnapshot::ExtractIndexData(
         has_error = true;
     }
 
-    ::rtidb::log::LogReader log_reader(log_part_, log_path_);
+    ::rtidb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
     std::string buffer;
@@ -1159,7 +1159,7 @@ bool MemTableSnapshot::DumpSnapshotIndexData(
         return false;
     }
     ::rtidb::log::SequentialFile* seq_file = ::rtidb::log::NewSeqFile(path, fd);
-    ::rtidb::log::Reader reader(seq_file, NULL, false, 0);
+    ::rtidb::log::Reader reader(seq_file, NULL, false, 0, true);
     ::rtidb::api::LogEntry entry;
     std::string buffer;
     std::string entry_buff;
@@ -1288,7 +1288,7 @@ bool MemTableSnapshot::DumpBinlogIndexData(
     const std::vector<::rtidb::codec::ColumnDesc>& columns, uint32_t max_idx,
     uint32_t idx, const std::vector<::rtidb::log::WriteHandle*>& whs,
     uint64_t snapshot_offset, uint64_t collected_offset) {
-    ::rtidb::log::LogReader log_reader(log_part_, log_path_);
+    ::rtidb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(snapshot_offset);
     uint64_t cur_offset = snapshot_offset;
     uint32_t partition_num = whs.size();

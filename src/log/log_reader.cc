@@ -43,7 +43,7 @@ Reader::Reporter::~Reporter() {}
 #endif
 
 Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
-               uint64_t initial_offset)
+               uint64_t initial_offset, bool for_snaphot)
     : file_(file),
       reporter_(reporter),
       checksum_(checksum),
@@ -54,9 +54,10 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
       end_of_buffer_offset_(0),
       last_end_of_buffer_offset_(0),
       initial_offset_(initial_offset),
-      resyncing_(initial_offset > 0) {
+      resyncing_(initial_offset > 0),
+      for_snapshot_(for_snaphot) {
 #ifdef PZFPGA_ENABLE
-          if (FLAGS_compress_snapshot) {
+          if (for_snapshot_ && FLAGS_compress_snapshot) {
               fpga_ctx_ = gzipfpga_init_titanse();
           }
 #endif
@@ -65,7 +66,7 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
 Reader::~Reader() {
     delete[] backing_store_;
 #ifdef PZFPGA_ENABLE
-    if (FLAGS_compress_snapshot && fpga_ctx_) {
+    if (for_snapshot_ && FLAGS_compress_snapshot && fpga_ctx_) {
         gzipfpga_end(fpga_ctx_);
     }
 #endif
@@ -284,7 +285,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
         buffer_.clear();
         Status status;
 #ifdef PZFPGA_ENABLE
-        if (!FLAGS_compress_snapshot) {
+        if (!for_snapshot_ || !FLAGS_compress_snapshot) {
 #endif
             status = file_->Read(kBlockSize, &buffer_, backing_store_);
 #ifdef PZFPGA_ENABLE
@@ -390,13 +391,14 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
     return type;
 }
 
-LogReader::LogReader(LogParts* logs, const std::string& log_path)
+LogReader::LogReader(LogParts* logs, const std::string& log_path, bool for_snapshot)
     : log_path_(log_path) {
     sf_ = NULL;
     reader_ = NULL;
     logs_ = logs;
     log_part_index_ = -1;
     start_offset_ = 0;
+    for_snapshot_ = for_snapshot;
 }
 
 LogReader::~LogReader() {
@@ -527,7 +529,7 @@ int LogReader::RollRLogFile() {
         }
         delete reader_;
         // roll a new log part file, reset status
-        reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0);
+        reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0, for_snapshot_);
         PDLOG(INFO, "roll log file from index[%d] to index[%d]",
               log_part_index_, index);
         log_part_index_ = index;

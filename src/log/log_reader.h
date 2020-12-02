@@ -53,7 +53,7 @@ class Reader {
     // The Reader will start reading at the first record located at physical
     // position >= initial_offset within the file.
     Reader(SequentialFile* file, Reporter* reporter, bool checksum,
-           uint64_t initial_offset);
+           uint64_t initial_offset, bool for_snaphot);
 
     ~Reader();
 
@@ -97,6 +97,8 @@ class Reader {
     // skipped in this mode
     bool resyncing_;
 
+    bool for_snapshot_;
+
     // Extend record types with the following special values
     enum {
         kEof = kMaxRecordType + 1,
@@ -134,7 +136,7 @@ typedef ::rtidb::base::Skiplist<uint32_t, uint64_t,
 
 class LogReader {
  public:
-    LogReader(LogParts* logs, const std::string& log_path);
+    LogReader(LogParts* logs, const std::string& log_path, bool for_snapshot);
     virtual ~LogReader();
     ::rtidb::base::Status ReadNextRecord(::rtidb::base::Slice* record,
                                          std::string* buffer);
@@ -156,6 +158,7 @@ class LogReader {
     SequentialFile* sf_;
     Reader* reader_;
     LogParts* logs_;
+    bool for_snapshot_;
 };
 
 }  // namespace log

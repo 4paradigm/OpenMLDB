@@ -45,7 +45,7 @@ ReplicateNode::ReplicateNode(const std::string& point, LogParts* logs,
                              bool rep_follower,
                              std::atomic<uint64_t>* follower_offset,
                              const std::string& real_point)
-    : log_reader_(logs, log_path),
+    : log_reader_(logs, log_path, false),
       cache_(),
       endpoint_(point),
       last_sync_offset_(0),

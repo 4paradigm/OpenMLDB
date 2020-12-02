@@ -24,12 +24,12 @@ class Writer {
     // Create a writer that will append data to "*dest".
     // "*dest" must be initially empty.
     // "*dest" must remain live while this Writer is in use.
-    explicit Writer(WritableFile* dest);
+    explicit Writer(WritableFile* dest, bool for_snapshot);
 
     // Create a writer that will append data to "*dest".
     // "*dest" must have initial length "dest_length".
     // "*dest" must remain live while this Writer is in use.
-    Writer(WritableFile* dest, uint64_t dest_length);
+    Writer(WritableFile* dest, uint64_t dest_length, bool for_snapshot);
 
     ~Writer();
 
@@ -46,6 +46,7 @@ class Writer {
     uint32_t type_crc_[kMaxRecordType + 1];
 
 #ifdef PZFPGA_ENABLE
+    bool for_snapshot_;
     // buffer of kBlockSize
     char* buffer_;
     Status CompressRecord();
@@ -62,7 +63,7 @@ struct WriteHandle {
     FILE* fd_;
     WritableFile* wf_;
     Writer* lw_;
-    WriteHandle(const std::string& fname, FILE* fd, uint64_t dest_length = 0)
+    WriteHandle(const std::string& fname, FILE* fd, bool for_snapshot, uint64_t dest_length = 0)
         : fd_(fd), wf_(NULL), lw_(NULL) {
         wf_ = ::rtidb::log::NewWritableFile(fname, fd);
         lw_ = new Writer(wf_, dest_length);

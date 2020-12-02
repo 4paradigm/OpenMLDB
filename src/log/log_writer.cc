@@ -30,21 +30,22 @@ static void InitTypeCrc(uint32_t* type_crc) {
     }
 }
 
-Writer::Writer(WritableFile* dest) : dest_(dest), block_offset_(0) {
+Writer::Writer(WritableFile* dest, bool for_snapshot)
+: dest_(dest), block_offset_(0), for_snapshot_(for_snapshot) {
     InitTypeCrc(type_crc_);
 #ifdef PZFPGA_ENABLE
-          if (FLAGS_compress_snapshot) {
+          if (for_snapshot_ && FLAGS_compress_snapshot) {
               fpga_ctx_ = gzipfpga_init_titanse();
               buffer_ = new char[kBlockSize];
           }
 #endif
 }
 
-Writer::Writer(WritableFile* dest, uint64_t dest_length)
-    : dest_(dest), block_offset_(dest_length % kBlockSize) {
+Writer::Writer(WritableFile* dest, uint64_t dest_length, bool for_snapshot)
+    : dest_(dest), block_offset_(dest_length % kBlockSize), for_snapshot_(for_snapshot) {
     InitTypeCrc(type_crc_);
 #ifdef PZFPGA_ENABLE
-          if (FLAGS_compress_snapshot) {
+          if (for_snapshot_ && FLAGS_compress_snapshot) {
               fpga_ctx_ = gzipfpga_init_titanse();
               buffer_ = new char[kBlockSize];
           }
@@ -53,7 +54,7 @@ Writer::Writer(WritableFile* dest, uint64_t dest_length)
 
 Writer::~Writer() {
 #ifdef PZFPGA_ENABLE
-    if (FLAGS_compress_snapshot && fpga_ctx_) {
+    if (for_snapshot_ && FLAGS_compress_snapshot && fpga_ctx_) {
         gzipfpga_end(fpga_ctx_);
         delete[] buffer_;
     }
@@ -76,7 +77,7 @@ Status Writer::EndLog() {
                 assert(kHeaderSize == 7);
                 Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
 #ifdef PZFPGA_ENABLE
-                if (!FLAGS_compress_snapshot) {
+                if (!for_snapshot_ || !FLAGS_compress_snapshot) {
 #endif
                     dest_->Append(fill_slice);
 #ifdef PZFPGA_ENABLE
@@ -121,7 +122,7 @@ Status Writer::AddRecord(const Slice& slice) {
                 assert(kHeaderSize == 7);
                 Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
 #ifdef PZFPGA_ENABLE
-                if (!FLAGS_compress_snapshot) {
+                if (!for_snapshot_ || !FLAGS_compress_snapshot) {
 #endif
                     dest_->Append(fill_slice);
 #ifdef PZFPGA_ENABLE
