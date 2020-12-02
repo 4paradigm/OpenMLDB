@@ -54,10 +54,16 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
             log.info("skip case in rtidb request mode: {}", fesqlCase.getDesc());
             return;
         }
-        if (FesqlConfig.isCluster() &&
-                null != fesqlCase.getMode() && fesqlCase.getMode().contains("cluster-unsupport")) {
-            log.info("cluster-unsupport, skip case in cluster request mode: {}", fesqlCase.getDesc());
-            return;
+        if (FesqlConfig.isCluster()) {
+            if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("cluster-unsupport")) {
+                log.info("cluster-unsupport, skip case in cluster request mode: {}", fesqlCase.getDesc());
+                return;
+            }
+        } else {
+            if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("cluster-only")) {
+                log.info("cluster-only, skip case in standalone mode: {}", fesqlCase.getDesc());
+                return;
+            }
         }
         process();
     }
