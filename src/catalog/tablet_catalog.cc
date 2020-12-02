@@ -27,7 +27,8 @@
 #include "catalog/schema_adapter.h"
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
-
+DECLARE_bool(enable_distsql);
+DECLARE_bool(enable_localtablet);
 namespace rtidb {
 namespace catalog {
 
@@ -206,7 +207,8 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
     }
     DLOG(INFO) << "pid num " << pid_num << " get tablet with pid = " << pid;
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
-    if (tables->find(pid) != tables->end()) {
+    // return local tablet only when --enable_localtablet==true
+    if (FLAGS_enable_distsql && FLAGS_enable_localtablet && tables->find(pid) != tables->end()) {
         DLOG(INFO) << "get tablet index_name " << index_name << ", pk " << pk << ", local_tablet_";
         return local_tablet_;
     }
