@@ -138,7 +138,7 @@ DEFINE_uint32(snapshot_ttl_time, 6 * 60,
               "config relational table snapshot TTL time in minutes");
 DEFINE_uint32(snapshot_ttl_check_interval, 60,
               "config relational table snapshot TTL check in minutes");
-DEFINE_bool(compress_snapshot, true, "enable compress snapshot");
+DEFINE_string(snapshot_compression, "off", "Type of compression, can be off, pz, snappy");
 
 DEFINE_uint32(load_index_max_wait_time, 120 * 60 * 1000,
               "config the max wait time of load index");

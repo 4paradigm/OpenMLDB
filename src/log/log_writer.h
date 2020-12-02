@@ -45,12 +45,10 @@ class Writer {
     // record type stored in the header.
     uint32_t type_crc_[kMaxRecordType + 1];
 
-#ifdef PZFPGA_ENABLE
     bool for_snapshot_;
     // buffer of kBlockSize
     char* buffer_;
     Status CompressRecord();
-#endif
 
     Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);
 

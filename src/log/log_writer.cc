@@ -5,6 +5,7 @@
 #include "log/log_writer.h"
 
 #include <stdint.h>
+#include <snappy.h>
 #include "log/coding.h"
 #include "log/crc32c.h"
 #include "base/glog_wapper.h" // NOLINT
@@ -14,7 +15,7 @@
 #include "pz.h" // NOLINT
 #endif
 
-DECLARE_bool(compress_snapshot);
+DECLARE_string(snapshot_compression);
 
 namespace rtidb {
 namespace log {
@@ -34,7 +35,7 @@ Writer::Writer(WritableFile* dest, bool for_snapshot)
 : dest_(dest), block_offset_(0), for_snapshot_(for_snapshot) {
     InitTypeCrc(type_crc_);
 #ifdef PZFPGA_ENABLE
-          if (for_snapshot_ && FLAGS_compress_snapshot) {
+          if (for_snapshot_ && FLAGS_snapshot_compression == "pz") {
               fpga_ctx_ = gzipfpga_init_titanse();
               buffer_ = new char[kBlockSize];
           }
@@ -45,7 +46,7 @@ Writer::Writer(WritableFile* dest, uint64_t dest_length, bool for_snapshot)
     : dest_(dest), block_offset_(dest_length % kBlockSize), for_snapshot_(for_snapshot) {
     InitTypeCrc(type_crc_);
 #ifdef PZFPGA_ENABLE
-          if (for_snapshot_ && FLAGS_compress_snapshot) {
+          if (for_snapshot_ && FLAGS_snapshot_compression == "pz") {
               fpga_ctx_ = gzipfpga_init_titanse();
               buffer_ = new char[kBlockSize];
           }
@@ -54,7 +55,7 @@ Writer::Writer(WritableFile* dest, uint64_t dest_length, bool for_snapshot)
 
 Writer::~Writer() {
 #ifdef PZFPGA_ENABLE
-    if (for_snapshot_ && FLAGS_compress_snapshot && fpga_ctx_) {
+    if (for_snapshot_ && FLAGS_snapshot_compression == "pz" && fpga_ctx_) {
         gzipfpga_end(fpga_ctx_);
         delete[] buffer_;
     }
@@ -77,15 +78,17 @@ Status Writer::EndLog() {
                 assert(kHeaderSize == 7);
                 Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
 #ifdef PZFPGA_ENABLE
-                if (!for_snapshot_ || !FLAGS_compress_snapshot) {
+                if (!for_snapshot_ ||
+                        (FLAGS_snapshot_compression != "pz" &&
+                         FLAGS_snapshot_compression != "snappy")) {
+#elif
+                if (!for_snapshot_ || FLAGS_snapshot_compression != "snappy") {
 #endif
                     dest_->Append(fill_slice);
-#ifdef PZFPGA_ENABLE
                 } else {
                     memcpy(buffer_ + block_offset_, fill_slice.data(), leftover);
                     CompressRecord();
                 }
-#endif
             }
             block_offset_ = 0;
         }
@@ -122,15 +125,17 @@ Status Writer::AddRecord(const Slice& slice) {
                 assert(kHeaderSize == 7);
                 Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
 #ifdef PZFPGA_ENABLE
-                if (!for_snapshot_ || !FLAGS_compress_snapshot) {
+                if (!for_snapshot_ ||
+                        (FLAGS_snapshot_compression != "pz" &&
+                         FLAGS_snapshot_compression != "snappy")) {
+#elif
+                if (!for_snapshot_ || FLAGS_snapshot_compression != "snappy") {
 #endif
                     dest_->Append(fill_slice);
-#ifdef PZFPGA_ENABLE
                 } else {
                     memcpy(buffer_ + block_offset_, fill_slice.data(), leftover);
                     CompressRecord();
                 }
-#endif
             }
             block_offset_ = 0;
         }
@@ -174,7 +179,11 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
     EncodeFixed32(buf, crc);
 
 #ifdef PZFPGA_ENABLE
-    if (!FLAGS_compress_snapshot) {
+    if (!for_snapshot_ ||
+            (FLAGS_snapshot_compression != "pz" &&
+             FLAGS_snapshot_compression != "snappy")) {
+#elif
+    if (!for_snapshot_ || FLAGS_snapshot_compression != "snappy") {
 #endif
         // Write the header and the payload
         Status s = dest_->Append(Slice(buf, kHeaderSize));
@@ -190,7 +199,6 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
 
         block_offset_ += kHeaderSize + n;
         return s;
-#ifdef PZFPGA_ENABLE
     } else {
         memcpy(buffer_ + block_offset_, &buf, kHeaderSize);
         memcpy(buffer_ + block_offset_ + kHeaderSize, ptr, n);
@@ -205,16 +213,25 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
         }
         return Status::OK();
     }
-#endif
 }
 
-#ifdef PZFPGA_ENABLE
 Status Writer::CompressRecord() {
     Status s;
     // compress
     char compress_data[kBlockSize];
-    int compress_len = gzipfpga_compress_nohuff(
-            fpga_ctx_, buffer_, compress_data, kBlockSize, kBlockSize, 0);
+    int compress_len = -1;
+#ifdef PZFPGA_ENABLE
+    if (FLAGS_snapshot_compression == "pz") {
+        compress_len = gzipfpga_compress_nohuff(
+                fpga_ctx_, buffer_, compress_data, kBlockSize, kBlockSize, 0);
+    } else {
+#endif
+        size_t tmp_val = 0;
+        snappy::RawCompress(buffer_, kBlockSize, compress_data, &tmp_val);
+        compress_len = static_cast<int>(tmp_val);
+#ifdef PZFPGA_ENABLE
+    }
+#endif
     if (compress_len < 0)  {
         s = Status::InvalidRecord(Slice("compress failed"));
         PDLOG(WARNING, "write error. %s", s.ToString().c_str());
@@ -238,7 +255,6 @@ Status Writer::CompressRecord() {
     }
     return s;
 }
-#endif
 
 }  // namespace log
 }  // namespace rtidb

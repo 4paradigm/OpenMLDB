@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <gflags/gflags.h>
 #include <stdio.h>
+#include <snappy.h>
 #include "base/status.h"
 #include "base/strings.h"
 #include "log/coding.h"
@@ -31,7 +32,7 @@ using ::rtidb::base::Status;
 
 DECLARE_bool(binlog_enable_crc);
 DECLARE_int32(binlog_name_length);
-DECLARE_bool(compress_snapshot);
+DECLARE_string(snapshot_compression);
 
 namespace rtidb {
 namespace log {
@@ -57,7 +58,7 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
       resyncing_(initial_offset > 0),
       for_snapshot_(for_snaphot) {
 #ifdef PZFPGA_ENABLE
-          if (for_snapshot_ && FLAGS_compress_snapshot) {
+          if (for_snapshot_ && FLAGS_snapshot_compression == "pz") {
               fpga_ctx_ = gzipfpga_init_titanse();
           }
 #endif
@@ -66,7 +67,7 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
 Reader::~Reader() {
     delete[] backing_store_;
 #ifdef PZFPGA_ENABLE
-    if (for_snapshot_ && FLAGS_compress_snapshot && fpga_ctx_) {
+    if (for_snapshot_ && FLAGS_snapshot_compression == "pz" && fpga_ctx_) {
         gzipfpga_end(fpga_ctx_);
     }
 #endif
@@ -285,10 +286,13 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
         buffer_.clear();
         Status status;
 #ifdef PZFPGA_ENABLE
-        if (!for_snapshot_ || !FLAGS_compress_snapshot) {
+        if (!for_snapshot_ ||
+                (FLAGS_snapshot_compression != "pz" &&
+                 FLAGS_snapshot_compression != "snappy")) {
+#elif
+        if (!for_snapshot_ || FLAGS_snapshot_compression != "snappy") {
 #endif
             status = file_->Read(kBlockSize, &buffer_, backing_store_);
-#ifdef PZFPGA_ENABLE
         } else {
             // read header of compressed data
             Slice header_of_compress;
@@ -310,15 +314,29 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
             }
             const char* block_data = block.data();
             char uncompress[kBlockSize];
-            int decompress_size = gzipfpga_uncompress_nohuff(
+            int uncompress_size = 0;
+#ifdef PZFPGA_ENABLE
+            if (FLAGS_snapshot_compression == "pz") {
+                uncompress_size = gzipfpga_uncompress_nohuff(
                     NULL, block_data, uncompress, block_size, kBlockSize);
-            if (decompress_size != kBlockSize) {
+            } else {
+#endif
+                size_t tmp_val = 0;
+                snappy::GetUncompressedLength(block_data, static_cast<size_t>(block_size), &tmp_val);
+                uncompress_size = static_cast<int>(tmp_val);
+                if (!snappy::RawUncompress(block_data, static_cast<size_t>(block_size), uncompress)) {
+                    PDLOG(WARNING, "bad record with uncompress block");
+                    return kBadRecord;
+                }
+#ifdef PZFPGA_ENABLE
+            }
+#endif
+            if (uncompress_size != kBlockSize) {
                 PDLOG(WARNING, "bad record with uncompress block");
                 return kBadRecord;
             }
             buffer_ = Slice(uncompress, kBlockSize);
         }
-#endif
         offset = end_of_buffer_offset_;
         end_of_buffer_offset_ += buffer_.size();
         // Read log error
