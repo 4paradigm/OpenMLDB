@@ -11,6 +11,7 @@ import com._4paradigm.sql.sdk.impl.BatchCallablePreparedStatementImpl;
 import com._4paradigm.sql.sdk.impl.CallablePreparedStatementImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.collections.Lists;
@@ -782,7 +783,7 @@ public class FesqlUtil {
         logger.info("init request row: {}", totalSize);
         for (int i = 0; i < metaData.getColumnCount(); i++) {
             Object obj = objects.get(i);
-            if (null == obj) {
+            if (null == obj || obj.toString().equalsIgnoreCase("null")) {
                 requestPs.setNull(i + 1, 0);
                 continue;
             }
@@ -802,14 +803,22 @@ public class FesqlUtil {
             } else if (columnType == Types.TIMESTAMP) {
                 requestPs.setTimestamp(i + 1, new Timestamp(Long.parseLong(obj.toString())));
             } else if (columnType == Types.DATE) {
-                try {
-                    Date date = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(obj.toString() + " 00:00:00").getTime());
-                    logger.info("build request row: obj: {}, append date: {},  {}, {}, {}",
-                            obj, date.toString(), date.getYear() + 1900, date.getMonth() + 1, date.getDate());
-                    requestPs.setDate(i + 1, date);
-                } catch (ParseException e) {
-                    logger.error("Fail convert {} to date", obj.toString());
-                    return false;
+                if (obj instanceof java.util.Date) {
+                    requestPs.setDate(i+1, new Date(((java.util.Date) obj).getTime()));
+                } else if(obj instanceof Date) {
+                    requestPs.setDate(i + 1, (Date)(obj));
+                } else if (obj instanceof DateTime) {
+                    requestPs.setDate(i+1, new Date(((DateTime) obj).getMillis()));
+                } else {
+                    try {
+                        Date date = new Date(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(obj.toString() + " 00:00:00").getTime());
+                        logger.info("build request row: obj: {}, append date: {},  {}, {}, {}",
+                                obj, date.toString(), date.getYear() + 1900, date.getMonth() + 1, date.getDate());
+                        requestPs.setDate(i + 1, date);
+                    } catch (ParseException e) {
+                        logger.error("Fail convert {} to date: {}", obj, e);
+                        return false;
+                    }
                 }
             } else if (columnType == Types.VARCHAR) {
                 requestPs.setString(i + 1, obj.toString());
