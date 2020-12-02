@@ -194,3 +194,39 @@ cases:
       columns: ["name string","c2 int","c3 bigint","c4 timestamp","1 int"]
       rows:
         - ["aa",2,3,1590738989000,1]
+  - id: 15
+    desc: 查询的列带表名和别名
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select {0}.c1 as name,{0}.c2 as t_c2,{0}.c3 as t_c3,{0}.c4 as t_c4 from {0};
+    expect:
+      columns: ["name string","t_c2 int","t_c3 bigint","t_c4 timestamp"]
+      rows:
+        - ["aa",2,3,1590738989000]
+  - id: 16
+    desc: 查询表达式使用表名
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select c1 as name,{0}.c2+1 as t_c2,c3,c4 from {0};
+    expect:
+      columns: ["name string","t_c2 bigint","c3 bigint","c4 timestamp"]
+      rows:
+        - ["aa",3,3,1590738989000]
+  - id: 17
+    desc: 查询函数表达式使用表名
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["123456789",2,3,1590738989000]
+    sql: select substr({0}.c1, 3, 6) as name,{0}.c2+1 as t_c2,c3,c4 from {0};
+    expect:
+      columns: ["name string","t_c2 bigint","c3 bigint","c4 timestamp"]
+      rows:
+        - ["345",3,3,1590738989000]
