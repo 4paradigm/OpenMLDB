@@ -1677,7 +1677,7 @@ bool TabletClient::SubQuery(const ::rtidb::api::QueryRequest& request,
         return false;
     }
     return client_.SendRequest(&::rtidb::api::TabletServer_Stub::SubQuery,
-            callback->GetController().get(), &request, 
+            callback->GetController().get(), &request,
             callback->GetResponse().get(), callback);
 }
 
