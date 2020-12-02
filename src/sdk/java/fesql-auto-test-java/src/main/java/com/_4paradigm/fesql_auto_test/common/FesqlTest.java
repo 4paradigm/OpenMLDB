@@ -25,8 +25,9 @@ public class FesqlTest implements ITest {
     public void BeforeMethod(Method method, Object[] testData) {
         if (testData[0] instanceof SQLCase) {
             SQLCase sqlCase = (SQLCase) testData[0];
-            testName.set(String.format("%s_%s_%s",
-                    method.getName(), sqlCase.getId(), sqlCase.getDesc()));
+            testName.set(String.format("%s_%s_%s_%s",
+                    method.getName(),
+                    FesqlGlobalVar.env, sqlCase.getId(), sqlCase.getDesc()));
         } else {
             testName.set(method.getName() + "_" + testData[0]);
         }
