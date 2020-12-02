@@ -14,19 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <gflags/gflags.h>
+#include <stdio.h>
 
 #include "benchmark/benchmark.h"
+#include "boost/algorithm/string.hpp"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
 #include "sdk/base.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_router.h"
+#include "sdk/sql_sdk_test.h"
+#include "test/base_test.h"
 #include "vm/catalog.h"
+DECLARE_bool(enable_distsql);
 
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc>
-    RtiDBSchema;
-typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey>
-    RtiDBIndex;
+typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> RtiDBSchema;
+typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> RtiDBIndex;
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
@@ -78,8 +82,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     ok = ns_client->CreateTable(table_info, error);
 
     ::fesql::vm::Schema fe_schema;
-    ::rtidb::catalog::SchemaAdapter::ConvertSchema(table_info.column_desc_v1(),
-                                                   &fe_schema);
+    ::rtidb::catalog::SchemaAdapter::ConvertSchema(table_info.column_desc_v1(), &fe_schema);
     ::fesql::codec::RowBuilder rb(fe_schema);
     std::string pk = "pk1";
     uint64_t ts = 1589780888000l;
@@ -106,8 +109,7 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
             ok = tablet[0]->GetClient()->Put(tid, 0, pk, ts + i, value, 1);
         }
     }
-    std::string sql =
-        "select col1, col2 + 1, col3, col4, col5 from " + name + " ;";
+    std::string sql = "select col1, col2 + 1, col3, col4, col5 from " + name + " ;";
     ::fesql::sdk::Status status;
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
@@ -116,17 +118,19 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     if (!router) return;
     for (auto _ : state) {
         benchmark::DoNotOptimize(router->ExecuteSQL(db, sql, &status));
+        if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+            state.SkipWithError("benchmark case debug");
+            break;
+        }
     }
 }
 
-static void GenerateInsertSQLSample(uint32_t size, std::string name,
-                                    std::vector<std::string>* sample) {
+static void GenerateInsertSQLSample(uint32_t size, std::string name, std::vector<std::string>* sample) {
     uint64_t time = 1589780888000l;
     for (uint64_t i = 0; i < size; ++i) {
-        std::string insert_sql =
-            "insert into " + name + " values('hello'," +
-            std::to_string(time + i) + "," + std::to_string(i) + "," +
-            std::to_string(2.7 + i) + "," + std::to_string(3.14 + i) + ");";
+        std::string insert_sql = "insert into " + name + " values('hello'," + std::to_string(time + i) + "," +
+                                 std::to_string(i) + "," + std::to_string(2.7 + i) + "," + std::to_string(3.14 + i) +
+                                 ");";
         sample->push_back(insert_sql);
     }
 }
@@ -158,8 +162,11 @@ static void BM_SimpleInsertFunction(benchmark::State& state) {  // NOLINT
     GenerateInsertSQLSample(state.range(0), name, &sample);
     for (auto _ : state) {
         for (uint64_t i = 0; i < sample.size(); ++i) {
-            benchmark::DoNotOptimize(
-                router->ExecuteInsert(db, sample[i], &status));
+            benchmark::DoNotOptimize(router->ExecuteInsert(db, sample[i], &status));
+            if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+                state.SkipWithError("benchmark case debug");
+                break;
+            }
         }
     }
 }
@@ -191,8 +198,7 @@ static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
     for (auto _ : state) {
         std::string insert = "insert into " + name + " values(?, ?, ?, ?, ?);";
         for (int i = 0; i < state.range(0); ++i) {
-            std::shared_ptr<::rtidb::sdk::SQLInsertRow> row =
-                router->GetInsertRow(db, insert, &status);
+            std::shared_ptr<::rtidb::sdk::SQLInsertRow> row = router->GetInsertRow(db, insert, &status);
             if (row != nullptr) {
                 row->Init(5);
                 row->AppendString("hello");
@@ -200,17 +206,19 @@ static void BM_InsertPlaceHolderFunction(benchmark::State& state) {  // NOLINT
                 row->AppendInt32(i);
                 row->AppendFloat(3.14 + i);
                 row->AppendDouble(2.7 + i);
-                benchmark::DoNotOptimize(
-                    router->ExecuteInsert(db, insert, row, &status));
+                benchmark::DoNotOptimize(router->ExecuteInsert(db, insert, row, &status));
             } else {
                 std::cout << "get insert row failed" << std::endl;
+            }
+            if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+                state.SkipWithError("benchmark case debug");
+                break;
             }
         }
     }
 }
 
-static void BM_InsertPlaceHolderBatchFunction(
-    benchmark::State& state) {  // NOLINT
+static void BM_InsertPlaceHolderBatchFunction(benchmark::State& state) {  // NOLINT
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
     sql_opt.zk_path = mc->GetZkPath();
@@ -236,12 +244,10 @@ static void BM_InsertPlaceHolderBatchFunction(
     uint64_t time = 1589780888000l;
     for (auto _ : state) {
         std::string insert = "insert into " + name + " values(?, ?, ?, ?, ?);";
-        std::shared_ptr<::rtidb::sdk::SQLInsertRows> rows =
-            router->GetInsertRows(db, insert, &status);
+        std::shared_ptr<::rtidb::sdk::SQLInsertRows> rows = router->GetInsertRows(db, insert, &status);
         if (rows != nullptr) {
             for (int i = 0; i < state.range(0); ++i) {
-                std::shared_ptr<::rtidb::sdk::SQLInsertRow> row =
-                    rows->NewRow();
+                std::shared_ptr<::rtidb::sdk::SQLInsertRow> row = rows->NewRow();
                 row->Init(5);
                 row->AppendString("hello");
                 row->AppendInt64(i + time);
@@ -249,40 +255,604 @@ static void BM_InsertPlaceHolderBatchFunction(
                 row->AppendFloat(3.14 + i);
                 row->AppendDouble(2.7 + i);
             }
-            benchmark::DoNotOptimize(
-                router->ExecuteInsert(db, insert, rows, &status));
+            benchmark::DoNotOptimize(router->ExecuteInsert(db, insert, rows, &status));
         } else {
             std::cout << "get insert row failed" << std::endl;
+        }
+        if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+            state.SkipWithError("benchmark case debug");
+            break;
         }
     }
 }
 
+static void BM_SimpleRowWindow(benchmark::State& state) {  // NOLINT
+    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc->GetZkCluster();
+    sql_opt.zk_path = mc->GetZkPath();
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        sql_opt.enable_debug = true;
+    } else {
+        sql_opt.enable_debug = false;
+    }
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (router == nullptr) {
+        std::cout << "fail to init sql cluster router" << std::endl;
+        return;
+    }
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    router->CreateDB(db, &status);
+    std::string create = "create table " + name +
+                         "(id int, c1 string, c2 string, c3 string, c4 string, "
+                         "c6 double, c7 timestamp, "
+                         "index(key=(c1), ts=c7, ttl=3650d)"
+                         ") partitionnum=8;";
+    router->ExecuteDDL(db, create, &status);
+    if (status.msg != "ok") {
+        std::cout << "fail to create table" << std::endl;
+        return;
+    }
+    sleep(2);
+    router->RefreshCatalog();
+    std::vector<std::string> sample;
+    std::string base_sql = "insert into " + name;
+    int window_size = state.range(0);
+    int id = 1;
+    int64_t ts = 1590738991000;
+    for (int i = 0; i < window_size; i++) {
+        sample.push_back(base_sql + " values(" + std::to_string(id++) + ", 'a', 'aa', 'aaa', 'aaaa', " +
+                         std::to_string(i) + ", " + std::to_string(ts - i * 1000) + ");");
+        sample.push_back(base_sql + " values(" + std::to_string(id++) + ", 'b', 'bb', 'bbb', 'bbbb', " +
+                         std::to_string(i) + ", " + std::to_string(ts - i * 1000) + ");");
+        sample.push_back(base_sql + " values(" + std::to_string(id++) + ", 'c', 'cc', 'ccc', 'cccc', " +
+                         std::to_string(i) + ", " + std::to_string(ts - i * 1000) + ");");
+    }
+    for (const auto& sql : sample) {
+        router->ExecuteInsert(db, sql, &status);
+    }
+    std::string preceding = std::to_string(window_size - 1);
+    char sql[1000];
+    int size = snprintf(sql, sizeof(sql),
+                        "SELECT id, c1, c2, c3, c4, c6, c7 "
+                        ", min(c6) OVER w1 as w1_c6_min, count(id) OVER w1 as w1_cnt "
+                        "FROM %s WINDOW "
+                        "w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN %s PRECEDING AND CURRENT ROW);",
+                        name.c_str(), preceding.c_str());
+    std::string exe_sql(sql, size);
+    auto request_row = router->GetRequestRow(db, exe_sql, &status);
+    request_row->Init(10);
+    request_row->AppendInt32(id);
+    request_row->AppendString("a");
+    request_row->AppendString("aa");
+    request_row->AppendString("aaa");
+    request_row->AppendString("aaaa");
+    request_row->AppendDouble(1.0);
+    request_row->AppendTimestamp(ts + 1000);
+    request_row->Build();
+    for (int i = 0; i < 10; i++) {
+        router->ExecuteSQL(db, exe_sql, request_row, &status);
+    }
+    LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
+    if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
+        for (auto _ : state) {
+            router->ExecuteSQL(db, exe_sql, request_row, &status);
+            state.SkipWithError("benchmark case debug");
+            break;
+        }
+    } else {
+        for (auto _ : state) {
+            benchmark::DoNotOptimize(router->ExecuteSQL(db, exe_sql, request_row, &status));
+        }
+    }
+}
+static void BM_SimpleRow4Window(benchmark::State& state) {  // NOLINT
+    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc->GetZkCluster();
+    sql_opt.zk_path = mc->GetZkPath();
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        sql_opt.enable_debug = true;
+    } else {
+        sql_opt.enable_debug = false;
+    }
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (router == nullptr) {
+        std::cout << "fail to init sql cluster router" << std::endl;
+        return;
+    }
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    router->CreateDB(db, &status);
+    std::string create = "create table " + name +
+                         "(id int, c1 string, c2 string, c3 string, c4 string, "
+                         "c6 double, c7 timestamp, "
+                         "index(key=(c1), ts=c7, ttl=3650d), "
+                         "index(key=(c2), ts=c7, ttl=3650d), "
+                         "index(key=(c3), ts=c7, ttl=3650d), "
+                         "index(key=(c4), ts=c7, ttl=3650d) "
+                         ") partitionnum=8;";
+    router->ExecuteDDL(db, create, &status);
+    if (status.msg != "ok") {
+        std::cout << "fail to create table" << std::endl;
+        return;
+    }
+    sleep(2);
+    router->RefreshCatalog();
+    std::vector<std::string> sample;
+    std::string base_sql = "insert into " + name;
+    int window_size = state.range(0);
+    int id = 1;
+    int64_t ts = 1590738991000;
+    for (int i = 0; i < window_size; i++) {
+        sample.push_back(base_sql + " values(" + std::to_string(id++) + ", 'a', 'aa', 'aaa', 'aaaa', " +
+                         std::to_string(i) + ", " + std::to_string(ts - i * 1000) + ");");
+        sample.push_back(base_sql + " values(" + std::to_string(id++) + ", 'b', 'bb', 'bbb', 'bbbb', " +
+                         std::to_string(i) + ", " + std::to_string(ts - i * 1000) + ");");
+        sample.push_back(base_sql + " values(" + std::to_string(id++) + ", 'c', 'cc', 'ccc', 'cccc', " +
+                         std::to_string(i) + ", " + std::to_string(ts - i * 1000) + ");");
+    }
+    for (const auto& sql : sample) {
+        router->ExecuteInsert(db, sql, &status);
+    }
+    char sql[1000];
+    std::string preceding = std::to_string(window_size - 1);
+    int size = snprintf(sql, sizeof(sql),
+                        "SELECT id, c1, c2, c3, c4, c6, c7 "
+                        ", min(c6) OVER w1 as w1_c6_min, count(id) OVER w1 as w1_cnt "
+                        ", min(c6) OVER w2 as w2_c6_min, count(id) OVER w2 as w2_cnt "
+                        ", min(c6) OVER w3 as w3_c6_min, count(id) OVER w3 as w3_cnt "
+                        ", min(c6) OVER w4 as w4_c6_min, count(id) OVER w4 as w4_cnt "
+                        "FROM %s WINDOW "
+                        "  w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN %s PRECEDING AND CURRENT ROW)"
+                        ", w2 AS (PARTITION BY c2 ORDER BY c7 ROWS BETWEEN %s PRECEDING AND CURRENT ROW)"
+                        ", w3 AS (PARTITION BY c3 ORDER BY c7 ROWS BETWEEN %s PRECEDING AND CURRENT ROW)"
+                        ", w4 AS (PARTITION BY c4 ORDER BY c7 ROWS BETWEEN %s PRECEDING AND CURRENT ROW)"
+                        ";",
+                        name.c_str(), preceding.c_str(), preceding.c_str(), preceding.c_str(), preceding.c_str());
+    std::string exe_sql(sql, size);
+    auto request_row = router->GetRequestRow(db, exe_sql, &status);
+    request_row->Init(10);
+    request_row->AppendInt32(id);
+    request_row->AppendString("a");
+    request_row->AppendString("aa");
+    request_row->AppendString("aaa");
+    request_row->AppendString("aaaa");
+    request_row->AppendDouble(1.0);
+    request_row->AppendTimestamp(ts + 1000);
+    request_row->Build();
+    for (int i = 0; i < 10; i++) {
+        router->ExecuteSQL(db, exe_sql, request_row, &status);
+    }
+    LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
+    if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
+        for (auto _ : state) {
+            router->ExecuteSQL(db, exe_sql, request_row, &status);
+            state.SkipWithError("benchmark case debug");
+            break;
+        }
+    } else {
+        for (auto _ : state) {
+            benchmark::DoNotOptimize(router->ExecuteSQL(db, exe_sql, request_row, &status));
+        }
+    }
+}
+
+static void SimpleLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_case, int32_t window_size) {  // NOLINT
+    sql_case.db_ = fesql::sqlcase::SQLCase::GenRand("db");
+    // table {0}
+    {
+        fesql::sqlcase::SQLCase::TableInfo input;
+        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        input.columns_ = {"id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"};
+        input.indexs_ = {"index1:c1:c7"};
+        sql_case.inputs_.push_back(input);
+    }
+
+    // table {1}
+    {
+        fesql::sqlcase::SQLCase::TableInfo input;
+        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        input.columns_ = {"rid int", "x1 string", "x2 string", "x3 string", "x4 string", "x6 double", "x7 timestamp"};
+        input.indexs_ = {"index1:x1:x7"};
+        int id = 0;
+        int64_t ts = 1590738991000;
+        for (int i = 1; i < window_size; i++) {
+            ts -= 1000;
+            // prepare row {id, c1, c2, c3, c4, c5, c6, c7};
+            input.rows_.push_back(
+                {std::to_string(id++), "a", "aa", "aaa", "aaaa", std::to_string(i), std::to_string(ts)});
+            input.rows_.push_back(
+                {std::to_string(id++), "b", "bb", "bbb", "bbbb", std::to_string(i), std::to_string(ts)});
+            input.rows_.push_back(
+                {std::to_string(id++), "c", "cc", "ccc", "cccc", std::to_string(i), std::to_string(ts)});
+        }
+        sql_case.inputs_.push_back(input);
+    }
+    // table {2}
+    {
+        fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[1];
+        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        input.indexs_ = {"index2:x2:x7"};
+        sql_case.inputs_.push_back(input);
+    }
+    // table {3}
+    {
+        fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[1];
+        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        input.indexs_ = {"index3:x3:x7"};
+        sql_case.inputs_.push_back(input);
+    }
+    // table {4}
+    {
+        fesql::sqlcase::SQLCase::TableInfo input = sql_case.inputs_[1];
+        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        input.indexs_ = {"index4:x4:x7"};
+        sql_case.inputs_.push_back(input);
+    }
+
+    // request table {0}
+    {
+        fesql::sqlcase::SQLCase::TableInfo request;
+        request.columns_ = {"id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"};
+        request.indexs_ = {"index1:c1:c7"};
+        request.rows_.push_back(
+            {std::to_string(0), "a", "bb", "ccc", "aaaa", "1.0", std::to_string(1590738991000 + 1000)});
+        sql_case.batch_request_ = request;
+    }
+}
+
+static void SimpleWindowOutputLastJoinNCaseData(fesql::sqlcase::SQLCase& sql_case, int32_t window_size) {  // NOLINT
+    sql_case.db_ = fesql::sqlcase::SQLCase::GenRand("db");
+    // table {0}
+    {
+        int id = 0;
+        fesql::sqlcase::SQLCase::TableInfo input;
+        input.columns_ = {"id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"};
+        input.indexs_ = {"index1:c1:c7"};
+        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        int64_t ts = 1590738991000;
+        for (int i = 1; i < window_size; i++) {
+            ts -= 1000;
+            // prepare row {id, c1, c2, c3, c4, c5, c6, c7};
+            input.rows_.push_back(
+                {std::to_string(id++), "a", "aa", "aaa", "aaaa", std::to_string(i), std::to_string(ts)});
+            input.rows_.push_back(
+                {std::to_string(id++), "b", "bb", "bbb", "bbbb", std::to_string(i), std::to_string(ts)});
+            input.rows_.push_back(
+                {std::to_string(id++), "c", "cc", "ccc", "cccc", std::to_string(i), std::to_string(ts)});
+        }
+        sql_case.inputs_.push_back(input);
+        // request table {0}
+        fesql::sqlcase::SQLCase::TableInfo request;
+        request.columns_ = {"id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"};
+        request.indexs_ = {"index1:c1:c7"};
+        request.rows_.push_back({std::to_string(id), "a", "bb", "ccc", "aaaa", "1.0", std::to_string(1590738991000)});
+        sql_case.batch_request_ = request;
+    }
+    // table {1}
+    {
+        int id = 0;
+        fesql::sqlcase::SQLCase::TableInfo input;
+        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        input.columns_ = {"rid int", "x1 string", "x2 string", "x3 string", "x4 string", "x6 double", "x7 timestamp"};
+        input.indexs_ = {"index1:x1:x7", "index2:x2:x7", "index3:x3:x7", "index4:x4:x7"};
+        int64_t ts = 1590738991000;
+        for (int i = 1; i < window_size; i++) {
+            ts -= 1000;
+            // prepare row {id, c1, c2, c3, c4, c5, c6, c7};
+            input.rows_.push_back(
+                {std::to_string(id++), "a", "aa", "aaa", "aaaa", std::to_string(i), std::to_string(ts)});
+            input.rows_.push_back(
+                {std::to_string(id++), "b", "bb", "bbb", "bbbb", std::to_string(i), std::to_string(ts)});
+            input.rows_.push_back(
+                {std::to_string(id++), "c", "cc", "ccc", "cccc", std::to_string(i), std::to_string(ts)});
+        }
+        sql_case.inputs_.push_back(input);
+    }
+}
+static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case) {  // NOLINT
+    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc->GetZkCluster();
+    sql_opt.zk_path = mc->GetZkPath();
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        sql_opt.enable_debug = true;
+    } else {
+        sql_opt.enable_debug = false;
+    }
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (router == nullptr) {
+        std::cout << "fail to init sql cluster router" << std::endl;
+        return;
+    }
+    fesql::sdk::Status status;
+    rtidb::sdk::SQLSDKTest::CreateDB(sql_case, router);
+    rtidb::sdk::SQLSDKTest::CreateTables(sql_case, router, 8);
+    rtidb::sdk::SQLSDKTest::InsertTables(sql_case, router, true);
+    {
+        // execute SQL
+        std::string sql = sql_case.sql_str();
+        for (size_t i = 0; i < sql_case.inputs().size(); i++) {
+            std::string placeholder = "{" + std::to_string(i) + "}";
+            boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+        }
+        boost::to_lower(sql);
+        LOG(INFO) << sql;
+        auto request_row = router->GetRequestRow(sql_case.db(), sql, &status);
+        if (status.code != 0) {
+            state.SkipWithError("benchmark error: fesql case compile fail");
+            return;
+        }
+        // success check
+
+        fesql::type::TableDef request_table;
+        if (!sql_case.ExtractInputTableDef(sql_case.batch_request_, request_table)) {
+            state.SkipWithError("benchmark error: fesql case input schema invalid");
+            return;
+        }
+
+        std::vector<fesql::codec::Row> request_rows;
+        if (!sql_case.ExtractInputData(sql_case.batch_request_, request_rows)) {
+            state.SkipWithError("benchmark error: fesql case input data invalid");
+            return;
+        }
+
+
+        if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+            rtidb::sdk::SQLSDKTest::CheckSchema(request_table.columns(), *(request_row->GetSchema().get()));
+        }
+
+        fesql::codec::RowView row_view(request_table.columns());
+        ASSERT_EQ(1, request_rows.size());
+        row_view.Reset(request_rows[0].buf());
+        rtidb::sdk::SQLSDKTest::CovertFesqlRowToRequestRow(&row_view, request_row);
+
+        if (!fesql::sqlcase::SQLCase::IS_DEBUG()) {
+            for (int i = 0; i < 10; i++) {
+                auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
+                rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+            }
+            LOG(INFO) << "------------WARMUP FINISHED ------------\n\n";
+        }
+        if (fesql::sqlcase::SQLCase::IS_DEBUG() || fesql::sqlcase::SQLCase::IS_PERF()) {
+            for (auto _ : state) {
+                auto rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
+                rtidb::sdk::SQLSDKTest::PrintResultSet(rs);
+                state.SkipWithError("benchmark case debug");
+                if (!rs) FAIL() << "sql case expect success == true";
+                break;
+            }
+        } else {
+            for (auto _ : state) {
+                benchmark::DoNotOptimize(router->ExecuteSQL(sql_case.db(), sql, request_row, &status));
+            }
+        }
+    }
+    rtidb::sdk::SQLSDKTest::DropTables(sql_case, router);
+}
+
+static void BM_SimpleLastJoinTable2(benchmark::State& state) {  // NOLINT
+    fesql::sqlcase::SQLCase sql_case;
+    sql_case.desc_ = "BM_SimpleLastJoin2Right";
+    SimpleLastJoinNCaseData(sql_case, state.range(0));
+
+    sql_case.sql_str_ = (R"(
+    SELECT {0}.id, {0}.c1, {0}.c2, {0}.c3, {0}.c4, {0}.c7, {1}.x1, {1}.x7, {2}.x2, {2}.x7
+FROM {0}
+last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - {ts_diff} >= {1}.x7
+last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - {ts_diff} >= {2}.x7;
+)");
+    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0)*1000/2));
+    BM_RequestQuery(state, sql_case);
+}
+static void BM_SimpleLastJoinTable4(benchmark::State& state) {  // NOLINT
+    fesql::sqlcase::SQLCase sql_case;
+    sql_case.desc_ = "BM_SimpleLastJoin3Table";
+    SimpleLastJoinNCaseData(sql_case, state.range(0));
+    sql_case.sql_str_ = R"(
+    SELECT {0}.id, {0}.c1, {0}.c2, {0}.c3, {0}.c4, {0}.c7, {1}.x1, {1}.x7, {2}.x2, {2}.x7, {3}.x3, {3}.x7, {4}.x4, {4}.x7
+FROM {0}
+last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - {ts_diff} >= {1}.x7
+last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - {ts_diff} >= {2}.x7
+last join {3} order by {3}.x7 on {0}.c3 = {3}.x3 and {0}.c7 - {ts_diff} >= {3}.x7
+last join {4} order by {4}.x7 on {0}.c4 = {4}.x4 and {0}.c7 - {ts_diff} >= {4}.x7;
+)";
+    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0)*1000/2));
+    BM_RequestQuery(state, sql_case);
+}
+
+static void BM_SimpleWindowOutputLastJoinTable2(benchmark::State& state) {  // NOLINT
+    fesql::sqlcase::SQLCase sql_case;
+    sql_case.desc_ = "BM_SimpleWindowOutputLastJoin4Table";
+    SimpleWindowOutputLastJoinNCaseData(sql_case, state.range(0));
+    sql_case.sql_str_ = R"(
+select id, c1, c2, c3, c4, c6, c7, cur_hour, today
+, w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6
+, t1.rid as t1_rid, t2.rid as t2_rid
+    from
+    (
+        select id, c1, c2, c3, c4, c6, c7, hour(c7) as cur_hour, day(c7) as today
+, sum(c6) over w1 as w1_sum_c6
+, max(c6) over w1 as w1_max_c6
+, min(c6) over w1 as w1_min_c6
+, avg(c6) over w1 as w1_avg_c6
+, count(c6) over w1 as w1_cnt_c6
+from {0}
+window w1 as (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as w_out last join {1} as t1 order by t1.x7 on c1 = t1.x1 and c7 - {ts_diff}>= t1.x7
+last join {1} as t2 order by t2.x7 on c2 = t2.x2 and c7 - {ts_diff} >= t2.x7
+;
+)";
+    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0)*1000/2));
+    BM_RequestQuery(state, sql_case);
+}
+static void BM_SimpleWindowOutputLastJoinTable4(benchmark::State& state) {  // NOLINT
+    fesql::sqlcase::SQLCase sql_case;
+    sql_case.desc_ = "BM_SimpleWindowOutputLastJoin4Table";
+    SimpleWindowOutputLastJoinNCaseData(sql_case, state.range(0));
+    sql_case.sql_str_ = R"(
+      select id, c1, c2, c3, c4, c6, c7, cur_hour, today
+      , w1_sum_c6, w1_max_c6, w1_min_c6, w1_avg_c6, w1_cnt_c6
+      , t1.rid as t1_rid, t2.rid as t2_rid, t3.rid as t3_rid, t4.rid as t4_rid
+      from
+      (
+        select id, c1, c2, c3, c4, c6, c7, hour(c7) as cur_hour, day(c7) as today
+        , sum(c6) over w1 as w1_sum_c6
+        , max(c6) over w1 as w1_max_c6
+        , min(c6) over w1 as w1_min_c6
+        , avg(c6) over w1 as w1_avg_c6
+        , count(c6) over w1 as w1_cnt_c6
+        from {0}
+        window w1 as (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+      ) as w_out last join {1} as t1 order by t1.x7 on c1 = t1.x1 and c7 - {ts_diff} >= t1.x7
+        last join {1} as t2 order by t2.x7 on c2 = t2.x2 and c7 - {ts_diff} >= t2.x7
+        last join {1} as t3 order by t3.x7 on c3 = t3.x3 and c7 - {ts_diff} >= t3.x7
+        last join {1} as t4 order by t4.x7 on c4 = t4.x4 and c7 - {ts_diff} >= t4.x7;
+)";
+    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0)*1000/2));
+    BM_RequestQuery(state, sql_case);
+}
+
+static void LastJoinNWindowOutputCase(fesql::sqlcase::SQLCase& sql_case, int32_t window_size) {  // NOLINT
+    sql_case.db_ = fesql::sqlcase::SQLCase::GenRand("db");
+    int request_id = 0;
+    std::vector<std::string> columns = {"id int",    "c1 string", "c2 string",   "c3 string",
+                                        "c4 string", "c6 double", "c7 timestamp"};
+    std::vector<std::string> indexs = {"index1:c1:c7", "index2:c2:c7", "index3:c3:c7", "index4:c4:c7"};
+    // table {0}
+    {
+        fesql::sqlcase::SQLCase::TableInfo input;
+        input.columns_ = columns;
+        input.indexs_ = indexs;
+        input.name_ = fesql::sqlcase::SQLCase::GenRand("table");
+        int id = 0;
+        int64_t ts = 1590738991000;
+        for (int i = 1; i < window_size; i++) {
+            ts -= 1000;
+            // prepare row {id, c1, c2, c3, c4, c5, c6, c7};
+            input.rows_.push_back(
+                {std::to_string(id++), "a", "aa", "aaa", "aaaa", std::to_string(i), std::to_string(ts)});
+            input.rows_.push_back(
+                {std::to_string(id++), "b", "bb", "bbb", "bbbb", std::to_string(i), std::to_string(ts)});
+            input.rows_.push_back(
+                {std::to_string(id++), "c", "cc", "ccc", "cccc", std::to_string(i), std::to_string(ts)});
+        }
+        sql_case.inputs_.push_back(input);
+        request_id = id;
+    }
+    // request table {0}
+    {
+        fesql::sqlcase::SQLCase::TableInfo request;
+        request.columns_ = columns;
+        request.indexs_ = indexs;
+        request.rows_.push_back(
+            {std::to_string(request_id), "a", "bb", "ccc", "aaaa", "1.0", std::to_string(1590738991000 + 1000)});
+        sql_case.batch_request_ = request;
+    }
+}
+static void BM_LastJoin4WindowOutput(benchmark::State& state) {  // NOLINT
+    fesql::sqlcase::SQLCase sql_case;
+    LastJoinNWindowOutputCase(sql_case, state.range(0));
+    sql_case.desc_ = "BM_LastJoin4WindowOutput";
+    sql_case.sql_str_ = R"(
+select * from
+(
+select id as out1_id, c1, sum(c6) over w1 as w1_sum_c6, count(c6) over w1 as w1_cnt_c6 from {0}
+window w1 as (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out1 last join
+(
+select id as out2_id, c2, sum(c6) over w2 as w2_sum_c6, count(c6) over w2 as w2_cnt_c6 from {0}
+window w2 as (PARTITION BY {0}.c2 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out2 on out1_id=out2_id last join
+(
+select id as out3_id, c3, sum(c6) over w3 as w3_sum_c6, count(c6) over w3 as w3_cnt_c6 from {0}
+window w3 as (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out3 on out1_id=out3_id last join
+(
+select id as out4_id, c4, sum(c6) over w4 as w4_sum_c6, count(c6) over w4 as w4_cnt_c6 from {0}
+window w4 as (PARTITION BY {0}.c4 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out4 on out1_id=out4_id;
+)";
+    BM_RequestQuery(state, sql_case);
+}
+static void BM_LastJoin8WindowOutput(benchmark::State& state) {  // NOLINT
+    fesql::sqlcase::SQLCase sql_case;
+    LastJoinNWindowOutputCase(sql_case, state.range(0));
+    sql_case.desc_ = "BM_LastJoin4WindowOutput";
+    sql_case.sql_str_ = R"(
+select * from
+(
+select id as out1_id, c1, sum(c6) over w1 as w1_sum_c6, count(c6) over w1 as w1_cnt_c6 from {0}
+window w1 as (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out1 last join
+(
+select id as out2_id, c2, sum(c6) over w2 as w2_sum_c6, count(c6) over w2 as w2_cnt_c6 from {0}
+window w2 as (PARTITION BY {0}.c2 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out2 on out1_id=out2_id last join
+(
+select id as out3_id, c3, sum(c6) over w3 as w3_sum_c6, count(c6) over w3 as w3_cnt_c6 from {0}
+window w3 as (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out3 on out1_id=out3_id last join
+(
+select id as out4_id, c4, sum(c6) over w4 as w4_sum_c6, count(c6) over w4 as w4_cnt_c6 from {0}
+window w4 as (PARTITION BY {0}.c4 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+) as out4 on out1_id=out4_id last join
+(
+select id as out5_id, c1, sum(c6) over w5 as w5_sum_c6, count(c6) over w5 as w5_cnt_c6 from {0}
+window w5 as (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW)
+) as out5 on out1_id=out5_id last join
+(
+select id as out6_id, c2, sum(c6) over w6 as w6_sum_c6, count(c6) over w6 as w6_cnt_c6 from {0}
+window w6 as (PARTITION BY {0}.c2 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW)
+) as out6 on out1_id=out6_id last join
+(
+select id as out7_id, c3, sum(c6) over w7 as w7_sum_c6, count(c6) over w7 as w7_cnt_c6 from {0}
+window w7 as (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW)
+) as out7 on out1_id=out7_id last join
+(
+select id as out8_id, c4, sum(c6) over w8 as w8_sum_c6, count(c6) over w8 as w8_cnt_c6 from {0}
+window w8 as (PARTITION BY {0}.c4 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW)
+) as out8 on out1_id=out8_id
+;
+)";
+    BM_RequestQuery(state, sql_case);
+}
+
+BENCHMARK(BM_SimpleLastJoinTable2)->Args({10})->Args({100})->Args({1000})->Args({10000});
+BENCHMARK(BM_SimpleLastJoinTable4)->Args({10})->Args({100})->Args({1000})->Args({10000});
+BENCHMARK(BM_SimpleWindowOutputLastJoinTable2)->Args({10})->Args({100})->Args({1000})->Args({10000});
+BENCHMARK(BM_SimpleWindowOutputLastJoinTable4)->Args({10})->Args({100})->Args({1000})->Args({10000});
+BENCHMARK(BM_SimpleRowWindow)->Args({10})->Args({100})->Args({1000})->Args({10000});
+BENCHMARK(BM_SimpleRow4Window)->Args({10})->Args({100})->Args({1000})->Args({10000});
+BENCHMARK(BM_LastJoin4WindowOutput)->Args({10})->Args({100})->Args({1000})->Args({10000});
+BENCHMARK(BM_LastJoin8WindowOutput)->Args({10})->Args({100})->Args({1000})->Args({10000});
 BENCHMARK(BM_SimpleQueryFunction);
 
-BENCHMARK(BM_SimpleInsertFunction)
-    ->Args({10})
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
+BENCHMARK(BM_SimpleInsertFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
 
-BENCHMARK(BM_InsertPlaceHolderFunction)
-    ->Args({10})
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
+BENCHMARK(BM_InsertPlaceHolderFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
 
-BENCHMARK(BM_InsertPlaceHolderBatchFunction)
-    ->Args({10})
-    ->Args({100})
-    ->Args({1000})
-    ->Args({10000});
-
+BENCHMARK(BM_InsertPlaceHolderBatchFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
+static bool IS_CLUSTER() {
+    const char* env_name = "FESQL_CLUSTER";
+    char* value = getenv(env_name);
+    if (value != nullptr && strcmp(value, "true") == 0) {
+        return true;
+    }
+    return false;
+}
 int main(int argc, char** argv) {
+    FLAGS_enable_distsql = IS_CLUSTER();
     ::benchmark::Initialize(&argc, argv);
     if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
     ::rtidb::sdk::MiniCluster mini_cluster(6181);
     mc = &mini_cluster;
-    mini_cluster.SetUp();
+    if (!IS_CLUSTER()) {
+        mini_cluster.SetUp(1);
+    } else {
+        mini_cluster.SetUp();
+    }
     sleep(2);
     ::benchmark::RunSpecifiedBenchmarks();
     mini_cluster.Close();

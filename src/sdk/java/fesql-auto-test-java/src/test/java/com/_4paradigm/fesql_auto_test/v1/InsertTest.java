@@ -26,6 +26,6 @@ public class InsertTest extends FesqlTest {
 
     @Test(dataProvider = "testInsertData")
     public void testInsert(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor,testCase).run();
+        ExecutorFactory.build(executor,testCase, ExecutorFactory.ExecutorType.kDDL).run();
     }
 }
