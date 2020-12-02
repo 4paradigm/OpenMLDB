@@ -383,7 +383,6 @@ cases:
   -
     id: 38
     desc: create with replica num
-    mode: cluster-only
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -393,7 +392,6 @@ cases:
   -
     id: 39
     desc: create with replica num and distribution
-    mode: cluster-only
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -403,7 +401,6 @@ cases:
   -
     id: 40
     desc: create with replica num and distribution
-    mode: cluster-only
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -413,7 +410,6 @@ cases:
   -
     id: 41
     desc: create with replica num and distribution
-    mode: cluster-only
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
@@ -486,7 +482,6 @@ cases:
   -
     id: 49
     desc: create with partition num
-    mode: cluster-only
     sql: |
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
