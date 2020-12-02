@@ -90,8 +90,7 @@ class SQLSDKQueryTest : public SQLSDKTest {
     static void RunRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                   std::shared_ptr<SQLRouter> router);
     static void DistributeRunRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                                            std::shared_ptr<SQLRouter> router,
-                                            int32_t partition_num= 8);
+                                            std::shared_ptr<SQLRouter> router, int32_t partition_num = 8);
     void RunRequestProcedureModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
             std::shared_ptr<SQLRouter> router, bool is_asyn);
 };
