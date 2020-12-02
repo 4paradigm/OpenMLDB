@@ -145,6 +145,7 @@ fpga_c++_ut:
 
 java_ut:
   stage: quick
+  when: manual
   except:
     variables:
       - $ENV_BUILD == "daily"
@@ -264,6 +265,7 @@ auto_test_add_index_column:
 
 c++_ut:
   stage: quick
+  when: manual
   script:
     - source /root/.bashrc && sh tools/install_fesql.sh
     - ln -sf /depends/thirdparty thirdparty
@@ -282,6 +284,7 @@ c++_ut:
 
 py3_ut:
   stage: quick
+  when: manual
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -343,6 +346,7 @@ tablet_one_demension:
 
 tablet_multi_demension:
   stage: quick
+  when: manual
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
@@ -386,6 +390,7 @@ ns_one_demension:
 
 ns_multi_demension:
   stage: quick
+  when: manual
   before_script:
     - mkdir /rambuild
     - mount -t tmpfs -o size=3G tmpfs /rambuild
