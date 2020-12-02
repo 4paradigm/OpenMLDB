@@ -72,9 +72,6 @@ class SQLExecutor(BaseExecutor):
         if self.fesqlCase.get('mode') !=None and "python-unsupport" in self.fesqlCase.get('mode'):
             log.info("skip case in python mode: {}".format(self.fesqlCase.get('desc')))
             return
-        if self.fesqlCase.get('mode') !=None and "cluster-only" in self.fesqlCase.get('mode'):
-            log.info("skip case in python mode: {}".format(self.fesqlCase.get('desc')))
-            return
         self.process()
 
     def prepare(self):
@@ -131,9 +128,6 @@ class RequestQuerySQLExecutor(SQLExecutor):
             log.info("skip case in rtidb request mode: {}".format(self.fesqlCase.get('desc')))
             return
         if self.fesqlCase.get('mode') !=None and "python-unsupport" in self.fesqlCase.get('mode'):
-            log.info("skip case in python mode: {}".format(self.fesqlCase.get('desc')))
-            return
-        if self.fesqlCase.get('mode') !=None and "cluster-only" in self.fesqlCase.get('mode'):
             log.info("skip case in python mode: {}".format(self.fesqlCase.get('desc')))
             return
         self.process()

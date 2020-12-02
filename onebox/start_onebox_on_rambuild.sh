@@ -15,12 +15,6 @@ TABLET2=$IP:9521
 TABLET3=$IP:9522
 BLOB1=$IP:9720
 
-TABLETNUM=3
-if [ $# -gt 0 ]; then
-    TABLETNUM=$1
-fi
-echo $TABLETNUM
-
 ../build/bin/rtidb --db_root_path=/rambuild/tablet0-binlogs \
                    --hdd_root_path=/rambuild/tablet0-hdd-binlogs \
                    --ssd_root_path=/rambuild/tablet0-ssd-binlogs \
@@ -32,35 +26,32 @@ echo $TABLETNUM
                    --zk_cluster=${ZK_CLUSTER}\
                    --zk_keep_alive_check_interval=100000000\
                    --zk_root_path=/onebox > tablet0.log 2>&1 &
-if [ $TABLETNUM -gt 1 ]; then
-    # start tablet1
-    ../build/bin/rtidb --db_root_path=/rambuild/tablet1-binlogs \
-                       --hdd_root_path=/rambuild/tablet1-hdd-binlogs \
-                       --ssd_root_path=/rambuild/tablet1-ssd-binlogs \
-                       --recycle_bin_root_path=/rambuild/recycle_bin1 \
-                       --recycle_ssd_bin_root_path=/rambuild/recycle_ssd-bin1 \
-                       --recycle_hdd_bin_root_path=/rambuild/recycle_hdd-bin1 \
-                       --endpoint=${TABLET2} --role=tablet \
-                       --zk_cluster=${ZK_CLUSTER}\
-                       --binlog_notify_on_put=true\
-                       --zk_keep_alive_check_interval=100000000\
-                       --zk_root_path=/onebox > tablet1.log 2>&1 &
-fi
 
-if [ $TABLETNUM -gt 2 ]; then
-    # start tablet2
-    ../build/bin/rtidb --db_root_path=/rambuild/tablet2-binlogs \
-                       --hdd_root_path=/rambuild/tablet2-hdd-binlogs \
-                       --ssd_root_path=/rambuild/tablet2-ssd-binlogs \
-                       --recycle_bin_root_path=/rambuild/recycle_bin2 \
-                       --recycle_ssd_bin_root_path=/rambuild/recycle_ssd_bin2 \
-                       --recycle_hdd_bin_root_path=/rambuild/recycle_hdd_bin2 \
-                       --endpoint=${TABLET3} --role=tablet \
-                       --binlog_notify_on_put=true\
-                       --zk_cluster=${ZK_CLUSTER}\
-                       --zk_keep_alive_check_interval=100000000\
-                       --zk_root_path=/onebox > tablet2.log 2>&1 &
-fi
+# start tablet1
+../build/bin/rtidb --db_root_path=/rambuild/tablet1-binlogs \
+                   --hdd_root_path=/rambuild/tablet1-hdd-binlogs \
+                   --ssd_root_path=/rambuild/tablet1-ssd-binlogs \
+                   --recycle_bin_root_path=/rambuild/recycle_bin1 \
+                   --recycle_ssd_bin_root_path=/rambuild/recycle_ssd-bin1 \
+                   --recycle_hdd_bin_root_path=/rambuild/recycle_hdd-bin1 \
+                   --endpoint=${TABLET2} --role=tablet \
+                   --zk_cluster=${ZK_CLUSTER}\
+                   --binlog_notify_on_put=true\
+                   --zk_keep_alive_check_interval=100000000\
+                   --zk_root_path=/onebox > tablet1.log 2>&1 &
+
+# start tablet2
+../build/bin/rtidb --db_root_path=/rambuild/tablet2-binlogs \
+                   --hdd_root_path=/rambuild/tablet2-hdd-binlogs \
+                   --ssd_root_path=/rambuild/tablet2-ssd-binlogs \
+                   --recycle_bin_root_path=/rambuild/recycle_bin2 \
+                   --recycle_ssd_bin_root_path=/rambuild/recycle_ssd_bin2 \
+                   --recycle_hdd_bin_root_path=/rambuild/recycle_hdd_bin2 \
+                   --endpoint=${TABLET3} --role=tablet \
+                   --binlog_notify_on_put=true\
+                   --zk_cluster=${ZK_CLUSTER}\
+                   --zk_keep_alive_check_interval=100000000\
+                   --zk_root_path=/onebox > tablet2.log 2>&1 &
 
 # start ns1
 ../build/bin/rtidb --endpoint=${NS1} --role=nameserver \
@@ -104,3 +95,4 @@ sleep 5
 sleep 5
 
 echo "start all ok"
+
