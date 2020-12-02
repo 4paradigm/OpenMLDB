@@ -210,19 +210,26 @@ class UDFDesc:
 
 
 class UDFPool:
+    '''
+        UDFPool 初始化方法
+        :param udf_config_file: yml文件路径
+        :param args: 脚本传入的参数列表，Namespace
+        '''
     def __init__(self, udf_config_file, args):
         self.args = args
-
+        # 根据用户输入的参数 获取需要进行测试的函数名列表
         filter_names = None
         if args.udf_filter is not None:
             filter_names = frozenset(args.udf_filter.split(","))
 
         self.udfs = []
         self.udafs = []
+        # 单行函数字典 key为函数名，value为list 是该函数名下为udf的所有函数声明
         self.udfs_dict = {}
+        # 聚合函数字典 key为函数名，value为list 是该函数名下为udaf的所有函数声明
         self.udafs_dict = {}
         self.picked_functions = []
-
+        # 函数唯一id 与 UDFDesc 对应字典
         self.udf_by_unique_id = {}
         self.history_failures = []
         self.history_successes = []
@@ -241,7 +248,7 @@ class UDFPool:
                 for sig in item["signatures"]:
                     arg_types = sig["arg_types"]
                     return_type = sig["return_type"]
-
+                    # row类型是内部类型，sql里不支持
                     if any([_.endswith("row") for _ in arg_types]):
                         continue
 
@@ -286,6 +293,13 @@ class UDFPool:
         return cands
 
     def sample_function(self, is_udaf=None, expect_dtype=None):
+        '''
+        挑选一个函数
+        :param is_udaf: 是否是udaf
+        :param expect_dtype: 期望的函数返回类型
+        :return: UDFDesc
+        '''
+        # 创建一个函数 用来判断返回类型是否符合预期
         filter_func = lambda x: expect_dtype is None or x.return_type == expect_dtype
         if is_udaf:
             cands = self.filter_functions(self.udafs, filter_func)
@@ -299,6 +313,7 @@ class UDFPool:
             raise ValueError("No function found for type: " + expect_dtype)
 
         strategy = self.args.udf_error_strategy
+        # 根据错误策略选择函数，如果某一个函数出现了错误，减少函数的概率
         if strategy is None:
             picked = random.choice(cands)
         else:
@@ -334,6 +349,12 @@ class UDFPool:
 
 class ColumnInfo:
     def __init__(self, name, dtype, nullable=True):
+        '''
+        ColumnInfo 初始化方法
+        :param name: 列名
+        :param dtype: 列类型
+        :param nullable: 是否为null，默认可以为null
+        '''
         self.name = name
         self.dtype = dtype
         self.nullable = nullable
@@ -348,6 +369,10 @@ class ColumnsPool:
         self.normal_columns = []
     
     def get_all_columns(self):
+        '''
+        获取所有列
+        :return: ColumnInfo的list
+        '''
         res = []
         if self.index_column is not None:
             res.append(self.index_column)
@@ -357,9 +382,22 @@ class ColumnsPool:
         return res
         
     def set_unique_id(self, name, dtype):
+        '''
+        设置索引列
+        :param name: "id"
+        :param dtype: "int64"
+        :return: 无返回
+        '''
         self.index_column = ColumnInfo(name, dtype, nullable=False)
 
     def add_order_column(self, name, dtype, nullable=False):
+        '''
+        增加排序列
+        :param name: 列名
+        :param dtype: 类型
+        :param nullable: 是否为null，默认不为空
+        :return:
+        '''
         column = ColumnInfo(name, dtype, nullable=nullable)
         self.order_columns.append(column)
         return column
@@ -371,6 +409,11 @@ class ColumnsPool:
 
     @staticmethod
     def sample_index(p):
+        '''
+        获取落在某一个概率中的 索引位置
+        :param p:
+        :return:
+        '''
         weight = sum(p)
         p = [_ / weight for _ in p]
         samples = np.random.multinomial(1, p)
@@ -378,14 +421,27 @@ class ColumnsPool:
 
     @staticmethod
     def do_create_new_column(prefix, cands, dtype, nullable):
+        '''
+        创建一个新的列
+        :param prefix: 前缀
+        :param cands: 列的list
+        :param dtype: 列类型
+        :param nullable: 是否为null
+        :return:
+        '''
+        #如果类型为空就从pk类型中选择一个
         if dtype is None:
             dtype = random.choice(PRIMITIVE_TYPES)
+        #如果是 类型的list 就从list中选择一个
         elif isinstance(dtype, list) or isinstance(dtype, set):
             dtype = random.choice(dtype)
+        #如果nullable 不填，默认为true
         if nullable is None:
             nullable = True
+        #生成列名
         name = prefix + "_" + str(len(cands)) + "_" + str(dtype)
         column = ColumnInfo(name, dtype=dtype, nullable=nullable)
+        # 生成的列添加到集合中
         cands.append(column)
         return column
 
@@ -394,6 +450,16 @@ class ColumnsPool:
                          dtype=None,
                          nullable=None,
                          allow_const=False):
+        '''
+        生成一个列样本
+        :param prefix:
+        :param column_list:
+        :param downward:
+        :param dtype:
+        :param nullable:
+        :param allow_const:
+        :return:
+        '''
         # probabilities for random generate leaf expression
         prob_use_existing = self.args.prob_sample_exist_column
         prob_use_new = self.args.prob_sample_new_column
@@ -408,9 +474,14 @@ class ColumnsPool:
             probs.append(prob_use_constant)
 
         idx = self.sample_index(probs)
-
+        #idx==0 表示 是prob_use_existing
         if idx == 0:
             def is_compatible_column(c):
+                '''
+                判断采样出的列是否满足nullable和数据类型约束
+                :param c:
+                :return:
+                '''
                 if nullable is not None and c.nullable != nullable:
                     return False
                 elif dtype is not None:
@@ -422,6 +493,7 @@ class ColumnsPool:
                 return True
 
             candidates = list(filter(is_compatible_column, column_list))
+            #如果candidates为0，则创建一个列
             if len(candidates) == 0:
                 if downward:
                     return self.do_create_new_column(prefix, column_list, dtype, nullable)
@@ -432,9 +504,16 @@ class ColumnsPool:
         elif idx == 1 and downward:
             return self.do_create_new_column(prefix, column_list, dtype, nullable)
         else:
+            # 返回的是一个常量
             return gen_literal_const(dtype, nullable=False)
 
     def sample_partition_column(self, downward=True, nullable=False):
+        '''
+        pk样本
+        :param downward:
+        :param nullable:
+        :return:
+        '''
         return self.do_sample_column("pk", self.partition_columns,
                                      downward=downward,
                                      allow_const=False,
@@ -442,6 +521,12 @@ class ColumnsPool:
                                      nullable=nullable)
 
     def sample_order_column(self, downward=True, nullable=False):
+        '''
+        order样本
+        :param downward:
+        :param nullable:
+        :return:
+        '''
         return self.do_sample_column("order", self.order_columns,
                                      downward=downward,
                                      allow_const=False,
@@ -449,6 +534,14 @@ class ColumnsPool:
                                      nullable=nullable)
 
     def sample_column(self, downward=True, dtype=None, nullable=None, allow_const=False):
+        '''
+        普通列样本
+        :param downward:
+        :param dtype:
+        :param nullable:
+        :param allow_const:
+        :return:
+        '''
         return self.do_sample_column("c", self.normal_columns,
                                      downward=downward,
                                      allow_const=allow_const,
@@ -457,6 +550,13 @@ class ColumnsPool:
 
 
 class WindowDesc:
+    '''
+        定义WindowDesc，ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+        :param name: 窗口的名字
+        :param preceding:
+        :param following:
+        :param rows_between: 窗口类型 0 为RANGE 非0为 ROWS
+        '''
     def __init__(self, name, preceding, following, rows_between=True):
         self.name = name
         self.preceding = str(preceding)
@@ -464,6 +564,10 @@ class WindowDesc:
         self.rows_between = rows_between
 
     def get_frame_def_string(self):
+        '''
+        获取定义窗口的字符串，暂不支持单位
+        :return: ROWS BETWEEN 3 PRECEDING AND CURRENT ROW
+        '''
         res = ""
         if self.rows_between:
             res += "ROWS BETWEEN "
@@ -537,6 +641,12 @@ def random_literal_string():
 
 
 def gen_literal_const(dtype, nullable):
+    '''
+    根据类型生成常量
+    :param dtype:
+    :param nullable:
+    :return:
+    '''
     if dtype is None:
         dtype = random.choice(PRIMITIVE_TYPES)
     if dtype == "bool":
@@ -568,6 +678,19 @@ def sample_expr(udf_pool, column_pool,
                 downward=True,
                 alias_name=None,
                 depth=1):
+    '''
+    生成表达式样本
+    :param udf_pool:
+    :param column_pool:
+    :param is_udaf:
+    :param expect_dtype:
+    :param over_window:
+    :param allow_const:
+    :param downward:
+    :param alias_name:
+    :param depth:
+    :return:
+    '''
 
     # generate leaf expression
     if depth <= 0:
@@ -752,6 +875,13 @@ def sample_string(nullable=True):
 
 
 def sample_window_def(name, args):
+    '''
+    得到WindowDesc
+    :param name: 窗口名字
+    :param args:
+    :return: WindowDesc
+    '''
+    # 根据规则随机生成一个整数
     preceding = sample_integer_config(args.rows_preceding)
     if preceding == 0:
         preceding = "CURRENT"
@@ -793,6 +923,15 @@ def gen_simple_data(columns, args,
                     index_column=None,
                     partition_columns=None,
                     order_columns=None):
+    '''
+    生成样本数据
+    :param columns:
+    :param args:
+    :param index_column:
+    :param partition_columns:
+    :param order_columns:
+    :return:
+    '''
     columns_dict = {}
     for idx, col in enumerate(columns):
         columns_dict[col.name] = idx
@@ -893,8 +1032,10 @@ def sample_window_project(input_name, input_columns,
 
     for i in range(expr_num):
         alias_name = None
+        #生成别名
         if args.use_alias_name:
             alias_name = window_def.name + "_out_" + str(i)
+        #生成一个新的表达式
         new_expr = sample_expr(udf_defs, input_columns,
                                is_udaf=True,
                                over_window=window_def.name,
@@ -945,7 +1086,7 @@ def gen_single_window_test(test_name, udf_pool, args):
                            index_column=input_columns.index_column,
                            partition_columns=input_columns.partition_columns,
                            order_columns=input_columns.order_columns)
-
+    # 组装 yml
     input_table = {
         "columns": ["%s %s" % (c.name, c.dtype) for c in all_columns],
         "indexs": ["index1:%s:%s" % (
@@ -1034,6 +1175,7 @@ def worker_run(udf_pool, args, shared_states):
 
 
 def run(args):
+    # 加载yml文件 封装成UDFDesc 并进行分类 创建了 UDFPool
     udf_pool = UDFPool(args.udf_path, args)
     logging.info("Successfully load udf information from %s", args.udf_path)
 
