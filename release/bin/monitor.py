@@ -7,8 +7,15 @@ work_dir = os.path.dirname(dir_name)
 sys.path.insert(0, dir_name + "/prometheus_client-0.6.0")
 from prometheus_client import start_http_server
 from prometheus_client import Gauge
+import traceback
+
+try:
+    import urllib.request as request
+except:
+    import urllib2 as request
 
 method = ["put", "get", "scan", "query"]
+method_set = set(method)
 monitor_key = ["count", "error", "qps", "latency", "latency_50",
                "latency_90", "latency_99", "latency_999", "latency_9999", "max_latency"]
 rtidb_log = {
@@ -55,23 +62,37 @@ rtidb_log = {
 
 def get_data(url):
     result = {}
-    output = os.popen("curl -s %s" % url)
-    method_content = output.read().split("\n\n")
-
-    for content in method_content:
-        item_arr = content.split("\n")
-        if len(item_arr) < 12:
+    resp = request.urlopen(url)
+    def parse_data():
+        beginParse = False
+        stageBegin = False
+        server = ""
+        servers = {}
+        for i in resp:
+          if len(i) < 0:
             continue
-        cur_method = item_arr[-12].split(" ")[0]
-        cur_method = cur_method.lower()
-        if cur_method in method:
-            result.setdefault(cur_method, {})
-            for item in item_arr[-11:]:
-                arr = item.strip().split(":")
-                if arr[0] in monitor_key:
-                    result[cur_method][arr[0]] = arr[1].strip()
-    return result
-
+          l = i.decode()
+          if beginParse and l[0] == '\n':
+            stageBegin = False
+            resp.readline()
+            continue
+          elif l[0] == '[':
+            beginParse = True
+            resp.readline()
+            continue
+          if not beginParse:
+            continue
+          if stageBegin:
+            cols = l.strip().split()
+            indicator = cols[0].strip(":")
+            value = int(cols[1])
+            servers[server][indicator] = value
+          else:
+            stageBegin = True
+            server = l.split()[0]
+            servers[server]={}
+        return servers
+    return parse_data()
 
 def get_conf():
     conf_map = {}
@@ -178,18 +199,23 @@ if __name__ == "__main__":
                 continue
             result = get_data(url)
             for method_data in result:
-                data = time_stamp + "\t" + method_data + "\t"
+                lower_method = method_data.lower()
+                if lower_method not in method_set:
+                    continue
+                data = "{}\t{}\t".format(time_stamp, lower_method)
+                log_file.write("method data is {}\n".format(data))
                 for key in monitor_key:
-                    data += "\t" + key + ":" + result[method_data][key]
+                    data = "{}\t{}:{}".format(data, key, result[method_data][key])
                     if key.find("latency") == -1:
-                        gauge[method_data].labels("type", key).set(
+                        gauge[lower_method].labels("type", key).set(
                             result[method_data][key])
                     else:
-                        gauge[method_data].labels("latency", key).set(
+                        gauge[lower_method].labels("latency", key).set(
                             result[method_data][key])
                 log_file.write(data + "\n")
                 log_file.flush()
         except Exception, ex:
+            traceback.print_exc(file=log_file)
             log_file.write("has exception {}\n".format(ex))
         time.sleep(conf_map["interval"])
     log_file.close()
