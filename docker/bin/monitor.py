@@ -97,7 +97,7 @@ def get_data(url):
 def get_conf():
     conf_map = {}
     with open(work_dir + "/conf/monitor.conf", "r") as conf_file:
-        for line in conf_file.xreadlines():
+        for line in conf_file:
             if line.startswith("#"):
                 continue
             arr = line.split("=")
@@ -117,10 +117,15 @@ def get_conf():
 
 
 def get_timestamp():
+    def big_int(ct):
+        try:
+            return long(ct)
+        except:
+            return int(ct)
     ct = time.time()
     local_time = time.localtime(ct)
     data_head = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
-    data_secs = (ct - long(ct)) * 1000
+    data_secs = (ct - big_int(ct)) * 1000
     today = time.strftime("%Y%m%d", local_time)
     return ["%s.%03d" % (data_head, data_secs) + " +0800", today]
 
@@ -131,7 +136,7 @@ def search_key(file_name, offset, keyword):
     count = 0
     with open(file_name, 'r') as f:
         f.seek(offset)
-        for line in f.xreadlines():
+        for line in f:
             if line.find(keyword) != -1:
                 count += 1
         return (count, f.tell())
@@ -214,8 +219,8 @@ if __name__ == "__main__":
                             result[method_data][key])
                 log_file.write(data + "\n")
                 log_file.flush()
-        except Exception, ex:
+        except Exception as e:
             traceback.print_exc(file=log_file)
-            log_file.write("has exception {}\n".format(ex))
+            log_file.write("has exception {}\n".format(e))
         time.sleep(conf_map["interval"])
     log_file.close()
