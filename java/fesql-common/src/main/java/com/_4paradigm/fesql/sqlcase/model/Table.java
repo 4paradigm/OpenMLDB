@@ -189,11 +189,6 @@ public class Table {
             return false;
         }
 
-        if (length < 3) {
-            logger.info("Index is invalid: missing ts, {}", index);
-            return false;
-        }
-
         if (length > 5) {
             logger.info("Index is invalid: index items > 5", index);
             return false;
