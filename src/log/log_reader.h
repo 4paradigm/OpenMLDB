@@ -78,7 +78,7 @@ class Reader {
     SequentialFile* const file_;
     Reporter* const reporter_;
     bool const checksum_;
-    char* const backing_store_;
+    char* backing_store_;
     Slice buffer_;
 
     // Offset of the last record returned by ReadRecord.
@@ -98,6 +98,7 @@ class Reader {
     bool resyncing_;
 
     bool for_snapshot_;
+    int block_size_;
 
     // Extend record types with the following special values
     enum {

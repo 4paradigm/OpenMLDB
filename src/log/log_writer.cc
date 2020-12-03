@@ -35,21 +35,42 @@ Writer::Writer(WritableFile* dest, bool for_snapshot)
 : dest_(dest), block_offset_(0), for_snapshot_(for_snapshot) {
     InitTypeCrc(type_crc_);
 #ifdef PZFPGA_ENABLE
-          if (for_snapshot_ && FLAGS_snapshot_compression == "pz") {
-              fpga_ctx_ = gzipfpga_init_titanse();
-              buffer_ = new char[kBlockSize];
-          }
+    if (for_snapshot_ &&
+            (FLAGS_snapshot_compression == "pz" || FLAGS_snapshot_compression == "snappy")) {
+#else
+    if (for_snapshot_ &&  FLAGS_snapshot_compression == "snappy") {
+#endif
+        block_size_ = kCompressBlockSize;
+        buffer_ = new char[block_size_];
+    } else {
+        block_size_ = kBlockSize;
+    }
+#ifdef PZFPGA_ENABLE
+    if (for_snapshot_ && FLAGS_snapshot_compression == "pz") {
+        fpga_ctx_ = gzipfpga_init_titanse();
+    }
 #endif
 }
 
 Writer::Writer(WritableFile* dest, uint64_t dest_length, bool for_snapshot)
-    : dest_(dest), block_offset_(dest_length % kBlockSize), for_snapshot_(for_snapshot) {
+    : dest_(dest), for_snapshot_(for_snapshot) {
     InitTypeCrc(type_crc_);
 #ifdef PZFPGA_ENABLE
-          if (for_snapshot_ && FLAGS_snapshot_compression == "pz") {
-              fpga_ctx_ = gzipfpga_init_titanse();
-              buffer_ = new char[kBlockSize];
-          }
+    if (for_snapshot_ &&
+            (FLAGS_snapshot_compression == "pz" || FLAGS_snapshot_compression == "snappy")) {
+#else
+    if (for_snapshot_ &&  FLAGS_snapshot_compression == "snappy") {
+#endif
+        block_size_ = kCompressBlockSize;
+        buffer_ = new char[block_size_];
+    } else {
+        block_size_ = kBlockSize;
+    }
+    block_offset_ = dest_length % block_size_;
+#ifdef PZFPGA_ENABLE
+    if (for_snapshot_ && FLAGS_snapshot_compression == "pz") {
+        fpga_ctx_ = gzipfpga_init_titanse();
+    }
 #endif
 }
 
@@ -57,9 +78,11 @@ Writer::~Writer() {
 #ifdef PZFPGA_ENABLE
     if (for_snapshot_ && FLAGS_snapshot_compression == "pz" && fpga_ctx_) {
         gzipfpga_end(fpga_ctx_);
-        delete[] buffer_;
     }
 #endif
+    if (buffer_) {
+        delete[] buffer_;
+    }
 }
 
 Status Writer::EndLog() {
@@ -68,7 +91,7 @@ Status Writer::EndLog() {
     size_t left = 0;
     Status s;
     do {
-        const int leftover = kBlockSize - block_offset_;
+        const int leftover = block_size_ - block_offset_;
         assert(leftover >= 0);
         if (leftover < kHeaderSize) {
             // Switch to a new block
@@ -81,7 +104,7 @@ Status Writer::EndLog() {
                 if (!for_snapshot_ ||
                         (FLAGS_snapshot_compression != "pz" &&
                          FLAGS_snapshot_compression != "snappy")) {
-#elif
+#else
                 if (!for_snapshot_ || FLAGS_snapshot_compression != "snappy") {
 #endif
                     dest_->Append(fill_slice);
@@ -93,8 +116,8 @@ Status Writer::EndLog() {
             block_offset_ = 0;
         }
         // Invariant: we never leave < kHeaderSize bytes in a block.
-        assert(kBlockSize - block_offset_ - kHeaderSize >= 0);
-        const size_t avail = kBlockSize - block_offset_ - kHeaderSize;
+        assert(block_size_ - block_offset_ - kHeaderSize >= 0);
+        const size_t avail = block_size_ - block_offset_ - kHeaderSize;
         const size_t fragment_length = (left < avail) ? left : avail;
         RecordType type = kEofType;
         PDLOG(INFO, "end log");
@@ -115,7 +138,7 @@ Status Writer::AddRecord(const Slice& slice) {
     Status s;
     bool begin = true;
     do {
-        const int leftover = kBlockSize - block_offset_;
+        const int leftover = block_size_ - block_offset_;
         assert(leftover >= 0);
         if (leftover < kHeaderSize) {
             // Switch to a new block
@@ -128,7 +151,7 @@ Status Writer::AddRecord(const Slice& slice) {
                 if (!for_snapshot_ ||
                         (FLAGS_snapshot_compression != "pz" &&
                          FLAGS_snapshot_compression != "snappy")) {
-#elif
+#else
                 if (!for_snapshot_ || FLAGS_snapshot_compression != "snappy") {
 #endif
                     dest_->Append(fill_slice);
@@ -140,9 +163,9 @@ Status Writer::AddRecord(const Slice& slice) {
             block_offset_ = 0;
         }
         // Invariant: we never leave < kHeaderSize bytes in a block.
-        assert(kBlockSize - block_offset_ - kHeaderSize >= 0);
+        assert(block_size_ - block_offset_ - kHeaderSize >= 0);
 
-        const size_t avail = kBlockSize - block_offset_ - kHeaderSize;
+        const size_t avail = block_size_ - block_offset_ - kHeaderSize;
         const size_t fragment_length = (left < avail) ? left : avail;
 
         RecordType type;
@@ -166,7 +189,7 @@ Status Writer::AddRecord(const Slice& slice) {
 
 Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
     assert(n <= 0xffff);  // Must fit in two bytes
-    assert(block_offset_ + kHeaderSize + n <= kBlockSize);
+    assert(block_offset_ + kHeaderSize + n <= block_size_);
     // Format the header
     char buf[kHeaderSize];
     buf[4] = static_cast<char>(n & 0xff);
@@ -182,7 +205,7 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
     if (!for_snapshot_ ||
             (FLAGS_snapshot_compression != "pz" &&
              FLAGS_snapshot_compression != "snappy")) {
-#elif
+#else
     if (!for_snapshot_ || FLAGS_snapshot_compression != "snappy") {
 #endif
         // Write the header and the payload
@@ -205,10 +228,10 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
         block_offset_ += kHeaderSize + n;
         // fill the trailer if kEofType
         if (t == kEofType) {
-            memset(buffer_ + block_offset_, 0, kBlockSize - block_offset_);
-            block_offset_ = kBlockSize;
+            memset(buffer_ + block_offset_, 0, block_size_ - block_offset_);
+            block_offset_ = block_size_;
         }
-        if (block_offset_ == kBlockSize) {
+        if (block_offset_ == block_size_) {
             return CompressRecord();
         }
         return Status::OK();
@@ -218,16 +241,16 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
 Status Writer::CompressRecord() {
     Status s;
     // compress
-    char compress_data[kBlockSize];
+    char* compress_data = new char[block_size_];
     int compress_len = -1;
 #ifdef PZFPGA_ENABLE
     if (FLAGS_snapshot_compression == "pz") {
         compress_len = gzipfpga_compress_nohuff(
-                fpga_ctx_, buffer_, compress_data, kBlockSize, kBlockSize, 0);
+                fpga_ctx_, buffer_, compress_data, block_size_, block_size_, 0);
     } else {
 #endif
         size_t tmp_val = 0;
-        snappy::RawCompress(buffer_, kBlockSize, compress_data, &tmp_val);
+        snappy::RawCompress(buffer_, block_size_, compress_data, &tmp_val);
         compress_len = static_cast<int>(tmp_val);
 #ifdef PZFPGA_ENABLE
     }
@@ -253,6 +276,7 @@ Status Writer::CompressRecord() {
     if (!s.ok()) {
         PDLOG(WARNING, "write error. %s", s.ToString().c_str());
     }
+    delete compress_data;
     return s;
 }
 

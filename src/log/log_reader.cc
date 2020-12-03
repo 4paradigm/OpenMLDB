@@ -48,7 +48,6 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
     : file_(file),
       reporter_(reporter),
       checksum_(checksum),
-      backing_store_(new char[kBlockSize]),
       buffer_(),
       last_record_offset_(0),
       last_record_end_offset_(0),
@@ -57,6 +56,17 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
       initial_offset_(initial_offset),
       resyncing_(initial_offset > 0),
       for_snapshot_(for_snaphot) {
+#ifdef PZFPGA_ENABLE
+          if (for_snapshot_ &&
+                  (FLAGS_snapshot_compression == "pz" || FLAGS_snapshot_compression == "snappy")) {
+#else
+          if (for_snapshot_ &&  FLAGS_snapshot_compression == "snappy") {
+#endif
+              block_size_ = kCompressBlockSize;
+          } else {
+              block_size_ = kBlockSize;
+          }
+          backing_store_ = new char[block_size_];
 #ifdef PZFPGA_ENABLE
           if (for_snapshot_ && FLAGS_snapshot_compression == "pz") {
               fpga_ctx_ = gzipfpga_init_titanse();
@@ -74,12 +84,12 @@ Reader::~Reader() {
 }
 
 bool Reader::SkipToInitialBlock() {
-    size_t offset_in_block = initial_offset_ % kBlockSize;
+    size_t offset_in_block = initial_offset_ % block_size_;
     uint64_t block_start_location = initial_offset_ - offset_in_block;
 
     // Don't search a block if we'd be in the trailer
-    if (offset_in_block > kBlockSize - 6) {
-        block_start_location += kBlockSize;
+    if (offset_in_block > (size_t)(block_size_ - 6)) {
+        block_start_location += block_size_;
     }
 
     end_of_buffer_offset_ = block_start_location;
@@ -260,7 +270,7 @@ void Reader::ReportDrop(uint64_t bytes, const Status& reason) {
 }
 
 void Reader::GoBackToLastBlock() {
-    size_t offset_in_block = last_end_of_buffer_offset_ % kBlockSize;
+    size_t offset_in_block = last_end_of_buffer_offset_ % block_size_;
     uint64_t block_start_location = 0;
     if (last_end_of_buffer_offset_ > offset_in_block) {
         block_start_location = last_end_of_buffer_offset_ - offset_in_block;
@@ -289,10 +299,10 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
         if (!for_snapshot_ ||
                 (FLAGS_snapshot_compression != "pz" &&
                  FLAGS_snapshot_compression != "snappy")) {
-#elif
+#else
         if (!for_snapshot_ || FLAGS_snapshot_compression != "snappy") {
 #endif
-            status = file_->Read(kBlockSize, &buffer_, backing_store_);
+            status = file_->Read(block_size_, &buffer_, backing_store_);
         } else {
             // read header of compressed data
             Slice header_of_compress;
@@ -302,47 +312,48 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                 return kWaitRecord;
             }
             const char* data = header_of_compress.data();
-            int block_size = 0;
-            memcpy(static_cast<void*>(&block_size), data, sizeof(int));
-            memrev32ifbe(static_cast<void*>(&block_size));
+            int compress_len = 0;
+            memcpy(static_cast<void*>(&compress_len), data, sizeof(int));
+            memrev32ifbe(static_cast<void*>(&compress_len));
             // read compressed data
             Slice block;
-            status = file_->Read(block_size, &block, backing_store_);
+            status = file_->Read(compress_len, &block, backing_store_);
             if (!status.ok()) {
                 PDLOG(WARNING, "fail to read file %s when reading block", status.ToString().c_str());
                 return kWaitRecord;
             }
             const char* block_data = block.data();
-            char uncompress[kBlockSize];
-            int uncompress_size = 0;
+            char* uncompress = new char[block_size_];
+            int uncompress_len = 0;
 #ifdef PZFPGA_ENABLE
             if (FLAGS_snapshot_compression == "pz") {
-                uncompress_size = gzipfpga_uncompress_nohuff(
-                    NULL, block_data, uncompress, block_size, kBlockSize);
+                uncompress_len = gzipfpga_uncompress_nohuff(
+                    NULL, block_data, uncompress, compress_len, block_size_);
             } else {
 #endif
                 size_t tmp_val = 0;
-                snappy::GetUncompressedLength(block_data, static_cast<size_t>(block_size), &tmp_val);
-                uncompress_size = static_cast<int>(tmp_val);
-                if (!snappy::RawUncompress(block_data, static_cast<size_t>(block_size), uncompress)) {
+                snappy::GetUncompressedLength(block_data, static_cast<size_t>(compress_len), &tmp_val);
+                uncompress_len = static_cast<int>(tmp_val);
+                if (!snappy::RawUncompress(block_data, static_cast<size_t>(compress_len), uncompress)) {
                     PDLOG(WARNING, "bad record with uncompress block");
                     return kBadRecord;
                 }
 #ifdef PZFPGA_ENABLE
             }
 #endif
-            if (uncompress_size != kBlockSize) {
+            if (uncompress_len != block_size_) {
                 PDLOG(WARNING, "bad record with uncompress block");
                 return kBadRecord;
             }
-            buffer_ = Slice(uncompress, kBlockSize);
+            buffer_ = Slice(uncompress, block_size_);
+            delete uncompress;
         }
         offset = end_of_buffer_offset_;
         end_of_buffer_offset_ += buffer_.size();
         // Read log error
         if (!status.ok()) {
             buffer_.clear();
-            ReportDrop(kBlockSize, status);
+            ReportDrop(block_size_, status);
             PDLOG(WARNING, "fail to read file %s", status.ToString().c_str());
             return kWaitRecord;
         }
