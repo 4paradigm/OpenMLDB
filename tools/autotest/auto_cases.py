@@ -572,7 +572,7 @@ class WindowDesc:
         if self.rows_between:
             res += "ROWS BETWEEN "
         else:
-            res += "RANGE BETWEEN "
+            res += "ROWS_RANGE BETWEEN "
         if self.preceding.lower().startswith("current"):
             res += "CURRENT "
             # if self.rows_between:
