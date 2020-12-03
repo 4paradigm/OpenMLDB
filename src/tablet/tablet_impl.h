@@ -102,7 +102,6 @@ class SpCache : public fesql::vm::CompileInfoCache {
     }
     std::shared_ptr<fesql::vm::CompileInfo> GetBatchRequestInfo(const std::string& db, const std::string& sp_name,
                                                                 fesql::base::Status& status) override {  // NOLINT
-
         auto db_it = db_sp_map_.find(db);
         if (db_it == db_sp_map_.end()) {
             status = fesql::base::Status(fesql::common::kProcedureNotFound,
