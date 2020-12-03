@@ -14,6 +14,11 @@ try:
 except:
     import urllib2 as request
 
+if sys.version_info.major > 2:
+    do_open = lambda filename, mode: open(filename, mode, encoding="utf-8")
+else:
+    do_open = lambda filename, mode: open(filename, mode)
+
 method = ["put", "get", "scan", "query"]
 method_set = set(method)
 monitor_key = ["count", "error", "qps", "latency", "latency_50",
@@ -96,7 +101,7 @@ def get_data(url):
 
 def get_conf():
     conf_map = {}
-    with open(work_dir + "/conf/monitor.conf", "r") as conf_file:
+    with do_open(work_dir + "/conf/monitor.conf", "r") as conf_file:
         for line in conf_file:
             if line.startswith("#"):
                 continue
@@ -134,7 +139,7 @@ def search_key(file_name, offset, keyword):
     if not os.path.exists(file_name):
         return (0, 0)
     count = 0
-    with open(file_name, 'r') as f:
+    with do_open(file_name, 'r') as f:
         f.seek(offset)
         for line in f:
             if line.find(keyword) != -1:
