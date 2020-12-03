@@ -351,7 +351,10 @@ public class Table {
             }
 
             builder.append("key=(").append(Joiner.on(",").join(getIndexKeys(index))).append(")");
-            builder.append(",ts=").append(getIndexTsCol(index));
+            String tsIndex = getIndexTsCol(index);
+            if (!tsIndex.isEmpty()) {
+                builder.append(",ts=").append(getIndexTsCol(index));
+            }
 
             String ttl = getIndexTTL(index);
             if (!ttl.isEmpty()) {
