@@ -20,16 +20,19 @@ import java.util.ArrayList;
 public class FesqlTest implements ITest {
     protected static SqlExecutor executor;
     private ThreadLocal<String> testName = new ThreadLocal<>();
+    private int testNum = 0;
 
     @BeforeMethod
     public void BeforeMethod(Method method, Object[] testData) {
         if (testData[0] instanceof SQLCase) {
             SQLCase sqlCase = (SQLCase) testData[0];
-            testName.set(String.format("%s_%s_%s",
-                    method.getName(), sqlCase.getId(), sqlCase.getDesc()));
+            testName.set(String.format("[%d]%s_%s_%s_%s",testNum,
+                    method.getName(),
+                    FesqlGlobalVar.env, sqlCase.getId(), sqlCase.getDesc()));
         } else {
             testName.set(method.getName() + "_" + testData[0]);
         }
+        testNum++;
     }
 
     protected ArrayList<String> tableNameList = new ArrayList<>();
