@@ -120,7 +120,7 @@ TabletImpl::TabletImpl()
       endpoint_(),
       notify_path_() {
     catalog_->SetLocalTablet(std::shared_ptr<::fesql::vm::Tablet>(
-        new ::fesql::vm::LocalTablet(&engine_)));
+        new ::fesql::vm::LocalTablet(&engine_, sp_cache_)));
 }
 
 TabletImpl::~TabletImpl() {
@@ -1939,32 +1939,18 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
             const std::string& sp_name = request->sp_name();
             std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
             {
+                fesql::base::Status status;
                 std::lock_guard<std::mutex> lock(mu_);
-                auto db_it = db_sp_map_.find(db_name);
-                if (db_it == db_sp_map_.end()) {
-                    response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
-                    response->set_msg("db not found");
-                    PDLOG(WARNING, "db[%s] not found", db_name.c_str());
-                    return;
-                }
-                auto sp_it = db_it->second.find(sp_name);
-                if (sp_it == db_it->second.end()) {
+                request_compile_info = sp_cache_->GetRequestInfo(request->db(), request->sp_name(), status);
+                if (status.isOK()) {
                     response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
-                    response->set_msg("store procedure not found");
-                    PDLOG(WARNING, "store procedure[%s] not found in db[%s]",
-                            sp_name.c_str(), db_name.c_str());
-                    return;
-                }
-                request_compile_info = sp_it->second.request_info;
-                if (request_compile_info == nullptr) {
-                    response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
-                    response->set_msg("invalid procedure compile info");
-                    PDLOG(WARNING, "invalid procedure compile info of [%s] in db[%s]",
-                            sp_name.c_str(), db_name.c_str());
+                    response->set_msg(status.msg);
+                    PDLOG(WARNING, status.msg.c_str());
                     return;
                 }
             }
             session.SetCompileInfo(request_compile_info);
+            session.SetSpName(sp_name);
             RunRequestQuery(*request, session, *response, *buf);
         } else {
             bool ok = engine_.Get(request->sql(), request->db(), session, status);
@@ -2015,30 +2001,16 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
         std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
         {
             std::lock_guard<std::mutex> lock(mu_);
-            auto db_it = db_sp_map_.find(request->db());
-            if (db_it == db_sp_map_.end()) {
-                response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
-                response->set_msg("db not found");
-                PDLOG(WARNING, "db[%s] not found", request->db().c_str());
-                return;
-            }
-            auto sp_it = db_it->second.find(request->sp_name());
-            if (sp_it == db_it->second.end()) {
+            fesql::base::Status status;
+            request_compile_info = sp_cache_->GetBatchRequestInfo(request->db(), request->sp_name(), status);
+            if (!status.isOK()) {
                 response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
-                response->set_msg("store procedure not found");
-                PDLOG(WARNING, "store procedure[%s] not found in db[%s]",
-                        request->sp_name().c_str(), request->db().c_str());
-                return;
-            }
-            request_compile_info = sp_it->second.batch_request_info;
-            if (request_compile_info == nullptr) {
-                response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
-                response->set_msg("invalid procedure compile info");
-                PDLOG(WARNING, "invalid procedure compile info of [%s] in db[%s]",
-                        request->sp_name().c_str(), request->db().c_str());
+                response->set_msg(status.msg);
+                PDLOG(WARNING, status.msg.c_str());
                 return;
             }
             session.SetCompileInfo(request_compile_info);
+            session.SetSpName(request->sp_name());
         }
     } else {
         size_t common_column_num = request->common_column_indices().size();
@@ -6085,7 +6057,7 @@ void TabletImpl::CreateProcedure(RpcController* controller,
     const std::string& sql = sp_info.sql();
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        auto& sp_map_of_db = db_sp_map_[db_name];
+        auto& sp_map_of_db = ->sp_cache_db_sp_map_[db_name];
         auto sp_it = sp_map_of_db.find(sp_name);
         if (sp_it != sp_map_of_db.end()) {
             response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
@@ -6141,7 +6113,7 @@ void TabletImpl::CreateProcedure(RpcController* controller,
 
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        auto& sp_map_of_db = db_sp_map_[db_name];
+        auto& sp_map_of_db = sp_cache_->db_sp_map_[db_name];
         sp_map_of_db.insert(std::make_pair(sp_name, SQLProcedureCacheEntry(
                         sp_info_impl, session.GetCompileInfo(), batch_session.GetCompileInfo())));
     }
@@ -6159,7 +6131,7 @@ void TabletImpl::DropProcedure(RpcController* controller,
     const std::string& sp_name = request->sp_name();
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        db_sp_map_[db_name].erase(sp_name);
+        sp_cache_->db_sp_map_[db_name].erase(sp_name);
     }
     if (!catalog_->DropProcedure(db_name, sp_name)) {
         LOG(WARNING) << "drop procedure" << db_name << "."
@@ -6225,7 +6197,7 @@ void TabletImpl::CreateProcedure(const std::shared_ptr<fesql::sdk::ProcedureInfo
     }
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        auto& sp_map_of_db = db_sp_map_[db_name];
+        auto& sp_map_of_db = sp_cache_->db_sp_map_[db_name];
         sp_map_of_db.insert(std::make_pair(sp_name, SQLProcedureCacheEntry(
                         sp_info, session.GetCompileInfo(), batch_session.GetCompileInfo())));
     }

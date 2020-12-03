@@ -198,8 +198,9 @@ void TabletTableHandler::Update(const ::rtidb::nameserver::TableInfo& meta, cons
     }
 }
 
-std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::string& index_name,
-                                                                   const std::string& pk) {
+std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet( const std::string& index_name,
+                                                                   const std::string& pk,
+                                                                    const bool is_procedure) {
     uint32_t pid_num = table_st_.GetPartitionNum();
     uint32_t pid = 0;
     if (pid_num > 0) {
@@ -208,7 +209,7 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
     DLOG(INFO) << "pid num " << pid_num << " get tablet with pid = " << pid;
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
     // return local tablet only when --enable_localtablet==true
-    if (FLAGS_enable_distsql && FLAGS_enable_localtablet && tables->find(pid) != tables->end()) {
+    if (FLAGS_enable_distsql && FLAGS_enable_localtablet && !is_procedure && tables->find(pid) != tables->end()) {
         DLOG(INFO) << "get tablet index_name " << index_name << ", pk " << pk << ", local_tablet_";
         return local_tablet_;
     }
