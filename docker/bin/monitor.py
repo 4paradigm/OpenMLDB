@@ -213,7 +213,6 @@ if __name__ == "__main__":
                 if lower_method not in method_set:
                     continue
                 data = "{}\t{}\t".format(time_stamp, lower_method)
-                log_file.write("method data is {}\n".format(data))
                 for key in monitor_key:
                     data = "{}\t{}:{}".format(data, key, result[method_data][key])
                     if key.find("latency") == -1:
