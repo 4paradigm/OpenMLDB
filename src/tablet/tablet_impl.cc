@@ -117,6 +117,7 @@ TabletImpl::TabletImpl()
                   FLAGS_enable_distsql)),
       zk_cluster_(),
       zk_path_(),
+      sp_cache_(std::shared_ptr<SpCache>(new SpCache())),
       endpoint_(),
       notify_path_() {
     catalog_->SetLocalTablet(std::shared_ptr<::fesql::vm::Tablet>(
@@ -1942,7 +1943,7 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
                 fesql::base::Status status;
                 std::lock_guard<std::mutex> lock(mu_);
                 request_compile_info = sp_cache_->GetRequestInfo(request->db(), request->sp_name(), status);
-                if (status.isOK()) {
+                if (!status.isOK()) {
                     response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
                     response->set_msg(status.msg);
                     PDLOG(WARNING, status.msg.c_str());
@@ -6057,7 +6058,7 @@ void TabletImpl::CreateProcedure(RpcController* controller,
     const std::string& sql = sp_info.sql();
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        auto& sp_map_of_db = ->sp_cache_db_sp_map_[db_name];
+        auto& sp_map_of_db = sp_cache_->db_sp_map_[db_name];
         auto sp_it = sp_map_of_db.find(sp_name);
         if (sp_it != sp_map_of_db.end()) {
             response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);

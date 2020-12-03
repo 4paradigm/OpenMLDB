@@ -74,14 +74,14 @@ struct SQLProcedureCacheEntry {
                            std::shared_ptr<fesql::vm::CompileInfo> brinfo)
       : procedure_info(pinfo), request_info(rinfo), batch_request_info(brinfo) {}
 };
-class SpCache : fesql::vm::CompileInfoCache {
+class SpCache : public fesql::vm::CompileInfoCache {
  public:
     SpCache() : db_sp_map_() {
 
     }
     ~SpCache(){}
-    std::shared_ptr<fesql::vm::CompileInfo> GetRequestInfo(const std::string db, const std::string sp_name,
-                                                           fesql::base::Status& status) {  // NOLINT
+    std::shared_ptr<fesql::vm::CompileInfo> GetRequestInfo(const std::string& db, const std::string& sp_name,
+                                                           fesql::base::Status& status) override {  // NOLINT
         auto db_it = db_sp_map_.find(db);
         if (db_it == db_sp_map_.end()) {
             status = fesql::base::Status(fesql::common::kProcedureNotFound,
@@ -102,8 +102,8 @@ class SpCache : fesql::vm::CompileInfoCache {
         }
         return sp_it->second.request_info;
     }
-    std::shared_ptr<fesql::vm::CompileInfo> GetBatchRequestInfo(const std::string db, const std::string sp_name,
-                                                                fesql::base::Status& status) {  // NOLINT
+    std::shared_ptr<fesql::vm::CompileInfo> GetBatchRequestInfo(const std::string& db, const std::string& sp_name,
+                                                                fesql::base::Status& status) override {  // NOLINT
 
         auto db_it = db_sp_map_.find(db);
         if (db_it == db_sp_map_.end()) {

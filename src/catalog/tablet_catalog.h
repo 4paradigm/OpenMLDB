@@ -167,7 +167,8 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler,
 class TabletTableHandler : public ::fesql::vm::TableHandler,
                            public std::enable_shared_from_this<fesql::vm::TableHandler> {
  public:
-    explicit TabletTableHandler(const ::rtidb::api::TableMeta &meta, std::shared_ptr<fesql::vm::Tablet> local_tablet);
+    explicit TabletTableHandler(const ::rtidb::api::TableMeta &meta,
+                                std::shared_ptr<fesql::vm::Tablet> local_tablet);
 
     explicit TabletTableHandler(const ::rtidb::nameserver::TableInfo &meta,
                                 std::shared_ptr<fesql::vm::Tablet> local_tablet);
@@ -199,8 +200,7 @@ class TabletTableHandler : public ::fesql::vm::TableHandler,
     std::shared_ptr<::fesql::vm::PartitionHandler> GetPartition(const std::string &index_name) override;
     const std::string GetHandlerTypeName() override { return "TabletTableHandler"; }
 
-    std::shared_ptr<::fesql::vm::Tablet> GetTablet(const std::string &index_name, const std::string &pk,
-                                                   const bool is_procedure) override;
+    std::shared_ptr<::fesql::vm::Tablet> GetTablet(const std::string &index_name, const std::string &pk) override;
 
     inline int32_t GetTid() { return table_st_.GetTid(); }
 
