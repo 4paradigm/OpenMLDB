@@ -83,7 +83,7 @@ bool RollWLogFile(WriteHandle** wh, LogParts* logs, const std::string& log_path,
         return false;
     }
     logs->Insert(binlog_index, offset);
-    *wh = new WriteHandle(name, fd);
+    *wh = new WriteHandle(name, fd, false);
     binlog_index++;
     return true;
 }
@@ -352,7 +352,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
         ASSERT_TRUE(fd_w != NULL);
         ::rtidb::log::WritableFile* wf =
             ::rtidb::log::NewWritableFile(snapshot1, fd_w);
-        ::rtidb::log::Writer writer(wf);
+        ::rtidb::log::Writer writer(wf, true);
         {
             ::rtidb::api::LogEntry entry;
             entry.set_ts(9527);
@@ -398,7 +398,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
         ASSERT_TRUE(fd_w != NULL);
         ::rtidb::log::WritableFile* wf =
             ::rtidb::log::NewWritableFile(snapshot1, fd_w);
-        ::rtidb::log::Writer writer(wf);
+        ::rtidb::log::Writer writer(wf, true);
         ::rtidb::api::LogEntry entry;
         entry.set_pk("test1");
         entry.set_ts(9527);
@@ -484,7 +484,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
         ASSERT_TRUE(fd_w != NULL);
         ::rtidb::log::WritableFile* wf =
             ::rtidb::log::NewWritableFile(snapshot1, fd_w);
-        ::rtidb::log::Writer writer(wf);
+        ::rtidb::log::Writer writer(wf, true);
         {
             ::rtidb::api::LogEntry entry;
             entry.set_ts(9527);
@@ -530,7 +530,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
         ASSERT_TRUE(fd_w != NULL);
         ::rtidb::log::WritableFile* wf =
             ::rtidb::log::NewWritableFile(snapshot1, fd_w);
-        ::rtidb::log::Writer writer(wf);
+        ::rtidb::log::Writer writer(wf, true);
         ::rtidb::api::LogEntry entry;
         entry.set_pk("test1");
         entry.set_ts(9527);
@@ -614,7 +614,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
         ASSERT_TRUE(fd_w != NULL);
         ::rtidb::log::WritableFile* wf =
             ::rtidb::log::NewWritableFile(snapshot1, fd_w);
-        ::rtidb::log::Writer writer(wf);
+        ::rtidb::log::Writer writer(wf, true);
         ::rtidb::api::LogEntry entry;
         entry.set_pk("test0");
         entry.set_ts(9527);
@@ -644,7 +644,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot) {
         ASSERT_TRUE(fd_w != NULL);
         ::rtidb::log::WritableFile* wf =
             ::rtidb::log::NewWritableFile(snapshot1, fd_w);
-        ::rtidb::log::Writer writer(wf);
+        ::rtidb::log::Writer writer(wf, true);
         ::rtidb::api::LogEntry entry;
         entry.set_pk("test1");
         entry.set_ts(9527);
@@ -1345,7 +1345,7 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
         ASSERT_TRUE(fd_w != NULL);
         ::rtidb::log::WritableFile* wf =
             ::rtidb::log::NewWritableFile(snapshot1, fd_w);
-        ::rtidb::log::Writer writer(wf);
+        ::rtidb::log::Writer writer(wf, true);
         ::rtidb::api::LogEntry entry;
         entry.set_pk("test0");
         entry.set_ts(9527);

@@ -142,11 +142,11 @@ TEST_F(LogWRTest, TestWriteAndRead) {
     FILE* fd_w = fopen(full_path.c_str(), "ab+");
     ASSERT_TRUE(fd_w != NULL);
     WritableFile* wf = NewWritableFile(fname, fd_w);
-    Writer writer(wf);
+    Writer writer(wf, false);
     FILE* fd_r = fopen(full_path.c_str(), "rb");
     ASSERT_TRUE(fd_r != NULL);
     SequentialFile* rf = NewSeqFile(fname, fd_r);
-    Reader reader(rf, NULL, true, 0);
+    Reader reader(rf, NULL, true, 0, false);
     Status status = writer.AddRecord("hello");
     ASSERT_TRUE(status.ok());
     std::string scratch;
@@ -158,7 +158,7 @@ TEST_F(LogWRTest, TestWriteAndRead) {
     std::cout << "last record offset " << last_record_offset << std::endl;
     status = writer.AddRecord("hello1");
     ASSERT_TRUE(status.ok());
-    Reader reader2(rf, NULL, true, last_record_offset);
+    Reader reader2(rf, NULL, true, last_record_offset, false);
     std::string scratch2;
     Slice value2;
     status = reader2.ReadRecord(&value2, &scratch2);
@@ -174,7 +174,7 @@ TEST_F(LogWRTest, TestLogEntry) {
     FILE* fd_w = fopen(full_path.c_str(), "ab+");
     ASSERT_TRUE(fd_w != NULL);
     WritableFile* wf = NewWritableFile(fname, fd_w);
-    Writer writer(wf);
+    Writer writer(wf, false);
 
     ::rtidb::api::LogEntry entry;
     entry.set_pk("test0");
@@ -190,7 +190,7 @@ TEST_F(LogWRTest, TestLogEntry) {
     ASSERT_TRUE(fd_r != NULL);
     SequentialFile* rf = NewSeqFile(fname, fd_r);
     std::string scratch2;
-    Reader reader(rf, NULL, true, 0);
+    Reader reader(rf, NULL, true, 0, false);
     {
         Slice value2;
         status = reader.ReadRecord(&value2, &scratch2);
@@ -235,7 +235,7 @@ TEST_F(LogWRTest, TestWait) {
     FILE* fd_w = fopen(full_path.c_str(), "ab+");
     ASSERT_TRUE(fd_w != NULL);
     WritableFile* wf = NewWritableFile(fname, fd_w);
-    Writer writer(wf);
+    Writer writer(wf, false);
     std::string val(1024 * 5, 'a');
     Slice sval(val.c_str(), val.size());
     Status status = writer.AddRecord(sval);
@@ -247,7 +247,7 @@ TEST_F(LogWRTest, TestWait) {
     ASSERT_TRUE(fd_r != NULL);
     SequentialFile* rf = NewSeqFile(fname, fd_r);
     std::string scratch2;
-    Reader reader(rf, NULL, true, 0);
+    Reader reader(rf, NULL, true, 0, false);
     Slice value;
     status = reader.ReadRecord(&value, &scratch2);
     ASSERT_TRUE(status.ok());
@@ -283,11 +283,11 @@ TEST_F(LogWRTest, TestGoBack) {
     FILE* fd_w = fopen(full_path.c_str(), "ab+");
     ASSERT_TRUE(fd_w != NULL);
     WritableFile* wf = NewWritableFile(fname, fd_w);
-    Writer writer(wf);
+    Writer writer(wf, false);
     FILE* fd_r = fopen(full_path.c_str(), "rb");
     ASSERT_TRUE(fd_r != NULL);
     SequentialFile* rf = NewSeqFile(fname, fd_r);
-    Reader reader(rf, NULL, true, 0);
+    Reader reader(rf, NULL, true, 0, false);
     Status status = writer.AddRecord("hello");
     ASSERT_TRUE(status.ok());
     std::string scratch;
