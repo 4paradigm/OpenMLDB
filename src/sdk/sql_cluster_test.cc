@@ -200,7 +200,8 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_t
     auto router = GetNewSQLRouter(sql_case);
     ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
     DistributeRunBatchRequestProcedureModeSDK(sql_case, router, 8, false);
-    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_procedure_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_procedure_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
 }
 
 TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_test) {
@@ -216,7 +217,8 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_test) {
     auto router = GetNewSQLRouter(sql_case);
     ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router with multi partitions";
     DistributeRunRequestProcedureModeSDK(sql_case, router, 8, false);
-    LOG(INFO) << "Finish sql_sdk_distribute_request_procedure_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    LOG(INFO) << "Finish sql_sdk_distribute_request_procedure_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
 }
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_async_test) {
     auto sql_case = GetParam();
@@ -235,7 +237,8 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_a
     auto router = GetNewSQLRouter(sql_case);
     ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
     DistributeRunBatchRequestProcedureModeSDK(sql_case, router, 8, true);
-    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_procedure_async_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_procedure_async_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
 }
 
 TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_async_test) {
@@ -251,9 +254,9 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_async_test) {
     auto router = GetNewSQLRouter(sql_case);
     ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router with multi partitions";
     DistributeRunRequestProcedureModeSDK(sql_case, router, 8, true);
-    LOG(INFO) << "Finish sql_sdk_distribute_request_procedure_async_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    LOG(INFO) << "Finish sql_sdk_distribute_request_procedure_async_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
 }
-
 
 }  // namespace sdk
 }  // namespace rtidb

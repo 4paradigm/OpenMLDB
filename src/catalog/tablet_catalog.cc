@@ -198,7 +198,7 @@ void TabletTableHandler::Update(const ::rtidb::nameserver::TableInfo& meta, cons
     }
 }
 
-std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet( const std::string& index_name,
+std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::string& index_name,
                                                                    const std::string& pk) {
     uint32_t pid_num = table_st_.GetPartitionNum();
     uint32_t pid = 0;

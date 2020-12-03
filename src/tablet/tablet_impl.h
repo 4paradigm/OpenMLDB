@@ -76,28 +76,26 @@ struct SQLProcedureCacheEntry {
 };
 class SpCache : public fesql::vm::CompileInfoCache {
  public:
-    SpCache() : db_sp_map_() {
-
-    }
-    ~SpCache(){}
+    SpCache() : db_sp_map_() {}
+    ~SpCache() {}
     std::shared_ptr<fesql::vm::CompileInfo> GetRequestInfo(const std::string& db, const std::string& sp_name,
                                                            fesql::base::Status& status) override {  // NOLINT
         auto db_it = db_sp_map_.find(db);
         if (db_it == db_sp_map_.end()) {
             status = fesql::base::Status(fesql::common::kProcedureNotFound,
-                                         "store procedure[" + db + "] not found in db[" + sp_name + "]");
+                                         "store procedure[" + sp_name + "] not found in db[" + db + "]");
             return std::shared_ptr<fesql::vm::CompileInfo>();
         }
         auto sp_it = db_it->second.find(sp_name);
         if (sp_it == db_it->second.end()) {
             status = fesql::base::Status(fesql::common::kProcedureNotFound,
-                                         "store procedure[" + db + "] not found in db[" + sp_name + "]");
+                                         "store procedure[" + sp_name + "] not found in db[" + db + "]");
             return std::shared_ptr<fesql::vm::CompileInfo>();
         }
 
         if (!sp_it->second.request_info) {
             status = fesql::base::Status(fesql::common::kProcedureNotFound,
-                                         "store procedure[" + db + "] not found in db[" + sp_name + "]");
+                                         "store procedure[" + sp_name + "] not found in db[" + db + "]");
             return std::shared_ptr<fesql::vm::CompileInfo>();
         }
         return sp_it->second.request_info;
@@ -108,18 +106,18 @@ class SpCache : public fesql::vm::CompileInfoCache {
         auto db_it = db_sp_map_.find(db);
         if (db_it == db_sp_map_.end()) {
             status = fesql::base::Status(fesql::common::kProcedureNotFound,
-                                         "store procedure[" + db + "] not found in db[" + sp_name + "]");
+                                         "store procedure[" + sp_name + "] not found in db[" + db + "]");
             return std::shared_ptr<fesql::vm::CompileInfo>();
         }
         auto sp_it = db_it->second.find(sp_name);
         if (sp_it == db_it->second.end()) {
             status = fesql::base::Status(fesql::common::kProcedureNotFound,
-                                         "store procedure[" + db + "] not found in db[" + sp_name + "]");
+                                         "store procedure[" + sp_name + "] not found in db[" + db + "]");
             return std::shared_ptr<fesql::vm::CompileInfo>();
         }
         if (!sp_it->second.batch_request_info) {
             status = fesql::base::Status(fesql::common::kProcedureNotFound,
-                                         "store procedure[" + db + "] not found in db[" + sp_name + "]");
+                                         "store procedure[" + sp_name + "] not found in db[" + db + "]");
             return std::shared_ptr<fesql::vm::CompileInfo>();
         }
         return sp_it->second.batch_request_info;

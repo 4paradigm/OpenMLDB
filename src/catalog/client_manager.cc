@@ -78,7 +78,7 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
                                                                   const ::fesql::codec::Row& row,
                                                                   const bool is_procedure,
                                                                   const bool is_debug) {
-    DLOG(INFO) << "SubQuery taskid: " << task_id;
+    DLOG(INFO) << "SubQuery taskid: " << task_id << " is_procedure=" << is_procedure;
     auto client = GetClient();
     if (!client) {
         return std::make_shared<TabletRowHandler>(
@@ -86,9 +86,9 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
     }
     ::rtidb::api::QueryRequest request;
     if (is_procedure) {
-        request.set_sql(sql);
-    } else {
         request.set_sp_name(sql);
+    } else {
+        request.set_sql(sql);
     }
     request.set_db(db);
     request.set_is_batch(false);
