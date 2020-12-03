@@ -1904,21 +1904,18 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(RunnerContext& ctx) {
         case kRowHandler: {
             auto row = std::dynamic_pointer_cast<RowHandler>(input)->GetValue();
             if (!task.GetIndexKey().ValidKey()) {
-                // local mode
-                RunnerContext local_ctx(ctx.cluster_job(), row, ctx.is_debug());
-                return task.GetRoot()->RunWithCache(local_ctx);
+                LOG(WARNING) << "can't pick tablet to subquery without index";
+                return std::shared_ptr<DataHandler>();
             }
             KeyGenerator generator(task.GetIndexKey().fn_info());
             pk = generator.Gen(row);
             if (pk.empty()) {
                 // local mode
-                RunnerContext local_ctx(ctx.cluster_job(), row, ctx.is_debug());
-                return task.GetRoot()->RunWithCache(local_ctx);
+                LOG(WARNING) << "can't pick tablet to subquery with empty pk";
+                return std::shared_ptr<DataHandler>();
             } else {
                 DLOG(INFO) << "pick tablet with given index_name "
                            << task.index() << " pk " << pk;
-                // TODO(denglong): route tablet client based on index
-                // and
                 auto table_handler = task.table_handler();
                 if (!table_handler) {
                     LOG(WARNING) << "table handler is null";
@@ -1927,13 +1924,18 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(RunnerContext& ctx) {
                 auto tablet = table_handler->GetTablet(task.index(), pk);
                 if (!tablet) {
                     DLOG(INFO) << "tablet is null, run in local mode";
-                    RunnerContext local_ctx(ctx.cluster_job(), row,
-                                            ctx.is_debug());
-                    return task.GetRoot()->RunWithCache(local_ctx);
+                    return std::shared_ptr<DataHandler>();
                 } else {
-                    return tablet->SubQuery(
-                        task_id_, table_handler->GetDatabase(),
-                        cluster_job->sql(), row, ctx.is_debug());
+                    if (ctx.sp_name().empty()) {
+                        return tablet->SubQuery(
+                            task_id_, table_handler->GetDatabase(),
+                            cluster_job->sql(), row, false, ctx.is_debug());
+                    } else {
+                        return tablet->SubQuery(
+                            task_id_, table_handler->GetDatabase(),
+                            ctx.sp_name(), row, false, ctx.is_debug());
+
+                    }
                 }
             }
         }
