@@ -573,8 +573,7 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
     rtidb::sdk::SQLSDKTest::CreateTables(sql_case, router, 8);
     rtidb::sdk::SQLSDKTest::InsertTables(sql_case, router, true);
     if (is_procedure) {
-        rtidb::sdk::SQLSDKTest::CreateProcedure(sql_case, router );
-
+        rtidb::sdk::SQLSDKTest::CreateProcedure(sql_case, router);
     }
     {
         // execute SQL
@@ -603,7 +602,6 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
             state.SkipWithError("benchmark error: fesql case input data invalid");
             return;
         }
-
 
         if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
             rtidb::sdk::SQLSDKTest::CheckSchema(request_table.columns(), *(request_row->GetSchema().get()));
@@ -645,7 +643,8 @@ static void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sq
         } else {
             if (is_procedure) {
                 for (auto _ : state) {
-                    benchmark::DoNotOptimize(router->CallProcedure(sql_case.db(), sql_case.inputs()[0].name_, request_row, &status));
+                    benchmark::DoNotOptimize(
+                        router->CallProcedure(sql_case.db(), sql_case.inputs()[0].name_, request_row, &status));
                 }
             } else {
                 for (auto _ : state) {
@@ -669,7 +668,7 @@ FROM {0}
 last join {1} order by {1}.x7 on {0}.c1 = {1}.x1 and {0}.c7 - {ts_diff} >= {1}.x7
 last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - {ts_diff} >= {2}.x7;
 )");
-    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0)*1000/2));
+    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0) * 1000 / 2));
     BM_RequestQuery(state, sql_case);
 }
 static void BM_SimpleLastJoinTable4(benchmark::State& state) {  // NOLINT
@@ -684,7 +683,7 @@ last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - {ts_diff} >= {2}.x
 last join {3} order by {3}.x7 on {0}.c3 = {3}.x3 and {0}.c7 - {ts_diff} >= {3}.x7
 last join {4} order by {4}.x7 on {0}.c4 = {4}.x4 and {0}.c7 - {ts_diff} >= {4}.x7;
 )";
-    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0)*1000/2));
+    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0) * 1000 / 2));
     BM_RequestQuery(state, sql_case);
 }
 
@@ -710,7 +709,7 @@ window w1 as (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDI
 last join {1} as t2 order by t2.x7 on c2 = t2.x2 and c7 - {ts_diff} >= t2.x7
 ;
 )";
-    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0)*1000/2));
+    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0) * 1000 / 2));
     BM_RequestQuery(state, sql_case);
 }
 static void BM_SimpleWindowOutputLastJoinTable4(benchmark::State& state) {  // NOLINT
@@ -736,7 +735,7 @@ static void BM_SimpleWindowOutputLastJoinTable4(benchmark::State& state) {  // N
         last join {1} as t3 order by t3.x7 on c3 = t3.x3 and c7 - {ts_diff} >= t3.x7
         last join {1} as t4 order by t4.x7 on c4 = t4.x4 and c7 - {ts_diff} >= t4.x7;
 )";
-    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0)*1000/2));
+    boost::replace_all(sql_case.sql_str_, "{ts_diff}", std::to_string(state.range(0) * 1000 / 2));
     BM_RequestQuery(state, sql_case);
 }
 
