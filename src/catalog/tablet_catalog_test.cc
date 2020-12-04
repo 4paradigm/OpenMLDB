@@ -562,6 +562,31 @@ TEST_F(TabletCatalogTest, iterator_test_discontinuous) {
     ASSERT_EQ(full_record_num, 500);
 }
 
+TEST_F(TabletCatalogTest, get_tablet) {
+    auto local_tablet = std::make_shared<fesql::vm::LocalTablet>(nullptr);
+    uint32_t pid_num = 8;
+    TestArgs *args = PrepareMultiPartitionTable("t1", pid_num);
+    auto handler = std::make_shared<TabletTableHandler>(args->meta[0], local_tablet);
+    ClientManager client_manager;
+    ASSERT_TRUE(handler->Init(client_manager));
+    handler->AddTable(args->tables[0]);
+    handler->AddTable(args->tables[3]);
+    handler->AddTable(args->tables[7]);
+    std::string pk = "key0";
+    int pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
+    ASSERT_EQ(pid, 7);
+    auto tablet = handler->GetTablet("", pk);
+    auto real_tablet = std::dynamic_pointer_cast<fesql::vm::LocalTablet>(tablet);
+    ASSERT_TRUE(real_tablet != nullptr);
+    pk = "key1";
+    pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
+    ASSERT_EQ(pid, 6);
+    tablet = handler->GetTablet("", pk);
+    real_tablet = std::dynamic_pointer_cast<fesql::vm::LocalTablet>(tablet);
+    ASSERT_TRUE(real_tablet == nullptr);
+    delete args;
+}
+
 }  // namespace catalog
 }  // namespace rtidb
 
