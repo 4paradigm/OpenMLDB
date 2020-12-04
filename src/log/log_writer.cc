@@ -11,18 +11,13 @@
 #include "base/glog_wapper.h" // NOLINT
 #include "gflags/gflags.h"
 #include "base/endianconv.h"
-#ifdef PZFPGA_ENABLE
-#include "pz.h" // NOLINT
-#endif
+#include "base/compress.h"
 
 DECLARE_string(snapshot_compression);
 
 namespace rtidb {
 namespace log {
 
-#ifdef PZFPGA_ENABLE
-    static FPGA_env * fpga_ctx_;
-#endif
 
 static void InitTypeCrc(uint32_t* type_crc) {
     for (int i = 0; i <= kMaxRecordType; i++) {
@@ -45,11 +40,6 @@ Writer::Writer(WritableFile* dest, bool for_snapshot)
     } else {
         block_size_ = kBlockSize;
     }
-#ifdef PZFPGA_ENABLE
-    if (for_snapshot_ && FLAGS_snapshot_compression == "pz") {
-        fpga_ctx_ = gzipfpga_init_titanse();
-    }
-#endif
 }
 
 Writer::Writer(WritableFile* dest, uint64_t dest_length, bool for_snapshot)
@@ -67,19 +57,9 @@ Writer::Writer(WritableFile* dest, uint64_t dest_length, bool for_snapshot)
         block_size_ = kBlockSize;
     }
     block_offset_ = dest_length % block_size_;
-#ifdef PZFPGA_ENABLE
-    if (for_snapshot_ && FLAGS_snapshot_compression == "pz") {
-        fpga_ctx_ = gzipfpga_init_titanse();
-    }
-#endif
 }
 
 Writer::~Writer() {
-#ifdef PZFPGA_ENABLE
-    if (for_snapshot_ && FLAGS_snapshot_compression == "pz" && fpga_ctx_) {
-        gzipfpga_end(fpga_ctx_);
-    }
-#endif
     if (buffer_) {
         delete[] buffer_;
     }
@@ -245,8 +225,9 @@ Status Writer::CompressRecord() {
     int compress_len = -1;
 #ifdef PZFPGA_ENABLE
     if (FLAGS_snapshot_compression == "pz") {
+        FPGA_env* fpga_env = rtidb::base::Compress::GetFpgaEnv();
         compress_len = gzipfpga_compress_nohuff(
-                fpga_ctx_, buffer_, compress_data, block_size_, block_size_, 0);
+                fpga_env, buffer_, compress_data, block_size_, block_size_, 0);
     } else {
 #endif
         size_t tmp_val = 0;

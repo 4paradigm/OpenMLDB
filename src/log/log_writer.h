@@ -11,7 +11,6 @@
 #include "base/status.h"
 #include "log/log_format.h"
 #include "log/writable_file.h"
-#include "config.h" // NOLINT
 
 using ::rtidb::base::Slice;
 using ::rtidb::base::Status;

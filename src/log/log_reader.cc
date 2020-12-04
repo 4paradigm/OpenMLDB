@@ -22,10 +22,7 @@
 #include "log/log_format.h"
 #include "base/glog_wapper.h" // NOLINT
 #include "base/endianconv.h"
-#include "config.h" // NOLINT
-#ifdef PZFPGA_ENABLE
-#include "pz.h" // NOLINT
-#endif
+#include "base/compress.h"
 
 
 using ::rtidb::base::Status;
@@ -38,10 +35,6 @@ namespace rtidb {
 namespace log {
 
 Reader::Reporter::~Reporter() {}
-
-#ifdef PZFPGA_ENABLE
-    static FPGA_env * fpga_ctx_;
-#endif
 
 Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
                uint64_t initial_offset, bool for_snaphot)
@@ -67,20 +60,10 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
               block_size_ = kBlockSize;
           }
           backing_store_ = new char[block_size_];
-#ifdef PZFPGA_ENABLE
-          if (for_snapshot_ && FLAGS_snapshot_compression == "pz") {
-              fpga_ctx_ = gzipfpga_init_titanse();
-          }
-#endif
       }
 
 Reader::~Reader() {
     delete[] backing_store_;
-#ifdef PZFPGA_ENABLE
-    if (for_snapshot_ && FLAGS_snapshot_compression == "pz" && fpga_ctx_) {
-        gzipfpga_end(fpga_ctx_);
-    }
-#endif
 }
 
 bool Reader::SkipToInitialBlock() {
@@ -327,8 +310,9 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
             int uncompress_len = 0;
 #ifdef PZFPGA_ENABLE
             if (FLAGS_snapshot_compression == "pz") {
+                FPGA_env* fpga_env = rtidb::base::Compress::GetFpgaEnv();
                 uncompress_len = gzipfpga_uncompress_nohuff(
-                    NULL, block_data, uncompress, compress_len, block_size_);
+                    fpga_env, block_data, uncompress, compress_len, block_size_);
             } else {
 #endif
                 size_t tmp_val = 0;
