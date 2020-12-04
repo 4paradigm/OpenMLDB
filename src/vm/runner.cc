@@ -986,6 +986,10 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(RunnerContext& ctx) {
     if (join_gen_.right_group_gen_.Valid()) {
         right = join_gen_.right_group_gen_.Partition(right);
     }
+    if (!right) {
+        LOG(WARNING) << "fail to run last join: right partition is empty";
+        return fail_ptr;
+    }
 
     if (kTableHandler == left->GetHanlderType()) {
         auto left_table = std::dynamic_pointer_cast<TableHandler>(left);
