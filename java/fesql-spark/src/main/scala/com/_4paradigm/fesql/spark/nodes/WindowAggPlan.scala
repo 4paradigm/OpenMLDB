@@ -2,6 +2,7 @@ package com._4paradigm.fesql.spark.nodes
 
 import com._4paradigm.fesql.common.{FesqlException, JITManager, SerializableByteBuffer}
 import com._4paradigm.fesql.spark._
+import com._4paradigm.fesql.spark.element.FesqlConfig
 import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil, SparkColumnUtil, SparkRowUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalWindowAggrerationNode, WindowInterface}
 import org.apache.spark.broadcast.Broadcast
@@ -17,6 +18,7 @@ object WindowAggPlan {
   def gen(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance): SparkInstance = {
     // process unions
     val unionNum = node.window_unions().GetSize().toInt
+    
     val outputRDD = if (unionNum > 0) {
       genWithUnion(ctx, node, input)
     } else {
@@ -32,6 +34,9 @@ object WindowAggPlan {
     // group and sort
     val inputDf = groupAndSort(ctx, node, input.getDf(ctx.getSparkSession))
     val windowAggConfig = createWindowAggConfig(ctx, node)
+    if (FesqlConfig.configMode.equals(FesqlConfig.skew)) {
+
+    }
 
     val resultRDD = inputDf.rdd.mapPartitions(iter => {
       // ensure worker native
@@ -65,6 +70,8 @@ object WindowAggPlan {
     })
     resultRDD
   }
+
+  
 
 
   def doUnionTables(ctx: PlanContext,
@@ -148,7 +155,7 @@ object WindowAggPlan {
       groupByCols += SparkColumnUtil.getColumnFromIndex(input, colIdx)
     }
 
-    val partitions = ctx.getConf("fesql.group.partitions", 0)
+    val partitions = ctx.getConf(FesqlConfig.configPartitions, FesqlConfig.paritions)
     val groupedDf = if (partitions > 0) {
       input.repartition(partitions, groupByCols: _*)
     } else {

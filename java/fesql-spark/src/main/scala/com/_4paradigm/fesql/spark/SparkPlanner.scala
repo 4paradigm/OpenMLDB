@@ -3,6 +3,7 @@ package com._4paradigm.fesql.spark
 import com._4paradigm.fesql.FeSqlLibrary
 import com._4paradigm.fesql.`type`.TypeOuterClass._
 import com._4paradigm.fesql.common.{SQLEngine, UnsupportedFesqlException}
+import com._4paradigm.fesql.spark.element.FesqlConfig
 import com._4paradigm.fesql.spark.nodes._
 import com._4paradigm.fesql.spark.utils.FesqlUtil
 import com._4paradigm.fesql.vm._
@@ -33,7 +34,7 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
       case (name, df) => planCtx.registerDataFrame(name, df)
     }
 
-    withSQLEngine(sql, FesqlUtil.getDatabase("spark_db", tableDict)) { engine =>
+    withSQLEngine(sql, FesqlUtil.getDatabase(FesqlConfig.configDBName, tableDict)) { engine =>
       val irBuffer = engine.getIRBuffer
       planCtx.setModuleBuffer(irBuffer)
 

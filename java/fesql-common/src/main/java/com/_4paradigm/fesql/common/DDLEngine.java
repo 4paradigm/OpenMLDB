@@ -53,6 +53,7 @@ public class DDLEngine {
         db.setName(tempDB);
         List<TypeOuterClass.TableDef> tables = getTableDefs(schema);
         Map<String, TypeOuterClass.TableDef> tableDefMap = new HashMap<>();
+//        tableDefMap.forEach((k, v) -> System.out.printf("xx"));
         for (TypeOuterClass.TableDef e : tables) {
             db.addTables(e);
             tableDefMap.put(e.getName(), e);
@@ -67,8 +68,11 @@ public class DDLEngine {
             Map<String, RtidbTable> rtidbTables = parseRtidbIndex(listNodes, tableDefMap);
             StringBuilder sb = new StringBuilder();
             for (Map.Entry<String, RtidbTable> e : rtidbTables.entrySet()) {
-                sb.append(e.getValue().toDDL());
-                sb.append(";\n");
+                if (e.getKey().equals(e.getValue().getTableName())) {
+                    sb.append(e.getValue().toDDL());
+                    sb.append(";\n");
+                }
+
             }
             String res = sb.toString();
             logger.info("gen ddl:" +  res);
@@ -84,8 +88,6 @@ public class DDLEngine {
     public static void parseWindowOp(PhysicalOpNode node, Map<String, RtidbTable> rtidbTables) {
         logger.info("begin to pares window op");
         PhysicalRequestUnionNode castNode = PhysicalRequestUnionNode.CastFrom(node);
-
-        String ts = castNode.window().sort().orders().order_by().GetChild(0).GetExprString();
         long start = -1;
         long end = -1;
         long cntStart = -1;
@@ -105,7 +107,9 @@ public class DDLEngine {
             nodes.add(castNode.window_unions().GetKey(i));
         }
 
+//        int nodeIndex = -1;
         for (PhysicalOpNode e : nodes) {
+//            nodeIndex++;
             PhysicalDataProviderNode unionTable = findDataProviderNode(e);
             logger.info("union table = {}", unionTable.GetName());
 
@@ -119,6 +123,7 @@ public class DDLEngine {
                         ColumnRefNode.CastFrom(castNode.window().partition().keys().GetChild(keyIndex)));
                 keys.add(key);
             }
+            String ts = CoreAPI.ResolveSourceColumnName(e, ColumnRefNode.CastFrom(castNode.window().sort().orders().order_by().GetChild(0)));
 
             index.setTs(ts);
             if (start != -1) {
@@ -170,10 +175,10 @@ public class DDLEngine {
         Key conditionKey = join.join().right_key();
         Sort sort = join.join().right_sort();
         if (sort != null && sort.orders() != null) {
-            String ts = sort.orders().order_by().GetChild(0).GetExprString();
+            String ts = CoreAPI.ResolveSourceColumnName(join, ColumnRefNode.CastFrom(sort.orders().order_by().GetChild(0)));
             rightIndex.setTs(ts);
-            rightIndex.setAtmost(1);
         }
+        rightIndex.setAtmost(1);
         List<String> keys = rightIndex.getKeys();
         for (int i = 0; i < conditionKey.keys().GetChildNum(); i++) {
             String keyName = CoreAPI.ResolveSourceColumnName(node,
