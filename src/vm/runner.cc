@@ -1934,7 +1934,6 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(RunnerContext& ctx) {
                         return tablet->SubQuery(
                             task_id_, table_handler->GetDatabase(),
                             ctx.sp_name(), row, true, ctx.is_debug());
-
                     }
                 }
             }

@@ -139,9 +139,7 @@ class RunSession {
     void EnableDebug() { is_debug_ = true; }
     void DisableDebug() { is_debug_ = false; }
 
-    void SetSpName(const std::string& sp_name) {
-        sp_name_ = sp_name;
-    }
+    void SetSpName(const std::string& sp_name) { sp_name_ = sp_name; }
     EngineMode engine_mode() const { return engine_mode_; }
 
  protected:
@@ -230,12 +228,12 @@ typedef std::map<
     EngineLRUCache;
 class CompileInfoCache {
  public:
-    virtual std::shared_ptr<fesql::vm::CompileInfo> GetRequestInfo(const std::string& db,
-                                                                   const std::string& sp_name,
-                                                                   base::Status& status) = 0; //NOLINT
-    virtual std::shared_ptr<fesql::vm::CompileInfo> GetBatchRequestInfo(const std::string& db,
-                                                                        const std::string& sp_name,
-                                                                        base::Status& status) = 0; //NOLINT
+    virtual std::shared_ptr<fesql::vm::CompileInfo> GetRequestInfo(
+        const std::string& db, const std::string& sp_name,
+        base::Status& status) = 0;  // NOLINT
+    virtual std::shared_ptr<fesql::vm::CompileInfo> GetBatchRequestInfo(
+        const std::string& db, const std::string& sp_name,
+        base::Status& status) = 0;  // NOLINT
 };
 class Engine {
  public:
@@ -286,8 +284,7 @@ class Engine {
 
 class LocalTabletRowHandler : public RowHandler {
  public:
-    LocalTabletRowHandler(uint32_t task_id,
-                          const RequestRunSession& session,
+    LocalTabletRowHandler(uint32_t task_id, const RequestRunSession& session,
                           const Row& request)
         : RowHandler(),
           status_(base::Status::Running()),
@@ -365,16 +362,16 @@ class LocalTablet : public Tablet {
             }
         }
 
-        return std::shared_ptr<RowHandler>(new LocalTabletRowHandler(
-            task_id, session, row));
+        return std::shared_ptr<RowHandler>(
+            new LocalTabletRowHandler(task_id, session, row));
     }
     std::shared_ptr<RowHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
-        const std::vector<fesql::codec::Row>& rows,
-        const bool is_procedure,
+        const std::vector<fesql::codec::Row>& rows, const bool is_procedure,
         const bool is_debug) override {
         return std::shared_ptr<RowHandler>();
     }
+
  private:
     vm::Engine* engine_;
     std::shared_ptr<fesql::vm::CompileInfoCache> sp_cache_;
