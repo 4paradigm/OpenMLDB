@@ -568,7 +568,7 @@ TEST_F(TabletCatalogTest, get_tablet) {
     uint32_t pid_num = 8;
     TestArgs *args = PrepareMultiPartitionTable("t1", pid_num);
     auto handler = std::make_shared<TabletTableHandler>(args->meta[0], local_tablet);
-    ClientManager client_manager;
+    ClientManager client_manager, std::shared_ptr<fesql::vm::CompileInfoCache>();
     ASSERT_TRUE(handler->Init(client_manager));
     handler->AddTable(args->tables[0]);
     handler->AddTable(args->tables[3]);
