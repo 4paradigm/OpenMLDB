@@ -171,56 +171,54 @@ void SQLSDKTest::DropTables(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
 }
 
 void SQLSDKTest::CreateProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                              std::shared_ptr<SQLRouter> router, bool is_batch) {
+                                 std::shared_ptr<SQLRouter> router, bool is_batch) {
     DLOG(INFO) << "Create Procedure BEGIN";
     fesql::sdk::Status status;
+    if (sql_case.inputs()[0].name_.empty()) {
+        sql_case.set_input_name(fesql::sqlcase::SQLCase::GenRand("auto_t"), 0);
+    }
+    std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
-        if (sql_case.inputs()[i].name_.empty()) {
-            sql_case.set_input_name(fesql::sqlcase::SQLCase::GenRand("auto_t"), i);
-        }
-        std::string sql = sql_case.sql_str();
-        for (size_t i = 0; i < sql_case.inputs().size(); i++) {
-            std::string placeholder = "{" + std::to_string(i) + "}";
-            boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
-        }
-        boost::replace_all(sql, "{auto}", fesql::sqlcase::SQLCase::GenRand("auto_t"));
-        boost::to_lower(sql);
-        LOG(INFO) << sql;
-        if (!boost::algorithm::starts_with(sql, "select")) {
-            FAIL() << "sql not support in request mode";
-        }
-        std::string create_sp;
-        if (is_batch) {
-            ASSERT_TRUE(sql_case.BuildCreateSpSQLFromInput(
-                        i, sql, sql_case.batch_request().common_column_indices_, &create_sp));
-        } else {
-            std::set<size_t> common_idx;
-            ASSERT_TRUE(sql_case.BuildCreateSpSQLFromInput(i, sql, common_idx, &create_sp));
-        }
+        std::string placeholder = "{" + std::to_string(i) + "}";
+        boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+    }
+    boost::replace_all(sql, "{auto}", fesql::sqlcase::SQLCase::GenRand("auto_t"));
+    boost::to_lower(sql);
+    boost::trim(sql);
+    LOG(INFO) << sql;
+    std::string create_sp;
+    if (is_batch) {
+        ASSERT_TRUE(
+            sql_case.BuildCreateSpSQLFromInput(0, sql, sql_case.batch_request().common_column_indices_, &create_sp));
+    } else {
+        std::set<size_t> common_idx;
+        ASSERT_TRUE(sql_case.BuildCreateSpSQLFromInput(0, sql, common_idx, &create_sp));
+    }
+
+    for (int i = 0; i < sql_case.inputs_.size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
         boost::replace_all(create_sp, placeholder, sql_case.inputs()[i].name_);
-        LOG(INFO) << create_sp;
-        if (!create_sp.empty()) {
-            router->ExecuteDDL(sql_case.db(), create_sp, &status);
-            ASSERT_TRUE(router->RefreshCatalog());
-        }
+    }
+    LOG(INFO) << create_sp;
+    if (!create_sp.empty()) {
+        router->ExecuteDDL(sql_case.db(), create_sp, &status);
+        ASSERT_TRUE(router->RefreshCatalog());
     }
     DLOG(INFO) << "Create Procedure DONE";
 }
 
 void SQLSDKTest::DropProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
-                            std::shared_ptr<SQLRouter> router) {
+                               std::shared_ptr<SQLRouter> router) {
     fesql::sdk::Status status;
-    for (size_t i = 0; i < sql_case.inputs().size(); i++) {
-        if (sql_case.inputs()[i].name_.empty()) {
-            sql_case.set_input_name(fesql::sqlcase::SQLCase::GenRand("auto_t"), i);
-        }
-        std::string drop = "drop procedure " + sql_case.inputs()[i].name_ + ";";
-        LOG(INFO) << drop;
-        if (!drop.empty()) {
-            router->ExecuteDDL(sql_case.db(), drop, &status);
-            ASSERT_TRUE(router->RefreshCatalog());
-        }
+    if (sql_case.inputs()[0].name_.empty()) {
+        LOG(WARNING) << "fail to drop procedure, sp name is empty";
+        return;
+    }
+    std::string drop = "drop procedure " + sql_case.inputs()[0].name_ + ";";
+    LOG(INFO) << drop;
+    if (!drop.empty()) {
+        router->ExecuteDDL(sql_case.db(), drop, &status);
+        ASSERT_TRUE(router->RefreshCatalog());
     }
 }
 
