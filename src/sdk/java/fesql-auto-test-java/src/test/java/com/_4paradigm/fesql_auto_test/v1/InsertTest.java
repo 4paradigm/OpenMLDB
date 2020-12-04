@@ -3,6 +3,7 @@ package com._4paradigm.fesql_auto_test.v1;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import com._4paradigm.fesql_auto_test.common.FesqlTest;
 import com._4paradigm.fesql_auto_test.entity.FesqlDataProvider;
+import com._4paradigm.fesql_auto_test.entity.FesqlDataProviderList;
 import com._4paradigm.fesql_auto_test.executor.ExecutorFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.DataProvider;
@@ -19,8 +20,8 @@ public class InsertTest extends FesqlTest {
 
     @DataProvider
     public Object[] testInsertData() throws FileNotFoundException {
-        FesqlDataProvider dp = FesqlDataProvider
-                .dataProviderGenerator("/integration/v1/test_insert.yaml");
+        FesqlDataProviderList dp = FesqlDataProviderList
+                .dataProviderGenerator(new String[]{"/integration/v1/test_insert.yaml"});
         return dp.getCases().toArray();
     }
 
