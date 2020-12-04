@@ -438,7 +438,7 @@ TEST_F(SQLSDKTest, create_table) {
     sql_opt.zk_path = mc_->GetZkPath();
     auto router = NewClusterSQLRouter(sql_opt);
     ASSERT_TRUE(router != nullptr);
-    std::string db = "db" + rand() % 1000;
+    std::string db = "db" + rand() % 1000;  // NOLINT
     ::fesql::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
