@@ -200,7 +200,8 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
     ASSERT_TRUE(catalog->Init());
     fesql::vm::Engine engine(catalog, options);
 
-    catalog->SetLocalTablet(std::shared_ptr<fesql::vm::Tablet>(new fesql::vm::LocalTablet(&engine)));
+    catalog->SetLocalTablet(std::shared_ptr<fesql::vm::Tablet>(
+        new fesql::vm::LocalTablet(&engine, std::shared_ptr<fesql::vm::CompileInfoCache>())));
     // Init catalog
     std::map<std::string, std::pair<std::shared_ptr<TestArgs>, std::shared_ptr<::fesql::storage::Table>>>
         name_table_map;
