@@ -44,6 +44,7 @@ DECLARE_uint32(get_replica_status_interval);
 DECLARE_int32(make_snapshot_time);
 DECLARE_int32(make_snapshot_check_interval);
 DECLARE_bool(use_name);
+DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_timeseries_table);
 
 using ::rtidb::base::BLOB_PREFIX;
@@ -2623,7 +2624,7 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     {
         std::lock_guard<std::mutex> lock(mu_);
         std::map<std::string, std::shared_ptr<::rtidb::nameserver::TableInfo>>* cur_table_info = &table_info_;
-        if (!table_info.db().empty()) {
+        if (FLAGS_enable_distsql && !table_info.db().empty()) {
             auto it = db_table_info_.find(table_info.db());
             if (it != db_table_info_.end()) {
                 cur_table_info = &(it->second);
