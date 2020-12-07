@@ -103,6 +103,10 @@ bool BuildStoreOffset(::llvm::IRBuilder<>& builder,  // NOLINT
                       ::llvm::Value* ptr, ::llvm::Value* offset,
                       ::llvm::Value* value);
 
+llvm::Value* CreateAllocaAtHead(llvm::IRBuilder<>* builder, llvm::Type* dtype,
+                                const std::string& name,
+                                llvm::Value* size = nullptr);
+
 }  // namespace codegen
 }  // namespace fesql
 #endif  // SRC_CODEGEN_IR_BASE_BUILDER_H_
