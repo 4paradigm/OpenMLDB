@@ -21,7 +21,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     private SQLInsertRows currentRows = null;
     private SQLRouter router = null;
     private List<Object> currentDatas = null;
-    private List<Integer> currentDatasLen = null;
     private List<DataType> currentDatasType = null;
     private Schema currentSchema = null;
     private String db = null;
@@ -49,7 +48,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         this.db = db;
         VectorUint32 idxs = this.currentRow.GetHoleIdx();
         currentDatas = new ArrayList<>(idxs.size());
-        currentDatasLen = new ArrayList<>(idxs.size());
         currentDatasType = new ArrayList<>(idxs.size());
         hasSet = new ArrayList<>(idxs.size());
         scehmaIdxs = new ArrayList<>(idxs.size());
@@ -58,7 +56,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             DataType type = currentSchema.GetColumnType(idx);
             currentDatasType.add(type);
             currentDatas.add(null);
-            currentDatasLen.add(0);
             hasSet.add(false);
             scehmaIdxs.add(i);
         }
@@ -187,7 +184,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         stringsLen.put(i, bytes.length);
         hasSet.set(i - 1, true);
         currentDatas.set(i - 1, s);
-        currentDatasLen.set(i - 1, bytes.length);
     }
 
     @Override
@@ -274,17 +270,9 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             currentRow = currentRows.NewRow();
         }
         int strLen = 0;
-        if (!stringsLen.isEmpty()) {
-            for (Integer k : stringsLen.keySet()) {
-                Integer len = stringsLen.get(k);
-                strLen += len;
-            }
-        }
-        for (int i = 0; i < currentDatasType.size(); i++) {
-            if (currentDatasType.get(i) != DataType.kTypeString) {
-                continue;
-            }
-            strLen += currentDatasLen.get(i);
+        for (Integer k : stringsLen.keySet()) {
+            Integer len = stringsLen.get(k);
+            strLen += len;
         }
         boolean ok = currentRow.Init(strLen);
         if (!ok) {
@@ -319,6 +307,9 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             if (!ok) {
                 throw new SQLException("put data faile idx is " + i);
             }
+        }
+        if (!currentRow.Build()) {
+            throw new SQLException("build insert row failed");
         }
         currentRow = null;
         clearParameters();
@@ -721,7 +712,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             rows.delete();
         }
         sqlRowsMap.clear();
-        currentSchema = null;
         currentSchema = null;
         currentRow = null;
         currentRows = null;
