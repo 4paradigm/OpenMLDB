@@ -78,8 +78,30 @@ class SpCache : public fesql::vm::CompileInfoCache {
  public:
     SpCache() : db_sp_map_() {}
     ~SpCache() {}
+    void InsertSQLProcedureCacheEntry(const std::string& db, const std::string& sp_name,
+                                      std::shared_ptr<fesql::sdk::ProcedureInfo> procedure_info,
+                                      std::shared_ptr<fesql::vm::CompileInfo> request_info,
+                                      std::shared_ptr<fesql::vm::CompileInfo> batch_request_info) {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        auto& sp_map_of_db = db_sp_map_[db];
+        sp_map_of_db.insert(
+            std::make_pair(sp_name, SQLProcedureCacheEntry(procedure_info, request_info, batch_request_info)));
+    }
+
+    void DropSQLProcedureCacheEntry(const std::string& db, const std::string& sp_name) {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        db_sp_map_[db].erase(sp_name);
+        return;
+    }
+    const bool ProcedureExist(const std::string& db, const std::string& sp_name) {
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
+        auto& sp_map_of_db = db_sp_map_[db];
+        auto sp_it = sp_map_of_db.find(sp_name);
+        return sp_it != sp_map_of_db.end();
+    }
     std::shared_ptr<fesql::vm::CompileInfo> GetRequestInfo(const std::string& db, const std::string& sp_name,
                                                            fesql::base::Status& status) override {  // NOLINT
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         auto db_it = db_sp_map_.find(db);
         if (db_it == db_sp_map_.end()) {
             status = fesql::base::Status(fesql::common::kProcedureNotFound,
@@ -102,6 +124,7 @@ class SpCache : public fesql::vm::CompileInfoCache {
     }
     std::shared_ptr<fesql::vm::CompileInfo> GetBatchRequestInfo(const std::string& db, const std::string& sp_name,
                                                                 fesql::base::Status& status) override {  // NOLINT
+        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         auto db_it = db_sp_map_.find(db);
         if (db_it == db_sp_map_.end()) {
             status = fesql::base::Status(fesql::common::kProcedureNotFound,
@@ -121,7 +144,10 @@ class SpCache : public fesql::vm::CompileInfoCache {
         }
         return sp_it->second.batch_request_info;
     }
+
+ private:
     std::map<std::string, std::map<std::string, SQLProcedureCacheEntry>> db_sp_map_;
+    SpinMutex spin_mutex_;
 };
 class TabletImpl : public ::rtidb::api::TabletServer {
  public:

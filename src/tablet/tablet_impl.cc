@@ -1941,7 +1941,6 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
             std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
             {
                 fesql::base::Status status;
-                std::lock_guard<std::mutex> lock(mu_);
                 request_compile_info = sp_cache_->GetRequestInfo(request->db(), request->sp_name(), status);
                 if (!status.isOK()) {
                     response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
@@ -2001,7 +2000,6 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
     if (is_procedure) {
         std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
         {
-            std::lock_guard<std::mutex> lock(mu_);
             fesql::base::Status status;
             request_compile_info = sp_cache_->GetBatchRequestInfo(request->db(), request->sp_name(), status);
             if (!status.isOK()) {
@@ -6056,17 +6054,11 @@ void TabletImpl::CreateProcedure(RpcController* controller,
     const std::string& db_name = sp_info.db_name();
     const std::string& sp_name = sp_info.sp_name();
     const std::string& sql = sp_info.sql();
-    {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        auto& sp_map_of_db = sp_cache_->db_sp_map_[db_name];
-        auto sp_it = sp_map_of_db.find(sp_name);
-        if (sp_it != sp_map_of_db.end()) {
-            response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
-            response->set_msg("store procedure already exists");
-            PDLOG(WARNING, "store procedure[%s] already exists in db[%s]",
-                    sp_name.c_str(), db_name.c_str());
-            return;
-        }
+    if (sp_cache_->ProcedureExist(db_name, sp_name)) {
+        response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
+        response->set_msg("store procedure already exists");
+        PDLOG(WARNING, "store procedure[%s] already exists in db[%s]", sp_name.c_str(), db_name.c_str());
+        return;
     }
     ::fesql::base::Status status;
 
@@ -6112,12 +6104,9 @@ void TabletImpl::CreateProcedure(RpcController* controller,
             << " to catalog with db " << db_name;
     }
 
-    {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        auto& sp_map_of_db = sp_cache_->db_sp_map_[db_name];
-        sp_map_of_db.insert(std::make_pair(sp_name, SQLProcedureCacheEntry(
-                        sp_info_impl, session.GetCompileInfo(), batch_session.GetCompileInfo())));
-    }
+    sp_cache_->InsertSQLProcedureCacheEntry(db_name, sp_name, sp_info_impl, session.GetCompileInfo(),
+                                            batch_session.GetCompileInfo());
+
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
     LOG(INFO) << "create procedure success! sp_name: " << sp_name << ", db: " << db_name << ", sql: " << sql;
@@ -6130,13 +6119,9 @@ void TabletImpl::DropProcedure(RpcController* controller,
     brpc::ClosureGuard done_guard(done);
     const std::string& db_name = request->db_name();
     const std::string& sp_name = request->sp_name();
-    {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        sp_cache_->db_sp_map_[db_name].erase(sp_name);
-    }
+    sp_cache_->DropSQLProcedureCacheEntry(db_name, sp_name);
     if (!catalog_->DropProcedure(db_name, sp_name)) {
-        LOG(WARNING) << "drop procedure" << db_name << "."
-            << sp_name << " in catalog failed";
+        LOG(WARNING) << "drop procedure" << db_name << "." << sp_name << " in catalog failed";
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -6196,12 +6181,8 @@ void TabletImpl::CreateProcedure(const std::shared_ptr<fesql::sdk::ProcedureInfo
         LOG(WARNING) << "fail to compile batch request for sql " << sql;
         return;
     }
-    {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        auto& sp_map_of_db = sp_cache_->db_sp_map_[db_name];
-        sp_map_of_db.insert(std::make_pair(sp_name, SQLProcedureCacheEntry(
-                        sp_info, session.GetCompileInfo(), batch_session.GetCompileInfo())));
-    }
+    sp_cache_->InsertSQLProcedureCacheEntry(db_name, sp_name, sp_info, session.GetCompileInfo(),
+                                            batch_session.GetCompileInfo());
     LOG(INFO) << "refresh procedure success! sp_name: " << sp_name << ", db: " << db_name << ", sql: " << sql;
 }
 
