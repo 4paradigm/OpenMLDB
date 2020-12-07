@@ -27,7 +27,7 @@ static void InitTypeCrc(uint32_t* type_crc) {
 }
 
 Writer::Writer(WritableFile* dest, bool for_snapshot)
-: dest_(dest), block_offset_(0), for_snapshot_(for_snapshot) {
+: dest_(dest), block_offset_(0), for_snapshot_(for_snapshot), buffer_(nullptr) {
     InitTypeCrc(type_crc_);
 #ifdef PZFPGA_ENABLE
     if (for_snapshot_ &&
@@ -43,7 +43,7 @@ Writer::Writer(WritableFile* dest, bool for_snapshot)
 }
 
 Writer::Writer(WritableFile* dest, uint64_t dest_length, bool for_snapshot)
-    : dest_(dest), for_snapshot_(for_snapshot) {
+    : dest_(dest), for_snapshot_(for_snapshot), buffer_(nullptr) {
     InitTypeCrc(type_crc_);
 #ifdef PZFPGA_ENABLE
     if (for_snapshot_ &&
