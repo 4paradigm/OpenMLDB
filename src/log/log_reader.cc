@@ -330,7 +330,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
                 return kBadRecord;
             }
             buffer_ = Slice(uncompress, block_size_);
-            delete uncompress;
+            delete[] uncompress;
         }
         offset = end_of_buffer_offset_;
         end_of_buffer_offset_ += buffer_.size();

@@ -257,7 +257,7 @@ Status Writer::CompressRecord() {
     if (!s.ok()) {
         PDLOG(WARNING, "write error. %s", s.ToString().c_str());
     }
-    delete compress_data;
+    delete[] compress_data;
     return s;
 }
 
