@@ -2,6 +2,7 @@ package com._4paradigm.fesql_auto_test.executor;
 
 import com._4paradigm.fesql.sqlcase.model.InputDesc;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.fesql_auto_test.common.FesqlConfig;
 import com._4paradigm.fesql_auto_test.entity.FesqlResult;
 import com._4paradigm.fesql_auto_test.util.FesqlUtil;
 import com._4paradigm.sql.sdk.SqlExecutor;
@@ -17,11 +18,13 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
     protected boolean isBatchRequest;
     protected boolean isAsyn;
 
-    public RequestQuerySQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest, boolean isAsyn) {
+    public RequestQuerySQLExecutor(SqlExecutor executor, SQLCase fesqlCase,
+                                   boolean isBatchRequest, boolean isAsyn) {
         super(executor, fesqlCase);
         this.isBatchRequest = isBatchRequest;
         this.isAsyn = isAsyn;
     }
+
 
     @Override
     protected void prepare() throws Exception {
@@ -49,6 +52,11 @@ public class RequestQuerySQLExecutor extends SQLExecutor {
         }
         if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("rtidb-request-unsupport")) {
             log.info("skip case in rtidb request mode: {}", fesqlCase.getDesc());
+            return;
+        }
+        if (FesqlConfig.isCluster() &&
+                null != fesqlCase.getMode() && fesqlCase.getMode().contains("cluster-unsupport")) {
+            log.info("cluster-unsupport, skip case in cluster request mode: {}", fesqlCase.getDesc());
             return;
         }
         process();

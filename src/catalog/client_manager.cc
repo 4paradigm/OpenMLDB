@@ -19,46 +19,55 @@
 #include <utility>
 #include "codec/fe_schema_codec.h"
 
+DECLARE_int32(request_timeout_ms);
+
 namespace rtidb {
 namespace catalog {
 
-TabletRowHandler::TabletRowHandler(const std::string& db, std::unique_ptr<brpc::Controller> cntl,
-                                   std::unique_ptr<::rtidb::api::QueryResponse> response)
+TabletRowHandler::TabletRowHandler(const std::string& db, rtidb::RpcCallback<rtidb::api::QueryResponse>* callback)
     : db_(db),
       name_(),
       status_(::fesql::base::Status::Running()),
       row_(),
-      cntl_(std::move(cntl)),
-      response_(std::move(response)) {}
+      callback_(callback) {
+    callback_->Ref();
+}
 
 TabletRowHandler::TabletRowHandler(::fesql::base::Status status)
-    : db_(), name_(), status_(status), row_(), cntl_(), response_() {}
+    : db_(), name_(), status_(status), row_(), callback_(nullptr) {}
+
+TabletRowHandler::~TabletRowHandler() {
+    if (callback_ != nullptr) {
+        callback_->UnRef();
+    }
+}
 
 const ::fesql::codec::Row& TabletRowHandler::GetValue() {
-    if (!status_.isRunning()) {
+    if (!status_.isRunning() || !callback_) {
         return row_;
     }
-    if (!cntl_ || !response_) {
+    auto cntl = callback_->GetController();
+    auto response = callback_->GetResponse();
+    if (!cntl || !response) {
         status_.code = fesql::common::kRpcError;
         return row_;
     }
-    DLOG(INFO) << "TabletRowHandler get value by brpc join " << cntl_->call_id();
-    // TODO(denglong) timeout handle
-    brpc::Join(cntl_->call_id());
-    if (cntl_->Failed()) {
-        status_ = ::fesql::base::Status(::fesql::common::kRpcError, "request error. " + cntl_->ErrorText());
+    DLOG(INFO) << "TabletRowHandler get value by brpc join";
+    brpc::Join(cntl->call_id());
+    if (cntl->Failed()) {
+        status_ = ::fesql::base::Status(::fesql::common::kRpcError, "request error. " + cntl->ErrorText());
         return row_;
     }
-    if (cntl_->response_attachment().size() <= codec::HEADER_LENGTH) {
+    if (cntl->response_attachment().size() <= codec::HEADER_LENGTH) {
         status_.code = fesql::common::kSchemaCodecError;
         status_.msg = "response content decode fail";
         return row_;
     }
     uint32_t tmp_size = 0;
-    cntl_->response_attachment().copy_to(reinterpret_cast<void*>(&tmp_size), codec::SIZE_LENGTH,
+    cntl->response_attachment().copy_to(reinterpret_cast<void*>(&tmp_size), codec::SIZE_LENGTH,
                  codec::VERSION_LENGTH);
     int8_t* out_buf = reinterpret_cast<int8_t*>(malloc(tmp_size));
-    cntl_->response_attachment().copy_to(out_buf, tmp_size);
+    cntl->response_attachment().copy_to(out_buf, tmp_size);
     row_ = fesql::codec::Row(fesql::base::RefCountedSlice::CreateManaged(out_buf, tmp_size));
     status_.code = ::fesql::common::kOk;
     return row_;
@@ -69,6 +78,11 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
                                                                   const ::fesql::codec::Row& row,
                                                                   const bool is_debug) {
     DLOG(INFO) << "SubQuery taskid: " << task_id;
+    auto client = GetClient();
+    if (!client) {
+        return std::make_shared<TabletRowHandler>(
+            ::fesql::base::Status(::fesql::common::kRpcError, "get client failed"));
+    }
     ::rtidb::api::QueryRequest request;
     request.set_sql(sql);
     request.set_db(db);
@@ -79,18 +93,16 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
         std::string* input_row = request.mutable_input_row();
         input_row->assign(reinterpret_cast<const char*>(row.buf()), row.size());
     }
-    std::unique_ptr<brpc::Controller> cntl(new brpc::Controller);
-    std::unique_ptr<::rtidb::api::QueryResponse> response(new ::rtidb::api::QueryResponse);
-    auto client = GetClient();
-    if (!client) {
-        return std::make_shared<TabletRowHandler>(
-            ::fesql::base::Status(::fesql::common::kRpcError, "get client failed"));
-    }
-    if (!client->SubQuery(request, cntl.get(), response.get())) {
+    auto cntl = std::make_shared<brpc::Controller>();
+    auto response = std::make_shared<::rtidb::api::QueryResponse>();
+    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
+    auto callback = new rtidb::RpcCallback<rtidb::api::QueryResponse>(response, cntl);
+    auto row_handler = std::make_shared<TabletRowHandler>(db, callback);
+    if (!client->SubQuery(request, callback)) {
         return std::make_shared<TabletRowHandler>(
             ::fesql::base::Status(::fesql::common::kRpcError, "send request failed"));
     }
-    return std::make_shared<TabletRowHandler>(db, std::move(cntl), std::move(response));
+    return row_handler;
 }
 
 std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,

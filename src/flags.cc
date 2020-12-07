@@ -59,6 +59,7 @@ DEFINE_int32(io_pool_size, 2, "the size of tablet io task thread pool");
 DEFINE_bool(use_name, false, "enable or disable use server name");
 DEFINE_string(data_dir, "./data", "the path of data dir");
 DEFINE_bool(enable_distsql, false, "enable or disable distribute sql");
+DEFINE_bool(enable_localtablet, true, "enable or disable local tablet opt when distribute sql circumstance");
 
 // scan configuration
 DEFINE_uint32(scan_max_bytes_size, 2 * 1024 * 1024,

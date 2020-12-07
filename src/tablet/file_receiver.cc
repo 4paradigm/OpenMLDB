@@ -63,7 +63,13 @@ int FileReceiver::WriteData(const std::string& data, uint64_t block_id) {
         DEBUGLOG("block id %lu has been received", block_id);
         return 0;
     }
+
+#ifdef __APPLE__
+    size_t r = fwrite(data.c_str(), 1, data.size(), file_);
+#else
+    // linux
     size_t r = fwrite_unlocked(data.c_str(), 1, data.size(), file_);
+#endif
     if (r < data.size()) {
         PDLOG(WARNING, "write error. name %s%s", path_.c_str(),
               file_name_.c_str());
