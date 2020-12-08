@@ -704,6 +704,44 @@ std::shared_ptr<TableHandler> Runner::TableReverse(
     output_table->Reverse();
     return output_table;
 }
+std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
+    if (need_cache_) {
+        auto cached = ctx.GetBatchCache(id_);
+        if (cached != nullptr) {
+            DLOG(INFO) << "RUNNER ID " << id_ << " HIT CACHE!";
+            return cached;
+        }
+    }
+    std::shared_ptr<DataHandlerVector> outputs =
+        std::make_shared<DataHandlerVector>();
+    std::vector<std::shared_ptr<DataHandler>> inputs(producers_.size());
+    std::vector<std::shared_ptr<DataHandlerList>> batch_inputs;
+    for (size_t idx = 0; idx < producers_.size(); idx++) {
+        batch_inputs.push_back(producers_[idx]->BatchRequestRun(ctx));
+    }
+
+    for (size_t idx = 0; idx < ctx.GetRequestSize(); idx++) {
+        for (size_t producer_idx = 0; producer_idx < producers_.size();
+             producer_idx++) {
+            inputs.push_back(batch_inputs[producer_idx]->Get(idx));
+        }
+        auto res = Run(ctx, inputs);
+        if (ctx.is_debug()) {
+            LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_)
+                      << ", ID: " << id_ << "\n";
+            Runner::PrintData(output_schemas_, res);
+        }
+        if (need_batch_cache_) {
+            return std::shared_ptr<DataHandlerList>(
+                new DataHandlerRepeater(res, ctx.GetRequestSize()));
+        }
+        outputs->Add(res);
+    }
+    if (need_cache_) {
+        ctx.SetBatchCache(id_, outputs);
+    }
+    return outputs;
+}
 std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     if (need_cache_) {
         auto cached = ctx.GetCache(id_);
@@ -712,14 +750,11 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
             return cached;
         }
     }
-    if (need_batch_cache_) {
-        auto batch_cached = ctx.GetBatchCache(id_);
-        if (batch_cached != nullptr) {
-            DLOG(INFO) << "RUNNER ID " << id_ << " HIT BATCH CACHE!";
-            return batch_cached;
-        }
+    std::vector<std::shared_ptr<DataHandler>> inputs;
+    for (size_t idx = 0; idx < producers_.size(); idx++) {
+        inputs.push_back(producers_[idx]->RunWithCache(ctx));
     }
-    auto res = Run(ctx);
+    auto res = Run(ctx, inputs);
     if (ctx.is_debug()) {
         LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
                   << "\n";
@@ -728,21 +763,37 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     if (need_cache_) {
         ctx.SetCache(id_, res);
     }
-    if (need_batch_cache_) {
-        ctx.SetBatchCache(id_, res);
-    }
     return res;
 }
-
-std::shared_ptr<DataHandler> DataRunner::Run(RunnerContext& ctx) {
+std::shared_ptr<DataHandler> DataRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     return data_handler_;
 }
-
-std::shared_ptr<DataHandler> RequestRunner::Run(RunnerContext& ctx) {
-    return std::shared_ptr<DataHandler>(new MemRowHandler(ctx.request()));
+std::shared_ptr<DataHandlerList> DataRunner::BatchRequestRun(
+    RunnerContext& ctx) {
+    return std::shared_ptr<DataHandlerList>(
+        new DataHandlerRepeater(data_handler_, ctx.GetRequestSize()));
 }
-std::shared_ptr<DataHandler> GroupRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> RequestRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    return std::shared_ptr<MemRowHandler>(new MemRowHandler(ctx.GetRequest()));
+}
+std::shared_ptr<DataHandlerList> RequestRunner::BatchRequestRun(
+    RunnerContext& ctx) {
+    std::shared_ptr<DataHandlerVector> outputs =
+        std::shared_ptr<DataHandlerVector>(new DataHandlerVector());
+    for (size_t idx = 0; idx < ctx.GetRequestSize(); idx++) {
+        outputs->Add(std::shared_ptr<MemRowHandler>(
+            new MemRowHandler(ctx.GetRequest(idx))));
+    }
+    return outputs;
+}
+std::shared_ptr<DataHandler> GroupRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    auto input = inputs[0];
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (!input) {
         LOG(WARNING) << "input is empty";
@@ -750,8 +801,10 @@ std::shared_ptr<DataHandler> GroupRunner::Run(RunnerContext& ctx) {
     }
     return partition_gen_.Partition(input);
 }
-std::shared_ptr<DataHandler> SortRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> SortRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    auto input = inputs[0];
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (!input) {
         LOG(WARNING) << "input is empty";
@@ -760,13 +813,17 @@ std::shared_ptr<DataHandler> SortRunner::Run(RunnerContext& ctx) {
     return sort_gen_.Sort(input);
 }
 
-std::shared_ptr<DataHandler> ConstProjectRunner::Run(RunnerContext& ctx) {
+std::shared_ptr<DataHandler> ConstProjectRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto output_table = std::shared_ptr<MemTableHandler>(new MemTableHandler());
     output_table->AddRow(project_gen_.Gen());
     return output_table;
 }
-std::shared_ptr<DataHandler> TableProjectRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> TableProjectRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    auto input = inputs[0];
     if (!input) {
         return std::shared_ptr<DataHandler>();
     }
@@ -789,15 +846,18 @@ std::shared_ptr<DataHandler> TableProjectRunner::Run(RunnerContext& ctx) {
     return output_table;
 }
 
-std::shared_ptr<DataHandler> RowProjectRunner::Run(RunnerContext& ctx) {
-    auto row =
-        std::dynamic_pointer_cast<RowHandler>(producers_[0]->RunWithCache(ctx));
+std::shared_ptr<DataHandler> RowProjectRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    auto row = std::dynamic_pointer_cast<RowHandler>(inputs[0]);
     return std::shared_ptr<RowHandler>(
         new MemRowHandler(project_gen_.Gen(row->GetValue())));
 }
 
-std::shared_ptr<DataHandler> SimpleProjectRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> SimpleProjectRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    auto input = inputs[0];
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (!input) {
         LOG(WARNING) << "simple project fail: input is null";
@@ -828,8 +888,10 @@ std::shared_ptr<DataHandler> SimpleProjectRunner::Run(RunnerContext& ctx) {
 
     return std::shared_ptr<DataHandler>();
 }
-std::shared_ptr<DataHandler> WindowAggRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> WindowAggRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    auto input = inputs[0];
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (!input) {
         LOG(WARNING) << "window aggregation fail: input is null";
@@ -976,10 +1038,11 @@ void WindowAggRunner::RunWindowAggOnKey(
 }
 
 std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
-    RunnerContext& ctx) {  // NOLINT
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {  // NOLINT
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    auto right = producers_[1]->RunWithCache(ctx);
-    auto left = producers_[0]->RunWithCache(ctx);
+    auto right = inputs[1];
+    auto left = inputs[0];
     if (!left || !right) {
         return std::shared_ptr<DataHandler>();
     }
@@ -996,10 +1059,15 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
     }
 }
 
-std::shared_ptr<DataHandler> LastJoinRunner::Run(RunnerContext& ctx) {
+std::shared_ptr<DataHandler> LastJoinRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    auto right = producers_[1]->RunWithCache(ctx);
-    auto left = producers_[0]->RunWithCache(ctx);
+    if (inputs.size() < 2) {
+        return fail_ptr;
+    }
+    auto right = inputs[1];
+    auto left = inputs[1];
     if (!left || !right) {
         LOG(WARNING) << "fail to run last join: left|right input is empty";
         return fail_ptr;
@@ -1689,10 +1757,15 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
     LOG(INFO) << data->GetHandlerTypeName() << " RESULT:\n" << oss.str();
 }
 
-std::shared_ptr<DataHandler> ConcatRunner::Run(RunnerContext& ctx) {
+std::shared_ptr<DataHandler> ConcatRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    auto right = producers_[1]->RunWithCache(ctx);
-    auto left = producers_[0]->RunWithCache(ctx);
+    if (inputs.size() < 2) {
+        return fail_ptr;
+    }
+    auto right = inputs[1];
+    auto left = inputs[0];
     size_t left_slices = producers_[0]->output_schemas()->GetSchemaSourceSize();
     size_t right_slices =
         producers_[1]->output_schemas()->GetSchemaSourceSize();
@@ -1706,9 +1779,12 @@ std::shared_ptr<DataHandler> ConcatRunner::Run(RunnerContext& ctx) {
         std::dynamic_pointer_cast<RowHandler>(left), left_slices,
         std::dynamic_pointer_cast<RowHandler>(right), right_slices));
 }
-std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+
+std::shared_ptr<DataHandler> LimitRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
+    auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "input is empty";
         return fail_ptr;
@@ -1742,9 +1818,11 @@ std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
     }
     return fail_ptr;
 }
-std::shared_ptr<DataHandler> FilterRunner::Run(RunnerContext& ctx) {
+std::shared_ptr<DataHandler> FilterRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    auto input = producers_[0]->RunWithCache(ctx);
+    auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "fail to run filter: input is empty or null";
         return fail_ptr;
@@ -1766,8 +1844,10 @@ std::shared_ptr<DataHandler> FilterRunner::Run(RunnerContext& ctx) {
     }
 }
 
-std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> GroupAggRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "group aggregation fail: input is null";
         return std::shared_ptr<DataHandler>();
@@ -1802,10 +1882,12 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {
     }
     return output_table;
 }
-std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
+std::shared_ptr<DataHandler> RequestUnionRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    auto left = producers_[0]->RunWithCache(ctx);
-    auto right = producers_[1]->RunWithCache(ctx);
+    auto left = inputs[0];
+    auto right = inputs[1];
     if (!left || !right) {
         return std::shared_ptr<DataHandler>();
     }
@@ -1891,10 +1973,12 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
     return window_table;
 }
 
-std::shared_ptr<DataHandler> PostRequestUnionRunner::Run(RunnerContext& ctx) {
+std::shared_ptr<DataHandler> PostRequestUnionRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    auto left = producers_[0]->RunWithCache(ctx);
-    auto right = producers_[1]->RunWithCache(ctx);
+    auto left = inputs[0];
+    auto right = inputs[1];
     if (!left || !right) {
         return nullptr;
     }
@@ -1918,8 +2002,10 @@ std::shared_ptr<DataHandler> PostRequestUnionRunner::Run(RunnerContext& ctx) {
     return result_table;
 }
 
-std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> AggRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "input is empty";
         return std::shared_ptr<DataHandler>();
@@ -1932,8 +2018,10 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
     return row_handler;
 }
 
-std::shared_ptr<DataHandler> ProxyRequestRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "input is empty";
         return std::shared_ptr<DataHandler>();
@@ -2010,12 +2098,10 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -2035,12 +2121,10 @@ const std::string KeyGenerator::Gen(const Row& row) {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -2274,6 +2358,41 @@ std::shared_ptr<TableHandler> FilterGenerator::Filter(
         return table;
     }
     return std::shared_ptr<TableHandler>(new TableFilterWrapper(table, this));
+}
+
+std::shared_ptr<DataHandlerList> RunnerContext::GetBatchCache(int64_t id) const {
+    auto iter = batch_cache_.find(id);
+    if (iter == batch_cache_.end()) {
+        return std::shared_ptr<DataHandlerList>();
+    } else {
+        return iter->second;
+    }
+}
+
+void RunnerContext::SetBatchCache(int64_t id,
+                                  std::shared_ptr<DataHandlerList> data) {
+    batch_cache_[id] = data;
+}
+
+std::shared_ptr<DataHandler> RunnerContext::GetCache(
+    int64_t id) const {
+    auto iter = cache_.find(id);
+    if (iter == cache_.end()) {
+        return std::shared_ptr<DataHandler>();
+    } else {
+        return iter->second;
+    }
+}
+
+void RunnerContext::SetCache(int64_t id, const std::shared_ptr<DataHandler> data) {
+    cache_[id] = data;
+}
+
+void RunnerContext::SetRequest(const fesql::codec::Row& request) {
+    request_ = request;
+}
+void RunnerContext::SetRequests(const std::vector<fesql::codec::Row>& requests) {
+    requests_ = requests;
 }
 }  // namespace vm
 }  // namespace fesql
