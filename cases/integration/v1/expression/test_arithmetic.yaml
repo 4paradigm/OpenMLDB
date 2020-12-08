@@ -1,0 +1,98 @@
+db: test_zw
+cases:
+  - id: 0
+    desc: ">-string"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",false]
+    sql: select {0}.c1>{1}.c1 as b1,{0}.c1>{1}.c2 as b2,{0}.c1>{1}.c3 as b3,{0}.c1>{1}.c4 as b4,{0}.c1>{1}.c5 as b5,{0}.c1>{1}.c6 as b6,{0}.c1>{1}.c7 as b7,{0}.c1>{1}.c8 as b8,{0}.c1>{1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;;
+    expect:
+      columns: ["b1 bool","b2 bool","b3 bool","b4 bool","b5 bool","b6 bool", "b7 bool", "b8 bool", "b9 bool"]
+      rows:
+        - ["aa",3,3,1,1.5,1,2]
+  - id: 1
+    desc: ">-smallint"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",false]
+    sql: select {0}.c2>{1}.c1 as b1,{0}.c2>{1}.c2 as b2,{0}.c2>{1}.c3 as b3,{0}.c2>{1}.c4 as b4,{0}.c2>{1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;;
+    expect:
+      columns: ["b1 bool","b2 bool","b3 bool","b4 bool", "b9 bool"]
+      rows:
+        - ["aa",3,3,1,1.5,1,2]
+  - id: 2
+    desc: ">-int"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",false]
+    sql: select {0}.c3>{1}.c1 as b1,{0}.c3>{1}.c2 as b2,{0}.c3>{1}.c3 as b3,{0}.c3>{1}.c4 as b4,{0}.c3>{1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;;
+    expect:
+      columns: ["b1 bool","b2 bool","b3 bool","b4 bool", "b9 bool"]
+      rows:
+        - ["aa",3,3,1,1.5,1,2]
+  - id: 4
+    desc: 算术表达式不使用数字类型
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select c1+1 from {0};
+    expect:
+      success: false
+  - id: 5
+    desc: 算术表达式-timestamp
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp","c5 double"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000,2.3]
+    sql: select c4+1,c5+1,c5*2,c5/2 from {0};
+    expect:
+      columns: ["c4 + 1 timestamp","c5 + 1 double","c5 * 2 double","c5 / 2 double"]
+      rows:
+        - [1590738989001,3.3,4.6,1.15]
+  - id: 6
+    desc: 算术表达式-date
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp","c5 date"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000,"2020-05-01"]
+    sql: select c5+1 from {0};
+    expect:
+      success: false
+  - id: 6
+    desc: 算术表达式-timestamp*
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp","c5 date"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000,"2020-05-01"]
+    sql: select c4*1 from {0};
+    expect:
+      success: false
