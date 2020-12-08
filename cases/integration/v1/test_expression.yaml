@@ -1,17 +1,17 @@
 db: test_zw
 cases:
-  - id: 1
-    desc: 算术表达式
-    inputs:
-      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp", "c5 bool"]
-        indexs: ["index1:c1:c4"]
-        rows:
-          - ["aa",2,3,1590738989000, true]
-    sql: select c1,c2+1,c3*1,c2-1,c3/2,c3%2, 1+ c5 from {0};
-    expect:
-      columns: ["c1 string","c2 + 1 int","c3 * 1 bigint","c2 - 1 int","c3 / 2 double","c3 % 2 bigint", "1 + c5 int"]
-      rows:
-        - ["aa",3,3,1,1.5,1,2]
+#  - id: 1
+#    desc: 算术表达式
+#    inputs:
+#      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp", "c5 bool"]
+#        indexs: ["index1:c1:c4"]
+#        rows:
+#          - ["aa",2,3,1590738989000, true]
+#    sql: select c1,c2+1,c3*1,c2-1,c3/2,c3%2, 1+ c5 from {0};
+#    expect:
+#      columns: ["c1 string","c2 + 1 int","c3 * 1 bigint","c2 - 1 int","c3 / 2 double","c3 % 2 bigint", "1 + c5 int"]
+#      rows:
+#        - ["aa",3,3,1,1.5,1,2]
   - id: 2
     desc: 布尔表达式
     inputs:
@@ -36,48 +36,48 @@ cases:
       columns: ["c1 string","c2 = 1 AND c3 = 3 bool" ,"c2 = 1 AND c3 = 3 bool","c2 = 1 OR c3 = 3 bool","c2 = 1 OR c3 = 3 bool","NOT (c2 = 1) bool"]
       rows:
         - ["aa",false,false,true,true,true]
-  - id: 4
-    desc: 算术表达式不使用数字类型
-    inputs:
-      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-        indexs: ["index1:c1:c4"]
-        rows:
-          - ["aa",2,3,1590738989000]
-    sql: select c1+1 from {0};
-    expect:
-      success: false
-  - id: 5
-    desc: 算术表达式-timestamp
-    inputs:
-      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp","c5 double"]
-        indexs: ["index1:c1:c4"]
-        rows:
-          - ["aa",2,3,1590738989000,2.3]
-    sql: select c4+1,c5+1,c5*2,c5/2 from {0};
-    expect:
-      columns: ["c4 + 1 timestamp","c5 + 1 double","c5 * 2 double","c5 / 2 double"]
-      rows:
-        - [1590738989001,3.3,4.6,1.15]
-  - id: 6
-    desc: 算术表达式-date
-    inputs:
-      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp","c5 date"]
-        indexs: ["index1:c1:c4"]
-        rows:
-          - ["aa",2,3,1590738989000,"2020-05-01"]
-    sql: select c5+1 from {0};
-    expect:
-      success: false
-  - id: 6
-    desc: 算术表达式-timestamp*
-    inputs:
-      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp","c5 date"]
-        indexs: ["index1:c1:c4"]
-        rows:
-          - ["aa",2,3,1590738989000,"2020-05-01"]
-    sql: select c4*1 from {0};
-    expect:
-      success: false
+#  - id: 4
+#    desc: 算术表达式不使用数字类型
+#    inputs:
+#      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+#        indexs: ["index1:c1:c4"]
+#        rows:
+#          - ["aa",2,3,1590738989000]
+#    sql: select c1+1 from {0};
+#    expect:
+#      success: false
+#  - id: 5
+#    desc: 算术表达式-timestamp
+#    inputs:
+#      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp","c5 double"]
+#        indexs: ["index1:c1:c4"]
+#        rows:
+#          - ["aa",2,3,1590738989000,2.3]
+#    sql: select c4+1,c5+1,c5*2,c5/2 from {0};
+#    expect:
+#      columns: ["c4 + 1 timestamp","c5 + 1 double","c5 * 2 double","c5 / 2 double"]
+#      rows:
+#        - [1590738989001,3.3,4.6,1.15]
+#  - id: 6
+#    desc: 算术表达式-date
+#    inputs:
+#      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp","c5 date"]
+#        indexs: ["index1:c1:c4"]
+#        rows:
+#          - ["aa",2,3,1590738989000,"2020-05-01"]
+#    sql: select c5+1 from {0};
+#    expect:
+#      success: false
+#  - id: 6
+#    desc: 算术表达式-timestamp*
+#    inputs:
+#      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp","c5 date"]
+#        indexs: ["index1:c1:c4"]
+#        rows:
+#          - ["aa",2,3,1590738989000,"2020-05-01"]
+#    sql: select c4*1 from {0};
+#    expect:
+#      success: false
   - id: 7
     desc: 布尔表达式-字符类型
     inputs:

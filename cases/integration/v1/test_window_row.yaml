@@ -831,3 +831,100 @@ cases:
       SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7);
     expect:
       success: false
+
+  -
+    id: 38
+    desc: rows 1-2
+    inputs:
+      -
+        columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - ["aa",21,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - ["aa",22,32,1.3,2.3,1590738992000,"2020-05-03"]
+          - ["aa",23,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - ["bb",24,34,1.5,2.5,1590738994000,"2020-05-05"]
+    sql: |
+      SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 1);
+    expect:
+      order: c3
+      columns: ["c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - ["aa",20,30]
+        - ["aa",21,61]
+        - ["aa",22,93]
+        - ["aa",23,96]
+        - ["bb",24,34]
+  -
+    id: 39
+    desc: rows 0-2
+    inputs:
+      -
+        columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - ["aa",21,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - ["aa",22,32,1.3,2.3,1590738992000,"2020-05-03"]
+          - ["aa",23,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - ["bb",24,34,1.5,2.5,1590738994000,"2020-05-05"]
+    sql: |
+      SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 0);
+    expect:
+      order: c3
+      columns: ["c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - ["aa",20,30]
+        - ["aa",21,61]
+        - ["aa",22,93]
+        - ["aa",23,96]
+        - ["bb",24,34]
+  -
+    id: 40
+    desc: rows 0-2
+    inputs:
+      -
+        columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - ["aa",21,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - ["aa",22,32,1.3,2.3,1590738992000,"2020-05-03"]
+          - ["aa",23,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - ["bb",24,34,1.5,2.5,1590738994000,"2020-05-05"]
+    sql: |
+      SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 0);
+    expect:
+      order: c3
+      columns: ["c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - ["aa",20,30]
+        - ["aa",21,61]
+        - ["aa",22,93]
+        - ["aa",23,96]
+        - ["bb",24,34]
+  -
+    id: 41
+    desc: rows -1-2
+    inputs:
+      -
+        columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - ["aa",21,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - ["aa",22,32,1.3,2.3,1590738992000,"2020-05-03"]
+          - ["aa",23,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - ["bb",24,34,1.5,2.5,1590738994000,"2020-05-05"]
+    sql: |
+      SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND -1);
+    expect:
+      order: c3
+      columns: ["c1 string","c3 int","w1_c4_sum bigint"]
+      rows:
+        - ["aa",20,30]
+        - ["aa",21,61]
+        - ["aa",22,93]
+        - ["aa",23,96]
+        - ["bb",24,34]
