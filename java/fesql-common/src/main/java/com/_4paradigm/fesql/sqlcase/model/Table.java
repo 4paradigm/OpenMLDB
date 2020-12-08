@@ -189,11 +189,6 @@ public class Table {
             return false;
         }
 
-        if (length < 3) {
-            logger.info("Index is invalid: missing ts, {}", index);
-            return false;
-        }
-
         if (length > 5) {
             logger.info("Index is invalid: index items > 5", index);
             return false;
@@ -351,7 +346,10 @@ public class Table {
             }
 
             builder.append("key=(").append(Joiner.on(",").join(getIndexKeys(index))).append(")");
-            builder.append(",ts=").append(getIndexTsCol(index));
+            String tsIndex = getIndexTsCol(index);
+            if (!tsIndex.isEmpty()) {
+                builder.append(",ts=").append(getIndexTsCol(index));
+            }
 
             String ttl = getIndexTTL(index);
             if (!ttl.isEmpty()) {
