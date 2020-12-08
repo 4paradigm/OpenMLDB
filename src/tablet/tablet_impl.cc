@@ -4521,6 +4521,7 @@ int TabletImpl::CreateDiskTableInternal(
     if (FLAGS_use_name) {
         if (!GetRealEp(tid, pid, &real_ep_map)) {
             msg.assign("name not found in real_ep_map");
+            PDLOG(WARNING, "name not found in real_ep_map. tid[%u] pid[%u]", tid, pid);
             return -1;
         }
     }
@@ -4650,8 +4651,7 @@ void TabletImpl::DropTable(RpcController* controller,
     }
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    PDLOG(INFO, "drop table. tid[%u] pid[%u] %s", tid, pid,
-          rtidb::type::TableType_Name(request->table_type()).c_str());
+    PDLOG(INFO, "drop table. tid[%u] pid[%u]", tid, pid);
     do {
         if (!request->has_table_type() ||
             request->table_type() == ::rtidb::type::kTimeSeries) {
@@ -4659,6 +4659,7 @@ void TabletImpl::DropTable(RpcController* controller,
             if (!table) {
                 response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
                 response->set_msg("table is not exist");
+                PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, pid);
                 break;
             } else {
                 if (table->GetTableStat() ==

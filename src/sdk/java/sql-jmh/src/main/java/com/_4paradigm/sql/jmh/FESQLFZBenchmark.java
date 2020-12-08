@@ -21,18 +21,19 @@ import java.util.concurrent.TimeUnit;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
 @Threads(1)
-@Fork(value = 1, jvmArgs = {"-Xms8G", "-Xmx8G"})
+@Fork(value = 1, jvmArgs = {"-Xms32G", "-Xmx32G"})
 @Warmup(iterations = 1)
 
 public class FESQLFZBenchmark {
     private SqlExecutor executor;
     private String db;
-    private String ddlUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.txt.ddl.txt";
-    private String scriptUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.txt";
-    private String relationUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.relation.txt";
+    private String ddlUrl = "http://172.27.128.37:8999/fz_ddl/constant_column.txt.ddl.txt";
+    private String scriptUrl = "http://172.27.128.37:8999/fz_ddl/constant_column.txt";
+    private String relationUrl = "http://172.27.128.37:8999/fz_ddl/constant_column.relation.txt";
     private int pkNum = 1;
     @Param({"500", "1000", "2000"})
     private int windowNum = 10;
+    private String partitionNum = "7";
     private Map<String, TableInfo> tableMap;
     private String script;
     private String mainTable;
@@ -56,7 +57,7 @@ public class FESQLFZBenchmark {
         private Set<Integer> index;
         private Map<Integer, String> relation;
         public TableInfo(String ddl, Map<String, Map<String, String>> relationMap) {
-            this.ddl = ddl + ";";
+            this.ddl = ddl + "partitionnum=" + partitionNum + ";";
             String[] arr = ddl.split("index\\(")[0].split("\\(");
             name = arr[0].split(" ")[2].replaceAll("`", "");
             String indexStr = relationMap.get(name).get("index");
