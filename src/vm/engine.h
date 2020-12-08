@@ -75,7 +75,7 @@ class EngineOptions {
     static EngineOptions NewEngineOptionWithClusterEnable(bool flag) {
         EngineOptions options;
         options.set_cluster_optimized(flag);
-        DLOG(INFO) << "Engine Options with cluster_optimized_ " << flag;
+        LOG(INFO) << "Engine Options with cluster_optimized_ " << flag;
         return options;
     }
 
@@ -272,6 +272,63 @@ class Engine {
     EngineLRUCache lru_cache_;
 };
 
+class LocalTabletRowHandler : public RowHandler {
+ public:
+    LocalTabletRowHandler(const std::string& db, const bool is_debug,
+                          const std::string& sql, uint32_t task_id,
+                          const Row& request, vm::Engine* engine)
+        : RowHandler(),
+          status_(base::Status::Running()),
+          table_name_(""),
+          db_(db),
+          schema_(nullptr),
+          is_debug_(is_debug),
+          sql_(sql),
+          task_id_(task_id),
+          request_(request),
+          engine_(engine),
+          value_() {}
+    virtual ~LocalTabletRowHandler() {}
+    const Row& GetValue() override {
+        if (!status_.isRunning()) {
+            return value_;
+        }
+        status_ = SyncValue();
+        return value_;
+    }
+    base::Status SyncValue() {
+        DLOG(INFO) << "Local tablet SubQuery: task id " << task_id_;
+        RequestRunSession session;
+        if (is_debug_) {
+            session.EnableDebug();
+        }
+        base::Status status;
+        if (!engine_->Get(sql_, db_, session, status)) {
+            return base::Status(common::kCallMethodError,
+                                "SubQuery fail: compile sql fail");
+        }
+
+        if (0 != session.Run(task_id_, request_, &value_)) {
+            return base::Status(common::kCallMethodError,
+                                "sub query fail: session run fail");
+        }
+        return base::Status::OK();
+    }
+    const Schema* GetSchema() override { return schema_; }
+    const std::string& GetName() override { return table_name_; }
+    const std::string& GetDatabase() override { return db_; }
+    base::Status status_;
+    std::string table_name_;
+    std::string db_;
+    const Schema* schema_;
+    const bool is_debug_;
+    const std::string& sql_;
+    uint32_t task_id_;
+    Row request_;
+    vm::Engine* engine_;
+    Row value_;
+};
+
 class LocalTablet : public Tablet {
  public:
     explicit LocalTablet(vm::Engine* engine) : Tablet(), engine_((engine)) {}
@@ -280,23 +337,8 @@ class LocalTablet : public Tablet {
                                          const std::string& db,
                                          const std::string& sql, const Row& row,
                                          const bool is_debug) override {
-        DLOG(INFO) << "Local tablet SubQuery: task id " << task_id;
-        RequestRunSession session;
-        if (is_debug) {
-            session.EnableDebug();
-        }
-        base::Status status;
-        if (!engine_->Get(sql, db, session, status)) {
-            return std::shared_ptr<RowHandler>(new ErrorRowHandler(
-                common::kCallMethodError, "SubQuery fail: compile sql fail"));
-        }
-
-        Row out;
-        if (0 != session.Run(task_id, row, &out)) {
-            return std::shared_ptr<RowHandler>(new ErrorRowHandler(
-                common::kCallMethodError, "sub query fail: session run fail"));
-        }
-        return std::shared_ptr<RowHandler>(new MemRowHandler(out));
+        return std::shared_ptr<RowHandler>(new LocalTabletRowHandler(
+            db, is_debug, sql, task_id, row, engine_));
     }
     std::shared_ptr<RowHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,

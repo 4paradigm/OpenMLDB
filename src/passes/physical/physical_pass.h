@@ -74,7 +74,6 @@ class PhysicalPlanContext {
         *result_op = nm_->RegisterNode(op);
         return Status::OK();
     }
-
     node::NodeManager* node_manager() const { return nm_; }
     const udf::UDFLibrary* library() const { return library_; }
     const std::string& db() { return db_; }

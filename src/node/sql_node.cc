@@ -935,50 +935,44 @@ void ColumnOfExpression(const ExprNode *node_ptr,
         }
     }
 }
+
 bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
                         ExprNode *node_ptr, const WindowDefNode **output) {
-    switch (node_ptr->GetExprType()) {
-        case kExprCall: {
-            CallExprNode *func_node_ptr =
-                dynamic_cast<CallExprNode *>(node_ptr);
-            if (nullptr != func_node_ptr->GetOver()) {
-                if (func_node_ptr->GetOver()->GetName().empty()) {
-                    *output = func_node_ptr->GetOver();
-                } else {
-                    auto iter =
-                        windows.find(func_node_ptr->GetOver()->GetName());
-                    if (iter == windows.cend()) {
-                        LOG(WARNING)
-                            << "Fail to resolved window from expression: "
-                            << func_node_ptr->GetOver()->GetName()
-                            << " undefined";
-                        return false;
-                    }
-                    *output = iter->second;
-                }
+    // try to resolved window ptr from expression like: call(args...) over
+    // window
+    if (kExprCall == node_ptr->GetExprType()) {
+        CallExprNode *func_node_ptr = dynamic_cast<CallExprNode *>(node_ptr);
+        if (nullptr != func_node_ptr->GetOver()) {
+            if (func_node_ptr->GetOver()->GetName().empty()) {
+                *output = func_node_ptr->GetOver();
             } else {
-                *output = nullptr;
-            }
-            break;
-        }
-        default: {
-            *output = nullptr;
-            for (auto child : node_ptr->children_) {
-                const WindowDefNode *w = nullptr;
-                if (!WindowOfExpression(windows, child, &w)) {
+                auto iter = windows.find(func_node_ptr->GetOver()->GetName());
+                if (iter == windows.cend()) {
+                    LOG(WARNING)
+                        << "Fail to resolved window from expression: "
+                        << func_node_ptr->GetOver()->GetName() << " undefined";
                     return false;
                 }
-                // resolve window of child
-                if (nullptr != w) {
-                    if (*output == nullptr) {
-                        *output = w;
-                    } else if (!node::SQLEquals(*output, w)) {
-                        LOG(WARNING)
-                            << "Fail to resolved window from expression: "
-                            << "expression depends on more than one window";
-                        return false;
-                    }
-                }
+                *output = iter->second;
+            }
+        }
+    }
+
+    // try to resolved windows of children
+    // make sure there is only one window for the whole expression
+    for (auto child : node_ptr->children_) {
+        const WindowDefNode *w = nullptr;
+        if (!WindowOfExpression(windows, child, &w)) {
+            return false;
+        }
+        // resolve window of child
+        if (nullptr != w) {
+            if (*output == nullptr) {
+                *output = w;
+            } else if (!node::SQLEquals(*output, w)) {
+                LOG(WARNING) << "Fail to resolved window from expression: "
+                             << "expression depends on more than one window";
+                return false;
             }
         }
     }

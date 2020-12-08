@@ -333,6 +333,7 @@ cases:
 
   - id: 15
     desc: aggregate where
+    mode: request-unsupport
     inputs:
       - columns: ["id bigint", "c1 double", "c2 float", "c3 bigint"]
         indexs: ["index1:c3:id"]

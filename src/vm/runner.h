@@ -12,6 +12,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -366,6 +367,7 @@ class Runner : public node::NodeBase<Runner> {
         : id_(id),
           type_(kRunnerUnknow),
           limit_cnt_(0),
+          is_lazy_(false),
           need_cache_(false),
           need_batch_cache_(false),
           producers_(),
@@ -375,6 +377,7 @@ class Runner : public node::NodeBase<Runner> {
         : id_(id),
           type_(type),
           limit_cnt_(0),
+          is_lazy_(false),
           need_cache_(false),
           need_batch_cache_(false),
           producers_(),
@@ -384,6 +387,7 @@ class Runner : public node::NodeBase<Runner> {
         : id_(id),
           type_(type),
           limit_cnt_(limit_cnt),
+          is_lazy_(false),
           need_cache_(false),
           need_batch_cache_(false),
           producers_(),
@@ -391,15 +395,32 @@ class Runner : public node::NodeBase<Runner> {
     virtual ~Runner() {}
     void AddProducer(Runner* runner) { producers_.push_back(runner); }
     const std::vector<Runner*>& GetProducers() const { return producers_; }
-    virtual void Print(std::ostream& output, const std::string& tab) const {
+    virtual void PrintRunnerInfo(std::ostream& output,
+                                 const std::string& tab) const {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_);
+        if (is_lazy_) {
+            output <<" lazy";
+        }
+    }
+    virtual void Print(std::ostream& output, const std::string& tab,
+                       std::set<int32_t>* visited_ids) const {  // NOLINT
+        PrintRunnerInfo(output, tab);
         if (need_cache_) {
             output << "(cache_enable)";
+        }
+        if (nullptr != visited_ids &&
+            visited_ids->find(id_) != visited_ids->cend()) {
+            output << "\n";
+            output << "  " << tab << "...";
+            return;
+        }
+        if (nullptr != visited_ids) {
+            visited_ids->insert(id_);
         }
         if (!producers_.empty()) {
             for (auto producer : producers_) {
                 output << "\n";
-                producer->Print(output, "  " + tab);
+                producer->Print(output, "  " + tab, visited_ids);
             }
         }
     }
@@ -442,6 +463,7 @@ class Runner : public node::NodeBase<Runner> {
     virtual bool Equals(const Runner* other) const { return this == other; }
 
  protected:
+    bool is_lazy_;
     bool need_cache_;
     bool need_batch_cache_;
     std::vector<Runner*> producers_;
@@ -610,7 +632,9 @@ class FilterRunner : public Runner {
  public:
     FilterRunner(const int32_t id, const SchemasContext* schema,
                  const int32_t limit_cnt, const Filter& filter)
-        : Runner(id, kRunnerFilter, schema, limit_cnt), filter_gen_(filter) {}
+        : Runner(id, kRunnerFilter, schema, limit_cnt), filter_gen_(filter) {
+        is_lazy_ = true;
+    }
     ~FilterRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     FilterGenerator filter_gen_;
@@ -663,7 +687,9 @@ class SimpleProjectRunner : public Runner {
     SimpleProjectRunner(const int32_t id, const SchemasContext* schema,
                         const int32_t limit_cnt, const FnInfo& fn_info)
         : Runner(id, kRunnerSimpleProject, schema, limit_cnt),
-          project_gen_(fn_info) {}
+          project_gen_(fn_info) {
+        is_lazy_ = true;
+    }
     ~SimpleProjectRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
     ProjectGenerator project_gen_;
@@ -764,20 +790,14 @@ class RequestLastJoinRunner : public Runner {
     ~RequestLastJoinRunner() {}
 
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-    virtual void Print(std::ostream& output, const std::string& tab) const {
+    virtual void PrintRunnerInfo(std::ostream& output,
+                                 const std::string& tab) const {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_);
+        if (is_lazy_) {
+            output <<" lazy";
+        }
         if (output_right_only_) {
             output << " OUTPUT_RIGHT_ONLY";
-        }
-
-        if (need_cache_) {
-            output << "(cache_enable)";
-        }
-        if (!producers_.empty()) {
-            for (auto producer : producers_) {
-                output << "\n";
-                producer->Print(output, "  " + tab);
-            }
         }
     }
     JoinGenerator join_gen_;
@@ -787,7 +807,9 @@ class ConcatRunner : public Runner {
  public:
     ConcatRunner(const int32_t id, const SchemasContext* schema,
                  const int32_t limit_cnt)
-        : Runner(id, kRunnerConcat, schema, limit_cnt) {}
+        : Runner(id, kRunnerConcat, schema, limit_cnt) {
+        is_lazy_ = true;
+    }
     ~ConcatRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
 };
@@ -803,22 +825,20 @@ class ProxyRequestRunner : public Runner {
  public:
     ProxyRequestRunner(int32_t id, uint32_t task_id,
                        const SchemasContext* schema_ctx)
-        : Runner(id, kRunnerRequestRunProxy, schema_ctx), task_id_(task_id) {}
+        : Runner(id, kRunnerRequestRunProxy, schema_ctx), task_id_(task_id) {
+        is_lazy_ = true;
+    }
     ~ProxyRequestRunner() {}
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
-    virtual void Print(std::ostream& output, const std::string& tab) const {
+    virtual void PrintRunnerInfo(std::ostream& output,
+                                 const std::string& tab) const {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_)
                << "(TASK_ID=" << task_id_ << ")";
-        if (need_cache_) {
-            output << "(cache_enable)";
-        }
-        if (!producers_.empty()) {
-            for (auto producer : producers_) {
-                output << "\n";
-                producer->Print(output, "  " + tab);
-            }
+        if (is_lazy_) {
+            output <<" lazy";
         }
     }
+
     const int32_t task_id() const { return task_id_; }
 
  private:
@@ -853,7 +873,8 @@ class ClusterTask {
         if (nullptr == root_) {
             output << tab << "NULL RUNNER\n";
         } else {
-            root_->Print(output, tab);
+            std::set<int32_t> visited_ids;
+            root_->Print(output, tab, &visited_ids);
         }
     }
     Runner* GetRoot() const { return root_; }
