@@ -270,12 +270,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             currentRow = currentRows.NewRow();
         }
         int strLen = 0;
-        {
-            Iterator it = stringsLen.keySet().iterator();
-            while (it.hasNext()) {
-                Map.Entry<Integer, Integer> pair = (Map.Entry<Integer, Integer>)it.next();
-                strLen += pair.getValue();
-            }
+        for (Map.Entry<Integer, Integer> entry : stringsLen.entrySet()) {
+            strLen += entry.getValue();
         }
         boolean ok = currentRow.Init(strLen);
         if (!ok) {
