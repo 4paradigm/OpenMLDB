@@ -66,6 +66,7 @@ cases:
         - [5, "k5:v5 k3:v3", "k5 k3", "v5 v3", 2, 2]
   - id: 2
     desc: fz case 5 simple version debug
+    mode: rtidb-batch-unsupport
     inputs:
       - columns: ["id int64", "reqId string", "eventTime timestamp", "SK_ID_CURR string"]
         indexs: ["index1:reqId:id"]
