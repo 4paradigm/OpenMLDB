@@ -296,7 +296,7 @@ bool Engine::SetCacheLocked(const std::string& db, const std::string& sql,
 }
 
 RunSession::RunSession(EngineMode engine_mode)
-    : engine_mode_(engine_mode), is_debug_(false) {}
+    : engine_mode_(engine_mode), is_debug_(false), sp_name_("") {}
 RunSession::~RunSession() {}
 
 bool RunSession::SetCompileInfo(
@@ -353,7 +353,7 @@ int32_t RequestRunSession::Run(const uint32_t task_id, const Row& in_row,
     }
     DLOG(INFO) << "Request Row Run with task_id " << task_id;
     RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, in_row,
-                      is_debug_);
+                      sp_name_, is_debug_);
     auto output = task->RunWithCache(ctx);
     if (!output) {
         LOG(WARNING) << "run request plan output is null";
