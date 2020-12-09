@@ -8,6 +8,7 @@ import com._4paradigm.fesql.node.ExprType;
 import com._4paradigm.fesql.tablet.Tablet;
 import com._4paradigm.fesql.type.TypeOuterClass;
 import com._4paradigm.fesql.vm.*;
+import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import lombok.Data;
@@ -28,6 +29,8 @@ public class DDLEngine {
     }
 
     private static final Logger logger = LoggerFactory.getLogger(DDLEngine.class);
+
+    public static String SQLTableName = "sql_table";
 
     public static int resolveColumnIndex(ExprNode expr, PhysicalOpNode planNode) throws FesqlException {
         if (expr.getExpr_type_() == ExprType.kExprColumnRef) {
@@ -383,18 +386,56 @@ public class DDLEngine {
         return newList;
     }
 
+    public static String genOutputSchema(String sql, String schema) {
+        String tempDB = "temp_" + System.currentTimeMillis();
+        TypeOuterClass.Database.Builder db = TypeOuterClass.Database.newBuilder();
+        db.setName(tempDB);
+        List<TypeOuterClass.TableDef> tables = getTableDefs(schema);
+        Map<String, TypeOuterClass.TableDef> tableDefMap = new HashMap<>();
+//        tableDefMap.forEach((k, v) -> System.out.printf("xx"));
+        for (TypeOuterClass.TableDef e : tables) {
+            db.addTables(e);
+            tableDefMap.put(e.getName(), e);
+        }
+        RequestEngine engine = null;
+        try {
+            engine = new RequestEngine(sql, db.build());
+        } catch (UnsupportedFesqlException e) {
+            e.printStackTrace();
+        }
+        PhysicalOpNode plan = engine.getPlan();
+        List<Pair<String, String>> schemaPair = new ArrayList<>();
+
+        for (TypeOuterClass.ColumnDef e : plan.GetOutputSchema()) {
+            Pair<String, String> field = new Pair<>(e.getName(), getDDLType(e.getType()));
+            schemaPair.add(field);
+        }
+
+        HashMap<String, List<Pair<String, String>>> feConfig = new HashMap<>();
+
+        feConfig.put(SQLTableName, schemaPair);
+
+        Gson gson = new Gson();
+        String jsonConfig = String.format("{\"tableInfo\": %s}", gson.toJson(feConfig));
+        System.out.println("=================fe config=================");
+        System.out.println(jsonConfig);
+        return jsonConfig;
+
+    }
+
 
     public static void main(String[] args) {
         //    String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.json";
         //    String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/homecredit.txt";
-//        String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/rong_e.json";
-//        String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/rong_e.txt";
-        String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/performance/all_op.json";
-        String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/performance/all_op.txt";
+        String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/performance/rong_e.json";
+        String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/performance/rong_e.txt";
+//        String schemaPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/performance/all_op.json";
+//        String sqlPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/performance/all_op.txt";
         File file = new File(schemaPath);
         File sql = new File(sqlPath);
         try {
-            genDDL(FileUtils.readFileToString(sql, "UTF-8"), FileUtils.readFileToString(file, "UTF-8"));
+            genOutputSchema(FileUtils.readFileToString(sql, "UTF-8"), FileUtils.readFileToString(file, "UTF-8"));
+//            genDDL(FileUtils.readFileToString(sql, "UTF-8"), FileUtils.readFileToString(file, "UTF-8"));
 //            getTableDefs(FileUtils.readFileToString(file, "UTF-8"));
         } catch (IOException e) {
             e.printStackTrace();
@@ -508,3 +549,12 @@ class RtidbIndex {
     }
 }
 
+@Data
+class Pair<K, V> {
+    private K name;
+    private V type;
+    public Pair(K k, V v) {
+        name = k;
+        type = v;
+    }
+}
