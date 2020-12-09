@@ -97,7 +97,7 @@ class SQLInsertRow {
                 result.push_back(i);
             }
         }
-        return result;
+        return std::move(result);
     }
 
  private:

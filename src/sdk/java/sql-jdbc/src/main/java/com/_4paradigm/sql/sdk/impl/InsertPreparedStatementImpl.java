@@ -270,9 +270,12 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             currentRow = currentRows.NewRow();
         }
         int strLen = 0;
-        for (Integer k : stringsLen.keySet()) {
-            Integer len = stringsLen.get(k);
-            strLen += len;
+        {
+            Iterator it = stringsLen.keySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry<Integer, Integer> pair = (Map.Entry<Integer, Integer>)it.next();
+                strLen += pair.getValue();
+            }
         }
         boolean ok = currentRow.Init(strLen);
         if (!ok) {
@@ -282,27 +285,30 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             Object data = currentDatas.get(i);
             if (data == null) {
                 ok = currentRow.AppendNULL();
-            } else if (DataType.kTypeBool.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendBool((boolean) data);
-            } else if (DataType.kTypeDate.equals(currentDatasType.get(i))) {
-                java.sql.Date date = (java.sql.Date)data;
-                ok = currentRow.AppendDate(date.getYear() + 1900, date.getMonth(), date.getDate());
-            } else if (DataType.kTypeDouble.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendDouble((double) data);
-            } else if (DataType.kTypeFloat.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendFloat((float) data);
-            } else if (DataType.kTypeInt16.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendInt16((short) data);
-            } else if (DataType.kTypeInt32.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendInt32((int) data);
-            } else if (DataType.kTypeInt64.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendInt64((long) data);
-            } else if (DataType.kTypeString.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendString((String) data);
-            } else if (DataType.kTypeTimestamp.equals(currentDatasType.get(i))) {
-                ok = currentRow.AppendTimestamp((long) data);
-            } else {
-                throw new SQLException("unkown data type");
+            } else  {
+                DataType curType = currentDatasType.get(i);
+                if (DataType.kTypeBool.equals(curType)) {
+                    ok = currentRow.AppendBool((boolean) data);
+                } else if (DataType.kTypeDate.equals(curType)) {
+                    java.sql.Date date = (java.sql.Date)data;
+                    ok = currentRow.AppendDate(date.getYear() + 1900, date.getMonth(), date.getDate());
+                } else if (DataType.kTypeDouble.equals(curType)) {
+                    ok = currentRow.AppendDouble((double) data);
+                } else if (DataType.kTypeFloat.equals(curType)) {
+                    ok = currentRow.AppendFloat((float) data);
+                } else if (DataType.kTypeInt16.equals(curType)) {
+                    ok = currentRow.AppendInt16((short) data);
+                } else if (DataType.kTypeInt32.equals(curType)) {
+                    ok = currentRow.AppendInt32((int) data);
+                } else if (DataType.kTypeInt64.equals(curType)) {
+                    ok = currentRow.AppendInt64((long) data);
+                } else if (DataType.kTypeString.equals(curType)) {
+                    ok = currentRow.AppendString((String) data);
+                } else if (DataType.kTypeTimestamp.equals(curType)) {
+                    ok = currentRow.AppendTimestamp((long) data);
+                } else {
+                    throw new SQLException("unkown data type");
+                }
             }
             if (!ok) {
                 throw new SQLException("put data faile idx is " + i);
