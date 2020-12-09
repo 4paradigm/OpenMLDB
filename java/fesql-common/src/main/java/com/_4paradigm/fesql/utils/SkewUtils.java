@@ -13,6 +13,30 @@ import java.util.Map;
  * @Date 2020/12/2 19:15
  **/
 public class SkewUtils {
+
+    public static String genPercentileSql(String table1, int quantile, List<String> keys, String ts) {
+        StringBuffer sql = new StringBuffer();
+        sql.append("select \n");
+        for (String e : keys) {
+            sql.append(e + ",\n");
+        }
+        sql.append(String.format("min(%s) as min_%s,\n", ts, ts));
+        sql.append(String.format("max(%s) as max_%s,\n", ts, ts));
+        sql.append(String.format("mean(%s) as mean_%s,\n", ts, ts));
+        sql.append(String.format("sum(%s) as sum_%s,\n", ts, ts));
+        double factor = 1.0 / new Double(quantile);
+        for (int i = 0; i < quantile; i++) {
+            double v = i * factor;
+            sql.append(String.format("percentile_approx(%s, %s) as percentile_%s,\n", ts, v, i));
+        }
+        sql.append(String.format("percentile_approx(%s, 1) as percentile_%s\n", ts, quantile));
+        sql.append(String.format("from \n%s\ngroup by ", table1));
+        sql.append(StringUtils.join(keys, " , "));
+        sql.append(";");
+//        System.out.println(sql);
+        return sql.toString();
+    }
+
     public static String genPercentileSql(String table1, String table2, int quantile, Map<String, String> keysMap, String ts) {
         StringBuffer sql = new StringBuffer();
         sql.append("select ");

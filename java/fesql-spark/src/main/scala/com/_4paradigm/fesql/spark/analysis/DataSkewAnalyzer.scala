@@ -144,7 +144,9 @@ class DataSkewAnalyzer {
     logger.info("skew main table {}", table)
     logger.info("skew main table report{}", reportTable)
     val keysMap = new util.HashMap[String, String]()
-//    val sqlCode = SkewUtils.genPercentileSql(table, reportTable, 4, )
+    keyScala.foreach(_ => keysMap.put(_, _))
+    val sqlCode = SkewUtils.genPercentileSql(table, reportTable, 4, keysMap, ts)
+
 
 
 
@@ -154,6 +156,7 @@ class DataSkewAnalyzer {
   
   def takeTableReport(data: DataFrame, keys: Seq[String], ts: String): DataFrame = {
     val coordinate = data.groupBy(keys.map(data(_)): _*).agg(
+
       sum(ts) as "total_order",
       approx_count_distinct(ts) as "order",
       mean(ts) as "mean_order",
