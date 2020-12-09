@@ -192,7 +192,7 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t col_idx, uint32_t offset,
     ::llvm::IRBuilder<> builder(block_);
     NativeValue str_addr_space_val;
     bool ok = variable_ir_builder_.LoadAddrSpace(schema_idx_,
-                                             &str_addr_space_val, status);
+                                                 &str_addr_space_val, status);
     ::llvm::Value* str_addr_space = nullptr;
     if (!str_addr_space_val.IsConstNull()) {
         str_addr_space = str_addr_space_val.GetValue(&builder);
@@ -208,7 +208,8 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t col_idx, uint32_t offset,
             builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{size});
         str_addr_space = builder.CreateIntCast(str_addr_space, i32_ty, true,
                                                "cast_i8_to_i32");
-        ok = variable_ir_builder_.StoreAddrSpace(schema_idx_, str_addr_space, status);
+        ok = variable_ir_builder_.StoreAddrSpace(schema_idx_, str_addr_space,
+                                                 status);
         if (!ok) {
             LOG(WARNING) << "fail to add str add space var";
             return false;

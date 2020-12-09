@@ -171,9 +171,8 @@ bool fesql::codegen::VariableIRBuilder::LoadColumnItem(
 bool fesql::codegen::VariableIRBuilder::LoadAddrSpace(const size_t schema_idx,
                                                       NativeValue* output,
                                                       base::Status& status) {
-    bool ok =
-        LoadValue("@addrspace[" + std::to_string(schema_idx) + "]",
-                  output, status);
+    bool ok = LoadValue("@addrspace[" + std::to_string(schema_idx) + "]",
+                        output, status);
     return ok;
 }
 bool fesql::codegen::VariableIRBuilder::StoreAddrSpace(const size_t schema_idx,
