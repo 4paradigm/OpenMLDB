@@ -45,9 +45,10 @@ class Writer {
     uint32_t type_crc_[kMaxRecordType + 1];
 
     bool for_snapshot_;
+    int block_size_;
     // buffer of kCompressBlockSize
     char* buffer_;
-    int block_size_;
+    char* compress_buf_;
     Status CompressRecord();
 
     Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);

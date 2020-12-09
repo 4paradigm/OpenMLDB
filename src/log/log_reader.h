@@ -99,6 +99,7 @@ class Reader {
 
     bool for_snapshot_;
     int block_size_;
+    char* uncompress_buf_;
 
     // Extend record types with the following special values
     enum {

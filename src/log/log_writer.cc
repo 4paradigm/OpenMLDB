@@ -27,7 +27,7 @@ static void InitTypeCrc(uint32_t* type_crc) {
 }
 
 Writer::Writer(WritableFile* dest, bool for_snapshot)
-: dest_(dest), block_offset_(0), for_snapshot_(for_snapshot), buffer_(nullptr) {
+: dest_(dest), block_offset_(0), for_snapshot_(for_snapshot), buffer_(nullptr), compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
 #ifdef PZFPGA_ENABLE
     if (for_snapshot_ &&
@@ -37,13 +37,14 @@ Writer::Writer(WritableFile* dest, bool for_snapshot)
 #endif
         block_size_ = kCompressBlockSize;
         buffer_ = new char[block_size_];
+        compress_buf_ = new char[block_size_];
     } else {
         block_size_ = kBlockSize;
     }
 }
 
 Writer::Writer(WritableFile* dest, uint64_t dest_length, bool for_snapshot)
-    : dest_(dest), for_snapshot_(for_snapshot), buffer_(nullptr) {
+    : dest_(dest), for_snapshot_(for_snapshot), buffer_(nullptr), compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
 #ifdef PZFPGA_ENABLE
     if (for_snapshot_ &&
@@ -53,6 +54,7 @@ Writer::Writer(WritableFile* dest, uint64_t dest_length, bool for_snapshot)
 #endif
         block_size_ = kCompressBlockSize;
         buffer_ = new char[block_size_];
+        compress_buf_ = new char[block_size_];
     } else {
         block_size_ = kBlockSize;
     }
@@ -62,6 +64,9 @@ Writer::Writer(WritableFile* dest, uint64_t dest_length, bool for_snapshot)
 Writer::~Writer() {
     if (buffer_) {
         delete[] buffer_;
+    }
+    if (compress_buf_) {
+        delete[] compress_buf_;
     }
 }
 
@@ -169,7 +174,7 @@ Status Writer::AddRecord(const Slice& slice) {
 
 Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
     assert(n <= 0xffff);  // Must fit in two bytes
-    assert(block_offset_ + kHeaderSize + n <= block_size_);
+    assert(static_cast<int>(block_offset_ + kHeaderSize + n) <= block_size_);
     // Format the header
     char buf[kHeaderSize];
     buf[4] = static_cast<char>(n & 0xff);
@@ -221,26 +226,26 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
 Status Writer::CompressRecord() {
     Status s;
     // compress
-    char* compress_data = new char[block_size_];
     int compress_len = -1;
 #ifdef PZFPGA_ENABLE
     if (FLAGS_snapshot_compression == "pz") {
         FPGA_env* fpga_env = rtidb::base::Compress::GetFpgaEnv();
         compress_len = gzipfpga_compress_nohuff(
-                fpga_env, buffer_, compress_data, block_size_, block_size_, 0);
+                fpga_env, buffer_, compress_buf_, block_size_, block_size_, 0);
     } else {
 #endif
         size_t tmp_val = 0;
-        snappy::RawCompress(buffer_, block_size_, compress_data, &tmp_val);
+        snappy::RawCompress(buffer_, block_size_, compress_buf_, &tmp_val);
         compress_len = static_cast<int>(tmp_val);
 #ifdef PZFPGA_ENABLE
     }
 #endif
-    if (compress_len < 0)  {
+    if (compress_len < 0) {
         s = Status::InvalidRecord(Slice("compress failed"));
         PDLOG(WARNING, "write error. %s", s.ToString().c_str());
         return s;
     }
+    PDLOG(INFO, "compress_len: %d", compress_len);
     // fill compressed data's header
     char head_of_compress[kHeaderSizeOfCompressData];
     memrev32ifbe(static_cast<void*>(&compress_len));
@@ -249,7 +254,7 @@ Status Writer::CompressRecord() {
     // write header and compressed data
     s = dest_->Append(Slice(head_of_compress, kHeaderSizeOfCompressData));
     if (s.ok()) {
-        s = dest_->Append(Slice(compress_data, compress_len));
+        s = dest_->Append(Slice(compress_buf_, compress_len));
         if (s.ok()) {
             s = dest_->Flush();
         }
@@ -257,7 +262,6 @@ Status Writer::CompressRecord() {
     if (!s.ok()) {
         PDLOG(WARNING, "write error. %s", s.ToString().c_str());
     }
-    delete[] compress_data;
     return s;
 }
 
