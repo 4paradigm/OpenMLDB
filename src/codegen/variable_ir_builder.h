@@ -39,9 +39,9 @@ class VariableIRBuilder {
                         base::Status& status);  // NOLINT (runtime/references)
 
     bool LoadAddrSpace(const size_t schema_idx, NativeValue* output,
-                    base::Status& status);  // NOLINT
+                       base::Status& status);  // NOLINT
     bool StoreAddrSpace(const size_t schema_idx, ::llvm::Value* value,
-                        base::Status& status);
+                        base::Status& status);  // NOLINT (runtime/references)
     bool StoreWindow(const std::string& frame_str, ::llvm::Value* value,
                      base::Status& status);  // NOLINT
     bool StoreColumnRef(const std::string& relation_name,
