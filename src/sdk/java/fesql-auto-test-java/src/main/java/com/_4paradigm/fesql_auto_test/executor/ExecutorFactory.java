@@ -88,18 +88,4 @@ public class ExecutorFactory {
                 sqlExecutor, fesqlCase, fesqlCase.getBatch_request() != null, isAsyn);
         return executor;
     }
-
-
-    private static BaseExecutor getClusterFeRequestQueryExecutor(SqlExecutor sqlExecutor, SQLCase fesqlCase) {
-        BaseExecutor executor = null;
-        executor = new RequestQuerySQLExecutor(sqlExecutor, fesqlCase, false, true);
-        return executor;
-    }
-
-    private static BaseExecutor getClusterFeBatchRequestQueryExecutor(SqlExecutor sqlExecutor,
-                                                               SQLCase fesqlCase) {
-        RequestQuerySQLExecutor executor = new RequestQuerySQLExecutor(
-                sqlExecutor, fesqlCase, true, true);
-        return executor;
-    }
 }

@@ -22,6 +22,8 @@ namespace base {
 const int DEBUG = -1;
 static int log_level = INFO;
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-value"
 template <typename... Arguments>
 inline std::string FormatArgs(const char* fmt, const Arguments&... args) {
     boost::format f(fmt);
@@ -29,6 +31,7 @@ inline std::string FormatArgs(const char* fmt, const Arguments&... args) {
 
     return boost::str(f);
 }
+#pragma clang diagnostic pop
 
 inline void SetLogLevel(int level) { log_level = level; }
 
