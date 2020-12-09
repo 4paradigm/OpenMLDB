@@ -166,7 +166,8 @@ bool BufNativeIRBuilder::BuildGetPrimaryField(const std::string& fn_name,
     ::llvm::Type* i32_ty = builder.getInt32Ty();
     ::llvm::Value* val_col_idx = builder.getInt32(col_idx);
     ::llvm::Value* val_offset = builder.getInt32(offset);
-    ::llvm::Value* is_null_alloca = builder.CreateAlloca(builder.getInt8Ty());
+    ::llvm::Value* is_null_alloca =
+        CreateAllocaAtHead(&builder, builder.getInt8Ty(), "is_null_addr");
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         fn_name, type, i8_ptr_ty, i32_ty, i32_ty, i8_ptr_ty);
 
