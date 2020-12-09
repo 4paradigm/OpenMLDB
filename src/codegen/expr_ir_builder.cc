@@ -804,7 +804,7 @@ Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
             builder.CreateCall(get_slice_size_func, {row_ptr, slice_idx_value}),
             int32_ty, false);
 
-        BufNativeIRBuilder buf_builder(
+        BufNativeIRBuilder buf_builder(schema_idx,
             schemas_context->GetRowFormat(schema_idx), ctx_->GetCurrentBlock(),
             ctx_->GetCurrentScope()->sv());
         CHECK_TRUE(

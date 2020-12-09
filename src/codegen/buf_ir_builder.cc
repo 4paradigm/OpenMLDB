@@ -29,11 +29,13 @@
 namespace fesql {
 namespace codegen {
 
-BufNativeIRBuilder::BufNativeIRBuilder(const codec::RowFormat* format,
+BufNativeIRBuilder::BufNativeIRBuilder(const size_t schema_idx,
+                                       const codec::RowFormat* format,
                                        ::llvm::BasicBlock* block,
                                        ScopeVar* scope_var)
     : block_(block),
       sv_(scope_var),
+      schema_idx_(schema_idx),
       format_(format),
       variable_ir_builder_(block, scope_var) {}
 
@@ -189,7 +191,7 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t col_idx, uint32_t offset,
 
     ::llvm::IRBuilder<> builder(block_);
     NativeValue str_addr_space_val;
-    bool ok = variable_ir_builder_.LoadValue("str_addr_space",
+    bool ok = variable_ir_builder_.LoadAddrSpace(schema_idx_,
                                              &str_addr_space_val, status);
     ::llvm::Value* str_addr_space = nullptr;
     if (!str_addr_space_val.IsConstNull()) {
@@ -206,8 +208,7 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t col_idx, uint32_t offset,
             builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{size});
         str_addr_space = builder.CreateIntCast(str_addr_space, i32_ty, true,
                                                "cast_i8_to_i32");
-        ok = variable_ir_builder_.StoreValue(
-            "str_addr_space", NativeValue::Create(str_addr_space), status);
+        ok = variable_ir_builder_.StoreAddrSpace(schema_idx_, str_addr_space, status);
         if (!ok) {
             LOG(WARNING) << "fail to add str add space var";
             return false;
