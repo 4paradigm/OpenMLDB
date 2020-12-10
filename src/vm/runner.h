@@ -1082,8 +1082,16 @@ class RunnerContext {
                            const fesql::codec::Row& request,
                            const bool is_debug = false)
         : cluster_job_(cluster_job),
+          request_(request),
+          requests_(),
+          is_debug_(is_debug),
+          batch_cache_() {}
+    explicit RunnerContext(fesql::vm::ClusterJob* cluster_job,
+                           const std::vector<Row>& request_batch,
+                           const bool is_debug = false)
+        : cluster_job_(cluster_job),
           request_(),
-          requests_(std::vector<Row>({request})),
+          requests_(request_batch),
           is_debug_(is_debug),
           batch_cache_() {}
 

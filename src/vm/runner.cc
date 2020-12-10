@@ -720,21 +720,27 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
         batch_inputs.push_back(producers_[idx]->BatchRequestRun(ctx));
     }
 
+    LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_)
+              << ", ID: " << id_ << "\n";
     for (size_t idx = 0; idx < ctx.GetRequestSize(); idx++) {
+        inputs.clear();
         for (size_t producer_idx = 0; producer_idx < producers_.size();
              producer_idx++) {
             inputs.push_back(batch_inputs[producer_idx]->Get(idx));
         }
         auto res = Run(ctx, inputs);
         if (ctx.is_debug()) {
-            LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_)
-                      << ", ID: " << id_ << "\n";
             Runner::PrintData(output_schemas_, res);
         }
         if (need_batch_cache_) {
-            DLOG(INFO) << "RUNNER ID " << id_ << " HIT BATCH CACHE!";
-            return std::shared_ptr<DataHandlerList>(
+            DLOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) <<
+                "RUNNER ID " << id_ << " HIT BATCH CACHE!";
+            auto repeated_data = std::shared_ptr<DataHandlerList>(
                 new DataHandlerRepeater(res, ctx.GetRequestSize()));
+            if (need_cache_) {
+                ctx.SetBatchCache(id_, repeated_data);
+            }
+            return repeated_data;
         }
         outputs->Add(res);
     }
@@ -758,7 +764,7 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     auto res = Run(ctx, inputs);
     if (ctx.is_debug()) {
         LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
-                  << "\n";
+                  << ", Repeated " << ctx.GetRequestSize();
         Runner::PrintData(output_schemas_, res);
     }
     if (need_cache_) {
@@ -773,8 +779,15 @@ std::shared_ptr<DataHandler> DataRunner::Run(
 }
 std::shared_ptr<DataHandlerList> DataRunner::BatchRequestRun(
     RunnerContext& ctx) {
-    return std::shared_ptr<DataHandlerList>(
+    auto res = std::shared_ptr<DataHandlerList>(
         new DataHandlerRepeater(data_handler_, ctx.GetRequestSize()));
+
+    if (ctx.is_debug()) {
+        LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+                  << ", Repeated " << ctx.GetRequestSize();
+        Runner::PrintData(output_schemas_, res->Get(0));
+    }
+    return res;
 }
 std::shared_ptr<DataHandler> RequestRunner::Run(
     RunnerContext& ctx,
@@ -783,13 +796,20 @@ std::shared_ptr<DataHandler> RequestRunner::Run(
 }
 std::shared_ptr<DataHandlerList> RequestRunner::BatchRequestRun(
     RunnerContext& ctx) {
-    std::shared_ptr<DataHandlerVector> outputs =
+    std::shared_ptr<DataHandlerVector> res =
         std::shared_ptr<DataHandlerVector>(new DataHandlerVector());
     for (size_t idx = 0; idx < ctx.GetRequestSize(); idx++) {
-        outputs->Add(std::shared_ptr<MemRowHandler>(
+        res->Add(std::shared_ptr<MemRowHandler>(
             new MemRowHandler(ctx.GetRequest(idx))));
     }
-    return outputs;
+    if (ctx.is_debug()) {
+        LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_)
+                  << ", ID: " << id_ << "\n";
+        for(size_t idx = 0; idx < res->GetSize(); idx++) {
+            Runner::PrintData(output_schemas_, res->Get(idx));
+        }
+    }
+    return res;
 }
 std::shared_ptr<DataHandler> GroupRunner::Run(
     RunnerContext& ctx,
@@ -1071,7 +1091,7 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(
         return fail_ptr;
     }
     auto right = inputs[1];
-    auto left = inputs[1];
+    auto left = inputs[0];
     if (!left || !right) {
         LOG(WARNING) << "fail to run last join: left|right input is empty";
         return fail_ptr;
@@ -2033,8 +2053,9 @@ std::shared_ptr<DataHandler> PostRequestUnionRunner::Run(
     return result_table;
 }
 
-std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx,
+                                            const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "input is empty";
         return std::shared_ptr<DataHandler>();
@@ -2101,6 +2122,10 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
                                             ctx.is_debug());
                     return task.GetRoot()->RunWithCache(local_ctx);
                 } else {
+                    if (row.GetRowPtrCnt() > 1) {
+                        LOG(WARNING) << "subquery with multi slice row is unsupported currently";
+                        return std::shared_ptr<DataHandler>();
+                    }
                     return tablet->SubQuery(
                         task_id_, table_handler->GetDatabase(),
                         cluster_job->sql(), row, ctx.is_debug());

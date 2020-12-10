@@ -337,39 +337,45 @@ static bool ExtractSingleRow(std::shared_ptr<DataHandler> handler,
         }
     }
 }
-static bool ExtractBatchRows(std::shared_ptr<DataHandler> handler,
+static bool ExtractBatchRows(std::shared_ptr<DataHandlerList> handlers,
                              std::vector<Row>& out_rows) { //NOLINT
-    if (!handler) {
+    if (!handlers) {
         LOG(WARNING) << "Extract batch rows error: data handler is null";
         return false;
     }
-    switch (handler->GetHanlderType()) {
-        case kTableHandler: {
-            auto iter =
-                std::dynamic_pointer_cast<TableHandler>(handler)->GetIterator();
-            if (!iter) {
-                LOG(WARNING) << "Extract batch rows error: iter is null";
+    for(size_t i = 0; i < handlers->GetSize(); i++) {
+        auto handler = handlers->Get(i);
+        if (!handler) {
+            out_rows.push_back(Row());
+            continue;
+        }
+        switch (handler->GetHanlderType()) {
+            case kTableHandler: {
+                auto iter = std::dynamic_pointer_cast<TableHandler>(handler)
+                                ->GetIterator();
+                if (!iter) {
+                    LOG(WARNING) << "Extract batch rows error: iter is null";
+                    return false;
+                }
+                iter->SeekToFirst();
+                while (iter->Valid()) {
+                    out_rows.push_back(iter->GetValue());
+                    iter->Next();
+                }
+                break;
+            }
+            case kRowHandler: {
+                out_rows.push_back(
+                    std::dynamic_pointer_cast<RowHandler>(handler)->GetValue());
+                break;
+            }
+            default: {
+                LOG(WARNING) << "partition output is invalid";
                 return false;
             }
-            iter->SeekToFirst();
-            while (iter->Valid()) {
-                out_rows.push_back(iter->GetValue());
-                return true;
-            }
-        }
-        case kRowHandler: {
-            out_rows.push_back(
-                std::dynamic_pointer_cast<RowHandler>(handler)->GetValue());
-            return true;
-        }
-        case kPartitionHandler: {
-            LOG(WARNING) << "partition output is invalid";
-            return false;
-        }
-        default: {
-            return false;
         }
     }
+    return true;
 }
 
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
@@ -409,9 +415,21 @@ int32_t BatchRequestRunSession::Run(const std::vector<Row>& request_batch,
 int32_t BatchRequestRunSession::Run(const uint32_t id,
                                     const std::vector<Row>& request_batch,
                                     std::vector<Row>& output) {
-    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, is_debug_);
-    int32_t ok = RunBatch(ctx, id, request_batch, output);
-    if (ok != 0) {
+    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, request_batch, is_debug_);
+    auto task =
+        compile_info_->get_sql_context().cluster_job.GetTask(id).GetRoot();
+    if (nullptr == task) {
+        LOG(WARNING) << "fail to run request plan: taskid" << id
+                     << " not exist!";
+        return -2;
+    }
+    auto handler = task->BatchRequestRun(ctx);
+    if (!handler) {
+        LOG(WARNING) << "run request plan output is null";
+        return -1;
+    }
+    bool ok = ExtractBatchRows(handler, output);
+    if (!ok) {
         return -1;
     }
     ctx.ClearCache();
@@ -429,24 +447,7 @@ int32_t BatchRequestRunSession::RunBatch(RunnerContext& ctx,  // NOLINT
                                           const uint32_t task_id,
                                          const std::vector<Row>& requests,
                                          std::vector<Row>& output) {  // NOLINT
-    auto task =
-        compile_info_->get_sql_context().cluster_job.GetTask(task_id).GetRoot();
-    if (nullptr == task) {
-        LOG(WARNING) << "fail to run request plan: taskid" << task_id
-                     << " not exist!";
-        return -2;
-    }
-    ctx.SetRequests(requests);
-    auto handler = task->RunWithCache(ctx);
-    if (!handler) {
-        LOG(WARNING) << "run request plan output is null";
-        return -1;
-    }
-    bool ok = ExtractBatchRows(handler, output);
-    if (!ok) {
-        return -1;
-    }
-    return 0;
+
 }
 
 std::shared_ptr<TableHandler> BatchRunSession::Run() {
