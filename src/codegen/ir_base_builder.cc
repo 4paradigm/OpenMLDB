@@ -989,8 +989,7 @@ Status GetLLVMFunctionType(::llvm::Module* m,
 }
 
 llvm::Value* CreateAllocaAtHead(llvm::IRBuilder<>* builder, llvm::Type* dtype,
-                                const std::string& name,
-                                llvm::Value* size) {
+                                const std::string& name, llvm::Value* size) {
     ::llvm::BasicBlock* current_block = builder->GetInsertBlock();
     if (current_block == nullptr) {
         LOG(WARNING) << "Uninitialized builder";

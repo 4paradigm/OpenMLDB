@@ -338,12 +338,12 @@ static bool ExtractSingleRow(std::shared_ptr<DataHandler> handler,
     }
 }
 static bool ExtractBatchRows(std::shared_ptr<DataHandlerList> handlers,
-                             std::vector<Row>& out_rows) { //NOLINT
+                             std::vector<Row>& out_rows) {  // NOLINT
     if (!handlers) {
         LOG(WARNING) << "Extract batch rows error: data handler is null";
         return false;
     }
-    for(size_t i = 0; i < handlers->GetSize(); i++) {
+    for (size_t i = 0; i < handlers->GetSize(); i++) {
         auto handler = handlers->Get(i);
         if (!handler) {
             out_rows.push_back(Row());
@@ -415,7 +415,8 @@ int32_t BatchRequestRunSession::Run(const std::vector<Row>& request_batch,
 int32_t BatchRequestRunSession::Run(const uint32_t id,
                                     const std::vector<Row>& request_batch,
                                     std::vector<Row>& output) {
-    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job, request_batch, is_debug_);
+    RunnerContext ctx(&compile_info_->get_sql_context().cluster_job,
+                      request_batch, sp_name_, is_debug_);
     auto task =
         compile_info_->get_sql_context().cluster_job.GetTask(id).GetRoot();
     if (nullptr == task) {
@@ -437,17 +438,16 @@ int32_t BatchRequestRunSession::Run(const uint32_t id,
 }
 
 int32_t BatchRequestRunSession::RunBatch(RunnerContext& ctx,  // NOLINT
-                                          const std::vector<Row>& requests,
-                                         std::vector<Row>& output) {  // NOLINT
-    return RunBatch(
-        ctx, compile_info_->get_sql_context().cluster_job.main_task_id(),
-        requests, output);
-}
-int32_t BatchRequestRunSession::RunBatch(RunnerContext& ctx,  // NOLINT
-                                          const uint32_t task_id,
                                          const std::vector<Row>& requests,
                                          std::vector<Row>& output) {  // NOLINT
-
+    return RunBatch(ctx,
+                    compile_info_->get_sql_context().cluster_job.main_task_id(),
+                    requests, output);
+}
+int32_t BatchRequestRunSession::RunBatch(RunnerContext& ctx,  // NOLINT
+                                         const uint32_t task_id,
+                                         const std::vector<Row>& requests,
+                                         std::vector<Row>& output) {  // NOLINT
 }
 
 std::shared_ptr<TableHandler> BatchRunSession::Run() {

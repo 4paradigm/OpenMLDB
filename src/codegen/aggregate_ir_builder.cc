@@ -671,9 +671,9 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
             auto& slice_info = used_slices[schema_idx];
 
             ScopeVar dummy_scope_var;
-            BufNativeIRBuilder buf_builder(schema_idx,
-                schema_context_->GetRowFormat(schema_idx), body_block,
-                &dummy_scope_var);
+            BufNativeIRBuilder buf_builder(
+                schema_idx, schema_context_->GetRowFormat(schema_idx),
+                body_block, &dummy_scope_var);
             NativeValue field_value;
             if (!buf_builder.BuildGetField(info.col_idx, slice_info.first,
                                            slice_info.second, &field_value)) {

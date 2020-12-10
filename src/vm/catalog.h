@@ -201,30 +201,26 @@ class DataHandler : public ListV<Row> {
 class DataHandlerList {
  public:
     DataHandlerList() {}
-    ~DataHandlerList(){}
+    ~DataHandlerList() {}
     virtual size_t GetSize() = 0;
     virtual std::shared_ptr<DataHandler> Get(size_t idx) = 0;
 };
-class DataHandlerVector : public DataHandlerList{
+class DataHandlerVector : public DataHandlerList {
  public:
     DataHandlerVector() : data_handlers_() {}
-    ~DataHandlerVector(){}
+    ~DataHandlerVector() {}
     void Add(std::shared_ptr<DataHandler> data_handler) {
         data_handlers_.push_back(data_handler);
     }
-    size_t GetSize() {
-        return data_handlers_.size();
-    }
-    std::shared_ptr<DataHandler> Get(size_t idx) {
-        return data_handlers_[idx];
-    }
+    size_t GetSize() { return data_handlers_.size(); }
+    std::shared_ptr<DataHandler> Get(size_t idx) { return data_handlers_[idx]; }
+
  private:
     std::vector<std::shared_ptr<DataHandler>> data_handlers_;
 };
 class DataHandlerRepeater : public DataHandlerList {
  public:
-    DataHandlerRepeater(std::shared_ptr<DataHandler> data_handler,
-                        size_t size)
+    DataHandlerRepeater(std::shared_ptr<DataHandler> data_handler, size_t size)
         : size_(size), data_handler_(data_handler) {}
     ~DataHandlerRepeater() {}
     size_t GetSize() { return size_; }

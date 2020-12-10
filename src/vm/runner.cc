@@ -720,8 +720,8 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
         batch_inputs.push_back(producers_[idx]->BatchRequestRun(ctx));
     }
 
-    LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_)
-              << ", ID: " << id_ << "\n";
+    LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+              << "\n";
     for (size_t idx = 0; idx < ctx.GetRequestSize(); idx++) {
         inputs.clear();
         for (size_t producer_idx = 0; producer_idx < producers_.size();
@@ -733,8 +733,8 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
             Runner::PrintData(output_schemas_, res);
         }
         if (need_batch_cache_) {
-            DLOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) <<
-                "RUNNER ID " << id_ << " HIT BATCH CACHE!";
+            DLOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_)
+                       << "RUNNER ID " << id_ << " HIT BATCH CACHE!";
             auto repeated_data = std::shared_ptr<DataHandlerList>(
                 new DataHandlerRepeater(res, ctx.GetRequestSize()));
             if (need_cache_) {
@@ -763,7 +763,8 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     }
     auto res = Run(ctx, inputs);
     if (ctx.is_debug()) {
-        LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_;
+        LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_)
+                  << ", ID: " << id_;
         Runner::PrintData(output_schemas_, res);
     }
     if (need_cache_) {
@@ -802,9 +803,9 @@ std::shared_ptr<DataHandlerList> RequestRunner::BatchRequestRun(
             new MemRowHandler(ctx.GetRequest(idx))));
     }
     if (ctx.is_debug()) {
-        LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_)
-                  << ", ID: " << id_ << "\n";
-        for(size_t idx = 0; idx < res->GetSize(); idx++) {
+        LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+                  << "\n";
+        for (size_t idx = 0; idx < res->GetSize(); idx++) {
             Runner::PrintData(output_schemas_, res->Get(idx));
         }
     }
@@ -2052,8 +2053,9 @@ std::shared_ptr<DataHandler> PostRequestUnionRunner::Run(
     return result_table;
 }
 
-std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx,
-                                            const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+std::shared_ptr<DataHandler> AggRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "input is empty";
@@ -2117,7 +2119,8 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
                     return std::shared_ptr<DataHandler>();
                 } else {
                     if (row.GetRowPtrCnt() > 1) {
-                        LOG(WARNING) << "subquery with multi slice row is unsupported currently";
+                        LOG(WARNING) << "subquery with multi slice row is "
+                                        "unsupported currently";
                         return std::shared_ptr<DataHandler>();
                     }
                     if (ctx.sp_name().empty()) {
@@ -2152,10 +2155,12 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
-                          : fn_schema_.Get(pos).type() == fesql::type::kDate
-                              ? std::to_string(row_view.GetDateUnsafe(pos))
-                              : row_view.GetAsString(pos);
+        std::string key =
+            row_view.IsNULL(pos)
+                ? codec::NONETOKEN
+                : fn_schema_.Get(pos).type() == fesql::type::kDate
+                      ? std::to_string(row_view.GetDateUnsafe(pos))
+                      : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -2175,10 +2180,12 @@ const std::string KeyGenerator::Gen(const Row& row) {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
-                          : fn_schema_.Get(pos).type() == fesql::type::kDate
-                              ? std::to_string(row_view.GetDateUnsafe(pos))
-                              : row_view.GetAsString(pos);
+        std::string key =
+            row_view.IsNULL(pos)
+                ? codec::NONETOKEN
+                : fn_schema_.Get(pos).type() == fesql::type::kDate
+                      ? std::to_string(row_view.GetDateUnsafe(pos))
+                      : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -2414,7 +2421,8 @@ std::shared_ptr<TableHandler> FilterGenerator::Filter(
     return std::shared_ptr<TableHandler>(new TableFilterWrapper(table, this));
 }
 
-std::shared_ptr<DataHandlerList> RunnerContext::GetBatchCache(int64_t id) const {
+std::shared_ptr<DataHandlerList> RunnerContext::GetBatchCache(
+    int64_t id) const {
     auto iter = batch_cache_.find(id);
     if (iter == batch_cache_.end()) {
         return std::shared_ptr<DataHandlerList>();
@@ -2428,8 +2436,7 @@ void RunnerContext::SetBatchCache(int64_t id,
     batch_cache_[id] = data;
 }
 
-std::shared_ptr<DataHandler> RunnerContext::GetCache(
-    int64_t id) const {
+std::shared_ptr<DataHandler> RunnerContext::GetCache(int64_t id) const {
     auto iter = cache_.find(id);
     if (iter == cache_.end()) {
         return std::shared_ptr<DataHandler>();
@@ -2438,14 +2445,16 @@ std::shared_ptr<DataHandler> RunnerContext::GetCache(
     }
 }
 
-void RunnerContext::SetCache(int64_t id, const std::shared_ptr<DataHandler> data) {
+void RunnerContext::SetCache(int64_t id,
+                             const std::shared_ptr<DataHandler> data) {
     cache_[id] = data;
 }
 
 void RunnerContext::SetRequest(const fesql::codec::Row& request) {
     request_ = request;
 }
-void RunnerContext::SetRequests(const std::vector<fesql::codec::Row>& requests) {
+void RunnerContext::SetRequests(
+    const std::vector<fesql::codec::Row>& requests) {
     requests_ = requests;
 }
 }  // namespace vm
