@@ -291,6 +291,31 @@ Status BatchModeTransformer::InitFnInfo(PhysicalOpNode* node,
     return Status::OK();
 }
 
+static bool ResetProducer(PhysicalPlanContext* plan_ctx, PhysicalOpNode* op,
+                          size_t idx, PhysicalOpNode* child) {
+    auto origin = op->GetProducer(idx);
+    if (origin == child) {
+        return true;
+    }
+    op->SetProducer(idx, child);
+    op->ClearSchema();
+    Status status = op->InitSchema(plan_ctx);
+    if (!status.isOK()) {
+        LOG(WARNING) << "Reset producer failed: " << status << "\nAt child:\n"
+                     << *child;
+        op->SetProducer(idx, origin);
+        op->ClearSchema();
+        status = op->InitSchema(plan_ctx);
+        if (!status.isOK()) {
+            LOG(WARNING) << "Recover schema failed: " << status;
+        }
+        op->FinishSchema();
+        return false;
+    }
+    op->FinishSchema();
+    return true;
+}
+
 Status BatchModeTransformer::TransformLimitOp(const node::LimitPlanNode* node,
                                               PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
@@ -1807,7 +1832,9 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                 &new_producer)) {
                 return false;
             }
-            group_op->SetProducer(0, new_producer);
+            if (!ResetProducer(plan_ctx_, group_op, 0, new_producer)) {
+                return false;
+            }
             if (!group_op->Valid()) {
                 *output = group_op->producers()[0];
             }
@@ -1826,7 +1853,10 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                        &window_agg_op->window_.partition_,
                                        &new_producer)) {
                         input = new_producer;
-                        window_agg_op->SetProducer(0, input);
+                        if (!ResetProducer(plan_ctx_, window_agg_op, 0,
+                                           input)) {
+                            return false;
+                        }
                     }
                 }
 
@@ -1886,10 +1916,12 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
 
             if (!union_op->instance_not_in_window()) {
                 if (KeysFilterOptimized(
-                    union_op->schemas_ctx(), union_op->GetProducer(1),
-                    &union_op->window_.partition_,
-                    &union_op->window_.index_key_, &new_producer)) {
-                    union_op->SetProducer(1, new_producer);
+                        union_op->schemas_ctx(), union_op->GetProducer(1),
+                        &union_op->window_.partition_,
+                        &union_op->window_.index_key_, &new_producer)) {
+                    if (!ResetProducer(plan_ctx_, union_op, 1, new_producer)) {
+                        return false;
+                    }
                 }
                 SortOptimized(union_op->schemas_ctx(), union_op->GetProducer(1),
                               &union_op->window_.sort_);
@@ -1922,7 +1954,9 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                    &new_producer)) {
                 return false;
             }
-            join_op->SetProducer(1, new_producer);
+            if (!ResetProducer(plan_ctx_, join_op, 1, new_producer)) {
+                return false;
+            }
             SortOptimized(join_op->schemas_ctx(), join_op->GetProducer(1),
                           &join_op->join_.right_sort_);
             return true;
@@ -1936,7 +1970,9 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                    &new_producer)) {
                 return false;
             }
-            join_op->SetProducer(1, new_producer);
+            if (!ResetProducer(plan_ctx_, join_op, 1, new_producer)) {
+                return false;
+            }
             SortOptimized(join_op->schemas_ctx(), join_op->GetProducer(1),
                           &join_op->join_.right_sort_);
             return true;
@@ -1948,7 +1984,9 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
             if (FilterOptimized(filter_op->schemas_ctx(),
                                 filter_op->GetProducer(0), &filter_op->filter_,
                                 &new_producer)) {
-                filter_op->SetProducer(0, new_producer);
+                if (!ResetProducer(plan_ctx_, filter_op, 0, new_producer)) {
+                    return false;
+                }
             }
         }
         default: {
@@ -2455,9 +2493,18 @@ bool TransformUpPysicalPass::Apply(PhysicalOpNode* in, PhysicalOpNode** out) {
     for (size_t j = 0; j < producer.size(); ++j) {
         PhysicalOpNode* output = nullptr;
         if (Apply(producer[j], &output)) {
-            in->SetProducer(j, output);
+            if (!ResetProducer(plan_ctx_, in, j, output)) {
+                return false;
+            }
         }
     }
+    in->ClearSchema();
+    Status status = in->InitSchema(plan_ctx_);
+    if (!status.isOK()) {
+        LOG(WARNING) << "Reset schema failed: " << status;
+        return false;
+    }
+    in->FinishSchema();
     return Transform(in, out);
 }
 
@@ -2624,8 +2671,10 @@ bool LeftJoinOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
 
             auto left = join_op->producers()[0];
             auto right = join_op->producers()[1];
-            window_agg_op->SetProducer(0, left);
             window_agg_op->AddWindowJoin(right, join_op->join());
+            if (!ResetProducer(plan_ctx_, window_agg_op, 0, left)) {
+                return false;
+            }
             Transform(window_agg_op, output);
             *output = window_agg_op;
             return true;
@@ -2719,48 +2768,42 @@ bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalRequestJoinNode* join_op,
         auto column_expr = columns[idx];
         simplified_projects.Add(column_names[idx], column_expr, nullptr);
     }
-    if (simplified_projects.size() < left->GetOutputSchemaSize()) {
-        PhysicalSimpleProjectNode* simplify_project_op = nullptr;
-        Status status = plan_ctx_->CreateOp<PhysicalSimpleProjectNode>(
-            &simplify_project_op, left, simplified_projects);
-        if (!status.isOK()) {
-            LOG(WARNING) << "Simplify join left input failed: " << status;
-            return false;
-        }
-        *output = simplify_project_op;
-    } else {
+    if (simplified_projects.size() >= left->GetOutputSchemaSize()) {
         LOG(WARNING) << "Simplify columns size == left output columns";
         return false;
     }
-
     auto root = left;
     while (root->GetProducerCnt() > 0) {
-        Status status;
-        auto schemas_ctx = root->GetProducer(0)->schemas_ctx();
-        bool flag = true;
-        for (auto column_expr : columns) {
-            if (!CheckExprDependOnChildOnly(column_expr, schemas_ctx).isOK()) {
-                flag = false;
+        bool found_child = false;
+        for (size_t i = 0; i < root->GetProducerCnt(); ++i) {
+            auto schemas_ctx = root->GetProducer(i)->schemas_ctx();
+            bool flag = true;
+            for (size_t idx : left_indices) {
+                auto column_expr = columns[idx];
+                if (!CheckExprDependOnChildOnly(column_expr, schemas_ctx)
+                         .isOK()) {
+                    flag = false;
+                    break;
+                }
+            }
+            if (flag) {
+                found_child = true;
+                root = root->GetProducer(i);
                 break;
             }
         }
-        if (!flag) {
+        if (!found_child) {
             break;
         }
-        root = root->GetProducer(0);
-    }
-    if (root == left) {
-        // simplify left node directly
-        return true;
     }
     // try to simplify depend node
     PhysicalSimpleProjectNode* root_simplify_project_op = nullptr;
     auto status = plan_ctx_->CreateOp<PhysicalSimpleProjectNode>(
         &root_simplify_project_op, root, simplified_projects);
     if (!status.isOK()) {
-        LOG(WARNING) << status.msg;
         LOG(WARNING)
-            << "Simplify root left input failed: apply left node simplify";
+            << "Simplify root left input failed: apply left node simplify: "
+            << status;
         return false;
     }
     DLOG(INFO) << "apply root node simplify!";
