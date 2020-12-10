@@ -245,8 +245,9 @@ bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
         }
         sql.append(")");
         // end key
-
-        sql.append(", ts=").append(index.second_key());
+        if (!index.second_key().empty()) {
+            sql.append(", ts=").append(index.second_key());
+        }
 
         if (index.ttl_size() > 0) {
             sql.append(", ttl=").append(std::to_string(index.ttl(0)));
