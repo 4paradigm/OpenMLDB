@@ -763,8 +763,7 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     }
     auto res = Run(ctx, inputs);
     if (ctx.is_debug()) {
-        LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
-                  << ", Repeated " << ctx.GetRequestSize();
+        LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_;
         Runner::PrintData(output_schemas_, res);
     }
     if (need_cache_) {
