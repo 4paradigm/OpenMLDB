@@ -8,13 +8,14 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.sql.*;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.util.*;
 
 public class RequestPreparedStatement implements PreparedStatement {
-    private static final Logger logger = LoggerFactory.getLogger(RequestPreparedStatement.class);
+    public static final Charset CHARSET = Charset.forName("utf-8");
     protected String db;
     protected String currentSql;
     protected SQLRouter router;
@@ -183,7 +184,8 @@ public class RequestPreparedStatement implements PreparedStatement {
             setNull(i);
             return;
         }
-        stringsLen.put(i, s.length());
+        byte bytes[] = s.getBytes(CHARSET);
+        stringsLen.put(i, bytes.length);
         hasSet.set(i - 1, true);
         currentDatas.set(i - 1, s);
     }
