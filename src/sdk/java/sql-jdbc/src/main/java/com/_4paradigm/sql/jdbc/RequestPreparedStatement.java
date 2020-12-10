@@ -75,7 +75,7 @@ public class RequestPreparedStatement implements PreparedStatement {
     }
 
     @Override
-    public java.sql.ResultSet executeQuery() throws SQLException {
+    public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
         dataBuild();
         Status status = new Status();
@@ -83,7 +83,7 @@ public class RequestPreparedStatement implements PreparedStatement {
         if (resultSet == null) {
             throw new SQLException("execute sql fail");
         }
-        ResultSet rs = new SQLResultSet(resultSet);
+        SQLResultSet rs = new SQLResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
         }
