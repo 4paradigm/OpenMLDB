@@ -1007,13 +1007,16 @@ class RunnerContext {
                            const bool is_debug = false)
         : cluster_job_(cluster_job),
           request_(),
+          sp_name_(""),
           is_debug_(is_debug),
           batch_cache_() {}
     explicit RunnerContext(fesql::vm::ClusterJob* cluster_job,
                            const fesql::codec::Row& request,
+                           const std::string& sp_name = "",
                            const bool is_debug = false)
         : cluster_job_(cluster_job),
           request_(request),
+          sp_name_(sp_name),
           is_debug_(is_debug),
           batch_cache_() {}
 
@@ -1022,6 +1025,9 @@ class RunnerContext {
     void SetRequest(const fesql::codec::Row& request);
     bool is_debug() const { return is_debug_; }
 
+    const std::string& sp_name() {
+        return sp_name_;
+    }
     std::shared_ptr<DataHandler> GetCache(int64_t id) const;
     void SetCache(int64_t id, std::shared_ptr<DataHandler> data);
     void ClearCache() { cache_.clear(); }
@@ -1031,6 +1037,7 @@ class RunnerContext {
  private:
     fesql::vm::ClusterJob* cluster_job_;
     fesql::codec::Row request_;
+    const std::string sp_name_;
     const bool is_debug_;
     // TODO(chenjing): optimize
     std::map<int64_t, std::shared_ptr<DataHandler>> batch_cache_;

@@ -74,8 +74,8 @@ class TabletServerImpl : public TabletServer {
 
     inline bool AddTableUnLocked(std::shared_ptr<storage::Table> table) {
         const type::TableDef& table_def = table->GetTableDef();
-        auto local_tablet =
-            std::shared_ptr<vm::Tablet>(new vm::LocalTablet(engine_.get()));
+        auto local_tablet = std::shared_ptr<vm::Tablet>(new vm::LocalTablet(
+            engine_.get(), std::shared_ptr<fesql::vm::CompileInfoCache>()));
         std::shared_ptr<TabletTableHandler> handler(new TabletTableHandler(
             table_def.columns(), table_def.name(), table_def.catalog(),
             table_def.indexes(), table, local_tablet));

@@ -1814,11 +1814,13 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 PhysicalOpNode* input = window_agg_op->GetProducer(0);
 
                 PhysicalOpNode* new_producer;
-                if (GroupOptimized(input->schemas_ctx(), input,
-                                   &window_agg_op->window_.partition_,
-                                   &new_producer)) {
-                    input = new_producer;
-                    window_agg_op->SetProducer(0, input);
+                if (!window_agg_op->instance_not_in_window()) {
+                    if (GroupOptimized(input->schemas_ctx(), input,
+                                       &window_agg_op->window_.partition_,
+                                       &new_producer)) {
+                        input = new_producer;
+                        window_agg_op->SetProducer(0, input);
+                    }
                 }
 
                 // must prepare for window join column infer
@@ -1829,8 +1831,11 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                 PhysicalOpNode* final_joined =
                     joined_op_list_.empty() ? input : joined_op_list_.back();
 
-                SortOptimized(final_joined->schemas_ctx(), input,
-                              &window_agg_op->window_.sort_);
+                if (!window_agg_op->instance_not_in_window()) {
+                    SortOptimized(final_joined->schemas_ctx(), input,
+                                  &window_agg_op->window_.sort_);
+                }
+
                 if (!window_joins.Empty()) {
                     size_t join_idx = 0;
                     for (auto& window_join : window_joins.window_joins()) {
@@ -1871,14 +1876,17 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
             PhysicalRequestUnionNode* union_op =
                 dynamic_cast<PhysicalRequestUnionNode*>(in);
             PhysicalOpNode* new_producer;
-            if (KeysFilterOptimized(
+
+            if (!union_op->instance_not_in_window()) {
+                if (KeysFilterOptimized(
                     union_op->schemas_ctx(), union_op->GetProducer(1),
                     &union_op->window_.partition_,
                     &union_op->window_.index_key_, &new_producer)) {
-                union_op->SetProducer(1, new_producer);
+                    union_op->SetProducer(1, new_producer);
+                }
+                SortOptimized(union_op->schemas_ctx(), union_op->GetProducer(1),
+                              &union_op->window_.sort_);
             }
-            SortOptimized(union_op->schemas_ctx(), union_op->GetProducer(1),
-                          &union_op->window_.sort_);
 
             if (!union_op->window_unions().Empty()) {
                 for (auto& window_union :
