@@ -642,8 +642,14 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output,
 }
 
 Status PhysicalWindowAggrerationNode::InitSchema(PhysicalPlanContext* ctx) {
+    CHECK_STATUS(InitJoinList(ctx));
     auto input = GetProducer(0);
-    auto input_schemas_ctx = input->schemas_ctx();
+    const vm::SchemasContext* input_schemas_ctx;
+    if (joined_op_list_.empty()) {
+        input_schemas_ctx = input->schemas_ctx();
+    } else {
+        input_schemas_ctx = joined_op_list_.back()->schemas_ctx();
+    }
 
     // init fn info
     bool is_row_project = !IsAggProjectType(project_type_);
@@ -659,7 +665,7 @@ Status PhysicalWindowAggrerationNode::InitSchema(PhysicalPlanContext* ctx) {
 
     // window agg may inherit input row
     if (need_append_input()) {
-        schemas_ctx_.Merge(0, input_schemas_ctx);
+        schemas_ctx_.Merge(0, input->schemas_ctx());
     }
     return Status::OK();
 }

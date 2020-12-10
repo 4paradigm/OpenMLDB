@@ -368,6 +368,10 @@ Status SchemasContext::ResolveExprDependentColumns(
             case node::kExprColumnId: {
                 auto column_id =
                     dynamic_cast<const node::ColumnIdNode*>(col_expr);
+                size_t schema_idx;
+                size_t col_idx;
+                CHECK_STATUS(ResolveColumnIndexByID(column_id->GetColumnID(),
+                                                    &schema_idx, &col_idx));
                 column_ids->insert(column_id->GetColumnID());
                 break;
             }

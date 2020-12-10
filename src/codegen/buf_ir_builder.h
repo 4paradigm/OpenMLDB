@@ -74,7 +74,7 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
 
 class BufNativeIRBuilder : public RowDecodeIRBuilder {
  public:
-    BufNativeIRBuilder(const codec::RowFormat* format,
+    BufNativeIRBuilder(size_t schema_idx, const codec::RowFormat* format,
                        ::llvm::BasicBlock* block, ScopeVar* scope_var);
     ~BufNativeIRBuilder();
 
@@ -94,6 +94,7 @@ class BufNativeIRBuilder : public RowDecodeIRBuilder {
  private:
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
+    size_t schema_idx_;
     const codec::RowFormat* format_;
     VariableIRBuilder variable_ir_builder_;
 };

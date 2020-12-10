@@ -815,7 +815,6 @@ class PostRequestUnionRunner : public Runner {
 
     std::shared_ptr<DataHandler> Run(RunnerContext& ctx,
                                      const std::vector<std::shared_ptr<DataHandler>>& inputs) override;  // NOLINT
-
  private:
     OrderGenerator request_ts_gen_;
 };
@@ -1074,12 +1073,14 @@ class RunnerContext {
     explicit RunnerContext(fesql::vm::ClusterJob* cluster_job,
                            const bool is_debug = false)
         : cluster_job_(cluster_job),
+          sp_name_(""),
           request_(),
           requests_(),
           is_debug_(is_debug),
           batch_cache_() {}
     explicit RunnerContext(fesql::vm::ClusterJob* cluster_job,
                            const fesql::codec::Row& request,
+                           const std::string& sp_name = "",
                            const bool is_debug = false)
         : cluster_job_(cluster_job),
           request_(request),
@@ -1088,8 +1089,10 @@ class RunnerContext {
           batch_cache_() {}
     explicit RunnerContext(fesql::vm::ClusterJob* cluster_job,
                            const std::vector<Row>& request_batch,
+                           const std::string& sp_name = "",
                            const bool is_debug = false)
         : cluster_job_(cluster_job),
+          sp_name_(sp_name),
           request_(),
           requests_(request_batch),
           is_debug_(is_debug),
@@ -1103,6 +1106,9 @@ class RunnerContext {
     void SetRequests(const std::vector<fesql::codec::Row>& requests);
     bool is_debug() const { return is_debug_; }
 
+    const std::string& sp_name() {
+        return sp_name_;
+    }
     std::shared_ptr<DataHandler> GetCache(int64_t id) const;
     void SetCache(int64_t id, std::shared_ptr<DataHandler> data);
     void ClearCache() { cache_.clear(); }
@@ -1111,6 +1117,7 @@ class RunnerContext {
 
  private:
     fesql::vm::ClusterJob* cluster_job_;
+    const std::string sp_name_;
     fesql::codec::Row request_;
     std::vector<fesql::codec::Row> requests_;
     size_t idx_;
