@@ -576,3 +576,49 @@ cases:
       rows:
         - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
 
+  -
+    id: 56
+    desc: bool-insert-1
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",1]
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+
+  -
+    id: 57
+    desc: create with two no ts index
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3), ttl=(10m,10), ttl_type=absorlat),
+      index(key=(c4), ttl=(10m,10), ttl_type=absorlat));
+    expect:
+      success: true
+  -
+    id: 58
+    desc: one has ts and another has not
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3), ttl=(10m,10), ttl_type=absorlat),
+      index(key=(c4), ts=c4, ttl=(10m,10), ttl_type=absorlat));
+    expect:
+      success: false
+
+  -
+    id: 59
+    desc: create with only key
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3)),
+      index(key=(c4)));
+    expect:
+      success: true
