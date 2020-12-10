@@ -33,7 +33,7 @@ std::string SQLCaseTest::FindRtidbDirPath(const std::string &dirname) {
         }
     }
     if (current_path.filename().string() == dirname) {
-        LOG(INFO) << "Dir Path is : " << current_path.string() << std::endl;
+        DLOG(INFO) << "Dir Path is : " << current_path.string() << std::endl;
         return current_path.string();
     }
     return std::string();

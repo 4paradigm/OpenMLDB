@@ -162,6 +162,9 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_executable(new_server_env_test nameserver/new_server_env_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc)
     target_link_libraries(new_server_env_test gtest ${BIN_LIBS})
 
+    add_executable(sql_cluster_availability_test tablet/sql_cluster_availability_test.cc client/tablet_client.cc client/ns_client.cc base/status.cc sdk/sql_router.cc)
+    target_link_libraries(sql_cluster_availability_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+
     add_executable(parse_log tools/parse_log.cc)
     target_link_libraries(parse_log ${BIN_LIBS})
 

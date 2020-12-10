@@ -14,24 +14,23 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 import java.util.Map;
 
-public class FESQLClusterBenchmarkTest {
+public class FESQLFZBenchmarkTest {
     private static Logger logger = LoggerFactory.getLogger(FESQLClusterBenchmark.class);
     @Test
     public void execSQLTest() throws SQLException {
-        FESQLClusterBenchmark benchmark = new FESQLClusterBenchmark(true);
-        benchmark.setWindowNum(1000);
+        FESQLFZBenchmark benchmark = new FESQLFZBenchmark(true);
+        benchmark.setWindowNum(1);
         benchmark.setup();
         int loops = 1;
         for (int i = 0; i < loops; i++) {
             Map<String, String> result = benchmark.execSQLTest();
+            for(Map.Entry<String, String> entry: result.entrySet()) {
+                System.out.println(entry.getKey()  + ": " + entry.getValue());
+            }
             Assert.assertNotNull(result);
             Assert.assertTrue(result.size() > 0);
-            System.out.println("previous_application_SK_ID_CURR_time_0s_32d_CNT: " + result.get("previous_application_SK_ID_CURR_time_0s_32d_CNT"));
-            System.out.println("POS_CASH_balance_SK_ID_CURR_time_0s_32d_CNT: " + result.get("POS_CASH_balance_SK_ID_CURR_time_0s_32d_CNT"));
-            System.out.println("installments_payments_SK_ID_CURR_time_0s_32d_CNT: " + result.get("installments_payments_SK_ID_CURR_time_0s_32d_CNT"));
-            System.out.println("bureau_balance_SK_ID_CURR_time_0s_32d_CNT: " + result.get("bureau_balance_SK_ID_CURR_time_0s_32d_CNT"));
-            System.out.println("credit_card_balance_SK_ID_CURR_time_0s_32d_CNT: " + result.get("credit_card_balance_SK_ID_CURR_time_0s_32d_CNT"));
-            System.out.println("bureau_SK_ID_CURR_time_0s_32d_CNT: " + result.get("bureau_SK_ID_CURR_time_0s_32d_CNT"));
+            System.out.println("reqId_1: " + result.get("reqId_1"));
+            System.out.println("reqId_243: " + result.get("reqId_243"));
             System.out.println("----------------------------");
         }
         benchmark.teardown();
@@ -41,7 +40,7 @@ public class FESQLClusterBenchmarkTest {
     @Ignore
     public void benchmark() throws RunnerException {
         Options opt = new OptionsBuilder()
-                .include(FESQLClusterBenchmark.class.getSimpleName())
+                .include(FESQLFZBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
         new Runner(opt).run();
@@ -50,7 +49,7 @@ public class FESQLClusterBenchmarkTest {
     @Ignore
     public void benchmarkSampleTime() throws RunnerException {
         Options opt = new OptionsBuilder()
-                .include(FESQLClusterBenchmark.class.getSimpleName())
+                .include(FESQLFZBenchmark.class.getSimpleName())
                 .mode(Mode.SampleTime)
                 .forks(1)
                 .build();
@@ -60,7 +59,7 @@ public class FESQLClusterBenchmarkTest {
     @Ignore
     public void benchmarkAverageTime() throws RunnerException {
         Options opt = new OptionsBuilder()
-                .include(FESQLClusterBenchmark.class.getSimpleName())
+                .include(FESQLFZBenchmark.class.getSimpleName())
                 .mode(Mode.AverageTime)
                 .forks(1)
                 .build();

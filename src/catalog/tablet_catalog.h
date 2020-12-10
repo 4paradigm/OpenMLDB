@@ -167,7 +167,8 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler,
 class TabletTableHandler : public ::fesql::vm::TableHandler,
                            public std::enable_shared_from_this<fesql::vm::TableHandler> {
  public:
-    explicit TabletTableHandler(const ::rtidb::api::TableMeta &meta, std::shared_ptr<fesql::vm::Tablet> local_tablet);
+    explicit TabletTableHandler(const ::rtidb::api::TableMeta &meta,
+                                std::shared_ptr<fesql::vm::Tablet> local_tablet);
 
     explicit TabletTableHandler(const ::rtidb::nameserver::TableInfo &meta,
                                 std::shared_ptr<fesql::vm::Tablet> local_tablet);
@@ -269,6 +270,7 @@ class TabletCatalog : public ::fesql::vm::Catalog {
     uint64_t GetVersion() const;
 
     void SetLocalTablet(std::shared_ptr<::fesql::vm::Tablet> local_tablet) { local_tablet_ = local_tablet; }
+    void SetLocalSpTablet(std::shared_ptr<::fesql::vm::Tablet> local_sp_tablet) { local_sp_tablet_ = local_sp_tablet; }
 
     std::shared_ptr<::fesql::sdk::ProcedureInfo> GetProcedureInfo(const std::string& db,
             const std::string& sp_name) override;
@@ -283,6 +285,7 @@ class TabletCatalog : public ::fesql::vm::Catalog {
     ClientManager client_manager_;
     std::atomic<uint64_t> version_;
     std::shared_ptr<::fesql::vm::Tablet> local_tablet_;
+    std::shared_ptr<::fesql::vm::Tablet> local_sp_tablet_;
 };
 
 }  // namespace catalog
