@@ -11,6 +11,8 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.net.URL;
 import java.sql.*;
 import java.sql.Date;
@@ -27,9 +29,12 @@ import java.util.concurrent.TimeUnit;
 public class FESQLFZBenchmark {
     private SqlExecutor executor;
     private String db;
-    private String ddlUrl = "http://172.27.128.37:8999/fz_ddl/constant_column.txt.ddl.txt";
-    private String scriptUrl = "http://172.27.128.37:8999/fz_ddl/constant_column.txt";
-    private String relationUrl = "http://172.27.128.37:8999/fz_ddl/constant_column.relation.txt";
+//    private String ddlUrl = "http://172.27.128.37:8999/fz_ddl/constant_column.txt.ddl.txt";
+//    private String scriptUrl = "http://172.27.128.37:8999/fz_ddl/constant_column.txt";
+//    private String relationUrl = "http://172.27.128.37:8999/fz_ddl/constant_column.relation.txt";
+    private String ddlUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.txt.ddl.txt";
+    private String scriptUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.txt";
+    private String relationUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.relation.txt";
     private int pkNum = 1;
     @Param({"500", "1000", "2000"})
     private int windowNum = 10;
@@ -39,14 +44,19 @@ public class FESQLFZBenchmark {
     private String mainTable;
     List<Map<String, String>> mainTableValue;
     int pkBase = 1000000;
-
     public FESQLFZBenchmark() {
-        executor = BenchmarkConfig.GetSqlExecutor();
+        this(false);
+    }
+    public FESQLFZBenchmark(boolean enableDebug ) {
+        executor = BenchmarkConfig.GetSqlExecutor(enableDebug);
         db = "db" + System.nanoTime();
         tableMap = new HashMap<>();
         mainTableValue = new ArrayList<>();
     }
 
+    public void setWindowNum(int windowNum) {
+        this.windowNum = windowNum;
+    }
     class TableInfo {
         private String name;
         private String ddl;
@@ -123,7 +133,14 @@ public class FESQLFZBenchmark {
     public String getContent(String httpUrl) {
         try {
             URL url = new URL(httpUrl);
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            HttpURLConnection con = null;
+            if (BenchmarkConfig.NeedProxy()) {
+                Proxy proxy = new Proxy(Proxy.Type.SOCKS, InetSocketAddress.createUnresolved("127.0.0.1", 1080));
+                System.out.println("Opening connection: " + url.toString() + " with proxy: " + proxy);
+                con = (HttpURLConnection) url.openConnection(proxy);
+            } else {
+                con = (HttpURLConnection) url.openConnection();
+            }
             con.setRequestMethod("GET");
             con.connect();
             if (con.getResponseCode() == 200) {
@@ -150,6 +167,7 @@ public class FESQLFZBenchmark {
     public void init() {
         String rawScript = getContent(scriptUrl);
         script = rawScript.trim().replace("\n", " ");
+        System.out.println(script);
         String relation = getContent(relationUrl);
         String[] arr = relation.trim().split("\n");
         Map<String, Map<String, String>> relationMap = new HashMap<>();
@@ -274,6 +292,7 @@ public class FESQLFZBenchmark {
                 }
                 builder.append(");");
                 String exeSql = builder.toString();
+                System.out.println(exeSql);
                 executor.executeInsert(db, exeSql);
             }
             if (isMainTable) {
@@ -325,6 +344,7 @@ public class FESQLFZBenchmark {
             return;
         }
         for (TableInfo table : tableMap.values()) {
+            System.out.println(table.getDDL());
             if (!executor.executeDDL(db, table.getDDL())) {
                 return;
             }
@@ -371,6 +391,35 @@ public class FESQLFZBenchmark {
         }
     }
 
+    public Map<String, String> execSQLTest() {
+        try {
+            PreparedStatement ps = getPreparedStatement();
+            ResultSet resultSet = ps.executeQuery();
+            resultSet.next();
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            Map<String, String> val = new HashMap<>();
+            for (int i = 0; i < metaData.getColumnCount(); i++) {
+                String columnName = metaData.getColumnName(i + 1);
+                int columnType = metaData.getColumnType(i + 1);
+                if (columnType == Types.VARCHAR) {
+                    val.put(columnName, String.valueOf(resultSet.getString(i + 1)));
+                } else if (columnType == Types.DOUBLE) {
+                    val.put(columnName, String.valueOf(resultSet.getDouble(i + 1)));
+                } else if (columnType == Types.INTEGER) {
+                    val.put(columnName, String.valueOf(resultSet.getInt(i + 1)));
+                } else if (columnType == Types.BIGINT) {
+                    val.put(columnName, String.valueOf(resultSet.getLong(i + 1)));
+                } else if (columnType == Types.TIMESTAMP) {
+                    val.put(columnName, String.valueOf(resultSet.getTimestamp(i + 1)));
+                }
+            }
+            ps.close();
+            return val;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
     public static void main(String[] args) throws RunnerException {
       /*FESQLFZBenchmark ben = new FESQLFZBenchmark();
       try {
