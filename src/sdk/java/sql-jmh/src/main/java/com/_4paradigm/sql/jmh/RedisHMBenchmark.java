@@ -80,7 +80,7 @@ public class RedisHMBenchmark {
         jedis.hmget(key500, field500);
         jedis.close();
     }
-    
+
     @Benchmark
     public void hm100SetWrite() {
         Jedis jedis = pool.getResource();

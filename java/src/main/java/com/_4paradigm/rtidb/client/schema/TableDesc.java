@@ -10,8 +10,17 @@ public class TableDesc {
     private TableType tableType;
     private List<ColumnDesc> columnDescList;
     private List<IndexDef> indexs;
+    private String db = "";
 
     public TableDesc() {
+    }
+
+    public String getDb() {
+        return db;
+    }
+
+    public void setDb(String db) {
+        this.db = db;
     }
 
     public TableDesc(String name, TableType tableType, List<ColumnDesc> columnDescList, List<IndexDef> indexs) {

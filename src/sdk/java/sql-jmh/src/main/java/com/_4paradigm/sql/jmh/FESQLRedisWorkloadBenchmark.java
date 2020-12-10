@@ -15,17 +15,17 @@ import java.sql.Timestamp;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-@BenchmarkMode(Mode.SampleTime)
-@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@BenchmarkMode(Mode.Throughput)
+@OutputTimeUnit(TimeUnit.SECONDS)
 @State(Scope.Benchmark)
-@Threads(5)
-@Fork(value = 1, jvmArgs = {"-Xms32G", "-Xmx32G"})
+@Threads(1)
+@Fork(value = 1, jvmArgs = {"-Xms4G", "-Xmx4G"})
 @Warmup(iterations = 1)
 public class FESQLRedisWorkloadBenchmark {
     private AtomicLong counter = new AtomicLong(0l);
     private SqlExecutor executor;
     private SdkOption option;
-    private String db = "db_insert_benchmark" + System.nanoTime();
+    private String db = "db_insert_benchmark" + System.currentTimeMillis();
     private int recordSize = 10000;
     private String ddl100;
     private String ddl100Insert;
@@ -71,7 +71,7 @@ public class FESQLRedisWorkloadBenchmark {
             ddl100Builder.append("col" + String.valueOf(i) + " string");
             ddl100InsertBuilder.append("?");
         }
-        ddl100Builder.append(", col99 timestamp, index(key=col98, ts=col99));");
+        ddl100Builder.append(", col99 timestamp, index(key=col98, ts=col99)) partitionnum=8;");
         ddl100InsertBuilder.append(", ?);");
         ddl100 = ddl100Builder.toString();
         ddl100Insert = ddl100InsertBuilder.toString();
@@ -234,10 +234,18 @@ public class FESQLRedisWorkloadBenchmark {
         }
     }
     public static void main(String[] args) throws RunnerException {
-       Options opt = new OptionsBuilder()
+        /*Options opt = new OptionsBuilder()
                 .include(FESQLRedisWorkloadBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
-        new Runner(opt).run();
+        new Runner(opt).run();*/
+        FESQLRedisWorkloadBenchmark  ben = new FESQLRedisWorkloadBenchmark();
+        try {
+            ben.setup();
+            ben.read100bm();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 }

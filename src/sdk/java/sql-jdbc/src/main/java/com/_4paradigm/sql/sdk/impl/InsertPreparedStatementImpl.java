@@ -20,17 +20,15 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     private SQLInsertRow currentRow = null;
     private SQLInsertRows currentRows = null;
     private SQLRouter router = null;
-    private List<Object> currentDatas = null;
-    private List<Integer> currentDatasLen = null;
-    private List<DataType> currentDatasType = null;
+    private Object[] currentDatas = null;
     private Schema currentSchema = null;
     private String db = null;
-    private List<Boolean> hasSet = null;
+    private Boolean[] hasSet = null;
     private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
     private boolean closed = false;
     private boolean closeOnComplete = false;
     private Map<String, SQLInsertRows> sqlRowsMap = new HashMap<>();
-    private List<Integer> scehmaIdxs = null;
+    private Long[] scehmaIdxs = null;
     private Map<Integer, Integer> stringsLen = new HashMap<>();
     public InsertPreparedStatementImpl(String db, String sql, SQLRouter router) throws SQLException {
         Status status = new Status();
@@ -47,19 +45,13 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         currentSchema = this.currentRow.GetSchema();
         this.db = db;
         VectorUint32 idxs = this.currentRow.GetHoleIdx();
-        currentDatas = new ArrayList<>(idxs.size());
-        currentDatasLen = new ArrayList<>(idxs.size());
-        currentDatasType = new ArrayList<>(idxs.size());
-        hasSet = new ArrayList<>(idxs.size());
-        scehmaIdxs = new ArrayList<>(idxs.size());
+        currentDatas = new Object[idxs.size()];
+        hasSet = new Boolean[idxs.size()];
+        scehmaIdxs = new Long[idxs.size()];
         for (int i = 0; i < idxs.size(); i++) {
-            long idx = idxs.get(i);
-            DataType type = currentSchema.GetColumnType(idx);
-            currentDatasType.add(type);
-            currentDatas.add(null);
-            currentDatasLen.add(0);
-            hasSet.add(false);
-            scehmaIdxs.add(i);
+            currentDatas[i] = null;
+            hasSet[i] = false;
+            scehmaIdxs[i] = idxs.get(i);
         }
     }
 
@@ -82,7 +74,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         if (i <= 0) {
             throw new SQLException("error sqe number");
         }
-        if (i > currentDatasType.size()) {
+        if (i > scehmaIdxs.size()) {
             throw new SQLException("out of data range");
         }
     }
