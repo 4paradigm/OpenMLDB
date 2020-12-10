@@ -1066,9 +1066,7 @@ class RunnerContext {
     void SetRequest(const fesql::codec::Row& request);
     bool is_debug() const { return is_debug_; }
 
-    const std::string& sp_name() {
-        return sp_name_;
-    }
+    const std::string& sp_name() { return sp_name_; }
     std::shared_ptr<DataHandler> GetCache(int64_t id) const;
     void SetCache(int64_t id, std::shared_ptr<DataHandler> data);
     void ClearCache() { cache_.clear(); }

@@ -55,7 +55,8 @@ bool MemoryWindowDecodeIRBuilder::BuildInnerRowsList(::llvm::Value* list_ptr,
     // alloca memory on stack for col iterator
     ::llvm::ArrayType* array_type =
         ::llvm::ArrayType::get(i8_ty, inner_list_size);
-    ::llvm::Value* inner_list_ptr = builder.CreateAlloca(array_type);
+    ::llvm::Value* inner_list_ptr =
+        CreateAllocaAtHead(&builder, array_type, "sub_window_alloca");
     inner_list_ptr = builder.CreatePointerCast(inner_list_ptr, i8_ptr_ty);
 
     ::llvm::Value* val_start_offset = builder.getInt64(start_offset);
@@ -91,7 +92,8 @@ bool MemoryWindowDecodeIRBuilder::BuildInnerRangeList(::llvm::Value* list_ptr,
     // alloca memory on stack for col iterator
     ::llvm::ArrayType* array_type =
         ::llvm::ArrayType::get(i8_ty, inner_list_size);
-    ::llvm::Value* inner_list_ptr = builder.CreateAlloca(array_type);
+    ::llvm::Value* inner_list_ptr =
+        CreateAllocaAtHead(&builder, array_type, "sub_window_alloca");
     inner_list_ptr = builder.CreatePointerCast(inner_list_ptr, i8_ptr_ty);
 
     ::llvm::Value* val_start_offset = builder.getInt64(start_offset);
@@ -196,9 +198,11 @@ bool MemoryWindowDecodeIRBuilder::BuildGetPrimaryCol(
     // alloca memory on stack for col iterator
     ::llvm::ArrayType* array_type =
         ::llvm::ArrayType::get(i8_ty, col_iterator_size);
-    ::llvm::Value* col_iter = builder.CreateAlloca(array_type);
+    ::llvm::Value* col_iter =
+        CreateAllocaAtHead(&builder, array_type, "col_iter_alloca");
     // alloca memory on stack
-    ::llvm::Value* list_ref = builder.CreateAlloca(list_ref_type);
+    ::llvm::Value* list_ref =
+        CreateAllocaAtHead(&builder, list_ref_type, "list_ref_alloca");
     ::llvm::Value* data_ptr_ptr =
         builder.CreateStructGEP(list_ref_type, list_ref, 0);
     data_ptr_ptr = builder.CreatePointerCast(
@@ -255,10 +259,12 @@ bool MemoryWindowDecodeIRBuilder::BuildGetStringCol(
     // alloca memory on stack for col iterator
     ::llvm::ArrayType* array_type =
         ::llvm::ArrayType::get(i8_ty, col_iterator_size);
-    ::llvm::Value* col_iter = builder.CreateAlloca(array_type);
+    ::llvm::Value* col_iter =
+        CreateAllocaAtHead(&builder, array_type, "col_iter_alloca");
 
     // alloca memory on stack
-    ::llvm::Value* list_ref = builder.CreateAlloca(list_ref_type);
+    ::llvm::Value* list_ref =
+        CreateAllocaAtHead(&builder, list_ref_type, "list_ref_alloca");
     ::llvm::Value* data_ptr_ptr =
         builder.CreateStructGEP(list_ref_type, list_ref, 0);
     data_ptr_ptr = builder.CreatePointerCast(

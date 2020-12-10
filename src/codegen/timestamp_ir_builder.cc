@@ -78,7 +78,8 @@ base::Status TimestampIRBuilder::CastFrom(::llvm::BasicBlock* block,
     } else if (IsStringPtr(src.GetType()) || IsDatePtr(src.GetType())) {
         ::llvm::IRBuilder<> builder(block);
         ::llvm::Value* dist = nullptr;
-        ::llvm::Value* is_null_ptr = builder.CreateAlloca(builder.getInt1Ty());
+        ::llvm::Value* is_null_ptr = CreateAllocaAtHead(
+            &builder, builder.getInt1Ty(), "timestamp_is_null_alloca");
         if (!CreateDefault(block, &dist)) {
             status.code = common::kCodegenError;
             status.msg = "Fail to cast date: create default date fail";

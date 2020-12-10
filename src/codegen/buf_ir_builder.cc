@@ -254,7 +254,8 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t col_idx, uint32_t offset,
 
     // null flag
     ::llvm::Type* bool_ty = builder.getInt1Ty();
-    ::llvm::Value* is_null_alloca = builder.CreateAlloca(bool_ty);
+    ::llvm::Value* is_null_alloca =
+        CreateAllocaAtHead(&builder, bool_ty, "string_is_null");
 
     // TODO(wangtaize) add status check
     builder.CreateCall(callee,
@@ -308,7 +309,8 @@ bool BufNativeEncoderIRBuilder::BuildEncodePrimaryField(
 bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* i32_ty = builder.getInt32Ty();
-    ::llvm::Value* str_addr_space_ptr = builder.CreateAlloca(i32_ty);
+    ::llvm::Value* str_addr_space_ptr =
+        CreateAllocaAtHead(&builder, i32_ty, "str_addr_space_alloca");
     ::llvm::Value* row_size = NULL;
     bool ok = CalcTotalSize(&row_size, str_addr_space_ptr);
 
