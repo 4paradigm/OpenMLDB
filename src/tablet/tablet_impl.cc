@@ -5089,7 +5089,7 @@ void TabletImpl::RefreshTableInfo() {
             return;
         }
     } else {
-        LOG(INFO) << "no procedures in db";
+        DLOG(INFO) << "no procedures in db";
     }
     rtidb::catalog::Procedures db_sp_map;
     for (const auto& node : sp_datas) {
@@ -5113,7 +5113,7 @@ void TabletImpl::RefreshTableInfo() {
         auto sp_info = rtidb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info_pb);
         if (!sp_info) {
             LOG(WARNING) << "convert procedure info failed, sp_name: "
-                << sp_info->GetSpName() << " db: " << sp_info->GetDbName();
+                << sp_info_pb.sp_name() << " db: " << sp_info_pb.db_name();
             continue;
         }
         auto it = db_sp_map.find(sp_info->GetDbName());
