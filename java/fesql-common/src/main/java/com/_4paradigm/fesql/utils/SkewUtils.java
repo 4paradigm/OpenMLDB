@@ -20,6 +20,8 @@ public class SkewUtils {
         for (String e : keys) {
             sql.append(e + ",\n");
         }
+//        count(employee_name, department) as key_cnt,
+        sql.append(String.format("count(%s) as key_cnt,\n", StringUtils.join(keys, ",")));
         sql.append(String.format("min(%s) as min_%s,\n", ts, ts));
         sql.append(String.format("max(%s) as max_%s,\n", ts, ts));
         sql.append(String.format("mean(%s) as mean_%s,\n", ts, ts));
@@ -33,29 +35,24 @@ public class SkewUtils {
         sql.append(String.format("from \n%s\ngroup by ", table1));
         sql.append(StringUtils.join(keys, " , "));
         sql.append(";");
-//        System.out.println(sql);
+        System.out.println(sql);
         return sql.toString();
+
     }
 
-    public static String genPercentileSql(String table1, String table2, int quantile, Map<String, String> keysMap, String ts) {
+    public static String genPercentileTagSql(String table1, String table2, int quantile, List<String> schemas, Map<String, String> keysMap, String ts) {
         StringBuffer sql = new StringBuffer();
-        sql.append("select ");
-        for (String e : keysMap.keySet()) {
+        sql.append("select \n");
+        for (String e : schemas) {
             sql.append(table1 + "." + e + ",");
         }
-        sql.append(table1 + "." + ts + ",\n");
-        sql.append("case\n");
+//        sql.append(table1 + "." + ts + ",\n");
 
-        for (int i = 0; i < quantile; i++) {
-            if (i == 0) {
-                sql.append(String.format("when %s.%s <= percentile_%s then %d\n", table1, ts, i, i+1));
-            }
-            sql.append(String.format("when %s.%s > percentile_%s and %s.%s <= percentile_%d then %d\n", table1, ts, i, table1, ts, i+1, i+1));
-            if (i == quantile) {
-                sql.append(String.format("when %s.%s > percentile_%s then %d\n", table1, ts, i+1, i+1));
-            }
-        }
-        sql.append("end as tag\n");
+        sql.append(caseWhenTag(table1, table2, ts, quantile, "tag_wzx"));
+        sql.append(",");
+        sql.append(caseWhenTag(table1, table2, ts, quantile, "position_wzx"));
+
+
         sql.append(String.format("from %s left join %s on ", table1, table2));
         List<String> conditions = new ArrayList<>();
         for (Map.Entry<String, String> e : keysMap.entrySet()) {
@@ -67,6 +64,32 @@ public class SkewUtils {
         return sql.toString();
     }
 
+    /**
+     * ?shu
+     * @paraable1
+     * @param ts
+     * @param quantile
+     * @param output
+     * @return
+     */
+    public static String caseWhenTag(String table1, String table2, String ts, int quantile, String output) {
+        StringBuffer sql = new StringBuffer();
+        sql.append("\ncase\n");
+        sql.append(String.format("when %s.key_cnt < %s then 1\n", table2, quantile));
+        for (int i = 0; i < quantile; i++) {
+            if (i == 0) {
+                sql.append(String.format("when %s.%s <= percentile_%s then %d\n", table1, ts, i, quantile - i));
+            }
+
+            sql.append(String.format("when %s.%s > percentile_%s and %s.%s <= percentile_%d then %d\n", table1, ts, i, table1, ts, i+1, quantile - i));
+            if (i == quantile) {
+                sql.append(String.format("when %s.%s > percentile_%s then %d\n", table1, ts, i+1, quantile - i));
+            }
+        }
+        sql.append("end as " + output + "\n");
+        return sql.toString();
+    }
+
     public static void main(String[] args) {
         String table1 = "mainTable";
         String table2 = "info_table";
@@ -74,7 +97,17 @@ public class SkewUtils {
         Map<String, String> keys = new HashMap<>();
         keys.put("employee_name", "employee_name");
         keys.put("department", "department");
-        System.out.println(genPercentileSql(table1, table2, 4, keys, ts));
+        List<String> schemas = new ArrayList<String>(){
+            {
+                add("employee_name");
+                add("department");
+                add("state");
+                add("salary");
+                add("age");
+                add("bonus");
+            }
+        };
+        System.out.println(genPercentileTagSql(table1, table2, 4, schemas, keys, ts));
     }
 }
 

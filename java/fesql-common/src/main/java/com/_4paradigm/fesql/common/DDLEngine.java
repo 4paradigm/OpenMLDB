@@ -386,7 +386,7 @@ public class DDLEngine {
         return newList;
     }
 
-    public static String genOutputSchema(String sql, String schema) {
+    public static String sql2Feconfig(String sql, String schema) {
         String tempDB = "temp_" + System.currentTimeMillis();
         TypeOuterClass.Database.Builder db = TypeOuterClass.Database.newBuilder();
         db.setName(tempDB);
@@ -434,7 +434,7 @@ public class DDLEngine {
         File file = new File(schemaPath);
         File sql = new File(sqlPath);
         try {
-            genOutputSchema(FileUtils.readFileToString(sql, "UTF-8"), FileUtils.readFileToString(file, "UTF-8"));
+            sql2Feconfig(FileUtils.readFileToString(sql, "UTF-8"), FileUtils.readFileToString(file, "UTF-8"));
 //            genDDL(FileUtils.readFileToString(sql, "UTF-8"), FileUtils.readFileToString(file, "UTF-8"));
 //            getTableDefs(FileUtils.readFileToString(file, "UTF-8"));
         } catch (IOException e) {

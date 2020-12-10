@@ -56,7 +56,13 @@ object WindowAggPlan {
     val flagColName = "__FESQL_WINDOW_UNION_FLAG__" + System.currentTimeMillis()
     val union = doUnionTables(ctx, node, input.getDf(sess), flagColName)
 
-    val inputDf = groupAndSort(ctx, node, union)
+     val inputDf =  if (FesqlConfig.configMode.equals(FesqlConfig.skew)) {
+        
+    } else {
+      groupAndSort(ctx, node, union)
+    }
+
+   
     val windowAggConfig = createWindowAggConfig(ctx, node)
 
     val resultRDD = inputDf.rdd.mapPartitions(iter => {
