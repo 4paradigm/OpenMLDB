@@ -154,7 +154,7 @@ int ClusterInfo::Init(std::string& msg) {
     if (FLAGS_use_name) {
         std::vector<std::string> vec;
         const std::string name_path = cluster_add_.zk_path() + "/map/names/" + endpoint;
-        if (!zk_client_->IsExistNode(name_path) != 0) {
+        if (zk_client_->IsExistNode(name_path) != 0) {
             msg = "name not in names_vec";
             LOG(WARNING) << endpoint << " not in name vec";
             return -1;
