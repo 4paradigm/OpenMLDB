@@ -76,10 +76,6 @@ build:
       - build/python/dist/*.whl
 
 mac_build:
-  variables:
-    CICD_RUNNER_TAG: "rtidb_mac"
-  tags:
-    - rtidb_mac
   stage: build
   script:
     - bash steps/simple_compile_mac.sh
@@ -436,11 +432,11 @@ deploy-fedb:
     - ln -sf /depends/thirdparty thirdparty
     - ln -sf /depends/thirdsrc thirdsrc
     - source /root/.bashrc && bash steps/deploy_package_fedb.sh
+  dependencies:
+    - mac_build
   only:
     variables:
       - $ENV_BUILD == "daily"
-  dependencies:
-    - build
 
 deploy-fedb-fpga:
   image: develop-registry.4pd.io/centos6_gcc7_fesql_fpga:0.0.12
