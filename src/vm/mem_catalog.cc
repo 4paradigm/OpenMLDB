@@ -264,15 +264,14 @@ MemTableHandler::MemTableHandler(const std::string& table_name,
       table_(),
       order_type_(kNoneOrder) {}
 void MemTableHandler::AddRow(const Row& row) {
-    table_.push_back(std::make_pair(table_.size(), row));
+    table_.push_back(row);
 }
 void MemTableHandler::Reserve(const size_t size) { table_.reserve(size); }
 bool MemTableHandler::SetRow(const size_t idx, const Row& row) {
     if (idx >= table_.size()) {
         return false;
     }
-    table_[idx].first = idx;
-    table_[idx].second = row;
+    table_[idx] = row;
     return true;
 }
 void MemTableHandler::Reverse() {
@@ -302,14 +301,14 @@ MemTableIterator::MemTableIterator(const MemTable* table,
 MemTableIterator::~MemTableIterator() {}
 void MemTableIterator::Seek(const uint64_t& ts) { iter_ = start_iter_ + ts; }
 void MemTableIterator::SeekToFirst() { iter_ = start_iter_; }
-const uint64_t& MemTableIterator::GetKey() const { return iter_->first; }
+const uint64_t& MemTableIterator::GetKey() const { return iter_-start_iter_; }
 
 bool MemTableIterator::Valid() const { return end_iter_ > iter_; }
 void MemTableIterator::Next() {
     iter_++;
     key_ = Valid() ? iter_ - start_iter_ : 0;
 }
-const Row& MemTableIterator::GetValue() { return iter_->second; }
+const Row& MemTableIterator::GetValue() { return *iter_; }
 bool MemTableIterator::IsSeekable() const { return true; }
 
 // row iter interfaces for llvm

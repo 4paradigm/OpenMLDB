@@ -465,6 +465,12 @@ class Runner : public node::NodeBase<Runner> {
         return kRunnerRequestRunProxy == type ||
                kRunnerBatchRequestRunProxy == type;
     }
+    static bool ExtractRows(std::shared_ptr<DataHandlerList> handlers,
+                                 std::vector<Row>& out_rows);  // NOLINT
+    static bool ExtractRow(std::shared_ptr<DataHandler> handler,
+                                 Row* out_row);  // NOLINT
+    static bool ExtractRows(std::shared_ptr<DataHandler> handler,
+                            std::vector<Row>& out_rows);  // NOLINT
     const vm::SchemasContext* output_schemas() const { return output_schemas_; }
 
     void set_output_schemas(const vm::SchemasContext* schemas) {
@@ -928,6 +934,8 @@ class ProxyRequestRunner : public Runner {
     std::shared_ptr<DataHandler> Run(
         RunnerContext& ctx,  // NOLINT
         const std::vector<std::shared_ptr<DataHandler>>& inputs) override;
+    std::shared_ptr<DataHandlerList> BatchRequestRun(
+        RunnerContext& ctx) override;  // NOLINT
     virtual void PrintRunnerInfo(std::ostream& output,
                                  const std::string& tab) const {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_)
@@ -940,6 +948,14 @@ class ProxyRequestRunner : public Runner {
     const int32_t task_id() const { return task_id_; }
 
  private:
+    std::shared_ptr<DataHandlerList> RunBatchInput(
+        RunnerContext& ctx,  // NOLINT
+        std::shared_ptr<DataHandlerList> input);
+    std::shared_ptr<DataHandler> RunWithRowInput(RunnerContext& ctx,  // NOLINT
+                                                 const Row& row);
+    std::shared_ptr<TableHandler> RunWithRowsInput(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<Row>& rows);
     uint32_t task_id_;
 };
 

@@ -192,9 +192,6 @@ class BatchRequestRunSession : public RunSession {
                 std::vector<Row>& output);  // NOLINT
     int32_t Run(const std::vector<Row>& request_batch,
                 std::vector<Row>& output);  // NOLINT
-    int32_t Run(const uint32_t id,
-                const std::shared_ptr<TableHandler> request_batch,
-                std::vector<Row>& output);  // NOLINT
     // TODO(baoxinqi): remove
     int32_t RunBatch(fesql::vm::RunnerContext& ctx,  // NOLINT
                      const std::vector<Row>& requests,
@@ -321,11 +318,59 @@ class LocalTabletRowHandler : public RowHandler {
     std::string db_;
     const Schema* schema_;
     uint32_t task_id_;
-    Row request_;
     RequestRunSession session_;
+    Row request_;
     Row value_;
 };
-
+class LocalTabletTableHandler : public MemTableHandler {
+ public:
+    LocalTabletTableHandler(uint32_t task_id,
+                                 const BatchRequestRunSession session,
+                                 const std::vector<Row> requests)
+        : status_(base::Status::Running()),
+          task_id_(task_id),
+          session_(session),
+          requests_(requests) {}
+    ~LocalTabletTableHandler() {}
+     Row At(uint64_t pos) override {
+        if (!status_.isRunning()) {
+            return MemTableHandler::At(pos);
+        }
+        status_ = SyncValue();
+        return MemTableHandler::At(pos);
+    }
+    std::unique_ptr<RowIterator> GetIterator() {
+        if (status_.isRunning()) {
+            status_ = SyncValue();
+        }
+        return MemTableHandler::GetIterator();
+    }
+    RowIterator* GetRawIterator() {
+        if (status_.isRunning()) {
+            status_ = SyncValue();
+        }
+        return MemTableHandler::GetRawIterator();
+    }
+    virtual const uint64_t GetCount() {
+        if (status_.isRunning()) {
+            status_ = SyncValue();
+        }
+        return MemTableHandler::GetCount();
+    }
+ private:
+    base::Status SyncValue() {
+        DLOG(INFO) << "Local tablet SubQuery: task id " << task_id_;
+        if (0 != session_.Run(task_id_, requests_, table_)) {
+            return base::Status(common::kCallMethodError,
+                                "sub query fail: session run fail");
+        }
+        return base::Status::OK();
+    }
+    base::Status status_;
+    uint32_t task_id_;
+    BatchRequestRunSession session_;
+    const std::vector<Row> requests_;
+};
 class LocalTablet : public Tablet {
  public:
     explicit LocalTablet(fesql::vm::Engine* engine,
@@ -370,29 +415,38 @@ class LocalTablet : public Tablet {
     }
     virtual std::shared_ptr<TableHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
-        const std::shared_ptr<TableHandler> table, const bool is_debug) {
-        DLOG(INFO) << "Local tablet SubQuery batch request: task id " << task_id;
+        const std::vector<Row>& in_rows, const bool is_procedure,
+        const bool is_debug) {
+        DLOG(INFO) << "Local tablet SubQuery batch request: task id "
+                   << task_id;
         BatchRequestRunSession session;
+        base::Status status;
         if (is_debug) {
             session.EnableDebug();
         }
-        base::Status status;
-        if (!engine_->Get(sql, db, session, status)) {
-            return std::shared_ptr<TableHandler>(new ErrorTableHandler(
-                common::kCallMethodError, "SubQuery fail: compile sql fail"));
+        if (is_procedure) {
+            if (!sp_cache_) {
+                return std::shared_ptr<TableHandler>(
+                    new ErrorTableHandler(common::kProcedureNotFound,
+                                        "SubQuery Fail: procedure not found, "
+                                        "procedure cache not exist"));
+            }
+            auto request_compile_info =
+                sp_cache_->GetRequestInfo(db, sql, status);
+            if (!status.isOK()) {
+                return std::shared_ptr<TableHandler>(new ErrorTableHandler(
+                    status.code, "SubQuery Fail: " + status.msg));
+            }
+            session.SetSpName(sql);
+            session.SetCompileInfo(request_compile_info);
+        } else {
+            if (!engine_->Get(sql, db, session, status)) {
+                return std::shared_ptr<TableHandler>(new ErrorTableHandler(
+                    status.code, "SubQuery Fail: " + status.msg));
+            }
         }
-
-        std::vector<Row> out_rows;
-        std::shared_ptr<MemTableHandler> out_table =
-            std::shared_ptr<MemTableHandler>(new MemTableHandler());
-        if (0 != session.Run(task_id, table, out_rows)) {
-            return std::shared_ptr<TableHandler>(new ErrorTableHandler(
-                common::kCallMethodError, "sub query fail: session run fail"));
-        }
-        for (Row& row : out_rows) {
-            out_table->AddRow(row);
-        }
-        return out_table;
+        return std::make_shared<LocalTabletTableHandler>(task_id, session,
+                                                       in_rows);
     }
 
  private:

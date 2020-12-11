@@ -48,7 +48,7 @@ struct DescComparor {
 };
 
 typedef std::deque<std::pair<uint64_t, Row>> MemTimeTable;
-typedef std::vector<std::pair<uint64_t, Row>> MemTable;
+typedef std::vector<Row> MemTable;
 typedef std::map<std::string, MemTimeTable, std::greater<std::string>>
     MemSegmentMap;
 
@@ -163,7 +163,7 @@ class MemTableHandler : public TableHandler {
     void Reverse();
     virtual const uint64_t GetCount() { return table_.size(); }
     virtual Row At(uint64_t pos) {
-        return pos < table_.size() ? table_.at(pos).second : Row();
+        return pos < table_.size() ? table_.at(pos): Row();
     }
 
     const OrderType GetOrderType() const { return order_type_; }

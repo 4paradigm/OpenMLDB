@@ -95,7 +95,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             if (Runner::IsProxyRunner(input->type_) && !input->need_cache()) {
                 cluster_job_.AddRunnerToTask(
                     nm_->RegisterNode(runner),
-                    dynamic_cast<ProxyRunner*>(input)->task_id());
+                    dynamic_cast<ProxyRequestRunner*>(input)->task_id());
                 input->set_output_schemas(runner->output_schemas());
                 return RegisterTask(node, cluster_task);
             }
@@ -535,14 +535,14 @@ ClusterTask RunnerBuilder::BuildProxyRunner(
             return ClusterTask();
         }
         if (is_batch_request) {
-            auto proxy_runner = nm_->RegisterNode(new ProxyBatchRequestRunner(
+            auto proxy_runner = nm_->RegisterNode(new ProxyRequestRunner(
                 id_++, static_cast<uint32_t>(remote_task_id),
                 runner->output_schemas()));
 
             if (Runner::IsProxyRunner(left->type_) && !left->need_cache()) {
                 cluster_job_.AddRunnerToTask(
                     proxy_runner,
-                    dynamic_cast<ProxyRunner*>(left)->task_id());
+                    dynamic_cast<ProxyRequestRunner*>(left)->task_id());
                 left->set_output_schemas(proxy_runner->output_schemas());
                 return left_task;
             } else {
@@ -1844,6 +1844,113 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
     LOG(INFO) << data->GetHandlerTypeName() << " RESULT:\n" << oss.str();
 }
 
+bool Runner::ExtractRows(std::shared_ptr<DataHandlerList> handlers,
+
+                             std::vector<Row>& out_rows) {
+    if (!handlers) {
+        LOG(WARNING) << "Extract batch rows error: data handler is null";
+        return false;
+    }
+    for (size_t i = 0; i < handlers->GetSize(); i++) {
+        auto handler = handlers->Get(i);
+        if (!handler) {
+            out_rows.push_back(Row());
+            continue;
+        }
+        switch (handler->GetHanlderType()) {
+            case kTableHandler: {
+                auto iter = std::dynamic_pointer_cast<TableHandler>(handler)
+                    ->GetIterator();
+                if (!iter) {
+                    LOG(WARNING)
+                        << "Extract batch rows error: iter is null";
+                    return false;
+                }
+                iter->SeekToFirst();
+                while (iter->Valid()) {
+                    out_rows.push_back(iter->GetValue());
+                    iter->Next();
+                }
+                break;
+            }
+            case kRowHandler: {
+                out_rows.push_back(
+                    std::dynamic_pointer_cast<RowHandler>(handler)
+                        ->GetValue());
+                break;
+            }
+            default: {
+                LOG(WARNING) << "partition output is invalid";
+                return false;
+            }
+        }
+    }
+    return true;
+}
+bool Runner::ExtractRow(std::shared_ptr<DataHandler> handler,
+                             Row* out_row) {
+    switch (handler->GetHanlderType()) {
+        case kTableHandler: {
+            auto iter =
+                std::dynamic_pointer_cast<TableHandler>(handler)->GetIterator();
+            if (!iter) {
+                return false;
+            }
+            iter->SeekToFirst();
+            if (iter->Valid()) {
+                *out_row = iter->GetValue();
+                return true;
+            } else {
+                return false;
+            }
+        }
+        case kRowHandler: {
+            *out_row =
+                std::dynamic_pointer_cast<RowHandler>(handler)->GetValue();
+            return true;
+        }
+        case kPartitionHandler: {
+            LOG(WARNING) << "partition output is invalid";
+            return false;
+        }
+        default: {
+            return false;
+        }
+    }
+}
+bool Runner::ExtractRows(std::shared_ptr<DataHandler> handler,
+                        std::vector<Row>& out_rows) {  // NOLINT
+    if (!handler) {
+        LOG(WARNING) << "Extract batch rows error: data handler is null";
+        return false;
+    }
+    switch (handler->GetHanlderType()) {
+        case kTableHandler: {
+            auto iter =
+                std::dynamic_pointer_cast<TableHandler>(handler)->GetIterator();
+            if (!iter) {
+                LOG(WARNING) << "Extract batch rows error: iter is null";
+                return false;
+            }
+            iter->SeekToFirst();
+            while (iter->Valid()) {
+                out_rows.push_back(iter->GetValue());
+                iter->Next();
+            }
+            break;
+        }
+        case kRowHandler: {
+            out_rows.push_back(
+                std::dynamic_pointer_cast<RowHandler>(handler)->GetValue());
+            break;
+        }
+        default: {
+            LOG(WARNING) << "partition output is invalid";
+            return false;
+        }
+    }
+    return true;
+}
 std::shared_ptr<DataHandler> ConcatRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
@@ -2104,23 +2211,145 @@ std::shared_ptr<DataHandler> AggRunner::Run(
         agg_gen_.Gen(std::dynamic_pointer_cast<TableHandler>(input))));
     return row_handler;
 }
+std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
+    RunnerContext& ctx) {
+    if (need_cache_) {
+        auto cached = ctx.GetBatchCache(id_);
+        if (cached != nullptr) {
+            DLOG(INFO) << "RUNNER ID " << id_ << " HIT CACHE!";
+            return cached;
+        }
+    }
+    std::shared_ptr<DataHandlerList> proxy_batch_input =
+        producers_[0]->BatchRequestRun(ctx);
+    LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+              << "\n";
+    std::vector<std::shared_ptr<DataHandler>> inputs(0);
+    // if need batch cache_, we only need to compute the first line
+    // and repeat the output
+    if (need_batch_cache_) {
+        inputs[0] = proxy_batch_input->Get(0);
+        auto res = Run(ctx, inputs);
+        if (ctx.is_debug()) {
+            Runner::PrintData(output_schemas_, res);
+        }
+        DLOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << "RUNNER ID "
+                   << id_ << " HIT BATCH CACHE!";
+        auto repeated_data = std::shared_ptr<DataHandlerList>(
+            new DataHandlerRepeater(res, proxy_batch_input->GetSize()));
+        if (need_cache_) {
+            ctx.SetBatchCache(id_, repeated_data);
+        }
+        return repeated_data;
+    }
 
+    // if not need batch cache
+    // compute each line
+    auto outputs = RunBatchInput(ctx, proxy_batch_input);
+    if (need_cache_) {
+        ctx.SetBatchCache(id_, outputs);
+    }
+    return outputs;
+}
+
+// run each line of request
 std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    auto fail_ptr = std::shared_ptr<DataHandler>();
+    // proxy input, can be row or rows
     auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "input is empty";
-        return std::shared_ptr<DataHandler>();
+        return fail_ptr;
+    }
+    switch (input->GetHanlderType()) {
+        case kRowHandler: {
+            auto row = std::dynamic_pointer_cast<RowHandler>(input)->GetValue();
+            return RunWithRowInput(ctx, row);
+        }
+        case kTableHandler: {
+            auto iter =
+                std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
+            if (!iter) {
+                LOG(WARNING)
+                    << "fail to run proxy runner with rows: table iter null"
+                    << task_id_;
+                return fail_ptr;
+            }
+            iter->SeekToFirst();
+            std::vector<Row> rows;
+            while (iter->Valid()) {
+                rows.push_back(iter->GetValue());
+                iter->Next();
+            }
+            return RunWithRowsInput(ctx, rows);
+        }
+    }
+}
+// outs = Proxy(in_rows),  remote batch request
+// out_tables = Proxy(in_tables), remote batch request
+std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
+    RunnerContext& ctx,  // NOLINT
+    std::shared_ptr<DataHandlerList> batch_input) {
+    auto fail_ptr = std::shared_ptr<DataHandlerList>();
+    // proxy input, can be row or rows
+    if (!batch_input || 0 == batch_input->GetSize()) {
+        LOG(WARNING) << "input is empty";
+        return fail_ptr;
     }
 
-    auto cluster_job = ctx.cluster_job();
+
+    switch (batch_input->Get(0)->GetHanlderType()) {
+        case kRowHandler: {
+            std::vector<Row> rows;
+            if (!ExtractRows(batch_input, rows)) {
+                LOG(WARNING) << "run proxy runner with rows fail, batch rows is empty";
+                return fail_ptr;
+            }
+            std::shared_ptr<TableHandler> table = RunWithRowsInput(ctx, rows);
+            if (!table) {
+                LOG(WARNING) << "run proxy runner with rows fail, result table is null";
+                return fail_ptr;
+            }
+
+            std::shared_ptr<DataHandlerVector> outputs =
+                std::make_shared<DataHandlerVector>();
+            for(size_t idx = 0; idx < rows.size(); idx++) {
+                outputs->Add(std::make_shared<AysncRowHandler>(idx, table));
+            }
+        }
+        case kTableHandler: {
+            std::shared_ptr<DataHandlerVector> outputs =
+                std::make_shared<DataHandlerVector>();
+            for(size_t idx = 0; idx < batch_input->GetSize(); idx++) {
+                std::vector<Row> rows;
+                if (!ExtractRows(batch_input->Get(idx), rows)) {
+                    LOG(WARNING) << "run proxy runner with rows fail, batch rows is empty";
+                    return fail_ptr;
+                }
+                outputs->Add(RunWithRowsInput(ctx, rows));
+            }
+        }
+        default: {
+            LOG(WARNING) << "fail to run proxy runner: handler type unsupported";
+            return fail_ptr;
+        }
+    }
+    return fail_ptr;
+}
+
+// out = Proxy(in_row)
+// out_table = Proxy(in_table) , remote table left join
+std::shared_ptr<DataHandler> ProxyRequestRunner::RunWithRowInput(
+    RunnerContext& ctx,  // NOLINT
+    const Row& row) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
+    auto cluster_job = ctx.cluster_job();
     if (nullptr == cluster_job) {
         LOG(WARNING) << "fail to run proxy runner: invalid cluster job ptr";
         return fail_ptr;
     }
-
     auto task = cluster_job->GetTask(task_id_);
     if (!task.IsValid()) {
         LOG(WARNING) << "fail to run proxy runner: invalid task of taskid "
@@ -2128,56 +2357,91 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
         return fail_ptr;
     }
     std::string pk = "";
-    switch (input->GetHanlderType()) {
-        case kRowHandler: {
-            auto row = std::dynamic_pointer_cast<RowHandler>(input)->GetValue();
-            if (!task.GetIndexKey().ValidKey()) {
-                LOG(WARNING) << "can't pick tablet to subquery without index";
-                return std::shared_ptr<DataHandler>();
-            }
-            KeyGenerator generator(task.GetIndexKey().fn_info());
-            pk = generator.Gen(row);
-            if (pk.empty()) {
-                // local mode
-                LOG(WARNING) << "can't pick tablet to subquery with empty pk";
-                return std::shared_ptr<DataHandler>();
-            } else {
-                DLOG(INFO) << "pick tablet with given index_name "
-                           << task.index() << " pk " << pk;
-                auto table_handler = task.table_handler();
-                if (!table_handler) {
-                    LOG(WARNING) << "table handler is null";
-                    return std::shared_ptr<DataHandler>();
-                }
-                auto tablet = table_handler->GetTablet(task.index(), pk);
-                if (!tablet) {
-                    DLOG(INFO) << "tablet is null, run in local mode";
-                    return std::shared_ptr<DataHandler>();
-                } else {
-                    if (row.GetRowPtrCnt() > 1) {
-                        LOG(WARNING) << "subquery with multi slice row is "
-                                        "unsupported currently";
-                        return std::shared_ptr<DataHandler>();
-                    }
-                    if (ctx.sp_name().empty()) {
-                        return tablet->SubQuery(
-                            task_id_, table_handler->GetDatabase(),
-                            cluster_job->sql(), row, false, ctx.is_debug());
-                    } else {
-                        return tablet->SubQuery(
-                            task_id_, table_handler->GetDatabase(),
-                            ctx.sp_name(), row, true, ctx.is_debug());
-                    }
-                }
-            }
+    if (!task.GetIndexKey().ValidKey()) {
+        LOG(WARNING) << "can't pick tablet to subquery without index";
+        return std::shared_ptr<DataHandler>();
+    }
+    KeyGenerator generator(task.GetIndexKey().fn_info());
+    pk = generator.Gen(row);
+    if (pk.empty()) {
+        // local mode
+        LOG(WARNING) << "can't pick tablet to subquery with empty pk";
+        return std::shared_ptr<DataHandler>();
+    }
+    DLOG(INFO) << "pick tablet with given index_name " << task.index() << " pk "
+               << pk;
+    auto table_handler = task.table_handler();
+    if (!table_handler) {
+        LOG(WARNING) << "table handler is null";
+        return std::shared_ptr<DataHandler>();
+    }
+    auto tablet = table_handler->GetTablet(task.index(), pk);
+    if (!tablet) {
+        DLOG(INFO) << "tablet is null, run in local mode";
+        return std::shared_ptr<DataHandler>();
+    } else {
+        if (row.GetRowPtrCnt() > 1) {
+            LOG(WARNING) << "subquery with multi slice row is "
+                            "unsupported currently";
+            return std::shared_ptr<DataHandler>();
         }
-        default: {
-            LOG(WARNING) << "invalid key row, key generator input type is "
-                         << input->GetHandlerTypeName();
-            return fail_ptr;
+        if (ctx.sp_name().empty()) {
+            return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
+                                    cluster_job->sql(), row, false,
+                                    ctx.is_debug());
+        } else {
+            return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
+                                    ctx.sp_name(), row, true, ctx.is_debug());
         }
     }
 }
+// out_table = Proxy(in_table) , remote table left join
+std::shared_ptr<TableHandler> ProxyRequestRunner::RunWithRowsInput(
+    RunnerContext& ctx,  // NOLINT
+    const std::vector<Row>& rows) {
+    // basic cluster task validate
+    auto fail_ptr = std::shared_ptr<TableHandler>();
+
+    auto cluster_job = ctx.cluster_job();
+    if (nullptr == cluster_job) {
+        LOG(WARNING) << "fail to run proxy runner: invalid cluster job ptr";
+        return fail_ptr;
+    }
+    auto task = cluster_job->GetTask(task_id_);
+    if (!task.IsValid()) {
+        LOG(WARNING)
+            << "fail to run proxy runner with rows: invalid task of taskid "
+            << task_id_;
+        return fail_ptr;
+    }
+    auto table_handler = task.table_handler();
+    if (!table_handler) {
+        LOG(WARNING) << "table handler is null";
+        return fail_ptr;
+    }
+    // collect pk list from rows
+    std::string pk = "";
+    KeyGenerator generator(task.GetIndexKey().fn_info());
+    std::vector<std::string> pks;
+    for (auto& row : rows) {
+        pks.push_back(generator.Gen(row));
+    }
+    auto tablet = table_handler->GetTablet(task.index(), pks);
+    if (!tablet) {
+        LOG(WARNING) << "fail to run proxy runner with rows: tablet is null";
+        return fail_ptr;
+    }
+    if (ctx.sp_name().empty()) {
+        return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
+                                cluster_job->sql(), rows, false,
+                                ctx.is_debug());
+    } else {
+        return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
+                                ctx.sp_name(), rows, true, ctx.is_debug());
+    }
+    return fail_ptr;
+}
+
 /**
  * TODO(chenjing): GenConst key during compile-time
  * @return

@@ -52,6 +52,8 @@ typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
 class PartitionHandler;
+class TableHandler;
+class RowHandler;
 class Tablet;
 
 enum HandlerType { kRowHandler, kTableHandler, kPartitionHandler };
@@ -71,41 +73,6 @@ class DataHandler : public ListV<Row> {
     virtual const HandlerType GetHanlderType() = 0;
     virtual const std::string GetHandlerTypeName() = 0;
     virtual base::Status GetStatus() { return base::Status::OK(); }
-};
-class DataHandlerList {
- public:
-    DataHandlerList() {}
-    ~DataHandlerList() {}
-    virtual size_t GetSize() = 0;
-    virtual std::shared_ptr<DataHandler> Get(size_t idx) = 0;
-};
-class DataHandlerVector : public DataHandlerList {
- public:
-    DataHandlerVector() : data_handlers_() {}
-    ~DataHandlerVector() {}
-    void Add(std::shared_ptr<DataHandler> data_handler) {
-        data_handlers_.push_back(data_handler);
-    }
-    size_t GetSize() { return data_handlers_.size(); }
-    std::shared_ptr<DataHandler> Get(size_t idx) { return data_handlers_[idx]; }
-
- private:
-    std::vector<std::shared_ptr<DataHandler>> data_handlers_;
-};
-class DataHandlerRepeater : public DataHandlerList {
- public:
-    DataHandlerRepeater(std::shared_ptr<DataHandler> data_handler, size_t size)
-        : size_(size), data_handler_(data_handler) {}
-    ~DataHandlerRepeater() {}
-    size_t GetSize() { return size_; }
-    std::shared_ptr<DataHandler> Get(size_t idx) {
-        return idx >= 0 && idx < size_ ? data_handler_
-                                       : std::shared_ptr<DataHandler>();
-    }
-
- private:
-    size_t size_;
-    std::shared_ptr<DataHandler> data_handler_;
 };
 class RowHandler : public DataHandler {
  public:
@@ -262,6 +229,75 @@ class PartitionHandler : public TableHandler {
     const OrderType GetOrderType() const { return kNoneOrder; }
 };
 
+class DataHandlerList {
+ public:
+    DataHandlerList() {}
+    ~DataHandlerList() {}
+    virtual size_t GetSize() = 0;
+    virtual std::shared_ptr<DataHandler> Get(size_t idx) = 0;
+};
+class DataHandlerVector : public DataHandlerList {
+ public:
+    DataHandlerVector() : data_handlers_() {}
+    ~DataHandlerVector() {}
+    void Add(std::shared_ptr<DataHandler> data_handler) {
+        data_handlers_.push_back(data_handler);
+    }
+    size_t GetSize() { return data_handlers_.size(); }
+    std::shared_ptr<DataHandler> Get(size_t idx) { return data_handlers_[idx]; }
+
+ private:
+    std::vector<std::shared_ptr<DataHandler>> data_handlers_;
+};
+class DataHandlerRepeater : public DataHandlerList {
+ public:
+    DataHandlerRepeater(std::shared_ptr<DataHandler> data_handler, size_t size)
+        : size_(size), data_handler_(data_handler) {}
+    ~DataHandlerRepeater() {}
+    size_t GetSize() { return size_; }
+    std::shared_ptr<DataHandler> Get(size_t idx) {
+        return idx >= 0 && idx < size_ ? data_handler_
+                                       : std::shared_ptr<DataHandler>();
+    }
+
+ private:
+    size_t size_;
+    std::shared_ptr<DataHandler> data_handler_;
+};
+
+class AysncRowHandler : public RowHandler {
+ public:
+    AysncRowHandler(size_t idx,
+                    std::shared_ptr<TableHandler> aysnc_table_handler)
+        : RowHandler(),
+          status_(base::Status::Running()),
+          table_name_(""),
+          db_(""),
+          schema_(nullptr),
+          idx_(idx),
+          aysnc_table_handler_(aysnc_table_handler),
+          value_() {}
+    virtual ~AysncRowHandler() {}
+    const Row& GetValue() override {
+        if (!status_.isRunning()) {
+            return value_;
+        }
+        value_ = aysnc_table_handler_->At(idx_);
+        status_ = aysnc_table_handler_->GetStatus();
+        return value_;
+    }
+    const Schema* GetSchema() override { return schema_; }
+    const std::string& GetName() override { return table_name_; }
+    const std::string& GetDatabase() override { return db_; }
+    base::Status status_;
+    std::string table_name_;
+    std::string db_;
+    const Schema* schema_;
+    size_t idx_;
+    std::shared_ptr<TableHandler> aysnc_table_handler_;
+    Row value_;
+};
+
 class Tablet {
  public:
     Tablet() {}
@@ -270,10 +306,12 @@ class Tablet {
                                                  const std::string& db,
                                                  const std::string& sql,
                                                  const fesql::codec::Row& row,
+                                                 const bool is_procedure,
                                                  const bool is_debug) = 0;
     virtual std::shared_ptr<TableHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
-        const std::shared_ptr<TableHandler> table, const bool is_debug) = 0;
+        const std::vector<Row>& in_rows, const bool is_procedure,
+        const bool is_debug) = 0;
 };
 
 // database/table/schema/type management
