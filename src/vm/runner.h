@@ -315,6 +315,7 @@ enum RunnerType {
     kRunnerConcat,
     kRunnerRequestRunProxy,
     kRunnerRequestLastJoin,
+    kRunnerBatchRequestRunProxy,
     kRunnerLimit,
     kRunnerUnknow,
 };
@@ -360,6 +361,8 @@ inline const std::string RunnerTypeName(const RunnerType& type) {
             return "LIMIT";
         case kRunnerRequestRunProxy:
             return "REQUEST_RUN_PROXY";
+        case kRunnerBatchRequestRunProxy:
+            return "BATCH_REQUEST_RUN_PROXY";
         default:
             return "UNKNOW";
     }
@@ -458,7 +461,10 @@ class Runner : public node::NodeBase<Runner> {
 
     static void PrintData(const vm::SchemasContext* schema_list,
                           std::shared_ptr<DataHandler> data);
-
+    static const bool IsProxyRunner(const RunnerType& type) {
+        return kRunnerRequestRunProxy == type ||
+               kRunnerBatchRequestRunProxy == type;
+    }
     const vm::SchemasContext* output_schemas() const { return output_schemas_; }
 
     void set_output_schemas(const vm::SchemasContext* schemas) {
@@ -1081,12 +1087,20 @@ class RunnerBuilder {
         return cluster_job_;
     }
 
-    ClusterTask BuildRunnerWithProxy(Runner* runner,
-                                     const ClusterTask& left_task,
-                                     const ClusterTask& right_task,
-                                     const Key& index_key,
-                                     Status& status);  // NOLINT
-
+    ClusterTask BuildProxyRunner(Runner* runner, const ClusterTask& left_task,
+                                 const ClusterTask& right_task,
+                                 const Key& index_key,
+                                 const bool is_batch_request, Status& status);
+    ClusterTask BuildRequestRunnerWithProxy(Runner* runner,
+                                            const ClusterTask& left_task,
+                                            const ClusterTask& right_task,
+                                            const Key& index_key,
+                                            Status& status);  // NOLINT
+    ClusterTask BuildBatchRequestRunnerWithProxy(Runner* runner,
+                                                 const ClusterTask& left_task,
+                                                 const ClusterTask& right_task,
+                                                 const Key& index_key,
+                                                 Status& status);  // NOLINT
  private:
     node::NodeManager* nm_;
     bool support_cluster_optimized_;

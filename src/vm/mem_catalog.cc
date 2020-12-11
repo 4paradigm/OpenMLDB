@@ -266,6 +266,15 @@ MemTableHandler::MemTableHandler(const std::string& table_name,
 void MemTableHandler::AddRow(const Row& row) {
     table_.push_back(std::make_pair(table_.size(), row));
 }
+void MemTableHandler::Reserve(const size_t size) { table_.reserve(size); }
+bool MemTableHandler::SetRow(const size_t idx, const Row& row) {
+    if (idx >= table_.size()) {
+        return false;
+    }
+    table_[idx].first = idx;
+    table_[idx].second = row;
+    return true;
+}
 void MemTableHandler::Reverse() {
     std::reverse(table_.begin(), table_.end());
     order_type_ = kAscOrder == order_type_
