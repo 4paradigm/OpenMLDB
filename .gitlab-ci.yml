@@ -76,6 +76,10 @@ build:
       - build/python/dist/*.whl
 
 mac_build:
+  variables:
+    CICD_RUNNER_TAG: "rtidb_mac"
+  tags:
+    - rtidb_mac
   stage: build
   script:
     - bash steps/simple_compile_mac.sh
