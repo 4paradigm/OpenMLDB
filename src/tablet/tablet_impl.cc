@@ -2035,7 +2035,7 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
         return;
     }
     size_t input_row_num = request->non_common_rows().size();
-    size_t common_column_num = compile_info->get_sql_context().common_column_indices.size();
+    size_t common_column_num = compile_info->get_sql_context().batch_request_info.common_column_indices.size();
     std::vector<::fesql::codec::Row> input_rows(input_row_num);
     if (common_column_num > 0 &&
         common_column_num < static_cast<size_t>(session.GetRequestSchema().size())) {
