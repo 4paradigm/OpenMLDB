@@ -26,6 +26,7 @@
 #include "udf/udf_library.h"
 #include "vm/physical_op.h"
 #include "vm/schemas_context.h"
+#include "vm/sql_compiler.h"
 
 namespace fesql {
 namespace vm {
@@ -226,8 +227,8 @@ class ClusterOptimized : public TransformUpPysicalPass {
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
-    bool SimplifyJoinLeftInput(PhysicalBinaryNode* join_op, const Join& join,
-                               PhysicalOpNode** out);
+    bool SimplifyJoinLeftInput(PhysicalRequestJoinNode* join_op,
+                               const Join& join, PhysicalOpNode** out);
 };
 
 typedef fesql::base::Graph<LogicalOp, HashLogicalOp, EqualLogicalOp>
@@ -413,8 +414,13 @@ class RequestModeTransformer : public BatchModeTransformer {
 
     const Schema& request_schema() const { return request_schema_; }
     const std::string& request_name() const { return request_name_; }
+    const BatchRequestInfo& batch_request_info() const {
+        return batch_request_info_;
+    }
 
  protected:
+    void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) override;
+
     virtual Status TransformProjectOp(node::ProjectListNode* node,
                                       PhysicalOpNode* depend, bool append_input,
                                       PhysicalOpNode** output);
@@ -428,7 +434,7 @@ class RequestModeTransformer : public BatchModeTransformer {
  private:
     vm::Schema request_schema_;
     std::string request_name_;
-    std::set<size_t> common_column_indices_;
+    BatchRequestInfo batch_request_info_;
 };
 
 inline bool SchemaType2DataType(const ::fesql::type::Type type,

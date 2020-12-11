@@ -166,12 +166,14 @@ class SQLCase {
     static std::string GenRand(const std::string& prefix) {
         return prefix + std::to_string(rand() % 10000000 + 1);  // NOLINT
     }
-    bool BuildCreateSpSQLFromInput(
-            int32_t input_idx, const std::string& select_sql,
-            const std::set<size_t>& common_idx, std::string* create_sp_sql);
+    bool BuildCreateSpSQLFromInput(int32_t input_idx,
+                                   const std::string& select_sql,
+                                   const std::set<size_t>& common_idx,
+                                   std::string* create_sp_sql);
     bool BuildCreateSpSQLFromSchema(const type::TableDef& table,
-            const std::string& select_sql, const std::set<size_t>& common_idx,
-            std::string* create_sql);
+                                    const std::string& select_sql,
+                                    const std::set<size_t>& common_idx,
+                                    std::string* create_sql);
 
     friend SQLCaseBuilder;
     friend std::ostream& operator<<(std::ostream& output, const SQLCase& thiz);

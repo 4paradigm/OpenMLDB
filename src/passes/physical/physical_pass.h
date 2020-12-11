@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/fe_object.h"
 #include "base/fe_status.h"
@@ -74,6 +75,36 @@ class PhysicalPlanContext {
         *result_op = nm_->RegisterNode(op);
         return Status::OK();
     }
+
+    template <typename Op>
+    Status WithNewChildren(Op* input,
+                           const std::vector<PhysicalOpNode*>& children,
+                           Op** out) {
+        PhysicalOpNode* new_op = nullptr;
+        CHECK_STATUS(input->WithNewChildren(nm_, children, &new_op));
+        auto status = new_op->InitSchema(this);
+        if (!status.isOK()) {
+            return status;
+        }
+        new_op->FinishSchema();
+        new_op->SetLimitCnt(input->GetLimitCnt());
+        *out = dynamic_cast<Op*>(new_op);
+        return Status::OK();
+    }
+
+    template <typename Op>
+    Status WithNewChild(Op* input, size_t idx, Op* new_child, Op** out) {
+        std::vector<PhysicalOpNode*> children;
+        for (size_t i = 0; i < input->producers().size(); ++i) {
+            if (i == idx) {
+                children.push_back(new_child);
+            } else {
+                children.push_back(input->GetProducer(i));
+            }
+        }
+        return WithNewChildren(input, children, out);
+    }
+
     node::NodeManager* node_manager() const { return nm_; }
     const udf::UDFLibrary* library() const { return library_; }
     const std::string& db() { return db_; }
@@ -113,6 +144,31 @@ class PhysicalPass
     PhysicalPass() = default;
     virtual ~PhysicalPass() {}
 };
+
+/**
+ * Initialize expression replacer with schema change.
+ */
+Status BuildColumnReplacement(const node::ExprNode* expr,
+                              const SchemasContext* origin_schema,
+                              const SchemasContext* rebase_schema,
+                              node::NodeManager* nm,
+                              passes::ExprReplacer* replacer);
+
+template <typename Component>
+static Status ReplaceComponentExpr(const Component& component,
+                                   const SchemasContext* origin_schema,
+                                   const SchemasContext* rebase_schema,
+                                   node::NodeManager* nm, Component* output) {
+    *output = component;
+    std::vector<const node::ExprNode*> depend_columns;
+    component.ResolvedRelatedColumns(&depend_columns);
+    passes::ExprReplacer replacer;
+    for (auto col_expr : depend_columns) {
+        CHECK_STATUS(BuildColumnReplacement(col_expr, origin_schema,
+                                            rebase_schema, nm, &replacer));
+    }
+    return component.ReplaceExpr(replacer, nm, output);
+}
 
 }  // namespace vm
 }  // namespace fesql

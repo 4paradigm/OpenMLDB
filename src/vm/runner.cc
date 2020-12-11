@@ -254,7 +254,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 }
             }
         }
-        case kPhysicalOpRequestUnoin: {
+        case kPhysicalOpRequestUnion: {
             auto left_task = Build(node->producers().at(0), status);
             if (!left_task.IsValid()) {
                 status.msg = "fail to build left input runner";
@@ -271,9 +271,9 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 return fail;
             }
             auto op = dynamic_cast<const PhysicalRequestUnionNode*>(node);
-            auto runner =
-                new RequestUnionRunner(id_++, node->schemas_ctx(),
-                                       op->GetLimitCnt(), op->window().range_);
+            auto runner = new RequestUnionRunner(
+                id_++, node->schemas_ctx(), op->GetLimitCnt(),
+                op->window().range_, op->output_request_row());
             Key index_key;
             if (!op->instance_not_in_window()) {
                 runner->AddWindowUnion(op->window_, right);
@@ -459,6 +459,29 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         }
         case kPhysicalOpRename: {
             return Build(node->producers().at(0), status);
+        }
+        case kPhysicalOpPostRequestUnion: {
+            auto left_task = Build(node->producers().at(0), status);
+            if (!left_task.IsValid()) {
+                status.msg = "fail to build left input runner";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
+            }
+            auto right_task = Build(node->producers().at(1), status);
+            if (!right_task.IsValid()) {
+                status.msg = "fail to build right input runner";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
+            }
+            auto union_op = dynamic_cast<PhysicalPostRequestUnionNode*>(node);
+            auto runner = nm_->RegisterNode(new PostRequestUnionRunner(
+                id_++, node->schemas_ctx(), union_op->request_ts()));
+            runner->AddProducer(left_task.GetRoot());
+            runner->AddProducer(right_task.GetRoot());
+            left_task.SetRoot(runner);
+            return RegisterTask(node, left_task);
         }
         default: {
             status.code = common::kOpGenError;
@@ -692,6 +715,7 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     if (need_batch_cache_) {
         auto batch_cached = ctx.GetBatchCache(id_);
         if (batch_cached != nullptr) {
+            DLOG(INFO) << "RUNNER ID " << id_ << " HIT BATCH CACHE!";
             return batch_cached;
         }
     }
@@ -1836,7 +1860,9 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
                   : (request_key + range_gen_.end_offset_);
         rows_start_preceding = range_gen_.start_row_;
     }
-    window_table->AddRow(request_key, request);
+    if (output_request_row_) {
+        window_table->AddRow(request_key, request);
+    }
     // Prepare Union Window
     auto union_inputs = windows_union_gen_.RunInputs(ctx);
     auto union_segments =
@@ -1893,6 +1919,33 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
     }
     DLOG(INFO) << "REQUEST UNION cnt = " << cnt;
     return window_table;
+}
+
+std::shared_ptr<DataHandler> PostRequestUnionRunner::Run(RunnerContext& ctx) {
+    auto fail_ptr = std::shared_ptr<DataHandler>();
+    auto left = producers_[0]->RunWithCache(ctx);
+    auto right = producers_[1]->RunWithCache(ctx);
+    if (!left || !right) {
+        return nullptr;
+    }
+    if (kRowHandler != left->GetHanlderType()) {
+        return nullptr;
+    }
+
+    auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
+    int64_t request_key = request_ts_gen_.Gen(request);
+
+    auto result_table =
+        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+    result_table->AddRow(request_key, request);
+
+    auto window_table = std::dynamic_pointer_cast<MemTimeTableHandler>(right);
+    auto window_iter = window_table->GetIterator();
+    while (window_iter->Valid()) {
+        result_table->AddRow(window_iter->GetKey(), window_iter->GetValue());
+        window_iter->Next();
+    }
+    return result_table;
 }
 
 std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
