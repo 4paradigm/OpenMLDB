@@ -438,6 +438,7 @@ deploy-fedb:
     - source /root/.bashrc && bash steps/deploy_package_fedb.sh
   dependencies:
     - mac_build
+    - build
   only:
     variables:
       - $ENV_BUILD == "daily"
