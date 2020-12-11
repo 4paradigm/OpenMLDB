@@ -14,14 +14,14 @@ import java.util.Map;
  **/
 public class SkewUtils {
 
-    public static String genPercentileSql(String table1, int quantile, List<String> keys, String ts) {
+    public static String genPercentileSql(String table1, int quantile, List<String> keys, String ts, String cnt) {
         StringBuffer sql = new StringBuffer();
         sql.append("select \n");
         for (String e : keys) {
             sql.append(e + ",\n");
         }
 //        count(employee_name, department) as key_cnt,
-        sql.append(String.format("count(%s) as key_cnt,\n", StringUtils.join(keys, ",")));
+        sql.append(String.format("count(%s) as %s,\n", StringUtils.join(keys, ","), cnt));
         sql.append(String.format("min(%s) as min_%s,\n", ts, ts));
         sql.append(String.format("max(%s) as max_%s,\n", ts, ts));
         sql.append(String.format("mean(%s) as mean_%s,\n", ts, ts));
@@ -37,20 +37,18 @@ public class SkewUtils {
         sql.append(";");
         System.out.println(sql);
         return sql.toString();
-
     }
 
-    public static String genPercentileTagSql(String table1, String table2, int quantile, List<String> schemas, Map<String, String> keysMap, String ts) {
+    public static String genPercentileTagSql(String table1, String table2, int quantile, List<String> schemas, Map<String, String> keysMap, String ts, String tag1, String tag2) {
         StringBuffer sql = new StringBuffer();
         sql.append("select \n");
         for (String e : schemas) {
             sql.append(table1 + "." + e + ",");
         }
-//        sql.append(table1 + "." + ts + ",\n");
 
-        sql.append(caseWhenTag(table1, table2, ts, quantile, "tag_wzx"));
+        sql.append(caseWhenTag(table1, table2, ts, quantile, tag1));
         sql.append(",");
-        sql.append(caseWhenTag(table1, table2, ts, quantile, "position_wzx"));
+        sql.append(caseWhenTag(table1, table2, ts, quantile, tag2));
 
 
         sql.append(String.format("from %s left join %s on ", table1, table2));
@@ -107,7 +105,7 @@ public class SkewUtils {
                 add("bonus");
             }
         };
-        System.out.println(genPercentileTagSql(table1, table2, 4, schemas, keys, ts));
+        System.out.println(genPercentileTagSql(table1, table2, 4, schemas, keys, ts, "tag", "pos"));
     }
 }
 

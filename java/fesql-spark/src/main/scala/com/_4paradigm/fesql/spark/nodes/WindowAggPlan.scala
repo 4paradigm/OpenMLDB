@@ -1,19 +1,24 @@
 package com._4paradigm.fesql.spark.nodes
 
+import java.util
+
 import com._4paradigm.fesql.common.{FesqlException, JITManager, SerializableByteBuffer}
 import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.element.FesqlConfig
 import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil, SparkColumnUtil, SparkRowUtil}
+import com._4paradigm.fesql.utils.SkewUtils
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalWindowAggrerationNode, WindowInterface}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Column, DataFrame, Row, functions}
 import org.apache.spark.sql.types._
+import org.slf4j.LoggerFactory
 
-import scala.collection.mutable
+import scala.collection.{JavaConverters, mutable}
 
 
 object WindowAggPlan {
+  val logger = LoggerFactory.getLogger(this.getClass)
 
   def gen(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance): SparkInstance = {
     // process unions
@@ -31,11 +36,13 @@ object WindowAggPlan {
 
 
   def genDefault(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: SparkInstance): RDD[Row] = {
-    // group and sort
-    val inputDf = groupAndSort(ctx, node, input.getDf(ctx.getSparkSession))
-    val windowAggConfig = createWindowAggConfig(ctx, node)
-    if (FesqlConfig.configMode.equals(FesqlConfig.skew)) {
 
+    val windowAggConfig = createWindowAggConfig(ctx, node)
+    // group and sort
+    val inputDf = if (FesqlConfig.configMode.equals(FesqlConfig.skew)) {
+      improveSkew(ctx, node, input.getDf(ctx.getSparkSession), windowAggConfig)
+    } else {
+      groupAndSort(ctx, node, input.getDf(ctx.getSparkSession))
     }
 
     val resultRDD = inputDf.rdd.mapPartitions(iter => {
@@ -55,15 +62,12 @@ object WindowAggPlan {
     val sess = ctx.getSparkSession
     val flagColName = "__FESQL_WINDOW_UNION_FLAG__" + System.currentTimeMillis()
     val union = doUnionTables(ctx, node, input.getDf(sess), flagColName)
-
+    val windowAggConfig = createWindowAggConfig(ctx, node)
      val inputDf =  if (FesqlConfig.configMode.equals(FesqlConfig.skew)) {
-        
+        improveSkew(ctx, node, union, windowAggConfig)
     } else {
       groupAndSort(ctx, node, union)
     }
-
-   
-    val windowAggConfig = createWindowAggConfig(ctx, node)
 
     val resultRDD = inputDf.rdd.mapPartitions(iter => {
       // ensure worker native
@@ -76,6 +80,8 @@ object WindowAggPlan {
     })
     resultRDD
   }
+
+  
 
   
 
@@ -129,7 +135,12 @@ object WindowAggPlan {
     }
 
     // window union flag is the last input column
-    val flagIdx = if (node.window_unions().Empty()) -1 else inputSchema.size
+    val flagIdx = if (node.window_unions().Empty()) {
+      -1
+    } else {
+      inputSchema.size
+    }
+
 
     WindowAggConfig(
       startOffset = node.window.range.frame.GetHistoryRangeStart(),
@@ -147,6 +158,102 @@ object WindowAggPlan {
       needAppendInput = node.need_append_input(),
       limitCnt = node.GetLimitCnt()
     )
+  }
+
+  /**
+   *
+   * @param input
+   * @param config
+   * @return
+   */
+  def expansionData(input: DataFrame, config: WindowAggConfig): DataFrame = {
+    val tag_index = config.skewTagIdx
+    val res = input.rdd.flatMap(row => {
+        val arr = row.toSeq.toArray
+        var arrays = Seq(row)
+        val value = arr(tag_index)
+        //      System.out.println(String.format("value = %d, keys = %s, %s ts = %d", value.asInstanceOf[Int], arr(0).asInstanceOf[String], arr(1).asInstanceOf[String], arr(2).asInstanceOf[Int]))
+        for (i <- 1 until value.asInstanceOf[Int]) {
+//        println("i = " + i)
+        val temp_arr = row.toSeq.toArray
+        temp_arr(tag_index) = i
+        arrays = arrays :+ Row.fromSeq(temp_arr)
+      }
+        arrays
+      })
+      input.sqlContext.createDataFrame(res, input.schema)
+  }
+
+  /**
+   *
+   * @param ctx
+   * @param node
+   * @param input
+   * @param config
+   * @return
+   */
+  def improveSkew(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: DataFrame, config: WindowAggConfig): DataFrame = {
+    val windowOp = node.window()
+    val groupByExprs = windowOp.partition().keys()
+    val keysName = new util.ArrayList[String]()
+    var ts: String = ""
+
+    val groupByCols = mutable.ArrayBuffer[Column]()
+    for (i <- 0 until groupByExprs.GetChildNum()) {
+      val expr = groupByExprs.GetChild(i)
+      val colIdx = SparkColumnUtil.resolveColumnIndex(expr, node.GetProducer(0))
+      groupByCols += SparkColumnUtil.getColumnFromIndex(input, colIdx)
+      keysName.add(input.schema.apply(colIdx).name)
+    }
+
+    val orders = windowOp.sort().orders()
+    val orderExprs = orders.order_by()
+    val orderByCols = mutable.ArrayBuffer[Column]()
+    for (i <- 0 until orderExprs.GetChildNum()) {
+      val expr = orderExprs.GetChild(i)
+      val colIdx = SparkColumnUtil.resolveColumnIndex(expr, node.GetProducer(0))
+      ts = input.schema.apply(colIdx).name
+      val column = SparkColumnUtil.getColumnFromIndex(input, colIdx)
+      if (orders.is_asc()) {
+        orderByCols += column.asc
+      } else {
+        orderByCols += column.desc
+      }
+    }
+
+    val table = "FESQL_TEMP_WINDOW_" + System.currentTimeMillis()
+    val reportTable = "FESQL_TEMP_WINDOW_REPORT_" + System.currentTimeMillis()
+    logger.info("skew main table {}", table)
+    logger.info("skew main table report{}", reportTable)
+    val quantile = math.pow(2, FesqlConfig.skewLevel)
+    val analyzeSQL = SkewUtils.genPercentileSql(table, quantile.intValue(), keysName, ts, FesqlConfig.skewCntName)
+    input.createOrReplaceTempView(table)
+    val reportDf = input.sqlContext.sql(analyzeSQL)
+    reportDf.createOrReplaceTempView(reportTable)
+    val keysMap = new util.HashMap[String, String]()
+    var keyScala = JavaConverters.asScalaIteratorConverter(keysName.iterator()).asScala.toSeq
+    keyScala.foreach(_ => keysMap.put(_, _))
+    val schemas = scala.collection.JavaConverters.seqAsJavaList(input.schema.fieldNames)
+    config.skewTagIdx = schemas.size() - 1
+    config.skewPositionIdx = schemas.size()
+    val tagSQL = SkewUtils.genPercentileTagSql(table, reportTable, quantile.intValue(), schemas, keysMap, ts, FesqlConfig.skewTag, FesqlConfig.skewPosition)
+    var skewDf = input.sqlContext.sql(tagSQL)
+    skewDf = expansionData(skewDf, config)
+
+    keyScala = keyScala :+ FesqlConfig.skewTag
+
+
+
+    val partitions = ctx.getConf(FesqlConfig.configPartitions, FesqlConfig.paritions)
+    val groupedDf = if (partitions > 0) {
+      skewDf.repartition(partitions, keyScala.map(skewDf(_)): _*)
+    } else {
+      skewDf.repartition(keyScala.map(skewDf(_)): _*)
+    }
+    keyScala = keyScala :+ ts
+    // todo order desc asc
+    val sortedDf = groupedDf.sortWithinPartitions(keyScala.map(skewDf(_)): _*)
+    sortedDf
   }
 
 
@@ -195,13 +302,43 @@ object WindowAggPlan {
     // Take the iterator if the limit has been set
     val limitInputIter = if (config.limitCnt > 0) inputIter.take(config.limitCnt) else inputIter
 
-    val resIter = limitInputIter.map(row => {
-      if (lastRow != null) {
-        computer.checkPartition(row, lastRow)
-      }
-      lastRow = row
-      computer.compute(row)
-    })
+    // todo isSkew need to be check
+    val resIter = if (FesqlConfig.skew == "Skew") {
+      limitInputIter.flatMap(row => {
+        if (lastRow != null) {
+          computer.checkPartition(row, lastRow)
+        }
+        lastRow = row
+
+        val tag = row(config.skewTagIdx)
+        val position = row(config.skewPositionIdx)
+        if (tag == position) {
+          Some(computer.compute(row))
+        } else {
+          computer.bufferRowOnly(row)
+          None
+        }
+//        computer.compute(row)
+      })
+    } else {
+      limitInputIter.flatMap(row => {
+        if (lastRow != null) {
+          computer.checkPartition(row, lastRow)
+        }
+        lastRow = row
+        Some(computer.compute(row))
+      })
+    }
+
+//    val resIter = limitInputIter.flatMap(row => {
+//      if (lastRow != null) {
+//        computer.checkPartition(row, lastRow)
+//      }
+//      lastRow = row
+//      Some(computer.compute(row))
+////      computer.compute(row)
+//    })
+
     AutoDestructibleIterator(resIter) {
       computer.delete()
     }
@@ -224,7 +361,14 @@ object WindowAggPlan {
       val unionFlag = row.getBoolean(flagIdx)
       if (unionFlag) {
         // primary
-        Some(computer.compute(row))
+        val tag = row(config.skewTagIdx)
+        val position = row(config.skewPositionIdx)
+        if (tag == position) {
+          Some(computer.compute(row))
+        } else {
+          computer.bufferRowOnly(row)
+          None
+        }
       } else {
         // secondary
         computer.bufferRowOnly(row)
@@ -251,6 +395,8 @@ object WindowAggPlan {
                              inputSchemaSlices: Array[StructType],
                              outputSchemaSlices: Array[StructType],
                              unionFlagIdx: Int,
+                             var skewTagIdx: Int = 0,
+                             var skewPositionIdx: Int = 0,
                              instanceNotInWindow: Boolean,
                              needAppendInput: Boolean,
                              limitCnt: Int)
