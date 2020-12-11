@@ -102,7 +102,7 @@ MemTimeTableHandler::MemTimeTableHandler(const std::string& table_name,
       order_type_(kNoneOrder) {}
 
 MemTimeTableHandler::~MemTimeTableHandler() {}
-std::unique_ptr<RowIterator> MemTimeTableHandler::GetIterator() const {
+std::unique_ptr<RowIterator> MemTimeTableHandler::GetIterator() {
     std::unique_ptr<MemTimeTableIterator> it(
         new MemTimeTableIterator(&table_, schema_));
     return std::move(it);
@@ -142,7 +142,7 @@ void MemTimeTableHandler::Reverse() {
                       ? kDescOrder
                       : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
 }
-RowIterator* MemTimeTableHandler::GetRawIterator() const {
+RowIterator* MemTimeTableHandler::GetRawIterator() {
     return new MemTimeTableIterator(&table_, schema_);
 }
 
@@ -226,12 +226,12 @@ std::unique_ptr<WindowIterator> MemTableHandler::GetWindowIterator(
     const std::string& idx_name) {
     return std::unique_ptr<WindowIterator>();
 }
-std::unique_ptr<RowIterator> MemTableHandler::GetIterator() const {
+std::unique_ptr<RowIterator> MemTableHandler::GetIterator() {
     std::unique_ptr<MemTableIterator> it(
         new MemTableIterator(&table_, schema_));
     return std::move(it);
 }
-RowIterator* MemTableHandler::GetRawIterator() const {
+RowIterator* MemTableHandler::GetRawIterator() {
     return new MemTableIterator(&table_, schema_);
 }
 

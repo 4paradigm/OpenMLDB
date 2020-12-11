@@ -79,10 +79,10 @@ class RowHandler : public DataHandler {
     RowHandler() {}
 
     virtual ~RowHandler() {}
-    std::unique_ptr<RowIterator> GetIterator() const override {
+    std::unique_ptr<RowIterator> GetIterator() override {
         return std::unique_ptr<RowIterator>();
     }
-    RowIterator* GetRawIterator() const override { return nullptr; }
+    RowIterator* GetRawIterator() override { return nullptr; }
     const uint64_t GetCount() override { return 0; }
     Row At(uint64_t pos) override { return Row(); }
     const HandlerType GetHanlderType() override { return kRowHandler; }
@@ -172,10 +172,10 @@ class ErrorTableHandler : public TableHandler {
     inline const IndexHint& GetIndex() override { return index_hint_; }
     inline const std::string& GetDatabase() override { return db_; }
 
-    std::unique_ptr<RowIterator> GetIterator() const {
+    std::unique_ptr<RowIterator> GetIterator() {
         return std::unique_ptr<RowIterator>();
     }
-    RowIterator* GetRawIterator() const { return nullptr; }
+    RowIterator* GetRawIterator() { return nullptr; }
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) {
         return std::unique_ptr<WindowIterator>();
@@ -198,10 +198,10 @@ class PartitionHandler : public TableHandler {
  public:
     PartitionHandler() : TableHandler() {}
     ~PartitionHandler() {}
-    virtual std::unique_ptr<RowIterator> GetIterator() const {
+    virtual std::unique_ptr<RowIterator> GetIterator() {
         return std::unique_ptr<RowIterator>();
     }
-    RowIterator* GetRawIterator() const { return nullptr; }
+    RowIterator* GetRawIterator() { return nullptr; }
     virtual std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name) {
         return std::unique_ptr<WindowIterator>();

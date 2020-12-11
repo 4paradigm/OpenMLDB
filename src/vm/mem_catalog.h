@@ -154,8 +154,8 @@ class MemTableHandler : public TableHandler {
     inline const IndexHint& GetIndex() { return index_hint_; }
     inline const std::string& GetDatabase() { return db_; }
 
-    std::unique_ptr<RowIterator> GetIterator() const;
-    RowIterator* GetRawIterator() const;
+    std::unique_ptr<RowIterator> GetIterator();
+    RowIterator* GetRawIterator() ;
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
 
@@ -195,8 +195,8 @@ class MemTimeTableHandler : public TableHandler {
     inline const Schema* GetSchema() { return schema_; }
     inline const std::string& GetName() { return table_name_; }
     inline const IndexHint& GetIndex() { return index_hint_; }
-    std::unique_ptr<RowIterator> GetIterator() const;
-    RowIterator* GetRawIterator() const;
+    std::unique_ptr<RowIterator> GetIterator();
+    RowIterator* GetRawIterator();
     inline const std::string& GetDatabase() { return db_; }
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
@@ -250,13 +250,13 @@ class Window : public MemTimeTableHandler {
           instance_not_in_window_(false) {}
     virtual ~Window() {}
 
-    std::unique_ptr<RowIterator> GetIterator() const override {
+    std::unique_ptr<RowIterator> GetIterator() override {
         std::unique_ptr<vm::MemTimeTableIterator> it(
             new vm::MemTimeTableIterator(&table_, schema_));
         return std::move(it);
     }
 
-    RowIterator* GetRawIterator() const {
+    RowIterator* GetRawIterator() {
         return new vm::MemTimeTableIterator(&table_, schema_);
     }
     virtual void BufferData(uint64_t key, const Row& row) = 0;
@@ -361,7 +361,7 @@ class MemSegmentHandler : public TableHandler {
     const OrderType GetOrderType() const {
         return partition_hander_->GetOrderType();
     }
-    std::unique_ptr<vm::RowIterator> GetIterator() const {
+    std::unique_ptr<vm::RowIterator> GetIterator() {
         auto iter = partition_hander_->GetWindowIterator();
         if (iter) {
             iter->Seek(key_);
@@ -370,7 +370,7 @@ class MemSegmentHandler : public TableHandler {
         }
         return std::unique_ptr<RowIterator>();
     }
-    RowIterator* GetRawIterator() const override {
+    RowIterator* GetRawIterator() override {
         auto iter = partition_hander_->GetWindowIterator();
         if (iter) {
             iter->Seek(key_);

@@ -100,7 +100,7 @@ bool TabletTableHandler::Init() {
     return true;
 }
 
-std::unique_ptr<RowIterator> TabletTableHandler::GetIterator() const {
+std::unique_ptr<RowIterator> TabletTableHandler::GetIterator() {
     std::unique_ptr<storage::FullTableIterator> it(
         new storage::FullTableIterator(table_->GetSegments(),
                                        table_->GetSegCnt(), table_));
@@ -130,7 +130,7 @@ const Row TabletTableHandler::Get(int32_t pos) {
     }
     return iter->Valid() ? iter->GetValue() : Row();
 }
-RowIterator* TabletTableHandler::GetRawIterator() const {
+RowIterator* TabletTableHandler::GetRawIterator() {
     return new storage::FullTableIterator(table_->GetSegments(),
                                           table_->GetSegCnt(), table_);
 }
@@ -217,7 +217,7 @@ TabletSegmentHandler::TabletSegmentHandler(
     const std::string& key)
     : TableHandler(), partition_hander_(partition_hander), key_(key) {}
 TabletSegmentHandler::~TabletSegmentHandler() {}
-std::unique_ptr<RowIterator> TabletSegmentHandler::GetIterator() const {
+std::unique_ptr<RowIterator> TabletSegmentHandler::GetIterator() {
     auto iter = partition_hander_->GetWindowIterator();
     if (iter) {
         iter->Seek(key_);
@@ -226,7 +226,7 @@ std::unique_ptr<RowIterator> TabletSegmentHandler::GetIterator() const {
     }
     return std::unique_ptr<RowIterator>();
 }
-RowIterator* TabletSegmentHandler::GetRawIterator() const {
+RowIterator* TabletSegmentHandler::GetRawIterator() {
     auto iter = partition_hander_->GetWindowIterator();
     if (iter) {
         iter->Seek(key_);
