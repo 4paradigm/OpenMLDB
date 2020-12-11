@@ -4,15 +4,17 @@ import lombok.Data;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 
+import java.io.Serializable;
 import java.util.List;
 
 @Data
-public class SQLCase {
+public class SQLCase implements Serializable{
     String id;
     String desc;
     String mode;
     String db;
     String sql;
+    List<String> dataProvider;
     List<String> sqls;
     boolean standard_sql;
     boolean standard_sql_compatible;

@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.SerializationUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,8 +34,14 @@ public class CaseFile {
                 }
                 continue;
             }
-            if (!isCaseInBlackList(tmpCase)) {
-                testCaseList.add(tmpCase);
+            if (isCaseInBlackList(tmpCase)) {
+                continue;
+            }
+            if(CollectionUtils.isNotEmpty(tmpCase.getDataProvider())){
+                List<SQLCase> genList = generateCaseByDataProvider(tmpCase,tmpCase.getDataProvider());
+                cases.addAll(genList);
+            }else {
+                cases.add(tmpCase);
             }
         }
         return testCaseList;
@@ -47,6 +54,17 @@ public class CaseFile {
             return true;
         }
         return false;
+    }
+    private List<SQLCase> generateCaseByDataProvider(SQLCase sqlCase,List<String> dataProvider){
+        List<SQLCase> sqlCases = new ArrayList<>();
+        for(String data:dataProvider){
+            String sql = sqlCase.getSql();
+            sql = sql.replaceAll("\\[0\\]",data);
+            SQLCase newSqlCase = SerializationUtils.clone(sqlCase);
+            newSqlCase.setSql(sql);
+            sqlCases.add(newSqlCase);
+        }
+        return sqlCases;
     }
 
 }
