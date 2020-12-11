@@ -8,10 +8,14 @@ import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.tools.Util;
 import com._4paradigm.sql.tools.Relation;
 import com._4paradigm.sql.tools.TableInfo;
+import org.joda.time.DateTime;
 import org.json.JSONArray;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.RunnerException;
 
+import org.openjdk.jmh.runner.Runner;
+import org.openjdk.jmh.runner.options.Options;
+import org.openjdk.jmh.runner.options.OptionsBuilder;
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -24,22 +28,22 @@ import com._4paradigm.rtidb.client.TableSyncClient;
 import com._4paradigm.rtidb.client.impl.TableSyncClientImpl;
 import com._4paradigm.featuredb.driver.DBMSClient;
 
-@BenchmarkMode(Mode.Throughput)
-@OutputTimeUnit(TimeUnit.SECONDS)
+@BenchmarkMode(Mode.SampleTime)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
-@Threads(10)
+@Threads(1)
 @Fork(value = 1, jvmArgs = {"-Xms32G", "-Xmx32G"})
 @Warmup(iterations = 1)
 
 public class FEDBFZBenchmark {
     private SqlExecutor executor;
     private String db;
-    private String jsonUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.json.txt";
-    private String scriptUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.feql.txt";
-    private String relationUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.relation.txt";
+    private String jsonUrl = "http://172.27.128.37:8999/fz_ddl/constant_column.json.txt";
+    private String scriptUrl = "http://172.27.128.37:8999/fz_ddl/constant_column.feql.txt";
+    private String relationUrl = "http://172.27.128.37:8999/fz_ddl/constant_column.relation.txt";
     private int pkNum = 1;
     //@Param({"500", "1000", "2000"})
-    private int windowNum = 1;
+    private int windowNum = 1000;
     int pkBase = 1000000;
     private String script;
     private String nsName = "test_fz";
@@ -47,6 +51,7 @@ public class FEDBFZBenchmark {
     private DBMSClient dbmsClient = null;
     private TableSyncClient tableSyncClient = null;
     private NameServerClientImpl nsc = null;
+    private RTIDBClusterClient cluster = null;
 
     private Map<String, TableInfo> tableMap;
     private Set<String> rtidbTables;
@@ -61,7 +66,7 @@ public class FEDBFZBenchmark {
         config.setZkRootPath(BenchmarkConfig.ZK_PATH);
         config.setReadTimeout(10000);
         config.setWriteTimeout(10000);
-        RTIDBClusterClient cluster = new RTIDBClusterClient(config);
+        cluster = new RTIDBClusterClient(config);
         try {
             cluster.init();
             tableSyncClient = new TableSyncClientImpl(cluster);
@@ -108,8 +113,8 @@ public class FEDBFZBenchmark {
             //CompileResult compileResult = dbmsClient.compileFEQL(nsName, script);
             DeployConfig config = DeployConfig.builder().engineList(dbmsClient.showEngine(Base.EngineType.kRealTimeEngine)).build();
             config.setReplicaNum(1);
-            config.setPartitionNum(Integer.valueOf(BenchmarkConfig.PARTITION_NUM));
             config.setDebug(true);
+            config.setPartitionNum(Integer.valueOf(BenchmarkConfig.PARTITION_NUM));
             dbmsClient.deployFEQL(nsName, script, deployName, config);
             Thread.sleep(1000);
             Map<String, List<String>> rtidbTableMap = dbmsClient.showDeploy(nsName, deployName).getRtidbTables();
@@ -175,9 +180,11 @@ public class FEDBFZBenchmark {
                         val.put(fieldName, 1.3);
                     } else if (type.equals("double")) {
                         val.put(fieldName, 1.4d);
-                    } else if (type.equals("bigint") || type.equals("timestamp") || type.equals("int")) {
+                    } else if (type.equals("bigint") || type.equals("timestamp") || type.equals("int") || type.equals("long")) {
                         if (type.equals("timestamp")) {
-                            val.put(fieldName, new Timestamp(ts - tsCnt));
+                            val.put(fieldName, new DateTime(ts - tsCnt * 1000));
+                        } else if (type.equals("long") || type.equals("bigint")){
+                            val.put(fieldName, (long)pos);
                         } else {
                             val.put(fieldName, pos);
                         }
@@ -192,6 +199,13 @@ public class FEDBFZBenchmark {
                         val.put(fieldName, new Date(2020, 12, 10));
                     } else {
                         System.out.println("invalid type");
+                    }
+                }
+                if (isMainTable && inputData == null) {
+                    Map<Integer, String> posName = table.getSchemaPosName();
+                    inputData = new Object[1][schema.size()];
+                    for (int k = 0; k < schema.size(); k++) {
+                        inputData[0][k] = val.get(posName.get(k));
                     }
                 }
                 if (!rtidbTables.contains(table.getName())) {
@@ -209,13 +223,6 @@ public class FEDBFZBenchmark {
             }
             if (isMainTable) {
                 mainTableValue.add(valueMap);
-                if (inputData == null) {
-                    Map<Integer, String> posName = table.getSchemaPosName();
-                    inputData = new Object[1][schema.size()];
-                    for (int k = 0; k < schema.size(); k++) {
-                        inputData[0][k] = val.get(posName.get(k));
-                    }
-                }
             }
         }
     }
@@ -228,11 +235,15 @@ public class FEDBFZBenchmark {
 
     @TearDown
     public void teardown() {
+        /*List<com._4paradigm.rtidb.ns.NS.TableInfo> tables = nsc.showTable("");
+        for (com._4paradigm.rtidb.ns.NS.TableInfo ta : tables) {
+            rtidbTables.add(ta.getName());
+        }*/
         for (String name : rtidbTables) {
             String tableName = nsName + "_" + name;
             nsc.dropTable(tableName);
         }
-        /*try {
+        try {
             List<Base.EngineStatus> list = dbmsClient.showEngine(Base.EngineType.kRealTimeEngine);
             for (Base.EngineStatus engine : list) {
                 dbmsClient.dropFEQL(nsName, deployName, engine);
@@ -240,21 +251,29 @@ public class FEDBFZBenchmark {
             dbmsClient.dropDeploy(nsName, deployName);
         } catch (Exception e) {
             e.printStackTrace();
-        }*/
+        }
     }
 
     @Benchmark
     public void execSQL() {
-        try {
-            ExecuteResult result = dbmsClient.batchExecuteFEQL(nsName, deployName, inputData);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        //for (int i = 0; i < 100000; i++) {
+            try {
+                ExecuteResult result = dbmsClient.batchExecuteFEQL(nsName, deployName, inputData);
+                int a = 0;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        //}
     }
 
+    public void close() {
+        dbmsClient.close();
+        nsc.close();
+        cluster.close();
+    }
 
     public static void main(String[] args) throws RunnerException {
-        FEDBFZBenchmark ben = new FEDBFZBenchmark();
+        /*FEDBFZBenchmark ben = new FEDBFZBenchmark();
         try {
             ben.setup();
             ben.execSQL();
@@ -262,10 +281,11 @@ public class FEDBFZBenchmark {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        /*Options opt = new OptionsBuilder()
+        ben.close();*/
+        Options opt = new OptionsBuilder()
                 .include(FEDBFZBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
-        new Runner(opt).run();*/
+        new Runner(opt).run();
     }
 }
