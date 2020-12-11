@@ -172,16 +172,13 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder) {
 
     std::string insert = "insert into " + name + " values('hello', 1590);";
     std::string insert_placeholder1 = "insert into " + name + " values(?, ?);";
-    std::string insert_placeholder2 =
-        "insert into " + name + " values(?, 1592);";
-    std::string insert_placeholder3 =
-        "insert into " + name + " values('hi', ?);";
+    std::string insert_placeholder2 = "insert into " + name + " values(?, 1592);";
+    std::string insert_placeholder3 = "insert into " + name + " values('hi', ?);";
 
     ok = router->ExecuteInsert(db, insert, &status);
     ASSERT_TRUE(ok);
 
-    std::shared_ptr<SQLInsertRow> insert_row1 =
-        router->GetInsertRow(db, insert_placeholder1, &status);
+    std::shared_ptr<SQLInsertRow> insert_row1 = router->GetInsertRow(db, insert_placeholder1, &status);
     ASSERT_EQ(status.code, 0);
     ASSERT_TRUE(insert_row1->Init(5));
     ASSERT_TRUE(insert_row1->AppendString("world"));
@@ -189,9 +186,22 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder) {
     ASSERT_TRUE(insert_row1->Build());
     ok = router->ExecuteInsert(db, insert_placeholder1, insert_row1, &status);
     ASSERT_TRUE(ok);
+    {
+        std::shared_ptr<SQLInsertRow> insert_row2 = router->GetInsertRow(db, insert_placeholder2, &status);
+        ASSERT_EQ(status.code, 0);
+        ASSERT_TRUE(insert_row2->Init(4));
+        ASSERT_TRUE(insert_row2->AppendString("wrd"));
+        ASSERT_FALSE(insert_row2->Build());
+    }
+    {
+        std::shared_ptr<SQLInsertRow> insert_row2 = router->GetInsertRow(db, insert_placeholder2, &status);
+        ASSERT_EQ(status.code, 0);
+        ASSERT_TRUE(insert_row2->Init(4));
+        ASSERT_FALSE(insert_row2->AppendString("wordd"));
+        ASSERT_FALSE(insert_row2->Build());
+    }
 
-    std::shared_ptr<SQLInsertRow> insert_row2 =
-        router->GetInsertRow(db, insert_placeholder2, &status);
+    std::shared_ptr<SQLInsertRow> insert_row2 = router->GetInsertRow(db, insert_placeholder2, &status);
     ASSERT_EQ(status.code, 0);
     ASSERT_TRUE(insert_row2->Init(4));
     ASSERT_TRUE(insert_row2->AppendString("word"));
@@ -199,8 +209,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder) {
     ok = router->ExecuteInsert(db, insert_placeholder2, insert_row2, &status);
     ASSERT_TRUE(ok);
 
-    std::shared_ptr<SQLInsertRow> insert_row3 =
-        router->GetInsertRow(db, insert_placeholder3, &status);
+    std::shared_ptr<SQLInsertRow> insert_row3 = router->GetInsertRow(db, insert_placeholder3, &status);
     ASSERT_EQ(status.code, 0);
     ASSERT_TRUE(insert_row3->Init(0));
     ASSERT_TRUE(insert_row3->AppendInt64(1593));
@@ -208,8 +217,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder) {
     ok = router->ExecuteInsert(db, insert_placeholder3, insert_row3, &status);
     ASSERT_TRUE(ok);
 
-    std::shared_ptr<SQLInsertRows> insert_rows1 =
-        router->GetInsertRows(db, insert_placeholder1, &status);
+    std::shared_ptr<SQLInsertRows> insert_rows1 = router->GetInsertRows(db, insert_placeholder1, &status);
     ASSERT_EQ(status.code, 0);
     std::shared_ptr<SQLInsertRow> insert_rows1_1 = insert_rows1->NewRow();
     ASSERT_TRUE(insert_rows1_1->Init(2));
@@ -224,8 +232,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder) {
     ok = router->ExecuteInsert(db, insert_placeholder1, insert_rows1, &status);
     ASSERT_TRUE(ok);
 
-    std::shared_ptr<SQLInsertRows> insert_rows2 =
-        router->GetInsertRows(db, insert_placeholder2, &status);
+    std::shared_ptr<SQLInsertRows> insert_rows2 = router->GetInsertRows(db, insert_placeholder2, &status);
     ASSERT_EQ(status.code, 0);
     std::shared_ptr<SQLInsertRow> insert_rows2_1 = insert_rows2->NewRow();
     ASSERT_TRUE(insert_rows2_1->Init(2));
@@ -238,8 +245,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder) {
     ok = router->ExecuteInsert(db, insert_placeholder2, insert_rows2, &status);
     ASSERT_TRUE(ok);
 
-    std::shared_ptr<SQLInsertRows> insert_rows3 =
-        router->GetInsertRows(db, insert_placeholder3, &status);
+    std::shared_ptr<SQLInsertRows> insert_rows3 = router->GetInsertRows(db, insert_placeholder3, &status);
     ASSERT_EQ(status.code, 0);
     std::shared_ptr<SQLInsertRow> insert_rows3_1 = insert_rows3->NewRow();
     ASSERT_TRUE(insert_rows3_1->Init(0));
