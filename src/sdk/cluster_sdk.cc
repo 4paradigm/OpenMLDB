@@ -184,7 +184,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         auto sp_info = rtidb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info_pb);
         if (!sp_info) {
             LOG(WARNING) << "convert procedure info failed, sp_name: "
-                << sp_info->GetSpName() << " db: " << sp_info->GetDbName();
+                << sp_info_pb.sp_name() << " db: " << sp_info_pb.db_name();
             continue;
         }
         auto it = db_sp_map.find(sp_info->GetDbName());

@@ -20,8 +20,13 @@ public class BenchmarkConfig {
 
     private static SqlExecutor executor = null;
     private static SdkOption option = null;
+    private static boolean needProxy = false;
 
-    public static SqlExecutor GetSqlExecutor() {
+    public static boolean NeedProxy() {
+        return needProxy;
+    }
+
+    public static SqlExecutor GetSqlExecutor(boolean enableDebug) {
         if (executor != null) {
             return executor;
         }
@@ -29,6 +34,7 @@ public class BenchmarkConfig {
         sdkOption.setSessionTimeout(30000);
         sdkOption.setZkCluster(BenchmarkConfig.ZK_CLUSTER);
         sdkOption.setZkPath(BenchmarkConfig.ZK_PATH);
+        sdkOption.setEnableDebug(enableDebug);
         option = sdkOption;
         try {
             executor = new SqlClusterExecutor(option);
