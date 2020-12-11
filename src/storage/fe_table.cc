@@ -65,7 +65,7 @@ bool Table::Init() {
                 default: {
                     LOG(WARNING) << "Invalid index ts type: "
                                  << fesql::type::Type_Name(
-                                     table_def_.columns(st.ts_pos).type());
+                                        table_def_.columns(st.ts_pos).type());
                     return false;
                 }
             }
@@ -176,7 +176,7 @@ bool Table::DecodeKeysAndTs(const IndexSt& index, const char* row,
     if (fesql::vm::INVALID_POS == index.ts_pos) {
         struct timeval cur_time;
         gettimeofday(&cur_time, NULL);
-        *time_ptr = cur_time.tv_sec*1000 + cur_time.tv_usec/1000;
+        *time_ptr = cur_time.tv_sec * 1000 + cur_time.tv_usec / 1000;
         return true;
     }
     row_view_.GetInteger(reinterpret_cast<const int8_t*>(row), index.ts_pos,

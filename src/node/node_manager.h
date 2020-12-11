@@ -163,6 +163,7 @@ class NodeManager {
                                      const std::string &db_name);
     ColumnRefNode *MakeColumnRefNode(const std::string &column_name,
                                      const std::string &relation_name);
+    ColumnIdNode *MakeColumnIdNode(size_t column_id);
     GetFieldExpr *MakeGetFieldExpr(ExprNode *input,
                                    const std::string &column_name,
                                    size_t column_id);

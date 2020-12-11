@@ -354,6 +354,10 @@ ColumnRefNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
     return RegisterNode(node_ptr);
 }
 
+ColumnIdNode *NodeManager::MakeColumnIdNode(size_t column_id) {
+    return RegisterNode(new ColumnIdNode(column_id));
+}
+
 GetFieldExpr *NodeManager::MakeGetFieldExpr(ExprNode *input,
                                             const std::string &column_name,
                                             size_t column_id) {
