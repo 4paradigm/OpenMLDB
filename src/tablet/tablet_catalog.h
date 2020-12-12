@@ -21,6 +21,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 #include "base/spin_lock.h"
 #include "storage/fe_table.h"
 #include "vm/catalog.h"
@@ -66,7 +67,7 @@ class TabletSegmentHandler : public TableHandler {
         return partition_hander_->GetOrderType();
     }
 
-    std::unique_ptr<vm::RowIterator> GetIterator() ;
+    std::unique_ptr<vm::RowIterator> GetIterator() override;
     RowIterator* GetRawIterator() override;
     std::unique_ptr<vm::WindowIterator> GetWindowIterator(
         const std::string& idx_name);

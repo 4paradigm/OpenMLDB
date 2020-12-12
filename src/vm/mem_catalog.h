@@ -154,8 +154,8 @@ class MemTableHandler : public TableHandler {
     inline const IndexHint& GetIndex() { return index_hint_; }
     inline const std::string& GetDatabase() { return db_; }
 
-    std::unique_ptr<RowIterator> GetIterator();
-    RowIterator* GetRawIterator() ;
+    std::unique_ptr<RowIterator> GetIterator() override;
+    RowIterator* GetRawIterator() override;
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
 
@@ -163,7 +163,7 @@ class MemTableHandler : public TableHandler {
     void Reverse();
     virtual const uint64_t GetCount() { return table_.size(); }
     virtual Row At(uint64_t pos) {
-        return pos < table_.size() ? table_.at(pos): Row();
+        return pos < table_.size() ? table_.at(pos) : Row();
     }
 
     const OrderType GetOrderType() const { return order_type_; }

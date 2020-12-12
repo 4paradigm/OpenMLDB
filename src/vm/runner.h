@@ -466,9 +466,9 @@ class Runner : public node::NodeBase<Runner> {
                kRunnerBatchRequestRunProxy == type;
     }
     static bool ExtractRows(std::shared_ptr<DataHandlerList> handlers,
-                                 std::vector<Row>& out_rows);  // NOLINT
+                            std::vector<Row>& out_rows);  // NOLINT
     static bool ExtractRow(std::shared_ptr<DataHandler> handler,
-                                 Row* out_row);  // NOLINT
+                           Row* out_row);  // NOLINT
     static bool ExtractRows(std::shared_ptr<DataHandler> handler,
                             std::vector<Row>& out_rows);  // NOLINT
     const vm::SchemasContext* output_schemas() const { return output_schemas_; }
@@ -1106,7 +1106,8 @@ class RunnerBuilder {
     ClusterTask BuildProxyRunner(Runner* runner, const ClusterTask& left_task,
                                  const ClusterTask& right_task,
                                  const Key& index_key,
-                                 const bool is_batch_request, Status& status);
+                                 const bool is_batch_request,
+                                 Status& status);  // NOLINT
     ClusterTask BuildRequestRunnerWithProxy(Runner* runner,
                                             const ClusterTask& left_task,
                                             const ClusterTask& right_task,

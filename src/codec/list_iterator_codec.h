@@ -463,7 +463,7 @@ class InnerRangeList : public ListV<V> {
         return std::unique_ptr<InnerRangeIterator<V>>(
             new InnerRangeIterator<V>(root_, start_, end_));
     }
-    virtual ConstIterator<uint64_t, V> *GetRawIterator() const {
+    virtual ConstIterator<uint64_t, V> *GetRawIterator() {
         return new InnerRangeIterator<V>(root_, start_, end_);
     }
 

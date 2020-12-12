@@ -1846,7 +1846,7 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
 
 bool Runner::ExtractRows(std::shared_ptr<DataHandlerList> handlers,
 
-                             std::vector<Row>& out_rows) {
+                         std::vector<Row>& out_rows) {
     if (!handlers) {
         LOG(WARNING) << "Extract batch rows error: data handler is null";
         return false;
@@ -1860,10 +1860,9 @@ bool Runner::ExtractRows(std::shared_ptr<DataHandlerList> handlers,
         switch (handler->GetHanlderType()) {
             case kTableHandler: {
                 auto iter = std::dynamic_pointer_cast<TableHandler>(handler)
-                    ->GetIterator();
+                                ->GetIterator();
                 if (!iter) {
-                    LOG(WARNING)
-                        << "Extract batch rows error: iter is null";
+                    LOG(WARNING) << "Extract batch rows error: iter is null";
                     return false;
                 }
                 iter->SeekToFirst();
@@ -1875,8 +1874,7 @@ bool Runner::ExtractRows(std::shared_ptr<DataHandlerList> handlers,
             }
             case kRowHandler: {
                 out_rows.push_back(
-                    std::dynamic_pointer_cast<RowHandler>(handler)
-                        ->GetValue());
+                    std::dynamic_pointer_cast<RowHandler>(handler)->GetValue());
                 break;
             }
             default: {
@@ -1887,8 +1885,7 @@ bool Runner::ExtractRows(std::shared_ptr<DataHandlerList> handlers,
     }
     return true;
 }
-bool Runner::ExtractRow(std::shared_ptr<DataHandler> handler,
-                             Row* out_row) {
+bool Runner::ExtractRow(std::shared_ptr<DataHandler> handler, Row* out_row) {
     switch (handler->GetHanlderType()) {
         case kTableHandler: {
             auto iter =
@@ -1919,7 +1916,7 @@ bool Runner::ExtractRow(std::shared_ptr<DataHandler> handler,
     }
 }
 bool Runner::ExtractRows(std::shared_ptr<DataHandler> handler,
-                        std::vector<Row>& out_rows) {  // NOLINT
+                         std::vector<Row>& out_rows) {  // NOLINT
     if (!handler) {
         LOG(WARNING) << "Extract batch rows error: data handler is null";
         return false;
@@ -2224,11 +2221,15 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
         producers_[0]->BatchRequestRun(ctx);
     LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
               << "\n";
-    std::vector<std::shared_ptr<DataHandler>> inputs(0);
+    if (!proxy_batch_input || 0 == proxy_batch_input->GetSize()) {
+        LOG(WARNING) << "proxy batch run input is empty";
+        return std::shared_ptr<DataHandlerList>();
+    }
     // if need batch cache_, we only need to compute the first line
     // and repeat the output
     if (need_batch_cache_) {
-        inputs[0] = proxy_batch_input->Get(0);
+        std::vector<std::shared_ptr<DataHandler>> inputs(
+            {proxy_batch_input->Get(0)});
         auto res = Run(ctx, inputs);
         if (ctx.is_debug()) {
             Runner::PrintData(output_schemas_, res);
@@ -2298,41 +2299,45 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
         LOG(WARNING) << "input is empty";
         return fail_ptr;
     }
-
-
     switch (batch_input->Get(0)->GetHanlderType()) {
         case kRowHandler: {
             std::vector<Row> rows;
             if (!ExtractRows(batch_input, rows)) {
-                LOG(WARNING) << "run proxy runner with rows fail, batch rows is empty";
+                LOG(WARNING)
+                    << "run proxy runner with rows fail, batch rows is empty";
                 return fail_ptr;
             }
             std::shared_ptr<TableHandler> table = RunWithRowsInput(ctx, rows);
             if (!table) {
-                LOG(WARNING) << "run proxy runner with rows fail, result table is null";
+                LOG(WARNING)
+                    << "run proxy runner with rows fail, result table is null";
                 return fail_ptr;
             }
 
             std::shared_ptr<DataHandlerVector> outputs =
                 std::make_shared<DataHandlerVector>();
-            for(size_t idx = 0; idx < rows.size(); idx++) {
+            for (size_t idx = 0; idx < rows.size(); idx++) {
                 outputs->Add(std::make_shared<AysncRowHandler>(idx, table));
             }
+            return outputs;
         }
         case kTableHandler: {
             std::shared_ptr<DataHandlerVector> outputs =
                 std::make_shared<DataHandlerVector>();
-            for(size_t idx = 0; idx < batch_input->GetSize(); idx++) {
+            for (size_t idx = 0; idx < batch_input->GetSize(); idx++) {
                 std::vector<Row> rows;
                 if (!ExtractRows(batch_input->Get(idx), rows)) {
-                    LOG(WARNING) << "run proxy runner with rows fail, batch rows is empty";
+                    LOG(WARNING) << "run proxy runner with rows fail, batch "
+                                    "rows is empty";
                     return fail_ptr;
                 }
                 outputs->Add(RunWithRowsInput(ctx, rows));
             }
+            return outputs;
         }
         default: {
-            LOG(WARNING) << "fail to run proxy runner: handler type unsupported";
+            LOG(WARNING)
+                << "fail to run proxy runner: handler type unsupported";
             return fail_ptr;
         }
     }

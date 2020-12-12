@@ -406,6 +406,11 @@ class RowCombineWrapper : public RowHandler {
         }
         auto left_row =
             std::dynamic_pointer_cast<RowHandler>(left_)->GetValue();
+        if (!right_) {
+            value_ = Row(left_slices_, left_row, right_slices_, Row());
+            status_ = base::Status::OK();
+            return value_;
+        }
         if (kRowHandler == right_->GetHanlderType()) {
             auto right_row =
                 std::dynamic_pointer_cast<RowHandler>(right_)->GetValue();

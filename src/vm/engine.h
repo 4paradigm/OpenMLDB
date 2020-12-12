@@ -325,14 +325,14 @@ class LocalTabletRowHandler : public RowHandler {
 class LocalTabletTableHandler : public MemTableHandler {
  public:
     LocalTabletTableHandler(uint32_t task_id,
-                                 const BatchRequestRunSession session,
-                                 const std::vector<Row> requests)
+                            const BatchRequestRunSession session,
+                            const std::vector<Row> requests)
         : status_(base::Status::Running()),
           task_id_(task_id),
           session_(session),
           requests_(requests) {}
     ~LocalTabletTableHandler() {}
-     Row At(uint64_t pos) override {
+    Row At(uint64_t pos) override {
         if (!status_.isRunning()) {
             return MemTableHandler::At(pos);
         }
@@ -357,6 +357,7 @@ class LocalTabletTableHandler : public MemTableHandler {
         }
         return MemTableHandler::GetCount();
     }
+
  private:
     base::Status SyncValue() {
         DLOG(INFO) << "Local tablet SubQuery: task id " << task_id_;
@@ -428,8 +429,8 @@ class LocalTablet : public Tablet {
             if (!sp_cache_) {
                 return std::shared_ptr<TableHandler>(
                     new ErrorTableHandler(common::kProcedureNotFound,
-                                        "SubQuery Fail: procedure not found, "
-                                        "procedure cache not exist"));
+                                          "SubQuery Fail: procedure not found, "
+                                          "procedure cache not exist"));
             }
             auto request_compile_info =
                 sp_cache_->GetRequestInfo(db, sql, status);
@@ -446,7 +447,7 @@ class LocalTablet : public Tablet {
             }
         }
         return std::make_shared<LocalTabletTableHandler>(task_id, session,
-                                                       in_rows);
+                                                         in_rows);
     }
 
  private:
