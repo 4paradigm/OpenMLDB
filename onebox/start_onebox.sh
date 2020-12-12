@@ -6,13 +6,14 @@ ulimit -c unlimited
 # first start zookeeper
 IP=127.0.0.1
 
-ZK_CLUSTER=$IP:12200
-NS1=$IP:9722
-NS2=$IP:9723
-NS3=$IP:9724
-TABLET1=$IP:9420
-TABLET2=$IP:9421
-TABLET3=$IP:9422
+ZK_CLUSTER=$IP:6181
+NS1=$IP:9622
+NS2=$IP:9623
+NS3=$IP:9624
+TABLET1=$IP:9520
+TABLET2=$IP:9521
+TABLET3=$IP:9522
+BLOB1=$IP:9720
 
 # start tablet0
 test -d tablet0-binlogs && rm -rf tablet0-binlogs
@@ -73,6 +74,23 @@ test -d recycle_ssd_bin2 && rm -rf recycle_ssd_bin2
                    --zk_keep_alive_check_interval=100000000\
                    --zk_root_path=/onebox > tablet2.log 2>&1 &
 
+test -d blob1-hdd-binlogs && rm -rf blob1-hdd-binlogs
+test -d blob1-ssd-binlogs && rm -rf blob1-ssd-binlogs
+test -d recycle_bin3 && rm -rf recycle_bin3
+test -d recycle_ssd_bin3 && rm -rf recycle_ssd_bin3
+test -d recycle_hdd_bin3 && rm -rf recycle_hdd_bin3
+
+# start blob1
+../build/bin/rtidb --hdd_root_path=blob1-hdd-binlogs \
+                   --ssd_root_path=blob1-ssd-binlogs \
+                   --recycle_bin_root_path=recycle_bin3 \
+                   --recycle_ssd_bin_root_path=recycle_ssd_bin3 \
+                   --recycle_hdd_bin_root_path=recycle_hdd_bin3 \
+                   --endpoint=${BLOB1} --role=blob \
+                   --binlog_notify_on_put=true\
+                   --zk_cluster=${ZK_CLUSTER}\
+                   --zk_keep_alive_check_interval=100000000\
+                   --zk_root_path=/onebox > blob1.log 2>&1 &
 
 # start ns1 
 ../build/bin/rtidb --endpoint=${NS1} --role=nameserver \
