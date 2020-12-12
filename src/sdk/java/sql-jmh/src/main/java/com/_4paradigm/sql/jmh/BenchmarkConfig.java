@@ -7,16 +7,16 @@ import com._4paradigm.featuredb.driver.DBMSClient;
 import com._4paradigm.featuredb.driver.impl.DBMSDriverClientImpl;
 
 public class BenchmarkConfig {
-//    public static String ZK_CLUSTER="127.0.0.1:6181";
+//    public static String ZK_CLUSTER = "127.0.0.1:6181";
     public static String ZK_CLUSTER="172.27.128.32:12200";
-//    public static String ZK_PATH="/standalone";
+    public static String ZK_PATH="/standalone";
 //    public static String ZK_PATH="/cluster";
 //    public static String ZK_PATH="/onebox";
 //    public static String ZK_CLUSTER="172.27.128.81:16181";
-    public static String ZK_PATH="/rtidb_fe";
+//    public static String ZK_PATH="/rtidb_fe";
     public static String ZK_NS = "featuredb";
     public static String MEMSQL_URL="jdbc:mysql://172.27.128.37:3306/benchmark?user=benchmark&password=benchmark";
-    public static String PARTITION_NUM = "7";
+    public static String PARTITION_NUM = "4";
 
     private static SqlExecutor executor = null;
     private static SdkOption option = null;
