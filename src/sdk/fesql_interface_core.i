@@ -106,6 +106,8 @@ using fesql::node::DataType;
 %ignore fesql::vm::DataHandlerList;
 %ignore fesql::vm::DataHandlerVector;
 %ignore fesql::vm::DataHandlerRepeater;
+%ignore fesql::vm::LocalTabletTableHandler;
+%ignore fesql::vm::AysncRowHandler;
 %ignore DataTypeName; // TODO: Geneerate duplicated class
 %ignore fesql::vm::FeSQLJITWrapper::AddModule;
 
