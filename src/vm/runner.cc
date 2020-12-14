@@ -818,7 +818,7 @@ std::shared_ptr<DataHandlerList> RequestRunner::BatchRequestRun(
 std::shared_ptr<DataHandler> GroupRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
-    if (inputs.size() < 1u ) {
+    if (inputs.size() < 1u) {
         LOG(WARNING) << "inputs size < 1";
         return std::shared_ptr<DataHandler>();
     }
@@ -833,7 +833,7 @@ std::shared_ptr<DataHandler> GroupRunner::Run(
 std::shared_ptr<DataHandler> SortRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
-    if (inputs.size() < 1u ) {
+    if (inputs.size() < 1u) {
         LOG(WARNING) << "inputs size < 1";
         return std::shared_ptr<DataHandler>();
     }
@@ -856,7 +856,7 @@ std::shared_ptr<DataHandler> ConstProjectRunner::Run(
 std::shared_ptr<DataHandler> TableProjectRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
-    if (inputs.size() < 1u ) {
+    if (inputs.size() < 1u) {
         LOG(WARNING) << "inputs size < 1";
         return std::shared_ptr<DataHandler>();
     }
@@ -889,7 +889,7 @@ std::shared_ptr<DataHandler> TableProjectRunner::Run(
 std::shared_ptr<DataHandler> RowProjectRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
-    if (inputs.size() < 1u ) {
+    if (inputs.size() < 1u) {
         LOG(WARNING) << "inputs size < 1";
         return std::shared_ptr<DataHandler>();
     }
@@ -901,7 +901,7 @@ std::shared_ptr<DataHandler> RowProjectRunner::Run(
 std::shared_ptr<DataHandler> SimpleProjectRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
-    if (inputs.size() < 1u ) {
+    if (inputs.size() < 1u) {
         LOG(WARNING) << "inputs size < 1";
         return std::shared_ptr<DataHandler>();
     }
@@ -939,7 +939,7 @@ std::shared_ptr<DataHandler> SimpleProjectRunner::Run(
 std::shared_ptr<DataHandler> WindowAggRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
-    if (inputs.size() < 1u ) {
+    if (inputs.size() < 1u) {
         LOG(WARNING) << "inputs size < 1";
         return std::shared_ptr<DataHandler>();
     }
@@ -1869,7 +1869,7 @@ std::shared_ptr<DataHandler> LimitRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    if (inputs.size() < 1u ) {
+    if (inputs.size() < 1u) {
         LOG(WARNING) << "inputs size < 1";
         return fail_ptr;
     }
@@ -1911,7 +1911,7 @@ std::shared_ptr<DataHandler> FilterRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    if (inputs.size() < 1u ) {
+    if (inputs.size() < 1u) {
         LOG(WARNING) << "inputs size < 1";
         return fail_ptr;
     }
@@ -1940,7 +1940,7 @@ std::shared_ptr<DataHandler> FilterRunner::Run(
 std::shared_ptr<DataHandler> GroupAggRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
-    if (inputs.size() < 1u ) {
+    if (inputs.size() < 1u) {
         LOG(WARNING) << "inputs size < 1";
         return std::shared_ptr<DataHandler>();
     }
@@ -1983,7 +1983,7 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    if (inputs.size() < 2u ) {
+    if (inputs.size() < 2u) {
         LOG(WARNING) << "inputs size < 2";
         return std::shared_ptr<DataHandler>();
     }
@@ -2078,7 +2078,7 @@ std::shared_ptr<DataHandler> PostRequestUnionRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    if (inputs.size() < 2u ) {
+    if (inputs.size() < 2u) {
         LOG(WARNING) << "inputs size < 2";
         return std::shared_ptr<DataHandler>();
     }
@@ -2110,7 +2110,7 @@ std::shared_ptr<DataHandler> PostRequestUnionRunner::Run(
 std::shared_ptr<DataHandler> AggRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
-    if (inputs.size() < 1u ) {
+    if (inputs.size() < 1u) {
         LOG(WARNING) << "inputs size < 1";
         return std::shared_ptr<DataHandler>();
     }
@@ -2130,7 +2130,7 @@ std::shared_ptr<DataHandler> AggRunner::Run(
 std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
-    if (inputs.size() < 1u ) {
+    if (inputs.size() < 1u) {
         LOG(WARNING) << "inputs size < 1";
         return std::shared_ptr<DataHandler>();
     }
