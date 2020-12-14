@@ -211,7 +211,7 @@ void SQLSDKTest::CreateProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
 void SQLSDKTest::DropProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                std::shared_ptr<SQLRouter> router) {
     fesql::sdk::Status status;
-    if (sql_case.inputs()[0].name_.empty()) {
+    if (sql_case.sp_name_.empty()) {
         LOG(WARNING) << "fail to drop procedure, sp name is empty";
         return;
     }
