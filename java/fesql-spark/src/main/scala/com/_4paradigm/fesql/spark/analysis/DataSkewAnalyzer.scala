@@ -126,33 +126,33 @@ class DataSkewAnalyzer {
     data.agg(avg("xx"))
   }
 
-  def improveSkew(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: DataFrame) {
-    val windowOp = node.window()
-    val groupByExprs = windowOp.partition().keys()
-    val groupByCols = new util.ArrayList[String]()
-    for (i <- 0 until groupByExprs.GetChildNum()) {
-      val expr = groupByExprs.GetChild(i)
-      val key = CoreAPI.ResolveSourceColumnName(node, ColumnRefNode.CastFrom(expr))
-      groupByCols.add(key)
-    }
-    val ts = CoreAPI.ResolveSourceColumnName(node, ColumnRefNode.CastFrom(node.window.sort.orders.order_by.GetChild(0)))
-    val keyScala = JavaConverters.asScalaIteratorConverter(groupByCols.iterator()).asScala.toSeq
-    val table_report = takeTableReport(input, keyScala, ts)
-//    val windowAggConfig = createWindowAggConfig(ctx, node)
-    val table = "FESQL_TEMP_WINDOW_" + System.currentTimeMillis()
-    val reportTable = "FESQL_TEMP_WINDOW_REPORT_" + System.currentTimeMillis()
-    logger.info("skew main table {}", table)
-    logger.info("skew main table report{}", reportTable)
-    val keysMap = new util.HashMap[String, String]()
-    keyScala.foreach(_ => keysMap.put(_, _))
-    val sqlCode = SkewUtils.genPercentileSql(table, reportTable, 4, keysMap, ts)
-
-
-
-
-//    val percentileSql = SkewUtils.genPercentileSql(windowOp)
-
-  }
+//  def improveSkew(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: DataFrame) {
+//    val windowOp = node.window()
+//    val groupByExprs = windowOp.partition().keys()
+//    val groupByCols = new util.ArrayList[String]()
+//    for (i <- 0 until groupByExprs.GetChildNum()) {
+//      val expr = groupByExprs.GetChild(i)
+//      val key = CoreAPI.ResolveSourceColumnName(node, ColumnRefNode.CastFrom(expr))
+//      groupByCols.add(key)
+//    }
+//    val ts = CoreAPI.ResolveSourceColumnName(node, ColumnRefNode.CastFrom(node.window.sort.orders.order_by.GetChild(0)))
+//    val keyScala = JavaConverters.asScalaIteratorConverter(groupByCols.iterator()).asScala.toSeq
+//    val table_report = takeTableReport(input, keyScala, ts)
+////    val windowAggConfig = createWindowAggConfig(ctx, node)
+//    val table = "FESQL_TEMP_WINDOW_" + System.currentTimeMillis()
+//    val reportTable = "FESQL_TEMP_WINDOW_REPORT_" + System.currentTimeMillis()
+//    logger.info("skew main table {}", table)
+//    logger.info("skew main table report{}", reportTable)
+//    val keysMap = new util.HashMap[String, String]()
+//    keyScala.foreach(_ => keysMap.put(_, _))
+//    val sqlCode = SkewUtils.genPercentileSql(table, reportTable, 4, keysMap, ts)
+//
+//
+//
+//
+////    val percentileSql = SkewUtils.genPercentileSql(windowOp)
+//
+//  }
   
   def takeTableReport(data: DataFrame, keys: Seq[String], ts: String): DataFrame = {
     val coordinate = data.groupBy(keys.map(data(_)): _*).agg(
