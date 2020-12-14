@@ -8,6 +8,7 @@
  **/
 #include "codegen/variable_ir_builder.h"
 #include <glog/logging.h>
+#include "codegen/ir_base_builder.h"
 #include "codegen/struct_ir_builder.h"
 
 using ::fesql::common::kCodegenError;
@@ -27,8 +28,9 @@ bool VariableIRBuilder::StoreStruct(const std::string& name,
     // get value addr
     NativeValue addr;
     if (!sv_->FindVar(name, &addr)) {
-        addr = NativeValue::Create(
-            builder.CreateAlloca(value.GetType()->getPointerElementType()));
+        addr = NativeValue::Create(CreateAllocaAtHead(
+            &builder, value.GetType()->getPointerElementType(),
+            "struct_alloca_of_var_" + name));
         sv_->AddVar(name, addr);
     }
 
@@ -76,8 +78,8 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
         // get value addr
         NativeValue addr;
         if (!sv_->FindVar(name, &addr)) {
-            addr =
-                NativeValue::CreateMem(builder.CreateAlloca(value.GetType()));
+            addr = NativeValue::CreateMem(CreateAllocaAtHead(
+                &builder, value.GetType(), "alloca_of_var_" + name));
             sv_->AddVar(name, addr);
         }
 

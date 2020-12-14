@@ -989,8 +989,7 @@ Status GetLLVMFunctionType(::llvm::Module* m,
 }
 
 llvm::Value* CreateAllocaAtHead(llvm::IRBuilder<>* builder, llvm::Type* dtype,
-                                const std::string& name,
-                                llvm::Value* size) {
+                                const std::string& name, llvm::Value* size) {
     ::llvm::BasicBlock* current_block = builder->GetInsertBlock();
     if (current_block == nullptr) {
         LOG(WARNING) << "Uninitialized builder";
@@ -1001,10 +1000,10 @@ llvm::Value* CreateAllocaAtHead(llvm::IRBuilder<>* builder, llvm::Type* dtype,
         LOG(WARNING) << "Empty parent function";
         return nullptr;
     }
-    ::llvm::BasicBlock& entry_block = current_func->getEntryBlock();
-    ::llvm::IRBuilder<> entry_builder(&entry_block);
-    if (!entry_block.empty()) {
-        auto first_inst = entry_block.getFirstNonPHI();
+    ::llvm::BasicBlock* entry_block = &current_func->getEntryBlock();
+    ::llvm::IRBuilder<> entry_builder(entry_block);
+    if (!entry_block->empty()) {
+        auto first_inst = entry_block->getFirstNonPHI();
         entry_builder.SetInsertPoint(first_inst);
     }
     return entry_builder.CreateAlloca(dtype, size, name);
