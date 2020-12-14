@@ -51,6 +51,7 @@ BlobServerImpl::~BlobServerImpl() {
     if (zk_client_ != nullptr) {
         delete zk_client_;
     }
+    task_pool_.Stop(true);
 }
 
 bool BlobServerImpl::Init(const std::string& real_endpoint) {
