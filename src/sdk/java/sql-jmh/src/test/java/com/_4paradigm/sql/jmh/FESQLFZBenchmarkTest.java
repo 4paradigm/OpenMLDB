@@ -1,5 +1,6 @@
 package com._4paradigm.sql.jmh;
 
+import com._4paradigm.sql.tools.Util;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -16,16 +17,18 @@ import java.util.Map;
 
 public class FESQLFZBenchmarkTest {
     private static Logger logger = LoggerFactory.getLogger(FESQLClusterBenchmark.class);
+
     @Test
     public void execSQLTest() throws SQLException {
-        FESQLFZBenchmark benchmark = new FESQLFZBenchmark(true);
+        FESQLFZBenchmark benchmark = new FESQLFZBenchmark(true, false);
+        Util.EnableProxy();
         benchmark.setWindowNum(1);
         benchmark.setup();
         int loops = 1;
         for (int i = 0; i < loops; i++) {
             Map<String, String> result = benchmark.execSQLTest();
-            for(Map.Entry<String, String> entry: result.entrySet()) {
-                System.out.println(entry.getKey()  + ": " + entry.getValue());
+            for (Map.Entry<String, String> entry : result.entrySet()) {
+                System.out.println(entry.getKey() + ": " + entry.getValue());
             }
             Assert.assertNotNull(result);
             Assert.assertTrue(result.size() > 0);
@@ -35,13 +38,19 @@ public class FESQLFZBenchmarkTest {
         }
         benchmark.teardown();
     }
+
     @Test
     public void dumpSQLCaseTest() throws SQLException {
-        FESQLFZBenchmark benchmark = new FESQLFZBenchmark(true, true);
-        benchmark.setWindowNum(2000);
-        benchmark.setup();
-        benchmark.outputSQLCase();
-        benchmark.teardown();
+        try {
+            FESQLFZBenchmark benchmark = new FESQLFZBenchmark(true, true);
+            Util.EnableProxy();
+            benchmark.setWindowNum(10);
+            benchmark.setup();
+            benchmark.outputSQLCase("fz_case_benchmark.yaml");
+            benchmark.teardown();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Test
@@ -53,6 +62,7 @@ public class FESQLFZBenchmarkTest {
                 .build();
         new Runner(opt).run();
     }
+
     @Test
     @Ignore
     public void benchmarkSampleTime() throws RunnerException {
@@ -63,6 +73,7 @@ public class FESQLFZBenchmarkTest {
                 .build();
         new Runner(opt).run();
     }
+
     @Test
     @Ignore
     public void benchmarkAverageTime() throws RunnerException {

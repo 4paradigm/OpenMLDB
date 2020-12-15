@@ -14,11 +14,20 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
+
+import java.io.*;
 import java.sql.*;
 import java.sql.Date;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.introspector.Property;
+import org.yaml.snakeyaml.nodes.Node;
+import org.yaml.snakeyaml.nodes.NodeTuple;
+import org.yaml.snakeyaml.nodes.Tag;
+import org.yaml.snakeyaml.representer.Representer;
 
 @BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -43,10 +52,12 @@ public class FESQLFZBenchmark {
     private String mainTable;
     List<Map<String, String>> mainTableValue;
     int pkBase = 1000000;
+
     public FESQLFZBenchmark() {
         this(false, false);
     }
-    public FESQLFZBenchmark(boolean enableDebug , boolean enableOutputYamlCase) {
+
+    public FESQLFZBenchmark(boolean enableDebug, boolean enableOutputYamlCase) {
         executor = BenchmarkConfig.GetSqlExecutor(enableDebug);
         db = "db" + System.nanoTime();
         tableMap = new HashMap<>();
@@ -177,12 +188,15 @@ public class FESQLFZBenchmark {
                 mainTableValue.add(valueMap);
             }
         }
-        for(String exeSql: inserts) {
+        for (String exeSql : inserts) {
             executor.executeInsert(db, exeSql);
         }
         if (enableOutputYamlCase) {
             InputDesc inputDesc = new InputDesc();
             inputDesc.setName(table.getName());
+            inputDesc.setColumns(Lists.<String>newArrayList());
+            inputDesc.setIndexs(Lists.<String>newArrayList());
+            inputDesc.setRows(Lists.<List<Object>>newArrayList());
             inputDesc.setCreate(table.getDDL());
             inputDesc.setInserts(inserts);
             sqlCase.getInputs().add(inputDesc);
@@ -222,7 +236,7 @@ public class FESQLFZBenchmark {
                 requestPs.setDate(i + 1, new Date(System.currentTimeMillis()));
             }
         }
-        return  requestPs;
+        return requestPs;
     }
 
     @Setup
@@ -237,18 +251,43 @@ public class FESQLFZBenchmark {
                 return;
             }
         }
+        if (enableOutputYamlCase) {
+            sqlCase.setDesc("FZ benchmark case");
+            sqlCase.setId("0");
+            sqlCase.setInputs(Lists.<InputDesc>newArrayList());
+        }
         putData();
         if (enableOutputYamlCase) {
             sqlCase.setSql(script);
             sqlCase.setExpect(new ExpectDesc());
         }
     }
-    public Boolean outputSQLCase() {
+
+    public Boolean outputSQLCase(String caseAbsPath) throws FileNotFoundException, UnsupportedEncodingException {
         if (sqlCase == null) {
             return false;
         }
-        Yaml yaml = new Yaml();
-        System.out.println(yaml.dump(sqlCase));
+        Writer writer = new OutputStreamWriter(new FileOutputStream(caseAbsPath), "UTF-8");
+        Representer representer = new Representer() {
+            @Override
+            protected NodeTuple representJavaBeanProperty(Object javaBean, Property property, Object propertyValue, Tag customTag) {
+                // if value of property is null, ignore it.
+                if (propertyValue == null) {
+                    return null;
+                } else if (propertyValue instanceof ArrayList &&
+                        ((ArrayList) propertyValue).isEmpty()) {
+                    return null;
+                } else if (propertyValue.toString().equalsIgnoreCase("id001")) {
+                    return null;
+                }else {
+                    return super.representJavaBeanProperty(javaBean, property, propertyValue, customTag);
+                }
+            }
+
+        };
+        Yaml yaml = new Yaml(new Constructor(SQLCase.class), representer);
+        yaml.represent(representer);
+        yaml.dump(sqlCase, writer);
         return true;
     }
 

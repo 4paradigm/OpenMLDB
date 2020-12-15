@@ -19,6 +19,13 @@
 		<fesql.version>0.0.1-SNAPSHOT</fesql.version>
 	</properties>
 
+	<repositories>
+		<repository>
+			<id>4pd-nexus-public</id>
+			<name>4Paradigm nexus maven public</name>
+			<url>https://nexus.4pd.io/repository/maven-public/</url>
+		</repository>
+	</repositories>
 	<dependencies>
 		<dependency>
 			<groupId>org.openjdk.jmh</groupId>
