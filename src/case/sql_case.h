@@ -236,6 +236,7 @@ class SQLCase {
     TableInfo batch_request_;
     ExpectInfo expect_;
     YAML::Node raw_node_;
+    std::string sp_name_;
 };
 std::string FindFesqlDirPath();
 

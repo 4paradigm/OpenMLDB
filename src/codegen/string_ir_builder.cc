@@ -11,6 +11,7 @@
 #include <vector>
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/cond_select_ir_builder.h"
+#include "codegen/ir_base_builder.h"
 #include "codegen/memery_ir_builder.h"
 #include "codegen/null_ir_builder.h"
 
@@ -163,8 +164,10 @@ base::Status StringIRBuilder::CastToNumber(::llvm::BasicBlock* block,
     CHECK_TRUE(IsNumber(type), kCodegenError,
                "fail to cast to number: dist type is ")
     ::llvm::IRBuilder<> builder(block);
-    ::llvm::Value* dist_ptr = builder.CreateAlloca(type);
-    ::llvm::Value* is_null_ptr = builder.CreateAlloca(builder.getInt1Ty());
+    ::llvm::Value* dist_ptr =
+        CreateAllocaAtHead(&builder, type, "cast_dist_number_alloca");
+    ::llvm::Value* is_null_ptr = CreateAllocaAtHead(
+        &builder, builder.getInt1Ty(), "cast_dist_number_is_null, alloca");
     ::std::string fn_name = TypeName(type) + ".string";
 
     auto cast_func = m_->getOrInsertFunction(

@@ -756,8 +756,10 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
         batch_inputs.push_back(producers_[idx]->BatchRequestRun(ctx));
     }
 
-    LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
-              << "\n";
+    if (ctx.is_debug()) {
+        LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+                  << "\n";
+    }
     for (size_t idx = 0; idx < ctx.GetRequestSize(); idx++) {
         inputs.clear();
         for (size_t producer_idx = 0; producer_idx < producers_.size();
@@ -769,8 +771,10 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
             Runner::PrintData(output_schemas_, res);
         }
         if (need_batch_cache_) {
-            DLOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_)
-                       << "RUNNER ID " << id_ << " HIT BATCH CACHE!";
+            if (ctx.is_debug()) {
+                LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_)
+                          << "RUNNER ID " << id_ << " HIT BATCH CACHE!";
+            }
             auto repeated_data = std::shared_ptr<DataHandlerList>(
                 new DataHandlerRepeater(res, ctx.GetRequestSize()));
             if (need_cache_) {
@@ -850,8 +854,12 @@ std::shared_ptr<DataHandlerList> RequestRunner::BatchRequestRun(
 std::shared_ptr<DataHandler> GroupRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
-    auto input = inputs[0];
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
     auto fail_ptr = std::shared_ptr<DataHandler>();
+    auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "input is empty";
         return fail_ptr;
@@ -861,8 +869,12 @@ std::shared_ptr<DataHandler> GroupRunner::Run(
 std::shared_ptr<DataHandler> SortRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
-    auto input = inputs[0];
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
     auto fail_ptr = std::shared_ptr<DataHandler>();
+    auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "input is empty";
         return fail_ptr;
@@ -880,6 +892,10 @@ std::shared_ptr<DataHandler> ConstProjectRunner::Run(
 std::shared_ptr<DataHandler> TableProjectRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
     auto input = inputs[0];
     if (!input) {
         return std::shared_ptr<DataHandler>();
@@ -909,6 +925,10 @@ std::shared_ptr<DataHandler> TableProjectRunner::Run(
 std::shared_ptr<DataHandler> RowProjectRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
     auto row = std::dynamic_pointer_cast<RowHandler>(inputs[0]);
     return std::shared_ptr<RowHandler>(
         new MemRowHandler(project_gen_.Gen(row->GetValue())));
@@ -917,6 +937,10 @@ std::shared_ptr<DataHandler> RowProjectRunner::Run(
 std::shared_ptr<DataHandler> SimpleProjectRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
     auto input = inputs[0];
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (!input) {
@@ -951,6 +975,10 @@ std::shared_ptr<DataHandler> SimpleProjectRunner::Run(
 std::shared_ptr<DataHandler> WindowAggRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
     auto input = inputs[0];
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (!input) {
@@ -1101,6 +1129,10 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {  // NOLINT
     auto fail_ptr = std::shared_ptr<DataHandler>();
+    if (inputs.size() < 2u) {
+        LOG(WARNING) << "inputs size < 2";
+        return std::shared_ptr<DataHandler>();
+    }
     auto right = inputs[1];
     auto left = inputs[0];
     if (!left || !right) {
@@ -1124,6 +1156,7 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (inputs.size() < 2) {
+        LOG(WARNING) << "inputs size < 2";
         return fail_ptr;
     }
     auto right = inputs[1];
@@ -1953,6 +1986,7 @@ std::shared_ptr<DataHandler> ConcatRunner::Run(
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (inputs.size() < 2) {
+        LOG(WARNING) << "inputs size < 2";
         return fail_ptr;
     }
     auto right = inputs[1];
@@ -1975,6 +2009,10 @@ std::shared_ptr<DataHandler> LimitRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return fail_ptr;
+    }
     auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "input is empty";
@@ -2013,6 +2051,10 @@ std::shared_ptr<DataHandler> FilterRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return fail_ptr;
+    }
     auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "fail to run filter: input is empty or null";
@@ -2038,6 +2080,10 @@ std::shared_ptr<DataHandler> FilterRunner::Run(
 std::shared_ptr<DataHandler> GroupAggRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
     auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "group aggregation fail: input is null";
@@ -2077,6 +2123,10 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
+    if (inputs.size() < 2u) {
+        LOG(WARNING) << "inputs size < 2";
+        return std::shared_ptr<DataHandler>();
+    }
     auto left = inputs[0];
     auto right = inputs[1];
     if (!left || !right) {
@@ -2168,6 +2218,10 @@ std::shared_ptr<DataHandler> PostRequestUnionRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
+    if (inputs.size() < 2u) {
+        LOG(WARNING) << "inputs size < 2";
+        return std::shared_ptr<DataHandler>();
+    }
     auto left = inputs[0];
     auto right = inputs[1];
     if (!left || !right) {
@@ -2196,6 +2250,10 @@ std::shared_ptr<DataHandler> PostRequestUnionRunner::Run(
 std::shared_ptr<DataHandler> AggRunner::Run(
     RunnerContext& ctx,
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
     auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "input is empty";
@@ -2259,6 +2317,10 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
     // proxy input, can be row or rows
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return fail_ptr;
+    }
     auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "input is empty";
@@ -2460,12 +2522,10 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -2485,12 +2545,10 @@ const std::string KeyGenerator::Gen(const Row& row) {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
