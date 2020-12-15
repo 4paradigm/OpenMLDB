@@ -20,7 +20,7 @@ class FesqlSession {
   private var sparkMaster: String = null
 
   private val registeredTables = mutable.HashMap[String, DataFrame]()
-  private var configs: mutable.HashMap[String, Any] = _
+//  private var configs: mutable.HashMap[String, Any] = _
   private var scalaConfig: Map[String, Any] = Map()
 
   /**
@@ -28,24 +28,41 @@ class FesqlSession {
    *
    * @param sparkSession
    */
-  def this(sparkSession: SparkSession, config: mutable.HashMap[String, Any]) = {
+  def this(sparkSession: SparkSession) = {
     this()
     this.sparkSession = sparkSession
     this.sparkSession.conf.set(FesqlConfig.configTimeZone, FesqlConfig.timeZone)
-    this.configs = config
+//    this.configs = this.sparkSession.conf.getAll
 
-    for ((k, v) <- configs) {
+//    for ((k, v) <- this.sparkSession.conf.getAll) {
+//      scalaConfig += (k -> v)
+//      k match {
+//        case FesqlConfig.configSkewRadio => FesqlConfig.skewRatio = v.toDouble
+//        case FesqlConfig.configSkewLevel => FesqlConfig.skewLevel = v.asInstanceOf[Int]
+//        case FesqlConfig.configSkewCnt => FesqlConfig.skewCnt = v.asInstanceOf[Int]
+//        case FesqlConfig.configSkewCntName => FesqlConfig.skewCntName = v.asInstanceOf[String]
+//        case FesqlConfig.configSkewTag => FesqlConfig.skewTag = v.asInstanceOf[String]
+//        case FesqlConfig.configSkewPosition => FesqlConfig.skewPosition = v.asInstanceOf[String]
+//        case FesqlConfig.configMode => FesqlConfig.mode = v.asInstanceOf[String]
+//        case FesqlConfig.configPartitions => FesqlConfig.paritions = v.asInstanceOf[Int]
+//        case FesqlConfig.configTimeZone => FesqlConfig.timeZone = v.asInstanceOf[String]
+//      }
+//    }
+
+
+    for ((k, v) <- this.sparkSession.conf.getAll) {
+      logger.info("fesql config: %s = %s", k, v)
       scalaConfig += (k -> v)
       k match {
-        case "fesql.skew.ratio" => FesqlConfig.skewRatio = v.asInstanceOf[Double]
-        case "fesql.skew.level" => FesqlConfig.skewLevel = v.asInstanceOf[Int]
-        case "fesql.skew.watershed" => FesqlConfig.skewCnt = v.asInstanceOf[Int]
-        case "fesql.skew.cnt.name" => FesqlConfig.skewCntName = v.asInstanceOf[String]
-        case "fesql.skew.tag" => FesqlConfig.skewTag = v.asInstanceOf[String]
-        case "fesql.skew.position" => FesqlConfig.skewPosition = v.asInstanceOf[String]
-        case "fesql.mode" => FesqlConfig.mode = v.asInstanceOf[String]
-        case "fesql.group.partitions" => FesqlConfig.paritions = v.asInstanceOf[Int]
-        case "fesql.timeZone" => FesqlConfig.timeZone = v.asInstanceOf[String]
+        case FesqlConfig.configSkewRadio => FesqlConfig.skewRatio = v.toDouble
+        case FesqlConfig.configSkewLevel => FesqlConfig.skewLevel = v.toInt
+        case FesqlConfig.configSkewCnt => FesqlConfig.skewCnt = v.toInt
+        case FesqlConfig.configSkewCntName => FesqlConfig.skewCntName = v.asInstanceOf[String]
+        case FesqlConfig.configSkewTag => FesqlConfig.skewTag = v.asInstanceOf[String]
+        case FesqlConfig.configSkewPosition => FesqlConfig.skewPosition = v.asInstanceOf[String]
+        case FesqlConfig.configMode => FesqlConfig.mode = v.asInstanceOf[String]
+        case FesqlConfig.configPartitions => FesqlConfig.paritions = v.toInt
+        case FesqlConfig.configTimeZone => FesqlConfig.timeZone = v.asInstanceOf[String]
       }
     }
   }

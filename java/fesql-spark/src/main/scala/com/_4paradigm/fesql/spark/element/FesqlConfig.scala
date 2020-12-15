@@ -4,19 +4,19 @@ package com._4paradigm.fesql.spark.element
 
 object FesqlConfig {
   // 配置名字
-  val configPartitions = "fesql.group.partitions"
+  val configPartitions = "spark.fesql.group.partitions"
   val configTimeZone = "spark.sql.session.timeZone"
-  val configFesqlTZ = "fesql.timeZone"
-  val configMode =  "fesql.mode"
+  val configFesqlTZ = "spark.fesql.timeZone"
+  val configMode =  "spark.fesql.mode"
   // ================================================
   // skew mode
-  val configSkewRadio = "fesql.skew.ratio"
-  val configSkewLevel = "fesql.skew.level"
+  val configSkewRadio = "spark.fesql.skew.ratio"
+  val configSkewLevel = "spark.fesql.skew.level"
   // 针对key的分水岭，默认是100 * 100 条，才做数据倾斜优化
-  val configSkewCnt = "fesql.skew.watershed"
-  val configSkewCntName = "fesql.skew.cnt.name"
-  val configSkewTag = "fesql.skew.tag"
-  val configSkewPosition = "fesql.skew.position"
+  val configSkewCnt = "spark.fesql.skew.watershed"
+  val configSkewCntName = "spark.fesql.skew.cnt.name"
+  val configSkewTag = "spark.fesql.skew.tag"
+  val configSkewPosition = "spark.fesql.skew.position"
 
   // ================================================
   // enable spark2.3.0 service

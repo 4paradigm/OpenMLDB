@@ -1,5 +1,6 @@
 package com._4paradigm.fesql.spark
 
+import com._4paradigm.fesql.spark.element.FesqlConfig
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 
@@ -83,7 +84,7 @@ class TestSparkPlanner extends SparkTestSuite {
      """.stripMargin
 
     val config =  Map(
-      "fesql.group.partitions" -> 1
+      FesqlConfig.configPartitions -> 1
     )
 
     val planner = new SparkPlanner(sess, config)

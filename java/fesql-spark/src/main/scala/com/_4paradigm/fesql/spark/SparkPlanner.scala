@@ -16,25 +16,30 @@ import scala.collection.mutable
 class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
-//  private var tableDict: Map[String, Any] = Map()
 
   // Ensure native initialized
   FeSqlLibrary.initCore()
   Engine.InitializeGlobalLLVM()
 
-//  def this(session: SparkSession, config: mutable.HashMap[String, Any]) = {
-////    var tableDict: Map[String, Any] = Map()
-//    this(session, tableDict)
-//    for ((k, v) <- config) {
-//      if (k.startsWith("fesql.")) {
-//        tableDict += (k -> v)
-//      }
-//    }
-//  }
 
-//  def this(session: SparkSession, config: Map[String, Any]) = {
-//    this(session, config)
-//  }
+  def this(session: SparkSession) = {
+    this(session, session.conf.getAll)
+    for ((k, v) <- config.asInstanceOf[Map[String, String]]) {
+      logger.info("fesql config: %s = %s", k, v)
+//      scalaConfig += (k -> v)
+      k match {
+        case FesqlConfig.configSkewRadio => FesqlConfig.skewRatio = v.toDouble
+        case FesqlConfig.configSkewLevel => FesqlConfig.skewLevel = v.toInt
+        case FesqlConfig.configSkewCnt => FesqlConfig.skewCnt = v.toInt
+        case FesqlConfig.configSkewCntName => FesqlConfig.skewCntName = v.asInstanceOf[String]
+        case FesqlConfig.configSkewTag => FesqlConfig.skewTag = v.asInstanceOf[String]
+        case FesqlConfig.configSkewPosition => FesqlConfig.skewPosition = v.asInstanceOf[String]
+        case FesqlConfig.configMode => FesqlConfig.mode = v.asInstanceOf[String]
+        case FesqlConfig.configPartitions => FesqlConfig.paritions = v.toInt
+        case FesqlConfig.configTimeZone => FesqlConfig.timeZone = v.asInstanceOf[String]
+      }
+    }
+  }
 
   def plan(sql: String, tableDict: Map[String, DataFrame]): SparkInstance = {
     // spark translation state
