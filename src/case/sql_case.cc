@@ -1211,10 +1211,9 @@ bool SQLCase::BuildCreateSpSQLFromInput(int32_t input_idx,
 }
 
 bool SQLCase::BuildCreateSpSQLFromSchema(const type::TableDef& table,
-                                         const std::string& select_sql,
-                                         const std::set<size_t>& common_idx,
-                                         std::string* create_sql) {
-    std::string sql = "CREATE Procedure " + table.name() + "(\n";
+        const std::string& select_sql, const std::set<size_t>& common_idx,
+        std::string* create_sql) {
+    std::string sql = "CREATE Procedure " + sp_name_ + "(\n";
     for (int i = 0; i < table.columns_size(); i++) {
         auto column = table.columns(i);
         if (!common_idx.empty() && common_idx.count(i)) {

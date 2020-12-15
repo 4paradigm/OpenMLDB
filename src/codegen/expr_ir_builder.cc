@@ -349,7 +349,8 @@ bool ExprIRBuilder::BuildCallFnLegacy(
         ::llvm::Type* struct_type =
             reinterpret_cast<::llvm::PointerType*>(last_arg->getType())
                 ->getElementType();
-        ::llvm::Value* struct_value = builder.CreateAlloca(struct_type);
+        ::llvm::Value* struct_value =
+            CreateAllocaAtHead(&builder, struct_type, "struct_alloca");
         llvm_args.push_back(struct_value);
         ::llvm::Value* ret =
             builder.CreateCall(fn->getFunctionType(), fn,
@@ -448,8 +449,8 @@ Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
     }
 
     // int8_t** -> ListRef* { int8_t* }
-    ::llvm::Value* inner_list_ref_ptr =
-        builder.CreateAlloca(window_ptr->getType());
+    ::llvm::Value* inner_list_ref_ptr = CreateAllocaAtHead(
+        &builder, window_ptr->getType(), "sub_window_alloca");
     builder.CreateStore(window_ptr, inner_list_ref_ptr);
     window_ptr =
         builder.CreatePointerCast(inner_list_ref_ptr, window_ptr->getType());
