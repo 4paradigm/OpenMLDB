@@ -35,6 +35,14 @@ public class FESQLFZBenchmarkTest {
         }
         benchmark.teardown();
     }
+    @Test
+    public void dumpSQLCaseTest() throws SQLException {
+        FESQLFZBenchmark benchmark = new FESQLFZBenchmark(true, true);
+        benchmark.setWindowNum(2000);
+        benchmark.setup();
+        benchmark.outputSQLCase();
+        benchmark.teardown();
+    }
 
     @Test
     @Ignore

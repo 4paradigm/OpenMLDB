@@ -22,6 +22,9 @@ public class BenchmarkConfig {
     private static SdkOption option = null;
     private static boolean needProxy = false;
 
+    public static void EnableProxy() {
+        needProxy = true;
+    }
     public static boolean NeedProxy() {
         return needProxy;
     }

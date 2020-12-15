@@ -1,20 +1,24 @@
 package com._4paradigm.sql.jmh;
 
+import com._4paradigm.fesql.sqlcase.model.ExpectDesc;
+import com._4paradigm.fesql.sqlcase.model.InputDesc;
+import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.fesql.sqlcase.model.Table;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.tools.Util;
 import com._4paradigm.sql.tools.Relation;
 import com._4paradigm.sql.tools.TableInfo;
+import com.google.common.collect.Lists;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
-
 import java.sql.*;
 import java.sql.Date;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-
+import org.yaml.snakeyaml.Yaml;
 
 @BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -29,6 +33,8 @@ public class FESQLFZBenchmark {
     private String ddlUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.txt.ddl.txt";
     private String scriptUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.txt";
     private String relationUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.relation.txt";
+    private Boolean enableOutputYamlCase = false;
+    SQLCase sqlCase = new SQLCase();
     private int pkNum = 1;
     //@Param({"500", "1000", "2000"})
     private int windowNum = 2000;
@@ -38,13 +44,14 @@ public class FESQLFZBenchmark {
     List<Map<String, String>> mainTableValue;
     int pkBase = 1000000;
     public FESQLFZBenchmark() {
-        this(false);
+        this(false, false);
     }
-    public FESQLFZBenchmark(boolean enableDebug ) {
+    public FESQLFZBenchmark(boolean enableDebug , boolean enableOutputYamlCase) {
         executor = BenchmarkConfig.GetSqlExecutor(enableDebug);
         db = "db" + System.nanoTime();
         tableMap = new HashMap<>();
         mainTableValue = new ArrayList<>();
+        this.enableOutputYamlCase = enableOutputYamlCase;
     }
 
     public void setWindowNum(int windowNum) {
@@ -81,6 +88,7 @@ public class FESQLFZBenchmark {
     }
 
     private void putTableData(TableInfo table) {
+        List<String> inserts = Lists.newArrayList();
         boolean isMainTable = false;
         if (table.getName().equals(mainTable)) {
             isMainTable = true;
@@ -163,11 +171,21 @@ public class FESQLFZBenchmark {
                 builder.append(");");
                 String exeSql = builder.toString();
                 //System.out.println(exeSql);
-                executor.executeInsert(db, exeSql);
+                inserts.add(exeSql);
             }
             if (isMainTable) {
                 mainTableValue.add(valueMap);
             }
+        }
+        for(String exeSql: inserts) {
+            executor.executeInsert(db, exeSql);
+        }
+        if (enableOutputYamlCase) {
+            InputDesc inputDesc = new InputDesc();
+            inputDesc.setName(table.getName());
+            inputDesc.setCreate(table.getDDL());
+            inputDesc.setInserts(inserts);
+            sqlCase.getInputs().add(inputDesc);
         }
     }
 
@@ -220,6 +238,18 @@ public class FESQLFZBenchmark {
             }
         }
         putData();
+        if (enableOutputYamlCase) {
+            sqlCase.setSql(script);
+            sqlCase.setExpect(new ExpectDesc());
+        }
+    }
+    public Boolean outputSQLCase() {
+        if (sqlCase == null) {
+            return false;
+        }
+        Yaml yaml = new Yaml();
+        System.out.println(yaml.dump(sqlCase));
+        return true;
     }
 
     @TearDown
