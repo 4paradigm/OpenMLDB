@@ -108,7 +108,7 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
     return true;
 }
 
-std::unique_ptr<::fesql::codec::RowIterator> TabletTableHandler::GetIterator() const {
+std::unique_ptr<::fesql::codec::RowIterator> TabletTableHandler::GetIterator() {
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
     if (!tables->empty()) {
         return std::unique_ptr<catalog::FullTableIterator>(new catalog::FullTableIterator(tables));
@@ -140,7 +140,7 @@ const ::fesql::codec::Row TabletTableHandler::Get(int32_t pos) {
     return iter->Valid() ? iter->GetValue() : ::fesql::codec::Row();
 }
 
-::fesql::codec::RowIterator* TabletTableHandler::GetRawIterator() const {
+::fesql::codec::RowIterator* TabletTableHandler::GetRawIterator() {
     auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
     if (!tables->empty()) {
         return new catalog::FullTableIterator(tables);

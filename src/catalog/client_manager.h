@@ -87,7 +87,7 @@ class TabletAccessor : public ::fesql::vm::Tablet {
                                                       const bool is_procedure,
                                                       const bool is_debug) override;
 
-    std::shared_ptr<::fesql::vm::RowHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
+    std::shared_ptr<::fesql::vm::TableHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
                                                       const std::vector<::fesql::codec::Row>& row,
                                                       const bool is_procedure,
                                                       const bool is_debug) override;

@@ -59,7 +59,7 @@ class TabletSegmentHandler : public ::fesql::vm::TableHandler {
 
     const ::fesql::vm::OrderType GetOrderType() const override { return partition_handler_->GetOrderType(); }
 
-    std::unique_ptr<::fesql::vm::RowIterator> GetIterator() const override {
+    std::unique_ptr<::fesql::vm::RowIterator> GetIterator() override {
         auto iter = partition_handler_->GetWindowIterator();
         if (iter) {
             DLOG(INFO) << "seek to pk " << key_;
@@ -73,7 +73,7 @@ class TabletSegmentHandler : public ::fesql::vm::TableHandler {
         return std::unique_ptr<::fesql::vm::RowIterator>();
     }
 
-    ::fesql::vm::RowIterator *GetRawIterator() const override {
+    ::fesql::vm::RowIterator *GetRawIterator() override {
         auto iter = partition_handler_->GetWindowIterator();
         if (iter) {
             DLOG(INFO) << "seek to pk " << key_;
@@ -187,9 +187,9 @@ class TabletTableHandler : public ::fesql::vm::TableHandler,
 
     const ::fesql::codec::Row Get(int32_t pos);
 
-    std::unique_ptr<::fesql::codec::RowIterator> GetIterator() const override;
+    std::unique_ptr<::fesql::codec::RowIterator> GetIterator() override;
 
-    ::fesql::codec::RowIterator *GetRawIterator() const override;
+    ::fesql::codec::RowIterator *GetRawIterator() override;
 
     std::unique_ptr<::fesql::codec::WindowIterator> GetWindowIterator(const std::string &idx_name) override;
 

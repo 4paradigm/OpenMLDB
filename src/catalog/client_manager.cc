@@ -111,12 +111,12 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
     return row_handler;
 }
 
-std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
+std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                   const std::string& sql,
                                                                   const std::vector<::fesql::codec::Row>& row,
                                                                   const bool is_procedure,
                                                                   const bool is_debug) {
-    return std::shared_ptr<::fesql::vm::RowHandler>();
+    return std::shared_ptr<::fesql::vm::TableHandler>();
 }
 
 PartitionClientManager::PartitionClientManager(uint32_t pid, const std::shared_ptr<TabletAccessor>& leader,
