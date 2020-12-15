@@ -738,15 +738,6 @@ Status CommonColumnOptimize::GetOpState(PhysicalPlanContext* ctx,
         state->non_common_op->SetLimitCnt(input->GetLimitCnt());
     }
     *state_ptr = state;
-    /*LOG(INFO) << "========================= Before:\n" << *input;
-    LOG(INFO) << "After:\n";
-    if (state->common_op != nullptr) {
-        LOG(INFO) << "Common:\n" << *state->common_op;
-    }
-    if (state->non_common_op != nullptr) {
-        LOG(INFO) << "Non-common:\n" << *state->non_common_op;
-    }
-    LOG(INFO) << "";*/
     return Status::OK();
 }
 

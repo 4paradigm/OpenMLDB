@@ -17,9 +17,9 @@
 #include <string>
 #include <utility>
 
-#include "llvm/Bitcode/BitcodeReader.h"
-
 #include "glog/logging.h"
+#include "llvm/IRReader/IRReader.h"
+#include "llvm/Support/SourceMgr.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf.h"
 #include "vm/jit.h"
@@ -65,16 +65,18 @@ bool FeSQLJITWrapper::AddModule(std::unique_ptr<llvm::Module> module,
 
 bool FeSQLJITWrapper::AddModuleFromBuffer(const base::RawBuffer& buf) {
     std::string buf_str(buf.addr, buf.size);
-    llvm::MemoryBufferRef mem_buf_ref(buf_str, "fesql_module_buf");
+    ::llvm::SMDiagnostic diagnostic;
     auto llvm_ctx = ::llvm::make_unique<::llvm::LLVMContext>();
-    auto res = llvm::parseBitcodeFile(mem_buf_ref, *llvm_ctx);
-    auto error = res.takeError();
-    if (error) {
-        llvm::errs() << error << "\n";
-        LOG(WARNING) << "fail to parse module, module size: " << buf.size;
+    auto mem_buf = ::llvm::MemoryBuffer::getMemBuffer(buf_str);
+    auto llvm_module = parseIR(*mem_buf, diagnostic, *llvm_ctx);
+    if (llvm_module == nullptr) {
+        LOG(WARNING) << "Parse module failed: module string is\n" << buf_str;
+        std::string err_msg;
+        llvm::raw_string_ostream err_msg_stream(err_msg);
+        diagnostic.print("", err_msg_stream);
         return false;
     }
-    return this->AddModule(std::move(res.get()), std::move(llvm_ctx));
+    return this->AddModule(std::move(llvm_module), std::move(llvm_ctx));
 }
 
 RawPtrHandle FeSQLJITWrapper::FindFunction(const std::string& funcname) {
