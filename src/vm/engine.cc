@@ -221,8 +221,8 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     ctx.is_performance_sensitive = options_.is_performance_sensitive();
     ctx.is_cluster_optimized = options_.is_cluster_optimzied();
     SQLCompiler compiler(
-        std::atomic_load_explicit(&cl_, std::memory_order_acquire), true, 
-        true, true);
+        std::atomic_load_explicit(&cl_, std::memory_order_acquire), true, true,
+        true);
     bool ok = compiler.Compile(ctx, *status);
     if (!ok || 0 != status->code) {
         LOG(WARNING) << "fail to compile sql " << sql << " in db " << db
