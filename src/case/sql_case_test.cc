@@ -690,7 +690,7 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
 
     ASSERT_TRUE(fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(
         fesql_dir, case_path, cases));
-    ASSERT_EQ(4, cases.size());
+    ASSERT_EQ(5, cases.size());
     {
         SQLCase& sql_case = cases[0];
         ASSERT_EQ(sql_case.id(), "1");
@@ -817,6 +817,42 @@ TEST_F(SQLCaseTest, ExtractYamlSQLCase) {
                   "insert into t2 values"
                   "\n(\"hello\", 1),"
                   "\n(\"world\", 2);");
+        ASSERT_EQ(sql_case.expect().schema_,
+                  "col0:string, col1:int32, col2:int16, col3:float, "
+                  "col4:double, col5:int64, col6:string");
+        ASSERT_EQ(sql_case.expect().order_, "col1");
+        ASSERT_EQ(sql_case.expect().data_, "hello, 1, 2, 3.3, 4.4, 5, world");
+    }
+    // 简单INSERT with inserts
+    {
+        SQLCase& sql_case = cases[4];
+        ASSERT_EQ(sql_case.id(), "5");
+        ASSERT_EQ("简单INSERT with inserts", sql_case.desc());
+        ASSERT_EQ(sql_case.db(), "test");
+        ASSERT_EQ(2, sql_case.inputs().size());
+        ASSERT_EQ(sql_case.inputs()[0].create_,
+                  "create table t1 (\n"
+                  "col0 string not null,\n"
+                  "col1 int not null,\n"
+                  "col2 smallint not null,\n"
+                  "col3 float not null,\n"
+                  "col4 double not null,\n"
+                  "col5 bigint not null,\n"
+                  "col6 string not null,\n"
+                  "index(name=index1, key=(col2), ts=col5)\n"
+                  ");");
+        ASSERT_EQ(sql_case.inputs()[1].create_,
+                  "create table t2 (\n"
+                  "c1 string not null,\n"
+                  "c2 bigint not null,\n"
+                  "index(name=index2, key=(c1), ts=c2)\n"
+                  ");");
+        ASSERT_EQ(sql_case.inputs()[0].inserts_,
+                  std::vector<std::string>({
+                      "insert into t1 values\n"
+                 "(\"hello\", 1, 2, 3.3f, 4.4, 5L, \"world\");\n",
+                      "insert into t1 values (\"happy\", 10, 20, 30.3f, 40.4, 50L, \"newyear\");"
+                  }));
         ASSERT_EQ(sql_case.expect().schema_,
                   "col0:string, col1:int32, col2:int16, col3:float, "
                   "col4:double, col5:int64, col6:string");
