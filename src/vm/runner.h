@@ -1118,6 +1118,7 @@ class RunnerBuilder {
                                                  const ClusterTask& right_task,
                                                  const Key& index_key,
                                                  Status& status);  // NOLINT
+    
  private:
     node::NodeManager* nm_;
     bool support_cluster_optimized_;

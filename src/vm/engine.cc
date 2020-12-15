@@ -306,7 +306,6 @@ bool RunSession::SetCompileInfo(
     return true;
 }
 
-
 int32_t RequestRunSession::Run(const Row& in_row, Row* out_row) {
     DLOG(INFO) << "Request Row Run with main task";
     return Run(compile_info_->get_sql_context().cluster_job.main_task_id(),

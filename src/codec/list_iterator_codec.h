@@ -362,8 +362,7 @@ class BoolArrayListV : public ListV<bool> {
 
     ~BoolArrayListV() {}
 
-    std::unique_ptr<ConstIterator<uint64_t, bool>> GetIterator()
-        override {
+    std::unique_ptr<ConstIterator<uint64_t, bool>> GetIterator() override {
         return std::unique_ptr<BoolArrayListIterator>(
             new BoolArrayListIterator(buffer_, start_, end_));
     }
