@@ -117,8 +117,8 @@ TabletImpl::TabletImpl()
                   FLAGS_enable_distsql)),
       zk_cluster_(),
       zk_path_(),
-      sp_cache_(std::shared_ptr<SpCache>(new SpCache())),
       endpoint_(),
+      sp_cache_(std::shared_ptr<SpCache>(new SpCache())),
       notify_path_() {
     catalog_->SetLocalTablet(std::shared_ptr<::fesql::vm::Tablet>(
         new ::fesql::vm::LocalTablet(&engine_, sp_cache_)));
@@ -1941,7 +1941,7 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
             std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
             {
                 fesql::base::Status status;
-                request_compile_info = sp_cache_->GetRequestInfo(request->db(), request->sp_name(), status);
+                request_compile_info = sp_cache_->GetRequestInfo(db_name, sp_name, status);
                 if (!status.isOK()) {
                     response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
                     response->set_msg(status.msg);

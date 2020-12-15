@@ -186,6 +186,7 @@ void SQLSDKTest::CreateProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
     boost::to_lower(sql);
     boost::trim(sql);
     LOG(INFO) << sql;
+    sql_case.sp_name_ = fesql::sqlcase::SQLCase::GenRand("auto_sp");
     std::string create_sp;
     if (is_batch) {
         ASSERT_TRUE(
@@ -210,11 +211,11 @@ void SQLSDKTest::CreateProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
 void SQLSDKTest::DropProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                std::shared_ptr<SQLRouter> router) {
     fesql::sdk::Status status;
-    if (sql_case.inputs()[0].name_.empty()) {
+    if (sql_case.sp_name_.empty()) {
         LOG(WARNING) << "fail to drop procedure, sp name is empty";
         return;
     }
-    std::string drop = "drop procedure " + sql_case.inputs()[0].name_ + ";";
+    std::string drop = "drop procedure " + sql_case.sp_name_ + ";";
     LOG(INFO) << drop;
     if (!drop.empty()) {
         router->ExecuteDDL(sql_case.db(), drop, &status);
@@ -428,12 +429,12 @@ void SQLSDKQueryTest::RequestExecuteSQL(fesql::sqlcase::SQLCase& sql_case,  // N
                 if (is_asyn) {
                     LOG(INFO) << "-------asyn procedure----------";
                     auto future = router->CallProcedure(
-                            sql_case.db(), sql_case.inputs()[0].name_, 1000, request_row, &status);
+                            sql_case.db(), sql_case.sp_name_, 1000, request_row, &status);
                     if (!future || status.code != 0) FAIL() << "sql case expect success == true";
                     rs = future->GetResultSet(&status);
                 } else {
                     LOG(INFO) << "--------syn procedure----------";
-                    rs = router->CallProcedure(sql_case.db(), sql_case.inputs()[0].name_, request_row, &status);
+                    rs = router->CallProcedure(sql_case.db(), sql_case.sp_name_, request_row, &status);
                 }
             } else {
                 rs = router->ExecuteSQL(sql_case.db(), sql, request_row, &status);
@@ -529,13 +530,13 @@ void SQLSDKBatchRequestQueryTest::BatchRequestExecuteSQL(fesql::sqlcase::SQLCase
         if (is_asyn) {
             LOG(INFO) << "-------asyn procedure----------";
             auto future = router->CallSQLBatchRequestProcedure(
-                    sql_case.db(), sql_case.inputs()[0].name_, 1000, row_batch, &status);
+                    sql_case.db(), sql_case.sp_name_, 1000, row_batch, &status);
             if (!future || status.code != 0) FAIL() << "sql case expect success == true";
             results = future->GetResultSet(&status);
         } else {
             LOG(INFO) << "--------syn procedure----------";
             results = router->CallSQLBatchRequestProcedure(
-                    sql_case.db(), sql_case.inputs()[0].name_, row_batch, &status);
+                    sql_case.db(), sql_case.sp_name_, row_batch, &status);
         }
     } else {
         results = router->ExecuteSQLBatchRequest(sql_case.db(), sql, row_batch, &status);

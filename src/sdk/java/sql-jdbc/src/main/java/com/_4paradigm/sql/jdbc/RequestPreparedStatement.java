@@ -1,8 +1,6 @@
 package com._4paradigm.sql.jdbc;
 
 import com._4paradigm.sql.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -75,7 +73,7 @@ public class RequestPreparedStatement implements PreparedStatement {
     }
 
     @Override
-    public java.sql.ResultSet executeQuery() throws SQLException {
+    public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
         dataBuild();
         Status status = new Status();
@@ -83,7 +81,7 @@ public class RequestPreparedStatement implements PreparedStatement {
         if (resultSet == null) {
             throw new SQLException("execute sql fail");
         }
-        ResultSet rs = new SQLResultSet(resultSet);
+        SQLResultSet rs = new SQLResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
         }
