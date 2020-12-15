@@ -138,9 +138,9 @@ void MemTimeTableHandler::Sort(const bool is_asc) {
 }
 void MemTimeTableHandler::Reverse() {
     std::reverse(table_.begin(), table_.end());
-    order_type_ = kAscOrder == order_type_
-                      ? kDescOrder
-                      : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
+    order_type_ = kAscOrder == order_type_    ? kDescOrder
+                  : kDescOrder == order_type_ ? kAscOrder
+                                              : kNoneOrder;
 }
 RowIterator* MemTimeTableHandler::GetRawIterator() {
     return new MemTimeTableIterator(&table_, schema_);
@@ -207,9 +207,9 @@ void MemPartitionHandler::Reverse() {
     for (auto& segment : partitions_) {
         std::reverse(segment.second.begin(), segment.second.end());
     }
-    order_type_ = kAscOrder == order_type_
-                      ? kDescOrder
-                      : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
+    order_type_ = kAscOrder == order_type_    ? kDescOrder
+                  : kDescOrder == order_type_ ? kAscOrder
+                                              : kNoneOrder;
 }
 void MemPartitionHandler::Print() {
     for (auto iter = partitions_.cbegin(); iter != partitions_.cend(); iter++) {
@@ -274,9 +274,9 @@ bool MemTableHandler::SetRow(const size_t idx, const Row& row) {
 }
 void MemTableHandler::Reverse() {
     std::reverse(table_.begin(), table_.end());
-    order_type_ = kAscOrder == order_type_
-                      ? kDescOrder
-                      : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
+    order_type_ = kAscOrder == order_type_    ? kDescOrder
+                  : kDescOrder == order_type_ ? kAscOrder
+                                              : kNoneOrder;
 }
 MemTableHandler::~MemTableHandler() {}
 MemTableIterator::MemTableIterator(const MemTable* table,
@@ -297,14 +297,20 @@ MemTableIterator::MemTableIterator(const MemTable* table,
       iter_(start_iter_),
       key_(0) {}
 MemTableIterator::~MemTableIterator() {}
-void MemTableIterator::Seek(const uint64_t& ts) { iter_ = start_iter_ + ts; }
-void MemTableIterator::SeekToFirst() { iter_ = start_iter_; }
-const uint64_t& MemTableIterator::GetKey() const { return iter_ - start_iter_; }
+void MemTableIterator::Seek(const uint64_t& ts) {
+    iter_ = start_iter_ + ts;
+    key_ = ts;
+}
+void MemTableIterator::SeekToFirst() {
+    iter_ = start_iter_;
+    key_ = 0;
+}
+const uint64_t& MemTableIterator::GetKey() const { return key_; }
 
 bool MemTableIterator::Valid() const { return end_iter_ > iter_; }
 void MemTableIterator::Next() {
     iter_++;
-    key_ = Valid() ? iter_ - start_iter_ : 0;
+    key_++;
 }
 const Row& MemTableIterator::GetValue() { return *iter_; }
 bool MemTableIterator::IsSeekable() const { return true; }
