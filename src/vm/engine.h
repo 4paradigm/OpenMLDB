@@ -291,8 +291,8 @@ class LocalTabletRowHandler : public RowHandler {
           db_(""),
           schema_(nullptr),
           task_id_(task_id),
-          request_(request),
           session_(session),
+          request_(request),
           value_() {}
     virtual ~LocalTabletRowHandler() {}
     const Row& GetValue() override {

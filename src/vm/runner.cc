@@ -2348,7 +2348,13 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
             }
             return RunWithRowsInput(ctx, rows);
         }
+        default: {
+            LOG(WARNING)
+                << "fail to run proxy runner: handler type unsupported";
+            return fail_ptr;
+        }
     }
+    return fail_ptr;
 }
 // outs = Proxy(in_rows),  remote batch request
 // out_tables = Proxy(in_tables), remote batch request
