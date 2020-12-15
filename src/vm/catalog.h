@@ -213,7 +213,11 @@ class DataHandlerVector : public DataHandlerList {
         data_handlers_.push_back(data_handler);
     }
     size_t GetSize() { return data_handlers_.size(); }
-    std::shared_ptr<DataHandler> Get(size_t idx) { return data_handlers_[idx]; }
+    std::shared_ptr<DataHandler> Get(size_t idx) {
+        return idx >= 0 && idx < data_handlers_.size()
+                   ? data_handlers_[idx]
+                   : std::shared_ptr<DataHandler>();
+    }
 
  private:
     std::vector<std::shared_ptr<DataHandler>> data_handlers_;
