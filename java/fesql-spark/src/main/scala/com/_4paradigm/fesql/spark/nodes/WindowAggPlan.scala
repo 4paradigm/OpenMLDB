@@ -39,7 +39,7 @@ object WindowAggPlan {
 
     val windowAggConfig = createWindowAggConfig(ctx, node)
     // group and sort
-    val inputDf = if (FesqlConfig.configMode.equals(FesqlConfig.skew)) {
+    val inputDf = if (FesqlConfig.mode.equals(FesqlConfig.skew)) {
       improveSkew(ctx, node, input.getDf(ctx.getSparkSession), windowAggConfig)
     } else {
       groupAndSort(ctx, node, input.getDf(ctx.getSparkSession))
@@ -63,7 +63,7 @@ object WindowAggPlan {
     val flagColName = "__FESQL_WINDOW_UNION_FLAG__" + System.currentTimeMillis()
     val union = doUnionTables(ctx, node, input.getDf(sess), flagColName)
     val windowAggConfig = createWindowAggConfig(ctx, node)
-     val inputDf =  if (FesqlConfig.configMode.equals(FesqlConfig.skew)) {
+     val inputDf =  if (FesqlConfig.mode.equals(FesqlConfig.skew)) {
         improveSkew(ctx, node, union, windowAggConfig)
     } else {
       groupAndSort(ctx, node, union)
@@ -225,7 +225,7 @@ object WindowAggPlan {
     val reportTable = "FESQL_TEMP_WINDOW_REPORT_" + System.currentTimeMillis()
     logger.info("skew main table {}", table)
     logger.info("skew main table report{}", reportTable)
-    val quantile = math.pow(2, FesqlConfig.skewLevel)
+    val quantile = math.pow(2, ctx.getConf(FesqlConfig.configSkewLevel, FesqlConfig.skewLevel))
     val analyzeSQL = SkewUtils.genPercentileSql(table, quantile.intValue(), keysName, ts, FesqlConfig.skewCntName)
     input.createOrReplaceTempView(table)
     val reportDf = input.sqlContext.sql(analyzeSQL)
@@ -240,7 +240,7 @@ object WindowAggPlan {
     var skewDf = input.sqlContext.sql(tagSQL)
     skewDf = expansionData(skewDf, config)
 
-    keyScala = keyScala :+ FesqlConfig.skewTag
+    keyScala = keyScala :+ ctx.getConf(FesqlConfig.configSkewTag, FesqlConfig.skewTag)
 
 
 
@@ -303,7 +303,7 @@ object WindowAggPlan {
     val limitInputIter = if (config.limitCnt > 0) inputIter.take(config.limitCnt) else inputIter
 
     // todo isSkew need to be check
-    val resIter = if (FesqlConfig.skew == "Skew") {
+    val resIter = if (FesqlConfig.mode == "Skew") {
       limitInputIter.flatMap(row => {
         if (lastRow != null) {
           computer.checkPartition(row, lastRow)

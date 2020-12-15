@@ -20,6 +20,7 @@ object Main {
   private var sparkMaster = "local"
   private var appName: String = _
   private var useSparkSQL = false
+  private var jsonPath: String = _
 
   def main(args: Array[String]): Unit = {
     ArgParser(args).parseArgs()
@@ -39,7 +40,7 @@ object Main {
     }
     val sparkSession = sessionBuilder.getOrCreate()
 
-    val sess = new FesqlSession(sparkSession)
+    val sess = new FesqlSession(sparkSession, configs)
 
     logger.info("Resolve input tables...")
     val tables = mutable.HashMap[String, DataFrame]()
@@ -92,6 +93,7 @@ object Main {
         case "--master" => sparkMaster = parseValue()
         case "--name" => appName = parseValue()
         case "--spark-sql" => useSparkSQL = true
+        case "--json" => jsonPath = parseValue()
         case _ =>
           logger.warn(s"Unknown argument: $key")
       }

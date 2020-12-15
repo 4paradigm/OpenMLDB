@@ -20,27 +20,45 @@ class FesqlSession {
   private var sparkMaster: String = null
 
   private val registeredTables = mutable.HashMap[String, DataFrame]()
+  private var configs: mutable.HashMap[String, Any] = _
+  private var scalaConfig: Map[String, Any] = Map()
 
   /**
    * Construct with Spark session.
    *
    * @param sparkSession
    */
-  def this(sparkSession: SparkSession) = {
+  def this(sparkSession: SparkSession, config: mutable.HashMap[String, Any]) = {
     this()
     this.sparkSession = sparkSession
     this.sparkSession.conf.set(FesqlConfig.configTimeZone, FesqlConfig.timeZone)
+    this.configs = config
+
+    for ((k, v) <- configs) {
+      scalaConfig += (k -> v)
+      k match {
+        case "fesql.skew.ratio" => FesqlConfig.skewRatio = v.asInstanceOf[Double]
+        case "fesql.skew.level" => FesqlConfig.skewLevel = v.asInstanceOf[Int]
+        case "fesql.skew.watershed" => FesqlConfig.skewCnt = v.asInstanceOf[Int]
+        case "fesql.skew.cnt.name" => FesqlConfig.skewCntName = v.asInstanceOf[String]
+        case "fesql.skew.tag" => FesqlConfig.skewTag = v.asInstanceOf[String]
+        case "fesql.skew.position" => FesqlConfig.skewPosition = v.asInstanceOf[String]
+        case "fesql.mode" => FesqlConfig.mode = v.asInstanceOf[String]
+        case "fesql.group.partitions" => FesqlConfig.paritions = v.asInstanceOf[Int]
+        case "fesql.timeZone" => FesqlConfig.timeZone = v.asInstanceOf[String]
+      }
+    }
   }
 
   /**
    * Construct with Spark master string.
    *
-   * @param sparkMaster
+   *
    */
-  def this(sparkMaster: String) = {
-    this()
-    this.sparkMaster = sparkMaster
-  }
+//  def this(sparkMaster: String) = {
+//    this()
+//    this.sparkMaster = sparkMaster
+//  }
 
   /**
    * Get or create the Spark session.
@@ -98,8 +116,7 @@ class FesqlSession {
   /**
    * Read the Spark dataframe to Fesql dataframe.
    *
-   * @param filePath
-   * @param format
+   * @param sparkDf
    * @return
    */
   def readSparkDataframe(sparkDf: DataFrame): FesqlDataframe = {
@@ -118,7 +135,7 @@ class FesqlSession {
       sql = sql.trim + ";"
     }
 
-    val planner = new SparkPlanner(getSparkSession)
+    val planner = new SparkPlanner(getSparkSession, scalaConfig)
     val df = planner.plan(sql, registeredTables.toMap).getDf(getSparkSession)
     new FesqlDataframe(this, df)
   }

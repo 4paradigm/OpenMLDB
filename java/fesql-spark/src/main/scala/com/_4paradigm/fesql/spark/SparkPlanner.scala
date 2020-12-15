@@ -16,14 +16,25 @@ import scala.collection.mutable
 class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
+//  private var tableDict: Map[String, Any] = Map()
 
   // Ensure native initialized
   FeSqlLibrary.initCore()
   Engine.InitializeGlobalLLVM()
 
-  def this(session: SparkSession) = {
-    this(session, Map())
-  }
+//  def this(session: SparkSession, config: mutable.HashMap[String, Any]) = {
+////    var tableDict: Map[String, Any] = Map()
+//    this(session, tableDict)
+//    for ((k, v) <- config) {
+//      if (k.startsWith("fesql.")) {
+//        tableDict += (k -> v)
+//      }
+//    }
+//  }
+
+//  def this(session: SparkSession, config: Map[String, Any]) = {
+//    this(session, config)
+//  }
 
   def plan(sql: String, tableDict: Map[String, DataFrame]): SparkInstance = {
     // spark translation state
