@@ -28,23 +28,19 @@ class Router {
  public:
     void SetMainTable(const std::string& main_table) {
         main_table_ = main_table;
-    } 
-
-    const std::string& GetMainTable() const {
-        return main_table_;
     }
 
-    int Parse(const PhysicalOpNode* physical_plan); 
+    const std::string& GetMainTable() const { return main_table_; }
 
-    const std::string& GetRouterCol() const {
-        return router_col_;
-    }
+    int Parse(const PhysicalOpNode* physical_plan);
+
+    const std::string& GetRouterCol() const { return router_col_; }
 
  private:
     std::string main_table_;
     std::string router_col_;
 };
 
-}
-}
+}  // namespace vm
+}  // namespace fesql
 #endif  // SRC_VM_ROUTER_H_

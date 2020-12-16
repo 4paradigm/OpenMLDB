@@ -1,5 +1,5 @@
 /*
- * sql_compiler.cc
+ * router.cc
  * Copyright (C) 4paradigm.com 2019 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +21,18 @@ namespace fesql {
 namespace vm {
 
 int Router::Parse(const PhysicalOpNode* physical_plan) {
-	if (physical_plan == nullptr) {
-		return -1;
-	}
+    if (physical_plan == nullptr) {
+        return -1;
+    }
     if (physical_plan->GetOpType() == kPhysicalOpRequestUnion) {
-        auto request_union_node = dynamic_cast<const PhysicalRequestUnionNode*>(physical_plan);
+        auto request_union_node =
+            dynamic_cast<const PhysicalRequestUnionNode*>(physical_plan);
         if (request_union_node) {
             auto keys = request_union_node->window().partition().keys();
             if (keys != nullptr && keys->GetChildNum() > 0) {
                 auto exp_node = keys->GetChild(0);
-                auto columnNode = dynamic_cast<fesql::node::ColumnRefNode*>(exp_node);
+                auto columnNode =
+                    dynamic_cast<fesql::node::ColumnRefNode*>(exp_node);
                 if (columnNode != nullptr) {
                     router_col_ = columnNode->GetColumnName();
                     return 0;
@@ -46,6 +48,5 @@ int Router::Parse(const PhysicalOpNode* physical_plan) {
     return 1;
 }
 
-}
-}
-
+}  // namespace vm
+}  // namespace fesql
