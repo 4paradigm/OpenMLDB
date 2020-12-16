@@ -1997,12 +1997,21 @@ std::shared_ptr<DataHandler> ConcatRunner::Run(
     if (!left || !right) {
         return std::shared_ptr<DataHandler>();
     }
-    if (kRowHandler != left->GetHanlderType()) {
-        return std::shared_ptr<DataHandler>();
+    switch (left->GetHanlderType()) {
+        case kRowHandler:
+            return std::shared_ptr<RowHandler>(new RowCombineWrapper(
+                std::dynamic_pointer_cast<RowHandler>(left), left_slices,
+                std::dynamic_pointer_cast<RowHandler>(right), right_slices));
+        case kTableHandler:
+            return std::shared_ptr<TableHandler>(new ConcatTableHandler(
+                std::dynamic_pointer_cast<TableHandler>(left), left_slices,
+                std::dynamic_pointer_cast<TableHandler>(right), right_slices));
+        default: {
+            LOG(WARNING)
+                << "fail to run conncat runner: handler type unsupported";
+            return fail_ptr;
+        }
     }
-    return std::shared_ptr<RowHandler>(new RowCombineWrapper(
-        std::dynamic_pointer_cast<RowHandler>(left), left_slices,
-        std::dynamic_pointer_cast<RowHandler>(right), right_slices));
 }
 
 std::shared_ptr<DataHandler> LimitRunner::Run(

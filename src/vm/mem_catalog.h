@@ -456,6 +456,79 @@ class MemPartitionHandler
     IndexHint index_hint_;
     OrderType order_type_;
 };
+class ConcatTableHandler : public MemTimeTableHandler {
+ public:
+    ConcatTableHandler(std::shared_ptr<TableHandler> left, size_t left_slices,
+                       std::shared_ptr<TableHandler> right, size_t right_slices)
+        : MemTimeTableHandler(),
+          status_(base::Status::Running()),
+          left_(left),
+          left_slices_(left_slices),
+          right_(right),
+          right_slices_(right_slices) {}
+    ~ConcatTableHandler() {}
+    Row At(uint64_t pos) override {
+        if (!status_.isRunning()) {
+            return MemTimeTableHandler::At(pos);
+        }
+        status_ = SyncValue();
+        return MemTimeTableHandler::At(pos);
+    }
+    std::unique_ptr<RowIterator> GetIterator() {
+        if (status_.isRunning()) {
+            status_ = SyncValue();
+        }
+        return MemTimeTableHandler::GetIterator();
+    }
+    RowIterator* GetRawIterator() {
+        if (status_.isRunning()) {
+            status_ = SyncValue();
+        }
+        return MemTimeTableHandler::GetRawIterator();
+    }
+    virtual const uint64_t GetCount() {
+        if (status_.isRunning()) {
+            status_ = SyncValue();
+        }
+        return MemTimeTableHandler::GetCount();
+    }
+
+ private:
+    base::Status SyncValue() {
+        DLOG(INFO) << "Sync... concat left table and right table";
+        if (!left_) {
+            return base::Status::OK();
+        }
+        auto left_iter = left_->GetIterator();
+        if (!left_iter) {
+            return base::Status::OK();
+        }
+
+        auto right_iter = std::unique_ptr<RowIterator>();
+        if (right_) {
+            right_iter = right_->GetIterator();
+        }
+        left_iter->SeekToFirst();
+        while (left_iter->Valid()) {
+            if (!right_iter || !right_iter->Valid()) {
+                AddRow(left_iter->GetKey(), Row(left_slices_, left_iter->GetValue(),
+                                           right_slices_, Row()));
+            } else {
+                AddRow(left_iter->GetKey(),
+                       Row(left_slices_, left_iter->GetValue(), right_slices_,
+                           right_iter->GetValue()));
+                right_iter->Next();
+            }
+            left_iter->Next();
+        }
+        return base::Status::OK();
+    }
+    base::Status status_;
+    std::shared_ptr<TableHandler> left_;
+    size_t left_slices_;
+    std::shared_ptr<TableHandler> right_;
+    size_t right_slices_;
+};
 
 class MemCatalog : public Catalog {
  public:

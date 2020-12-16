@@ -1030,6 +1030,25 @@ class ClusterJob {
         return tasks_.size() - 1;
     }
 
+    bool AddRunnerToProxyTask(Runner* runner, Runner* input) {
+        Runner* root_of_task = nullptr;
+        int32_t task_id = -1;
+        while (Runner::IsProxyRunner(input->type_) && !input->need_cache()) {
+            int32_t id = dynamic_cast<ProxyRequestRunner*>(input)->task_id();
+            if (id< 0 || id>= static_cast<int32_t>(tasks_.size())) {
+                LOG(WARNING) << "fail get task: task " << task_id << " not exist";
+                break;
+            }
+            task_id = id;
+            root_of_task = tasks_[task_id].GetRoot();
+            input->set_output_schemas(runner->output_schemas());
+            input = root_of_task;
+        }
+        if (-1 == task_id || nullptr == root_of_task) {
+            return false;
+        }
+        return AddRunnerToTask(runner, task_id);
+    }
     bool AddRunnerToTask(Runner* runner, const int32_t id) {
         if (id < 0 || id >= static_cast<int32_t>(tasks_.size())) {
             LOG(WARNING) << "fail update task: task " << id << " not exist";

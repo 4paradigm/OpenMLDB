@@ -446,6 +446,7 @@ class RowCombineWrapper : public RowHandler {
     const ProjectFun* fun_;
 };
 
+
 }  // namespace vm
 }  // namespace fesql
 
