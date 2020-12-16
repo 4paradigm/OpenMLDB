@@ -658,15 +658,11 @@ ClusterTask RunnerBuilder::BuildProxyRunnerForJoinedWindow(ConcatRunner* runner,
     ClusterTask empty_task;
     // optimize special physical structure
     if (!Runner::IsProxyRunner(left->type_) ||
-        Runner::IsProxyRunner(right->type_) || right->need_cache()) {
+        !Runner::IsProxyRunner(right->type_) || right->need_cache()) {
         return empty_task;
     }
     auto left_proxy_task = cluster_job_.GetTask(
         dynamic_cast<ProxyRequestRunner*>(left)->task_id());
-    if (!left_proxy_task.IsValid()) {
-        return empty_task;
-    }
-
     auto left_proxy_root = left_proxy_task.GetRoot();
     if (nullptr == left_proxy_root) {
         return empty_task;
