@@ -273,10 +273,10 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
         LOG(WARNING) << "module is null";
         return;
     }
-    ctx.ir.reserve(1024);
-    llvm::raw_string_ostream buf(ctx.ir);
-    llvm::WriteBitcodeToFile(*m, buf);
-    buf.flush();
+    ctx.ir.clear();
+    llvm::raw_string_ostream ss(ctx.ir);
+    ss << *m;
+    ss.flush();
     LOG(INFO) << "keep ir length: " << ctx.ir.size();
 }
 
@@ -406,7 +406,7 @@ Status SQLCompiler::BuildPhysicalPlan(
                 transformer.TransformPhysicalPlan(plan_list, output),
                 "Fail to generate physical plan (batch mode) for sql: \n",
                 ctx->sql);
-            break;
+            return Status::OK();
         }
         case kRequestMode:
         case kBatchRequestMode: {
@@ -419,19 +419,18 @@ Status SQLCompiler::BuildPhysicalPlan(
                 transformer.TransformPhysicalPlan(plan_list, output),
                 "Fail to generate physical plan (request mode) for sql: \n",
                 ctx->sql);
+
             ctx->request_schema = transformer.request_schema();
-            ctx->batch_request_info = transformer.batch_request_info();
             CHECK_TRUE(codec::SchemaCodec::Encode(transformer.request_schema(),
                                                   &ctx->encoded_request_schema),
                        kPlanError, "Fail to encode request schema");
             ctx->request_name = transformer.request_name();
-            break;
+            return Status::OK();
         }
         default:
             return Status(kPlanError, "Unknown engine mode: " +
                                           EngineModeName(ctx->engine_mode));
     }
-    return Status::OK();
 }
 
 bool SQLCompiler::BuildClusterJob(SQLContext& ctx, Status& status) {  // NOLINT

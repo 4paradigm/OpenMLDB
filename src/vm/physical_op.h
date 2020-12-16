@@ -791,7 +791,8 @@ class WindowOp {
     explicit WindowOp(const node::WindowPlanNode *w_ptr)
         : partition_(w_ptr->GetKeys()),
           sort_(w_ptr->GetOrders()),
-          range_(w_ptr->GetOrders(), w_ptr->frame_node()) {}
+          range_(w_ptr->GetOrders(), w_ptr->frame_node()),
+          name_(w_ptr->GetName()) {}
     virtual ~WindowOp() {}
     const std::string ToString() const {
         std::ostringstream oss;
@@ -814,6 +815,7 @@ class WindowOp {
     const Key &partition() const { return partition_; }
     const Sort &sort() const { return sort_; }
     const Range &range() const { return range_; }
+    const std::string &name() const { return name_; }
 
     base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
                              node::NodeManager *nm, WindowOp *out) const;
@@ -823,6 +825,7 @@ class WindowOp {
     Key partition_;
     Sort sort_;
     Range range_;
+    std::string name_ = "";
 };
 
 class RequestWindowOp : public WindowOp {
