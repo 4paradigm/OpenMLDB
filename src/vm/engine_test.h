@@ -279,6 +279,7 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
     RowView row_view(schema);
     RowView row_view_exp(schema);
     for (size_t row_index = 0; row_index < rows.size(); row_index++) {
+        ASSERT_TRUE(nullptr != rows[row_index].buf());
         row_view.Reset(rows[row_index].buf());
         row_view_exp.Reset(exp_rows[row_index].buf());
         for (int i = 0; i < schema.size(); i++) {
@@ -286,6 +287,7 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                 ASSERT_TRUE(row_view.IsNULL(i)) << " At " << i;
                 continue;
             }
+            ASSERT_FALSE(row_view.IsNULL(i)) << " At " << i;
             switch (schema.Get(i).type()) {
                 case fesql::type::kInt32: {
                     ASSERT_EQ(row_view.GetInt32Unsafe(i),

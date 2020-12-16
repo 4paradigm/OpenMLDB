@@ -32,6 +32,7 @@ class CommonColumnOptimize : public PhysicalPass {
  public:
     explicit CommonColumnOptimize(const std::set<size_t> common_column_indices);
 
+    ~CommonColumnOptimize() {}
     Status Apply(PhysicalPlanContext* ctx, PhysicalOpNode* input,
                  PhysicalOpNode** out) override;
 
