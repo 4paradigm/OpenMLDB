@@ -1160,6 +1160,8 @@ class RunnerBuilder {
     std::set<size_t> batch_common_node_set_;
     ClusterTask TryToReduceSameProxy(Runner* runner, ProxyRequestRunner* left,
                                      Runner* right);
+    ClusterTask BuildProxyRunnerForJoinedWindow(ConcatRunner* runner,
+                                                Runner* left, Runner* right);
 };
 
 class RunnerContext {

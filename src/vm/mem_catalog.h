@@ -511,8 +511,9 @@ class ConcatTableHandler : public MemTimeTableHandler {
         left_iter->SeekToFirst();
         while (left_iter->Valid()) {
             if (!right_iter || !right_iter->Valid()) {
-                AddRow(left_iter->GetKey(), Row(left_slices_, left_iter->GetValue(),
-                                           right_slices_, Row()));
+                AddRow(left_iter->GetKey(),
+                       Row(left_slices_, left_iter->GetValue(), right_slices_,
+                           Row()));
             } else {
                 AddRow(left_iter->GetKey(),
                        Row(left_slices_, left_iter->GetValue(), right_slices_,

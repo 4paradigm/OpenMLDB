@@ -227,8 +227,7 @@ class ClusterOptimized : public TransformUpPysicalPass {
 
  private:
     virtual bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
-    bool SimplifyJoinLeftInput(PhysicalOpNode* join_op,
-                               const Join& join,
+    bool SimplifyJoinLeftInput(PhysicalOpNode* join_op, const Join& join,
                                const SchemasContext* joined_schema_ctx,
                                PhysicalOpNode** out);
 };

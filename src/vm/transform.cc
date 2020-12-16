@@ -2719,10 +2719,9 @@ bool LeftJoinOptimized::CheckExprListFromSchema(
     return true;
 }
 
-bool ClusterOptimized::SimplifyJoinLeftInput(PhysicalOpNode* join_op,
-                                             const Join& join,
-                                             const SchemasContext* joined_schema_ctx,
-                                             PhysicalOpNode** output) {
+bool ClusterOptimized::SimplifyJoinLeftInput(
+    PhysicalOpNode* join_op, const Join& join,
+    const SchemasContext* joined_schema_ctx, PhysicalOpNode** output) {
     auto left = join_op->GetProducer(0);
     std::vector<const fesql::node::ExprNode*> columns;
     std::vector<std::string> column_names;
@@ -2885,16 +2884,15 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                     Status status;
                     PhysicalJoinNode* join_right_only = nullptr;
                     status = plan_ctx_->CreateOp<PhysicalJoinNode>(
-                        &join_right_only, simplify_left, right,
-                        join_op->join(), true);
+                        &join_right_only, simplify_left, right, join_op->join(),
+                        true);
                     if (!status.isOK()) {
                         return false;
                     }
                     status = ReplaceComponentExpr(
                         join_op->join(), join_op->joined_schemas_ctx(),
                         join_right_only->joined_schemas_ctx(),
-                        plan_ctx_->node_manager(),
-                        &join_right_only->join_);
+                        plan_ctx_->node_manager(), &join_right_only->join_);
                     if (!status.isOK()) {
                         return false;
                     }
