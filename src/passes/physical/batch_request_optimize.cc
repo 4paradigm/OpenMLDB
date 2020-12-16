@@ -50,7 +50,7 @@ Status CommonColumnOptimize::ProcessRequest(
     if (common_column_indices_.empty()) {
         state->SetAllNonCommon(data_op);
         return Status::OK();
-    } else if (common_column_indices_.size() == request_schema->size()) {
+    } else if ((int)common_column_indices_.size() == request_schema->size()) {
         state->SetAllCommon(data_op);
         return Status::OK();
     }

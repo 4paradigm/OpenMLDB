@@ -34,6 +34,7 @@
 #include "proto/fe_common.pb.h"
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
+#include "vm/router.h"
 #include "vm/sql_compiler.h"
 
 namespace fesql {
@@ -218,6 +219,7 @@ struct ExplainOutput {
     std::string ir;
     vm::Schema output_schema;
     std::string request_name;
+    vm::Router router;
 };
 
 typedef std::map<
