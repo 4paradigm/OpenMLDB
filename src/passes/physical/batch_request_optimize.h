@@ -38,6 +38,10 @@ class CommonColumnOptimize : public PhysicalPass {
 
     void ExtractCommonNodeSet(std::set<size_t>* output);
 
+    const std::set<size_t>& GetOutputCommonColumnIndices() const {
+        return output_common_column_indices_;
+    }
+
  private:
     void Init();
 
@@ -122,6 +126,8 @@ class CommonColumnOptimize : public PhysicalPass {
 
     // input common column indices
     std::set<size_t> common_column_indices_;
+
+    std::set<size_t> output_common_column_indices_;
 
     std::unordered_map<size_t, BuildOpState> build_dict_;
 };

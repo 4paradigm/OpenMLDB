@@ -3061,6 +3061,8 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
     LOG(INFO) << "After batch request optimization:\n" << *batch_request_plan;
     batch_request_optimizer.ExtractCommonNodeSet(
         &batch_request_info_.common_node_set);
+    batch_request_info_.output_common_column_indices =
+        batch_request_optimizer.GetOutputCommonColumnIndices();
     *output = batch_request_plan;
     return;
 }

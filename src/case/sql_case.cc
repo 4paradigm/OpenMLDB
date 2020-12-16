@@ -896,6 +896,17 @@ bool SQLCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
     } else {
         expect->success_ = true;
     }
+    if (schema_data["common_column_indices"]) {
+        auto data = schema_data["common_column_indices"];
+        std::vector<std::string> idxs;
+        if (!CreateStringListFromYamlNode(data, idxs)) {
+            return false;
+        }
+        for (auto str : idxs) {
+            expect->common_column_indices_.insert(
+                boost::lexical_cast<size_t>(str));
+        }
+    }
     return true;
 }
 bool SQLCase::CreateSQLCasesFromYaml(const std::string& cases_dir,

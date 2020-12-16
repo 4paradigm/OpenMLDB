@@ -33,14 +33,65 @@ bool CommonColumnOptimize::FindRequestUnionPath(
     return FindRequestUnionPath(root->GetProducer(0), path);
 }
 
-void CommonColumnOptimize::Init() { build_dict_.clear(); }
+void CommonColumnOptimize::Init() {
+    output_common_column_indices_.clear();
+    build_dict_.clear();
+}
+
+static Status GetSingleSliceResult(PhysicalPlanContext* ctx,
+                                   PhysicalOpNode* input,
+                                   PhysicalOpNode** output) {
+    if (input == nullptr) {
+        *output = nullptr;
+        return Status::OK();
+    }
+    if (input->GetOutputSchemaSourceSize() == 1) {
+        *output = input;
+        return Status::OK();
+    }
+    ColumnProjects projects;
+    for (size_t i = 0; i < input->GetOutputSchemaSourceSize(); ++i) {
+        auto source = input->GetOutputSchemaSource(i);
+        for (size_t j = 0; j < source->size(); ++j) {
+            auto column =
+                ctx->node_manager()->MakeColumnIdNode(source->GetColumnID(j));
+            projects.Add(source->GetColumnName(j), column, nullptr);
+        }
+    }
+    PhysicalSimpleProjectNode* op = nullptr;
+    CHECK_STATUS(
+        ctx->CreateOp<PhysicalSimpleProjectNode>(&op, input, projects));
+    *output = op;
+    return Status::OK();
+}
 
 Status CommonColumnOptimize::Apply(PhysicalPlanContext* ctx,
                                    PhysicalOpNode* input,
                                    PhysicalOpNode** output) {
     CHECK_TRUE(input != nullptr && output != nullptr, kPlanError);
     Init();
-    return GetReorderedOp(ctx, input, output);
+    BuildOpState* state = nullptr;
+    CHECK_STATUS(GetOpState(ctx, input, &state));
+    output_common_column_indices_ = state->common_column_indices;
+
+    PhysicalOpNode* common_output = nullptr;
+    CHECK_STATUS(GetSingleSliceResult(ctx, state->common_op, &common_output));
+
+    PhysicalOpNode* non_common_output = nullptr;
+    CHECK_STATUS(
+        GetSingleSliceResult(ctx, state->non_common_op, &non_common_output));
+
+    if (common_output == nullptr) {
+        *output = non_common_output;
+    } else if (non_common_output == nullptr) {
+        *output = common_output;
+    } else {
+        PhysicalRequestJoinNode* concat = nullptr;
+        CHECK_STATUS(ctx->CreateOp<PhysicalRequestJoinNode>(
+            &concat, common_output, non_common_output, node::kJoinTypeConcat));
+        *output = concat;
+    }
+    return Status::OK();
 }
 
 Status CommonColumnOptimize::ProcessRequest(
@@ -50,7 +101,8 @@ Status CommonColumnOptimize::ProcessRequest(
     if (common_column_indices_.empty()) {
         state->SetAllNonCommon(data_op);
         return Status::OK();
-    } else if (common_column_indices_.size() == request_schema->size()) {
+    } else if (common_column_indices_.size() ==
+               static_cast<size_t>(request_schema->size())) {
         state->SetAllCommon(data_op);
         return Status::OK();
     }
