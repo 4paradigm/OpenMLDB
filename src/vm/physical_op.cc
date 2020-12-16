@@ -707,8 +707,14 @@ Status PhysicalJoinNode::InitSchema(PhysicalPlanContext* ctx) {
                "InitSchema fail: producers size isn't 2 or left/right "
                "producer is null");
     schemas_ctx_.Clear();
-    schemas_ctx_.Merge(0, producers_[0]->schemas_ctx());
-    schemas_ctx_.MergeWithNewID(1, producers_[1]->schemas_ctx(), ctx);
+    if (!output_right_only_) {
+        schemas_ctx_.Merge(0, producers_[0]->schemas_ctx());
+    }
+    if (join_.join_type() == node::kJoinTypeConcat) {
+        schemas_ctx_.Merge(1, producers_[1]->schemas_ctx());
+    } else {
+        schemas_ctx_.MergeWithNewID(1, producers_[1]->schemas_ctx(), ctx);
+    }
 
     // join input schema context
     joined_schemas_ctx_.Clear();

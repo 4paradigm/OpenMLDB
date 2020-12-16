@@ -192,11 +192,6 @@ class BatchRequestRunSession : public RunSession {
                 std::vector<Row>& output);  // NOLINT
     int32_t Run(const std::vector<Row>& request_batch,
                 std::vector<Row>& output);  // NOLINT
-    // TODO(baoxinqi): remove
-    int32_t RunBatch(fesql::vm::RunnerContext& ctx,  // NOLINT
-                     const std::vector<Row>& requests,
-                     std::vector<Row>& output);  // NOLINT
-
     void AddCommonColumnIdx(size_t idx) { common_column_indices_.insert(idx); }
 
     const std::set<size_t>& common_column_indices() const {
@@ -204,9 +199,6 @@ class BatchRequestRunSession : public RunSession {
     }
 
  private:
-    int32_t RunBatch(fesql::vm::RunnerContext& ctx,  // NOLINT
-                     const uint32_t id, const std::vector<Row>& requests,
-                     std::vector<Row>& output);  // NOLINT
     std::set<size_t> common_column_indices_;
 };
 

@@ -400,6 +400,13 @@ class Runner : public node::NodeBase<Runner> {
           output_schemas_(output_schemas) {}
     virtual ~Runner() {}
     void AddProducer(Runner* runner) { producers_.push_back(runner); }
+    bool SetProducer(size_t idx, Runner* runner) {
+        if (idx >= producers_.size()) {
+            return false;
+        }
+        producers_[idx] = runner;
+        return true;
+    }
     const std::vector<Runner*>& GetProducers() const { return producers_; }
     virtual void PrintRunnerInfo(std::ostream& output,
                                  const std::string& tab) const {
@@ -1035,8 +1042,9 @@ class ClusterJob {
         int32_t task_id = -1;
         while (Runner::IsProxyRunner(input->type_) && !input->need_cache()) {
             int32_t id = dynamic_cast<ProxyRequestRunner*>(input)->task_id();
-            if (id< 0 || id>= static_cast<int32_t>(tasks_.size())) {
-                LOG(WARNING) << "fail get task: task " << task_id << " not exist";
+            if (id < 0 || id >= static_cast<int32_t>(tasks_.size())) {
+                LOG(WARNING)
+                    << "fail get task: task " << task_id << " not exist";
                 break;
             }
             task_id = id;
@@ -1150,6 +1158,8 @@ class RunnerBuilder {
         task_map_;
 
     std::set<size_t> batch_common_node_set_;
+    ClusterTask TryToReduceSameProxy(Runner* runner, ProxyRequestRunner* left,
+                                     Runner* right);
 };
 
 class RunnerContext {

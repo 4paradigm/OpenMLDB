@@ -377,7 +377,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                             op->join_,
                             left->output_schemas()->GetSchemaSourceSize(),
                             right->output_schemas()->GetSchemaSourceSize(),
-                            false);
+                            op->output_right_only_);
                         auto cluster_task = BuildBatchRequestRunnerWithProxy(
                             nm_->RegisterNode(runner), left_task, right_task,
                             op->join().index_key(), status);
@@ -393,6 +393,61 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         left_task.SetRoot(nm_->RegisterNode(runner));
                         return RegisterTask(node, left_task);
                     }
+                }
+                case node::kJoinTypeConcat: {
+                    auto runner = new ConcatRunner(id_++, node->schemas_ctx(),
+                                                   op->GetLimitCnt());
+                    // optimize special physical structure
+                    if (Runner::IsProxyRunner(left->type_) &&
+                        Runner::IsProxyRunner(right->type_) &&
+                        !right->need_cache()) {
+                        auto left_proxy_task = cluster_job_.GetTask(
+                            dynamic_cast<ProxyRequestRunner*>(left)->task_id());
+                        auto left_proxy_root = left_proxy_task.GetRoot();
+                        if (nullptr != left_proxy_root) {
+                            // try to find physical structure
+                            // concat_node
+                            //      +left_proxy_node
+                            //      +right_proxy_node
+                            //         +simple_project
+                            //              +left_proxy_node
+                            auto simple_project = right->GetProducers()[0];
+                            if (simple_project->type_ == kRunnerSimpleProject &&
+                                !simple_project->need_cache()) {
+                                auto right_proxy_node =
+                                    simple_project->GetProducers()[0];
+                                // ProxyNode
+                                if (right_proxy_node == left) {
+                                    simple_project->SetProducer(
+                                        0, left_proxy_root);
+                                    runner->AddProducer(left_proxy_root);
+                                    runner->AddProducer(right);
+                                    auto remote_task = left_proxy_task;
+                                    remote_task.SetRoot(runner);
+                                    auto remote_task_id =
+                                        cluster_job_.AddTask(remote_task);
+                                    if (-1 == remote_task_id) {
+                                        LOG(WARNING)
+                                            << "fail to add remote task id";
+                                        return ClusterTask();
+                                    }
+                                    auto proxy_runner = nm_->RegisterNode(
+                                        new ProxyRequestRunner(
+                                            id_++,
+                                            static_cast<uint32_t>(
+                                                remote_task_id),
+                                            runner->output_schemas()));
+                                    proxy_runner->AddProducer(
+                                        left->GetProducers()[0]);
+                                    return ClusterTask(proxy_runner);
+                                }
+                            }
+                        }
+                    }
+                    runner->AddProducer(left);
+                    runner->AddProducer(right);
+                    left_task.SetRoot(nm_->RegisterNode(runner));
+                    return RegisterTask(node, left_task);
                 }
                 default: {
                     status.code = common::kOpGenError;
@@ -556,12 +611,88 @@ ClusterTask RunnerBuilder::BuildProxyRunner(
             proxy_runner->AddProducer(left);
             return ClusterTask(proxy_runner);
         }
+    } else if (support_cluster_optimized_ &&
+               Runner::IsProxyRunner(left->type_) &&
+               Runner::IsProxyRunner(right->type_)) {
+        runner->AddProducer(left);
+        runner->AddProducer(right);
+        task.SetRoot(runner);
+        if (!task.IsClusterTask()) {
+            task.SetIndexKey(
+                cluster_job_
+                    .GetTask(dynamic_cast<ProxyRequestRunner*>(left)->task_id())
+                    .GetIndexKey());
+        }
     } else {
         runner->AddProducer(left);
         runner->AddProducer(right);
         task.SetRoot(runner);
     }
     return task;
+}
+ClusterTask RunnerBuilder::TryToReduceSameProxy(Runner* runner,
+                                                ProxyRequestRunner* left,
+                                                Runner* right) {
+    //    if (left == right) {
+    //        //
+    //    }
+    //
+    //
+    //    auto right_runner = right;
+    //    while (!right_runner->GetProducers().size()) {
+    //        auto right_child = right_runner->GetProducers()[0];
+    //        if (left == right_child) {
+    //            auto left_root =
+    //                this->cluster_job_
+    //                    .GetTask(dynamic_cast<ProxyRequestRunner*>(left)
+    //                                 ->task_id())
+    //                    .GetRoot();
+    //            right_runner->SetProducer(0, left_root);
+    //            runner->AddProducer(left_root);
+    //            runner->AddProducer(right);
+    //            auto remote_task = left;
+    //            remote_task.SetRoot(runner);
+    //            remote_task.SetIndexKey(index_key);
+    //            auto remote_task_id = cluster_job_.AddTask(remote_task);
+    //            if (-1 == remote_task_id) {
+    //                LOG(WARNING) << "fail to add remote task id";
+    //                return ClusterTask();
+    //            }
+    //
+    //        } else if (Runner::IsProxyRunner(right_child->type_)) {
+    //            right_runner = right_child;
+    //            right_child =
+    //                this->cluster_job_
+    //                    .GetTask(dynamic_cast<ProxyRequestRunner*>(right_child)
+    //                                 ->task_id())
+    //                    .GetRoot();
+    //        } else {
+    //            right_runner = right_child;
+    //            right_child = right_runner->GetProducers()[0];
+    //        }
+    //    }
+    //    {
+    //        runner->AddProducer(left);
+    //        runner->AddProducer(right);
+    //        task.SetRoot(runner);
+    //        return task;
+    //    }
+    //    else {
+    //        auto remote_task = left_task;
+    //        remote_task.SetRoot(runner);
+    //        auto remote_task_id = cluster_job_.AddTask(remote_task);
+    //        if (-1 == remote_task_id) {
+    //            LOG(WARNING) << "fail to add remote task id";
+    //            return ClusterTask();
+    //        }
+    //        auto proxy_runner = nm_->RegisterNode(
+    //            new ProxyRequestRunner(id_++,
+    //            static_cast<uint32_t>(remote_task_id),
+    //                                   runner->output_schemas()));
+    //        proxy_runner->AddProducer(left);
+    //        return ClusterTask(proxy_runner);
+    //    }
+    //    return ClusterTask();
 }
 
 bool Runner::GetColumnBool(RowView* row_view, int idx, type::Type type) {
