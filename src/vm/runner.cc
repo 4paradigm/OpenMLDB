@@ -1129,57 +1129,78 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(
         LOG(WARNING) << "fail to run last join: left|right input is empty";
         return fail_ptr;
     }
-    if (join_gen_.right_group_gen_.Valid()) {
-        right = join_gen_.right_group_gen_.Partition(right);
-    }
     if (!right) {
         LOG(WARNING) << "fail to run last join: right partition is empty";
         return fail_ptr;
     }
 
-    if (kTableHandler == left->GetHanlderType()) {
-        auto left_table = std::dynamic_pointer_cast<TableHandler>(left);
+    switch (left->GetHanlderType()) {
+        case kTableHandler: {
+            if (join_gen_.right_group_gen_.Valid()) {
+                right = join_gen_.right_group_gen_.Partition(right);
+            }
+            if (!right) {
+                LOG(WARNING) << "fail to run last join: right partition is empty";
+                return fail_ptr;
+            }
+            auto left_table = std::dynamic_pointer_cast<TableHandler>(left);
 
-        auto output_table =
-            std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
-        output_table->SetOrderType(left_table->GetOrderType());
-        if (kPartitionHandler == right->GetHanlderType()) {
-            if (!join_gen_.TableJoin(
-                    left_table,
-                    std::dynamic_pointer_cast<PartitionHandler>(right),
-                    output_table)) {
-                return fail_ptr;
+            auto output_table =
+                std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+            output_table->SetOrderType(left_table->GetOrderType());
+            if (kPartitionHandler == right->GetHanlderType()) {
+                if (!join_gen_.TableJoin(
+                        left_table,
+                        std::dynamic_pointer_cast<PartitionHandler>(right),
+                        output_table)) {
+                    return fail_ptr;
+                }
+            } else {
+                if (!join_gen_.TableJoin(
+                        left_table,
+                        std::dynamic_pointer_cast<TableHandler>(right),
+                        output_table)) {
+                    return fail_ptr;
+                }
             }
-        } else {
-            if (!join_gen_.TableJoin(
-                    left_table, std::dynamic_pointer_cast<TableHandler>(right),
-                    output_table)) {
-                return fail_ptr;
-            }
+            return output_table;
         }
-        return output_table;
-    } else {
-        auto output_partition =
-            std::shared_ptr<MemPartitionHandler>(new MemPartitionHandler());
-        auto left_partition = std::dynamic_pointer_cast<PartitionHandler>(left);
-        output_partition->SetOrderType(left_partition->GetOrderType());
-        if (kPartitionHandler == right->GetHanlderType()) {
-            if (!join_gen_.PartitionJoin(
-                    left_partition,
-                    std::dynamic_pointer_cast<PartitionHandler>(right),
-                    output_partition)) {
+        case kPartitionHandler: {
+            if (join_gen_.right_group_gen_.Valid()) {
+                right = join_gen_.right_group_gen_.Partition(right);
+            }
+            if (!right) {
+                LOG(WARNING) << "fail to run last join: right partition is empty";
                 return fail_ptr;
             }
+            auto output_partition =
+                std::shared_ptr<MemPartitionHandler>(new MemPartitionHandler());
+            auto left_partition =
+                std::dynamic_pointer_cast<PartitionHandler>(left);
+            output_partition->SetOrderType(left_partition->GetOrderType());
+            if (kPartitionHandler == right->GetHanlderType()) {
+                if (!join_gen_.PartitionJoin(
+                        left_partition,
+                        std::dynamic_pointer_cast<PartitionHandler>(right),
+                        output_partition)) {
+                    return fail_ptr;
+                }
 
-        } else {
-            if (!join_gen_.PartitionJoin(
-                    left_partition,
-                    std::dynamic_pointer_cast<TableHandler>(right),
-                    output_partition)) {
-                return fail_ptr;
+            } else {
+                if (!join_gen_.PartitionJoin(
+                        left_partition,
+                        std::dynamic_pointer_cast<TableHandler>(right),
+                        output_partition)) {
+                    return fail_ptr;
+                }
             }
+            return output_partition;
         }
-        return output_partition;
+        case kRowHandler: {
+            auto left_row = std::dynamic_pointer_cast<RowHandler>(left);
+            return std::make_shared<MemRowHandler>(
+                join_gen_.RowLastJoin(left_row->GetValue(), right));
+        }
     }
 }
 
