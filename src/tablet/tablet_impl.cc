@@ -1982,15 +1982,17 @@ void TabletImpl::SubQuery(RpcController* ctrl,
     ProcessQuery(request, response, &buf);
 }
 
-void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
-                                      const rtidb::api::SQLBatchRequestQueryRequest* request,
-                                      rtidb::api::SQLBatchRequestQueryResponse* response,
-                                      Closure* done) {
+void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl, const rtidb::api::SQLBatchRequestQueryRequest* request,
+                                      rtidb::api::SQLBatchRequestQueryResponse* response, Closure* done) {
+    DLOG(INFO) << "handle query batch request begin!";
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
+    return ProcessBatchRequestQuery(request, response, buf);
+}
+void TabletImpl::ProcessBatchRequestQuery(const rtidb::api::SQLBatchRequestQueryRequest* request,
+                                          rtidb::api::SQLBatchRequestQueryResponse* response, butil::IOBuf& buf) {
     ::fesql::base::Status status;
-
     ::fesql::vm::BatchRequestRunSession session;
     // run session
     if (request->is_debug()) {
@@ -2051,7 +2053,12 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
     }
 
     std::vector<::fesql::codec::Row> output_rows;
-    int32_t run_ret = session.Run(input_rows, output_rows);
+    int32_t run_ret = 0;
+    if (request->has_task_id()) {
+        session.Run(request->task_id(), input_rows, output_rows);
+    } else {
+        session.Run(input_rows, output_rows);
+    }
     if (run_ret != 0) {
         response->set_msg(status.msg);
         response->set_code(::rtidb::base::kSQLRunError);
@@ -2079,7 +2086,14 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
                << " with record cnt " << output_rows.size()
                << " with schema size " << session.GetSchema().size();
 }
-
+void TabletImpl::SubBatchRequestQuery(RpcController* ctrl, const rtidb::api::SQLBatchRequestQueryRequest* request,
+                                      rtidb::api::SQLBatchRequestQueryResponse* response, Closure* done) {
+    DLOG(INFO) << "handle subquery batch request begin!";
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
+    butil::IOBuf& buf = cntl->response_attachment();
+    return ProcessBatchRequestQuery(request, response, buf);
+}
 void TabletImpl::BatchQuery(RpcController* controller,
                             const rtidb::api::BatchQueryRequest* request,
                             rtidb::api::BatchQueryResponse* response,

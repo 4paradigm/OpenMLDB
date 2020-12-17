@@ -16,7 +16,9 @@
  */
 
 #include "catalog/client_manager.h"
+
 #include <utility>
+
 #include "codec/fe_schema_codec.h"
 
 DECLARE_int32(request_timeout_ms);
@@ -25,11 +27,7 @@ namespace rtidb {
 namespace catalog {
 
 TabletRowHandler::TabletRowHandler(const std::string& db, rtidb::RpcCallback<rtidb::api::QueryResponse>* callback)
-    : db_(db),
-      name_(),
-      status_(::fesql::base::Status::Running()),
-      row_(),
-      callback_(callback) {
+    : db_(db), name_(), status_(::fesql::base::Status::Running()), row_(), callback_(callback) {
     callback_->Ref();
 }
 
@@ -64,8 +62,7 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
         return row_;
     }
     uint32_t tmp_size = 0;
-    cntl->response_attachment().copy_to(reinterpret_cast<void*>(&tmp_size), codec::SIZE_LENGTH,
-                 codec::VERSION_LENGTH);
+    cntl->response_attachment().copy_to(reinterpret_cast<void*>(&tmp_size), codec::SIZE_LENGTH, codec::VERSION_LENGTH);
     int8_t* out_buf = reinterpret_cast<int8_t*>(malloc(tmp_size));
     cntl->response_attachment().copy_to(out_buf, tmp_size);
     row_ = fesql::codec::Row(fesql::base::RefCountedSlice::CreateManaged(out_buf, tmp_size));
@@ -73,11 +70,134 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
     return row_;
 }
 
+AsyncTableHandler::AsyncTableHandler(rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback)
+    : fesql::vm::MemTableHandler("", "", nullptr),
+      status_(::fesql::base::Status::Running()),
+      callback_(callback) {
+    callback_->Ref();
+}
+
+std::unique_ptr<fesql::vm::RowIterator> AsyncTableHandler::GetIterator() {
+    if (status_.isRunning()) {
+        SyncRpcResponse();
+    }
+    if (status_.isOK()) {
+        return fesql::vm::MemTableHandler::GetIterator();
+    }
+
+    return std::unique_ptr<fesql::vm::RowIterator>();
+}
+fesql::vm::RowIterator* AsyncTableHandler::GetRawIterator() {
+    if (status_.isRunning()) {
+        SyncRpcResponse();
+    }
+    if (status_.isOK()) {
+        return fesql::vm::MemTableHandler::GetRawIterator();
+    }
+    return nullptr;
+}
+void AsyncTableHandler::SyncRpcResponse() {
+    auto cntl = callback_->GetController();
+    auto response = callback_->GetResponse();
+    if (!cntl || !response) {
+        status_.code = fesql::common::kRpcError;
+        status_.msg = "rpc controller or response is null";
+        LOG(WARNING) << status_.msg;
+        return;
+    }
+    DLOG(INFO) << "AsyncTableHandler sync data brpc join";
+    brpc::Join(cntl->call_id());
+    if (cntl->Failed()) {
+        status_ = ::fesql::base::Status(::fesql::common::kRpcError, "request error. " + cntl->ErrorText());
+        LOG(WARNING) << status_.msg;
+        return;
+    }
+    if (response->code() != 0) {
+        status_ = ::fesql::base::Status(::fesql::common::kResponseError, "request error. " + response->msg());
+        LOG(WARNING) << status_.msg;
+        return;
+    }
+    int32_t position = 0;
+    for (auto row_size : response->row_sizes()) {
+        if (row_size < 0) {
+            LOG(WARNING) << "illegal row size field";
+            status_ = ::fesql::base::Status(::fesql::common::kResponseError, "illegal row size field.");
+            LOG(WARNING) << status_.msg;
+            return;
+        }
+        int8_t* out_buf = reinterpret_cast<int8_t*>(malloc(row_size));
+        cntl->response_attachment().copy_to(out_buf, row_size, position);
+        AddRow(fesql::codec::Row(fesql::base::RefCountedSlice::CreateManaged(out_buf, row_size)));
+        position += row_size;
+    }
+    status_ = fesql::base::Status::OK();
+    return;
+}
+
+AsyncTablesHandler::AsyncTablesHandler()
+    : fesql::vm::MemTableHandler("", "", nullptr),
+      status_(::fesql::base::Status::Running()),
+      rows_cnt_(0),
+      posinfos_(),
+      handlers_() {}
+
+std::unique_ptr<fesql::vm::RowIterator> AsyncTablesHandler::GetIterator() {
+    if (status_.isRunning()) {
+        SyncAllTableHandlers();
+    }
+    if (status_.isOK()) {
+        return fesql::vm::MemTableHandler::GetIterator();
+    }
+    return std::unique_ptr<fesql::vm::RowIterator>();
+}
+fesql::vm::RowIterator* AsyncTablesHandler::GetRawIterator() {
+    if (status_.isRunning()) {
+        SyncAllTableHandlers();
+    }
+    if (status_.isOK()) {
+        return fesql::vm::MemTableHandler::GetRawIterator();
+    }
+    return nullptr;
+}
+bool AsyncTablesHandler::SyncAllTableHandlers() {
+    DLOG(INFO) << "SyncAllTableHandlers rows_cnt_ " << rows_cnt_;
+    Resize(rows_cnt_);
+    for (size_t handler_idx = 0; handler_idx < handlers_.size(); handler_idx++) {
+        auto& handler = handlers_[handler_idx];
+        auto iter = handler->GetIterator();
+        if (!handler->GetStatus().isOK()) {
+            status_.msg = "fail to sync table handler " + std::to_string(handler_idx) + ": " + handler->GetStatus().msg;
+            status_.code = handler->GetStatus().code;
+            return false;
+        }
+        if (!iter) {
+            status_.msg = "fail to sync table hander: iter is null";
+            status_.code = fesql::common::kResponseError;
+            return false;
+        }
+        auto& posinfo = posinfos_[handler_idx];
+        if (handler->GetCount() != posinfos_[handler_idx].size()) {
+            status_.msg = "fail to sync table hander: unexpected rows cnt";
+            status_.code = fesql::common::kResponseError;
+            return false;
+        }
+        size_t pos_idx = 0;
+        iter->SeekToFirst();
+        while (iter->Valid()) {
+            SetRow(posinfo[pos_idx], iter->GetValue());
+            iter->Next();
+            pos_idx++;
+        }
+    }
+    status_ = fesql::base::Status::OK();
+    DLOG(INFO) << "SyncAllTableHandlers OK";
+    return true;
+}
+
 std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                   const std::string& sql,
                                                                   const ::fesql::codec::Row& row,
-                                                                  const bool is_procedure,
-                                                                  const bool is_debug) {
+                                                                  const bool is_procedure, const bool is_debug) {
     DLOG(INFO) << "SubQuery taskid: " << task_id << " is_procedure=" << is_procedure;
     auto client = GetClient();
     if (!client) {
@@ -112,13 +232,57 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
 }
 
 std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
-                                                                  const std::string& sql,
-                                                                  const std::vector<::fesql::codec::Row>& row,
-                                                                  const bool is_procedure,
-                                                                  const bool is_debug) {
-    return std::shared_ptr<::fesql::vm::TableHandler>();
+                                                                    const std::string& sql,
+                                                                    const std::vector<::fesql::codec::Row>& row,
+                                                                    const bool is_procedure, const bool is_debug) {
+    DLOG(INFO) << "SubQuery batch request, taskid: " << task_id << " is_procedure=" << is_procedure;
+    auto client = GetClient();
+    if (!client) {
+        return std::make_shared<fesql::vm::ErrorTableHandler>(::fesql::common::kRpcError, "get client failed");
+    }
+    ::rtidb::api::SQLBatchRequestQueryRequest request;
+    request.set_sql(sql);
+    request.set_db(db);
+    request.set_task_id(task_id);
+    request.set_is_debug(is_debug);
+    // TODO(chenjing): handler non common and common rows
+    for (auto iter = row.cbegin(); iter != row.cend(); iter++) {
+        request.add_non_common_rows(iter->ToString());
+    }
+    auto cntl = std::make_shared<brpc::Controller>();
+    auto response = std::make_shared<::rtidb::api::SQLBatchRequestQueryResponse>();
+    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
+    auto callback = new rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>(response, cntl);
+    auto async_table_handler = std::make_shared<AsyncTableHandler>(callback);
+    if (!client->SubBatchRequestQuery(request, callback)) {
+        LOG(WARNING) << "fail to query tablet";
+        return std::make_shared<::fesql::vm::ErrorTableHandler>(::fesql::common::kRpcError,
+                                                                "fail to batch request query");
+    }
+    return async_table_handler;
 }
-
+std::shared_ptr<fesql::vm::RowHandler> TabletsAccessor::SubQuery(uint32_t task_id, const std::string& db,
+                                                                 const std::string& sql, const fesql::codec::Row& row,
+                                                                 const bool is_procedure, const bool is_debug) {
+    return std::make_shared<::fesql::vm::ErrorRowHandler>(::fesql::common::kRpcError, "Unsupport SubQuery");
+}
+std::shared_ptr<fesql::vm::TableHandler> TabletsAccessor::SubQuery(uint32_t task_id, const std::string& db,
+                                                                   const std::string& sql,
+                                                                   const std::vector<fesql::codec::Row>& rows,
+                                                                   const bool is_procedure, const bool is_debug) {
+    auto tables_handler = std::make_shared<AsyncTablesHandler>();
+    std::vector<std::vector<fesql::vm::Row>> accessors_rows(accessors_.size());
+    for (size_t idx = 0; idx < rows.size(); idx++) {
+        accessors_rows[assign_accessor_idxs_[idx]].push_back(rows[idx]);
+    }
+    for (size_t idx = 0; idx < accessors_.size(); idx++) {
+        DLOG(INFO) << "AddAsyncRpcHandler posinfos_[idx].size()" << posinfos_[idx].size();
+        tables_handler->AddAsyncRpcHandler(
+            accessors_[idx]->SubQuery(task_id, db, sql, accessors_rows[idx], is_procedure, is_debug), posinfos_[idx]);
+    }
+    DLOG(INFO) << "row cnt " << rows_cnt_;
+    return tables_handler;
+}
 PartitionClientManager::PartitionClientManager(uint32_t pid, const std::shared_ptr<TabletAccessor>& leader,
                                                const std::vector<std::shared_ptr<TabletAccessor>>& followers)
     : pid_(pid), leader_(leader), followers_(followers), rand_(0xdeadbeef) {}

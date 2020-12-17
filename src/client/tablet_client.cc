@@ -1680,6 +1680,15 @@ bool TabletClient::SubQuery(const ::rtidb::api::QueryRequest& request,
             callback->GetController().get(), &request,
             callback->GetResponse().get(), callback);
 }
+bool TabletClient::SubBatchRequestQuery(const ::rtidb::api::SQLBatchRequestQueryRequest& request,
+                                        rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback) {
+    if (callback == nullptr) {
+        return false;
+    }
+    return client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
+                               callback->GetController().get(), &request,
+                               callback->GetResponse().get(), callback);
+}
 
 bool TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
         std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,

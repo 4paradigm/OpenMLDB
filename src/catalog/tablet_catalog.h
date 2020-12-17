@@ -201,6 +201,8 @@ class TabletTableHandler : public ::fesql::vm::TableHandler,
     const std::string GetHandlerTypeName() override { return "TabletTableHandler"; }
 
     std::shared_ptr<::fesql::vm::Tablet> GetTablet(const std::string &index_name, const std::string &pk) override;
+    std::shared_ptr<::fesql::vm::Tablet> GetTablet(const std::string &index_name,
+                                                   const std::vector<std::string> &pks) override;
 
     inline int32_t GetTid() { return table_st_.GetTid(); }
 

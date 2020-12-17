@@ -794,6 +794,7 @@ message SQLBatchRequestQueryRequest {
     optional bool is_debug = 6 [default = false];
     optional string sp_name = 7;
     optional bool is_procedure = 8 [default = false];
+    optional uint64 task_id = 9;
 }
 
 /**
@@ -850,6 +851,7 @@ service TabletServer {
     rpc Query(QueryRequest) returns(QueryResponse);
     rpc SubQuery(QueryRequest) returns(QueryResponse);
     rpc SQLBatchRequestQuery(SQLBatchRequestQueryRequest) returns(SQLBatchRequestQueryResponse);
+    rpc SubBatchRequestQuery(SQLBatchRequestQueryRequest) returns(SQLBatchRequestQueryResponse);
 
     // table api for master
     rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);

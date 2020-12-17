@@ -348,9 +348,6 @@ INSTANTIATE_TEST_SUITE_P(EngineLastJoinQuery, TabletEngineTest,
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinWindowQuery, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_window_query.yaml")));
 
-INSTANTIATE_TEST_SUITE_P(EngineRequestLastJoinWindowQuery, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_window_query.yaml")));
-
 INSTANTIATE_TEST_SUITE_P(EngineWindowQuery, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/window_query.yaml")));
 
