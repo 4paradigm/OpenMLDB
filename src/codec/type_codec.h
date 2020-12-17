@@ -51,11 +51,6 @@ struct StringRef {
         }
         return r;
     }
-    template <typename H>
-    friend H AbslHashValue(H h, const StringRef& str) {
-        return H::combine_contiguous(std::move(h), str.data_, str.size_);
-    }
-
     uint32_t size_;
     const char* data_;
     
