@@ -553,10 +553,10 @@ TEST_F(EngineTest, RouterTest) {
     index2->set_second_key("col5");
 
     {
-        std::string sql = "SELECT COL1, COL2, SUM(COL4) OVER w1 as w_amt_sum FROM t1\n"
-                          "WINDOW w1 AS (PARTITION BY COL2\n"  
-                          "ORDER BY COL5 RANGE BETWEEN 3 PRECEDING AND CURRENT ROW\n"
-                          ");";
+        std::string sql =
+            "SELECT COL1, COL2, SUM(COL4) OVER w1 as w_amt_sum FROM t1\n"
+            "WINDOW w1 AS (PARTITION BY COL2\n"
+            "ORDER BY COL5 RANGE BETWEEN 3 PRECEDING AND CURRENT ROW);";
 
         EngineOptions options;
         options.set_compile_only(true);
@@ -564,10 +564,10 @@ TEST_F(EngineTest, RouterTest) {
         Engine engine(catalog, options);
         ExplainOutput explain_output;
         base::Status status;
-        ASSERT_TRUE(engine.Explain("db", sql, kRequestMode, &explain_output, &status));
+        ASSERT_TRUE(
+            engine.Explain("db", sql, kRequestMode, &explain_output, &status));
     }
 }
-
 
 }  // namespace vm
 }  // namespace fesql
