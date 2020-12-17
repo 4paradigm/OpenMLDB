@@ -24,8 +24,10 @@
 #include <vector>
 #include "base/mem_pool.h"
 #include "glog/logging.h"
+#include "base/fe_hash.h"
 namespace fesql {
 namespace codec {
+static const uint32_t SEED = 0xe17a1465;
 struct StringRef {
     StringRef() : size_(0), data_(nullptr) {}
     explicit StringRef(const char* str)
@@ -49,8 +51,14 @@ struct StringRef {
         }
         return r;
     }
+    template <typename H>
+    friend H AbslHashValue(H h, const StringRef& str) {
+        return H::combine_contiguous(std::move(h), str.data_, str.size_);
+    }
+
     uint32_t size_;
     const char* data_;
+    
 };
 
 __attribute__((unused)) static const StringRef operator+(const StringRef& a,
@@ -475,7 +483,7 @@ struct hash<fesql::codec::Date> {
 template <>
 struct hash<fesql::codec::StringRef> {
     std::size_t operator()(const fesql::codec::StringRef& t) const {
-        return std::hash<std::string>()(t.ToString());
+        return fesql::base::hash(t.data_, t.size_, fesql::codec::SEED);
     }
 };
 

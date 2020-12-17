@@ -62,6 +62,11 @@ static void BM_EngineWindowSumFeature5Window5(
     EngineWindowSumFeature5Window5(&state, BENCHMARK, state.range(0),
                                    state.range(1));
 }
+static void BM_EngineWindowDistinctCntFeature(
+        benchmark::State& state) { // NOLINT
+    EngineWindowDistinctCntFeature(&state, BENCHMARK, state.range(0),
+                                   state.range(1));
+}
 
 static void BM_EngineWindowTop1RatioFeature(
         benchmark::State& state) { // NOLINT
@@ -165,6 +170,14 @@ BENCHMARK(BM_EngineWindowSumFeature5)
     ->Args({10000, 10000});
 
 BENCHMARK(BM_MapTop)
+    ->Args({1, 2})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({1, 1000})
+    ->Args({1, 2000})
+    ->Args({1, 10000});
+
+BENCHMARK(BM_EngineWindowDistinctCntFeature)
     ->Args({1, 2})
     ->Args({1, 10})
     ->Args({1, 100})

@@ -339,6 +339,22 @@ void EngineWindowSumFeature5(benchmark::State* state, MODE mode,
     EngineRequestMode(sql, mode, limit_cnt, size, state);
 }
 
+void EngineWindowDistinctCntFeature(benchmark::State* state, MODE mode,
+                                    int64_t limit_cnt,
+                                    int64_t size) {  // NOLINT
+    const std::string sql =
+        "SELECT "
+        "distinct_count(col6) OVER  w1  as top1, "
+        "distinct_count(col6) OVER  w1  as top2, "
+        "distinct_count(col6) OVER  w1  as top3, "
+        "distinct_count(col6) OVER  w1  as top4, "
+        "distinct_count(col6) OVER  w1  as top5 "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "30d PRECEDING AND CURRENT ROW) limit " +
+        std::to_string(limit_cnt) + ";";
+    EngineRequestMode(sql, mode, limit_cnt, size, state);
+}
+
 void EngineWindowTop1RatioFeature(benchmark::State* state, MODE mode,
                                     int64_t limit_cnt,
                                     int64_t size) {  // NOLINT
