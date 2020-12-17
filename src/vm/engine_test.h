@@ -279,6 +279,7 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
     RowView row_view(schema);
     RowView row_view_exp(schema);
     for (size_t row_index = 0; row_index < rows.size(); row_index++) {
+        ASSERT_TRUE(nullptr != rows[row_index].buf());
         row_view.Reset(rows[row_index].buf());
         row_view_exp.Reset(exp_rows[row_index].buf());
         for (int i = 0; i < schema.size(); i++) {
@@ -286,6 +287,7 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                 ASSERT_TRUE(row_view.IsNULL(i)) << " At " << i;
                 continue;
             }
+            ASSERT_FALSE(row_view.IsNULL(i)) << " At " << i;
             switch (schema.Get(i).type()) {
                 case fesql::type::kInt32: {
                     ASSERT_EQ(row_view.GetInt32Unsafe(i),
@@ -418,7 +420,6 @@ void DoEngineCheckExpect(const SQLCase& sql_case, const vm::Schema& schema,
         ASSERT_NO_FATAL_FAILURE(
             CheckSchema(schema, case_output_table.columns()));
 
-
         LOG(INFO) << "Real result:\n";
         PrintRows(schema, sorted_output);
 
@@ -433,7 +434,6 @@ void DoEngineCheckExpect(const SQLCase& sql_case, const vm::Schema& schema,
 
         LOG(INFO) << "Expect result:\n";
         PrintRows(schema, case_output_data);
-
 
         ASSERT_NO_FATAL_FAILURE(
             CheckRows(schema, sorted_output, case_output_data));
@@ -944,15 +944,25 @@ void BatchRequestEngineCheck(const SQLCase& sql_case,
                                                        common_column_indices);
         common_column_indices.clear();
 
+        if (options.is_cluster_optimzied()) {
+            return;
+        }
+
         // partial
-        // TODO(bxq): use transform pass to resolve all problems
-        // of changing the request schema
-        // for (size_t i = 0; i < schema_size; i += 2) {
-        //    common_column_indices.insert(i);
-        // }
-        // BatchRequestEngineCheckWithCommonColumnIndices(
-        //    sql_case, common_column_indices, return_status);
-        // common_column_indices.clear();
+        // 0, 2, 4, ...
+        for (size_t i = 0; i < schema_size; i += 2) {
+            common_column_indices.insert(i);
+        }
+        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
+                                                       common_column_indices);
+        common_column_indices.clear();
+        return;
+        // 1, 3, 5, ...
+        for (size_t i = 1; i < schema_size; i += 2) {
+            common_column_indices.insert(i);
+        }
+        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
+                                                       common_column_indices);
     }
 }
 

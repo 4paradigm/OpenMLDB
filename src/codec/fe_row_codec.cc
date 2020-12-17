@@ -890,7 +890,8 @@ bool RowFormat::GetStringColumnInfo(size_t idx, StringColInfo* res) const {
         return false;
     }
     DLOG(INFO) << "get string with offset " << offset << " next offset "
-               << next_offset << " for col " << base_col_info.name;
+               << next_offset << " str_field_start_offset "
+               << str_field_start_offset_ << " for col " << base_col_info.name;
     *res = StringColInfo(base_col_info.name, ty, col_idx, offset, next_offset,
                          str_field_start_offset_);
     return true;

@@ -440,8 +440,8 @@ bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
 bool AddTable(const std::shared_ptr<tablet::TabletCatalog>& catalog,
               const fesql::type::TableDef& table_def,
               std::shared_ptr<fesql::storage::Table> table, Engine* engine) {
-    auto local_tablet =
-        std::shared_ptr<vm::Tablet>(new vm::LocalTablet(engine));
+    auto local_tablet = std::shared_ptr<vm::Tablet>(
+        new vm::LocalTablet(engine, std::shared_ptr<CompileInfoCache>()));
     std::shared_ptr<tablet::TabletTableHandler> handler(
         new tablet::TabletTableHandler(table_def.columns(), table_def.name(),
                                        table_def.catalog(), table_def.indexes(),

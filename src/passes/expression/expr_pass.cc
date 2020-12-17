@@ -32,6 +32,16 @@ void ExprReplacer::AddReplacement(const node::ExprNode* expr,
     node_id_map_[expr->node_id()] = repl;
 }
 
+void ExprReplacer::AddReplacement(size_t column_id, node::ExprNode* repl) {
+    column_id_map_[column_id] = repl;
+}
+
+void ExprReplacer::AddReplacement(const std::string& relation_name,
+                                  const std::string& column_name,
+                                  node::ExprNode* repl) {
+    column_name_map_[relation_name + "." + column_name] = repl;
+}
+
 Status ExprReplacer::Replace(node::ExprNode* root,
                              node::ExprNode** output) const {
     std::unordered_set<size_t> visited;
@@ -57,6 +67,21 @@ Status ExprReplacer::DoReplace(node::ExprNode* root,
             }
         }
         return Status::OK();
+    } else if (root->GetExprType() == node::kExprColumnRef) {
+        auto col = dynamic_cast<const node::ColumnRefNode*>(root);
+        auto name = col->GetRelationName() + "." + col->GetColumnName();
+        auto iter = column_name_map_.find(name);
+        if (iter != column_name_map_.end()) {
+            *output = iter->second;
+            return Status::OK();
+        }
+    } else if (root->GetExprType() == node::kExprColumnId) {
+        auto col = dynamic_cast<const node::ColumnIdNode*>(root);
+        auto iter = column_id_map_.find(col->GetColumnID());
+        if (iter != column_id_map_.end()) {
+            *output = iter->second;
+            return Status::OK();
+        }
     }
     auto iter = node_id_map_.find(root->node_id());
     if (iter != node_id_map_.end()) {

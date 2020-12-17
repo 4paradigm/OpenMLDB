@@ -8,6 +8,7 @@
  **/
 #include "codegen/variable_ir_builder.h"
 #include <glog/logging.h>
+#include "codegen/ir_base_builder.h"
 #include "codegen/struct_ir_builder.h"
 
 using ::fesql::common::kCodegenError;
@@ -27,8 +28,9 @@ bool VariableIRBuilder::StoreStruct(const std::string& name,
     // get value addr
     NativeValue addr;
     if (!sv_->FindVar(name, &addr)) {
-        addr = NativeValue::Create(
-            builder.CreateAlloca(value.GetType()->getPointerElementType()));
+        addr = NativeValue::Create(CreateAllocaAtHead(
+            &builder, value.GetType()->getPointerElementType(),
+            "struct_alloca_of_var_" + name));
         sv_->AddVar(name, addr);
     }
 
@@ -76,8 +78,8 @@ bool fesql::codegen::VariableIRBuilder::StoreValue(
         // get value addr
         NativeValue addr;
         if (!sv_->FindVar(name, &addr)) {
-            addr =
-                NativeValue::CreateMem(builder.CreateAlloca(value.GetType()));
+            addr = NativeValue::CreateMem(CreateAllocaAtHead(
+                &builder, value.GetType(), "alloca_of_var_" + name));
             sv_->AddVar(name, addr);
         }
 
@@ -168,7 +170,19 @@ bool fesql::codegen::VariableIRBuilder::LoadColumnItem(
     NativeValue* output, fesql::base::Status& status) {
     return LoadValue("@item." + relation_name + "." + name, output, status);
 }
-
+bool fesql::codegen::VariableIRBuilder::LoadAddrSpace(const size_t schema_idx,
+                                                      NativeValue* output,
+                                                      base::Status& status) {
+    bool ok = LoadValue("@addrspace[" + std::to_string(schema_idx) + "]",
+                        output, status);
+    return ok;
+}
+bool fesql::codegen::VariableIRBuilder::StoreAddrSpace(const size_t schema_idx,
+                                                       ::llvm::Value* value,
+                                                       base::Status& status) {
+    return StoreValue("@addrspace[" + std::to_string(schema_idx) + "]",
+                      NativeValue::Create(value), status);
+}
 bool fesql::codegen::VariableIRBuilder::StoreWindow(
     const std::string& frame_str, ::llvm::Value* value,
     fesql::base::Status& status) {

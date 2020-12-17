@@ -157,7 +157,7 @@ void EngineWindowSumFeature1(benchmark::State* state, MODE mode,
     EngineRequestMode(sql, mode, limit_cnt, size, state);
 }
 void EngineWindowRowsSumFeature1(benchmark::State* state, MODE mode,
-                             int64_t limit_cnt, int64_t size) {  // NOLINT
+                                 int64_t limit_cnt, int64_t size) {  // NOLINT
     // prepare data into table
     const std::string sql =
         "SELECT "

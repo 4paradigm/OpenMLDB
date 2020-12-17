@@ -273,10 +273,10 @@ void SQLCompiler::KeepIR(SQLContext& ctx, llvm::Module* m) {
         LOG(WARNING) << "module is null";
         return;
     }
-    ctx.ir.reserve(1024);
-    llvm::raw_string_ostream buf(ctx.ir);
-    llvm::WriteBitcodeToFile(*m, buf);
-    buf.flush();
+    ctx.ir.clear();
+    llvm::raw_string_ostream ss(ctx.ir);
+    ss << *m;
+    ss.flush();
     LOG(INFO) << "keep ir length: " << ctx.ir.size();
 }
 
@@ -412,8 +412,8 @@ Status SQLCompiler::BuildPhysicalPlan(
         case kBatchRequestMode: {
             vm::RequestModeTransformer transformer(
                 &ctx->nm, ctx->db, cl_, llvm_module, library,
-                ctx->common_column_indices, ctx->is_performance_sensitive,
-                ctx->is_cluster_optimized);
+                ctx->batch_request_info.common_column_indices,
+                ctx->is_performance_sensitive, ctx->is_cluster_optimized);
             transformer.AddDefaultPasses();
             CHECK_STATUS(
                 transformer.TransformPhysicalPlan(plan_list, output),
@@ -442,7 +442,8 @@ bool SQLCompiler::BuildClusterJob(SQLContext& ctx, Status& status) {  // NOLINT
     bool is_request_mode = vm::kRequestMode == ctx.engine_mode ||
                            vm::kBatchRequestMode == ctx.engine_mode;
     RunnerBuilder runner_builder(&ctx.nm, ctx.sql,
-                                 ctx.is_cluster_optimized && is_request_mode);
+                                 ctx.is_cluster_optimized && is_request_mode,
+                                 ctx.batch_request_info.common_node_set);
     ctx.cluster_job = runner_builder.BuildClusterJob(ctx.physical_plan, status);
     return status.isOK();
 }
@@ -496,7 +497,7 @@ bool SQLCompiler::ResolvePlanFnAddress(vm::PhysicalOpNode* node,
     // 待优化，内嵌子查询的Resolved不适合特别处理，需要把子查询的function信息注册到主查询中，
     // 函数指针的注册需要整体优化一下设计
     switch (node->GetOpType()) {
-        case kPhysicalOpRequestUnoin: {
+        case kPhysicalOpRequestUnion: {
             auto request_union_op =
                 dynamic_cast<PhysicalRequestUnionNode*>(node);
             if (!request_union_op->window_unions_.Empty()) {

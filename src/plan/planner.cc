@@ -188,7 +188,7 @@ bool Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root,
                 node::WindowPlanNode *w_node_ptr =
                     node_manager_->MakeWindowPlanNode(w_id++);
                 if (!CreateWindowPlanNode(w_ptr, w_node_ptr, status)) {
-                    return status.code;
+                    return false;
                 }
                 project_list_map[w_ptr] =
                     node_manager_->MakeProjectListPlanNode(w_node_ptr, true);

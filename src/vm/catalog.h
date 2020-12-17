@@ -116,6 +116,8 @@ class ColumnSource {
     const node::ConstNode* const_value_;
 };*/
 
+constexpr uint32_t INVALID_POS = UINT32_MAX;
+
 struct IndexSt {
     std::string name;
     uint32_t index;
@@ -196,7 +198,45 @@ class DataHandler : public ListV<Row> {
     virtual const std::string GetHandlerTypeName() = 0;
     virtual base::Status GetStatus() { return base::Status::OK(); }
 };
+class DataHandlerList {
+ public:
+    DataHandlerList() {}
+    ~DataHandlerList() {}
+    virtual size_t GetSize() = 0;
+    virtual std::shared_ptr<DataHandler> Get(size_t idx) = 0;
+};
+class DataHandlerVector : public DataHandlerList {
+ public:
+    DataHandlerVector() : data_handlers_() {}
+    ~DataHandlerVector() {}
+    void Add(std::shared_ptr<DataHandler> data_handler) {
+        data_handlers_.push_back(data_handler);
+    }
+    size_t GetSize() { return data_handlers_.size(); }
+    std::shared_ptr<DataHandler> Get(size_t idx) {
+        return idx >= 0 && idx < data_handlers_.size()
+                   ? data_handlers_[idx]
+                   : std::shared_ptr<DataHandler>();
+    }
 
+ private:
+    std::vector<std::shared_ptr<DataHandler>> data_handlers_;
+};
+class DataHandlerRepeater : public DataHandlerList {
+ public:
+    DataHandlerRepeater(std::shared_ptr<DataHandler> data_handler, size_t size)
+        : size_(size), data_handler_(data_handler) {}
+    ~DataHandlerRepeater() {}
+    size_t GetSize() { return size_; }
+    std::shared_ptr<DataHandler> Get(size_t idx) {
+        return idx >= 0 && idx < size_ ? data_handler_
+                                       : std::shared_ptr<DataHandler>();
+    }
+
+ private:
+    size_t size_;
+    std::shared_ptr<DataHandler> data_handler_;
+};
 class RowHandler : public DataHandler {
  public:
     RowHandler() {}
@@ -246,10 +286,12 @@ class Tablet {
                                                  const std::string& db,
                                                  const std::string& sql,
                                                  const fesql::codec::Row& row,
+                                                 const bool is_procedure,
                                                  const bool is_debug) = 0;
     virtual std::shared_ptr<RowHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
-        const std::vector<fesql::codec::Row>& rows, const bool is_debug) = 0;
+        const std::vector<fesql::codec::Row>& rows, const bool is_procedure,
+        const bool is_debug) = 0;
 };
 
 class TableHandler : public DataHandler {
@@ -332,7 +374,7 @@ class Catalog {
         const std::string& db, const std::string& table_name) = 0;
 
     virtual std::shared_ptr<fesql::sdk::ProcedureInfo> GetProcedureInfo(
-            const std::string& db, const std::string& sp_name) {
+        const std::string& db, const std::string& sp_name) {
         return nullptr;
     }
 };

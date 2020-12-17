@@ -155,7 +155,7 @@ class StatisticalAggGenerator {
         ::llvm::LLVMContext& llvm_ctx = builder->getContext();
         ::llvm::Type* llvm_ty =
             AggregateIRBuilder::GetOutputLLVMType(llvm_ctx, "sum", col_type_);
-        ::llvm::Value* accum = builder->CreateAlloca(llvm_ty);
+        ::llvm::Value* accum = CreateAllocaAtHead(builder, llvm_ty, "sum");
         if (llvm_ty->isIntegerTy()) {
             builder->CreateStore(::llvm::ConstantInt::get(llvm_ty, 0, true),
                                  accum);
@@ -169,7 +169,7 @@ class StatisticalAggGenerator {
         ::llvm::LLVMContext& llvm_ctx = builder->getContext();
         ::llvm::Type* llvm_ty =
             AggregateIRBuilder::GetOutputLLVMType(llvm_ctx, "avg", col_type_);
-        ::llvm::Value* accum = builder->CreateAlloca(llvm_ty);
+        ::llvm::Value* accum = CreateAllocaAtHead(builder, llvm_ty, "avg");
         builder->CreateStore(::llvm::ConstantFP::get(llvm_ty, 0.0), accum);
         return accum;
     }
@@ -177,7 +177,7 @@ class StatisticalAggGenerator {
     ::llvm::Value* GenCountInitState(::llvm::IRBuilder<>* builder) {
         ::llvm::LLVMContext& llvm_ctx = builder->getContext();
         ::llvm::Type* int64_ty = ::llvm::Type::getInt64Ty(llvm_ctx);
-        ::llvm::Value* cnt = builder->CreateAlloca(int64_ty);
+        ::llvm::Value* cnt = CreateAllocaAtHead(builder, int64_ty, "cnt");
         builder->CreateStore(::llvm::ConstantInt::get(int64_ty, 0, true), cnt);
         return cnt;
     }
@@ -186,7 +186,7 @@ class StatisticalAggGenerator {
         ::llvm::LLVMContext& llvm_ctx = builder->getContext();
         ::llvm::Type* llvm_ty =
             AggregateIRBuilder::GetOutputLLVMType(llvm_ctx, "min", col_type_);
-        ::llvm::Value* accum = builder->CreateAlloca(llvm_ty);
+        ::llvm::Value* accum = CreateAllocaAtHead(builder, llvm_ty, "min");
         ::llvm::Value* min;
         if (llvm_ty == ::llvm::Type::getInt16Ty(llvm_ctx)) {
             min = ::llvm::ConstantInt::get(
@@ -212,7 +212,7 @@ class StatisticalAggGenerator {
         ::llvm::LLVMContext& llvm_ctx = builder->getContext();
         ::llvm::Type* llvm_ty =
             AggregateIRBuilder::GetOutputLLVMType(llvm_ctx, "max", col_type_);
-        ::llvm::Value* accum = builder->CreateAlloca(llvm_ty);
+        ::llvm::Value* accum = CreateAllocaAtHead(builder, llvm_ty, "max");
         ::llvm::Value* max;
         if (llvm_ty == ::llvm::Type::getInt16Ty(llvm_ctx)) {
             max = ::llvm::ConstantInt::get(
@@ -618,8 +618,8 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
 
     // on stack unique pointer
     size_t iter_bytes = sizeof(std::unique_ptr<codec::RowIterator>);
-    ::llvm::Value* iter_ptr = builder.CreateAlloca(
-        ::llvm::Type::getInt8Ty(llvm_ctx),
+    ::llvm::Value* iter_ptr = CreateAllocaAtHead(
+        &builder, ::llvm::Type::getInt8Ty(llvm_ctx), "row_iter",
         ::llvm::ConstantInt::get(int64_ty, iter_bytes, true));
     auto get_iter_func = module_->getOrInsertFunction(
         "fesql_storage_get_row_iter", void_ty, ptr_ty, ptr_ty);
@@ -672,8 +672,8 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
 
             ScopeVar dummy_scope_var;
             BufNativeIRBuilder buf_builder(
-                schema_context_->GetRowFormat(schema_idx), body_block,
-                &dummy_scope_var);
+                schema_idx, schema_context_->GetRowFormat(schema_idx),
+                body_block, &dummy_scope_var);
             NativeValue field_value;
             if (!buf_builder.BuildGetField(info.col_idx, slice_info.first,
                                            slice_info.second, &field_value)) {

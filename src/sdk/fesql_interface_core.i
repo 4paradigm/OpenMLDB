@@ -72,7 +72,6 @@ using namespace fesql::node;
 using fesql::vm::SQLContext;
 using fesql::vm::Catalog;
 using fesql::vm::PhysicalOpNode;
-using fesql::vm::PhysicalWindowNode;
 using fesql::vm::PhysicalSimpleProjectNode;
 using fesql::vm::RowView;
 using fesql::vm::FnInfo;
@@ -102,6 +101,9 @@ using fesql::node::DataType;
 %ignore fesql::vm::TableHandler;
 %ignore fesql::vm::PartitionHandler;
 %ignore fesql::vm::SimpleCatalogTableHandler;
+%ignore fesql::vm::DataHandlerList;
+%ignore fesql::vm::DataHandlerVector;
+%ignore fesql::vm::DataHandlerRepeater;
 %ignore DataTypeName; // TODO: Geneerate duplicated class
 %ignore fesql::vm::FeSQLJITWrapper::AddModule;
 
