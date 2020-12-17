@@ -16,7 +16,6 @@
 #include "codec/list_iterator_codec.h"
 #include "codec/type_codec.h"
 #include "proto/fe_type.pb.h"
-#include "vm/jit.h"
 
 namespace fesql {
 namespace udf {
@@ -269,15 +268,6 @@ uint32_t to_string_len(const V &v);
 
 }  // namespace v1
 
-void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);                // NOLINT
-void InitUDFSymbol(::llvm::orc::JITDylib &jd,             // NOLINT
-                   ::llvm::orc::MangleAndInterner &mi);   // NOLINT
-void InitCLibSymbol(vm::FeSQLJIT *jit_ptr);               // NOLINT
-void InitCLibSymbol(::llvm::orc::JITDylib &jd,            // NOLINT
-                    ::llvm::orc::MangleAndInterner &mi);  // NOLINT
-bool AddSymbol(::llvm::orc::JITDylib &jd,                 // NOLINT
-               ::llvm::orc::MangleAndInterner &mi,        // NOLINT
-               const std::string &fn_name, void *fn_ptr);
 void RegisterNativeUDFToModule();
 }  // namespace udf
 }  // namespace fesql

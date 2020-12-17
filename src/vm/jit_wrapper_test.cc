@@ -40,11 +40,8 @@ std::shared_ptr<SimpleCatalog> GetTestCatalog() {
 }
 
 std::shared_ptr<CompileInfo> Compile(const std::string &sql,
+                                     const EngineOptions &options,
                                      std::shared_ptr<SimpleCatalog> catalog) {
-    EngineOptions options;
-    options.set_keep_ir(true);
-    options.set_performance_sensitive(false);
-
     base::Status status;
     BatchRunSession session;
     Engine engine(catalog, options);
@@ -55,20 +52,22 @@ std::shared_ptr<CompileInfo> Compile(const std::string &sql,
     return session.GetCompileInfo();
 }
 
-TEST_F(JITWrapperTest, test) {
+void simple_test(const EngineOptions &options) {
     auto catalog = GetTestCatalog();
-    auto compile_info = Compile("select col_1, col_2 from t1;", catalog);
+    std::string sql = "select col_1, col_2 from t1;";
+    auto compile_info = Compile(sql, options, catalog);
     auto &sql_context = compile_info->get_sql_context();
     std::string ir_str = sql_context.ir;
     ASSERT_FALSE(ir_str.empty());
-    FeSQLJITWrapper jit;
-    ASSERT_TRUE(jit.Init());
+    FeSQLJITWrapper *jit = FeSQLJITWrapper::Create();
+    ASSERT_TRUE(jit->Init());
+    FeSQLJITWrapper::InitJITSymbols(jit);
 
     base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
-    ASSERT_TRUE(jit.AddModuleFromBuffer(ir_buf));
+    ASSERT_TRUE(jit->AddModuleFromBuffer(ir_buf));
 
     auto fn_name = sql_context.physical_plan->GetFnInfos()[0]->fn_name();
-    auto fn = jit.FindFunction(fn_name);
+    auto fn = jit->FindFunction(fn_name);
     ASSERT_TRUE(fn != nullptr);
 
     int8_t buf[1024];
@@ -79,9 +78,7 @@ TEST_F(JITWrapperTest, test) {
     row_builder.AppendInt64(42);
 
     fesql::codec::Row row(base::RefCountedSlice::Create(buf, 1024));
-
     fesql::codec::Row output = CoreAPI::RowProject(fn, row);
-
     codec::RowView row_view(*schema, output.buf(), output.size());
     double c1;
     int64_t c2;
@@ -89,9 +86,31 @@ TEST_F(JITWrapperTest, test) {
     ASSERT_EQ(row_view.GetInt64(1, &c2), 0);
     ASSERT_EQ(c1, 3.14);
     ASSERT_EQ(c2, 42);
+    delete jit;
 }
 
+TEST_F(JITWrapperTest, test) {
+    EngineOptions options;
+    options.set_keep_ir(true);
+    simple_test(options);
+}
+
+#ifdef LLVM_EXT_ENABLE
+TEST_F(JITWrapperTest, test_mcjit) {
+    EngineOptions options;
+    options.set_keep_ir(true);
+    options.jit_options().set_enable_mcjit(true);
+    options.jit_options().set_enable_gdb(true);
+    options.jit_options().set_enable_perf(true);
+    options.jit_options().set_enable_vtune(true);
+    simple_test(options);
+}
+#endif
+
 TEST_F(JITWrapperTest, test_window) {
+    EngineOptions options;
+    options.set_keep_ir(true);
+    options.set_performance_sensitive(false);
     auto catalog = GetTestCatalog();
     auto compile_info = Compile(
         "select col_1, sum(col_2) over w, "
@@ -100,7 +119,7 @@ TEST_F(JITWrapperTest, test_window) {
         "window w as ("
         "PARTITION by col_2 ORDER BY col_2 "
         "ROWS BETWEEN 1 PRECEDING AND CURRENT ROW);",
-        catalog);
+        options, catalog);
     auto &sql_context = compile_info->get_sql_context();
     std::string ir_str = sql_context.ir;
 
@@ -108,15 +127,17 @@ TEST_F(JITWrapperTest, test_window) {
     // this should be removed by better symbol init utility
 
     ASSERT_FALSE(ir_str.empty());
-    FeSQLJITWrapper jit;
-    ASSERT_TRUE(jit.Init());
+    FeSQLJITWrapper *jit = FeSQLJITWrapper::Create();
+    ASSERT_TRUE(jit->Init());
+    FeSQLJITWrapper::InitJITSymbols(jit);
 
     base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
-    ASSERT_TRUE(jit.AddModuleFromBuffer(ir_buf));
+    ASSERT_TRUE(jit->AddModuleFromBuffer(ir_buf));
 
     auto fn_name = sql_context.physical_plan->GetFnInfos()[0]->fn_name();
-    auto fn = jit.FindFunction(fn_name);
+    auto fn = jit->FindFunction(fn_name);
     ASSERT_TRUE(fn != nullptr);
+    delete jit;
 }
 
 }  // namespace vm

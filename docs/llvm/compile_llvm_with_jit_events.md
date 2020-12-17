@@ -1,0 +1,3 @@
+```
+cmake .. -DLLVM_USE_INTEL_JITEVENTS=ON -DLLVM_USE_PERF=ON
+```

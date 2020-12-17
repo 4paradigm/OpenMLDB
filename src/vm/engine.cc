@@ -172,6 +172,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     sql_context.is_cluster_optimized = options_.is_cluster_optimzied();
     sql_context.is_batch_request_optimized =
         options_.is_batch_request_optimized();
+    sql_context.jit_options = options_.jit_options();
 
     auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
     if (batch_req_sess) {

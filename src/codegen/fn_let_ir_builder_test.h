@@ -161,20 +161,16 @@ void CheckFnLetBuilder(::fesql::node::NodeManager* manager,
     *output_schema = *fn_info.fn_schema();
 
     m->print(::llvm::errs(), NULL);
-    ExitOnError ExitOnErr;
-    auto J = ExitOnErr(LLJITBuilder().create());
-    auto& jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-    lib->InitJITSymbols(J.get());
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ::fesql::udf::InitUDFSymbol(jd, mi);
+    auto jit =
+        std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+    jit->Init();
+    vm::FeSQLJITWrapper::InitJITSymbols(jit.get());
 
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto load_fn_jit = ExitOnErr(J->lookup("test_at_fn"));
+    ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
+    auto address = jit->FindFunction("test_at_fn");
 
     int32_t (*decode)(int8_t*, int8_t*, int8_t**) =
-        (int32_t(*)(int8_t*, int8_t*, int8_t**))load_fn_jit.getAddress();
+        (int32_t(*)(int8_t*, int8_t*, int8_t**))address;
     int32_t ret2 = decode(row_ptr, window_ptr, output);
     ASSERT_EQ(0, ret2);
 }

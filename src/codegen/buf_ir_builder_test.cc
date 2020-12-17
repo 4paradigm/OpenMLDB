@@ -186,15 +186,15 @@ void RunEncode(::fesql::type::TableDef& table, int8_t** output_ptr) {  // NOLINT
     ASSERT_TRUE(ok);
     builder.CreateRetVoid();
     m->print(::llvm::errs(), NULL);
-    auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
-    auto& jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto load_fn_jit = ExitOnErr(J->lookup("fn"));
+
+    auto jit =
+        std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+    jit->Init();
+    vm::FeSQLJITWrapper::InitJITSymbols(jit.get());
+    ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
+    auto load_fn_jit = jit->FindFunction("fn");
     void (*decode)(int8_t**) =
-        reinterpret_cast<void (*)(int8_t**)>(load_fn_jit.getAddress());
+        reinterpret_cast<void (*)(int8_t**)>(const_cast<int8_t*>(load_fn_jit));
     decode(output_ptr);
 }
 template <class T>
@@ -308,18 +308,17 @@ void LoadValue(T* result, bool* is_null,
     }
     builder.CreateRet(llvm::ConstantInt::getFalse(*ctx));
     m->print(::llvm::errs(), NULL);
-    auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
-    auto& jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-    // add codec
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto load_fn_jit = ExitOnErr(J->lookup("fn"));
+
+    auto jit =
+        std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+    jit->Init();
+    vm::FeSQLJITWrapper::InitJITSymbols(jit.get());
+    ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
+    auto load_fn_jit = jit->FindFunction("fn");
 
     bool (*decode)(int8_t*, int32_t, T*) =
         reinterpret_cast<bool (*)(int8_t*, int32_t, T*)>(
-            load_fn_jit.getAddress());
+            const_cast<int8_t*>(load_fn_jit));
     bool n = decode(row, row_size, result);
     if (is_null != nullptr) {
         *is_null = n;
@@ -440,77 +439,39 @@ void RunColCase(T expected, type::TableDef& table,  // NOLINT
         builder.CreateRetVoid();
     }
     m->print(::llvm::errs(), NULL);
-    auto J = ExitOnErr(::llvm::orc::LLJITBuilder().create());
-    auto& jd = J->getMainJITDylib();
-    ::llvm::orc::MangleAndInterner mi(J->getExecutionSession(),
-                                      J->getDataLayout());
-    ::llvm::StringRef symbol1("print_list_i16");
-    ::llvm::StringRef symbol2("print_list_i32");
-    ::llvm::StringRef symbol3("print_list_i64");
-    ::llvm::StringRef symbol4("print_list_float");
-    ::llvm::StringRef symbol5("print_list_double");
-    ::llvm::StringRef symbol6("print_list_string");
-    ::llvm::StringRef symbol7("print_list_timestamp");
-    ::llvm::orc::SymbolMap symbol_map;
 
-    ::llvm::JITEvaluatedSymbol jit_symbol1(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&PrintListInt16)),
-        ::llvm::JITSymbolFlags());
-    ::llvm::JITEvaluatedSymbol jit_symbol2(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&PrintListInt32)),
-        ::llvm::JITSymbolFlags());
+    auto jit =
+        std::unique_ptr<vm::FeSQLJITWrapper>(vm::FeSQLJITWrapper::Create());
+    jit->Init();
+    vm::FeSQLJITWrapper::InitJITSymbols(jit.get());
+    ASSERT_TRUE(jit->AddModule(std::move(m), std::move(ctx)));
+    jit->AddExternalFunction("print_list_i16",
+                             reinterpret_cast<void*>(&PrintListInt16));
+    jit->AddExternalFunction("print_list_i32",
+                             reinterpret_cast<void*>(&PrintListInt32));
+    jit->AddExternalFunction("print_list_i64",
+                             reinterpret_cast<void*>(&PrintListInt64));
+    jit->AddExternalFunction("print_list_float",
+                             reinterpret_cast<void*>(&PrintListFloat));
+    jit->AddExternalFunction("print_list_double",
+                             reinterpret_cast<void*>(&PrintListDouble));
+    jit->AddExternalFunction("print_list_string",
+                             reinterpret_cast<void*>(&PrintListString));
+    jit->AddExternalFunction("print_list_timestamp",
+                             reinterpret_cast<void*>(&PrintListTimestamp));
 
-    ::llvm::JITEvaluatedSymbol jit_symbol3(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&PrintListInt64)),
-        ::llvm::JITSymbolFlags());
-    ::llvm::JITEvaluatedSymbol jit_symbol4(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&PrintListFloat)),
-        ::llvm::JITSymbolFlags());
-    ::llvm::JITEvaluatedSymbol jit_symbol5(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&PrintListDouble)),
-        ::llvm::JITSymbolFlags());
-
-    ::llvm::JITEvaluatedSymbol jit_symbol6(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&PrintListString)),
-        ::llvm::JITSymbolFlags());
-
-    ::llvm::JITEvaluatedSymbol jit_symbol7(
-        ::llvm::pointerToJITTargetAddress(
-            reinterpret_cast<void*>(&PrintListTimestamp)),
-        ::llvm::JITSymbolFlags());
-    symbol_map.insert(std::make_pair(mi(symbol1), jit_symbol1));
-    symbol_map.insert(std::make_pair(mi(symbol2), jit_symbol2));
-    symbol_map.insert(std::make_pair(mi(symbol3), jit_symbol3));
-    symbol_map.insert(std::make_pair(mi(symbol4), jit_symbol4));
-    symbol_map.insert(std::make_pair(mi(symbol5), jit_symbol5));
-    symbol_map.insert(std::make_pair(mi(symbol6), jit_symbol6));
-    symbol_map.insert(std::make_pair(mi(symbol7), jit_symbol7));
-    // add codec
-
-    auto err = jd.define(::llvm::orc::absoluteSymbols(symbol_map));
-    if (err) {
-        ASSERT_TRUE(false);
-    }
-    ::fesql::vm::InitCodecSymbol(jd, mi);
-    ExitOnErr(J->addIRModule(ThreadSafeModule(std::move(m), std::move(ctx))));
-    auto load_fn_jit = ExitOnErr(J->lookup("fn"));
-
+    auto load_fn_jit = jit->FindFunction("fn");
     codec::ListRef<> window_ref;
     window_ref.list = window;
     if (!is_void) {
         T(*decode)
-        (int8_t*) = reinterpret_cast<T (*)(int8_t*)>(load_fn_jit.getAddress());
+        (int8_t*) =
+            reinterpret_cast<T (*)(int8_t*)>(const_cast<int8_t*>(load_fn_jit));
         ASSERT_EQ(expected, decode(reinterpret_cast<int8_t*>(&window_ref)));
 
     } else {
-        void (*decode)(int8_t*) =
-            reinterpret_cast<void (*)(int8_t*)>(load_fn_jit.getAddress());
+        void (*decode)(int8_t*) = reinterpret_cast<void (*)(int8_t*)>(
+            const_cast<int8_t*>(load_fn_jit));
         decode(reinterpret_cast<int8_t*>(&window_ref));
     }
 }
