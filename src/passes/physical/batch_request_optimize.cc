@@ -411,7 +411,8 @@ Status CommonColumnOptimize::ProcessTrivial(PhysicalPlanContext* ctx,
 
 Status CommonColumnOptimize::ProcessRequestUnion(
     PhysicalPlanContext* ctx, PhysicalRequestUnionNode* request_union_op,
-    const std::vector<PhysicalOpNode*>& path, PhysicalOpNode** out) {
+    const std::vector<PhysicalOpNode*>& path, PhysicalOpNode** out,
+    BuildOpState** agg_request_state) {
     // get request row
     BuildOpState* request_state = nullptr;
     auto origin_input_op = request_union_op->GetProducer(0);
@@ -463,10 +464,22 @@ Status CommonColumnOptimize::ProcessRequestUnion(
 
         // apply on request
         new_children[0] = cur_request;
-        CHECK_STATUS(ctx->WithNewChildren(path[i], new_children, &cur_request));
+        PhysicalOpNode* to_apply = path[i];
+        if (to_apply->GetOpType() == kPhysicalOpJoin) {
+            PhysicalRequestJoinNode* request_join_op = nullptr;
+            CHECK_STATUS(ctx->CreateOp<PhysicalRequestJoinNode>(
+                &request_join_op, to_apply->GetProducer(0),
+                to_apply->GetProducer(1),
+                dynamic_cast<PhysicalJoinNode*>(to_apply)->join(), false));
+            to_apply = request_join_op;
+        }
+        CHECK_STATUS(
+            ctx->WithNewChildren(to_apply, new_children, &cur_request));
         BuildOpState* new_request_state = nullptr;
         CHECK_STATUS(GetOpState(ctx, cur_request, &new_request_state));
     }
+    // final request row before union and agg
+    CHECK_STATUS(GetOpState(ctx, cur_request, agg_request_state));
     CHECK_STATUS(GetReorderedOp(ctx, cur_request, &cur_request));
 
     // final union
@@ -513,12 +526,17 @@ Status CommonColumnOptimize::ProcessWindow(PhysicalPlanContext* ctx,
     }
 
     PhysicalOpNode* new_union = nullptr;
+    BuildOpState* agg_request_state = nullptr;
     if (union_is_non_trivial_common) {
         CHECK_STATUS(ProcessRequestUnion(ctx, request_union_op,
-                                         request_union_path, &new_union));
+                                         request_union_path, &new_union,
+                                         &agg_request_state));
     } else {
+        agg_request_state = request_state;  // missing join right parts possible
         CHECK_STATUS(GetReorderedOp(ctx, input, &new_union));
     }
+    bool is_trival_common =
+        !union_is_non_trivial_common && request_state->non_common_op == nullptr;
 
     // split project expressions
     ColumnProjects common_projects;
@@ -530,10 +548,10 @@ Status CommonColumnOptimize::ProcessWindow(PhysicalPlanContext* ctx,
         const node::FrameNode* frame = origin_projects.GetFrame(i);
 
         bool expr_is_common =
-            request_state->non_common_op == nullptr ||
+            is_trival_common || agg_request_state->non_common_op == nullptr ||
             (union_is_non_trivial_common &&
-             ExprDependOnlyOnLeft(expr, request_state->common_op,
-                                  request_state->non_common_op));
+             ExprDependOnlyOnLeft(expr, agg_request_state->common_op,
+                                  agg_request_state->non_common_op));
         if (expr_is_common) {
             state->AddCommonIdx(i);
             common_projects.Add(name, expr, frame);

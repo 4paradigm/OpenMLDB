@@ -115,7 +115,8 @@ class CommonColumnOptimize : public PhysicalPass {
                           BuildOpState*);
     Status ProcessRequestUnion(PhysicalPlanContext*, PhysicalRequestUnionNode*,
                                const std::vector<PhysicalOpNode*>& path,
-                               PhysicalOpNode** out);
+                               PhysicalOpNode** out,
+                               BuildOpState** agg_request_state);
 
     /**
      * Find a non-agg op sequence ends with request union.

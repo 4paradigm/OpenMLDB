@@ -450,6 +450,8 @@ Status SQLCompiler::BuildPhysicalPlan(
                 transformer.batch_request_info().output_common_column_indices;
             ctx->batch_request_info.output_common_column_indices =
                 output_common_indices;
+            ctx->batch_request_info.common_node_set =
+                transformer.batch_request_info().common_node_set;
             if (!output_common_indices.empty() &&
                 output_common_indices.size() <
                     output_plan->GetOutputSchemaSize()) {

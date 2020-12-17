@@ -1140,7 +1140,8 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(
                 right = join_gen_.right_group_gen_.Partition(right);
             }
             if (!right) {
-                LOG(WARNING) << "fail to run last join: right partition is empty";
+                LOG(WARNING)
+                    << "fail to run last join: right partition is empty";
                 return fail_ptr;
             }
             auto left_table = std::dynamic_pointer_cast<TableHandler>(left);
@@ -1170,7 +1171,8 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(
                 right = join_gen_.right_group_gen_.Partition(right);
             }
             if (!right) {
-                LOG(WARNING) << "fail to run last join: right partition is empty";
+                LOG(WARNING)
+                    << "fail to run last join: right partition is empty";
                 return fail_ptr;
             }
             auto output_partition =
@@ -1201,7 +1203,8 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(
             return std::make_shared<MemRowHandler>(
                 join_gen_.RowLastJoin(left_row->GetValue(), right));
         }
-        default: return fail_ptr;
+        default:
+            return fail_ptr;
     }
 }
 
