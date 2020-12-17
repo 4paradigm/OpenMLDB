@@ -426,7 +426,7 @@ class LocalTablet : public Tablet {
                                           "procedure cache not exist"));
             }
             auto request_compile_info =
-                sp_cache_->GetRequestInfo(db, sql, status);
+                sp_cache_->GetBatchRequestInfo(db, sql, status);
             if (!status.isOK()) {
                 return std::shared_ptr<TableHandler>(new ErrorTableHandler(
                     status.code, "SubQuery Fail: " + status.msg));

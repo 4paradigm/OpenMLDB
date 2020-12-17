@@ -893,10 +893,6 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
         batch_inputs.push_back(producers_[idx]->BatchRequestRun(ctx));
     }
 
-    if (ctx.is_debug()) {
-        LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
-                  << "\n";
-    }
     for (size_t idx = 0; idx < ctx.GetRequestSize(); idx++) {
         inputs.clear();
         for (size_t producer_idx = 0; producer_idx < producers_.size();
@@ -904,13 +900,14 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
             inputs.push_back(batch_inputs[producer_idx]->Get(idx));
         }
         auto res = Run(ctx, inputs);
-        if (ctx.is_debug()) {
-            Runner::PrintData(output_schemas_, res);
-        }
         if (need_batch_cache_) {
             if (ctx.is_debug()) {
-                LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_)
-                          << "RUNNER ID " << id_ << " HIT BATCH CACHE!";
+                std::ostringstream oss;
+                oss << "RUNNER TYPE: " << RunnerTypeName(type_)
+                    << ", ID: " << id_ << " HIT BATCH CACHE!"
+                    << "\n";
+                Runner::PrintData(oss, output_schemas_, res);
+                LOG(INFO) << oss.str();
             }
             auto repeated_data = std::shared_ptr<DataHandlerList>(
                 new DataHandlerRepeater(res, ctx.GetRequestSize()));
@@ -920,6 +917,15 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
             return repeated_data;
         }
         outputs->Add(res);
+    }
+    if (ctx.is_debug()) {
+        std::ostringstream oss;
+        oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+            << "\n";
+        for (size_t idx = 0; idx < outputs->GetSize(); idx++) {
+            Runner::PrintData(oss, output_schemas_, outputs->Get(idx));
+        }
+        LOG(INFO) << oss.str();
     }
     if (need_cache_) {
         ctx.SetBatchCache(id_, outputs);
@@ -940,9 +946,11 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     }
     auto res = Run(ctx, inputs);
     if (ctx.is_debug()) {
-        LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_)
-                  << ", ID: " << id_;
-        Runner::PrintData(output_schemas_, res);
+        std::ostringstream oss;
+        oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+            << "\n";
+        Runner::PrintData(oss, output_schemas_, res);
+        LOG(INFO) << oss.str();
     }
     if (need_cache_) {
         ctx.SetCache(id_, res);
@@ -960,9 +968,11 @@ std::shared_ptr<DataHandlerList> DataRunner::BatchRequestRun(
         new DataHandlerRepeater(data_handler_, ctx.GetRequestSize()));
 
     if (ctx.is_debug()) {
-        LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
-                  << ", Repeated " << ctx.GetRequestSize();
-        Runner::PrintData(output_schemas_, res->Get(0));
+        std::ostringstream oss;
+        oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+            << ", Repeated " << ctx.GetRequestSize() << "\n";
+        Runner::PrintData(oss, output_schemas_, res->Get(0));
+        LOG(INFO) << oss.str();
     }
     return res;
 }
@@ -979,12 +989,15 @@ std::shared_ptr<DataHandlerList> RequestRunner::BatchRequestRun(
         res->Add(std::shared_ptr<MemRowHandler>(
             new MemRowHandler(ctx.GetRequest(idx))));
     }
+
     if (ctx.is_debug()) {
-        LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
-                  << "\n";
+        std::ostringstream oss;
+        oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+            << "\n";
         for (size_t idx = 0; idx < res->GetSize(); idx++) {
-            Runner::PrintData(output_schemas_, res->Get(idx));
+            Runner::PrintData(oss, output_schemas_, res->Get(idx));
         }
+        LOG(INFO) << oss.str();
     }
     return res;
 }
@@ -1823,9 +1836,12 @@ const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
     }
     return Row(left_slices, left_row, right_slices, Row());
 }
-void Runner::PrintData(const vm::SchemasContext* schema_list,
+void Runner::PrintData(std::ostringstream& oss,
+                       const vm::SchemasContext* schema_list,
                        std::shared_ptr<DataHandler> data) {
-    std::ostringstream oss;
+    if (data) {
+        oss << data->GetHandlerTypeName() << " RESULT:\n";
+    }
     std::vector<RowView> row_view_list;
     ::fesql::base::TextTable t('-', '|', '+');
     // Add Header
@@ -1855,7 +1871,6 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
         t.add("Empty set");
         t.endOfRow();
         oss << t << std::endl;
-        LOG(INFO) << "\n" << oss.str();
         return;
     }
 
@@ -2011,7 +2026,6 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
         }
     }
     oss << t << std::endl;
-    LOG(INFO) << data->GetHandlerTypeName() << " RESULT:\n" << oss.str();
 }
 
 bool Runner::ExtractRows(std::shared_ptr<DataHandlerList> handlers,
@@ -2423,8 +2437,6 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
     }
     std::shared_ptr<DataHandlerList> proxy_batch_input =
         producers_[0]->BatchRequestRun(ctx);
-    LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
-              << "\n";
     if (!proxy_batch_input || 0 == proxy_batch_input->GetSize()) {
         LOG(WARNING) << "proxy batch run input is empty";
         return std::shared_ptr<DataHandlerList>();
@@ -2436,10 +2448,13 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
             {proxy_batch_input->Get(0)});
         auto res = Run(ctx, inputs);
         if (ctx.is_debug()) {
-            Runner::PrintData(output_schemas_, res);
+            std::ostringstream oss;
+            oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+                << " HIT BATCH CACHE!"
+                << "\n";
+            Runner::PrintData(oss, output_schemas_, res);
+            LOG(INFO) << oss.str();
         }
-        DLOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << "RUNNER ID "
-                   << id_ << " HIT BATCH CACHE!";
         auto repeated_data = std::shared_ptr<DataHandlerList>(
             new DataHandlerRepeater(res, proxy_batch_input->GetSize()));
         if (need_cache_) {
@@ -2451,6 +2466,15 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
     // if not need batch cache
     // compute each line
     auto outputs = RunBatchInput(ctx, proxy_batch_input);
+    if (ctx.is_debug()) {
+        std::ostringstream oss;
+        oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+            << "\n";
+        for (size_t idx = 0; idx < outputs->GetSize(); idx++) {
+            Runner::PrintData(oss, output_schemas_, outputs->Get(idx));
+        }
+        LOG(INFO) << oss.str();
+    }
     if (need_cache_) {
         ctx.SetBatchCache(id_, outputs);
     }

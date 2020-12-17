@@ -466,7 +466,8 @@ class Runner : public node::NodeBase<Runner> {
     static std::shared_ptr<TableHandler> TableReverse(
         std::shared_ptr<TableHandler> table);
 
-    static void PrintData(const vm::SchemasContext* schema_list,
+    static void PrintData(std::ostringstream& oss,
+                          const vm::SchemasContext* schema_list,
                           std::shared_ptr<DataHandler> data);
     static const bool IsProxyRunner(const RunnerType& type) {
         return kRunnerRequestRunProxy == type ||
