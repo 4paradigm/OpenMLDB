@@ -1,9 +1,10 @@
 package com._4paradigm.fesql.spark
 
 import java.io.File
-import com._4paradigm.fesql.utils.SqlUtils._
 
+import com._4paradigm.fesql.utils.SqlUtils._
 import com._4paradigm.fesql.spark.api.FesqlSession
+import com._4paradigm.fesql.spark.element.FesqlConfig
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
 
@@ -14,7 +15,7 @@ import scala.io.Source
 object Fesql {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
-  private val sparkMaster = "local"
+  private val sparkMaster = "cluster"
   private val appName: String = "fesql"
 
   def main(args: Array[String]): Unit = {
@@ -46,7 +47,12 @@ object Fesql {
     val inputTables = config.getTables
     for ((name, path) <- inputTables.asScala) {
       logger.info(s"Try load table $name from: $path")
-      sess.read(path).createOrReplaceTempView(name)
+      if (FesqlConfig.tinyData > 0) {
+        sess.read(path).tiny(FesqlConfig.tinyData).createOrReplaceTempView(name)
+      } else {
+        sess.read(path).createOrReplaceTempView(name)
+      }
+
     }
 
     val output = config.getOutputPath

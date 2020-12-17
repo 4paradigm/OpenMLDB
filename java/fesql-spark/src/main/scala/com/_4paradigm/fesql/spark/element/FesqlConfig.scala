@@ -19,9 +19,16 @@ object FesqlConfig {
   val configSkewPosition = "spark.fesql.skew.position"
 
   // ================================================
+  // test mode 用于测试的时候验证相关问题
+  // 控制读取表的数据条数，默认读全量数据
+  val configTinyData = "spark.fesql.test.tiny"
+  // ================================================
+
   // enable spark2.3.0 service
   val configSparkEnable = "spark.hadoop.yarn.timeline-service.enabled"
   var configDBName = "spark_db"
+
+
 
 
 
@@ -45,6 +52,10 @@ object FesqlConfig {
   var skewTag = "tag_4paradigm"
   // position字段名
   var skewPosition = "position_4paradigm"
+  // ================================================
+  // test mode 用于测试的时候验证相关问题
+  // 控制读取表的数据条数，-1表示读全量数据
+  var tinyData: Long = -1
   // ================================================
   // 常量区
   val skew = "skew"

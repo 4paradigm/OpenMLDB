@@ -63,6 +63,7 @@ class FesqlSession {
         case FesqlConfig.configMode => FesqlConfig.mode = v.asInstanceOf[String]
         case FesqlConfig.configPartitions => FesqlConfig.paritions = v.toInt
         case FesqlConfig.configTimeZone => FesqlConfig.timeZone = v.asInstanceOf[String]
+        case FesqlConfig.configTinyData => FesqlConfig.tinyData = v.toLong
         case _ => ""
       }
     }
