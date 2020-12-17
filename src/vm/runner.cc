@@ -1201,6 +1201,7 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(
             return std::make_shared<MemRowHandler>(
                 join_gen_.RowLastJoin(left_row->GetValue(), right));
         }
+        default: return fail_ptr;
     }
 }
 
@@ -1762,7 +1763,7 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
                     t.add(std::to_string(iter->GetKey()));
                     for (size_t id = 0; id < row_view_list.size(); id++) {
                         RowView& row_view = row_view_list[id];
-                        row_view.Reset(row.buf(id));
+                        row_view.Reset(row.buf(id), row.size(id));
                         for (int idx = 0;
                              idx < schema_list->GetSchema(id)->size(); idx++) {
                             std::string str = row_view.GetAsString(idx);
@@ -1828,7 +1829,7 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
                         t.add(std::to_string(segment_iter->GetKey()));
                         for (size_t id = 0; id < row_view_list.size(); id++) {
                             RowView& row_view = row_view_list[id];
-                            row_view.Reset(row.buf(id));
+                            row_view.Reset(row.buf(id), row.size(id));
                             for (int idx = 0;
                                  idx < schema_list->GetSchema(id)->size();
                                  idx++) {

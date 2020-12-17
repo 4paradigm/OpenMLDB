@@ -312,6 +312,7 @@ bool RowView::Reset(const int8_t* row, uint32_t size) {
     row_ = row;
     size_ = size;
     str_addr_length_ = GetAddrLength(size_);
+    is_valid_ = true;
     return true;
 }
 
@@ -327,6 +328,7 @@ bool RowView::Reset(const int8_t* row) {
         return false;
     }
     str_addr_length_ = GetAddrLength(size_);
+    is_valid_ = true;
     return true;
 }
 
