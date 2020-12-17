@@ -264,7 +264,7 @@ void SQLCaseTest::PrintResultSet(std::shared_ptr<fesql::sdk::ResultSet> rs) {
         t.endOfRow();
         return;
     }
-
+    rs->Reset();
     while (rs->Next()) {
         for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
             std::string str = rs->GetAsString(idx);
