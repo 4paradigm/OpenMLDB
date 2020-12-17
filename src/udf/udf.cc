@@ -677,13 +677,15 @@ uint32_t format_string<std::string>(const std::string &v, char *buffer,
 }
 
 template <>
-uint32_t format_string<codec::StringRef>(const codec::StringRef &v, char *buffer,
-                                    size_t size) {
+uint32_t format_string<codec::StringRef>(const codec::StringRef &v,
+                                         char *buffer, size_t size) {
     if (v.size_ < size) {
-        memcpy(reinterpret_cast<void*>(buffer), reinterpret_cast<const void*>(v.data_), v.size_);
+        memcpy(reinterpret_cast<void *>(buffer),
+               reinterpret_cast<const void *>(v.data_), v.size_);
         return v.size_;
-    }else {
-        memcpy(reinterpret_cast<void*>(buffer), reinterpret_cast<const void*>(v.data_), size);
+    } else {
+        memcpy(reinterpret_cast<void *>(buffer),
+               reinterpret_cast<const void *>(v.data_), size);
         return size;
     }
 }

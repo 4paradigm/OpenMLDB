@@ -16,16 +16,16 @@
  */
 
 #include "bm/engine_bm_case.h"
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-#include <map>
 #include "benchmark/benchmark.h"
 #include "bm/base_bm.h"
+#include "codec/type_codec.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
-#include "codec/type_codec.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstrTypes.h"
@@ -77,7 +77,7 @@ int32_t MapTopFn(int64_t limit) {
             auto it = state.find(rkey);
             if (it == state.end()) {
                 state.insert(it, {rkey, 1});
-            }else {
+            } else {
                 auto& single = it->second;
                 single += 1;
             }
@@ -95,11 +95,10 @@ int32_t MapTopFn(int64_t limit) {
     return 0;
 }
 
-void MapTop1(benchmark::State* state,
-        MODE mode, int64_t limit_cnt, int64_t size) {
+void MapTop1(benchmark::State* state, MODE mode, int64_t limit_cnt,
+             int64_t size) {
     for (auto _ : *state) {
-        benchmark::DoNotOptimize(
-                MapTopFn(size));
+        benchmark::DoNotOptimize(MapTopFn(size));
     }
 }
 
@@ -356,8 +355,8 @@ void EngineWindowDistinctCntFeature(benchmark::State* state, MODE mode,
 }
 
 void EngineWindowTop1RatioFeature(benchmark::State* state, MODE mode,
-                                    int64_t limit_cnt,
-                                    int64_t size) {  // NOLINT
+                                  int64_t limit_cnt,
+                                  int64_t size) {  // NOLINT
     const std::string sql =
         "SELECT "
         "fz_top1_ratio(col6) OVER  w1  as top1, "

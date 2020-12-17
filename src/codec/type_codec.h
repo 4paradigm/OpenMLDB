@@ -22,9 +22,9 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include "base/fe_hash.h"
 #include "base/mem_pool.h"
 #include "glog/logging.h"
-#include "base/fe_hash.h"
 namespace fesql {
 namespace codec {
 static const uint32_t SEED = 0xe17a1465;
@@ -53,7 +53,6 @@ struct StringRef {
     }
     uint32_t size_;
     const char* data_;
-    
 };
 
 __attribute__((unused)) static const StringRef operator+(const StringRef& a,
