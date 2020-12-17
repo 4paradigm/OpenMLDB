@@ -37,6 +37,9 @@ class Router {
     const std::string& GetRouterCol() const { return router_col_; }
 
  private:
+    bool IsWindowNode(const PhysicalOpNode* physical_node);
+
+ private:
     std::string main_table_;
     std::string router_col_;
 };

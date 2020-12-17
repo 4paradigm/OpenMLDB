@@ -532,40 +532,34 @@ TEST_F(EngineTest, EngineGetDependentTableTest) {
 TEST_F(EngineTest, RouterTest) {
     const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
     fesql::type::TableDef table_def;
-    fesql::type::TableDef table_def2;
     BuildTableDef(table_def);
-    BuildTableDef(table_def2);
     table_def.set_name("t1");
-    table_def2.set_name("t2");
     std::shared_ptr<::fesql::storage::Table> table(
         new ::fesql::storage::Table(1, 1, table_def));
-    std::shared_ptr<::fesql::storage::Table> table2(
-        new ::fesql::storage::Table(2, 1, table_def2));
     ::fesql::type::IndexDef* index = table_def.add_indexes();
     index->set_name("index1");
+    index->add_first_keys("col1");
+    index->set_second_key("col5");
+    index = table_def.add_indexes();
+    index->set_name("index2");
     index->add_first_keys("col2");
     index->set_second_key("col5");
     auto catalog = BuildCommonCatalog(table_def, table);
-    AddTable(catalog, table_def2, table2);
-    ::fesql::type::IndexDef* index2 = table_def2.add_indexes();
-    index2->set_name("index2");
-    index2->add_first_keys("col6");
-    index2->set_second_key("col5");
-
     {
         std::string sql =
-            "SELECT COL1, COL2, SUM(COL4) OVER w1 as w_amt_sum FROM t1\n"
-            "WINDOW w1 AS (PARTITION BY COL2\n"
-            "ORDER BY COL5 RANGE BETWEEN 3 PRECEDING AND CURRENT ROW);";
-
+            "select col2, sum(col1) over w1 from t1 \n"
+            "window w1 as (partition by col2 \n"
+            "order by col5 rows between 3 preceding and current row);";
         EngineOptions options;
         options.set_compile_only(true);
         options.set_performance_sensitive(false);
         Engine engine(catalog, options);
         ExplainOutput explain_output;
         base::Status status;
-        ASSERT_TRUE(
-            engine.Explain("db", sql, kRequestMode, &explain_output, &status));
+        ASSERT_TRUE(engine.Explain(sql, "db", kBatchRequestMode,
+                                   &explain_output, &status));
+        ASSERT_EQ(explain_output.router.GetMainTable(), "t1");
+        ASSERT_EQ(explain_output.router.GetRouterCol(), "col2");
     }
 }
 
