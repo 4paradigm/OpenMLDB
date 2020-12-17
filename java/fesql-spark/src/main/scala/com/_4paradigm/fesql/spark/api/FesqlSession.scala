@@ -51,7 +51,7 @@ class FesqlSession {
 
 
     for ((k, v) <- this.sparkSession.conf.getAll) {
-      logger.info("fesql config: %s = %s", k, v)
+      logger.info("fesql config: " +  k + " = " + v)
       scalaConfig += (k -> v)
       k match {
         case FesqlConfig.configSkewRadio => FesqlConfig.skewRatio = v.toDouble
@@ -63,6 +63,7 @@ class FesqlSession {
         case FesqlConfig.configMode => FesqlConfig.mode = v.asInstanceOf[String]
         case FesqlConfig.configPartitions => FesqlConfig.paritions = v.toInt
         case FesqlConfig.configTimeZone => FesqlConfig.timeZone = v.asInstanceOf[String]
+        case _ => ""
       }
     }
   }

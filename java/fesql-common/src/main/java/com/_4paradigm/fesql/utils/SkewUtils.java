@@ -35,20 +35,33 @@ public class SkewUtils {
         sql.append(String.format("from \n%s\ngroup by ", table1));
         sql.append(StringUtils.join(keys, " , "));
         sql.append(";");
-        System.out.println(sql);
+//        System.out.println(sql);
         return sql.toString();
     }
 
-    public static String genPercentileTagSql(String table1, String table2, int quantile, List<String> schemas, Map<String, String> keysMap, String ts, String tag1, String tag2) {
+    /**
+     *
+     * @param table1
+     * @param table2
+     * @param quantile
+     * @param schemas
+     * @param keysMap
+     * @param ts
+     * @param tag1 skewTag
+     * @param tag2 skewPosition
+     * @param tag3 skewCntName
+     * @return
+     */
+    public static String genPercentileTagSql(String table1, String table2, int quantile, List<String> schemas, Map<String, String> keysMap, String ts, String tag1, String tag2, String tag3) {
         StringBuffer sql = new StringBuffer();
         sql.append("select \n");
         for (String e : schemas) {
             sql.append(table1 + "." + e + ",");
         }
 
-        sql.append(caseWhenTag(table1, table2, ts, quantile, tag1));
+        sql.append(caseWhenTag(table1, table2, ts, quantile, tag1, tag3));
         sql.append(",");
-        sql.append(caseWhenTag(table1, table2, ts, quantile, tag2));
+        sql.append(caseWhenTag(table1, table2, ts, quantile, tag2, tag3));
 
 
         sql.append(String.format("from %s left join %s on ", table1, table2));
@@ -70,10 +83,10 @@ public class SkewUtils {
      * @param output
      * @return
      */
-    public static String caseWhenTag(String table1, String table2, String ts, int quantile, String output) {
+    public static String caseWhenTag(String table1, String table2, String ts, int quantile, String output, String con1) {
         StringBuffer sql = new StringBuffer();
         sql.append("\ncase\n");
-        sql.append(String.format("when %s.key_cnt < %s then 1\n", table2, quantile));
+        sql.append(String.format("when %s.%s < %s then 1\n", table2, con1, quantile));
         for (int i = 0; i < quantile; i++) {
             if (i == 0) {
                 sql.append(String.format("when %s.%s <= percentile_%s then %d\n", table1, ts, i, quantile - i));
@@ -105,7 +118,7 @@ public class SkewUtils {
                 add("bonus");
             }
         };
-        System.out.println(genPercentileTagSql(table1, table2, 4, schemas, keys, ts, "tag", "pos"));
+        System.out.println(genPercentileTagSql(table1, table2, 4, schemas, keys, ts, "tag", "pos", "z"));
     }
 }
 

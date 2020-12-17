@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 
 import static com._4paradigm.fesql.common.DDLEngine.genDDL;
+import static com._4paradigm.fesql.common.DDLEngine.sql2Feconfig;
 
 public class DDLEngineTest {
     private static final Logger logger = LoggerFactory.getLogger(DDLEngineTest.class);
@@ -18,7 +19,7 @@ public class DDLEngineTest {
     public Object[][] getSqlScript() {
         return new Object[][] {
                 new Object[] {
-                        "????????",
+                        "几千列的场景",
                         "ddl/4k.json",
                         "ddl/4k.txt",
                         1,
@@ -102,69 +103,62 @@ public class DDLEngineTest {
 //                  1,
 //                  1
 //          },
+                // new Object[] {
+                //         "????op???",
+                //         "performance/all_op.json",
+                //         "performance/all_op.txt",
+                //         1,
+                //         1
+                // },
+                // new Object[] {
+                //         "?????????",
+                //         "performance/batch_request100680.json",
+                //         "performance/batch_request100680.txt",
+                //         1,
+                //         1
+                // },
+                // new Object[] {
+                //         "????????",
+                //         "performance/constant_column.json",
+                //         "performance/constant_column.txt",
+                //         1,
+                //         1
+                // },
+                // new Object[] {
+                //         "multi col",
+                //         "performance/gg_studio.json",
+                //         "performance/gg_studio.txt",
+                //         1,
+                //         1
+                // },
+                // new Object[] {
+                //         "multi col",
+                //         "performance/only_one.json",
+                //         "performance/only_one.txt",
+                //         1,
+                //         1
+                // },
+                // new Object[] {
+                //         "multi col",
+                //         "performance/rong_e.json",
+                //         "performance/rong_e.txt",
+                //         1,
+                //         1
+                // },
+                // new Object[] {
+                //         "multi col",
+                //         "performance/timestamp2date.json",
+                //         "performance/timestamp2date.txt",
+                //         1,
+                //         1
+                // },
                 new Object[] {
-                        "????op???",
-                        "performance/all_op.json",
-                        "performance/all_op.txt",
-                        1,
-                        1
-                },
-                new Object[] {
-                        "?????????",
-                        "performance/batch_request100680.json",
-                        "performance/batch_request100680.txt",
-                        1,
-                        1
-                },
-                new Object[] {
-                        "????????",
-                        "performance/constant_column.json",
-                        "performance/constant_column.txt",
-                        1,
-                        1
-                },
-                new Object[] {
-                        "multi col",
-                        "performance/gg_studio.json",
-                        "performance/gg_studio.txt",
-                        1,
-                        1
-                },
-                new Object[] {
-                        "multi col",
-                        "performance/only_one.json",
-                        "performance/only_one.txt",
-                        1,
-                        1
-                },
-                new Object[] {
-                        "multi col",
-                        "performance/rong_e.json",
-                        "performance/rong_e.txt",
-                        1,
-                        1
-                },
-                new Object[] {
-                        "multi col",
-                        "performance/timestamp2date.json",
-                        "performance/timestamp2date.txt",
+                        "luoji场景",
+                        "fz/luoji.json",
+                        "fz/luoji.txt",
                         1,
                         1
                 }
-//           new Object[] {
-//                   "multi col",
-//                   "ddl/rong_e.json",
-//                   "ddl/rong_e.txt",
-//                   1,
-//                   1
-//           }
-//           new Object[] {
-//                   "multi col",
-//                   "ddl/",
-//                   "ddl/",
-//                   1,
-//                   1
-//           },
 
         };
     }
@@ -190,6 +184,24 @@ public class DDLEngineTest {
             e.printStackTrace();
             logger.error(e.getMessage());
         }
+    }
 
+    @Test(dataProvider = "performance_script")
+    public void testOutputSchema(String desc, String schemaPath, String sqlPath, int replicaNumber, int partitionNumber) {
+        logger.info(desc);
+        File file = new File(DDLEngineTest.class.getClassLoader().getResource(schemaPath).getPath());
+        File sql = new File(DDLEngineTest.class.getClassLoader().getResource(sqlPath).getPath());
+//        File output = new File()
+        try {
+            String ddl = sql2Feconfig(FileUtils.readFileToString(sql, "UTF-8"), FileUtils.readFileToString(file, "UTF-8"));
+            System.out.printf(ddl);
+            File output = new File(DDLEngineTest.class.getClassLoader().getResource(sqlPath).getPath() + ".ddl.txt");
+            FileUtils.touch(output);
+            FileUtils.write(output, ddl, "UTF-8");
+//            getTableDefs(FileUtils.readFileToString(file, "UTF-8"));
+        } catch (IOException e) {
+            e.printStackTrace();
+            logger.error(e.getMessage());
+        }
     }
 }

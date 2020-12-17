@@ -24,9 +24,11 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
 
   def this(session: SparkSession) = {
     this(session, session.conf.getAll)
+//    println(FesqlConfig.mode)
     for ((k, v) <- config.asInstanceOf[Map[String, String]]) {
-      logger.info("fesql config: %s = %s", k, v)
+      logger.info("spark plan fesql config: " +  k + " = " + v)
 //      scalaConfig += (k -> v)
+//      if (k.startsWith())
       k match {
         case FesqlConfig.configSkewRadio => FesqlConfig.skewRatio = v.toDouble
         case FesqlConfig.configSkewLevel => FesqlConfig.skewLevel = v.toInt
@@ -37,8 +39,10 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
         case FesqlConfig.configMode => FesqlConfig.mode = v.asInstanceOf[String]
         case FesqlConfig.configPartitions => FesqlConfig.paritions = v.toInt
         case FesqlConfig.configTimeZone => FesqlConfig.timeZone = v.asInstanceOf[String]
+        case _ => ""
       }
     }
+//    println(FesqlConfig.mode)
   }
 
   def plan(sql: String, tableDict: Map[String, DataFrame]): SparkInstance = {

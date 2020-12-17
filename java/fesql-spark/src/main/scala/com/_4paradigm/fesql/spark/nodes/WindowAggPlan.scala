@@ -13,7 +13,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Column, DataFrame, Row, functions}
 import org.apache.spark.sql.types._
 import org.slf4j.LoggerFactory
-
+import scala.collection.JavaConverters._
 import scala.collection.{JavaConverters, mutable}
 
 
@@ -172,7 +172,7 @@ object WindowAggPlan {
         val arr = row.toSeq.toArray
         var arrays = Seq(row)
         val value = arr(tag_index)
-        //      System.out.println(String.format("value = %d, keys = %s, %s ts = %d", value.asInstanceOf[Int], arr(0).asInstanceOf[String], arr(1).asInstanceOf[String], arr(2).asInstanceOf[Int]))
+//              System.out.println(String.format("value = %d, keys = %s, %s ts = %d", value.asInstanceOf[Int], arr(0).asInstanceOf[String], arr(1).asInstanceOf[String], arr(2).asInstanceOf[Int]))
         for (i <- 1 until value.asInstanceOf[Int]) {
 //        println("i = " + i)
         val temp_arr = row.toSeq.toArray
@@ -227,17 +227,23 @@ object WindowAggPlan {
     logger.info("skew main table report{}", reportTable)
     val quantile = math.pow(2, ctx.getConf(FesqlConfig.configSkewLevel, FesqlConfig.skewLevel))
     val analyzeSQL = SkewUtils.genPercentileSql(table, quantile.intValue(), keysName, ts, FesqlConfig.skewCntName)
+    logger.info(s"skew analyze sql : ${analyzeSQL}")
     input.createOrReplaceTempView(table)
     val reportDf = input.sqlContext.sql(analyzeSQL)
     reportDf.createOrReplaceTempView(reportTable)
     val keysMap = new util.HashMap[String, String]()
-    var keyScala = JavaConverters.asScalaIteratorConverter(keysName.iterator()).asScala.toSeq
-    keyScala.foreach(_ => keysMap.put(_, _))
+    var keyScala = keysName.asScala
+    keyScala.foreach(e => keysMap.put(e, e))
     val schemas = scala.collection.JavaConverters.seqAsJavaList(input.schema.fieldNames)
-    config.skewTagIdx = schemas.size() - 1
-    config.skewPositionIdx = schemas.size()
-    val tagSQL = SkewUtils.genPercentileTagSql(table, reportTable, quantile.intValue(), schemas, keysMap, ts, FesqlConfig.skewTag, FesqlConfig.skewPosition)
+
+
+    val tagSQL = SkewUtils.genPercentileTagSql(table, reportTable, quantile.intValue(), schemas, keysMap, ts, FesqlConfig.skewTag, FesqlConfig.skewPosition, FesqlConfig.skewCntName)
+    logger.info(s"skew tag sql : ${tagSQL}")
     var skewDf = input.sqlContext.sql(tagSQL)
+
+    config.skewTagIdx = skewDf.schema.fieldNames.length - 2
+    config.skewPositionIdx = skewDf.schema.fieldNames.length - 1
+
     skewDf = expansionData(skewDf, config)
 
     keyScala = keyScala :+ ctx.getConf(FesqlConfig.configSkewTag, FesqlConfig.skewTag)
@@ -303,7 +309,7 @@ object WindowAggPlan {
     val limitInputIter = if (config.limitCnt > 0) inputIter.take(config.limitCnt) else inputIter
 
     // todo isSkew need to be check
-    val resIter = if (FesqlConfig.mode == "Skew") {
+    val resIter = if (FesqlConfig.mode == FesqlConfig.skew) {
       limitInputIter.flatMap(row => {
         if (lastRow != null) {
           computer.checkPartition(row, lastRow)
@@ -361,13 +367,17 @@ object WindowAggPlan {
       val unionFlag = row.getBoolean(flagIdx)
       if (unionFlag) {
         // primary
-        val tag = row(config.skewTagIdx)
-        val position = row(config.skewPositionIdx)
-        if (tag == position) {
-          Some(computer.compute(row))
+        if (FesqlConfig.mode == FesqlConfig.skew) {
+          val tag = row(config.skewTagIdx)
+          val position = row(config.skewPositionIdx)
+          if (tag == position) {
+            Some(computer.compute(row))
+          } else {
+            computer.bufferRowOnly(row)
+            None
+          }
         } else {
-          computer.bufferRowOnly(row)
-          None
+          Some(computer.compute(row))
         }
       } else {
         // secondary

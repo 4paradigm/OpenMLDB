@@ -40,7 +40,7 @@ object Main {
     }
     val sparkSession = sessionBuilder.getOrCreate()
 
-    val sess = new FesqlSession(sparkSession, configs)
+    val sess = new FesqlSession(sparkSession)
 
     logger.info("Resolve input tables...")
     val tables = mutable.HashMap[String, DataFrame]()

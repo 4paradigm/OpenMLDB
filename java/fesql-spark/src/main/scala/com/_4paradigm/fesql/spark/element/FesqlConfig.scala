@@ -31,7 +31,7 @@ object FesqlConfig {
   var timeZone = "Asia/Shanghai"
   // 默认normal模式
   // 如果需要针对数据倾斜优化，就要给出 skew
-  var mode = "skew"
+  var mode = "normal"
   // ================================================
   // skew mode
   // 数据倾斜因子，如果某个key占总数据量比例一半，那么认为需要优化。范围是0 ~ 1
@@ -40,11 +40,11 @@ object FesqlConfig {
   var skewLevel: Int = 1
   var skewCnt: Int = 100
   // 条数字段名
-  var skewCntName = "key_cnt_wzx"
+  var skewCntName = "key_cnt_4paradigm"
   // tag字段名
-  var skewTag = "tag_wzx"
+  var skewTag = "tag_4paradigm"
   // position字段名
-  var skewPosition = "position_wzx"
+  var skewPosition = "position_4paradigm"
   // ================================================
   // 常量区
   val skew = "skew"
