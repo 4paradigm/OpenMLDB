@@ -264,7 +264,7 @@ MemTableHandler::MemTableHandler(const std::string& table_name,
       table_(),
       order_type_(kNoneOrder) {}
 void MemTableHandler::AddRow(const Row& row) { table_.push_back(row); }
-void MemTableHandler::Reserve(const size_t size) { table_.reserve(size); }
+void MemTableHandler::Resize(const size_t size) { table_.resize(size); }
 bool MemTableHandler::SetRow(const size_t idx, const Row& row) {
     if (idx >= table_.size()) {
         return false;

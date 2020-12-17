@@ -1562,7 +1562,7 @@ Row JoinGenerator::RowLastJoinDropLeftSlices(
     const Row& left_row, std::shared_ptr<DataHandler> right) {
     Row joined = RowLastJoin(left_row, right);
     Row right_row(joined.GetSlice(left_slices_));
-    for (size_t offset = 0; offset < right_slices_; offset++) {
+    for (size_t offset = 1; offset < right_slices_; offset++) {
         right_row.Append(joined.GetSlice(left_slices_ + offset));
     }
     return right_row;

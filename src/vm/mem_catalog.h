@@ -173,7 +173,7 @@ class MemTableHandler : public TableHandler {
     }
 
  protected:
-    void Reserve(const size_t size);
+    void Resize(const size_t size);
     bool SetRow(const size_t idx, const Row& row);
     const std::string table_name_;
     const std::string db_;
