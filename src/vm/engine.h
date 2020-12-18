@@ -442,6 +442,7 @@ class LocalTablet : public Tablet {
         return std::make_shared<LocalTabletTableHandler>(task_id, session,
                                                          in_rows);
     }
+    const std::string& GetName() const { return "LocalTablet"; }
 
  private:
     vm::Engine* engine_;

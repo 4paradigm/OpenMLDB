@@ -304,6 +304,7 @@ class Tablet {
  public:
     Tablet() {}
     virtual ~Tablet() {}
+    virtual const std::string& GetName() const = 0;
     virtual std::shared_ptr<RowHandler> SubQuery(uint32_t task_id,
                                                  const std::string& db,
                                                  const std::string& sql,

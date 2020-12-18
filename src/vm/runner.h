@@ -1209,11 +1209,6 @@ class RunnerContext {
     std::map<int64_t, std::shared_ptr<DataHandler>> cache_;
     std::map<int64_t, std::shared_ptr<DataHandlerList>> batch_cache_;
 };
-
-class LocalTabletAccesser : public Tablet {
- public:
-    LocalTabletAccesser() {}
-};
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_RUNNER_H_
