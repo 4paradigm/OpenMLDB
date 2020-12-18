@@ -397,8 +397,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 case node::kJoinTypeConcat: {
                     auto runner = new ConcatRunner(id_++, node->schemas_ctx(),
                                                    op->GetLimitCnt());
-                    ClusterTask task =
-                        BuildProxyRunnerForJoinedWindow(runner, left, right);
+                    ClusterTask task = BuildProxyRunnerForConcatedProxyNode(
+                        runner, left, right);
                     if (task.IsValid()) {
                         return task;
                     }
@@ -588,73 +588,14 @@ ClusterTask RunnerBuilder::BuildProxyRunner(
     }
     return task;
 }
-ClusterTask RunnerBuilder::TryToReduceSameProxy(Runner* runner,
-                                                ProxyRequestRunner* left,
-                                                Runner* right) {
-    //    if (left == right) {
-    //        //
-    //    }
-    //
-    //
-    //    auto right_runner = right;
-    //    while (!right_runner->GetProducers().size()) {
-    //        auto right_child = right_runner->GetProducers()[0];
-    //        if (left == right_child) {
-    //            auto left_root =
-    //                this->cluster_job_
-    //                    .GetTask(dynamic_cast<ProxyRequestRunner*>(left)
-    //                                 ->task_id())
-    //                    .GetRoot();
-    //            right_runner->SetProducer(0, left_root);
-    //            runner->AddProducer(left_root);
-    //            runner->AddProducer(right);
-    //            auto remote_task = left;
-    //            remote_task.SetRoot(runner);
-    //            remote_task.SetIndexKey(index_key);
-    //            auto remote_task_id = cluster_job_.AddTask(remote_task);
-    //            if (-1 == remote_task_id) {
-    //                LOG(WARNING) << "fail to add remote task id";
-    //                return ClusterTask();
-    //            }
-    //
-    //        } else if (Runner::IsProxyRunner(right_child->type_)) {
-    //            right_runner = right_child;
-    //            right_child =
-    //                this->cluster_job_
-    //                    .GetTask(dynamic_cast<ProxyRequestRunner*>(right_child)
-    //                                 ->task_id())
-    //                    .GetRoot();
-    //        } else {
-    //            right_runner = right_child;
-    //            right_child = right_runner->GetProducers()[0];
-    //        }
-    //    }
-    //    {
-    //        runner->AddProducer(left);
-    //        runner->AddProducer(right);
-    //        task.SetRoot(runner);
-    //        return task;
-    //    }
-    //    else {
-    //        auto remote_task = left_task;
-    //        remote_task.SetRoot(runner);
-    //        auto remote_task_id = cluster_job_.AddTask(remote_task);
-    //        if (-1 == remote_task_id) {
-    //            LOG(WARNING) << "fail to add remote task id";
-    //            return ClusterTask();
-    //        }
-    //        auto proxy_runner = nm_->RegisterNode(
-    //            new ProxyRequestRunner(id_++,
-    //            static_cast<uint32_t>(remote_task_id),
-    //                                   runner->output_schemas()));
-    //        proxy_runner->AddProducer(left);
-    //        return ClusterTask(proxy_runner);
-    //    }
-    //    return ClusterTask();
-}
-ClusterTask RunnerBuilder::BuildProxyRunnerForJoinedWindow(ConcatRunner* runner,
-                                                           Runner* left,
-                                                           Runner* right) {
+// build proxy for special structure
+// concat_node
+//      +left_proxy_node
+//      +right_proxy_node
+//         +simple_project
+//              +left_proxy_node
+ClusterTask RunnerBuilder::BuildProxyRunnerForConcatedProxyNode(
+    ConcatRunner* runner, Runner* left, Runner* right) {
     ClusterTask empty_task;
     // optimize special physical structure
     if (!Runner::IsProxyRunner(left->type_) ||
@@ -663,8 +604,8 @@ ClusterTask RunnerBuilder::BuildProxyRunnerForJoinedWindow(ConcatRunner* runner,
     }
     auto left_proxy_task = cluster_job_.GetTask(
         dynamic_cast<ProxyRequestRunner*>(left)->task_id());
-    auto left_proxy_root = left_proxy_task.GetRoot();
-    if (nullptr == left_proxy_root) {
+    auto left_task_root = left_proxy_task.GetRoot();
+    if (nullptr == left_task_root) {
         return empty_task;
     }
 
@@ -679,12 +620,31 @@ ClusterTask RunnerBuilder::BuildProxyRunnerForJoinedWindow(ConcatRunner* runner,
         simple_project->need_cache()) {
         return empty_task;
     }
-    auto right_proxy_node = simple_project->GetProducers()[0];
-    // ProxyNode
-    if (right_proxy_node = left) {
-        simple_project->SetProducer(0, left_proxy_root);
-        runner->AddProducer(left_proxy_root);
-        runner->AddProducer(right);
+    if (simple_project->GetProducers()[0] == left) {
+        // if simple_project child == left
+        // try to reduce 2 left_proxy_node, and create new proxy node
+        // concat_node[task of new_proxy]
+        //      + left_task_root
+        //      + new_right_proxy
+        //          + new_simple_project
+        //              + left_task_root
+
+        // new simple project using left_proxy_root as producer
+        auto new_simple_project = nm_->RegisterNode(new SimpleProjectRunner(
+            id_++, simple_project->output_schemas(), simple_project->limit_cnt_,
+            dynamic_cast<SimpleProjectRunner*>(simple_project)->project_gen_));
+        new_simple_project->AddProducer(left_task_root);
+
+        // new right proxy runner
+        // copy task id and output schema from old right
+        auto new_right = nm_->RegisterNode(new ProxyRequestRunner(
+            id_++, dynamic_cast<ProxyRequestRunner*>(right)->task_id(),
+            right->output_schemas()));
+
+        new_right->AddProducer(new_simple_project);
+
+        runner->AddProducer(left_task_root);
+        runner->AddProducer(new_right);
         auto remote_task = left_proxy_task;
         remote_task.SetRoot(runner);
         auto remote_task_id = cluster_job_.AddTask(remote_task);
