@@ -2037,7 +2037,8 @@ void TabletImpl::ProcessBatchRequestQuery(const rtidb::api::SQLBatchRequestQuery
         return;
     }
     size_t input_row_num = request->non_common_rows().size();
-    size_t common_column_num = compile_info->get_sql_context().batch_request_info.common_column_indices.size();
+    const auto& batch_request_info = compile_info->get_sql_context().batch_request_info;
+    size_t common_column_num = batch_request_info.common_column_indices.size();
     std::vector<::fesql::codec::Row> input_rows(input_row_num);
     if (common_column_num > 0 &&
         common_column_num < static_cast<size_t>(session.GetRequestSchema().size())) {
@@ -2067,18 +2068,46 @@ void TabletImpl::ProcessBatchRequestQuery(const rtidb::api::SQLBatchRequestQuery
     }
 
     // fill output data
-    for (auto& output_row : output_rows) {
-        if (output_row.GetRowPtrCnt() != 1) {
-            response->set_msg("illegal row ptrs: expect 1");
+    auto& output_common_indices = batch_request_info.output_common_column_indices;
+    bool has_common_slice = !output_common_indices.empty() &&
+                            output_common_indices.size() < session.GetSchema().size();
+    if (has_common_slice && !output_rows.empty()) {
+        const auto& first_row = output_rows[0];
+        if (first_row.GetRowPtrCnt() != 2) {
+            response->set_msg("illegal row ptrs: expect 2");
             response->set_code(::rtidb::base::kSQLRunError);
-            LOG(WARNING) << "illegal row ptrs: expect 1";
+            LOG(WARNING) << "illegal row ptrs: expect 2";
             return;
         }
-        buf.append(output_row.buf(0), output_row.size(0));
-        response->add_row_sizes(output_row.size(0));
+        buf.append(first_row.buf(0), first_row.size(0));
+        response->add_row_sizes(first_row.size(0));
+    }
+    for (auto& output_row : output_rows) {
+        if (has_common_slice) {
+            if (output_row.GetRowPtrCnt() != 2) {
+                response->set_msg("illegal row ptrs: expect 2");
+                response->set_code(::rtidb::base::kSQLRunError);
+                LOG(WARNING) << "illegal row ptrs: expect 2";
+                return;
+            }
+            buf.append(output_row.buf(1), output_row.size(1));
+            response->add_row_sizes(output_row.size(1));
+        } else {
+            if (output_row.GetRowPtrCnt() != 1) {
+                response->set_msg("illegal row ptrs: expect 1");
+                response->set_code(::rtidb::base::kSQLRunError);
+                LOG(WARNING) << "illegal row ptrs: expect 1";
+                return;
+            }
+            buf.append(output_row.buf(0), output_row.size(0));
+            response->add_row_sizes(output_row.size(0));
+        }
     }
 
     // fill response
+    for (size_t idx : output_common_indices) {
+        response->add_common_column_indices(idx);
+    }
     response->set_schema(session.GetEncodedSchema());
     response->set_count(output_rows.size());
     response->set_code(::rtidb::base::kOk);

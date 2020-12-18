@@ -98,6 +98,7 @@ class SQLBatchRequestResultSet : public ::fesql::sdk::ResultSet {
     ::fesql::codec::Schema common_schema_;
     ::fesql::codec::Schema non_common_schema_;
 
+    size_t common_buf_size_ = 0;
     butil::IOBuf common_buf_;
     std::shared_ptr<brpc::Controller> cntl_;
 };
