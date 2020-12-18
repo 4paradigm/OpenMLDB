@@ -141,6 +141,7 @@ AsyncTablesHandler::AsyncTablesHandler()
       posinfos_(),
       handlers_() {}
 
+
 std::unique_ptr<fesql::vm::RowIterator> AsyncTablesHandler::GetIterator() {
     if (status_.isRunning()) {
         SyncAllTableHandlers();
@@ -235,13 +236,18 @@ std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t tas
                                                                     const std::string& sql,
                                                                     const std::vector<::fesql::codec::Row>& row,
                                                                     const bool is_procedure, const bool is_debug) {
-    DLOG(INFO) << "SubQuery batch request, taskid: " << task_id << " is_procedure=" << is_procedure;
+    DLOG(INFO) << "SubQuery batch request, taskid=" << task_id << ", is_procedure=" << is_procedure;
     auto client = GetClient();
     if (!client) {
         return std::make_shared<fesql::vm::ErrorTableHandler>(::fesql::common::kRpcError, "get client failed");
     }
     ::rtidb::api::SQLBatchRequestQueryRequest request;
-    request.set_sql(sql);
+    if (is_procedure) {
+        request.set_sp_name(sql);
+    } else {
+        request.set_sql(sql);
+    }
+    request.set_is_procedure(is_procedure);
     request.set_db(db);
     request.set_task_id(task_id);
     request.set_is_debug(is_debug);
@@ -264,7 +270,8 @@ std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t tas
 std::shared_ptr<fesql::vm::RowHandler> TabletsAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                  const std::string& sql, const fesql::codec::Row& row,
                                                                  const bool is_procedure, const bool is_debug) {
-    return std::make_shared<::fesql::vm::ErrorRowHandler>(::fesql::common::kRpcError, "Unsupport SubQuery");
+    return std::make_shared<::fesql::vm::ErrorRowHandler>(::fesql::common::kRpcError,
+                                                          "TabletsAccessor Unsupport SubQuery with request");
 }
 std::shared_ptr<fesql::vm::TableHandler> TabletsAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                    const std::string& sql,
@@ -276,11 +283,9 @@ std::shared_ptr<fesql::vm::TableHandler> TabletsAccessor::SubQuery(uint32_t task
         accessors_rows[assign_accessor_idxs_[idx]].push_back(rows[idx]);
     }
     for (size_t idx = 0; idx < accessors_.size(); idx++) {
-        DLOG(INFO) << "AddAsyncRpcHandler posinfos_[idx].size()" << posinfos_[idx].size();
         tables_handler->AddAsyncRpcHandler(
             accessors_[idx]->SubQuery(task_id, db, sql, accessors_rows[idx], is_procedure, is_debug), posinfos_[idx]);
     }
-    DLOG(INFO) << "row cnt " << rows_cnt_;
     return tables_handler;
 }
 PartitionClientManager::PartitionClientManager(uint32_t pid, const std::shared_ptr<TabletAccessor>& leader,

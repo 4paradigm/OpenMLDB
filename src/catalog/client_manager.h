@@ -61,16 +61,26 @@ class AsyncTableHandler : public ::fesql::vm::MemTableHandler {
  public:
     AsyncTableHandler(rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback);
     ~AsyncTableHandler() {}
+    virtual const uint64_t GetCount() override {
+        if (status_.isRunning()) {
+            SyncRpcResponse();
+        }
+        return fesql::vm::MemTableHandler::GetCount();
+    }
+    fesql::codec::Row At(uint64_t pos) override {
+        if (status_.isRunning()) {
+            SyncRpcResponse();
+        }
+        return fesql::vm::MemTableHandler::At(pos);
+    }
     std::unique_ptr<fesql::vm::RowIterator> GetIterator();
     fesql::vm::RowIterator* GetRawIterator();
-    std::unique_ptr<fesql::vm::WindowIterator> GetWindowIterator(
-        const std::string& idx_name) {
+    std::unique_ptr<fesql::vm::WindowIterator> GetWindowIterator(const std::string& idx_name) {
         return std::unique_ptr<fesql::vm::WindowIterator>();
     }
-    const std::string GetHandlerTypeName() override {
-        return "AsyncTableHandler";
-    }
+    const std::string GetHandlerTypeName() override { return "AsyncTableHandler"; }
     virtual fesql::base::Status GetStatus() { return status_; }
+
  private:
     void SyncRpcResponse();
     fesql::base::Status status_;
@@ -80,27 +90,36 @@ class AsyncTablesHandler : public ::fesql::vm::MemTableHandler {
  public:
     AsyncTablesHandler();
     ~AsyncTablesHandler() {}
-    void AddAsyncRpcHandler(std::shared_ptr<TableHandler> handler,
-                            std::vector<size_t>& pos_info) {
+    void AddAsyncRpcHandler(std::shared_ptr<TableHandler> handler, std::vector<size_t>& pos_info) {
         handlers_.push_back(handler);
         posinfos_.push_back(pos_info);
         rows_cnt_ += pos_info.size();
     }
+    virtual const uint64_t GetCount() override {
+        if (status_.isRunning()) {
+            SyncAllTableHandlers();
+        }
+        return fesql::vm::MemTableHandler::GetCount();
+    }
+    fesql::codec::Row At(uint64_t pos) override {
+        if (status_.isRunning()) {
+            SyncAllTableHandlers();
+        }
+        return fesql::vm::MemTableHandler::At(pos);
+    }
     std::unique_ptr<fesql::vm::RowIterator> GetIterator();
     fesql::vm::RowIterator* GetRawIterator();
-    std::unique_ptr<fesql::vm::WindowIterator> GetWindowIterator(
-        const std::string& idx_name) {
+    std::unique_ptr<fesql::vm::WindowIterator> GetWindowIterator(const std::string& idx_name) {
         return std::unique_ptr<fesql::vm::WindowIterator>();
     }
-    const std::string GetHandlerTypeName() override {
-        return "AsyncTableHandler";
-    }
+    const std::string GetHandlerTypeName() override { return "AsyncTableHandler"; }
     virtual fesql::base::Status GetStatus() { return status_; }
+
  private:
     bool SyncAllTableHandlers();
     fesql::base::Status status_;
     size_t rows_cnt_;
-    std::vector<std::vector<size_t >> posinfos_;
+    std::vector<std::vector<size_t>> posinfos_;
     std::vector<std::shared_ptr<TableHandler>> handlers_;
 };
 
@@ -130,30 +149,33 @@ class TabletAccessor : public ::fesql::vm::Tablet {
     }
 
     std::shared_ptr<::fesql::vm::RowHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
-                                                      const ::fesql::codec::Row& row,
-                                                      const bool is_procedure,
+                                                      const ::fesql::codec::Row& row, const bool is_procedure,
                                                       const bool is_debug) override;
 
     std::shared_ptr<::fesql::vm::TableHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
-                                                      const std::vector<::fesql::codec::Row>& row,
-                                                      const bool is_procedure,
-                                                      const bool is_debug) override;
+                                                        const std::vector<::fesql::codec::Row>& row,
+                                                        const bool is_procedure, const bool is_debug) override;
     const std::string& GetName() const { return name_; }
+
  private:
     std::string name_;
     std::shared_ptr<::rtidb::client::TabletClient> tablet_client_;
 };
 class TabletsAccessor : public ::fesql::vm::Tablet {
  public:
-    TabletsAccessor(): rows_cnt_(0) {}
+    TabletsAccessor() : rows_cnt_(0) {}
     ~TabletsAccessor() {}
     void AddTabletAccessor(std::shared_ptr<TabletAccessor> accessor) {
+        if (!accessor) {
+            LOG(WARNING) << "Fail to add null tablet accessor";
+            return;
+        }
         auto iter = name_idx_map_.find(accessor->GetName());
         if (iter == name_idx_map_.cend()) {
             accessors_.push_back(accessor);
-            name_idx_map_.insert(std::make_pair(accessor->GetName(), accessors_.size()-1));
+            name_idx_map_.insert(std::make_pair(accessor->GetName(), accessors_.size() - 1));
             posinfos_.push_back(std::vector<size_t>({rows_cnt_}));
-            assign_accessor_idxs_.push_back(accessors_.size()-1);
+            assign_accessor_idxs_.push_back(accessors_.size() - 1);
         } else {
             posinfos_[iter->second].push_back(rows_cnt_);
             assign_accessor_idxs_.push_back(iter->second);
@@ -170,7 +192,7 @@ class TabletsAccessor : public ::fesql::vm::Tablet {
  private:
     size_t rows_cnt_;
     std::vector<std::shared_ptr<Tablet>> accessors_;
-    std::vector<size_t > assign_accessor_idxs_;
+    std::vector<size_t> assign_accessor_idxs_;
     std::vector<std::vector<size_t>> posinfos_;
     std::map<std::string, size_t> name_idx_map_;
 };
@@ -232,9 +254,14 @@ class TableClientManager {
     }
     std::shared_ptr<TabletsAccessor> GetTablet(std::vector<uint32_t> pids) const {
         std::shared_ptr<TabletsAccessor> tablets_accessor = std::shared_ptr<TabletsAccessor>(new TabletsAccessor());
-        for(size_t idx = 0; idx <  pids.size(); idx++) {
+        for (size_t idx = 0; idx < pids.size(); idx++) {
             auto partition_manager = GetPartitionClientManager(pids[idx]);
             if (partition_manager) {
+                auto leader = partition_manager->GetLeader();
+                if (!leader) {
+                    LOG(WARNING) << "fail to get TabletsAccessor, null tablet for pid " << pids[idx];
+                    return std::shared_ptr<TabletsAccessor>();
+                }
                 tablets_accessor->AddTabletAccessor(partition_manager->GetLeader());
             } else {
                 LOG(WARNING) << "fail to get tablet: pid " << pids[idx] << " not exist";
