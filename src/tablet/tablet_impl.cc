@@ -89,6 +89,7 @@ DECLARE_uint32(snapshot_ttl_time);
 DECLARE_uint32(snapshot_ttl_check_interval);
 DECLARE_uint32(put_slow_log_threshold);
 DECLARE_uint32(query_slow_log_threshold);
+DECLARE_int32(snapshot_pool_size);
 
 namespace rtidb {
 namespace tablet {
@@ -106,7 +107,7 @@ TabletImpl::TabletImpl()
       keep_alive_pool_(1),
       task_pool_(FLAGS_task_pool_size),
       io_pool_(FLAGS_io_pool_size),
-      snapshot_pool_(1),
+      snapshot_pool_(FLAGS_snapshot_pool_size),
       server_(NULL),
       mode_root_paths_(),
       mode_recycle_root_paths_(),
