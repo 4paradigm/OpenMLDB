@@ -589,9 +589,10 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     void ProcessBatchRequestQuery(const rtidb::api::SQLBatchRequestQueryRequest* request,
                                               rtidb::api::SQLBatchRequestQueryResponse* response,
                                               butil::IOBuf& buf);  // NOLINT
+    
  private:
     void RunRequestQuery(const rtidb::api::QueryRequest& request,
-        ::fesql::vm::RequestRunSession& session, // NOLINT 
+        ::fesql::vm::RequestRunSession& session, // NOLINT
         rtidb::api::QueryResponse& response, butil::IOBuf& buf); // NOLINT
 
     void CreateProcedure(const std::shared_ptr<fesql::sdk::ProcedureInfo> sp_info);

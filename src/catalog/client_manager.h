@@ -23,6 +23,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <unordered_map>
 #include <vector>
 
@@ -59,9 +60,9 @@ class TabletRowHandler : public ::fesql::vm::RowHandler {
 };
 class AsyncTableHandler : public ::fesql::vm::MemTableHandler {
  public:
-    AsyncTableHandler(rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback);
+    explicit AsyncTableHandler(rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback);
     ~AsyncTableHandler() {}
-    virtual const uint64_t GetCount() override {
+    const uint64_t GetCount() override {
         if (status_.isRunning()) {
             SyncRpcResponse();
         }
@@ -90,12 +91,12 @@ class AsyncTablesHandler : public ::fesql::vm::MemTableHandler {
  public:
     AsyncTablesHandler();
     ~AsyncTablesHandler() {}
-    void AddAsyncRpcHandler(std::shared_ptr<TableHandler> handler, std::vector<size_t>& pos_info) {
+    void AddAsyncRpcHandler(std::shared_ptr<TableHandler> handler, const std::vector<size_t>& pos_info) {
         handlers_.push_back(handler);
         posinfos_.push_back(pos_info);
         rows_cnt_ += pos_info.size();
     }
-    virtual const uint64_t GetCount() override {
+    const uint64_t GetCount() override {
         if (status_.isRunning()) {
             SyncAllTableHandlers();
         }
