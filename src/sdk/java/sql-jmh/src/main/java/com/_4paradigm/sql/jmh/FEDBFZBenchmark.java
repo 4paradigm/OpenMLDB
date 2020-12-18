@@ -38,9 +38,6 @@ import com._4paradigm.featuredb.driver.DBMSClient;
 public class FEDBFZBenchmark {
     private SqlExecutor executor;
     private String db;
-    private String jsonUrl = "http://172.27.128.37:8999/fz_ddl/constant_column.json.txt";
-    private String scriptUrl = "http://172.27.128.37:8999/fz_ddl/constant_column.feql.txt";
-    private String relationUrl = "http://172.27.128.37:8999/fz_ddl/constant_column.relation.txt";
     private int pkNum = 1;
     //@Param({"500", "1000", "2000"})
     private int windowNum = 1000;
@@ -83,9 +80,9 @@ public class FEDBFZBenchmark {
     }
 
     public void createTable() {
-        String json = Util.getContent(jsonUrl).trim();
-        script = Util.getContent(scriptUrl).trim();
-        Relation relation = new Relation(Util.getContent(relationUrl));
+        String json = Util.getContent(BenchmarkConfig.jsonUrl).trim();
+        script = Util.getContent(BenchmarkConfig.scriptUrl).trim();
+        Relation relation = new Relation(Util.getContent(BenchmarkConfig.relationUrl));
         mainTable = relation.getMainTable();
         try {
             dbmsClient.createNs(nsName);

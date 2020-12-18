@@ -677,24 +677,7 @@ std::shared_ptr<::rtidb::client::TabletClient> SQLClusterRouter::GetTabletClient
         }
     }
     if (!tablet) {
-        std::set<std::string> tables;
-        ::fesql::base::Status status;
-        if (!engine_->GetDependentTables(sql, db, ::fesql::vm::kBatchMode, &tables, status)) {
-            LOG(WARNING) << "fail to get tablet: " << status.msg;
-            return std::shared_ptr<::rtidb::client::TabletClient>();
-        }
-
-        // pick one tablet for const query sql
-        if (tables.empty()) {
-            auto tablet = cluster_sdk_->GetTablet();
-            if (!tablet) {
-                LOG(WARNING) << "fail to pick a tablet";
-                return std::shared_ptr<::rtidb::client::TabletClient>();
-            }
-            return tablet->GetClient();
-        }
-        const std::string& name = *tables.begin();
-        tablet = cluster_sdk_->GetTablet(db, name);
+        tablet = cluster_sdk_->GetTablet();
     }
     if (!tablet) {
         LOG(WARNING) << "fail to get tablet";

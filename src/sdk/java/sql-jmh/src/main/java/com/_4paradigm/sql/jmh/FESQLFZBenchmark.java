@@ -26,11 +26,8 @@ import java.util.concurrent.TimeUnit;
 public class FESQLFZBenchmark {
     private SqlExecutor executor;
     private String db;
-    private String ddlUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.txt.ddl.txt";
-    private String scriptUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.txt";
-    private String relationUrl = "http://172.27.128.37:8999/fz_ddl/batch_request100680.relation.txt";
     private int pkNum = 1;
-    //@Param({"500", "1000", "2000"})
+    @Param({"500", "1000", "2000"})
     private int windowNum = 2000;
     private Map<String, TableInfo> tableMap;
     private String script;
@@ -52,11 +49,11 @@ public class FESQLFZBenchmark {
     }
 
     public void init() {
-        String rawScript = Util.getContent(scriptUrl);
+        String rawScript = Util.getContent(BenchmarkConfig.scriptUrl);
         script = rawScript.trim().replace("\n", " ");
-        Relation relation = new Relation(Util.getContent(relationUrl));
+        Relation relation = new Relation(Util.getContent(BenchmarkConfig.relationUrl));
         mainTable = relation.getMainTable();
-        String ddl = Util.getContent(ddlUrl);
+        String ddl = Util.getContent(BenchmarkConfig.ddlUrl);
         String[] arr = ddl.split(";");
         for (String item : arr) {
             item = item.trim().replace("\n", "");
