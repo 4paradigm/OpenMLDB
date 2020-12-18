@@ -979,15 +979,13 @@ class RouteInfo {
     RouteInfo(const std::string index,
               std::shared_ptr<TableHandler> table_handler)
         : index_(index), index_key_(), table_handler_(table_handler) {}
-    RouteInfo(const std::string index, const Key& index_key, Runner* input,
-              std::shared_ptr<TableHandler> table_handler)
-        : index_(index),
-          index_key_(),
-          input_(input),
-          table_handler_(table_handler) {}
     ~RouteInfo() {}
     const bool IsValid() const {
-        return nullptr != input_ && index_key_.ValidKey();
+        return table_handler_ && nullptr != input_ && !index_.empty() &&
+               index_key_.ValidKey();
+    }
+    const bool IsCluster() const {
+        return table_handler_ && nullptr != input_ && !index_.empty();
     }
     static const bool EqualWith(const RouteInfo& info1,
                                 const RouteInfo& info2) {
@@ -1046,7 +1044,7 @@ class ClusterTask {
     void SetInput(Runner* input) { route_info_.input_ = input; }
     const bool IsValid() const { return nullptr != root_; }
 
-    const bool IsClusterTask() const { return route_info_.IsValid(); }
+    const bool IsClusterTask() const { return route_info_.IsCluster(); }
     const std::string& index() { return route_info_.index_; }
     std::shared_ptr<TableHandler> table_handler() {
         return route_info_.table_handler_;
