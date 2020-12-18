@@ -51,6 +51,7 @@ struct IndexSt {
 typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
+
 class PartitionHandler;
 class TableHandler;
 class RowHandler;
@@ -90,9 +91,8 @@ class DataHandlerVector : public DataHandlerList {
     }
     size_t GetSize() { return data_handlers_.size(); }
     std::shared_ptr<DataHandler> Get(size_t idx) {
-        return idx >= 0 && idx < data_handlers_.size()
-                   ? data_handlers_[idx]
-                   : std::shared_ptr<DataHandler>();
+        return idx < data_handlers_.size() ? data_handlers_[idx]
+                                           : std::shared_ptr<DataHandler>();
     }
 
  private:
@@ -105,8 +105,7 @@ class DataHandlerRepeater : public DataHandlerList {
     ~DataHandlerRepeater() {}
     size_t GetSize() { return size_; }
     std::shared_ptr<DataHandler> Get(size_t idx) {
-        return idx >= 0 && idx < size_ ? data_handler_
-                                       : std::shared_ptr<DataHandler>();
+        return idx < size_ ? data_handler_ : std::shared_ptr<DataHandler>();
     }
 
  private:

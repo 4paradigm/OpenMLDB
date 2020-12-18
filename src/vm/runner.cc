@@ -1295,57 +1295,82 @@ std::shared_ptr<DataHandler> LastJoinRunner::Run(
         LOG(WARNING) << "fail to run last join: left|right input is empty";
         return fail_ptr;
     }
-    if (join_gen_.right_group_gen_.Valid()) {
-        right = join_gen_.right_group_gen_.Partition(right);
-    }
     if (!right) {
         LOG(WARNING) << "fail to run last join: right partition is empty";
         return fail_ptr;
     }
 
-    if (kTableHandler == left->GetHanlderType()) {
-        auto left_table = std::dynamic_pointer_cast<TableHandler>(left);
+    switch (left->GetHanlderType()) {
+        case kTableHandler: {
+            if (join_gen_.right_group_gen_.Valid()) {
+                right = join_gen_.right_group_gen_.Partition(right);
+            }
+            if (!right) {
+                LOG(WARNING)
+                    << "fail to run last join: right partition is empty";
+                return fail_ptr;
+            }
+            auto left_table = std::dynamic_pointer_cast<TableHandler>(left);
 
-        auto output_table =
-            std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
-        output_table->SetOrderType(left_table->GetOrderType());
-        if (kPartitionHandler == right->GetHanlderType()) {
-            if (!join_gen_.TableJoin(
-                    left_table,
-                    std::dynamic_pointer_cast<PartitionHandler>(right),
-                    output_table)) {
-                return fail_ptr;
+            auto output_table =
+                std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+            output_table->SetOrderType(left_table->GetOrderType());
+            if (kPartitionHandler == right->GetHanlderType()) {
+                if (!join_gen_.TableJoin(
+                        left_table,
+                        std::dynamic_pointer_cast<PartitionHandler>(right),
+                        output_table)) {
+                    return fail_ptr;
+                }
+            } else {
+                if (!join_gen_.TableJoin(
+                        left_table,
+                        std::dynamic_pointer_cast<TableHandler>(right),
+                        output_table)) {
+                    return fail_ptr;
+                }
             }
-        } else {
-            if (!join_gen_.TableJoin(
-                    left_table, std::dynamic_pointer_cast<TableHandler>(right),
-                    output_table)) {
-                return fail_ptr;
-            }
+            return output_table;
         }
-        return output_table;
-    } else {
-        auto output_partition =
-            std::shared_ptr<MemPartitionHandler>(new MemPartitionHandler());
-        auto left_partition = std::dynamic_pointer_cast<PartitionHandler>(left);
-        output_partition->SetOrderType(left_partition->GetOrderType());
-        if (kPartitionHandler == right->GetHanlderType()) {
-            if (!join_gen_.PartitionJoin(
-                    left_partition,
-                    std::dynamic_pointer_cast<PartitionHandler>(right),
-                    output_partition)) {
+        case kPartitionHandler: {
+            if (join_gen_.right_group_gen_.Valid()) {
+                right = join_gen_.right_group_gen_.Partition(right);
+            }
+            if (!right) {
+                LOG(WARNING)
+                    << "fail to run last join: right partition is empty";
                 return fail_ptr;
             }
+            auto output_partition =
+                std::shared_ptr<MemPartitionHandler>(new MemPartitionHandler());
+            auto left_partition =
+                std::dynamic_pointer_cast<PartitionHandler>(left);
+            output_partition->SetOrderType(left_partition->GetOrderType());
+            if (kPartitionHandler == right->GetHanlderType()) {
+                if (!join_gen_.PartitionJoin(
+                        left_partition,
+                        std::dynamic_pointer_cast<PartitionHandler>(right),
+                        output_partition)) {
+                    return fail_ptr;
+                }
 
-        } else {
-            if (!join_gen_.PartitionJoin(
-                    left_partition,
-                    std::dynamic_pointer_cast<TableHandler>(right),
-                    output_partition)) {
-                return fail_ptr;
+            } else {
+                if (!join_gen_.PartitionJoin(
+                        left_partition,
+                        std::dynamic_pointer_cast<TableHandler>(right),
+                        output_partition)) {
+                    return fail_ptr;
+                }
             }
+            return output_partition;
         }
-        return output_partition;
+        case kRowHandler: {
+            auto left_row = std::dynamic_pointer_cast<RowHandler>(left);
+            return std::make_shared<MemRowHandler>(
+                join_gen_.RowLastJoin(left_row->GetValue(), right));
+        }
+        default:
+            return fail_ptr;
     }
 }
 
@@ -1910,7 +1935,7 @@ void Runner::PrintData(std::ostringstream& oss,
                     t.add(std::to_string(iter->GetKey()));
                     for (size_t id = 0; id < row_view_list.size(); id++) {
                         RowView& row_view = row_view_list[id];
-                        row_view.Reset(row.buf(id));
+                        row_view.Reset(row.buf(id), row.size(id));
                         for (int idx = 0;
                              idx < schema_list->GetSchema(id)->size(); idx++) {
                             std::string str = row_view.GetAsString(idx);
@@ -1976,7 +2001,7 @@ void Runner::PrintData(std::ostringstream& oss,
                         t.add(std::to_string(segment_iter->GetKey()));
                         for (size_t id = 0; id < row_view_list.size(); id++) {
                             RowView& row_view = row_view_list[id];
-                            row_view.Reset(row.buf(id));
+                            row_view.Reset(row.buf(id), row.size(id));
                             for (int idx = 0;
                                  idx < schema_list->GetSchema(id)->size();
                                  idx++) {
@@ -2679,10 +2704,12 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
-                          : fn_schema_.Get(pos).type() == fesql::type::kDate
-                              ? std::to_string(row_view.GetDateUnsafe(pos))
-                              : row_view.GetAsString(pos);
+        std::string key =
+            row_view.IsNULL(pos)
+                ? codec::NONETOKEN
+                : fn_schema_.Get(pos).type() == fesql::type::kDate
+                      ? std::to_string(row_view.GetDateUnsafe(pos))
+                      : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -2702,10 +2729,12 @@ const std::string KeyGenerator::Gen(const Row& row) {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
-                          : fn_schema_.Get(pos).type() == fesql::type::kDate
-                              ? std::to_string(row_view.GetDateUnsafe(pos))
-                              : row_view.GetAsString(pos);
+        std::string key =
+            row_view.IsNULL(pos)
+                ? codec::NONETOKEN
+                : fn_schema_.Get(pos).type() == fesql::type::kDate
+                      ? std::to_string(row_view.GetDateUnsafe(pos))
+                      : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
