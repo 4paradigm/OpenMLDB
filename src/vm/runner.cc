@@ -964,6 +964,13 @@ std::shared_ptr<DataHandler> DataRunner::Run(
 }
 std::shared_ptr<DataHandlerList> DataRunner::BatchRequestRun(
     RunnerContext& ctx) {
+    if (need_cache_) {
+        auto cached = ctx.GetBatchCache(id_);
+        if (cached != nullptr) {
+            DLOG(INFO) << "RUNNER ID " << id_ << " HIT CACHE!";
+            return cached;
+        }
+    }
     auto res = std::shared_ptr<DataHandlerList>(
         new DataHandlerRepeater(data_handler_, ctx.GetRequestSize()));
 
@@ -974,6 +981,9 @@ std::shared_ptr<DataHandlerList> DataRunner::BatchRequestRun(
         Runner::PrintData(oss, output_schemas_, res->Get(0));
         LOG(INFO) << oss.str();
     }
+    if (need_cache_) {
+        ctx.SetBatchCache(id_, res);
+    }
     return res;
 }
 std::shared_ptr<DataHandler> RequestRunner::Run(
@@ -983,6 +993,13 @@ std::shared_ptr<DataHandler> RequestRunner::Run(
 }
 std::shared_ptr<DataHandlerList> RequestRunner::BatchRequestRun(
     RunnerContext& ctx) {
+    if (need_cache_) {
+        auto cached = ctx.GetBatchCache(id_);
+        if (cached != nullptr) {
+            DLOG(INFO) << "RUNNER ID " << id_ << " HIT CACHE!";
+            return cached;
+        }
+    }
     std::shared_ptr<DataHandlerVector> res =
         std::shared_ptr<DataHandlerVector>(new DataHandlerVector());
     for (size_t idx = 0; idx < ctx.GetRequestSize(); idx++) {
@@ -998,6 +1015,9 @@ std::shared_ptr<DataHandlerList> RequestRunner::BatchRequestRun(
             Runner::PrintData(oss, output_schemas_, res->Get(idx));
         }
         LOG(INFO) << oss.str();
+    }
+    if (need_cache_) {
+        ctx.SetBatchCache(id_, res);
     }
     return res;
 }
@@ -1839,13 +1859,14 @@ const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
 void Runner::PrintData(std::ostringstream& oss,
                        const vm::SchemasContext* schema_list,
                        std::shared_ptr<DataHandler> data) {
-    if (data) {
-        oss << data->GetHandlerTypeName() << " RESULT:\n";
-    }
     std::vector<RowView> row_view_list;
     ::fesql::base::TextTable t('-', '|', '+');
     // Add Header
-    t.add("Order");
+    if (data) {
+        t.add(data->GetHandlerTypeName());
+    } else {
+        t.add("EmptyDataHandler");
+    }
     for (size_t i = 0; i < schema_list->GetSchemaSourceSize(); ++i) {
         auto source = schema_list->GetSchemaSource(i);
         for (int j = 0; j < source->GetSchema()->size(); j++) {
@@ -1870,7 +1891,7 @@ void Runner::PrintData(std::ostringstream& oss,
     if (!data) {
         t.add("Empty set");
         t.endOfRow();
-        oss << t << std::endl;
+        oss << t;
         return;
     }
 
@@ -2025,7 +2046,7 @@ void Runner::PrintData(std::ostringstream& oss,
             oss << "Invalid Set";
         }
     }
-    oss << t << std::endl;
+    oss << t;
 }
 
 bool Runner::ExtractRows(std::shared_ptr<DataHandlerList> handlers,
