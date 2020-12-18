@@ -973,32 +973,65 @@ class ProxyRequestRunner : public Runner {
         const std::vector<Row>& rows);
     uint32_t task_id_;
 };
+class RouteInfo {
+ public:
+    RouteInfo() : index_(), index_key_(), table_handler_() {}
+    RouteInfo(const std::string index,
+              std::shared_ptr<TableHandler> table_handler)
+        : index_(index), index_key_(), table_handler_(table_handler) {}
+    RouteInfo(const std::string index, const Key& index_key, Runner* input,
+              std::shared_ptr<TableHandler> table_handler)
+        : index_(index),
+          index_key_(),
+          input_(input),
+          table_handler_(table_handler) {}
+    ~RouteInfo() {}
+    const bool IsValid() const {
+        return nullptr != input_ && index_key_.ValidKey();
+    }
+    const bool EqualWith(const RouteInfo& info1,
+                         const RouteInfo& info2) const {
+        return info1.input_ == info2.input_ &&
+               info1.table_handler_ == info2.table_handler_ &&
+               info1.index_ == info2.index_ &&
+               node::ExprEquals(info1.index_key_.keys_,
+                                info2.index_key_.keys_);
+    }
+
+    const std::string& ToString() const {
+        if (IsValid()) {
+            std::ostringstream oss;
+            oss << ", routing index = " << table_handler_->GetDatabase()
+                << "." << table_handler_->GetName() << "." << index_ << ", "
+                << index_key_.ToString();
+            return oss.str();
+        } else {
+            return "";
+        }
+    }
+    std::string index_;
+    Key index_key_;
+    Runner* input_;
+    std::shared_ptr<TableHandler> table_handler_;
+};
 
 // task info of cluster job
 // partitoin/index info
 // index key generator
 // request generator
 class ClusterTask {
+
  public:
-    ClusterTask()
-        : root_(nullptr), table_handler_(), index_(""), index_key_() {}
-    explicit ClusterTask(Runner* root)
-        : root_(root), table_handler_(), index_(""), index_key_() {}
+    ClusterTask() : root_(nullptr), route_info_() {}
+    explicit ClusterTask(Runner* root) : root_(root), route_info_() {}
     ClusterTask(Runner* root, const std::shared_ptr<TableHandler> table_handler,
                 std::string index)
-        : root_(root),
-          table_handler_(table_handler),
-          index_(index),
-          index_key_() {}
+        : root_(root), route_info_(index, table_handler) {}
+    ClusterTask(Runner* root, const RouteInfo& route_info)
+        : root_(root), route_info_(route_info) {}
     ~ClusterTask() {}
     void Print(std::ostream& output, const std::string& tab) const {
-        if (IsClusterTask()) {
-            output << ", partition index = " << table_handler_->GetDatabase()
-                   << "." << table_handler_->GetName() << "." << index_ << ", "
-                   << index_key_.ToString() << "\n";
-        } else {
-            output << "\n";
-        }
+        output << route_info_.ToString() << "\n";
         if (nullptr == root_) {
             output << tab << "NULL RUNNER\n";
         } else {
@@ -1008,19 +1041,32 @@ class ClusterTask {
     }
     Runner* GetRoot() const { return root_; }
     void SetRoot(Runner* root) { root_ = root; }
-    Key GetIndexKey() const { return index_key_; }
-    void SetIndexKey(const Key& key) { index_key_ = key; }
 
+    Runner* GetInput() const { return route_info_.input_; }
+    Key GetIndexKey() const { return route_info_.index_key_; }
+    void SetIndexKey(const Key& key) { route_info_.index_key_ = key; }
+    void SetInput(Runner* input) { route_info_.input_ = input; }
     const bool IsValid() const { return nullptr != root_; }
-    const bool IsClusterTask() const { return !index_.empty(); }
-    const std::string& index() { return index_; }
-    std::shared_ptr<TableHandler> table_handler() { return table_handler_; }
+
+    const bool IsClusterTask() const { return route_info_.IsValid(); }
+    const std::string& index() { return route_info_.index_; }
+    std::shared_ptr<TableHandler> table_handler() {
+        return route_info_.table_handler_;
+    }
+
+    // Cluster tasks with same input runners and index keys can be merged
+    const bool TaskCanBeMerge(const ClusterTask& task1,
+                              const ClusterTask& task2) {
+        return task1.route_info_.EqualWith(task2.route_info_);
+    }
+    const ClusterTask TaskMerge(Runner* root, const ClusterTask& task1,
+                                const ClusterTask& task2) {
+        return ClusterTask(root, task1.route_info_);
+    }
 
  private:
     Runner* root_;
-    std::shared_ptr<TableHandler> table_handler_;
-    std::string index_;
-    Key index_key_;
+    RouteInfo route_info_;
 };
 class ClusterJob {
  public:
