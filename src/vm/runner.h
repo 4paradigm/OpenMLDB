@@ -989,20 +989,19 @@ class RouteInfo {
     const bool IsValid() const {
         return nullptr != input_ && index_key_.ValidKey();
     }
-    const bool EqualWith(const RouteInfo& info1,
-                         const RouteInfo& info2) const {
+    static const bool EqualWith(const RouteInfo& info1,
+                                const RouteInfo& info2) {
         return info1.input_ == info2.input_ &&
                info1.table_handler_ == info2.table_handler_ &&
                info1.index_ == info2.index_ &&
-               node::ExprEquals(info1.index_key_.keys_,
-                                info2.index_key_.keys_);
+               node::ExprEquals(info1.index_key_.keys_, info2.index_key_.keys_);
     }
 
     const std::string& ToString() const {
         if (IsValid()) {
             std::ostringstream oss;
-            oss << ", routing index = " << table_handler_->GetDatabase()
-                << "." << table_handler_->GetName() << "." << index_ << ", "
+            oss << ", routing index = " << table_handler_->GetDatabase() << "."
+                << table_handler_->GetName() << "." << index_ << ", "
                 << index_key_.ToString();
             return oss.str();
         } else {
@@ -1020,7 +1019,6 @@ class RouteInfo {
 // index key generator
 // request generator
 class ClusterTask {
-
  public:
     ClusterTask() : root_(nullptr), route_info_() {}
     explicit ClusterTask(Runner* root) : root_(root), route_info_() {}
@@ -1057,7 +1055,7 @@ class ClusterTask {
     // Cluster tasks with same input runners and index keys can be merged
     const bool TaskCanBeMerge(const ClusterTask& task1,
                               const ClusterTask& task2) {
-        return task1.route_info_.EqualWith(task2.route_info_);
+        return RouteInfo::EqualWith(task1.route_info_, task2.route_info_);
     }
     const ClusterTask TaskMerge(Runner* root, const ClusterTask& task1,
                                 const ClusterTask& task2) {
