@@ -166,8 +166,8 @@ fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn, const Row row,
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();
     }
-    return Row(base::RefCountedSlice::CreateManaged(
-        out_buf, RowView::GetSize(out_buf)));
+    return Row(base::RefCountedSlice::CreateManaged(out_buf,
+                                                    RowView::GetSize(out_buf)));
 }
 
 fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
