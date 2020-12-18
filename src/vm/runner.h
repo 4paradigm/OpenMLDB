@@ -995,7 +995,7 @@ class RouteInfo {
                node::ExprEquals(info1.index_key_.keys_, info2.index_key_.keys_);
     }
 
-    const std::string& ToString() const {
+    const std::string ToString() const {
         if (IsValid()) {
             std::ostringstream oss;
             oss << ", routing index = " << table_handler_->GetDatabase() << "."
