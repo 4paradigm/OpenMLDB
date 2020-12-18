@@ -23,8 +23,8 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <utility>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "base/random.h"
@@ -166,7 +166,8 @@ class TabletsAccessor : public ::fesql::vm::Tablet {
  public:
     TabletsAccessor() : rows_cnt_(0) {}
     ~TabletsAccessor() {}
-    void AddTabletAccessor(std::shared_ptr<TabletAccessor> accessor) {
+    const std::string& GetName() const { return "TabletsAccessor"; }
+    void AddTabletAccessor(std::shared_ptr<Tablet> accessor) {
         if (!accessor) {
             LOG(WARNING) << "Fail to add null tablet accessor";
             return;

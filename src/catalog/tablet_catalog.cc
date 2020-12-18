@@ -228,19 +228,17 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
 std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::string& index_name,
                                                                    const std::vector<std::string>& pks) {
     std::vector<uint32_t> pids;
+    std::shared_ptr<TabletsAccessor> tablets_accessor = std::shared_ptr<TabletsAccessor>(new TabletsAccessor());
     for (auto pk : pks) {
-        uint32_t pid_num = table_st_.GetPartitionNum();
-        uint32_t pid = 0;
-        if (pid_num > 0) {
-            pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
+        auto tablet_accessor = GetTablet(index_name, pk);
+        if (tablet_accessor) {
+            tablets_accessor->AddTabletAccessor(tablet_accessor);
+        } else {
+            LOG(WARNING) << "fail to get tablet: pid " << pk << " not exist";
+            return std::shared_ptr<TabletsAccessor>();
         }
-        pids.push_back(pid);
     }
-    auto client_tablet = table_client_manager_->GetTablet(pids);
-    if (!client_tablet) {
-        LOG(WARNING) << "get tablet index_name " << index_name;
-    }
-    return client_tablet;
+    return tablets_accessor;
 }
 
 TabletCatalog::TabletCatalog()
