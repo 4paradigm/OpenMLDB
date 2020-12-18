@@ -43,6 +43,7 @@ class SQLCase {
         std::string schema_;
         std::string data_;
         std::string order_;
+        std::set<size_t> common_column_indices_;
         bool success_ = true;
     };
     SQLCase() {}

@@ -448,6 +448,7 @@ int32_t BatchRequestRunSession::RunBatch(RunnerContext& ctx,  // NOLINT
                                          const uint32_t task_id,
                                          const std::vector<Row>& requests,
                                          std::vector<Row>& output) {  // NOLINT
+    return -1;
 }
 
 std::shared_ptr<TableHandler> BatchRunSession::Run() {
