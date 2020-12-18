@@ -359,8 +359,7 @@ std::shared_ptr<::rtidb::catalog::TabletAccessor> ClusterSDK::GetTablet(const st
         ::rtidb::catalog::SDKTableHandler* sdk_table_handler =
             dynamic_cast<::rtidb::catalog::SDKTableHandler*>(table_handler.get());
         if (sdk_table_handler) {
-            auto tablet = sdk_table_handler->GetTablet(pid);
-            return tablet;
+            return sdk_table_handler->GetTablet(pid);
         }
     }
     return std::shared_ptr<::rtidb::catalog::TabletAccessor>();
@@ -370,8 +369,7 @@ std::shared_ptr<::rtidb::catalog::TabletAccessor> ClusterSDK::GetTablet(const st
                                                                         const std::string& pk) {
     auto table_handler = GetCatalog()->GetTable(db, name);
     if (table_handler) {
-        ::rtidb::catalog::SDKTableHandler* sdk_table_handler =
-            dynamic_cast<::rtidb::catalog::SDKTableHandler*>(table_handler.get());
+        auto sdk_table_handler = dynamic_cast<::rtidb::catalog::SDKTableHandler*>(table_handler.get());
         if (sdk_table_handler) {
             uint32_t pid_num = sdk_table_handler->GetPartitionNum();
             uint32_t pid = 0;
@@ -379,8 +377,6 @@ std::shared_ptr<::rtidb::catalog::TabletAccessor> ClusterSDK::GetTablet(const st
                 pid = ::rtidb::base::hash64(pk) % pid_num;
             }
             return sdk_table_handler->GetTablet(pid);
-            auto tablet = sdk_table_handler->GetTablet(pid);
-            return tablet;
         }
     }
     return std::shared_ptr<::rtidb::catalog::TabletAccessor>();

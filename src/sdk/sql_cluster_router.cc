@@ -218,7 +218,10 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
     std::set<std::string> col_set;
     if (cache) {
         status->code = 0;
-        col_set.insert(cache->router.GetRouterCol());
+        const std::string& router_col = cache->router.GetRouterCol();
+        if (!router_col.empty()) {
+            col_set.insert(router_col);
+        }
         return std::make_shared<SQLRequestRow>(cache->column_schema, col_set);
     }
     ::fesql::vm::ExplainOutput explain;
@@ -234,7 +237,10 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
     std::shared_ptr<::fesql::sdk::SchemaImpl> schema =
         std::make_shared<::fesql::sdk::SchemaImpl>(explain.input_schema);
     SetCache(db, sql, std::make_shared<SQLCache>(schema, explain.router));
-    col_set.insert(explain.router.GetRouterCol());
+    const std::string& router_col = explain.router.GetRouterCol();
+    if (!router_col.empty()) {
+        col_set.insert(router_col);
+    }
     return std::make_shared<SQLRequestRow>(schema, col_set);
 }
 
