@@ -67,6 +67,9 @@ class ListV {
     }
     virtual V At(uint64_t pos) {
         auto iter = GetIterator();
+        if (!iter) {
+            return V();
+        }
         while (pos-- > 0 && iter->Valid()) {
             iter->Next();
         }

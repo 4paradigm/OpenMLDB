@@ -384,23 +384,29 @@ class LocalTablet : public Tablet {
         }
         if (is_procedure) {
             if (!sp_cache_) {
-                return std::shared_ptr<RowHandler>(
+                auto error = std::shared_ptr<RowHandler>(
                     new ErrorRowHandler(common::kProcedureNotFound,
                                         "SubQuery Fail: procedure not found, "
                                         "procedure cache not exist"));
+                LOG(WARNING) << error->GetStatus();
+                return error;
             }
             auto request_compile_info =
                 sp_cache_->GetRequestInfo(db, sql, status);
             if (!status.isOK()) {
-                return std::shared_ptr<RowHandler>(new ErrorRowHandler(
+                auto error = std::shared_ptr<RowHandler>(new ErrorRowHandler(
                     status.code, "SubQuery Fail: " + status.msg));
+                LOG(WARNING) << error->GetStatus();
+                return error;
             }
             session.SetSpName(sql);
             session.SetCompileInfo(request_compile_info);
         } else {
             if (!engine_->Get(sql, db, session, status)) {
-                return std::shared_ptr<RowHandler>(new ErrorRowHandler(
+                auto error = std::shared_ptr<RowHandler>(new ErrorRowHandler(
                     status.code, "SubQuery Fail: " + status.msg));
+                LOG(WARNING) << error->GetStatus();
+                return error;
             }
         }
 
@@ -420,23 +426,29 @@ class LocalTablet : public Tablet {
         }
         if (is_procedure) {
             if (!sp_cache_) {
-                return std::shared_ptr<TableHandler>(
+                auto error = std::shared_ptr<TableHandler>(
                     new ErrorTableHandler(common::kProcedureNotFound,
                                           "SubQuery Fail: procedure not found, "
                                           "procedure cache not exist"));
+                LOG(WARNING) << error->GetStatus();
+                return error;
             }
             auto request_compile_info =
                 sp_cache_->GetBatchRequestInfo(db, sql, status);
             if (!status.isOK()) {
-                return std::shared_ptr<TableHandler>(new ErrorTableHandler(
+                auto error = std::shared_ptr<TableHandler>(new ErrorTableHandler(
                     status.code, "SubQuery Fail: " + status.msg));
+                LOG(WARNING) << error->GetStatus();
+                return error;
             }
             session.SetSpName(sql);
             session.SetCompileInfo(request_compile_info);
         } else {
             if (!engine_->Get(sql, db, session, status)) {
-                return std::shared_ptr<TableHandler>(new ErrorTableHandler(
+                auto error = std::shared_ptr<TableHandler>(new ErrorTableHandler(
                     status.code, "SubQuery Fail: " + status.msg));
+                LOG(WARNING) << error->GetStatus();
+                return error;
             }
         }
         return std::make_shared<LocalTabletTableHandler>(task_id, session,

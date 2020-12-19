@@ -160,6 +160,7 @@ cases:
         55,6, 10, 10.5, 55.5, 110, 11, 2, 5, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
   - id: 4
     desc: Window SQL WITH UNION 子查询, 样本表PK命中, UNION表PK命中
+    mode: cluster-unsupport
     db: db1
     sql: |
       SELECT col2, col5, sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
@@ -185,19 +186,6 @@ cases:
                   DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
             DATA_PROVIDER(request=t1)
             DATA_PROVIDER(type=Partition, table=t1, index=index_col25)
-    cluster_request_plan: |
-      LIMIT(limit=10)
-        SIMPLE_PROJECT(sources=(col2, col5, w1_col1_sum, w1_col3_sum, w1_col4_sum, w1_col2_sum, w1_col5_sum, w1_col1_cnt, col1, col6))
-          REQUEST_JOIN(type=kJoinTypeConcat)
-            SIMPLE_PROJECT(sources=(col2, col5, col1, col6))
-              DATA_PROVIDER(request=t1)
-            PROJECT(type=Aggregation)
-              REQUEST_UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
-                +-UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
-                    SIMPLE_PROJECT(sources=(c0 -> col0, c1 -> col1, c2 -> col2, c3 -> col3, 0.000000 -> col4, c5 -> col5, NA_STR -> col6))
-                      DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
-                DATA_PROVIDER(request=t1)
-                DATA_PROVIDER(type=Partition, table=t1, index=index_col25)
     inputs:
       - name: t1
         schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
@@ -229,6 +217,7 @@ cases:
         55,6, 14, 14.9, 99.9, 165, 15, 3, 5, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
   - id: 5
     desc: Window SQL WITH UNION 子查询, 样本表PK命中, UNION表PK命中
+    mode: cluster-unsupport
     db: db1
     sql: |
       SELECT col2, col5, sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
@@ -257,21 +246,6 @@ cases:
               DATA_PROVIDER(request=tx)
             SIMPLE_PROJECT(sources=(tx_col0 -> col0, x1 -> col1, x2 -> col2, x3 -> col3, x4 -> col4, x5 -> col5, x6 -> col6))
               DATA_PROVIDER(type=Partition, table=tx, index=index_x25)
-    cluster_request_plan: |
-      LIMIT(limit=10)
-        SIMPLE_PROJECT(sources=(col2, col5, w1_col1_sum, w1_col3_sum, w1_col4_sum, w1_col2_sum, w1_col5_sum, w1_col1_cnt, col1, col6))
-          REQUEST_JOIN(type=kJoinTypeConcat)
-            SIMPLE_PROJECT(sources=(x2 -> col2, x5 -> col5, x1 -> col1, x6 -> col6))
-              DATA_PROVIDER(request=tx)
-            PROJECT(type=Aggregation)
-              REQUEST_UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
-                +-UNION(partition_keys=(), orders=() ASC, range=(col5, -2, 0), index_keys=(col2))
-                    SIMPLE_PROJECT(sources=(c0 -> col0, c1 -> col1, c2 -> col2, c3 -> col3, 0.000000 -> col4, c5 -> col5, NA_STR -> col6))
-                      DATA_PROVIDER(type=Partition, table=tb, index=index_c25)
-                SIMPLE_PROJECT(sources=(tx_col0 -> col0, x1 -> col1, x2 -> col2, x3 -> col3, x4 -> col4, x5 -> col5, x6 -> col6))
-                  DATA_PROVIDER(request=tx)
-                SIMPLE_PROJECT(sources=(tx_col0 -> col0, x1 -> col1, x2 -> col2, x3 -> col3, x4 -> col4, x5 -> col5, x6 -> col6))
-                  DATA_PROVIDER(type=Partition, table=tx, index=index_x25)
     inputs:
       - name: tx
         schema: x1:int32, x2:int16, x3:float, x4:double, x5:int64, x6:string

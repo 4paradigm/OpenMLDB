@@ -165,7 +165,7 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         session.SetCompileInfo(info);
         return true;
     }
-
+    DLOG(INFO) << "Compile FESQL ...";
     info = std::shared_ptr<CompileInfo>(new CompileInfo());
     auto& sql_context = info->get_sql_context();
     sql_context.sql = sql;
