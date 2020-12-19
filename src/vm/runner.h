@@ -1164,21 +1164,7 @@ class RunnerBuilder {
         return cluster_job_;
     }
 
-    ClusterTask BuildProxyRunner(Runner* runner, const ClusterTask& left_task,
-                                 const ClusterTask& right_task,
-                                 const Key& index_key,
-                                 const bool is_batch_request,
-                                 Status& status);  // NOLINT
-    ClusterTask BuildRequestRunnerWithProxy(Runner* runner,
-                                            const ClusterTask& left_task,
-                                            const ClusterTask& right_task,
-                                            const Key& index_key,
-                                            Status& status);  // NOLINT
-    ClusterTask BuildBatchRequestRunnerWithProxy(Runner* runner,
-                                                 const ClusterTask& left_task,
-                                                 const ClusterTask& right_task,
-                                                 const Key& index_key,
-                                                 Status& status);  // NOLINT
+
 
  private:
     node::NodeManager* nm_;
@@ -1192,10 +1178,6 @@ class RunnerBuilder {
         task_map_;
 
     std::set<size_t> batch_common_node_set_;
-    ClusterTask BuildProxyRunnerForConcatedProxyNode(ConcatRunner* runner,
-                                                     Runner* left,
-                                                     Runner* right);
-
     ClusterTask BuildTaskForBinaryRunner(const ClusterTask& left,
                                          const ClusterTask& right,
                                          Runner* runner, const Key& index_key);

@@ -385,10 +385,10 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                             op->join_,
                             left->output_schemas()->GetSchemaSourceSize(),
                             right->output_schemas()->GetSchemaSourceSize());
-                        return RegisterTask(node,
-                                            BuildTaskForBinaryRunner(
-                                                left_task, right_task,
-                                                nm_->RegisterNode(runner), Key()));
+                        return RegisterTask(
+                            node, BuildTaskForBinaryRunner(
+                                      left_task, right_task,
+                                      nm_->RegisterNode(runner), Key()));
                     }
                 }
                 case node::kJoinTypeConcat: {
@@ -481,8 +481,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 return fail;
             }
             auto union_op = dynamic_cast<PhysicalPostRequestUnionNode*>(node);
-            auto runner = nm_->RegisterNode(new PostRequestUnionRunner(
-                id_++, node->schemas_ctx(), union_op->request_ts()));
+            auto runner = new PostRequestUnionRunner(id_++, node->schemas_ctx(),
+                                                     union_op->request_ts());
 
             return RegisterTask(node, BuildTaskForBinaryRunner(
                                           left_task, right_task,
@@ -498,170 +498,19 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         }
     }
 }
-// runner(left_row,right) -->
-// proxy_request_run(left, task_id) : task[runner(request, right)]
-ClusterTask RunnerBuilder::BuildRequestRunnerWithProxy(
-    Runner* runner, const ClusterTask& left_task, const ClusterTask& right_task,
-    const Key& index_key, Status& status) {
-    return BuildProxyRunner(runner, left_task, right_task, index_key, false,
-                            status);
-}
-
-// runner(left_table,right) -->
-// proxy_batch_request_run(left, task_id) : task[runner(batch_request,
-// right)]
-ClusterTask RunnerBuilder::BuildBatchRequestRunnerWithProxy(
-    Runner* runner, const ClusterTask& left_task, const ClusterTask& right_task,
-    const Key& index_key, Status& status) {
-    return BuildProxyRunner(runner, left_task, right_task, index_key, true,
-                            status);
-}
-ClusterTask RunnerBuilder::BuildProxyRunner(
-    Runner* runner, const ClusterTask& left_task, const ClusterTask& right_task,
-    const Key& index_key, const bool is_batch_request, Status& status) {
-    auto left = left_task.GetRoot();
-    auto right = right_task.GetRoot();
-    auto task = left_task;
-    if (support_cluster_optimized_ && right_task.IsClusterTask()) {
-        runner->AddProducer(nm_->RegisterNode(
-            new RequestRunner(id_++, left->output_schemas())));
-        runner->AddProducer(right);
-        auto remote_task = right_task;
-        remote_task.SetRoot(runner);
-        remote_task.SetIndexKey(index_key);
-        auto remote_task_id = cluster_job_.AddTask(remote_task);
-        if (-1 == remote_task_id) {
-            LOG(WARNING) << "fail to add remote task id";
-            return ClusterTask();
-        }
-        if (is_batch_request) {
-            auto proxy_runner = nm_->RegisterNode(new ProxyRequestRunner(
-                id_++, static_cast<uint32_t>(remote_task_id),
-                runner->output_schemas()));
-
-            if (Runner::IsProxyRunner(left->type_) && !left->need_cache()) {
-                cluster_job_.AddRunnerToTask(
-                    proxy_runner,
-                    dynamic_cast<ProxyRequestRunner*>(left)->task_id());
-                left->set_output_schemas(proxy_runner->output_schemas());
-                return left_task;
-            } else {
-                proxy_runner->AddProducer(left);
-                return ClusterTask(proxy_runner);
-            }
-        } else {
-            auto proxy_runner = nm_->RegisterNode(new ProxyRequestRunner(
-                id_++, static_cast<uint32_t>(remote_task_id),
-                runner->output_schemas()));
-            proxy_runner->AddProducer(left);
-            return ClusterTask(proxy_runner);
-        }
-    } else if (support_cluster_optimized_ &&
-               Runner::IsProxyRunner(left->type_) &&
-               Runner::IsProxyRunner(right->type_)) {
-        runner->AddProducer(left);
-        runner->AddProducer(right);
-        task.SetRoot(runner);
-        if (!task.IsClusterTask()) {
-            task.SetIndexKey(
-                cluster_job_
-                    .GetTask(dynamic_cast<ProxyRequestRunner*>(left)->task_id())
-                    .GetIndexKey());
-        }
-    } else {
-        runner->AddProducer(left);
-        runner->AddProducer(right);
-        task.SetRoot(runner);
-    }
-    return task;
-}
-// build proxy for special structure
-// concat_node
-//      +left_proxy_node
-//      +right_proxy_node
-//         +simple_project
-//              +left_proxy_node
-ClusterTask RunnerBuilder::BuildProxyRunnerForConcatedProxyNode(
-    ConcatRunner* runner, Runner* left, Runner* right) {
-    ClusterTask empty_task;
-    // optimize special physical structure
-    if (!Runner::IsProxyRunner(left->type_) ||
-        !Runner::IsProxyRunner(right->type_) || right->need_cache()) {
-        return empty_task;
-    }
-    auto left_proxy_task = cluster_job_.GetTask(
-        dynamic_cast<ProxyRequestRunner*>(left)->task_id());
-    auto left_task_root = left_proxy_task.GetRoot();
-    if (nullptr == left_task_root) {
-        return empty_task;
-    }
-
-    // try to find physical structure
-    // concat_node
-    //      +left_proxy_node
-    //      +right_proxy_node
-    //         +simple_project
-    //              +left_proxy_node
-    auto simple_project = right->GetProducers()[0];
-    if (simple_project->type_ != kRunnerSimpleProject ||
-        simple_project->need_cache()) {
-        return empty_task;
-    }
-    if (simple_project->GetProducers()[0] == left) {
-        // if simple_project child == left
-        // try to reduce 2 left_proxy_node, and create new proxy node
-        // concat_node[task of new_proxy]
-        //      + left_task_root
-        //      + new_right_proxy
-        //          + new_simple_project
-        //              + left_task_root
-
-        // new simple project using left_proxy_root as producer
-        auto new_simple_project = nm_->RegisterNode(new SimpleProjectRunner(
-            id_++, simple_project->output_schemas(), simple_project->limit_cnt_,
-            dynamic_cast<SimpleProjectRunner*>(simple_project)->project_gen_));
-        new_simple_project->AddProducer(left_task_root);
-
-        // new right proxy runner
-        // copy task id and output schema from old right
-        auto new_right = nm_->RegisterNode(new ProxyRequestRunner(
-            id_++, dynamic_cast<ProxyRequestRunner*>(right)->task_id(),
-            right->output_schemas()));
-
-        new_right->AddProducer(new_simple_project);
-
-        runner->AddProducer(left_task_root);
-        runner->AddProducer(new_right);
-        auto remote_task = left_proxy_task;
-        remote_task.SetRoot(runner);
-        auto remote_task_id = cluster_job_.AddTask(remote_task);
-        if (-1 == remote_task_id) {
-            LOG(WARNING) << "fail to add remote task id";
-            return ClusterTask();
-        }
-        auto proxy_runner = nm_->RegisterNode(
-            new ProxyRequestRunner(id_++, static_cast<uint32_t>(remote_task_id),
-                                   runner->output_schemas()));
-        proxy_runner->AddProducer(left->GetProducers()[0]);
-        return ClusterTask(proxy_runner);
-    }
-    return empty_task;
-}
-
 
 ClusterTask RunnerBuilder::BuildTaskForBinaryRunner(const ClusterTask& left,
-                                     const ClusterTask& right,
-                                     Runner* runner, const Key& index_key) {
+                                                    const ClusterTask& right,
+                                                    Runner* runner,
+                                                    const Key& index_key) {
     if (support_cluster_optimized_) {
-        return BuildClusterTaskForBinaryRunner(left, right, runner,
-                                               index_key);
+        return BuildClusterTaskForBinaryRunner(left, right, runner, index_key);
     } else {
         return BuildLocalTaskForBinaryRunner(left, right, runner);
     }
 }
-ClusterTask RunnerBuilder::BuildLocalTaskForBinaryRunner(const ClusterTask& left,
-                                          const ClusterTask& right,
-                                          Runner* runner) {
+ClusterTask RunnerBuilder::BuildLocalTaskForBinaryRunner(
+    const ClusterTask& left, const ClusterTask& right, Runner* runner) {
     if (left.IsClusterTask() || right.IsClusterTask()) {
         LOG(WARNING) << "fail to build local task for binary runner";
         return ClusterTask();
@@ -670,10 +519,9 @@ ClusterTask RunnerBuilder::BuildLocalTaskForBinaryRunner(const ClusterTask& left
     runner->AddProducer(right.GetRoot());
     return ClusterTask(runner);
 }
-ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(const ClusterTask& left,
-                                            const ClusterTask& right,
-                                            Runner* runner,
-                                            const Key& index_key) {
+ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
+    const ClusterTask& left, const ClusterTask& right, Runner* runner,
+    const Key& index_key) {
     if (nullptr == runner) {
         LOG(WARNING) << "Fail to build cluster task for null runner";
         return ClusterTask();
@@ -748,16 +596,16 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(const ClusterTask& le
     new_left.SetRoot(runner);
     return new_left;
 }
-ClusterTask RunnerBuilder::BuildProxyRunnerForClusterTask(const ClusterTask& task) {
+ClusterTask RunnerBuilder::BuildProxyRunnerForClusterTask(
+    const ClusterTask& task) {
     if (!task.IsCompletedClusterTask()) {
         LOG(WARNING)
             << "Fail to build proxy runner, cluster task is uncompleted";
         return ClusterTask();
     }
     uint32_t remote_task_id = cluster_job_.AddTask(task);
-    ProxyRequestRunner* proxy_runner =
-        nm_->RegisterNode(new ProxyRequestRunner(
-            id_++, remote_task_id, task.GetRoot()->output_schemas()));
+    ProxyRequestRunner* proxy_runner = nm_->RegisterNode(new ProxyRequestRunner(
+        id_++, remote_task_id, task.GetRoot()->output_schemas()));
     return InheritTask(*task.GetInput(), proxy_runner);
 }
 ClusterTask RunnerBuilder::NewClusterTaskWithIndex(
@@ -765,14 +613,16 @@ ClusterTask RunnerBuilder::NewClusterTaskWithIndex(
     std::string index) {
     return ClusterTask(runner, table_handler, index);
 }
-ClusterTask RunnerBuilder::InheritLocalTask(const ClusterTask& input, Runner* runner) {
+ClusterTask RunnerBuilder::InheritLocalTask(const ClusterTask& input,
+                                            Runner* runner) {
     if (input.IsClusterTask()) {
         LOG(WARNING) << "fail to inherit local task, input is cluster task";
         return ClusterTask();
     }
     return InheritTask(input, runner);
 }
-ClusterTask RunnerBuilder::InheritTask(const ClusterTask& input, Runner* runner) {
+ClusterTask RunnerBuilder::InheritTask(const ClusterTask& input,
+                                       Runner* runner) {
     ClusterTask task = input;
     runner->AddProducer(task.GetRoot());
     task.SetRoot(runner);
