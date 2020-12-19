@@ -32,10 +32,15 @@ class CommonColumnOptimize : public PhysicalPass {
  public:
     explicit CommonColumnOptimize(const std::set<size_t> common_column_indices);
 
+    ~CommonColumnOptimize() {}
     Status Apply(PhysicalPlanContext* ctx, PhysicalOpNode* input,
                  PhysicalOpNode** out) override;
 
     void ExtractCommonNodeSet(std::set<size_t>* output);
+
+    const std::set<size_t>& GetOutputCommonColumnIndices() const {
+        return output_common_column_indices_;
+    }
 
  private:
     void Init();
@@ -110,7 +115,8 @@ class CommonColumnOptimize : public PhysicalPass {
                           BuildOpState*);
     Status ProcessRequestUnion(PhysicalPlanContext*, PhysicalRequestUnionNode*,
                                const std::vector<PhysicalOpNode*>& path,
-                               PhysicalOpNode** out);
+                               PhysicalOpNode** out,
+                               BuildOpState** agg_request_state);
 
     /**
      * Find a non-agg op sequence ends with request union.
@@ -121,6 +127,8 @@ class CommonColumnOptimize : public PhysicalPass {
 
     // input common column indices
     std::set<size_t> common_column_indices_;
+
+    std::set<size_t> output_common_column_indices_;
 
     std::unordered_map<size_t, BuildOpState> build_dict_;
 };

@@ -896,6 +896,17 @@ bool SQLCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
     } else {
         expect->success_ = true;
     }
+    if (schema_data["common_column_indices"]) {
+        auto data = schema_data["common_column_indices"];
+        std::vector<std::string> idxs;
+        if (!CreateStringListFromYamlNode(data, idxs)) {
+            return false;
+        }
+        for (auto str : idxs) {
+            expect->common_column_indices_.insert(
+                boost::lexical_cast<size_t>(str));
+        }
+    }
     return true;
 }
 bool SQLCase::CreateSQLCasesFromYaml(const std::string& cases_dir,
@@ -1211,8 +1222,9 @@ bool SQLCase::BuildCreateSpSQLFromInput(int32_t input_idx,
 }
 
 bool SQLCase::BuildCreateSpSQLFromSchema(const type::TableDef& table,
-        const std::string& select_sql, const std::set<size_t>& common_idx,
-        std::string* create_sql) {
+                                         const std::string& select_sql,
+                                         const std::set<size_t>& common_idx,
+                                         std::string* create_sql) {
     std::string sql = "CREATE Procedure " + sp_name_ + "(\n";
     for (int i = 0; i < table.columns_size(); i++) {
         auto column = table.columns(i);

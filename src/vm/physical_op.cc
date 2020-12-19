@@ -1155,7 +1155,11 @@ void PhysicalRequestUnionNode::Print(std::ostream& output,
 base::Status PhysicalRequestUnionNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty request union");
     schemas_ctx_.Clear();
-    schemas_ctx_.MergeWithNewID(0, producers_[0]->schemas_ctx(), ctx);
+    if (output_request_row()) {
+        schemas_ctx_.MergeWithNewID(0, producers_[0]->schemas_ctx(), ctx);
+    } else {
+        schemas_ctx_.Merge(0, producers_[1]->schemas_ctx());
+    }
     return Status::OK();
 }
 

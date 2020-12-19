@@ -375,8 +375,8 @@ class Runner : public node::NodeBase<Runner> {
           need_batch_cache_(false),
           producers_(),
           output_schemas_() {}
-    explicit Runner(const int32_t id, const RunnerType type,
-                    const vm::SchemasContext* output_schemas)
+    Runner(const int32_t id, const RunnerType type,
+           const vm::SchemasContext* output_schemas)
         : id_(id),
           type_(type),
           limit_cnt_(0),
@@ -434,7 +434,11 @@ class Runner : public node::NodeBase<Runner> {
     const int32_t id_;
     const RunnerType type_;
     const int32_t limit_cnt_;
-    virtual std::shared_ptr<DataHandler> Run(RunnerContext& ctx) = 0;  // NOLINT
+    virtual std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs) = 0;
+    virtual std::shared_ptr<DataHandlerList> BatchRequestRun(
+        RunnerContext& ctx);  // NOLINT
     virtual std::shared_ptr<DataHandler> RunWithCache(
         RunnerContext& ctx);  // NOLINT
 
@@ -623,7 +627,11 @@ class DataRunner : public Runner {
                std::shared_ptr<DataHandler> data_hander)
         : Runner(id, kRunnerData, schema), data_handler_(data_hander) {}
     ~DataRunner() {}
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    virtual std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs);
+    std::shared_ptr<DataHandlerList> BatchRequestRun(
+        RunnerContext& ctx) override;  // NOLINT
     const std::shared_ptr<DataHandler> data_handler_;
 };
 
@@ -632,7 +640,11 @@ class RequestRunner : public Runner {
     RequestRunner(const int32_t id, const SchemasContext* schema)
         : Runner(id, kRunnerRequest, schema) {}
     ~RequestRunner() {}
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    virtual std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs);
+    std::shared_ptr<DataHandlerList> BatchRequestRun(
+        RunnerContext& ctx);  // NOLINT
 };
 class GroupRunner : public Runner {
  public:
@@ -640,7 +652,10 @@ class GroupRunner : public Runner {
                 const int32_t limit_cnt, const Key& group)
         : Runner(id, kRunnerGroup, schema, limit_cnt), partition_gen_(group) {}
     ~GroupRunner() {}
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs)
+        override;  // NOLINT
     PartitionGenerator partition_gen_;
 };
 class FilterRunner : public Runner {
@@ -651,7 +666,10 @@ class FilterRunner : public Runner {
         is_lazy_ = true;
     }
     ~FilterRunner() {}
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs)
+        override;  // NOLINT
     FilterGenerator filter_gen_;
 };
 
@@ -661,7 +679,10 @@ class SortRunner : public Runner {
                const int32_t limit_cnt, const Sort& sort)
         : Runner(id, kRunnerOrder, schema, limit_cnt), sort_gen_(sort) {}
     ~SortRunner() {}
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs)
+        override;  // NOLINT
     SortGenerator sort_gen_;
 };
 class ConstProjectRunner : public Runner {
@@ -672,7 +693,10 @@ class ConstProjectRunner : public Runner {
           project_gen_(fn_info) {}
     ~ConstProjectRunner() {}
 
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs)
+        override;  // NOLINT
     ConstProjectGenerator project_gen_;
 };
 class TableProjectRunner : public Runner {
@@ -683,7 +707,10 @@ class TableProjectRunner : public Runner {
           project_gen_(fn_info) {}
     ~TableProjectRunner() {}
 
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs)
+        override;  // NOLINT
     ProjectGenerator project_gen_;
 };
 class RowProjectRunner : public Runner {
@@ -693,7 +720,10 @@ class RowProjectRunner : public Runner {
         : Runner(id, kRunnerRowProject, schema, limit_cnt),
           project_gen_(fn_info) {}
     ~RowProjectRunner() {}
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs)
+        override;  // NOLINT
     ProjectGenerator project_gen_;
 };
 
@@ -706,7 +736,10 @@ class SimpleProjectRunner : public Runner {
         is_lazy_ = true;
     }
     ~SimpleProjectRunner() {}
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs)
+        override;  // NOLINT
     ProjectGenerator project_gen_;
 };
 class GroupAggRunner : public Runner {
@@ -718,7 +751,10 @@ class GroupAggRunner : public Runner {
           group_(group.fn_info()),
           agg_gen_(project) {}
     ~GroupAggRunner() {}
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs)
+        override;  // NOLINT
     KeyGenerator group_;
     AggGenerator agg_gen_;
 };
@@ -728,7 +764,10 @@ class AggRunner : public Runner {
               const int32_t limit_cnt, const FnInfo& fn_info)
         : Runner(id, kRunnerAgg, schema, limit_cnt), agg_gen_(fn_info) {}
     ~AggRunner() {}
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs)
+        override;  // NOLINT
     AggGenerator agg_gen_;
 };
 class WindowAggRunner : public Runner {
@@ -752,7 +791,10 @@ class WindowAggRunner : public Runner {
     void AddWindowUnion(const WindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs)
+        override;  // NOLINT
     void RunWindowAggOnKey(
         std::shared_ptr<PartitionHandler> instance_partition,
         std::vector<std::shared_ptr<PartitionHandler>> union_partitions,
@@ -777,7 +819,10 @@ class RequestUnionRunner : public Runner {
           range_gen_(range),
           output_request_row_(output_request_row) {}
 
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs)
+        override;  // NOLINT
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
@@ -793,8 +838,10 @@ class PostRequestUnionRunner : public Runner {
         : Runner(id, kRunnerPostRequestUnion, schema),
           request_ts_gen_(request_ts.fn_info()) {}
 
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
-
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs)
+        override;  // NOLINT
  private:
     OrderGenerator request_ts_gen_;
 };
@@ -807,7 +854,10 @@ class LastJoinRunner : public Runner {
         : Runner(id, kRunnerLastJoin, schema, limit_cnt),
           join_gen_(join, left_slices, right_slices) {}
     ~LastJoinRunner() {}
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs)
+        override;  // NOLINT
 
     JoinGenerator join_gen_;
 };
@@ -822,7 +872,9 @@ class RequestLastJoinRunner : public Runner {
           output_right_only_(output_right_only) {}
     ~RequestLastJoinRunner() {}
 
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,                                        // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs);  // NOLINT
     virtual void PrintRunnerInfo(std::ostream& output,
                                  const std::string& tab) const {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_);
@@ -844,14 +896,19 @@ class ConcatRunner : public Runner {
         is_lazy_ = true;
     }
     ~ConcatRunner() {}
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs)
+        override;  // NOLINT
 };
 class LimitRunner : public Runner {
  public:
     LimitRunner(int32_t id, const SchemasContext* schema, int32_t limit_cnt)
         : Runner(id, kRunnerLimit, schema, limit_cnt) {}
     ~LimitRunner() {}
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;  // NOLINT
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,                                        // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs);  // NOLINT
 };
 
 class ProxyRequestRunner : public Runner {
@@ -862,7 +919,9 @@ class ProxyRequestRunner : public Runner {
         is_lazy_ = true;
     }
     ~ProxyRequestRunner() {}
-    std::shared_ptr<DataHandler> Run(RunnerContext& ctx) override;
+    std::shared_ptr<DataHandler> Run(
+        RunnerContext& ctx,  // NOLINT
+        const std::vector<std::shared_ptr<DataHandler>>& inputs) override;
     virtual void PrintRunnerInfo(std::ostream& output,
                                  const std::string& tab) const {
         output << tab << "[" << id_ << "]" << RunnerTypeName(type_)
@@ -1047,8 +1106,9 @@ class RunnerContext {
     explicit RunnerContext(fesql::vm::ClusterJob* cluster_job,
                            const bool is_debug = false)
         : cluster_job_(cluster_job),
-          request_(),
           sp_name_(""),
+          request_(),
+          requests_(),
           is_debug_(is_debug),
           batch_cache_() {}
     explicit RunnerContext(fesql::vm::ClusterJob* cluster_job,
@@ -1056,31 +1116,49 @@ class RunnerContext {
                            const std::string& sp_name = "",
                            const bool is_debug = false)
         : cluster_job_(cluster_job),
-          request_(request),
           sp_name_(sp_name),
+          request_(request),
+          requests_(),
+          is_debug_(is_debug),
+          batch_cache_() {}
+    explicit RunnerContext(fesql::vm::ClusterJob* cluster_job,
+                           const std::vector<Row>& request_batch,
+                           const std::string& sp_name = "",
+                           const bool is_debug = false)
+        : cluster_job_(cluster_job),
+          sp_name_(sp_name),
+          request_(),
+          requests_(request_batch),
           is_debug_(is_debug),
           batch_cache_() {}
 
-    const fesql::codec::Row& request() const { return request_; }
+    const size_t GetRequestSize() const { return requests_.size(); }
+    const fesql::codec::Row& GetRequest() const { return request_; }
+    const fesql::codec::Row& GetRequest(size_t idx) const {
+        return requests_[idx];
+    }
     fesql::vm::ClusterJob* cluster_job() { return cluster_job_; }
     void SetRequest(const fesql::codec::Row& request);
+    void SetRequests(const std::vector<fesql::codec::Row>& requests);
     bool is_debug() const { return is_debug_; }
 
     const std::string& sp_name() { return sp_name_; }
     std::shared_ptr<DataHandler> GetCache(int64_t id) const;
     void SetCache(int64_t id, std::shared_ptr<DataHandler> data);
     void ClearCache() { cache_.clear(); }
-    std::shared_ptr<DataHandler> GetBatchCache(int64_t id) const;
-    void SetBatchCache(int64_t id, std::shared_ptr<DataHandler> data);
+    std::shared_ptr<DataHandlerList> GetBatchCache(int64_t id) const;
+    void SetBatchCache(int64_t id, std::shared_ptr<DataHandlerList> data);
 
  private:
     fesql::vm::ClusterJob* cluster_job_;
-    fesql::codec::Row request_;
     const std::string sp_name_;
+    fesql::codec::Row request_;
+    std::vector<fesql::codec::Row> requests_;
+    size_t idx_;
     const bool is_debug_;
     // TODO(chenjing): optimize
-    std::map<int64_t, std::shared_ptr<DataHandler>> batch_cache_;
     std::map<int64_t, std::shared_ptr<DataHandler>> cache_;
+    std::map<int64_t, std::shared_ptr<DataHandlerList>> batch_cache_;
 };
 
 class LocalTabletAccesser : public Tablet {

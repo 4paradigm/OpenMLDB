@@ -222,7 +222,7 @@ class BoundedGroupByDict {
             }
         } else {
             for (auto iter = map.begin(); iter != map.end(); ++iter) {
-                uint32_t key_len = v1::format_string(iter->first, nullptr, 0);
+                uint32_t key_len = v1::to_string_len(iter->first);
                 uint32_t value_len = format_value(iter->second, nullptr, 0);
                 uint32_t new_len = str_len + key_len + value_len + 2;  // "k:v,"
                 if (new_len > MAX_OUTPUT_STR_SIZE) {

@@ -653,8 +653,10 @@ uint32_t format_string<double>(const double &v, char *buffer, size_t size) {
 template <>
 uint32_t format_string<codec::Date>(const codec::Date &v, char *buffer,
                                     size_t size) {
+
     const uint32_t len = 10;  // 1990-01-01
-    if (buffer != nullptr && size >= len) {
+    if (buffer == nullptr) return len;
+    if (size >= len) {
         date_format(&v, "%Y-%m-%d", buffer, size);
     }
     return len;
@@ -664,7 +666,8 @@ template <>
 uint32_t format_string<codec::Timestamp>(const codec::Timestamp &v,
                                          char *buffer, size_t size) {
     const uint32_t len = 19;  // "%Y-%m-%d %H:%M:%S"
-    if (buffer != nullptr && size >= len) {
+    if (buffer == nullptr) return len;
+    if (size >= len) {
         date_format(&v, "%Y-%m-%d %H:%M:%S", buffer, size);
     }
     return len;
@@ -673,12 +676,14 @@ uint32_t format_string<codec::Timestamp>(const codec::Timestamp &v,
 template <>
 uint32_t format_string<std::string>(const std::string &v, char *buffer,
                                     size_t size) {
+    if (buffer == nullptr) return v.size();
     return snprintf(buffer, size, "%s", v.c_str());
 }
 
 template <>
 uint32_t format_string<codec::StringRef>(const codec::StringRef &v,
                                          char *buffer, size_t size) {
+    if (buffer == nullptr) return v.size_;
     if (v.size_ < size) {
         memcpy(reinterpret_cast<void *>(buffer),
                reinterpret_cast<const void *>(v.data_), v.size_);
