@@ -5,6 +5,8 @@
 %include stl.i
 %include stdint.i
 %include std_vector.i
+%include various.i
+%apply char *BYTE { char *string_buffer_var_name };
 
 %shared_ptr(fesql::sdk::ResultSet);
 %shared_ptr(fesql::sdk::Schema);
