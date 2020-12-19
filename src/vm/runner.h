@@ -973,6 +973,7 @@ class ProxyRequestRunner : public Runner {
         const std::vector<Row>& rows);
     uint32_t task_id_;
 };
+class ClusterTask;
 class RouteInfo {
  public:
     RouteInfo() : index_(), index_key_(), table_handler_() {}
@@ -980,13 +981,11 @@ class RouteInfo {
               std::shared_ptr<TableHandler> table_handler)
         : index_(index), index_key_(), table_handler_(table_handler) {}
     ~RouteInfo() {}
-    const bool IsValid() const {
-        return table_handler_ && nullptr != input_ && !index_.empty() &&
+    const bool IsCompleted() const {
+        return table_handler_ && input_ && !index_.empty() &&
                index_key_.ValidKey();
     }
-    const bool IsCluster() const {
-        return table_handler_ && nullptr != input_ && !index_.empty();
-    }
+    const bool IsCluster() const { return table_handler_ && !index_.empty(); }
     static const bool EqualWith(const RouteInfo& info1,
                                 const RouteInfo& info2) {
         return info1.input_ == info2.input_ &&
@@ -996,7 +995,7 @@ class RouteInfo {
     }
 
     const std::string ToString() const {
-        if (IsValid()) {
+        if (IsCompleted()) {
             std::ostringstream oss;
             oss << ", routing index = " << table_handler_->GetDatabase() << "."
                 << table_handler_->GetName() << "." << index_ << ", "
@@ -1008,7 +1007,7 @@ class RouteInfo {
     }
     std::string index_;
     Key index_key_;
-    Runner* input_;
+    std::shared_ptr<ClusterTask> input_;
     std::shared_ptr<TableHandler> table_handler_;
 };
 
@@ -1038,12 +1037,17 @@ class ClusterTask {
     Runner* GetRoot() const { return root_; }
     void SetRoot(Runner* root) { root_ = root; }
 
-    Runner* GetInput() const { return route_info_.input_; }
+    std::shared_ptr<ClusterTask> GetInput() const { return route_info_.input_; }
     Key GetIndexKey() const { return route_info_.index_key_; }
     void SetIndexKey(const Key& key) { route_info_.index_key_ = key; }
-    void SetInput(Runner* input) { route_info_.input_ = input; }
+    void SetInput(std::shared_ptr<ClusterTask> input) {
+        route_info_.input_ = input;
+    }
     const bool IsValid() const { return nullptr != root_; }
 
+    const bool IsCompletedClusterTask() const {
+        return IsValid() && route_info_.IsCompleted();
+    }
     const bool IsClusterTask() const { return route_info_.IsCluster(); }
     const std::string& index() { return route_info_.index_; }
     std::shared_ptr<TableHandler> table_handler() {
@@ -1051,19 +1055,20 @@ class ClusterTask {
     }
 
     // Cluster tasks with same input runners and index keys can be merged
-    const bool TaskCanBeMerge(const ClusterTask& task1,
-                              const ClusterTask& task2) {
+    static const bool TaskCanBeMerge(const ClusterTask& task1,
+                                     const ClusterTask& task2) {
         return RouteInfo::EqualWith(task1.route_info_, task2.route_info_);
     }
-    const ClusterTask TaskMerge(Runner* root, const ClusterTask& task1,
-                                const ClusterTask& task2) {
+    static const ClusterTask TaskMerge(Runner* root, const ClusterTask& task1,
+                                       const ClusterTask& task2) {
         return ClusterTask(root, task1.route_info_);
     }
 
- private:
+ protected:
     Runner* root_;
     RouteInfo route_info_;
 };
+
 class ClusterJob {
  public:
     ClusterJob() : tasks_(), main_task_id_(-1), sql_("") {}
@@ -1190,6 +1195,23 @@ class RunnerBuilder {
     ClusterTask BuildProxyRunnerForConcatedProxyNode(ConcatRunner* runner,
                                                      Runner* left,
                                                      Runner* right);
+
+    ClusterTask BuildTaskForBinaryRunner(const ClusterTask& left,
+                                         const ClusterTask& right,
+                                         Runner* runner, const Key& index_key);
+    ClusterTask BuildLocalTaskForBinaryRunner(const ClusterTask& left,
+                                              const ClusterTask& right,
+                                              Runner* runner);
+    ClusterTask BuildClusterTaskForBinaryRunner(const ClusterTask& left,
+                                                const ClusterTask& right,
+                                                Runner* runner,
+                                                const Key& index_key);
+    ClusterTask BuildProxyRunnerForClusterTask(const ClusterTask& task);
+    ClusterTask NewClusterTaskWithIndex(
+        Runner* runner, const std::shared_ptr<TableHandler> table_handler,
+        std::string index);
+    ClusterTask InheritLocalTask(const ClusterTask& input, Runner* runner);
+    ClusterTask InheritTask(const ClusterTask& input, Runner* runner);
 };
 
 class RunnerContext {
