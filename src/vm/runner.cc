@@ -2649,11 +2649,14 @@ std::shared_ptr<TableHandler> ProxyRequestRunner::RunWithRowsInput(
     }
     if (ctx.sp_name().empty()) {
         return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
-                                cluster_job->sql(), rows, false,
-                                ctx.is_debug());
+                                cluster_job->sql(),
+                                ctx.cluster_job()->common_column_indices(),
+                                rows, false, ctx.is_debug());
     } else {
         return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
-                                ctx.sp_name(), rows, true, ctx.is_debug());
+                                ctx.sp_name(),
+                                ctx.cluster_job()->common_column_indices(),
+                                rows, true, ctx.is_debug());
     }
     return fail_ptr;
 }

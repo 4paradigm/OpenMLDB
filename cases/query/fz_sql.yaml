@@ -1,6 +1,7 @@
 cases:
   - id: 0
     desc: fz sub select
+    mode: cluster-unsupport
     db: db1
     sql: |
       select

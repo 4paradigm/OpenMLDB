@@ -415,11 +415,15 @@ class LocalTablet : public Tablet {
     }
     virtual std::shared_ptr<TableHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
+        const std::set<size_t>& common_column_indices,
         const std::vector<Row>& in_rows, const bool is_procedure,
         const bool is_debug) {
         DLOG(INFO) << "Local tablet SubQuery batch request: task id "
                    << task_id;
         BatchRequestRunSession session;
+        for (size_t idx : common_column_indices) {
+            session.AddCommonColumnIdx(idx);
+        }
         base::Status status;
         if (is_debug) {
             session.EnableDebug();
@@ -436,8 +440,9 @@ class LocalTablet : public Tablet {
             auto request_compile_info =
                 sp_cache_->GetBatchRequestInfo(db, sql, status);
             if (!status.isOK()) {
-                auto error = std::shared_ptr<TableHandler>(new ErrorTableHandler(
-                    status.code, "SubQuery Fail: " + status.msg));
+                auto error =
+                    std::shared_ptr<TableHandler>(new ErrorTableHandler(
+                        status.code, "SubQuery Fail: " + status.msg));
                 LOG(WARNING) << error->GetStatus();
                 return error;
             }
@@ -445,8 +450,9 @@ class LocalTablet : public Tablet {
             session.SetCompileInfo(request_compile_info);
         } else {
             if (!engine_->Get(sql, db, session, status)) {
-                auto error = std::shared_ptr<TableHandler>(new ErrorTableHandler(
-                    status.code, "SubQuery Fail: " + status.msg));
+                auto error =
+                    std::shared_ptr<TableHandler>(new ErrorTableHandler(
+                        status.code, "SubQuery Fail: " + status.msg));
                 LOG(WARNING) << error->GetStatus();
                 return error;
             }

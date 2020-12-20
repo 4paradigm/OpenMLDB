@@ -165,7 +165,13 @@ bool Engine::Get(const std::string& sql, const std::string& db,
         session.SetCompileInfo(info);
         return true;
     }
+    // TODO(baoxinqi): IsCompatibleCache fail, return false, or reset status.
+    if (!status.isOK()) {
+        LOG(WARNING) << status;
+        status = base::Status::OK();
+    }
     DLOG(INFO) << "Compile FESQL ...";
+    status = base::Status::OK();
     info = std::shared_ptr<CompileInfo>(new CompileInfo());
     auto& sql_context = info->get_sql_context();
     sql_context.sql = sql;

@@ -1071,9 +1071,14 @@ class ClusterTask {
 
 class ClusterJob {
  public:
-    ClusterJob() : tasks_(), main_task_id_(-1), sql_("") {}
-    explicit ClusterJob(const std::string& sql)
-        : tasks_(), main_task_id_(-1), sql_(sql) {}
+    ClusterJob()
+        : tasks_(), main_task_id_(-1), sql_(""), common_column_indices_() {}
+    explicit ClusterJob(const std::string& sql,
+                        const std::set<size_t>& common_column_indices)
+        : tasks_(),
+          main_task_id_(-1),
+          sql_(sql),
+          common_column_indices_(common_column_indices) {}
     ClusterTask GetTask(int32_t id) {
         if (id < 0 || id >= static_cast<int32_t>(tasks_.size())) {
             LOG(WARNING) << "fail get task: task " << id << " not exist";
@@ -1122,22 +1127,27 @@ class ClusterJob {
             output << "\n";
         }
     }
+    const std::set<size_t>& common_column_indices() const {
+        return common_column_indices_;
+    }
     void Print() const { this->Print(std::cout, "    "); }
 
  private:
     std::vector<ClusterTask> tasks_;
     int32_t main_task_id_;
     std::string sql_;
+    std::set<size_t> common_column_indices_;
 };
 class RunnerBuilder {
  public:
     explicit RunnerBuilder(node::NodeManager* nm, const std::string& sql,
                            bool support_cluster_optimized,
+                           const std::set<size_t>& common_column_indices,
                            const std::set<size_t>& batch_common_node_set)
         : nm_(nm),
           support_cluster_optimized_(support_cluster_optimized),
           id_(0),
-          cluster_job_(sql),
+          cluster_job_(sql, common_column_indices),
           task_map_(),
           batch_common_node_set_(batch_common_node_set) {}
     virtual ~RunnerBuilder() {}
@@ -1163,8 +1173,6 @@ class RunnerBuilder {
         cluster_job_.AddMainTask(task);
         return cluster_job_;
     }
-
-
 
  private:
     node::NodeManager* nm_;

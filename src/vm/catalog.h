@@ -19,6 +19,7 @@
 #define SRC_VM_CATALOG_H_
 #include <node/sql_node.h>
 #include <map>
+#include <set>
 #include <memory>
 #include <string>
 #include <utility>
@@ -281,7 +282,8 @@ class AysncRowHandler : public RowHandler {
           aysnc_table_handler_(aysnc_table_handler),
           value_() {
         if (!aysnc_table_handler_) {
-            status_ = base::Status(fesql::common::kNullPointer, "async table handler is null");
+            status_ = base::Status(fesql::common::kNullPointer,
+                                   "async table handler is null");
         }
     }
     virtual ~AysncRowHandler() {}
@@ -318,6 +320,7 @@ class Tablet {
                                                  const bool is_debug) = 0;
     virtual std::shared_ptr<TableHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
+        const std::set<size_t>& common_column_indices,
         const std::vector<Row>& in_rows, const bool is_procedure,
         const bool is_debug) = 0;
 };
