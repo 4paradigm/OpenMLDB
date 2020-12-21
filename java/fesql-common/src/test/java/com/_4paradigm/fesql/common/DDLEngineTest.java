@@ -152,10 +152,17 @@ public class DDLEngineTest {
                 //         1,
                 //         1
                 // },
+//                new Object[] {
+//                        "luoji场景",
+//                        "fz/luoji.json",
+//                        "fz/luoji.txt",
+//                        1,
+//                        1
+//                },
                 new Object[] {
-                        "luoji场景",
-                        "fz/luoji.json",
-                        "fz/luoji.txt",
+                        "see_click场景",
+                        "fz/see_click.json",
+                        "fz/see_click.txt",
                         1,
                         1
                 }
