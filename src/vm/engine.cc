@@ -237,6 +237,8 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     explain_output->physical_plan = ctx.physical_plan_str;
     explain_output->ir = ctx.ir;
     explain_output->request_name = ctx.request_name;
+    explain_output->router.SetMainTable(ctx.request_name);
+    explain_output->router.Parse(ctx.physical_plan);
     return true;
 }
 

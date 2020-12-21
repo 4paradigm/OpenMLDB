@@ -529,6 +529,40 @@ TEST_F(EngineTest, EngineGetDependentTableTest) {
     }
 }
 
+TEST_F(EngineTest, RouterTest) {
+    const fesql::base::Status exp_status(::fesql::common::kOk, "ok");
+    fesql::type::TableDef table_def;
+    BuildTableDef(table_def);
+    table_def.set_name("t1");
+    std::shared_ptr<::fesql::storage::Table> table(
+        new ::fesql::storage::Table(1, 1, table_def));
+    ::fesql::type::IndexDef* index = table_def.add_indexes();
+    index->set_name("index1");
+    index->add_first_keys("col1");
+    index->set_second_key("col5");
+    index = table_def.add_indexes();
+    index->set_name("index2");
+    index->add_first_keys("col2");
+    index->set_second_key("col5");
+    auto catalog = BuildCommonCatalog(table_def, table);
+    {
+        std::string sql =
+            "select col2, sum(col1) over w1 from t1 \n"
+            "window w1 as (partition by col2 \n"
+            "order by col5 rows between 3 preceding and current row);";
+        EngineOptions options;
+        options.set_compile_only(true);
+        options.set_performance_sensitive(false);
+        Engine engine(catalog, options);
+        ExplainOutput explain_output;
+        base::Status status;
+        ASSERT_TRUE(engine.Explain(sql, "db", kBatchRequestMode,
+                                   &explain_output, &status));
+        ASSERT_EQ(explain_output.router.GetMainTable(), "t1");
+        ASSERT_EQ(explain_output.router.GetRouterCol(), "col2");
+    }
+}
+
 }  // namespace vm
 }  // namespace fesql
 
