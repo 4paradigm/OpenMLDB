@@ -237,7 +237,8 @@ Status CommonColumnOptimize::ProcessSimpleProject(
             }
             CHECK_TRUE(ExprDependOnlyOnLeft(expr, new_input, nullptr),
                        kPlanError, "Fail to resolve expr ",
-                       expr->GetExprString(), " on project input");
+                       expr->GetExprString(), " on project input:\n",
+                       new_input->SchemaToString());
             non_common_projects.Add(name, expr, frame);
         }
     }
