@@ -653,7 +653,6 @@ uint32_t format_string<double>(const double &v, char *buffer, size_t size) {
 template <>
 uint32_t format_string<codec::Date>(const codec::Date &v, char *buffer,
                                     size_t size) {
-
     const uint32_t len = 10;  // 1990-01-01
     if (buffer == nullptr) return len;
     if (size >= len) {

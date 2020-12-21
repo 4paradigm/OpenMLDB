@@ -488,8 +488,7 @@ struct FZTopNFrequency {
         };
         std::priority_queue<Entry, std::vector<Entry>, decltype(cmp)> queue(
             cmp);
-        for (auto iter = map.begin(); 
-                iter != map.end(); ++iter) {
+        for (auto iter = map.begin(); iter != map.end(); ++iter) {
             queue.push({iter->first, iter->second});
         }
         std::vector<StorageK> keys;
