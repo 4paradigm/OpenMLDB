@@ -206,6 +206,42 @@ static bool LeftDependOnlyOnPart(const Component& comp, PhysicalOpNode* part,
     return true;
 }
 
+static Status UpdateProjectExpr(PhysicalPlanContext* ctx, const node::ExprNode* expr,
+                                const PhysicalOpNode* origin_input,
+                                const std::unordered_map<size_t, size_t>& new_id_map,
+                                node::ExprNode** output) {
+    auto schemas_ctx = origin_input->schemas_ctx();
+    std::vector<const node::ExprNode*> origin_columns;
+    CHECK_STATUS(
+        schemas_ctx->ResolveExprDependentColumns(expr, &origin_columns));
+    
+    passes::ExprReplacer replacer;
+    for (auto column_expr : origin_columns) {
+        size_t schema_idx;
+        size_t col_idx;
+        if (column_expr->GetExprType() == node::kExprColumnId) {
+            auto column_id = dynamic_cast<const node::ColumnIdNode*>(column_expr);
+            CHECK_STATUS(schemas_ctx->ResolveColumnIndexByID(
+                column_id->GetColumnID(), &schema_idx, &col_idx));
+        } else if (column_expr->GetExprType() == node::kExprColumnRef) {
+            auto column_ref = dynamic_cast<const node::ColumnRefNode*>(column_expr);
+            CHECK_STATUS(schemas_ctx->ResolveColumnRefIndex(
+                column_ref, &schema_idx, &col_idx));
+        }
+        size_t total_idx = col_idx;
+        for (size_t i = 0; i < schema_idx; ++i) {
+            total_idx += schemas_ctx->GetSchemaSource(i)->size();
+        }
+	auto iter = new_id_map.find(total_idx);
+        CHECK_TRUE(iter != new_id_map.end(), kPlanError);
+        size_t new_column_id = iter->second;
+        auto new_column_expr = ctx->node_manager()->MakeColumnIdNode(new_column_id);
+        LOG(INFO) << total_idx << " " << new_column_id;
+        replacer.AddReplacement(column_expr, new_column_expr);
+    }
+    return replacer.Replace(expr->DeepCopy(ctx->node_manager()), output);
+}
+ 
 Status CommonColumnOptimize::ProcessSimpleProject(
     PhysicalPlanContext* ctx, PhysicalSimpleProjectNode* project_op,
     BuildOpState* state) {
@@ -214,15 +250,38 @@ Status CommonColumnOptimize::ProcessSimpleProject(
     auto input_op = project_op->GetProducer(0);
     CHECK_STATUS(GetOpState(ctx, input_op, &input_state));
 
+    // maybe use concat input
+    PhysicalOpNode* new_input = nullptr;
+    CHECK_STATUS(GetConcatOp(ctx, input_op, &new_input));
+    std::unordered_map<size_t, size_t> new_id_map;
+    for (size_t i = 0; i < new_input->GetOutputSchemaSourceSize(); ++i) {
+        auto source = new_input->GetOutputSchemaSource(i);
+        for (size_t j = 0; j < source->size(); ++j) {
+            auto col_idx = new_id_map.size();
+            new_id_map[col_idx] = source->GetColumnID(j);
+        }
+    }    
+
     // split project expressions
     ColumnProjects common_projects;
     ColumnProjects non_common_projects;
-    PhysicalOpNode* new_input = nullptr;
+    bool use_concat_input = false;
     const ColumnProjects& origin_projects = project_op->project();
     for (size_t i = 0; i < origin_projects.size(); ++i) {
         const std::string& name = origin_projects.GetName(i);
         const node::ExprNode* expr = origin_projects.GetExpr(i);
         const node::FrameNode* frame = origin_projects.GetFrame(i);
+
+        bool need_update = !ExprDependOnlyOnLeft(expr, new_input, nullptr);
+        if (need_update) {
+            node::ExprNode* new_expr = nullptr;
+            CHECK_STATUS(UpdateProjectExpr(ctx, expr, input_op, new_id_map, &new_expr),
+                       "Fail to resolve expr ",
+                       expr->GetExprString(), " on project input:\n",
+                       new_input->SchemaToString(), "\n", new_input->GetTreeString(), "\n\n", input_op->GetTreeString());
+            LOG(INFO) << expr->GetExprString() << " " << new_expr->GetExprString();
+            expr = new_expr;
+        }
 
         if (ExprDependOnlyOnLeft(expr, input_state->common_op,
                                  input_state->non_common_op)) {
@@ -232,17 +291,11 @@ Status CommonColumnOptimize::ProcessSimpleProject(
                                         input_state->common_op)) {
             non_common_projects.Add(name, expr, frame);
         } else {
-            if (new_input == nullptr) {
-                CHECK_STATUS(GetConcatOp(ctx, input_op, &new_input));
-            }
-            CHECK_TRUE(ExprDependOnlyOnLeft(expr, new_input, nullptr),
-                       kPlanError, "Fail to resolve expr ",
-                       expr->GetExprString(), " on project input:\n",
-                       new_input->SchemaToString());
+            use_concat_input = true;       
             non_common_projects.Add(name, expr, frame);
         }
     }
-    if (new_input == nullptr && non_common_projects.size() > 0) {
+    if (!use_concat_input && non_common_projects.size() > 0) {
         // expr depend on non-common part only
         new_input = input_state->non_common_op;
     }
