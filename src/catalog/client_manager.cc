@@ -253,7 +253,7 @@ std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t tas
     request.set_is_debug(is_debug);
     // TODO(chenjing): handler non common and common rows
     for (auto iter = row.cbegin(); iter != row.cend(); iter++) {
-        request.add_non_common_rows(iter->ToString());
+        request.add_non_common_rows(iter->buf(), iter->size());
     }
     auto cntl = std::make_shared<brpc::Controller>();
     auto response = std::make_shared<::rtidb::api::SQLBatchRequestQueryResponse>();
