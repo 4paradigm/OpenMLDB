@@ -16,12 +16,14 @@
  */
 
 #include "bm/engine_bm_case.h"
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 #include "benchmark/benchmark.h"
 #include "bm/base_bm.h"
+#include "codec/type_codec.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -64,6 +66,42 @@ static const int64_t RunTableRequest(
     }
     return cnt;
 }
+
+int32_t MapTopFn(int64_t limit) {
+    double d[5];
+    std::string key = "key";
+    codec::StringRef rkey(key.size(), key.c_str());
+    for (int j = 0; j < 5; j++) {
+        std::map<codec::StringRef, int32_t> state;
+        for (uint32_t i = 0; i < limit; i++) {
+            auto it = state.find(rkey);
+            if (it == state.end()) {
+                state.insert(it, {rkey, 1});
+            } else {
+                auto& single = it->second;
+                single += 1;
+            }
+        }
+        int max = 0;
+        int size = 0;
+        for (auto it = state.begin(); it != state.end(); ++it) {
+            size += it->second;
+            if (it->second > max) {
+                max = it->second;
+            }
+        }
+        d[j] = static_cast<double>(max) / size;
+    }
+    return 0;
+}
+
+void MapTop1(benchmark::State* state, MODE mode, int64_t limit_cnt,
+             int64_t size) {
+    for (auto _ : *state) {
+        benchmark::DoNotOptimize(MapTopFn(size));
+    }
+}
+
 static void EngineRequestMode(const std::string sql, MODE mode,
                               int64_t limit_cnt, int64_t size,
                               benchmark::State* state) {
@@ -296,6 +334,38 @@ void EngineWindowSumFeature5(benchmark::State* state, MODE mode,
         "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
+        std::to_string(limit_cnt) + ";";
+    EngineRequestMode(sql, mode, limit_cnt, size, state);
+}
+
+void EngineWindowDistinctCntFeature(benchmark::State* state, MODE mode,
+                                    int64_t limit_cnt,
+                                    int64_t size) {  // NOLINT
+    const std::string sql =
+        "SELECT "
+        "distinct_count(col6) OVER  w1  as top1, "
+        "distinct_count(col6) OVER  w1  as top2, "
+        "distinct_count(col6) OVER  w1  as top3, "
+        "distinct_count(col6) OVER  w1  as top4, "
+        "distinct_count(col6) OVER  w1  as top5 "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "30d PRECEDING AND CURRENT ROW) limit " +
+        std::to_string(limit_cnt) + ";";
+    EngineRequestMode(sql, mode, limit_cnt, size, state);
+}
+
+void EngineWindowTop1RatioFeature(benchmark::State* state, MODE mode,
+                                  int64_t limit_cnt,
+                                  int64_t size) {  // NOLINT
+    const std::string sql =
+        "SELECT "
+        "fz_top1_ratio(col6) OVER  w1  as top1, "
+        "fz_top1_ratio(col6) OVER  w1  as top2, "
+        "fz_top1_ratio(col6) OVER  w1  as top3, "
+        "fz_top1_ratio(col6) OVER  w1  as top4, "
+        "fz_top1_ratio(col6) OVER  w1  as top5 "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "30d PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
     EngineRequestMode(sql, mode, limit_cnt, size, state);
 }

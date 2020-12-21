@@ -34,6 +34,7 @@
 #include "proto/fe_common.pb.h"
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
+#include "vm/router.h"
 #include "vm/sql_compiler.h"
 
 namespace fesql {
@@ -138,6 +139,7 @@ class RunSession {
 
     void EnableDebug() { is_debug_ = true; }
     void DisableDebug() { is_debug_ = false; }
+    bool IsDebug() { return is_debug_; }
 
     void SetSpName(const std::string& sp_name) { sp_name_ = sp_name; }
     EngineMode engine_mode() const { return engine_mode_; }
@@ -210,6 +212,7 @@ struct ExplainOutput {
     std::string ir;
     vm::Schema output_schema;
     std::string request_name;
+    vm::Router router;
 };
 
 typedef std::map<
@@ -295,7 +298,8 @@ class LocalTabletRowHandler : public RowHandler {
         return value_;
     }
     base::Status SyncValue() {
-        DLOG(INFO) << "Local tablet SubQuery request: task id " << task_id_;
+        DLOG(INFO) << "Sync Value ... local tablet SubQuery request: task id "
+                   << task_id_;
         if (0 != session_.Run(task_id_, request_, &value_)) {
             return base::Status(common::kCallMethodError,
                                 "sub query fail: session run fail");

@@ -35,9 +35,9 @@ struct ContainerStorageTypeTrait {
 
 template <>
 struct ContainerStorageTypeTrait<codec::StringRef> {
-    using type = std::string;
-    static std::string to_stored_value(codec::StringRef* t) {
-        return t == nullptr ? "" : t->ToString();
+    using type = codec::StringRef;
+    static codec::StringRef to_stored_value(codec::StringRef* t) {
+        return t == nullptr ? codec::StringRef() : *t;
     }
 };
 
@@ -100,13 +100,11 @@ class TopKContainer {
         // estimate output length
         uint32_t str_len = 0;
         for (auto iter = map.rbegin(); iter != map.rend(); ++iter) {
-            uint32_t key_len = v1::format_string(iter->first, nullptr, 0);
+            uint32_t key_len = v1::to_string_len(iter->first);
             str_len += (key_len + 1) * iter->second;  // "x,x,x,"
         }
-
         // allocate string buffer
         char* buffer = udf::v1::AllocManagedStringBuf(str_len);
-
         // fill string buffer
         char* cur = buffer;
         uint32_t remain_space = str_len;
@@ -212,7 +210,7 @@ class BoundedGroupByDict {
         auto stop_rpos = map.rend();
         if (is_desc) {
             for (auto iter = map.rbegin(); iter != map.rend(); ++iter) {
-                uint32_t key_len = v1::format_string(iter->first, nullptr, 0);
+                uint32_t key_len = v1::to_string_len(iter->first);
                 uint32_t value_len = format_value(iter->second, nullptr, 0);
                 uint32_t new_len = str_len + key_len + value_len + 2;  // "k:v,"
                 if (new_len > MAX_OUTPUT_STR_SIZE) {
@@ -224,7 +222,7 @@ class BoundedGroupByDict {
             }
         } else {
             for (auto iter = map.begin(); iter != map.end(); ++iter) {
-                uint32_t key_len = v1::format_string(iter->first, nullptr, 0);
+                uint32_t key_len = v1::to_string_len(iter->first);
                 uint32_t value_len = format_value(iter->second, nullptr, 0);
                 uint32_t new_len = str_len + key_len + value_len + 2;  // "k:v,"
                 if (new_len > MAX_OUTPUT_STR_SIZE) {

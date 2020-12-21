@@ -848,9 +848,10 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
     std::shared_ptr<DataHandlerVector> outputs =
         std::make_shared<DataHandlerVector>();
     std::vector<std::shared_ptr<DataHandler>> inputs(producers_.size());
-    std::vector<std::shared_ptr<DataHandlerList>> batch_inputs;
-    for (size_t idx = 0; idx < producers_.size(); idx++) {
-        batch_inputs.push_back(producers_[idx]->BatchRequestRun(ctx));
+    std::vector<std::shared_ptr<DataHandlerList>> batch_inputs(
+        producers_.size());
+    for (size_t idx = producers_.size(); idx > 0; idx--) {
+        batch_inputs[idx - 1] = producers_[idx - 1]->BatchRequestRun(ctx);
     }
 
     for (size_t idx = 0; idx < ctx.GetRequestSize(); idx++) {
@@ -900,10 +901,11 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
             return cached;
         }
     }
-    std::vector<std::shared_ptr<DataHandler>> inputs;
-    for (size_t idx = 0; idx < producers_.size(); idx++) {
-        inputs.push_back(producers_[idx]->RunWithCache(ctx));
+    std::vector<std::shared_ptr<DataHandler>> inputs(producers_.size());
+    for (size_t idx = producers_.size(); idx > 0; idx--) {
+        inputs[idx - 1] = producers_[idx - 1]->RunWithCache(ctx);
     }
+
     auto res = Run(ctx, inputs);
     if (ctx.is_debug()) {
         std::ostringstream oss;
@@ -2704,12 +2706,10 @@ const std::string KeyGenerator::GenConst() {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
@@ -2729,12 +2729,10 @@ const std::string KeyGenerator::Gen(const Row& row) {
     }
     std::string keys = "";
     for (auto pos : idxs_) {
-        std::string key =
-            row_view.IsNULL(pos)
-                ? codec::NONETOKEN
-                : fn_schema_.Get(pos).type() == fesql::type::kDate
-                      ? std::to_string(row_view.GetDateUnsafe(pos))
-                      : row_view.GetAsString(pos);
+        std::string key = row_view.IsNULL(pos) ? codec::NONETOKEN
+                          : fn_schema_.Get(pos).type() == fesql::type::kDate
+                              ? std::to_string(row_view.GetDateUnsafe(pos))
+                              : row_view.GetAsString(pos);
         if (key == "") {
             key = codec::EMPTY_STRING;
         }
