@@ -23,6 +23,7 @@ public class FESQLFZBenchmarkTest {
         Util.EnableProxy();
         benchmark.setWindowNum(10);
         benchmark.setup();
+        int loops = 1;
         for (int i = 0; i < loops; i++) {
             Map<String, String> result = benchmark.execSQLTest();
             for(Map.Entry<String, String> entry: result.entrySet()) {
