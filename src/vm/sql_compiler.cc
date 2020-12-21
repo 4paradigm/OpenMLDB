@@ -318,7 +318,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         ctx.physical_plan->Print(physical_plan_ss, "\t");
         ctx.physical_plan_str = physical_plan_ss.str();
     }
-    ctx.schema = *ctx.physical_plan->GetOutputSchema();
     ok = codec::SchemaCodec::Encode(ctx.schema, &ctx.encoded_schema);
     if (!ok) {
         LOG(WARNING) << "fail to encode output schema";
@@ -332,7 +331,6 @@ bool SQLCompiler::Compile(SQLContext& ctx, Status& status) {  // NOLINT
         m->print(::llvm::errs(), NULL, true, true);
         return false;
     }
-    // ::llvm::errs() << *(m.get());
     ::llvm::Expected<std::unique_ptr<FeSQLJIT>> jit_expected(
         FeSQLJITBuilder().create());
     {
