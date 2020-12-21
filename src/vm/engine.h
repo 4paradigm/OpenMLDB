@@ -369,7 +369,10 @@ class LocalTablet : public Tablet {
  public:
     explicit LocalTablet(fesql::vm::Engine* engine,
                          std::shared_ptr<fesql::vm::CompileInfoCache> sp_cache)
-        : Tablet(), engine_(engine), sp_cache_(sp_cache) {}
+        : Tablet(),
+          name_("LocalTablet"),
+          engine_(engine),
+          sp_cache_(sp_cache) {}
     ~LocalTablet() {}
     std::shared_ptr<RowHandler> SubQuery(uint32_t task_id,
                                          const std::string& db,
@@ -442,9 +445,10 @@ class LocalTablet : public Tablet {
         return std::make_shared<LocalTabletTableHandler>(task_id, session,
                                                          in_rows);
     }
-    const std::string& GetName() const { return "LocalTablet"; }
+    const std::string& GetName() const { return name_; }
 
  private:
+    const std::string name_;
     vm::Engine* engine_;
     std::shared_ptr<fesql::vm::CompileInfoCache> sp_cache_;
 };
