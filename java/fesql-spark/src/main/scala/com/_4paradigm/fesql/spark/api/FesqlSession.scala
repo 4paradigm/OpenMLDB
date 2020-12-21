@@ -32,23 +32,6 @@ class FesqlSession {
     this()
     this.sparkSession = sparkSession
     this.sparkSession.conf.set(FesqlConfig.configTimeZone, FesqlConfig.timeZone)
-//    this.configs = this.sparkSession.conf.getAll
-
-//    for ((k, v) <- this.sparkSession.conf.getAll) {
-//      scalaConfig += (k -> v)
-//      k match {
-//        case FesqlConfig.configSkewRadio => FesqlConfig.skewRatio = v.toDouble
-//        case FesqlConfig.configSkewLevel => FesqlConfig.skewLevel = v.asInstanceOf[Int]
-//        case FesqlConfig.configSkewCnt => FesqlConfig.skewCnt = v.asInstanceOf[Int]
-//        case FesqlConfig.configSkewCntName => FesqlConfig.skewCntName = v.asInstanceOf[String]
-//        case FesqlConfig.configSkewTag => FesqlConfig.skewTag = v.asInstanceOf[String]
-//        case FesqlConfig.configSkewPosition => FesqlConfig.skewPosition = v.asInstanceOf[String]
-//        case FesqlConfig.configMode => FesqlConfig.mode = v.asInstanceOf[String]
-//        case FesqlConfig.configPartitions => FesqlConfig.paritions = v.asInstanceOf[Int]
-//        case FesqlConfig.configTimeZone => FesqlConfig.timeZone = v.asInstanceOf[String]
-//      }
-//    }
-
 
     for ((k, v) <- this.sparkSession.conf.getAll) {
       logger.info("fesql config: " +  k + " = " + v)

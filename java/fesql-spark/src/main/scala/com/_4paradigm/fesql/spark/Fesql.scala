@@ -25,7 +25,7 @@ object Fesql {
   def run(args: Array[String]): Unit = {
     val path = args(0)
     val config = parseFeconfigJsonPath(path)
-    val sessionBuilder = SparkSession.builder().master(sparkMaster)
+    val sessionBuilder = SparkSession.builder()
     if (appName != null) {
       sessionBuilder.appName(appName)
     }

@@ -18,22 +18,26 @@ public class SkewUtils {
         StringBuffer sql = new StringBuffer();
         sql.append("select \n");
         for (String e : keys) {
-            sql.append(e + ",\n");
+            sql.append(String.format("`%s`,\n", e));
         }
 //        count(employee_name, department) as key_cnt,
-        sql.append(String.format("count(%s) as %s,\n", StringUtils.join(keys, ","), cnt));
-        sql.append(String.format("min(%s) as min_%s,\n", ts, ts));
-        sql.append(String.format("max(%s) as max_%s,\n", ts, ts));
-        sql.append(String.format("mean(%s) as mean_%s,\n", ts, ts));
-        sql.append(String.format("sum(%s) as sum_%s,\n", ts, ts));
+        List<String> newkeys = new ArrayList<>();
+        for (String e : keys) {
+            newkeys.add(String.format("`%s`", e));
+        }
+        sql.append(String.format("count(%s) as %s,\n", StringUtils.join(newkeys, ","), cnt));
+        sql.append(String.format("min(`%s`) as min_%s,\n", ts, ts));
+        sql.append(String.format("max(`%s`) as max_%s,\n", ts, ts));
+        sql.append(String.format("mean(`%s`) as mean_%s,\n", ts, ts));
+        sql.append(String.format("sum(`%s`) as sum_%s,\n", ts, ts));
         double factor = 1.0 / new Double(quantile);
         for (int i = 0; i < quantile; i++) {
             double v = i * factor;
-            sql.append(String.format("percentile_approx(%s, %s) as percentile_%s,\n", ts, v, i));
+            sql.append(String.format("percentile_approx(`%s`, %s) as percentile_%s,\n", ts, v, i));
         }
-        sql.append(String.format("percentile_approx(%s, 1) as percentile_%s\n", ts, quantile));
-        sql.append(String.format("from \n%s\ngroup by ", table1));
-        sql.append(StringUtils.join(keys, " , "));
+        sql.append(String.format("percentile_approx(`%s`, 1) as percentile_%s\n", ts, quantile));
+        sql.append(String.format("from \n`%s`\ngroup by ", table1));
+        sql.append(StringUtils.join(newkeys, " , "));
         sql.append(";");
 //        System.out.println(sql);
         return sql.toString();
@@ -56,7 +60,7 @@ public class SkewUtils {
         StringBuffer sql = new StringBuffer();
         sql.append("select \n");
         for (String e : schemas) {
-            sql.append(table1 + "." + e + ",");
+            sql.append(table1 + ".`" + e + "`,");
         }
 
         sql.append(caseWhenTag(table1, table2, ts, quantile, tag1, tag3));
@@ -64,10 +68,10 @@ public class SkewUtils {
         sql.append(caseWhenTag(table1, table2, ts, quantile, tag2, tag3));
 
 
-        sql.append(String.format("from %s left join %s on ", table1, table2));
+        sql.append(String.format("from `%s` left join `%s` on ", table1, table2));
         List<String> conditions = new ArrayList<>();
         for (Map.Entry<String, String> e : keysMap.entrySet()) {
-            String cond = String.format("%s.%s = %s.%s", table1, e.getKey(), table2, e.getValue());
+            String cond = String.format("`%s`.`%s` = `%s`.`%s`", table1, e.getKey(), table2, e.getValue());
             conditions.add(cond);
         }
         sql.append(StringUtils.join(conditions, " and "));
@@ -86,15 +90,15 @@ public class SkewUtils {
     public static String caseWhenTag(String table1, String table2, String ts, int quantile, String output, String con1) {
         StringBuffer sql = new StringBuffer();
         sql.append("\ncase\n");
-        sql.append(String.format("when %s.%s < %s then 1\n", table2, con1, quantile));
+        sql.append(String.format("when `%s`.`%s` < %s then 1\n", table2, con1, quantile));
         for (int i = 0; i < quantile; i++) {
             if (i == 0) {
-                sql.append(String.format("when %s.%s <= percentile_%s then %d\n", table1, ts, i, quantile - i));
+                sql.append(String.format("when `%s`.`%s` <= percentile_%s then %d\n", table1, ts, i, quantile - i));
             }
 
-            sql.append(String.format("when %s.%s > percentile_%s and %s.%s <= percentile_%d then %d\n", table1, ts, i, table1, ts, i+1, quantile - i));
+            sql.append(String.format("when `%s`.`%s` > percentile_%s and `%s`.`%s` <= percentile_%d then %d\n", table1, ts, i, table1, ts, i+1, quantile - i));
             if (i == quantile) {
-                sql.append(String.format("when %s.%s > percentile_%s then %d\n", table1, ts, i+1, quantile - i));
+                sql.append(String.format("when `%s`.`%s` > percentile_%s then %d\n", table1, ts, i+1, quantile - i));
             }
         }
         sql.append("end as " + output + "\n");
