@@ -4,10 +4,12 @@ import com._4paradigm.fesql.spark.SparkPlanner
 import com._4paradigm.fesql.spark.element.FesqlConfig
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.apache.spark.SparkConf
-
+import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+import org.apache.spark.sql.catalyst.QueryPlanningTracker
 import scala.collection.mutable
+
 
 /**
  * The class to provide SparkSession-like API.
@@ -159,7 +161,19 @@ class FesqlSession {
    * @return
    */
   def sparksql(sqlText: String): FesqlDataframe = {
-    new FesqlDataframe(this, getSparkSession.sql(sqlText))
+    // Use Spark internal implementation because we may override sql function in 4PD Spark distribution
+    val tracker = new QueryPlanningTracker
+    val plan = tracker.measurePhase(QueryPlanningTracker.PARSING) {
+      getSparkSession.sessionState.sqlParser.parsePlan(sqlText)
+    }
+
+    // Call private method Dataset.ofRows()
+    val datasetClass = Class.forName("org.apache.spark.sql.Dataset")
+    val datasetOfRowsMethod = datasetClass
+      .getDeclaredMethod(s"ofRows", classOf[SparkSession], classOf[LogicalPlan], classOf[QueryPlanningTracker])
+    val outputDataset =  datasetOfRowsMethod.invoke(null, getSparkSession, plan, tracker).asInstanceOf[Dataset[Row]]
+
+    FesqlDataframe(this, outputDataset)
   }
 
   /**

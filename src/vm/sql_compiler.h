@@ -46,6 +46,9 @@ struct BatchRequestInfo {
 
     // common physical node ids during batch request
     std::set<size_t> common_node_set;
+
+    // common output column indices
+    std::set<size_t> output_common_column_indices;
 };
 
 struct SQLContext {
