@@ -164,9 +164,9 @@ class TabletAccessor : public ::fesql::vm::Tablet {
 };
 class TabletsAccessor : public ::fesql::vm::Tablet {
  public:
-    TabletsAccessor() : rows_cnt_(0) {}
+    TabletsAccessor() : name_("TabletsAccessor"), rows_cnt_(0) {}
     ~TabletsAccessor() {}
-    const std::string& GetName() const { return "TabletsAccessor"; }
+    const std::string& GetName() const { return name_; }
     void AddTabletAccessor(std::shared_ptr<Tablet> accessor) {
         if (!accessor) {
             LOG(WARNING) << "Fail to add null tablet accessor";
@@ -192,6 +192,7 @@ class TabletsAccessor : public ::fesql::vm::Tablet {
                                                       const bool is_procedure, const bool is_debug);
 
  private:
+    const std::string name_;
     size_t rows_cnt_;
     std::vector<std::shared_ptr<Tablet>> accessors_;
     std::vector<size_t> assign_accessor_idxs_;
