@@ -306,10 +306,8 @@ class LocalTabletRowHandler : public RowHandler {
         return value_;
     }
     base::Status SyncValue() {
-        if (session_.IsDebug()) {
-            LOG(INFO) << "Sync Value ... local tablet SubQuery: task id "
-                       << task_id_;
-        }
+        DLOG(INFO) << "Sync Value ... local tablet SubQuery: task id "
+                   << task_id_;
         if (0 != session_.Run(task_id_, request_, &value_)) {
             return base::Status(common::kCallMethodError,
                                 "sub query fail: session run fail");
@@ -340,9 +338,7 @@ class LocalTablet : public Tablet {
                                          const std::string& sql, const Row& row,
                                          const bool is_procedure,
                                          const bool is_debug) override {
-        if (is_debug) {
-            LOG(INFO) << "Local tablet SubQuery: task id " << task_id;
-        }
+        DLOG(INFO) << "Local tablet SubQuery: task id " << task_id;
         RequestRunSession session;
         base::Status status;
         if (is_debug) {
