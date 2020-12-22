@@ -104,25 +104,5 @@ public class SkewUtils {
         sql.append("end as " + output + "\n");
         return sql.toString();
     }
-
-    public static void main(String[] args) {
-        String table1 = "mainTable";
-        String table2 = "info_table";
-        String ts = "bonus";
-        Map<String, String> keys = new HashMap<>();
-        keys.put("employee_name", "employee_name");
-        keys.put("department", "department");
-        List<String> schemas = new ArrayList<String>(){
-            {
-                add("employee_name");
-                add("department");
-                add("state");
-                add("salary");
-                add("age");
-                add("bonus");
-            }
-        };
-        System.out.println(genPercentileTagSql(table1, table2, 4, schemas, keys, ts, "tag", "pos", "z"));
-    }
 }
 

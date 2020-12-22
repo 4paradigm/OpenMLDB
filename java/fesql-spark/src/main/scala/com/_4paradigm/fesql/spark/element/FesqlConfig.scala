@@ -4,28 +4,28 @@ package com._4paradigm.fesql.spark.element
 
 object FesqlConfig {
   // 配置名字
-  val configPartitions = "spark.fesql.group.partitions"
-  val configTimeZone = "spark.sql.session.timeZone"
-  val configFesqlTZ = "spark.fesql.timeZone"
-  val configMode =  "spark.fesql.mode"
+  final val configPartitions = "spark.fesql.group.partitions"
+  final val configTimeZone = "spark.sql.session.timeZone"
+  final val configFesqlTZ = "spark.fesql.timeZone"
+  final val configMode =  "spark.fesql.mode"
   // ================================================
   // skew mode
-  val configSkewRadio = "spark.fesql.skew.ratio"
-  val configSkewLevel = "spark.fesql.skew.level"
+  final val configSkewRadio = "spark.fesql.skew.ratio"
+  final val configSkewLevel = "spark.fesql.skew.level"
   // 针对key的分水岭，默认是100 * 100 条，才做数据倾斜优化
-  val configSkewCnt = "spark.fesql.skew.watershed"
-  val configSkewCntName = "spark.fesql.skew.cnt.name"
-  val configSkewTag = "spark.fesql.skew.tag"
-  val configSkewPosition = "spark.fesql.skew.position"
+  final val configSkewCnt = "spark.fesql.skew.watershed"
+  final val configSkewCntName = "spark.fesql.skew.cnt.name"
+  final val configSkewTag = "spark.fesql.skew.tag"
+  final val configSkewPosition = "spark.fesql.skew.position"
 
   // ================================================
   // test mode 用于测试的时候验证相关问题
   // 控制读取表的数据条数，默认读全量数据
-  val configTinyData = "spark.fesql.test.tiny"
+  final val configTinyData = "spark.fesql.test.tiny"
   // ================================================
 
   // enable spark2.3.0 service
-  val configSparkEnable = "spark.hadoop.yarn.timeline-service.enabled"
+  final val configSparkEnable = "spark.hadoop.yarn.timeline-service.enabled"
   var configDBName = "spark_db"
 
 
@@ -58,6 +58,6 @@ object FesqlConfig {
   var tinyData: Long = -1
   // ================================================
   // 常量区
-  val skew = "skew"
+  final val skew = "skew"
 
 }

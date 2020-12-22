@@ -186,13 +186,12 @@ object WindowAggPlan {
     val res = input.rdd.flatMap(row => {
         val arr = row.toSeq.toArray
         var arrays = Seq(row)
-        val value = arr(tag_index)
+        val value = row.getInt(tag_index)
         for (i <- 1 until value.asInstanceOf[Int]) {
-//        println("i = " + i)
-        val temp_arr = row.toSeq.toArray
-        temp_arr(tag_index) = i
-        arrays = arrays :+ Row.fromSeq(temp_arr)
-      }
+          val temp_arr = row.toSeq.toArray
+          temp_arr(tag_index) = i
+          arrays = arrays :+ Row.fromSeq(temp_arr)
+        }
         arrays
       })
       input.sqlContext.createDataFrame(res, input.schema)
@@ -216,6 +215,10 @@ object WindowAggPlan {
     for (i <- 0 until groupByExprs.GetChildNum()) {
       val expr = groupByExprs.GetChild(i)
       val colIdx = SparkColumnUtil.resolveColumnIndex(expr, node.GetProducer(0))
+      if (colIdx < 0) {
+        logger.error(s"skew dataframe: $input")
+        throw new FesqlException("window skew colIdx is less than zero")
+      }
       groupByCols += SparkColumnUtil.getColumnFromIndex(input, colIdx)
       keysName.add(input.schema.apply(colIdx).name)
     }
@@ -226,6 +229,10 @@ object WindowAggPlan {
     for (i <- 0 until orderExprs.GetChildNum()) {
       val expr = orderExprs.GetChild(i)
       val colIdx = SparkColumnUtil.resolveColumnIndex(expr, node.GetProducer(0))
+      if (colIdx < 0) {
+        logger.error(s"skew dataframe: $input")
+        throw new FesqlException("window skew colIdx is less than zero")
+      }
       ts = input.schema.apply(colIdx).name
       val column = SparkColumnUtil.getColumnFromIndex(input, colIdx)
       if (orders.is_asc()) {
