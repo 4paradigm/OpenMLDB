@@ -3,7 +3,7 @@ package com._4paradigm.sql.sdk;
 public class SdkOption {
     private String zkCluster;
     private String zkPath;
-    private long sessionTimeout;
+    private long sessionTimeout = 10000;
     private Boolean enableDebug = false;
 
     public String getZkCluster() {
