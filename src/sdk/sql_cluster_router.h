@@ -163,9 +163,10 @@ class SQLClusterRouter : public SQLRouter {
             const std::string& db, const std::string& sp_name, int64_t timeout_ms,
             std::shared_ptr<SQLRequestRowBatch> row_batch, fesql::sdk::Status* status);
 
- private:
     std::shared_ptr<::rtidb::client::TabletClient> GetTabletClient(
         const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row);
+
+ private:
 
     void GetTables(::fesql::vm::PhysicalOpNode* node,
                    std::set<std::string>* tables);

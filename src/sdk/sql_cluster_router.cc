@@ -660,19 +660,27 @@ bool SQLClusterRouter::DropDB(const std::string& db,
 std::shared_ptr<::rtidb::client::TabletClient> SQLClusterRouter::GetTabletClient(
     const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row) {
     std::shared_ptr<::rtidb::catalog::TabletAccessor> tablet;
-    if (row) {
-        auto cache = GetCache(db, sql);
-        if (cache) {
-            const std::string& col = cache->router.GetRouterCol();
-            const std::string& main_table = cache->router.GetMainTable();
-            if (!main_table.empty()) {
-                std::string val;
-                if (!col.empty() && row->GetRecordVal(col, &val)) {
-                    tablet = cluster_sdk_->GetTablet(db, main_table, val);
-                }
-                if (!tablet) {
-                    tablet = cluster_sdk_->GetTablet(db, main_table);
-                }
+    auto cache = GetCache(db, sql);
+    if (!cache) {
+        ::fesql::vm::ExplainOutput explain;
+        ::fesql::base::Status vm_status;
+        if (engine_->Explain(sql, db, ::fesql::vm::kBatchMode, &explain, &vm_status)) {
+            auto schema = std::make_shared<::fesql::sdk::SchemaImpl>(explain.input_schema);
+            cache = std::make_shared<SQLCache>(schema, explain.router);
+            SetCache(db, sql, cache);
+        }
+    }
+    if (cache) {
+        const std::string& col = cache->router.GetRouterCol();
+        const std::string& main_table = cache->router.GetMainTable();
+        if (!main_table.empty()) {
+            DLOG(INFO) << "get main table" << main_table;
+            std::string val;
+            if (!col.empty() && row && row->GetRecordVal(col, &val)) {
+                tablet = cluster_sdk_->GetTablet(db, main_table, val);
+            }
+            if (!tablet) {
+                tablet = cluster_sdk_->GetTablet(db, main_table);
             }
         }
     }
