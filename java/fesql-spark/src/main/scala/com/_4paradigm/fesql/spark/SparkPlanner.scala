@@ -28,11 +28,8 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
 
   def this(session: SparkSession) = {
     this(session, session.conf.getAll)
-//    println(FesqlConfig.mode)
     for ((k, v) <- config.asInstanceOf[Map[String, String]]) {
       logger.info("spark plan fesql config: " +  k + " = " + v)
-//      scalaConfig += (k -> v)
-//      if (k.startsWith())
       k match {
         case FesqlConfig.configSkewRadio => FesqlConfig.skewRatio = v.toDouble
         case FesqlConfig.configSkewLevel => FesqlConfig.skewLevel = v.toInt
@@ -47,7 +44,6 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
         case _ => ""
       }
     }
-//    println(FesqlConfig.mode)
   }
 
   def plan(sql: String, tableDict: Map[String, DataFrame]): SparkInstance = {
@@ -70,9 +66,6 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
       visitPhysicalNodes(root, planCtx)
     }
   }
-
-
-
 
   def visitPhysicalNodes(root: PhysicalOpNode, ctx: PlanContext): SparkInstance = {
     val optCache = ctx.getPlanResult(root)

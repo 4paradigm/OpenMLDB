@@ -11,7 +11,7 @@ create table `bo_hislabel`(
 `uUserId` string,
 `nRequestTime` timestamp,
 `fWatchedTimeLen` double,
-index(key=(`zUserId`,`uUserId`), ts=`ingestionTime`, ttl=2880m, ttl_type=absolute)
+index(key=(`zUserId`,`uUserId`), ts=`ingestionTime`, ttl=2881m, ttl_type=absolute)
 ) replicanum=1, partitionnum=1 ;
 create table `flattenRequest`(
 `reqId` string,
@@ -94,11 +94,11 @@ create table `flattenRequest`(
 `uRGiftUserNum` double,
 `uWatchTopList` int,
 `split_id` int,
-index(key=(`uUserId`), ts=`eventTime`, ttl=2880m, ttl_type=absolute),
-index(key=(`zChannel`), ts=`eventTime`, ttl=2880m, ttl_type=absolute),
-index(key=(`uSex`), ts=`eventTime`, ttl=2880m, ttl_type=absolute),
-index(key=(`zUserId`), ts=`eventTime`, ttl=2880m, ttl_type=absolute),
-index(key=(`uPlayGame`), ts=`eventTime`, ttl=600m, ttl_type=absolute),
-index(key=(`uHasJoinedGroup`), ts=`eventTime`, ttl=2880m, ttl_type=absolute),
-index(key=(`zUserId`,`uUserId`), ts=`eventTime`, ttl=2880m, ttl_type=absolute)
+index(key=(`uUserId`), ts=`eventTime`, ttl=2881m, ttl_type=absolute),
+index(key=(`zChannel`), ts=`eventTime`, ttl=2881m, ttl_type=absolute),
+index(key=(`uSex`), ts=`eventTime`, ttl=2881m, ttl_type=absolute),
+index(key=(`zUserId`), ts=`eventTime`, ttl=2881m, ttl_type=absolute),
+index(key=(`uPlayGame`), ts=`eventTime`, ttl=601m, ttl_type=absolute),
+index(key=(`uHasJoinedGroup`), ts=`eventTime`, ttl=2881m, ttl_type=absolute),
+index(key=(`zUserId`,`uUserId`), ts=`eventTime`, ttl=2881m, ttl_type=absolute)
 ) replicanum=1, partitionnum=1 ;

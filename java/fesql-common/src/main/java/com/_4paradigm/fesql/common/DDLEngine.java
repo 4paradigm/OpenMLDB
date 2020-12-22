@@ -572,18 +572,33 @@ class RtidbIndex {
 
     public String getTTL() {
         if (TTLType.kAbsAndLat == type) {
-            long expireStr = expire / (60 * 1000);
+            long expireStr = 1L;
+            if (expire % (60 * 1000) == 0) {
+                expireStr = expire / (60 * 1000);
+            } else {
+                expireStr += expire / (60 * 1000);
+            }
             return "(" + expireStr + "m, " + atmost + ")";
         }
         if (TTLType.kAbsolute == type) {
-            long expireStr = expire / (60 * 1000);
+            long expireStr = 1L;
+            if (expire % (60 * 1000) == 0) {
+                expireStr = expire / (60 * 1000);
+            } else {
+                expireStr += expire / (60 * 1000);
+            }
             return expireStr + "m";
         }
         if (TTLType.kLatest == type) {
             return String.valueOf(atmost);
         }
         if (TTLType.kAbsOrLat == type) {
-            long expireStr = expire / (60 * 1000);
+            long expireStr = 1L;
+            if (expire % (60 * 1000) == 0) {
+                expireStr = expire / (60 * 1000);
+            } else {
+                expireStr += expire / (60 * 1000);
+            }
             return "(" + expireStr + "m, " + atmost + ")";
         }
         return null;

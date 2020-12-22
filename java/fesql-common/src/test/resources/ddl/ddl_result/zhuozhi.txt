@@ -2,7 +2,7 @@ create table `his_label`(
 `ingestionTime` timestamp,
 `SKUID` string,
 `actionValue` double,
-index(key=(`SKUID`), ts=`ingestionTime`, ttl=7200m, ttl_type=absolute)
+index(key=(`SKUID`), ts=`ingestionTime`, ttl=7201m, ttl_type=absolute)
 ) replicanum=1, partitionnum=1 ;
 create table `main`(
 `reqId` string,
@@ -27,5 +27,5 @@ create table `main`(
 `ae` int,
 `split_id` bigint,
 `actionValue` double,
-index(key=(`SKUID`), ts=`eventTime`, ttl=7200m, ttl_type=absolute)
+index(key=(`SKUID`), ts=`eventTime`, ttl=7201m, ttl_type=absolute)
 ) replicanum=1, partitionnum=1 ;

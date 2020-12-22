@@ -90,11 +90,6 @@ object WindowAggPlan {
     resultRDD
   }
 
-
-
-
-
-
   def doUnionTables(ctx: PlanContext,
                     node: PhysicalWindowAggrerationNode,
                     source: DataFrame,
@@ -192,7 +187,6 @@ object WindowAggPlan {
         val arr = row.toSeq.toArray
         var arrays = Seq(row)
         val value = arr(tag_index)
-//              System.out.println(String.format("value = %d, keys = %s, %s ts = %d", value.asInstanceOf[Int], arr(0).asInstanceOf[String], arr(1).asInstanceOf[String], arr(2).asInstanceOf[Int]))
         for (i <- 1 until value.asInstanceOf[Int]) {
 //        println("i = " + i)
         val temp_arr = row.toSeq.toArray
@@ -356,7 +350,6 @@ object WindowAggPlan {
           computer.bufferRowOnly(row)
           None
         }
-//        computer.compute(row)
       })
     } else {
       limitInputIter.flatMap(row => {
@@ -367,16 +360,6 @@ object WindowAggPlan {
         Some(computer.compute(row))
       })
     }
-
-//    val resIter = limitInputIter.flatMap(row => {
-//      if (lastRow != null) {
-//        computer.checkPartition(row, lastRow)
-//      }
-//      lastRow = row
-//      Some(computer.compute(row))
-////      computer.compute(row)
-//    })
-
     AutoDestructibleIterator(resIter) {
       computer.delete()
     }
