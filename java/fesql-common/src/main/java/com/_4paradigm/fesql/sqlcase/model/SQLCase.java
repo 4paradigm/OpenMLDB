@@ -5,6 +5,7 @@ import org.apache.commons.collections.CollectionUtils;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 @Data
 public class SQLCase implements Serializable{
@@ -13,7 +14,7 @@ public class SQLCase implements Serializable{
     String mode;
     String db;
     String sql;
-    List<String> dataProvider;
+    List<List<String>> dataProvider;
     List<String> sqls;
     boolean standard_sql;
     boolean standard_sql_compatible;
@@ -25,6 +26,7 @@ public class SQLCase implements Serializable{
     List<InputDesc> inputs;
     InputDesc batch_request;
     ExpectDesc expect;
+    private Map<Integer,ExpectDesc> expectProvider;
 
     public static String formatSql(String sql, int idx, String name) {
         return sql.replaceAll("\\{" + idx + "\\}", name);
