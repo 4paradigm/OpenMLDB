@@ -36,7 +36,7 @@ public class DDLEngineTest {
                         ""
                 },
                 new Object[] {
-                        "????op???",
+                        "all_op",
                         "ddl/failed/all_op.json",
                         "ddl/failed/all_op.txt",
                         1,
@@ -44,7 +44,7 @@ public class DDLEngineTest {
                         ""
                 },
                 new Object[] {
-                        "?????????",
+                        "multi_table_cnt_window",
                         "ddl/multi_table_cnt_window.json",
                         "ddl/multi_table_cnt_window.txt",
                         1,
@@ -52,7 +52,7 @@ public class DDLEngineTest {
                         ""
                 },
                 new Object[] {
-                        "????????",
+                        "multi_table_max_cnt_window",
                         "ddl/multi_table_max_cnt_window.json",
                         "ddl/multi_table_max_cnt_window_more.txt",
                         1,

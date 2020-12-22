@@ -20,7 +20,7 @@ object PercentileApprox {
    *
    * @param col
    * @param percentage
-   * @param accu ????0?????????
+   * @param accu
    * @return
    */
   def percentile_approx(col: Column, percentage: Column, accu: Int): Column = {
