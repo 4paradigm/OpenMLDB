@@ -61,7 +61,11 @@ class TabletRowHandler : public ::fesql::vm::RowHandler {
 class AsyncTableHandler : public ::fesql::vm::MemTableHandler {
  public:
     explicit AsyncTableHandler(rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback);
-    ~AsyncTableHandler() {}
+    ~AsyncTableHandler() {
+        if (nullptr != callback_) {
+            callback_->UnRef();
+        }
+    }
     const uint64_t GetCount() override {
         if (status_.isRunning()) {
             SyncRpcResponse();
