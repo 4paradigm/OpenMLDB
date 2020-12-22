@@ -238,8 +238,8 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     if (engine_mode == ::fesql::vm::kBatchMode) {
         std::set<std::string> tables;
         base::Status status;
-        for (auto iter = ctx.logical_plan.cbegin(); iter != ctx.logical_plan.cend();
-             iter++) {
+        for (auto iter = ctx.logical_plan.cbegin();
+             iter != ctx.logical_plan.cend(); iter++) {
             if (!GetDependentTables(*iter, &tables, status)) {
                 break;
             }
