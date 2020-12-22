@@ -39,13 +39,10 @@ namespace vm {
 static bool LLVM_IS_INITIALIZED = false;
 Engine::Engine(const std::shared_ptr<Catalog>& catalog)
     : cl_(catalog), options_(), mu_(), lru_cache_() {}
-
 Engine::Engine(const std::shared_ptr<Catalog>& catalog,
                const EngineOptions& options)
     : cl_(catalog), options_(options), mu_(), lru_cache_() {}
-
 Engine::~Engine() {}
-
 void Engine::InitializeGlobalLLVM() {
     if (LLVM_IS_INITIALIZED) return;
     LLVMInitializeNativeTarget();
@@ -224,7 +221,8 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     ctx.is_performance_sensitive = options_.is_performance_sensitive();
     ctx.is_cluster_optimized = options_.is_cluster_optimzied();
     SQLCompiler compiler(
-        std::atomic_load_explicit(&cl_, std::memory_order_acquire), true, true);
+        std::atomic_load_explicit(&cl_, std::memory_order_acquire), true, true,
+        true);
     bool ok = compiler.Compile(ctx, *status);
     if (!ok || 0 != status->code) {
         LOG(WARNING) << "fail to compile sql " << sql << " in db " << db
@@ -237,8 +235,22 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     explain_output->physical_plan = ctx.physical_plan_str;
     explain_output->ir = ctx.ir;
     explain_output->request_name = ctx.request_name;
-    explain_output->router.SetMainTable(ctx.request_name);
-    explain_output->router.Parse(ctx.physical_plan);
+    if (engine_mode == ::fesql::vm::kBatchMode) {
+        std::set<std::string> tables;
+        base::Status status;
+        for (auto iter = ctx.logical_plan.cbegin(); iter != ctx.logical_plan.cend();
+             iter++) {
+            if (!GetDependentTables(*iter, &tables, status)) {
+                break;
+            }
+        }
+        if (!tables.empty()) {
+            explain_output->router.SetMainTable(*tables.begin());
+        }
+    } else {
+        explain_output->router.SetMainTable(ctx.request_name);
+        explain_output->router.Parse(ctx.physical_plan);
+    }
     return true;
 }
 
