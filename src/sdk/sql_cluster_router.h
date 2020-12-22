@@ -167,7 +167,6 @@ class SQLClusterRouter : public SQLRouter {
         const std::string& db, const std::string& sql, const std::shared_ptr<SQLRequestRow>& row);
 
  private:
-
     void GetTables(::fesql::vm::PhysicalOpNode* node,
                    std::set<std::string>* tables);
 
