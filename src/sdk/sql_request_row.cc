@@ -359,6 +359,18 @@ bool SQLRequestRow::Build() {
     return true;
 }
 
+bool SQLRequestRow::GetRecordVal(const std::string& col, std::string* val) {
+    if (val == nullptr) {
+        return false;
+    }
+    auto iter = record_value_.find(col);
+    if (iter != record_value_.end()) {
+        val->assign(iter->second);
+        return true;
+    }
+    return false;
+}
+
 ::fesql::type::Type ProtoTypeFromDataType(::fesql::sdk::DataType type) {
     switch (type) {
         case fesql::sdk::kTypeBool:

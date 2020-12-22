@@ -60,18 +60,7 @@ class SQLRequestRow {
     inline const std::shared_ptr<fesql::sdk::Schema> GetSchema() {
         return schema_;
     }
-
-    bool GetRecordVal(const std::string& col, std::string* val) {
-        if (val == nullptr) {
-            return false;
-        }
-        auto iter = record_value_.find(col);
-        if (iter != record_value_.end()) {
-            val->assign(iter->second);
-            return true;
-        }
-        return false;
-    }
+    bool GetRecordVal(const std::string& col, std::string* val);
 
  private:
     bool Check(fesql::sdk::DataType type);

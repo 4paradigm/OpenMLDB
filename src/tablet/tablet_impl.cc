@@ -1862,7 +1862,6 @@ void TabletImpl::Query(RpcController* ctrl,
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
     ProcessQuery(request, response, &buf);
-    DLOG(INFO) << "handle query request end!";
 }
 
 void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
@@ -1981,7 +1980,6 @@ void TabletImpl::SubQuery(RpcController* ctrl,
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
     ProcessQuery(request, response, &buf);
-    DLOG(INFO) << "handle subquery request end!";
 }
 
 void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
