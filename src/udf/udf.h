@@ -264,6 +264,9 @@ struct ToString {
 template <typename V>
 uint32_t format_string(const V &v, char *buffer, size_t size);
 
+template <typename V>
+uint32_t to_string_len(const V &v);
+
 }  // namespace v1
 
 void InitUDFSymbol(vm::FeSQLJIT *jit_ptr);                // NOLINT
