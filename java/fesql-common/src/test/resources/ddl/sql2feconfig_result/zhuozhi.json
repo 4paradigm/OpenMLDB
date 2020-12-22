@@ -1,0 +1,102 @@
+{
+  "tableInfo": {
+    "sql_table": [
+      {
+        "name": "reqId_1",
+        "type": "string"
+      },
+      {
+        "name": "main_eventTime_original_0",
+        "type": "timestamp"
+      },
+      {
+        "name": "main_StoreID_original_1",
+        "type": "string"
+      },
+      {
+        "name": "main_SKUID_original_2",
+        "type": "string"
+      },
+      {
+        "name": "main_PID_1_original_3",
+        "type": "string"
+      },
+      {
+        "name": "main_PID_2_original_4",
+        "type": "string"
+      },
+      {
+        "name": "main_SALE_NUM_original_5",
+        "type": "bigint"
+      },
+      {
+        "name": "main_PRICE_original_6",
+        "type": "double"
+      },
+      {
+        "name": "main_mon_original_7",
+        "type": "string"
+      },
+      {
+        "name": "main_day_original_8",
+        "type": "int"
+      },
+      {
+        "name": "main_dow_original_9",
+        "type": "int"
+      },
+      {
+        "name": "main_weekday_original_10",
+        "type": "string"
+      },
+      {
+        "name": "main_weekend_original_11",
+        "type": "string"
+      },
+      {
+        "name": "main_break_original_12",
+        "type": "int"
+      },
+      {
+        "name": "main_holiday_original_13",
+        "type": "string"
+      },
+      {
+        "name": "main_s_original_14",
+        "type": "int"
+      },
+      {
+        "name": "main_e_original_15",
+        "type": "int"
+      },
+      {
+        "name": "main_hs_original_16",
+        "type": "int"
+      },
+      {
+        "name": "main_se_original_17",
+        "type": "int"
+      },
+      {
+        "name": "main_ae_original_18",
+        "type": "int"
+      },
+      {
+        "name": "main_actionValue_original_19",
+        "type": "double"
+      },
+      {
+        "name": "reqId_21",
+        "type": "string"
+      },
+      {
+        "name": "his_label_actionValue_multi_min_20",
+        "type": "double"
+      },
+      {
+        "name": "his_label_actionValue_multi_avg_21",
+        "type": "double"
+      }
+    ]
+  }
+}

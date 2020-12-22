@@ -1,0 +1,394 @@
+# start sql code
+# output table name: sql_table
+select * from 
+(
+select
+    reqId as reqId_1,
+    `reqId` as batch100680_flatten_request_reqId_original_0,
+    `eventTime` as batch100680_flatten_request_eventTime_original_1,
+    `SK_ID_CURR` as batch100680_flatten_request_SK_ID_CURR_original_2,
+    `NAME_CONTRACT_TYPE` as batch100680_flatten_request_NAME_CONTRACT_TYPE_original_3,
+    `CODE_GENDER` as batch100680_flatten_request_CODE_GENDER_original_4,
+    `FLAG_OWN_CAR` as batch100680_flatten_request_FLAG_OWN_CAR_original_5,
+    `FLAG_OWN_REALTY` as batch100680_flatten_request_FLAG_OWN_REALTY_original_6,
+    `CNT_CHILDREN` as batch100680_flatten_request_CNT_CHILDREN_original_7,
+    `AMT_INCOME_TOTAL` as batch100680_flatten_request_AMT_INCOME_TOTAL_original_8,
+    `AMT_CREDIT` as batch100680_flatten_request_AMT_CREDIT_original_9,
+    `AMT_ANNUITY` as batch100680_flatten_request_AMT_ANNUITY_original_10,
+    `AMT_GOODS_PRICE` as batch100680_flatten_request_AMT_GOODS_PRICE_original_11,
+    `NAME_TYPE_SUITE` as batch100680_flatten_request_NAME_TYPE_SUITE_original_12,
+    `NAME_INCOME_TYPE` as batch100680_flatten_request_NAME_INCOME_TYPE_original_13,
+    `NAME_EDUCATION_TYPE` as batch100680_flatten_request_NAME_EDUCATION_TYPE_original_14,
+    `NAME_FAMILY_STATUS` as batch100680_flatten_request_NAME_FAMILY_STATUS_original_15,
+    `NAME_HOUSING_TYPE` as batch100680_flatten_request_NAME_HOUSING_TYPE_original_16,
+    `REGION_POPULATION_RELATIVE` as batch100680_flatten_request_REGION_POPULATION_RELATIVE_original_17,
+    `DAYS_BIRTH` as batch100680_flatten_request_DAYS_BIRTH_original_18,
+    `DAYS_EMPLOYED` as batch100680_flatten_request_DAYS_EMPLOYED_original_19,
+    `DAYS_REGISTRATION` as batch100680_flatten_request_DAYS_REGISTRATION_original_20,
+    `DAYS_ID_PUBLISH` as batch100680_flatten_request_DAYS_ID_PUBLISH_original_21,
+    `OWN_CAR_AGE` as batch100680_flatten_request_OWN_CAR_AGE_original_22,
+    `FLAG_MOBIL` as batch100680_flatten_request_FLAG_MOBIL_original_23,
+    `FLAG_EMP_PHONE` as batch100680_flatten_request_FLAG_EMP_PHONE_original_24,
+    `FLAG_WORK_PHONE` as batch100680_flatten_request_FLAG_WORK_PHONE_original_25,
+    `FLAG_CONT_MOBILE` as batch100680_flatten_request_FLAG_CONT_MOBILE_original_26,
+    `FLAG_PHONE` as batch100680_flatten_request_FLAG_PHONE_original_27,
+    `FLAG_EMAIL` as batch100680_flatten_request_FLAG_EMAIL_original_28,
+    `OCCUPATION_TYPE` as batch100680_flatten_request_OCCUPATION_TYPE_original_29,
+    `CNT_FAM_MEMBERS` as batch100680_flatten_request_CNT_FAM_MEMBERS_original_30,
+    `REGION_RATING_CLIENT` as batch100680_flatten_request_REGION_RATING_CLIENT_original_31,
+    `REGION_RATING_CLIENT_W_CITY` as batch100680_flatten_request_REGION_RATING_CLIENT_W_CITY_original_32,
+    `WEEKDAY_APPR_PROCESS_START` as batch100680_flatten_request_WEEKDAY_APPR_PROCESS_START_original_33,
+    `HOUR_APPR_PROCESS_START` as batch100680_flatten_request_HOUR_APPR_PROCESS_START_original_34,
+    `REG_REGION_NOT_LIVE_REGION` as batch100680_flatten_request_REG_REGION_NOT_LIVE_REGION_original_35,
+    `REG_REGION_NOT_WORK_REGION` as batch100680_flatten_request_REG_REGION_NOT_WORK_REGION_original_36,
+    `LIVE_REGION_NOT_WORK_REGION` as batch100680_flatten_request_LIVE_REGION_NOT_WORK_REGION_original_37,
+    `REG_CITY_NOT_LIVE_CITY` as batch100680_flatten_request_REG_CITY_NOT_LIVE_CITY_original_38,
+    `REG_CITY_NOT_WORK_CITY` as batch100680_flatten_request_REG_CITY_NOT_WORK_CITY_original_39,
+    `LIVE_CITY_NOT_WORK_CITY` as batch100680_flatten_request_LIVE_CITY_NOT_WORK_CITY_original_40,
+    `ORGANIZATION_TYPE` as batch100680_flatten_request_ORGANIZATION_TYPE_original_41,
+    `EXT_SOURCE_1` as batch100680_flatten_request_EXT_SOURCE_1_original_42,
+    `EXT_SOURCE_2` as batch100680_flatten_request_EXT_SOURCE_2_original_43,
+    `EXT_SOURCE_3` as batch100680_flatten_request_EXT_SOURCE_3_original_44,
+    `APARTMENTS_AVG` as batch100680_flatten_request_APARTMENTS_AVG_original_45,
+    `BASEMENTAREA_AVG` as batch100680_flatten_request_BASEMENTAREA_AVG_original_46,
+    `YEARS_BEGINEXPLUATATION_AVG` as batch100680_flatten_request_YEARS_BEGINEXPLUATATION_AVG_original_47,
+    `YEARS_BUILD_AVG` as batch100680_flatten_request_YEARS_BUILD_AVG_original_48,
+    `COMMONAREA_AVG` as batch100680_flatten_request_COMMONAREA_AVG_original_49,
+    `ELEVATORS_AVG` as batch100680_flatten_request_ELEVATORS_AVG_original_50,
+    `ENTRANCES_AVG` as batch100680_flatten_request_ENTRANCES_AVG_original_51,
+    `FLOORSMAX_AVG` as batch100680_flatten_request_FLOORSMAX_AVG_original_52,
+    `FLOORSMIN_AVG` as batch100680_flatten_request_FLOORSMIN_AVG_original_53,
+    `LANDAREA_AVG` as batch100680_flatten_request_LANDAREA_AVG_original_54,
+    `LIVINGAPARTMENTS_AVG` as batch100680_flatten_request_LIVINGAPARTMENTS_AVG_original_55,
+    `LIVINGAREA_AVG` as batch100680_flatten_request_LIVINGAREA_AVG_original_56,
+    `NONLIVINGAPARTMENTS_AVG` as batch100680_flatten_request_NONLIVINGAPARTMENTS_AVG_original_57,
+    `NONLIVINGAREA_AVG` as batch100680_flatten_request_NONLIVINGAREA_AVG_original_58,
+    `APARTMENTS_MODE` as batch100680_flatten_request_APARTMENTS_MODE_original_59,
+    `BASEMENTAREA_MODE` as batch100680_flatten_request_BASEMENTAREA_MODE_original_60,
+    `YEARS_BEGINEXPLUATATION_MODE` as batch100680_flatten_request_YEARS_BEGINEXPLUATATION_MODE_original_61,
+    `YEARS_BUILD_MODE` as batch100680_flatten_request_YEARS_BUILD_MODE_original_62,
+    `COMMONAREA_MODE` as batch100680_flatten_request_COMMONAREA_MODE_original_63,
+    `ELEVATORS_MODE` as batch100680_flatten_request_ELEVATORS_MODE_original_64,
+    `ENTRANCES_MODE` as batch100680_flatten_request_ENTRANCES_MODE_original_65,
+    `FLOORSMAX_MODE` as batch100680_flatten_request_FLOORSMAX_MODE_original_66,
+    `FLOORSMIN_MODE` as batch100680_flatten_request_FLOORSMIN_MODE_original_67,
+    `LANDAREA_MODE` as batch100680_flatten_request_LANDAREA_MODE_original_68,
+    `LIVINGAPARTMENTS_MODE` as batch100680_flatten_request_LIVINGAPARTMENTS_MODE_original_69,
+    `LIVINGAREA_MODE` as batch100680_flatten_request_LIVINGAREA_MODE_original_70,
+    `NONLIVINGAPARTMENTS_MODE` as batch100680_flatten_request_NONLIVINGAPARTMENTS_MODE_original_71,
+    `NONLIVINGAREA_MODE` as batch100680_flatten_request_NONLIVINGAREA_MODE_original_72,
+    `APARTMENTS_MEDI` as batch100680_flatten_request_APARTMENTS_MEDI_original_73,
+    `BASEMENTAREA_MEDI` as batch100680_flatten_request_BASEMENTAREA_MEDI_original_74,
+    `YEARS_BEGINEXPLUATATION_MEDI` as batch100680_flatten_request_YEARS_BEGINEXPLUATATION_MEDI_original_75,
+    `YEARS_BUILD_MEDI` as batch100680_flatten_request_YEARS_BUILD_MEDI_original_76,
+    `COMMONAREA_MEDI` as batch100680_flatten_request_COMMONAREA_MEDI_original_77,
+    `ELEVATORS_MEDI` as batch100680_flatten_request_ELEVATORS_MEDI_original_78,
+    `ENTRANCES_MEDI` as batch100680_flatten_request_ENTRANCES_MEDI_original_79,
+    `FLOORSMAX_MEDI` as batch100680_flatten_request_FLOORSMAX_MEDI_original_80,
+    `FLOORSMIN_MEDI` as batch100680_flatten_request_FLOORSMIN_MEDI_original_81,
+    `LANDAREA_MEDI` as batch100680_flatten_request_LANDAREA_MEDI_original_82,
+    `LIVINGAPARTMENTS_MEDI` as batch100680_flatten_request_LIVINGAPARTMENTS_MEDI_original_83,
+    `LIVINGAREA_MEDI` as batch100680_flatten_request_LIVINGAREA_MEDI_original_84,
+    `NONLIVINGAPARTMENTS_MEDI` as batch100680_flatten_request_NONLIVINGAPARTMENTS_MEDI_original_85,
+    `NONLIVINGAREA_MEDI` as batch100680_flatten_request_NONLIVINGAREA_MEDI_original_86,
+    `FONDKAPREMONT_MODE` as batch100680_flatten_request_FONDKAPREMONT_MODE_original_87,
+    `HOUSETYPE_MODE` as batch100680_flatten_request_HOUSETYPE_MODE_original_88,
+    `TOTALAREA_MODE` as batch100680_flatten_request_TOTALAREA_MODE_original_89,
+    `WALLSMATERIAL_MODE` as batch100680_flatten_request_WALLSMATERIAL_MODE_original_90,
+    `EMERGENCYSTATE_MODE` as batch100680_flatten_request_EMERGENCYSTATE_MODE_original_91,
+    `OBS_30_CNT_SOCIAL_CIRCLE` as batch100680_flatten_request_OBS_30_CNT_SOCIAL_CIRCLE_original_92,
+    `DEF_30_CNT_SOCIAL_CIRCLE` as batch100680_flatten_request_DEF_30_CNT_SOCIAL_CIRCLE_original_93,
+    `OBS_60_CNT_SOCIAL_CIRCLE` as batch100680_flatten_request_OBS_60_CNT_SOCIAL_CIRCLE_original_94,
+    `DEF_60_CNT_SOCIAL_CIRCLE` as batch100680_flatten_request_DEF_60_CNT_SOCIAL_CIRCLE_original_95,
+    `DAYS_LAST_PHONE_CHANGE` as batch100680_flatten_request_DAYS_LAST_PHONE_CHANGE_original_96,
+    `FLAG_DOCUMENT_2` as batch100680_flatten_request_FLAG_DOCUMENT_2_original_97,
+    `FLAG_DOCUMENT_3` as batch100680_flatten_request_FLAG_DOCUMENT_3_original_98,
+    `FLAG_DOCUMENT_4` as batch100680_flatten_request_FLAG_DOCUMENT_4_original_99,
+    `FLAG_DOCUMENT_5` as batch100680_flatten_request_FLAG_DOCUMENT_5_original_100,
+    `FLAG_DOCUMENT_6` as batch100680_flatten_request_FLAG_DOCUMENT_6_original_101,
+    `FLAG_DOCUMENT_7` as batch100680_flatten_request_FLAG_DOCUMENT_7_original_102,
+    `FLAG_DOCUMENT_8` as batch100680_flatten_request_FLAG_DOCUMENT_8_original_103,
+    `FLAG_DOCUMENT_9` as batch100680_flatten_request_FLAG_DOCUMENT_9_original_104,
+    `FLAG_DOCUMENT_10` as batch100680_flatten_request_FLAG_DOCUMENT_10_original_105,
+    `FLAG_DOCUMENT_11` as batch100680_flatten_request_FLAG_DOCUMENT_11_original_106,
+    `FLAG_DOCUMENT_12` as batch100680_flatten_request_FLAG_DOCUMENT_12_original_107,
+    `FLAG_DOCUMENT_13` as batch100680_flatten_request_FLAG_DOCUMENT_13_original_108,
+    `FLAG_DOCUMENT_14` as batch100680_flatten_request_FLAG_DOCUMENT_14_original_109,
+    `FLAG_DOCUMENT_15` as batch100680_flatten_request_FLAG_DOCUMENT_15_original_110,
+    `FLAG_DOCUMENT_16` as batch100680_flatten_request_FLAG_DOCUMENT_16_original_111,
+    `FLAG_DOCUMENT_17` as batch100680_flatten_request_FLAG_DOCUMENT_17_original_112,
+    `FLAG_DOCUMENT_18` as batch100680_flatten_request_FLAG_DOCUMENT_18_original_113,
+    `FLAG_DOCUMENT_19` as batch100680_flatten_request_FLAG_DOCUMENT_19_original_114,
+    `FLAG_DOCUMENT_20` as batch100680_flatten_request_FLAG_DOCUMENT_20_original_115,
+    `FLAG_DOCUMENT_21` as batch100680_flatten_request_FLAG_DOCUMENT_21_original_116,
+    `AMT_REQ_CREDIT_BUREAU_HOUR` as batch100680_flatten_request_AMT_REQ_CREDIT_BUREAU_HOUR_original_117,
+    `AMT_REQ_CREDIT_BUREAU_DAY` as batch100680_flatten_request_AMT_REQ_CREDIT_BUREAU_DAY_original_118,
+    `AMT_REQ_CREDIT_BUREAU_WEEK` as batch100680_flatten_request_AMT_REQ_CREDIT_BUREAU_WEEK_original_119,
+    `AMT_REQ_CREDIT_BUREAU_MON` as batch100680_flatten_request_AMT_REQ_CREDIT_BUREAU_MON_original_120,
+    `AMT_REQ_CREDIT_BUREAU_QRT` as batch100680_flatten_request_AMT_REQ_CREDIT_BUREAU_QRT_original_121,
+    `AMT_REQ_CREDIT_BUREAU_YEAR` as batch100680_flatten_request_AMT_REQ_CREDIT_BUREAU_YEAR_original_122
+from
+    `batch100680_flatten_request`
+    )
+as out0
+last join
+(
+select
+    batch100680_flatten_request.reqId as reqId_124,
+    `action_reqId`.`actionValue` as action_actionValue_multi_direct_123,
+    `action_reqId`.`eventTime` as action_eventTime_multi_direct_124,
+    `action_reqId`.`ingestionTime` as action_ingestionTime_multi_direct_125
+from
+    `batch100680_flatten_request`
+    last join `action` as `action_reqId` on `batch100680_flatten_request`.`reqId` = `action_reqId`.`reqId`)
+as out1
+on out0.reqId_1 = out1.reqId_124
+last join
+(
+select
+    reqId as reqId_127,
+    max(`CNT_INSTALMENT`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_CNT_INSTALMENT_multi_max_126,
+    avg(`CNT_INSTALMENT`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_CNT_INSTALMENT_multi_avg_127,
+    avg(`CNT_INSTALMENT_FUTURE`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_CNT_INSTALMENT_FUTURE_multi_avg_128,
+    max(`CNT_INSTALMENT_FUTURE`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_CNT_INSTALMENT_FUTURE_multi_max_129,
+    max(`MONTHS_BALANCE`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_MONTHS_BALANCE_multi_max_130,
+    avg(`MONTHS_BALANCE`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_MONTHS_BALANCE_multi_avg_131,
+    max(`SK_DPD`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_DPD_multi_max_132,
+    min(`SK_DPD`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_DPD_multi_min_133,
+    max(`SK_DPD_DEF`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_DPD_DEF_multi_max_134,
+    min(`SK_DPD_DEF`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_DPD_DEF_multi_min_135,
+    distinct_count(`NAME_CONTRACT_STATUS`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_NAME_CONTRACT_STATUS_multi_unique_count_136,
+    fz_topn_frequency(`NAME_CONTRACT_STATUS`, 3) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_NAME_CONTRACT_STATUS_multi_top3frequency_137,
+    distinct_count(`SK_ID_CURR_1`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_ID_CURR_1_multi_unique_count_138,
+    fz_topn_frequency(`SK_ID_CURR_1`, 3) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_ID_CURR_1_multi_top3frequency_139,
+    fz_topn_frequency(`SK_ID_PREV`, 3) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_ID_PREV_multi_top3frequency_140,
+    distinct_count(`SK_ID_PREV`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_ID_PREV_multi_unique_count_141
+from
+    (select `eventTime` as `ingestionTime`, timestamp('2019-07-18 09:20:20') as `eventTime`, timestamp('2019-07-18 09:20:20') as `previousTime`, '' as `SK_ID_CURR_1`, '' as `SK_ID_PREV`, `SK_ID_CURR` as `SK_ID_CURR`, int(0) as `MONTHS_BALANCE`, double(0) as `CNT_INSTALMENT`, double(0) as `CNT_INSTALMENT_FUTURE`, '' as `NAME_CONTRACT_STATUS`, int(0) as `SK_DPD`, int(0) as `SK_DPD_DEF`, reqId from `batch100680_flatten_request`)
+    window POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as (
+UNION (select `ingestionTime`, `eventTime`, `previousTime`, `SK_ID_CURR_1`, `SK_ID_PREV`, `SK_ID_CURR`, `MONTHS_BALANCE`, `CNT_INSTALMENT`, `CNT_INSTALMENT_FUTURE`, `NAME_CONTRACT_STATUS`, `SK_DPD`, `SK_DPD_DEF`, '' as reqId from `POS_CASH_balance`) partition by `SK_ID_CURR` order by `ingestionTime` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))
+as out2
+on out0.reqId_1 = out2.reqId_127
+last join
+(
+select
+    reqId as reqId_143,
+    max(`AMT_ANNUITY`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_AMT_ANNUITY_multi_max_142,
+    avg(`AMT_ANNUITY`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_AMT_ANNUITY_multi_avg_143,
+    max(`AMT_CREDIT_MAX_OVERDUE`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_AMT_CREDIT_MAX_OVERDUE_multi_max_144,
+    min(`AMT_CREDIT_MAX_OVERDUE`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_AMT_CREDIT_MAX_OVERDUE_multi_min_145,
+    avg(`AMT_CREDIT_SUM`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_AMT_CREDIT_SUM_multi_avg_146,
+    min(`AMT_CREDIT_SUM`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_AMT_CREDIT_SUM_multi_min_147,
+    avg(`AMT_CREDIT_SUM_DEBT`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_AMT_CREDIT_SUM_DEBT_multi_avg_148,
+    max(`AMT_CREDIT_SUM_DEBT`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_AMT_CREDIT_SUM_DEBT_multi_max_149,
+    min(`AMT_CREDIT_SUM_LIMIT`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_AMT_CREDIT_SUM_LIMIT_multi_min_150,
+    max(`AMT_CREDIT_SUM_LIMIT`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_AMT_CREDIT_SUM_LIMIT_multi_max_151,
+    max(`AMT_CREDIT_SUM_OVERDUE`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_AMT_CREDIT_SUM_OVERDUE_multi_max_152,
+    avg(`AMT_CREDIT_SUM_OVERDUE`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_AMT_CREDIT_SUM_OVERDUE_multi_avg_153,
+    max(`CNT_CREDIT_PROLONG`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CNT_CREDIT_PROLONG_multi_max_154,
+    min(`CNT_CREDIT_PROLONG`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CNT_CREDIT_PROLONG_multi_min_155,
+    min(`CREDIT_DAY_OVERDUE`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_DAY_OVERDUE_multi_min_156,
+    avg(`CREDIT_DAY_OVERDUE`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_DAY_OVERDUE_multi_avg_157,
+    max(`DAYS_CREDIT`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_DAYS_CREDIT_multi_max_158,
+    min(`DAYS_CREDIT`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_DAYS_CREDIT_multi_min_159,
+    max(`DAYS_CREDIT_ENDDATE`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_DAYS_CREDIT_ENDDATE_multi_max_160,
+    avg(`DAYS_CREDIT_ENDDATE`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_DAYS_CREDIT_ENDDATE_multi_avg_161,
+    max(`DAYS_CREDIT_UPDATE`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_DAYS_CREDIT_UPDATE_multi_max_162,
+    avg(`DAYS_CREDIT_UPDATE`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_DAYS_CREDIT_UPDATE_multi_avg_163,
+    max(`DAYS_ENDDATE_FACT`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_DAYS_ENDDATE_FACT_multi_max_164,
+    min(`DAYS_ENDDATE_FACT`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_DAYS_ENDDATE_FACT_multi_min_165,
+    min(`SK_ID_BUREAU`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_SK_ID_BUREAU_multi_min_166,
+    max(`SK_ID_BUREAU`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_SK_ID_BUREAU_multi_max_167,
+    fz_topn_frequency(`CREDIT_ACTIVE`, 3) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_ACTIVE_multi_top3frequency_168,
+    distinct_count(`CREDIT_ACTIVE`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_ACTIVE_multi_unique_count_169,
+    fz_topn_frequency(`CREDIT_CURRENCY`, 3) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_CURRENCY_multi_top3frequency_170,
+    distinct_count(`CREDIT_CURRENCY`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_CURRENCY_multi_unique_count_171,
+    fz_topn_frequency(`CREDIT_TYPE`, 3) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_TYPE_multi_top3frequency_172,
+    distinct_count(`CREDIT_TYPE`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_TYPE_multi_unique_count_173
+from
+    (select `eventTime` as `ingestionTime`, timestamp('2019-07-18 09:20:20') as `eventTime`, `SK_ID_CURR` as `SK_ID_CURR`, int(0) as `SK_ID_BUREAU`, '' as `CREDIT_ACTIVE`, '' as `CREDIT_CURRENCY`, int(0) as `DAYS_CREDIT`, int(0) as `CREDIT_DAY_OVERDUE`, double(0) as `DAYS_CREDIT_ENDDATE`, double(0) as `DAYS_ENDDATE_FACT`, double(0) as `AMT_CREDIT_MAX_OVERDUE`, int(0) as `CNT_CREDIT_PROLONG`, double(0) as `AMT_CREDIT_SUM`, double(0) as `AMT_CREDIT_SUM_DEBT`, double(0) as `AMT_CREDIT_SUM_LIMIT`, double(0) as `AMT_CREDIT_SUM_OVERDUE`, '' as `CREDIT_TYPE`, int(0) as `DAYS_CREDIT_UPDATE`, double(0) as `AMT_ANNUITY`, reqId from `batch100680_flatten_request`)
+    window bureau_SK_ID_CURR_ingestionTime_0s_32d as (
+UNION (select `ingestionTime`, `eventTime`, `SK_ID_CURR`, `SK_ID_BUREAU`, `CREDIT_ACTIVE`, `CREDIT_CURRENCY`, `DAYS_CREDIT`, `CREDIT_DAY_OVERDUE`, `DAYS_CREDIT_ENDDATE`, `DAYS_ENDDATE_FACT`, `AMT_CREDIT_MAX_OVERDUE`, `CNT_CREDIT_PROLONG`, `AMT_CREDIT_SUM`, `AMT_CREDIT_SUM_DEBT`, `AMT_CREDIT_SUM_LIMIT`, `AMT_CREDIT_SUM_OVERDUE`, `CREDIT_TYPE`, `DAYS_CREDIT_UPDATE`, `AMT_ANNUITY`, '' as reqId from `bureau`) partition by `SK_ID_CURR` order by `ingestionTime` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))
+as out3
+on out0.reqId_1 = out3.reqId_143
+last join
+(
+select
+    reqId as reqId_175,
+    max(`MONTHS_BALANCE`) over bureau_balance_SK_ID_CURR_ingestionTime_0s_32d as bureau_balance_MONTHS_BALANCE_multi_max_174,
+    min(`MONTHS_BALANCE`) over bureau_balance_SK_ID_CURR_ingestionTime_0s_32d as bureau_balance_MONTHS_BALANCE_multi_min_175,
+    max(`SK_ID_BUREAU`) over bureau_balance_SK_ID_CURR_ingestionTime_0s_32d as bureau_balance_SK_ID_BUREAU_multi_max_176,
+    avg(`SK_ID_BUREAU`) over bureau_balance_SK_ID_CURR_ingestionTime_0s_32d as bureau_balance_SK_ID_BUREAU_multi_avg_177,
+    distinct_count(`STATUS`) over bureau_balance_SK_ID_CURR_ingestionTime_0s_32d as bureau_balance_STATUS_multi_unique_count_178,
+    fz_topn_frequency(`STATUS`, 3) over bureau_balance_SK_ID_CURR_ingestionTime_0s_32d as bureau_balance_STATUS_multi_top3frequency_179
+from
+    (select `eventTime` as `ingestionTime`, timestamp('2019-07-18 09:20:20') as `eventTime`, timestamp('2019-07-18 09:20:20') as `bureauTime`, `SK_ID_CURR` as `SK_ID_CURR`, int(0) as `SK_ID_BUREAU`, int(0) as `MONTHS_BALANCE`, '' as `STATUS`, reqId from `batch100680_flatten_request`)
+    window bureau_balance_SK_ID_CURR_ingestionTime_0s_32d as (
+UNION (select `ingestionTime`, `eventTime`, `bureauTime`, `SK_ID_CURR`, `SK_ID_BUREAU`, `MONTHS_BALANCE`, `STATUS`, '' as reqId from `bureau_balance`) partition by `SK_ID_CURR` order by `ingestionTime` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))
+as out4
+on out0.reqId_1 = out4.reqId_175
+last join
+(
+select
+    reqId as reqId_181,
+    avg(`AMT_BALANCE`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_BALANCE_multi_avg_180,
+    max(`AMT_BALANCE`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_BALANCE_multi_max_181,
+    avg(`AMT_CREDIT_LIMIT_ACTUAL`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_CREDIT_LIMIT_ACTUAL_multi_avg_182,
+    max(`AMT_CREDIT_LIMIT_ACTUAL`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_CREDIT_LIMIT_ACTUAL_multi_max_183,
+    avg(`AMT_DRAWINGS_ATM_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_DRAWINGS_ATM_CURRENT_multi_avg_184,
+    max(`AMT_DRAWINGS_ATM_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_DRAWINGS_ATM_CURRENT_multi_max_185,
+    avg(`AMT_DRAWINGS_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_DRAWINGS_CURRENT_multi_avg_186,
+    max(`AMT_DRAWINGS_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_DRAWINGS_CURRENT_multi_max_187,
+    max(`AMT_DRAWINGS_OTHER_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_DRAWINGS_OTHER_CURRENT_multi_max_188,
+    avg(`AMT_DRAWINGS_OTHER_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_DRAWINGS_OTHER_CURRENT_multi_avg_189,
+    avg(`AMT_DRAWINGS_POS_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_DRAWINGS_POS_CURRENT_multi_avg_190,
+    max(`AMT_DRAWINGS_POS_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_DRAWINGS_POS_CURRENT_multi_max_191,
+    avg(`AMT_INST_MIN_REGULARITY`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_INST_MIN_REGULARITY_multi_avg_192,
+    max(`AMT_INST_MIN_REGULARITY`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_INST_MIN_REGULARITY_multi_max_193,
+    max(`AMT_PAYMENT_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_PAYMENT_CURRENT_multi_max_194,
+    avg(`AMT_PAYMENT_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_PAYMENT_CURRENT_multi_avg_195,
+    max(`AMT_PAYMENT_TOTAL_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_PAYMENT_TOTAL_CURRENT_multi_max_196,
+    avg(`AMT_PAYMENT_TOTAL_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_PAYMENT_TOTAL_CURRENT_multi_avg_197,
+    avg(`AMT_RECEIVABLE_PRINCIPAL`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_RECEIVABLE_PRINCIPAL_multi_avg_198,
+    max(`AMT_RECEIVABLE_PRINCIPAL`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_RECEIVABLE_PRINCIPAL_multi_max_199,
+    avg(`AMT_RECIVABLE`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_RECIVABLE_multi_avg_200,
+    max(`AMT_RECIVABLE`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_RECIVABLE_multi_max_201,
+    avg(`AMT_TOTAL_RECEIVABLE`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_TOTAL_RECEIVABLE_multi_avg_202,
+    max(`AMT_TOTAL_RECEIVABLE`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_AMT_TOTAL_RECEIVABLE_multi_max_203,
+    avg(`CNT_DRAWINGS_ATM_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_CNT_DRAWINGS_ATM_CURRENT_multi_avg_204,
+    max(`CNT_DRAWINGS_ATM_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_CNT_DRAWINGS_ATM_CURRENT_multi_max_205,
+    avg(`CNT_DRAWINGS_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_CNT_DRAWINGS_CURRENT_multi_avg_206,
+    max(`CNT_DRAWINGS_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_CNT_DRAWINGS_CURRENT_multi_max_207,
+    max(`CNT_DRAWINGS_OTHER_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_CNT_DRAWINGS_OTHER_CURRENT_multi_max_208,
+    avg(`CNT_DRAWINGS_OTHER_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_CNT_DRAWINGS_OTHER_CURRENT_multi_avg_209,
+    max(`CNT_DRAWINGS_POS_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_CNT_DRAWINGS_POS_CURRENT_multi_max_210,
+    avg(`CNT_DRAWINGS_POS_CURRENT`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_CNT_DRAWINGS_POS_CURRENT_multi_avg_211,
+    avg(`CNT_INSTALMENT_MATURE_CUM`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_CNT_INSTALMENT_MATURE_CUM_multi_avg_212,
+    max(`CNT_INSTALMENT_MATURE_CUM`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_CNT_INSTALMENT_MATURE_CUM_multi_max_213,
+    max(`MONTHS_BALANCE`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_MONTHS_BALANCE_multi_max_214,
+    min(`MONTHS_BALANCE`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_MONTHS_BALANCE_multi_min_215,
+    min(`SK_DPD`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_DPD_multi_min_216,
+    max(`SK_DPD`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_DPD_multi_max_217,
+    max(`SK_DPD_DEF`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_DPD_DEF_multi_max_218,
+    avg(`SK_DPD_DEF`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_DPD_DEF_multi_avg_219,
+    distinct_count(`NAME_CONTRACT_STATUS`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_NAME_CONTRACT_STATUS_multi_unique_count_220,
+    fz_topn_frequency(`NAME_CONTRACT_STATUS`, 3) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_NAME_CONTRACT_STATUS_multi_top3frequency_221,
+    distinct_count(`SK_ID_CURR_1`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_ID_CURR_1_multi_unique_count_222,
+    fz_topn_frequency(`SK_ID_CURR_1`, 3) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_ID_CURR_1_multi_top3frequency_223,
+    distinct_count(`SK_ID_PREV`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_ID_PREV_multi_unique_count_224,
+    fz_topn_frequency(`SK_ID_PREV`, 3) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_ID_PREV_multi_top3frequency_225
+from
+    (select `eventTime` as `ingestionTime`, timestamp('2019-07-18 09:20:20') as `eventTime`, timestamp('2019-07-18 09:20:20') as `previousTime`, '' as `SK_ID_CURR_1`, '' as `SK_ID_PREV`, `SK_ID_CURR` as `SK_ID_CURR`, int(0) as `MONTHS_BALANCE`, double(0) as `AMT_BALANCE`, int(0) as `AMT_CREDIT_LIMIT_ACTUAL`, double(0) as `AMT_DRAWINGS_ATM_CURRENT`, double(0) as `AMT_DRAWINGS_CURRENT`, double(0) as `AMT_DRAWINGS_OTHER_CURRENT`, double(0) as `AMT_DRAWINGS_POS_CURRENT`, double(0) as `AMT_INST_MIN_REGULARITY`, double(0) as `AMT_PAYMENT_CURRENT`, double(0) as `AMT_PAYMENT_TOTAL_CURRENT`, double(0) as `AMT_RECEIVABLE_PRINCIPAL`, double(0) as `AMT_RECIVABLE`, double(0) as `AMT_TOTAL_RECEIVABLE`, double(0) as `CNT_DRAWINGS_ATM_CURRENT`, int(0) as `CNT_DRAWINGS_CURRENT`, double(0) as `CNT_DRAWINGS_OTHER_CURRENT`, double(0) as `CNT_DRAWINGS_POS_CURRENT`, double(0) as `CNT_INSTALMENT_MATURE_CUM`, '' as `NAME_CONTRACT_STATUS`, int(0) as `SK_DPD`, int(0) as `SK_DPD_DEF`, reqId from `batch100680_flatten_request`)
+    window credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as (
+UNION (select `ingestionTime`, `eventTime`, `previousTime`, `SK_ID_CURR_1`, `SK_ID_PREV`, `SK_ID_CURR`, `MONTHS_BALANCE`, `AMT_BALANCE`, `AMT_CREDIT_LIMIT_ACTUAL`, `AMT_DRAWINGS_ATM_CURRENT`, `AMT_DRAWINGS_CURRENT`, `AMT_DRAWINGS_OTHER_CURRENT`, `AMT_DRAWINGS_POS_CURRENT`, `AMT_INST_MIN_REGULARITY`, `AMT_PAYMENT_CURRENT`, `AMT_PAYMENT_TOTAL_CURRENT`, `AMT_RECEIVABLE_PRINCIPAL`, `AMT_RECIVABLE`, `AMT_TOTAL_RECEIVABLE`, `CNT_DRAWINGS_ATM_CURRENT`, `CNT_DRAWINGS_CURRENT`, `CNT_DRAWINGS_OTHER_CURRENT`, `CNT_DRAWINGS_POS_CURRENT`, `CNT_INSTALMENT_MATURE_CUM`, `NAME_CONTRACT_STATUS`, `SK_DPD`, `SK_DPD_DEF`, '' as reqId from `credit_card_balance`) partition by `SK_ID_CURR` order by `ingestionTime` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))
+as out5
+on out0.reqId_1 = out5.reqId_181
+last join
+(
+select
+    reqId as reqId_227,
+    max(`AMT_INSTALMENT`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_AMT_INSTALMENT_multi_max_226,
+    min(`AMT_INSTALMENT`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_AMT_INSTALMENT_multi_min_227,
+    max(`AMT_PAYMENT`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_AMT_PAYMENT_multi_max_228,
+    min(`AMT_PAYMENT`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_AMT_PAYMENT_multi_min_229,
+    max(`DAYS_ENTRY_PAYMENT`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_DAYS_ENTRY_PAYMENT_multi_max_230,
+    avg(`DAYS_ENTRY_PAYMENT`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_DAYS_ENTRY_PAYMENT_multi_avg_231,
+    max(`DAYS_INSTALMENT`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_DAYS_INSTALMENT_multi_max_232,
+    avg(`DAYS_INSTALMENT`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_DAYS_INSTALMENT_multi_avg_233,
+    max(`NUM_INSTALMENT_NUMBER`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_NUM_INSTALMENT_NUMBER_multi_max_234,
+    avg(`NUM_INSTALMENT_NUMBER`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_NUM_INSTALMENT_NUMBER_multi_avg_235,
+    avg(`NUM_INSTALMENT_VERSION`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_NUM_INSTALMENT_VERSION_multi_avg_236,
+    min(`NUM_INSTALMENT_VERSION`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_NUM_INSTALMENT_VERSION_multi_min_237,
+    distinct_count(`SK_ID_CURR_1`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_SK_ID_CURR_1_multi_unique_count_238,
+    fz_topn_frequency(`SK_ID_CURR_1`, 3) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_SK_ID_CURR_1_multi_top3frequency_239,
+    fz_topn_frequency(`SK_ID_PREV`, 3) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_SK_ID_PREV_multi_top3frequency_240,
+    distinct_count(`SK_ID_PREV`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_SK_ID_PREV_multi_unique_count_241
+from
+    (select `eventTime` as `ingestionTime`, timestamp('2019-07-18 09:20:20') as `eventTime`, timestamp('2019-07-18 09:20:20') as `previousTime`, timestamp('2019-07-18 09:20:20') as `planTime`, '' as `SK_ID_CURR_1`, '' as `SK_ID_PREV`, `SK_ID_CURR` as `SK_ID_CURR`, double(0) as `NUM_INSTALMENT_VERSION`, int(0) as `NUM_INSTALMENT_NUMBER`, double(0) as `DAYS_INSTALMENT`, double(0) as `DAYS_ENTRY_PAYMENT`, double(0) as `AMT_INSTALMENT`, double(0) as `AMT_PAYMENT`, reqId from `batch100680_flatten_request`)
+    window installments_payments_SK_ID_CURR_ingestionTime_0s_32d as (
+UNION (select `ingestionTime`, `eventTime`, `previousTime`, `planTime`, `SK_ID_CURR_1`, `SK_ID_PREV`, `SK_ID_CURR`, `NUM_INSTALMENT_VERSION`, `NUM_INSTALMENT_NUMBER`, `DAYS_INSTALMENT`, `DAYS_ENTRY_PAYMENT`, `AMT_INSTALMENT`, `AMT_PAYMENT`, '' as reqId from `installments_payments`) partition by `SK_ID_CURR` order by `ingestionTime` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))
+as out6
+on out0.reqId_1 = out6.reqId_227
+last join
+(
+select
+    reqId as reqId_243,
+    min(`AMT_ANNUITY`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_AMT_ANNUITY_multi_min_242,
+    max(`AMT_ANNUITY`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_AMT_ANNUITY_multi_max_243,
+    min(`AMT_APPLICATION`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_AMT_APPLICATION_multi_min_244,
+    max(`AMT_APPLICATION`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_AMT_APPLICATION_multi_max_245,
+    max(`AMT_CREDIT`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_AMT_CREDIT_multi_max_246,
+    min(`AMT_CREDIT`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_AMT_CREDIT_multi_min_247,
+    max(`AMT_DOWN_PAYMENT`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_AMT_DOWN_PAYMENT_multi_max_248,
+    avg(`AMT_DOWN_PAYMENT`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_AMT_DOWN_PAYMENT_multi_avg_249,
+    min(`AMT_GOODS_PRICE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_AMT_GOODS_PRICE_multi_min_250,
+    max(`AMT_GOODS_PRICE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_AMT_GOODS_PRICE_multi_max_251,
+    max(`CNT_PAYMENT`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_CNT_PAYMENT_multi_max_252,
+    avg(`CNT_PAYMENT`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_CNT_PAYMENT_multi_avg_253,
+    max(`DAYS_DECISION`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_DAYS_DECISION_multi_max_254,
+    avg(`DAYS_DECISION`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_DAYS_DECISION_multi_avg_255,
+    avg(`DAYS_FIRST_DRAWING`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_DAYS_FIRST_DRAWING_multi_avg_256,
+    min(`DAYS_FIRST_DRAWING`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_DAYS_FIRST_DRAWING_multi_min_257,
+    avg(`DAYS_FIRST_DUE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_DAYS_FIRST_DUE_multi_avg_258,
+    max(`DAYS_FIRST_DUE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_DAYS_FIRST_DUE_multi_max_259,
+    max(`DAYS_LAST_DUE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_DAYS_LAST_DUE_multi_max_260,
+    min(`DAYS_LAST_DUE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_DAYS_LAST_DUE_multi_min_261,
+    max(`DAYS_LAST_DUE_1ST_VERSION`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_DAYS_LAST_DUE_1ST_VERSION_multi_max_262,
+    avg(`DAYS_LAST_DUE_1ST_VERSION`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_DAYS_LAST_DUE_1ST_VERSION_multi_avg_263,
+    max(`DAYS_TERMINATION`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_DAYS_TERMINATION_multi_max_264,
+    min(`DAYS_TERMINATION`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_DAYS_TERMINATION_multi_min_265,
+    min(`HOUR_APPR_PROCESS_START`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_HOUR_APPR_PROCESS_START_multi_min_266,
+    avg(`HOUR_APPR_PROCESS_START`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_HOUR_APPR_PROCESS_START_multi_avg_267,
+    min(`NFLAG_INSURED_ON_APPROVAL`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NFLAG_INSURED_ON_APPROVAL_multi_min_268,
+    max(`NFLAG_INSURED_ON_APPROVAL`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NFLAG_INSURED_ON_APPROVAL_multi_max_269,
+    min(`NFLAG_LAST_APPL_IN_DAY`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NFLAG_LAST_APPL_IN_DAY_multi_min_270,
+    avg(`NFLAG_LAST_APPL_IN_DAY`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NFLAG_LAST_APPL_IN_DAY_multi_avg_271,
+    avg(`RATE_DOWN_PAYMENT`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_RATE_DOWN_PAYMENT_multi_avg_272,
+    max(`RATE_DOWN_PAYMENT`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_RATE_DOWN_PAYMENT_multi_max_273,
+    avg(`RATE_INTEREST_PRIMARY`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_RATE_INTEREST_PRIMARY_multi_avg_274,
+    min(`RATE_INTEREST_PRIMARY`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_RATE_INTEREST_PRIMARY_multi_min_275,
+    avg(`RATE_INTEREST_PRIVILEGED`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_RATE_INTEREST_PRIVILEGED_multi_avg_276,
+    min(`RATE_INTEREST_PRIVILEGED`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_RATE_INTEREST_PRIVILEGED_multi_min_277,
+    min(`SELLERPLACE_AREA`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_SELLERPLACE_AREA_multi_min_278,
+    avg(`SELLERPLACE_AREA`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_SELLERPLACE_AREA_multi_avg_279,
+    fz_topn_frequency(`CHANNEL_TYPE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_CHANNEL_TYPE_multi_top3frequency_280,
+    case when !isnull(at(`CHANNEL_TYPE`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`CHANNEL_TYPE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_CHANNEL_TYPE_multi_count_281,
+    distinct_count(`CODE_REJECT_REASON`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_CODE_REJECT_REASON_multi_unique_count_282,
+    fz_topn_frequency(`CODE_REJECT_REASON`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_CODE_REJECT_REASON_multi_top3frequency_283,
+    fz_topn_frequency(`FLAG_LAST_APPL_PER_CONTRACT`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_FLAG_LAST_APPL_PER_CONTRACT_multi_top3frequency_284,
+    case when !isnull(at(`FLAG_LAST_APPL_PER_CONTRACT`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`FLAG_LAST_APPL_PER_CONTRACT`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_FLAG_LAST_APPL_PER_CONTRACT_multi_count_285,
+    fz_topn_frequency(`NAME_CASH_LOAN_PURPOSE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CASH_LOAN_PURPOSE_multi_top3frequency_286,
+    distinct_count(`NAME_CASH_LOAN_PURPOSE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CASH_LOAN_PURPOSE_multi_unique_count_287,
+    fz_topn_frequency(`NAME_CLIENT_TYPE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CLIENT_TYPE_multi_top3frequency_288,
+    case when !isnull(at(`NAME_CLIENT_TYPE`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`NAME_CLIENT_TYPE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_NAME_CLIENT_TYPE_multi_count_289,
+    distinct_count(`NAME_CONTRACT_STATUS`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CONTRACT_STATUS_multi_unique_count_290,
+    fz_topn_frequency(`NAME_CONTRACT_STATUS`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CONTRACT_STATUS_multi_top3frequency_291,
+    distinct_count(`NAME_CONTRACT_TYPE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CONTRACT_TYPE_multi_unique_count_292,
+    fz_topn_frequency(`NAME_CONTRACT_TYPE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CONTRACT_TYPE_multi_top3frequency_293,
+    fz_topn_frequency(`NAME_GOODS_CATEGORY`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_GOODS_CATEGORY_multi_top3frequency_294,
+    distinct_count(`NAME_GOODS_CATEGORY`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_GOODS_CATEGORY_multi_unique_count_295,
+    fz_topn_frequency(`NAME_PAYMENT_TYPE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PAYMENT_TYPE_multi_top3frequency_296,
+    case when !isnull(at(`NAME_PAYMENT_TYPE`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`NAME_PAYMENT_TYPE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_NAME_PAYMENT_TYPE_multi_count_297,
+    distinct_count(`NAME_PORTFOLIO`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PORTFOLIO_multi_unique_count_298,
+    fz_topn_frequency(`NAME_PORTFOLIO`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PORTFOLIO_multi_top3frequency_299,
+    distinct_count(`NAME_PRODUCT_TYPE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PRODUCT_TYPE_multi_unique_count_300,
+    fz_topn_frequency(`NAME_PRODUCT_TYPE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PRODUCT_TYPE_multi_top3frequency_301,
+    fz_topn_frequency(`NAME_SELLER_INDUSTRY`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_SELLER_INDUSTRY_multi_top3frequency_302,
+    case when !isnull(at(`NAME_SELLER_INDUSTRY`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`NAME_SELLER_INDUSTRY`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_NAME_SELLER_INDUSTRY_multi_count_303,
+    fz_topn_frequency(`NAME_TYPE_SUITE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_TYPE_SUITE_multi_top3frequency_304,
+    case when !isnull(at(`NAME_TYPE_SUITE`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`NAME_TYPE_SUITE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_NAME_TYPE_SUITE_multi_count_305,
+    fz_topn_frequency(`NAME_YIELD_GROUP`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_YIELD_GROUP_multi_top3frequency_306,
+    case when !isnull(at(`NAME_YIELD_GROUP`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`NAME_YIELD_GROUP`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_NAME_YIELD_GROUP_multi_count_307,
+    fz_topn_frequency(`PRODUCT_COMBINATION`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_PRODUCT_COMBINATION_multi_top3frequency_308,
+    case when !isnull(at(`PRODUCT_COMBINATION`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`PRODUCT_COMBINATION`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_PRODUCT_COMBINATION_multi_count_309,
+    fz_topn_frequency(`SK_ID_PREV`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_SK_ID_PREV_multi_top3frequency_310,
+    distinct_count(`SK_ID_PREV`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_SK_ID_PREV_multi_unique_count_311,
+    fz_topn_frequency(`WEEKDAY_APPR_PROCESS_START`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_WEEKDAY_APPR_PROCESS_START_multi_top3frequency_312,
+    case when !isnull(at(`WEEKDAY_APPR_PROCESS_START`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`WEEKDAY_APPR_PROCESS_START`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_WEEKDAY_APPR_PROCESS_START_multi_count_313
+from
+    (select `eventTime` as `ingestionTime`, timestamp('2019-07-18 09:20:20') as `eventTime`, '' as `SK_ID_PREV`, `SK_ID_CURR` as `SK_ID_CURR`, '' as `NAME_CONTRACT_TYPE`, double(0) as `AMT_ANNUITY`, double(0) as `AMT_APPLICATION`, double(0) as `AMT_CREDIT`, double(0) as `AMT_DOWN_PAYMENT`, double(0) as `AMT_GOODS_PRICE`, '' as `WEEKDAY_APPR_PROCESS_START`, int(0) as `HOUR_APPR_PROCESS_START`, '' as `FLAG_LAST_APPL_PER_CONTRACT`, int(0) as `NFLAG_LAST_APPL_IN_DAY`, double(0) as `RATE_DOWN_PAYMENT`, double(0) as `RATE_INTEREST_PRIMARY`, double(0) as `RATE_INTEREST_PRIVILEGED`, '' as `NAME_CASH_LOAN_PURPOSE`, '' as `NAME_CONTRACT_STATUS`, int(0) as `DAYS_DECISION`, '' as `NAME_PAYMENT_TYPE`, '' as `CODE_REJECT_REASON`, '' as `NAME_TYPE_SUITE`, '' as `NAME_CLIENT_TYPE`, '' as `NAME_GOODS_CATEGORY`, '' as `NAME_PORTFOLIO`, '' as `NAME_PRODUCT_TYPE`, '' as `CHANNEL_TYPE`, int(0) as `SELLERPLACE_AREA`, '' as `NAME_SELLER_INDUSTRY`, double(0) as `CNT_PAYMENT`, '' as `NAME_YIELD_GROUP`, '' as `PRODUCT_COMBINATION`, double(0) as `DAYS_FIRST_DRAWING`, double(0) as `DAYS_FIRST_DUE`, double(0) as `DAYS_LAST_DUE_1ST_VERSION`, double(0) as `DAYS_LAST_DUE`, double(0) as `DAYS_TERMINATION`, double(0) as `NFLAG_INSURED_ON_APPROVAL`, reqId from `batch100680_flatten_request`)
+    window previous_application_SK_ID_CURR_ingestionTime_0s_32d as (
+UNION (select `ingestionTime`, `eventTime`, `SK_ID_PREV`, `SK_ID_CURR`, `NAME_CONTRACT_TYPE`, `AMT_ANNUITY`, `AMT_APPLICATION`, `AMT_CREDIT`, `AMT_DOWN_PAYMENT`, `AMT_GOODS_PRICE`, `WEEKDAY_APPR_PROCESS_START`, `HOUR_APPR_PROCESS_START`, `FLAG_LAST_APPL_PER_CONTRACT`, `NFLAG_LAST_APPL_IN_DAY`, `RATE_DOWN_PAYMENT`, `RATE_INTEREST_PRIMARY`, `RATE_INTEREST_PRIVILEGED`, `NAME_CASH_LOAN_PURPOSE`, `NAME_CONTRACT_STATUS`, `DAYS_DECISION`, `NAME_PAYMENT_TYPE`, `CODE_REJECT_REASON`, `NAME_TYPE_SUITE`, `NAME_CLIENT_TYPE`, `NAME_GOODS_CATEGORY`, `NAME_PORTFOLIO`, `NAME_PRODUCT_TYPE`, `CHANNEL_TYPE`, `SELLERPLACE_AREA`, `NAME_SELLER_INDUSTRY`, `CNT_PAYMENT`, `NAME_YIELD_GROUP`, `PRODUCT_COMBINATION`, `DAYS_FIRST_DRAWING`, `DAYS_FIRST_DUE`, `DAYS_LAST_DUE_1ST_VERSION`, `DAYS_LAST_DUE`, `DAYS_TERMINATION`, `NFLAG_INSURED_ON_APPROVAL`, '' as reqId from `previous_application`) partition by `SK_ID_CURR` order by `ingestionTime` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))
+as out7
+on out0.reqId_1 = out7.reqId_243
+;

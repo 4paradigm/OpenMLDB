@@ -462,7 +462,6 @@ public class DDLEngine {
 
         feConfig.put(SQLTableName, schemaPair);
 
-//        Gson gson = new GsonBuilder().setPrettyPrinting().create();
         Gson gson = new Gson();
         String jsonConfig = String.format("{\"tableInfo\": %s}", gson.toJson(feConfig));
         System.out.println("=================fe config=================");
@@ -476,7 +475,7 @@ public class DDLEngine {
 class RtidbTable {
     String tableName;
     TypeOuterClass.TableDef schema;
-    Set<RtidbIndex> indexs = new HashSet<RtidbIndex>();
+    Set<RtidbIndex> indexs = new LinkedHashSet<>();
 
     // 需要考虑重复的index，并且找到范围最大ttl值
     public void addIndex(RtidbIndex index) {

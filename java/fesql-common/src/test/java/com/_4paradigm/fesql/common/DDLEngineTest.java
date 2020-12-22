@@ -1,8 +1,12 @@
 package com._4paradigm.fesql.common;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParser;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -95,13 +99,6 @@ public class DDLEngineTest {
                         1,
                         ""
                 }
-                //   new Object[] {
-                //           "multi col",
-                //           "ddl/",
-                //           "ddl/",
-                //           1,
-                //           1
-                //   },
 
         };
     }
@@ -119,7 +116,7 @@ public class DDLEngineTest {
                         ""
                 },
                 new Object[] {
-                        "????op???",
+                        "all_op",
                         "performance/all_op.json",
                         "performance/all_op.txt",
                         1,
@@ -127,7 +124,7 @@ public class DDLEngineTest {
                         ""
                 },
                 new Object[] {
-                        "?????????",
+                        "batch_request100680",
                         "performance/batch_request100680.json",
                         "performance/batch_request100680.txt",
                         1,
@@ -135,7 +132,7 @@ public class DDLEngineTest {
                         ""
                 },
                 new Object[] {
-                        "????????",
+                        "constant_column",
                         "performance/constant_column.json",
                         "performance/constant_column.txt",
                         1,
@@ -143,7 +140,7 @@ public class DDLEngineTest {
                         ""
                 },
                 new Object[] {
-                        "multi col",
+                        "gg_studio",
                         "performance/gg_studio.json",
                         "performance/gg_studio.txt",
                         1,
@@ -151,7 +148,7 @@ public class DDLEngineTest {
                         ""
                 },
                 new Object[] {
-                        "multi col",
+                        "only_one",
                         "performance/only_one.json",
                         "performance/only_one.txt",
                         1,
@@ -159,7 +156,7 @@ public class DDLEngineTest {
                         ""
                 },
                 new Object[] {
-                        "multi col",
+                        "rong_e col",
                         "performance/rong_e.json",
                         "performance/rong_e.txt",
                         1,
@@ -167,7 +164,7 @@ public class DDLEngineTest {
                         ""
                 },
                 new Object[] {
-                        "multi col",
+                        "timestamp2date",
                         "performance/timestamp2date.json",
                         "performance/timestamp2date.txt",
                         1,
@@ -198,7 +195,7 @@ public class DDLEngineTest {
         FileUtils.write(file, content, "UTF-8");
     }
 
-    @Test(dataProvider = "build_more_index")
+    @Test(dataProvider = "build_more_index", enabled = false)
     public void testDDL(String desc, String schemaPath, String sqlPath, int replicaNumber, int partitionNumber, String expct) {
         logger.info(desc);
         File file = new File(DDLEngineTest.class.getClassLoader().getResource(schemaPath).getPath());
@@ -220,6 +217,56 @@ public class DDLEngineTest {
     }
 
     @Test
+    public void testDDLAndConfig() throws Exception {
+        String rootPath = "ddl";
+        File root = new File(DDLEngineTest.class.getClassLoader().getResource(rootPath).getPath());
+        rootPath = DDLEngineTest.class.getClassLoader().getResource(rootPath).getPath();
+
+//        File[] cases = root.listFiles();
+        Map<String, File> sqlMap = new HashMap<>();
+        Map<String, File> jsonMap = new HashMap<>();
+        List<File> fileList = (List<File>)FileUtils.listFiles(root, null, false);
+        for (File e : fileList) {
+            String name = e.getName();
+//            logger
+//            System.out.println(e.getName());
+//            if (!name.startsWith("only_one")) {
+//                continue;
+//            }
+            if (name.endsWith(".txt")) {
+                sqlMap.put(name.split("\\.")[0], e);
+            }
+            if (name.endsWith(".json")) {
+                jsonMap.put(name.split("\\.")[0], e);
+            }
+        }
+        for (String e : sqlMap.keySet()) {
+            logger.info("case: " + e);
+            System.out.println("case: " + e);
+//            String e = k.split("\.")split
+
+            String ddl = genDDL(FileUtils.readFileToString(sqlMap.get(e), "UTF-8"), FileUtils.readFileToString(jsonMap.get(e), "UTF-8"), 1, 1);
+            String config = sql2Feconfig(FileUtils.readFileToString(sqlMap.get(e), "UTF-8"), FileUtils.readFileToString(jsonMap.get(e), "UTF-8"));
+
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            JsonParser parser = new JsonParser();
+            config = gson.toJson(parser.parse(config));
+
+
+
+
+            String ddlPath = rootPath + "/ddl_result/" + e + ".txt";
+            String configPath = rootPath + "/sql2feconfig_result/" + e + ".json";
+
+            Assert.assertEquals(ddl, FileUtils.readFileToString(new File(ddlPath), "UTF-8"));
+            Assert.assertEquals(config, FileUtils.readFileToString(new File(configPath), "UTF-8"));
+
+
+        }
+
+    }
+
+    @Test(enabled = false)
     public void testAudoDDL() throws Exception {
 
         String rootPath = "ddl";
@@ -240,10 +287,16 @@ public class DDLEngineTest {
             }
         }
         for (String e : sqlMap.keySet()) {
+            logger.info("case: " + e);
+            System.out.println("case: " + e);
 //            String e = k.split("\.")split
 
             String ddl = genDDL(FileUtils.readFileToString(sqlMap.get(e), "UTF-8"), FileUtils.readFileToString(jsonMap.get(e), "UTF-8"), 1, 1);
             String config = sql2Feconfig(FileUtils.readFileToString(sqlMap.get(e), "UTF-8"), FileUtils.readFileToString(jsonMap.get(e), "UTF-8"));
+
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            JsonParser parser = new JsonParser();
+            config = gson.toJson(parser.parse(config));
 
 
             rootPath = "/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/";
@@ -256,9 +309,6 @@ public class DDLEngineTest {
 //            FileUtils.forceMkdirParent(temp);
             temp  = new File("/home/wangzixian/ferrari/idea/docker-code/fesql/java/fesql-common/src/test/resources/ddl/sql2feconfig");
             temp.createNewFile();
-
-//            FileUtils.forceMkdirParent(()));
-
 
             File file = new File(ddlPath);
             FileWriter writer = null;
@@ -286,7 +336,8 @@ public class DDLEngineTest {
 
     }
 
-    @Test(dataProvider = "performance_script")
+
+    @Test(dataProvider = "performance_script", enabled = false)
     public void testOutputSchema(String desc, String schemaPath, String sqlPath, int replicaNumber, int partitionNumber, String expct) {
         logger.info(desc);
         File file = new File(DDLEngineTest.class.getClassLoader().getResource(schemaPath).getPath());
