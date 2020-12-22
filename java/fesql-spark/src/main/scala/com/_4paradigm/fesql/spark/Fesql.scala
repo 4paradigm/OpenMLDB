@@ -1,15 +1,16 @@
 package com._4paradigm.fesql.spark
 
-import java.io.File
+import java.io.{File, FileReader}
 
+import com._4paradigm.fesql.common.DDLEngine._
+import com._4paradigm.fesql.common.RequestEngine
 import com._4paradigm.fesql.utils.SqlUtils._
 import com._4paradigm.fesql.spark.api.FesqlSession
 import com._4paradigm.fesql.spark.element.FesqlConfig
+import com._4paradigm.fesql.spark.utils.FesqlUtil
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
 
-import scala.collection.mutable
-import scala.io.Source
 
 
 object Fesql {
@@ -42,6 +43,7 @@ object Fesql {
     val sparkSession = sessionBuilder.getOrCreate()
 
     val sess = new FesqlSession(sparkSession)
+    sess.version()
 
     val sqlScript = config.getSql
     val inputTables = config.getTables
@@ -52,19 +54,26 @@ object Fesql {
       } else {
         sess.read(path).createOrReplaceTempView(name)
       }
-
     }
+
+//    val rquestEngine = new RequestEngine(sqlScript, FesqlUtil.getDatabase(FesqlConfig.configDBName, sess.registeredTables.toMap))
+    val feconfig = sql2Feconfig(sqlScript, FesqlUtil.getDatabase(FesqlConfig.configDBName, sess.registeredTables.toMap))//parseOpSchema(rquestEngine.getPlan)
+    val tableInfoRDD = sess.getSparkSession.sparkContext.parallelize(Seq(feconfig)).repartition(1)
+    tableInfoRDD.saveAsTextFile((config.getOutputPath + "/../config"))
 
     val output = config.getOutputPath
     val res = sess.fesql(sqlScript)
+//    sess.
+//    HDFSUtil.deleteIfExist(config.getOutputPath + "/config")
+
     if (config.getInstanceFormat.equals("parquet")) {
       res.sparkDf.write.mode("overwrite").parquet(output)
     }
     if (config.getInstanceFormat.equals("csv")) {
       res.sparkDf.write.mode("overwrite").csv(output)
     }
+
     sess.stop()
   }
-
 
 }

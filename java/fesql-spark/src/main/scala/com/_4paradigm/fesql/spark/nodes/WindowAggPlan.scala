@@ -249,7 +249,7 @@ object WindowAggPlan {
     val analyzeSQL = SkewUtils.genPercentileSql(table, quantile.intValue(), keysName, ts, FesqlConfig.skewCntName)
     logger.info(s"skew analyze sql : ${analyzeSQL}")
     input.createOrReplaceTempView(table)
-    val reportDf = input.sqlContext.sql(analyzeSQL)
+    val reportDf = ctx.sparksql(analyzeSQL)
     reportDf.createOrReplaceTempView(reportTable)
     val keysMap = new util.HashMap[String, String]()
     var keyScala = keysName.asScala
@@ -259,7 +259,7 @@ object WindowAggPlan {
 
     val tagSQL = SkewUtils.genPercentileTagSql(table, reportTable, quantile.intValue(), schemas, keysMap, ts, FesqlConfig.skewTag, FesqlConfig.skewPosition, FesqlConfig.skewCntName)
     logger.info(s"skew tag sql : ${tagSQL}")
-    var skewDf = input.sqlContext.sql(tagSQL)
+    var skewDf = ctx.sparksql(tagSQL)
 
     config.skewTagIdx = skewDf.schema.fieldNames.length - 2
     config.skewPositionIdx = skewDf.schema.fieldNames.length - 1
@@ -267,8 +267,6 @@ object WindowAggPlan {
     skewDf = expansionData(skewDf, config)
 
     keyScala = keyScala :+ ctx.getConf(FesqlConfig.configSkewTag, FesqlConfig.skewTag)
-
-
 
     val partitions = ctx.getConf(FesqlConfig.configPartitions, FesqlConfig.paritions)
     val groupedDf = if (partitions > 0) {
@@ -281,7 +279,6 @@ object WindowAggPlan {
     val sortedDf = groupedDf.sortWithinPartitions(keyScala.map(skewDf(_)): _*)
     sortedDf
   }
-
 
   def groupAndSort(ctx: PlanContext, node: PhysicalWindowAggrerationNode, input: DataFrame): DataFrame = {
     val windowOp = node.window()

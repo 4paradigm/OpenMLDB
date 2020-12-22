@@ -2,12 +2,14 @@ package com._4paradigm.fesql.spark.api
 
 import com._4paradigm.fesql.spark.SparkPlanner
 import com._4paradigm.fesql.spark.element.FesqlConfig
+import com._4paradigm.fesql.vm.PhysicalOpNode
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
+
 import scala.collection.mutable
 
 
@@ -21,9 +23,10 @@ class FesqlSession {
   private var sparkSession: SparkSession = null
   private var sparkMaster: String = null
 
-  private val registeredTables = mutable.HashMap[String, DataFrame]()
+  val registeredTables = mutable.HashMap[String, DataFrame]()
 //  private var configs: mutable.HashMap[String, Any] = _
   private var scalaConfig: Map[String, Any] = Map()
+  var planner: SparkPlanner = _
 
   /**
    * Construct with Spark session.
@@ -117,6 +120,8 @@ class FesqlSession {
     new FesqlDataframe(this, sparkDf)
   }
 
+
+
   /**
    * Read the Spark dataframe to Fesql dataframe.
    *
@@ -140,6 +145,7 @@ class FesqlSession {
     }
 
     val planner = new SparkPlanner(getSparkSession, scalaConfig)
+    this.planner = planner
     val df = planner.plan(sql, registeredTables.toMap).getDf(getSparkSession)
     new FesqlDataframe(this, df)
   }

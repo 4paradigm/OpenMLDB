@@ -3,11 +3,14 @@ package com._4paradigm.fesql.spark
 import com._4paradigm.fesql.FeSqlLibrary
 import com._4paradigm.fesql.`type`.TypeOuterClass._
 import com._4paradigm.fesql.common.{SQLEngine, UnsupportedFesqlException}
+import com._4paradigm.fesql.spark.api.{FesqlDataframe, FesqlSession}
 import com._4paradigm.fesql.spark.element.FesqlConfig
 import com._4paradigm.fesql.spark.nodes._
 import com._4paradigm.fesql.spark.utils.FesqlUtil
 import com._4paradigm.fesql.vm._
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.catalyst.QueryPlanningTracker
+import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -20,6 +23,7 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
   // Ensure native initialized
   FeSqlLibrary.initCore()
   Engine.InitializeGlobalLLVM()
+  var node: PhysicalOpNode = _
 
 
   def this(session: SparkSession) = {
@@ -60,11 +64,14 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
       planCtx.setModuleBuffer(irBuffer)
 
       val root = engine.getPlan
+      node = root
       logger.info("Get FeSQL physical plan: ")
       root.Print()
       visitPhysicalNodes(root, planCtx)
     }
   }
+
+
 
 
   def visitPhysicalNodes(root: PhysicalOpNode, ctx: PlanContext): SparkInstance = {
@@ -115,7 +122,6 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
         throw new UnsupportedFesqlException(s"Plan type $opType not supported")
     }
   }
-
 
   private def withSQLEngine[T](sql: String, db: Database)(body: SQLEngine => T): T = {
     val engine = new SQLEngine(sql, db)
