@@ -580,12 +580,14 @@ class TabletImpl : public ::rtidb::api::TabletServer {
     bool GetRealEp(uint64_t tid, uint64_t pid,
             std::map<std::string, std::string>* real_ep_map);
 
-    void ProcessQuery(const rtidb::api::QueryRequest* request,
-            ::rtidb::api::QueryResponse* response,
-            butil::IOBuf* buf);
+    void ProcessQuery(RpcController* controller,
+                      const rtidb::api::QueryRequest* request,
+                      ::rtidb::api::QueryResponse* response,
+                      butil::IOBuf* buf);
 
  private:
-    void RunRequestQuery(const rtidb::api::QueryRequest& request,
+    void RunRequestQuery(RpcController* controller,
+        const rtidb::api::QueryRequest& request,
         ::fesql::vm::RequestRunSession& session, // NOLINT 
         rtidb::api::QueryResponse& response, butil::IOBuf& buf); // NOLINT
 

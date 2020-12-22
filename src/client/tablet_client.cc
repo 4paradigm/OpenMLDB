@@ -14,6 +14,7 @@
 #include "brpc/channel.h"
 #include "codec/codec.h"
 #include "sdk/sql_request_row.h"
+#include "sdk/sql_rpc_row_codec.h"
 #include "timer.h"  // NOLINT
 
 DECLARE_int32(request_max_retry);
@@ -133,10 +134,16 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
     request.set_db(db);
     request.set_is_batch(false);
     request.set_is_debug(is_debug);
-    request.set_input_row(row);
+    request.set_row_size(row.size());
+    request.set_row_slices(1);
+    auto& io_buf = cntl->request_attachment();
+    if (!sdk::EncodeRpcRow(reinterpret_cast<const int8_t*>(row.data()),
+          row.size(), &io_buf)) {
+        LOG(WARNING) << "Encode row buffer failed";
+        return false;
+    }
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query, cntl,
                                   &request, response);
-
     if (!ok || response->code() != 0) {
         LOG(WARNING) << "fail to query tablet";
         return false;
@@ -164,6 +171,37 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
     return true;
 }
 
+/**
+ * Utility function to encode row batch data into rpc attachment buffer
+ */
+static bool EncodeRowBatch(std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
+                           ::rtidb::api::SQLBatchRequestQueryRequest* request,
+                           butil::IOBuf* io_buf) {
+    auto common_slice = row_batch->GetCommonSlice();
+    if (common_slice->empty()) {
+        request->set_common_slices(0);
+    } else {
+        if (!sdk::EncodeRpcRow(reinterpret_cast<const int8_t*>(common_slice->data()),
+                               common_slice->size(), io_buf)) {
+            LOG(WARNING) << "encode common row buf failed";
+            return false;
+        }
+        request->add_row_sizes(common_slice->size());
+        request->set_common_slices(1);
+    }
+    for (int i = 0; i < row_batch->Size(); ++i) {
+        auto non_common_slice = row_batch->GetNonCommonSlice(i);
+        if (!sdk::EncodeRpcRow(reinterpret_cast<const int8_t*>(non_common_slice->data()),
+                               non_common_slice->size(), io_buf)) {
+            LOG(WARNING) << "encode common row buf failed";
+            return false;
+        }
+        request->add_row_sizes(non_common_slice->size());
+        request->set_non_common_slices(1);
+    }
+    return true;
+}
+
 bool TabletClient::SQLBatchRequestQuery(const std::string& db, const std::string& sql,
                                         std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row_batch,
                                         brpc::Controller* cntl,
@@ -179,9 +217,9 @@ bool TabletClient::SQLBatchRequestQuery(const std::string& db, const std::string
     for (size_t idx : indices_set) {
         request.add_common_column_indices(idx);
     }
-    request.set_common_row(*row_batch->GetCommonSlice());
-    for (int i = 0; i < row_batch->Size(); ++i) {
-        request.add_non_common_rows(*row_batch->GetNonCommonSlice(i));
+    auto& io_buf = cntl->request_attachment();
+    if (!EncodeRowBatch(row_batch, &request, &io_buf)) {
+        return false;
     }
 
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
@@ -1659,9 +1697,16 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
     request.set_sp_name(sp_name);
     request.set_db(db);
     request.set_is_debug(is_debug);
-    request.set_input_row(row);
     request.set_is_batch(false);
     request.set_is_procedure(true);
+    request.set_row_size(row.size());
+    request.set_row_slices(1);
+    auto& io_buf = cntl->request_attachment();
+    if (!sdk::EncodeRpcRow(reinterpret_cast<const int8_t*>(row.data()),
+                           row.size(), &io_buf)) {
+        LOG(WARNING) << "encode row buf failed";
+        return false;
+    }
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query, cntl,
                                   &request, response);
     if (!ok || response->code() != 0) {
@@ -1694,9 +1739,10 @@ bool TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std
     request.set_is_procedure(true);
     request.set_db(db);
     request.set_is_debug(is_debug);
-    request.set_common_row(*row_batch->GetCommonSlice());
-    for (int i = 0; i < row_batch->Size(); ++i) {
-        request.add_non_common_rows(*row_batch->GetNonCommonSlice(i));
+
+    auto& io_buf = cntl->request_attachment();
+    if (!EncodeRowBatch(row_batch, &request, &io_buf)) {
+        return false;
     }
 
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
@@ -1724,7 +1770,7 @@ bool TabletClient::DropProcedure(const std::string& db_name, const std::string& 
 
 bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name,
         const std::string& row, int64_t timeout_ms, bool is_debug,
-        rtidb::RpcCallback<rtidb::api::QueryResponse>* callback) {
+        brpc::Controller* cntl, rtidb::RpcCallback<rtidb::api::QueryResponse>* callback) {
     if (callback == nullptr) {
         return false;
     }
@@ -1732,10 +1778,16 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
     request.set_db(db);
     request.set_sp_name(sp_name);
     request.set_is_debug(is_debug);
-    request.set_input_row(row);
     request.set_is_batch(false);
     request.set_is_procedure(true);
-
+    request.set_row_size(row.size());
+    request.set_row_slices(1);
+    auto& io_buf = cntl->request_attachment();
+    if (!sdk::EncodeRpcRow(reinterpret_cast<const int8_t*>(row.data()),
+                           row.size(), &io_buf)) {
+        LOG(WARNING) << "Encode row buf failed";
+        return false;
+    }
     callback->GetController()->set_timeout_ms(timeout_ms);
     return client_.SendRequest(&::rtidb::api::TabletServer_Stub::Query,
             callback->GetController().get(), &request, callback->GetResponse().get(), callback);
@@ -1754,9 +1806,10 @@ bool TabletClient::CallSQLBatchRequestProcedure(
     request.set_is_procedure(true);
     request.set_db(db);
     request.set_is_debug(is_debug);
-    request.set_common_row(*row_batch->GetCommonSlice());
-    for (int i = 0; i < row_batch->Size(); ++i) {
-        request.add_non_common_rows(*row_batch->GetNonCommonSlice(i));
+
+    auto& io_buf = callback->GetController()->request_attachment();
+    if (!EncodeRowBatch(row_batch, &request, &io_buf)) {
+        return false;
     }
 
     callback->GetController()->set_timeout_ms(timeout_ms);
