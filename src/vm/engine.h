@@ -139,6 +139,7 @@ class RunSession {
 
     void EnableDebug() { is_debug_ = true; }
     void DisableDebug() { is_debug_ = false; }
+    bool IsDebug() { return is_debug_; }
 
     void SetSpName(const std::string& sp_name) { sp_name_ = sp_name; }
     EngineMode engine_mode() const { return engine_mode_; }
@@ -305,7 +306,8 @@ class LocalTabletRowHandler : public RowHandler {
         return value_;
     }
     base::Status SyncValue() {
-        DLOG(INFO) << "Local tablet SubQuery: task id " << task_id_;
+        DLOG(INFO) << "Sync Value ... local tablet SubQuery: task id "
+                   << task_id_;
         if (0 != session_.Run(task_id_, request_, &value_)) {
             return base::Status(common::kCallMethodError,
                                 "sub query fail: session run fail");
@@ -336,6 +338,7 @@ class LocalTablet : public Tablet {
                                          const std::string& sql, const Row& row,
                                          const bool is_procedure,
                                          const bool is_debug) override {
+        DLOG(INFO) << "Local tablet SubQuery: task id " << task_id;
         RequestRunSession session;
         base::Status status;
         if (is_debug) {
