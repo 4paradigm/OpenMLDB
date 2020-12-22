@@ -7,7 +7,7 @@ import com._4paradigm.fesql.common.RequestEngine
 import com._4paradigm.fesql.utils.SqlUtils._
 import com._4paradigm.fesql.spark.api.FesqlSession
 import com._4paradigm.fesql.spark.element.FesqlConfig
-import com._4paradigm.fesql.spark.utils.FesqlUtil
+import com._4paradigm.fesql.spark.utils.{FesqlUtil, HDFSUtil}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
 
@@ -59,12 +59,13 @@ object Fesql {
 //    val rquestEngine = new RequestEngine(sqlScript, FesqlUtil.getDatabase(FesqlConfig.configDBName, sess.registeredTables.toMap))
     val feconfig = sql2Feconfig(sqlScript, FesqlUtil.getDatabase(FesqlConfig.configDBName, sess.registeredTables.toMap))//parseOpSchema(rquestEngine.getPlan)
     val tableInfoRDD = sess.getSparkSession.sparkContext.parallelize(Seq(feconfig)).repartition(1)
+    HDFSUtil.deleteIfExist(config.getOutputPath + "/../config")
     tableInfoRDD.saveAsTextFile((config.getOutputPath + "/../config"))
 
     val output = config.getOutputPath
     val res = sess.fesql(sqlScript)
 //    sess.
-//    HDFSUtil.deleteIfExist(config.getOutputPath + "/config")
+
 
     if (config.getInstanceFormat.equals("parquet")) {
       res.sparkDf.write.mode("overwrite").parquet(output)
