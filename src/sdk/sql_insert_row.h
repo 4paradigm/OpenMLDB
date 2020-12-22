@@ -100,6 +100,8 @@ class SQLInsertRow {
         return std::move(result);
     }
 
+    bool AppendStringByteBufferVarName(char* string_buffer_var_name, uint32_t length);
+
  private:
     bool DateToString(uint32_t year, uint32_t month, uint32_t day,
                       std::string* date);
