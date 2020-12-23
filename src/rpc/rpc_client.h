@@ -30,11 +30,10 @@
 #include <thread>  // NOLINT
 
 #include "base/glog_wapper.h"  // NOLINT
-#include "base/ip.h"
-#include "butil/endpoint.h"
 #include "proto/tablet.pb.h"
 
 DECLARE_int32(request_sleep_time);
+DECLARE_bool(use_rdma);
 
 namespace rtidb {
 
@@ -88,18 +87,7 @@ class RpcClient {
         channel_ = new brpc::Channel();
         brpc::ChannelOptions options;
 #ifdef __rdma__
-        {
-            options.use_rdma = true;
-            std::string local_ip;
-            bool ok = ::rtidb::base::GetLocalIp(&local_ip);
-            ::butil::Endpoint endpoint;
-            ::butil::str2endpoint(endpoint_.c_str(), &endpoint);
-            std::string target_ip(::butil::ip2str(endpoint.ip).c_str());
-            if (local_ip.compare(target_ip) == 0) {
-                options.use_rdma = false;
-                LOG(INFO) << "use tcp to make a connection to self";
-            }
-        }
+        options.use_rdma = FLAGS_use_rdma;
 #endif
         if (use_sleep_policy_) {
             options.retry_policy = &sleep_retry_policy;
@@ -269,3 +257,4 @@ class RpcCallback : public google::protobuf::Closure {
 }  // namespace rtidb
 
 #endif  // SRC_RPC_RPC_CLIENT_H_
+
