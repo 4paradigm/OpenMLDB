@@ -47,8 +47,4 @@ public class BenchmarkConfig {
         }
         return executor;
     }
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/feat/benchmark_vs_redis
 }
