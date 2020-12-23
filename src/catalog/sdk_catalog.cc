@@ -61,12 +61,15 @@ bool SDKTableHandler::Init() {
         const ::fesql::type::IndexDef& index_def = index_list_.Get(i);
         ::fesql::vm::IndexSt index_st;
         index_st.index = i;
-        int32_t pos = GetColumnIndex(index_def.second_key());
-        if (pos < 0) {
-            LOG(WARNING) << "fail to get second key " << index_def.second_key();
-            return false;
+        index_st.ts_pos = ::fesql::vm::INVALID_POS;
+        if (!index_def.second_key().empty()) {
+            int32_t pos = GetColumnIndex(index_def.second_key());
+            if (pos < 0) {
+                LOG(WARNING) << "fail to get second key " << index_def.second_key();
+                return false;
+            }
+            index_st.ts_pos = pos;
         }
-        index_st.ts_pos = pos;
         index_st.name = index_def.name();
         for (int32_t j = 0; j < index_def.first_keys_size(); j++) {
             const std::string& key = index_def.first_keys(j);
@@ -112,7 +115,7 @@ bool SDKTableHandler::GetTablet(std::vector<std::shared_ptr<TabletAccessor>>* ta
     return true;
 }
 
-bool SDKCatalog::Init(const std::vector<::rtidb::nameserver::TableInfo>& tables) {
+bool SDKCatalog::Init(const std::vector<::rtidb::nameserver::TableInfo>& tables, const Procedures& db_sp_map) {
     for (size_t i = 0; i < tables.size(); i++) {
         const ::rtidb::nameserver::TableInfo& table_meta = tables[i];
         std::shared_ptr<SDKTableHandler> table = std::make_shared<SDKTableHandler>(table_meta, *client_manager_);
@@ -129,6 +132,7 @@ bool SDKCatalog::Init(const std::vector<::rtidb::nameserver::TableInfo>& tables)
         }
         db_it->second.insert(std::make_pair(table->GetName(), table));
     }
+    db_sp_map_ = db_sp_map;
     return true;
 }
 
@@ -147,6 +151,20 @@ std::shared_ptr<::fesql::vm::TableHandler> SDKCatalog::GetTable(
 
 std::shared_ptr<TabletAccessor> SDKCatalog::GetTablet() const {
     return client_manager_->GetTablet();
+}
+
+std::shared_ptr<::fesql::sdk::ProcedureInfo> SDKCatalog::GetProcedureInfo(
+        const std::string& db, const std::string& sp_name) {
+    auto db_sp_it = db_sp_map_.find(db);
+    if (db_sp_it == db_sp_map_.end()) {
+        return nullptr;
+    }
+    auto& map = db_sp_it->second;
+    auto sp_it = map.find(sp_name);
+    if (sp_it == map.end()) {
+        return nullptr;
+    }
+    return sp_it->second;
 }
 
 }  // namespace catalog

@@ -20,15 +20,16 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     private SQLInsertRow currentRow = null;
     private SQLInsertRows currentRows = null;
     private SQLRouter router = null;
-    private Object[] currentDatas = null;
+    private List<Object> currentDatas = null;
+    private List<DataType> currentDatasType = null;
     private Schema currentSchema = null;
     private String db = null;
-    private Boolean[] hasSet = null;
+    private List<Boolean> hasSet = null;
     private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
     private boolean closed = false;
     private boolean closeOnComplete = false;
     private Map<String, SQLInsertRows> sqlRowsMap = new HashMap<>();
-    private Long[] scehmaIdxs = null;
+    private List<Integer> scehmaIdxs = null;
     private Map<Integer, Integer> stringsLen = new HashMap<>();
     public InsertPreparedStatementImpl(String db, String sql, SQLRouter router) throws SQLException {
         Status status = new Status();
@@ -45,13 +46,17 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         currentSchema = this.currentRow.GetSchema();
         this.db = db;
         VectorUint32 idxs = this.currentRow.GetHoleIdx();
-        currentDatas = new Object[idxs.size()];
-        hasSet = new Boolean[idxs.size()];
-        scehmaIdxs = new Long[idxs.size()];
+        currentDatas = new ArrayList<>(idxs.size());
+        currentDatasType = new ArrayList<>(idxs.size());
+        hasSet = new ArrayList<>(idxs.size());
+        scehmaIdxs = new ArrayList<>(idxs.size());
         for (int i = 0; i < idxs.size(); i++) {
-            currentDatas[i] = null;
-            hasSet[i] = false;
-            scehmaIdxs[i] = idxs.get(i);
+            long idx = idxs.get(i);
+            DataType type = currentSchema.GetColumnType(idx);
+            currentDatasType.add(type);
+            currentDatas.add(null);
+            hasSet.add(false);
+            scehmaIdxs.add(i);
         }
     }
 
@@ -162,7 +167,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
     }
 
     private boolean checkNotAllowNull(int i) {
-        int idx = this.scehmaIdxs.get(i - 1);
+        long idx = this.scehmaIdxs.get(i - 1);
         return this.currentSchema.IsColumnNotNull(idx);
     }
 
@@ -178,7 +183,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         stringsLen.put(i, bytes.length);
         hasSet.set(i - 1, true);
         currentDatas.set(i - 1, s);
-        currentDatasLen.set(i - 1, bytes.length);
     }
 
     @Override
@@ -260,16 +264,9 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             currentRow = currentRows.NewRow();
         }
 
-        for (int i = 0; i < hasSet.size(); i++) {
-            if (!hasSet.get(i)) {
-                throw new SQLException("data not enough");
-            }
-        }
-
         int strLen = 0;
-        for (Integer k : stringsLen.keySet()) {
-            Integer len = stringsLen.get(k);
-            strLen += len;
+        for (Map.Entry<Integer, Integer> entry : stringsLen.entrySet()) {
+            strLen += entry.getValue();
         }
 
         boolean ok = currentRow.Init(strLen);
@@ -281,34 +278,34 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             Object data = currentDatas.get(i);
             if (data == null) {
                 ok = currentRow.AppendNULL();
-                if (!ok) {
-                    throw new SQLException("put data faile idx is " + i);
+            } else  {
+                DataType curType = currentDatasType.get(i);
+                if (DataType.kTypeBool.equals(curType)) {
+                    ok = currentRow.AppendBool((boolean) data);
+                } else if (DataType.kTypeDate.equals(curType)) {
+                    java.sql.Date date = (java.sql.Date)data;
+                    ok = currentRow.AppendDate(date.getYear() + 1900, date.getMonth(), date.getDate());
+                } else if (DataType.kTypeDouble.equals(curType)) {
+                    ok = currentRow.AppendDouble((double) data);
+                } else if (DataType.kTypeFloat.equals(curType)) {
+                    ok = currentRow.AppendFloat((float) data);
+                } else if (DataType.kTypeInt16.equals(curType)) {
+                    ok = currentRow.AppendInt16((short) data);
+                } else if (DataType.kTypeInt32.equals(curType)) {
+                    ok = currentRow.AppendInt32((int) data);
+                } else if (DataType.kTypeInt64.equals(curType)) {
+                    ok = currentRow.AppendInt64((long) data);
+                } else if (DataType.kTypeString.equals(curType)) {
+                    ok = currentRow.AppendString((String) data);
+                } else if (DataType.kTypeTimestamp.equals(curType)) {
+                    ok = currentRow.AppendTimestamp((long) data);
+                } else {
+                    throw new SQLException("unkown data type");
                 }
-                continue;
             }
-            DataType dt = currentDatasType.get(i);
-            if (DataType.kTypeBool == dt) {
-                ok = currentRow.AppendBool((boolean) data);
-            } else if (DataType.kTypeDate == dt) {
-                java.sql.Date date = (java.sql.Date)data;
-                ok = currentRow.AppendDate(date.getYear() + 1900, date.getMonth(), date.getDate());
-            } else if (DataType.kTypeDouble == dt) {
-                ok = currentRow.AppendDouble((double) data);
-            } else if (DataType.kTypeFloat == dt) {
-                ok = currentRow.AppendFloat((float) data);
-            } else if (DataType.kTypeInt16 == dt) {
-                ok = currentRow.AppendInt16((short) data);
-            } else if (DataType.kTypeInt32 == dt) {
-                ok = currentRow.AppendInt32((int) data);
-            } else if (DataType.kTypeInt64 == dt) {
-                ok = currentRow.AppendInt64((long) data);
-            } else if (DataType.kTypeString == dt) {
-                ok = currentRow.AppendString((String) data);
-            } else if (DataType.kTypeTimestamp == dt) {
-                ok = currentRow.AppendTimestamp((long) data);
-            } else {
-                throw new SQLException("unkown data type");
-            }
+        }
+        if (!currentRow.Build()) {
+            throw new SQLException("build insert row failed");
         }
         currentRow = null;
         clearParameters();
@@ -711,7 +708,6 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
             rows.delete();
         }
         sqlRowsMap.clear();
-        currentSchema = null;
         currentSchema = null;
         currentRow = null;
         currentRows = null;

@@ -25,6 +25,7 @@
 
 #include "base/fe_slice.h"
 #include "codec/fe_row_codec.h"
+#include "codec/fe_row_selector.h"
 #include "sdk/base.h"
 
 namespace rtidb {

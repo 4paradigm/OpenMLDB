@@ -116,7 +116,7 @@ bool TabletClient::CreateTable(
     ::rtidb::api::CreateTableResponse response;
     bool ok =
         client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
-                            &request, &response, FLAGS_request_timeout_ms, 1);
+                            &request, &response, FLAGS_request_timeout_ms * 2, 1);
     if (ok && response.code() == 0) {
         return true;
     }
@@ -238,7 +238,7 @@ bool TabletClient::CreateTable(const std::string& name, uint32_t tid,
     ::rtidb::api::CreateTableResponse response;
     bool ok =
         client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
-                            &request, &response, FLAGS_request_timeout_ms, 1);
+                            &request, &response, FLAGS_request_timeout_ms * 2, 1);
     if (ok && response.code() == 0) {
         return true;
     }
@@ -252,7 +252,7 @@ bool TabletClient::CreateTable(const ::rtidb::api::TableMeta& table_meta) {
     ::rtidb::api::CreateTableResponse response;
     bool ok =
         client_.SendRequest(&::rtidb::api::TabletServer_Stub::CreateTable,
-                            &request, &response, FLAGS_request_timeout_ms, 1);
+                            &request, &response, FLAGS_request_timeout_ms * 2, 1);
     if (ok && response.code() == 0) {
         return true;
     }
@@ -1672,13 +1672,13 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
 }
 
 bool TabletClient::SubQuery(const ::rtidb::api::QueryRequest& request,
-        brpc::Controller* cntl,
-        ::rtidb::api::QueryResponse* response) {
-    if (cntl == nullptr || response == nullptr) {
+        rtidb::RpcCallback<rtidb::api::QueryResponse>* callback) {
+    if (callback == nullptr) {
         return false;
     }
-    cntl->set_timeout_ms(FLAGS_request_timeout_ms);
-    return client_.SendRequest(&::rtidb::api::TabletServer_Stub::SubQuery, cntl, &request, response, brpc::DoNothing());
+    return client_.SendRequest(&::rtidb::api::TabletServer_Stub::SubQuery,
+            callback->GetController().get(), &request,
+            callback->GetResponse().get(), callback);
 }
 
 bool TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,

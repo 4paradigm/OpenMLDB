@@ -22,6 +22,7 @@
 #include "storage/mem_table.h"
 #include "storage/table.h"
 #include "test/base_test.h"
+#include "timer.h"  // NOLINT
 #include "vm/engine.h"
 namespace rtidb {
 namespace catalog {
@@ -50,6 +51,7 @@ void StoreData(std::shared_ptr<TestArgs> args, std::shared_ptr<fesql::storage::T
     fesql::codec::RowView row_view(sql_table->GetTableDef().columns());
     int column_size = sql_table->GetTableDef().columns_size();
     auto sql_schema = sql_table->GetTableDef().columns();
+    uint64_t ts = ::baidu::common::timer::get_micros() / 1000;
     for (auto row : rows) {
         std::map<uint32_t, rtidb::codec::Dimension> dimensions;
         std::vector<uint64_t> ts_dimensions;
@@ -81,8 +83,12 @@ void StoreData(std::shared_ptr<TestArgs> args, std::shared_ptr<fesql::storage::T
             ts_dim->set_ts(ts_dimensions[i]);
             ts_dim->set_idx(i);
         }
-        bool ok = table->Put(dims, ts_dims, row.ToString());
-        ASSERT_TRUE(ok);
+        if (ts_dimensions.empty()) {
+            ASSERT_TRUE(table->Put(ts, row.ToString(), dims));
+            ts--;
+        } else {
+            ASSERT_TRUE(table->Put(dims, ts_dims, row.ToString()));
+        }
     }
     LOG(INFO) << "store data done!";
 }
@@ -163,7 +169,7 @@ void TabletEngineTest::BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // N
     LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
 
     std::ostringstream runner_oss;
-    session.GetMainTask()->Print(runner_oss, "");
+    session.GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::vector<fesql::codec::Row> request_data;
     for (int32_t i = 0; i < input_cnt; i++) {
@@ -200,7 +206,8 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
     ASSERT_TRUE(catalog->Init());
     fesql::vm::Engine engine(catalog, options);
 
-    catalog->SetLocalTablet(std::shared_ptr<fesql::vm::Tablet>(new fesql::vm::LocalTablet(&engine)));
+    catalog->SetLocalTablet(std::shared_ptr<fesql::vm::Tablet>(
+        new fesql::vm::LocalTablet(&engine, std::shared_ptr<fesql::vm::CompileInfoCache>())));
     // Init catalog
     std::map<std::string, std::pair<std::shared_ptr<TestArgs>, std::shared_ptr<::fesql::storage::Table>>>
         name_table_map;
@@ -246,7 +253,7 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
     LOG(INFO) << "physical plan:\n" << oss.str() << std::endl;
 
     std::ostringstream runner_oss;
-    session.GetMainTask()->Print(runner_oss, "");
+    session.GetClusterJob().Print(runner_oss, "");
     LOG(INFO) << "runner plan:\n" << runner_oss.str() << std::endl;
     std::vector<fesql::codec::Row> request_data;
     const std::string &request_name = session.GetRequestName();

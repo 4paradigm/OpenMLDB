@@ -147,6 +147,160 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_test) {
     LOG(INFO) << "Finish sql_sdk_distribute_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
 
+TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_single_partition_test) {
+    auto sql_case = GetParam();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport") ||
+        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    if (sql_case.batch_request().columns_.empty()) {
+        LOG(WARNING) << "No batch request specified";
+        return;
+    }
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
+    DistributeRunBatchRequestModeSDK(sql_case, router, 1);
+    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+}
+
+TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_single_partition_test) {
+    auto sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport") ||
+        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router with multi partitions";
+    DistributeRunRequestModeSDK(sql_case, router, 1);
+    LOG(INFO) << "Finish sql_sdk_distribute_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+}
+
+TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_test) {
+    auto sql_case = GetParam();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport") ||
+        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    if (sql_case.batch_request().columns_.empty()) {
+        LOG(WARNING) << "No batch request specified";
+        return;
+    }
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
+    DistributeRunBatchRequestProcedureModeSDK(sql_case, router, 8, false);
+    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_procedure_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
+}
+
+TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_test) {
+    auto sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport") ||
+        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router with multi partitions";
+    DistributeRunRequestProcedureModeSDK(sql_case, router, 8, false);
+    LOG(INFO) << "Finish sql_sdk_distribute_request_procedure_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
+}
+TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_async_test) {
+    auto sql_case = GetParam();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport") ||
+        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    if (sql_case.batch_request().columns_.empty()) {
+        LOG(WARNING) << "No batch request specified";
+        return;
+    }
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
+    DistributeRunBatchRequestProcedureModeSDK(sql_case, router, 8, true);
+    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_procedure_async_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
+}
+
+TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_procedure_async_test) {
+    auto sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport") ||
+        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router with multi partitions";
+    DistributeRunRequestProcedureModeSDK(sql_case, router, 8, true);
+    LOG(INFO) << "Finish sql_sdk_distribute_request_procedure_async_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
+}
+
+TEST_F(SQLClusterTest, create_table) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    for (int i = 0; i < 2; i++) {
+        std::string name = "test" + std::to_string(i);
+        std::string ddl = "create table " + name +
+                          "("
+                          "col1 string, col2 bigint,"
+                          "index(key=col1, ts=col2)) partitionnum=3;";
+        ok = router->ExecuteDDL(db, ddl, &status);
+        ASSERT_TRUE(ok);
+    }
+    ASSERT_TRUE(router->RefreshCatalog());
+    auto ns_client = mc_->GetNsClient();
+    std::vector<::rtidb::nameserver::TableInfo> tables;
+    std::string msg;
+    ASSERT_TRUE(ns_client->ShowTable("", db, false, tables, msg));
+    ASSERT_TRUE(!tables.empty());
+    std::map<std::string, int> pid_map;
+    for (const auto& table : tables) {
+        for (const auto& partition : table.table_partition()) {
+            for (const auto& meta : partition.partition_meta()) {
+                if (pid_map.find(meta.endpoint()) == pid_map.end()) {
+                    pid_map.emplace(meta.endpoint(), 0);
+                }
+                pid_map[meta.endpoint()]++;
+            }
+        }
+    }
+    ASSERT_EQ(pid_map.size(), 2);
+    ASSERT_EQ(pid_map.begin()->second, pid_map.rbegin()->second);
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table test1;", &status));
+    ASSERT_TRUE(router->DropDB(db, &status));
+}
+
 }  // namespace sdk
 }  // namespace rtidb
 

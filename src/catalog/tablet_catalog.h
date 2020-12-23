@@ -35,6 +35,7 @@
 namespace rtidb {
 namespace catalog {
 
+
 class TabletPartitionHandler;
 class TabletTableHandler;
 class TabletSegmentHandler;
@@ -166,7 +167,8 @@ class TabletPartitionHandler : public ::fesql::vm::PartitionHandler,
 class TabletTableHandler : public ::fesql::vm::TableHandler,
                            public std::enable_shared_from_this<fesql::vm::TableHandler> {
  public:
-    explicit TabletTableHandler(const ::rtidb::api::TableMeta &meta, std::shared_ptr<fesql::vm::Tablet> local_tablet);
+    explicit TabletTableHandler(const ::rtidb::api::TableMeta &meta,
+                                std::shared_ptr<fesql::vm::Tablet> local_tablet);
 
     explicit TabletTableHandler(const ::rtidb::nameserver::TableInfo &meta,
                                 std::shared_ptr<fesql::vm::Tablet> local_tablet);
@@ -230,7 +232,8 @@ class TabletTableHandler : public ::fesql::vm::TableHandler,
 
 typedef std::map<std::string, std::map<std::string, std::shared_ptr<TabletTableHandler>>> TabletTables;
 typedef std::map<std::string, std::shared_ptr<::fesql::type::Database>> TabletDB;
-typedef std::map<std::string, std::map<std::string, std::string>> TabletProcedures;
+typedef std::map<std::string,
+        std::map<std::string, std::shared_ptr<::fesql::sdk::ProcedureInfo>>> Procedures;
 
 class TabletCatalog : public ::fesql::vm::Catalog {
  public:
@@ -254,9 +257,11 @@ class TabletCatalog : public ::fesql::vm::Catalog {
 
     bool DeleteDB(const std::string &db);
 
-    void RefreshTable(const std::vector<::rtidb::nameserver::TableInfo> &table_info_vec, uint64_t version);
+    void Refresh(const std::vector<::rtidb::nameserver::TableInfo> &table_info_vec, uint64_t version,
+            const Procedures& db_sp_map);
 
-    bool AddProcedure(const std::string &db, const std::string &sp_name, const std::string &sql);
+    bool AddProcedure(const std::string &db, const std::string &sp_name,
+            const std::shared_ptr<fesql::sdk::ProcedureInfo>& sp_info);
 
     bool DropProcedure(const std::string &db, const std::string &sp_name);
 
@@ -265,15 +270,22 @@ class TabletCatalog : public ::fesql::vm::Catalog {
     uint64_t GetVersion() const;
 
     void SetLocalTablet(std::shared_ptr<::fesql::vm::Tablet> local_tablet) { local_tablet_ = local_tablet; }
+    void SetLocalSpTablet(std::shared_ptr<::fesql::vm::Tablet> local_sp_tablet) { local_sp_tablet_ = local_sp_tablet; }
+
+    std::shared_ptr<::fesql::sdk::ProcedureInfo> GetProcedureInfo(const std::string& db,
+            const std::string& sp_name) override;
+
+    const Procedures& GetProcedures();
 
  private:
     ::rtidb::base::SpinMutex mu_;
     TabletTables tables_;
     TabletDB db_;
-    TabletProcedures procedures_;
+    Procedures db_sp_map_;
     ClientManager client_manager_;
     std::atomic<uint64_t> version_;
     std::shared_ptr<::fesql::vm::Tablet> local_tablet_;
+    std::shared_ptr<::fesql::vm::Tablet> local_sp_tablet_;
 };
 
 }  // namespace catalog

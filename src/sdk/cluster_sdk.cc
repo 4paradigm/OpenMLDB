@@ -143,7 +143,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         ok = table_info->ParseFromString(value);
         if (!ok) {
             LOG(WARNING) << "fail to parse table proto with " << value;
-            return false;
+            continue;
         }
         DLOG(INFO) << "parse table " << table_info->name() << " ok";
         if (table_info->format_version() != 1) {
@@ -161,43 +161,45 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         DLOG(INFO) << "load table info with name " << table_info->name() << " in db " << table_info->db();
     }
 
-    std::map<
-        std::string,
-        std::map<std::string, std::shared_ptr<::rtidb::api::ProcedureInfo>>>
-        sp_mapping;
-    for (uint32_t i = 0; i < sp_datas.size(); i++) {
-        if (sp_datas[i].empty()) continue;
+    Procedures db_sp_map;
+    for (const auto& node : sp_datas) {
+        if (node.empty()) continue;
         std::string value;
         bool ok = zk_client_->GetNodeValue(
-                sp_root_path_ + "/" + sp_datas[i], value);
+                sp_root_path_ + "/" + node, value);
         if (!ok) {
-            LOG(WARNING) << "fail to get procedure data";
+            LOG(WARNING) << "fail to get procedure data. node: " << node;
             continue;
         }
         std::string uncompressed;
         ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
-        std::shared_ptr<::rtidb::api::ProcedureInfo> sp_info(
-                new ::rtidb::api::ProcedureInfo());
-        ok = sp_info->ParseFromString(uncompressed);
+        ::rtidb::api::ProcedureInfo sp_info_pb;
+        ok = sp_info_pb.ParseFromString(uncompressed);
         if (!ok) {
-            LOG(WARNING) << "fail to parse procedure proto with " << value;
-            return false;
+            LOG(WARNING) << "fail to parse procedure proto. node: " << node << " value: "<< value;
+            continue;
         }
-        DLOG(INFO) << "parse procedure " << sp_info->sp_name() << " ok";
-        auto it = sp_mapping.find(sp_info->db_name());
-        if (it == sp_mapping.end()) {
+        DLOG(INFO) << "parse procedure " << sp_info_pb.sp_name() << " ok";
+        // conver to ProcedureInfoImpl
+        auto sp_info = rtidb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info_pb);
+        if (!sp_info) {
+            LOG(WARNING) << "convert procedure info failed, sp_name: "
+                << sp_info_pb.sp_name() << " db: " << sp_info_pb.db_name();
+            continue;
+        }
+        auto it = db_sp_map.find(sp_info->GetDbName());
+        if (it == db_sp_map.end()) {
             std::map<std::string,
-                     std::shared_ptr<::rtidb::api::ProcedureInfo>>
-                     sp_in_db = {{sp_info->sp_name(), sp_info}};
-            sp_mapping.insert(std::make_pair(sp_info->db_name(), sp_in_db));
+                     std::shared_ptr<fesql::sdk::ProcedureInfo>>
+                     sp_in_db = {{sp_info->GetSpName(), sp_info}};
+            db_sp_map.insert(std::make_pair(sp_info->GetDbName(), sp_in_db));
         } else {
-            it->second.insert(std::make_pair(sp_info->sp_name(), sp_info));
+            it->second.insert(std::make_pair(sp_info->GetSpName(), sp_info));
         }
-        DLOG(INFO) << "load procedure info with sp name " << sp_info->sp_name()
-            << " in db " << sp_info->db_name();
+        DLOG(INFO) << "load procedure info with sp name " << sp_info->GetSpName()
+            << " in db " << sp_info->GetDbName();
     }
-
-    if (!new_catalog->Init(tables)) {
+    if (!new_catalog->Init(tables, db_sp_map)) {
         LOG(WARNING) << "fail to init catalog";
         return false;
     }
@@ -205,7 +207,6 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         table_to_tablets_ = mapping;
         catalog_ = new_catalog;
-        sp_map_ = sp_mapping;
         return true;
     }
 }
@@ -252,7 +253,7 @@ bool ClusterSDK::InitCatalog() {
             return false;
         }
     } else {
-        LOG(INFO) << "no procedures in db";
+        DLOG(INFO) << "no procedures in db";
     }
     bool ok = InitTabletClient();
     if (!ok) return false;
@@ -365,50 +366,45 @@ std::shared_ptr<::rtidb::catalog::TabletAccessor> ClusterSDK::GetTablet(const st
     return std::shared_ptr<::rtidb::catalog::TabletAccessor>();
 }
 
-bool ClusterSDK::GetProcedureInfo(const std::string& db, const std::string& sp_name,
-        ::rtidb::api::ProcedureInfo* sp_info, std::string* msg) {
-    if (msg == nullptr || sp_info == nullptr) {
+std::shared_ptr<fesql::sdk::ProcedureInfo> ClusterSDK::GetProcedureInfo(
+        const std::string& db, const std::string& sp_name, std::string* msg) {
+    if (msg == nullptr) {
         *msg = "null ptr";
-        return false;
+        return nullptr;
     }
     if (db.empty() || sp_name.empty()) {
         *msg = "db or sp_name is empty";
-        return false;
+        return nullptr;
     } else {
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-        auto it = sp_map_.find(db);
-        if (it == sp_map_.end()) {
-            *msg = sp_name + " does not exist in sp_map";
-            return false;
+        auto sp = catalog_->GetProcedureInfo(db, sp_name);
+        if (!sp) {
+            *msg = sp_name + " does not exist in " + db;
+            return nullptr;
         }
-        auto sit = it->second.find(sp_name);
-        if (sit == it->second.end()) {
-            *msg = db + " does not exist in sp_map";
-            return false;
-        }
-        *sp_info = *(sit->second.get());
+        return sp;
     }
-    return true;
 }
 
-bool ClusterSDK::GetProcedureInfo(
-        std::vector<std::shared_ptr<::rtidb::api::ProcedureInfo>>* sp_infos,
+std::vector<std::shared_ptr<fesql::sdk::ProcedureInfo>> ClusterSDK::GetProcedureInfo(
         std::string* msg) {
-    if (msg == nullptr || sp_infos == nullptr) {
+    std::vector<std::shared_ptr<fesql::sdk::ProcedureInfo>> sp_infos;
+    if (msg == nullptr) {
         *msg = "null ptr";
-        return false;
+        return std::move(sp_infos);
     }
     std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
-    for (const auto& db_kv : sp_map_) {
+    auto& db_sp_map = catalog_->GetProcedures();
+    for (const auto& db_kv : db_sp_map) {
         for (const auto& sp_kv : db_kv.second) {
-            sp_infos->push_back(sp_kv.second);
+            sp_infos.push_back(sp_kv.second);
         }
     }
-    if (sp_infos->empty()) {
+    if (sp_infos.empty()) {
         *msg = "procedure set is empty";
-        return false;
+        return std::move(sp_infos);
     }
-    return true;
+    return std::move(sp_infos);
 }
 
 }  // namespace sdk

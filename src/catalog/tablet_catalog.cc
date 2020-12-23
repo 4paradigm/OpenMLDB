@@ -27,7 +27,8 @@
 #include "catalog/schema_adapter.h"
 #include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
-
+DECLARE_bool(enable_distsql);
+DECLARE_bool(enable_localtablet);
 namespace rtidb {
 namespace catalog {
 
@@ -81,12 +82,15 @@ bool TabletTableHandler::Init(const ClientManager& client_manager) {
         const ::fesql::type::IndexDef& index_def = index_list_.Get(i);
         ::fesql::vm::IndexSt index_st;
         index_st.index = i;
-        int32_t pos = GetColumnIndex(index_def.second_key());
-        if (pos < 0) {
-            LOG(WARNING) << "fail to get second key " << index_def.second_key();
-            return false;
+        index_st.ts_pos = ::fesql::vm::INVALID_POS;
+        if (!index_def.second_key().empty()) {
+            int32_t pos = GetColumnIndex(index_def.second_key());
+            if (pos < 0) {
+                LOG(WARNING) << "fail to get second key " << index_def.second_key();
+                return false;
+            }
+            index_st.ts_pos = pos;
         }
-        index_st.ts_pos = pos;
         index_st.name = index_def.name();
         for (int32_t j = 0; j < index_def.first_keys_size(); j++) {
             const std::string& key = index_def.first_keys(j);
@@ -204,12 +208,13 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
     if (pid_num > 0) {
         pid = (uint32_t)(::rtidb::base::hash64(pk) % pid_num);
     }
-    // TODO(denglong): return local_tablet if pid is in local
-    if (pid_num < 2) {
-        DLOG(INFO) << "pid num " << pid_num << " local tablet_";
+    DLOG(INFO) << "pid num " << pid_num << " get tablet with pid = " << pid;
+    auto tables = std::atomic_load_explicit(&tables_, std::memory_order_relaxed);
+    // return local tablet only when --enable_localtablet==true
+    if (FLAGS_enable_localtablet && tables->find(pid) != tables->end()) {
+        DLOG(INFO) << "get tablet index_name " << index_name << ", pk " << pk << ", local_tablet_";
         return local_tablet_;
     }
-    DLOG(INFO) << "pid num " << pid_num << " get tablet with pid = " << pid;
     auto client_tablet = table_client_manager_->GetTablet(pid);
     if (!client_tablet) {
         DLOG(INFO) << "get tablet index_name " << index_name << ", pk " << pk << ", tablet nullptr";
@@ -220,7 +225,8 @@ std::shared_ptr<::fesql::vm::Tablet> TabletTableHandler::GetTablet(const std::st
     return client_tablet;
 }
 
-TabletCatalog::TabletCatalog() : mu_(), tables_(), db_(), client_manager_(), version_(1), local_tablet_() {}
+TabletCatalog::TabletCatalog()
+    : mu_(), tables_(), db_(), db_sp_map_(), client_manager_(), version_(1), local_tablet_() {}
 
 TabletCatalog::~TabletCatalog() {}
 
@@ -311,35 +317,37 @@ bool TabletCatalog::DeleteDB(const std::string& db) {
 
 bool TabletCatalog::IndexSupport() { return true; }
 
-bool TabletCatalog::AddProcedure(const std::string& db, const std::string& sp_name, const std::string& sql) {
+bool TabletCatalog::AddProcedure(const std::string& db, const std::string& sp_name,
+        const std::shared_ptr<fesql::sdk::ProcedureInfo>& sp_info) {
     std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
-    auto& sp_map = procedures_[db];
+    auto& sp_map = db_sp_map_[db];
     if (sp_map.find(sp_name) != sp_map.end()) {
-        LOG(WARNING) << "procedure " << sp_name << "already exist";
+        LOG(WARNING) << "procedure " << sp_name << " already exist in db " << db;
         return false;
     }
-    sp_map.insert({sp_name, sql});
+    sp_map.insert({sp_name, sp_info});
     return true;
 }
 
 bool TabletCatalog::DropProcedure(const std::string& db, const std::string& sp_name) {
     std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
-    auto db_it = procedures_.find(db);
-    if (db_it == procedures_.end()) {
-        LOG(WARNING) << "db " << db << "not exist";
+    auto db_it = db_sp_map_.find(db);
+    if (db_it == db_sp_map_.end()) {
+        LOG(WARNING) << "db " << db << " not exist";
         return false;
     }
     auto& sp_map = db_it->second;
     auto it = sp_map.find(sp_name);
     if (it == sp_map.end()) {
-        LOG(WARNING) << "procedure " << sp_name << "not exist";
+        LOG(WARNING) << "procedure " << sp_name << " not exist in db " << db;
         return false;
     }
     sp_map.erase(it);
     return true;
 }
 
-void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInfo>& table_info_vec, uint64_t version) {
+void TabletCatalog::Refresh(const std::vector<::rtidb::nameserver::TableInfo>& table_info_vec,
+        uint64_t version, const Procedures& db_sp_map) {
     std::map<std::string, std::set<std::string>> table_map;
     for (const auto& table_info : table_info_vec) {
         const std::string& db_name = table_info.db();
@@ -394,6 +402,7 @@ void TabletCatalog::RefreshTable(const std::vector<::rtidb::nameserver::TableInf
         }
         ++db_it;
     }
+    db_sp_map_ = db_sp_map;
     version_.store(version, std::memory_order_relaxed);
     LOG(INFO) << "refresh catalog. version " << version;
 }
@@ -403,6 +412,26 @@ bool TabletCatalog::UpdateClient(const std::map<std::string, std::string>& real_
 }
 
 uint64_t TabletCatalog::GetVersion() const { return version_.load(std::memory_order_relaxed); }
+
+std::shared_ptr<::fesql::sdk::ProcedureInfo> TabletCatalog::GetProcedureInfo(
+        const std::string& db, const std::string& sp_name) {
+    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    auto db_sp_it = db_sp_map_.find(db);
+    if (db_sp_it == db_sp_map_.end()) {
+        return nullptr;
+    }
+    auto& map = db_sp_it->second;
+    auto sp_it = map.find(sp_name);
+    if (sp_it == map.end()) {
+        return nullptr;
+    }
+    return sp_it->second;
+}
+
+const Procedures& TabletCatalog::GetProcedures() {
+    std::lock_guard<::rtidb::base::SpinMutex> spin_lock(mu_);
+    return db_sp_map_;
+}
 
 }  // namespace catalog
 }  // namespace rtidb

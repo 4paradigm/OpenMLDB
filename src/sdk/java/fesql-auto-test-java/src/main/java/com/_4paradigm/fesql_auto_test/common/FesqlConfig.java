@@ -19,4 +19,7 @@ public class FesqlConfig {
         ZK_CLUSTER = CONFIG.getProperty(FesqlGlobalVar.env+"_zk_cluster");
         ZK_ROOT_PATH = CONFIG.getProperty(FesqlGlobalVar.env+"_zk_root_path");
     }
+    public static boolean isCluster() {
+        return FesqlGlobalVar.env.equals("cluster");
+    }
 }

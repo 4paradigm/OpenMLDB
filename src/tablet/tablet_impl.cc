@@ -118,9 +118,10 @@ TabletImpl::TabletImpl()
       zk_cluster_(),
       zk_path_(),
       endpoint_(),
+      sp_cache_(std::shared_ptr<SpCache>(new SpCache())),
       notify_path_() {
     catalog_->SetLocalTablet(std::shared_ptr<::fesql::vm::Tablet>(
-        new ::fesql::vm::LocalTablet(&engine_)));
+        new ::fesql::vm::LocalTablet(&engine_, sp_cache_)));
 }
 
 TabletImpl::~TabletImpl() {
@@ -129,6 +130,7 @@ TabletImpl::~TabletImpl() {
     gc_pool_.Stop(true);
     io_pool_.Stop(true);
     snapshot_pool_.Stop(true);
+    delete zk_client_;
 }
 
 bool TabletImpl::Init(const std::string& real_endpoint) {
@@ -142,6 +144,7 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
     zk_path_ = zk_path;
     endpoint_ = endpoint;
     notify_path_ = zk_path + "/table/notify";
+    sp_root_path_ = zk_path + "/store_procedure/db_sp_data";
     std::lock_guard<std::mutex> lock(mu_);
     ::rtidb::base::SplitString(FLAGS_db_root_path, ",",
                                mode_root_paths_[::rtidb::common::kMemory]);
@@ -1937,32 +1940,17 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
             const std::string& sp_name = request->sp_name();
             std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
             {
-                std::lock_guard<std::mutex> lock(mu_);
-                auto db_it = sp_map_.find(db_name);
-                if (db_it == sp_map_.end()) {
-                    response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
-                    response->set_msg("db not found");
-                    PDLOG(WARNING, "db[%s] not found", db_name.c_str());
-                    return;
-                }
-                auto sp_it = db_it->second.find(sp_name);
-                if (sp_it == db_it->second.end()) {
+                fesql::base::Status status;
+                request_compile_info = sp_cache_->GetRequestInfo(db_name, sp_name, status);
+                if (!status.isOK()) {
                     response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
-                    response->set_msg("store procedure not found");
-                    PDLOG(WARNING, "store procedure[%s] not found in db[%s]",
-                            sp_name.c_str(), db_name.c_str());
-                    return;
-                }
-                request_compile_info = sp_it->second.request_info;
-                if (request_compile_info == nullptr) {
-                    response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
-                    response->set_msg("invalid procedure compile info");
-                    PDLOG(WARNING, "invalid procedure compile info of [%s] in db[%s]",
-                            sp_name.c_str(), db_name.c_str());
+                    response->set_msg(status.msg);
+                    PDLOG(WARNING, status.msg.c_str());
                     return;
                 }
             }
             session.SetCompileInfo(request_compile_info);
+            session.SetSpName(sp_name);
             RunRequestQuery(*request, session, *response, *buf);
         } else {
             bool ok = engine_.Get(request->sql(), request->db(), session, status);
@@ -2012,31 +2000,16 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
     if (is_procedure) {
         std::shared_ptr<fesql::vm::CompileInfo> request_compile_info;
         {
-            std::lock_guard<std::mutex> lock(mu_);
-            auto db_it = sp_map_.find(request->db());
-            if (db_it == sp_map_.end()) {
-                response->set_code(::rtidb::base::ReturnCode::kDatabaseNotFound);
-                response->set_msg("db not found");
-                PDLOG(WARNING, "db[%s] not found", request->db().c_str());
-                return;
-            }
-            auto sp_it = db_it->second.find(request->sp_name());
-            if (sp_it == db_it->second.end()) {
+            fesql::base::Status status;
+            request_compile_info = sp_cache_->GetBatchRequestInfo(request->db(), request->sp_name(), status);
+            if (!status.isOK()) {
                 response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
-                response->set_msg("store procedure not found");
-                PDLOG(WARNING, "store procedure[%s] not found in db[%s]",
-                        request->sp_name().c_str(), request->db().c_str());
-                return;
-            }
-            request_compile_info = sp_it->second.batch_request_info;
-            if (request_compile_info == nullptr) {
-                response->set_code(::rtidb::base::ReturnCode::kProcedureNotFound);
-                response->set_msg("invalid procedure compile info");
-                PDLOG(WARNING, "invalid procedure compile info of [%s] in db[%s]",
-                        request->sp_name().c_str(), request->db().c_str());
+                response->set_msg(status.msg);
+                PDLOG(WARNING, status.msg.c_str());
                 return;
             }
             session.SetCompileInfo(request_compile_info);
+            session.SetSpName(request->sp_name());
         }
     } else {
         size_t common_column_num = request->common_column_indices().size();
@@ -2062,7 +2035,8 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
         return;
     }
     size_t input_row_num = request->non_common_rows().size();
-    size_t common_column_num = compile_info->get_sql_context().common_column_indices.size();
+    const auto& batch_request_info = compile_info->get_sql_context().batch_request_info;
+    size_t common_column_num = batch_request_info.common_column_indices.size();
     std::vector<::fesql::codec::Row> input_rows(input_row_num);
     if (common_column_num > 0 &&
         common_column_num < static_cast<size_t>(session.GetRequestSchema().size())) {
@@ -2087,18 +2061,46 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
     }
 
     // fill output data
-    for (auto& output_row : output_rows) {
-        if (output_row.GetRowPtrCnt() != 1) {
-            response->set_msg("illegal row ptrs: expect 1");
+    auto& output_common_indices = batch_request_info.output_common_column_indices;
+    bool has_common_slice = !output_common_indices.empty() &&
+                            output_common_indices.size() < session.GetSchema().size();
+    if (has_common_slice && !output_rows.empty()) {
+        const auto& first_row = output_rows[0];
+        if (first_row.GetRowPtrCnt() != 2) {
+            response->set_msg("illegal row ptrs: expect 2");
             response->set_code(::rtidb::base::kSQLRunError);
-            LOG(WARNING) << "illegal row ptrs: expect 1";
+            LOG(WARNING) << "illegal row ptrs: expect 2";
             return;
         }
-        buf.append(output_row.buf(0), output_row.size(0));
-        response->add_row_sizes(output_row.size(0));
+        buf.append(first_row.buf(0), first_row.size(0));
+        response->add_row_sizes(first_row.size(0));
+    }
+    for (auto& output_row : output_rows) {
+        if (has_common_slice) {
+            if (output_row.GetRowPtrCnt() != 2) {
+                response->set_msg("illegal row ptrs: expect 2");
+                response->set_code(::rtidb::base::kSQLRunError);
+                LOG(WARNING) << "illegal row ptrs: expect 2";
+                return;
+            }
+            buf.append(output_row.buf(1), output_row.size(1));
+            response->add_row_sizes(output_row.size(1));
+        } else {
+            if (output_row.GetRowPtrCnt() != 1) {
+                response->set_msg("illegal row ptrs: expect 1");
+                response->set_code(::rtidb::base::kSQLRunError);
+                LOG(WARNING) << "illegal row ptrs: expect 1";
+                return;
+            }
+            buf.append(output_row.buf(0), output_row.size(0));
+            response->add_row_sizes(output_row.size(0));
+        }
     }
 
     // fill response
+    for (size_t idx : output_common_indices) {
+        response->add_common_column_indices(idx);
+    }
     response->set_schema(session.GetEncodedSchema());
     response->set_count(output_rows.size());
     response->set_code(::rtidb::base::kOk);
@@ -4519,6 +4521,7 @@ int TabletImpl::CreateDiskTableInternal(
     if (FLAGS_use_name) {
         if (!GetRealEp(tid, pid, &real_ep_map)) {
             msg.assign("name not found in real_ep_map");
+            PDLOG(WARNING, "name not found in real_ep_map. tid[%u] pid[%u]", tid, pid);
             return -1;
         }
     }
@@ -4648,8 +4651,7 @@ void TabletImpl::DropTable(RpcController* controller,
     }
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
-    PDLOG(INFO, "drop table. tid[%u] pid[%u] %s", tid, pid,
-          rtidb::type::TableType_Name(request->table_type()).c_str());
+    PDLOG(INFO, "drop table. tid[%u] pid[%u]", tid, pid);
     do {
         if (!request->has_table_type() ||
             request->table_type() == ::rtidb::type::kTimeSeries) {
@@ -4657,6 +4659,7 @@ void TabletImpl::DropTable(RpcController* controller,
             if (!table) {
                 response->set_code(::rtidb::base::ReturnCode::kTableIsNotExist);
                 response->set_msg("table is not exist");
+                PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, pid);
                 break;
             } else {
                 if (table->GetTableStat() ==
@@ -5077,7 +5080,75 @@ void TabletImpl::RefreshTableInfo() {
         }
         table_info_vec.push_back(std::move(table_info));
     }
-    catalog_->RefreshTable(table_info_vec, version);
+    // procedure part
+    std::vector<std::string> sp_datas;
+    if (zk_client_->IsExistNode(sp_root_path_) == 0) {
+        bool ok = zk_client_->GetChildren(sp_root_path_, sp_datas);
+        if (!ok) {
+            LOG(WARNING) << "fail to get procedure list with path " << sp_root_path_;
+            return;
+        }
+    } else {
+        DLOG(INFO) << "no procedures in db";
+    }
+    rtidb::catalog::Procedures db_sp_map;
+    for (const auto& node : sp_datas) {
+        if (node.empty()) continue;
+        std::string value;
+        bool ok = zk_client_->GetNodeValue(
+                sp_root_path_ + "/" + node, value);
+        if (!ok) {
+            LOG(WARNING) << "fail to get procedure data. node: " << node;
+            continue;
+        }
+        std::string uncompressed;
+        ::snappy::Uncompress(value.c_str(), value.length(), &uncompressed);
+        ::rtidb::api::ProcedureInfo sp_info_pb;
+        ok = sp_info_pb.ParseFromString(uncompressed);
+        if (!ok) {
+            LOG(WARNING) << "fail to parse procedure proto. node: " << node << " value: "<< value;
+            continue;
+        }
+        // conver to ProcedureInfoImpl
+        auto sp_info = rtidb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info_pb);
+        if (!sp_info) {
+            LOG(WARNING) << "convert procedure info failed, sp_name: "
+                << sp_info_pb.sp_name() << " db: " << sp_info_pb.db_name();
+            continue;
+        }
+        auto it = db_sp_map.find(sp_info->GetDbName());
+        if (it == db_sp_map.end()) {
+            std::map<std::string,
+                std::shared_ptr<fesql::sdk::ProcedureInfo>>
+                    sp_in_db = {{sp_info->GetSpName(), sp_info}};
+            db_sp_map.insert(std::make_pair(sp_info->GetDbName(), sp_in_db));
+        } else {
+            it->second.insert(std::make_pair(sp_info->GetSpName(), sp_info));
+        }
+    }
+    auto old_db_sp_map = catalog_->GetProcedures();
+    catalog_->Refresh(table_info_vec, version, db_sp_map);
+    // skip exist procedure, don`t need recompile
+    for (const auto& db_sp_map_kv : db_sp_map) {
+        const auto& db = db_sp_map_kv.first;
+        auto old_db_sp_map_it = old_db_sp_map.find(db);
+        if (old_db_sp_map_it != old_db_sp_map.end()) {
+            auto old_sp_map = old_db_sp_map_it->second;
+            for (const auto& sp_map_kv : db_sp_map_kv.second) {
+                const auto& sp_name = sp_map_kv.first;
+                auto old_sp_map_it = old_sp_map.find(sp_name);
+                if (old_sp_map_it != old_sp_map.end()) {
+                    continue;
+                } else {
+                    CreateProcedure(sp_map_kv.second);
+                }
+            }
+        } else {
+            for (const auto& sp_map_kv : db_sp_map_kv.second) {
+                CreateProcedure(sp_map_kv.second);
+            }
+        }
+    }
 }
 
 int TabletImpl::CheckDimessionPut(const ::rtidb::api::PutRequest* request,
@@ -6013,6 +6084,12 @@ void TabletImpl::CreateProcedure(RpcController* controller,
     const std::string& db_name = sp_info.db_name();
     const std::string& sp_name = sp_info.sp_name();
     const std::string& sql = sp_info.sql();
+    if (sp_cache_->ProcedureExist(db_name, sp_name)) {
+        response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
+        response->set_msg("store procedure already exists");
+        PDLOG(WARNING, "store procedure[%s] already exists in db[%s]", sp_name.c_str(), db_name.c_str());
+        return;
+    }
     ::fesql::base::Status status;
 
     // build for single request
@@ -6021,7 +6098,7 @@ void TabletImpl::CreateProcedure(RpcController* controller,
     if (!ok || session.GetCompileInfo() == nullptr) {
         response->set_msg(status.str());
         response->set_code(::rtidb::base::kSQLCompileError);
-        DLOG(WARNING) << "fail to compile sql " << sql;
+        LOG(WARNING) << "fail to compile sql " << sql;
         return;
     }
 
@@ -6037,11 +6114,18 @@ void TabletImpl::CreateProcedure(RpcController* controller,
     if (!ok || batch_session.GetCompileInfo() == nullptr) {
         response->set_msg(status.str());
         response->set_code(::rtidb::base::kSQLCompileError);
-        DLOG(WARNING) << "fail to compile batch request for sql " << sql;
+        LOG(WARNING) << "fail to compile batch request for sql " << sql;
         return;
     }
 
-    ok = catalog_->AddProcedure(db_name, sp_name, sql);
+    auto sp_info_impl = rtidb::catalog::SchemaAdapter::ConvertProcedureInfo(sp_info);
+    if (!sp_info_impl) {
+        response->set_msg(status.str());
+        response->set_code(::rtidb::base::kCreateProcedureFailedOnTablet);
+        LOG(WARNING) << "convert procedure info failed, sp_name: " << sp_name << " db: " << db_name;
+        return;
+    }
+    ok = catalog_->AddProcedure(db_name, sp_name, sp_info_impl);
     if (ok) {
         LOG(INFO) << "add procedure " << sp_name
             << " to catalog with db " << db_name;
@@ -6050,23 +6134,12 @@ void TabletImpl::CreateProcedure(RpcController* controller,
             << " to catalog with db " << db_name;
     }
 
-    {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        auto& sp_map_of_db = sp_map_[db_name];
-        auto sp_it = sp_map_of_db.find(sp_name);
-        if (sp_it != sp_map_of_db.end()) {
-            response->set_code(::rtidb::base::ReturnCode::kProcedureAlreadyExists);
-            response->set_msg("store procedure already exists");
-            PDLOG(WARNING, "store procedure[%s] already exists in db[%s]",
-                    sp_name.c_str(), db_name.c_str());
-            return;
-        } else {
-            sp_map_of_db.insert(sp_it, std::make_pair(sp_name, SQLProcedureCacheEntry(
-                sp_info, session.GetCompileInfo(), batch_session.GetCompileInfo())));
-        }
-    }
+    sp_cache_->InsertSQLProcedureCacheEntry(db_name, sp_name, sp_info_impl, session.GetCompileInfo(),
+                                            batch_session.GetCompileInfo());
+
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
+    LOG(INFO) << "create procedure success! sp_name: " << sp_name << ", db: " << db_name << ", sql: " << sql;
 }
 
 void TabletImpl::DropProcedure(RpcController* controller,
@@ -6076,13 +6149,9 @@ void TabletImpl::DropProcedure(RpcController* controller,
     brpc::ClosureGuard done_guard(done);
     const std::string& db_name = request->db_name();
     const std::string& sp_name = request->sp_name();
-    {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        sp_map_[db_name].erase(sp_name);
-    }
+    sp_cache_->DropSQLProcedureCacheEntry(db_name, sp_name);
     if (!catalog_->DropProcedure(db_name, sp_name)) {
-        LOG(WARNING) << "drop procedure" << db_name << "."
-            << sp_name << " in catalog failed";
+        LOG(WARNING) << "drop procedure" << db_name << "." << sp_name << " in catalog failed";
     }
     response->set_code(::rtidb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -6115,6 +6184,36 @@ void TabletImpl::RunRequestQuery(const rtidb::api::QueryRequest& request,
     response.set_byte_size(output.size());
     response.set_count(1);
     response.set_code(::rtidb::base::kOk);
+}
+
+void TabletImpl::CreateProcedure(const std::shared_ptr<fesql::sdk::ProcedureInfo> sp_info) {
+    const std::string& db_name = sp_info->GetDbName();
+    const std::string& sp_name = sp_info->GetSpName();
+    const std::string& sql = sp_info->GetSql();
+    ::fesql::base::Status status;
+    // build for single request
+    ::fesql::vm::RequestRunSession session;
+    bool ok = engine_.Get(sql, db_name, session, status);
+    if (!ok || session.GetCompileInfo() == nullptr) {
+        LOG(WARNING) << "fail to compile sql " << sql;
+        return;
+    }
+    // build for batch request
+    ::fesql::vm::BatchRequestRunSession batch_session;
+    for (auto i = 0; i < sp_info->GetInputSchema().GetColumnCnt(); ++i) {
+        bool is_constant = sp_info->GetInputSchema().IsConstant(i);
+        if (is_constant) {
+            batch_session.AddCommonColumnIdx(i);
+        }
+    }
+    ok = engine_.Get(sql, db_name, batch_session, status);
+    if (!ok || batch_session.GetCompileInfo() == nullptr) {
+        LOG(WARNING) << "fail to compile batch request for sql " << sql;
+        return;
+    }
+    sp_cache_->InsertSQLProcedureCacheEntry(db_name, sp_name, sp_info, session.GetCompileInfo(),
+                                            batch_session.GetCompileInfo());
+    LOG(INFO) << "refresh procedure success! sp_name: " << sp_name << ", db: " << db_name << ", sql: " << sql;
 }
 
 }  // namespace tablet

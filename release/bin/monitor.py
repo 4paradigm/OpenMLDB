@@ -7,8 +7,20 @@ work_dir = os.path.dirname(dir_name)
 sys.path.insert(0, dir_name + "/prometheus_client-0.6.0")
 from prometheus_client import start_http_server
 from prometheus_client import Gauge
+import traceback
 
-method = ["put", "get", "scan", "query"]
+try:
+    import urllib.request as request
+except:
+    import urllib2 as request
+
+if sys.version_info.major > 2:
+    do_open = lambda filename, mode: open(filename, mode, encoding="utf-8")
+else:
+    do_open = lambda filename, mode: open(filename, mode)
+
+method = ["put", "get", "scan", "query", "subquery", "batchquery", "sqlbatchrequestquery"]
+method_set = set(method)
 monitor_key = ["count", "error", "qps", "latency", "latency_50",
                "latency_90", "latency_99", "latency_999", "latency_9999", "max_latency"]
 rtidb_log = {
@@ -55,28 +67,68 @@ rtidb_log = {
 
 def get_data(url):
     result = {}
-    output = os.popen("curl -s %s" % url)
-    method_content = output.read().split("\n\n")
-
-    for content in method_content:
-        item_arr = content.split("\n")
-        if len(item_arr) < 12:
+    resp = request.urlopen(url)
+    def parse_data():
+        beginParse = False
+        stageBegin = False
+        server = ""
+        servers = {}
+        for i in resp:
+          if len(i) < 0:
             continue
-        cur_method = item_arr[-12].split(" ")[0]
-        cur_method = cur_method.lower()
-        if cur_method in method:
-            result.setdefault(cur_method, {})
-            for item in item_arr[-11:]:
-                arr = item.strip().split(":")
-                if arr[0] in monitor_key:
-                    result[cur_method][arr[0]] = arr[1].strip()
-    return result
+          l = i.decode()
+          if beginParse and l[0] == '\n':
+            stageBegin = False
+            resp.readline()
+            continue
+          elif l[0] == '[':
+            beginParse = True
+            resp.readline()
+            continue
+          if not beginParse:
+            continue
+          if stageBegin:
+            cols = l.strip().split()
+            indicator = cols[0].strip(":")
+            value = int(cols[1])
+            servers[server][indicator] = value
+          else:
+            stageBegin = True
+            server = l.split()[0]
+            servers[server]={}
+        return servers
+    return parse_data()
 
+def get_mem(url):
+    memory_by_application = 0
+    memory_central_cache_freelist = 0
+    memory_acutal_used = 0
+    resp = request.urlopen(url)
+    for i in resp:
+        line = i.decode().strip()
+        if line.rfind("use by application") > 0:
+            try:
+                memory_by_application = int(line.split()[1])
+            except Exception as e:
+                memory_by_application = 0
+        elif line.rfind("central cache freelist") > 0:
+            try:
+                memory_central_cache_freelist = line.split()[2]
+            except Exception as e:
+                memory_central_cache_freelist = 0
+        elif line.rfind("Actual memory used") > 0:
+            try:
+                memory_acutal_used = line.split()[2]
+            except Exception as e:
+                memory_acutal_used = 0
+        else:
+            continue
+    return memory_by_application, memory_central_cache_freelist, memory_acutal_used
 
 def get_conf():
     conf_map = {}
-    with open(work_dir + "/conf/monitor.conf", "r") as conf_file:
-        for line in conf_file.xreadlines():
+    with do_open(work_dir + "/conf/monitor.conf", "r") as conf_file:
+        for line in conf_file:
             if line.startswith("#"):
                 continue
             arr = line.split("=")
@@ -96,10 +148,15 @@ def get_conf():
 
 
 def get_timestamp():
+    def big_int(ct):
+        try:
+            return long(ct)
+        except:
+            return int(ct)
     ct = time.time()
     local_time = time.localtime(ct)
     data_head = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
-    data_secs = (ct - long(ct)) * 1000
+    data_secs = (ct - big_int(ct)) * 1000
     today = time.strftime("%Y%m%d", local_time)
     return ["%s.%03d" % (data_head, data_secs) + " +0800", today]
 
@@ -108,9 +165,9 @@ def search_key(file_name, offset, keyword):
     if not os.path.exists(file_name):
         return (0, 0)
     count = 0
-    with open(file_name, 'r') as f:
+    with do_open(file_name, 'r') as f:
         f.seek(offset)
-        for line in f.xreadlines():
+        for line in f:
             if line.find(keyword) != -1:
                 count += 1
         return (count, f.tell())
@@ -129,6 +186,7 @@ if __name__ == "__main__":
             "rtidb_" + cur_method, cur_method, ["latency", "type"])
 
     gauge["log"] = Gauge("rtidb_log", "log", ["role", "type"])
+    gauge["memory"] = Gauge("rtidb_memory", "memory", ["role", "type"])
 
     endpoint = ""
     if "endpoint" in conf_map:
@@ -136,8 +194,11 @@ if __name__ == "__main__":
     if "endpoint" in env_dist:
         endpoint = env_dist["endpoint"]
     url = ""
+    mem_url = ""
     if endpoint != "":
         url = "http://" + endpoint + "/status"
+        mem_url = "http://{}/TabletServer/ShowMemPool".format(endpoint)
+
     log_file_name = conf_map["log_dir"] + "/monitor.log"
     if not os.path.exists(conf_map["log_dir"]):
         os.mkdir(conf_map["log_dir"])
@@ -178,18 +239,28 @@ if __name__ == "__main__":
                 continue
             result = get_data(url)
             for method_data in result:
-                data = time_stamp + "\t" + method_data + "\t"
+                lower_method = method_data.lower()
+                if lower_method not in method_set:
+                    continue
+                data = "{}\t{}\t".format(time_stamp, lower_method)
                 for key in monitor_key:
-                    data += "\t" + key + ":" + result[method_data][key]
+                    data = "{}\t{}:{}".format(data, key, result[method_data][key])
                     if key.find("latency") == -1:
-                        gauge[method_data].labels("type", key).set(
+                        gauge[lower_method].labels("type", key).set(
                             result[method_data][key])
                     else:
-                        gauge[method_data].labels("latency", key).set(
+                        gauge[lower_method].labels("latency", key).set(
                             result[method_data][key])
                 log_file.write(data + "\n")
                 log_file.flush()
-        except Exception, ex:
-            log_file.write("has exception {}\n".format(ex))
+            if len(mem_url) < 1:
+                continue
+            mema, memb, memc = get_mem(mem_url)
+            gauge["memory"].labels("memory", "use_by_application").set(mema)
+            gauge["memory"].labels("memory", "central_cache_freelist").set(memb)
+            gauge["memory"].labels("memory", "actual_memory_used").set(memc)
+        except Exception as e:
+            traceback.print_exc(file=log_file)
+            log_file.write("has exception {}\n".format(e))
         time.sleep(conf_map["interval"])
     log_file.close()

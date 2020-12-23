@@ -59,7 +59,8 @@ TEST_F(SDKCatalogTest, sdk_smoke_test) {
     tables.push_back(args->meta);
     auto client_manager = std::make_shared<ClientManager>();
     std::shared_ptr<SDKCatalog> catalog(new SDKCatalog(client_manager));
-    ASSERT_TRUE(catalog->Init(tables));
+    Procedures procedures;
+    ASSERT_TRUE(catalog->Init(tables, procedures));
     ::fesql::vm::EngineOptions options;
     options.set_compile_only(true);
     ::fesql::vm::Engine engine(catalog, options);
@@ -78,7 +79,8 @@ TEST_F(SDKCatalogTest, sdk_window_smoke_test) {
     tables.push_back(args->meta);
     auto client_manager = std::make_shared<ClientManager>();
     std::shared_ptr<SDKCatalog> catalog(new SDKCatalog(client_manager));
-    ASSERT_TRUE(catalog->Init(tables));
+    Procedures procedures;
+    ASSERT_TRUE(catalog->Init(tables, procedures));
     ::fesql::vm::EngineOptions options;
     options.set_compile_only(true);
     ::fesql::vm::Engine engine(catalog, options);
@@ -102,7 +104,8 @@ TEST_F(SDKCatalogTest, sdk_lastjoin_smoke_test) {
     tables.push_back(args2->meta);
     auto client_manager = std::make_shared<ClientManager>();
     std::shared_ptr<SDKCatalog> catalog(new SDKCatalog(client_manager));
-    ASSERT_TRUE(catalog->Init(tables));
+    Procedures procedures;
+    ASSERT_TRUE(catalog->Init(tables, procedures));
     ::fesql::vm::EngineOptions options;
     options.set_compile_only(true);
     ::fesql::vm::Engine engine(catalog, options);

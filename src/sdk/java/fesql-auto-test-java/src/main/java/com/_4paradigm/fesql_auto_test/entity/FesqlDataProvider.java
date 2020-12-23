@@ -1,6 +1,7 @@
 package com._4paradigm.fesql_auto_test.entity;
 
 import com._4paradigm.fesql.sqlcase.model.CaseFile;
+import com._4paradigm.fesql.sqlcase.model.SQLCase;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,8 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author zhaowei
@@ -35,12 +38,11 @@ public class FesqlDataProvider extends CaseFile {
             return null;
         }
     }
-
-    public static FesqlDataProvider dataProviderGenerator(String caseFile)
-            throws FileNotFoundException {
+    public static FesqlDataProvider dataProviderGenerator(String caseFile) throws FileNotFoundException {
         Yaml yaml = new Yaml();
         String rtidbDir = rtidbDir().getAbsolutePath();
         Assert.assertNotNull(rtidbDir);
+        FesqlDataProvider finalDataProvider;
         String caseAbsPath = rtidbDir + "/fesql/cases/" + caseFile;
         logger.debug("fesql case absolute path: {}", caseAbsPath);
         FileInputStream testDataStream = new FileInputStream(caseAbsPath);
@@ -50,3 +52,4 @@ public class FesqlDataProvider extends CaseFile {
 
 
 }
+
