@@ -33,7 +33,7 @@ std::string SQLCaseTest::FindRtidbDirPath(const std::string &dirname) {
         }
     }
     if (current_path.filename().string() == dirname) {
-        LOG(INFO) << "Dir Path is : " << current_path.string() << std::endl;
+        DLOG(INFO) << "Dir Path is : " << current_path.string() << std::endl;
         return current_path.string();
     }
     return std::string();
@@ -264,7 +264,7 @@ void SQLCaseTest::PrintResultSet(std::shared_ptr<fesql::sdk::ResultSet> rs) {
         t.endOfRow();
         return;
     }
-
+    rs->Reset();
     while (rs->Next()) {
         for (int idx = 0; idx < schema->GetColumnCnt(); idx++) {
             std::string str = rs->GetAsString(idx);

@@ -82,6 +82,7 @@ class SQLInsertRow {
     bool AppendDate(int32_t date);
     bool AppendNULL();
     bool IsComplete();
+    bool Build();
     const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& GetDimensions();
     inline const std::vector<uint64_t>& GetTs() { return ts_; }
     inline const std::string& GetRow() { return val_; }
@@ -96,7 +97,7 @@ class SQLInsertRow {
                 result.push_back(i);
             }
         }
-        return result;
+        return std::move(result);
     }
 
  private:
@@ -123,6 +124,7 @@ class SQLInsertRow {
     std::vector<uint64_t> ts_;
     ::rtidb::codec::RowBuilder rb_;
     std::string val_;
+    uint32_t str_size_;
 };
 
 class SQLInsertRows {
