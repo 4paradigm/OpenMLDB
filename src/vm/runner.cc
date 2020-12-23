@@ -332,10 +332,11 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 case node::kJoinTypeConcat: {
                     auto runner = new ConcatRunner(id_++, node->schemas_ctx(),
                                                    op->GetLimitCnt());
-                    return RegisterTask(node,
-                                        BuildTaskForBinaryRunner(
-                                            left_task, right_task,
-                                            nm_->RegisterNode(runner), Key()));
+                    return RegisterTask(
+                        node,
+                        BuildTaskForBinaryRunner(left_task, right_task,
+                                                 nm_->RegisterNode(runner),
+                                                 Key(), kLeftBias));
                 }
                 default: {
                     status.code = common::kOpGenError;
@@ -562,7 +563,7 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
                       std::make_shared<ClusterTask>(new_left),
                       right_route_info.table_handler_));
         // TODO(chenjing): opt
-        if (new_left.IsClusterTask()) {
+        if (new_left.IsCompletedClusterTask()) {
             return BuildProxyRunnerForClusterTask(cluster_task);
         } else {
             return cluster_task;
