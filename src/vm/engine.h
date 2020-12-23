@@ -34,6 +34,7 @@
 #include "proto/fe_common.pb.h"
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
+#include "vm/router.h"
 #include "vm/sql_compiler.h"
 
 namespace fesql {
@@ -138,6 +139,7 @@ class RunSession {
 
     void EnableDebug() { is_debug_ = true; }
     void DisableDebug() { is_debug_ = false; }
+    bool IsDebug() { return is_debug_; }
 
     void SetSpName(const std::string& sp_name) { sp_name_ = sp_name; }
     EngineMode engine_mode() const { return engine_mode_; }
@@ -210,6 +212,7 @@ struct ExplainOutput {
     std::string ir;
     vm::Schema output_schema;
     std::string request_name;
+    vm::Router router;
 };
 
 typedef std::map<
@@ -295,7 +298,8 @@ class LocalTabletRowHandler : public RowHandler {
         return value_;
     }
     base::Status SyncValue() {
-        DLOG(INFO) << "Local tablet SubQuery request: task id " << task_id_;
+        DLOG(INFO) << "Sync Value ... local tablet SubQuery request: task id "
+                   << task_id_;
         if (0 != session_.Run(task_id_, request_, &value_)) {
             return base::Status(common::kCallMethodError,
                                 "sub query fail: session run fail");
@@ -372,7 +376,10 @@ class LocalTablet : public Tablet {
  public:
     explicit LocalTablet(fesql::vm::Engine* engine,
                          std::shared_ptr<fesql::vm::CompileInfoCache> sp_cache)
-        : Tablet(), engine_(engine), sp_cache_(sp_cache) {}
+        : Tablet(),
+          name_("LocalTablet"),
+          engine_(engine),
+          sp_cache_(sp_cache) {}
     ~LocalTablet() {}
     std::shared_ptr<RowHandler> SubQuery(uint32_t task_id,
                                          const std::string& db,
@@ -463,9 +470,10 @@ class LocalTablet : public Tablet {
         return std::make_shared<LocalTabletTableHandler>(
             task_id, session, in_rows, request_is_common);
     }
-    const std::string& GetName() const { return "LocalTablet"; }
+    const std::string& GetName() const { return name_; }
 
  private:
+    const std::string name_;
     vm::Engine* engine_;
     std::shared_ptr<fesql::vm::CompileInfoCache> sp_cache_;
 };

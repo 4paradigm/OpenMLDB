@@ -574,6 +574,56 @@ int32_t strcmp(fesql::codec::StringRef *s1, fesql::codec::StringRef *s2) {
     return fesql::codec::StringRef::compare(*s1, *s2);
 }
 
+//
+
+template <>
+uint32_t to_string_len<int16_t>(const int16_t &v) {
+    return std::to_string(v).size();
+}
+
+template <>
+uint32_t to_string_len<int32_t>(const int32_t &v) {
+    return std::to_string(v).size();
+}
+
+template <>
+uint32_t to_string_len<int64_t>(const int64_t &v) {
+    return std::to_string(v).size();
+}
+
+template <>
+uint32_t to_string_len<float>(const float &v) {
+    return std::to_string(v).size();
+}
+
+template <>
+uint32_t to_string_len<double>(const double &v) {
+    return std::to_string(v).size();
+}
+
+template <>
+uint32_t to_string_len<codec::Date>(const codec::Date &v) {
+    const uint32_t len = 10;  // 1990-01-01
+    return len;
+}
+
+template <>
+uint32_t to_string_len<codec::Timestamp>(const codec::Timestamp &v) {
+    const uint32_t len = 19;  // "%Y-%m-%d %H:%M:%S"
+    return len;
+}
+
+template <>
+uint32_t to_string_len<std::string>(const std::string &v) {
+    return v.size();
+}
+
+template <>
+uint32_t to_string_len<codec::StringRef>(const codec::StringRef &v) {
+    return v.size_;
+}
+
+////
 template <>
 uint32_t format_string<int16_t>(const int16_t &v, char *buffer, size_t size) {
     return snprintf(buffer, size, "%d", v);
@@ -604,7 +654,8 @@ template <>
 uint32_t format_string<codec::Date>(const codec::Date &v, char *buffer,
                                     size_t size) {
     const uint32_t len = 10;  // 1990-01-01
-    if (buffer != nullptr && size >= len) {
+    if (buffer == nullptr) return len;
+    if (size >= len) {
         date_format(&v, "%Y-%m-%d", buffer, size);
     }
     return len;
@@ -614,7 +665,8 @@ template <>
 uint32_t format_string<codec::Timestamp>(const codec::Timestamp &v,
                                          char *buffer, size_t size) {
     const uint32_t len = 19;  // "%Y-%m-%d %H:%M:%S"
-    if (buffer != nullptr && size >= len) {
+    if (buffer == nullptr) return len;
+    if (size >= len) {
         date_format(&v, "%Y-%m-%d %H:%M:%S", buffer, size);
     }
     return len;
@@ -623,7 +675,23 @@ uint32_t format_string<codec::Timestamp>(const codec::Timestamp &v,
 template <>
 uint32_t format_string<std::string>(const std::string &v, char *buffer,
                                     size_t size) {
+    if (buffer == nullptr) return v.size();
     return snprintf(buffer, size, "%s", v.c_str());
+}
+
+template <>
+uint32_t format_string<codec::StringRef>(const codec::StringRef &v,
+                                         char *buffer, size_t size) {
+    if (buffer == nullptr) return v.size_;
+    if (v.size_ < size) {
+        memcpy(reinterpret_cast<void *>(buffer),
+               reinterpret_cast<const void *>(v.data_), v.size_);
+        return v.size_;
+    } else {
+        memcpy(reinterpret_cast<void *>(buffer),
+               reinterpret_cast<const void *>(v.data_), size);
+        return size;
+    }
 }
 
 char *AllocManagedStringBuf(int32_t bytes) {
