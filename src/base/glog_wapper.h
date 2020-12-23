@@ -21,6 +21,7 @@ namespace base {
 
 const int DEBUG = -1;
 static int log_level = INFO;
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-value"
 template <typename... Arguments>

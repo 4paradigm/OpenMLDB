@@ -83,7 +83,11 @@ DECLARE_string(data_dir);
 DECLARE_bool(use_rdma);
 #endif
 
-static std::string RTIDB_VERSION;
+constexpr std::string RTIDB_VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." +
+                            std::to_string(RTIDB_VERSION_MEDIUM) + "." +
+                            std::to_string(RTIDB_VERSION_MINOR) + "." +
+                            std::to_string(RTIDB_VERSION_BUG) + "." +
+                            RTIDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
 
 static std::map<std::string, std::string> real_ep_map;
 
@@ -166,7 +170,7 @@ void StartNameServer() {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    PDLOG(INFO, "start nameserver on endpoint %s with version %s", RTIDB_VERSION.c_str());
+    PDLOG(INFO, "start nameserver on endpoint %s with version %s", real_endpoint.c_str(), RTIDB_VERSION.c_str());
     server.set_version(RTIDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
@@ -271,9 +275,9 @@ void StartTablet() {
         exit(1);
     }
 #ifdef PZFPGA_ENABLE
-    PDLOG(INFO, "start tablet on endpoint %s with version %s with fpga", RTIDB_VERSION.c_str());
+    PDLOG(INFO, "start tablet on endpoint %s with version %s with fpga", real_endpoint.c_str(), RTIDB_VERSION.c_str());
 #else
-    PDLOG(INFO, "start tablet on endpoint %s with version %s", RTIDB_VERSION.c_str());
+    PDLOG(INFO, "start tablet on endpoint %s with version %s", real_endpoint.c_str(), RTIDB_VERSION.c_str());
 #endif
     if (!tablet->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
@@ -313,7 +317,7 @@ void StartBlobProxy() {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    PDLOG(INFO, "start blobproxy on endpoint %s with version %s", RTIDB_VERSION.c_str());
+    PDLOG(INFO, "start blobproxy on endpoint %s with version %s", real_endpoint.c_str(), RTIDB_VERSION.c_str());
     server.set_version(RTIDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
@@ -349,7 +353,7 @@ void StartBlob() {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    PDLOG(INFO, "start blob on endpoint %s with version %s", RTIDB_VERSION.c_str());
+    PDLOG(INFO, "start blob on endpoint %s with version %s", real_endpoint.c_str(), RTIDB_VERSION.c_str());
     if (!server_impl->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
@@ -6613,16 +6617,7 @@ int main(int argc, char* argv[]) {
     #ifdef __rdma__
     std::cout << "rdma is enabled" << std::endl;
     #endif
-    {
-        std::ostringstream ss;
-        ss << RTIDB_VERSION_MAJOR << ".";
-        ss << RTIDB_VERSION_MEDIUM << ".";
-        ss << RTIDB_VERSION_MINOR << ".";
-        ss << RTIDB_VERSION_BUG << ".";
-        ss << FESQL_COMMIT_ID;
-        RTIDB_VERSION = ss.str();
-        ::google::SetVersionString(RTIDB_VERSION.c_str());
-    }
+    ::google::SetVersionString(RTIDB_VERSION.c_str());
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "ns_client") {
         StartNsClient();

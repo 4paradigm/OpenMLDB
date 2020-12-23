@@ -53,12 +53,11 @@ const std::string LOGO =  // NOLINT
     " | | |  __ / |__| | |_) |\n"
     " |_|  \\___||_____/|____/\n";
 
-const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) +  // NOLINT
-                            "." +                                  // NOLINT
+const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." +  // NOLINT
                             std::to_string(RTIDB_VERSION_MEDIUM) + "." +
                             std::to_string(RTIDB_VERSION_MINOR) + "." +
                             std::to_string(RTIDB_VERSION_BUG) + "." +
-                            FESQL_COMMIT_ID;
+                            RTIDB_COMMIT_ID + "." + FESQL_COMMIT_ID;
 
 std::string db = "";  // NOLINT
 ::rtidb::sdk::ClusterSDK *cs = NULL;

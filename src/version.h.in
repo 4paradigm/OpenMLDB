@@ -22,6 +22,7 @@
 #define RTIDB_VERSION_MINOR @RTIDB_VERSION_MINOR@
 #define RTIDB_VERSION_BUG @RTIDB_VERSION_BUG@
 const std::string FESQL_COMMIT_ID = "@FESQL_COMMIT_ID@";
+const std::string RTIDB_COMMIT_ID = "@RTIDB_COMMIT_ID@";
 
 #endif /* !VERSION_H */
 
