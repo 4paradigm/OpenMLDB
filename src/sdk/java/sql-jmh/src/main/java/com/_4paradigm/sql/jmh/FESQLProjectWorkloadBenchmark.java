@@ -1,5 +1,6 @@
 package com._4paradigm.sql.jmh;
 
+import com._4paradigm.sql.ResultSet;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
@@ -125,53 +126,76 @@ public class FESQLProjectWorkloadBenchmark {
         }
         {
             String key = "100_key";
-            PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl100Insert);
             try {
-                for (int i = 0; i < 98; i++) {
-                    impl.setString(i+1, "value10000000000");
+                for (int a = 0; a < 100; a++) {
+
+                    PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl100Insert);
+                    for (int i = 0; i < 98; i++) {
+                        impl.setString(i+1, "value10000000000");
+                    }
+                    impl.setString(99, key);
+                    impl.setTimestamp(100, new Timestamp(System.currentTimeMillis()));
+                    impl.setInt(101, 10);
+                    impl.execute();
                 }
-                impl.setString(99, key);
-                impl.setTimestamp(100, new Timestamp(System.currentTimeMillis()));
-                impl.setInt(101, 10);
-                impl.execute();
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
         {
             String key = "200_key";
-            PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl200Insert);
             try {
-                for (int i = 0; i < 198; i++) {
-                    impl.setString(i+1, "value10000000000");
+                for (int a = 0; a < 200; a++) {
+
+                    PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl200Insert);
+                    for (int i = 0; i < 198; i++) {
+                        impl.setString(i+1, "value10000000000");
+                    }
+                    impl.setString(199, key);
+                    impl.setTimestamp(200, new Timestamp(System.currentTimeMillis()));
+                    impl.setInt(201, 10);
+                    impl.execute();
+
                 }
-                impl.setString(199, key);
-                impl.setTimestamp(200, new Timestamp(System.currentTimeMillis()));
-                impl.setInt(201, 10);
-                impl.execute();
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
         {
             String key = "500_key";
-            PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl500Insert);
             try {
-                for (int i = 0; i < 498; i++) {
-                    impl.setString(i+1, "value10000000000");
+                for (int a = 0; a < 500; a++) {
+
+                    PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl500Insert);
+                    for (int i = 0; i < 498; i++) {
+                        impl.setString(i+1, "value10000000000");
+                    }
+                    impl.setString(499, key);
+                    impl.setTimestamp(500, new Timestamp(System.currentTimeMillis()));
+                    impl.setInt(501, 10);
+                    impl.execute();
+
                 }
-                impl.setString(499, key);
-                impl.setTimestamp(500, new Timestamp(System.currentTimeMillis()));
-                impl.setInt(501, 10);
-                impl.execute();
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
         try {
             Thread.sleep(2000);
+            ResultSet rs = executor.executeSQL(db, query100);
+            if (rs.Size() != 100) {
+                throw new Exception("check failed real size " + rs.Size());
+            }
+            rs = executor.executeSQL(db, query200);
+            if (rs.Size() != 200) {
+                throw new Exception("check failed");
+            }
+            rs = executor.executeSQL(db, query500);
+            if (rs.Size() != 500) {
+                throw new Exception("check failed");
+            }
         } catch (Exception e) {
-
+            e.printStackTrace();
         }
     }
 
@@ -190,7 +214,9 @@ public class FESQLProjectWorkloadBenchmark {
         executor.executeSQL(db, query500);
     }
 
-    public static void main(String[] args) throws RunnerException {
+    public static void main(String[] args) throws Exception {
+        //FESQLProjectWorkloadBenchmark benchmark = new FESQLProjectWorkloadBenchmark();
+        //benchmark.setup();
         Options opt = new OptionsBuilder()
                 .include(FESQLProjectWorkloadBenchmark.class.getSimpleName())
                 .forks(1)
