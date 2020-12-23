@@ -15,8 +15,8 @@ import java.sql.Timestamp;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-@BenchmarkMode(Mode.Throughput)
-@OutputTimeUnit(TimeUnit.SECONDS)
+@BenchmarkMode(Mode.SampleTime)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
 @Threads(1)
 @Fork(value = 1, jvmArgs = {"-Xms32G", "-Xmx32G"})
@@ -71,7 +71,7 @@ public class FESQLProjectWorkloadBenchmark {
             ddl100Builder.append("col" + String.valueOf(i) + " string");
             ddl100InsertBuilder.append("?");
         }
-        ddl100Builder.append(", col99 timestamp, col100 int, index(key=col98, ts=col99)) partitionnum=8;");
+        ddl100Builder.append(", col99 timestamp, col100 int, index(key=col98, ts=col99)) partitionnum=1;");
         ddl100InsertBuilder.append(", ?, ?);");
         ddl100 = ddl100Builder.toString();
         ddl100Insert = ddl100InsertBuilder.toString();
@@ -92,7 +92,7 @@ public class FESQLProjectWorkloadBenchmark {
                 ddl200Builder.append("col" + String.valueOf(i) + " string");
                 ddl200InsertBuilder.append("?");
             }
-            ddl200Builder.append(", col199 timestamp, col200 int, index(key=col198, ts=col199));");
+            ddl200Builder.append(", col199 timestamp, col200 int, index(key=col198, ts=col199)) partitionnum=1;");
             ddl200InsertBuilder.append(", ?, ?);");
             ddl200 = ddl200Builder.toString();
             ddl200Insert = ddl200InsertBuilder.toString();
@@ -114,7 +114,7 @@ public class FESQLProjectWorkloadBenchmark {
                 ddl500Builder.append("col" + String.valueOf(i) + " string");
                 ddl500InsertBuilder.append("?");
             }
-            ddl500Builder.append(", col499 timestamp, col500 int, index(key=col498, ts=col499));");
+            ddl500Builder.append(", col499 timestamp, col500 int, index(key=col498, ts=col499)) partitionnum=1;");
             ddl500InsertBuilder.append(", ?, ?);");
             ddl500 = ddl500Builder.toString();
             ddl500Insert = ddl500InsertBuilder.toString();

@@ -3,14 +3,12 @@ package com._4paradigm.sql.jmh;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
-import com._4paradigm.featuredb.driver.DBMSClient;
-import com._4paradigm.featuredb.driver.impl.DBMSDriverClientImpl;
 
 public class BenchmarkConfig {
 
 //    public static String ZK_CLUSTER = "127.0.0.1:6181";
-    public static String ZK_CLUSTER="172.27.128.32:12200";
-    public static String ZK_PATH="/standalone";
+    public static String ZK_CLUSTER="172.27.128.81:16181";
+    public static String ZK_PATH="/fedb_stable";
     public static String REDIS_IP = "172.27.128.81";
     public static int REDIS_PORT = 6379;
 //    public static String ZK_PATH="/cluster";
