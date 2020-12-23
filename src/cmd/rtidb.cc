@@ -85,7 +85,7 @@ DECLARE_string(data_dir);
 DECLARE_bool(use_rdma);
 #endif
 
-const std::string RTIDB_VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." +
+const std::string RTIDB_VERSION = std::to_string(RTIDB_VERSION_MAJOR) + "." + // NOLINT
                             std::to_string(RTIDB_VERSION_MEDIUM) + "." +
                             std::to_string(RTIDB_VERSION_MINOR) + "." +
                             std::to_string(RTIDB_VERSION_BUG) + "." +
