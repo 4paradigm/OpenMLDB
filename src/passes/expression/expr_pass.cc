@@ -33,7 +33,8 @@ void ExprReplacer::AddReplacement(const node::ExprNode* expr,
         AddReplacement(column_id->GetColumnID(), repl);
     } else if (expr->GetExprType() == node::kExprColumnRef) {
         auto column_ref = dynamic_cast<const node::ColumnRefNode*>(expr);
-        AddReplacement(column_ref->GetRelationName(), column_ref->GetColumnName(), repl);
+        AddReplacement(column_ref->GetRelationName(),
+                       column_ref->GetColumnName(), repl);
     }
     node_id_map_[expr->node_id()] = repl;
 }

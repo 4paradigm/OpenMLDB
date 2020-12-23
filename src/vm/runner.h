@@ -1059,13 +1059,6 @@ class ClusterTask {
     Runner* GetInputRunner(size_t idx) const {
         return idx >= input_runners_.size() ? nullptr : input_runners_[idx];
     }
-    const std::vector<Runner*>& GetInputRunners() const {
-        return input_runners_;
-    }
-    void AddInputRunner(Runner* input_runner) {
-        input_runners_.push_back(input_runner);
-    }
-
     std::shared_ptr<ClusterTask> GetInput() const { return route_info_.input_; }
     Key GetIndexKey() const { return route_info_.index_key_; }
     void SetIndexKey(const Key& key) { route_info_.index_key_ = key; }
@@ -1073,13 +1066,6 @@ class ClusterTask {
         route_info_.input_ = input;
     }
 
-    bool CompleteRouteInfo(const Key& key, std::shared_ptr<ClusterTask> input) {
-        if (IsClusterTask()) {
-            LOG(WARNING) << "fail to complete route info, task is not cluster";
-        }
-        SetIndexKey(key);
-        SetInput(input);
-    }
     const bool IsValid() const { return nullptr != root_; }
 
     const bool IsCompletedClusterTask() const {
@@ -1164,18 +1150,6 @@ class ClusterJob {
             return ClusterTask();
         }
         return tasks_[id];
-    }
-    ClusterTask FindTaskByRunner(Runner* runner) {
-        if (nullptr == runner) {
-            return ClusterTask();
-        }
-
-        for (auto task : tasks_) {
-            if (task.GetRoot() == runner) {
-                return task;
-            }
-        }
-        return ClusterTask();
     }
 
     ClusterTask GetMainTask() { return GetTask(main_task_id_); }
@@ -1292,9 +1266,7 @@ class RunnerBuilder {
     bool support_cluster_optimized_;
     int32_t id_;
     ClusterJob cluster_job_;
-    bool AddRunnerToRemoteTask(Runner* runner, int32_t task_id) {
-        return cluster_job_.AddRunnerToTask(runner, task_id);
-    }
+
     std::unordered_map<::fesql::vm::PhysicalOpNode*, ::fesql::vm::ClusterTask>
         task_map_;
     std::shared_ptr<ClusterTask> request_task_;

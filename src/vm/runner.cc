@@ -333,10 +333,9 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto runner = new ConcatRunner(id_++, node->schemas_ctx(),
                                                    op->GetLimitCnt());
                     return RegisterTask(
-                        node,
-                        BuildTaskForBinaryRunner(left_task, right_task,
-                                                 nm_->RegisterNode(runner),
-                                                 Key(), kLeftBias));
+                        node, BuildTaskForBinaryRunner(
+                                  left_task, right_task,
+                                  nm_->RegisterNode(runner), Key(), kLeftBias));
                 }
                 default: {
                     status.code = common::kOpGenError;
