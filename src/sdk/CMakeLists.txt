@@ -1,7 +1,7 @@
 add_library(rtidb_sdk STATIC
 	cluster_sdk.cc sql_cluster_router.cc sql_router.cc
     result_set_sql.cc batch_request_result_set_sql.cc
-    sql_request_row.cc sql_insert_row.cc sql_rpc_row_codec.cc)
+    sql_request_row.cc sql_insert_row.cc)
 set(FESQL_CASE_LIBS base_test fesql_core yaml-cpp boost_filesystem)
 
 add_executable(cluster_sdk_test cluster_sdk_test.cc)
@@ -18,9 +18,6 @@ target_link_libraries(sql_cluster_test gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
 
 add_executable(sql_request_row_test sql_request_row_test.cc)
 target_link_libraries(sql_request_row_test gtest ${BIN_LIBS})
-
-add_executable(sql_rpc_row_codec_test sql_rpc_row_codec_test.cc)
-target_link_libraries(sql_rpc_row_codec_test gtest ${BIN_LIBS})
 
 set(SDK_LIBS rtidb_sdk rtidb_catalog client zk_client rtidb_flags rtidb_codec rtidb_proto base fesql_sdk zookeeper_mt ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS})
 add_executable(mini_cluster_bm mini_cluster_microbenchmark.cc)

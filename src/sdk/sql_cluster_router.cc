@@ -1315,7 +1315,7 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
     std::shared_ptr<rtidb::sdk::QueryFutureImpl> future =
         std::make_shared<rtidb::sdk::QueryFutureImpl>(callback);
     bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), timeout_ms,
-            options_.enable_debug, cntl.get(), callback);
+            options_.enable_debug, callback);
     if (!ok) {
         status->code = -1;
         status->msg = "request server error";

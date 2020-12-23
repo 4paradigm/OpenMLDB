@@ -37,7 +37,7 @@
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
 #include "timer.h"  // NOLINT
-#include "sdk/sql_rpc_row_codec.h"
+#include "codec/sql_rpc_row_codec.h"
 
 using google::protobuf::RepeatedPtrField;
 using ::rtidb::storage::DataBlock;
@@ -2049,8 +2049,8 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
     if (has_common_row) {
         size_t common_size = request->row_sizes().Get(0);
         ::fesql::codec::Row common_row;
-        if (!sdk::DecodeRpcRow(io_buf, buf_offset, common_size,
-                               request->common_slices(), &common_row)) {
+        if (!codec::DecodeRpcRow(io_buf, buf_offset, common_size,
+                                 request->common_slices(), &common_row)) {
             response->set_msg("decode input common row failed");
             response->set_code(::rtidb::base::kSQLRunError);
             return;
@@ -2059,8 +2059,8 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
         for (size_t i = 0; i < input_row_num; ++i) {
             ::fesql::codec::Row non_common_row;
             size_t non_common_size = request->row_sizes().Get(i + 1);
-            if (!sdk::DecodeRpcRow(io_buf, buf_offset, non_common_size,
-                                   request->non_common_slices(), &non_common_row)) {
+            if (!codec::DecodeRpcRow(io_buf, buf_offset, non_common_size,
+                                     request->non_common_slices(), &non_common_row)) {
                 response->set_msg("decode input non common row failed");
                 response->set_code(::rtidb::base::kSQLRunError);
                 return;
@@ -2071,8 +2071,8 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
     } else {
         for (size_t i = 0; i < input_row_num; ++i) {
             size_t non_common_size = request->row_sizes().Get(i);
-            if (!sdk::DecodeRpcRow(io_buf, buf_offset, non_common_size,
-                                   request->non_common_slices(), &input_rows[i])) {
+            if (!codec::DecodeRpcRow(io_buf, buf_offset, non_common_size,
+                                     request->non_common_slices(), &input_rows[i])) {
                 response->set_msg("decode input non common row failed");
                 response->set_code(::rtidb::base::kSQLRunError);
                 return;
@@ -2103,7 +2103,11 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
         }
         buf.append(first_row.buf(0), first_row.size(0));
         response->add_row_sizes(first_row.size(0));
+        response->set_common_slices(1);
+    } else {
+        response->set_common_slices(0);
     }
+    response->set_non_common_slices(1);
     for (auto& output_row : output_rows) {
         if (has_common_slice) {
             if (output_row.GetRowPtrCnt() != 2) {
@@ -6199,7 +6203,7 @@ void TabletImpl::RunRequestQuery(RpcController* ctrl,
     ::fesql::codec::Row row;
     auto& request_buf = static_cast<brpc::Controller*>(ctrl)->request_attachment();
     size_t input_slices = request.row_slices();
-    if (!sdk::DecodeRpcRow(request_buf, 0, request.row_size(), input_slices, &row)) {
+    if (!codec::DecodeRpcRow(request_buf, 0, request.row_size(), input_slices, &row)) {
         response.set_code(::rtidb::base::kSQLRunError);
         response.set_msg("fail to decode input row");
         return;
@@ -6221,7 +6225,7 @@ void TabletImpl::RunRequestQuery(RpcController* ctrl,
         return;
     }
     size_t buf_total_size;
-    if (!sdk::EncodeRpcRow(output, &buf, &buf_total_size)) {
+    if (!codec::EncodeRpcRow(output, &buf, &buf_total_size)) {
         response.set_code(::rtidb::base::kSQLRunError);
         response.set_msg("fail to encode sql output row");
         return;

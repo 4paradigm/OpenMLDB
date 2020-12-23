@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef SRC_SDK_SQL_RPC_ROW_CODEC_H_
-#define SRC_SDK_SQL_RPC_ROW_CODEC_H_
+#ifndef SRC_CODEC_SQL_RPC_ROW_CODEC_H_
+#define SRC_CODEC_SQL_RPC_ROW_CODEC_H_
 
 #include <memory>
 #include <set>
@@ -30,7 +30,7 @@
 #include "sdk/base.h"
 
 namespace rtidb {
-namespace sdk {
+namespace codec {
 
 bool DecodeRpcRow(const butil::IOBuf& buf, size_t offset, size_t size, size_t slice_num, fesql::codec::Row* row);
 
@@ -38,6 +38,6 @@ bool EncodeRpcRow(const fesql::codec::Row& row, butil::IOBuf* buf, size_t* total
 
 bool EncodeRpcRow(const int8_t* buf, size_t size, butil::IOBuf* io_buf);
 
-}  // namespace sdk
+}  // namespace codec
 }  // namespace rtidb
-#endif  // SRC_SDK_SQL_RPC_ROW_CODEC_H_
+#endif  // SRC_CODEC_SQL_RPC_ROW_CODEC_H_

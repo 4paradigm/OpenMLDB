@@ -13,8 +13,8 @@
 #include "base/glog_wapper.h"  // NOLINT
 #include "brpc/channel.h"
 #include "codec/codec.h"
+#include "codec/sql_rpc_row_codec.h"
 #include "sdk/sql_request_row.h"
-#include "sdk/sql_rpc_row_codec.h"
 #include "timer.h"  // NOLINT
 
 DECLARE_int32(request_max_retry);
@@ -137,7 +137,7 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
     request.set_row_size(row.size());
     request.set_row_slices(1);
     auto& io_buf = cntl->request_attachment();
-    if (!sdk::EncodeRpcRow(reinterpret_cast<const int8_t*>(row.data()),
+    if (!codec::EncodeRpcRow(reinterpret_cast<const int8_t*>(row.data()),
           row.size(), &io_buf)) {
         LOG(WARNING) << "Encode row buffer failed";
         return false;
@@ -181,8 +181,8 @@ static bool EncodeRowBatch(std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row
     if (common_slice->empty()) {
         request->set_common_slices(0);
     } else {
-        if (!sdk::EncodeRpcRow(reinterpret_cast<const int8_t*>(common_slice->data()),
-                               common_slice->size(), io_buf)) {
+        if (!codec::EncodeRpcRow(reinterpret_cast<const int8_t*>(common_slice->data()),
+                                 common_slice->size(), io_buf)) {
             LOG(WARNING) << "encode common row buf failed";
             return false;
         }
@@ -191,8 +191,8 @@ static bool EncodeRowBatch(std::shared_ptr<::rtidb::sdk::SQLRequestRowBatch> row
     }
     for (int i = 0; i < row_batch->Size(); ++i) {
         auto non_common_slice = row_batch->GetNonCommonSlice(i);
-        if (!sdk::EncodeRpcRow(reinterpret_cast<const int8_t*>(non_common_slice->data()),
-                               non_common_slice->size(), io_buf)) {
+        if (!codec::EncodeRpcRow(reinterpret_cast<const int8_t*>(non_common_slice->data()),
+                                 non_common_slice->size(), io_buf)) {
             LOG(WARNING) << "encode common row buf failed";
             return false;
         }
@@ -1702,8 +1702,8 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
     request.set_row_size(row.size());
     request.set_row_slices(1);
     auto& io_buf = cntl->request_attachment();
-    if (!sdk::EncodeRpcRow(reinterpret_cast<const int8_t*>(row.data()),
-                           row.size(), &io_buf)) {
+    if (!codec::EncodeRpcRow(reinterpret_cast<const int8_t*>(row.data()),
+                             row.size(), &io_buf)) {
         LOG(WARNING) << "encode row buf failed";
         return false;
     }
@@ -1770,7 +1770,7 @@ bool TabletClient::DropProcedure(const std::string& db_name, const std::string& 
 
 bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name,
         const std::string& row, int64_t timeout_ms, bool is_debug,
-        brpc::Controller* cntl, rtidb::RpcCallback<rtidb::api::QueryResponse>* callback) {
+        rtidb::RpcCallback<rtidb::api::QueryResponse>* callback) {
     if (callback == nullptr) {
         return false;
     }
@@ -1782,9 +1782,9 @@ bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_na
     request.set_is_procedure(true);
     request.set_row_size(row.size());
     request.set_row_slices(1);
-    auto& io_buf = cntl->request_attachment();
-    if (!sdk::EncodeRpcRow(reinterpret_cast<const int8_t*>(row.data()),
-                           row.size(), &io_buf)) {
+    auto& io_buf = callback->GetController()->request_attachment();
+    if (!codec::EncodeRpcRow(reinterpret_cast<const int8_t*>(row.data()),
+                             row.size(), &io_buf)) {
         LOG(WARNING) << "Encode row buf failed";
         return false;
     }

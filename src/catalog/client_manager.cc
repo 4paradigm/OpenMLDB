@@ -18,6 +18,7 @@
 #include "catalog/client_manager.h"
 #include <utility>
 #include "codec/fe_schema_codec.h"
+#include "codec/sql_rpc_row_codec.h"
 
 DECLARE_int32(request_timeout_ms);
 
@@ -64,11 +65,13 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
         return row_;
     }
     uint32_t tmp_size = 0;
-    cntl->response_attachment().copy_to(reinterpret_cast<void*>(&tmp_size), codec::SIZE_LENGTH,
-                 codec::VERSION_LENGTH);
-    int8_t* out_buf = reinterpret_cast<int8_t*>(malloc(tmp_size));
-    cntl->response_attachment().copy_to(out_buf, tmp_size);
-    row_ = fesql::codec::Row(fesql::base::RefCountedSlice::CreateManaged(out_buf, tmp_size));
+    row_ = fesql::codec::Row();
+    if (!codec::DecodeRpcRow(cntl->response_attachment(), 0, response->byte_size(),
+                             response->row_slices(), &row_)) {
+        status_.code = fesql::common::kRpcError;
+        status_.msg = "response content decode fail";
+        return row_;
+    }
     status_.code = ::fesql::common::kOk;
     return row_;
 }
@@ -95,11 +98,17 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
     request.set_task_id(task_id);
     request.set_is_debug(is_debug);
     request.set_is_procedure(is_procedure);
-    if (!row.empty()) {
-        std::string* input_row = request.mutable_input_row();
-        input_row->assign(reinterpret_cast<const char*>(row.buf()), row.size());
-    }
     auto cntl = std::make_shared<brpc::Controller>();
+    if (!row.empty()) {
+        auto& io_buf = cntl->request_attachment();
+        size_t row_size;
+        if (!codec::EncodeRpcRow(row, &io_buf, &row_size)) {
+            return std::make_shared<TabletRowHandler>(
+                ::fesql::base::Status(::fesql::common::kRpcError, "encode row failed"));
+        }
+        request.set_row_size(row_size);
+        request.set_row_slices(row.GetRowPtrCnt());
+    }
     auto response = std::make_shared<::rtidb::api::QueryResponse>();
     cntl->set_timeout_ms(FLAGS_request_timeout_ms);
     auto callback = new rtidb::RpcCallback<rtidb::api::QueryResponse>(response, cntl);

@@ -14,10 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "sdk/sql_rpc_row_codec.h"
+#include "codec/sql_rpc_row_codec.h"
 
 namespace rtidb {
-namespace sdk {
+namespace codec {
 
 bool DecodeRpcRow(const butil::IOBuf& buf, size_t offset, size_t size, size_t slice_num, fesql::codec::Row* row) {
     if (row == nullptr || slice_num == 0 || size == 0) {
@@ -101,6 +101,6 @@ bool EncodeRpcRow(const int8_t* buf, size_t size, butil::IOBuf* io_buf) {
     return true;
 }
 
-}  // namespace sdk
+}  // namespace codec
 }  // namespace rtidb
 
