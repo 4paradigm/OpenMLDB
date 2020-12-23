@@ -37,6 +37,7 @@
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
 #include "timer.h"  // NOLINT
+#include "codec/sql_rpc_row_codec.h"
 
 using google::protobuf::RepeatedPtrField;
 using ::rtidb::storage::DataBlock;
@@ -1861,10 +1862,11 @@ void TabletImpl::Query(RpcController* ctrl,
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
-    ProcessQuery(request, response, &buf);
+    ProcessQuery(ctrl, request, response, &buf);
 }
 
-void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
+void TabletImpl::ProcessQuery(RpcController* ctrl,
+                              const rtidb::api::QueryRequest* request,
                               ::rtidb::api::QueryResponse* response,
                               butil::IOBuf* buf) {
     ::fesql::base::Status status;
@@ -1925,12 +1927,6 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
                    << " with record cnt " << count << " byte size "
                    << byte_size;
     } else {
-        // TODO(wangtaize) validate the row
-        if (request->input_row().empty()) {
-            response->set_code(::rtidb::base::ReturnCode::kInvalidParameter);
-            response->set_msg("input row is empty");
-            return;
-        }
         ::fesql::vm::RequestRunSession session;
         if (request->is_debug()) {
             session.EnableDebug();
@@ -1951,7 +1947,7 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
             }
             session.SetCompileInfo(request_compile_info);
             session.SetSpName(sp_name);
-            RunRequestQuery(*request, session, *response, *buf);
+            RunRequestQuery(ctrl, *request, session, *response, *buf);
         } else {
             bool ok = engine_.Get(request->sql(), request->db(), session, status);
             if (!ok || session.GetCompileInfo() == nullptr) {
@@ -1961,7 +1957,7 @@ void TabletImpl::ProcessQuery(const rtidb::api::QueryRequest* request,
                     << request->sql();
                 return;
             }
-            RunRequestQuery(*request, session, *response, *buf);
+            RunRequestQuery(ctrl, *request, session, *response, *buf);
         }
         const std::string& sql = session.GetCompileInfo()->get_sql_context().sql;
         if (response->code() != ::rtidb::base::kOk) {
@@ -1979,7 +1975,7 @@ void TabletImpl::SubQuery(RpcController* ctrl,
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
-    ProcessQuery(request, response, &buf);
+    ProcessQuery(ctrl, request, response, &buf);
 }
 
 void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
@@ -2034,23 +2030,55 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
         response->set_code(::rtidb::base::kSQLCompileError);
         return;
     }
-    size_t input_row_num = request->non_common_rows().size();
     const auto& batch_request_info = compile_info->get_sql_context().batch_request_info;
     size_t common_column_num = batch_request_info.common_column_indices.size();
+    bool has_common_row = common_column_num > 0 &&
+        common_column_num < static_cast<size_t>(session.GetRequestSchema().size());
+    size_t input_row_num = request->row_sizes().size();
+    if (request->common_slices() > 0 && input_row_num > 0) {
+        input_row_num -= 1;
+    } else if (has_common_row) {
+        response->set_msg("input common row is missing");
+        response->set_code(::rtidb::base::kSQLRunError);
+        return;
+    }
+
+    auto& io_buf = static_cast<brpc::Controller*>(ctrl)->request_attachment();
+    size_t buf_offset = 0;
     std::vector<::fesql::codec::Row> input_rows(input_row_num);
-    if (common_column_num > 0 &&
-        common_column_num < static_cast<size_t>(session.GetRequestSchema().size())) {
-        ::fesql::codec::Row common_row(request->common_row());
+    if (has_common_row) {
+        size_t common_size = request->row_sizes().Get(0);
+        ::fesql::codec::Row common_row;
+        if (!codec::DecodeRpcRow(io_buf, buf_offset, common_size,
+                                 request->common_slices(), &common_row)) {
+            response->set_msg("decode input common row failed");
+            response->set_code(::rtidb::base::kSQLRunError);
+            return;
+        }
+        buf_offset += common_size;
         for (size_t i = 0; i < input_row_num; ++i) {
+            ::fesql::codec::Row non_common_row;
+            size_t non_common_size = request->row_sizes().Get(i + 1);
+            if (!codec::DecodeRpcRow(io_buf, buf_offset, non_common_size,
+                                     request->non_common_slices(), &non_common_row)) {
+                response->set_msg("decode input non common row failed");
+                response->set_code(::rtidb::base::kSQLRunError);
+                return;
+            }
             input_rows[i] = ::fesql::codec::Row(
-                1, common_row, 1, ::fesql::codec::Row(request->non_common_rows().Get(i)));
+                1, common_row, 1, non_common_row);
         }
     } else {
         for (size_t i = 0; i < input_row_num; ++i) {
-            input_rows[i] = ::fesql::codec::Row(request->non_common_rows().Get(i));
+            size_t non_common_size = request->row_sizes().Get(i);
+            if (!codec::DecodeRpcRow(io_buf, buf_offset, non_common_size,
+                                     request->non_common_slices(), &input_rows[i])) {
+                response->set_msg("decode input non common row failed");
+                response->set_code(::rtidb::base::kSQLRunError);
+                return;
+            }
         }
     }
-
     std::vector<::fesql::codec::Row> output_rows;
     int32_t run_ret = session.Run(input_rows, output_rows);
     if (run_ret != 0) {
@@ -2061,9 +2089,10 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
     }
 
     // fill output data
+    size_t output_col_num = session.GetSchema().size();
     auto& output_common_indices = batch_request_info.output_common_column_indices;
     bool has_common_slice = !output_common_indices.empty() &&
-                            output_common_indices.size() < session.GetSchema().size();
+                            output_common_indices.size() < output_col_num;
     if (has_common_slice && !output_rows.empty()) {
         const auto& first_row = output_rows[0];
         if (first_row.GetRowPtrCnt() != 2) {
@@ -2074,7 +2103,11 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
         }
         buf.append(first_row.buf(0), first_row.size(0));
         response->add_row_sizes(first_row.size(0));
+        response->set_common_slices(1);
+    } else {
+        response->set_common_slices(0);
     }
+    response->set_non_common_slices(1);
     for (auto& output_row : output_rows) {
         if (has_common_slice) {
             if (output_row.GetRowPtrCnt() != 2) {
@@ -6159,14 +6192,22 @@ void TabletImpl::DropProcedure(RpcController* controller,
         db_name.c_str(), sp_name.c_str());
 }
 
-void TabletImpl::RunRequestQuery(const rtidb::api::QueryRequest& request,
+void TabletImpl::RunRequestQuery(RpcController* ctrl,
+                                 const rtidb::api::QueryRequest& request,
                                  ::fesql::vm::RequestRunSession& session,
                                  rtidb::api::QueryResponse& response,
                                  butil::IOBuf& buf) {
     if (request.is_debug()) {
         session.EnableDebug();
     }
-    ::fesql::codec::Row row(request.input_row());
+    ::fesql::codec::Row row;
+    auto& request_buf = static_cast<brpc::Controller*>(ctrl)->request_attachment();
+    size_t input_slices = request.row_slices();
+    if (!codec::DecodeRpcRow(request_buf, 0, request.row_size(), input_slices, &row)) {
+        response.set_code(::rtidb::base::kSQLRunError);
+        response.set_msg("fail to decode input row");
+        return;
+    }
     ::fesql::codec::Row output;
     int32_t ret = 0;
     if (request.has_task_id()) {
@@ -6178,11 +6219,21 @@ void TabletImpl::RunRequestQuery(const rtidb::api::QueryRequest& request,
         response.set_code(::rtidb::base::kSQLRunError);
         response.set_msg("fail to run sql");
         return;
+    } else if (row.GetRowPtrCnt() != 1) {
+        response.set_code(::rtidb::base::kSQLRunError);
+        response.set_msg("do not support multiple output row slices");
+        return;
     }
-    buf.append(reinterpret_cast<void*>(output.buf()), output.size());
+    size_t buf_total_size;
+    if (!codec::EncodeRpcRow(output, &buf, &buf_total_size)) {
+        response.set_code(::rtidb::base::kSQLRunError);
+        response.set_msg("fail to encode sql output row");
+        return;
+    }
     response.set_schema(session.GetEncodedSchema());
-    response.set_byte_size(output.size());
+    response.set_byte_size(buf_total_size);
     response.set_count(1);
+    response.set_row_slices(1);
     response.set_code(::rtidb::base::kOk);
 }
 
