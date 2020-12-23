@@ -217,7 +217,7 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         table_to_tablets_ = mapping;
         catalog_ = new_catalog;
     }
-    engine_->UpdateCatalog(catalog_);
+    engine_->UpdateCatalog(new_catalog);
     return true;
 }
 
