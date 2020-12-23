@@ -318,11 +318,13 @@ class LocalTabletTableHandler : public MemTableHandler {
  public:
     LocalTabletTableHandler(uint32_t task_id,
                             const BatchRequestRunSession session,
-                            const std::vector<Row> requests)
+                            const std::vector<Row> requests,
+                            const bool request_is_common)
         : status_(base::Status::Running()),
           task_id_(task_id),
           session_(session),
-          requests_(requests) {}
+          requests_(requests),
+          request_is_common_(request_is_common){}
     ~LocalTabletTableHandler() {}
     Row At(uint64_t pos) override {
         if (!status_.isRunning()) {
@@ -364,6 +366,7 @@ class LocalTabletTableHandler : public MemTableHandler {
     uint32_t task_id_;
     BatchRequestRunSession session_;
     const std::vector<Row> requests_;
+    const bool request_is_common_;
 };
 class LocalTablet : public Tablet {
  public:
@@ -416,7 +419,9 @@ class LocalTablet : public Tablet {
     virtual std::shared_ptr<TableHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
         const std::set<size_t>& common_column_indices,
-        const std::vector<Row>& in_rows, const bool is_procedure,
+        const std::vector<Row>& in_rows,
+        const bool request_is_common,
+        const bool is_procedure,
         const bool is_debug) {
         DLOG(INFO) << "Local tablet SubQuery batch request: task id "
                    << task_id;
@@ -458,7 +463,7 @@ class LocalTablet : public Tablet {
             }
         }
         return std::make_shared<LocalTabletTableHandler>(task_id, session,
-                                                         in_rows);
+                                                         in_rows, request_is_common);
     }
     const std::string& GetName() const { return "LocalTablet"; }
 

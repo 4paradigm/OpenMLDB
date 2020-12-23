@@ -933,7 +933,6 @@ bool SQLCase::CreateTableInfoFromYaml(const std::string& cases_dir,
     } else {
         resouces_path = yaml_path;
     }
-    DLOG(INFO) << "Resource path: " << resouces_path;
     if (!boost::filesystem::is_regular_file(resouces_path)) {
         LOG(WARNING) << resouces_path << ": No such file";
         return false;
@@ -978,7 +977,9 @@ bool SQLCase::CreateSQLCasesFromYaml(
     } else {
         sql_case_path = yaml_path;
     }
-    DLOG(INFO) << "SQL Cases Path: " << sql_case_path;
+    if (IS_DEBUG()) {
+        DLOG(INFO) << "SQL Cases Path: " << sql_case_path;
+    }
     if (!boost::filesystem::is_regular_file(sql_case_path)) {
         LOG(WARNING) << sql_case_path << ": No such file";
         return false;
@@ -1197,8 +1198,6 @@ std::string FindFesqlDirPath() {
     }
 
     if (find_fesql_dir) {
-        DLOG(INFO) << "Fesql Dir Path is : " << fesql_path.string()
-                   << std::endl;
         return fesql_path.string();
     }
     return std::string();

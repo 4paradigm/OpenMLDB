@@ -436,6 +436,7 @@ class Runner : public node::NodeBase<Runner> {
         }
     }
     const bool need_cache() { return need_cache_; }
+    const bool need_batch_cache() { return need_cache_; }
     void EnableCache() { need_cache_ = true; }
     void DisableCache() { need_cache_ = false; }
     void EnableBatchCache() { need_batch_cache_ = true; }
@@ -970,19 +971,29 @@ class ProxyRequestRunner : public Runner {
                                                  const Row& row);
     std::shared_ptr<TableHandler> RunWithRowsInput(
         RunnerContext& ctx,  // NOLINT
-        const std::vector<Row>& rows);
+        const std::vector<Row>& rows, const bool request_is_common);
     uint32_t task_id_;
 };
 class ClusterTask;
 class RouteInfo {
  public:
-    RouteInfo() : index_(), index_key_(), table_handler_() {}
+    RouteInfo() : index_(), index_key_(), input_(), table_handler_() {}
     RouteInfo(const std::string index,
               std::shared_ptr<TableHandler> table_handler)
-        : index_(index), index_key_(), table_handler_(table_handler) {}
+        : index_(index),
+          index_key_(),
+          input_(),
+          table_handler_(table_handler) {}
+    RouteInfo(const std::string index, const Key& index_key,
+              std::shared_ptr<ClusterTask> input,
+              std::shared_ptr<TableHandler> table_handler)
+        : index_(index),
+          index_key_(index_key),
+          input_(input),
+          table_handler_(table_handler) {}
     ~RouteInfo() {}
     const bool IsCompleted() const {
-        return table_handler_ && input_ && !index_.empty() &&
+        return table_handler_ && !index_.empty() &&
                index_key_.ValidKey();
     }
     const bool IsCluster() const { return table_handler_ && !index_.empty(); }
@@ -1017,13 +1028,15 @@ class RouteInfo {
 // request generator
 class ClusterTask {
  public:
-    ClusterTask() : root_(nullptr), route_info_() {}
-    explicit ClusterTask(Runner* root) : root_(root), route_info_() {}
+    ClusterTask() : root_(nullptr), input_runners_(), route_info_() {}
+    explicit ClusterTask(Runner* root)
+        : root_(root), input_runners_(), route_info_() {}
     ClusterTask(Runner* root, const std::shared_ptr<TableHandler> table_handler,
                 std::string index)
-        : root_(root), route_info_(index, table_handler) {}
-    ClusterTask(Runner* root, const RouteInfo& route_info)
-        : root_(root), route_info_(route_info) {}
+        : root_(root), input_runners_(), route_info_(index, table_handler) {}
+    ClusterTask(Runner* root, const std::vector<Runner*>& input_runners,
+                const RouteInfo& route_info)
+        : root_(root), input_runners_(input_runners), route_info_(route_info) {}
     ~ClusterTask() {}
     void Print(std::ostream& output, const std::string& tab) const {
         output << route_info_.ToString() << "\n";
@@ -1034,8 +1047,24 @@ class ClusterTask {
             root_->Print(output, tab, &visited_ids);
         }
     }
+
+    void ResetInputs(std::shared_ptr<ClusterTask> input) {
+        for (auto input_runner : input_runners_) {
+            input_runner->SetProducer(0, route_info_.input_->GetRoot());
+        }
+        route_info_.input_ = input;
+    }
     Runner* GetRoot() const { return root_; }
     void SetRoot(Runner* root) { root_ = root; }
+    Runner* GetInputRunner(size_t idx) const {
+        return idx >= input_runners_.size() ? nullptr : input_runners_[idx];
+    }
+    const std::vector<Runner*>& GetInputRunners() const {
+        return input_runners_;
+    }
+    void AddInputRunner(Runner* input_runner) {
+        input_runners_.push_back(input_runner);
+    }
 
     std::shared_ptr<ClusterTask> GetInput() const { return route_info_.input_; }
     Key GetIndexKey() const { return route_info_.index_key_; }
@@ -1043,10 +1072,21 @@ class ClusterTask {
     void SetInput(std::shared_ptr<ClusterTask> input) {
         route_info_.input_ = input;
     }
+
+    bool CompleteRouteInfo(const Key& key, std::shared_ptr<ClusterTask> input) {
+        if (IsClusterTask()) {
+            LOG(WARNING) << "fail to complete route info, task is not cluster";
+        }
+        SetIndexKey(key);
+        SetInput(input);
+    }
     const bool IsValid() const { return nullptr != root_; }
 
     const bool IsCompletedClusterTask() const {
         return IsValid() && route_info_.IsCompleted();
+    }
+    const bool IsUnCompletedClusterTask() const {
+        return IsClusterTask() && !route_info_.IsCompleted();
     }
     const bool IsClusterTask() const { return route_info_.IsCluster(); }
     const std::string& index() { return route_info_.index_; }
@@ -1061,11 +1101,50 @@ class ClusterTask {
     }
     static const ClusterTask TaskMerge(Runner* root, const ClusterTask& task1,
                                        const ClusterTask& task2) {
-        return ClusterTask(root, task1.route_info_);
+        return TaskMergeToLeft(root, task1, task2);
     }
+    static const ClusterTask TaskMergeToLeft(Runner* root,
+                                             const ClusterTask& task1,
+                                             const ClusterTask& task2) {
+        std::vector<Runner*> input_runners;
+        for (auto runner : task1.input_runners_) {
+            input_runners.push_back(runner);
+        }
+        for (auto runner : task2.input_runners_) {
+            input_runners.push_back(runner);
+        }
+        return ClusterTask(root, input_runners, task1.route_info_);
+    }
+    static const ClusterTask TaskMergeToRight(Runner* root,
+                                              const ClusterTask& task1,
+                                              const ClusterTask& task2) {
+        std::vector<Runner*> input_runners;
+        for (auto runner : task1.input_runners_) {
+            input_runners.push_back(runner);
+        }
+        for (auto runner : task2.input_runners_) {
+            input_runners.push_back(runner);
+        }
+        return ClusterTask(root, input_runners, task2.route_info_);
+    }
+
+    static const Runner* GetRequestInput(const ClusterTask& task) {
+        if (!task.IsValid()) {
+            return nullptr;
+        }
+        Runner* input = nullptr;
+        auto input_task = task.GetInput();
+        if (input_task) {
+            return input_task->GetRoot();
+        }
+        return nullptr;
+    }
+
+    const RouteInfo& GetRouteInfo() const { return route_info_; }
 
  protected:
     Runner* root_;
+    std::vector<Runner*> input_runners_;
     RouteInfo route_info_;
 };
 
@@ -1085,6 +1164,18 @@ class ClusterJob {
             return ClusterTask();
         }
         return tasks_[id];
+    }
+    ClusterTask FindTaskByRunner(Runner* runner) {
+        if (nullptr == runner) {
+            return ClusterTask();
+        }
+
+        for (auto task : tasks_) {
+            if (task.GetRoot() == runner) {
+                return task;
+            }
+        }
+        return ClusterTask();
     }
 
     ClusterTask GetMainTask() { return GetTask(main_task_id_); }
@@ -1139,6 +1230,8 @@ class ClusterJob {
     std::set<size_t> common_column_indices_;
 };
 class RunnerBuilder {
+    enum TaskBiasType { kLeftBias, kRightBias, kNoBias };
+
  public:
     explicit RunnerBuilder(node::NodeManager* nm, const std::string& sql,
                            bool support_cluster_optimized,
@@ -1149,6 +1242,7 @@ class RunnerBuilder {
           id_(0),
           cluster_job_(sql, common_column_indices),
           task_map_(),
+          proxy_runner_map_(),
           batch_common_node_set_(batch_common_node_set) {}
     virtual ~RunnerBuilder() {}
     ClusterTask RegisterTask(PhysicalOpNode* node, ClusterTask task) {
@@ -1170,7 +1264,26 @@ class RunnerBuilder {
         if (!status.isOK()) {
             return cluster_job_;
         }
-        cluster_job_.AddMainTask(task);
+
+        if (task.IsCompletedClusterTask()) {
+            auto proxy_task = BuildProxyRunnerForClusterTask(task);
+            if (!proxy_task.IsValid()) {
+                status.code = common::kOpGenError;
+                status.msg = "Fail to build proxy cluster task";
+                LOG(WARNING) << status;
+                return cluster_job_;
+            }
+            cluster_job_.AddMainTask(proxy_task);
+        } else if (task.IsUnCompletedClusterTask()) {
+            status.code = common::kOpGenError;
+            status.msg =
+                "Fail to build main task, can't handler "
+                "uncompleted cluster task";
+            LOG(WARNING) << status;
+            return cluster_job_;
+        } else {
+            cluster_job_.AddMainTask(task);
+        }
         return cluster_job_;
     }
 
@@ -1184,23 +1297,29 @@ class RunnerBuilder {
     }
     std::unordered_map<::fesql::vm::PhysicalOpNode*, ::fesql::vm::ClusterTask>
         task_map_;
-
+    std::shared_ptr<ClusterTask> request_task_;
+    std::unordered_map<fesql::vm::Runner*, ::fesql::vm::Runner*>
+        proxy_runner_map_;
     std::set<size_t> batch_common_node_set_;
     ClusterTask BuildTaskForBinaryRunner(const ClusterTask& left,
                                          const ClusterTask& right,
-                                         Runner* runner, const Key& index_key);
+                                         Runner* runner, const Key& index_key,
+                                         const TaskBiasType bias = kNoBias);
     ClusterTask BuildLocalTaskForBinaryRunner(const ClusterTask& left,
                                               const ClusterTask& right,
                                               Runner* runner);
     ClusterTask BuildClusterTaskForBinaryRunner(const ClusterTask& left,
                                                 const ClusterTask& right,
                                                 Runner* runner,
-                                                const Key& index_key);
+                                                const Key& index_key,
+                                                const TaskBiasType bias);
     ClusterTask BuildProxyRunnerForClusterTask(const ClusterTask& task);
+    ClusterTask NormalTask(Runner* runner) { return ClusterTask(runner); }
     ClusterTask NewClusterTaskWithIndex(
         Runner* runner, const std::shared_ptr<TableHandler> table_handler,
         std::string index);
     ClusterTask InheritLocalTask(const ClusterTask& input, Runner* runner);
+    ClusterTask BuildRequestTask(RequestRunner* runner);
     ClusterTask InheritTask(const ClusterTask& input, Runner* runner);
 };
 

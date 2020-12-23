@@ -64,7 +64,6 @@ cases:
 
   - id: 2
     desc: batch request with non-trival common columns
-    mode: cluster-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]
@@ -109,7 +108,6 @@ cases:
   
   - id: 3
     desc: batch request with non-trival output common columns, window is common
-    mode: cluster-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c2 int","c3 bigint","c4 float","c5 double","c6 timestamp"]
@@ -155,7 +153,6 @@ cases:
 
   - id: 4
     desc: batch request with non-trival output common columns, join is common and window non-common
-    mode: cluster-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c2 int","c3 bigint","c4 float","c5 double","c6 timestamp"]
@@ -201,7 +198,6 @@ cases:
 
   - id: 5
     desc: batch request with non-trival output common columns, window and join are common
-    mode: cluster-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c2 int","c3 bigint","c4 float","c5 double","c6 timestamp"]
