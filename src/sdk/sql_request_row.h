@@ -47,7 +47,6 @@ class SQLRequestRow {
     bool AppendFloat(float val);
     bool AppendDouble(double val);
     bool AppendString(const std::string& val);
-    bool AppendStringByteBufferVarName(char* string_buffer_var_name, uint32_t length);
     bool AppendString(const char *val, uint32_t length);
     bool AppendNULL();
     bool Build();

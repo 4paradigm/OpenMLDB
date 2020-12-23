@@ -300,7 +300,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
                     ok = currentRow.AppendInt64((long) data);
                 } else if (DataType.kTypeString.equals(curType)) {
                     byte[] bdata = (byte[])data;
-                    ok = currentRow.AppendStringByteBufferVarName(bdata, bdata.length);
+                    ok = currentRow.AppendString(bdata, bdata.length);
                 } else if (DataType.kTypeTimestamp.equals(curType)) {
                     ok = currentRow.AppendTimestamp((long) data);
                 } else {

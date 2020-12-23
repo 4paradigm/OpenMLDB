@@ -298,7 +298,7 @@ public class RequestPreparedStatement implements PreparedStatement {
                     ok = this.currentRow.AppendInt64((long) data);
                 } else if (DataType.kTypeString.equals(dataType)) {
                     byte[] bdata = (byte[])data;
-                    ok = this.currentRow.AppendStringByteBufferVarName(bdata, bdata.length);
+                    ok = this.currentRow.AppendString(bdata, bdata.length);
                 } else if (DataType.kTypeTimestamp.equals(dataType)) {
                     ok = this.currentRow.AppendTimestamp((long) data);
                 } else {
