@@ -11,7 +11,10 @@ public class BenchmarkConfig {
 //    public static String ZK_CLUSTER = "127.0.0.1:6181";
     public static String ZK_CLUSTER="172.27.128.32:12200";
     public static String ZK_PATH="/standalone";
+    public static String REDIS_IP = "172.27.128.81";
+    public static int REDIS_PORT = 6379;
 //    public static String ZK_PATH="/cluster";
+
 //    public static String ZK_PATH="/onebox";
 //    public static String ZK_CLUSTER="172.27.128.81:16181";
 //    public static String ZK_PATH="/rtidb_fe";
@@ -44,5 +47,8 @@ public class BenchmarkConfig {
         }
         return executor;
     }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/feat/benchmark_vs_redis
 }
