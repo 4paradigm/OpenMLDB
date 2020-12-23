@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "sdk/sql_rpc_row_codec.h"
+#include "codec/sql_rpc_row_codec.h"
 
 #include <memory>
 #include <string>
@@ -26,7 +26,7 @@
 #include "gtest/gtest.h"
 
 namespace rtidb {
-namespace sdk {
+namespace codec {
 
 class SqlRpcRowCodecTest : public ::testing::Test {};
 
@@ -124,7 +124,7 @@ TEST_F(SqlRpcRowCodecTest, TestMultiSlice) {
     ASSERT_EQ(0, decoded.size(3));
 }
 
-}  // namespace sdk
+}  // namespace codec
 }  // namespace rtidb
 
 int main(int argc, char** argv) {

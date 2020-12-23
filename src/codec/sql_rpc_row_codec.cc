@@ -1,5 +1,5 @@
 /*
- * sql_rpc_row_codec.h
+ * sql_rpc_row_codec.cc
  * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,23 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#ifndef SRC_SDK_SQL_RPC_ROW_CODEC_H_
-#define SRC_SDK_SQL_RPC_ROW_CODEC_H_
-
-#include <memory>
-#include <set>
-#include <string>
-#include <vector>
-
-#include "base/fe_slice.h"
-#include "butil/iobuf.h"
-#include "codec/fe_row_codec.h"
-#include "codec/row.h"
-#include "sdk/base.h"
+#include "codec/sql_rpc_row_codec.h"
 
 namespace rtidb {
-namespace sdk {
+namespace codec {
 
 bool DecodeRpcRow(const butil::IOBuf& buf, size_t offset, size_t size, size_t slice_num, fesql::codec::Row* row) {
     if (row == nullptr || slice_num == 0 || size == 0) {
@@ -105,6 +92,15 @@ bool EncodeRpcRow(const fesql::codec::Row& row, butil::IOBuf* buf, size_t* total
     return true;
 }
 
-}  // namespace sdk
+bool EncodeRpcRow(const int8_t* buf, size_t size, butil::IOBuf* io_buf) {
+    int code = io_buf->append(buf, size);
+    if (code != 0) {
+        LOG(WARNING) << "Append buf of size " << size << " failed";
+        return false;
+    }
+    return true;
+}
+
+}  // namespace codec
 }  // namespace rtidb
-#endif  // SRC_SDK_SQL_RPC_ROW_CODEC_H_
+
