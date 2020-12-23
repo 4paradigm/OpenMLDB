@@ -665,9 +665,21 @@ std::shared_ptr<::rtidb::client::TabletClient> SQLClusterRouter::GetTabletClient
         ::fesql::vm::ExplainOutput explain;
         ::fesql::base::Status vm_status;
         if (engine_->Explain(sql, db, ::fesql::vm::kBatchMode, &explain, &vm_status)) {
-            auto schema = std::make_shared<::fesql::sdk::SchemaImpl>(explain.input_schema);
-            cache = std::make_shared<SQLCache>(schema, explain.router);
-            SetCache(db, sql, cache);
+            std::shared_ptr<::fesql::sdk::SchemaImpl> schema;
+            if (explain.input_schema.size() > 0) {
+                schema = std::make_shared<::fesql::sdk::SchemaImpl>(explain.input_schema);
+            } else {
+                auto table_info = cluster_sdk_->GetTableInfo(db, explain.router.GetMainTable());
+                ::fesql::vm::Schema raw_schema;
+                if (table_info &&
+                        ::rtidb::catalog::SchemaAdapter::ConvertSchema(table_info->column_desc_v1(), &raw_schema)) {
+                    schema = std::make_shared<::fesql::sdk::SchemaImpl>(raw_schema);
+                }
+            }
+            if (schema) {
+                cache = std::make_shared<SQLCache>(schema, explain.router);
+                SetCache(db, sql, cache);
+            }
         }
     }
     if (cache) {

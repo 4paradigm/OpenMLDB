@@ -29,6 +29,19 @@ set(RTIDB_VERSION_MAJOR 1)
 set(RTIDB_VERSION_MEDIUM 6)
 set(RTIDB_VERSION_MINOR 2)
 set(RTIDB_VERSION_BUG 0)
+set(FESQL_COMMIT_ID 0)
+find_package(Git REQUIRED)
+if(GIT_FOUND)
+  execute_process(
+	COMMAND ${GIT_EXECUTABLE} log -1 --pretty=format:%h
+	OUTPUT_VARIABLE FESQL_COMMIT_ID
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+	WORKING_DIRECTORY
+	  "${PROJECT_SOURCE_DIR}/fesql"
+	)
+endif()
+message(STATUS "FESQL_COMMIT_ID : ${FESQL_COMMIT_ID}")
 configure_file (
   "${PROJECT_SOURCE_DIR}/src/version.h.in"
   "${PROJECT_SOURCE_DIR}/src/version.h"

@@ -57,7 +57,8 @@ const std::string VERSION = std::to_string(RTIDB_VERSION_MAJOR) +  // NOLINT
                             "." +                                  // NOLINT
                             std::to_string(RTIDB_VERSION_MEDIUM) + "." +
                             std::to_string(RTIDB_VERSION_MINOR) + "." +
-                            std::to_string(RTIDB_VERSION_BUG);
+                            std::to_string(RTIDB_VERSION_BUG) + "." +
+                            FESQL_COMMIT_ID;
 
 std::string db = "";  // NOLINT
 ::rtidb::sdk::ClusterSDK *cs = NULL;

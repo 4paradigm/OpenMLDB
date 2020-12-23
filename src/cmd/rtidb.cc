@@ -85,6 +85,8 @@ DECLARE_string(data_dir);
 DECLARE_bool(use_rdma);
 #endif
 
+static std::string RTIDB_VERSION;
+
 static std::map<std::string, std::string> real_ep_map;
 
 void shutdown_signal_handler(int signal) {
@@ -167,13 +169,8 @@ void StartNameServer() {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    PDLOG(INFO, "start nameserver on endpoint %s with version %d.%d.%d.%d",
-            real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
-    std::ostringstream oss;
-    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
-        << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
-    server.set_version(oss.str());
+    PDLOG(INFO, "start nameserver on endpoint %s with version %s", RTIDB_VERSION.c_str());
+    server.set_version(RTIDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
 
@@ -277,22 +274,15 @@ void StartTablet() {
         exit(1);
     }
 #ifdef PZFPGA_ENABLE
-    PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d with fpga",
-            real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    PDLOG(INFO, "start tablet on endpoint %s with version %s with fpga", RTIDB_VERSION.c_str());
 #else
-    PDLOG(INFO, "start tablet on endpoint %s with version %d.%d.%d.%d",
-            real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    PDLOG(INFO, "start tablet on endpoint %s with version %s", RTIDB_VERSION.c_str());
 #endif
     if (!tablet->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
     }
-    std::ostringstream oss;
-    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
-        << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
-    server.set_version(oss.str());
+    server.set_version(RTIDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
 
@@ -326,13 +316,8 @@ void StartBlobProxy() {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    PDLOG(INFO, "start blobproxy on endpoint %s with version %d.%d.%d.%d",
-            real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
-    std::ostringstream oss;
-    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
-        << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
-    server.set_version(oss.str());
+    PDLOG(INFO, "start blobproxy on endpoint %s with version %s", RTIDB_VERSION.c_str());
+    server.set_version(RTIDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
 #endif
@@ -369,18 +354,13 @@ void StartBlob() {
         PDLOG(WARNING, "Fail to start server");
         exit(1);
     }
-    PDLOG(INFO, "start blob on endpoint %s with version %d.%d.%d.%d",
-            real_endpoint.c_str(), RTIDB_VERSION_MAJOR, RTIDB_VERSION_MEDIUM,
-            RTIDB_VERSION_MINOR, RTIDB_VERSION_BUG);
+    PDLOG(INFO, "start blob on endpoint %s with version %s", RTIDB_VERSION.c_str());
     if (!server_impl->RegisterZK()) {
         PDLOG(WARNING, "Fail to register zk");
         exit(1);
     }
     std::signal(SIGTERM, shutdown_signal_handler);
-    std::ostringstream oss;
-    oss << RTIDB_VERSION_MAJOR << "." << RTIDB_VERSION_MEDIUM << "."
-        << RTIDB_VERSION_MINOR << "." << RTIDB_VERSION_BUG;
-    server.set_version(oss.str());
+    server.set_version(RTIDB_VERSION.c_str());
     server.RunUntilAskedToQuit();
 }
 #endif
@@ -6239,9 +6219,7 @@ void StartClient() {
         return;
     }
     if (FLAGS_interactive) {
-        std::cout << "Welcome to rtidb with version " << RTIDB_VERSION_MAJOR
-                  << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR
-                  << "." << RTIDB_VERSION_BUG << std::endl;
+        std::cout << "Welcome to rtidb with version " << RTIDB_VERSION << std::endl;
     }
     ::rtidb::client::TabletClient client(FLAGS_endpoint, "");
     client.Init();
@@ -6357,9 +6335,7 @@ void StartNsClient() {
     std::string endpoint;
     std::string real_endpoint;
     if (FLAGS_interactive) {
-        std::cout << "Welcome to rtidb with version " << RTIDB_VERSION_MAJOR
-                  << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR
-                  << "." << RTIDB_VERSION_BUG << std::endl;
+        std::cout << "Welcome to rtidb with version " << RTIDB_VERSION << std::endl;
     }
     std::shared_ptr<::rtidb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
@@ -6593,9 +6569,7 @@ void StartBsClient() {
         return;
     }
     if (FLAGS_interactive) {
-        std::cout << "Welcome to rtidb with version " << RTIDB_VERSION_MAJOR
-                  << "." << RTIDB_VERSION_MEDIUM << "." << RTIDB_VERSION_MINOR
-                  << "." << RTIDB_VERSION_BUG << std::endl;
+        std::cout << "Welcome to rtidb with version " << RTIDB_VERSION << std::endl;
     }
     ::rtidb::client::BsClient client(FLAGS_endpoint, "");
     client.Init();
@@ -6650,9 +6624,10 @@ int main(int argc, char* argv[]) {
         ss << RTIDB_VERSION_MAJOR << ".";
         ss << RTIDB_VERSION_MEDIUM << ".";
         ss << RTIDB_VERSION_MINOR << ".";
-        ss << RTIDB_VERSION_BUG;
-        std::string version = ss.str();
-        ::google::SetVersionString(version);
+        ss << RTIDB_VERSION_BUG << ".";
+        ss << FESQL_COMMIT_ID;
+        RTIDB_VERSION = ss.str();
+        ::google::SetVersionString(RTIDB_VERSION.c_str());
     }
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_role == "ns_client") {
