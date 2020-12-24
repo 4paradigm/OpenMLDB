@@ -294,21 +294,6 @@ public class DDLEngine {
         list.add(node);
     }
 
-    /**
-     *
-     * @param list
-     */
-    public static void printDagListInfo(List<PhysicalOpNode> list) {
-        for (PhysicalOpNode node : list) {
-            System.out.println("dagToList node type = " + node.GetTypeName());
-            PhysicalOpType type = node.GetOpType();
-            if (type.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
-                PhysicalDataProviderNode castNode = PhysicalDataProviderNode.CastFrom(node);
-                System.out.println("PhysicalDataProviderNode = " + castNode.GetName());
-            }
-        }
-    }
-
     public static TypeOuterClass.Type getFesqlType(String type) {
         if (type.equalsIgnoreCase("bigint") || type.equalsIgnoreCase("long")) {
             return TypeOuterClass.Type.kInt64;
@@ -422,7 +407,6 @@ public class DDLEngine {
         db.setName(tempDB);
         List<TypeOuterClass.TableDef> tables = getTableDefs(schema);
         Map<String, TypeOuterClass.TableDef> tableDefMap = new HashMap<>();
-//        tableDefMap.forEach((k, v) -> System.out.printf("xx"));
         for (TypeOuterClass.TableDef e : tables) {
             db.addTables(e);
             tableDefMap.put(e.getName(), e);
@@ -464,8 +448,6 @@ public class DDLEngine {
 
         Gson gson = new Gson();
         String jsonConfig = String.format("{\"tableInfo\": %s}", gson.toJson(feConfig));
-        System.out.println("=================fe config=================");
-        System.out.println(jsonConfig);
         return jsonConfig;
 
     }
