@@ -245,6 +245,7 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
 std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                     const std::string& sql,
                                                                     const std::vector<::fesql::codec::Row>& row,
+                                                                    const bool request_is_common,
                                                                     const bool is_procedure, const bool is_debug) {
     DLOG(INFO) << "SubQuery batch request, taskid=" << task_id << ", is_procedure=" << is_procedure;
     auto client = GetClient();
@@ -286,6 +287,7 @@ std::shared_ptr<fesql::vm::RowHandler> TabletsAccessor::SubQuery(uint32_t task_i
 std::shared_ptr<fesql::vm::TableHandler> TabletsAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                    const std::string& sql,
                                                                    const std::vector<fesql::codec::Row>& rows,
+                                                                   const bool request_is_common,
                                                                    const bool is_procedure, const bool is_debug) {
     auto tables_handler = std::make_shared<AsyncTablesHandler>();
     std::vector<std::vector<fesql::vm::Row>> accessors_rows(accessors_.size());

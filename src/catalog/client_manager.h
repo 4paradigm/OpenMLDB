@@ -159,6 +159,7 @@ class TabletAccessor : public ::fesql::vm::Tablet {
 
     std::shared_ptr<::fesql::vm::TableHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
                                                         const std::vector<::fesql::codec::Row>& row,
+                                                        const bool request_is_common,
                                                         const bool is_procedure, const bool is_debug) override;
     const std::string& GetName() const { return name_; }
 
@@ -193,6 +194,7 @@ class TabletsAccessor : public ::fesql::vm::Tablet {
                                                     const bool is_debug) override;
     std::shared_ptr<fesql::vm::TableHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
                                                       const std::vector<fesql::codec::Row>& rows,
+                                                      const bool request_is_common,
                                                       const bool is_procedure, const bool is_debug);
 
  private:
