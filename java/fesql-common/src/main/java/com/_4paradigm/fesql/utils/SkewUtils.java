@@ -39,7 +39,6 @@ public class SkewUtils {
         sql.append(String.format("from \n`%s`\ngroup by ", table1));
         sql.append(StringUtils.join(newkeys, " , "));
         sql.append(";");
-//        System.out.println(sql);
         return sql.toString();
     }
 

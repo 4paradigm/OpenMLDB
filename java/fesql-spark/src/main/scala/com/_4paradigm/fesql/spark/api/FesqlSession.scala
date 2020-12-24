@@ -39,7 +39,7 @@ class FesqlSession {
     this.sparkSession.conf.set(FesqlConfig.configTimeZone, FesqlConfig.timeZone)
 
     for ((k, v) <- this.sparkSession.conf.getAll) {
-      logger.info("fesql config: " +  k + " = " + v)
+      logger.info("fesql config: {} = {}", k , v)
       scalaConfig += (k -> v)
       k match {
         case FesqlConfig.configSkewRadio => FesqlConfig.skewRatio = v.toDouble
@@ -80,7 +80,7 @@ class FesqlSession {
           this.sparkMaster = "local"
         }
 
-        logger.debug(s"Create new SparkSession with master=${this.sparkMaster}")
+        logger.debug("Create new SparkSession with master={}", this.sparkMaster)
         val sparkConf = new SparkConf()
         val sparkMaster = sparkConf.get("spark.master", this.sparkMaster)
         val builder = SparkSession.builder()

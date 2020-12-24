@@ -71,7 +71,7 @@ public class DDLEngine {
                 }
             }
             String res = sb.toString();
-            logger.info("gen ddl:" +  res);
+            logger.info("gen ddl:{}", res);
             return res;
         } catch (UnsupportedFesqlException | FesqlException e) {
             e.printStackTrace();
@@ -109,7 +109,7 @@ public class DDLEngine {
                 }
             }
             String res = sb.toString();
-            logger.info("gen ddl:" +  res);
+            logger.info("gen ddl:{}", res);
             return res;
         } catch (UnsupportedFesqlException | FesqlException e) {
             e.printStackTrace();
@@ -252,7 +252,7 @@ public class DDLEngine {
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpRename.swigValue()) {
                 PhysicalRenameNode castNode = PhysicalRenameNode.CastFrom(node);
-                logger.info("rename = " + castNode.getName_());
+                logger.info("rename = {}", castNode.getName_());
                 PhysicalDataProviderNode dataNode = findDataProviderNode(node.GetProducer(0));
                 if (dataNode != null) {
                     table2OrgTable.put(castNode.getName_(), dataNode.GetName());
@@ -292,21 +292,6 @@ public class DDLEngine {
             dagToList(node.GetProducer(i), list);
         }
         list.add(node);
-    }
-
-    /**
-     *
-     * @param list
-     */
-    public static void printDagListInfo(List<PhysicalOpNode> list) {
-        for (PhysicalOpNode node : list) {
-            System.out.println("dagToList node type = " + node.GetTypeName());
-            PhysicalOpType type = node.GetOpType();
-            if (type.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) {
-                PhysicalDataProviderNode castNode = PhysicalDataProviderNode.CastFrom(node);
-                System.out.println("PhysicalDataProviderNode = " + castNode.GetName());
-            }
-        }
     }
 
     public static TypeOuterClass.Type getFesqlType(String type) {
@@ -422,7 +407,6 @@ public class DDLEngine {
         db.setName(tempDB);
         List<TypeOuterClass.TableDef> tables = getTableDefs(schema);
         Map<String, TypeOuterClass.TableDef> tableDefMap = new HashMap<>();
-//        tableDefMap.forEach((k, v) -> System.out.printf("xx"));
         for (TypeOuterClass.TableDef e : tables) {
             db.addTables(e);
             tableDefMap.put(e.getName(), e);
@@ -464,8 +448,6 @@ public class DDLEngine {
 
         Gson gson = new Gson();
         String jsonConfig = String.format("{\"tableInfo\": %s}", gson.toJson(feConfig));
-        System.out.println("=================fe config=================");
-        System.out.println(jsonConfig);
         return jsonConfig;
 
     }

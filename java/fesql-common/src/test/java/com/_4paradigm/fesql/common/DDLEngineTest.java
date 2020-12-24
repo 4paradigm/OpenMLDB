@@ -203,14 +203,13 @@ public class DDLEngineTest {
 //        File output = new File()
         try {
             String ddl = genDDL(FileUtils.readFileToString(sql, "UTF-8"), FileUtils.readFileToString(file, "UTF-8"), replicaNumber, partitionNumber);
-            System.out.printf(ddl);
             File output = new File(DDLEngineTest.class.getClassLoader().getResource(sqlPath).getPath() + ".ddl.txt");
             FileUtils.touch(output);
             FileUtils.write(output, ddl, "UTF-8");
 //            getTableDefs(FileUtils.readFileToString(file, "UTF-8"));
         } catch (IOException e) {
             e.printStackTrace();
-            logger.error(e.getMessage());
+            logger.error("{}", e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -228,11 +227,6 @@ public class DDLEngineTest {
         List<File> fileList = (List<File>)FileUtils.listFiles(root, null, false);
         for (File e : fileList) {
             String name = e.getName();
-//            logger
-//            System.out.println(e.getName());
-//            if (!name.startsWith("myhug")) {
-//                continue;
-//            }
             if (name.endsWith(".txt")) {
                 sqlMap.put(name.split("\\.")[0], e);
             }
@@ -241,10 +235,7 @@ public class DDLEngineTest {
             }
         }
         for (String e : sqlMap.keySet()) {
-            logger.info("case: " + e);
-            System.out.println("case: " + e);
-//            String e = k.split("\.")split
-
+            logger.info("case: {}", e);
             String ddl = genDDL(FileUtils.readFileToString(sqlMap.get(e), "UTF-8"), FileUtils.readFileToString(jsonMap.get(e), "UTF-8"), 1, 1);
             String config = sql2Feconfig(FileUtils.readFileToString(sqlMap.get(e), "UTF-8"), FileUtils.readFileToString(jsonMap.get(e), "UTF-8"));
 
@@ -278,7 +269,6 @@ public class DDLEngineTest {
         List<File> fileList = (List<File>)FileUtils.listFiles(root, null, false);
         for (File e : fileList) {
             String nane = e.getName();
-            System.out.println(e.getName());
             if (nane.endsWith(".txt")) {
                 sqlMap.put(nane.split("\\.")[0], e);
             }
@@ -287,15 +277,10 @@ public class DDLEngineTest {
             }
         }
         for (String e : sqlMap.keySet()) {
-            logger.info("case: " + e);
-            System.out.println("case: " + e);
-//            String e = k.split("\.")split
-
+            logger.info("case: {}", e);
             String ddl = genDDL(FileUtils.readFileToString(sqlMap.get(e), "UTF-8"), FileUtils.readFileToString(jsonMap.get(e), "UTF-8"), 1, 1);
             String config = sql2Feconfig(FileUtils.readFileToString(sqlMap.get(e), "UTF-8"), FileUtils.readFileToString(jsonMap.get(e), "UTF-8"));
 
-            System.out.println(ddl);
-            System.out.println(config);
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             JsonParser parser = new JsonParser();
             config = gson.toJson(parser.parse(config));
@@ -347,11 +332,9 @@ public class DDLEngineTest {
 //        File output = new File()
         try {
             String ddl = sql2Feconfig(FileUtils.readFileToString(sql, "UTF-8"), FileUtils.readFileToString(file, "UTF-8"));
-            System.out.printf(ddl);
             File output = new File(DDLEngineTest.class.getClassLoader().getResource(sqlPath).getPath() + ".ddl.txt");
             FileUtils.touch(output);
             FileUtils.write(output, ddl, "UTF-8");
-//            getTableDefs(FileUtils.readFileToString(file, "UTF-8"));
         } catch (IOException e) {
             e.printStackTrace();
             logger.error(e.getMessage());
