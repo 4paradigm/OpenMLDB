@@ -244,13 +244,16 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
 
 std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                     const std::string& sql,
-                                                                    const std::vector<::fesql::codec::Row>& row,
+                                                                    const std::vector<::fesql::codec::Row>& rows,
                                                                     const bool is_procedure, const bool is_debug) {
     DLOG(INFO) << "SubQuery batch request, taskid=" << task_id << ", is_procedure=" << is_procedure;
     auto client = GetClient();
     if (!client) {
         return std::make_shared<fesql::vm::ErrorTableHandler>(::fesql::common::kRpcError, "get client failed");
     }
+    auto cntl = std::make_shared<brpc::Controller>();
+    auto& io_buf = cntl->request_attachment();
+
     ::rtidb::api::SQLBatchRequestQueryRequest request;
     if (is_procedure) {
         request.set_sp_name(sql);
@@ -261,11 +264,31 @@ std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t tas
     request.set_db(db);
     request.set_task_id(task_id);
     request.set_is_debug(is_debug);
-    // TODO(chenjing): handler non common and common rows
-    for (auto iter = row.cbegin(); iter != row.cend(); iter++) {
-        request.add_non_common_rows(iter->buf(), iter->size());
+    bool common_slice_empty = false;
+
+    if (common_slice_empty) {
+        if (rows.empty()) {
+            request.set_common_slices(0);
+        } else {
+            size_t common_slice_size = 0;
+            if (!codec::EncodeRpcRow(rows[0], &io_buf, &common_slice_size)) {
+                return std::make_shared<::fesql::vm::ErrorTableHandler>(::fesql::common::kBadRequest,
+                                                                        "encode common row buf failed");
+            }
+            request.add_row_sizes(common_slice_size);
+            request.set_common_slices(rows[0].GetRowPtrCnt());
+        }
+    } else {
+        for (const auto& row : rows) {
+            size_t uncommon_slice_size = 0;
+            if (!codec::EncodeRpcRow(row, &io_buf, &uncommon_slice_size)) {
+                return std::make_shared<::fesql::vm::ErrorTableHandler>(::fesql::common::kBadRequest,
+                                                                        "encode uncommon row buf failed");
+            }
+            request.add_row_sizes(uncommon_slice_size);
+            request.set_non_common_slices(row.GetRowPtrCnt());
+        }
     }
-    auto cntl = std::make_shared<brpc::Controller>();
     auto response = std::make_shared<::rtidb::api::SQLBatchRequestQueryResponse>();
     cntl->set_timeout_ms(FLAGS_request_timeout_ms);
     auto callback = new rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>(response, cntl);
