@@ -4,6 +4,8 @@ import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
 
+import java.util.Properties;
+
 public class BenchmarkConfig {
 
 //    public static String ZK_CLUSTER = "127.0.0.1:6181";
