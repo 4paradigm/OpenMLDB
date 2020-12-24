@@ -39,7 +39,6 @@ namespace sdk {
 
 MiniCluster* mc_ = nullptr;
 static std::shared_ptr<SQLRouter> GetNewSQLRouter(const fesql::sqlcase::SQLCase& sql_case) {
-    ::fesql::vm::Engine::InitializeGlobalLLVM();
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
@@ -519,6 +518,7 @@ TEST_F(SQLSDKTest, create_table) {
 }  // namespace rtidb
 
 int main(int argc, char** argv) {
+    ::fesql::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
     FLAGS_zk_session_timeout = 100000;
