@@ -242,7 +242,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
              iter != ctx.logical_plan.cend(); iter++) {
             if (!GetDependentTables(*iter, &tables, status)) {
                 LOG(WARNING) << "fail to get dependent tables " << sql
-                             << " in db " << db << " with error " << *status;
+                             << " in db " << db << " with error " << status;
                 break;
             }
         }
