@@ -656,7 +656,7 @@ std::shared_ptr<::rtidb::client::TabletClient> SQLClusterRouter::GetTabletClient
     if (!cache) {
         ::fesql::vm::ExplainOutput explain;
         ::fesql::base::Status vm_status;
-        if (engine_->Explain(sql, db, ::fesql::vm::kBatchMode, &explain, &vm_status)) {
+        if (cluster_sdk_->GetEngine()->Explain(sql, db, ::fesql::vm::kBatchMode, &explain, &vm_status)) {
             std::shared_ptr<::fesql::sdk::SchemaImpl> schema;
             if (explain.input_schema.size() > 0) {
                 schema = std::make_shared<::fesql::sdk::SchemaImpl>(explain.input_schema);

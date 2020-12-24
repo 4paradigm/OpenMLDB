@@ -39,6 +39,7 @@ namespace sdk {
 
 MiniCluster* mc_ = nullptr;
 static std::shared_ptr<SQLRouter> GetNewSQLRouter(const fesql::sqlcase::SQLCase& sql_case) {
+    ::fesql::vm::Engine::InitializeGlobalLLVM();
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();

@@ -210,7 +210,6 @@ class SQLClusterRouter : public SQLRouter {
  private:
     SQLRouterOptions options_;
     ClusterSDK* cluster_sdk_;
-    std::map<std::string, boost::compute::detail::lru_cache<std::string, std::shared_ptr<RouterCache>>>
     std::map<std::string, boost::compute::detail::lru_cache<std::string, std::shared_ptr<SQLCache>>>
         input_lru_cache_;
     ::rtidb::base::SpinMutex mu_;

@@ -56,6 +56,7 @@ class MockClosure : public ::google::protobuf::Closure {
 };
 
 TEST_F(SQLClusterTest, cluster_insert) {
+    ::fesql::vm::Engine::InitializeGlobalLLVM();
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
