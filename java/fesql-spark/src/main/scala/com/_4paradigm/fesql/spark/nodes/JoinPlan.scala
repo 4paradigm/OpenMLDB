@@ -153,6 +153,9 @@ object JoinPlan {
 
         distinct.drop(indexName)
       } else { // Does not have order by column
+        // TODO: Do not use native last join currently
+        joined.dropDuplicates(indexName).drop(indexName)
+        /*
         try {
           org.apache.spark.sql.catalyst.plans.JoinType("last") // If Spark distribution support native last join type
           leftDf.join(rightDf, joinConditions.reduce(_ && _),  "last")
@@ -162,6 +165,7 @@ object JoinPlan {
             joined.dropDuplicates(indexName).drop(indexName)
           }
         }
+        */
       }
 
     } else { // Just left join, not last join
