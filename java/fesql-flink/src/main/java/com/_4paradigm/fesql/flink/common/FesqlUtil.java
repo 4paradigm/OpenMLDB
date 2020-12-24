@@ -79,8 +79,6 @@ public class FesqlUtil {
         builder.setName(dbName);
 
         for (Map.Entry<String, TableSchema> entry : tableSchemaMap.entrySet()) {
-            System.out.println(entry.getKey() + ":" + entry.getValue());
-
             builder.addTables(buildTableDef(entry.getKey(), entry.getValue()));
         }
 

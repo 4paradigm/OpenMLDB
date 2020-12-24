@@ -33,12 +33,11 @@ public class SqlUtils {
                 try {
                     script = ConfigReader.readConf(script.replaceFirst("file://", ""));
                 }catch (Exception e) {
-                    logger.error("fail to read {}", script, e);
+                    logger.error("fail to read {} {}", script, e);
                 }
             }
             config.setSql(script);
         } else {
-//            logger.error("json has no script field");
             throw new RuntimeException("config json has no script field");
         }
         if (jsonElement.has("inputs")) {

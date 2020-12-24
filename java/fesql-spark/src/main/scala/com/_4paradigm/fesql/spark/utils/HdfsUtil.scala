@@ -134,20 +134,20 @@ object HDFSUtil {
    * @return
    */
   def getFileSystem(uri: String) = {
-    logger.info("Going to get file system from uri:" + uri)
+    logger.info("Going to get file system from uri:{}", uri)
     val u = new URI(uri)
     val key = u.getScheme match {
       case null => "default"
       case _ => String.valueOf(u.getScheme) + String.valueOf(u.getHost) + String.valueOf(u.getPort)
     }
     if (hostFSMap.keySet.contains(key)){
-      logger.info("File System has key:" + key + ", value:" + hostFSMap.get(key).toString)
+      logger.info("File System has key:{}, value:{}", key, hostFSMap.get(key).toString)
       hostFSMap(key)
     }
     else {
       val fs = FileSystem.get(u, conf)
       hostFSMap.put(key, fs)
-      logger.info("File System create key:" + key + ", value:" + fs.toString)
+      logger.info("File System create key:{}, value:{}", key, fs.toString)
       fs
     }
   }

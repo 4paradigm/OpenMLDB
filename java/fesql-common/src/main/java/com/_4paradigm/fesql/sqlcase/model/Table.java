@@ -186,7 +186,7 @@ public class Table {
         }
 
         if (length > 5) {
-            logger.info("Index is invalid: index items > 5", index);
+            logger.info("Index is invalid: index items {} > 5", index);
             return false;
         }
         return true;

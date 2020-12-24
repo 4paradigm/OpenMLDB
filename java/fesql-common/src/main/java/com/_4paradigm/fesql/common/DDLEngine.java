@@ -71,7 +71,7 @@ public class DDLEngine {
                 }
             }
             String res = sb.toString();
-            logger.info("gen ddl:" +  res);
+            logger.info("gen ddl:{}", res);
             return res;
         } catch (UnsupportedFesqlException | FesqlException e) {
             e.printStackTrace();
@@ -109,7 +109,7 @@ public class DDLEngine {
                 }
             }
             String res = sb.toString();
-            logger.info("gen ddl:" +  res);
+            logger.info("gen ddl:{}", res);
             return res;
         } catch (UnsupportedFesqlException | FesqlException e) {
             e.printStackTrace();
@@ -252,7 +252,7 @@ public class DDLEngine {
             }
             if (type.swigValue() == PhysicalOpType.kPhysicalOpRename.swigValue()) {
                 PhysicalRenameNode castNode = PhysicalRenameNode.CastFrom(node);
-                logger.info("rename = " + castNode.getName_());
+                logger.info("rename = {}", castNode.getName_());
                 PhysicalDataProviderNode dataNode = findDataProviderNode(node.GetProducer(0));
                 if (dataNode != null) {
                     table2OrgTable.put(castNode.getName_(), dataNode.GetName());
