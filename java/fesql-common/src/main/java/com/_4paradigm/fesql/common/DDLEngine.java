@@ -504,12 +504,13 @@ class RtidbTable {
         //
         if (indexs.size() == 0) {
             for (TypeOuterClass.ColumnDef e : schema.getColumnsList()) {
-                if (e.getType() == TypeOuterClass.Type.kVarchar) {
+                if (e.getType() == TypeOuterClass.Type.kVarchar || e.getType() == TypeOuterClass.Type.kInt32 || e.getType() == TypeOuterClass.Type.kInt64) {
                     RtidbIndex index = new RtidbIndex();
                     index.getKeys().add(e.getName());
                     index.setAtmost(1);
                     index.setType(TTLType.kLatest);
                     indexs.add(index);
+                    break;
                 }
             }
         }
