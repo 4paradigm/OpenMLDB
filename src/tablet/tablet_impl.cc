@@ -2155,7 +2155,7 @@ void TabletImpl::SubBatchRequestQuery(RpcController* ctrl, const rtidb::api::SQL
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(ctrl);
     butil::IOBuf& buf = cntl->response_attachment();
-    return ProcessBatchRequestQuery(request, response, buf);
+    return ProcessBatchRequestQuery(ctrl, request, response, buf);
 }
 void TabletImpl::BatchQuery(RpcController* controller,
                             const rtidb::api::BatchQueryRequest* request,
