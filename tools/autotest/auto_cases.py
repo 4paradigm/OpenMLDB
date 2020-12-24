@@ -1,3 +1,4 @@
+import datetime
 import sys
 import os
 import argparse
@@ -10,8 +11,6 @@ import time
 import subprocess
 import multiprocessing
 import traceback
-
-
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s: %(message)s')
 
@@ -72,6 +71,7 @@ SQL_PRESERVED_NAMES = {
     "string",
 }
 
+current_time = datetime.datetime.now()
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -102,6 +102,9 @@ def parse_args():
     parser.add_argument("--use_alias_name", default="true", type=parse_bool,
                         help="Whether add \"AS ALIAS_NAME\" to expr")
 
+    parser.add_argument("--rows_between", default="0,1", help="""
+                        用于指定窗口的类型，1为rows，0为rows_range""")
+
     parser.add_argument("--rows_preceding", default=3, help="""
                         Specify window row preceding,
                         can be integer, integer range or integer list,
@@ -111,6 +114,29 @@ def parse_args():
                         Specify window row following,
                         can be integer, integer range or integer list,
                         -1 denote UNBOUND and 0 denote CURRENT""")
+
+    parser.add_argument("--rows_range_unit", default="0,s,m,h,d", help="""
+                        rows_range窗口的单位，0：表示无单位""")
+
+    parser.add_argument("--begin_time", default="0", help="""
+                        生成数据ts列的时间范围的开始时间,传入毫秒级时间戳，0表示1970-01-01""")
+
+    parser.add_argument("--end_time", default="0", help="""
+                        生成数据ts列的时间范围的结束时间,传入毫秒级时间戳，0表示当前时间""")
+
+    parser.add_argument("--gen_time_mode", default="auto", help="""
+                        生成时间的模式，提供三种模式：
+                        auto：根据时间窗口的大小扩展2倍生成时间，例如时间窗口从6s前到2s前，则生成从12s前到0s前的时间，
+                            如果是rows窗口，则根据be生成时间
+                        be：根据执行的begin和end来生成时间
+                        自己指定时间范围：例如 1d，生成1天内的时间，
+                            目前支持的时间范围：S 毫秒，s 秒，m 分，h 小时，d 天""")
+
+    parser.add_argument("--auto_time_multiple", default="2", help="""
+                        根据窗口自动生成time时，根据窗口大小扩展的倍数，默认为2，为1时生成的时间均在窗口内""")
+
+    parser.add_argument("--ts_type", default="0,1", help="""
+                        ts列的类型，1表示timestamp 0表示bigint 默认随机重timestamp和bigint中随机选一个""")
 
     parser.add_argument("--prob_sample_exist_column", default=0.4, type=float,
                         help="Probability weight to sample an existing column")
@@ -173,6 +199,13 @@ def parse_range(range_str):
         end += 1
     return int(content[0]), int(content[1])
 
+def sample_string_config(spec:str):
+    items = spec.split(",")
+    items = [_.strip() for _ in items if _.strip() != ""]
+    res = random.choice(items)
+    if res=="0":
+        res = ""
+    return res
 
 def sample_integer_config(spec):
     """
@@ -236,7 +269,6 @@ class UDFPool:
 
         with open(os.path.join(udf_config_file)) as yaml_file:
             udf_defs = yaml.load(yaml_file.read())
-
         unique_id_counter = 0
         for name in udf_defs:
             if filter_names is not None and name not in filter_names:
@@ -527,10 +559,12 @@ class ColumnsPool:
         :param nullable:
         :return:
         '''
+        ts_type = sample_integer_config(self.args.ts_type)
+        order_type = VALID_ORDER_TYPES[ts_type]
         return self.do_sample_column("order", self.order_columns,
                                      downward=downward,
                                      allow_const=False,
-                                     dtype=VALID_ORDER_TYPES,
+                                     dtype=order_type,
                                      nullable=nullable)
 
     def sample_column(self, downward=True, dtype=None, nullable=None, allow_const=False):
@@ -555,18 +589,20 @@ class WindowDesc:
         :param name: 窗口的名字
         :param preceding:
         :param following:
-        :param rows_between: 窗口类型 0 为RANGE 非0为 ROWS
+        :param rows_between: 窗口类型 0 为RANGE 1为 ROWS
         '''
-    def __init__(self, name, preceding, following, rows_between=True):
+    def __init__(self, name, preceding, following, rows_between=True, rows_range_unit=""):
         self.name = name
         self.preceding = str(preceding)
         self.following = str(following)
         self.rows_between = rows_between
+        self.rows_range_unit = rows_range_unit
 
     def get_frame_def_string(self):
         '''
         获取定义窗口的字符串，暂不支持单位
         :return: ROWS BETWEEN 3 PRECEDING AND CURRENT ROW
+                ROWS_RANGE BETWEEN
         '''
         res = ""
         if self.rows_between:
@@ -578,14 +614,28 @@ class WindowDesc:
             # if self.rows_between:
             res += "ROW"
         else:
-            res += self.preceding + " PRECEDING"
+            if self.rows_between:
+                res += self.preceding + " PRECEDING"
+            else:
+                res += self.preceding + self.rows_range_unit + " PRECEDING"
         res += " AND "
         if self.following.lower().startswith("current"):
             res += "CURRENT "
             # if self.rows_between:
             res += "ROW"
         else:
-            res += self.following + " FOLLOWING"
+            # 判断如果 following > preceding 则进行重置，随机从0-preceding 生成一个数字
+            # if not self.preceding.lower().startswith("current"):
+            #     preceding = int(self.preceding)
+            #     following = int(self.following)
+            #     if following > preceding:
+            #         following = random.randint(0,preceding)
+            #         self.following=str(following)
+
+            if self.rows_between:
+                res += self.following + " PRECEDING"
+            else:
+                res += self.following + self.rows_range_unit + " PRECEDING"
         return res
 
 
@@ -637,7 +687,7 @@ def random_literal_string():
     upper_letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     digits = "0123456789"
     cands = lower_letters + upper_letters + digits
-    return "\"" + "".join(random.choice(cands) for _ in range(strlen)) + "\""
+    return "".join(random.choice(cands) for _ in range(strlen))
 
 
 def gen_literal_const(dtype, nullable):
@@ -851,20 +901,94 @@ def sample_double(nullable=True):
         return random.uniform(lower, upper)
 
 
-def sample_date(nullable=True):
-    res = sample_timestamp(nullable=nullable)
+def sample_date(args, nullable=True):
+    res = sample_timestamp(args, nullable=nullable)
     if res is not None:
-        res = time.strftime("%Y-%m-%d", time.localtime(res))
+        res = time.strftime("%Y-%m-%d", time.localtime(res/1000))
     return res
 
+def compute_pre_time(gen_time_mode:str):
+    '''
+    根据字符串计算当前时间之前的时间
+    :param gen_time_mode:
+    :return: 毫秒级时间戳，int
+    '''
+    time_unit = gen_time_mode[-1]
+    time_num = int(gen_time_mode[0:-1])
+    time_compute = {
+        'S':current_time-datetime.timedelta(milliseconds=time_num),
+        's':current_time-datetime.timedelta(seconds=time_num),
+        'm':current_time-datetime.timedelta(minutes=time_num),
+        'h':current_time-datetime.timedelta(hours=time_num),
+        'd':current_time-datetime.timedelta(days=time_num)
+    }
+    if time_unit not in time_compute:
+        raise Exception("不支持的时间单位")
+    pre_time=int(time_compute[time_unit].timestamp()*1000)
+    return pre_time
 
-def sample_timestamp(nullable=True):
+def gen_time_unit(gen_time_mode:str):
+    begin_time=compute_pre_time(gen_time_mode)
+    end_time=int(current_time.timestamp()*1000)
+    gen_time = random.randint(begin_time, end_time)
+    return gen_time
+
+def gen_time_be(args):
+    begin_time = int(args.begin_time)
+    end_time = int(args.end_time)
+    if end_time == 0:
+        end_time = int(current_time.timestamp()*1000)
+    gen_time = random.randint(begin_time, end_time)
+    return gen_time
+
+def gen_time_auto(w:WindowDesc,args):
+    # 0 ：时间窗口
+    multiple = int(args.auto_time_multiple)
+    if w.rows_between == 0:
+        rows_range_unit = w.rows_range_unit
+        if rows_range_unit == "":
+            rows_range_unit = "S"
+        if w.preceding.lower().startswith("current"):
+            begin_num = 0
+        else:
+            begin_num = int(w.preceding)*multiple
+        begin_time = compute_pre_time(str(begin_num)+rows_range_unit)
+        if w.following.lower().startswith("current"):
+            end_num = 0
+        else:
+            end_num = int(w.following)//multiple
+        end_time = compute_pre_time(str(end_num)+rows_range_unit)
+        gen_time = random.randint(begin_time, end_time)
+        return gen_time
+    else:
+        return gen_time_be(args)
+
+def sample_ts_timestamp(args,w_def:WindowDesc, nullable=True):
     if nullable:
         if random.randint(0, 3) == 0:
             return None
-    lower = int(time.mktime(time.strptime("2000-01-01", "%Y-%m-%d")))
-    upper = int(time.mktime(time.strptime("2020-01-01", "%Y-%m-%d")))
-    return random.randint(lower, upper)
+    gen_time_mode = args.gen_time_mode.strip()
+    if gen_time_mode == "auto":
+        return gen_time_auto(w_def,args)
+    elif gen_time_mode == "be":
+        return gen_time_be(args)
+    else:
+        return gen_time_unit(gen_time_mode)
+
+def sample_timestamp(args, nullable=True):
+    if nullable:
+        if random.randint(0, 3) == 0:
+            return None
+    # lower = int(time.mktime(time.strptime("2000-01-01", "%Y-%m-%d")))
+    # upper = int(time.mktime(time.strptime("2020-01-01", "%Y-%m-%d")))
+    # return random.randint(lower, upper)
+    return gen_time_be(args)
+
+def sample_ts_value(dtype, args, w_def:WindowDesc, nullable=True):
+    if dtype == "int64":
+        return sample_int64(nullable=nullable)
+    else:
+        return sample_ts_timestamp(args, w_def, nullable)
 
 
 def sample_string(nullable=True):
@@ -881,7 +1005,7 @@ def sample_window_def(name, args):
     :param args:
     :return: WindowDesc
     '''
-    # 根据规则随机生成一个整数
+    # 根据规则随机生成一个整数，默认值为3
     preceding = sample_integer_config(args.rows_preceding)
     if preceding == 0:
         preceding = "CURRENT"
@@ -892,11 +1016,11 @@ def sample_window_def(name, args):
         following = "CURRENT"
     elif following == -1:
         following = "UNBOUNDED"
-    rows_between = random.randint(0, 1) == 0
-    return WindowDesc(name, preceding, following, rows_between=rows_between)
+    rows_between = sample_integer_config(args.rows_between)
+    rows_range_unit = sample_string_config(args.rows_range_unit)
+    return WindowDesc(name, preceding, following, rows_between=rows_between, rows_range_unit=rows_range_unit)
 
-
-def sample_value(dtype, nullable=True):
+def sample_value(dtype, args, nullable=True):
     if dtype == "bool":
         return sample_bool(nullable=nullable)
     elif dtype == "int16":
@@ -910,16 +1034,16 @@ def sample_value(dtype, nullable=True):
     elif dtype == "double":
         return sample_double(nullable=nullable)
     elif dtype == "date":
-        return sample_date(nullable=nullable)
+        return sample_date(args, nullable=nullable)
     elif dtype == "timestamp":
-        return sample_timestamp(nullable=nullable)
+        return sample_timestamp(args, nullable=nullable)
     elif dtype == "string":
         return sample_string(nullable=nullable)
     else:
         raise ValueError("Can not sample from dtype: " + str(dtype))
 
 
-def gen_simple_data(columns, args,
+def gen_simple_data(columns, args, w_def:WindowDesc,
                     index_column=None,
                     partition_columns=None,
                     order_columns=None):
@@ -961,7 +1085,7 @@ def gen_simple_data(columns, args,
             group = []
             num_pk = sample_integer_config(args.num_pk)
             for _ in range(num_pk):
-                pk = sample_value(col.dtype, nullable=False)
+                pk = sample_value(col.dtype, args, nullable=False)
                 group.append(pk)
             pk_groups.append(group)
 
@@ -977,11 +1101,11 @@ def gen_simple_data(columns, args,
                 row[partition_idxs[k]] = pk_val
             for k in order_idxs:
                 order_col = columns[k]
-                order_val = sample_value(order_col.dtype, order_col.nullable)
+                order_val = sample_ts_value(order_col.dtype, args, w_def, order_col.nullable)
                 row[k] = order_val
             for k in normal_column_idxs:
                 normal_col = columns[k]
-                value = sample_value(normal_col.dtype, normal_col.nullable)
+                value = sample_value(normal_col.dtype, args, normal_col.nullable)
                 row[k] = value
             rows.append(row)
 
@@ -1082,7 +1206,7 @@ def gen_single_window_test(test_name, udf_pool, args):
     sql_string = window_query.text.strip() + ";"
 
     all_columns = input_columns.get_all_columns()
-    data = gen_simple_data(all_columns, args,
+    data = gen_simple_data(all_columns, args, window_def,
                            index_column=input_columns.index_column,
                            partition_columns=input_columns.partition_columns,
                            order_columns=input_columns.order_columns)
@@ -1224,6 +1348,22 @@ def run(args):
 def main(args):
     run(args)
 
-
 if __name__ == "__main__":
-    main(parse_args())
+    args = parse_args()
+    # main(args)
+    udf_pool = UDFPool(args.udf_path, args)
+    begin = time.time()
+    for _ in range(10):
+        test_name = str(uuid.uuid1())
+        case = gen_single_window_test(test_name, udf_pool, args)
+        case_dir = os.path.join(args.log_dir, test_name)
+        if not os.path.exists(case_dir):
+            os.makedirs(case_dir)
+        with open(os.path.join(case_dir, "case.yaml"), "w") as yaml_file:
+            yaml_file.write(yaml.dump(case))
+    end = time.time()
+    print(end-begin)
+
+
+# if __name__ == "__main__":
+#     main(parse_args())
