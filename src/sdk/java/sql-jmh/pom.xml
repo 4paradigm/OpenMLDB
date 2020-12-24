@@ -18,6 +18,14 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
+	<repositories>
+		<repository>
+			<id>4pd-nexus-public</id>
+			<name>4Paradigm nexus maven public</name>
+			<url>https://nexus.4pd.io/repository/maven-public/</url>
+		</repository>
+	</repositories>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.openjdk.jmh</groupId>

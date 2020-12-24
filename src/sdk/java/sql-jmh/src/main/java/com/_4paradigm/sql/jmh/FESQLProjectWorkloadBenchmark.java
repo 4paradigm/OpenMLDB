@@ -40,6 +40,7 @@ public class FESQLProjectWorkloadBenchmark {
     private String query100 = "select col100 from ddl100 where col98='100_key';";
     private String query200 = "select col200 from ddl200 where col198='200_key';";
     private String query500 = "select col500 from ddl500 where col498='500_key';";
+    private String query361 = "select col500 from ddl500 where col498='3000_key'";
 
     public FESQLProjectWorkloadBenchmark() {
         SdkOption sdkOption = new SdkOption();
@@ -180,6 +181,26 @@ public class FESQLProjectWorkloadBenchmark {
                 e.printStackTrace();
             }
         }
+        {
+            String key = "3000_key";
+            try {
+                long ts = System.currentTimeMillis();
+                for (int a = 0; a < 3000; a++) {
+                    PreparedStatement impl = executor.getInsertPreparedStmt(db, ddl500Insert);
+                    for (int i = 0; i < 498; i++) {
+                        impl.setString(i+1, "value10000000000");
+                    }
+                    impl.setString(499, key);
+                    impl.setTimestamp(500, new Timestamp(ts - a));
+                    impl.setInt(501, 10);
+                    impl.execute();
+                }
+                query361 += " col499 > timestamp(" + (ts - 3000) + ") and col499 < timestamp(" +(ts - 2638) +");";
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
         try {
             Thread.sleep(2000);
             ResultSet rs = executor.executeSQL(db, query100);
@@ -212,6 +233,11 @@ public class FESQLProjectWorkloadBenchmark {
     @Benchmark
     public void project500bm() {
         executor.executeSQL(db, query500);
+    }
+
+    @Benchmark
+    public void projectWhere361m() {
+        executor.executeSQL(db, query361);
     }
 
     public static void main(String[] args) throws Exception {
