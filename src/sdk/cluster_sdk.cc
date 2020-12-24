@@ -82,6 +82,7 @@ bool ClusterSDK::Init() {
                  << ",session timeout " << options_.session_timeout << " and session id "
                  << zk_client_->GetSessionTerm();
 
+    ::fesql::vm::Engine::InitializeGlobalLLVM();
     ::fesql::vm::EngineOptions eopt;
     eopt.set_compile_only(true);
     eopt.set_plan_only(true);

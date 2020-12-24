@@ -15,51 +15,27 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
 public class ComplexSql3Example extends BaseExample {
     private static final Logger logger = LoggerFactory.getLogger(ComplexSql3Example.class);
-
-    private String ddl1 = "create table `table_2`(\n" +
-            "`s1` string,\n" +
-            "`s2` string,\n" +
-            "`t1` timestamp,\n" +
-            "`t2` date,\n" +
-            "`d1` float,\n" +
-            "`d2` double,\n" +
-            "`c1` int,\n" +
-            "`c2` bigint,\n" +
-            "`ai` string,\n" +
-            "`kn` string,\n" +
-            "`ks` string,\n" +
-            "index(key=(`s1`), ts=`t1`, ttl=1440m, ttl_type=absolute)\n" +
-            ");";
-    private String ddl2 = "create table `main`(\n" +
-            "`label` int,\n" +
-            "`s1` string,\n" +
-            "`s2` string,\n" +
-            "`t1` timestamp,\n" +
-            "`t2` date,\n" +
-            "`d1` float,\n" +
-            "`d2` double,\n" +
-            "`c1` int,\n" +
-            "`c2` bigint,\n" +
-            "`ai` string,\n" +
-            "`kn` string,\n" +
-            "`ks` string,\n" +
-            "index(key=(`s2`), ts=`t1`, ttl=1440m, ttl_type=absolute)\n" +
-            ");";
-
-
     private SqlExecutor sqlExecutor = null;
-    private String db = "fix";
+    private String db = "fix_test1";
     private String spSql;
+    private List<String> tableDDLList = new ArrayList<>();
 
     public void init() throws SqlException {
         try {
             String path = System.getProperty("user.dir");
             File file = new File(path + "/fesql-auto-test-java/src/test/resources/xjd_sp_ddl.txt");
             spSql = IOUtils.toString(new FileInputStream(file), "UTF-8");
+            file = new File(path + "/fesql-auto-test-java/src/test/resources/xjd_table_ddl.txt");
+            String tableDDL = IOUtils.toString(new FileInputStream(file), "UTF-8");
+            String[] split = tableDDL.split(";");
+            tableDDLList = Arrays.asList(split);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -73,10 +49,10 @@ public class ComplexSql3Example extends BaseExample {
     public void initDDL() throws Exception {
         sqlExecutor.dropDB(db);
         sqlExecutor.createDB(db);
-        boolean ok = sqlExecutor.executeDDL(db, ddl1);
-        Assert.assertTrue(ok);
-        ok = sqlExecutor.executeDDL(db, ddl2);
-        Assert.assertTrue(ok);
+        for (String ddl : tableDDLList) {
+            boolean ok = sqlExecutor.executeDDL(db, ddl + ";");
+            Assert.assertTrue(ok);
+        }
         System.out.println("init ddl finished");
     }
 
@@ -149,7 +125,7 @@ public class ComplexSql3Example extends BaseExample {
         try {
             example.init();
             System.out.println("init success");
-//            example.initDDL();
+            example.initDDL();
             example.createProcedure();
 //            example.callProcedureWithPstms();
         } catch (Exception e) {
