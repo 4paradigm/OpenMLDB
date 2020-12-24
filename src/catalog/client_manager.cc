@@ -244,7 +244,8 @@ std::shared_ptr<::fesql::vm::RowHandler> TabletAccessor::SubQuery(uint32_t task_
 
 std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                     const std::string& sql,
-                                                                    const std::vector<::fesql::codec::Row>& row,
+                                                                    const std::set<size_t>& common_column_indices,
+                                                                    const std::vector<::fesql::codec::Row>& rows,
                                                                     const bool request_is_common,
                                                                     const bool is_procedure, const bool is_debug) {
     DLOG(INFO) << "SubQuery batch request, taskid=" << task_id << ", is_procedure=" << is_procedure;
@@ -252,6 +253,9 @@ std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t tas
     if (!client) {
         return std::make_shared<fesql::vm::ErrorTableHandler>(::fesql::common::kRpcError, "get client failed");
     }
+    auto cntl = std::make_shared<brpc::Controller>();
+    auto& io_buf = cntl->request_attachment();
+
     ::rtidb::api::SQLBatchRequestQueryRequest request;
     if (is_procedure) {
         request.set_sp_name(sql);
@@ -262,11 +266,32 @@ std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t tas
     request.set_db(db);
     request.set_task_id(task_id);
     request.set_is_debug(is_debug);
-    // TODO(chenjing): handler non common and common rows
-    for (auto iter = row.cbegin(); iter != row.cend(); iter++) {
-        request.add_non_common_rows(iter->buf(), iter->size());
+    for (size_t idx : common_column_indices) {
+        request.add_common_column_indices(idx);
     }
-    auto cntl = std::make_shared<brpc::Controller>();
+    if (request_is_common) {
+        if (rows.empty()) {
+            request.set_common_slices(0);
+        } else {
+            size_t common_slice_size = 0;
+            if (!codec::EncodeRpcRow(rows[0], &io_buf, &common_slice_size)) {
+                return std::make_shared<::fesql::vm::ErrorTableHandler>(::fesql::common::kBadRequest,
+                                                                        "encode common row buf failed");
+            }
+            request.add_row_sizes(common_slice_size);
+            request.set_common_slices(rows[0].GetRowPtrCnt());
+        }
+    } else {
+        for (const auto& row : rows) {
+            size_t uncommon_slice_size = 0;
+            if (!codec::EncodeRpcRow(row, &io_buf, &uncommon_slice_size)) {
+                return std::make_shared<::fesql::vm::ErrorTableHandler>(::fesql::common::kBadRequest,
+                                                                        "encode uncommon row buf failed");
+            }
+            request.add_row_sizes(uncommon_slice_size);
+            request.set_non_common_slices(row.GetRowPtrCnt());
+        }
+    }
     auto response = std::make_shared<::rtidb::api::SQLBatchRequestQueryResponse>();
     cntl->set_timeout_ms(FLAGS_request_timeout_ms);
     auto callback = new rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>(response, cntl);
@@ -286,6 +311,7 @@ std::shared_ptr<fesql::vm::RowHandler> TabletsAccessor::SubQuery(uint32_t task_i
 }
 std::shared_ptr<fesql::vm::TableHandler> TabletsAccessor::SubQuery(uint32_t task_id, const std::string& db,
                                                                    const std::string& sql,
+                                                                   const std::set<size_t>& common_column_indices,
                                                                    const std::vector<fesql::codec::Row>& rows,
                                                                    const bool request_is_common,
                                                                    const bool is_procedure, const bool is_debug) {
@@ -296,7 +322,7 @@ std::shared_ptr<fesql::vm::TableHandler> TabletsAccessor::SubQuery(uint32_t task
     }
     for (size_t idx = 0; idx < accessors_.size(); idx++) {
         tables_handler->AddAsyncRpcHandler(
-            accessors_[idx]->SubQuery(task_id, db, sql, accessors_rows[idx], is_procedure, is_debug), posinfos_[idx]);
+            accessors_[idx]->SubQuery(task_id, db, sql, common_column_indices, accessors_rows[idx], request_is_common, is_procedure, is_debug), posinfos_[idx]);
     }
     return tables_handler;
 }
