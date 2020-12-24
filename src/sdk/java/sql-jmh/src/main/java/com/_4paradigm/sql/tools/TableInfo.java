@@ -58,6 +58,24 @@ public class TableInfo {
         parseRelation(relation);
     }
 
+    public String getTyeString() {
+        StringBuilder stringBuilder  = new StringBuilder();
+        for (int i = 0; i < schema.size(); i++) {
+            if (i > 0) {
+                stringBuilder.append(",");
+            }
+            String name = schemaPosName.get(i);
+            stringBuilder.append(name);
+            stringBuilder.append(" ");
+            if (schema.get(i).equals("int")) {
+                stringBuilder.append("int32");
+            } else {
+                stringBuilder.append(schema.get(i));
+            }
+        }
+        return stringBuilder.toString();
+    }
+
     private void parseRelation(Relation relation) {
         String indexStr = relation.getIndex().get(name);
         String tsIndexStr = relation.getTsIndex().get(name);
