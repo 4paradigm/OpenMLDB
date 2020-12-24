@@ -12,12 +12,14 @@ public class BenchmarkConfig {
     public static String ZK_NS = "featuredb";
     public static String MEMSQL_URL="jdbc:mysql://172.27.128.37:3306/benchmark?user=benchmark&password=benchmark";
     public static String PARTITION_NUM = "4";
+    public static int BATCH_SIZE = 1;
+    public static Mode mode = Mode.REQUEST;
 
     public static String ddlUrl;
     public static String scriptUrl;
     public static String relationUrl;
     public static String jsonUrl;
-
+    public static String commonCol;
 
     private static SqlExecutor executor = null;
     private static SdkOption option = null;
@@ -35,10 +37,29 @@ public class BenchmarkConfig {
             scriptUrl = prop.getProperty("scriptUrl");
             relationUrl = prop.getProperty("relationUrl");
             jsonUrl = prop.getProperty("jsonUrl");
+            BATCH_SIZE = Integer.valueOf((String)prop.get("BATCH_SIZE"));
+            String mode_str = prop.getProperty("MODE");
+            if (mode_str.equals("batch")) {
+                System.out.println("mode is batch");
+                mode = Mode.BATCH;
+            } else if (mode_str.equals("batchrequest")) {
+                System.out.println("mode is batch request");
+                mode = Mode.BATCH_REQUEST;
+            } else {
+                System.out.println("mode is request");
+                mode = Mode.REQUEST;
+            }
+            commonCol = prop.getProperty("commonCol");
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+    }
+
+    enum Mode {
+        REQUEST,
+        BATCH_REQUEST,
+        BATCH
     }
 
     public static boolean NeedProxy() {

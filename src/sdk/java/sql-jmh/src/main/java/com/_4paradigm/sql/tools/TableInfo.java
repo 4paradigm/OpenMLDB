@@ -95,9 +95,11 @@ public class TableInfo {
         String relationStr = relation.getColRelaion().get(name);
         colRelation = new HashMap<>();
         if (!relationStr.equals("null")) {
-            String[] val = relationStr.trim().split("\\|");
-            if (val.length == 2) {
-                colRelation.put(schemaPos.get(val[1]), val[0]);
+            for (String val : relationStr.trim().split(",")) {
+                String[] tmp = val.split("\\|");
+                if (tmp.length == 2) {
+                    colRelation.put(schemaPos.get(tmp[1]), tmp[0]);
+                }
             }
         }
         String mainTable = relation.getMainTable();

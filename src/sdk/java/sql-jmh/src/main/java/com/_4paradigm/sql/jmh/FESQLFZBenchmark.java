@@ -33,6 +33,7 @@ public class FESQLFZBenchmark {
     private String script;
     private String mainTable;
     List<Map<String, String>> mainTableValue;
+    List<Integer> commonColumnIndices;
     int pkBase = 1000000;
     public FESQLFZBenchmark() {
         this(false);
@@ -42,6 +43,7 @@ public class FESQLFZBenchmark {
         db = "db" + System.nanoTime();
         tableMap = new HashMap<>();
         mainTableValue = new ArrayList<>();
+        commonColumnIndices = new ArrayList<>();
     }
 
     public void setWindowNum(int windowNum) {
@@ -62,6 +64,12 @@ public class FESQLFZBenchmark {
             }
             TableInfo table = new TableInfo(item, relation);
             tableMap.put(table.getName(), table);
+            if (table.getName().equals(mainTable) && !BenchmarkConfig.commonCol.isEmpty()) {
+                String[] colArr = BenchmarkConfig.commonCol.trim().split(",");
+                for (String col : colArr) {
+                    commonColumnIndices.add(table.getSchemaPos().get(col));
+                }
+            }
         }
         System.out.println(db);
     }
@@ -169,39 +177,59 @@ public class FESQLFZBenchmark {
     }
 
     private PreparedStatement getPreparedStatement() throws SQLException {
-        PreparedStatement requestPs = executor.getRequestPreparedStmt(db, script);
-        ResultSetMetaData metaData = requestPs.getMetaData();
-        TableInfo table = tableMap.get(mainTable);
-        if (table.getSchema().size() != metaData.getColumnCount()) {
-            return null;
-        }
-        for (int i = 0; i < metaData.getColumnCount(); i++) {
-            int columnType = metaData.getColumnType(i + 1);
-            if (columnType == Types.VARCHAR) {
-                requestPs.setString(i + 1, "col" + String.valueOf(i));
-            } else if (columnType == Types.DOUBLE) {
-                requestPs.setDouble(i + 1, 1.4d);
-            } else if (columnType == Types.FLOAT) {
-                requestPs.setFloat(i + 1, 1.3f);
-            } else if (columnType == Types.INTEGER) {
-                if (table.getIndex().contains(i)) {
-                    requestPs.setInt(i + 1, pkBase + i);
-                } else {
-                    requestPs.setInt(i + 1, i);
+        PreparedStatement requestPs = null;
+        if (BenchmarkConfig.mode == BenchmarkConfig.Mode.BATCH_REQUEST) {
+            requestPs = executor.getBatchRequestPreparedStmt(db, script, commonColumnIndices);
+            for (int i = 0; i < BenchmarkConfig.BATCH_SIZE; i++) {
+                if (setRequestData(requestPs)) {
+                    requestPs.addBatch();
                 }
-            } else if (columnType == Types.BIGINT) {
-                if (table.getIndex().contains(i)) {
-                    requestPs.setLong(i + 1, pkBase + i);
-                } else {
-                    requestPs.setLong(i + 1, i);
-                }
-            } else if (columnType == Types.TIMESTAMP) {
-                requestPs.setTimestamp(i + 1, new Timestamp(System.currentTimeMillis()));
-            } else if (columnType == Types.DATE) {
-                requestPs.setDate(i + 1, new Date(System.currentTimeMillis()));
             }
+        } else {
+            requestPs = executor.getRequestPreparedStmt(db, script);
+            setRequestData(requestPs);
         }
-        return  requestPs;
+        return requestPs;
+    }
+
+    private boolean setRequestData(PreparedStatement requestPs) {
+        try {
+            ResultSetMetaData metaData = requestPs.getMetaData();
+            TableInfo table = tableMap.get(mainTable);
+            if (table.getSchema().size() != metaData.getColumnCount()) {
+                return false;
+            }
+            for (int i = 0; i < metaData.getColumnCount(); i++) {
+                int columnType = metaData.getColumnType(i + 1);
+                if (columnType == Types.VARCHAR) {
+                    requestPs.setString(i + 1, "col" + String.valueOf(i));
+                } else if (columnType == Types.DOUBLE) {
+                    requestPs.setDouble(i + 1, 1.4d);
+                } else if (columnType == Types.FLOAT) {
+                    requestPs.setFloat(i + 1, 1.3f);
+                } else if (columnType == Types.INTEGER) {
+                    if (table.getIndex().contains(i)) {
+                        requestPs.setInt(i + 1, pkBase + i);
+                    } else {
+                        requestPs.setInt(i + 1, i);
+                    }
+                } else if (columnType == Types.BIGINT) {
+                    if (table.getIndex().contains(i)) {
+                        requestPs.setLong(i + 1, pkBase + i);
+                    } else {
+                        requestPs.setLong(i + 1, i);
+                    }
+                } else if (columnType == Types.TIMESTAMP) {
+                    requestPs.setTimestamp(i + 1, new Timestamp(System.currentTimeMillis()));
+                } else if (columnType == Types.DATE) {
+                    requestPs.setDate(i + 1, new Date(System.currentTimeMillis()));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
 
     @Setup
@@ -221,10 +249,10 @@ public class FESQLFZBenchmark {
 
     @TearDown
     public void teardown() throws SQLException {
-        /*for (String name : tableMap.keySet()) {
+        for (String name : tableMap.keySet()) {
             executor.executeDDL(db, "drop table " + name + ";");
         }
-        executor.dropDB(db);*/
+        executor.dropDB(db);
     }
 
     @Benchmark
@@ -257,8 +285,8 @@ public class FESQLFZBenchmark {
                     val.put(columnName, String.valueOf(resultSet.getDate(i+ 1)));
                 }
             }
-            System.out.println("string num" + stringNum);
-            ps.close();*/
+            System.out.println("string num" + stringNum);*/
+            ps.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -295,7 +323,7 @@ public class FESQLFZBenchmark {
     }
 
     public static void main(String[] args) throws RunnerException {
-      /*FESQLFZBenchmark ben = new FESQLFZBenchmark();
+     /* FESQLFZBenchmark ben = new FESQLFZBenchmark();
       try {
           ben.setup();
           ben.execSQL();
