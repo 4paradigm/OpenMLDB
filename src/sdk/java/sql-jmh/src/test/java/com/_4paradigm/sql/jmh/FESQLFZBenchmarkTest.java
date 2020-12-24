@@ -1,5 +1,6 @@
 package com._4paradigm.sql.jmh;
 
+import com._4paradigm.sql.tools.Util;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -18,8 +19,9 @@ public class FESQLFZBenchmarkTest {
     private static Logger logger = LoggerFactory.getLogger(FESQLClusterBenchmark.class);
     @Test
     public void execSQLTest() throws SQLException {
-        FESQLFZBenchmark benchmark = new FESQLFZBenchmark(true);
-        benchmark.setWindowNum(1);
+        FESQLFZBenchmark benchmark = new FESQLFZBenchmark(false);
+        Util.EnableProxy();
+        benchmark.setWindowNum(10);
         benchmark.setup();
         int loops = 1;
         for (int i = 0; i < loops; i++) {

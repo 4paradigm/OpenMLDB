@@ -60,7 +60,8 @@ inline uint32_t SDKGetStartOffset(int32_t column_count) {
     return SDK_HEADER_LENGTH + BitMapSize(column_count);
 }
 
-SQLRequestRow::SQLRequestRow(std::shared_ptr<fesql::sdk::Schema> schema)
+SQLRequestRow::SQLRequestRow(std::shared_ptr<fesql::sdk::Schema> schema,
+        const std::set<std::string>& record_cols)
     : schema_(schema),
       cnt_(0),
       size_(0),
@@ -91,6 +92,9 @@ SQLRequestRow::SQLRequestRow(std::shared_ptr<fesql::sdk::Schema> schema)
                 offset_vec_.push_back(str_field_start_offset_);
                 str_field_start_offset_ += iter->second;
             }
+        }
+        if (!record_cols.empty() && record_cols.find(schema->GetColumnName(idx)) != record_cols.end()) {
+            record_cols_.insert(static_cast<uint32_t>(idx));
         }
     }
 }
@@ -160,6 +164,13 @@ bool SQLRequestRow::AppendBool(bool val) {
     if (!Check(::fesql::sdk::kTypeBool)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<uint8_t*>(ptr)) = val ? 1 : 0;
+    if (record_cols_.find(cnt_) != record_cols_.end()) {
+        if (val) {
+            record_value_.emplace(schema_->GetColumnName(cnt_), "0");
+        } else {
+            record_value_.emplace(schema_->GetColumnName(cnt_), "1");
+        }
+    }
     cnt_++;
     return true;
 }
@@ -168,6 +179,9 @@ bool SQLRequestRow::AppendInt32(int32_t val) {
     if (!Check(::fesql::sdk::kTypeInt32)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int32_t*>(ptr)) = val;
+    if (record_cols_.find(cnt_) != record_cols_.end()) {
+        record_value_.emplace(schema_->GetColumnName(cnt_), std::to_string(val));
+    }
     cnt_++;
     return true;
 }
@@ -176,6 +190,9 @@ bool SQLRequestRow::AppendInt16(int16_t val) {
     if (!Check(::fesql::sdk::kTypeInt16)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int16_t*>(ptr)) = val;
+    if (record_cols_.find(cnt_) != record_cols_.end()) {
+        record_value_.emplace(schema_->GetColumnName(cnt_), std::to_string(val));
+    }
     cnt_++;
     return true;
 }
@@ -184,6 +201,9 @@ bool SQLRequestRow::AppendInt64(int64_t val) {
     if (!Check(::fesql::sdk::kTypeInt64)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
+    if (record_cols_.find(cnt_) != record_cols_.end()) {
+        record_value_.emplace(schema_->GetColumnName(cnt_), std::to_string(val));
+    }
     cnt_++;
     return true;
 }
@@ -192,6 +212,9 @@ bool SQLRequestRow::AppendTimestamp(int64_t val) {
     if (!Check(::fesql::sdk::kTypeTimestamp)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
+    if (record_cols_.find(cnt_) != record_cols_.end()) {
+        record_value_.emplace(schema_->GetColumnName(cnt_), std::to_string(val));
+    }
     cnt_++;
     return true;
 }
@@ -199,6 +222,9 @@ bool SQLRequestRow::AppendDate(int32_t val) {
     if (!Check(::fesql::sdk::kTypeDate)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<int32_t*>(ptr)) = val;
+    if (record_cols_.find(cnt_) != record_cols_.end()) {
+        record_value_.emplace(schema_->GetColumnName(cnt_), std::to_string(val));
+    }
     cnt_++;
     return true;
 }
@@ -225,6 +251,9 @@ bool SQLRequestRow::AppendDate(int32_t year, int32_t month, int32_t day) {
     date = date | ((month - 1) << 8);
     date = date | day;
     *(reinterpret_cast<int32_t*>(ptr)) = date;
+    if (record_cols_.find(cnt_) != record_cols_.end()) {
+        record_value_.emplace(schema_->GetColumnName(cnt_), std::to_string(date));
+    }
     cnt_++;
     return true;
 }
@@ -232,6 +261,9 @@ bool SQLRequestRow::AppendFloat(float val) {
     if (!Check(::fesql::sdk::kTypeFloat)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<float*>(ptr)) = val;
+    if (record_cols_.find(cnt_) != record_cols_.end()) {
+        record_value_.emplace(schema_->GetColumnName(cnt_), std::to_string(val));
+    }
     cnt_++;
     return true;
 }
@@ -240,15 +272,24 @@ bool SQLRequestRow::AppendDouble(double val) {
     if (!Check(::fesql::sdk::kTypeDouble)) return false;
     int8_t* ptr = buf_ + offset_vec_[cnt_];
     *(reinterpret_cast<double*>(ptr)) = val;
+    if (record_cols_.find(cnt_) != record_cols_.end()) {
+        record_value_.emplace(schema_->GetColumnName(cnt_), std::to_string(val));
+    }
     cnt_++;
     return true;
 }
+bool SQLRequestRow::AppendStringByteBufferVarName(char* string_buffer_var_name, uint32_t length) {
+    return AppendString(string_buffer_var_name, length);
+}
 
 bool SQLRequestRow::AppendString(const std::string& val) {
+    return AppendString(val.data(), val.size());
+}
+
+bool SQLRequestRow::AppendString(const char *val, uint32_t length) {
     if (!Check(::fesql::sdk::kTypeString)) return false;
-    if (str_offset_ + val.size() > size_) return false;
-    int8_t* ptr =
-        buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[cnt_];
+    if (str_offset_ + length > size_) return false;
+    int8_t* ptr = buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[cnt_];
     if (str_addr_length_ == 1) {
         *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset_;
     } else if (str_addr_length_ == 2) {
@@ -260,13 +301,15 @@ bool SQLRequestRow::AppendString(const std::string& val) {
     } else {
         *(reinterpret_cast<uint32_t*>(ptr)) = str_offset_;
     }
-    if (val.size() != 0) {
-        memcpy(reinterpret_cast<char*>(buf_ + str_offset_), val.c_str(),
-               val.size());
+    if (length != 0) {
+        memcpy(reinterpret_cast<char*>(buf_ + str_offset_), val, length);
     }
-    str_offset_ += val.size();
+    if (record_cols_.find(cnt_) != record_cols_.end()) {
+        record_value_.emplace(schema_->GetColumnName(cnt_), val);
+    }
+    str_offset_ += length;
     cnt_++;
-    str_length_current_ += val.size();
+    str_length_current_ += length;
     return true;
 }
 
@@ -314,6 +357,18 @@ bool SQLRequestRow::Build() {
     }
     is_ok_ = true;
     return true;
+}
+
+bool SQLRequestRow::GetRecordVal(const std::string& col, std::string* val) {
+    if (val == nullptr) {
+        return false;
+    }
+    auto iter = record_value_.find(col);
+    if (iter != record_value_.end()) {
+        val->assign(iter->second);
+        return true;
+    }
+    return false;
 }
 
 ::fesql::type::Type ProtoTypeFromDataType(::fesql::sdk::DataType type) {

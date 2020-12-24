@@ -2,15 +2,32 @@ package com._4paradigm.sql.tools;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.net.URL;
 
 import com._4paradigm.featuredb.proto.Base;
 
 public class Util {
+    private static Boolean NEED_PROXY = false;
+
+    public static void EnableProxy() {
+        NEED_PROXY = true;
+    }
+    public static boolean NeedProxy() {
+        return NEED_PROXY;
+    }
+
     public static String getContent(String httpUrl) {
         try {
             URL url = new URL(httpUrl);
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            HttpURLConnection con = null;
+            if (NEED_PROXY) {
+                con = (HttpURLConnection) url.openConnection(new Proxy(Proxy.Type.SOCKS,
+                        new InetSocketAddress("127.0.0.1",1080)));
+            } else {
+                con = (HttpURLConnection) url.openConnection();
+            }
             con.setRequestMethod("GET");
             con.connect();
             if (con.getResponseCode() == 200) {

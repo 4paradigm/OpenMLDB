@@ -1,17 +1,17 @@
 package com._4paradigm.sql.jmh;
 
 import com._4paradigm.sql.sdk.SqlExecutor;
-import com._4paradigm.sql.tools.Util;
 import com._4paradigm.sql.tools.Relation;
 import com._4paradigm.sql.tools.TableInfo;
+import com._4paradigm.sql.tools.Util;
 import org.openjdk.jmh.annotations.*;
-import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.Runner;
+import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import java.sql.*;
 import java.sql.Date;
+import java.sql.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 @Fork(value = 1, jvmArgs = {"-Xms32G", "-Xmx32G"})
 @Warmup(iterations = 1)
 
-public class FESQLFZBenchmark {
+public class FESQLPFZBenchmark {
     private SqlExecutor executor;
     private String db;
     private int pkNum = 1;
@@ -34,10 +34,11 @@ public class FESQLFZBenchmark {
     private String mainTable;
     List<Map<String, String>> mainTableValue;
     int pkBase = 1000000;
-    public FESQLFZBenchmark() {
+    private String pname = "d1" + System.nanoTime();
+    public FESQLPFZBenchmark() {
         this(false);
     }
-    public FESQLFZBenchmark(boolean enableDebug ) {
+    public FESQLPFZBenchmark(boolean enableDebug ) {
         executor = BenchmarkConfig.GetSqlExecutor(enableDebug);
         db = "db" + System.nanoTime();
         tableMap = new HashMap<>();
@@ -169,7 +170,7 @@ public class FESQLFZBenchmark {
     }
 
     private PreparedStatement getPreparedStatement() throws SQLException {
-        PreparedStatement requestPs = executor.getRequestPreparedStmt(db, script);
+        PreparedStatement requestPs = executor.getCallablePreparedStmt(db, pname);
         ResultSetMetaData metaData = requestPs.getMetaData();
         TableInfo table = tableMap.get(mainTable);
         if (table.getSchema().size() != metaData.getColumnCount()) {
@@ -215,6 +216,13 @@ public class FESQLFZBenchmark {
             if (!executor.executeDDL(db, table.getDDL())) {
                 return;
             }
+        }
+        TableInfo main = tableMap.get(mainTable);
+        String pro = "create PROCEDURE " + pname + "(" + main.getTyeString() + ") \n BEGIN \n" + script + "\n END;";
+        System.out.println(pro);
+        if (!executor.executeDDL(db, pro)) {
+            System.out.println("create PROCEDURE" + pro + "error");
+            return;
         }
         putData();
     }
@@ -295,7 +303,7 @@ public class FESQLFZBenchmark {
     }
 
     public static void main(String[] args) throws RunnerException {
-      /*FESQLFZBenchmark ben = new FESQLFZBenchmark();
+      /*FESQLPFZBenchmark ben = new FESQLPFZBenchmark();
       try {
           ben.setup();
           ben.execSQL();
@@ -304,7 +312,7 @@ public class FESQLFZBenchmark {
           e.printStackTrace();
       }*/
         Options opt = new OptionsBuilder()
-                .include(FESQLFZBenchmark.class.getSimpleName())
+                .include(FESQLPFZBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
         new Runner(opt).run();
