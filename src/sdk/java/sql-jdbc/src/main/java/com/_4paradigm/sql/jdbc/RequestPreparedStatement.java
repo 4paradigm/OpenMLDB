@@ -185,7 +185,7 @@ public class RequestPreparedStatement implements PreparedStatement {
         byte bytes[] = s.getBytes(CHARSET);
         stringsLen.put(i, bytes.length);
         hasSet.set(i - 1, true);
-        currentDatas.set(i - 1, s);
+        currentDatas.set(i - 1, bytes);
     }
 
     @Override
@@ -297,7 +297,8 @@ public class RequestPreparedStatement implements PreparedStatement {
                 } else if (DataType.kTypeInt64.equals(dataType)) {
                     ok = this.currentRow.AppendInt64((long) data);
                 } else if (DataType.kTypeString.equals(dataType)) {
-                    ok = this.currentRow.AppendString((String) data);
+                    byte[] bdata = (byte[])data;
+                    ok = this.currentRow.AppendStringByteBufferVarName(bdata, bdata.length);
                 } else if (DataType.kTypeTimestamp.equals(dataType)) {
                     ok = this.currentRow.AppendTimestamp((long) data);
                 } else {
