@@ -141,13 +141,13 @@ object HDFSUtil {
       case _ => String.valueOf(u.getScheme) + String.valueOf(u.getHost) + String.valueOf(u.getPort)
     }
     if (hostFSMap.keySet.contains(key)){
-      logger.info("File System has key:{}, value:{}", key, hostFSMap.get(key).toString)
+      logger.info(s"File System has key:${key}, value:${hostFSMap.get(key).toString}")
       hostFSMap(key)
     }
     else {
       val fs = FileSystem.get(u, conf)
       hostFSMap.put(key, fs)
-      logger.info("File System create key:{}, value:{}", key, fs.toString)
+      logger.info(s"File System create key:${key}, value:${fs.toString}")
       fs
     }
   }
