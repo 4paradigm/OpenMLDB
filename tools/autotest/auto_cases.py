@@ -164,7 +164,8 @@ def parse_args():
                         help="Show udf summary information")
     parser.add_argument("--max_cases", default=None, type=int,
                         help="Maximum num cases to run, default no limit")
-
+    parser.add_argument("--yaml_count", default=10, type=int,
+                        help="生成yaml的数量默认为10")
     return parser.parse_args(sys.argv[1:])
 
 
@@ -1344,26 +1345,25 @@ def run(args):
                          ", ".join(top_udfs(history_udf_failures))) + "]"
     logging.info("Wait workers to exit...")
 
+def gen_case_yaml():
+    args = parse_args()
+    udf_pool = UDFPool(args.udf_path, args)
+    begin = time.time()
+    case_num = args.yaml_count
+    for i in range(case_num):
+        test_name = str(uuid.uuid1())
+        case = gen_single_window_test(test_name, udf_pool, args)
+        case_dir = args.log_dir
+        if not os.path.exists(case_dir):
+            os.makedirs(case_dir)
+        yamlName = "auto_gen_case_"+str(i)+".yaml"
+        with open(os.path.join(case_dir, yamlName), "w") as yaml_file:
+            yaml_file.write(yaml.dump(case))
+    end = time.time()
+    print("use time:"+str(end-begin))
 
 def main(args):
     run(args)
 
 if __name__ == "__main__":
-    args = parse_args()
-    # main(args)
-    udf_pool = UDFPool(args.udf_path, args)
-    begin = time.time()
-    for _ in range(10):
-        test_name = str(uuid.uuid1())
-        case = gen_single_window_test(test_name, udf_pool, args)
-        case_dir = os.path.join(args.log_dir, test_name)
-        if not os.path.exists(case_dir):
-            os.makedirs(case_dir)
-        with open(os.path.join(case_dir, "case.yaml"), "w") as yaml_file:
-            yaml_file.write(yaml.dump(case))
-    end = time.time()
-    print(end-begin)
-
-
-# if __name__ == "__main__":
-#     main(parse_args())
+    main(parse_args())
