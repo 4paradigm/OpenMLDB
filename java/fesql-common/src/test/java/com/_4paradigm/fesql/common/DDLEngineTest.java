@@ -269,7 +269,7 @@ public class DDLEngineTest {
     @Test(enabled = false)
     public void testAudoDDL() throws Exception {
 
-        String rootPath = "ddl";
+        String rootPath = "temp";
         File root = new File(DDLEngineTest.class.getClassLoader().getResource(rootPath).getPath());
 
 //        File[] cases = root.listFiles();
@@ -294,6 +294,8 @@ public class DDLEngineTest {
             String ddl = genDDL(FileUtils.readFileToString(sqlMap.get(e), "UTF-8"), FileUtils.readFileToString(jsonMap.get(e), "UTF-8"), 1, 1);
             String config = sql2Feconfig(FileUtils.readFileToString(sqlMap.get(e), "UTF-8"), FileUtils.readFileToString(jsonMap.get(e), "UTF-8"));
 
+            System.out.println(ddl);
+            System.out.println(config);
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             JsonParser parser = new JsonParser();
             config = gson.toJson(parser.parse(config));
