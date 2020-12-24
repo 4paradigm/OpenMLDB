@@ -23,7 +23,7 @@ import java.util.Random;
 public class ComplexSql3Example extends BaseExample {
     private static final Logger logger = LoggerFactory.getLogger(ComplexSql3Example.class);
     private SqlExecutor sqlExecutor = null;
-    private String db = "fix_test1";
+    private String db = "fix_test9";
     private String spSql;
     private List<String> tableDDLList = new ArrayList<>();
 
@@ -43,6 +43,7 @@ public class ComplexSql3Example extends BaseExample {
         option.setZkCluster(zkCluster);
         option.setZkPath(zkPath);
         option.setSessionTimeout(10000);
+        option.setRequestTimeout(60000);
         sqlExecutor = new SqlClusterExecutor(option);
     }
 

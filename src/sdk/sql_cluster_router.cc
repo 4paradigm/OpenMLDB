@@ -1224,7 +1224,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVect
                 sp_info.add_tables(table);
             }
             // send request to ns client
-            if (!ns_ptr->CreateProcedure(sp_info, msg)) {
+            if (!ns_ptr->CreateProcedure(sp_info, options_.request_timeout, msg)) {
                 *msg = "create procedure failed, msg: " + *msg;
                 return false;
             }
