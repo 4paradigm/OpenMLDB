@@ -183,7 +183,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         byte bytes[] = s.getBytes(CHARSET);
         stringsLen.put(i, bytes.length);
         hasSet.set(i - 1, true);
-        currentDatas.set(i - 1, s);
+        currentDatas.set(i - 1, bytes);
     }
 
     @Override
@@ -299,7 +299,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
                 } else if (DataType.kTypeInt64.equals(curType)) {
                     ok = currentRow.AppendInt64((long) data);
                 } else if (DataType.kTypeString.equals(curType)) {
-                    ok = currentRow.AppendString((String) data);
+                    byte[] bdata = (byte[])data;
+                    ok = currentRow.AppendStringByteBufferVarName(bdata, bdata.length);
                 } else if (DataType.kTypeTimestamp.equals(curType)) {
                     ok = currentRow.AppendTimestamp((long) data);
                 } else {

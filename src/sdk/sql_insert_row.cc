@@ -248,6 +248,10 @@ bool SQLInsertRow::AppendString(const std::string& val) {
     return false;
 }
 
+bool SQLInsertRow::AppendStringByteBufferVarName(char* string_buffer_var_name, uint32_t length) {
+    return AppendString(string_buffer_var_name, length);
+}
+
 bool SQLInsertRow::AppendString(const char* val, uint32_t length) {
     if (IsDimension()) {
         if (0 == length) {

@@ -81,10 +81,13 @@ class ClusterSDK {
     bool GetTablet(const std::string& db, const  std::string& name,
             std::vector<std::shared_ptr<::rtidb::catalog::TabletAccessor>>* tablets);
     std::shared_ptr<::rtidb::catalog::TabletAccessor> GetTablet(const std::string& db,
-                                                                   const  std::string& name);
+                                                                   const std::string& name);
     std::shared_ptr<::rtidb::catalog::TabletAccessor> GetTablet(const std::string& db,
-                                                                   const  std::string& name,
+                                                                   const std::string& name,
                                                                    uint32_t pid);
+    std::shared_ptr<::rtidb::catalog::TabletAccessor> GetTablet(const std::string& db,
+                                                                   const std::string& name,
+                                                                   const std::string& pk);
 
     std::shared_ptr<fesql::sdk::ProcedureInfo> GetProcedureInfo(
             const std::string& db, const std::string& sp_name, std::string* msg);
