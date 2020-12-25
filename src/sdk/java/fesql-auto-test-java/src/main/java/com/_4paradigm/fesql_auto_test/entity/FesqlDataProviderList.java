@@ -1,9 +1,12 @@
 package com._4paradigm.fesql_auto_test.entity;
 
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.SerializationUtils;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class FesqlDataProviderList {
@@ -12,7 +15,8 @@ public class FesqlDataProviderList {
     public List<SQLCase> getCases() {
         List<SQLCase> cases = new ArrayList<SQLCase>();
         for (FesqlDataProvider dataProvider : dataProviderList) {
-            cases.addAll(dataProvider.getCases());
+            List<SQLCase> sqlCases = dataProvider.getCases();
+            cases.addAll(sqlCases);
         }
         return cases;
     }

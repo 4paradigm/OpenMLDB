@@ -10,11 +10,11 @@ import lombok.extern.slf4j.Slf4j;
 public class ExecutorFactory {
 
     public enum ExecutorType {
-        kDDL,
-        kBatch,
-        kRequest,
-        kBatchRequest,
-        kRequestWithSp,
+        kDDL,                       //执行DDL
+        kBatch,                     //在线批量查询
+        kRequest,                   //请求模式
+        kBatchRequest,              //批量请求模式
+        kRequestWithSp,             //
         kRequestWithSpAsync,
         kBatchRequestWithSp,
         kBatchRequestWithSpAsync,

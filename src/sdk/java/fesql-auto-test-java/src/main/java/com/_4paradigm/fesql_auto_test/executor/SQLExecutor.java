@@ -21,6 +21,7 @@ public class SQLExecutor extends BaseExecutor {
 
     protected String dbName;
     protected List<String> tableNames = Lists.newArrayList();
+    private List<InputDesc> tables;
 
     public SQLExecutor(SqlExecutor executor, SQLCase fesqlCase) {
         super(executor, fesqlCase);
@@ -54,6 +55,7 @@ public class SQLExecutor extends BaseExecutor {
         }
 
         if (!CollectionUtils.isEmpty(fesqlCase.getInputs())) {
+            tables = fesqlCase.getInputs();
             for (InputDesc inputDesc : fesqlCase.getInputs()) {
                 tableNames.add(inputDesc.getName());
             }
@@ -83,12 +85,14 @@ public class SQLExecutor extends BaseExecutor {
 
     @Override
     protected void tearDown() {
-        if (CollectionUtils.isEmpty(tableNames)) {
+        if (CollectionUtils.isEmpty(tables)) {
             return;
         }
-        for (String tableName : tableNames) {
-            String drop = "drop table " + tableName + ";";
-            FesqlUtil.ddl(executor, dbName, drop);
+        for (InputDesc table : tables) {
+            if(table.isDrop()) {
+                String drop = "drop table " + table.getName() + ";";
+                FesqlUtil.ddl(executor, dbName, drop);
+            }
         }
     }
 }
