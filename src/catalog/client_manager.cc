@@ -130,10 +130,11 @@ void AsyncTableHandler::SyncRpcResponse() {
         LOG(WARNING) << status_.msg;
         return;
     }
+    size_t buf_offset = 0;
     for (int i = 0; i < response->row_sizes_size(); ++i) {
-        size_t common_size = response->row_sizes(i);
+        size_t row_size = response->row_sizes(i);
         fesql::codec::Row row;
-        if (!codec::DecodeRpcRow(cntl->response_attachment(), 0, common_size, response->non_common_slices(), &row)) {
+        if (!codec::DecodeRpcRow(cntl->response_attachment(), buf_offset, row_size, response->non_common_slices(), &row)) {
             status_.code = fesql::common::kResponseError;
             status_.msg = "response error: content decode fail";
             LOG(WARNING) << status_.msg;
@@ -141,6 +142,7 @@ void AsyncTableHandler::SyncRpcResponse() {
         }
         DLOG(INFO) << "Add row";
         AddRow(row);
+        buf_offset += row_size;
     }
     status_ = fesql::base::Status::OK();
     return;
