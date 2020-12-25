@@ -39,7 +39,7 @@ class FesqlSession {
     this.sparkSession.conf.set(FesqlConfig.configTimeZone, FesqlConfig.timeZone)
 
     for ((k, v) <- this.sparkSession.conf.getAll) {
-      logger.info("fesql config: {} = {}", k , v)
+      logger.info(s"fesql config: ${k} = ${v}")
       scalaConfig += (k -> v)
       k match {
         case FesqlConfig.configSkewRadio => FesqlConfig.skewRatio = v.toDouble

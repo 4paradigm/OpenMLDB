@@ -29,7 +29,7 @@ class SparkPlanner(session: SparkSession, config: Map[String, Any]) {
   def this(session: SparkSession) = {
     this(session, session.conf.getAll)
     for ((k, v) <- config.asInstanceOf[Map[String, String]]) {
-      logger.info("spark plan fesql config: {} = {}", k, v)
+      logger.info(s"spark plan fesql config: ${k} = ${v}")
       k match {
         case FesqlConfig.configSkewRadio => FesqlConfig.skewRatio = v.toDouble
         case FesqlConfig.configSkewLevel => FesqlConfig.skewLevel = v.toInt
