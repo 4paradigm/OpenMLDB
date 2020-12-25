@@ -1273,7 +1273,7 @@ class RunnerBuilder {
     std::unordered_map<fesql::vm::Runner*, ::fesql::vm::Runner*>
         proxy_runner_map_;
     std::set<size_t> batch_common_node_set_;
-    ClusterTask BuildTaskForBinaryRunner(const ClusterTask& left,
+    ClusterTask BinaryInherit(const ClusterTask& left,
                                          const ClusterTask& right,
                                          Runner* runner, const Key& index_key,
                                          const TaskBiasType bias = kNoBias);
@@ -1286,13 +1286,13 @@ class RunnerBuilder {
                                                 const Key& index_key,
                                                 const TaskBiasType bias);
     ClusterTask BuildProxyRunnerForClusterTask(const ClusterTask& task);
-    ClusterTask NormalTask(Runner* runner) { return ClusterTask(runner); }
-    ClusterTask NewClusterTaskWithIndex(
+    ClusterTask InvalidTask() { return ClusterTask(); }
+    ClusterTask CommonTask(Runner* runner) { return ClusterTask(runner); }
+    ClusterTask UnCompletedClusterTask(
         Runner* runner, const std::shared_ptr<TableHandler> table_handler,
         std::string index);
-    ClusterTask InheritLocalTask(const ClusterTask& input, Runner* runner);
     ClusterTask BuildRequestTask(RequestRunner* runner);
-    ClusterTask InheritTask(const ClusterTask& input, Runner* runner);
+    ClusterTask UnaryInheritTask(const ClusterTask& input, Runner* runner);
 };
 
 class RunnerContext {
