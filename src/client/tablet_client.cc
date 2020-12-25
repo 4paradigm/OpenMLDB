@@ -1694,7 +1694,7 @@ bool TabletClient::Scan(const ::rtidb::api::ScanRequest& request,
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan, cntl,
                                   &request, response);
     if (!ok || response->code() != 0) {
-        LOG(WARNING) << "fail to scan table with tid " << request->tid();
+        LOG(WARNING) << "fail to scan table with tid " << request.tid();
         return false;
     }
     return true;
