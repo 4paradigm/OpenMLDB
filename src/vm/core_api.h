@@ -90,7 +90,7 @@ class CoreAPI {
 
     static bool ComputeCondition(const fesql::vm::RawPtrHandle fn,
                                  const Row& row,
-                                 fesql::codec::RowView* row_view,
+                                 const fesql::codec::RowView* row_view,
                                  size_t out_idx);
 
     static bool EnableSignalTraceback();
