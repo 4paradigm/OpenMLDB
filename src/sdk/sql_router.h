@@ -86,7 +86,7 @@ class SQLRouter {
                                std::shared_ptr<rtidb::sdk::SQLInsertRows> row,
                                fesql::sdk::Status* status) = 0;
 
-    virtual std::shared_ptr<TableReader> GetTableReader();
+    virtual std::shared_ptr<rtidb::sdk::TableReader> GetTableReader();
 
     virtual std::shared_ptr<ExplainInfo> Explain(
         const std::string& db, const std::string& sql,

@@ -15,6 +15,7 @@ public interface SqlExecutor {
     boolean executeInsert(String db, String sql);
     boolean executeInsert(String db, String sql, SQLInsertRow row);
     boolean executeInsert(String db, String sql, SQLInsertRows rows);
+    TableReader getTableReader();
     ResultSet executeSQL(String db, String sql);
     SQLInsertRow getInsertRow(String db, String sql);
     PreparedStatement getInsertPreparedStmt(String db, String sql);

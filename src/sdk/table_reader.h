@@ -42,8 +42,8 @@ class TableReader {
 
     virtual std::shared_ptr<fesql::sdk::ResultSet> Scan(const std::string& db,
             const std::string& table, const std::string& key,
-            long st,
-            long et, const ScanOption& so);
+            int64_t st,
+            int64_t et, const ScanOption& so);
 
 };
 

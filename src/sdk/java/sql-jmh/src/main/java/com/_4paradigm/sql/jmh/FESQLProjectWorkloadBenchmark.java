@@ -1,12 +1,13 @@
 package com._4paradigm.sql.jmh;
 
 import com._4paradigm.sql.ResultSet;
+import com._4paradigm.sql.ScanOption;
+import com._4paradigm.sql.TableReader;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
-import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
@@ -41,6 +42,9 @@ public class FESQLProjectWorkloadBenchmark {
     private String query200 = "select col200 from ddl200 where col198='200_key';";
     private String query500 = "select col500 from ddl500 where col498='500_key';";
     private String query361 = "select col500 from ddl500 where col498='3000_key'";
+    private TableReader reader;
+    private long st;
+    private long et;
 
     public FESQLProjectWorkloadBenchmark() {
         SdkOption sdkOption = new SdkOption();
@@ -196,6 +200,8 @@ public class FESQLProjectWorkloadBenchmark {
                     impl.execute();
                 }
                 query361 += " and col499 > timestamp(" + (ts - 3000) + ") and col499 < timestamp(" +(ts - 2638) +");";
+                st = ts - 2638 ;
+                et = ts - 3000 ;
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -215,6 +221,7 @@ public class FESQLProjectWorkloadBenchmark {
             if (rs.Size() != 500) {
                 throw new Exception("check failed");
             }
+            reader = executor.getTableReader();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -238,6 +245,12 @@ public class FESQLProjectWorkloadBenchmark {
     @Benchmark
     public void projectWhere361m() {
         executor.executeSQL(db, query361);
+    }
+
+    @Benchmark
+    public void projectScan361m() {
+        ScanOption so = new ScanOption();
+        reader.Scan(db, "ddl500", "500_key", st, et, so);
     }
 
     public static void main(String[] args) throws Exception {

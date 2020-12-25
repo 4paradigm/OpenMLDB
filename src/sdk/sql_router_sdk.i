@@ -45,6 +45,7 @@ using rtidb::sdk::SQLInsertRows;
 using rtidb::sdk::ExplainInfo;
 using fesql::sdk::ProcedureInfo;
 using rtidb::sdk::QueryFuture;
+using rtidb::sdk::TableReader;
 %}
 
 %include "sdk/sql_router.h"
@@ -52,4 +53,4 @@ using rtidb::sdk::QueryFuture;
 %include "sdk/result_set.h"
 %include "sdk/sql_request_row.h"
 %include "sdk/sql_insert_row.h"
-#include "sdk/table_reader.h"
+%include "sdk/table_reader.h"
