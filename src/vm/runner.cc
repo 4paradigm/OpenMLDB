@@ -2637,26 +2637,49 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
     }
     switch (batch_input->Get(0)->GetHanlderType()) {
         case kRowHandler: {
-            std::vector<Row> rows;
-            if (!ExtractRows(batch_input, rows)) {
-                LOG(WARNING) << "run proxy runner with rows fail, batch "
-                                "rows is empty";
-                return fail_ptr;
-            }
-            std::shared_ptr<TableHandler> table =
-                RunWithRowsInput(ctx, rows, producers_[0]->need_batch_cache());
-            if (!table) {
-                LOG(WARNING) << "run proxy runner with rows fail, result "
-                                "table is null";
-                return fail_ptr;
-            }
+            bool input_batch_is_common = producers_[0]->need_batch_cache();
+            if (input_batch_is_common) {
+                Row row;
+                if (!ExtractRow(batch_input->Get(0), &row)) {
+                    LOG(WARNING) << "run proxy runner with rows fail, batch "
+                                    "rows is empty";
+                    return fail_ptr;
+                }
+                std::shared_ptr<TableHandler> table = RunWithRowsInput(
+                    ctx, std::vector<Row>({row}), input_batch_is_common);
+                if (!table) {
+                    LOG(WARNING) << "run proxy runner with rows fail, result "
+                                    "table is null";
+                    return fail_ptr;
+                }
 
-            std::shared_ptr<DataHandlerVector> outputs =
-                std::make_shared<DataHandlerVector>();
-            for (size_t idx = 0; idx < rows.size(); idx++) {
-                outputs->Add(std::make_shared<AysncRowHandler>(idx, table));
+                std::shared_ptr<DataHandlerRepeater> outputs =
+                    std::make_shared<DataHandlerRepeater>(
+                        std::make_shared<AysncRowHandler>(0, table),
+                        batch_input->GetSize());
+                return outputs;
+            } else {
+                std::vector<Row> rows;
+                if (!ExtractRows(batch_input, rows)) {
+                    LOG(WARNING) << "run proxy runner with rows fail, batch "
+                                    "rows is empty";
+                    return fail_ptr;
+                }
+                std::shared_ptr<TableHandler> table =
+                    RunWithRowsInput(ctx, rows, input_batch_is_common);
+                if (!table) {
+                    LOG(WARNING) << "run proxy runner with rows fail, result "
+                                    "table is null";
+                    return fail_ptr;
+                }
+
+                std::shared_ptr<DataHandlerVector> outputs =
+                    std::make_shared<DataHandlerVector>();
+                for (size_t idx = 0; idx < rows.size(); idx++) {
+                    outputs->Add(std::make_shared<AysncRowHandler>(idx, table));
+                }
+                return outputs;
             }
-            return outputs;
         }
         case kTableHandler: {
             std::shared_ptr<DataHandlerVector> outputs =
@@ -2668,8 +2691,7 @@ std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
                                     "rows is empty";
                     return fail_ptr;
                 }
-                outputs->Add(RunWithRowsInput(
-                    ctx, rows, producers_[0]->need_batch_cache()));
+                outputs->Add(RunWithRowsInput(ctx, rows, false));
             }
             return outputs;
         }
@@ -2763,13 +2785,18 @@ std::shared_ptr<TableHandler> ProxyRequestRunner::RunWithRowsInput(
         return fail_ptr;
     }
     // collect pk list from rows
-    std::string pk = "";
+    std::shared_ptr<Tablet> tablet = std::shared_ptr<Tablet>();
     KeyGenerator generator(task.GetIndexKey().fn_info());
-    std::vector<std::string> pks;
-    for (auto& row : rows) {
-        pks.push_back(generator.Gen(row));
+    if (request_is_common) {
+        std::string pk = generator.Gen(rows[0]);
+        tablet = table_handler->GetTablet(task.index(), pk);
+    } else {
+        std::vector<std::string> pks;
+        for (auto& row : rows) {
+            pks.push_back(generator.Gen(row));
+        }
+        tablet = table_handler->GetTablet(task.index(), pks);
     }
-    auto tablet = table_handler->GetTablet(task.index(), pks);
     if (!tablet) {
         LOG(WARNING) << "fail to run proxy runner with rows: tablet is null";
         return fail_ptr;

@@ -436,7 +436,7 @@ class Runner : public node::NodeBase<Runner> {
         }
     }
     const bool need_cache() { return need_cache_; }
-    const bool need_batch_cache() { return need_cache_; }
+    const bool need_batch_cache() { return need_batch_cache_; }
     void EnableCache() { need_cache_ = true; }
     void DisableCache() { need_cache_ = false; }
     void EnableBatchCache() { need_batch_cache_ = true; }
