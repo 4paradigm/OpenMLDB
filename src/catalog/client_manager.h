@@ -60,7 +60,8 @@ class TabletRowHandler : public ::fesql::vm::RowHandler {
 };
 class AsyncTableHandler : public ::fesql::vm::MemTableHandler {
  public:
-    explicit AsyncTableHandler(rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback);
+    explicit AsyncTableHandler(rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback,
+                               const bool is_common);
     ~AsyncTableHandler() {
         if (nullptr != callback_) {
             callback_->UnRef();
@@ -90,6 +91,7 @@ class AsyncTableHandler : public ::fesql::vm::MemTableHandler {
     void SyncRpcResponse();
     fesql::base::Status status_;
     rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback_;
+    bool request_is_common_;
 };
 class AsyncTablesHandler : public ::fesql::vm::MemTableHandler {
  public:
@@ -160,8 +162,8 @@ class TabletAccessor : public ::fesql::vm::Tablet {
     std::shared_ptr<::fesql::vm::TableHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
                                                         const std::set<size_t>& common_column_indices,
                                                         const std::vector<::fesql::codec::Row>& row,
-                                                        const bool request_is_common,
-                                                        const bool is_procedure, const bool is_debug) override;
+                                                        const bool request_is_common, const bool is_procedure,
+                                                        const bool is_debug) override;
     const std::string& GetName() const { return name_; }
 
  private:
@@ -196,8 +198,8 @@ class TabletsAccessor : public ::fesql::vm::Tablet {
     std::shared_ptr<fesql::vm::TableHandler> SubQuery(uint32_t task_id, const std::string& db, const std::string& sql,
                                                       const std::set<size_t>& common_column_indices,
                                                       const std::vector<fesql::codec::Row>& rows,
-                                                      const bool request_is_common,
-                                                      const bool is_procedure, const bool is_debug);
+                                                      const bool request_is_common, const bool is_procedure,
+                                                      const bool is_debug);
 
  private:
     const std::string name_;
