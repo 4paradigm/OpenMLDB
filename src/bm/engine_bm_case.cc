@@ -16,12 +16,14 @@
  */
 
 #include "bm/engine_bm_case.h"
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 #include "benchmark/benchmark.h"
 #include "bm/base_bm.h"
+#include "codec/type_codec.h"
 #include "gtest/gtest.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Function.h"
@@ -39,10 +41,12 @@
 #include "parser/parser.h"
 #include "tablet/tablet_catalog.h"
 #include "vm/engine.h"
+#include "vm/engine_test.h"
 
 namespace fesql {
 namespace bm {
 using codec::Row;
+using sqlcase::SQLCase;
 using vm::BatchRunSession;
 using vm::Engine;
 using vm::RequestRunSession;
@@ -64,6 +68,42 @@ static const int64_t RunTableRequest(
     }
     return cnt;
 }
+
+int32_t MapTopFn(int64_t limit) {
+    double d[5];
+    std::string key = "key";
+    codec::StringRef rkey(key.size(), key.c_str());
+    for (int j = 0; j < 5; j++) {
+        std::map<codec::StringRef, int32_t> state;
+        for (uint32_t i = 0; i < limit; i++) {
+            auto it = state.find(rkey);
+            if (it == state.end()) {
+                state.insert(it, {rkey, 1});
+            } else {
+                auto& single = it->second;
+                single += 1;
+            }
+        }
+        int max = 0;
+        int size = 0;
+        for (auto it = state.begin(); it != state.end(); ++it) {
+            size += it->second;
+            if (it->second > max) {
+                max = it->second;
+            }
+        }
+        d[j] = static_cast<double>(max) / size;
+    }
+    return 0;
+}
+
+void MapTop1(benchmark::State* state, MODE mode, int64_t limit_cnt,
+             int64_t size) {
+    for (auto _ : *state) {
+        benchmark::DoNotOptimize(MapTopFn(size));
+    }
+}
+
 static void EngineRequestMode(const std::string sql, MODE mode,
                               int64_t limit_cnt, int64_t size,
                               benchmark::State* state) {
@@ -157,7 +197,7 @@ void EngineWindowSumFeature1(benchmark::State* state, MODE mode,
     EngineRequestMode(sql, mode, limit_cnt, size, state);
 }
 void EngineWindowRowsSumFeature1(benchmark::State* state, MODE mode,
-                             int64_t limit_cnt, int64_t size) {  // NOLINT
+                                 int64_t limit_cnt, int64_t size) {  // NOLINT
     // prepare data into table
     const std::string sql =
         "SELECT "
@@ -296,6 +336,38 @@ void EngineWindowSumFeature5(benchmark::State* state, MODE mode,
         "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
         "30d "
         "PRECEDING AND CURRENT ROW) limit " +
+        std::to_string(limit_cnt) + ";";
+    EngineRequestMode(sql, mode, limit_cnt, size, state);
+}
+
+void EngineWindowDistinctCntFeature(benchmark::State* state, MODE mode,
+                                    int64_t limit_cnt,
+                                    int64_t size) {  // NOLINT
+    const std::string sql =
+        "SELECT "
+        "distinct_count(col6) OVER  w1  as top1, "
+        "distinct_count(col6) OVER  w1  as top2, "
+        "distinct_count(col6) OVER  w1  as top3, "
+        "distinct_count(col6) OVER  w1  as top4, "
+        "distinct_count(col6) OVER  w1  as top5 "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "30d PRECEDING AND CURRENT ROW) limit " +
+        std::to_string(limit_cnt) + ";";
+    EngineRequestMode(sql, mode, limit_cnt, size, state);
+}
+
+void EngineWindowTop1RatioFeature(benchmark::State* state, MODE mode,
+                                  int64_t limit_cnt,
+                                  int64_t size) {  // NOLINT
+    const std::string sql =
+        "SELECT "
+        "fz_top1_ratio(col6) OVER  w1  as top1, "
+        "fz_top1_ratio(col6) OVER  w1  as top2, "
+        "fz_top1_ratio(col6) OVER  w1  as top3, "
+        "fz_top1_ratio(col6) OVER  w1  as top4, "
+        "fz_top1_ratio(col6) OVER  w1  as top5 "
+        "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 RANGE BETWEEN "
+        "30d PRECEDING AND CURRENT ROW) limit " +
         std::to_string(limit_cnt) + ";";
     EngineRequestMode(sql, mode, limit_cnt, size, state);
 }
@@ -614,5 +686,58 @@ void EngineRequestSimpleSelectDate(benchmark::State* state,
         "cases/resource/benchmark_t1_with_time_one_row.yaml";
     EngineRequestModeSimpleQueryBM("db", "t1", sql, 1, resource, state, mode);
 }
+
+void EngineBenchmarkOnCase(const std::string& yaml_path,
+                           const std::string& case_id,
+                           vm::EngineMode engine_mode,
+                           const vm::EngineOptions& engine_options,
+                           benchmark::State* state) {
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+    std::vector<SQLCase> cases;
+    SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
+                                    yaml_path, cases);
+    const SQLCase* target_case = nullptr;
+    for (const auto& sql_case : cases) {
+        if (sql_case.id() == case_id) {
+            target_case = &sql_case;
+            break;
+        }
+    }
+    if (target_case == nullptr) {
+        LOG(WARNING) << "Fail to find case #" << case_id << " in " << yaml_path;
+        return;
+    }
+    std::unique_ptr<vm::EngineTestRunner> engine_runner;
+    if (engine_mode == vm::kBatchMode) {
+        engine_runner = std::unique_ptr<vm::BatchEngineTestRunner>(
+            new vm::BatchEngineTestRunner(*target_case, engine_options));
+    } else if (engine_mode == vm::kRequestMode) {
+        LOG(WARNING) << "Request mode case can not benchmark now";
+        return;
+    } else {
+        engine_runner = std::unique_ptr<vm::BatchRequestEngineTestRunner>(
+            new vm::BatchRequestEngineTestRunner(
+                *target_case, engine_options,
+                target_case->batch_request().common_column_indices_));
+    }
+    base::Status status = engine_runner->Compile();
+    if (!status.isOK()) {
+        LOG(WARNING) << "Compile error: " << status;
+        return;
+    }
+    status = engine_runner->PrepareData();
+    if (!status.isOK()) {
+        LOG(WARNING) << "Prepare data error: " << status;
+        return;
+    }
+    std::vector<Row> output_rows;
+    for (auto _ : *state) {
+        output_rows.clear();
+        benchmark::DoNotOptimize(static_cast<const base::Status>(
+            engine_runner->Compute(&output_rows)));
+    }
+}
+
 }  // namespace bm
 }  // namespace fesql

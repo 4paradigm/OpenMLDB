@@ -3,6 +3,7 @@ debugs:
 cases:
   - id: 0
     desc: 正常union
+    mode: cluster-unsupport
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
@@ -26,6 +27,7 @@ cases:
         - [5,"ee",21,34]
   - id: 1
     desc: union的表列个数不一致
+    mode: cluster-unsupport
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
@@ -44,6 +46,7 @@ cases:
       success: false
   - id: 2
     desc: 列类型不一致
+    mode: cluster-unsupport
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
@@ -62,6 +65,7 @@ cases:
       success: false
   - id: 3
     desc: 列名不一致
+    mode: cluster-unsupport
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
@@ -80,6 +84,7 @@ cases:
       success: false
   - id: 4
     desc: 使用列别名后schema一致
+    mode: cluster-unsupport
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
@@ -153,6 +158,7 @@ cases:
         - [5,"ee",21,34]
   - id: 7
     desc: 样本表union表都使用索引
+    mode: cluster-unsupport
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
@@ -176,6 +182,7 @@ cases:
         - [5,"ee",21,34]
   - id: 8
     desc: union多表
+    mode: cluster-unsupport
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
@@ -228,6 +235,7 @@ cases:
         - [5,"ee",21,34]
   - id: 10
     desc: 使用两个pk
+    mode: cluster-unsupport
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c1|c3:c7"]
@@ -253,6 +261,7 @@ cases:
         - [6,"ee",21,67]
   - id: 11
     desc: 样本表和union表都使用子查询
+    mode: cluster-unsupport
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
@@ -276,6 +285,7 @@ cases:
         - [5,"ee",21,34]
   - id: 12
     desc: union多表,其中一个子查询
+    mode: cluster-unsupport
     inputs:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]

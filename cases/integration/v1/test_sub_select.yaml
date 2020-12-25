@@ -154,7 +154,7 @@ cases:
   -
     id: 8
     desc: window样本表和副表都作子查询
-    mode: rtidb-batch-unsupport, python-unsupport
+    mode: rtidb-batch-unsupport, python-unsupport, cluster-unsupport
     inputs:
       -
         columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]

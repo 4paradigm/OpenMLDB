@@ -2,12 +2,15 @@ package com._4paradigm.fesql.spark.nodes
 
 import com._4paradigm.fesql.common.{FesqlException, JITManager, SerializableByteBuffer}
 import com._4paradigm.fesql.spark._
+import com._4paradigm.fesql.spark.nodes.window.WindowComputerWithSampleSupport
 import com._4paradigm.fesql.spark.utils.{AutoDestructibleIterator, FesqlUtil, SparkColumnUtil, SparkRowUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalWindowAggrerationNode, WindowInterface}
+import org.apache.hadoop.fs.FileSystem
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Column, DataFrame, Row, functions}
 import org.apache.spark.sql.types._
+import org.apache.spark.util.SerializableConfiguration
 
 import scala.collection.mutable
 
@@ -33,15 +36,17 @@ object WindowAggPlan {
     val inputDf = groupAndSort(ctx, node, input.getDf(ctx.getSparkSession))
     val windowAggConfig = createWindowAggConfig(ctx, node)
 
-    val resultRDD = inputDf.rdd.mapPartitions(iter => {
-      // ensure worker native
-      val tag = windowAggConfig.moduleTag
-      val buffer = windowAggConfig.moduleNoneBroadcast.getBuffer
-      JITManager.initJITModule(tag, buffer)
-      val jit = JITManager.getJIT(tag)
+    val hadoopConf = new SerializableConfiguration(
+      ctx.getSparkSession.sparkContext.hadoopConfiguration)
 
-      windowAggIter(iter, jit, windowAggConfig)
-    })
+    val resultRDD = inputDf.rdd.mapPartitionsWithIndex {
+      case (partitionIndex, iter) =>
+        // create computer
+        val computer = createComputer(partitionIndex, hadoopConf, windowAggConfig)
+
+        // window iteration
+        windowAggIter(computer, iter, windowAggConfig)
+    }
     resultRDD
   }
 
@@ -54,15 +59,17 @@ object WindowAggPlan {
     val inputDf = groupAndSort(ctx, node, union)
     val windowAggConfig = createWindowAggConfig(ctx, node)
 
-    val resultRDD = inputDf.rdd.mapPartitions(iter => {
-      // ensure worker native
-      val tag = windowAggConfig.moduleTag
-      val buffer = windowAggConfig.moduleNoneBroadcast.getBuffer
-      JITManager.initJITModule(tag, buffer)
-      val jit = JITManager.getJIT(tag)
+    val hadoopConf = new SerializableConfiguration(
+      ctx.getSparkSession.sparkContext.hadoopConfiguration)
 
-      windowAggIterWithUnionFlag(iter, jit, windowAggConfig)
-    })
+    val resultRDD = inputDf.rdd.mapPartitionsWithIndex {
+      case (partitionIndex, iter) =>
+        // create computer
+        val computer = createComputer(partitionIndex, hadoopConf, windowAggConfig)
+
+        // window iteration
+        windowAggIterWithUnionFlag(computer, iter, windowAggConfig)
+    }
     resultRDD
   }
 
@@ -98,6 +105,11 @@ object WindowAggPlan {
 
     // process window op
     val windowOp = node.window()
+    val windowName = if (windowOp.getName_.isEmpty) {
+      "anonymous_" + System.currentTimeMillis()
+    } else {
+      windowOp.getName_
+    }
 
     // process order key
     val orders = windowOp.sort().orders().order_by()
@@ -118,7 +130,11 @@ object WindowAggPlan {
     // window union flag is the last input column
     val flagIdx = if (node.window_unions().Empty()) -1 else inputSchema.size
 
+    val sampleOutputPath = ctx.getConf("fesql.window.sampleOutputPath", "")
+    val sampleMinSize = ctx.getConf("fesql.window.sampleMinSize", -1)
+
     WindowAggConfig(
+      windowName = windowName,
       startOffset = node.window.range.frame.GetHistoryRangeStart(),
       rowPreceding = -1 * node.window.range.frame.GetHistoryRowsStart(),
       orderIdx = orderIdx,
@@ -132,7 +148,9 @@ object WindowAggPlan {
       unionFlagIdx = flagIdx,
       instanceNotInWindow = node.instance_not_in_window(),
       needAppendInput = node.need_append_input(),
-      limitCnt = node.GetLimitCnt()
+      limitCnt = node.GetLimitCnt(),
+      sampleOutputPath = sampleOutputPath,
+      sampleMinSize = sampleMinSize
     )
   }
 
@@ -172,11 +190,26 @@ object WindowAggPlan {
     sortedDf
   }
 
+  def createComputer(partitionIndex: Int,
+                     hadoopConf: SerializableConfiguration,
+                     config: WindowAggConfig): WindowComputer = {
+    // get jit in executor process
+    val tag = config.moduleTag
+    val buffer = config.moduleNoneBroadcast.getBuffer
+    JITManager.initJITModule(tag, buffer)
+    val jit = JITManager.getJIT(tag)
 
-  def windowAggIter(inputIter: Iterator[Row],
-                    jit: FeSQLJITWrapper,
+    if (partitionIndex == 0 && config.sampleMinSize > 0) {
+      val fs = FileSystem.get(hadoopConf.value)
+      new WindowComputerWithSampleSupport(fs, config, jit)
+    } else {
+      new WindowComputer(config, jit)
+    }
+  }
+
+  def windowAggIter(computer: WindowComputer,
+                    inputIter: Iterator[Row],
                     config: WindowAggConfig): Iterator[Row] = {
-    val computer = new WindowComputer(config, jit)
     var lastRow: Row = null
 
     // Take the iterator if the limit has been set
@@ -194,11 +227,9 @@ object WindowAggPlan {
     }
   }
 
-
-  def windowAggIterWithUnionFlag(inputIter: Iterator[Row],
-                                 jit: FeSQLJITWrapper,
+  def windowAggIterWithUnionFlag(computer: WindowComputer,
+                                 inputIter: Iterator[Row],
                                  config: WindowAggConfig): Iterator[Row] = {
-    val computer = new WindowComputer(config, jit)
     val flagIdx = config.unionFlagIdx
     var lastRow: Row = null
 
@@ -227,7 +258,8 @@ object WindowAggPlan {
   /**
    * Spark closure class for window compute information
    */
-  case class WindowAggConfig(startOffset: Long,
+  case class WindowAggConfig(windowName: String,
+                             startOffset: Long,
                              rowPreceding: Long,
                              orderIdx: Int,
                              groupIdxs: Array[Int],
@@ -240,7 +272,9 @@ object WindowAggPlan {
                              unionFlagIdx: Int,
                              instanceNotInWindow: Boolean,
                              needAppendInput: Boolean,
-                             limitCnt: Int)
+                             limitCnt: Int,
+                             sampleMinSize: Int,
+                             sampleOutputPath: String)
 
 
   /**
@@ -253,7 +287,7 @@ object WindowAggPlan {
     private val outputArr = Array.fill[Any](outputFieldNum)(null)
 
     // native row codecs
-    private var encoder = new SparkRowCodec(config.inputSchemaSlices)
+    protected var encoder = new SparkRowCodec(config.inputSchemaSlices)
     private var decoder = new SparkRowCodec(config.outputSchemaSlices)
 
     // order key extractor
@@ -262,7 +296,7 @@ object WindowAggPlan {
       config.orderIdx, orderField.dataType, orderField.nullable)
 
     // append slices cnt = needAppendInput ? inputSchemaSlices.size : 0
-    private val appendSlices = if (config.needAppendInput) config.inputSchemaSlices.size else 0
+    private val appendSlices = if (config.needAppendInput) config.inputSchemaSlices.length else 0
     // group key comparation
     private val groupKeyComparator = FesqlUtil.createGroupKeyComparator(
       config.groupIdxs, config.inputSchema)
@@ -271,9 +305,8 @@ object WindowAggPlan {
     private val fn = jit.FindFunction(config.functionName)
 
     // window state
-    private var window = new WindowInterface(
+    protected var window = new WindowInterface(
       config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, 0)
-
 
     def compute(row: Row): Row = {
       // call encode
@@ -296,24 +329,25 @@ object WindowAggPlan {
       Row.fromSeq(outputArr) // can reuse backed array
     }
 
-
     def bufferRowOnly(row: Row): Unit = {
       val nativeInputRow = encoder.encode(row)
       val key = orderKeyExtractor.apply(row)
       window.BufferData(key, nativeInputRow)
     }
 
-
     def checkPartition(prev: Row, cur: Row): Unit = {
       val groupChanged = groupKeyComparator.apply(cur, prev)
       if (groupChanged) {
-        // TODO: wrap iter to hook iter end; now last window is leak
-        window.delete()
-        window = new WindowInterface(
-          config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, 0)
+        resetWindow()
       }
     }
 
+    def resetWindow(): Unit = {
+      // TODO: wrap iter to hook iter end; now last window is leak
+      window.delete()
+      window = new WindowInterface(
+        config.instanceNotInWindow, config.startOffset, 0, config.rowPreceding, 0)
+    }
 
     def delete(): Unit = {
       encoder.delete()
@@ -325,6 +359,9 @@ object WindowAggPlan {
       window.delete()
       window = null
     }
+
+    def getWindow: WindowInterface = window
+    def getFn: Long = fn
   }
 
 }

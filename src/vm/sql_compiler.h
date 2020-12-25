@@ -40,11 +40,23 @@ enum EngineMode { kBatchMode, kRequestMode, kBatchRequestMode };
 
 std::string EngineModeName(EngineMode mode);
 
+struct BatchRequestInfo {
+    // common column indices in batch request mode
+    std::set<size_t> common_column_indices;
+
+    // common physical node ids during batch request
+    std::set<size_t> common_node_set;
+
+    // common output column indices
+    std::set<size_t> output_common_column_indices;
+};
+
 struct SQLContext {
     // mode: batch|request|batch request
     EngineMode engine_mode;
     bool is_performance_sensitive = false;
     bool is_cluster_optimized = false;
+    bool is_batch_request_optimized = false;
     // the sql content
     std::string sql;
     // the database
@@ -68,8 +80,7 @@ struct SQLContext {
     ::fesql::node::NodeManager nm;
     ::fesql::udf::UDFLibrary* udf_library = nullptr;
 
-    // common column indices in batch request mode
-    std::set<size_t> common_column_indices;
+    BatchRequestInfo batch_request_info;
 
     SQLContext() {}
     ~SQLContext() {}
@@ -111,6 +122,18 @@ class SQLCompiler {
                              const ::fesql::node::PlanNodeList& plan_list,
                              ::llvm::Module* llvm_module,
                              PhysicalOpNode** output);
+    Status BuildBatchModePhysicalPlan(
+        SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+        ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+        PhysicalOpNode** output);
+    Status BuildRequestModePhysicalPlan(
+        SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+        ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+        PhysicalOpNode** output);
+    Status BuildBatchRequestModePhysicalPlan(
+        SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+        ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+        PhysicalOpNode** output);
 
  private:
     const std::shared_ptr<Catalog> cl_;

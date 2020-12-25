@@ -31,6 +31,7 @@
 #include "boost/algorithm/string.hpp"
 #include "case/sql_case.h"
 #include "codec/fe_row_codec.h"
+#include "codec/fe_row_selector.h"
 #include "codec/list_iterator_codec.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
@@ -279,6 +280,7 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
     RowView row_view(schema);
     RowView row_view_exp(schema);
     for (size_t row_index = 0; row_index < rows.size(); row_index++) {
+        ASSERT_TRUE(nullptr != rows[row_index].buf());
         row_view.Reset(rows[row_index].buf());
         row_view_exp.Reset(exp_rows[row_index].buf());
         for (int i = 0; i < schema.size(); i++) {
@@ -286,6 +288,7 @@ void CheckRows(const vm::Schema& schema, const std::vector<Row>& rows,
                 ASSERT_TRUE(row_view.IsNULL(i)) << " At " << i;
                 continue;
             }
+            ASSERT_FALSE(row_view.IsNULL(i)) << " At " << i;
             switch (schema.Get(i).type()) {
                 case fesql::type::kInt32: {
                     ASSERT_EQ(row_view.GetInt32Unsafe(i),
@@ -402,14 +405,70 @@ void InitEngineCatalog(
     }
 }
 
-void DoEngineCheckExpect(const SQLCase& sql_case, const vm::Schema& schema,
-                         const std::vector<Row>& output,
-                         bool is_batch_request) {
+void DoEngineCheckExpect(const SQLCase& sql_case,
+                         std::shared_ptr<RunSession> session,
+                         const std::vector<Row>& output) {
     if (sql_case.expect().count_ >= 0) {
         ASSERT_EQ(sql_case.expect().count_, output.size());
     }
+    const Schema& schema = session->GetSchema();
+    std::vector<Row> sorted_output;
 
-    auto sorted_output = SortRows(schema, output, sql_case.expect().order_);
+    bool is_batch_request = session->engine_mode() == kBatchRequestMode;
+    if (is_batch_request) {
+        const auto& sql_ctx = session->GetCompileInfo()->get_sql_context();
+        const auto& output_common_column_indices =
+            sql_ctx.batch_request_info.output_common_column_indices;
+        if (!output_common_column_indices.empty() &&
+            output_common_column_indices.size() !=
+                static_cast<size_t>(schema.size()) &&
+            sql_ctx.is_batch_request_optimized) {
+            LOG(INFO) << "Reorder batch request outputs for non-trival common "
+                         "columns";
+
+            auto& expect_common_column_indices =
+                sql_case.expect().common_column_indices_;
+            if (!expect_common_column_indices.empty()) {
+                ASSERT_EQ(expect_common_column_indices,
+                          output_common_column_indices);
+            }
+
+            std::vector<Row> reordered;
+            std::vector<std::pair<size_t, size_t>> select_indices;
+            size_t common_col_idx = 0;
+            size_t non_common_col_idx = 0;
+            auto plan = sql_ctx.physical_plan;
+            for (size_t i = 0; i < plan->GetOutputSchemaSize(); ++i) {
+                if (output_common_column_indices.find(i) !=
+                    output_common_column_indices.end()) {
+                    select_indices.push_back(std::make_pair(0, common_col_idx));
+                    common_col_idx += 1;
+                } else {
+                    select_indices.push_back(
+                        std::make_pair(1, non_common_col_idx));
+                    non_common_col_idx += 1;
+                }
+            }
+            codec::RowSelector selector(
+                {plan->GetOutputSchemaSource(0)->GetSchema(),
+                 plan->GetOutputSchemaSource(1)->GetSchema()},
+                select_indices);
+            for (const auto& row : output) {
+                int8_t* reordered_buf = nullptr;
+                size_t reordered_size;
+                ASSERT_TRUE(
+                    selector.Select(row, &reordered_buf, &reordered_size));
+                reordered.push_back(Row(codec::RefCountedSlice::Create(
+                    reordered_buf, reordered_size)));
+            }
+            sorted_output = reordered;
+        } else {
+            sorted_output = SortRows(schema, output, sql_case.expect().order_);
+        }
+    } else {
+        sorted_output = SortRows(schema, output, sql_case.expect().order_);
+    }
+
     if (!sql_case.expect().schema_.empty() ||
         !sql_case.expect().columns_.empty()) {
         // Check Output Schema
@@ -417,7 +476,6 @@ void DoEngineCheckExpect(const SQLCase& sql_case, const vm::Schema& schema,
         ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
         ASSERT_NO_FATAL_FAILURE(
             CheckSchema(schema, case_output_table.columns()));
-
 
         LOG(INFO) << "Real result:\n";
         PrintRows(schema, sorted_output);
@@ -433,7 +491,6 @@ void DoEngineCheckExpect(const SQLCase& sql_case, const vm::Schema& schema,
 
         LOG(INFO) << "Expect result:\n";
         PrintRows(schema, case_output_data);
-
 
         ASSERT_NO_FATAL_FAILURE(
             CheckRows(schema, sorted_output, case_output_data));
@@ -528,6 +585,7 @@ class EngineTestRunner {
         InitEngineCatalog(sql_case_, options_, name_table_map_,
                           idx_table_name_map_, engine_, catalog_);
     }
+    virtual ~EngineTestRunner() {}
 
     void SetSession(std::shared_ptr<RunSession> session) { session_ = session; }
 
@@ -581,7 +639,7 @@ Status EngineTestRunner::Compile() {
     LOG(INFO) << "SQL Compile take " << mill << " milliseconds";
 
     if (!ok || !status.isOK()) {
-        LOG(INFO) << status;
+        LOG(INFO) << status.str();
         return_code_ = ENGINE_TEST_RET_COMPILE_ERROR;
     } else {
         LOG(INFO) << "SQL output schema:";
@@ -629,8 +687,7 @@ void EngineTestRunner::RunCheck() {
         return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
         return;
     }
-    DoEngineCheckExpect(sql_case_, session_->GetSchema(), output_rows,
-                        engine_mode == kBatchRequestMode);
+    DoEngineCheckExpect(sql_case_, session_, output_rows);
     return_code_ = ENGINE_TEST_RET_SUCCESS;
 }
 
@@ -692,6 +749,17 @@ class BatchEngineTestRunner : public EngineTestRunner {
             auto input = sql_case_.inputs()[i];
             std::vector<Row> rows;
             sql_case_.ExtractInputData(rows, i);
+            size_t repeat = sql_case_.inputs()[i].repeat_;
+            if (repeat > 1) {
+                size_t row_num = rows.size();
+                rows.resize(row_num * repeat);
+                size_t offset = row_num;
+                for (size_t i = 0; i < repeat - 1; ++i) {
+                    std::copy(rows.begin(), rows.begin() + row_num,
+                              rows.begin() + offset);
+                    offset += row_num;
+                }
+            }
             if (!rows.empty()) {
                 std::string table_name = idx_table_name_map_[i];
                 StoreData(name_table_map_[table_name].get(), rows);
@@ -831,6 +899,17 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
                     rows.pop_back();
                 }
                 std::string table_name = idx_table_name_map_[i];
+                size_t repeat = sql_case_.inputs()[i].repeat_;
+                if (repeat > 1) {
+                    size_t row_num = rows.size();
+                    rows.resize(row_num * repeat);
+                    size_t offset = row_num;
+                    for (size_t i = 0; i < repeat - 1; ++i) {
+                        std::copy(rows.begin(), rows.begin() + row_num,
+                                  rows.begin() + offset);
+                        offset += row_num;
+                    }
+                }
                 StoreData(name_table_map_[table_name].get(), rows);
             }
         }
@@ -853,7 +932,8 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
         }
         size_t request_schema_size = static_cast<size_t>(request_schema.size());
         if (common_column_indices.empty() ||
-            common_column_indices.size() == request_schema_size) {
+            common_column_indices.size() == request_schema_size ||
+            !options_.is_batch_request_optimized()) {
             request_rows_ = original_request_data;
         } else {
             std::vector<size_t> non_common_column_indices;
@@ -891,6 +971,18 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
                                                           right_size);
                 request_rows_.emplace_back(codec::Row(
                     1, codec::Row(left_slice), 1, codec::Row(right_slice)));
+            }
+        }
+        size_t repeat = sql_case_.batch_request().repeat_;
+        if (repeat > 1) {
+            size_t row_num = request_rows_.size();
+            request_rows_.resize(row_num * repeat);
+            size_t offset = row_num;
+            for (size_t i = 0; i < repeat - 1; ++i) {
+                std::copy(request_rows_.begin(),
+                          request_rows_.begin() + row_num,
+                          request_rows_.begin() + offset);
+                offset += row_num;
             }
         }
         return Status::OK();
@@ -944,15 +1036,25 @@ void BatchRequestEngineCheck(const SQLCase& sql_case,
                                                        common_column_indices);
         common_column_indices.clear();
 
+        if (options.is_cluster_optimzied()) {
+            return;
+        }
+
         // partial
-        // TODO(bxq): use transform pass to resolve all problems
-        // of changing the request schema
-        // for (size_t i = 0; i < schema_size; i += 2) {
-        //    common_column_indices.insert(i);
-        // }
-        // BatchRequestEngineCheckWithCommonColumnIndices(
-        //    sql_case, common_column_indices, return_status);
-        // common_column_indices.clear();
+        // 0, 2, 4, ...
+        for (size_t i = 0; i < schema_size; i += 2) {
+            common_column_indices.insert(i);
+        }
+        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
+                                                       common_column_indices);
+        common_column_indices.clear();
+        return;
+        // 1, 3, 5, ...
+        for (size_t i = 1; i < schema_size; i += 2) {
+            common_column_indices.insert(i);
+        }
+        BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
+                                                       common_column_indices);
     }
 }
 

@@ -102,6 +102,7 @@ enum ExprType {
     kExprCast,
     kExprId,
     kExprColumnRef,
+    kExprColumnId,
     kExprPrimary,
     kExprList,
     kExprForIn,
@@ -196,8 +197,8 @@ enum JoinType {
     kJoinTypeConcat,
 };
 
-enum UnionType { kUnionTypeLeft };
-enum UnoinType { kUnionTypeDistinct, kUnionTypeAll };
+enum UnionType { kUnionTypeDistinct, kUnionTypeAll };
+
 enum CmdType {
     kCmdCreateGroup,
     kCmdCreateDatabase,

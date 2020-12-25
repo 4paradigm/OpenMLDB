@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory
 
 class SparkRowCodec(sliceSchemas: Array[StructType]) {
 
-
   private val logger = LoggerFactory.getLogger(this.getClass)
   private val sliceNum = sliceSchemas.length
   private val columnDefSegmentList = sliceSchemas.map(FesqlUtil.getFeSQLSchema)

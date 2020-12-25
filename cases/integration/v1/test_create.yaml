@@ -200,7 +200,7 @@ cases:
     desc: 创建的index不指定ts
     sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1)));
     expect:
-      success: false
+      success: true
   -
     id: 22
     desc: 创建index不指定col
@@ -486,5 +486,35 @@ cases:
       create table {auto} (
       c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
       index(key=(c3), ts=c4)) replicanum=2, partitionnum=8;
+    expect:
+      success: true
+  -
+    id: 50
+    desc: create with two no ts index
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3), ttl=(10m,10), ttl_type=absorlat),
+      index(key=(c4), ttl=(10m,10), ttl_type=absorlat));
+    expect:
+      success: true
+  -
+    id: 51
+    desc: one has ts and another has not
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3), ttl=(10m,10), ttl_type=absorlat),
+      index(key=(c4), ts=c4, ttl=(10m,10), ttl_type=absorlat));
+    expect:
+      success: false
+  -
+    id: 52
+    desc: create with only key
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c3)),
+      index(key=(c4)));
     expect:
       success: true

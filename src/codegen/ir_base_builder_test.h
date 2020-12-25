@@ -378,7 +378,7 @@ void ModuleFunctionBuilderWithFullInfo<Ret, Args...>::ExpandApplyArg(
                 arg = builder.CreateSelect(
                     is_null, alloca, builder.CreatePointerCast(arg, expect_ty));
             } else {
-                alloca = builder.CreateAlloca(expect_ty);
+                alloca = CreateAllocaAtHead(&builder, expect_ty, "arg_ptr");
                 arg = builder.CreatePointerCast(arg, expect_ty->getPointerTo());
                 arg = builder.CreateSelect(is_null, alloca, arg);
                 arg = builder.CreateLoad(arg);

@@ -34,6 +34,7 @@
 #include "proto/fe_common.pb.h"
 #include "vm/catalog.h"
 #include "vm/mem_catalog.h"
+#include "vm/router.h"
 #include "vm/sql_compiler.h"
 
 namespace fesql {
@@ -52,6 +53,7 @@ class EngineOptions {
           plan_only_(false),
           performance_sensitive_(true),
           cluster_optimized_(false),
+          batch_request_optimized_(true),
           max_sql_cache_size_(50) {}
     inline void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
     inline bool is_keep_ir() const { return this->keep_ir_; }
@@ -69,6 +71,10 @@ class EngineOptions {
 
     inline bool is_cluster_optimzied() const { return cluster_optimized_; }
     inline void set_cluster_optimized(bool flag) { cluster_optimized_ = flag; }
+    bool is_batch_request_optimized() const { return batch_request_optimized_; }
+    void set_batch_request_optimized(bool flag) {
+        batch_request_optimized_ = flag;
+    }
     inline void set_max_sql_cache_size(uint32_t size) {
         max_sql_cache_size_ = size;
     }
@@ -85,6 +91,7 @@ class EngineOptions {
     bool plan_only_;
     bool performance_sensitive_;
     bool cluster_optimized_;
+    bool batch_request_optimized_;
     uint32_t max_sql_cache_size_;
 };
 
@@ -138,13 +145,16 @@ class RunSession {
 
     void EnableDebug() { is_debug_ = true; }
     void DisableDebug() { is_debug_ = false; }
+    bool IsDebug() { return is_debug_; }
 
+    void SetSpName(const std::string& sp_name) { sp_name_ = sp_name; }
     EngineMode engine_mode() const { return engine_mode_; }
 
  protected:
     std::shared_ptr<CompileInfo> compile_info_;
     EngineMode engine_mode_;
     bool is_debug_;
+    std::string sp_name_;
     friend Engine;
 };
 
@@ -191,9 +201,9 @@ class BatchRequestRunSession : public RunSession {
     int32_t Run(const std::vector<Row>& request_batch,
                 std::vector<Row>& output);  // NOLINT
     // TODO(baoxinqi): remove
-    int32_t RunSingle(fesql::vm::RunnerContext& ctx,  // NOLINT
-                      const Row& request,
-                      Row* output);  // NOLINT
+    int32_t RunBatch(fesql::vm::RunnerContext& ctx,  // NOLINT
+                     const std::vector<Row>& requests,
+                     std::vector<Row>& output);  // NOLINT
 
     void AddCommonColumnIdx(size_t idx) { common_column_indices_.insert(idx); }
 
@@ -202,10 +212,9 @@ class BatchRequestRunSession : public RunSession {
     }
 
  private:
-    int32_t RunSingle(fesql::vm::RunnerContext& ctx,  // NOLINT
-                      const uint32_t id, const Row& request,
-                      Row* output);  // NOLINT
-
+    int32_t RunBatch(fesql::vm::RunnerContext& ctx,  // NOLINT
+                     const uint32_t id, const std::vector<Row>& requests,
+                     std::vector<Row>& output);  // NOLINT
     std::set<size_t> common_column_indices_;
 };
 
@@ -217,6 +226,7 @@ struct ExplainOutput {
     std::string ir;
     vm::Schema output_schema;
     std::string request_name;
+    vm::Router router;
 };
 
 typedef std::map<
@@ -224,7 +234,15 @@ typedef std::map<
     std::map<std::string, boost::compute::detail::lru_cache<
                               std::string, std::shared_ptr<CompileInfo>>>>
     EngineLRUCache;
-
+class CompileInfoCache {
+ public:
+    virtual std::shared_ptr<fesql::vm::CompileInfo> GetRequestInfo(
+        const std::string& db, const std::string& sp_name,
+        base::Status& status) = 0;  // NOLINT
+    virtual std::shared_ptr<fesql::vm::CompileInfo> GetBatchRequestInfo(
+        const std::string& db, const std::string& sp_name,
+        base::Status& status) = 0;  // NOLINT
+};
 class Engine {
  public:
     Engine(const std::shared_ptr<Catalog>& cl, const EngineOptions& options);
@@ -272,42 +290,103 @@ class Engine {
     EngineLRUCache lru_cache_;
 };
 
+class LocalTabletRowHandler : public RowHandler {
+ public:
+    LocalTabletRowHandler(uint32_t task_id, const RequestRunSession& session,
+                          const Row& request)
+        : RowHandler(),
+          status_(base::Status::Running()),
+          table_name_(""),
+          db_(""),
+          schema_(nullptr),
+          task_id_(task_id),
+          request_(request),
+          session_(session),
+          value_() {}
+    virtual ~LocalTabletRowHandler() {}
+    const Row& GetValue() override {
+        if (!status_.isRunning()) {
+            return value_;
+        }
+        status_ = SyncValue();
+        return value_;
+    }
+    base::Status SyncValue() {
+        DLOG(INFO) << "Sync Value ... local tablet SubQuery: task id "
+                   << task_id_;
+        if (0 != session_.Run(task_id_, request_, &value_)) {
+            return base::Status(common::kCallMethodError,
+                                "sub query fail: session run fail");
+        }
+        return base::Status::OK();
+    }
+    const Schema* GetSchema() override { return schema_; }
+    const std::string& GetName() override { return table_name_; }
+    const std::string& GetDatabase() override { return db_; }
+    base::Status status_;
+    std::string table_name_;
+    std::string db_;
+    const Schema* schema_;
+    uint32_t task_id_;
+    Row request_;
+    RequestRunSession session_;
+    Row value_;
+};
+
 class LocalTablet : public Tablet {
  public:
-    explicit LocalTablet(vm::Engine* engine) : Tablet(), engine_((engine)) {}
+    explicit LocalTablet(fesql::vm::Engine* engine,
+                         std::shared_ptr<fesql::vm::CompileInfoCache> sp_cache)
+        : Tablet(), engine_(engine), sp_cache_(sp_cache) {}
     ~LocalTablet() {}
     std::shared_ptr<RowHandler> SubQuery(uint32_t task_id,
                                          const std::string& db,
                                          const std::string& sql, const Row& row,
+                                         const bool is_procedure,
                                          const bool is_debug) override {
         DLOG(INFO) << "Local tablet SubQuery: task id " << task_id;
         RequestRunSession session;
+        base::Status status;
         if (is_debug) {
             session.EnableDebug();
         }
-        base::Status status;
-        if (!engine_->Get(sql, db, session, status)) {
-            return std::shared_ptr<RowHandler>(new ErrorRowHandler(
-                common::kCallMethodError, "SubQuery fail: compile sql fail"));
+        if (is_procedure) {
+            if (!sp_cache_) {
+                return std::shared_ptr<RowHandler>(
+                    new ErrorRowHandler(common::kProcedureNotFound,
+                                        "SubQuery Fail: procedure not found, "
+                                        "procedure cache not exist"));
+            }
+            auto request_compile_info =
+                sp_cache_->GetRequestInfo(db, sql, status);
+            if (!status.isOK()) {
+                return std::shared_ptr<RowHandler>(new ErrorRowHandler(
+                    status.code, "SubQuery Fail: " + status.msg));
+            }
+            session.SetSpName(sql);
+            session.SetCompileInfo(request_compile_info);
+        } else {
+            if (!engine_->Get(sql, db, session, status)) {
+                return std::shared_ptr<RowHandler>(new ErrorRowHandler(
+                    status.code, "SubQuery Fail: " + status.msg));
+            }
         }
 
-        Row out;
-        if (0 != session.Run(task_id, row, &out)) {
-            return std::shared_ptr<RowHandler>(new ErrorRowHandler(
-                common::kCallMethodError, "sub query fail: session run fail"));
-        }
-        return std::shared_ptr<RowHandler>(new MemRowHandler(out));
+        return std::shared_ptr<RowHandler>(
+            new LocalTabletRowHandler(task_id, session, row));
     }
     std::shared_ptr<RowHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
-        const std::vector<fesql::codec::Row>& rows,
+        const std::vector<fesql::codec::Row>& rows, const bool is_procedure,
         const bool is_debug) override {
         return std::shared_ptr<RowHandler>();
     }
 
  private:
     vm::Engine* engine_;
+    std::shared_ptr<fesql::vm::CompileInfoCache> sp_cache_;
 };
+
 }  // namespace vm
 }  // namespace fesql
 #endif  // SRC_VM_ENGINE_H_

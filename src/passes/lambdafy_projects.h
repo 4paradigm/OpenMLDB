@@ -6,10 +6,10 @@
 #ifndef SRC_PASSES_LAMBDAFY_PROJECTS_H_
 #define SRC_PASSES_LAMBDAFY_PROJECTS_H_
 
+#include <map>
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include <map>
 
 #include "node/expr_node.h"
 #include "node/plan_node.h"

@@ -40,81 +40,7 @@ using fesql::codec::RowIterator;
 using fesql::codec::Schema;
 using fesql::codec::WindowIterator;
 
-/*enum SourceType { kSourceColumn, kSourceConst, kSourceNone };
-class ColumnSource;
-class Tablet;
-typedef std::vector<ColumnSource> ColumnSourceList;
-class ColumnSource {
- public:
-    ColumnSource()
-        : type_(kSourceNone),
-          schema_idx_(0),
-          column_idx_(0),
-          column_name_(""),
-          cast_type_chains_(),
-          const_value_() {}
-    explicit ColumnSource(const node::ConstNode* node)
-        : type_(kSourceConst),
-          schema_idx_(0),
-          column_idx_(0),
-          column_name_(""),
-          cast_type_chains_(),
-          const_value_(node) {}
-    ColumnSource(uint32_t schema_idx, uint32_t column_idx,
-                 const std::string& column_name)
-        : type_(kSourceColumn),
-          schema_idx_(schema_idx),
-          column_idx_(column_idx),
-          column_name_(column_name),
-          cast_type_chains_(),
-          const_value_() {}
-
-    void AddCastType(const node::DataType& type) {
-        cast_type_chains_.push_back(type);
-    }
-
-    void AddCastTypes(const std::vector<node::DataType>& types) {
-        for (auto type : types) {
-            AddCastType(type);
-        }
-    }
-    const std::string ToString() const {
-        std::string cast_types = "";
-        if (!cast_type_chains_.empty()) {
-            for (auto iter = cast_type_chains_.cbegin();
-                 iter != cast_type_chains_.cend(); iter++) {
-                cast_types.append(":");
-                cast_types.append(node::DataTypeName(*iter));
-            }
-        }
-        switch (type_) {
-            case kSourceColumn:
-                return "<-[" + std::to_string(schema_idx_) + ":" +
-                       std::to_string(column_idx_) + cast_types + "]";
-            case kSourceConst:
-                return "<-" + node::ExprString(const_value_) + cast_types;
-            case kSourceNone:
-                return "->None";
-        }
-        return "";
-    }
-    const SourceType type() const { return type_; }
-    const uint32_t schema_idx() const { return schema_idx_; }
-    const uint32_t column_idx() const { return column_idx_; }
-    const std::string& column_name() const { return column_name_; }
-    const node::ConstNode* const_value() const { return const_value_; }
-    const std::vector<node::DataType>& cast_types() const {
-        return cast_type_chains_;
-    }
-
- private:
-    SourceType type_;
-    uint32_t schema_idx_;
-    uint32_t column_idx_;
-    std::string column_name_;
-    std::vector<node::DataType> cast_type_chains_;
-    const node::ConstNode* const_value_;
-};*/
+constexpr uint32_t INVALID_POS = UINT32_MAX;
 
 struct IndexSt {
     std::string name;
@@ -126,55 +52,6 @@ struct IndexSt {
 typedef ::google::protobuf::RepeatedPtrField<::fesql::type::IndexDef> IndexList;
 typedef std::map<std::string, ColInfo> Types;
 typedef std::map<std::string, IndexSt> IndexHint;
-
-/*struct SchemaSource {
- public:
-    explicit SchemaSource(const vm::Schema* schema)
-        : table_name_(""), schema_(schema), sources_(nullptr) {}
-    SchemaSource(const std::string& table_name, const vm::Schema* schema)
-        : table_name_(table_name), schema_(schema), sources_(nullptr) {}
-
-    std::string table_name_;
-    const vm::Schema* schema_;
-};
-
-struct NamedSchemaSourceList {
-    void AddSchemaSource(const vm::Schema* schema) {
-        schema_source_list_.push_back(SchemaSource("", schema));
-    }
-    void AddSchemaSource(const std::string& table_name,
-                         const vm::Schema* schema) {
-        schema_source_list_.push_back(SchemaSource(table_name, schema));
-    }
-
-    void AddSchemaSource(const std::string& table_name,
-                         const vm::Schema* schema,
-                         const vm::ColumnSourceList* sources) {
-        schema_source_list_.push_back(
-            SchemaSource(table_name, schema, sources));
-    }
-    void AddSchemaSources(const NamedSchemaSourceList& sources) {
-        for (auto source : sources.schema_source_list_) {
-            schema_source_list_.push_back(source);
-        }
-    }
-
-    const bool Empty() const { return schema_source_list_.empty(); }
-    const std::vector<SchemaSource>& schema_source_list() const {
-        return schema_source_list_;
-    }
-    const vm::SchemaSource& GetSchemaSourceSlice(size_t idx) const {
-        return schema_source_list_[idx];
-    }
-    const vm::Schema* GetSchemaSlice(size_t idx) const {
-        return schema_source_list_[idx].schema_;
-    }
-    const size_t size() const {
-        return schema_source_list_.size();
-    }
-
-    std::vector<SchemaSource> schema_source_list_;
-};*/
 
 class PartitionHandler;
 
@@ -196,7 +73,43 @@ class DataHandler : public ListV<Row> {
     virtual const std::string GetHandlerTypeName() = 0;
     virtual base::Status GetStatus() { return base::Status::OK(); }
 };
+class DataHandlerList {
+ public:
+    DataHandlerList() {}
+    ~DataHandlerList() {}
+    virtual size_t GetSize() = 0;
+    virtual std::shared_ptr<DataHandler> Get(size_t idx) = 0;
+};
+class DataHandlerVector : public DataHandlerList {
+ public:
+    DataHandlerVector() : data_handlers_() {}
+    ~DataHandlerVector() {}
+    void Add(std::shared_ptr<DataHandler> data_handler) {
+        data_handlers_.push_back(data_handler);
+    }
+    size_t GetSize() { return data_handlers_.size(); }
+    std::shared_ptr<DataHandler> Get(size_t idx) {
+        return idx < data_handlers_.size() ? data_handlers_[idx]
+                                           : std::shared_ptr<DataHandler>();
+    }
 
+ private:
+    std::vector<std::shared_ptr<DataHandler>> data_handlers_;
+};
+class DataHandlerRepeater : public DataHandlerList {
+ public:
+    DataHandlerRepeater(std::shared_ptr<DataHandler> data_handler, size_t size)
+        : size_(size), data_handler_(data_handler) {}
+    ~DataHandlerRepeater() {}
+    size_t GetSize() { return size_; }
+    std::shared_ptr<DataHandler> Get(size_t idx) {
+        return idx < size_ ? data_handler_ : std::shared_ptr<DataHandler>();
+    }
+
+ private:
+    size_t size_;
+    std::shared_ptr<DataHandler> data_handler_;
+};
 class RowHandler : public DataHandler {
  public:
     RowHandler() {}
@@ -246,10 +159,12 @@ class Tablet {
                                                  const std::string& db,
                                                  const std::string& sql,
                                                  const fesql::codec::Row& row,
+                                                 const bool is_procedure,
                                                  const bool is_debug) = 0;
     virtual std::shared_ptr<RowHandler> SubQuery(
         uint32_t task_id, const std::string& db, const std::string& sql,
-        const std::vector<fesql::codec::Row>& rows, const bool is_debug) = 0;
+        const std::vector<fesql::codec::Row>& rows, const bool is_procedure,
+        const bool is_debug) = 0;
 };
 
 class TableHandler : public DataHandler {
@@ -332,7 +247,7 @@ class Catalog {
         const std::string& db, const std::string& table_name) = 0;
 
     virtual std::shared_ptr<fesql::sdk::ProcedureInfo> GetProcedureInfo(
-            const std::string& db, const std::string& sp_name) {
+        const std::string& db, const std::string& sp_name) {
         return nullptr;
     }
 };

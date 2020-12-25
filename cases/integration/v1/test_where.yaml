@@ -15,7 +15,7 @@ cases:
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     batch_plan: |
-      SIMPLE_PROJECT(sources=(#1, #2, #3, #4, #5, #6, #7))
+      SIMPLE_PROJECT(sources=(col0, col1, col2, col3, col4, col5, col6))
         FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(5))
           DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
     expect:
@@ -40,7 +40,7 @@ cases:
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     batch_plan: |
-      SIMPLE_PROJECT(sources=(#1, #2, #3, #4, #5, #6, #7))
+      SIMPLE_PROJECT(sources=(col0, col1, col2, col3, col4, col5, col6))
         FILTER_BY(condition=col1 > 3, left_keys=(), right_keys=(), index_keys=(55))
           DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
     expect:
@@ -144,7 +144,7 @@ cases:
       PROJECT(type=TableProject)
         FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(5))
           RENAME(name=t1)
-            SIMPLE_PROJECT(sources=(#1, #2, #3, #18, #5, #6, #19))
+            SIMPLE_PROJECT(sources=(col0 -> c0, col1 -> c1, col2 -> c2, 0.000000 -> c3, col4 -> c4, col5 -> c5, empty_str -> c6))
               DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
     expect:
       schema: c0:string, c1:int32, c2:int16, c3:float, c4:double, c5:int64, c6:string, c14:double

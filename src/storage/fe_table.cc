@@ -7,6 +7,7 @@
 //
 
 #include "storage/fe_table.h"
+#include <sys/time.h>
 #include <algorithm>
 #include <string>
 #include "base/fe_hash.h"
@@ -49,23 +50,27 @@ bool Table::Init() {
         }
         IndexSt st;
         st.name = table_def_.indexes(idx).name();
-        if (col_map.find(table_def_.indexes(idx).second_key()) ==
-            col_map.end()) {
-            return false;
-        }
-        st.ts_pos = col_map[table_def_.indexes(idx).second_key()];
-        switch (table_def_.columns(st.ts_pos).type()) {
-            case type::kInt64:
-            case type::kTimestamp: {
-                break;
-            }
-            default: {
-                LOG(WARNING) << "Invalid index ts type: "
-                             << fesql::type::Type_Name(
-                                    table_def_.columns(st.ts_pos).type());
+        st.ts_pos = fesql::vm::INVALID_POS;
+        if (!table_def_.indexes(idx).second_key().empty()) {
+            if (col_map.find(table_def_.indexes(idx).second_key()) ==
+                col_map.end()) {
                 return false;
             }
+            st.ts_pos = col_map[table_def_.indexes(idx).second_key()];
+            switch (table_def_.columns(st.ts_pos).type()) {
+                case type::kInt64:
+                case type::kTimestamp: {
+                    break;
+                }
+                default: {
+                    LOG(WARNING) << "Invalid index ts type: "
+                                 << fesql::type::Type_Name(
+                                        table_def_.columns(st.ts_pos).type());
+                    return false;
+                }
+            }
         }
+
         st.index = idx;
         std::vector<std::pair<fesql::type::Type, size_t>> col_vec;
         for (int i = 0; i < table_def_.indexes(idx).first_keys_size(); i++) {
@@ -168,7 +173,12 @@ bool Table::DecodeKeysAndTs(const IndexSt& index, const char* row,
             key = std::to_string(value);
         }
     }
-
+    if (fesql::vm::INVALID_POS == index.ts_pos) {
+        struct timeval cur_time;
+        gettimeofday(&cur_time, NULL);
+        *time_ptr = cur_time.tv_sec * 1000 + cur_time.tv_usec / 1000;
+        return true;
+    }
     row_view_.GetInteger(reinterpret_cast<const int8_t*>(row), index.ts_pos,
                          table_def_.columns(index.ts_pos).type(), time_ptr);
     return true;

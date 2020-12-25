@@ -504,7 +504,7 @@ struct FZTopNFrequency {
         uint32_t str_len = 0;
         for (size_t i = 0; i < top_n; ++i) {
             if (i < keys.size()) {
-                str_len += v1::format_string(keys[i], nullptr, 0) + 1;  // "k,"
+                str_len += v1::to_string_len(keys[i]) + 1;  // "k,"
             } else {
                 str_len += 5;
             }

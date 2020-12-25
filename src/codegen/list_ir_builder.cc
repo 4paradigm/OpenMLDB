@@ -47,7 +47,8 @@ Status ListIRBuilder::BuildIterator(::llvm::Value* list,
         block_->getModule()->getOrInsertFunction(fn_name, iter_function_ty);
 
     // alloca memory on stack
-    ::llvm::Value* iter_ref_ptr = builder.CreateAlloca(iter_ref_type);
+    ::llvm::Value* iter_ref_ptr =
+        CreateAllocaAtHead(&builder, iter_ref_type, "iter_ref_alloca");
     builder.CreateCall(callee, {list, iter_ref_ptr});
 
     // TODO(chenjing): check call res true
@@ -96,7 +97,8 @@ Status ListIRBuilder::BuildStructTypeIteratorNext(
 
     struct_type = struct_type->getPointerElementType();
     ::llvm::IRBuilder<> builder(block_);
-    ::llvm::Value* next_value_ptr = builder.CreateAlloca(struct_type);
+    ::llvm::Value* next_value_ptr =
+        CreateAllocaAtHead(&builder, struct_type, "iter_next_struct_alloca");
 
     ::llvm::Type* iter_ref_type = NULL;
     CHECK_TRUE(
@@ -152,8 +154,10 @@ Status ListIRBuilder::BuildIteratorNext(::llvm::Value* iterator,
             block_->getModule()->getOrInsertFunction(fn_name, iter_next_fn_ty);
 
         ::llvm::IRBuilder<> builder(block_);
-        ::llvm::Value* next_addr = builder.CreateAlloca(v1_type);
-        ::llvm::Value* is_null_addr = builder.CreateAlloca(bool_ty);
+        ::llvm::Value* next_addr =
+            CreateAllocaAtHead(&builder, v1_type, "iter_next_value_alloca");
+        ::llvm::Value* is_null_addr =
+            CreateAllocaAtHead(&builder, bool_ty, "iter_next_null_alloca");
         builder.CreateCall(callee, {iterator, next_addr, is_null_addr});
 
         ::llvm::Value* next_raw = next_addr;

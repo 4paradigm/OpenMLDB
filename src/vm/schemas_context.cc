@@ -294,36 +294,34 @@ Status SchemasContext::ResolveColumnID(const std::string& relation_name,
     return Status::OK();
 }
 
-static Status DoSearchExprDependentColumns(const node::ExprNode* expr,
-                                           const SchemasContext* ctx,
-                                           std::set<size_t>* column_ids) {
+static Status DoSearchExprDependentColumns(
+    const node::ExprNode* expr, const SchemasContext* ctx,
+    std::vector<const node::ExprNode*>* columns) {
     if (expr == nullptr) {
         return Status::OK();
     }
     for (size_t i = 0; i < expr->GetChildNum(); ++i) {
         CHECK_STATUS(
-            DoSearchExprDependentColumns(expr->GetChild(i), ctx, column_ids));
+            DoSearchExprDependentColumns(expr->GetChild(i), ctx, columns));
     }
     switch (expr->expr_type_) {
         case node::kExprColumnRef: {
-            auto column_ref = dynamic_cast<const node::ColumnRefNode*>(expr);
-            size_t schema_idx;
-            size_t col_idx;
-            CHECK_STATUS(
-                ctx->ResolveColumnRefIndex(column_ref, &schema_idx, &col_idx));
-            column_ids->insert(
-                ctx->GetSchemaSource(schema_idx)->GetColumnID(col_idx));
+            columns->push_back(expr);
+            break;
+        }
+        case node::kExprColumnId: {
+            columns->push_back(expr);
             break;
         }
         case node::kExprBetween: {
             std::vector<node::ExprNode*> expr_list;
             auto between_expr = dynamic_cast<const node::BetweenExpr*>(expr);
             CHECK_STATUS(DoSearchExprDependentColumns(between_expr->left_, ctx,
-                                                      column_ids));
+                                                      columns));
             CHECK_STATUS(DoSearchExprDependentColumns(between_expr->right_, ctx,
-                                                      column_ids));
+                                                      columns));
             CHECK_STATUS(DoSearchExprDependentColumns(between_expr->expr_, ctx,
-                                                      column_ids));
+                                                      columns));
             break;
         }
         case node::kExprCall: {
@@ -332,12 +330,12 @@ static Status DoSearchExprDependentColumns(const node::ExprNode* expr,
                 auto orders = call_expr->GetOver()->GetOrders();
                 if (nullptr != orders) {
                     CHECK_STATUS(
-                        DoSearchExprDependentColumns(orders, ctx, column_ids));
+                        DoSearchExprDependentColumns(orders, ctx, columns));
                 }
                 auto partitions = call_expr->GetOver()->GetPartitions();
                 if (nullptr != partitions) {
-                    CHECK_STATUS(DoSearchExprDependentColumns(partitions, ctx,
-                                                              column_ids));
+                    CHECK_STATUS(
+                        DoSearchExprDependentColumns(partitions, ctx, columns));
                 }
             }
             break;
@@ -350,7 +348,76 @@ static Status DoSearchExprDependentColumns(const node::ExprNode* expr,
 
 Status SchemasContext::ResolveExprDependentColumns(
     const node::ExprNode* expr, std::set<size_t>* column_ids) const {
-    return DoSearchExprDependentColumns(expr, this, column_ids);
+    std::vector<const node::ExprNode*> columns;
+    CHECK_STATUS(DoSearchExprDependentColumns(expr, this, &columns));
+
+    column_ids->clear();
+    for (auto col_expr : columns) {
+        switch (col_expr->GetExprType()) {
+            case node::kExprColumnRef: {
+                auto column_ref =
+                    dynamic_cast<const node::ColumnRefNode*>(col_expr);
+                size_t schema_idx;
+                size_t col_idx;
+                CHECK_STATUS(
+                    ResolveColumnRefIndex(column_ref, &schema_idx, &col_idx));
+                column_ids->insert(
+                    GetSchemaSource(schema_idx)->GetColumnID(col_idx));
+                break;
+            }
+            case node::kExprColumnId: {
+                auto column_id =
+                    dynamic_cast<const node::ColumnIdNode*>(col_expr);
+                size_t schema_idx;
+                size_t col_idx;
+                CHECK_STATUS(ResolveColumnIndexByID(column_id->GetColumnID(),
+                                                    &schema_idx, &col_idx));
+                column_ids->insert(column_id->GetColumnID());
+                break;
+            }
+            default:
+                break;
+        }
+    }
+    return Status::OK();
+}
+
+Status SchemasContext::ResolveExprDependentColumns(
+    const node::ExprNode* expr,
+    std::vector<const node::ExprNode*>* columns) const {
+    std::vector<const node::ExprNode*> search_columns;
+    CHECK_STATUS(DoSearchExprDependentColumns(expr, this, &search_columns));
+
+    std::set<size_t> column_id_set;
+    std::set<std::string> column_name_set;
+    columns->clear();
+    for (auto col_expr : search_columns) {
+        switch (col_expr->GetExprType()) {
+            case node::kExprColumnRef: {
+                auto column_ref =
+                    dynamic_cast<const node::ColumnRefNode*>(expr);
+                auto name = column_ref->GetExprString();
+                auto iter = column_name_set.find(name);
+                if (iter == column_name_set.end()) {
+                    columns->push_back(column_ref);
+                    column_name_set.insert(iter, name);
+                }
+                break;
+            }
+            case node::kExprColumnId: {
+                auto column_id = dynamic_cast<const node::ColumnIdNode*>(expr);
+                auto iter = column_id_set.find(column_id->GetColumnID());
+                if (iter == column_id_set.end()) {
+                    columns->push_back(column_id);
+                    column_id_set.insert(iter, column_id->GetColumnID());
+                }
+                break;
+            }
+            default:
+                break;
+        }
+    }
+    return Status::OK();
 }
 
 bool SchemasContext::IsColumnAmbiguous(const std::string& column_name) const {
@@ -499,7 +566,8 @@ Status SchemasContext::ResolveColumnID(
 
     // find recursively if node information is specified
     if (root_ == nullptr) {
-        return Status(kColumnNotFound);
+        return Status(kColumnNotFound,
+                      "Not found: " + relation_name + "." + column_name);
     }
     bool found = false;
     const auto& children = root_->GetProducers();
@@ -557,7 +625,8 @@ Status SchemasContext::ResolveColumnID(
     if (found) {
         return Status::OK();
     } else {
-        return Status(kColumnNotFound);
+        return Status(kColumnNotFound,
+                      "Not found: " + relation_name + "." + column_name);
     }
 }
 

@@ -166,10 +166,22 @@ Status LambdafyProjects::VisitLeafExpr(node::ExprNode* expr,
                                          column_id);
             break;
         }
+        case node::kExprColumnId: {
+            // column ref -> row => row.c
+            size_t column_id =
+                dynamic_cast<node::ColumnIdNode*>(expr)->GetColumnID();
+            size_t schema_idx;
+            size_t col_idx;
+            CHECK_STATUS(schemas_ctx_->ResolveColumnIndexByID(
+                column_id, &schema_idx, &col_idx));
+            *out = nm_->MakeGetFieldExpr(
+                row_arg, "#" + std::to_string(column_id), column_id);
+            break;
+        }
         default:
             return Status(
                 common::kCodegenError,
-                "Unknown left expr type: " + ExprTypeName(expr->GetExprType()));
+                "Unknown leaf expr type: " + ExprTypeName(expr->GetExprType()));
     }
     return Status::OK();
 }

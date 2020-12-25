@@ -70,12 +70,18 @@ bool TabletTableHandler::Init() {
         const type::IndexDef& index_def = index_list_.Get(i);
         vm::IndexSt index_st;
         index_st.index = i;
-        int32_t pos = GetColumnIndex(index_def.second_key());
-        if (pos < 0) {
-            LOG(WARNING) << "fail to get second key " << index_def.second_key();
-            return false;
+        index_st.ts_pos = ::fesql::vm::INVALID_POS;
+        if (!index_def.second_key().empty()) {
+            int32_t pos = GetColumnIndex(index_def.second_key());
+            if (pos < 0) {
+                LOG(WARNING)
+                    << "fail to get second key " << index_def.second_key();
+                return false;
+            }
+            index_st.ts_pos = pos;
+        } else {
+            DLOG(INFO) << "init table with empty second key";
         }
-        index_st.ts_pos = pos;
         index_st.name = index_def.name();
         for (int32_t j = 0; j < index_def.first_keys_size(); j++) {
             const std::string& key = index_def.first_keys(j);
