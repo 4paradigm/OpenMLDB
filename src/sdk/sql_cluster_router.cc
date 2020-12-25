@@ -171,7 +171,6 @@ class BatchQueryFutureImpl : public QueryFuture {
 SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
     : options_(options),
       cluster_sdk_(NULL),
-      engine_(NULL),
       input_lru_cache_(),
       mu_(),
       rand_(::baidu::common::timer::now_time()) {}
@@ -179,14 +178,12 @@ SQLClusterRouter::SQLClusterRouter(const SQLRouterOptions& options)
 SQLClusterRouter::SQLClusterRouter(ClusterSDK* sdk)
     : options_(),
       cluster_sdk_(sdk),
-      engine_(NULL),
       input_lru_cache_(),
       mu_(),
       rand_(::baidu::common::timer::now_time()) {}
 
 SQLClusterRouter::~SQLClusterRouter() {
     delete cluster_sdk_;
-    delete engine_;
 }
 
 bool SQLClusterRouter::Init() {
@@ -202,11 +199,6 @@ bool SQLClusterRouter::Init() {
             return false;
         }
     }
-    ::fesql::vm::Engine::InitializeGlobalLLVM();
-    ::fesql::vm::EngineOptions eopt;
-    eopt.set_compile_only(true);
-    eopt.set_plan_only(true);
-    engine_ = new ::fesql::vm::Engine(cluster_sdk_->GetCatalog(), eopt);
     return true;
 }
 
@@ -226,7 +218,7 @@ std::shared_ptr<SQLRequestRow> SQLClusterRouter::GetRequestRow(
     }
     ::fesql::vm::ExplainOutput explain;
     ::fesql::base::Status vm_status;
-    bool ok = engine_->Explain(sql, db, ::fesql::vm::kRequestMode, &explain, &vm_status);
+    bool ok = cluster_sdk_->GetEngine()->Explain(sql, db, ::fesql::vm::kRequestMode, &explain, &vm_status);
     if (!ok) {
         status->code = -1;
         status->msg = vm_status.msg;
@@ -664,7 +656,7 @@ std::shared_ptr<::rtidb::client::TabletClient> SQLClusterRouter::GetTabletClient
     if (!cache) {
         ::fesql::vm::ExplainOutput explain;
         ::fesql::base::Status vm_status;
-        if (engine_->Explain(sql, db, ::fesql::vm::kBatchMode, &explain, &vm_status)) {
+        if (cluster_sdk_->GetEngine()->Explain(sql, db, ::fesql::vm::kBatchMode, &explain, &vm_status)) {
             std::shared_ptr<::fesql::sdk::SchemaImpl> schema;
             if (explain.input_schema.size() > 0) {
                 schema = std::make_shared<::fesql::sdk::SchemaImpl>(explain.input_schema);
@@ -1029,7 +1021,7 @@ bool SQLClusterRouter::GetSQLPlan(const std::string& sql,
 bool SQLClusterRouter::RefreshCatalog() {
     bool ok = cluster_sdk_->Refresh();
     if (ok) {
-        engine_->UpdateCatalog(cluster_sdk_->GetCatalog());
+        cluster_sdk_->GetEngine()->UpdateCatalog(cluster_sdk_->GetCatalog());
     }
     return ok;
 }
@@ -1039,7 +1031,7 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(
     ::fesql::sdk::Status* status) {
     ::fesql::vm::ExplainOutput explain_output;
     ::fesql::base::Status vm_status;
-    bool ok = engine_->Explain(sql, db, ::fesql::vm::kRequestMode, &explain_output, &vm_status);
+    bool ok = cluster_sdk_->GetEngine()->Explain(sql, db, ::fesql::vm::kRequestMode, &explain_output, &vm_status);
     if (!ok) {
         status->code = -1;
         status->msg = vm_status.msg;
@@ -1225,9 +1217,10 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVect
             }
             // get input schema, check input parameter, and fill sp_info
             fesql::vm::ExplainOutput explain_output;
-            bool ok = engine_->Explain(sql, db, fesql::vm::kRequestMode, &explain_output, &sql_status);
+            bool ok = cluster_sdk_->GetEngine()->Explain(
+                    sql, db, fesql::vm::kRequestMode, &explain_output, &sql_status);
             if (!ok) {
-                *msg = "fail to explain sql";
+                *msg = "fail to explain sql" + sql_status.msg;
                 return false;
             }
             RtidbSchema rtidb_input_schema;
@@ -1252,7 +1245,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVect
             // get dependent tables, and fill sp_info
             std::set<std::string> tables;
             ::fesql::base::Status status;
-            if (!engine_->GetDependentTables(sql, db, ::fesql::vm::kRequestMode, &tables, status)) {
+            if (!cluster_sdk_->GetEngine()->GetDependentTables(sql, db, ::fesql::vm::kRequestMode, &tables, status)) {
                 LOG(WARNING) << "fail to get dependent tables: " << status.msg;
                 return false;
             }
@@ -1260,7 +1253,7 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVect
                 sp_info.add_tables(table);
             }
             // send request to ns client
-            if (!ns_ptr->CreateProcedure(sp_info, msg)) {
+            if (!ns_ptr->CreateProcedure(sp_info, options_.request_timeout, msg)) {
                 *msg = "create procedure failed, msg: " + *msg;
                 return false;
             }
