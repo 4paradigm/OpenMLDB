@@ -772,7 +772,7 @@ std::string RowView::GetAsString(uint32_t idx) {
 }
 
 int32_t RowView::GetValue(const int8_t* row, uint32_t idx, const char** val,
-                          uint32_t* length) const{
+                          uint32_t* length) const {
     if (schema_.size() == 0 || row == NULL || length == NULL) {
         return -1;
     }
