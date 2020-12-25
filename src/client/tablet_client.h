@@ -181,6 +181,10 @@ class TabletClient {
                                     std::string& msg,     // NOLINT
                                     bool showm = false);  // NOLINT
 
+    bool Scan(const ::rtidb::api::ScanRequest& request,
+             brpc::Controller* cntl,
+             ::rtidb::api::ScanResponse* response);
+
     bool GetTableSchema(uint32_t tid, uint32_t pid,
                         ::rtidb::api::TableMeta& table_meta);  // NOLINT
 

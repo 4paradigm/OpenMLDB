@@ -706,6 +706,11 @@ std::shared_ptr<::rtidb::client::TabletClient> SQLClusterRouter::GetTabletClient
     return tablet->GetClient();
 }
 
+std::shared_ptr<TableReader> SQLClusterRouter::GetTableReader() {
+    std::shared_ptr<TableReaderImpl> reader(new TableReaderImpl(cluster_sdk_));
+    return reader;
+}
+
 std::shared_ptr<rtidb::client::TabletClient> SQLClusterRouter::GetTablet(
         const std::string& db, const std::string& sp_name, fesql::sdk::Status* status) {
     if (status == nullptr) return nullptr;

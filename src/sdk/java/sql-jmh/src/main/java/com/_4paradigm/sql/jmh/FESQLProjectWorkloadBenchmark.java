@@ -195,7 +195,7 @@ public class FESQLProjectWorkloadBenchmark {
                     impl.setInt(501, 10);
                     impl.execute();
                 }
-                query361 += " col499 > timestamp(" + (ts - 3000) + ") and col499 < timestamp(" +(ts - 2638) +");";
+                query361 += " and col499 > timestamp(" + (ts - 3000) + ") and col499 < timestamp(" +(ts - 2638) +");";
             } catch (Exception e) {
                 e.printStackTrace();
             }

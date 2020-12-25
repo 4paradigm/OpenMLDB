@@ -397,6 +397,12 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                       CombineIterator* combine_it, std::string* pairs,
                       uint32_t* count);
 
+    int32_t ScanIndex(const ::rtidb::api::ScanRequest* request,
+                      const ::rtidb::api::TableMeta& meta,
+                      const std::map<int32_t, std::shared_ptr<Schema>>& vers_schema,
+                      CombineIterator* combine_it, butil::IOBuf* buf,
+                      uint32_t* count);
+
     int32_t CountIndex(uint64_t expire_time, uint64_t expire_cnt,
                        ::rtidb::api::TTLType ttl_type,
                        ::rtidb::storage::TableIterator* it,
