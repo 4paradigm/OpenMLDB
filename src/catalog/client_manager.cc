@@ -112,7 +112,6 @@ void AsyncTableHandler::SyncRpcResponse() {
         LOG(WARNING) << status_.msg;
         return;
     }
-    DLOG(INFO) << "AsyncTableHandler sync data brpc join";
     brpc::Join(cntl->call_id());
     if (cntl->Failed()) {
         status_ = ::fesql::base::Status(::fesql::common::kRpcError, "request error. " + cntl->ErrorText());
@@ -125,7 +124,6 @@ void AsyncTableHandler::SyncRpcResponse() {
         return;
     }
 
-    DLOG(INFO) << "start to add row into aysnc table: response->row_sizes_size()" << response->row_sizes_size();
     if (response->row_sizes_size() == 0) {
         status_.code = fesql::common::kResponseError;
         status_.msg = "response error: rows empty";
@@ -143,7 +141,6 @@ void AsyncTableHandler::SyncRpcResponse() {
             LOG(WARNING) << status_.msg;
             return;
         }
-        DLOG(INFO) << "Add row";
         AddRow(row);
         buf_offset += row_size;
     }
@@ -206,7 +203,6 @@ bool AsyncTablesHandler::SyncAllTableHandlers() {
         size_t pos_idx = 0;
         iter->SeekToFirst();
         while (iter->Valid()) {
-            DLOG(INFO) << "SetRow pos: " << posinfo[pos_idx];
             SetRow(posinfo[pos_idx], iter->GetValue());
             iter->Next();
             pos_idx++;
