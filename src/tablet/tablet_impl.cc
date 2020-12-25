@@ -2065,6 +2065,7 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
                 response->set_code(::rtidb::base::kSQLRunError);
                 return;
             }
+            buf_offset += non_common_size;
             input_rows[i] = ::fesql::codec::Row(
                 1, common_row, 1, non_common_row);
         }
@@ -2077,6 +2078,7 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl,
                 response->set_code(::rtidb::base::kSQLRunError);
                 return;
             }
+            buf_offset += non_common_size;
         }
     }
     std::vector<::fesql::codec::Row> output_rows;
