@@ -209,7 +209,7 @@ public class DDLEngineTest {
 //            getTableDefs(FileUtils.readFileToString(file, "UTF-8"));
         } catch (IOException e) {
             e.printStackTrace();
-            logger.error("{}", e.getMessage());
+            logger.error("{}", e);
         } catch (Exception e) {
             e.printStackTrace();
         }

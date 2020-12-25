@@ -27,7 +27,7 @@ public class LibraryLoader {
                 logger.info("Successfully load library {}", libraryPath);
                 return;
             } catch (Throwable t) {
-                logger.debug(String.format("Failed to load {}", libraryPath), t);
+                logger.debug(String.format("Failed to load %s", libraryPath), t);
             }
         }
         if (!isPath) {
