@@ -32,7 +32,8 @@ namespace codegen {
 
 AggregateIRBuilder::AggregateIRBuilder(const vm::SchemasContext* sc,
                                        ::llvm::Module* module,
-                                       node::FrameNode* frame_node, uint32_t id)
+                                       const node::FrameNode* frame_node,
+                                       uint32_t id)
     : schema_context_(sc), module_(module), frame_node_(frame_node), id_(id) {
     available_agg_func_set_.insert("sum");
     available_agg_func_set_.insert("avg");
@@ -83,23 +84,18 @@ bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
                 const_cast<node::ExprNode*>(input_expr));
             const std::string& rel_name = col->GetRelationName();
             const std::string& col_name = col->GetColumnName();
-            const RowSchemaInfo* info;
-            if (!schema_context_->ColumnRefResolved(rel_name, col_name,
-                                                    &info)) {
-                LOG(ERROR) << "fail to resolve column "
-                           << rel_name + "." + col_name;
-                return false;
-            }
-            size_t slice_idx = info->idx_;
 
-            const codec::RowDecoder* decoder =
-                schema_context_->GetDecoder(info->idx_);
-            codec::ColInfo col_info;
-            if (!decoder->ResolveColumn(col_name, &col_info)) {
-                LOG(ERROR) << "fail to resolve column "
-                           << rel_name + "." + col_name;
+            size_t schema_idx;
+            size_t col_idx;
+            Status status = schema_context_->ResolveColumnRefIndex(
+                col, &schema_idx, &col_idx);
+            if (!status.isOK()) {
+                DLOG(ERROR) << status.msg;
                 return false;
             }
+            const codec::ColInfo& col_info =
+                *schema_context_->GetRowFormat(schema_idx)
+                     ->GetColumnInfo(col_idx);
             auto col_type = col_info.type;
             uint32_t offset = col_info.offset;
 
@@ -126,7 +122,7 @@ bool AggregateIRBuilder::CollectAggColumn(const fesql::node::ExprNode* expr,
             auto iter = agg_col_infos_.find(col_key);
             if (iter == agg_col_infos_.end()) {
                 agg_col_infos_[col_key] =
-                    AggColumnInfo(col, node_type, slice_idx, offset);
+                    AggColumnInfo(col, node_type, schema_idx, col_idx, offset);
             }
             agg_col_infos_[col_key].AddAgg(agg_func_name, output_idx);
             return true;
@@ -159,7 +155,7 @@ class StatisticalAggGenerator {
         ::llvm::LLVMContext& llvm_ctx = builder->getContext();
         ::llvm::Type* llvm_ty =
             AggregateIRBuilder::GetOutputLLVMType(llvm_ctx, "sum", col_type_);
-        ::llvm::Value* accum = builder->CreateAlloca(llvm_ty);
+        ::llvm::Value* accum = CreateAllocaAtHead(builder, llvm_ty, "sum");
         if (llvm_ty->isIntegerTy()) {
             builder->CreateStore(::llvm::ConstantInt::get(llvm_ty, 0, true),
                                  accum);
@@ -173,7 +169,7 @@ class StatisticalAggGenerator {
         ::llvm::LLVMContext& llvm_ctx = builder->getContext();
         ::llvm::Type* llvm_ty =
             AggregateIRBuilder::GetOutputLLVMType(llvm_ctx, "avg", col_type_);
-        ::llvm::Value* accum = builder->CreateAlloca(llvm_ty);
+        ::llvm::Value* accum = CreateAllocaAtHead(builder, llvm_ty, "avg");
         builder->CreateStore(::llvm::ConstantFP::get(llvm_ty, 0.0), accum);
         return accum;
     }
@@ -181,7 +177,7 @@ class StatisticalAggGenerator {
     ::llvm::Value* GenCountInitState(::llvm::IRBuilder<>* builder) {
         ::llvm::LLVMContext& llvm_ctx = builder->getContext();
         ::llvm::Type* int64_ty = ::llvm::Type::getInt64Ty(llvm_ctx);
-        ::llvm::Value* cnt = builder->CreateAlloca(int64_ty);
+        ::llvm::Value* cnt = CreateAllocaAtHead(builder, int64_ty, "cnt");
         builder->CreateStore(::llvm::ConstantInt::get(int64_ty, 0, true), cnt);
         return cnt;
     }
@@ -190,7 +186,7 @@ class StatisticalAggGenerator {
         ::llvm::LLVMContext& llvm_ctx = builder->getContext();
         ::llvm::Type* llvm_ty =
             AggregateIRBuilder::GetOutputLLVMType(llvm_ctx, "min", col_type_);
-        ::llvm::Value* accum = builder->CreateAlloca(llvm_ty);
+        ::llvm::Value* accum = CreateAllocaAtHead(builder, llvm_ty, "min");
         ::llvm::Value* min;
         if (llvm_ty == ::llvm::Type::getInt16Ty(llvm_ctx)) {
             min = ::llvm::ConstantInt::get(
@@ -216,7 +212,7 @@ class StatisticalAggGenerator {
         ::llvm::LLVMContext& llvm_ctx = builder->getContext();
         ::llvm::Type* llvm_ty =
             AggregateIRBuilder::GetOutputLLVMType(llvm_ctx, "max", col_type_);
-        ::llvm::Value* accum = builder->CreateAlloca(llvm_ty);
+        ::llvm::Value* accum = CreateAllocaAtHead(builder, llvm_ty, "max");
         ::llvm::Value* max;
         if (llvm_ty == ::llvm::Type::getInt16Ty(llvm_ctx)) {
             max = ::llvm::ConstantInt::get(
@@ -562,7 +558,7 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
                                     VariableIRBuilder* variable_ir_builder,
                                     ::llvm::BasicBlock* cur_block,
                                     const std::string& output_ptr_name,
-                                    vm::Schema* output_schema) {
+                                    const vm::Schema& output_schema) {
     ::llvm::LLVMContext& llvm_ctx = module_->getContext();
     ::llvm::IRBuilder<> builder(llvm_ctx);
     auto void_ty = llvm::Type::getVoidTy(llvm_ctx);
@@ -622,8 +618,8 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
 
     // on stack unique pointer
     size_t iter_bytes = sizeof(std::unique_ptr<codec::RowIterator>);
-    ::llvm::Value* iter_ptr = builder.CreateAlloca(
-        ::llvm::Type::getInt8Ty(llvm_ctx),
+    ::llvm::Value* iter_ptr = CreateAllocaAtHead(
+        &builder, ::llvm::Type::getInt8Ty(llvm_ctx), "row_iter",
         ::llvm::ConstantInt::get(int64_ty, iter_bytes, true));
     auto get_iter_func = module_->getOrInsertFunction(
         "fesql_storage_get_row_iter", void_ty, ptr_ty, ptr_ty);
@@ -652,16 +648,16 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
 
     // compute current row's slices
     for (auto& pair : agg_col_infos_) {
-        size_t slice_idx = pair.second.slice_idx;
-        auto iter = used_slices.find(slice_idx);
+        size_t schema_idx = pair.second.schema_idx;
+        auto iter = used_slices.find(schema_idx);
         if (iter == used_slices.end()) {
             ::llvm::Value* idx_value =
-                llvm::ConstantInt::get(int64_ty, slice_idx, true);
+                llvm::ConstantInt::get(int64_ty, schema_idx, true);
             ::llvm::Value* buf_ptr =
                 builder.CreateCall(get_slice_func, {iter_ptr, idx_value});
             ::llvm::Value* buf_size =
                 builder.CreateCall(get_slice_size_func, {iter_ptr, idx_value});
-            used_slices[slice_idx] = {buf_ptr, buf_size};
+            used_slices[schema_idx] = {buf_ptr, buf_size};
         }
     }
 
@@ -671,17 +667,16 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
         auto& info = pair.second;
         std::string col_key = info.GetColKey();
         if (cur_row_fields_dict.find(col_key) == cur_row_fields_dict.end()) {
-            size_t slice_idx = info.slice_idx;
-            auto& slice_info = used_slices[slice_idx];
+            size_t schema_idx = info.schema_idx;
+            auto& slice_info = used_slices[schema_idx];
 
             ScopeVar dummy_scope_var;
             BufNativeIRBuilder buf_builder(
-                schema_context_->row_schema_info_list_[slice_idx].schema_,
+                schema_idx, schema_context_->GetRowFormat(schema_idx),
                 body_block, &dummy_scope_var);
             NativeValue field_value;
-            if (!buf_builder.BuildGetField(info.col->GetColumnName(),
-                                           slice_info.first, slice_info.second,
-                                           &field_value)) {
+            if (!buf_builder.BuildGetField(info.col_idx, slice_info.first,
+                                           slice_info.second, &field_value)) {
                 LOG(ERROR) << "fail to gen fetch column";
                 return false;
             }
@@ -720,7 +715,7 @@ bool AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
 
     // store results to output row
     std::map<uint32_t, NativeValue> dummy_map;
-    BufNativeEncoderIRBuilder output_encoder(&dummy_map, output_schema,
+    BufNativeEncoderIRBuilder output_encoder(&dummy_map, &output_schema,
                                              exit_block);
     for (auto& agg_generator : generators) {
         std::vector<std::pair<size_t, ::llvm::Value*>> outputs;

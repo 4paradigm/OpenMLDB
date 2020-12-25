@@ -17,18 +17,19 @@
 #include <vector>
 #include "base/graph.h"
 #include "node/plan_node.h"
+#include "passes/expression/expr_pass.h"
 #include "vm/catalog.h"
+#include "vm/schemas_context.h"
 namespace fesql {
 namespace vm {
 
-// new and delete physical node manage
+// new and delete physical node managef
 enum PhysicalOpType {
     kPhysicalOpDataProvider,
     kPhysicalOpFilter,
     kPhysicalOpGroupBy,
     kPhysicalOpSortBy,
     kPhysicalOpAggrerate,
-    kPhysicalOpWindowAgg,
     kPhysicalOpProject,
     kPhysicalOpSimpleProject,
     kPhysicalOpConstProject,
@@ -36,10 +37,11 @@ enum PhysicalOpType {
     kPhysicalOpRename,
     kPhysicalOpDistinct,
     kPhysicalOpJoin,
-    kPhysicalOpUnoin,
+    kPhysicalOpUnion,
     kPhysicalOpWindow,
     kPhysicalOpIndexSeek,
-    kPhysicalOpRequestUnoin,
+    kPhysicalOpRequestUnion,
+    kPhysicalOpPostRequestUnion,
     kPhysicalOpRequestJoin,
     kPhysicalOpRequestGroup,
     kPhysicalOpRequestGroupAndSort,
@@ -74,9 +76,11 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "WINDOW";
         case kPhysicalOpJoin:
             return "JOIN";
-        case kPhysicalOpUnoin:
+        case kPhysicalOpUnion:
             return "UNION";
-        case kPhysicalOpRequestUnoin:
+        case kPhysicalOpPostRequestUnion:
+            return "POST_REQUEST_UNION";
+        case kPhysicalOpRequestUnion:
             return "REQUEST_UNION";
         case kPhysicalOpRequestJoin:
             return "REQUEST_JOIN";
@@ -87,16 +91,90 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
     }
 }
 
-struct FnInfo {
-    ~FnInfo() {}
+/**
+ * Function codegen information for physical node. It should
+ * provide full information to generate execution code.
+ * FnInfo should be never shared between different node.
+ */
+class FnInfo {
+ public:
+    const std::string &fn_name() const { return fn_name_; }
+    const vm::Schema *fn_schema() const { return &fn_schema_; }
+    const node::LambdaNode *fn_def() const { return fn_def_; }
+    const SchemasContext *schemas_ctx() const { return schemas_ctx_; }
+
+    bool IsValid() const {
+        return fn_name_ != "" && !fn_schema_.empty() && fn_def_ != nullptr;
+    }
+
+    void SetFn(const std::string &fn_name, const node::LambdaNode *fn_def,
+               const SchemasContext *schemas_ctx) {
+        fn_name_ = fn_name;
+        fn_def_ = fn_def;
+        schemas_ctx_ = schemas_ctx;
+    }
+
+    void AddOutputColumn(const type::ColumnDef &column_def,
+                         const node::FrameNode *frame = nullptr) {
+        *fn_schema_.Add() = column_def;
+        frames_.push_back(frame);
+    }
+
+    void SetPrimaryFrame(const node::FrameNode *frame) {
+        primary_frame_ = frame;
+    }
+
+    void Clear() {
+        fn_name_ = "";
+        fn_schema_.Clear();
+        fn_def_ = nullptr;
+        primary_frame_ = nullptr;
+        frames_.clear();
+        schemas_ctx_ = nullptr;
+        fn_ptr_ = nullptr;
+    }
+
+    const node::FrameNode *GetFrame(size_t idx) const {
+        return idx < frames_.size() ? frames_[idx] : nullptr;
+    }
+    const std::vector<const node::FrameNode *> &GetFrames() const {
+        return frames_;
+    }
+    const node::FrameNode *GetPrimaryFrame() const { return primary_frame_; }
+
+    FnInfo() = default;
+
+    const int8_t *fn_ptr() const { return fn_ptr_; }
+    void SetFnPtr(const int8_t *fn) { fn_ptr_ = fn; }
+
+ private:
     std::string fn_name_ = "";
-    int8_t *fn_ = nullptr;
     vm::Schema fn_schema_;
-    const std::string &fn_name() { return fn_name_; }
-    const vm::Schema &fn_schema() { return fn_schema_; }
-    const int8_t *fn() { return fn_; }
+
+    // function definition
+    const node::LambdaNode *fn_def_ = nullptr;
+
+    // expression frames for agg projection
+    const node::FrameNode *primary_frame_ = nullptr;
+    std::vector<const node::FrameNode *> frames_;
+
+    // codegen output schemas context
+    const SchemasContext *schemas_ctx_ = nullptr;
+
+    // function ptr
+    const int8_t *fn_ptr_ = nullptr;
 };
-class Sort {
+
+class FnComponent {
+ public:
+    const FnInfo &fn_info() const { return fn_info_; }
+    FnInfo *mutable_fn_info() { return &fn_info_; }
+
+ protected:
+    FnInfo fn_info_;
+};
+
+class Sort : public FnComponent {
  public:
     explicit Sort(const node::OrderByNode *orders) : orders_(orders) {}
     virtual ~Sort() {}
@@ -111,18 +189,23 @@ class Sort {
         oss << "orders=" << node::ExprString(orders_);
         return oss.str();
     }
-    const FnInfo &fn_info() const { return fn_info_; }
-    const std::string FnDetail() const { return "sort = " + fn_info_.fn_name_; }
+    const std::string FnDetail() const {
+        return "sort = " + fn_info_.fn_name();
+    }
+
     void ResolvedRelatedColumns(
-        std::vector<const fesql::node::ColumnRefNode *> *columns) const {
+        std::vector<const node::ExprNode *> *columns) const {
         node::ColumnOfExpression(orders_, columns);
         return;
     }
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, Sort *out) const;
+
     const node::OrderByNode *orders_;
-    FnInfo fn_info_;
 };
 
-class Range {
+class Range : public FnComponent {
  public:
     Range() : range_key_(nullptr), frame_(nullptr) {}
     Range(const node::OrderByNode *order, const node::FrameNode *frame)
@@ -155,19 +238,23 @@ class Range {
         }
         return oss.str();
     }
-    const node::ExprNode *range_key() { return range_key_; }
+    const node::ExprNode *range_key() const { return range_key_; }
     void set_range_key(const node::ExprNode *range_key) {
         range_key_ = range_key;
     }
-    const FnInfo &fn_info() const { return fn_info_; }
     const node::FrameNode *frame() const { return frame_; }
-    const std::string FnDetail() const { return "range=" + fn_info_.fn_name_; }
-    FnInfo fn_info_;
+    const std::string FnDetail() const { return "range=" + fn_info_.fn_name(); }
+
+    void ResolvedRelatedColumns(std::vector<const node::ExprNode *> *) const;
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, Range *out) const;
+
     const node::ExprNode *range_key_;
     const node::FrameNode *frame_;
 };
 
-class ConditionFilter {
+class ConditionFilter : public FnComponent {
  public:
     explicit ConditionFilter(const node::ExprNode *condition)
         : condition_(condition) {}
@@ -182,18 +269,21 @@ class ConditionFilter {
         return oss.str();
     }
     const node::ExprNode *condition() const { return condition_; }
-    const FnInfo &fn_info() const { return fn_info_; }
-    const std::string FnDetail() const { return fn_info_.fn_name_; }
+    const std::string FnDetail() const { return fn_info_.fn_name(); }
+
     virtual void ResolvedRelatedColumns(
-        std::vector<const fesql::node::ColumnRefNode *> *columns) const {
+        std::vector<const node::ExprNode *> *columns) const {
         node::ColumnOfExpression(condition_, columns);
         return;
     }
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, ConditionFilter *out) const;
+
     const node::ExprNode *condition_;
-    FnInfo fn_info_;
 };
 
-class Key {
+class Key : public FnComponent {
  public:
     Key() : keys_(nullptr) {}
     explicit Key(const node::ExprListNode *keys) : keys_(keys) {}
@@ -204,86 +294,71 @@ class Key {
         return oss.str();
     }
     const bool ValidKey() const { return !node::ExprListNullOrEmpty(keys_); }
-    void set_keys(const node::ExprListNode *keys) { keys_ = keys; }
     const node::ExprListNode *keys() const { return keys_; }
-    const FnInfo &fn_info() const { return fn_info_; }
-    const std::string FnDetail() const { return "keys=" + fn_info_.fn_name_; }
+    void set_keys(const node::ExprListNode *keys) { keys_ = keys; }
+    const node::ExprListNode *PhysicalProjectNode() const { return keys_; }
+    const std::string FnDetail() const { return "keys=" + fn_info_.fn_name(); }
+
     void ResolvedRelatedColumns(
-        std::vector<const fesql::node::ColumnRefNode *> *columns) const {
+        std::vector<const node::ExprNode *> *columns) const {
         node::ColumnOfExpression(keys_, columns);
     }
 
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, Key *out) const;
+
     const node::ExprListNode *keys_;
-    FnInfo fn_info_;
 };
 
-class ColumnProject {
+class ColumnProjects : public FnComponent {
  public:
-    explicit ColumnProject(const ColumnSourceList &sources)
-        : column_sources_(sources) {}
-    virtual ~ColumnProject() {}
-    const std::string ToString() const {
-        std::ostringstream oss;
-        oss << "sources=(";
-        for (size_t i = 0; i < column_sources_.size(); i++) {
-            if (i > 10) {
-                oss << ", ...";
-                break;
-            }
-            if (i > 0) {
-                oss << ", ";
-            }
-            oss << "[" << i << "]" << column_sources_[i].ToString();
-        }
-        return oss.str();
-    }
-    const FnInfo &fn_info() const { return fn_info_; }
-    const std::string FnDetail() const {
-        return "simple_project=" + fn_info_.fn_name_;
-    }
-    const ColumnSourceList &column_sources() const { return column_sources_; }
+    ColumnProjects() {}
 
-    static const bool CombineColumnSources(
-        const ColumnSourceList &sources1, const ColumnSourceList &sources2,
-        ColumnSourceList &sources) {  // NOLINT
-        for (auto source1 : sources1) {
-            switch (source1.type()) {
-                case kSourceConst: {
-                    sources.push_back(source1);
-                    break;
-                }
-                case kSourceColumn: {
-                    if (source1.column_idx() >= sources2.size()) {
-                        LOG(WARNING) << "Fail to combine column sources";
-                        return false;
-                    }
-                    auto combine_source = sources2[source1.column_idx()];
-                    combine_source.AddCastTypes(source1.cast_types());
-                    sources.push_back(combine_source);
-                    break;
-                }
-                case kSourceNone: {
-                    LOG(WARNING) << "Fail to combine column sources";
-                    return false;
-                }
-            }
-        }
-        return true;
+    void Add(const std::string &name, const node::ExprNode *expr,
+             const node::FrameNode *frame);
+
+    void Clear();
+
+    size_t size() const { return names_.size(); }
+
+    const node::ExprNode *GetExpr(size_t idx) const {
+        return idx < size() ? exprs_[idx] : nullptr;
     }
-    FnInfo fn_info_;
-    ColumnSourceList column_sources_;
+
+    const std::string GetName(size_t idx) const {
+        return idx < size() ? names_[idx] : "";
+    }
+
+    const node::FrameNode *GetFrame(size_t idx) const {
+        return idx < size() ? frames_[idx] : nullptr;
+    }
+
+    void SetPrimaryFrame(const node::FrameNode *frame) {
+        primary_frame_ = frame;
+    }
+
+    const node::FrameNode *GetPrimaryFrame() const { return primary_frame_; }
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, ColumnProjects *out) const;
+
+ private:
+    std::vector<std::string> names_;
+    std::vector<const node::ExprNode *> exprs_;
+    std::vector<const node::FrameNode *> frames_;
+    const node::FrameNode *primary_frame_ = nullptr;
 };
+
+class PhysicalPlanContext;
 
 class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
  public:
-    PhysicalOpNode(PhysicalOpType type, bool is_block, bool is_lazy)
+    PhysicalOpNode(PhysicalOpType type, bool is_block)
         : type_(type),
           is_block_(is_block),
-          is_lazy_(is_lazy),
           output_type_(kSchemaTypeTable),
-          fn_info_({"", nullptr}),
-          fn_infos_({&fn_info_}),
-          limit_cnt_(0) {}
+          limit_cnt_(0),
+          schemas_ctx_(this) {}
 
     const std::string GetTypeName() const override {
         return PhysicalOpTypeName(type_);
@@ -298,8 +373,22 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
 
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
-    virtual bool InitSchema() = 0;
-    virtual void PrintSchema();
+
+    virtual base::Status WithNewChildren(
+        node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
+        PhysicalOpNode **out) = 0;
+
+    /**
+     * Initialize physical node's output schema.
+     */
+    virtual base::Status InitSchema(PhysicalPlanContext *ctx) = 0;
+    void ClearSchema() { schemas_ctx_.Clear(); }
+    void FinishSchema() { schemas_ctx_.Build(); }
+
+    virtual void PrintSchema() const;
+
+    virtual std::string SchemaToString() const;
+
     const std::vector<PhysicalOpNode *> &GetProducers() const {
         return producers_;
     }
@@ -310,108 +399,92 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
         producers_.push_back(producer);
     }
 
-    std::vector<FnInfo *> GetFnInfos() const { return fn_infos_; }
-    const FnInfo &GetFnInfo() const { return fn_info_; }
-    void SetFn(int8_t *fn) { fn_info_.fn_ = fn; }
-    const int8_t *GetFn() const { return fn_info_.fn_; }
+    /**
+     * Get all function infos bind to current physical node.
+     */
+    const std::vector<const FnInfo *> GetFnInfos() const { return fn_infos_; }
+
+    /**
+     * Add component FnInfo to current physical node. The node fn list take
+     * no ownership to this FnInfo instance.
+     */
+    void AddFnInfo(const FnInfo *fn_info) { fn_infos_.push_back(fn_info); }
+
+    /**
+     * Clear current function informations.
+     */
+    void ClearFnInfo() { fn_infos_.clear(); }
+
     PhysicalOpNode *GetProducer(size_t index) const {
         return producers_[index];
     }
 
     const fesql::codec::Schema *GetOutputSchema() const {
-        return &output_schema_;
+        return schemas_ctx_.GetOutputSchema();
     }
+
+    size_t GetOutputSchemaSize() const { return GetOutputSchema()->size(); }
 
     void SetProducer(size_t index, PhysicalOpNode *produce) {
         producers_[index] = produce;
     }
     size_t GetProducerCnt() const { return producers_.size(); }
 
-    void SetFnName(const std::string &fn_name) { fn_info_.fn_name_ = fn_name; }
-    const std::string &GetFnName() const { return fn_info_.fn_name_; }
-
-    void SetFnSchema(const Schema schema) { fn_info_.fn_schema_ = schema; }
-
-    const fesql::codec::Schema &GetFnSchema() const {
-        return fn_info_.fn_schema_;
+    const size_t GetOutputSchemaSourceSize() const {
+        return schemas_ctx_.GetSchemaSourceSize();
     }
 
-    const vm::SchemaSourceList &GetOutputNameSchemaList() {
-        return output_name_schema_list_;
-    }
-
-    void SetOutputNameSchemaList(const vm::SchemaSourceList &sources) {
-        output_name_schema_list_ = sources;
-    }
-    const size_t GetOutputSchemaListSize() const {
-        return output_name_schema_list_.GetSchemaSourceListSize();
-    }
-
-    const vm::Schema *GetOutputSchemaSlice(size_t idx) const {
-        return output_name_schema_list_.GetSchemaSlice(idx);
+    const fesql::vm::SchemaSource *GetOutputSchemaSource(size_t idx) const {
+        return idx < schemas_ctx_.GetSchemaSourceSize()
+                   ? schemas_ctx_.GetSchemaSource(idx)
+                   : nullptr;
     }
 
     void SetLimitCnt(int32_t limit_cnt) { limit_cnt_ = limit_cnt; }
 
     const int32_t GetLimitCnt() const { return limit_cnt_; }
 
-    const PhysicalOpType type_;
-    const bool is_block_;
-    const bool is_lazy_;
-    PhysicalSchemaType output_type_;
-    vm::Schema output_schema_;
+    bool IsSameSchema(const vm::Schema &schema,
+                      const vm::Schema &exp_schema) const;
+
+    PhysicalSchemaType GetOutputType() const { return output_type_; }
+
+    PhysicalOpType GetOpType() const { return type_; }
+
+    const SchemasContext *schemas_ctx() const { return &schemas_ctx_; }
+
+    bool is_block() const { return is_block_; }
 
  protected:
-    bool IsSameSchema(const vm::Schema &schema,
-                      const vm::Schema &exp_schema) const {
-        if (schema.size() != exp_schema.size()) {
-            LOG(WARNING) << "Schemas size aren't consistent: "
-                         << "expect size " << exp_schema.size()
-                         << ", real size " << schema.size();
-            return false;
-        }
-        for (int i = 0; i < schema.size(); i++) {
-            if (schema.Get(i).name() != exp_schema.Get(i).name()) {
-                LOG(WARNING) << "Schemas aren't consistent:\n"
-                             << exp_schema.Get(i).DebugString() << "vs:\n"
-                             << schema.Get(i).DebugString();
-                return false;
-            }
-            if (schema.Get(i).type() != exp_schema.Get(i).type()) {
-                LOG(WARNING) << "Schemas aren't consistent:\n"
-                             << exp_schema.Get(i).DebugString() << "vs:\n"
-                             << schema.Get(i).DebugString();
-                return false;
-            }
-        }
-        return true;
-    }
-    FnInfo fn_info_;
-    std::vector<FnInfo *> fn_infos_;
+    const PhysicalOpType type_;
+    const bool is_block_;
+    PhysicalSchemaType output_type_;
+
+    std::vector<const FnInfo *> fn_infos_;
     int32_t limit_cnt_;
     std::vector<PhysicalOpNode *> producers_;
-    vm::SchemaSourceList output_name_schema_list_;
+
+    SchemasContext schemas_ctx_;
 };
 
 class PhysicalUnaryNode : public PhysicalOpNode {
  public:
-    PhysicalUnaryNode(PhysicalOpNode *node, PhysicalOpType type, bool is_block,
-                      bool is_lazy)
-        : PhysicalOpNode(type, is_block, is_lazy) {
+    PhysicalUnaryNode(PhysicalOpNode *node, PhysicalOpType type, bool is_block)
+        : PhysicalOpNode(type, is_block) {
         AddProducer(node);
     }
+    base::Status InitSchema(PhysicalPlanContext *) override;
     virtual ~PhysicalUnaryNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
-    bool InitSchema() override;
 };
 
 class PhysicalBinaryNode : public PhysicalOpNode {
  public:
     PhysicalBinaryNode(PhysicalOpNode *left, PhysicalOpNode *right,
-                       PhysicalOpType type, bool is_block, bool is_lazy)
-        : PhysicalOpNode(type, is_block, is_lazy) {
+                       PhysicalOpType type, bool is_block)
+        : PhysicalOpNode(type, is_block) {
         AddProducer(left);
         AddProducer(right);
     }
@@ -439,17 +512,18 @@ inline const std::string DataProviderTypeName(const DataProviderType &type) {
             return "UNKNOW";
     }
 }
+
 class PhysicalDataProviderNode : public PhysicalOpNode {
  public:
     PhysicalDataProviderNode(const std::shared_ptr<TableHandler> &table_handler,
                              DataProviderType provider_type)
-        : PhysicalOpNode(kPhysicalOpDataProvider, true, false),
+        : PhysicalOpNode(kPhysicalOpDataProvider, true),
           provider_type_(provider_type),
-          table_handler_(table_handler) {
-        InitSchema();
-    }
+          table_handler_(table_handler) {}
     ~PhysicalDataProviderNode() {}
-    bool InitSchema() override;
+
+    base::Status InitSchema(PhysicalPlanContext *) override;
+
     static PhysicalDataProviderNode *CastFrom(PhysicalOpNode *node);
     const std::string &GetName() const;
     const DataProviderType provider_type_;
@@ -461,6 +535,11 @@ class PhysicalTableProviderNode : public PhysicalDataProviderNode {
     explicit PhysicalTableProviderNode(
         const std::shared_ptr<TableHandler> &table_handler)
         : PhysicalDataProviderNode(table_handler, kProviderTypeTable) {}
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     virtual ~PhysicalTableProviderNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
 };
@@ -472,6 +551,13 @@ class PhysicalRequestProviderNode : public PhysicalDataProviderNode {
         : PhysicalDataProviderNode(table_handler, kProviderTypeRequest) {
         output_type_ = kSchemaTypeRow;
     }
+
+    base::Status InitSchema(PhysicalPlanContext *) override;
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     virtual ~PhysicalRequestProviderNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
 };
@@ -483,20 +569,17 @@ class PhysicalRequestProviderNodeWithCommonColumn
         const std::shared_ptr<TableHandler> &table_handler,
         const std::set<size_t> common_column_indices)
         : PhysicalRequestProviderNode(table_handler),
-          common_column_indices_(common_column_indices) {
-        ResetSchemaWithCommonColumnInfo();
-    }
+          common_column_indices_(common_column_indices) {}
 
     ~PhysicalRequestProviderNodeWithCommonColumn() {}
 
+    base::Status InitSchema(PhysicalPlanContext *) override;
     void Print(std::ostream &output, const std::string &tab) const override;
 
  private:
-    bool ResetSchemaWithCommonColumnInfo();
-
     std::set<size_t> common_column_indices_;
-    std::unique_ptr<fesql::vm::Schema> owned_common_schema_ = nullptr;
-    std::unique_ptr<fesql::vm::Schema> owned_non_common_schema_ = nullptr;
+    vm::Schema common_schema_;
+    vm::Schema non_common_schema_;
 };
 
 class PhysicalPartitionProviderNode : public PhysicalDataProviderNode {
@@ -507,9 +590,13 @@ class PhysicalPartitionProviderNode : public PhysicalDataProviderNode {
                                    kProviderTypePartition),
           index_name_(index_name) {
         output_type_ = kSchemaTypeGroup;
-        SetOutputNameSchemaList(depend->GetOutputNameSchemaList());
     }
     virtual ~PhysicalPartitionProviderNode() {}
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const std::string index_name_;
 };
@@ -517,15 +604,18 @@ class PhysicalPartitionProviderNode : public PhysicalDataProviderNode {
 class PhysicalGroupNode : public PhysicalUnaryNode {
  public:
     PhysicalGroupNode(PhysicalOpNode *node, const node::ExprListNode *groups)
-        : PhysicalUnaryNode(node, kPhysicalOpGroupBy, true, false),
-          group_(groups) {
+        : PhysicalUnaryNode(node, kPhysicalOpGroupBy, true), group_(groups) {
         output_type_ = kSchemaTypeGroup;
-        InitSchema();
-        fn_infos_.push_back(&group_.fn_info_);
+        fn_infos_.push_back(&group_.fn_info());
     }
     virtual ~PhysicalGroupNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     static PhysicalGroupNode *CastFrom(PhysicalOpNode *node);
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     bool Valid() { return group_.ValidKey(); }
     Key group() const { return group_; }
     Key group_;
@@ -538,6 +628,7 @@ enum ProjectType {
     kGroupAggregation,
     kWindowAggregation,
 };
+
 inline const std::string ProjectTypeName(const ProjectType &type) {
     switch (type) {
         case kRowProject:
@@ -555,36 +646,47 @@ inline const std::string ProjectTypeName(const ProjectType &type) {
     }
 }
 
+inline bool IsAggProjectType(const ProjectType &type) {
+    switch (type) {
+        case kAggregation:
+        case kGroupAggregation:
+        case kWindowAggregation:
+            return true;
+        default:
+            return false;
+    }
+}
+
 class PhysicalProjectNode : public PhysicalUnaryNode {
  public:
-    PhysicalProjectNode(PhysicalOpNode *node, const std::string &fn_name,
-                        const Schema &schema, const ColumnSourceList &sources,
-                        ProjectType project_type, const bool is_block,
-                        const bool is_lazy)
-        : PhysicalUnaryNode(node, kPhysicalOpProject, is_block, is_lazy),
+    PhysicalProjectNode(PhysicalOpNode *depend, ProjectType project_type,
+                        const ColumnProjects &project, bool is_block)
+        : PhysicalUnaryNode(depend, kPhysicalOpProject, is_block),
           project_type_(project_type),
-          project_({fn_name, nullptr, schema}),
-          sources_(sources) {
-        InitSchema();
-        fn_infos_.push_back(&project_);
+          project_(project) {
+        fn_infos_.push_back(&project_.fn_info());
     }
     virtual ~PhysicalProjectNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    bool InitSchema() override;
     static PhysicalProjectNode *CastFrom(PhysicalOpNode *node);
-    const FnInfo &project() const { return project_; }
+
+    base::Status InitSchema(PhysicalPlanContext *) override;
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
+    const ColumnProjects &project() const { return project_; }
     const ProjectType project_type_;
-    FnInfo project_;
-    const ColumnSourceList sources_;
+
+ protected:
+    ColumnProjects project_;
 };
 
 class PhysicalRowProjectNode : public PhysicalProjectNode {
  public:
-    PhysicalRowProjectNode(PhysicalOpNode *node, const std::string fn_name,
-                           const Schema &schema,
-                           const ColumnSourceList &sources)
-        : PhysicalProjectNode(node, fn_name, schema, sources, kRowProject,
-                              false, false) {
+    PhysicalRowProjectNode(PhysicalOpNode *node, const ColumnProjects &project)
+        : PhysicalProjectNode(node, kRowProject, project, false) {
         output_type_ = kSchemaTypeRow;
     }
     virtual ~PhysicalRowProjectNode() {}
@@ -593,63 +695,66 @@ class PhysicalRowProjectNode : public PhysicalProjectNode {
 
 class PhysicalTableProjectNode : public PhysicalProjectNode {
  public:
-    PhysicalTableProjectNode(PhysicalOpNode *node, const std::string fn_name,
-                             const Schema &schema,
-                             const ColumnSourceList &sources)
-        : PhysicalProjectNode(node, fn_name, schema, sources, kTableProject,
-                              false, false) {
+    PhysicalTableProjectNode(PhysicalOpNode *node,
+                             const ColumnProjects &project)
+        : PhysicalProjectNode(node, kTableProject, project, false) {
         output_type_ = kSchemaTypeTable;
     }
     virtual ~PhysicalTableProjectNode() {}
     static PhysicalTableProjectNode *CastFrom(PhysicalOpNode *node);
 };
+
 class PhysicalConstProjectNode : public PhysicalOpNode {
  public:
-    PhysicalConstProjectNode(const std::string &fn_name, const Schema &schema,
-                             const ColumnSourceList &sources)
-        : PhysicalOpNode(kPhysicalOpConstProject, true, false),
-          project_({fn_name, nullptr, schema}),
-          sources_(sources) {
-        InitSchema();
-        fn_infos_.push_back(&project_);
+    explicit PhysicalConstProjectNode(const ColumnProjects &project)
+        : PhysicalOpNode(kPhysicalOpConstProject, true), project_(project) {
+        fn_infos_.push_back(&project_.fn_info());
     }
     virtual ~PhysicalConstProjectNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
-    bool InitSchema() override;
     static PhysicalConstProjectNode *CastFrom(PhysicalOpNode *node);
-    const FnInfo &project() const { return project_; }
-    FnInfo project_;
-    const ColumnSourceList sources_;
+    const ColumnProjects &project() const { return project_; }
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
+    base::Status InitSchema(PhysicalPlanContext *) override;
+
+ private:
+    ColumnProjects project_;
 };
+
 class PhysicalSimpleProjectNode : public PhysicalUnaryNode {
  public:
-    PhysicalSimpleProjectNode(PhysicalOpNode *node, const Schema &schema,
-                              const ColumnSourceList &sources,
-                              const std::string schema_name = "")
-        : PhysicalUnaryNode(node, kPhysicalOpSimpleProject, true, false),
-          project_(sources),
-          schema_name_(schema_name) {
-        output_type_ = node->output_type_;
-        output_schema_ = schema;
-        InitSchema();
-        fn_infos_.push_back(&project_.fn_info_);
+    PhysicalSimpleProjectNode(PhysicalOpNode *node,
+                              const ColumnProjects &project)
+        : PhysicalUnaryNode(node, kPhysicalOpSimpleProject, true),
+          project_(project) {
+        output_type_ = node->GetOutputType();
+        fn_infos_.push_back(&project_.fn_info());
     }
 
     virtual ~PhysicalSimpleProjectNode() {}
-    bool InitSchema() override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     static PhysicalSimpleProjectNode *CastFrom(PhysicalOpNode *node);
-    const ColumnProject &project() const { return project_; }
-    ColumnProject project_;
-    const std::string schema_name_;
+
+    const ColumnProjects &project() const { return project_; }
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
+    base::Status InitSchema(PhysicalPlanContext *) override;
+
+ private:
+    ColumnProjects project_;
 };
+
 class PhysicalAggrerationNode : public PhysicalProjectNode {
  public:
-    PhysicalAggrerationNode(PhysicalOpNode *node, const std::string &fn_name,
-                            const Schema &schema,
-                            const ColumnSourceList &sources)
-        : PhysicalProjectNode(node, fn_name, schema, sources, kAggregation,
-                              true, false) {
+    PhysicalAggrerationNode(PhysicalOpNode *node, const ColumnProjects &project)
+        : PhysicalProjectNode(node, kAggregation, project, true) {
         output_type_ = kSchemaTypeRow;
     }
     virtual ~PhysicalAggrerationNode() {}
@@ -658,17 +763,19 @@ class PhysicalAggrerationNode : public PhysicalProjectNode {
 class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalGroupAggrerationNode(PhysicalOpNode *node,
-                                 const node::ExprListNode *groups,
-                                 const std::string &fn_name,
-                                 const Schema &schema,
-                                 const ColumnSourceList &sources)
-        : PhysicalProjectNode(node, fn_name, schema, sources, kGroupAggregation,
-                              true, false),
+                                 const ColumnProjects &project,
+                                 const node::ExprListNode *groups)
+        : PhysicalProjectNode(node, kGroupAggregation, project, true),
           group_(groups) {
         output_type_ = kSchemaTypeTable;
-        fn_infos_.push_back(&group_.fn_info_);
+        fn_infos_.push_back(&group_.fn_info());
     }
     virtual ~PhysicalGroupAggrerationNode() {}
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     static PhysicalGroupAggrerationNode *CastFrom(PhysicalOpNode *node);
     virtual void Print(std::ostream &output, const std::string &tab) const;
     Key group_;
@@ -677,12 +784,6 @@ class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
 class PhysicalUnionNode;
 class PhysicalJoinNode;
 
-class Project {
- public:
-    Project() {}
-    virtual ~Project() {}
-    FnInfo fn_info_;
-};
 class WindowOp {
  public:
     explicit WindowOp(const node::ExprListNode *partitions)
@@ -690,7 +791,8 @@ class WindowOp {
     explicit WindowOp(const node::WindowPlanNode *w_ptr)
         : partition_(w_ptr->GetKeys()),
           sort_(w_ptr->GetOrders()),
-          range_(w_ptr->GetOrders(), w_ptr->frame_node()) {}
+          range_(w_ptr->GetOrders(), w_ptr->frame_node()),
+          name_(w_ptr->GetName()) {}
     virtual ~WindowOp() {}
     const std::string ToString() const {
         std::ostringstream oss;
@@ -713,9 +815,17 @@ class WindowOp {
     const Key &partition() const { return partition_; }
     const Sort &sort() const { return sort_; }
     const Range &range() const { return range_; }
+    const std::string &name() const { return name_; }
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, WindowOp *out) const;
+
+    void ResolvedRelatedColumns(std::vector<const node::ExprNode *> *) const;
+
     Key partition_;
     Sort sort_;
     Range range_;
+    std::string name_ = "";
 };
 
 class RequestWindowOp : public WindowOp {
@@ -736,8 +846,15 @@ class RequestWindowOp : public WindowOp {
         return oss.str();
     }
     const Key &index_key() const { return index_key_; }
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, RequestWindowOp *out) const;
+
+    void ResolvedRelatedColumns(std::vector<const node::ExprNode *> *) const;
+
     Key index_key_;
 };
+
 class Filter {
  public:
     explicit Filter(const node::ExprNode *condition)
@@ -751,6 +868,7 @@ class Filter {
           left_key_(left_keys),
           right_key_(right_keys),
           index_key_(nullptr) {}
+    virtual ~Filter() {}
 
     bool Valid() {
         return index_key_.ValidKey() || condition_.ValidCondition();
@@ -776,17 +894,22 @@ class Filter {
     const Key &index_key() const { return index_key_; }
     const ConditionFilter &condition() const { return condition_; }
     virtual void ResolvedRelatedColumns(
-        std::vector<const fesql::node::ColumnRefNode *> *columns) const {
+        std::vector<const node::ExprNode *> *columns) const {
         left_key_.ResolvedRelatedColumns(columns);
         right_key_.ResolvedRelatedColumns(columns);
         index_key_.ResolvedRelatedColumns(columns);
         condition_.ResolvedRelatedColumns(columns);
     }
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, Filter *out) const;
+
     ConditionFilter condition_;
     Key left_key_;
     Key right_key_;
     Key index_key_;
 };
+
 class Join : public Filter {
  public:
     explicit Join(const node::JoinType join_type)
@@ -830,18 +953,16 @@ class Join : public Filter {
     const node::JoinType join_type() const { return join_type_; }
     const Sort &right_sort() const { return right_sort_; }
     void ResolvedRelatedColumns(
-        std::vector<const fesql::node::ColumnRefNode *> *columns) const {
+        std::vector<const node::ExprNode *> *columns) const {
         Filter::ResolvedRelatedColumns(columns);
         right_sort_.ResolvedRelatedColumns(columns);
     }
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, Join *out) const;
+
     node::JoinType join_type_;
     Sort right_sort_;
-};
-
-class Union {
- public:
-    Union() : need_union_(false) {}
-    bool need_union_;
 };
 
 class WindowJoinList {
@@ -862,8 +983,10 @@ class WindowJoinList {
     std::list<std::pair<PhysicalOpNode *, Join>> &window_joins() {
         return window_joins_;
     }
+
     std::list<std::pair<PhysicalOpNode *, Join>> window_joins_;
 };
+
 class WindowUnionList {
  public:
     WindowUnionList() : window_unions_() {}
@@ -887,6 +1010,7 @@ class WindowUnionList {
         }
         return iter->first;
     }
+
     std::list<std::pair<PhysicalOpNode *, WindowOp>> window_unions_;
 };
 
@@ -897,6 +1021,25 @@ class RequestWindowUnionList {
     void AddWindowUnion(PhysicalOpNode *node, const RequestWindowOp &window) {
         window_unions_.push_back(std::make_pair(node, window));
     }
+    const PhysicalOpNode *GetKey(uint32_t index) {
+        auto iter = window_unions_.begin();
+        for (uint32_t i = 0; i < index; ++i) {
+            ++iter;
+        }
+        return iter->first;
+        // return window_unions_[index].first;
+    }
+
+    const RequestWindowOp &GetValue(uint32_t index) {
+        auto iter = window_unions_.begin();
+        for (uint32_t i = 0; i < index; ++i) {
+            ++iter;
+        }
+        return iter->second;
+    }
+
+    const uint32_t GetSize() { return window_unions_.size(); }
+
     const std::string FnDetail() const {
         std::ostringstream oss;
         for (auto &window_union : window_unions_) {
@@ -905,35 +1048,25 @@ class RequestWindowUnionList {
         return oss.str();
     }
     const bool Empty() const { return window_unions_.empty(); }
-    std::list<std::pair<PhysicalOpNode *, RequestWindowOp>> window_unions_;
-};
 
-class PhysicalWindowNode : public PhysicalUnaryNode, public WindowOp {
- public:
-    PhysicalWindowNode(PhysicalOpNode *node, const node::WindowPlanNode *w_ptr)
-        : PhysicalUnaryNode(node, kPhysicalOpWindow, true, false),
-          WindowOp(w_ptr) {}
-    virtual ~PhysicalWindowNode() {}
-    virtual void Print(std::ostream &output, const std::string &tab) const;
+    std::list<std::pair<PhysicalOpNode *, RequestWindowOp>> window_unions_;
 };
 
 class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
  public:
     PhysicalWindowAggrerationNode(PhysicalOpNode *node,
+                                  const ColumnProjects &project,
                                   const node::WindowPlanNode *w_ptr,
-                                  const std::string &fn_name,
-                                  const Schema &schema,
-                                  const ColumnSourceList &sources)
-        : PhysicalProjectNode(node, fn_name, schema, sources,
-                              kWindowAggregation, true, false),
-          need_append_input_(false),
+                                  bool need_append_input)
+        : PhysicalProjectNode(node, kWindowAggregation, project, true),
+          need_append_input_(need_append_input),
           instance_not_in_window_(w_ptr->instance_not_in_window()),
           window_(w_ptr),
           window_unions_() {
         output_type_ = kSchemaTypeTable;
-        fn_infos_.push_back(&window_.partition_.fn_info_);
-        fn_infos_.push_back(&window_.sort_.fn_info_);
-        fn_infos_.push_back(&window_.range_.fn_info_);
+        fn_infos_.push_back(&window_.partition_.fn_info());
+        fn_infos_.push_back(&window_.sort_.fn_info());
+        fn_infos_.push_back(&window_.range_.fn_info());
     }
     virtual ~PhysicalWindowAggrerationNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -942,10 +1075,10 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     void AddWindowJoin(PhysicalOpNode *node, const Join &join) {
         window_joins_.AddWindowJoin(node, join);
         Join &window_join = window_joins_.window_joins_.front().second;
-        fn_infos_.push_back(&window_join.left_key_.fn_info_);
-        fn_infos_.push_back(&window_join.right_key_.fn_info_);
-        fn_infos_.push_back(&window_join.index_key_.fn_info_);
-        fn_infos_.push_back(&window_join.condition_.fn_info_);
+        fn_infos_.push_back(&window_join.left_key_.fn_info());
+        fn_infos_.push_back(&window_join.right_key_.fn_info());
+        fn_infos_.push_back(&window_join.index_key_.fn_info());
+        fn_infos_.push_back(&window_join.condition_.fn_info());
     }
 
     bool AddWindowUnion(PhysicalOpNode *node) {
@@ -958,60 +1091,67 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
                 << "Fail to add window union : producer is empty or null";
             return false;
         }
-        if (!IsSameSchema(node->output_schema_,
-                          producers_[0]->output_schema_)) {
+        if (!IsSameSchema(*node->GetOutputSchema(),
+                          *producers_[0]->GetOutputSchema())) {
             LOG(WARNING)
                 << "Union Table and window input schema aren't consistent";
             return false;
         }
         window_unions_.AddWindowUnion(node, window_);
         WindowOp &window_union = window_unions_.window_unions_.back().second;
-        fn_infos_.push_back(&window_union.partition_.fn_info_);
-        fn_infos_.push_back(&window_union.sort_.fn_info_);
-        fn_infos_.push_back(&window_union.range_.fn_info_);
+        fn_infos_.push_back(&window_union.partition_.fn_info());
+        fn_infos_.push_back(&window_union.sort_.fn_info());
+        fn_infos_.push_back(&window_union.range_.fn_info());
         return true;
     }
-    void AppendInput() {
-        if (!need_append_input_) {
-            need_append_input_ = true;
-            output_schema_.MergeFrom(producers_[0]->output_schema_);
-            output_name_schema_list_.AddSchemaSources(
-                producers_[0]->GetOutputNameSchemaList());
-            PrintSchema();
-        }
-    }
+
     const bool instance_not_in_window() const {
         return instance_not_in_window_;
     }
 
-    const bool need_append_input() const { return need_append_input_; }
-    bool need_append_input_;
-    const bool instance_not_in_window_;
+    bool need_append_input() const { return need_append_input_; }
+
     WindowOp &window() { return window_; }
     WindowJoinList &window_joins() { return window_joins_; }
     WindowUnionList &window_unions() { return window_unions_; }
+
+    base::Status InitSchema(PhysicalPlanContext *) override;
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
+    const bool need_append_input_;
+    const bool instance_not_in_window_;
     WindowOp window_;
     WindowUnionList window_unions_;
     WindowJoinList window_joins_;
+
+    /**
+     * Initialize inner state for window joins
+     */
+    base::Status InitJoinList(PhysicalPlanContext *plan_ctx);
+    std::vector<PhysicalOpNode *> joined_op_list_;
 };
 
 class PhysicalJoinNode : public PhysicalBinaryNode {
  public:
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const node::JoinType join_type)
-        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
-          join_(join_type) {
-        output_type_ = left->output_type_;
-        InitSchema();
+        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
+          join_(join_type),
+          joined_schemas_ctx_(this) {
+        output_type_ = left->GetOutputType();
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const node::JoinType join_type,
                      const node::OrderByNode *orders,
                      const node::ExprNode *condition)
-        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
-          join_(join_type, orders, condition) {
-        output_type_ = left->output_type_;
-        InitSchema();
+        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
+          join_(join_type, orders, condition),
+          joined_schemas_ctx_(this) {
+        output_type_ = left->GetOutputType();
+
         RegisterFunctionInfo();
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
@@ -1019,10 +1159,11 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprNode *condition,
                      const node::ExprListNode *left_keys,
                      const node::ExprListNode *right_keys)
-        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
-          join_(join_type, condition, left_keys, right_keys) {
-        output_type_ = left->output_type_;
-        InitSchema();
+        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
+          join_(join_type, condition, left_keys, right_keys),
+          joined_schemas_ctx_(this) {
+        output_type_ = left->GetOutputType();
+
         RegisterFunctionInfo();
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
@@ -1031,65 +1172,76 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprNode *condition,
                      const node::ExprListNode *left_keys,
                      const node::ExprListNode *right_keys)
-        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
-          join_(join_type, orders, condition, left_keys, right_keys) {
-        output_type_ = left->output_type_;
-        InitSchema();
+        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
+          join_(join_type, orders, condition, left_keys, right_keys),
+          joined_schemas_ctx_(this) {
+        output_type_ = left->GetOutputType();
+
         RegisterFunctionInfo();
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                      const Join &join)
-        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false, true),
-          join_(join) {
-        output_type_ = left->output_type_;
-        InitSchema();
+        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
+          join_(join),
+          joined_schemas_ctx_(this) {
+        output_type_ = left->GetOutputType();
+
         RegisterFunctionInfo();
     }
     virtual ~PhysicalJoinNode() {}
-    bool InitSchema() override;
+    base::Status InitSchema(PhysicalPlanContext *) override;
     void RegisterFunctionInfo() {
-        fn_infos_.push_back(&join_.right_sort_.fn_info_);
-        fn_infos_.push_back(&join_.condition_.fn_info_);
-        fn_infos_.push_back(&join_.left_key_.fn_info_);
-        fn_infos_.push_back(&join_.right_key_.fn_info_);
-        fn_infos_.push_back(&join_.index_key_.fn_info_);
+        fn_infos_.push_back(&join_.right_sort_.fn_info());
+        fn_infos_.push_back(&join_.condition_.fn_info());
+        fn_infos_.push_back(&join_.left_key_.fn_info());
+        fn_infos_.push_back(&join_.right_key_.fn_info());
+        fn_infos_.push_back(&join_.index_key_.fn_info());
     }
     virtual void Print(std::ostream &output, const std::string &tab) const;
     static PhysicalJoinNode *CastFrom(PhysicalOpNode *node);
     const bool Valid() { return true; }
     const Join &join() const { return join_; }
+    const SchemasContext *joined_schemas_ctx() const {
+        return &joined_schemas_ctx_;
+    }
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     Join join_;
+    SchemasContext joined_schemas_ctx_;
 };
 
 class PhysicalRequestJoinNode : public PhysicalBinaryNode {
  public:
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const node::JoinType join_type)
-        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false),
           join_(join_type),
+          joined_schemas_ctx_(this),
           output_right_only_(false) {
         output_type_ = kSchemaTypeRow;
-        InitSchema();
         RegisterFunctionInfo();
     }
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const node::JoinType join_type,
                             const node::OrderByNode *orders,
                             const node::ExprNode *condition)
-        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false),
           join_(join_type, orders, condition),
+          joined_schemas_ctx_(this),
           output_right_only_(false) {
         output_type_ = kSchemaTypeRow;
-        InitSchema();
         RegisterFunctionInfo();
     }
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
                             const Join &join, const bool output_right_only)
-        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false),
           join_(join),
+          joined_schemas_ctx_(this),
           output_right_only_(output_right_only) {
         output_type_ = kSchemaTypeRow;
-        InitSchema();
         RegisterFunctionInfo();
     }
 
@@ -1099,11 +1251,11 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
                             const node::ExprNode *condition,
                             const node::ExprListNode *left_keys,
                             const node::ExprListNode *right_keys)
-        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false),
           join_(join_type, condition, left_keys, right_keys),
+          joined_schemas_ctx_(this),
           output_right_only_(false) {
         output_type_ = kSchemaTypeRow;
-        InitSchema();
         RegisterFunctionInfo();
     }
     PhysicalRequestJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
@@ -1112,73 +1264,134 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
                             const node::ExprNode *condition,
                             const node::ExprListNode *left_keys,
                             const node::ExprListNode *right_keys)
-        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false, true),
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestJoin, false),
           join_(join_type, orders, condition, left_keys, right_keys),
+          joined_schemas_ctx_(this),
           output_right_only_(false) {
         output_type_ = kSchemaTypeRow;
-        InitSchema();
         RegisterFunctionInfo();
     }
 
  public:
     virtual ~PhysicalRequestJoinNode() {}
-    bool InitSchema() override;
+
+    base::Status InitSchema(PhysicalPlanContext *) override;
+    static PhysicalRequestJoinNode *CastFrom(PhysicalOpNode *node);
+
     void RegisterFunctionInfo() {
-        fn_infos_.push_back(&join_.right_sort_.fn_info_);
-        fn_infos_.push_back(&join_.condition_.fn_info_);
-        fn_infos_.push_back(&join_.left_key_.fn_info_);
-        fn_infos_.push_back(&join_.right_key_.fn_info_);
-        fn_infos_.push_back(&join_.index_key_.fn_info_);
+        fn_infos_.push_back(&join_.right_sort_.fn_info());
+        fn_infos_.push_back(&join_.condition_.fn_info());
+        fn_infos_.push_back(&join_.left_key_.fn_info());
+        fn_infos_.push_back(&join_.right_key_.fn_info());
+        fn_infos_.push_back(&join_.index_key_.fn_info());
     }
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const Join &join() const { return join_; }
     const bool output_right_only() const { return output_right_only_; }
+    const SchemasContext *joined_schemas_ctx() const {
+        return &joined_schemas_ctx_;
+    }
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     Join join_;
+    SchemasContext joined_schemas_ctx_;
     const bool output_right_only_;
 };
+
 class PhysicalUnionNode : public PhysicalBinaryNode {
  public:
     PhysicalUnionNode(PhysicalOpNode *left, PhysicalOpNode *right, bool is_all)
-        : PhysicalBinaryNode(left, right, kPhysicalOpUnoin, true, true),
+        : PhysicalBinaryNode(left, right, kPhysicalOpUnion, true),
           is_all_(is_all) {
         output_type_ = kSchemaTypeTable;
-        InitSchema();
     }
     virtual ~PhysicalUnionNode() {}
-    bool InitSchema() override;
+    base::Status InitSchema(PhysicalPlanContext *) override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     const bool is_all_;
     static PhysicalUnionNode *CastFrom(PhysicalOpNode *node);
+};
+
+class PhysicalPostRequestUnionNode : public PhysicalBinaryNode {
+ public:
+    PhysicalPostRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                                 const Range &request_ts)
+        : PhysicalBinaryNode(left, right, kPhysicalOpPostRequestUnion, true),
+          request_ts_(request_ts) {
+        output_type_ = kSchemaTypeTable;
+        fn_infos_.push_back(&request_ts_.fn_info());
+    }
+    virtual ~PhysicalPostRequestUnionNode() {}
+    base::Status InitSchema(PhysicalPlanContext *) override;
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
+    static PhysicalPostRequestUnionNode *CastFrom(PhysicalOpNode *node);
+
+    const Range &request_ts() const { return request_ts_; }
+    Range *mutable_request_ts() { return &request_ts_; }
+
+ private:
+    Range request_ts_;
 };
 
 class PhysicalRequestUnionNode : public PhysicalBinaryNode {
  public:
     PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
                              const node::ExprListNode *partition)
-        : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnoin, true, true),
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnion, true),
           window_(partition),
-          instance_not_in_window_(false) {
+          instance_not_in_window_(false),
+          output_request_row_(true) {
         output_type_ = kSchemaTypeTable;
-        InitSchema();
-        fn_infos_.push_back(&window_.partition_.fn_info_);
-        fn_infos_.push_back(&window_.index_key_.fn_info_);
+
+        fn_infos_.push_back(&window_.partition_.fn_info());
+        fn_infos_.push_back(&window_.index_key_.fn_info());
     }
     PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
                              const node::WindowPlanNode *w_ptr)
-        : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnoin, true, true),
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnion, true),
           window_(w_ptr),
-          instance_not_in_window_(w_ptr->instance_not_in_window()) {
+          instance_not_in_window_(w_ptr->instance_not_in_window()),
+          output_request_row_(true) {
         output_type_ = kSchemaTypeTable;
-        InitSchema();
-        fn_infos_.push_back(&window_.partition_.fn_info_);
-        fn_infos_.push_back(&window_.sort_.fn_info_);
-        fn_infos_.push_back(&window_.range_.fn_info_);
-        fn_infos_.push_back(&window_.index_key_.fn_info_);
+
+        fn_infos_.push_back(&window_.partition_.fn_info());
+        fn_infos_.push_back(&window_.sort_.fn_info());
+        fn_infos_.push_back(&window_.range_.fn_info());
+        fn_infos_.push_back(&window_.index_key_.fn_info());
+    }
+    PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                             const RequestWindowOp &window,
+                             bool instance_not_in_window,
+                             bool output_request_row)
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnion, true),
+          window_(window),
+          instance_not_in_window_(instance_not_in_window),
+          output_request_row_(output_request_row) {
+        output_type_ = kSchemaTypeTable;
+
+        fn_infos_.push_back(&window_.partition_.fn_info());
+        fn_infos_.push_back(&window_.sort_.fn_info());
+        fn_infos_.push_back(&window_.range_.fn_info());
+        fn_infos_.push_back(&window_.index_key_.fn_info());
     }
     virtual ~PhysicalRequestUnionNode() {}
-    bool InitSchema() override;
+    base::Status InitSchema(PhysicalPlanContext *) override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const bool Valid() { return true; }
+    static PhysicalRequestUnionNode *CastFrom(PhysicalOpNode *node);
     bool AddWindowUnion(PhysicalOpNode *node) {
         if (nullptr == node) {
             LOG(WARNING) << "Fail to add window union : table is null";
@@ -1189,8 +1402,9 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
                 << "Fail to add window union : producer is empty or null";
             return false;
         }
-        if (!IsSameSchema(node->output_schema_,
-                          producers_[0]->output_schema_)) {
+        if (output_request_row() &&
+            !IsSameSchema(*node->GetOutputSchema(),
+                          *producers_[0]->GetOutputSchema())) {
             LOG(WARNING)
                 << "Union Table and window input schema aren't consistent";
             return false;
@@ -1198,41 +1412,51 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
         window_unions_.AddWindowUnion(node, window_);
         RequestWindowOp &window_union =
             window_unions_.window_unions_.back().second;
-        fn_infos_.push_back(&window_union.partition_.fn_info_);
-        fn_infos_.push_back(&window_union.sort_.fn_info_);
-        fn_infos_.push_back(&window_union.range_.fn_info_);
-        fn_infos_.push_back(&window_union.index_key_.fn_info_);
+        fn_infos_.push_back(&window_union.partition_.fn_info());
+        fn_infos_.push_back(&window_union.sort_.fn_info());
+        fn_infos_.push_back(&window_union.range_.fn_info());
+        fn_infos_.push_back(&window_union.index_key_.fn_info());
         return true;
     }
     const bool instance_not_in_window() const {
         return instance_not_in_window_;
     }
+    const bool output_request_row() const { return output_request_row_; }
     const RequestWindowOp &window() const { return window_; }
     const RequestWindowUnionList &window_unions() const {
         return window_unions_;
     }
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     RequestWindowOp window_;
     const bool instance_not_in_window_;
+    const bool output_request_row_;
     RequestWindowUnionList window_unions_;
 };
 
 class PhysicalSortNode : public PhysicalUnaryNode {
  public:
     PhysicalSortNode(PhysicalOpNode *node, const node::OrderByNode *order)
-        : PhysicalUnaryNode(node, kPhysicalOpSortBy, true, false),
-          sort_(order) {
-        output_type_ = node->output_type_;
-        InitSchema();
-        fn_infos_.push_back(&sort_.fn_info_);
+        : PhysicalUnaryNode(node, kPhysicalOpSortBy, true), sort_(order) {
+        output_type_ = node->GetOutputType();
+
+        fn_infos_.push_back(&sort_.fn_info());
     }
     PhysicalSortNode(PhysicalOpNode *node, const Sort &sort)
-        : PhysicalUnaryNode(node, kPhysicalOpSortBy, true, false), sort_(sort) {
-        output_type_ = node->output_type_;
-        InitSchema();
-        fn_infos_.push_back(&sort_.fn_info_);
+        : PhysicalUnaryNode(node, kPhysicalOpSortBy, true), sort_(sort) {
+        output_type_ = node->GetOutputType();
+
+        fn_infos_.push_back(&sort_.fn_info());
     }
     virtual ~PhysicalSortNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
 
     bool Valid() { return sort_.ValidSort(); }
     const Sort &sort() const { return sort_; }
@@ -1240,38 +1464,45 @@ class PhysicalSortNode : public PhysicalUnaryNode {
     static PhysicalSortNode *CastFrom(PhysicalOpNode *node);
 };
 
-class PhysicalFliterNode : public PhysicalUnaryNode {
+class PhysicalFilterNode : public PhysicalUnaryNode {
  public:
-    PhysicalFliterNode(PhysicalOpNode *node, const node::ExprNode *condition)
-        : PhysicalUnaryNode(node, kPhysicalOpFilter, true, false),
-          filter_(condition) {
-        output_type_ = node->output_type_;
-        InitSchema();
-        fn_infos_.push_back(&filter_.condition_.fn_info_);
-        fn_infos_.push_back(&filter_.index_key_.fn_info_);
+    PhysicalFilterNode(PhysicalOpNode *node, const node::ExprNode *condition)
+        : PhysicalUnaryNode(node, kPhysicalOpFilter, true), filter_(condition) {
+        output_type_ = node->GetOutputType();
+
+        fn_infos_.push_back(&filter_.condition_.fn_info());
+        fn_infos_.push_back(&filter_.index_key_.fn_info());
     }
-    virtual ~PhysicalFliterNode() {}
+    virtual ~PhysicalFilterNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     bool Valid() { return filter_.Valid(); }
     const Filter &filter() const { return filter_; }
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     Filter filter_;
-    static PhysicalFliterNode *CastFrom(PhysicalOpNode *node);
+    static PhysicalFilterNode *CastFrom(PhysicalOpNode *node);
 };
 
 class PhysicalLimitNode : public PhysicalUnaryNode {
  public:
     PhysicalLimitNode(PhysicalOpNode *node, int32_t limit_cnt)
-        : PhysicalUnaryNode(node, kPhysicalOpLimit, true, false) {
+        : PhysicalUnaryNode(node, kPhysicalOpLimit, true) {
         limit_cnt_ = limit_cnt;
         limit_optimized_ = false;
-        output_type_ = node->output_type_;
-        InitSchema();
+        output_type_ = node->GetOutputType();
     }
     virtual ~PhysicalLimitNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     void SetLimitOptimized(bool optimized) { limit_optimized_ = optimized; }
     const bool GetLimitOptimized() const { return limit_optimized_; }
     static PhysicalLimitNode *CastFrom(PhysicalOpNode *node);
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
 
  private:
     bool limit_optimized_;
@@ -1280,25 +1511,32 @@ class PhysicalLimitNode : public PhysicalUnaryNode {
 class PhysicalRenameNode : public PhysicalUnaryNode {
  public:
     PhysicalRenameNode(PhysicalOpNode *node, const std::string &name)
-        : PhysicalUnaryNode(node, kPhysicalOpRename, false, false),
-          name_(name) {
-        output_type_ = node->output_type_;
-        InitSchema();
+        : PhysicalUnaryNode(node, kPhysicalOpRename, false), name_(name) {
+        output_type_ = node->GetOutputType();
     }
-    bool InitSchema() override;
+    base::Status InitSchema(PhysicalPlanContext *) override;
     virtual ~PhysicalRenameNode() {}
     static PhysicalRenameNode *CastFrom(PhysicalOpNode *node);
     virtual void Print(std::ostream &output, const std::string &tab) const;
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     const std::string &name_;
 };
 
 class PhysicalDistinctNode : public PhysicalUnaryNode {
  public:
     explicit PhysicalDistinctNode(PhysicalOpNode *node)
-        : PhysicalUnaryNode(node, kPhysicalOpDistinct, true, false) {
-        output_type_ = node->output_type_;
-        InitSchema();
+        : PhysicalUnaryNode(node, kPhysicalOpDistinct, true) {
+        output_type_ = node->GetOutputType();
     }
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     virtual ~PhysicalDistinctNode() {}
 };
 

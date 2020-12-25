@@ -89,7 +89,7 @@ public class FesqlFlinkPlanner {
         }
 
         Table outputTable = null;
-        PhysicalOpType opType = node.getType_();
+        PhysicalOpType opType = node.GetOpType();
 
         if (opType.swigValue() == PhysicalOpType.kPhysicalOpDataProvider.swigValue()) { // DataProviderNode
             // Use "select *" to get Table from Flink source

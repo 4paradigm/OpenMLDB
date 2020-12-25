@@ -339,40 +339,45 @@ SQLNode *NodeManager::MakeFrameNode(FrameType frame_type,
         new FrameNode(frame_type, frame_range, frame_rows, maxsize);
     return RegisterNode(node_ptr);
 }
-ExprNode *NodeManager::MakeOrderByNode(const ExprListNode *order,
-                                       const bool is_asc) {
+OrderByNode *NodeManager::MakeOrderByNode(const ExprListNode *order,
+                                          const bool is_asc) {
     OrderByNode *node_ptr = new OrderByNode(order, is_asc);
     return RegisterNode(node_ptr);
 }
 
-ExprNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
-                                         const std::string &relation_name,
-                                         const std::string &db_name) {
+ColumnRefNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
+                                              const std::string &relation_name,
+                                              const std::string &db_name) {
     ColumnRefNode *node_ptr =
         new ColumnRefNode(column_name, relation_name, db_name);
 
     return RegisterNode(node_ptr);
 }
 
-GetFieldExpr *NodeManager::MakeGetFieldExpr(ExprNode *input,
-                                            const std::string &column_name,
-                                            const std::string &relation_name) {
-    return RegisterNode(new GetFieldExpr(input, column_name, relation_name));
-}
-GetFieldExpr *NodeManager::MakeGetFieldExpr(ExprNode *input, size_t idx) {
-    return RegisterNode(new GetFieldExpr(input, std::to_string(idx), ""));
+ColumnIdNode *NodeManager::MakeColumnIdNode(size_t column_id) {
+    return RegisterNode(new ColumnIdNode(column_id));
 }
 
-ExprNode *NodeManager::MakeColumnRefNode(const std::string &column_name,
-                                         const std::string &relation_name) {
+GetFieldExpr *NodeManager::MakeGetFieldExpr(ExprNode *input,
+                                            const std::string &column_name,
+                                            size_t column_id) {
+    return RegisterNode(new GetFieldExpr(input, column_name, column_id));
+}
+GetFieldExpr *NodeManager::MakeGetFieldExpr(ExprNode *input, size_t idx) {
+    return RegisterNode(new GetFieldExpr(input, std::to_string(idx), idx));
+}
+
+ColumnRefNode *NodeManager::MakeColumnRefNode(
+    const std::string &column_name, const std::string &relation_name) {
     return MakeColumnRefNode(column_name, relation_name, "");
 }
-ExprNode *NodeManager::MakeCastNode(const node::DataType cast_type,
-                                    ExprNode *expr) {
+CastExprNode *NodeManager::MakeCastNode(const node::DataType cast_type,
+                                        ExprNode *expr) {
     CastExprNode *node_ptr = new CastExprNode(cast_type, expr);
     return RegisterNode(node_ptr);
 }
-ExprNode *NodeManager::MakeWhenNode(ExprNode *when_expr, ExprNode *then_expr) {
+WhenExprNode *NodeManager::MakeWhenNode(ExprNode *when_expr,
+                                        ExprNode *then_expr) {
     WhenExprNode *node_ptr = new WhenExprNode(when_expr, then_expr);
     return RegisterNode(node_ptr);
 }
@@ -418,9 +423,9 @@ ExprNode *NodeManager::MakeTimeFuncNode(const TimeUnit time_unit,
     return RegisterNode(node_ptr);
 }
 
-ExprNode *NodeManager::MakeFuncNode(const std::string &name,
-                                    const std::vector<ExprNode *> &args,
-                                    const SQLNode *over) {
+CallExprNode *NodeManager::MakeFuncNode(const std::string &name,
+                                        const std::vector<ExprNode *> &args,
+                                        const SQLNode *over) {
     ExprListNode args_node;
     for (auto child : args) {
         args_node.AddChild(child);
@@ -432,9 +437,9 @@ ExprNode *NodeManager::MakeFuncNode(const std::string &name,
     return RegisterNode(node_ptr);
 }
 
-ExprNode *NodeManager::MakeFuncNode(const std::string &name,
-                                    ExprListNode *list_ptr,
-                                    const SQLNode *over) {
+CallExprNode *NodeManager::MakeFuncNode(const std::string &name,
+                                        ExprListNode *list_ptr,
+                                        const SQLNode *over) {
     FnDefNode *def_node =
         dynamic_cast<FnDefNode *>(MakeUnresolvedFnDefNode(name));
     CallExprNode *node_ptr = new CallExprNode(
@@ -442,16 +447,16 @@ ExprNode *NodeManager::MakeFuncNode(const std::string &name,
     return RegisterNode(node_ptr);
 }
 
-ExprNode *NodeManager::MakeFuncNode(FnDefNode *fn, ExprListNode *list_ptr,
-                                    const SQLNode *over) {
+CallExprNode *NodeManager::MakeFuncNode(FnDefNode *fn, ExprListNode *list_ptr,
+                                        const SQLNode *over) {
     CallExprNode *node_ptr = new CallExprNode(
         fn, list_ptr, dynamic_cast<const WindowDefNode *>(over));
     return RegisterNode(node_ptr);
 }
 
-ExprNode *NodeManager::MakeFuncNode(FnDefNode *fn,
-                                    const std::vector<ExprNode *> &args,
-                                    const SQLNode *over) {
+CallExprNode *NodeManager::MakeFuncNode(FnDefNode *fn,
+                                        const std::vector<ExprNode *> &args,
+                                        const SQLNode *over) {
     ExprListNode args_node;
     for (auto child : args) {
         args_node.AddChild(child);
@@ -461,92 +466,80 @@ ExprNode *NodeManager::MakeFuncNode(FnDefNode *fn,
     return RegisterNode(node_ptr);
 }
 
-ExprNode *NodeManager::MakeConstNode(int16_t value) {
-    ExprNode *node_ptr = new ConstNode(value);
-    return RegisterNode(node_ptr);
+ConstNode *NodeManager::MakeConstNode(int16_t value) {
+    return RegisterNode(new ConstNode(value));
 }
-ExprNode *NodeManager::MakeConstNode(int value) {
-    ExprNode *node_ptr = new ConstNode(value);
-    return RegisterNode(node_ptr);
+ConstNode *NodeManager::MakeConstNode(int value) {
+    return RegisterNode(new ConstNode(value));
 }
 
-ExprNode *NodeManager::MakeConstNode(int value, TTLType ttl_type) {
-    ExprNode *node_ptr = new ConstNode(value, ttl_type);
-    return RegisterNode(node_ptr);
+ConstNode *NodeManager::MakeConstNode(int value, TTLType ttl_type) {
+    return RegisterNode(new ConstNode(value, ttl_type));
 }
 
-ExprNode *NodeManager::MakeConstNode(int64_t value) {
-    ExprNode *node_ptr = new ConstNode(value);
-    return RegisterNode(node_ptr);
+ConstNode *NodeManager::MakeConstNode(int64_t value) {
+    return RegisterNode(new ConstNode(value));
 }
 
-ExprNode *NodeManager::MakeConstNode(int64_t value, TTLType ttl_type) {
-    ExprNode *node_ptr = new ConstNode(value, ttl_type);
-    return RegisterNode(node_ptr);
+ConstNode *NodeManager::MakeConstNode(int64_t value, TTLType ttl_type) {
+    return RegisterNode(new ConstNode(value, ttl_type));
 }
 
-ExprNode *NodeManager::MakeConstNode(int64_t value, DataType time_type) {
-    ExprNode *node_ptr = new ConstNode(value, time_type);
-    return RegisterNode(node_ptr);
+ConstNode *NodeManager::MakeConstNode(int64_t value, DataType time_type) {
+    return RegisterNode(new ConstNode(value, time_type));
 }
 
-ExprNode *NodeManager::MakeConstNode(float value) {
-    ExprNode *node_ptr = new ConstNode(value);
-    return RegisterNode(node_ptr);
+ConstNode *NodeManager::MakeConstNode(float value) {
+    return RegisterNode(new ConstNode(value));
 }
 
-ExprNode *NodeManager::MakeConstNode(double value) {
-    ExprNode *node_ptr = new ConstNode(value);
-    return RegisterNode(node_ptr);
+ConstNode *NodeManager::MakeConstNode(double value) {
+    return RegisterNode(new ConstNode(value));
 }
 
-ExprNode *NodeManager::MakeConstNode(const char *value) {
-    ExprNode *node_ptr = new ConstNode(value);
-    return RegisterNode(node_ptr);
+ConstNode *NodeManager::MakeConstNode(const char *value) {
+    return RegisterNode(new ConstNode(value));
 }
-ExprNode *NodeManager::MakeConstNode(const std::string &value) {
-    ExprNode *node_ptr = new ConstNode(value);
-    return RegisterNode(node_ptr);
+ConstNode *NodeManager::MakeConstNode(const std::string &value) {
+    return RegisterNode(new ConstNode(value));
 }
-ExprNode *NodeManager::MakeConstNode() {
-    ExprNode *node_ptr = new ConstNode();
-    return RegisterNode(node_ptr);
+ConstNode *NodeManager::MakeConstNode() {
+    return RegisterNode(new ConstNode());
 }
-ExprNode *NodeManager::MakeConstNode(DataType type) {
-    ExprNode *node_ptr = new ConstNode(type);
-    return RegisterNode(node_ptr);
+ConstNode *NodeManager::MakeConstNode(DataType type) {
+    return RegisterNode(new ConstNode(type));
 }
-ExprNode *NodeManager::MakeConstNodeINT16MAX() {
+ConstNode *NodeManager::MakeConstNodeINT16MAX() {
     return MakeConstNode(static_cast<int16_t>(INT16_MAX));
 }
-ExprNode *NodeManager::MakeConstNodeINT32MAX() {
+ConstNode *NodeManager::MakeConstNodeINT32MAX() {
     return MakeConstNode(static_cast<int32_t>(INT32_MAX));
 }
-ExprNode *NodeManager::MakeConstNodeINT64MAX() {
+ConstNode *NodeManager::MakeConstNodeINT64MAX() {
     return MakeConstNode(static_cast<int64_t>(INT64_MAX));
 }
-ExprNode *NodeManager::MakeConstNodeFLOATMAX() {
+ConstNode *NodeManager::MakeConstNodeFLOATMAX() {
     return MakeConstNode(static_cast<float>(FLT_MAX));
 }
-ExprNode *NodeManager::MakeConstNodeDOUBLEMAX() {
+ConstNode *NodeManager::MakeConstNodeDOUBLEMAX() {
     return MakeConstNode(static_cast<double>(DBL_MAX));
 }
-ExprNode *NodeManager::MakeConstNodeINT16MIN() {
+ConstNode *NodeManager::MakeConstNodeINT16MIN() {
     return MakeConstNode(static_cast<int16_t>(INT16_MIN));
 }
-ExprNode *NodeManager::MakeConstNodeINT32MIN() {
+ConstNode *NodeManager::MakeConstNodeINT32MIN() {
     return MakeConstNode(static_cast<int32_t>(INT32_MIN));
 }
-ExprNode *NodeManager::MakeConstNodeINT64MIN() {
+ConstNode *NodeManager::MakeConstNodeINT64MIN() {
     return MakeConstNode(static_cast<int64_t>(INT64_MIN));
 }
-ExprNode *NodeManager::MakeConstNodeFLOATMIN() {
+ConstNode *NodeManager::MakeConstNodeFLOATMIN() {
     return MakeConstNode(static_cast<float>(FLT_MIN));
 }
-ExprNode *NodeManager::MakeConstNodeDOUBLEMIN() {
+ConstNode *NodeManager::MakeConstNodeDOUBLEMIN() {
     return MakeConstNode(static_cast<double>(DBL_MIN));
 }
-ExprNode *NodeManager::MakeConstNodePlaceHolder() {
+ConstNode *NodeManager::MakeConstNodePlaceHolder() {
     return MakeConstNode(fesql::node::kPlaceholder);
 }
 ExprIdNode *NodeManager::MakeExprIdNode(const std::string &name) {
@@ -557,15 +550,15 @@ ExprIdNode *NodeManager::MakeUnresolvedExprId(const std::string &name) {
     return RegisterNode(new ::fesql::node::ExprIdNode(name, -1));
 }
 
-ExprNode *NodeManager::MakeBinaryExprNode(ExprNode *left, ExprNode *right,
-                                          FnOperator op) {
+BinaryExpr *NodeManager::MakeBinaryExprNode(ExprNode *left, ExprNode *right,
+                                            FnOperator op) {
     ::fesql::node::BinaryExpr *bexpr = new ::fesql::node::BinaryExpr(op);
     bexpr->AddChild(left);
     bexpr->AddChild(right);
     return RegisterNode(bexpr);
 }
 
-ExprNode *NodeManager::MakeUnaryExprNode(ExprNode *left, FnOperator op) {
+UnaryExpr *NodeManager::MakeUnaryExprNode(ExprNode *left, FnOperator op) {
     ::fesql::node::UnaryExpr *uexpr = new ::fesql::node::UnaryExpr(op);
     uexpr->AddChild(left);
     return RegisterNode(uexpr);
@@ -932,14 +925,13 @@ SQLNode *NodeManager::MakeCreateIndexNode(const std::string &index_name,
         new CreateIndexNode(index_name, table_name, index);
     return RegisterNode(node_ptr);
 }
-ExprNode *NodeManager::MakeAllNode(const std::string &relation_name) {
+AllNode *NodeManager::MakeAllNode(const std::string &relation_name) {
     return MakeAllNode(relation_name, "");
 }
 
-ExprNode *NodeManager::MakeAllNode(const std::string &relation_name,
-                                   const std::string &db_name) {
-    ExprNode *node_ptr = new AllNode(relation_name, db_name);
-    return RegisterNode(node_ptr);
+AllNode *NodeManager::MakeAllNode(const std::string &relation_name,
+                                  const std::string &db_name) {
+    return RegisterNode(new AllNode(relation_name, db_name));
 }
 
 SQLNode *NodeManager::MakeInsertTableNode(const std::string &table_name,
@@ -1007,14 +999,11 @@ OpaqueTypeNode *NodeManager::MakeOpaqueType(size_t bytes) {
     return RegisterNode(new OpaqueTypeNode(bytes));
 }
 RowTypeNode *NodeManager::MakeRowType(
-    const vm::SchemaSourceList &schema_source) {
+    const std::vector<const codec::Schema *> &schema_source) {
     return RegisterNode(new RowTypeNode(schema_source));
 }
-RowTypeNode *NodeManager::MakeRowType(const std::string &name,
-                                      codec::Schema *schema) {
-    vm::SchemaSourceList list;
-    list.AddSchemaSource(name, schema);
-    return RegisterNode(new RowTypeNode(list));
+RowTypeNode *NodeManager::MakeRowType(const vm::SchemasContext *schemas_ctx) {
+    return RegisterNode(new RowTypeNode(schemas_ctx));
 }
 
 FnNode *NodeManager::MakeForInStmtNode(const std::string &var_name,
@@ -1105,10 +1094,8 @@ FuncDefPlanNode *NodeManager::MakeFuncPlanNode(FnNodeFnDef *node) {
     RegisterNode(node_ptr);
     return node_ptr;
 }
-ExprNode *NodeManager::MakeQueryExprNode(const QueryNode *query) {
-    node::ExprNode *node_ptr = new QueryExpr(query);
-    RegisterNode(node_ptr);
-    return node_ptr;
+QueryExpr *NodeManager::MakeQueryExprNode(const QueryNode *query) {
+    return RegisterNode(new QueryExpr(query));
 }
 PlanNode *NodeManager::MakeSortPlanNode(PlanNode *node,
                                         const OrderByNode *order_list) {
@@ -1140,125 +1127,10 @@ ProjectNode *NodeManager::MakeRowProjectNode(const int32_t pos,
                                              node::ExprNode *expression) {
     return MakeProjectNode(pos, name, false, expression, nullptr);
 }
-ExprNode *NodeManager::MakeEqualCondition(const std::string &db1,
-                                          const std::string &table1,
-                                          const std::string &db2,
-                                          const std::string &table2,
-                                          const node::ExprListNode *expr_list) {
-    if (nullptr == expr_list || expr_list->children_.empty()) {
-        return nullptr;
-    }
-    auto iter = expr_list->children_.cbegin();
-    auto condition =
-        MakeBinaryExprNode(MakeExprFrom(*iter, table1, db1),
-                           MakeExprFrom(*iter, table2, db2), node::kFnOpEq);
-    iter++;
-    for (; iter != expr_list->children_.cend(); iter++) {
-        auto eq =
-            MakeBinaryExprNode(MakeExprFrom(*iter, table1, db1),
-                               MakeExprFrom(*iter, table2, db2), node::kFnOpEq);
-        condition = MakeBinaryExprNode(condition, eq, kFnOpAnd);
-    }
 
-    return condition;
-}
-
-// TODO(chenjing): WindoNode, FrameNode 支持expr
-ExprNode *NodeManager::MakeExprFrom(const node::ExprNode *expr,
-                                    const std::string relation_name,
-                                    const std::string db_name) {
-    if (nullptr == expr) {
-        return nullptr;
-    }
-
-    switch (expr->expr_type_) {
-        case kExprList: {
-            auto expr_list = dynamic_cast<const ExprListNode *>(expr);
-            auto new_expr_list = MakeExprList();
-            for (auto each : expr_list->children_) {
-                new_expr_list->AddChild(
-                    MakeExprFrom(each, relation_name, db_name));
-            }
-            return new_expr_list;
-        }
-        case kExprAll: {
-            return MakeAllNode(relation_name, db_name);
-        }
-        case kExprColumnRef: {
-            auto expr_column = dynamic_cast<const ColumnRefNode *>(expr);
-            return MakeColumnRefNode(expr_column->GetColumnName(),
-                                     relation_name, db_name);
-        }
-        case kExprBinary: {
-            auto expr_binary_op = dynamic_cast<const BinaryExpr *>(expr);
-            return MakeBinaryExprNode(MakeExprFrom(expr_binary_op->children_[0],
-                                                   relation_name, db_name),
-                                      MakeExprFrom(expr_binary_op->children_[1],
-                                                   relation_name, db_name),
-                                      expr_binary_op->GetOp());
-        }
-        case kExprUnary: {
-            auto expr_unary_op = dynamic_cast<const UnaryExpr *>(expr);
-            return MakeUnaryExprNode(MakeExprFrom(expr_unary_op->children_[0],
-                                                  relation_name, db_name),
-                                     expr_unary_op->GetOp());
-        }
-        case kExprOrder: {
-            auto expr_order = dynamic_cast<const OrderByNode *>(expr);
-            return MakeOrderByNode(
-                dynamic_cast<node::ExprListNode *>(MakeExprFrom(
-                    expr_order->order_by_, relation_name, db_name)),
-                expr_order->is_asc_);
-        }
-        case kExprCall: {
-            auto expr_call = dynamic_cast<const CallExprNode *>(expr);
-            node::ExprListNode empty;
-            for (size_t i = 0; i < expr_call->GetChildNum(); ++i) {
-                auto child = expr_call->GetChild(i);
-                empty.AddChild(MakeExprFrom(child, relation_name, db_name));
-            }
-            return MakeFuncNode(expr_call->GetFnDef(), &empty,
-                                expr_call->GetOver());
-        }
-
-        case kExprPrimary: {
-            auto expr_primary = dynamic_cast<const ConstNode *>(expr);
-            switch (expr_primary->GetDataType()) {
-                case node::kInt16:
-                    return MakeConstNode(expr_primary->GetSmallInt());
-                case node::kInt32:
-                    return MakeConstNode(expr_primary->GetInt());
-                case node::kInt64:
-                    return MakeConstNode(expr_primary->GetLong());
-                case node::kFloat:
-                    return MakeConstNode(expr_primary->GetFloat());
-                case node::kDouble:
-                    return MakeConstNode(expr_primary->GetDouble());
-                case node::kVarchar:
-                    return MakeConstNode(expr_primary->GetStr());
-                case node::kTimestamp:
-                    return MakeConstNode(expr_primary->GetLong(),
-                                         expr_primary->GetDataType());
-                default: {
-                    LOG(WARNING)
-                        << "fail to copy primary expr " +
-                               node::DataTypeName(expr_primary->GetDataType());
-                    return nullptr;
-                }
-            }
-        }
-        default: {
-            LOG(WARNING) << "fail to copy expr " +
-                                node::ExprTypeName(expr->expr_type_);
-            return nullptr;
-        }
-    }
-}
-
-ExprNode *NodeManager::MakeBetweenExpr(ExprNode *expr, ExprNode *left,
-                                       ExprNode *right) {
-    ExprNode *node_ptr = new BetweenExpr(expr, left, right);
-    return RegisterNode(node_ptr);
+BetweenExpr *NodeManager::MakeBetweenExpr(ExprNode *expr, ExprNode *left,
+                                          ExprNode *right) {
+    return RegisterNode(new BetweenExpr(expr, left, right));
 }
 ExprNode *NodeManager::MakeAndExpr(ExprListNode *expr_list) {
     if (node::ExprListNullOrEmpty(expr_list)) {
@@ -1275,51 +1147,9 @@ ExprNode *NodeManager::MakeAndExpr(ExprListNode *expr_list) {
     return left_node;
 }
 
-// Build expression list from column sources
-node::ExprListNode *NodeManager::BuildExprListFromSchemaSource(
-    const vm::ColumnSourceList column_sources,
-    const vm::SchemaSourceList &schema_souces) {
-    node::ExprListNode *output = MakeExprList();
-    if (nullptr == output) {
-        LOG(WARNING)
-            << "Fail Build Expr List from column sources: output is nullptr";
-        return nullptr;
-    }
-    for (auto iter = column_sources.cbegin(); iter != column_sources.cend();
-         iter++) {
-        node::ExprNode *expr = nullptr;
-        switch (iter->type()) {
-            case vm::kSourceColumn: {
-                auto schema_souce =
-                    schema_souces.schema_source_list().at(iter->schema_idx());
-                auto column = schema_souce.schema_->Get(iter->column_idx());
-                expr =
-                    MakeColumnRefNode(column.name(), schema_souce.table_name_);
-
-                break;
-            }
-            case vm::kSourceConst: {
-                expr = const_cast<node::ConstNode *>(iter->const_value());
-                break;
-            }
-            default: {
-                LOG(WARNING) << "Fail Gen Simple Project, invalid source type";
-                return nullptr;
-            }
-        }
-        if (!iter->cast_types().empty()) {
-            for (auto type : iter->cast_types()) {
-                expr = MakeCastNode(type, expr);
-            }
-        }
-        output->AddChild(expr);
-    }
-    return output;
-}
-
 ExternalFnDefNode *NodeManager::MakeExternalFnDefNode(
     const std::string &function_name, void *function_ptr,
-    node::TypeNode *ret_type, bool ret_nullable,
+    const node::TypeNode *ret_type, bool ret_nullable,
     const std::vector<const node::TypeNode *> &arg_types,
     const std::vector<int> &arg_nullable, int variadic_pos,
     bool return_by_arg) {

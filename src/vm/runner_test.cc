@@ -340,18 +340,21 @@ TEST_F(RunnerTest, RunnerPrintDataTest) {
     fesql::type::TableDef temp_table;
     BuildRows(temp_table, rows);
 
-    SchemaSourceList name_schema_list;
-    name_schema_list.AddSchemaSource("t1", &table_def.columns());
+    SchemasContext schemas_ctx;
+    auto source = schemas_ctx.AddSource();
+    source->SetSourceName("t1");
+    source->SetSchema(&table_def.columns());
+
     // Print Empty Set
     std::shared_ptr<MemTableHandler> table_handler =
         std::shared_ptr<MemTableHandler>(new MemTableHandler());
-    Runner::PrintData(name_schema_list, table_handler);
+    Runner::PrintData(&schemas_ctx, table_handler);
 
     // Print Table
     for (auto row : rows) {
         table_handler->AddRow(row);
     }
-    Runner::PrintData(name_schema_list, table_handler);
+    Runner::PrintData(&schemas_ctx, table_handler);
 
     // Print Table
     int i = 0;
@@ -360,12 +363,12 @@ TEST_F(RunnerTest, RunnerPrintDataTest) {
             table_handler->AddRow(row);
         }
     }
-    Runner::PrintData(name_schema_list, table_handler);
+    Runner::PrintData(&schemas_ctx, table_handler);
 
     // Print Row
     std::shared_ptr<MemRowHandler> row_handler =
         std::shared_ptr<MemRowHandler>(new MemRowHandler(rows[0]));
-    Runner::PrintData(name_schema_list, row_handler);
+    Runner::PrintData(&schemas_ctx, row_handler);
 }
 }  // namespace vm
 }  // namespace fesql

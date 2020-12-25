@@ -36,7 +36,8 @@ namespace codegen {
 struct AggColumnInfo {
     ::fesql::node::ColumnRefNode* col;
     node::DataType col_type;
-    size_t slice_idx;
+    size_t schema_idx;
+    size_t col_idx;
     size_t offset;
 
     std::vector<std::string> agg_funcs;
@@ -45,9 +46,13 @@ struct AggColumnInfo {
     AggColumnInfo() : col(nullptr) {}
 
     AggColumnInfo(::fesql::node::ColumnRefNode* col,
-                  const node::DataType& col_type, size_t slice_idx,
-                  size_t offset)
-        : col(col), col_type(col_type), slice_idx(slice_idx), offset(offset) {}
+                  const node::DataType& col_type, size_t schema_idx,
+                  size_t col_idx, size_t offset)
+        : col(col),
+          col_type(col_type),
+          schema_idx(schema_idx),
+          col_idx(col_idx),
+          offset(offset) {}
 
     const std::string GetColKey() const {
         return col->GetRelationName() + "." + col->GetColumnName();
@@ -70,14 +75,13 @@ struct AggColumnInfo {
             }
         }
         ss << "]\n";
-        LOG(INFO) << ss.str();
     }
 };
 
 class AggregateIRBuilder {
  public:
     AggregateIRBuilder(const vm::SchemasContext*, ::llvm::Module* module,
-                       node::FrameNode* frame_node, uint32_t id);
+                       const node::FrameNode* frame_node, uint32_t id);
 
     // TODO(someone): remove temporary implementations for row-wise agg
     static bool EnableColumnAggOpt();
@@ -96,14 +100,14 @@ class AggregateIRBuilder {
                     VariableIRBuilder* variable_ir_builder,
                     ::llvm::BasicBlock* cur_block,
                     const std::string& output_ptr_name,
-                    vm::Schema* output_schema);
+                    const vm::Schema& output_schema);
 
     bool empty() const { return agg_col_infos_.empty(); }
 
  private:
     const vm::SchemasContext* schema_context_;
     ::llvm::Module* module_;
-    node::FrameNode* frame_node_;
+    const node::FrameNode* frame_node_;
     uint32_t id_;
     std::set<std::string> available_agg_func_set_;
     std::unordered_map<std::string, AggColumnInfo> agg_col_infos_;

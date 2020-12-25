@@ -24,6 +24,7 @@ public class Table {
     List<List<Object>> rows;
     String create;
     String insert;
+    int repeat = 1;
     List<String> common_column_indices;
 
     private static final Logger logger = LoggerFactory.getLogger(Table.class);
@@ -47,10 +48,6 @@ public class Table {
 
     public String getCreate() {
         return getCreate(1);
-    }
-
-    public String getProcedure(String sql) {
-        return buildCreateSpSQLFromColumnsIndexs(name, sql, getColumns());
     }
 
     /**
@@ -185,11 +182,6 @@ public class Table {
 
         if (length < 2) {
             logger.info("Index is invalid: missing keys and ts, {}", index);
-            return false;
-        }
-
-        if (length < 3) {
-            logger.info("Index is invalid: missing ts, {}", index);
             return false;
         }
 
@@ -350,7 +342,10 @@ public class Table {
             }
 
             builder.append("key=(").append(Joiner.on(",").join(getIndexKeys(index))).append(")");
-            builder.append(",ts=").append(getIndexTsCol(index));
+            String tsIndex = getIndexTsCol(index);
+            if (!tsIndex.isEmpty()) {
+                builder.append(",ts=").append(getIndexTsCol(index));
+            }
 
             String ttl = getIndexTTL(index);
             if (!ttl.isEmpty()) {
@@ -375,24 +370,4 @@ public class Table {
         return sql;
     }
 
-
-    public static String buildCreateSpSQLFromColumnsIndexs(String name, String sql, List<String> columns) {
-        if (sql == null || sql.isEmpty()) {
-            return "";
-        }
-        StringBuilder builder = new StringBuilder("create procedure " + name + "(\n");
-        for (int i = 0; i < columns.size(); i++) {
-            builder.append(columns.get(i));
-            if (i != columns.size() - 1) {
-                builder.append(",");
-            }
-        }
-        builder.append(")\n");
-        builder.append("BEGIN\n");
-        builder.append(sql);
-        builder.append("\n");
-        builder.append("END;");
-        sql = builder.toString();
-        return sql;
-    }
 }

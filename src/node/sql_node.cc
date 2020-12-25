@@ -320,6 +320,38 @@ bool TableNode::Equals(const SQLNode *node) const {
     return this->org_table_name_ == that->org_table_name_;
 }
 
+void ColumnIdNode::Print(std::ostream &output,
+                         const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, std::to_string(this->GetColumnID()), "column_id",
+               false);
+}
+
+ColumnIdNode *ColumnIdNode::CastFrom(ExprNode *node) {
+    return dynamic_cast<ColumnIdNode *>(node);
+}
+
+const std::string ColumnIdNode::GenerateExpressionName() const {
+    return "#" + std::to_string(this->GetColumnID());
+}
+
+const std::string ColumnIdNode::GetExprString() const {
+    return "#" + std::to_string(this->GetColumnID());
+}
+
+bool ColumnIdNode::Equals(const ExprNode *node) const {
+    if (this == node) {
+        return true;
+    }
+    if (nullptr == node || expr_type_ != node->expr_type_) {
+        return false;
+    }
+    const ColumnIdNode *that = dynamic_cast<const ColumnIdNode *>(node);
+    return this->GetColumnID() == that->GetColumnID();
+}
+
 void ColumnRefNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
     ExprNode::Print(output, org_tab);
@@ -369,7 +401,7 @@ void GetFieldExpr::Print(std::ostream &output,
     output << "\n";
     PrintValue(output, tab, GetChild(0)->GetExprString(), "input", true);
     output << "\n";
-    PrintValue(output, tab, relation_name_, "relation_name", true);
+    PrintValue(output, tab, std::to_string(column_id_), "column_id", true);
     output << "\n";
     PrintValue(output, tab, column_name_, "column_name", true);
 }
@@ -382,9 +414,9 @@ const std::string GetFieldExpr::GenerateExpressionName() const {
 }
 const std::string GetFieldExpr::GetExprString() const {
     std::string str = "";
-    if (!relation_name_.empty()) {
-        str.append(relation_name_).append(".");
-    }
+    str.append("#");
+    str.append(std::to_string(column_id_));
+    str.append(":");
     str.append(column_name_);
     return str;
 }
@@ -397,7 +429,7 @@ bool GetFieldExpr::Equals(const ExprNode *node) const {
     }
     auto that = dynamic_cast<const GetFieldExpr *>(node);
     return this->GetRow()->Equals(that->GetRow()) &&
-           this->relation_name_ == that->relation_name_ &&
+           this->column_id_ == that->column_id_ &&
            this->column_name_ == that->column_name_ && ExprNode::Equals(node);
 }
 
@@ -535,6 +567,9 @@ bool CastExprNode::Equals(const ExprNode *node) const {
     const CastExprNode *that = dynamic_cast<const CastExprNode *>(node);
     return this->cast_type_ == that->cast_type_ &&
            ExprEquals(expr(), that->expr());
+}
+CastExprNode *CastExprNode::CastFrom(ExprNode *node) {
+    return dynamic_cast<CastExprNode *>(node);
 }
 
 void WhenExprNode::Print(std::ostream &output,
@@ -912,7 +947,7 @@ void FillSQLNodeList2NodeVector(
     }
 }
 void ColumnOfExpression(const ExprNode *node_ptr,
-                        std::vector<const node::ColumnRefNode *> *columns) {
+                        std::vector<const node::ExprNode *> *columns) {
     if (nullptr == columns || nullptr == node_ptr) {
         return;
     }
@@ -925,6 +960,11 @@ void ColumnOfExpression(const ExprNode *node_ptr,
                 dynamic_cast<const node::ColumnRefNode *>(node_ptr));
             return;
         }
+        case kExprColumnId: {
+            columns->push_back(
+                dynamic_cast<const node::ColumnIdNode *>(node_ptr));
+            return;
+        }
         default: {
             for (auto child : node_ptr->children_) {
                 ColumnOfExpression(child, columns);
@@ -932,50 +972,44 @@ void ColumnOfExpression(const ExprNode *node_ptr,
         }
     }
 }
+
 bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
                         ExprNode *node_ptr, const WindowDefNode **output) {
-    switch (node_ptr->GetExprType()) {
-        case kExprCall: {
-            CallExprNode *func_node_ptr =
-                dynamic_cast<CallExprNode *>(node_ptr);
-            if (nullptr != func_node_ptr->GetOver()) {
-                if (func_node_ptr->GetOver()->GetName().empty()) {
-                    *output = func_node_ptr->GetOver();
-                } else {
-                    auto iter =
-                        windows.find(func_node_ptr->GetOver()->GetName());
-                    if (iter == windows.cend()) {
-                        LOG(WARNING)
-                            << "Fail to resolved window from expression: "
-                            << func_node_ptr->GetOver()->GetName()
-                            << " undefined";
-                        return false;
-                    }
-                    *output = iter->second;
-                }
+    // try to resolved window ptr from expression like: call(args...) over
+    // window
+    if (kExprCall == node_ptr->GetExprType()) {
+        CallExprNode *func_node_ptr = dynamic_cast<CallExprNode *>(node_ptr);
+        if (nullptr != func_node_ptr->GetOver()) {
+            if (func_node_ptr->GetOver()->GetName().empty()) {
+                *output = func_node_ptr->GetOver();
             } else {
-                *output = nullptr;
-            }
-            break;
-        }
-        default: {
-            *output = nullptr;
-            for (auto child : node_ptr->children_) {
-                const WindowDefNode *w = nullptr;
-                if (!WindowOfExpression(windows, child, &w)) {
+                auto iter = windows.find(func_node_ptr->GetOver()->GetName());
+                if (iter == windows.cend()) {
+                    LOG(WARNING)
+                        << "Fail to resolved window from expression: "
+                        << func_node_ptr->GetOver()->GetName() << " undefined";
                     return false;
                 }
-                // resolve window of child
-                if (nullptr != w) {
-                    if (*output == nullptr) {
-                        *output = w;
-                    } else if (!node::SQLEquals(*output, w)) {
-                        LOG(WARNING)
-                            << "Fail to resolved window from expression: "
-                            << "expression depends on more than one window";
-                        return false;
-                    }
-                }
+                *output = iter->second;
+            }
+        }
+    }
+
+    // try to resolved windows of children
+    // make sure there is only one window for the whole expression
+    for (auto child : node_ptr->children_) {
+        const WindowDefNode *w = nullptr;
+        if (!WindowOfExpression(windows, child, &w)) {
+            return false;
+        }
+        // resolve window of child
+        if (nullptr != w) {
+            if (*output == nullptr) {
+                *output = w;
+            } else if (!node::SQLEquals(*output, w)) {
+                LOG(WARNING) << "Fail to resolved window from expression: "
+                             << "expression depends on more than one window";
+                return false;
             }
         }
     }

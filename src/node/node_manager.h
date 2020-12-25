@@ -79,25 +79,26 @@ class NodeManager {
                                    const std::string alias);
     TableRefNode *MakeQueryRefNode(const QueryNode *sub_query,
                                    const std::string &alias);
-    ExprNode *MakeCastNode(const node::DataType cast_type, ExprNode *expr);
-    ExprNode *MakeWhenNode(ExprNode *when_expr, ExprNode *then_expr);
+    CastExprNode *MakeCastNode(const node::DataType cast_type, ExprNode *expr);
+    WhenExprNode *MakeWhenNode(ExprNode *when_expr, ExprNode *then_expr);
     ExprNode *MakeSimpleCaseWhenNode(ExprNode *case_expr,
                                      ExprListNode *when_list_expr,
                                      ExprNode *else_expr);
     ExprNode *MakeSearchedCaseWhenNode(ExprListNode *when_list_expr,
                                        ExprNode *else_expr);
     ExprNode *MakeTimeFuncNode(const TimeUnit time_unit, ExprListNode *args);
-    ExprNode *MakeFuncNode(const std::string &name, ExprListNode *args,
-                           const SQLNode *over);
-    ExprNode *MakeFuncNode(FnDefNode *fn, ExprListNode *args,
-                           const SQLNode *over);
-    ExprNode *MakeFuncNode(const std::string &name,
-                           const std::vector<ExprNode *> &args,
-                           const SQLNode *over);
-    ExprNode *MakeFuncNode(FnDefNode *fn, const std::vector<ExprNode *> &args,
-                           const SQLNode *over);
+    CallExprNode *MakeFuncNode(const std::string &name, ExprListNode *args,
+                               const SQLNode *over);
+    CallExprNode *MakeFuncNode(FnDefNode *fn, ExprListNode *args,
+                               const SQLNode *over);
+    CallExprNode *MakeFuncNode(const std::string &name,
+                               const std::vector<ExprNode *> &args,
+                               const SQLNode *over);
+    CallExprNode *MakeFuncNode(FnDefNode *fn,
+                               const std::vector<ExprNode *> &args,
+                               const SQLNode *over);
 
-    ExprNode *MakeQueryExprNode(const QueryNode *query);
+    QueryExpr *MakeQueryExprNode(const QueryNode *query);
     SQLNode *MakeWindowDefNode(const std::string &name);
     SQLNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
                                SQLNode *frame);
@@ -106,7 +107,8 @@ class NodeManager {
                                SQLNode *frame, bool instance_not_in_window);
     WindowDefNode *MergeWindow(const WindowDefNode *w1,
                                const WindowDefNode *w2);
-    ExprNode *MakeOrderByNode(const ExprListNode *node_ptr, const bool is_asc);
+    OrderByNode *MakeOrderByNode(const ExprListNode *node_ptr,
+                                 const bool is_asc);
     SQLNode *MakeFrameExtent(SQLNode *start, SQLNode *end);
     SQLNode *MakeFrameBound(BoundType bound_type);
     SQLNode *MakeFrameBound(BoundType bound_type, ExprNode *offset);
@@ -153,60 +155,59 @@ class NodeManager {
     TypeNode *MakeTypeNode(fesql::node::DataType base, fesql::node::DataType v1,
                            fesql::node::DataType v2);
     OpaqueTypeNode *MakeOpaqueType(size_t bytes);
-    RowTypeNode *MakeRowType(const vm::SchemaSourceList &schema_source);
-    RowTypeNode *MakeRowType(const std::string &name, codec::Schema *schema);
+    RowTypeNode *MakeRowType(const std::vector<const vm::Schema *> &schema);
+    RowTypeNode *MakeRowType(const vm::SchemasContext *schemas_ctx);
 
-    ExprNode *MakeColumnRefNode(const std::string &column_name,
-                                const std::string &relation_name,
-                                const std::string &db_name);
-    ExprNode *MakeColumnRefNode(const std::string &column_name,
-                                const std::string &relation_name);
+    ColumnRefNode *MakeColumnRefNode(const std::string &column_name,
+                                     const std::string &relation_name,
+                                     const std::string &db_name);
+    ColumnRefNode *MakeColumnRefNode(const std::string &column_name,
+                                     const std::string &relation_name);
+    ColumnIdNode *MakeColumnIdNode(size_t column_id);
     GetFieldExpr *MakeGetFieldExpr(ExprNode *input,
                                    const std::string &column_name,
-                                   const std::string &relation_name);
-    GetFieldExpr *MakeGetFieldExpr(ExprNode *input, size_t idx);
+                                   size_t column_id);
+    GetFieldExpr *MakeGetFieldExpr(ExprNode *input, size_t column_id);
 
     CondExpr *MakeCondExpr(ExprNode *condition, ExprNode *left,
                            ExprNode *right);
 
-    ExprNode *MakeBetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right);
-    ExprNode *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
-                                 FnOperator op);
-    ExprNode *MakeUnaryExprNode(ExprNode *left, FnOperator op);
-    ExprNode *MakeExprFrom(const ExprNode *node,
-                           const std::string relation_name,
-                           const std::string db_name);
+    BetweenExpr *MakeBetweenExpr(ExprNode *expr, ExprNode *left,
+                                 ExprNode *right);
+    BinaryExpr *MakeBinaryExprNode(ExprNode *left, ExprNode *right,
+                                   FnOperator op);
+    UnaryExpr *MakeUnaryExprNode(ExprNode *left, FnOperator op);
     ExprIdNode *MakeExprIdNode(const std::string &name);
     ExprIdNode *MakeUnresolvedExprId(const std::string &name);
 
     // Make Fn Node
-    ExprNode *MakeConstNode(int16_t value);
-    ExprNode *MakeConstNode(int value);
-    ExprNode *MakeConstNode(int value, TTLType ttl_type);
-    ExprNode *MakeConstNode(int64_t value, DataType unit);
-    ExprNode *MakeConstNode(int64_t value);
-    ExprNode *MakeConstNode(int64_t value, TTLType ttl_type);
-    ExprNode *MakeConstNode(float value);
-    ExprNode *MakeConstNode(double value);
-    ExprNode *MakeConstNode(const std::string &value);
-    ExprNode *MakeConstNode(const char *value);
-    ExprNode *MakeConstNode();
-    ExprNode *MakeConstNode(DataType type);
-    ExprNode *MakeConstNodeINT16MAX();
-    ExprNode *MakeConstNodeINT32MAX();
-    ExprNode *MakeConstNodeINT64MAX();
-    ExprNode *MakeConstNodeFLOATMAX();
-    ExprNode *MakeConstNodeDOUBLEMAX();
-    ExprNode *MakeConstNodeINT16MIN();
-    ExprNode *MakeConstNodeINT32MIN();
-    ExprNode *MakeConstNodeINT64MIN();
-    ExprNode *MakeConstNodeFLOATMIN();
-    ExprNode *MakeConstNodeDOUBLEMIN();
-    ExprNode *MakeConstNodePlaceHolder();
+    ConstNode *MakeConstNode(int16_t value);
+    ConstNode *MakeConstNode(int value);
+    ConstNode *MakeConstNode(int value, TTLType ttl_type);
+    ConstNode *MakeConstNode(int64_t value, DataType unit);
+    ConstNode *MakeConstNode(int64_t value);
+    ConstNode *MakeConstNode(int64_t value, TTLType ttl_type);
+    ConstNode *MakeConstNode(float value);
+    ConstNode *MakeConstNode(double value);
+    ConstNode *MakeConstNode(const std::string &value);
+    ConstNode *MakeConstNode(const char *value);
+    ConstNode *MakeConstNode();
+    ConstNode *MakeConstNode(DataType type);
+    ConstNode *MakeConstNodeINT16MAX();
+    ConstNode *MakeConstNodeINT32MAX();
+    ConstNode *MakeConstNodeINT64MAX();
+    ConstNode *MakeConstNodeFLOATMAX();
+    ConstNode *MakeConstNodeDOUBLEMAX();
+    ConstNode *MakeConstNodeINT16MIN();
+    ConstNode *MakeConstNodeINT32MIN();
+    ConstNode *MakeConstNodeINT64MIN();
+    ConstNode *MakeConstNodeFLOATMIN();
+    ConstNode *MakeConstNodeDOUBLEMIN();
+    ConstNode *MakeConstNodePlaceHolder();
 
-    ExprNode *MakeAllNode(const std::string &relation_name);
-    ExprNode *MakeAllNode(const std::string &relation_name,
-                          const std::string &db_name);
+    AllNode *MakeAllNode(const std::string &relation_name);
+    AllNode *MakeAllNode(const std::string &relation_name,
+                         const std::string &db_name);
 
     FnNode *MakeFnNode(const SQLNodeType &type);
     FnNodeList *MakeFnListNode();
@@ -264,8 +265,7 @@ class NodeManager {
     PlanNode *MakeLimitPlanNode(PlanNode *node, int limit_cnt);
 
     CreatePlanNode *MakeCreateTablePlanNode(
-        const std::string &table_name, int replica_num,
-        int partition_num,
+        const std::string &table_name, int replica_num, int partition_num,
         const NodePointVector &column_list,
         const NodePointVector &partition_meta_list);
 
@@ -288,22 +288,13 @@ class NodeManager {
 
     PlanNode *MakeDistinctPlanNode(PlanNode *node);
 
-    node::ExprNode *MakeEqualCondition(const std::string &db1,
-                                       const std::string &table1,
-                                       const std::string &db2,
-                                       const std::string &table2,
-                                       const node::ExprListNode *expr_list);
-
     node::ExprNode *MakeAndExpr(ExprListNode *expr_list);
-    node ::ExprListNode *BuildExprListFromSchemaSource(
-        const vm::ColumnSourceList column_sources,
-        const vm::SchemaSourceList &schema_souces);
 
     node::FrameNode *MergeFrameNodeWithCurrentHistoryFrame(FrameNode *frame1);
 
     ExternalFnDefNode *MakeExternalFnDefNode(
         const std::string &function_name, void *function_ptr,
-        node::TypeNode *ret_type, bool ret_nullable,
+        const node::TypeNode *ret_type, bool ret_nullable,
         const std::vector<const node::TypeNode *> &arg_types,
         const std::vector<int> &arg_nullable, int variadic_pos,
         bool return_by_arg);

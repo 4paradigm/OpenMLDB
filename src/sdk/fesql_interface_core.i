@@ -57,7 +57,6 @@ namespace std {
 %include "swig_library/java/numerics.i"
 #endif
 
-
 %{
 #include "node/plan_node.h"
 #include "node/sql_node.h"
@@ -73,14 +72,13 @@ using namespace fesql::node;
 using fesql::vm::SQLContext;
 using fesql::vm::Catalog;
 using fesql::vm::PhysicalOpNode;
-using fesql::vm::PhysicalWindowNode;
 using fesql::vm::PhysicalSimpleProjectNode;
 using fesql::vm::RowView;
 using fesql::vm::FnInfo;
 using fesql::vm::Sort;
 using fesql::vm::Range;
 using fesql::vm::ConditionFilter;
-using fesql::vm::ColumnProject;
+using fesql::vm::ColumnProjects;
 using fesql::vm::Key;
 using fesql::vm::WindowOp;
 using fesql::vm::EngineMode;
@@ -88,7 +86,8 @@ using fesql::base::Iterator;
 using fesql::base::ConstIterator;
 using fesql::codec::RowIterator;
 using fesql::codec::Row;
-using fesql::vm::ColumnSource;
+using fesql::vm::SchemasContext;
+using fesql::vm::SchemaSource;
 using fesql::node::PlanType;
 using fesql::codec::WindowIterator;
 using fesql::node::DataType;
@@ -98,11 +97,13 @@ using fesql::node::DataType;
 %ignore MakeExprWithTable; // TODO: avoid return object with share pointer
 %ignore WindowIterator;
 %ignore fesql::vm::SchemasContext;
-%ignore fesql::vm::RowSchemaInfo;
 %ignore fesql::vm::RowHandler;
 %ignore fesql::vm::TableHandler;
 %ignore fesql::vm::PartitionHandler;
 %ignore fesql::vm::SimpleCatalogTableHandler;
+%ignore fesql::vm::DataHandlerList;
+%ignore fesql::vm::DataHandlerVector;
+%ignore fesql::vm::DataHandlerRepeater;
 %ignore DataTypeName; // TODO: Geneerate duplicated class
 %ignore fesql::vm::FeSQLJITWrapper::AddModule;
 
@@ -129,18 +130,9 @@ using fesql::node::DataType;
 %include "node/sql_node.h"
 %include "vm/catalog.h"
 %include "vm/simple_catalog.h"
+%include "vm/schemas_context.h"
 %include "vm/engine.h"
 %include "vm/physical_op.h"
 %include "vm/jit_wrapper.h"
 %include "vm/core_api.h"
 %include "vm/mem_catalog.h"
-
-// Notice that make sure this is declared after including "vm/catalog.h"
-namespace fesql {
-    namespace vm {
-        %template(ColumnSourceList) ::std::vector<fesql::vm::ColumnSource>;
-    }
-    namespace node {
-        %template(DataTypeList) ::std::vector<fesql::node::DataType>;
-    }
-}

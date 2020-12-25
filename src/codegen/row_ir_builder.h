@@ -41,12 +41,7 @@ class RowDecodeIRBuilder {
 
     virtual ~RowDecodeIRBuilder() {}
 
-    // get the one field of row
-    // name, the column name
-    // row_ptr, the row object ptr
-    // row_size, the row ptr size
-    // output, the output value
-    virtual bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
+    virtual bool BuildGetField(size_t col_idx, ::llvm::Value* row_ptr,
                                ::llvm::Value* row_size,
                                NativeValue* output) = 0;
 };

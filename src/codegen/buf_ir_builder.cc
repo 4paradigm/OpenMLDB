@@ -29,18 +29,19 @@
 namespace fesql {
 namespace codegen {
 
-BufNativeIRBuilder::BufNativeIRBuilder(const vm::Schema* schema,
+BufNativeIRBuilder::BufNativeIRBuilder(const size_t schema_idx,
+                                       const codec::RowFormat* format,
                                        ::llvm::BasicBlock* block,
                                        ScopeVar* scope_var)
     : block_(block),
       sv_(scope_var),
-      decoder_(schema),
+      schema_idx_(schema_idx),
+      format_(format),
       variable_ir_builder_(block, scope_var) {}
 
 BufNativeIRBuilder::~BufNativeIRBuilder() {}
 
-bool BufNativeIRBuilder::BuildGetField(const std::string& name,
-                                       ::llvm::Value* row_ptr,
+bool BufNativeIRBuilder::BuildGetField(size_t col_idx, ::llvm::Value* row_ptr,
                                        ::llvm::Value* row_size,
                                        NativeValue* output) {
     if (row_ptr == NULL || row_size == NULL || output == NULL) {
@@ -49,13 +50,17 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
     }
 
     node::TypeNode data_type;
-    codec::ColInfo col_info;
-    if (!ResolveFieldInfo(name, &col_info, &data_type)) {
-        LOG(WARNING) << "fail to resolve field info " << name;
+    const codec::ColInfo* col_info = format_->GetColumnInfo(col_idx);
+    if (col_info == nullptr) {
+        LOG(WARNING) << "fail to resolve field info at " << col_idx;
         return false;
     }
-    uint32_t col_idx = col_info.idx;
-    uint32_t offset = col_info.offset;
+    if (!SchemaType2DataType(col_info->type, &data_type)) {
+        LOG(WARNING) << "unrecognized data type " +
+                            fesql::type::Type_Name(col_info->type);
+        return false;
+    }
+    uint32_t offset = col_info->offset;
 
     ::llvm::IRBuilder<> builder(block_);
     switch (data_type.base_) {
@@ -129,13 +134,13 @@ bool BufNativeIRBuilder::BuildGetField(const std::string& name,
 
         case ::fesql::node::kVarchar: {
             codec::StringColInfo str_info;
-            if (!decoder_.ResolveStringCol(name, &str_info)) {
+            if (!format_->GetStringColumnInfo(col_idx, &str_info)) {
                 LOG(WARNING)
                     << "fail to get string filed offset and next offset"
-                    << name;
+                    << col_info->name;
             }
             DLOG(INFO) << "get string with offset " << offset << " next offset "
-                       << str_info.str_next_offset << " for col " << name;
+                       << str_info.str_next_offset << " for col " << col_idx;
             return BuildGetStringField(
                 col_idx, offset, str_info.str_next_offset,
                 str_info.str_start_offset, row_ptr, row_size, output);
@@ -161,7 +166,8 @@ bool BufNativeIRBuilder::BuildGetPrimaryField(const std::string& fn_name,
     ::llvm::Type* i32_ty = builder.getInt32Ty();
     ::llvm::Value* val_col_idx = builder.getInt32(col_idx);
     ::llvm::Value* val_offset = builder.getInt32(offset);
-    ::llvm::Value* is_null_alloca = builder.CreateAlloca(builder.getInt8Ty());
+    ::llvm::Value* is_null_alloca =
+        CreateAllocaAtHead(&builder, builder.getInt8Ty(), "is_null_addr");
     ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
         fn_name, type, i8_ptr_ty, i32_ty, i32_ty, i8_ptr_ty);
 
@@ -186,8 +192,8 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t col_idx, uint32_t offset,
 
     ::llvm::IRBuilder<> builder(block_);
     NativeValue str_addr_space_val;
-    bool ok = variable_ir_builder_.LoadValue("str_addr_space",
-                                             &str_addr_space_val, status);
+    bool ok = variable_ir_builder_.LoadAddrSpace(schema_idx_,
+                                                 &str_addr_space_val, status);
     ::llvm::Value* str_addr_space = nullptr;
     if (!str_addr_space_val.IsConstNull()) {
         str_addr_space = str_addr_space_val.GetValue(&builder);
@@ -203,8 +209,8 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t col_idx, uint32_t offset,
             builder.CreateCall(callee, ::llvm::ArrayRef<::llvm::Value*>{size});
         str_addr_space = builder.CreateIntCast(str_addr_space, i32_ty, true,
                                                "cast_i8_to_i32");
-        ok = variable_ir_builder_.StoreValue(
-            "str_addr_space", NativeValue::Create(str_addr_space), status);
+        ok = variable_ir_builder_.StoreAddrSpace(schema_idx_, str_addr_space,
+                                                 status);
         if (!ok) {
             LOG(WARNING) << "fail to add str add space var";
             return false;
@@ -248,7 +254,8 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t col_idx, uint32_t offset,
 
     // null flag
     ::llvm::Type* bool_ty = builder.getInt1Ty();
-    ::llvm::Value* is_null_alloca = builder.CreateAlloca(bool_ty);
+    ::llvm::Value* is_null_alloca =
+        CreateAllocaAtHead(&builder, bool_ty, "string_is_null");
 
     // TODO(wangtaize) add status check
     builder.CreateCall(callee,
@@ -258,21 +265,6 @@ bool BufNativeIRBuilder::BuildGetStringField(uint32_t col_idx, uint32_t offset,
 
     ::llvm::Value* is_null = builder.CreateLoad(is_null_alloca);
     *output = NativeValue::CreateWithFlag(string_ref, is_null);
-    return true;
-}
-
-bool BufNativeIRBuilder::ResolveFieldInfo(const std::string& name,
-                                          codec::ColInfo* col_info_ptr,
-                                          node::TypeNode* data_type_ptr) {
-    if (!decoder_.ResolveColumn(name, col_info_ptr)) {
-        return false;
-    }
-
-    if (!SchemaType2DataType(col_info_ptr->type, data_type_ptr)) {
-        LOG(WARNING) << "unrecognized data type " +
-                            fesql::type::Type_Name(col_info_ptr->type);
-        return false;
-    }
     return true;
 }
 
@@ -317,7 +309,8 @@ bool BufNativeEncoderIRBuilder::BuildEncodePrimaryField(
 bool BufNativeEncoderIRBuilder::BuildEncode(::llvm::Value* output_ptr) {
     ::llvm::IRBuilder<> builder(block_);
     ::llvm::Type* i32_ty = builder.getInt32Ty();
-    ::llvm::Value* str_addr_space_ptr = builder.CreateAlloca(i32_ty);
+    ::llvm::Value* str_addr_space_ptr =
+        CreateAllocaAtHead(&builder, i32_ty, "str_addr_space_alloca");
     ::llvm::Value* row_size = NULL;
     bool ok = CalcTotalSize(&row_size, str_addr_space_ptr);
 

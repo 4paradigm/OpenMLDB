@@ -206,6 +206,7 @@ bool SQLCase::ExtractSchema(const std::vector<std::string>& columns,
             return false;
         }
         column->set_type(type);
+        column->set_is_not_null(false);
     }
     return true;
 }
@@ -244,8 +245,9 @@ bool SQLCase::BuildCreateSQLFromSchema(const type::TableDef& table,
         }
         sql.append(")");
         // end key
-
-        sql.append(", ts=").append(index.second_key());
+        if (!index.second_key().empty()) {
+            sql.append(", ts=").append(index.second_key());
+        }
 
         if (index.ttl_size() > 0) {
             sql.append(", ttl=").append(std::to_string(index.ttl(0)));
@@ -291,22 +293,26 @@ bool SQLCase::AddInput(const TableInfo& table_data) {
 }
 bool SQLCase::ExtractInputData(std::vector<Row>& rows,
                                int32_t input_idx) const {
-    if (inputs_[input_idx].data_.empty() && inputs_[input_idx].rows_.empty()) {
+    return ExtractInputData(inputs_[input_idx], rows);
+}
+bool SQLCase::ExtractInputData(const TableInfo& input,
+                               std::vector<Row>& rows) const {
+    if (input.data_.empty() && input.rows_.empty()) {
         LOG(WARNING) << "Empty Data String";
         return false;
     }
     type::TableDef table;
-    if (!ExtractInputTableDef(table, input_idx)) {
+    if (!ExtractInputTableDef(input, table)) {
         LOG(WARNING) << "Invalid Schema";
         return false;
     }
 
-    if (!inputs_[input_idx].data_.empty()) {
-        if (!ExtractRows(table.columns(), inputs_[input_idx].data_, rows)) {
+    if (!input.data_.empty()) {
+        if (!ExtractRows(table.columns(), input.data_, rows)) {
             return false;
         }
-    } else if (!inputs_[input_idx].columns_.empty()) {
-        if (!ExtractRows(table.columns(), inputs_[input_idx].rows_, rows)) {
+    } else if (!input.columns_.empty()) {
+        if (!ExtractRows(table.columns(), input.rows_, rows)) {
             return false;
         }
     } else {
@@ -619,20 +625,22 @@ const std::string SQLCase::case_name() const {
 }
 bool SQLCase::ExtractInputTableDef(type::TableDef& table,
                                    int32_t input_idx) const {
-    if (!inputs_[input_idx].schema_.empty()) {
-        if (!ExtractTableDef(inputs_[input_idx].schema_,
-                             inputs_[input_idx].index_, table)) {
+    return ExtractInputTableDef(inputs_[input_idx], table);
+}
+bool SQLCase::ExtractInputTableDef(const TableInfo& input,
+                                   type::TableDef& table) const {
+    if (!input.schema_.empty()) {
+        if (!ExtractTableDef(input.schema_, input.index_, table)) {
             return false;
         }
-    } else if (!inputs_[input_idx].columns_.empty()) {
-        if (!ExtractTableDef(inputs_[input_idx].columns_,
-                             inputs_[input_idx].indexs_, table)) {
+    } else if (!input.columns_.empty()) {
+        if (!ExtractTableDef(input.columns_, input.indexs_, table)) {
             return false;
         }
     }
 
     table.set_catalog(db_);
-    table.set_name(inputs_[input_idx].name_);
+    table.set_name(input.name_);
     return true;
 }
 
@@ -799,6 +807,9 @@ bool SQLCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
         boost::trim(table->data_);
     }
 
+    if (schema_data["repeat"]) {
+        table->repeat_ = schema_data["repeat"].as<int64_t>();
+    }
     if (schema_data["rows"]) {
         table->rows_.clear();
         if (!CreateRowsFromYamlNode(schema_data["rows"], table->rows_)) {
@@ -885,6 +896,17 @@ bool SQLCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
     } else {
         expect->success_ = true;
     }
+    if (schema_data["common_column_indices"]) {
+        auto data = schema_data["common_column_indices"];
+        std::vector<std::string> idxs;
+        if (!CreateStringListFromYamlNode(data, idxs)) {
+            return false;
+        }
+        for (auto str : idxs) {
+            expect->common_column_indices_.insert(
+                boost::lexical_cast<size_t>(str));
+        }
+    }
     return true;
 }
 bool SQLCase::CreateSQLCasesFromYaml(const std::string& cases_dir,
@@ -911,7 +933,7 @@ bool SQLCase::CreateTableInfoFromYaml(const std::string& cases_dir,
     } else {
         resouces_path = yaml_path;
     }
-    LOG(INFO) << "Resource path: " << resouces_path;
+    DLOG(INFO) << "Resource path: " << resouces_path;
     if (!boost::filesystem::is_regular_file(resouces_path)) {
         LOG(WARNING) << resouces_path << ": No such file";
         return false;
@@ -956,7 +978,7 @@ bool SQLCase::CreateSQLCasesFromYaml(
     } else {
         sql_case_path = yaml_path;
     }
-    LOG(INFO) << "SQL Cases Path: " << sql_case_path;
+    DLOG(INFO) << "SQL Cases Path: " << sql_case_path;
     if (!boost::filesystem::is_regular_file(sql_case_path)) {
         LOG(WARNING) << sql_case_path << ": No such file";
         return false;
@@ -989,7 +1011,8 @@ bool SQLCase::CreateSQLCasesFromYaml(
     for (auto case_iter = sql_cases_node.begin();
          case_iter != sql_cases_node.end(); case_iter++) {
         SQLCase sql_case;
-        auto sql_case_node = *case_iter;
+        YAML::Node& sql_case_node = sql_case.raw_node_;
+        sql_case_node = (YAML::Node)(*case_iter);
 
         if (sql_case_node["id"]) {
             sql_case.id_ = sql_case_node["id"].as<std::string>();
@@ -1065,7 +1088,11 @@ bool SQLCase::CreateSQLCasesFromYaml(
                 sql_case_node["request_plan"].as<std::string>();
             boost::trim(sql_case.request_plan_);
         }
-
+        if (sql_case_node["cluster_request_plan"]) {
+            sql_case.cluster_request_plan_ =
+                sql_case_node["cluster_request_plan"].as<std::string>();
+            boost::trim(sql_case.cluster_request_plan_);
+        }
         if (sql_case_node["db"]) {
             sql_case.db_ = sql_case_node["db"].as<std::string>();
         } else {
@@ -1175,6 +1202,47 @@ std::string FindFesqlDirPath() {
         return fesql_path.string();
     }
     return std::string();
+}
+
+bool SQLCase::BuildCreateSpSQLFromInput(int32_t input_idx,
+                                        const std::string& select_sql,
+                                        const std::set<size_t>& common_idx,
+                                        std::string* create_sp_sql) {
+    type::TableDef table;
+    if (!ExtractInputTableDef(table, input_idx)) {
+        LOG(WARNING) << "Fail to extract table schema";
+        return false;
+    }
+    if (!BuildCreateSpSQLFromSchema(table, select_sql, common_idx,
+                                    create_sp_sql)) {
+        LOG(WARNING) << "Fail to build create sql string";
+        return false;
+    }
+    return true;
+}
+
+bool SQLCase::BuildCreateSpSQLFromSchema(const type::TableDef& table,
+                                         const std::string& select_sql,
+                                         const std::set<size_t>& common_idx,
+                                         std::string* create_sql) {
+    std::string sql = "CREATE Procedure " + sp_name_ + "(\n";
+    for (int i = 0; i < table.columns_size(); i++) {
+        auto column = table.columns(i);
+        if (!common_idx.empty() && common_idx.count(i)) {
+            sql.append("const ");
+        }
+        sql.append(column.name()).append(" ").append(TypeString(column.type()));
+        if (i < table.columns_size() - 1) {
+            sql.append(",\n");
+        }
+    }
+    sql.append(")\n");
+    sql.append("BEGIN\n");
+    sql.append(select_sql);
+    sql.append("\n");
+    sql.append("END;");
+    *create_sql = sql;
+    return true;
 }
 
 }  // namespace sqlcase

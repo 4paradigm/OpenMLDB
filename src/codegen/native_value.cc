@@ -11,6 +11,7 @@
 #include <execinfo.h>
 #include <signal.h>
 #include "codegen/context.h"
+#include "codegen/ir_base_builder.h"
 
 namespace fesql {
 namespace codegen {
@@ -56,7 +57,8 @@ namespace codegen {
         LOG(WARNING) << "Get addr from const null";
         return nullptr;
     } else if (IsReg()) {
-        ::llvm::Value* alloca = builder->CreateAlloca(type_);
+        ::llvm::Value* alloca =
+            CreateAllocaAtHead(builder, type_, "addr_alloca");
         builder->CreateStore(raw_, alloca);
         return alloca;
     } else {

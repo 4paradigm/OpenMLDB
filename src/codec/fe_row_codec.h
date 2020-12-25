@@ -203,38 +203,19 @@ struct StringColInfo : public ColInfo {
           str_start_offset(str_start_offset) {}
 };
 
-class RowSelector {
+class RowFormat {
  public:
-    RowSelector(const fesql::codec::Schema* schema,
-                const std::vector<size_t>& indices);
+    explicit RowFormat(const fesql::codec::Schema* schema);
+    virtual ~RowFormat() {}
 
-    bool Select(const int8_t* slice, size_t size, int8_t** out_slice,
-                size_t* out_size);
+    bool GetStringColumnInfo(size_t idx, StringColInfo* res) const;
 
- private:
-    fesql::codec::Schema CreateTargetSchema();
-
-    const fesql::codec::Schema* schema_;
-    const std::vector<size_t> indices_;
-
-    fesql::codec::Schema target_schema_;
-    RowView row_view_;
-    RowBuilder target_row_builder_;
-};
-
-class RowDecoder {
- public:
-    explicit RowDecoder(const fesql::codec::Schema* schema);
-    virtual ~RowDecoder() {}
-
-    virtual bool ResolveColumn(const std::string& name, ColInfo* res) const;
-
-    virtual bool ResolveStringCol(const std::string& name,
-                                  StringColInfo* res) const;
+    const ColInfo* GetColumnInfo(size_t idx) const;
 
  private:
     const fesql::codec::Schema* schema_;
-    std::map<std::string, ColInfo> infos_;
+    std::vector<ColInfo> infos_;
+    std::map<std::string, size_t> infos_dict_;
     std::map<uint32_t, uint32_t> next_str_pos_;
     uint32_t str_field_start_offset_;
 };

@@ -63,11 +63,10 @@ TEST_F(SqlNodeTest, MakeColumnRefNodeTest) {
 
 TEST_F(SqlNodeTest, MakeGetFieldExprTest) {
     auto row = node_manager_->MakeExprIdNode("row");
-    auto node = node_manager_->MakeGetFieldExpr(row, "col", "t");
+    auto node = node_manager_->MakeGetFieldExpr(row, 0);
     std::cout << *node << std::endl;
     ASSERT_EQ(kExprGetField, node->GetExprType());
-    ASSERT_EQ("t", node->GetRelationName());
-    ASSERT_EQ("col", node->GetColumnName());
+    ASSERT_EQ("0", node->GetColumnName());
     ASSERT_EQ(kExprId, node->GetRow()->GetExprType());
 }
 
@@ -515,7 +514,7 @@ TEST_F(SqlNodeTest, WindowAndFrameNodeMergeTest) {
 
 TEST_F(SqlNodeTest, ColumnOfExpressionTest) {
     {
-        std::vector<const node::ColumnRefNode *> columns;
+        std::vector<const node::ExprNode *> columns;
         node::ColumnOfExpression(
             dynamic_cast<ExprNode *>(
                 node_manager_->MakeColumnRefNode("c1", "t1")),
@@ -525,7 +524,7 @@ TEST_F(SqlNodeTest, ColumnOfExpressionTest) {
                                columns[0]));
     }
     {
-        std::vector<const node::ColumnRefNode *> columns;
+        std::vector<const node::ExprNode *> columns;
         node::ColumnOfExpression(
             dynamic_cast<ExprNode *>(node_manager_->MakeCastNode(
                 kDouble, node_manager_->MakeColumnRefNode("c2", "t1"))),
@@ -535,7 +534,7 @@ TEST_F(SqlNodeTest, ColumnOfExpressionTest) {
                                columns[0]));
     }
     {
-        std::vector<const node::ColumnRefNode *> columns;
+        std::vector<const node::ExprNode *> columns;
         node::ColumnOfExpression(
             dynamic_cast<ExprNode *>(node_manager_->MakeBinaryExprNode(
                 node_manager_->MakeColumnRefNode("c1", "t1"),
@@ -548,7 +547,7 @@ TEST_F(SqlNodeTest, ColumnOfExpressionTest) {
                                columns[1]));
     }
     {
-        std::vector<const node::ColumnRefNode *> columns;
+        std::vector<const node::ExprNode *> columns;
         node::ColumnOfExpression(
             dynamic_cast<ExprNode *>(node_manager_->MakeBinaryExprNode(
                 node_manager_->MakeConstNode(1),

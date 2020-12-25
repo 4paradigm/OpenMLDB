@@ -41,7 +41,6 @@ namespace fesql {
 namespace codegen {
 
 using fesql::base::Status;
-using fesql::vm::RowSchemaInfo;
 
 class ExprIRBuilder {
  public:
@@ -56,7 +55,8 @@ class ExprIRBuilder {
 
     Status BuildWindow(NativeValue* output);
 
-    inline void set_frame(node::ExprNode* frame_arg, node::FrameNode* frame) {
+    inline void set_frame(node::ExprNode* frame_arg,
+                          const node::FrameNode* frame) {
         this->frame_arg_ = frame_arg;
         this->frame_ = frame;
     }
@@ -103,12 +103,8 @@ class ExprIRBuilder {
 
  private:
     CodeGenContext* ctx_;
-    node::FrameNode* frame_ = nullptr;
+    const node::FrameNode* frame_ = nullptr;
     node::ExprNode* frame_arg_ = nullptr;
-
-    bool FindRowSchemaInfo(const std::string& relation_name,
-                           const std::string& col_name,
-                           const RowSchemaInfo** info);
 };
 }  // namespace codegen
 }  // namespace fesql

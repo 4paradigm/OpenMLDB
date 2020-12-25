@@ -25,6 +25,9 @@ void EngineBatchModeSimpleQueryBM(const std::string& db, const std::string& sql,
 void EngineWindowSumFeature1(benchmark::State* state, MODE mode,
                              int64_t limit_cnt,
                              int64_t size);  // NOLINT
+void EngineWindowRowsSumFeature1(benchmark::State* state, MODE mode,
+                                 int64_t limit_cnt,
+                                 int64_t size);  // NOLINT
 
 void EngineRunBatchWindowSumFeature1(benchmark::State* state, MODE mode,
                                      int64_t limit_cnt,
@@ -46,6 +49,17 @@ void EngineWindowSumFeature5Window5(benchmark::State* state, MODE mode,
                                     int64_t limit_cnt,
                                     int64_t size);  // NOLINT
 
+void EngineWindowTop1RatioFeature(benchmark::State* state, MODE mode,
+                                    int64_t limit_cnt,
+                                    int64_t size);
+
+void EngineWindowDistinctCntFeature(benchmark::State* state, MODE mode,
+                                    int64_t limit_cnt,
+                                    int64_t size);
+
+
+void MapTop1(benchmark::State* state,
+             MODE mode, int64_t limit_cnt, int64_t size);
 void EngineWindowMultiAggFeature5(benchmark::State* state, MODE mode,
                                   int64_t limit_cnt,
                                   int64_t size);  // NOLINT

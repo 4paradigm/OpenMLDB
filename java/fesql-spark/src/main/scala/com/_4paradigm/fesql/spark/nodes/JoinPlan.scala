@@ -8,7 +8,6 @@ import com._4paradigm.fesql.spark._
 import com._4paradigm.fesql.spark.utils.SparkColumnUtil.getColumnFromIndex
 import com._4paradigm.fesql.spark.utils.{FesqlUtil, SparkColumnUtil, SparkRowUtil}
 import com._4paradigm.fesql.vm.{CoreAPI, FeSQLJITWrapper, PhysicalJoinNode}
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.types.{LongType, StructType}
 import org.apache.spark.sql.{Column, Row, functions}
@@ -69,8 +68,7 @@ object JoinPlan {
     val filter = node.join().condition()
     // extra conditions
     if (filter.condition() != null) {
-
-      val regName = "FESQL_JOIN_CONDITION_" + node.GetFnName()
+      val regName = "FESQL_JOIN_CONDITION_" + filter.fn_info().fn_name()
       val conditionUDF = new JoinConditionUDF(
         functionName = filter.fn_info().fn_name(),
         inputSchemaSlices = inputSchemaSlices,
@@ -155,6 +153,9 @@ object JoinPlan {
 
         distinct.drop(indexName)
       } else { // Does not have order by column
+        // TODO: Do not use native last join currently
+        joined.dropDuplicates(indexName).drop(indexName)
+        /*
         try {
           org.apache.spark.sql.catalyst.plans.JoinType("last") // If Spark distribution support native last join type
           leftDf.join(rightDf, joinConditions.reduce(_ && _),  "last")
@@ -164,6 +165,7 @@ object JoinPlan {
             joined.dropDuplicates(indexName).drop(indexName)
           }
         }
+        */
       }
 
     } else { // Just left join, not last join

@@ -30,17 +30,52 @@ WindowInterface::WindowInterface(bool instance_not_in_window,
 void WindowInterface::BufferData(uint64_t key, const Row& row) {
     window_impl_->BufferData(key, row);
 }
-int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
-                                int32_t schema_idx, int32_t column_idx) {
-    SchemasContext schema_ctx(node->GetOutputNameSchemaList());
-    return schema_ctx.ColumnOffsetResolved(schema_idx, column_idx);
-}
+
 int CoreAPI::ResolveColumnIndex(fesql::vm::PhysicalOpNode* node,
                                 fesql::node::ColumnRefNode* expr) {
-    SchemasContext schema_ctx(node->GetOutputNameSchemaList());
+    const SchemasContext* schemas_ctx = node->schemas_ctx();
     auto column_expr = dynamic_cast<const node::ColumnRefNode*>(expr);
-    return schema_ctx.ColumnOffsetResolved(column_expr->GetRelationName(),
-                                           column_expr->GetColumnName());
+    size_t schema_idx;
+    size_t col_idx;
+    auto status =
+        schemas_ctx->ResolveColumnRefIndex(column_expr, &schema_idx, &col_idx);
+    if (!status.isOK()) {
+        LOG(WARNING) << "Fail to resolve column "
+                     << column_expr->GetExprString();
+        return -1;
+    }
+    size_t total_offset = col_idx;
+    for (size_t i = 0; i < schema_idx; ++i) {
+        total_offset += node->GetOutputSchemaSource(i)->size();
+    }
+    return total_offset;
+}
+
+std::string CoreAPI::ResolveSourceColumnName(fesql::vm::PhysicalOpNode* node,
+                                             fesql::node::ColumnRefNode* expr) {
+    const SchemasContext* schemas_ctx = node->schemas_ctx();
+    auto column_expr = dynamic_cast<const node::ColumnRefNode*>(expr);
+    size_t column_id;
+    int child_path_idx;
+    size_t child_column_id;
+    size_t source_column_id;
+    const PhysicalOpNode* source_node = nullptr;
+    auto status = schemas_ctx->ResolveColumnID(
+        column_expr->GetRelationName(), column_expr->GetColumnName(),
+        &column_id, &child_path_idx, &child_column_id, &source_column_id,
+        &source_node);
+    if (!status.isOK() || source_node == nullptr) {
+        LOG(WARNING) << "Fail to resolve column "
+                     << column_expr->GetExprString();
+        return "";
+    }
+    size_t schema_idx;
+    size_t col_idx;
+    status = source_node->schemas_ctx()->ResolveColumnIndexByID(
+        source_column_id, &schema_idx, &col_idx);
+    return source_node->schemas_ctx()
+        ->GetSchemaSource(schema_idx)
+        ->GetColumnName(col_idx);
 }
 
 GroupbyInterface::GroupbyInterface(const fesql::codec::Schema& schema)
@@ -104,6 +139,37 @@ fesql::codec::Row CoreAPI::RowProject(const RawPtrHandle fn,
         buf, fesql::codec::RowView::GetSize(buf)));
 }
 
+fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn, const Row row,
+                                         WindowInterface* window) {
+    if (row.empty()) {
+        return row;
+    }
+    // Init current run step runtime
+    JITRuntime::get()->InitRunStep();
+
+    auto udf =
+        reinterpret_cast<int32_t (*)(const int8_t*, const int8_t*, int8_t**)>(
+            const_cast<int8_t*>(fn));
+    int8_t* out_buf = nullptr;
+
+    codec::ListRef<Row> window_ref;
+    window_ref.list = reinterpret_cast<int8_t*>(window->GetWindow());
+    auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
+    auto row_ptr = reinterpret_cast<const int8_t*>(&row);
+
+    uint32_t ret = udf(row_ptr, window_ptr, &out_buf);
+
+    // Release current run step resources
+    JITRuntime::get()->ReleaseRunStep();
+
+    if (ret != 0) {
+        LOG(WARNING) << "fail to run udf " << ret;
+        return Row();
+    }
+    return Row(base::RefCountedSlice::CreateManaged(out_buf,
+                                                    RowView::GetSize(out_buf)));
+}
+
 fesql::codec::Row CoreAPI::WindowProject(const RawPtrHandle fn,
                                          const uint64_t key, const Row row,
                                          const bool is_instance,
@@ -157,37 +223,6 @@ bool CoreAPI::EnableSignalTraceback() {
     signal(SIGILL, fesql::base::FeSignalBacktraceHandler);
     signal(SIGSYS, fesql::base::FeSignalBacktraceHandler);
     return true;
-}
-
-std::shared_ptr<DataHandler> RunnerContext::GetBatchCache(int64_t id) const {
-    auto iter = batch_cache_.find(id);
-    if (iter == batch_cache_.end()) {
-        return nullptr;
-    } else {
-        return iter->second;
-    }
-}
-
-void RunnerContext::SetBatchCache(int64_t id,
-                                  std::shared_ptr<DataHandler> data) {
-    batch_cache_[id] = data;
-}
-
-std::shared_ptr<DataHandler> RunnerContext::GetCache(int64_t id) const {
-    auto iter = cache_.find(id);
-    if (iter == cache_.end()) {
-        return nullptr;
-    } else {
-        return iter->second;
-    }
-}
-
-void RunnerContext::SetCache(int64_t id, std::shared_ptr<DataHandler> data) {
-    cache_[id] = data;
-}
-
-void RunnerContext::SetRequest(const fesql::codec::Row& request) {
-    request_ = request;
 }
 
 }  // namespace vm

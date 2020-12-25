@@ -349,7 +349,8 @@ bool ExprIRBuilder::BuildCallFnLegacy(
         ::llvm::Type* struct_type =
             reinterpret_cast<::llvm::PointerType*>(last_arg->getType())
                 ->getElementType();
-        ::llvm::Value* struct_value = builder.CreateAlloca(struct_type);
+        ::llvm::Value* struct_value =
+            CreateAllocaAtHead(&builder, struct_type, "struct_alloca");
         llvm_args.push_back(struct_value);
         ::llvm::Value* ret =
             builder.CreateCall(fn->getFunctionType(), fn,
@@ -448,8 +449,8 @@ Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
     }
 
     // int8_t** -> ListRef* { int8_t* }
-    ::llvm::Value* inner_list_ref_ptr =
-        builder.CreateAlloca(window_ptr->getType());
+    ::llvm::Value* inner_list_ref_ptr = CreateAllocaAtHead(
+        &builder, window_ptr->getType(), "sub_window_alloca");
     builder.CreateStore(window_ptr, inner_list_ref_ptr);
     window_ptr =
         builder.CreatePointerCast(inner_list_ref_ptr, window_ptr->getType());
@@ -474,9 +475,12 @@ Status ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
                                      NativeValue* output) {
     const std::string relation_name = node->GetRelationName();
     const std::string col = node->GetColumnName();
-    const RowSchemaInfo* info;
-    CHECK_TRUE(FindRowSchemaInfo(relation_name, col, &info), kCodegenError,
-               "Fail to find context with " + relation_name + "." + col);
+
+    size_t schema_idx;
+    size_t col_idx;
+    CHECK_STATUS(ctx_->schemas_context()->ResolveColumnRefIndex(
+                     node, &schema_idx, &col_idx),
+                 "Fail to find context with " + node->GetExprString());
 
     ::llvm::Value* value = NULL;
     const std::string frame_str =
@@ -486,8 +490,8 @@ Status ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
     VariableIRBuilder variable_ir_builder(ctx_->GetCurrentBlock(),
                                           ctx_->GetCurrentScope()->sv());
     Status status;
-    bool ok = variable_ir_builder.LoadColumnRef(info->table_name_, col,
-                                                frame_str, &value, status);
+    bool ok = variable_ir_builder.LoadColumnRef(relation_name, col, frame_str,
+                                                &value, status);
     if (ok) {
         *output = NativeValue::Create(value);
         return Status::OK();
@@ -500,12 +504,12 @@ Status ExprIRBuilder::BuildColumnRef(const ::fesql::node::ColumnRefNode* node,
     // NOT reuse for iterator
     MemoryWindowDecodeIRBuilder window_ir_builder(ctx_->schemas_context(),
                                                   ctx_->GetCurrentBlock());
-    ok =
-        window_ir_builder.BuildGetCol(col, window.GetRaw(), info->idx_, &value);
+    ok = window_ir_builder.BuildGetCol(schema_idx, col_idx, window.GetRaw(),
+                                       &value);
     CHECK_TRUE(ok && value != nullptr, kCodegenError,
                "fail to find column " + col);
 
-    ok = variable_ir_builder.StoreColumnRef(info->table_name_, col, frame_str,
+    ok = variable_ir_builder.StoreColumnRef(relation_name, col, frame_str,
                                             value, status);
     CHECK_TRUE(ok, kCodegenError, "fail to store col for ", status.str());
     *output = NativeValue::Create(value);
@@ -727,7 +731,7 @@ Status ExprIRBuilder::BuildAsUDF(const node::ExprNode* expr,
 
     node::ExprNode* target_expr = nullptr;
     passes::ResolveFnAndAttrs resolver(ctx_->node_manager(), library,
-                                       *ctx_->schemas_context());
+                                       ctx_->schemas_context());
     CHECK_STATUS(resolver.VisitExpr(transformed, &target_expr));
 
     // Insert a transient binding scope between current scope and parent
@@ -759,7 +763,7 @@ Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
                    kCodegenError, "Illegal input for kTuple, expect ",
                    input_type->GetName());
         try {
-            size_t idx = std::stoi(node->GetColumnName());
+            size_t idx = node->GetColumnID();
             CHECK_TRUE(0 <= idx && idx < input_value.GetFieldNum(),
                        kCodegenError, "Tuple idx out of range: ", idx);
             *output = input_value.GetField(idx);
@@ -776,18 +780,19 @@ Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
 
         auto row_type = dynamic_cast<const node::RowTypeNode*>(
             node->GetRow()->GetOutputType());
-        vm::SchemasContext schemas_context(row_type->schema_source());
+        const auto schemas_context = row_type->schemas_ctx();
 
-        const vm::RowSchemaInfo* schema_info = nullptr;
-        bool ok = schemas_context.ColumnRefResolved(
-            node->GetRelationName(), node->GetColumnName(), &schema_info);
-        CHECK_TRUE(ok, kCodegenError, "Fail to resolve column ",
-                   node->GetExprString(), row_type);
+        size_t schema_idx;
+        size_t col_idx;
+        CHECK_STATUS(schemas_context->ResolveColumnIndexByID(
+                         node->GetColumnID(), &schema_idx, &col_idx),
+                     "Fail to resolve column ", node->GetExprString(), " from ",
+                     row_type->GetName());
         auto row_ptr = input_value.GetValue(ctx_);
 
         ::llvm::Module* module = ctx_->GetModule();
         ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
-        auto slice_idx = builder.getInt64(schema_info->idx_);
+        auto slice_idx_value = builder.getInt64(schema_idx);
         auto get_slice_func = module->getOrInsertFunction(
             "fesql_storage_get_row_slice",
             ::llvm::FunctionType::get(ptr_ty, {ptr_ty, int64_ty}, false));
@@ -795,17 +800,17 @@ Status ExprIRBuilder::BuildGetFieldExpr(const ::fesql::node::GetFieldExpr* node,
             "fesql_storage_get_row_slice_size",
             ::llvm::FunctionType::get(int64_ty, {ptr_ty, int64_ty}, false));
         ::llvm::Value* slice_ptr =
-            builder.CreateCall(get_slice_func, {row_ptr, slice_idx});
+            builder.CreateCall(get_slice_func, {row_ptr, slice_idx_value});
         ::llvm::Value* slice_size = builder.CreateIntCast(
-            builder.CreateCall(get_slice_size_func, {row_ptr, slice_idx}),
+            builder.CreateCall(get_slice_size_func, {row_ptr, slice_idx_value}),
             int32_ty, false);
 
-        BufNativeIRBuilder buf_builder(schema_info->schema_,
-                                       ctx_->GetCurrentBlock(),
-                                       ctx_->GetCurrentScope()->sv());
-        CHECK_TRUE(buf_builder.BuildGetField(node->GetColumnName(), slice_ptr,
-                                             slice_size, output),
-                   kCodegenError);
+        BufNativeIRBuilder buf_builder(
+            schema_idx, schemas_context->GetRowFormat(schema_idx),
+            ctx_->GetCurrentBlock(), ctx_->GetCurrentScope()->sv());
+        CHECK_TRUE(
+            buf_builder.BuildGetField(col_idx, slice_ptr, slice_size, output),
+            kCodegenError);
     } else {
         return Status(common::kCodegenError,
                       "Get field's input is neither tuple nor row");
@@ -850,18 +855,6 @@ Status ExprIRBuilder::BuildCondExpr(const ::fesql::node::CondExpr* node,
     CondSelectIRBuilder cond_select_builder;
     return cond_select_builder.Select(block, cond_value, left_value,
                                       right_value, output);
-}
-
-bool ExprIRBuilder::FindRowSchemaInfo(const std::string& relation_name,
-                                      const std::string& col_name,
-                                      const RowSchemaInfo** info) {
-    if (nullptr == ctx_->schemas_context()) {
-        LOG(WARNING)
-            << "fail to find row schema info with null schemas context";
-        return false;
-    }
-    return ctx_->schemas_context()->ColumnRefResolved(relation_name, col_name,
-                                                      info);
 }
 
 }  // namespace codegen

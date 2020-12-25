@@ -15,8 +15,8 @@ cases:
     sql: |
       SELECT id,
         identity(case when !isnull(at(c1, 0)) then distinct_count(fz_window_split(c1,  ",")) else null end) over w1 as table_2_kn_0,
-        identity(case when !isnull(at(c1, 0)) then distinct_count(fz_window_split_by_key(c1,  ",",  ":")) else null end) over w1 as table_2_kn_0,
-        identity(case when !isnull(at(c1, 0)) then distinct_count(fz_window_split_by_value(c1,  ",",  ":")) else null end) over w1 as table_2_kn_0,
+        identity(case when !isnull(at(c1, 0)) then distinct_count(fz_window_split_by_key(c1,  ",",  ":")) else null end) over w1 as table_2_kn_1,
+        identity(case when !isnull(at(c1, 0)) then distinct_count(fz_window_split_by_value(c1,  ",",  ":")) else null end) over w1 as table_2_kn_2,
         fz_join(fz_window_split(c1, ","), " ") OVER w1 AS split_and_join,
         fz_join(fz_window_split_by_key(c1, ",", ":"), " ") OVER w1 AS split_key_and_join,
         fz_join(fz_window_split_by_value(c1, ",", ":"), " ") OVER w1 AS split_value_and_join,
@@ -26,7 +26,7 @@ cases:
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int64", "table_2_kn_0 int64", "table_2_kn_0 int64", "table_2_kn_0 int64", "split_and_join string", "split_key_and_join string", "split_value_and_join string", "split_key_and_count int64", "split_key_and_distinct_count int64"]
+      columns: ["id int64", "table_2_kn_0 int64", "table_2_kn_1 int64", "table_2_kn_2 int64", "split_and_join string", "split_key_and_join string", "split_value_and_join string", "split_key_and_count int64", "split_key_and_distinct_count int64"]
       rows:
         - [1, 2, 2, 2, "k1:v1 k2:v2", "k1 k2", "v1 v2", 2, 2]
         - [2, 3, 3, 3, "k3:v3 k1:v1 k2:v2", "k3 k1 k2", "v3 v1 v2", 3, 3]
@@ -86,7 +86,7 @@ cases:
       fz_top1_ratio(c4) OVER w1 as r4,
       fz_top1_ratio(c5) OVER w1 as r5,
       fz_top1_ratio(fz_window_split_by_value(c6, " ", ":")) OVER w1 as r6,
-      fz_join(fz_window_split_by_value(c6, " ", ":")," ") as r7
+      fz_join(fz_window_split_by_value(c6, " ", ":")," ") OVER w1 as r7
       FROM {0} 
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -120,7 +120,7 @@ cases:
       fz_topn_frequency(c4, 3) OVER w1 as r4,
       fz_topn_frequency(c5, 3) OVER w1 as r5,
       fz_topn_frequency(fz_window_split_by_value(c6, " ", ":"), 3) OVER w1 as r6,
-      fz_join(fz_window_split_by_value(c6, " ", ":")," ") as r7
+      fz_join(fz_window_split_by_value(c6, " ", ":")," ") OVER w1 as r7
       FROM {0} 
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -163,4 +163,3 @@ cases:
         - [3, "", "", "", "", "", ""]
         - [4, "", "", "", "", "", ""]
         - [5, "", "", "", "", "", ""]
-

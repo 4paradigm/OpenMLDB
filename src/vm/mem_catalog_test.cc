@@ -242,7 +242,7 @@ TEST_F(MemCataLogTest, mem_time_table_handler_test) {
     ::fesql::type::TableDef table;
     BuildRows(table, rows);
     vm::MemTimeTableHandler table_handler("t1", "temp", &(table.columns()));
-    for (int i = 0; i < rows.size(); i++) {
+    for (size_t i = 0; i < rows.size(); i++) {
         table_handler.AddRow(i, rows[i]);
     }
     auto iter = table_handler.GetIterator();
@@ -420,6 +420,38 @@ TEST_F(MemCataLogTest, mem_row_handler_test) {
     for (auto row : rows) {
         MemRowHandler row_hander(row, &table.columns());
         ASSERT_EQ(0, row.compare(row_hander.GetValue()));
+    }
+}
+TEST_F(MemCataLogTest, mem_row_comcat_test) {
+    std::vector<Row> rows;
+    ::fesql::type::TableDef table;
+    BuildRows(table, rows);
+
+    std::vector<Row> rows_right;
+    ::fesql::type::TableDef table_right;
+    BuildT2Rows(table_right, rows_right);
+    // construct test
+    for (int i = 0; i < rows.size(); i++) {
+        std::shared_ptr<MemRowHandler> row =
+            std::shared_ptr<MemRowHandler>(new MemRowHandler(rows[i]));
+        std::shared_ptr<MemRowHandler> right_row =
+            std::shared_ptr<MemRowHandler>(new MemRowHandler(rows_right[i]));
+        // test leftrow concat rightrow
+        std::shared_ptr<RowHandler> concat_left_right =
+            std::shared_ptr<RowHandler>(
+                new RowCombineWrapper(row, 1, right_row, 1));
+        Row concat_left_right_row = Row(1, rows[i], 1, rows_right[i]);
+        ASSERT_EQ(0,
+                  concat_left_right->GetValue().compare(concat_left_right_row));
+
+        // tests left row concat right row concat right row
+        std::shared_ptr<RowHandler> concat_left_right_right =
+            std::shared_ptr<RowHandler>(
+                new RowCombineWrapper(concat_left_right, 2, right_row, 1));
+        Row concat_left_right_right_row =
+            Row(2, concat_left_right_row, 1, rows_right[i]);
+        ASSERT_EQ(0, concat_left_right_right->GetValue().compare(
+                         concat_left_right_right_row));
     }
 }
 

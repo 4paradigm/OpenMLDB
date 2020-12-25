@@ -34,7 +34,7 @@ cases:
                   "c4 date", "c5 timestamp", "std_ts timestamp"]
         indexs: ["index1:id:std_ts"]
         rows:
-        - [1, NULL, 42, 3.14, 2020-05-20, 1590738989000, 1590738989000]
+        - [1, NULL, 42, 3.14, "2020-05-20", 1590738989000, 1590738989000]
         - [2, "hello world", NULL, NULL, NULL, NULL, 1590738989000]
     sql: select id,
         substring(c1, 1, 5) as r1,
@@ -59,7 +59,7 @@ cases:
                   "c4 date", "c5 timestamp", "std_ts timestamp"]
         indexs: ["index1:id:std_ts"]
         rows:
-        - [1, NULL, 42, 3.14, 2020-05-20, 1590738989000, 1590738989000]
+        - [1, NULL, 42, 3.14, "2020-05-20", 1590738989000, 1590738989000]
         - [2, "hello world", NULL, NULL, NULL, NULL, 1590738989000]
     sql: select id,
         substring(substring(c1, 1, 5), 1, 1) as r1,

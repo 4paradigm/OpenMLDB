@@ -7,6 +7,8 @@
  *--------------------------------------------------------------------------
  **/
 #include "node/type_node.h"
+#include "node/node_manager.h"
+#include "vm/physical_op.h"
 
 namespace fesql {
 namespace node {
@@ -45,9 +47,49 @@ bool TypeNode::IsFloating() const {
 
 bool TypeNode::IsGeneric() const { return !generics_.empty(); }
 
-Status TypeNode::CheckTypeNodeNotNull(const TypeNode* left_type) {
+Status TypeNode::CheckTypeNodeNotNull(const TypeNode *left_type) {
     CHECK_TRUE(nullptr != left_type, common::kTypeError, "null type node");
     return Status::OK();
 }
+
+TypeNode *TypeNode::ShadowCopy(NodeManager *nm) const {
+    auto type_node = nm->MakeTypeNode(base_);
+    type_node->generics_ = this->generics_;
+    return type_node;
+}
+
+TypeNode *TypeNode::DeepCopy(NodeManager *nm) const {
+    // For type node, it is always immutable thus
+    // deep copy can be just implemented as shadow copy.
+    return ShadowCopy(nm);
+}
+
+RowTypeNode::RowTypeNode(const vm::SchemasContext *schemas_ctx)
+    : TypeNode(node::kRow),
+      schemas_ctx_(schemas_ctx),
+      is_own_schema_ctx_(false) {}
+
+RowTypeNode::RowTypeNode(const std::vector<const codec::Schema *> &schemas)
+    : TypeNode(node::kRow),
+      schemas_ctx_(new vm::SchemasContext()),
+      is_own_schema_ctx_(true) {
+    auto schemas_ctx = const_cast<vm::SchemasContext *>(schemas_ctx_);
+    schemas_ctx->BuildTrivial(schemas);
+}
+
+RowTypeNode::~RowTypeNode() {
+    if (IsOwnedSchema()) {
+        delete const_cast<vm::SchemasContext *>(schemas_ctx_);
+    }
+}
+
+RowTypeNode *RowTypeNode::ShadowCopy(NodeManager *nm) const {
+    return nm->MakeRowType(this->schemas_ctx());
+}
+
+OpaqueTypeNode *OpaqueTypeNode::ShadowCopy(NodeManager *nm) const {
+    return nm->MakeOpaqueType(bytes_);
+}
+
 }  // namespace node
 }  // namespace fesql

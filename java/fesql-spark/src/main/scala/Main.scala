@@ -42,7 +42,6 @@ object Main {
     val sess = new FesqlSession(sparkSession)
 
     logger.info("Resolve input tables...")
-    val tables = mutable.HashMap[String, DataFrame]()
     for ((name, path) <- inputSpecs) {
       logger.info(s"Try load table $name from: $path")
       sess.read(path).createOrReplaceTempView(name)
@@ -71,7 +70,7 @@ object Main {
       logger.info(s"Save result to: $outputPath")
       outputDf.write(outputPath)
     } else {
-      val count = outputDf.getSparkDf.queryExecution.toRdd.count()
+      val count = outputDf.getSparkDf().queryExecution.toRdd.count()
       logger.info(s"Result records count: $count")
     }
     endTime = System.currentTimeMillis()

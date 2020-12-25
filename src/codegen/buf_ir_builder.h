@@ -74,11 +74,11 @@ class BufNativeEncoderIRBuilder : public RowEncodeIRBuilder {
 
 class BufNativeIRBuilder : public RowDecodeIRBuilder {
  public:
-    BufNativeIRBuilder(const vm::Schema* schema, ::llvm::BasicBlock* block,
-                       ScopeVar* scope_var);
+    BufNativeIRBuilder(size_t schema_idx, const codec::RowFormat* format,
+                       ::llvm::BasicBlock* block, ScopeVar* scope_var);
     ~BufNativeIRBuilder();
 
-    bool BuildGetField(const std::string& name, ::llvm::Value* row_ptr,
+    bool BuildGetField(size_t col_idx, ::llvm::Value* row_ptr,
                        ::llvm::Value* row_size, NativeValue* output);
 
  private:
@@ -90,13 +90,12 @@ class BufNativeIRBuilder : public RowDecodeIRBuilder {
                              uint32_t next_str_field_offset,
                              uint32_t str_start_offset, ::llvm::Value* row_ptr,
                              ::llvm::Value* size, NativeValue* output);
-    bool ResolveFieldInfo(const std::string& name, codec::ColInfo* info_ptr,
-                          node::TypeNode* data_type_ptr);
 
  private:
     ::llvm::BasicBlock* block_;
     ScopeVar* sv_;
-    codec::RowDecoder decoder_;
+    size_t schema_idx_;
+    const codec::RowFormat* format_;
     VariableIRBuilder variable_ir_builder_;
 };
 

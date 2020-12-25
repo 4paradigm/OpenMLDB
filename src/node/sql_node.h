@@ -195,6 +195,8 @@ inline const std::string ExprTypeName(const ExprType &type) {
             return "between";
         case kExprColumnRef:
             return "column ref";
+        case kExprColumnId:
+            return "column id";
         case kExprCast:
             return "cast";
         case kExprAll:
@@ -447,6 +449,12 @@ class ExprNode : public SQLNode {
      */
     virtual bool IsListReturn(ExprAnalysisContext *ctx) const { return false; }
 
+    /**
+     * Default expression node deep copy implementation
+     */
+    virtual ExprNode *ShadowCopy(NodeManager *) const = 0;
+    ExprNode *DeepCopy(NodeManager *) const override;
+
     static bool IsSafeCast(const TypeNode *from_type,
                            const TypeNode *target_type);
 
@@ -512,7 +520,9 @@ class ExprListNode : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     const bool IsEmpty() const { return children_.empty(); }
     const std::string GetExprString() const;
+    ExprListNode *ShadowCopy(NodeManager *) const override;
 };
+
 class FnNode : public SQLNode {
  public:
     FnNode() : SQLNode(kFn, 0, 0), indent(0) {}
@@ -541,7 +551,7 @@ class OrderByNode : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *that) const;
-
+    OrderByNode *ShadowCopy(NodeManager *) const override;
     const ExprListNode *order_by() const { return order_by_; }
 
     bool is_asc() const { return is_asc_; }
@@ -774,6 +784,7 @@ class ConstNode : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
 
     virtual bool Equals(const ExprNode *node) const;
+    ConstNode *ShadowCopy(NodeManager *) const override;
 
     const bool IsNull() const { return kNull == data_type_; }
     const bool IsPlaceholder() const { return kPlaceholder == data_type_; }
@@ -1258,6 +1269,7 @@ class AllNode : public ExprNode {
     }
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *that) const;
+    AllNode *ShadowCopy(NodeManager *) const override;
 
  private:
     std::string relation_name_;
@@ -1278,6 +1290,9 @@ class FnDefNode : public SQLNode {
 
     std::string GetFlatString() const override;
 
+    virtual FnDefNode *ShadowCopy(NodeManager *) const = 0;
+    virtual FnDefNode *DeepCopy(NodeManager *) const = 0;
+
     virtual bool RequireListAt(ExprAnalysisContext *ctx, size_t index) const;
     virtual bool IsListReturn(ExprAnalysisContext *ctx) const;
 };
@@ -1293,11 +1308,15 @@ class CastExprNode : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *that) const;
+    CastExprNode *ShadowCopy(NodeManager *) const override;
+    static CastExprNode *CastFrom(ExprNode *node);
+
     ExprNode *expr() const { return GetChild(0); }
     const DataType cast_type_;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 };
+
 class WhenExprNode : public ExprNode {
  public:
     WhenExprNode(node::ExprNode *when_expr, node::ExprNode *then_expr)
@@ -1309,6 +1328,8 @@ class WhenExprNode : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *that) const;
+    WhenExprNode *ShadowCopy(NodeManager *) const override;
+
     ExprNode *when_expr() const { return GetChild(0); }
     ExprNode *then_expr() const { return GetChild(1); }
     Status InferAttr(ExprAnalysisContext *ctx) override;
@@ -1326,7 +1347,11 @@ class CaseWhenExprNode : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *that) const;
-    ExprNode *when_expr_list() const { return GetChild(0); }
+    CaseWhenExprNode *ShadowCopy(NodeManager *) const override;
+
+    ExprListNode *when_expr_list() const {
+        return dynamic_cast<ExprListNode *>(GetChild(0));
+    }
     ExprNode *else_expr() const { return GetChild(1); }
     Status InferAttr(ExprAnalysisContext *ctx) override;
 };
@@ -1349,13 +1374,12 @@ class CallExprNode : public ExprNode {
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *that) const;
 
+    CallExprNode *ShadowCopy(NodeManager *) const override;
+    CallExprNode *DeepCopy(NodeManager *) const override;
+
     const WindowDefNode *GetOver() const { return over_; }
 
     void SetOver(WindowDefNode *over) { over_ = over; }
-
-    bool IsRowWise() const { return is_row_wise_; }
-
-    void SetRowWise(bool flag) { is_row_wise_ = flag; }
 
     FnDefNode *GetFnDef() const { return fn_def_; }
     void SetFnDef(FnDefNode *fn_def) { fn_def_ = fn_def; }
@@ -1369,9 +1393,6 @@ class CallExprNode : public ExprNode {
     // const std::string function_name_;
     FnDefNode *fn_def_;
     const WindowDefNode *over_;
-
-    // TODO(xxx): maybe remove this if high order expression supported
-    bool is_row_wise_ = false;
 };
 
 class QueryExpr : public ExprNode {
@@ -1381,6 +1402,7 @@ class QueryExpr : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const ExprNode *node) const;
     const std::string GetExprString() const;
+    QueryExpr *ShadowCopy(NodeManager *) const override;
 
     const QueryNode *query_;
 };
@@ -1393,6 +1415,7 @@ class BinaryExpr : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *node) const;
+    BinaryExpr *ShadowCopy(NodeManager *) const override;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 
@@ -1408,6 +1431,7 @@ class UnaryExpr : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const override;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *node) const;
+    UnaryExpr *ShadowCopy(NodeManager *) const override;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 
@@ -1426,6 +1450,7 @@ class CondExpr : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const override;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *node) const;
+    CondExpr *ShadowCopy(NodeManager *) const override;
 
     ExprNode *GetCondition() const;
     ExprNode *GetLeft() const;
@@ -1445,6 +1470,8 @@ class ExprIdNode : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const override;
     const std::string GetExprString() const override;
     bool Equals(const ExprNode *node) const override;
+
+    ExprIdNode *ShadowCopy(NodeManager *) const override;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 
@@ -1497,6 +1524,7 @@ class ColumnRefNode : public ExprNode {
     const std::string GetExprString() const;
     const std::string GenerateExpressionName() const;
     virtual bool Equals(const ExprNode *node) const;
+    ColumnRefNode *ShadowCopy(NodeManager *) const override;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 
@@ -1508,30 +1536,51 @@ class ColumnRefNode : public ExprNode {
     std::string db_name_;
 };
 
+class ColumnIdNode : public ExprNode {
+ public:
+    explicit ColumnIdNode(size_t column_id)
+        : ExprNode(kExprColumnId), column_id_(column_id) {}
+
+    size_t GetColumnID() const { return column_id_; }
+
+    static ColumnIdNode *CastFrom(ExprNode *node);
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    const std::string GetExprString() const;
+    const std::string GenerateExpressionName() const;
+    virtual bool Equals(const ExprNode *node) const;
+    ColumnIdNode *ShadowCopy(NodeManager *) const override;
+
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+
+ private:
+    size_t column_id_;
+};
+
 class GetFieldExpr : public ExprNode {
  public:
     GetFieldExpr(ExprNode *input, const std::string &column_name,
-                 const std::string &relation_name)
+                 size_t column_id)
         : ExprNode(kExprGetField),
           column_name_(column_name),
-          relation_name_(relation_name) {
+          column_id_(column_id) {
         this->AddChild(input);
     }
 
-    std::string GetRelationName() const { return relation_name_; }
     std::string GetColumnName() const { return column_name_; }
+    size_t GetColumnID() const { return column_id_; }
     ExprNode *GetRow() const { return GetChild(0); }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     const std::string GenerateExpressionName() const;
     virtual bool Equals(const ExprNode *node) const;
+    GetFieldExpr *ShadowCopy(NodeManager *) const override;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
 
  private:
     std::string column_name_;
-    std::string relation_name_;
+    size_t column_id_;
 };
 
 class BetweenExpr : public ExprNode {
@@ -1542,6 +1591,7 @@ class BetweenExpr : public ExprNode {
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
     virtual bool Equals(const ExprNode *node) const;
+    BetweenExpr *ShadowCopy(NodeManager *) const override;
 
     ExprNode *expr_;
     ExprNode *left_;
@@ -2039,6 +2089,7 @@ class FnReturnStmt : public FnNode {
     void Print(std::ostream &output, const std::string &org_tab) const override;
     ExprNode *return_expr_;
 };
+
 class StructExpr : public ExprNode {
  public:
     explicit StructExpr(const std::string &name)
@@ -2052,6 +2103,7 @@ class StructExpr : public ExprNode {
 
     const std::string &GetName() const { return class_name_; }
     void Print(std::ostream &output, const std::string &org_tab) const override;
+    StructExpr *ShadowCopy(NodeManager *) const override;
 
  private:
     const std::string class_name_;
@@ -2112,6 +2164,9 @@ class ExternalFnDefNode : public FnDefNode {
     bool RequireListAt(ExprAnalysisContext *ctx, size_t index) const override;
     bool IsListReturn(ExprAnalysisContext *ctx) const override;
 
+    ExternalFnDefNode *ShadowCopy(NodeManager *) const override;
+    ExternalFnDefNode *DeepCopy(NodeManager *) const override;
+
  private:
     std::string function_name_;
     void *function_ptr_;
@@ -2157,6 +2212,9 @@ class UDFDefNode : public FnDefNode {
         return Status::OK();
     }
 
+    UDFDefNode *ShadowCopy(NodeManager *) const override;
+    UDFDefNode *DeepCopy(NodeManager *) const override;
+
  private:
     FnNodeFnDef *def_;
 };
@@ -2192,6 +2250,9 @@ class UDFByCodeGenDefNode : public FnDefNode {
         const std::vector<const TypeNode *> &arg_types) const override {
         return Status::OK();
     }
+
+    UDFByCodeGenDefNode *ShadowCopy(NodeManager *) const override;
+    UDFByCodeGenDefNode *DeepCopy(NodeManager *) const override;
 
  private:
     std::shared_ptr<udf::LLVMUDFGenBase> gen_impl_;
@@ -2230,6 +2291,9 @@ class LambdaNode : public FnDefNode {
 
     base::Status Validate(
         const std::vector<const TypeNode *> &arg_types) const override;
+
+    LambdaNode *ShadowCopy(NodeManager *) const override;
+    LambdaNode *DeepCopy(NodeManager *) const override;
 
  private:
     std::vector<node::ExprIdNode *> args_;
@@ -2299,6 +2363,9 @@ class UDAFDefNode : public FnDefNode {
     size_t GetArgSize() const override { return arg_types_.size(); }
 
     const TypeNode *GetArgType(size_t i) const { return arg_types_[i]; }
+
+    UDAFDefNode *ShadowCopy(NodeManager *) const override;
+    UDAFDefNode *DeepCopy(NodeManager *) const override;
 
  private:
     std::string name_;
@@ -2448,7 +2515,7 @@ bool WindowOfExpression(std::map<std::string, const WindowDefNode *> windows,
                         ExprNode *node_ptr, const WindowDefNode **output);
 void ColumnOfExpression(
     const ExprNode *node_ptr,
-    std::vector<const node::ColumnRefNode *> *columns);  // NOLINT
+    std::vector<const node::ExprNode *> *columns);  // NOLINT
 void FillSQLNodeList2NodeVector(
     SQLNodeList *node_list_ptr,
     std::vector<SQLNode *> &node_list);  // NOLINT (runtime/references)

@@ -56,7 +56,8 @@ bool StructTypeIRBuilder::Create(::llvm::BasicBlock* block,
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
-    ::llvm::Value* value = builder.CreateAlloca(struct_type_);
+    ::llvm::Value* value =
+        CreateAllocaAtHead(&builder, struct_type_, "struct_alloca");
     *output = value;
     return true;
 }
