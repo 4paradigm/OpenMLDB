@@ -1345,17 +1345,18 @@ def run(args):
                          ", ".join(top_udfs(history_udf_failures))) + "]"
     logging.info("Wait workers to exit...")
 
-def gen_case_yaml():
+def gen_case_yaml(case_dir=None):
     args = parse_args()
     udf_pool = UDFPool(args.udf_path, args)
     begin = time.time()
     case_num = args.yaml_count
+    if case_dir == None:
+        case_dir = args.log_dir
+    if not os.path.exists(case_dir):
+        os.makedirs(case_dir)
     for i in range(case_num):
         test_name = str(uuid.uuid1())
         case = gen_single_window_test(test_name, udf_pool, args)
-        case_dir = args.log_dir
-        if not os.path.exists(case_dir):
-            os.makedirs(case_dir)
         yamlName = "auto_gen_case_"+str(i)+".yaml"
         with open(os.path.join(case_dir, yamlName), "w") as yaml_file:
             yaml_file.write(yaml.dump(case))
