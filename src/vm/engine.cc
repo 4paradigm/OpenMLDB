@@ -241,8 +241,24 @@ bool Engine::Explain(const std::string& sql, const std::string& db,
     explain_output->physical_plan = ctx.physical_plan_str;
     explain_output->ir = ctx.ir;
     explain_output->request_name = ctx.request_name;
-    explain_output->router.SetMainTable(ctx.request_name);
-    explain_output->router.Parse(ctx.physical_plan);
+    if (engine_mode == ::fesql::vm::kBatchMode) {
+        std::set<std::string> tables;
+        base::Status status;
+        for (auto iter = ctx.logical_plan.cbegin();
+             iter != ctx.logical_plan.cend(); iter++) {
+            if (!GetDependentTables(*iter, &tables, status)) {
+                LOG(WARNING) << "fail to get dependent tables " << sql
+                             << " in db " << db << " with error " << status;
+                break;
+            }
+        }
+        if (!tables.empty()) {
+            explain_output->router.SetMainTable(*tables.begin());
+        }
+    } else {
+        explain_output->router.SetMainTable(ctx.request_name);
+        explain_output->router.Parse(ctx.physical_plan);
+    }
     return true;
 }
 
