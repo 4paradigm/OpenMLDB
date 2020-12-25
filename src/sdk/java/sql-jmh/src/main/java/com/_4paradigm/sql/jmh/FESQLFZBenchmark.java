@@ -176,9 +176,9 @@ public class FESQLFZBenchmark {
         }
     }
 
-    private PreparedStatement getPreparedStatement() throws SQLException {
+    private PreparedStatement getPreparedStatement(BenchmarkConfig.Mode mode) throws SQLException {
         PreparedStatement requestPs = null;
-        if (BenchmarkConfig.mode == BenchmarkConfig.Mode.BATCH_REQUEST) {
+        if (mode == BenchmarkConfig.Mode.BATCH_REQUEST) {
             requestPs = executor.getBatchRequestPreparedStmt(db, script, commonColumnIndices);
             for (int i = 0; i < BenchmarkConfig.BATCH_SIZE; i++) {
                 if (setRequestData(requestPs)) {
@@ -258,7 +258,7 @@ public class FESQLFZBenchmark {
     @Benchmark
     public void execSQL() {
         try {
-            PreparedStatement ps = getPreparedStatement();
+            PreparedStatement ps = getPreparedStatement(BenchmarkConfig.mode);
             ResultSet resultSet = ps.executeQuery();
             /*resultSet.next();
             ResultSetMetaData metaData = resultSet.getMetaData();
@@ -294,7 +294,7 @@ public class FESQLFZBenchmark {
 
     public Map<String, String> execSQLTest() {
         try {
-            PreparedStatement ps = getPreparedStatement();
+            PreparedStatement ps = getPreparedStatement(BenchmarkConfig.mode);
             ResultSet resultSet = ps.executeQuery();
             resultSet.next();
             ResultSetMetaData metaData = resultSet.getMetaData();

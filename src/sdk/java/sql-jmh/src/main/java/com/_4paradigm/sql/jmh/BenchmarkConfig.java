@@ -49,7 +49,7 @@ public class BenchmarkConfig {
                 System.out.println("mode is request");
                 mode = Mode.REQUEST;
             }
-            commonCol = prop.getProperty("commonCol");
+            commonCol = prop.getProperty("commonCol", "");
         } catch (Exception e) {
             e.printStackTrace();
         }
