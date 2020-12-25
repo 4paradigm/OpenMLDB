@@ -302,7 +302,7 @@ bool SQLRequestRow::AppendString(const char *string_buffer_var_name, uint32_t le
         memcpy(reinterpret_cast<char*>(buf_ + str_offset_), string_buffer_var_name, length);
     }
     if (record_cols_.find(cnt_) != record_cols_.end()) {
-        record_value_.emplace(schema_->GetColumnName(cnt_), val);
+        record_value_.emplace(schema_->GetColumnName(cnt_), string_buffer_var_name);
     }
     str_offset_ += length;
     cnt_++;
