@@ -78,7 +78,12 @@ public class PutFuture implements Future<Boolean> {
 
     @Override
     public Boolean get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-        throw new ExecutionException("no implementation", null);
+//        throw new ExecutionException("no implementation", null);
+        boolean ok = true;
+        for (Future<Tablet.PutResponse> f : bf) {
+            ok = ok && f.get(timeout, unit) != null && f.get().getCode() == 0;
+        }
+        return ok;
     }
 
 }

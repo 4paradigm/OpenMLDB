@@ -254,7 +254,7 @@ class NsClient {
             std::string& msg); // NOLINT
 
     bool CreateProcedure(const ::rtidb::api::ProcedureInfo& sp_info,
-            std::string* msg);
+            uint32_t request_timeout, std::string* msg);
 
  private:
     bool TransformToTableDef(

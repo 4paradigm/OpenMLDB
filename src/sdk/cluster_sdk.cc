@@ -47,7 +47,8 @@ ClusterSDK::ClusterSDK(const ClusterOptions& options)
       pool_(1),
       session_id_(0),
       rand_(0xdeadbeef),
-      sp_root_path_(options.zk_path + "/store_procedure/db_sp_data") {}
+      sp_root_path_(options.zk_path + "/store_procedure/db_sp_data"),
+      engine_(NULL) {}
 
 ClusterSDK::~ClusterSDK() {
     pool_.Stop(false);
@@ -56,6 +57,7 @@ ClusterSDK::~ClusterSDK() {
         delete zk_client_;
         zk_client_ = NULL;
     }
+    delete engine_;
 }
 
 void ClusterSDK::CheckZk() {
@@ -79,6 +81,12 @@ bool ClusterSDK::Init() {
     LOG(INFO) << "init zk client with zk cluster " << options_.zk_cluster << " , zk path " << options_.zk_path
                  << ",session timeout " << options_.session_timeout << " and session id "
                  << zk_client_->GetSessionTerm();
+
+    ::fesql::vm::EngineOptions eopt;
+    eopt.set_compile_only(true);
+    eopt.set_plan_only(true);
+    engine_ = new ::fesql::vm::Engine(catalog_, eopt);
+
     ok = InitCatalog();
     if (!ok) return false;
     CheckZk();
@@ -207,8 +215,9 @@ bool ClusterSDK::RefreshCatalog(const std::vector<std::string>& table_datas,
         std::lock_guard<::rtidb::base::SpinMutex> lock(mu_);
         table_to_tablets_ = mapping;
         catalog_ = new_catalog;
-        return true;
     }
+    engine_->UpdateCatalog(new_catalog);
+    return true;
 }
 
 bool ClusterSDK::InitTabletClient() {
