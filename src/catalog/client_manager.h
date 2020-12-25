@@ -21,6 +21,7 @@
 #define SRC_CATALOG_CLIENT_MANAGER_H_
 
 #include <map>
+#include <set>
 #include <memory>
 #include <string>
 #include <unordered_map>

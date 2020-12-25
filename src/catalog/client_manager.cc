@@ -62,9 +62,11 @@ const ::fesql::codec::Row& TabletRowHandler::GetValue() {
         status_.msg = "response content decode fail";
         return row_;
     }
-    uint32_t tmp_size = 0;
     row_ = fesql::codec::Row();
-    if (!codec::DecodeRpcRow(cntl->response_attachment(), 0, response->byte_size(), response->row_slices(), &row_)) {
+    if (0 != response->byte_size() &&
+        !codec::DecodeRpcRow(cntl->response_attachment(), 0,
+                             response->byte_size(), response->row_slices(),
+                             &row_)) {
         status_.code = fesql::common::kRpcError;
         status_.msg = "response content decode fail";
         return row_;
@@ -134,7 +136,8 @@ void AsyncTableHandler::SyncRpcResponse() {
     for (int i = 0; i < response->row_sizes_size(); ++i) {
         size_t row_size = response->row_sizes(i);
         fesql::codec::Row row;
-        if (!codec::DecodeRpcRow(cntl->response_attachment(), buf_offset, row_size, response->non_common_slices(), &row)) {
+        if (0 != row_size && !codec::DecodeRpcRow(cntl->response_attachment(), buf_offset, row_size,
+                                                  response->non_common_slices(), &row)) {
             status_.code = fesql::common::kResponseError;
             status_.msg = "response error: content decode fail";
             LOG(WARNING) << status_.msg;
