@@ -22,6 +22,9 @@ DEFINE_string(runner_mode, "batch",
               "Specify runner mode, can be batch or request");
 DEFINE_string(cluster_mode, "standalone",
               "Specify cluster mode, can be standalone or cluster");
+DEFINE_bool(
+    enable_batch_request_opt, true,
+    "Specify whether perform batch request optimization in batch request mode");
 DEFINE_int32(run_iters, 0, "Measure the approximate run time if specified");
 DEFINE_int32(case_id, -1, "Specify the case id to run and skip others");
 
@@ -55,6 +58,7 @@ int RunSingle(const std::string& yaml_path) {
     }
     EngineOptions options;
     options.set_cluster_optimized(FLAGS_cluster_mode == "cluster");
+    options.set_batch_request_optimized(FLAGS_enable_batch_request_opt);
     for (auto& sql_case : cases) {
         if (FLAGS_case_id >= 0 &&
             std::to_string(FLAGS_case_id) != sql_case.id()) {

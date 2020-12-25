@@ -170,6 +170,8 @@ bool Engine::Get(const std::string& sql, const std::string& db,
     sql_context.engine_mode = session.engine_mode();
     sql_context.is_performance_sensitive = options_.is_performance_sensitive();
     sql_context.is_cluster_optimized = options_.is_cluster_optimzied();
+    sql_context.is_batch_request_optimized =
+        options_.is_batch_request_optimized();
 
     auto batch_req_sess = dynamic_cast<BatchRequestRunSession*>(&session);
     if (batch_req_sess) {

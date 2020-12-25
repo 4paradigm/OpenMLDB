@@ -63,22 +63,19 @@ static void BM_EngineWindowSumFeature5Window5(
                                    state.range(1));
 }
 static void BM_EngineWindowDistinctCntFeature(
-        benchmark::State& state) { // NOLINT
+    benchmark::State& state) {  // NOLINT
     EngineWindowDistinctCntFeature(&state, BENCHMARK, state.range(0),
                                    state.range(1));
 }
 
 static void BM_EngineWindowTop1RatioFeature(
-        benchmark::State& state) { // NOLINT
+    benchmark::State& state) {  // NOLINT
     EngineWindowTop1RatioFeature(&state, BENCHMARK, state.range(0),
-                                   state.range(1));
+                                 state.range(1));
 }
 
-
-static void BM_MapTop(
-        benchmark::State& state) { // NOLINT
-    MapTop1(&state, BENCHMARK, state.range(0),
-                                   state.range(1));
+static void BM_MapTop(benchmark::State& state) {  // NOLINT
+    MapTop1(&state, BENCHMARK, state.range(0), state.range(1));
 }
 
 static void BM_EngineWindowMultiAggFeature5(
@@ -131,6 +128,19 @@ static void BM_EngineRunBatchWindowSumFeature5Window5(
     benchmark::State& state) {  // NOLINT
     EngineRunBatchWindowSumFeature5Window5(&state, BENCHMARK, state.range(0),
                                            state.range(1));
+}
+
+static void BM_EngineRunCommonWindowAndJoinBatchRequest(
+    benchmark::State& state) {  // NOLINT
+    vm::EngineOptions engine_options;
+    size_t enable_batch_opt_flag = state.range(0);
+    if (enable_batch_opt_flag == 0) {
+        engine_options.set_batch_request_optimized(true);
+    } else {
+        engine_options.set_batch_request_optimized(false);
+    }
+    EngineBenchmarkOnCase("/cases/benchmark/batch_request_benchmark.yaml", "0",
+                          vm::kBatchRequestMode, engine_options, &state);
 }
 
 // request engine simple bm
@@ -259,6 +269,8 @@ BENCHMARK(BM_EngineRunBatchWindowMultiAggWindow25Feature25)
     ->Args({100, 100})
     ->Args({1000, 1000})
     ->Args({10000, 10000});
+
+BENCHMARK(BM_EngineRunCommonWindowAndJoinBatchRequest)->Args({0})->Args({1});
 
 }  // namespace bm
 }  // namespace fesql

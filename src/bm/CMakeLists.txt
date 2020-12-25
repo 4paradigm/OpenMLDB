@@ -34,7 +34,7 @@ foreach(BM_SCRIPT ${BM_EXEC_FILE_LIST})
         add_executable(${BM_TARGET_NAME} ${BM_SCRIPT})
 
         target_link_libraries(${BM_TARGET_NAME}
-            fesql_sdk fesql_flags fesql_bm_lib ${BM_LIBS} benchmark)
+            fesql_sdk fesql_flags fesql_bm_lib ${BM_LIBS} benchmark sqlite3)
         list(APPEND BM_TARGET_LIST ${BM_TARGET_NAME})
 endforeach()
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -56,7 +56,7 @@ if (TESTING_ENABLE)
 
         target_link_libraries(${TEST_TARGET_NAME}
             fesql_bm_lib fesql_sdk fesql_flags
-            gtest benchmark ${yaml_libs} ${BRPC_LIBS} ${OS_LIBS} ${g_libs})
+            gtest benchmark ${yaml_libs} ${BRPC_LIBS} ${OS_LIBS} ${g_libs} sqlite3)
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
