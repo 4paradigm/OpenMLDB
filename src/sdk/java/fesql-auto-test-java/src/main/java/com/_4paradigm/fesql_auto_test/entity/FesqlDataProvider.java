@@ -2,6 +2,7 @@ package com._4paradigm.fesql_auto_test.entity;
 
 import com._4paradigm.fesql.sqlcase.model.CaseFile;
 import com._4paradigm.fesql.sqlcase.model.SQLCase;
+import com._4paradigm.fesql_auto_test.util.Tool;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,31 +22,14 @@ import java.util.List;
 @Data
 public class FesqlDataProvider extends CaseFile {
     private static Logger logger = LoggerFactory.getLogger(FesqlDataProvider.class);
-    private static File rtidbDir() {
-        File directory = new File(".");
-        directory = directory.getAbsoluteFile();
-        while (null != directory) {
-            if (directory.isDirectory() && "rtidb".equals(directory.getName())) {
-                break;
-            }
-            logger.debug("current directory name {}", directory.getName());
-            directory = directory.getParentFile();
-        }
 
-        if ("rtidb".equals(directory.getName())) {
-            return directory;
-        } else {
-            return null;
-        }
-    }
     public static FesqlDataProvider dataProviderGenerator(String caseFile) throws FileNotFoundException {
         Yaml yaml = new Yaml();
-        String rtidbDir = rtidbDir().getAbsolutePath();
-        Assert.assertNotNull(rtidbDir);
-        FesqlDataProvider finalDataProvider;
-        String caseAbsPath = rtidbDir + "/fesql/cases/" + caseFile;
-        logger.debug("fesql case absolute path: {}", caseAbsPath);
-        FileInputStream testDataStream = new FileInputStream(caseAbsPath);
+//        String rtidbDir = Tool.rtidbDir().getAbsolutePath();
+//        Assert.assertNotNull(rtidbDir);
+//        String caseAbsPath = rtidbDir + "/fesql/cases/" + caseFile;
+//        logger.debug("fesql case absolute path: {}", caseAbsPath);
+        FileInputStream testDataStream = new FileInputStream(caseFile);
         FesqlDataProvider testDateProvider = yaml.loadAs(testDataStream, FesqlDataProvider.class);
         return testDateProvider;
     }

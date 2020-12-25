@@ -7,6 +7,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.Assert;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -20,6 +21,30 @@ public class Tool {
 
     public static String getFilePath(String filename){
         return Tool.class.getClassLoader().getResource(filename).getFile();
+    }
+    public static String getCasePath(String casePath){
+        String rtidbDir = Tool.rtidbDir().getAbsolutePath();
+        Assert.assertNotNull(rtidbDir);
+        String caseAbsPath = rtidbDir + "/fesql/cases/" + casePath;
+        logger.debug("fesql case absolute path: {}", caseAbsPath);
+        return caseAbsPath;
+    }
+    public static File rtidbDir() {
+        File directory = new File(".");
+        directory = directory.getAbsoluteFile();
+        while (null != directory) {
+            if (directory.isDirectory() && "rtidb".equals(directory.getName())) {
+                break;
+            }
+            logger.debug("current directory name {}", directory.getName());
+            directory = directory.getParentFile();
+        }
+
+        if ("rtidb".equals(directory.getName())) {
+            return directory;
+        } else {
+            return null;
+        }
     }
 
     public static void sleep(long time){
