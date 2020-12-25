@@ -225,7 +225,7 @@ bool TabletClient::SQLBatchRequestQuery(const std::string& db, const std::string
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
                                   cntl, &request, response);
     if (!ok || response->code() != ::rtidb::base::kOk) {
-        LOG(WARNING) << "fail to query tablet";
+        LOG(WARNING) << "fail to query tablet" << response->msg();
         return false;
     }
     return true;
