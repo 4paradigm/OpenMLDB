@@ -183,14 +183,19 @@ object WindowAggPlan {
   def expansionData(input: DataFrame, config: WindowAggConfig): DataFrame = {
     val tag_index = config.skewTagIdx
     val res = input.rdd.flatMap(row => {
-      val arr = row.toSeq.toArray
-      var arrays = Seq(row)
+//      var arrays:  java.util.List[] = new util.LinkedList[row.type]()
+//      arrays.add(row)
+//      val arr = row.toSeq.toArray
+//      var arrays = Seq(row)
+      var arrays = mutable.ListBuffer(row)
       val value = row.getInt(tag_index)
-      for (i <- 1 until value.asInstanceOf[Int]) {
+      for (i <- 1 until  value.asInstanceOf[Int]) {
         val temp_arr = row.toSeq.toArray
         temp_arr(tag_index) = i
-        arrays = arrays :+ Row.fromSeq(temp_arr)
+        arrays += Row.fromSeq(temp_arr)
       }
+//      import scala.collection.JavaConverters._
+//      arrays.asScala
       arrays
     })
     input.sqlContext.createDataFrame(res, input.schema)
@@ -245,7 +250,7 @@ object WindowAggPlan {
     val reportTable = "FESQL_TEMP_WINDOW_REPORT_" + System.currentTimeMillis()
     logger.info("skew main table {}", table)
     logger.info("skew main table report{}", reportTable)
-    val quantile = math.pow(2, ctx.getConf(FesqlConfig.configSkewLevel, FesqlConfig.skewLevel))
+    val quantile = math.pow(2, FesqlConfig.skewLevel.toDouble)
     val analyzeSQL = SkewUtils.genPercentileSql(table, quantile.intValue(), keysName, ts, FesqlConfig.skewCntName)
     logger.info(s"skew analyze sql : ${analyzeSQL}")
     input.createOrReplaceTempView(table)
@@ -264,9 +269,12 @@ object WindowAggPlan {
     config.skewTagIdx = skewDf.schema.fieldNames.length - 2
     config.skewPositionIdx = skewDf.schema.fieldNames.length - 1
 
+//    keyScala = keyScala :+ FesqlConfig.skewTag
+    skewDf = skewDf.repartition(skewDf(FesqlConfig.skewTag))
+//    skewDf.show(50)
     skewDf = expansionData(skewDf, config)
+//    skewDf.show(100)
 
-    keyScala = keyScala :+ ctx.getConf(FesqlConfig.configSkewTag, FesqlConfig.skewTag)
 
     val partitions = ctx.getConf(FesqlConfig.configPartitions, FesqlConfig.paritions)
     val groupedDf = if (partitions > 0) {
@@ -291,7 +299,7 @@ object WindowAggPlan {
       groupByCols += SparkColumnUtil.getColumnFromIndex(input, colIdx)
     }
 
-    val partitions = ctx.getConf(FesqlConfig.configPartitions, FesqlConfig.paritions)
+    val partitions = FesqlConfig.paritions
     val groupedDf = if (partitions > 0) {
       input.repartition(partitions, groupByCols: _*)
     } else {
