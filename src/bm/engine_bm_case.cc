@@ -41,10 +41,12 @@
 #include "parser/parser.h"
 #include "tablet/tablet_catalog.h"
 #include "vm/engine.h"
+#include "vm/engine_test.h"
 
 namespace fesql {
 namespace bm {
 using codec::Row;
+using sqlcase::SQLCase;
 using vm::BatchRunSession;
 using vm::Engine;
 using vm::RequestRunSession;
@@ -684,5 +686,58 @@ void EngineRequestSimpleSelectDate(benchmark::State* state,
         "cases/resource/benchmark_t1_with_time_one_row.yaml";
     EngineRequestModeSimpleQueryBM("db", "t1", sql, 1, resource, state, mode);
 }
+
+void EngineBenchmarkOnCase(const std::string& yaml_path,
+                           const std::string& case_id,
+                           vm::EngineMode engine_mode,
+                           const vm::EngineOptions& engine_options,
+                           benchmark::State* state) {
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+    std::vector<SQLCase> cases;
+    SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
+                                    yaml_path, cases);
+    const SQLCase* target_case = nullptr;
+    for (const auto& sql_case : cases) {
+        if (sql_case.id() == case_id) {
+            target_case = &sql_case;
+            break;
+        }
+    }
+    if (target_case == nullptr) {
+        LOG(WARNING) << "Fail to find case #" << case_id << " in " << yaml_path;
+        return;
+    }
+    std::unique_ptr<vm::EngineTestRunner> engine_runner;
+    if (engine_mode == vm::kBatchMode) {
+        engine_runner = std::unique_ptr<vm::BatchEngineTestRunner>(
+            new vm::BatchEngineTestRunner(*target_case, engine_options));
+    } else if (engine_mode == vm::kRequestMode) {
+        LOG(WARNING) << "Request mode case can not benchmark now";
+        return;
+    } else {
+        engine_runner = std::unique_ptr<vm::BatchRequestEngineTestRunner>(
+            new vm::BatchRequestEngineTestRunner(
+                *target_case, engine_options,
+                target_case->batch_request().common_column_indices_));
+    }
+    base::Status status = engine_runner->Compile();
+    if (!status.isOK()) {
+        LOG(WARNING) << "Compile error: " << status;
+        return;
+    }
+    status = engine_runner->PrepareData();
+    if (!status.isOK()) {
+        LOG(WARNING) << "Prepare data error: " << status;
+        return;
+    }
+    std::vector<Row> output_rows;
+    for (auto _ : *state) {
+        output_rows.clear();
+        benchmark::DoNotOptimize(static_cast<const base::Status>(
+            engine_runner->Compute(&output_rows)));
+    }
+}
+
 }  // namespace bm
 }  // namespace fesql

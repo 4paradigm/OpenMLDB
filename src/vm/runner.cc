@@ -1651,7 +1651,7 @@ const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
     }
     auto right_iter = right_table->GetIterator();
     if (!right_iter) {
-        LOG(WARNING) << "Last Join right table is empty";
+        DLOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices, left_row, right_slices, Row());
     }
     right_iter->SeekToFirst();
@@ -2275,8 +2275,13 @@ const std::string KeyGenerator::Gen(const Row& row) {
             case ::fesql::type::kVarchar: {
                 const char* buf = nullptr;
                 uint32_t size = 0;
-                row_view_.GetValue(key_row.buf(), pos, &buf, &size);
-                keys.append(buf, size);
+                if(row_view_.GetValue(key_row.buf(), pos, &buf, &size) == 0) {
+                    if (size == 0) {
+                        keys.append(codec::EMPTY_STRING.c_str(), codec::EMPTY_STRING.size());
+                    }else {
+                        keys.append(buf, size);
+                    }
+                }
                 break;
             }
             case fesql::type::kDate: {
