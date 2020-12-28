@@ -182,21 +182,26 @@ object WindowAggPlan {
    */
   def expansionData(input: DataFrame, config: WindowAggConfig): DataFrame = {
     val tag_index = config.skewTagIdx
-    val res = input.rdd.flatMap(row => {
-//      var arrays:  java.util.List[] = new util.LinkedList[row.type]()
-//      arrays.add(row)
-//      val arr = row.toSeq.toArray
-//      var arrays = Seq(row)
-      var arrays = mutable.ListBuffer(row)
-      val value = row.getInt(tag_index)
-      for (i <- 1 until  value.asInstanceOf[Int]) {
-        val temp_arr = row.toSeq.toArray
-        temp_arr(tag_index) = i
-        arrays += Row.fromSeq(temp_arr)
-      }
-//      import scala.collection.JavaConverters._
-//      arrays.asScala
-      arrays
+    logger.info(config.windowName + ":" + config.orderIdx)
+    var cnt = 0
+
+    // partitions
+    val res = input.rdd.mapPartitionsWithIndex((index, iters) => {
+      iters.flatMap(row => {
+        cnt += 1
+        if (cnt % 10000 == 0) {
+          logger.info(index + row.toString())
+        }
+
+        var arrays = mutable.ListBuffer(row)
+        val value = row.getInt(tag_index)
+        for (i <- 1 until  value.asInstanceOf[Int]) {
+          val temp_arr = row.toSeq.toArray
+          temp_arr(tag_index) = i
+          arrays += Row.fromSeq(temp_arr)
+        }
+        arrays
+      })
     })
     input.sqlContext.createDataFrame(res, input.schema)
   }
@@ -269,11 +274,19 @@ object WindowAggPlan {
     config.skewTagIdx = skewDf.schema.fieldNames.length - 2
     config.skewPositionIdx = skewDf.schema.fieldNames.length - 1
 
-//    keyScala = keyScala :+ FesqlConfig.skewTag
-    skewDf = skewDf.repartition(skewDf(FesqlConfig.skewTag))
-//    skewDf.show(50)
-    skewDf = expansionData(skewDf, config)
-//    skewDf.show(100)
+    keyScala = keyScala :+ FesqlConfig.skewTag
+//    skewDf = skewDf.repartition(keyScala.map(skewDf(_)): _*)
+//    skewDf = expansionData(skewDf, config)
+//    skewDf.cache()
+    val skewTable = "FESQL_TEMP_WINDOW_SKEW_" + System.currentTimeMillis()
+    logger.info("skew explode table {}", skewTable)
+    skewDf.createOrReplaceTempView(skewTable)
+    val explodeSql = SkewUtils.explodeDataSql(skewTable, quantile.intValue(), schemas, FesqlConfig.skewTag, FesqlConfig.skewPosition)
+    logger.info(s"skew explode sql : ${explodeSql}")
+    skewDf = ctx.sparksql(explodeSql)
+    skewDf.cache()
+
+    skewDf.show(100)
 
 
     val partitions = ctx.getConf(FesqlConfig.configPartitions, FesqlConfig.paritions)
@@ -285,6 +298,7 @@ object WindowAggPlan {
     keyScala = keyScala :+ ts
     // todo order desc asc
     val sortedDf = groupedDf.sortWithinPartitions(keyScala.map(skewDf(_)): _*)
+    sortedDf.cache()
     sortedDf
   }
 

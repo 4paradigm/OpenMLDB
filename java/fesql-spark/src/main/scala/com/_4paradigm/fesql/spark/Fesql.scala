@@ -1,9 +1,6 @@
 package com._4paradigm.fesql.spark
 
-import java.io.{File, FileReader}
-
 import com._4paradigm.fesql.common.DDLEngine._
-import com._4paradigm.fesql.common.RequestEngine
 import com._4paradigm.fesql.utils.SqlUtils._
 import com._4paradigm.fesql.spark.api.FesqlSession
 import com._4paradigm.fesql.spark.element.FesqlConfig
@@ -59,10 +56,10 @@ object Fesql {
 //    val rquestEngine = new RequestEngine(sqlScript, FesqlUtil.getDatabase(FesqlConfig.configDBName, sess.registeredTables.toMap))
     val feconfig = sql2Feconfig(sqlScript, FesqlUtil.getDatabase(FesqlConfig.configDBName, sess.registeredTables.toMap))//parseOpSchema(rquestEngine.getPlan)
     val tableInfoRDD = sess.getSparkSession.sparkContext.parallelize(Seq(feconfig)).repartition(1)
-    HDFSUtil.deleteIfExist(config.getOutputPath + "/../config")
-    tableInfoRDD.saveAsTextFile((config.getOutputPath + "/../config"))
+    HDFSUtil.deleteIfExist(config.getOutputPath + "/config")
+    tableInfoRDD.saveAsTextFile((config.getOutputPath + "/config"))
 
-    val output = config.getOutputPath
+    val output = config.getOutputPath + "/data"
     val res = sess.fesql(sqlScript)
 //    sess.
 

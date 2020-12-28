@@ -95,13 +95,42 @@ public class SkewUtils {
                 sql.append(String.format("when `%s`.`%s` <= percentile_%s then %d\n", table1, ts, i, quantile - i));
             }
 
-            sql.append(String.format("when `%s`.`%s` > percentile_%s and `%s`.`%s` <= percentile_%d then %d\n", table1, ts, i, table1, ts, i+1, quantile - i));
+            sql.append(String.format("when `%s`.`%s` > percentile_%s and `%s`.`%s` <= percentile_%d then %d\n", table1, ts, i, table1, ts, i + 1, quantile - i));
             if (i == quantile) {
-                sql.append(String.format("when `%s`.`%s` > percentile_%s then %d\n", table1, ts, i+1, quantile - i));
+                sql.append(String.format("when `%s`.`%s` > percentile_%s then %d\n", table1, ts, i + 1, quantile - i));
             }
         }
         sql.append("end as " + output + "\n");
         return sql.toString();
+    }
+
+    public static String explodeDataSql(String table, int quantile, List<String> schemas, String tag1, String tag2) {
+        List<String> sqls = new ArrayList<>();
+        // big
+        for (int i = 0; i < quantile; i++) {
+            if (i == 0) {
+                String sql = String.format("select * from %s", table);
+                sqls.add(sql);
+                continue;
+            }
+
+            StringBuffer sql = new StringBuffer();
+            sql.append("select \n");
+            for (String e : schemas) {
+                sql.append(table + ".`" + e + "`,");
+            }
+            sql.append("\n");
+            sql.append(String.format("%d as `%s`, %s.`%s` from %s\nwhere\n", i, tag1, table, tag2, table));
+            List<String> whereExpr = new ArrayList<>();
+            // explode 1, 2, 3, 4
+            for (int explode = i + 1; explode <= quantile; explode++) {
+                whereExpr.add(String.format("`%s` = %d", tag2, explode));
+            }
+            sql.append(StringUtils.join(whereExpr, " or "));
+            sqls.add(sql.toString());
+        }
+        String res = StringUtils.join(sqls, "\nunion\n") + ";";
+        return res;
     }
 }
 
