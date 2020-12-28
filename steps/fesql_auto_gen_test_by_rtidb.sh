@@ -3,6 +3,18 @@
 ROOT_DIR=`pwd`
 ulimit -c unlimited
 
+git submodule update
+
+cd fesql
+
+git pull
+
+echo "-----------"
+
+ls -al tools/autotest
+
+cd ${ROOT_DIR}
+
 sh steps/gen_code.sh
 export JAVA_HOME=${RTIDB_DEV_JAVA_HOME:-/depends/thirdparty/jdk1.8.0_141}
 export RTIDB_THIRDPARTY=${RTIDB_DEV_THIRDPARTY:-/depends/thirdparty}
@@ -27,6 +39,7 @@ echo "AAAAAAAAAAAAA"
 
 python3 -m pip install numpy -i https://pypi.tuna.tsinghua.edu.cn/simple
 python3 -m pip install PyYaml -i https://pypi.tuna.tsinghua.edu.cn/simple
+
 python3 fesql/tools/autotest/gen_case_yaml_main.py  \
     --udf_path=udf_defs.yaml --yaml_count=1
 
