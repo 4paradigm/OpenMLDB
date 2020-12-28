@@ -1,16 +1,17 @@
 package com._4paradigm.fesql_auto_test.performance;
 
 import com._4paradigm.sql.jdbc.CallablePreparedStatement;
-import com._4paradigm.sql.jdbc.SQLResultSet;
-import com._4paradigm.sql.sdk.*;
-import com._4paradigm.sql.sdk.impl.BatchCallablePreparedStatementImpl;
+import com._4paradigm.sql.sdk.QueryFuture;
+import com._4paradigm.sql.sdk.SdkOption;
+import com._4paradigm.sql.sdk.SqlException;
+import com._4paradigm.sql.sdk.SqlExecutor;
 import com._4paradigm.sql.sdk.impl.CallablePreparedStatementImpl;
 import com._4paradigm.sql.sdk.impl.SqlClusterExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
+
 import java.sql.*;
-import java.sql.Date;
 import java.util.concurrent.TimeUnit;
 
 public class StorageProcedureExample extends BaseExample {
@@ -80,15 +81,6 @@ public class StorageProcedureExample extends BaseExample {
         System.out.println("ok");
         sqlResultSet.close();
         callablePreparedStmt.close();
-
-//        BatchCallablePreparedStatementImpl batchPsmt = sqlExecutor.getCallablePreparedStmtBatch("fix_test32", "xjd10");
-//        metaData = batchPsmt.getMetaData();
-//        if (setData(batchPsmt, metaData, "bb")) return;
-//        batchPsmt.addBatch();
-//        if (setData(batchPsmt, metaData, "")) return;
-//        batchPsmt.addBatch();
-//        sqlResultSet = batchPsmt.executeQuery();
-//        Assert.assertTrue(sqlResultSet.next());
     }
 
     public void callProcedureWithPstmsAsyn() throws Exception {
@@ -109,7 +101,7 @@ public class StorageProcedureExample extends BaseExample {
         callablePreparedStmt.close();
     }
 
-    private boolean setData(CallablePreparedStatement callablePreparedStmt, ResultSetMetaData metaData,  String strVal) throws SQLException {
+    private boolean setData(CallablePreparedStatement callablePreparedStmt, ResultSetMetaData metaData, String strVal) throws SQLException {
         for (int i = 0; i < metaData.getColumnCount(); i++) {
 //            if (obj == null) {
 //                callablePreparedStmt.setNull(i + 1, 0);

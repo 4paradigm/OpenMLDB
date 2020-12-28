@@ -19,7 +19,6 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 
 public class ComplexSql3Example extends BaseExample {
     private static final Logger logger = LoggerFactory.getLogger(ComplexSql3Example.class);
@@ -66,7 +65,7 @@ public class ComplexSql3Example extends BaseExample {
     public void callProcedureWithPstms() throws Exception {
         CallablePreparedStatementImpl callablePreparedStmt = sqlExecutor.getCallablePreparedStmt(db, "xjd10");
         ResultSetMetaData metaData = callablePreparedStmt.getMetaData();
-        if (setData(callablePreparedStmt, metaData)) return;
+        if (setData(callablePreparedStmt, metaData, "bb")) return;
         ResultSet sqlResultSet = callablePreparedStmt.executeQuery();
         Assert.assertTrue(sqlResultSet.next());
         for (int i = 1; i < sqlResultSet.getMetaData().getColumnCount(); i++) {
@@ -76,7 +75,10 @@ public class ComplexSql3Example extends BaseExample {
 
         BatchCallablePreparedStatementImpl batchPsmt = sqlExecutor.getCallablePreparedStmtBatch(db, "xjd10");
         metaData = batchPsmt.getMetaData();
-        if (setData(batchPsmt, metaData)) return;
+        metaData = batchPsmt.getMetaData();
+        if (setData(batchPsmt, metaData, "bb")) return;
+        batchPsmt.addBatch();
+        if (setData(batchPsmt, metaData, "")) return;
         batchPsmt.addBatch();
         sqlResultSet = batchPsmt.executeQuery();
         Assert.assertTrue(sqlResultSet.next());
@@ -86,7 +88,7 @@ public class ComplexSql3Example extends BaseExample {
         callablePreparedStmt.close();
     }
 
-    private boolean setData(CallablePreparedStatement callablePreparedStmt, ResultSetMetaData metaData) throws SQLException {
+    private boolean setData(CallablePreparedStatement callablePreparedStmt, ResultSetMetaData metaData, String strVal) throws SQLException {
         for (int i = 0; i < metaData.getColumnCount(); i++) {
 //            Object obj = requestRow[i];
 //            if (obj == null) {
@@ -111,7 +113,7 @@ public class ComplexSql3Example extends BaseExample {
             } else if (columnType == Types.DATE) {
                 callablePreparedStmt.setDate(i + 1, Date.valueOf("2020-05-05"));
             } else if (columnType == Types.VARCHAR) {
-                callablePreparedStmt.setString(i + 1, "");
+                callablePreparedStmt.setString(i + 1, strVal);
             } else {
                 logger.error("fail to build request row: invalid data type {]", columnType);
                 return true;
