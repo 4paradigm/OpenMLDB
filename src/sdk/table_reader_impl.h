@@ -18,8 +18,9 @@
 #ifndef SRC_SDK_TABLE_READER_IMPL_H_
 #define SRC_SDK_TABLE_READER_IMPL_H_
 
-#include <string>
 #include <memory>
+#include <string>
+
 #include "sdk/cluster_sdk.h"
 #include "sdk/table_reader.h"
 

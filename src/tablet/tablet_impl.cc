@@ -2004,8 +2004,7 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl, const rtidb::api::SQL
                 return;
             }
             buf_offset += non_common_size;
-            input_rows[i] = ::fesql::codec::Row(
-                1, common_row, 1, non_common_row);
+            input_rows[i] = ::fesql::codec::Row(1, common_row, 1, non_common_row);
         }
     } else {
         for (size_t i = 0; i < input_row_num; ++i) {
