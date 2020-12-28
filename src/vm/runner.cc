@@ -2286,41 +2286,41 @@ const std::string KeyGenerator::Gen(const Row& row) {
                 break;
             }
             case fesql::type::kDate: {
-                void* buf = nullptr;
-                if (row_view_.GetValue(key_row.buf(), pos, type, &buf) == 0) {
-                    keys.append(
-                        std::to_string(*reinterpret_cast<int32_t*>(buf)));
+                int32_t buf = 0;
+                if (row_view_.GetValue(key_row.buf(), pos, type,
+                                       reinterpret_cast<void*>(&buf)) == 0) {
+                    keys.append(std::to_string(buf));
                 }
                 break;
             }
             case fesql::type::kBool: {
-                void* buf = nullptr;
-                if (row_view_.GetValue(key_row.buf(), pos, type, &buf) == 0) {
-                    keys.append(*reinterpret_cast<bool*>(buf) ? "true"
-                                                              : "false");
+                bool buf = false;
+                if (row_view_.GetValue(key_row.buf(), pos, type,
+                                       reinterpret_cast<void*>(&buf)) == 0) {
+                    keys.append(buf ? "true" : "false");
                 }
                 break;
             }
             case fesql::type::kInt16: {
-                void* buf = nullptr;
-                if (row_view_.GetValue(key_row.buf(), pos, type, &buf) == 0)
-                    keys.append(
-                        std::to_string(*reinterpret_cast<int16_t*>(buf)));
+                int16_t buf = 0;
+                if (row_view_.GetValue(key_row.buf(), pos, type,
+                                       reinterpret_cast<void*>(&buf)) == 0)
+                    keys.append(std::to_string(buf));
                 break;
             }
             case fesql::type::kInt32: {
-                void* buf = nullptr;
-                if (row_view_.GetValue(key_row.buf(), pos, type, &buf) == 0)
-                    keys.append(
-                        std::to_string(*reinterpret_cast<int32_t*>(buf)));
+                int32_t buf = 0;
+                if (row_view_.GetValue(key_row.buf(), pos, type,
+                                       reinterpret_cast<void*>(&buf)) == 0)
+                    keys.append(std::to_string(buf));
                 break;
             }
             case fesql::type::kInt64:
             case fesql::type::kTimestamp: {
-                void* buf = nullptr;
-                if (row_view_.GetValue(key_row.buf(), pos, type, &buf) == 0)
-                    keys.append(
-                        std::to_string(*reinterpret_cast<int64_t*>(buf)));
+                int64_t buf = 0;
+                if (row_view_.GetValue(key_row.buf(), pos, type,
+                                       reinterpret_cast<void*>(&buf)) == 0)
+                    keys.append(std::to_string(buf));
                 break;
             }
             default:
