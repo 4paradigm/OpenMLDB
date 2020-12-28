@@ -19,7 +19,7 @@
 #define SRC_SDK_TABLE_READER_IMPL_H_
 
 #include <string>
-
+#include <memory>
 #include "sdk/cluster_sdk.h"
 #include "sdk/table_reader.h"
 
@@ -29,7 +29,7 @@ namespace sdk {
 class TableReader;
 class TableReaderImpl : public TableReader {
  public:
-    TableReaderImpl(ClusterSDK* cluster_sdk);
+    explicit TableReaderImpl(ClusterSDK* cluster_sdk);
     ~TableReaderImpl() {}
 
     std::shared_ptr<fesql::sdk::ResultSet> Scan(const std::string& db, const std::string& table, const std::string& key,

@@ -17,6 +17,7 @@
 
 #include "sdk/table_reader_impl.h"
 
+#include <memory>
 #include "base/hash.h"
 #include "brpc/channel.h"
 #include "client/tablet_client.h"
