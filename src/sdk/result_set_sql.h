@@ -27,6 +27,7 @@
 #include "proto/tablet.pb.h"
 #include "sdk/base_impl.h"
 #include "sdk/result_set.h"
+#include "sdk/result_set_base.h"
 
 namespace rtidb {
 namespace sdk {
@@ -39,51 +40,73 @@ class ResultSetSQL : public ::fesql::sdk::ResultSet {
 
     bool Init();
 
-    bool Reset();
+    bool Reset() {
+        return result_set_base_->Reset();
+    }
 
-    bool Next();
+    bool Next() {
+        return result_set_base_->Next();
+    }
 
-    bool IsNULL(int index);
+    bool IsNULL(int index) {
+        return result_set_base_->IsNULL(index);
+    }
 
-    bool GetString(uint32_t index, std::string* str);
+    bool GetString(uint32_t index, std::string* str) {
+        return result_set_base_->GetString(index, str);
+    }
 
-    bool GetBool(uint32_t index, bool* result);
+    bool GetBool(uint32_t index, bool* result) {
+        return result_set_base_->GetBool(index, result);
+    }
 
-    bool GetChar(uint32_t index, char* result);
+    bool GetChar(uint32_t index, char* result) {
+        return result_set_base_->GetChar(index, result);
+    }
 
-    bool GetInt16(uint32_t index, int16_t* result);
+    bool GetInt16(uint32_t index, int16_t* result) {
+        return result_set_base_->GetInt16(index, result);
+    }
 
-    bool GetInt32(uint32_t index, int32_t* result);
+    bool GetInt32(uint32_t index, int32_t* result) {
+        return result_set_base_->GetInt32(index, result);
+    }
 
-    bool GetInt64(uint32_t index, int64_t* result);
+    bool GetInt64(uint32_t index, int64_t* result) {
+        return result_set_base_->GetInt64(index, result);
+    }
 
-    bool GetFloat(uint32_t index, float* result);
+    bool GetFloat(uint32_t index, float* result) {
+        return result_set_base_->GetFloat(index, result);
+    }
 
-    bool GetDouble(uint32_t index, double* result);
+    bool GetDouble(uint32_t index, double* result) {
+        return result_set_base_->GetDouble(index, result);
+    }
 
-    bool GetDate(uint32_t index, int32_t* date);
+    bool GetDate(uint32_t index, int32_t* date) {
+        return result_set_base_->GetDate(index, date);
+    }
 
     bool GetDate(uint32_t index, int32_t* year, int32_t* month,
-                         int32_t* day);
+                         int32_t* day) {
+        return result_set_base_->GetDate(index, year, month, day);
+    }
 
-    bool GetTime(uint32_t index, int64_t* mills);
+    bool GetTime(uint32_t index, int64_t* mills) {
+        return result_set_base_->GetTime(index, mills);
+    }
 
-    inline const ::fesql::sdk::Schema* GetSchema() { return &schema_; }
+    const ::fesql::sdk::Schema* GetSchema() { 
+        return result_set_base_->GetSchema();
+    }
 
-    inline int32_t Size() { return response_->count(); }
-
- private:
-    inline uint32_t GetRecordSize() { return response_->count(); }
+    int32_t Size() { return result_set_base_->Size(); }
 
  private:
     std::shared_ptr<::rtidb::api::QueryResponse> response_;
-    int32_t index_;
-    uint32_t byte_size_;
-    uint32_t position_;
-    std::unique_ptr<::fesql::sdk::RowIOBufView> row_view_;
-    ::fesql::vm::Schema internal_schema_;
-    ::fesql::sdk::SchemaImpl schema_;
     std::shared_ptr<brpc::Controller> cntl_;
+    ResultSetBase* result_set_base_;
 };
 
 }  // namespace sdk

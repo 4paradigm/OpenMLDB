@@ -115,9 +115,24 @@ class SchemaAdapter {
         return true;
     }
 
+    static bool SubSchema(const ::fesql::vm::Schema* schema,
+            const std::vector<uint32_t>& projection,
+            fesql::vm::Schema* output) {
+        if (output == nullptr) {
+            LOG(WARNING) << "output ptr is null";
+            return false;
+        }
+        auto it = projection.begin();
+        for (; it != projection.end(); ++it) {
+            const fesql::type::ColumnDef& col = schema->Get(*it);
+            output->Add()->CopyFrom(col);
+        }
+        return true;
+    }
+
     static bool ConvertSchema(const RtiDBSchema& rtidb_schema,
                               ::fesql::vm::Schema* output) {
-        if (output == nullptr || rtidb_schema.empty()) {
+        if (output == nullptr) {
             LOG(WARNING) << "output ptr is null";
             return false;
         }

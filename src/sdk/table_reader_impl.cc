@@ -24,9 +24,49 @@
 namespace rtidb {
 namespace sdk {
 
+class ScanFutureImpl : public ScanFuture {
+ public:
+    explicit ScanFutureImpl(rtidb::RpcCallback<rtidb::api::ScanResponse>* callback,
+            const ::google::protobuf::RepeatedField<uint32_t>& projection,
+            std::shared_ptr<::fesql::vm::TableHandler> table_handler):
+        callback_(callback), schema_(), projection_(projection),
+    table_handler_(table_handler){
+        if (callback_) {
+            callback_->Ref();
+        }
+    }
+
+    ~ScanFutureImpl() {
+        if (callback_) {
+            callback_->UnRef();
+        }
+    }
+
+    bool IsDone() const override {
+        if (callback_)
+        return callback_->IsDone();
+        return false;
+    }
+
+    std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(::fesql::sdk::Status* status) override {
+
+    }
+
+ private:
+    rtidb::RpcCallback<rtidb::api::ScanResponse>* callback_;
+    fesql::vm::Schema schema_;
+    ::google::protobuf::RepeatedField<uint32_t> projection_;
+    std::shared_ptr<::fesql::vm::TableHandler> table_handler_;
+};
+
 TableReaderImpl::TableReaderImpl(ClusterSDK* cluster_sdk):
     cluster_sdk_(cluster_sdk) {}
 
+std::shared_ptr<rtidb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::string& db,
+            const std::string& table, const std::string& key,
+            int64_t st, int64_t et, const ScanOption& so, int64_t timeout_ms) {
+    return std::shared_ptr<rtidb::sdk::ScanFuture>();
+}
 
 std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& db,
         const std::string& table, const std::string& key,
@@ -37,6 +77,7 @@ std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& 
         LOG(WARNING) << "fail to get table "<< table << "desc from catalog";
         return std::shared_ptr<fesql::sdk::ResultSet>();
     }
+
     auto sdk_table_handler = dynamic_cast<::rtidb::catalog::SDKTableHandler*>(table_handler.get());
     uint32_t pid_num = sdk_table_handler->GetPartitionNum();
     uint32_t pid = 0;
@@ -85,5 +126,3 @@ std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& 
 
 }  // sdk
 }  // rtidb
-
-

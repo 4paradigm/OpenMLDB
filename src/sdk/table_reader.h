@@ -33,6 +33,15 @@ struct ScanOption {
     std::vector<std::string> projection;
 };
 
+class ScanFuture {
+ public:
+    ScanFuture() {}
+    virtual ~ScanFuture() {}
+    virtual std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(fesql::sdk::Status* status) = 0;
+    virtual bool IsDone() const = 0;
+};
+
+
 class TableReader {
 
  public:
@@ -43,7 +52,12 @@ class TableReader {
     virtual std::shared_ptr<fesql::sdk::ResultSet> Scan(const std::string& db,
             const std::string& table, const std::string& key,
             int64_t st,
-            int64_t et, const ScanOption& so);
+            int64_t et, const ScanOption& so) = 0;
+
+    virtual std::shared_ptr<rtidb::sdk::ScanFuture> AsyncScan(const std::string& db,
+            const std::string& table, const std::string& key,
+            int64_t st,
+            int64_t et, const ScanOption& so, int64_t timeout_ms) = 0;
 
 };
 

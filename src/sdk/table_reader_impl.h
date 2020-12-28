@@ -26,6 +26,7 @@
 namespace rtidb {
 namespace sdk {
 
+class TableReader;
 class TableReaderImpl : public TableReader {
  public:
     TableReaderImpl(ClusterSDK* cluster_sdk);
@@ -34,6 +35,11 @@ class TableReaderImpl : public TableReader {
     std::shared_ptr<fesql::sdk::ResultSet> Scan(const std::string& db,
             const std::string& table, const std::string& key,
             int64_t st, int64_t et, const ScanOption& so);
+
+    std::shared_ptr<rtidb::sdk::ScanFuture> AsyncScan(const std::string& db,
+            const std::string& table, const std::string& key,
+            int64_t st, int64_t et, const ScanOption& so, int64_t timeout_ms);
+
  private:
     ClusterSDK* cluster_sdk_;
 };

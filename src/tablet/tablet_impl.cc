@@ -1013,7 +1013,7 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
 
     uint32_t limit = request->limit();
     uint32_t atleast = request->atleast();
-    if (combine_it == NULL || pairs == NULL || count == NULL ||
+    if (combine_it == NULL || io_buf == NULL || count == NULL ||
         (atleast > limit && limit != 0)) {
         PDLOG(WARNING, "invalid args");
         return -1;
@@ -1060,16 +1060,16 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
     uint32_t record_count = 0;
     combine_it->SeekToFirst();
     while (combine_it->Valid()) {
-        if (limit > 0 && tmp.size() >= limit) {
+        if (limit > 0 && record_count >= limit) {
             break;
         }
-        if (remove_duplicated_record && tmp.size() > 0 &&
+        if (remove_duplicated_record && record_count > 0 &&
             last_time == combine_it->GetTs()) {
             combine_it->Next();
             continue;
         }
         uint64_t ts = combine_it->GetTs();
-        if (atleast <= 0 || tmp.size() >= atleast) {
+        if (atleast <= 0 || record_count >= atleast) {
             bool jump_out = false;
             switch (real_et_type) {
                 case ::rtidb::api::GetType::kSubKeyEq:
@@ -1112,13 +1112,14 @@ int32_t TabletImpl::ScanIndex(const ::rtidb::api::ScanRequest* request,
             io_buf->append(reinterpret_cast<const void*>(data.data()), data.size());
             total_block_size += data.size();
         }
+        record_count++;
         if (total_block_size > FLAGS_scan_max_bytes_size) {
             LOG(WARNING) << "reach the max byte size " << FLAGS_scan_max_bytes_size << " cur is " << total_block_size;
             return -3;
         }
         combine_it->Next();
     }
-    *count = tmp.size();
+    *count = record_count;
     return 0;
 }
 
@@ -1469,6 +1470,7 @@ void TabletImpl::Scan(RpcController* controller,
                   request->tid(), request->pid());
         }
     }else {
+        brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
         butil::IOBuf& buf = cntl->response_attachment();
         code = ScanIndex(request, table_meta, vers_schema, &combine_it, &buf, &count);
         response->set_code(code);

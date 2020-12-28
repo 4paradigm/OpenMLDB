@@ -113,7 +113,9 @@ class QueryFutureImpl : public QueryFuture {
     }
 
     bool IsDone() const override {
+        if (callback_)
         return callback_->IsDone();
+        return false;
     }
 
  private:
