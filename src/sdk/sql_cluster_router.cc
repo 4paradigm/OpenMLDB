@@ -90,7 +90,10 @@ class QueryFutureImpl : public QueryFuture {
     }
 
     std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(fesql::sdk::Status* status) override {
-        if (!callback_ || !status || !callback_->GetResponse() || !callback_->GetController()) {
+        if (!status) {
+            return nullptr;
+        }
+        if (!callback_ || !callback_->GetResponse() || !callback_->GetController()) {
             status->code = fesql::common::kRpcError;
             status->msg = "request error, response or controller null";
             return nullptr;
@@ -137,7 +140,10 @@ class BatchQueryFutureImpl : public QueryFuture {
     }
 
     std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(fesql::sdk::Status* status) override {
-        if (!callback_ || !status || !callback_->GetResponse() || !callback_->GetController()) {
+        if (!status) {
+            return nullptr;
+        }
+        if (!callback_ || !callback_->GetResponse() || !callback_->GetController()) {
             status->code = fesql::common::kRpcError;
             status->msg = "request error, response or controller null";
             return nullptr;
