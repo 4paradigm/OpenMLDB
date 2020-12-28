@@ -26,12 +26,14 @@ public class FesqlDataProviderList {
         for (String caseFile : caseFiles) {
             String casePath = Tool.getCasePath(caseFile);
             File file = new File(casePath);
+            if(!file.exists()){
+                continue;
+            }
             if(file.isFile()) {
                 fesqlDataProviderList.dataProviderList.add(FesqlDataProvider.dataProviderGenerator(casePath));
             }else{
                 File[] files = file.listFiles(f->f.getName().endsWith(".yaml"));
                 for(File f:files){
-                    System.out.println(">>>>:"+f.getAbsolutePath());
                     fesqlDataProviderList.dataProviderList.add(FesqlDataProvider.dataProviderGenerator(f.getAbsolutePath()));
                 }
             }
