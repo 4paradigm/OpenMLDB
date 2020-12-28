@@ -90,6 +90,7 @@ DECLARE_uint32(snapshot_ttl_time);
 DECLARE_uint32(snapshot_ttl_check_interval);
 DECLARE_uint32(put_slow_log_threshold);
 DECLARE_uint32(query_slow_log_threshold);
+DECLARE_int32(snapshot_pool_size);
 
 namespace rtidb {
 namespace tablet {
@@ -107,7 +108,7 @@ TabletImpl::TabletImpl()
       keep_alive_pool_(1),
       task_pool_(FLAGS_task_pool_size),
       io_pool_(FLAGS_io_pool_size),
-      snapshot_pool_(1),
+      snapshot_pool_(FLAGS_snapshot_pool_size),
       server_(NULL),
       mode_root_paths_(),
       mode_recycle_root_paths_(),
@@ -2002,7 +2003,9 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl, const rtidb::api::SQL
                 response->set_code(::rtidb::base::kSQLRunError);
                 return;
             }
-            input_rows[i] = ::fesql::codec::Row(1, common_row, 1, non_common_row);
+            buf_offset += non_common_size;
+            input_rows[i] = ::fesql::codec::Row(
+                1, common_row, 1, non_common_row);
         }
     } else {
         for (size_t i = 0; i < input_row_num; ++i) {
@@ -2013,6 +2016,7 @@ void TabletImpl::SQLBatchRequestQuery(RpcController* ctrl, const rtidb::api::SQL
                 response->set_code(::rtidb::base::kSQLRunError);
                 return;
             }
+            buf_offset += non_common_size;
         }
     }
     std::vector<::fesql::codec::Row> output_rows;

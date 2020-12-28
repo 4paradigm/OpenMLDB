@@ -136,6 +136,10 @@ class SchemaAdapter {
             LOG(WARNING) << "output ptr is null";
             return false;
         }
+        if (rtidb_schema.empty()) {
+            LOG(WARNING) << "rtidb_schema is empty";
+            return false;
+        }
         for (int32_t i = 0; i < rtidb_schema.size(); i++) {
             const common::ColumnDesc& column = rtidb_schema.Get(i);
             ::fesql::type::ColumnDef* new_column = output->Add();

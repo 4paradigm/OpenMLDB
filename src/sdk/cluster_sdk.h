@@ -31,6 +31,7 @@
 #include "thread_pool.h"  // NOLINT
 #include "vm/catalog.h"
 #include "zk/zk_client.h"
+#include "vm/engine.h"
 
 namespace rtidb {
 namespace sdk {
@@ -94,6 +95,10 @@ class ClusterSDK {
 
     std::vector<std::shared_ptr<fesql::sdk::ProcedureInfo>> GetProcedureInfo(std::string* msg);
 
+    inline ::fesql::vm::Engine* GetEngine() {
+        return engine_;
+    }
+
  private:
     bool InitCatalog();
     bool RefreshCatalog(const std::vector<std::string>& table_datas,
@@ -122,6 +127,7 @@ class ClusterSDK {
     uint64_t session_id_;
     ::rtidb::base::Random rand_;
     std::string sp_root_path_;
+    ::fesql::vm::Engine* engine_;
 };
 
 }  // namespace sdk

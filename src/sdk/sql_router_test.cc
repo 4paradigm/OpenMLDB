@@ -1039,6 +1039,7 @@ TEST_F(SQLRouterTest, smoketest_on_muti_partitions) {
 }  // namespace rtidb
 
 int main(int argc, char** argv) {
+    ::fesql::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_zk_session_timeout = 100000;
