@@ -101,14 +101,13 @@ class QueryFutureImpl : public QueryFuture {
             status->msg = "request error, " + callback_->GetController()->ErrorText();
             return nullptr;
         }
-        std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs = std::make_shared<rtidb::sdk::ResultSetSQL>(
-                    callback_->GetResponse(), callback_->GetController());
-        bool ok = rs->Init();
-        if (!ok) {
-            status->code = -1;
-            status->msg = "request error, resuletSetSQL init failed";
+        if (callback_->GetResponse()->code() != ::rtidb::base::kOk) {
+            status->code = callback_->GetResponse()->code();
+            status->msg = "request error, " + callback_->GetResponse()->msg();
             return nullptr;
         }
+        auto rs = ResultSetSQL::MakeResultSet(callback_->GetResponse(),
+                callback_->GetController(), status);
         return rs;
     }
 
@@ -785,12 +784,12 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     if (response->code() != ::rtidb::base::kOk) {
+        status->code = response->code();
+        status->msg = "request error, " + response->msg();
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
-    auto rs = std::make_shared<rtidb::sdk::ResultSetSQL>(response, cntl);
-    if (!rs->Init()) {
-        return std::shared_ptr<::fesql::sdk::ResultSet>();
-    }
+
+    auto rs = ResultSetSQL::MakeResultSet(response, cntl, status);
     return rs;
 }
 
@@ -810,12 +809,7 @@ std::shared_ptr<::fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                            options_.enable_debug)) {
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
-    std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs(
-        new rtidb::sdk::ResultSetSQL(response, cntl));
-    if (!rs->Init()) {
-        DLOG(INFO) << "fail to init result set for sql " << sql;
-        return std::shared_ptr<::fesql::sdk::ResultSet>();
-    }
+    auto rs = ResultSetSQL::MakeResultSet(response, cntl, status);
     return rs;
 }
 
@@ -1090,14 +1084,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
         LOG(WARNING) << status->msg;
         return nullptr;
     }
-    std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs(
-        new rtidb::sdk::ResultSetSQL(response, cntl));
-    if (!rs->Init()) {
-        status->code = -1;
-        status->msg = "resuletSetSQL init failed";
-        LOG(WARNING) << status->msg;
-        return nullptr;
-    }
+    auto rs = ResultSetSQL::MakeResultSet(response, cntl, status);
     return rs;
 }
 

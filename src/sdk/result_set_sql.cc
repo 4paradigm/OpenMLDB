@@ -29,28 +29,45 @@
 namespace rtidb {
 namespace sdk {
 
-ResultSetSQL::ResultSetSQL(const std::shared_ptr<::rtidb::api::QueryResponse>& response,
+ResultSetSQL::ResultSetSQL(const ::fesql::vm::Schema& schema,
+                           uint32_t record_cnt, uint32_t buf_size,
                            const std::shared_ptr<brpc::Controller>& cntl)
-    : response_(response), cntl_(cntl), result_set_base_(nullptr) {}
+    :schema_(schema), record_cnt_(record_cnt), buf_size_(buf_size),
+    cntl_(cntl), result_set_base_(nullptr) {}
 
 ResultSetSQL::~ResultSetSQL() { delete result_set_base_; }
 
 bool ResultSetSQL::Init() {
-    if (!response_ || response_->code() != ::rtidb::base::kOk) {
-        LOG(WARNING) << "bad response code " << response_->code();
-        return false;
-    }
-    DLOG(INFO) << "byte size " << response_->byte_size() << " count " << response_->count();
-    ::fesql::vm::Schema internal_schema;
-    bool ok = ::fesql::codec::SchemaCodec::Decode(response_->schema(), &internal_schema);
-    if (!ok) {
-        LOG(WARNING) << "fail to decode response schema ";
-        return false;
-    }
-    std::unique_ptr<::fesql::sdk::RowIOBufView> row_view(new ::fesql::sdk::RowIOBufView(internal_schema));
+    std::unique_ptr<::fesql::sdk::RowIOBufView> row_view(new ::fesql::sdk::RowIOBufView(schema_));
     result_set_base_ =
-        new ResultSetBase(cntl_, response_->count(), response_->byte_size(), std::move(row_view), internal_schema);
+        new ResultSetBase(cntl_, record_cnt_, buf_size_, std::move(row_view), schema_);
     return true;
+}
+
+std::shared_ptr<::fesql::sdk::ResultSet> ResultSetSQL::MakeResultSet(const std::shared_ptr<::rtidb::api::QueryResponse>& response,
+        const std::shared_ptr<brpc::Controller>& cntl,
+        fesql::sdk::Status* status) {
+    if (status == nullptr || response == nullptr) {
+        return std::shared_ptr<ResultSet>();
+    }
+    ::fesql::vm::Schema schema;
+    bool ok = ::fesql::codec::SchemaCodec::Decode(response->schema(),
+                                                  &schema);
+    if (!ok) {
+        status->code = -1;
+        status->msg = "request error, fail to decodec schema";
+        return std::shared_ptr<ResultSet>();
+    }
+    std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs = std::make_shared<rtidb::sdk::ResultSetSQL>(
+            schema, response->count(), response->byte_size(),
+            cntl);
+    ok = rs->Init();
+    if (!ok) {
+        status->code = -1;
+        status->msg = "request error, resuletSetSQL init failed";
+        return std::shared_ptr<ResultSet>();
+    }
+    return rs;
 }
 
 }  // namespace sdk
