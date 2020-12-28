@@ -30,6 +30,7 @@ python3 -m pip install PyYaml -i https://pypi.tuna.tsinghua.edu.cn/simple
 python3 fesql/tools/autotest/gen_case_yaml_main.py  \
     --udf_path=udf_defs.yaml --yaml_count=1
 
+ls -al fesql/cases/auto_gen_cases
 echo "BBBBBBBBBB"
 
 cd ${ROOT_DIR}
@@ -44,5 +45,8 @@ sleep 5
 case_xml=test_auto_gen_case_standalone.xml
 cd ${ROOT_DIR}/src/sdk/java/
 mvn install -Dmaven.test.skip=true
+
+echo "CCCCCCC"
+
 cd ${ROOT_DIR}/src/sdk/java/fesql-auto-test-java
 mvn test -DsuiteXmlFile=test_suite/${case_xml}
