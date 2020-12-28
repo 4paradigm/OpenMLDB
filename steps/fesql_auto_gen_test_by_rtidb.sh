@@ -8,6 +8,10 @@ export JAVA_HOME=${RTIDB_DEV_JAVA_HOME:-/depends/thirdparty/jdk1.8.0_141}
 export RTIDB_THIRDPARTY=${RTIDB_DEV_THIRDPARTY:-/depends/thirdparty}
 cd fesql && ln -sf ${RTIDB_THIRDPARTY} thirdparty && mkdir -p build
 cd build && cmake .. && make fesql_proto && make fesql_parser && make -j5
+cd ${ROOT_DIR}
+./fesql/build/src/export_udf_info --output_file=./udf_defs.yaml
+
+echo "================="
 
 cd ${ROOT_DIR}/fesql/java/fesql-common; mvn install
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake ..
@@ -17,15 +21,14 @@ else
     make -j16 || { echo "compile error"; exit 1; }
 fi
 
-
-cd ${ROOT_DIR}
-./fesql/build/src/export_udf_info --output_file=./udf_defs.yaml
+echo "AAAAAAAAAAAAA"
 
 python3 -m pip install numpy -i https://pypi.tuna.tsinghua.edu.cn/simple
 python3 -m pip install PyYaml -i https://pypi.tuna.tsinghua.edu.cn/simple
 python3 fesql/tools/autotest/gen_case_yaml_main.py  \
     --udf_path=udf_defs.yaml --yaml_count=1
 
+echo "BBBBBBBBBB"
 
 cd ${ROOT_DIR}
 test -d /rambuild/ut_zookeeper && rm -rf /rambuild/ut_zookeeper/*
