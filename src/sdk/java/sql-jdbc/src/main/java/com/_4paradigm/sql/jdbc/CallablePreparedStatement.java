@@ -2,14 +2,11 @@ package com._4paradigm.sql.jdbc;
 
 import com._4paradigm.sql.SQLRouter;
 import com._4paradigm.sql.Status;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
 
-public class CallablePreparedStatement extends RequestPreparedStatement{
-    private static final Logger logger = LoggerFactory.getLogger(CallablePreparedStatement.class);
+public class CallablePreparedStatement extends RequestPreparedStatement {
     protected String spName;
 
     public CallablePreparedStatement(String db, String spName, SQLRouter router) throws SQLException {
@@ -29,7 +26,6 @@ public class CallablePreparedStatement extends RequestPreparedStatement{
         this.currentSql = procedureInfo.GetSql();
         this.currentRow = router.GetRequestRow(db, procedureInfo.GetSql(), status);
         if (status.getCode() != 0 || this.currentRow == null) {
-            logger.error("getRequestRow failed: {}", status.getMsg());
             throw new SQLException("getRequestRow failed!, msg: " + status.getMsg());
         }
         this.currentSchema = procedureInfo.GetInputSchema();

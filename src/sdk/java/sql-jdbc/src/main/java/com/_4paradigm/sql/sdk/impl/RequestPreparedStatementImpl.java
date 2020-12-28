@@ -1,15 +1,13 @@
 package com._4paradigm.sql.sdk.impl;
 
-import com._4paradigm.sql.*;
+import com._4paradigm.sql.SQLRouter;
+import com._4paradigm.sql.Status;
 import com._4paradigm.sql.jdbc.RequestPreparedStatement;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.sql.*;
-import java.util.*;
+import java.sql.SQLException;
+import java.util.ArrayList;
 
 public class RequestPreparedStatementImpl extends RequestPreparedStatement {
-    private static final Logger logger = LoggerFactory.getLogger(RequestPreparedStatementImpl.class);
 
     public RequestPreparedStatementImpl(String db, String sql, SQLRouter router) throws SQLException {
         if (db == null) throw new SQLException("db is null");
@@ -22,7 +20,6 @@ public class RequestPreparedStatementImpl extends RequestPreparedStatement {
         this.currentRow = router.GetRequestRow(db, sql, status);
         if (status.getCode() != 0 || this.currentRow == null) {
             String msg = status.getMsg();
-            logger.error("GetRequestRow fail: {}", msg);
             throw new SQLException("get GetRequestRow fail " + msg + " in construction preparedstatement");
         }
         this.currentSchema = this.currentRow.GetSchema();
