@@ -40,7 +40,7 @@ public class FEDBFZBenchmark {
     private String db;
     private int pkNum = 1;
     //@Param({"500", "1000", "2000"})
-    private int windowNum = 1000;
+    private int windowNum = 500;
     int pkBase = 1000000;
     private String script;
     private String nsName = "test_fz";
@@ -55,6 +55,7 @@ public class FEDBFZBenchmark {
     private String mainTable;
     List<Map<String, Object>> mainTableValue;
     private Object[][] inputData;
+    List<String> commonColumnIndices;
 
     public FEDBFZBenchmark() {
         nsName += String.valueOf(new Random().nextInt());
@@ -77,6 +78,7 @@ public class FEDBFZBenchmark {
         tableMap = new HashMap<>();
         rtidbTables = new HashSet<>();
         mainTableValue = new ArrayList<>();
+        commonColumnIndices = new ArrayList<>();
     }
 
     public void createTable() {
@@ -105,6 +107,12 @@ public class FEDBFZBenchmark {
                 Base.TableDesc table = tableBuilder.build();
                 dbmsClient.createTable(table);
                 tableMap.put(name, new TableInfo(name, schema, relation));
+                if (mainTable.equals(name) && !BenchmarkConfig.commonCol.isEmpty()) {
+                    String[] colArr = BenchmarkConfig.commonCol.trim().split(",");
+                    for (String col : colArr) {
+                        commonColumnIndices.add(col);
+                    }
+                }
             }
             //List<Table> tList = dbmsClient.showTable(nsName);
             //CompileResult compileResult = dbmsClient.compileFEQL(nsName, script);
@@ -112,6 +120,9 @@ public class FEDBFZBenchmark {
             config.setReplicaNum(1);
             config.setDebug(true);
             config.setPartitionNum(Integer.valueOf(BenchmarkConfig.PARTITION_NUM));
+            if (BenchmarkConfig.mode == BenchmarkConfig.Mode.BATCH_REQUEST && !commonColumnIndices.isEmpty()) {
+                config.setConstantColumns(commonColumnIndices);
+            }
             dbmsClient.deployFEQL(nsName, script, deployName, config);
             Thread.sleep(1000);
             Map<String, List<String>> rtidbTableMap = dbmsClient.showDeploy(nsName, deployName).getRtidbTables();
@@ -200,9 +211,15 @@ public class FEDBFZBenchmark {
                 }
                 if (isMainTable && inputData == null) {
                     Map<Integer, String> posName = table.getSchemaPosName();
-                    inputData = new Object[1][schema.size()];
-                    for (int k = 0; k < schema.size(); k++) {
-                        inputData[0][k] = val.get(posName.get(k));
+                    if (BenchmarkConfig.mode == BenchmarkConfig.Mode.BATCH_REQUEST) {
+                        inputData = new Object[BenchmarkConfig.BATCH_SIZE][schema.size()];
+                    } else {
+                        inputData = new Object[1][schema.size()];
+                    }
+                    for (int j = 0; j < inputData.length; j++) {
+                        for (int k = 0; k < schema.size(); k++) {
+                            inputData[j][k] = val.get(posName.get(k));
+                        }
                     }
                 }
                 if (!rtidbTables.contains(table.getName())) {
@@ -270,7 +287,7 @@ public class FEDBFZBenchmark {
     }
 
     public static void main(String[] args) throws RunnerException {
-        /*FEDBFZBenchmark ben = new FEDBFZBenchmark();
+        FEDBFZBenchmark ben = new FEDBFZBenchmark();
         try {
             ben.setup();
             ben.execSQL();
@@ -278,11 +295,11 @@ public class FEDBFZBenchmark {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        ben.close();*/
-        Options opt = new OptionsBuilder()
+        ben.close();
+       /* Options opt = new OptionsBuilder()
                 .include(FEDBFZBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
-        new Runner(opt).run();
+        new Runner(opt).run();*/
     }
 }
