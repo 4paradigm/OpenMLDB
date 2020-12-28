@@ -589,18 +589,24 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
             break;
         }
     }
-    std::map<std::string, codec::Row> rows_map;
+    std::map<std::string, std::pair<codec::Row, bool>> rows_map;
     for (auto row : rows) {
         row_view.Reset(row.buf());
         std::string key = row_view.GetAsString(order_idx);
-        rows_map.insert(std::make_pair(key, row));
+        rows_map.insert(std::make_pair(key, std::make_pair(row, false)));
     }
     int32_t index = 0;
     rs->Reset();
     while (rs->Next()) {
         if (order_idx) {
             std::string key = rs->GetAsString(order_idx);
-            row_view.Reset(rows_map[key].buf());
+            LOG(INFO) << "key : " << key;
+            ASSERT_TRUE(rows_map.find(key) != rows_map.cend())
+                                <<"CheckRows fail: row[" << index << "] order not expected";
+            ASSERT_FALSE(rows_map[key].second) <<
+                                               "CheckRows fail: row[" << index << "] duplicate key";
+            row_view.Reset(rows_map[key].first.buf());
+            rows_map[key].second = true;
         } else {
             row_view.Reset(rows[index++].buf());
         }
