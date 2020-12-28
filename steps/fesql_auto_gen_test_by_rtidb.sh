@@ -10,7 +10,7 @@ cd fesql && ln -sf ${RTIDB_THIRDPARTY} thirdparty && mkdir -p build
 cd build && cmake .. && make fesql_proto && make fesql_parser && make -j5
 cd ${ROOT_DIR}
 ./fesql/build/src/export_udf_info --output_file=./udf_defs.yaml
-
+ls -al
 echo "+++++++++++++"
 sh tools/install_fesql.sh
 cd ${ROOT_DIR}/fesql/java/fesql-common; mvn install
