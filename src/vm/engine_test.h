@@ -647,11 +647,13 @@ Status EngineTestRunner::Compile() {
 
         std::ostringstream oss;
         session_->GetPhysicalPlan()->Print(oss, "");
-        LOG(INFO) << "Physical plan:\n" << oss.str() << std::endl;
+        LOG(INFO) << "Physical plan:";
+        std::cerr << oss.str() << std::endl;
 
         std::ostringstream runner_oss;
         session_->GetClusterJob().Print(runner_oss, "");
-        LOG(INFO) << "Runner plan:\n" << runner_oss.str() << std::endl;
+        LOG(INFO) << "Runner plan:";
+        std::cerr << runner_oss.str() << std::endl;
     }
     return status;
 }
