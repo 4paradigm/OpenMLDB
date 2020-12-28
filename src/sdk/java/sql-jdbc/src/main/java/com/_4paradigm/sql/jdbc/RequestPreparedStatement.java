@@ -264,7 +264,7 @@ public class RequestPreparedStatement implements PreparedStatement {
         }
         for (int i = 0; i < this.hasSet.size(); i++) {
             if (!this.hasSet.get(i)) {
-                throw new SQLException("data not enough");
+                throw new SQLException("data not enough, index is " + i);
             }
         }
         int strLen = 0;

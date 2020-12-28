@@ -1,5 +1,6 @@
 package com._4paradigm.fesql_auto_test.performance;
 
+import com._4paradigm.sql.jdbc.CallablePreparedStatement;
 import com._4paradigm.sql.sdk.SdkOption;
 import com._4paradigm.sql.sdk.SqlException;
 import com._4paradigm.sql.sdk.SqlExecutor;
@@ -23,7 +24,7 @@ import java.util.Random;
 public class ComplexSql3Example extends BaseExample {
     private static final Logger logger = LoggerFactory.getLogger(ComplexSql3Example.class);
     private SqlExecutor sqlExecutor = null;
-    private String db = "fix_test9";
+    private String db = "fix_test32";
     private String spSql;
     private List<String> tableDDLList = new ArrayList<>();
 
@@ -63,18 +64,29 @@ public class ComplexSql3Example extends BaseExample {
     }
 
     public void callProcedureWithPstms() throws Exception {
-//        Object[] requestRow = new Object[7];
-//        requestRow[0] = "bb";
-//        requestRow[1] = 24;
-//        requestRow[2] = 100000000;
-//        requestRow[3] = 1.5f;
-//        requestRow[4] = 2.5;
-//        requestRow[5] = new Timestamp(1590738994000l);
-//        requestRow[6] = Date.valueOf("2020-05-05");
-        CallablePreparedStatementImpl callablePreparedStmt = sqlExecutor.getCallablePreparedStmt(db, "xjd1");
+        CallablePreparedStatementImpl callablePreparedStmt = sqlExecutor.getCallablePreparedStmt(db, "xjd10");
         ResultSetMetaData metaData = callablePreparedStmt.getMetaData();
-        Random random = new Random();
-        Object num = random.nextInt();
+        if (setData(callablePreparedStmt, metaData)) return;
+        ResultSet sqlResultSet = callablePreparedStmt.executeQuery();
+        Assert.assertTrue(sqlResultSet.next());
+        for (int i = 1; i < sqlResultSet.getMetaData().getColumnCount(); i++) {
+            System.out.println("output column: " + i + ", " + sqlResultSet.getNString(i));
+        }
+        System.out.println("call ok");
+
+        BatchCallablePreparedStatementImpl batchPsmt = sqlExecutor.getCallablePreparedStmtBatch(db, "xjd10");
+        metaData = batchPsmt.getMetaData();
+        if (setData(batchPsmt, metaData)) return;
+        batchPsmt.addBatch();
+        sqlResultSet = batchPsmt.executeQuery();
+        Assert.assertTrue(sqlResultSet.next());
+
+        System.out.println("call batch ok");
+        sqlResultSet.close();
+        callablePreparedStmt.close();
+    }
+
+    private boolean setData(CallablePreparedStatement callablePreparedStmt, ResultSetMetaData metaData) throws SQLException {
         for (int i = 0; i < metaData.getColumnCount(); i++) {
 //            Object obj = requestRow[i];
 //            if (obj == null) {
@@ -89,9 +101,9 @@ public class ComplexSql3Example extends BaseExample {
             } else if (columnType == Types.INTEGER) {
                 callablePreparedStmt.setInt(i + 1, 11);
             } else if (columnType == Types.BIGINT) {
-                callablePreparedStmt.setLong(i + 1, Long.valueOf(num.toString()));
+                callablePreparedStmt.setLong(i + 1, Long.valueOf(300l));
             } else if (columnType == Types.FLOAT) {
-                callablePreparedStmt.setFloat(i + 1, Long.valueOf(num.toString()));
+                callablePreparedStmt.setFloat(i + 1, Float.valueOf(3.0f));
             } else if (columnType == Types.DOUBLE) {
                 callablePreparedStmt.setDouble(i + 1, 1.0);
             } else if (columnType == Types.TIMESTAMP) {
@@ -99,26 +111,13 @@ public class ComplexSql3Example extends BaseExample {
             } else if (columnType == Types.DATE) {
                 callablePreparedStmt.setDate(i + 1, Date.valueOf("2020-05-05"));
             } else if (columnType == Types.VARCHAR) {
-                callablePreparedStmt.setString(i + 1, "string");
+                callablePreparedStmt.setString(i + 1, "");
             } else {
                 logger.error("fail to build request row: invalid data type {]", columnType);
-                return;
+                return true;
             }
         }
-        ResultSet sqlResultSet = callablePreparedStmt.executeQuery();
-        Assert.assertTrue(sqlResultSet.next());
-        for (int i = 1; i < sqlResultSet.getMetaData().getColumnCount(); i++) {
-            System.out.println("output column: " + i + ", " + sqlResultSet.getNString(i));
-        }
-
-//        Assert.assertEquals(sqlResultSet.getMetaData().getColumnCount(), 3);
-//        Assert.assertEquals(sqlResultSet.getString(1), "bb");
-//        Assert.assertEquals(sqlResultSet.getInt(2), 24);
-//        Assert.assertEquals(sqlResultSet.getLong(3), 34);
-//        Thread.sleep(5000);
-        System.out.println("call ok");
-        sqlResultSet.close();
-        callablePreparedStmt.close();
+        return false;
     }
 
     public static void run() {
@@ -128,7 +127,7 @@ public class ComplexSql3Example extends BaseExample {
             System.out.println("init success");
             example.initDDL();
             example.createProcedure();
-//            example.callProcedureWithPstms();
+            example.callProcedureWithPstms();
         } catch (Exception e) {
             e.printStackTrace();
         }
