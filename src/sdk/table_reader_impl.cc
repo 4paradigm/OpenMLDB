@@ -16,10 +16,11 @@
  */
 
 #include "sdk/table_reader_impl.h"
-#include "client/tablet_client.h"
-#include "brpc/channel.h"
-#include "proto/tablet.pb.h"
+
 #include "base/hash.h"
+#include "brpc/channel.h"
+#include "client/tablet_client.h"
+#include "proto/tablet.pb.h"
 
 namespace rtidb {
 namespace sdk {
@@ -27,10 +28,9 @@ namespace sdk {
 class ScanFutureImpl : public ScanFuture {
  public:
     explicit ScanFutureImpl(rtidb::RpcCallback<rtidb::api::ScanResponse>* callback,
-            const ::google::protobuf::RepeatedField<uint32_t>& projection,
-            std::shared_ptr<::fesql::vm::TableHandler> table_handler):
-        callback_(callback), schema_(), projection_(projection),
-    table_handler_(table_handler){
+                            const ::google::protobuf::RepeatedField<uint32_t>& projection,
+                            std::shared_ptr<::fesql::vm::TableHandler> table_handler)
+        : callback_(callback), schema_(), projection_(projection), table_handler_(table_handler) {
         if (callback_) {
             callback_->Ref();
         }
@@ -43,14 +43,11 @@ class ScanFutureImpl : public ScanFuture {
     }
 
     bool IsDone() const override {
-        if (callback_)
-        return callback_->IsDone();
+        if (callback_) return callback_->IsDone();
         return false;
     }
 
-    std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(::fesql::sdk::Status* status) override {
-
-    }
+    std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(::fesql::sdk::Status* status) override {}
 
  private:
     rtidb::RpcCallback<rtidb::api::ScanResponse>* callback_;
@@ -59,22 +56,20 @@ class ScanFutureImpl : public ScanFuture {
     std::shared_ptr<::fesql::vm::TableHandler> table_handler_;
 };
 
-TableReaderImpl::TableReaderImpl(ClusterSDK* cluster_sdk):
-    cluster_sdk_(cluster_sdk) {}
+TableReaderImpl::TableReaderImpl(ClusterSDK* cluster_sdk) : cluster_sdk_(cluster_sdk) {}
 
-std::shared_ptr<rtidb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::string& db,
-            const std::string& table, const std::string& key,
-            int64_t st, int64_t et, const ScanOption& so, int64_t timeout_ms) {
+std::shared_ptr<rtidb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::string& db, const std::string& table,
+                                                                   const std::string& key, int64_t st, int64_t et,
+                                                                   const ScanOption& so, int64_t timeout_ms) {
     return std::shared_ptr<rtidb::sdk::ScanFuture>();
 }
 
-std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& db,
-        const std::string& table, const std::string& key,
-        int64_t st, int64_t et, const ScanOption& so) {
-
+std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& db, const std::string& table,
+                                                             const std::string& key, int64_t st, int64_t et,
+                                                             const ScanOption& so) {
     auto table_handler = cluster_sdk_->GetCatalog()->GetTable(db, table);
     if (!table_handler) {
-        LOG(WARNING) << "fail to get table "<< table << "desc from catalog";
+        LOG(WARNING) << "fail to get table " << table << "desc from catalog";
         return std::shared_ptr<fesql::sdk::ResultSet>();
     }
 
@@ -97,7 +92,7 @@ std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& 
     request.set_st(st);
     request.set_et(et);
     request.set_use_attachment(true);
-    for (size_t i = 0;  i < so.projection.size(); i++) {
+    for (size_t i = 0; i < so.projection.size(); i++) {
         const std::string& col = so.projection.at(i);
         int32_t col_idx = sdk_table_handler->GetColumnIndex(col);
         if (col_idx < 0) {
@@ -115,7 +110,7 @@ std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& 
     if (!so.idx_name.empty()) {
         request.set_idx_name(so.idx_name);
     }
-    if (so.at_least > 0 ) {
+    if (so.at_least > 0) {
         request.set_atleast(so.at_least);
     }
     ::rtidb::api::ScanResponse response;
@@ -124,5 +119,5 @@ std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& 
     return std::shared_ptr<fesql::sdk::ResultSet>();
 }
 
-}  // sdk
-}  // rtidb
+}  // namespace sdk
+}  // namespace rtidb

@@ -19,9 +19,9 @@
 #define SRC_SDK_TABLE_READER_IMPL_H_
 
 #include <string>
-#include "sdk/table_reader.h"
-#include "sdk/cluster_sdk.h"
 
+#include "sdk/cluster_sdk.h"
+#include "sdk/table_reader.h"
 
 namespace rtidb {
 namespace sdk {
@@ -32,19 +32,18 @@ class TableReaderImpl : public TableReader {
     TableReaderImpl(ClusterSDK* cluster_sdk);
     ~TableReaderImpl() {}
 
-    std::shared_ptr<fesql::sdk::ResultSet> Scan(const std::string& db,
-            const std::string& table, const std::string& key,
-            int64_t st, int64_t et, const ScanOption& so);
+    std::shared_ptr<fesql::sdk::ResultSet> Scan(const std::string& db, const std::string& table, const std::string& key,
+                                                int64_t st, int64_t et, const ScanOption& so);
 
-    std::shared_ptr<rtidb::sdk::ScanFuture> AsyncScan(const std::string& db,
-            const std::string& table, const std::string& key,
-            int64_t st, int64_t et, const ScanOption& so, int64_t timeout_ms);
+    std::shared_ptr<rtidb::sdk::ScanFuture> AsyncScan(const std::string& db, const std::string& table,
+                                                      const std::string& key, int64_t st, int64_t et,
+                                                      const ScanOption& so, int64_t timeout_ms);
 
  private:
     ClusterSDK* cluster_sdk_;
 };
 
-} // sdk
-} // rtidb
+}  // namespace sdk
+}  // namespace rtidb
 
-#endif // SRC_SDK_TABLE_READER_IMPL_H_
+#endif  // SRC_SDK_TABLE_READER_IMPL_H_

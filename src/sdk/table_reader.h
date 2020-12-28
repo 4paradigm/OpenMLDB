@@ -20,6 +20,7 @@
 
 #include <string>
 #include <vector>
+
 #include "sdk/result_set.h"
 
 namespace rtidb {
@@ -41,28 +42,22 @@ class ScanFuture {
     virtual bool IsDone() const = 0;
 };
 
-
 class TableReader {
-
  public:
     TableReader() {}
 
     virtual ~TableReader() {}
 
-    virtual std::shared_ptr<fesql::sdk::ResultSet> Scan(const std::string& db,
-            const std::string& table, const std::string& key,
-            int64_t st,
-            int64_t et, const ScanOption& so) = 0;
+    virtual std::shared_ptr<fesql::sdk::ResultSet> Scan(const std::string& db, const std::string& table,
+                                                        const std::string& key, int64_t st, int64_t et,
+                                                        const ScanOption& so) = 0;
 
-    virtual std::shared_ptr<rtidb::sdk::ScanFuture> AsyncScan(const std::string& db,
-            const std::string& table, const std::string& key,
-            int64_t st,
-            int64_t et, const ScanOption& so, int64_t timeout_ms) = 0;
-
+    virtual std::shared_ptr<rtidb::sdk::ScanFuture> AsyncScan(const std::string& db, const std::string& table,
+                                                              const std::string& key, int64_t st, int64_t et,
+                                                              const ScanOption& so, int64_t timeout_ms) = 0;
 };
 
-} // sdk
-} // rtidb
+}  // namespace sdk
+}  // namespace rtidb
 
 #endif  // SRC_SDK_TABLE_READER_H_
-
