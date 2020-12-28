@@ -305,6 +305,7 @@ std::shared_ptr<::fesql::vm::TableHandler> TabletAccessor::SubQuery(uint32_t tas
             request.set_non_common_slices(rows[0].GetRowPtrCnt());
         }
     } else {
+        request.set_common_slices(0);
         for (const auto& row : rows) {
             size_t uncommon_slice_size = 0;
             if (!codec::EncodeRpcRow(row, &io_buf, &uncommon_slice_size)) {
