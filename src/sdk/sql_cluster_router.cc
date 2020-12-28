@@ -774,7 +774,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     }
     if (!client->Query(db, sql, row->GetRow(), cntl.get(), response.get(),
                              options_.enable_debug)) {
-        status->msg = "request server error";
+        status->msg = "request server error, msg: " + response->msg();
         return std::shared_ptr<::fesql::sdk::ResultSet>();
     }
     if (response->code() != ::rtidb::base::kOk) {
@@ -1073,7 +1073,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallProcedure(
                              options_.enable_debug);
     if (!ok) {
         status->code = -1;
-        status->msg = "request server error";
+        status->msg = "request server error" + response->msg();
         LOG(WARNING) << status->msg;
         return nullptr;
     }
@@ -1115,7 +1115,7 @@ std::shared_ptr<fesql::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProc
             options_.enable_debug);
     if (!ok) {
         status->code = -1;
-        status->msg = "request server error";
+        status->msg = "request server error, msg: " + response->msg();
         return nullptr;
     }
     if (response->code() != ::rtidb::base::kOk) {
@@ -1340,7 +1340,7 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(
             options_.enable_debug, callback);
     if (!ok) {
         status->code = -1;
-        status->msg = "request server error";
+        status->msg = "request server error, msg: " + response->msg();
         LOG(WARNING) << status->msg;
         return std::shared_ptr<rtidb::sdk::QueryFuture>();
     }
@@ -1372,7 +1372,7 @@ std::shared_ptr<rtidb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestPr
             db, sp_name, row_batch, options_.enable_debug, timeout_ms, callback);
     if (!ok) {
         status->code = -1;
-        status->msg = "request server error";
+        status->msg = "request server error, msg: " + response->msg();
         LOG(WARNING) << status->msg;
         return nullptr;
     }
