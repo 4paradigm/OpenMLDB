@@ -2275,10 +2275,11 @@ const std::string KeyGenerator::Gen(const Row& row) {
             case ::fesql::type::kVarchar: {
                 const char* buf = nullptr;
                 uint32_t size = 0;
-                if(row_view_.GetValue(key_row.buf(), pos, &buf, &size) == 0) {
+                if (row_view_.GetValue(key_row.buf(), pos, &buf, &size) == 0) {
                     if (size == 0) {
-                        keys.append(codec::EMPTY_STRING.c_str(), codec::EMPTY_STRING.size());
-                    }else {
+                        keys.append(codec::EMPTY_STRING.c_str(),
+                                    codec::EMPTY_STRING.size());
+                    } else {
                         keys.append(buf, size);
                     }
                 }
@@ -2302,21 +2303,24 @@ const std::string KeyGenerator::Gen(const Row& row) {
             }
             case fesql::type::kInt16: {
                 void* buf = nullptr;
-                row_view_.GetValue(key_row.buf(), pos, type, &buf);
-                keys.append(std::to_string(*reinterpret_cast<int16_t*>(buf)));
+                if (row_view_.GetValue(key_row.buf(), pos, type, &buf) == 0)
+                    keys.append(
+                        std::to_string(*reinterpret_cast<int16_t*>(buf)));
                 break;
             }
             case fesql::type::kInt32: {
                 void* buf = nullptr;
-                row_view_.GetValue(key_row.buf(), pos, type, &buf);
-                keys.append(std::to_string(*reinterpret_cast<int32_t*>(buf)));
+                if (row_view_.GetValue(key_row.buf(), pos, type, &buf) == 0)
+                    keys.append(
+                        std::to_string(*reinterpret_cast<int32_t*>(buf)));
                 break;
             }
             case fesql::type::kInt64:
             case fesql::type::kTimestamp: {
                 void* buf = nullptr;
-                row_view_.GetValue(key_row.buf(), pos, type, &buf);
-                keys.append(std::to_string(*reinterpret_cast<int64_t*>(buf)));
+                if (row_view_.GetValue(key_row.buf(), pos, type, &buf) == 0)
+                    keys.append(
+                        std::to_string(*reinterpret_cast<int64_t*>(buf)));
                 break;
             }
             default:
