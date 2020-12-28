@@ -130,19 +130,6 @@ static void BM_EngineRunBatchWindowSumFeature5Window5(
                                            state.range(1));
 }
 
-static void BM_EngineRunCommonWindowAndJoinBatchRequest(
-    benchmark::State& state) {  // NOLINT
-    vm::EngineOptions engine_options;
-    size_t enable_batch_opt_flag = state.range(0);
-    if (enable_batch_opt_flag == 0) {
-        engine_options.set_batch_request_optimized(true);
-    } else {
-        engine_options.set_batch_request_optimized(false);
-    }
-    EngineBenchmarkOnCase("/cases/benchmark/batch_request_benchmark.yaml", "0",
-                          vm::kBatchRequestMode, engine_options, &state);
-}
-
 // request engine simple bm
 BENCHMARK(BM_EngineRequestSimpleSelectVarchar);
 BENCHMARK(BM_EngineRequestSimpleSelectDouble);
@@ -269,8 +256,6 @@ BENCHMARK(BM_EngineRunBatchWindowMultiAggWindow25Feature25)
     ->Args({100, 100})
     ->Args({1000, 1000})
     ->Args({10000, 10000});
-
-BENCHMARK(BM_EngineRunCommonWindowAndJoinBatchRequest)->Args({0})->Args({1});
 
 }  // namespace bm
 }  // namespace fesql
