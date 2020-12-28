@@ -87,21 +87,22 @@ public class FESQLInsertPreparedStatementBenchmark {
         counter ++;
          */
         long idx = counter;
-        PreparedStatement impl = executor.getInsertPreparedStmt(db, format);
+        PreparedStatement impl = null;
         for (int i = 0; i < 10; i++) {
             String s1 = "pkxxx" + idx + i;
             try {
+                impl = executor.getInsertPreparedStmt(db, format);
                 impl.setString(1, s1);
                 impl.setLong(2, System.currentTimeMillis());
                 impl.addBatch();
             } catch (Exception e) {
-
+                e.printStackTrace();
             }
         }
         try {
             impl.executeBatch();
         } catch (Exception e) {
-
+            e.printStackTrace();
         }
         counter += 10;
     }
