@@ -652,8 +652,8 @@ Status BatchModeTransformer::TransformWindowOp(
             break;
         }
         default: {
-            return Status(kPlanError,
-                          "Do not support window on " + depend->GetTypeName());
+            return Status(kPlanError, "Do not support window on " +
+                                          depend->GetTreeString());
         }
     }
     return Status::OK();
@@ -2924,9 +2924,11 @@ RequestModeTransformer::RequestModeTransformer(
     node::NodeManager* node_manager, const std::string& db,
     const std::shared_ptr<Catalog>& catalog, ::llvm::Module* module,
     udf::UDFLibrary* library, const std::set<size_t>& common_column_indices,
-    const bool performance_sensitive, const bool cluster_optimized)
+    const bool performance_sensitive, const bool cluster_optimized,
+    const bool enable_batch_request_opt)
     : BatchModeTransformer(node_manager, db, catalog, module, library,
-                           performance_sensitive, cluster_optimized) {
+                           performance_sensitive, cluster_optimized),
+      enable_batch_request_opt_(enable_batch_request_opt) {
     batch_request_info_.common_column_indices = common_column_indices;
 }
 
@@ -3090,7 +3092,8 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
         LOG(WARNING) << "Final optimized result is null";
         return;
     }
-    if (batch_request_info_.common_column_indices.empty()) {
+    if (!enable_batch_request_opt_ ||
+        batch_request_info_.common_column_indices.empty()) {
         *output = optimized;
         return;
     }

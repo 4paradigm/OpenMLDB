@@ -382,6 +382,100 @@ std::string EngineModeName(EngineMode mode) {
     }
 }
 
+Status SQLCompiler::BuildBatchModePhysicalPlan(
+    SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+    ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+    PhysicalOpNode** output) {
+    vm::BatchModeTransformer transformer(&ctx->nm, ctx->db, cl_, llvm_module,
+                                         library, ctx->is_performance_sensitive,
+                                         ctx->is_cluster_optimized);
+    transformer.AddDefaultPasses();
+    CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output),
+                 "Fail to generate physical plan (batch mode)");
+    ctx->schema = *(*output)->GetOutputSchema();
+    return Status::OK();
+}
+
+Status SQLCompiler::BuildRequestModePhysicalPlan(
+    SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+    ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+    PhysicalOpNode** output) {
+    vm::RequestModeTransformer transformer(
+        &ctx->nm, ctx->db, cl_, llvm_module, library, {},
+        ctx->is_performance_sensitive, ctx->is_cluster_optimized, false);
+    transformer.AddDefaultPasses();
+    CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, output),
+                 "Fail to generate physical plan (request mode)");
+    ctx->request_schema = transformer.request_schema();
+    CHECK_TRUE(codec::SchemaCodec::Encode(transformer.request_schema(),
+                                          &ctx->encoded_request_schema),
+               kPlanError, "Fail to encode request schema");
+    ctx->request_name = transformer.request_name();
+    ctx->schema = *(*output)->GetOutputSchema();
+    return Status::OK();
+}
+
+Status SQLCompiler::BuildBatchRequestModePhysicalPlan(
+    SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
+    ::llvm::Module* llvm_module, udf::UDFLibrary* library,
+    PhysicalOpNode** output) {
+    vm::RequestModeTransformer transformer(
+        &ctx->nm, ctx->db, cl_, llvm_module, library,
+        ctx->batch_request_info.common_column_indices,
+        ctx->is_performance_sensitive, ctx->is_cluster_optimized,
+        ctx->is_batch_request_optimized);
+    transformer.AddDefaultPasses();
+    PhysicalOpNode* output_plan = nullptr;
+    CHECK_STATUS(transformer.TransformPhysicalPlan(plan_list, &output_plan),
+                 "Fail to generate physical plan (batch request mode)");
+    *output = output_plan;
+
+    ctx->request_schema = transformer.request_schema();
+    CHECK_TRUE(codec::SchemaCodec::Encode(transformer.request_schema(),
+                                          &ctx->encoded_request_schema),
+               kPlanError, "Fail to encode request schema");
+    ctx->request_name = transformer.request_name();
+
+    // set batch request output schema
+    const auto& output_common_indices =
+        transformer.batch_request_info().output_common_column_indices;
+    ctx->batch_request_info.output_common_column_indices =
+        output_common_indices;
+    ctx->batch_request_info.common_node_set =
+        transformer.batch_request_info().common_node_set;
+    if (!output_common_indices.empty() &&
+        output_common_indices.size() < output_plan->GetOutputSchemaSize()) {
+        CHECK_TRUE(output_plan->GetOutputSchemaSourceSize() == 2, kPlanError,
+                   "Output plan should take 2 schema sources for "
+                   "non-trival common columns");
+        CHECK_TRUE(output_plan->GetOutputSchemaSource(0)->size() ==
+                       output_common_indices.size(),
+                   kPlanError, "Illegal common column schema size");
+        ctx->schema.Clear();
+        size_t common_col_idx = 0;
+        size_t non_common_col_idx = 0;
+        for (size_t i = 0; i < (*output)->GetOutputSchemaSize(); ++i) {
+            if (output_common_indices.find(i) != output_common_indices.end()) {
+                *(ctx->schema.Add()) =
+                    output_plan->GetOutputSchemaSource(0)->GetSchema()->Get(
+                        common_col_idx);
+                common_col_idx += 1;
+            } else {
+                *(ctx->schema.Add()) =
+                    output_plan->GetOutputSchemaSource(1)->GetSchema()->Get(
+                        non_common_col_idx);
+                non_common_col_idx += 1;
+            }
+        }
+    } else {
+        CHECK_TRUE(output_plan->GetOutputSchemaSourceSize() == 1, kPlanError,
+                   "Output plan should take 1 schema source for trival "
+                   "common columns");
+        ctx->schema = *(*output)->GetOutputSchema();
+    }
+    return Status::OK();
+}
+
 Status SQLCompiler::BuildPhysicalPlan(
     SQLContext* ctx, const ::fesql::node::PlanNodeList& plan_list,
     ::llvm::Module* llvm_module, PhysicalOpNode** output) {
@@ -393,98 +487,16 @@ Status SQLCompiler::BuildPhysicalPlan(
 
     switch (ctx->engine_mode) {
         case kBatchMode: {
-            vm::BatchModeTransformer transformer(
-                &ctx->nm, ctx->db, cl_, llvm_module, library,
-                ctx->is_performance_sensitive, ctx->is_cluster_optimized);
-            transformer.AddDefaultPasses();
-            CHECK_STATUS(
-                transformer.TransformPhysicalPlan(plan_list, output),
-                "Fail to generate physical plan (batch mode) for sql: \n",
-                ctx->sql);
-            ctx->schema = *(*output)->GetOutputSchema();
-            return Status::OK();
+            return BuildBatchModePhysicalPlan(ctx, plan_list, llvm_module,
+                                              library, output);
         }
         case kRequestMode: {
-            vm::RequestModeTransformer transformer(
-                &ctx->nm, ctx->db, cl_, llvm_module, library, {},
-                ctx->is_performance_sensitive, ctx->is_cluster_optimized);
-            transformer.AddDefaultPasses();
-            CHECK_STATUS(
-                transformer.TransformPhysicalPlan(plan_list, output),
-                "Fail to generate physical plan (request mode) for sql: \n",
-                ctx->sql);
-            ctx->request_schema = transformer.request_schema();
-            CHECK_TRUE(codec::SchemaCodec::Encode(transformer.request_schema(),
-                                                  &ctx->encoded_request_schema),
-                       kPlanError, "Fail to encode request schema");
-            ctx->request_name = transformer.request_name();
-            ctx->schema = *(*output)->GetOutputSchema();
-            return Status::OK();
+            return BuildRequestModePhysicalPlan(ctx, plan_list, llvm_module,
+                                                library, output);
         }
         case kBatchRequestMode: {
-            vm::RequestModeTransformer transformer(
-                &ctx->nm, ctx->db, cl_, llvm_module, library,
-                ctx->batch_request_info.common_column_indices,
-                ctx->is_performance_sensitive, ctx->is_cluster_optimized);
-            transformer.AddDefaultPasses();
-            PhysicalOpNode* output_plan = nullptr;
-            CHECK_STATUS(
-                transformer.TransformPhysicalPlan(plan_list, &output_plan),
-                "Fail to generate physical plan (batch request mode) for sql: "
-                "\n",
-                ctx->sql);
-            *output = output_plan;
-
-            ctx->request_schema = transformer.request_schema();
-            CHECK_TRUE(codec::SchemaCodec::Encode(transformer.request_schema(),
-                                                  &ctx->encoded_request_schema),
-                       kPlanError, "Fail to encode request schema");
-            ctx->request_name = transformer.request_name();
-
-            // set batch request output schema
-            const auto& output_common_indices =
-                transformer.batch_request_info().output_common_column_indices;
-            ctx->batch_request_info.output_common_column_indices =
-                output_common_indices;
-            ctx->batch_request_info.common_node_set =
-                transformer.batch_request_info().common_node_set;
-            if (!output_common_indices.empty() &&
-                output_common_indices.size() <
-                    output_plan->GetOutputSchemaSize()) {
-                CHECK_TRUE(output_plan->GetOutputSchemaSourceSize() == 2,
-                           kPlanError,
-                           "Output plan should take 2 schema sources for "
-                           "non-trival common columns");
-                CHECK_TRUE(output_plan->GetOutputSchemaSource(0)->size() ==
-                               output_common_indices.size(),
-                           kPlanError, "Illegal common column schema size");
-                ctx->schema.Clear();
-                size_t common_col_idx = 0;
-                size_t non_common_col_idx = 0;
-                for (size_t i = 0; i < (*output)->GetOutputSchemaSize(); ++i) {
-                    if (output_common_indices.find(i) !=
-                        output_common_indices.end()) {
-                        *(ctx->schema.Add()) =
-                            output_plan->GetOutputSchemaSource(0)
-                                ->GetSchema()
-                                ->Get(common_col_idx);
-                        common_col_idx += 1;
-                    } else {
-                        *(ctx->schema.Add()) =
-                            output_plan->GetOutputSchemaSource(1)
-                                ->GetSchema()
-                                ->Get(non_common_col_idx);
-                        non_common_col_idx += 1;
-                    }
-                }
-            } else {
-                CHECK_TRUE(output_plan->GetOutputSchemaSourceSize() == 1,
-                           kPlanError,
-                           "Output plan should take 1 schema source for trival "
-                           "common columns");
-                ctx->schema = *(*output)->GetOutputSchema();
-            }
-            return Status::OK();
+            return BuildBatchRequestModePhysicalPlan(
+                ctx, plan_list, llvm_module, library, output);
         }
         default:
             return Status(kPlanError, "Unknown engine mode: " +

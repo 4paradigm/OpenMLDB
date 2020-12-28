@@ -53,6 +53,7 @@ class EngineOptions {
           plan_only_(false),
           performance_sensitive_(true),
           cluster_optimized_(false),
+          batch_request_optimized_(true),
           max_sql_cache_size_(50) {}
     inline void set_keep_ir(bool flag) { this->keep_ir_ = flag; }
     inline bool is_keep_ir() const { return this->keep_ir_; }
@@ -70,6 +71,10 @@ class EngineOptions {
 
     inline bool is_cluster_optimzied() const { return cluster_optimized_; }
     inline void set_cluster_optimized(bool flag) { cluster_optimized_ = flag; }
+    bool is_batch_request_optimized() const { return batch_request_optimized_; }
+    void set_batch_request_optimized(bool flag) {
+        batch_request_optimized_ = flag;
+    }
     inline void set_max_sql_cache_size(uint32_t size) {
         max_sql_cache_size_ = size;
     }
@@ -86,6 +91,7 @@ class EngineOptions {
     bool plan_only_;
     bool performance_sensitive_;
     bool cluster_optimized_;
+    bool batch_request_optimized_;
     uint32_t max_sql_cache_size_;
 };
 
