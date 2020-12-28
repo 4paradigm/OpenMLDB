@@ -1688,6 +1688,16 @@ bool TabletClient::CreateProcedure(const rtidb::api::CreateProcedureRequest& sp_
     return true;
 }
 
+bool TabletClient::AsyncScan(const ::rtidb::api::ScanRequest& request,
+        rtidb::RpcCallback<rtidb::api::ScanResponse>* callback) {
+    if (callback == nullptr) {
+        return false;
+    }
+    return client_.SendRequest(&::rtidb::api::TabletServer_Stub::Scan,
+            callback->GetController().get(), &request,
+            callback->GetResponse().get(), callback);
+}
+
 bool TabletClient::Scan(const ::rtidb::api::ScanRequest& request,
         brpc::Controller* cntl,
         ::rtidb::api::ScanResponse* response) {

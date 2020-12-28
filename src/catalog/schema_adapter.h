@@ -116,7 +116,7 @@ class SchemaAdapter {
     }
 
     static bool SubSchema(const ::fesql::vm::Schema* schema,
-            const std::vector<uint32_t>& projection,
+            const ::google::protobuf::RepeatedField<uint32_t>& projection,
             fesql::vm::Schema* output) {
         if (output == nullptr) {
             LOG(WARNING) << "output ptr is null";

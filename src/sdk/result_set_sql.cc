@@ -23,44 +23,41 @@
 
 #include "base/fe_strings.h"
 #include "base/status.h"
+#include "catalog/schema_adapter.h"
+#include "catalog/sdk_catalog.h"
 #include "codec/fe_schema_codec.h"
 #include "glog/logging.h"
 
 namespace rtidb {
 namespace sdk {
 
-ResultSetSQL::ResultSetSQL(const ::fesql::vm::Schema& schema,
-                           uint32_t record_cnt, uint32_t buf_size,
+ResultSetSQL::ResultSetSQL(const ::fesql::vm::Schema& schema, uint32_t record_cnt, uint32_t buf_size,
                            const std::shared_ptr<brpc::Controller>& cntl)
-    :schema_(schema), record_cnt_(record_cnt), buf_size_(buf_size),
-    cntl_(cntl), result_set_base_(nullptr) {}
+    : schema_(schema), record_cnt_(record_cnt), buf_size_(buf_size), cntl_(cntl), result_set_base_(nullptr) {}
 
 ResultSetSQL::~ResultSetSQL() { delete result_set_base_; }
 
 bool ResultSetSQL::Init() {
     std::unique_ptr<::fesql::sdk::RowIOBufView> row_view(new ::fesql::sdk::RowIOBufView(schema_));
-    result_set_base_ =
-        new ResultSetBase(cntl_, record_cnt_, buf_size_, std::move(row_view), schema_);
+    result_set_base_ = new ResultSetBase(cntl_, record_cnt_, buf_size_, std::move(row_view), schema_);
     return true;
 }
 
-std::shared_ptr<::fesql::sdk::ResultSet> ResultSetSQL::MakeResultSet(const std::shared_ptr<::rtidb::api::QueryResponse>& response,
-        const std::shared_ptr<brpc::Controller>& cntl,
-        fesql::sdk::Status* status) {
-    if (status == nullptr || response == nullptr) {
+std::shared_ptr<::fesql::sdk::ResultSet> ResultSetSQL::MakeResultSet(
+    const std::shared_ptr<::rtidb::api::QueryResponse>& response, const std::shared_ptr<brpc::Controller>& cntl,
+    fesql::sdk::Status* status) {
+    if (!status || !response || !cntl) {
         return std::shared_ptr<ResultSet>();
     }
     ::fesql::vm::Schema schema;
-    bool ok = ::fesql::codec::SchemaCodec::Decode(response->schema(),
-                                                  &schema);
+    bool ok = ::fesql::codec::SchemaCodec::Decode(response->schema(), &schema);
     if (!ok) {
         status->code = -1;
         status->msg = "request error, fail to decodec schema";
         return std::shared_ptr<ResultSet>();
     }
-    std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs = std::make_shared<rtidb::sdk::ResultSetSQL>(
-            schema, response->count(), response->byte_size(),
-            cntl);
+    std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs =
+        std::make_shared<rtidb::sdk::ResultSetSQL>(schema, response->count(), response->byte_size(), cntl);
     ok = rs->Init();
     if (!ok) {
         status->code = -1;
@@ -68,6 +65,44 @@ std::shared_ptr<::fesql::sdk::ResultSet> ResultSetSQL::MakeResultSet(const std::
         return std::shared_ptr<ResultSet>();
     }
     return rs;
+}
+
+std::shared_ptr<::fesql::sdk::ResultSet> ResultSetSQL::MakeResultSet(
+    const std::shared_ptr<::rtidb::api::ScanResponse>& response,
+    const ::google::protobuf::RepeatedField<uint32_t>& projection, const std::shared_ptr<brpc::Controller>& cntl,
+    std::shared_ptr<::fesql::vm::TableHandler> table_handler, ::fesql::sdk::Status* status) {
+    if (!status || !response || !cntl) {
+        return std::shared_ptr<ResultSet>();
+    }
+    auto sdk_table_handler = dynamic_cast<::rtidb::catalog::SDKTableHandler*>(table_handler.get());
+    if (projection.size() > 0) {
+        ::fesql::vm::Schema schema;
+        bool ok = ::rtidb::catalog::SchemaAdapter::SubSchema(sdk_table_handler->GetSchema(), projection, &schema);
+        if (!ok) {
+            status->code = -1;
+            status->msg = "fail to get sub schema";
+            return std::shared_ptr<ResultSet>();
+        }
+        std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs =
+            std::make_shared<rtidb::sdk::ResultSetSQL>(schema, response->count(), response->buf_size(), cntl);
+        ok = rs->Init();
+        if (!ok) {
+            status->code = -1;
+            status->msg = "request error, resuletSetSQL init failed";
+            return std::shared_ptr<ResultSet>();
+        }
+        return rs;
+    } else {
+        std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs = std::make_shared<rtidb::sdk::ResultSetSQL>(
+            *(sdk_table_handler->GetSchema()), response->count(), response->buf_size(), cntl);
+        bool ok = rs->Init();
+        if (!ok) {
+            status->code = -1;
+            status->msg = "request error, resuletSetSQL init failed";
+            return std::shared_ptr<ResultSet>();
+        }
+        return rs;
+    }
 }
 
 }  // namespace sdk

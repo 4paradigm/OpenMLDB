@@ -1336,6 +1336,7 @@ void TabletImpl::Scan(RpcController* controller, const ::rtidb::api::ScanRequest
         code = ScanIndex(request, table_meta, vers_schema, &combine_it, &buf, &count);
         response->set_code(code);
         response->set_count(count);
+        response->set_buf_size(buf.size());
         uint64_t end_time = ::baidu::common::timer::get_micros();
         if (start_time + FLAGS_query_slow_log_threshold < end_time) {
             std::string index_name;
