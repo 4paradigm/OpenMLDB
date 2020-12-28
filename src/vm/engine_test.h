@@ -1010,6 +1010,13 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
 void BatchRequestEngineCheckWithCommonColumnIndices(
     const SQLCase& sql_case, const EngineOptions options,
     const std::set<size_t>& common_column_indices) {
+
+    std::ostringstream oss;
+    for(size_t index : common_column_indices) {
+        oss << index << ",";
+    }
+    LOG(INFO) << "BatchRequestEngineCheckWithCommonColumnIndices: common_column_indices = ["
+        << oss.str() << "]";
     BatchRequestEngineTestRunner engine_test(sql_case, options,
                                              common_column_indices);
     engine_test.RunCheck();
@@ -1037,10 +1044,6 @@ void BatchRequestEngineCheck(const SQLCase& sql_case,
         BatchRequestEngineCheckWithCommonColumnIndices(sql_case, options,
                                                        common_column_indices);
         common_column_indices.clear();
-
-        if (options.is_cluster_optimzied()) {
-            return;
-        }
 
         // partial
         // 0, 2, 4, ...
