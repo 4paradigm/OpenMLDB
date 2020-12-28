@@ -11,9 +11,11 @@ cd build && cmake .. && make fesql_proto && make fesql_parser && make -j5
 cd ${ROOT_DIR}
 ./fesql/build/src/export_udf_info --output_file=./udf_defs.yaml
 
+echo "+++++++++++++"
+sh tools/install_fesql.sh
+cd ${ROOT_DIR}/fesql/java/fesql-common; mvn install
 echo "================="
 
-cd ${ROOT_DIR}/fesql/java/fesql-common; mvn install
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake ..
 if [ -z "${FEDEV}" ]; then
     make -j5 sql_javasdk_package || { echo "compile error"; exit 1; }
