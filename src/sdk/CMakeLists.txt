@@ -23,6 +23,9 @@ set(SDK_LIBS rtidb_sdk rtidb_catalog client zk_client rtidb_flags rtidb_codec rt
 add_executable(mini_cluster_bm mini_cluster_microbenchmark.cc)
 target_link_libraries(mini_cluster_bm benchmark_main benchmark gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
 
+add_executable(mini_cluster_bm_request_batch mini_cluster_bm_request_batch.cc mini_cluster_microbenchmark.cc)
+target_link_libraries(mini_cluster_bm_request_batch benchmark_main benchmark gtest ${BIN_LIBS} ${FESQL_CASE_LIBS})
+
 if(SQL_PYSDK_ENABLE)
 	find_package(Python3 COMPONENTS Interpreter Development)
 	set_property(SOURCE sql_router_sdk.i PROPERTY CPLUSPLUS ON)

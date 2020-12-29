@@ -392,7 +392,6 @@ void SQLCaseTest::CheckRow(fesql::codec::RowView &row_view,  // NOLINT
 }
 void SQLCaseTest::CheckRows(const fesql::vm::Schema &schema, const std::string &order_col,
                             const std::vector<fesql::codec::Row> &rows, std::shared_ptr<fesql::sdk::ResultSet> rs) {
-
     LOG(INFO) << "Expected Rows: \n";
     PrintRows(schema, rows);
     LOG(INFO) << "ResultSet Rows: \n";

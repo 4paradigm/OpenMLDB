@@ -110,7 +110,6 @@ class SQLSDKQueryTest : public SQLSDKTest {
                                        std::shared_ptr<SQLRouter> router);
     static void DistributeRunBatchRequestModeSDK(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
                                                  std::shared_ptr<SQLRouter> router, int32_t partition_num = 8);
-
 };
 
 class SQLSDKBatchRequestQueryTest : public SQLSDKQueryTest {
@@ -592,7 +591,7 @@ void SQLSDKQueryTest::BatchRequestExecuteSQLWithCommonColumnIndices(fesql::sqlca
 
     auto row_batch = std::make_shared<SQLRequestRowBatch>(request_row->GetSchema(), common_column_indices);
 
-    LOG(INFO) << "Request execute sql start!";
+    LOG(INFO) << "Batch Request execute sql start!";
     for (size_t i = 0; i < request_rows.size(); i++) {
         row_view.Reset(request_rows[i].buf());
         CovertFesqlRowToRequestRow(&row_view, request_row);

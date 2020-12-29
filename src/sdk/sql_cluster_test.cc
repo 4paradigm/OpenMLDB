@@ -229,7 +229,8 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_batch_request_single_partition_test) 
     auto router = GetNewSQLRouter(sql_case);
     ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
     DistributeRunBatchRequestModeSDK(sql_case, router, 1);
-    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_single_partition_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_single_partition_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
 }
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_single_partition_test) {
     auto sql_case = GetParam();
@@ -248,7 +249,8 @@ TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_single_part
     auto router = GetNewSQLRouter(sql_case);
     ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
     DistributeRunBatchRequestModeSDK(sql_case, router, 1);
-    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_single_partition_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    LOG(INFO) << "Finish sql_sdk_distribute_batch_request_single_partition_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
 }
 
 TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_single_partition_test) {
@@ -264,7 +266,8 @@ TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_single_partition_test) {
     auto router = GetNewSQLRouter(sql_case);
     ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router with multi partitions";
     DistributeRunRequestModeSDK(sql_case, router, 1);
-    LOG(INFO) << "Finish sql_sdk_distribute_request_single_partition_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    LOG(INFO) << "Finish sql_sdk_distribute_request_single_partition_test: ID: " << sql_case.id()
+              << ", DESC: " << sql_case.desc();
 }
 
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_distribute_batch_request_procedure_test) {
