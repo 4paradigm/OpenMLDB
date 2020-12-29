@@ -3,10 +3,10 @@
 ROOT_DIR=`pwd`
 ulimit -c unlimited
 
-git submodule update
-
-echo "DDDDDD"
-ls -al fesql/tools/autotest/
+#git submodule update
+#
+#echo "DDDDDD"
+#ls -al fesql/tools/autotest/
 
 #sh steps/gen_code.sh
 #export JAVA_HOME=${RTIDB_DEV_JAVA_HOME:-/depends/thirdparty/jdk1.8.0_141}
