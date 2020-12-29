@@ -1118,7 +1118,6 @@ class ClusterTask {
         if (!task.IsValid()) {
             return nullptr;
         }
-        Runner* input = nullptr;
         auto input_task = task.GetInput();
         if (input_task) {
             return input_task->GetRoot();
