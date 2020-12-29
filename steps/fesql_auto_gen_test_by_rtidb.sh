@@ -3,13 +3,9 @@
 ROOT_DIR=`pwd`
 ulimit -c unlimited
 
-git submodule update
+#git submodule update
 
-cd fesql
-
-git pull
-
-echo "-----------"
+echo "DDDDDDD"
 
 ls -al tools/autotest
 
@@ -22,11 +18,9 @@ cd fesql && ln -sf ${RTIDB_THIRDPARTY} thirdparty && mkdir -p build
 cd build && cmake .. && make fesql_proto && make fesql_parser && make -j5
 cd ${ROOT_DIR}
 ./fesql/build/src/export_udf_info --output_file=./udf_defs.yaml
-ls -al
-echo "+++++++++++++"
+
 sh tools/install_fesql.sh
 cd ${ROOT_DIR}/fesql/java/fesql-common; mvn install
-echo "================="
 
 mkdir -p ${ROOT_DIR}/build  && cd ${ROOT_DIR}/build && cmake ..
 if [ -z "${FEDEV}" ]; then
@@ -35,8 +29,7 @@ else
     make -j16 || { echo "compile error"; exit 1; }
 fi
 
-echo "AAAAAAAAAAAAA"
-
+cd ${ROOT_DIR}
 python3 -m pip install numpy -i https://pypi.tuna.tsinghua.edu.cn/simple
 python3 -m pip install PyYaml -i https://pypi.tuna.tsinghua.edu.cn/simple
 
