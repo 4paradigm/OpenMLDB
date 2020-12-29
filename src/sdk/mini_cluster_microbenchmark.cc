@@ -27,6 +27,7 @@
 #include "sdk/sql_sdk_test.h"
 #include "test/base_test.h"
 #include "vm/catalog.h"
+#include "sdk/table_reader.h"
 DECLARE_bool(enable_distsql);
 DECLARE_bool(enable_localtablet);
 
@@ -123,6 +124,47 @@ static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
             state.SkipWithError("benchmark case debug");
             break;
         }
+    }
+}
+
+static void BM_SimpleTableReaderSync(benchmark::State& state) {
+    ::rtidb::sdk::SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc->GetZkCluster();
+    sql_opt.zk_path = mc->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    if (router == nullptr) {
+        std::cout << "fail to init sql cluster router" << std::endl;
+        return;
+    }
+    std::string db = "db" + GenRand();
+    ::fesql::sdk::Status status;
+    router->CreateDB(db, &status);
+    std::string ddl = "create table t1" 
+                          "("
+                          "col1 string, col2 bigint,"
+                          "index(key=col1, ts=col2));";
+    router->ExecuteDDL(db, ddl, &status);
+    router->RefreshCatalog();
+    int64_t st = 361;
+    int64_t et = 1;
+    int records = state.range(0);
+    std::string key = "k1";
+    for (int32_t i = 1;  i < records + 361; i++) {
+        std::string row = "insert into t1 values('" +key+ "', "+std::to_string(i)+ "L);";
+        router->ExecuteInsert(db, row, &status);
+    }
+    auto reader = router->GetTableReader();
+
+    ::rtidb::sdk::ScanOption so;
+    auto rs = reader->Scan(db, "t1", key, st, et, so, &status);
+    if (!rs || rs->Size() < 300) {
+        LOG(WARNING) << "result count is mismatch";
+        return;
+    }
+    for (auto _ : state) {
+        benchmark::DoNotOptimize(
+                reader->Scan(db, "t1", key, st, et, so, &status)
+                );
     }
 }
 
@@ -859,6 +901,8 @@ BENCHMARK(BM_SimpleInsertFunction)->Args({10})->Args({100})->Args({1000})->Args(
 BENCHMARK(BM_InsertPlaceHolderFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
 
 BENCHMARK(BM_InsertPlaceHolderBatchFunction)->Args({10})->Args({100})->Args({1000})->Args({10000});
+BENCHMARK(BM_SimpleTableReaderSync)->Args({10})->Args({100})->Args({1000})->Args({2000})->Args({4000})->Args({10000});
+
 int main(int argc, char** argv) {
     FLAGS_enable_distsql = fesql::sqlcase::SQLCase::IS_CLUSTER();
     FLAGS_enable_localtablet = !fesql::sqlcase::SQLCase::IS_DISABLE_LOCALTABLET();
