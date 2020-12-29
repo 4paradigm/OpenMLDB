@@ -3,7 +3,9 @@
 ROOT_DIR=`pwd`
 ulimit -c unlimited
 
-cd ${ROOT_DIR}
+git submodule update
+
+#cd ${ROOT_DIR}
 
 sh steps/gen_code.sh
 export JAVA_HOME=${RTIDB_DEV_JAVA_HOME:-/depends/thirdparty/jdk1.8.0_141}
