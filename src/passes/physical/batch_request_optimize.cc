@@ -218,8 +218,8 @@ static Status UpdateProjectExpr(
 
     passes::ExprReplacer replacer;
     for (auto column_expr : origin_columns) {
-        size_t schema_idx;
-        size_t col_idx;
+        size_t schema_idx = 0;
+        size_t col_idx = 0;
         if (column_expr->GetExprType() == node::kExprColumnId) {
             auto column_id =
                 dynamic_cast<const node::ColumnIdNode*>(column_expr);
