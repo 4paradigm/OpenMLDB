@@ -76,20 +76,15 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_test) {
     RunRequestModeSDK(sql_case, router);
     LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
-
-TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_test) {
+TEST_P(SQLSDKQueryTest, sql_sdk_batch_request_test) {
     auto sql_case = GetParam();
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
         boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
         boost::contains(sql_case.mode(), "request-unsupport")) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
-    if (sql_case.batch_request().columns_.empty()) {
-        LOG(WARNING) << "No batch request specified";
-        return;
-    }
-    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
     auto router = GetNewSQLRouter(sql_case);
     ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
     RunBatchRequestModeSDK(sql_case, router);
@@ -141,7 +136,24 @@ TEST_P(SQLSDKQueryTest, sql_sdk_request_procedure_asyn_test) {
     LOG(INFO) << "Finish sql_sdk_request_procedure_asyn_test: ID: "
         << sql_case.id() << ", DESC: " << sql_case.desc();
 }
-
+TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_test) {
+    auto sql_case = GetParam();
+    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
+        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
+        boost::contains(sql_case.mode(), "request-unsupport")) {
+        LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
+        return;
+    }
+    if (sql_case.batch_request().columns_.empty()) {
+        LOG(WARNING) << "No batch request specified";
+        return;
+    }
+    LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+    auto router = GetNewSQLRouter(sql_case);
+    ASSERT_TRUE(router != nullptr) << "Fail new cluster sql router";
+    RunBatchRequestModeSDK(sql_case, router);
+    LOG(INFO) << "Finish sql_sdk_request_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
+}
 TEST_P(SQLSDKBatchRequestQueryTest, sql_sdk_batch_request_procedure_test) {
     auto sql_case = GetParam();
     if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
