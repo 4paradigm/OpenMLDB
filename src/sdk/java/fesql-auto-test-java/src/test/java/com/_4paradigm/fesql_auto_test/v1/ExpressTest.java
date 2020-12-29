@@ -21,7 +21,7 @@ public class ExpressTest extends FesqlTest {
     public Object[] testExpressCase() throws FileNotFoundException {
         FesqlDataProviderList dp = FesqlDataProviderList.dataProviderGenerator(
                 new String[]{
-                        "/integration/v1/function/test_string.yaml"
+                        "/integration/v1/function/test_udaf_function.yaml"
                 });
         return dp.getCases().toArray();
     }
