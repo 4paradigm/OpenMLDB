@@ -1,6 +1,3 @@
-//
-// Created by Chenjing on 2020-12-28.
-//
 /*
  * mini_cluster_microbenchmark.cc
  * Copyright (C) 4paradigm.com 2020 wangtaize <wangtaize@4paradigm.com>
@@ -17,16 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "sdk/mini_cluster_bm.h"
+
 #include <gflags/gflags.h>
 #include <stdio.h>
 
-#include "benchmark/benchmark.h"
 #include "boost/algorithm/string.hpp"
 #include "catalog/schema_adapter.h"
 #include "codec/fe_row_codec.h"
 #include "sdk/base.h"
-#include "sdk/mini_cluster.h"
-#include "sdk/mini_cluster_bm.h"
 #include "sdk/sql_router.h"
 #include "sdk/sql_sdk_test.h"
 #include "test/base_test.h"
@@ -37,7 +33,8 @@ DECLARE_bool(enable_localtablet);
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnDesc> RtiDBSchema;
 typedef ::google::protobuf::RepeatedPtrField<::rtidb::common::ColumnKey> RtiDBIndex;
 // batch request rows size == 1
-void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case, ::rtidb::sdk::MiniCluster* mc) {  // NOLINT
+void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case, // NOLINT
+                     ::rtidb::sdk::MiniCluster* mc) {  // NOLINT
     const bool is_procedure = fesql::sqlcase::SQLCase::IS_PROCEDURE();
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
@@ -140,14 +137,10 @@ void BM_RequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,
     rtidb::sdk::SQLSDKTest::DropProcedure(sql_case, router);
     rtidb::sdk::SQLSDKTest::DropTables(sql_case, router);
 }
-void MiniBenchmarkOnCase(const std::string& yaml_path,
-                         const std::string& case_id,
-                         BmRunMode engine_mode,
-                         ::rtidb::sdk::MiniCluster* mc,
-                         benchmark::State* state) {
+void MiniBenchmarkOnCase(const std::string& yaml_path, const std::string& case_id, BmRunMode engine_mode,
+                         ::rtidb::sdk::MiniCluster* mc, benchmark::State* state) {
     std::vector<fesql::sqlcase::SQLCase> cases;
-    fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(),
-                                                    yaml_path, cases);
+    fesql::sqlcase::SQLCase::CreateSQLCasesFromYaml(fesql::sqlcase::FindFesqlDirPath(), yaml_path, cases);
     fesql::sqlcase::SQLCase* target_case = nullptr;
     for (auto& sql_case : cases) {
         if (sql_case.id() == case_id) {
@@ -173,11 +166,10 @@ void MiniBenchmarkOnCase(const std::string& yaml_path,
             FAIL() << "Unsupport Engine Mode " << engine_mode;
         }
     }
-
 }
 // batch request rows size >= 1
-void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,
-                          ::rtidb::sdk::MiniCluster* mc) {  // NOLINT
+void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_case,  // NOLINT
+                          ::rtidb::sdk::MiniCluster* mc) {
     if (sql_case.batch_request_.columns_.empty()) {
         FAIL() << "sql case should contain batch request columns: ";
         return;
