@@ -37,7 +37,7 @@ namespace log {
 Reader::Reporter::~Reporter() {}
 
 Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
-               uint64_t initial_offset, bool for_snaphot)
+               uint64_t initial_offset, bool compressed)
     : file_(file),
       reporter_(reporter),
       checksum_(checksum),
@@ -48,13 +48,13 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
       last_end_of_buffer_offset_(0),
       initial_offset_(initial_offset),
       resyncing_(initial_offset > 0),
-      for_snapshot_(for_snaphot),
+      compressed_(compressed),
       uncompress_buf_(nullptr) {
 #ifdef PZFPGA_ENABLE
-          if (for_snapshot_ &&
+          if (compressed_ &&
                   (FLAGS_snapshot_compression == "pz" || FLAGS_snapshot_compression == "snappy")) {
 #else
-          if (for_snapshot_ &&  FLAGS_snapshot_compression == "snappy") {
+          if (compressed_ &&  FLAGS_snapshot_compression == "snappy") {
 #endif
               block_size_ = kCompressBlockSize;
               uncompress_buf_ = new char[block_size_];
@@ -284,11 +284,11 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
         buffer_.clear();
         Status status;
 #ifdef PZFPGA_ENABLE
-        if (!for_snapshot_ ||
+        if (!compressed_ ||
                 (FLAGS_snapshot_compression != "pz" &&
                  FLAGS_snapshot_compression != "snappy")) {
 #else
-        if (!for_snapshot_ || FLAGS_snapshot_compression != "snappy") {
+        if (!compressed_ || FLAGS_snapshot_compression != "snappy") {
 #endif
             status = file_->Read(block_size_, &buffer_, backing_store_);
         } else {
@@ -411,14 +411,14 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result, uint64_t& offset) {
     return type;
 }
 
-LogReader::LogReader(LogParts* logs, const std::string& log_path, bool for_snapshot)
+LogReader::LogReader(LogParts* logs, const std::string& log_path, bool compressed)
     : log_path_(log_path) {
     sf_ = NULL;
     reader_ = NULL;
     logs_ = logs;
     log_part_index_ = -1;
     start_offset_ = 0;
-    for_snapshot_ = for_snapshot;
+    compressed_ = compressed;
 }
 
 LogReader::~LogReader() {
@@ -549,7 +549,7 @@ int LogReader::RollRLogFile() {
         }
         delete reader_;
         // roll a new log part file, reset status
-        reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0, for_snapshot_);
+        reader_ = new Reader(sf_, NULL, FLAGS_binlog_enable_crc, 0, compressed_);
         PDLOG(INFO, "roll log file from index[%d] to index[%d]",
               log_part_index_, index);
         log_part_index_ = index;

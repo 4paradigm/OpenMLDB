@@ -26,14 +26,14 @@ static void InitTypeCrc(uint32_t* type_crc) {
     }
 }
 
-Writer::Writer(WritableFile* dest, bool for_snapshot)
-: dest_(dest), block_offset_(0), for_snapshot_(for_snapshot), buffer_(nullptr), compress_buf_(nullptr) {
+Writer::Writer(WritableFile* dest, bool compressed)
+: dest_(dest), block_offset_(0), compressed_(compressed), buffer_(nullptr), compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
 #ifdef PZFPGA_ENABLE
-    if (for_snapshot_ &&
+    if (compressed_ &&
             (FLAGS_snapshot_compression == "pz" || FLAGS_snapshot_compression == "snappy")) {
 #else
-    if (for_snapshot_ &&  FLAGS_snapshot_compression == "snappy") {
+    if (compressed_ &&  FLAGS_snapshot_compression == "snappy") {
 #endif
         block_size_ = kCompressBlockSize;
         buffer_ = new char[block_size_];
@@ -43,14 +43,14 @@ Writer::Writer(WritableFile* dest, bool for_snapshot)
     }
 }
 
-Writer::Writer(WritableFile* dest, uint64_t dest_length, bool for_snapshot)
-    : dest_(dest), for_snapshot_(for_snapshot), buffer_(nullptr), compress_buf_(nullptr) {
+Writer::Writer(WritableFile* dest, uint64_t dest_length, bool compressed)
+    : dest_(dest), compressed_(compressed), buffer_(nullptr), compress_buf_(nullptr) {
     InitTypeCrc(type_crc_);
 #ifdef PZFPGA_ENABLE
-    if (for_snapshot_ &&
+    if (compressed_ &&
             (FLAGS_snapshot_compression == "pz" || FLAGS_snapshot_compression == "snappy")) {
 #else
-    if (for_snapshot_ &&  FLAGS_snapshot_compression == "snappy") {
+    if (compressed_ &&  FLAGS_snapshot_compression == "snappy") {
 #endif
         block_size_ = kCompressBlockSize;
         buffer_ = new char[block_size_];
@@ -86,11 +86,11 @@ Status Writer::EndLog() {
                 assert(kHeaderSize == 7);
                 Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
 #ifdef PZFPGA_ENABLE
-                if (!for_snapshot_ ||
+                if (!compressed_ ||
                         (FLAGS_snapshot_compression != "pz" &&
                          FLAGS_snapshot_compression != "snappy")) {
 #else
-                if (!for_snapshot_ || FLAGS_snapshot_compression != "snappy") {
+                if (!compressed_ || FLAGS_snapshot_compression != "snappy") {
 #endif
                     dest_->Append(fill_slice);
                 } else {
@@ -133,11 +133,11 @@ Status Writer::AddRecord(const Slice& slice) {
                 assert(kHeaderSize == 7);
                 Slice fill_slice("\x00\x00\x00\x00\x00\x00", leftover);
 #ifdef PZFPGA_ENABLE
-                if (!for_snapshot_ ||
+                if (!compressed_ ||
                         (FLAGS_snapshot_compression != "pz" &&
                          FLAGS_snapshot_compression != "snappy")) {
 #else
-                if (!for_snapshot_ || FLAGS_snapshot_compression != "snappy") {
+                if (!compressed_ || FLAGS_snapshot_compression != "snappy") {
 #endif
                     dest_->Append(fill_slice);
                 } else {
@@ -187,11 +187,11 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr, size_t n) {
     EncodeFixed32(buf, crc);
 
 #ifdef PZFPGA_ENABLE
-    if (!for_snapshot_ ||
+    if (!compressed_ ||
             (FLAGS_snapshot_compression != "pz" &&
              FLAGS_snapshot_compression != "snappy")) {
 #else
-    if (!for_snapshot_ || FLAGS_snapshot_compression != "snappy") {
+    if (!compressed_ || FLAGS_snapshot_compression != "snappy") {
 #endif
         // Write the header and the payload
         Status s = dest_->Append(Slice(buf, kHeaderSize));
