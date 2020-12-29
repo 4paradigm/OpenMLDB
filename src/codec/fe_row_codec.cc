@@ -312,6 +312,7 @@ bool RowView::Reset(const int8_t* row, uint32_t size) {
     row_ = row;
     size_ = size;
     str_addr_length_ = GetAddrLength(size_);
+    is_valid_ = true;
     return true;
 }
 
@@ -327,6 +328,7 @@ bool RowView::Reset(const int8_t* row) {
         return false;
     }
     str_addr_length_ = GetAddrLength(size_);
+    is_valid_ = true;
     return true;
 }
 
@@ -890,103 +892,10 @@ bool RowFormat::GetStringColumnInfo(size_t idx, StringColInfo* res) const {
         return false;
     }
     DLOG(INFO) << "get string with offset " << offset << " next offset "
-               << next_offset << " for col " << base_col_info.name;
+               << next_offset << " str_field_start_offset "
+               << str_field_start_offset_ << " for col " << base_col_info.name;
     *res = StringColInfo(base_col_info.name, ty, col_idx, offset, next_offset,
                          str_field_start_offset_);
-    return true;
-}
-
-fesql::codec::Schema RowSelector::CreateTargetSchema() {
-    Schema target_schema;
-    for (size_t idx : indices_) {
-        if (idx < static_cast<size_t>(schema_->size())) {
-            *target_schema.Add() = schema_->Get(idx);
-        }
-    }
-    return target_schema;
-}
-
-RowSelector::RowSelector(const fesql::codec::Schema* schema,
-                         const std::vector<size_t>& indices)
-    : schema_(schema),
-      indices_(indices),
-      target_schema_(CreateTargetSchema()),
-      row_view_(*schema),
-      target_row_builder_(target_schema_) {}
-
-bool RowSelector::Select(const int8_t* slice, size_t size, int8_t** out_slice,
-                         size_t* out_size) {
-    row_view_.Reset(slice, size);
-    size_t str_size = 0;
-    for (size_t idx : indices_) {
-        if (idx < static_cast<size_t>(schema_->size())) {
-            if (schema_->Get(idx).type() == type::kVarchar &&
-                !row_view_.IsNULL(idx)) {
-                str_size += row_view_.GetStringUnsafe(idx).size();
-            }
-        }
-    }
-    size_t target_size = target_row_builder_.CalTotalLength(str_size);
-    *out_slice = reinterpret_cast<int8_t*>(malloc(target_size));
-    *out_size = target_size;
-
-    target_row_builder_.SetBuffer(*out_slice, *out_size);
-    for (size_t idx : indices_) {
-        if (idx >= static_cast<size_t>(schema_->size())) {
-            continue;
-        }
-        if (row_view_.IsNULL(idx)) {
-            target_row_builder_.AppendNULL();
-            continue;
-        }
-        switch (schema_->Get(idx).type()) {
-            case type::kInt16: {
-                target_row_builder_.AppendInt16(row_view_.GetInt16Unsafe(idx));
-                break;
-            }
-            case type::kInt32: {
-                target_row_builder_.AppendInt32(row_view_.GetInt32Unsafe(idx));
-                break;
-            }
-            case type::kInt64: {
-                target_row_builder_.AppendInt64(row_view_.GetInt64Unsafe(idx));
-                break;
-            }
-            case type::kBool: {
-                target_row_builder_.AppendBool(row_view_.GetBoolUnsafe(idx));
-                break;
-            }
-            case type::kFloat: {
-                target_row_builder_.AppendFloat(row_view_.GetFloatUnsafe(idx));
-                break;
-            }
-            case type::kDouble: {
-                target_row_builder_.AppendDouble(
-                    row_view_.GetDoubleUnsafe(idx));
-                break;
-            }
-            case type::kDate: {
-                int32_t year;
-                int32_t month;
-                int32_t day;
-                row_view_.GetDate(idx, &year, &month, &day);
-                target_row_builder_.AppendDate(year, month, day);
-                break;
-            }
-            case type::kTimestamp: {
-                target_row_builder_.AppendTimestamp(
-                    row_view_.GetTimestampUnsafe(idx));
-                break;
-            }
-            case type::kVarchar: {
-                std::string str = row_view_.GetStringUnsafe(idx);
-                target_row_builder_.AppendString(str.data(), str.size());
-                break;
-            }
-            default:
-                continue;
-        }
-    }
     return true;
 }
 

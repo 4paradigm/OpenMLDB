@@ -203,25 +203,6 @@ struct StringColInfo : public ColInfo {
           str_start_offset(str_start_offset) {}
 };
 
-class RowSelector {
- public:
-    RowSelector(const fesql::codec::Schema* schema,
-                const std::vector<size_t>& indices);
-
-    bool Select(const int8_t* slice, size_t size, int8_t** out_slice,
-                size_t* out_size);
-
- private:
-    fesql::codec::Schema CreateTargetSchema();
-
-    const fesql::codec::Schema* schema_;
-    const std::vector<size_t> indices_;
-
-    fesql::codec::Schema target_schema_;
-    RowView row_view_;
-    RowBuilder target_row_builder_;
-};
-
 class RowFormat {
  public:
     explicit RowFormat(const fesql::codec::Schema* schema);

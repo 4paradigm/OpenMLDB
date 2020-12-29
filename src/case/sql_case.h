@@ -43,6 +43,7 @@ class SQLCase {
         std::string schema_;
         std::string data_;
         std::string order_;
+        std::set<size_t> common_column_indices_;
         bool success_ = true;
     };
     SQLCase() {}
@@ -166,12 +167,14 @@ class SQLCase {
     static std::string GenRand(const std::string& prefix) {
         return prefix + std::to_string(rand() % 10000000 + 1);  // NOLINT
     }
-    bool BuildCreateSpSQLFromInput(
-            int32_t input_idx, const std::string& select_sql,
-            const std::set<size_t>& common_idx, std::string* create_sp_sql);
+    bool BuildCreateSpSQLFromInput(int32_t input_idx,
+                                   const std::string& select_sql,
+                                   const std::set<size_t>& common_idx,
+                                   std::string* create_sp_sql);
     bool BuildCreateSpSQLFromSchema(const type::TableDef& table,
-            const std::string& select_sql, const std::set<size_t>& common_idx,
-            std::string* create_sql);
+                                    const std::string& select_sql,
+                                    const std::set<size_t>& common_idx,
+                                    std::string* create_sql);
 
     friend SQLCaseBuilder;
     friend std::ostream& operator<<(std::ostream& output, const SQLCase& thiz);
@@ -199,6 +202,22 @@ class SQLCase {
         }
         return false;
     }
+    static bool IS_DISABLE_LOCALTABLET() {
+        const char* env_name = "FESQL_DISTABLE_LOCALTABLET";
+        char* value = getenv(env_name);
+        if (value != nullptr && strcmp(value, "true") == 0) {
+            return true;
+        }
+        return false;
+    }
+    static bool IS_PROCEDURE() {
+        const char* env_name = "FESQL_PROCEDURE";
+        char* value = getenv(env_name);
+        if (value != nullptr && strcmp(value, "true") == 0) {
+            return true;
+        }
+        return false;
+    }
 
     const YAML::Node raw_node() const { return raw_node_; }
     std::string id_;
@@ -218,6 +237,7 @@ class SQLCase {
     TableInfo batch_request_;
     ExpectInfo expect_;
     YAML::Node raw_node_;
+    std::string sp_name_;
 };
 std::string FindFesqlDirPath();
 

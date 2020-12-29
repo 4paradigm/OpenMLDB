@@ -196,7 +196,7 @@ static bool RunnerRun(
     while (cnt < limit_cnt && iter->Valid()) {
         cnt++;
         RunnerContext ctx(&session->GetClusterJob(), iter->GetValue());
-        auto data = runner->Run(ctx);
+        auto data = runner->RunWithCache(ctx);
         iter->Next();
         result.push_back(data);
     }

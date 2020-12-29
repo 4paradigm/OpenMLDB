@@ -17,6 +17,7 @@
 #include <vector>
 #include "base/graph.h"
 #include "node/plan_node.h"
+#include "passes/expression/expr_pass.h"
 #include "vm/catalog.h"
 #include "vm/schemas_context.h"
 namespace fesql {
@@ -29,7 +30,6 @@ enum PhysicalOpType {
     kPhysicalOpGroupBy,
     kPhysicalOpSortBy,
     kPhysicalOpAggrerate,
-    kPhysicalOpWindowAgg,
     kPhysicalOpProject,
     kPhysicalOpSimpleProject,
     kPhysicalOpConstProject,
@@ -37,10 +37,11 @@ enum PhysicalOpType {
     kPhysicalOpRename,
     kPhysicalOpDistinct,
     kPhysicalOpJoin,
-    kPhysicalOpUnoin,
+    kPhysicalOpUnion,
     kPhysicalOpWindow,
     kPhysicalOpIndexSeek,
-    kPhysicalOpRequestUnoin,
+    kPhysicalOpRequestUnion,
+    kPhysicalOpPostRequestUnion,
     kPhysicalOpRequestJoin,
     kPhysicalOpRequestGroup,
     kPhysicalOpRequestGroupAndSort,
@@ -75,9 +76,11 @@ inline const std::string PhysicalOpTypeName(const PhysicalOpType &type) {
             return "WINDOW";
         case kPhysicalOpJoin:
             return "JOIN";
-        case kPhysicalOpUnoin:
+        case kPhysicalOpUnion:
             return "UNION";
-        case kPhysicalOpRequestUnoin:
+        case kPhysicalOpPostRequestUnion:
+            return "POST_REQUEST_UNION";
+        case kPhysicalOpRequestUnion:
             return "REQUEST_UNION";
         case kPhysicalOpRequestJoin:
             return "REQUEST_JOIN";
@@ -191,10 +194,13 @@ class Sort : public FnComponent {
     }
 
     void ResolvedRelatedColumns(
-        std::vector<const fesql::node::ColumnRefNode *> *columns) const {
+        std::vector<const node::ExprNode *> *columns) const {
         node::ColumnOfExpression(orders_, columns);
         return;
     }
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, Sort *out) const;
 
     const node::OrderByNode *orders_;
 };
@@ -239,6 +245,11 @@ class Range : public FnComponent {
     const node::FrameNode *frame() const { return frame_; }
     const std::string FnDetail() const { return "range=" + fn_info_.fn_name(); }
 
+    void ResolvedRelatedColumns(std::vector<const node::ExprNode *> *) const;
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, Range *out) const;
+
     const node::ExprNode *range_key_;
     const node::FrameNode *frame_;
 };
@@ -261,10 +272,13 @@ class ConditionFilter : public FnComponent {
     const std::string FnDetail() const { return fn_info_.fn_name(); }
 
     virtual void ResolvedRelatedColumns(
-        std::vector<const fesql::node::ColumnRefNode *> *columns) const {
+        std::vector<const node::ExprNode *> *columns) const {
         node::ColumnOfExpression(condition_, columns);
         return;
     }
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, ConditionFilter *out) const;
 
     const node::ExprNode *condition_;
 };
@@ -280,14 +294,18 @@ class Key : public FnComponent {
         return oss.str();
     }
     const bool ValidKey() const { return !node::ExprListNullOrEmpty(keys_); }
-    void set_keys(const node::ExprListNode *keys) { keys_ = keys; }
     const node::ExprListNode *keys() const { return keys_; }
+    void set_keys(const node::ExprListNode *keys) { keys_ = keys; }
+    const node::ExprListNode *PhysicalProjectNode() const { return keys_; }
     const std::string FnDetail() const { return "keys=" + fn_info_.fn_name(); }
 
     void ResolvedRelatedColumns(
-        std::vector<const fesql::node::ColumnRefNode *> *columns) const {
+        std::vector<const node::ExprNode *> *columns) const {
         node::ColumnOfExpression(keys_, columns);
     }
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, Key *out) const;
 
     const node::ExprListNode *keys_;
 };
@@ -298,6 +316,8 @@ class ColumnProjects : public FnComponent {
 
     void Add(const std::string &name, const node::ExprNode *expr,
              const node::FrameNode *frame);
+
+    void Clear();
 
     size_t size() const { return names_.size(); }
 
@@ -318,6 +338,9 @@ class ColumnProjects : public FnComponent {
     }
 
     const node::FrameNode *GetPrimaryFrame() const { return primary_frame_; }
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, ColumnProjects *out) const;
 
  private:
     std::vector<std::string> names_;
@@ -350,6 +373,10 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
 
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
+
+    virtual base::Status WithNewChildren(
+        node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
+        PhysicalOpNode **out) = 0;
 
     /**
      * Initialize physical node's output schema.
@@ -508,6 +535,11 @@ class PhysicalTableProviderNode : public PhysicalDataProviderNode {
     explicit PhysicalTableProviderNode(
         const std::shared_ptr<TableHandler> &table_handler)
         : PhysicalDataProviderNode(table_handler, kProviderTypeTable) {}
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     virtual ~PhysicalTableProviderNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
 };
@@ -521,6 +553,10 @@ class PhysicalRequestProviderNode : public PhysicalDataProviderNode {
     }
 
     base::Status InitSchema(PhysicalPlanContext *) override;
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
 
     virtual ~PhysicalRequestProviderNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
@@ -556,6 +592,11 @@ class PhysicalPartitionProviderNode : public PhysicalDataProviderNode {
         output_type_ = kSchemaTypeGroup;
     }
     virtual ~PhysicalPartitionProviderNode() {}
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const std::string index_name_;
 };
@@ -570,6 +611,10 @@ class PhysicalGroupNode : public PhysicalUnaryNode {
     virtual ~PhysicalGroupNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
     static PhysicalGroupNode *CastFrom(PhysicalOpNode *node);
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
 
     bool Valid() { return group_.ValidKey(); }
     Key group() const { return group_; }
@@ -627,6 +672,10 @@ class PhysicalProjectNode : public PhysicalUnaryNode {
 
     base::Status InitSchema(PhysicalPlanContext *) override;
 
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     const ColumnProjects &project() const { return project_; }
     const ProjectType project_type_;
 
@@ -666,6 +715,10 @@ class PhysicalConstProjectNode : public PhysicalOpNode {
     static PhysicalConstProjectNode *CastFrom(PhysicalOpNode *node);
     const ColumnProjects &project() const { return project_; }
 
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     base::Status InitSchema(PhysicalPlanContext *) override;
 
  private:
@@ -687,6 +740,10 @@ class PhysicalSimpleProjectNode : public PhysicalUnaryNode {
     static PhysicalSimpleProjectNode *CastFrom(PhysicalOpNode *node);
 
     const ColumnProjects &project() const { return project_; }
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
 
     base::Status InitSchema(PhysicalPlanContext *) override;
 
@@ -714,6 +771,11 @@ class PhysicalGroupAggrerationNode : public PhysicalProjectNode {
         fn_infos_.push_back(&group_.fn_info());
     }
     virtual ~PhysicalGroupAggrerationNode() {}
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     static PhysicalGroupAggrerationNode *CastFrom(PhysicalOpNode *node);
     virtual void Print(std::ostream &output, const std::string &tab) const;
     Key group_;
@@ -729,7 +791,8 @@ class WindowOp {
     explicit WindowOp(const node::WindowPlanNode *w_ptr)
         : partition_(w_ptr->GetKeys()),
           sort_(w_ptr->GetOrders()),
-          range_(w_ptr->GetOrders(), w_ptr->frame_node()) {}
+          range_(w_ptr->GetOrders(), w_ptr->frame_node()),
+          name_(w_ptr->GetName()) {}
     virtual ~WindowOp() {}
     const std::string ToString() const {
         std::ostringstream oss;
@@ -752,9 +815,17 @@ class WindowOp {
     const Key &partition() const { return partition_; }
     const Sort &sort() const { return sort_; }
     const Range &range() const { return range_; }
+    const std::string &name() const { return name_; }
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, WindowOp *out) const;
+
+    void ResolvedRelatedColumns(std::vector<const node::ExprNode *> *) const;
+
     Key partition_;
     Sort sort_;
     Range range_;
+    std::string name_ = "";
 };
 
 class RequestWindowOp : public WindowOp {
@@ -775,6 +846,12 @@ class RequestWindowOp : public WindowOp {
         return oss.str();
     }
     const Key &index_key() const { return index_key_; }
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, RequestWindowOp *out) const;
+
+    void ResolvedRelatedColumns(std::vector<const node::ExprNode *> *) const;
+
     Key index_key_;
 };
 
@@ -817,12 +894,16 @@ class Filter {
     const Key &index_key() const { return index_key_; }
     const ConditionFilter &condition() const { return condition_; }
     virtual void ResolvedRelatedColumns(
-        std::vector<const fesql::node::ColumnRefNode *> *columns) const {
+        std::vector<const node::ExprNode *> *columns) const {
         left_key_.ResolvedRelatedColumns(columns);
         right_key_.ResolvedRelatedColumns(columns);
         index_key_.ResolvedRelatedColumns(columns);
         condition_.ResolvedRelatedColumns(columns);
     }
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, Filter *out) const;
+
     ConditionFilter condition_;
     Key left_key_;
     Key right_key_;
@@ -872,18 +953,16 @@ class Join : public Filter {
     const node::JoinType join_type() const { return join_type_; }
     const Sort &right_sort() const { return right_sort_; }
     void ResolvedRelatedColumns(
-        std::vector<const fesql::node::ColumnRefNode *> *columns) const {
+        std::vector<const node::ExprNode *> *columns) const {
         Filter::ResolvedRelatedColumns(columns);
         right_sort_.ResolvedRelatedColumns(columns);
     }
+
+    base::Status ReplaceExpr(const passes::ExprReplacer &replacer,
+                             node::NodeManager *nm, Join *out) const;
+
     node::JoinType join_type_;
     Sort right_sort_;
-};
-
-class Union {
- public:
-    Union() : need_union_(false) {}
-    bool need_union_;
 };
 
 class WindowJoinList {
@@ -904,6 +983,7 @@ class WindowJoinList {
     std::list<std::pair<PhysicalOpNode *, Join>> &window_joins() {
         return window_joins_;
     }
+
     std::list<std::pair<PhysicalOpNode *, Join>> window_joins_;
 };
 
@@ -930,6 +1010,7 @@ class WindowUnionList {
         }
         return iter->first;
     }
+
     std::list<std::pair<PhysicalOpNode *, WindowOp>> window_unions_;
 };
 
@@ -967,22 +1048,8 @@ class RequestWindowUnionList {
         return oss.str();
     }
     const bool Empty() const { return window_unions_.empty(); }
+
     std::list<std::pair<PhysicalOpNode *, RequestWindowOp>> window_unions_;
-};
-
-class PhysicalWindowNode : public PhysicalUnaryNode {
- public:
-    PhysicalWindowNode(PhysicalOpNode *node, const node::WindowPlanNode *w_ptr)
-        : PhysicalUnaryNode(node, kPhysicalOpWindow, true), window_op_(w_ptr) {
-        fn_infos_.push_back(&window_op_.partition_.fn_info());
-        fn_infos_.push_back(&window_op_.sort_.fn_info());
-        fn_infos_.push_back(&window_op_.range_.fn_info());
-    }
-    virtual ~PhysicalWindowNode() {}
-    virtual void Print(std::ostream &output, const std::string &tab) const;
-
- private:
-    WindowOp window_op_;
 };
 
 class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
@@ -1050,6 +1117,10 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
 
     base::Status InitSchema(PhysicalPlanContext *) override;
 
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     const bool need_append_input_;
     const bool instance_not_in_window_;
     WindowOp window_;
@@ -1069,7 +1140,8 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::JoinType join_type)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
           join_(join_type),
-          joined_schemas_ctx_(this) {
+          joined_schemas_ctx_(this),
+          output_right_only_(false) {
         output_type_ = left->GetOutputType();
     }
     PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
@@ -1078,7 +1150,8 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprNode *condition)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
           join_(join_type, orders, condition),
-          joined_schemas_ctx_(this) {
+          joined_schemas_ctx_(this),
+          output_right_only_(false) {
         output_type_ = left->GetOutputType();
 
         RegisterFunctionInfo();
@@ -1090,7 +1163,8 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
           join_(join_type, condition, left_keys, right_keys),
-          joined_schemas_ctx_(this) {
+          joined_schemas_ctx_(this),
+          output_right_only_(false) {
         output_type_ = left->GetOutputType();
 
         RegisterFunctionInfo();
@@ -1103,7 +1177,8 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const node::ExprListNode *right_keys)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
           join_(join_type, orders, condition, left_keys, right_keys),
-          joined_schemas_ctx_(this) {
+          joined_schemas_ctx_(this),
+          output_right_only_(false) {
         output_type_ = left->GetOutputType();
 
         RegisterFunctionInfo();
@@ -1112,7 +1187,18 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
                      const Join &join)
         : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
           join_(join),
-          joined_schemas_ctx_(this) {
+          joined_schemas_ctx_(this),
+          output_right_only_(false) {
+        output_type_ = left->GetOutputType();
+
+        RegisterFunctionInfo();
+    }
+    PhysicalJoinNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                     const Join &join, const bool output_right_only)
+        : PhysicalBinaryNode(left, right, kPhysicalOpJoin, false),
+          join_(join),
+          joined_schemas_ctx_(this),
+          output_right_only_(output_right_only) {
         output_type_ = left->GetOutputType();
 
         RegisterFunctionInfo();
@@ -1133,8 +1219,15 @@ class PhysicalJoinNode : public PhysicalBinaryNode {
     const SchemasContext *joined_schemas_ctx() const {
         return &joined_schemas_ctx_;
     }
+    const bool output_right_only() const { return output_right_only_; }
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     Join join_;
     SchemasContext joined_schemas_ctx_;
+    const bool output_right_only_;
 };
 
 class PhysicalRequestJoinNode : public PhysicalBinaryNode {
@@ -1215,6 +1308,11 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
     const SchemasContext *joined_schemas_ctx() const {
         return &joined_schemas_ctx_;
     }
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     Join join_;
     SchemasContext joined_schemas_ctx_;
     const bool output_right_only_;
@@ -1223,24 +1321,56 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
 class PhysicalUnionNode : public PhysicalBinaryNode {
  public:
     PhysicalUnionNode(PhysicalOpNode *left, PhysicalOpNode *right, bool is_all)
-        : PhysicalBinaryNode(left, right, kPhysicalOpUnoin, true),
+        : PhysicalBinaryNode(left, right, kPhysicalOpUnion, true),
           is_all_(is_all) {
         output_type_ = kSchemaTypeTable;
     }
     virtual ~PhysicalUnionNode() {}
     base::Status InitSchema(PhysicalPlanContext *) override;
     virtual void Print(std::ostream &output, const std::string &tab) const;
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     const bool is_all_;
     static PhysicalUnionNode *CastFrom(PhysicalOpNode *node);
+};
+
+class PhysicalPostRequestUnionNode : public PhysicalBinaryNode {
+ public:
+    PhysicalPostRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                                 const Range &request_ts)
+        : PhysicalBinaryNode(left, right, kPhysicalOpPostRequestUnion, true),
+          request_ts_(request_ts) {
+        output_type_ = kSchemaTypeTable;
+        fn_infos_.push_back(&request_ts_.fn_info());
+    }
+    virtual ~PhysicalPostRequestUnionNode() {}
+    base::Status InitSchema(PhysicalPlanContext *) override;
+    virtual void Print(std::ostream &output, const std::string &tab) const;
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
+    static PhysicalPostRequestUnionNode *CastFrom(PhysicalOpNode *node);
+
+    const Range &request_ts() const { return request_ts_; }
+    Range *mutable_request_ts() { return &request_ts_; }
+
+ private:
+    Range request_ts_;
 };
 
 class PhysicalRequestUnionNode : public PhysicalBinaryNode {
  public:
     PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
                              const node::ExprListNode *partition)
-        : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnoin, true),
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnion, true),
           window_(partition),
-          instance_not_in_window_(false) {
+          instance_not_in_window_(false),
+          output_request_row_(true) {
         output_type_ = kSchemaTypeTable;
 
         fn_infos_.push_back(&window_.partition_.fn_info());
@@ -1248,9 +1378,25 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
     }
     PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
                              const node::WindowPlanNode *w_ptr)
-        : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnoin, true),
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnion, true),
           window_(w_ptr),
-          instance_not_in_window_(w_ptr->instance_not_in_window()) {
+          instance_not_in_window_(w_ptr->instance_not_in_window()),
+          output_request_row_(true) {
+        output_type_ = kSchemaTypeTable;
+
+        fn_infos_.push_back(&window_.partition_.fn_info());
+        fn_infos_.push_back(&window_.sort_.fn_info());
+        fn_infos_.push_back(&window_.range_.fn_info());
+        fn_infos_.push_back(&window_.index_key_.fn_info());
+    }
+    PhysicalRequestUnionNode(PhysicalOpNode *left, PhysicalOpNode *right,
+                             const RequestWindowOp &window,
+                             bool instance_not_in_window,
+                             bool output_request_row)
+        : PhysicalBinaryNode(left, right, kPhysicalOpRequestUnion, true),
+          window_(window),
+          instance_not_in_window_(instance_not_in_window),
+          output_request_row_(output_request_row) {
         output_type_ = kSchemaTypeTable;
 
         fn_infos_.push_back(&window_.partition_.fn_info());
@@ -1273,7 +1419,8 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
                 << "Fail to add window union : producer is empty or null";
             return false;
         }
-        if (!IsSameSchema(*node->GetOutputSchema(),
+        if (output_request_row() &&
+            !IsSameSchema(*node->GetOutputSchema(),
                           *producers_[0]->GetOutputSchema())) {
             LOG(WARNING)
                 << "Union Table and window input schema aren't consistent";
@@ -1291,12 +1438,19 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
     const bool instance_not_in_window() const {
         return instance_not_in_window_;
     }
+    const bool output_request_row() const { return output_request_row_; }
     const RequestWindowOp &window() const { return window_; }
     const RequestWindowUnionList &window_unions() const {
         return window_unions_;
     }
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     RequestWindowOp window_;
     const bool instance_not_in_window_;
+    const bool output_request_row_;
     RequestWindowUnionList window_unions_;
 };
 
@@ -1317,6 +1471,10 @@ class PhysicalSortNode : public PhysicalUnaryNode {
     virtual ~PhysicalSortNode() {}
     virtual void Print(std::ostream &output, const std::string &tab) const;
 
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     bool Valid() { return sort_.ValidSort(); }
     const Sort &sort() const { return sort_; }
     Sort sort_;
@@ -1336,6 +1494,11 @@ class PhysicalFilterNode : public PhysicalUnaryNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
     bool Valid() { return filter_.Valid(); }
     const Filter &filter() const { return filter_; }
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     Filter filter_;
     static PhysicalFilterNode *CastFrom(PhysicalOpNode *node);
 };
@@ -1354,6 +1517,10 @@ class PhysicalLimitNode : public PhysicalUnaryNode {
     const bool GetLimitOptimized() const { return limit_optimized_; }
     static PhysicalLimitNode *CastFrom(PhysicalOpNode *node);
 
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
  private:
     bool limit_optimized_;
 };
@@ -1368,6 +1535,11 @@ class PhysicalRenameNode : public PhysicalUnaryNode {
     virtual ~PhysicalRenameNode() {}
     static PhysicalRenameNode *CastFrom(PhysicalOpNode *node);
     virtual void Print(std::ostream &output, const std::string &tab) const;
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     const std::string &name_;
 };
 
@@ -1377,6 +1549,11 @@ class PhysicalDistinctNode : public PhysicalUnaryNode {
         : PhysicalUnaryNode(node, kPhysicalOpDistinct, true) {
         output_type_ = node->GetOutputType();
     }
+
+    base::Status WithNewChildren(node::NodeManager *nm,
+                                 const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override;
+
     virtual ~PhysicalDistinctNode() {}
 };
 

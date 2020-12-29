@@ -24,8 +24,42 @@ namespace vm {
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_MAX 20
 
+// Build Runner for each physical node
+// return cluster task of given runner
+//
+// DataRunner(kProviderTypePartition) --> cluster task
+// RequestRunner --> local task
+// DataRunner(kProviderTypeTable) --> LocalTask, Unsupport in distribute
+// database
+//
+// SimpleProjectRunner --> inherit task
+// TableProjectRunner --> inherit task
+// WindowAggRunner --> LocalTask , Unsupport in distribute database
+// GroupAggRunner --> LocalTask, Unsupport in distribute database
+//
+// RowProjectRunner --> inherit task
+// ConstProjectRunner --> local task
+//
+// RequestUnionRunner
+//      --> complete route_info of right cluster task
+//      --> build proxy runner if need
+// RequestJoinRunner
+//      --> complete route_info of right cluster task
+//      --> build proxy runner if need
+// kPhysicalOpJoin
+//      --> kJoinTypeLast->RequestJoinRunner
+//              --> complete route_info of right cluster task
+//              --> build proxy runner if need
+//      --> kJoinTypeConcat
+//              --> build proxy runner if need
+// kPhysicalOpPostRequestUnion
+//      --> build proxy runner if need
+// GroupRunner --> LocalTask, Unsupport in distribute database
+// kPhysicalOpFilter
+// kPhysicalOpLimit
+// kPhysicalOpRename
 ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
-    auto fail = ClusterTask();
+    auto fail = InvalidTask();
     if (nullptr == node) {
         status.msg = "fail to build runner : physical node is null";
         status.code = common::kOpGenError;
@@ -35,7 +69,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
     auto iter = task_map_.find(node);
     if (iter != task_map_.cend()) {
         iter->second.GetRoot()->EnableCache();
-        return ClusterTask((iter->second));
+        return iter->second;
     }
     switch (node->GetOpType()) {
         case kPhysicalOpDataProvider: {
@@ -46,7 +80,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         dynamic_cast<const PhysicalTableProviderNode*>(node);
                     auto runner = nm_->RegisterNode(new DataRunner(
                         id_++, node->schemas_ctx(), provider->table_handler_));
-                    return RegisterTask(node, ClusterTask(runner));
+                    return RegisterTask(node, CommonTask(runner));
                 }
                 case kProviderTypePartition: {
                     auto provider =
@@ -58,16 +92,17 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                                            provider->index_name_)));
                     if (support_cluster_optimized_) {
                         return RegisterTask(
-                            node, ClusterTask(runner, provider->table_handler_,
-                                              provider->index_name_));
+                            node, UnCompletedClusterTask(
+                                      runner, provider->table_handler_,
+                                      provider->index_name_));
                     } else {
-                        return RegisterTask(node, ClusterTask(runner));
+                        return RegisterTask(node, CommonTask(runner));
                     }
                 }
                 case kProviderTypeRequest: {
                     auto runner = nm_->RegisterNode(
                         new RequestRunner(id_++, node->schemas_ctx()));
-                    return RegisterTask(node, ClusterTask(runner));
+                    return RegisterTask(node, BuildRequestTask(runner));
                 }
                 default: {
                     status.msg = "fail to support data provider type " +
@@ -87,29 +122,20 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 LOG(WARNING) << status;
                 return fail;
             }
-            auto input = cluster_task.GetRoot();
             auto op = dynamic_cast<const PhysicalSimpleProjectNode*>(node);
             auto runner = new SimpleProjectRunner(id_++, node->schemas_ctx(),
                                                   op->GetLimitCnt(),
                                                   op->project().fn_info());
-            if (kRunnerRequestRunProxy == input->type_ &&
-                !input->need_cache()) {
-                cluster_job_.AddRunnerToTask(
-                    nm_->RegisterNode(runner),
-                    dynamic_cast<ProxyRequestRunner*>(input)->task_id());
-                input->set_output_schemas(runner->output_schemas());
-                return RegisterTask(node, cluster_task);
-            }
-            runner->AddProducer(input);
-            cluster_task.SetRoot(runner);
-            return RegisterTask(node, cluster_task);
+            return RegisterTask(
+                node,
+                UnaryInheritTask(cluster_task, nm_->RegisterNode(runner)));
         }
         case kPhysicalOpConstProject: {
             auto op = dynamic_cast<const PhysicalConstProjectNode*>(node);
             auto runner = new ConstProjectRunner(id_++, node->schemas_ctx(),
                                                  op->GetLimitCnt(),
                                                  op->project().fn_info());
-            return RegisterTask(node, ClusterTask(nm_->RegisterNode(runner)));
+            return RegisterTask(node, CommonTask(nm_->RegisterNode(runner)));
         }
         case kPhysicalOpProject: {
             auto cluster_task =  // NOLINT
@@ -134,36 +160,35 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     auto runner = new TableProjectRunner(
                         id_++, node->schemas_ctx(), op->GetLimitCnt(),
                         op->project().fn_info());
-                    runner->AddProducer(input);
-                    cluster_task.SetRoot(nm_->RegisterNode(runner));
-                    return RegisterTask(node, cluster_task);
+                    return RegisterTask(
+                        node, UnaryInheritTask(cluster_task,
+                                               nm_->RegisterNode(runner)));
                 }
                 case kAggregation: {
                     auto runner = new AggRunner(id_++, node->schemas_ctx(),
                                                 op->GetLimitCnt(),
                                                 op->project().fn_info());
-                    if (kRunnerRequestRunProxy == input->type_ &&
-                        !input->need_cache()) {
-                        cluster_job_.AddRunnerToTask(
-                            nm_->RegisterNode(runner),
-                            dynamic_cast<ProxyRequestRunner*>(input)
-                                ->task_id());
-                        input->set_output_schemas(runner->output_schemas());
-                        return RegisterTask(node, cluster_task);
-                    }
-                    runner->AddProducer(input);
-                    cluster_task.SetRoot(nm_->RegisterNode(runner));
-                    return RegisterTask(node, cluster_task);
+                    return RegisterTask(
+                        node, UnaryInheritTask(cluster_task,
+                                               nm_->RegisterNode(runner)));
                 }
                 case kGroupAggregation: {
+                    if (support_cluster_optimized_) {
+                        // 边界检查, 分布式计划暂时不支持表拼接
+                        status.msg =
+                            "fail to build cluster with group agg project";
+                        status.code = common::kOpGenError;
+                        LOG(WARNING) << status;
+                        return fail;
+                    }
                     auto op =
                         dynamic_cast<const PhysicalGroupAggrerationNode*>(node);
                     auto runner = new GroupAggRunner(
                         id_++, node->schemas_ctx(), op->GetLimitCnt(),
                         op->group_, op->project().fn_info());
-                    runner->AddProducer(input);
-                    cluster_task.SetRoot(nm_->RegisterNode(runner));
-                    return RegisterTask(node, cluster_task);
+                    return RegisterTask(
+                        node, UnaryInheritTask(cluster_task,
+                                               nm_->RegisterNode(runner)));
                 }
                 case kWindowAggregation: {
                     if (support_cluster_optimized_) {
@@ -181,10 +206,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         id_++, node->schemas_ctx(), op->GetLimitCnt(),
                         op->window_, op->project().fn_info(),
                         op->instance_not_in_window(), op->need_append_input());
-                    runner->AddProducer(input);
                     size_t input_slices =
                         input->output_schemas()->GetSchemaSourceSize();
-
                     if (!op->window_unions_.Empty()) {
                         for (auto window_union :
                              op->window_unions_.window_unions_) {
@@ -192,11 +215,6 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                             auto union_table = union_task.GetRoot();
                             if (nullptr == union_table) {
                                 return RegisterTask(node, fail);
-                            }
-                            if (!cluster_task.IsClusterTask()) {
-                                cluster_task = union_task;
-                                cluster_task.SetIndexKey(
-                                    window_union.second.partition());
                             }
                             runner->AddWindowUnion(window_union.second,
                                                    union_table);
@@ -211,39 +229,22 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                             if (nullptr == join_right_runner) {
                                 return RegisterTask(node, fail);
                             }
-
-                            // set runner partition id, if main table depend on
-                            // no window(partition)
-                            if (!cluster_task.IsClusterTask()) {
-                                cluster_task = join_task;
-                                cluster_task.SetIndexKey(
-                                    window_join.second.index_key_);
-                            }
                             runner->AddWindowJoin(window_join.second,
                                                   input_slices,
                                                   join_right_runner);
                         }
                     }
-
-                    cluster_task.SetRoot(nm_->RegisterNode(runner));
-                    return RegisterTask(node, cluster_task);
+                    return RegisterTask(
+                        node, UnaryInheritTask(cluster_task,
+                                               nm_->RegisterNode(runner)));
                 }
                 case kRowProject: {
                     auto runner = new RowProjectRunner(
                         id_++, node->schemas_ctx(), op->GetLimitCnt(),
                         op->project().fn_info());
-                    if (kRunnerRequestRunProxy == input->type_) {
-                        cluster_job_.AddRunnerToTask(
-                            nm_->RegisterNode(runner),
-                            dynamic_cast<ProxyRequestRunner*>(input)
-                                ->task_id());
-                        input->set_output_schemas(runner->output_schemas());
-                        return RegisterTask(node, cluster_task);
-                    } else {
-                        runner->AddProducer(input);
-                        cluster_task.SetRoot(nm_->RegisterNode(runner));
-                        return RegisterTask(node, cluster_task);
-                    }
+                    return RegisterTask(
+                        node, UnaryInheritTask(cluster_task,
+                                               nm_->RegisterNode(runner)));
                 }
                 default: {
                     status.msg = "fail to support project type " +
@@ -254,7 +255,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 }
             }
         }
-        case kPhysicalOpRequestUnoin: {
+        case kPhysicalOpRequestUnion: {
             auto left_task = Build(node->producers().at(0), status);
             if (!left_task.IsValid()) {
                 status.msg = "fail to build left input runner";
@@ -271,9 +272,9 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 return fail;
             }
             auto op = dynamic_cast<const PhysicalRequestUnionNode*>(node);
-            auto runner =
-                new RequestUnionRunner(id_++, node->schemas_ctx(),
-                                       op->GetLimitCnt(), op->window().range_);
+            auto runner = new RequestUnionRunner(
+                id_++, node->schemas_ctx(), op->GetLimitCnt(),
+                op->window().range_, op->output_request_row());
             Key index_key;
             if (!op->instance_not_in_window()) {
                 runner->AddWindowUnion(op->window_, right);
@@ -291,13 +292,16 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         index_key = window_union.second.index_key_;
                         right_task = union_task;
                         right_task.SetRoot(right);
+                    } else if (support_cluster_optimized_) {
+                        LOG(WARNING) << "Fail to build RequestUnionRunner with "
+                                        "multi union table in cluster mode";
+                        return ClusterTask();
                     }
                 }
             }
-            auto cluster_task =
-                BuildRunnerWithProxy(nm_->RegisterNode(runner), left_task,
-                                     right_task, index_key, status);
-            return RegisterTask(node, cluster_task);
+            return RegisterTask(node, BinaryInherit(left_task, right_task,
+                                                    nm_->RegisterNode(runner),
+                                                    index_key, kRightBias));
         }
         case kPhysicalOpRequestJoin: {
             auto left_task =  // NOLINT
@@ -328,18 +332,18 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         right->output_schemas()->GetSchemaSourceSize(),
                         op->output_right_only());
 
-                    auto cluster_task = BuildRunnerWithProxy(
-                        nm_->RegisterNode(runner), left_task, right_task,
-                        op->join().index_key(), status);
-                    return RegisterTask(node, cluster_task);
+                    return RegisterTask(
+                        node, BinaryInherit(left_task, right_task,
+                                            nm_->RegisterNode(runner),
+                                            op->join().index_key(), kLeftBias));
                 }
                 case node::kJoinTypeConcat: {
                     auto runner = new ConcatRunner(id_++, node->schemas_ctx(),
                                                    op->GetLimitCnt());
-                    auto cluster_task = BuildRunnerWithProxy(
-                        nm_->RegisterNode(runner), left_task, right_task, Key(),
-                        status);
-                    return RegisterTask(node, cluster_task);
+                    return RegisterTask(
+                        node, BinaryInherit(left_task, right_task,
+                                            nm_->RegisterNode(runner), Key(),
+                                            kNoBias));
                 }
                 default: {
                     status.code = common::kOpGenError;
@@ -351,13 +355,6 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             }
         }
         case kPhysicalOpJoin: {
-            if (support_cluster_optimized_) {
-                // 边界检查, 分布式计划暂时不支持表拼接
-                status.msg = "fail to build cluster with table join node";
-                status.code = common::kOpGenError;
-                LOG(WARNING) << status;
-                return fail;
-            }
             auto left_task = Build(node->producers().at(0), status);
             if (!left_task.IsValid()) {
                 status.msg = "fail to build left input runner";
@@ -377,16 +374,39 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto op = dynamic_cast<const PhysicalJoinNode*>(node);
             switch (op->join().join_type()) {
                 case node::kJoinTypeLast: {
-                    auto runner = new LastJoinRunner(
-                        id_++, node->schemas_ctx(), op->GetLimitCnt(),
-                        op->join_,
-                        left->output_schemas()->GetSchemaSourceSize(),
-                        right->output_schemas()->GetSchemaSourceSize());
-                    runner->AddProducer(left);
-                    runner->AddProducer(right);
-                    // TODO(chenjing): support join+window
-                    left_task.SetRoot(nm_->RegisterNode(runner));
-                    return RegisterTask(node, left_task);
+                    // 分布式模式下, TableLastJoin convert to
+                    // Batch Request RequestLastJoin
+                    if (support_cluster_optimized_) {
+                        auto runner = new RequestLastJoinRunner(
+                            id_++, node->schemas_ctx(), op->GetLimitCnt(),
+                            op->join_,
+                            left->output_schemas()->GetSchemaSourceSize(),
+                            right->output_schemas()->GetSchemaSourceSize(),
+                            op->output_right_only_);
+                        return RegisterTask(
+                            node,
+                            BinaryInherit(left_task, right_task,
+                                          nm_->RegisterNode(runner),
+                                          op->join().index_key(), kLeftBias));
+                    } else {
+                        auto runner = new LastJoinRunner(
+                            id_++, node->schemas_ctx(), op->GetLimitCnt(),
+                            op->join_,
+                            left->output_schemas()->GetSchemaSourceSize(),
+                            right->output_schemas()->GetSchemaSourceSize());
+                        return RegisterTask(
+                            node, BinaryInherit(left_task, right_task,
+                                                nm_->RegisterNode(runner),
+                                                Key(), kLeftBias));
+                    }
+                }
+                case node::kJoinTypeConcat: {
+                    auto runner = new ConcatRunner(id_++, node->schemas_ctx(),
+                                                   op->GetLimitCnt());
+                    return RegisterTask(
+                        node, BinaryInherit(left_task, right_task,
+                                            nm_->RegisterNode(runner),
+                                            op->join().index_key(), kNoBias));
                 }
                 default: {
                     status.code = common::kOpGenError;
@@ -412,18 +432,16 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 LOG(WARNING) << status;
                 return fail;
             }
-            auto input = cluster_task.GetRoot();
             auto op = dynamic_cast<const PhysicalGroupNode*>(node);
             auto runner = new GroupRunner(id_++, node->schemas_ctx(),
                                           op->GetLimitCnt(), op->group());
-            runner->AddProducer(input);
-            cluster_task.SetRoot(nm_->RegisterNode(runner));
-            return RegisterTask(node, cluster_task);
+            return RegisterTask(
+                node,
+                UnaryInheritTask(cluster_task, nm_->RegisterNode(runner)));
         }
         case kPhysicalOpFilter: {
             auto cluster_task =  // NOLINT
                 Build(node->producers().at(0), status);
-            auto input = cluster_task.GetRoot();
             if (!cluster_task.IsValid()) {
                 status.msg = "fail to build input runner";
                 status.code = common::kOpGenError;
@@ -433,9 +451,9 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto op = dynamic_cast<const PhysicalFilterNode*>(node);
             auto runner = new FilterRunner(id_++, node->schemas_ctx(),
                                            op->GetLimitCnt(), op->filter_);
-            runner->AddProducer(input);
-            cluster_task.SetRoot(nm_->RegisterNode(runner));
-            return RegisterTask(node, cluster_task);
+            return RegisterTask(
+                node,
+                UnaryInheritTask(cluster_task, nm_->RegisterNode(runner)));
         }
         case kPhysicalOpLimit: {
             auto cluster_task =  // NOLINT
@@ -446,19 +464,38 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 LOG(WARNING) << status;
                 return fail;
             }
-            auto input = cluster_task.GetRoot();
             auto op = dynamic_cast<const PhysicalLimitNode*>(node);
             if (op->GetLimitCnt() == 0 || op->GetLimitOptimized()) {
                 return RegisterTask(node, cluster_task);
             }
             auto runner =
                 new LimitRunner(id_++, node->schemas_ctx(), op->GetLimitCnt());
-            runner->AddProducer(input);
-            cluster_task.SetRoot(nm_->RegisterNode(runner));
-            return RegisterTask(node, cluster_task);
+            return RegisterTask(node, UnaryInheritTask(cluster_task, runner));
         }
         case kPhysicalOpRename: {
             return Build(node->producers().at(0), status);
+        }
+        case kPhysicalOpPostRequestUnion: {
+            auto left_task = Build(node->producers().at(0), status);
+            if (!left_task.IsValid()) {
+                status.msg = "fail to build left input runner";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
+            }
+            auto right_task = Build(node->producers().at(1), status);
+            if (!right_task.IsValid()) {
+                status.msg = "fail to build right input runner";
+                status.code = common::kOpGenError;
+                LOG(WARNING) << status;
+                return fail;
+            }
+            auto union_op = dynamic_cast<PhysicalPostRequestUnionNode*>(node);
+            auto runner = new PostRequestUnionRunner(id_++, node->schemas_ctx(),
+                                                     union_op->request_ts());
+            return RegisterTask(node, BinaryInherit(left_task, right_task,
+                                                    nm_->RegisterNode(runner),
+                                                    Key(), kRightBias));
         }
         default: {
             status.code = common::kOpGenError;
@@ -470,41 +507,251 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
         }
     }
 }
-// runner(left,right) -->
-// proxy_request_run(left, task_id) : task[runner(request, right)]
-ClusterTask RunnerBuilder::BuildRunnerWithProxy(Runner* runner,
-                                                const ClusterTask& left_task,
-                                                const ClusterTask& right_task,
-                                                const Key& index_key,
-                                                Status& status) {
-    auto left = left_task.GetRoot();
-    auto right = right_task.GetRoot();
-    auto task = left_task;
-    if (support_cluster_optimized_ && right_task.IsClusterTask()) {
-        runner->AddProducer(nm_->RegisterNode(
-            new RequestRunner(id_++, left->output_schemas())));
-        runner->AddProducer(right);
-        auto remote_task = right_task;
-        remote_task.SetRoot(runner);
-        remote_task.SetIndexKey(index_key);
-        auto remote_task_id = cluster_job_.AddTask(remote_task);
-        if (-1 == remote_task_id) {
-            LOG(WARNING) << "fail to add remote task id";
+
+ClusterTask RunnerBuilder::BinaryInherit(const ClusterTask& left,
+                                         const ClusterTask& right,
+                                         Runner* runner, const Key& index_key,
+                                         const TaskBiasType bias) {
+    if (support_cluster_optimized_) {
+        return BuildClusterTaskForBinaryRunner(left, right, runner, index_key,
+                                               bias);
+    } else {
+        return BuildLocalTaskForBinaryRunner(left, right, runner);
+    }
+}
+ClusterTask RunnerBuilder::BuildLocalTaskForBinaryRunner(
+    const ClusterTask& left, const ClusterTask& right, Runner* runner) {
+    if (left.IsClusterTask() || right.IsClusterTask()) {
+        LOG(WARNING) << "fail to build local task for binary runner";
+        return ClusterTask();
+    }
+    runner->AddProducer(left.GetRoot());
+    runner->AddProducer(right.GetRoot());
+    return ClusterTask(runner);
+}
+ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
+    const ClusterTask& left, const ClusterTask& right, Runner* runner,
+    const Key& index_key, const TaskBiasType bias) {
+    if (nullptr == runner) {
+        LOG(WARNING) << "Fail to build cluster task for null runner";
+        return ClusterTask();
+    }
+    ClusterTask new_left = left;
+    ClusterTask new_right = right;
+
+    Runner* right_runner = new_right.GetRoot();
+    Runner* left_runner = new_left.GetRoot();
+    // if index key is valid, try to complete route info of right cluster
+    // task
+    if (index_key.ValidKey()) {
+        if (!right.IsClusterTask()) {
+            LOG(WARNING) << "Fail to buidl cluster task for "
+                         << "[" << runner->id_ << "]"
+                         << RunnerTypeName(runner->type_)
+                         << ": can't handler local task with index key";
             return ClusterTask();
         }
-        auto proxy_runner = nm_->RegisterNode(
-            new ProxyRequestRunner(id_++, static_cast<uint32_t>(remote_task_id),
-                                   runner->output_schemas()));
-        proxy_runner->AddProducer(left);
-        return ClusterTask(proxy_runner);
-    } else {
-        runner->AddProducer(left);
-        runner->AddProducer(right);
-        task.SetRoot(runner);
+        if (right.IsCompletedClusterTask()) {
+            LOG(WARNING) << "Fail to complete cluster task for "
+                         << "[" << runner->id_ << "]"
+                         << RunnerTypeName(runner->type_)
+                         << ": task is completed already";
+            return ClusterTask();
+        }
+        runner->AddProducer(nm_->RegisterNode(
+            new RequestRunner(id_++, left_runner->output_schemas())));
+        runner->AddProducer(right_runner);
+        // build complete cluster task
+        const RouteInfo& right_route_info = new_right.GetRouteInfo();
+        ClusterTask cluster_task(
+            runner, std::vector<Runner*>({runner}),
+            RouteInfo(right_route_info.index_, index_key,
+                      std::make_shared<ClusterTask>(new_left),
+                      right_route_info.table_handler_));
+        // TODO(chenjing): opt
+        if (new_left.IsCompletedClusterTask()) {
+            return BuildProxyRunnerForClusterTask(cluster_task);
+        } else {
+            return cluster_task;
+        }
     }
-    return task;
+
+    // Concat
+    //      Agg1(Proxy(RequestUnion(Request, DATA))
+    //      Agg2(Proxy(RequestUnion(Request, DATA))
+    // -->
+    // Proxy(Concat
+    //          Agg1(RequestUnion(Request,DATA)
+    //          Agg2(RequestUnion(Request,DATA)
+    //      )
+
+    // if left and right is completed cluster task
+    while (new_left.IsCompletedClusterTask() &&
+           new_right.IsCompletedClusterTask()) {
+        // merge left and right task if tasks can be merged
+        if (ClusterTask::TaskCanBeMerge(new_left, new_right)) {
+            ClusterTask task =
+                ClusterTask::TaskMerge(runner, new_left, new_right);
+            runner->AddProducer(new_left.GetRoot());
+            runner->AddProducer(new_right.GetRoot());
+            return task;
+        }
+        switch (bias) {
+            case kNoBias: {
+                // Add build left proxy task into cluster job,
+                // and update new_left
+                new_left = BuildProxyRunnerForClusterTask(new_left);
+                new_right = BuildProxyRunnerForClusterTask(new_right);
+                break;
+            }
+            case kLeftBias: {
+                // build proxy runner for right task
+                new_right = BuildProxyRunnerForClusterTask(new_right);
+                break;
+            }
+            case kRightBias: {
+                // build proxy runner for right task
+                new_left = BuildProxyRunnerForClusterTask(new_left);
+                break;
+            }
+        }
+    }
+    if (new_left.IsUnCompletedClusterTask() ||
+        new_left.IsUnCompletedClusterTask()) {
+        LOG(WARNING) << "Fail to build cluster task, can't handler "
+                        "uncompleted cluster task";
+        return ClusterTask();
+    }
+
+    // prepare left and right for runner
+
+    // left local task + right cluster task
+    if (new_right.IsCompletedClusterTask()) {
+        switch (bias) {
+            case kNoBias:
+            case kLeftBias: {
+                new_right = BuildProxyRunnerForClusterTask(new_right);
+                runner->AddProducer(new_left.GetRoot());
+                runner->AddProducer(new_right.GetRoot());
+                return ClusterTask::TaskMergeToLeft(runner, new_left,
+                                                    new_right);
+            }
+            case kRightBias: {
+                auto new_left_root_input =
+                    ClusterTask::GetRequestInput(new_left);
+                auto new_right_root_input =
+                    ClusterTask::GetRequestInput(new_right);
+                // task can be merge simply when their inputs are the same
+                if (new_right_root_input == new_left_root_input) {
+                    runner->AddProducer(new_left.GetRoot());
+                    runner->AddProducer(new_right.GetRoot());
+                    return ClusterTask::TaskMergeToRight(runner, new_left,
+                                                         new_right);
+                } else if (new_left_root_input == nullptr) {
+                    // reset replace inputs as request runner
+                    new_right.ResetInputs(nullptr);
+                    runner->AddProducer(new_left.GetRoot());
+                    runner->AddProducer(new_right.GetRoot());
+                    return ClusterTask::TaskMergeToRight(runner, new_left,
+                                                         new_right);
+                } else {
+                    LOG(WARNING) << "fail to merge local left task and cluster "
+                                    "right task";
+                    return ClusterTask();
+                }
+            }
+        }
+    } else if (new_left.IsCompletedClusterTask()) {
+        switch (bias) {
+            case kNoBias:
+            case kRightBias: {
+                new_right = BuildProxyRunnerForClusterTask(new_left);
+                runner->AddProducer(new_left.GetRoot());
+                runner->AddProducer(new_right.GetRoot());
+                return ClusterTask::TaskMergeToRight(runner, new_left,
+                                                     new_right);
+            }
+            case kLeftBias: {
+                auto new_left_root_input =
+                    ClusterTask::GetRequestInput(new_right);
+                auto new_right_root_input =
+                    ClusterTask::GetRequestInput(new_right);
+                // task can be merge simply
+                if (new_right_root_input == new_left_root_input) {
+                    runner->AddProducer(new_left.GetRoot());
+                    runner->AddProducer(new_right.GetRoot());
+                    return ClusterTask::TaskMergeToLeft(runner, new_left,
+                                                        new_right);
+                } else if (new_right_root_input == nullptr) {
+                    // reset replace inputs as request runner
+                    new_left.ResetInputs(nullptr);
+                    runner->AddProducer(new_left.GetRoot());
+                    runner->AddProducer(new_right.GetRoot());
+                    return ClusterTask::TaskMergeToLeft(runner, new_left,
+                                                        new_right);
+                } else {
+                    LOG(WARNING) << "fail to merge cluster left task and local "
+                                    "right task";
+                    return ClusterTask();
+                }
+            }
+            default:
+                return ClusterTask();
+        }
+    } else {
+        runner->AddProducer(new_left.GetRoot());
+        runner->AddProducer(new_right.GetRoot());
+        return ClusterTask::TaskMergeToLeft(runner, new_left, new_right);
+    }
+}
+ClusterTask RunnerBuilder::BuildProxyRunnerForClusterTask(
+    const ClusterTask& task) {
+    if (!task.IsCompletedClusterTask()) {
+        LOG(WARNING)
+            << "Fail to build proxy runner, cluster task is uncompleted";
+        return ClusterTask();
+    }
+    // return cached proxy runner
+    Runner* proxy_runner = nullptr;
+    auto find_iter = proxy_runner_map_.find(task.GetRoot());
+    if (find_iter != proxy_runner_map_.cend()) {
+        proxy_runner = find_iter->second;
+        proxy_runner->EnableCache();
+    } else {
+        uint32_t remote_task_id = cluster_job_.AddTask(task);
+        proxy_runner = nm_->RegisterNode(new ProxyRequestRunner(
+            id_++, remote_task_id, task.GetRoot()->output_schemas()));
+        proxy_runner_map_.insert(std::make_pair(task.GetRoot(), proxy_runner));
+    }
+
+    if (task.GetInput()) {
+        return UnaryInheritTask(*task.GetInput(), proxy_runner);
+    } else {
+        return UnaryInheritTask(*request_task_, proxy_runner);
+    }
+}
+ClusterTask RunnerBuilder::UnCompletedClusterTask(
+    Runner* runner, const std::shared_ptr<TableHandler> table_handler,
+    std::string index) {
+    return ClusterTask(runner, table_handler, index);
+}
+ClusterTask RunnerBuilder::BuildRequestTask(RequestRunner* runner) {
+    if (nullptr == runner) {
+        LOG(WARNING) << "fail to build request task with null runner";
+        return ClusterTask();
+    }
+    ClusterTask request_task(runner);
+    request_task_ = std::make_shared<ClusterTask>(request_task);
+    return request_task;
 }
 
+ClusterTask RunnerBuilder::UnaryInheritTask(const ClusterTask& input,
+                                            Runner* runner) {
+    ClusterTask task = input;
+    runner->AddProducer(task.GetRoot());
+    task.SetRoot(runner);
+    return task;
+}
 bool Runner::GetColumnBool(RowView* row_view, int idx, type::Type type) {
     bool key = false;
     switch (type) {
@@ -681,6 +928,62 @@ std::shared_ptr<TableHandler> Runner::TableReverse(
     output_table->Reverse();
     return output_table;
 }
+std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
+    if (need_cache_) {
+        auto cached = ctx.GetBatchCache(id_);
+        if (cached != nullptr) {
+            DLOG(INFO) << "RUNNER ID " << id_ << " HIT CACHE!";
+            return cached;
+        }
+    }
+    std::shared_ptr<DataHandlerVector> outputs =
+        std::make_shared<DataHandlerVector>();
+    std::vector<std::shared_ptr<DataHandler>> inputs(producers_.size());
+    std::vector<std::shared_ptr<DataHandlerList>> batch_inputs(
+        producers_.size());
+    for (size_t idx = producers_.size(); idx > 0; idx--) {
+        batch_inputs[idx - 1] = producers_[idx - 1]->BatchRequestRun(ctx);
+    }
+
+    for (size_t idx = 0; idx < ctx.GetRequestSize(); idx++) {
+        inputs.clear();
+        for (size_t producer_idx = 0; producer_idx < producers_.size();
+             producer_idx++) {
+            inputs.push_back(batch_inputs[producer_idx]->Get(idx));
+        }
+        auto res = Run(ctx, inputs);
+        if (need_batch_cache_) {
+            if (ctx.is_debug()) {
+                std::ostringstream oss;
+                oss << "RUNNER TYPE: " << RunnerTypeName(type_)
+                    << ", ID: " << id_ << " HIT BATCH CACHE!"
+                    << "\n";
+                Runner::PrintData(oss, output_schemas_, res);
+                LOG(INFO) << oss.str();
+            }
+            auto repeated_data = std::shared_ptr<DataHandlerList>(
+                new DataHandlerRepeater(res, ctx.GetRequestSize()));
+            if (need_cache_) {
+                ctx.SetBatchCache(id_, repeated_data);
+            }
+            return repeated_data;
+        }
+        outputs->Add(res);
+    }
+    if (ctx.is_debug()) {
+        std::ostringstream oss;
+        oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+            << "\n";
+        for (size_t idx = 0; idx < outputs->GetSize(); idx++) {
+            Runner::PrintData(oss, output_schemas_, outputs->Get(idx));
+        }
+        LOG(INFO) << oss.str();
+    }
+    if (need_cache_) {
+        ctx.SetBatchCache(id_, outputs);
+    }
+    return outputs;
+}
 std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     if (need_cache_) {
         auto cached = ctx.GetCache(id_);
@@ -689,46 +992,112 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
             return cached;
         }
     }
-    if (need_batch_cache_) {
-        auto batch_cached = ctx.GetBatchCache(id_);
-        if (batch_cached != nullptr) {
-            return batch_cached;
-        }
+    std::vector<std::shared_ptr<DataHandler>> inputs(producers_.size());
+    for (size_t idx = producers_.size(); idx > 0; idx--) {
+        inputs[idx - 1] = producers_[idx - 1]->RunWithCache(ctx);
     }
-    auto res = Run(ctx);
+
+    auto res = Run(ctx, inputs);
     if (ctx.is_debug()) {
-        LOG(INFO) << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
-                  << "\n";
-        Runner::PrintData(output_schemas_, res);
+        std::ostringstream oss;
+        oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+            << "\n";
+        Runner::PrintData(oss, output_schemas_, res);
+        LOG(INFO) << oss.str();
     }
     if (need_cache_) {
         ctx.SetCache(id_, res);
     }
-    if (need_batch_cache_) {
+    return res;
+}
+std::shared_ptr<DataHandler> DataRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    return data_handler_;
+}
+std::shared_ptr<DataHandlerList> DataRunner::BatchRequestRun(
+    RunnerContext& ctx) {
+    if (need_cache_) {
+        auto cached = ctx.GetBatchCache(id_);
+        if (cached != nullptr) {
+            DLOG(INFO) << "RUNNER ID " << id_ << " HIT CACHE!";
+            return cached;
+        }
+    }
+    auto res = std::shared_ptr<DataHandlerList>(
+        new DataHandlerRepeater(data_handler_, ctx.GetRequestSize()));
+
+    if (ctx.is_debug()) {
+        std::ostringstream oss;
+        oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+            << ", Repeated " << ctx.GetRequestSize() << "\n";
+        Runner::PrintData(oss, output_schemas_, res->Get(0));
+        LOG(INFO) << oss.str();
+    }
+    if (need_cache_) {
         ctx.SetBatchCache(id_, res);
     }
     return res;
 }
-
-std::shared_ptr<DataHandler> DataRunner::Run(RunnerContext& ctx) {
-    return data_handler_;
+std::shared_ptr<DataHandler> RequestRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    return std::shared_ptr<MemRowHandler>(new MemRowHandler(ctx.GetRequest()));
 }
+std::shared_ptr<DataHandlerList> RequestRunner::BatchRequestRun(
+    RunnerContext& ctx) {
+    if (need_cache_) {
+        auto cached = ctx.GetBatchCache(id_);
+        if (cached != nullptr) {
+            DLOG(INFO) << "RUNNER ID " << id_ << " HIT CACHE!";
+            return cached;
+        }
+    }
+    std::shared_ptr<DataHandlerVector> res =
+        std::shared_ptr<DataHandlerVector>(new DataHandlerVector());
+    for (size_t idx = 0; idx < ctx.GetRequestSize(); idx++) {
+        res->Add(std::shared_ptr<MemRowHandler>(
+            new MemRowHandler(ctx.GetRequest(idx))));
+    }
 
-std::shared_ptr<DataHandler> RequestRunner::Run(RunnerContext& ctx) {
-    return std::shared_ptr<DataHandler>(new MemRowHandler(ctx.request()));
+    if (ctx.is_debug()) {
+        std::ostringstream oss;
+        oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+            << "\n";
+        for (size_t idx = 0; idx < res->GetSize(); idx++) {
+            Runner::PrintData(oss, output_schemas_, res->Get(idx));
+        }
+        LOG(INFO) << oss.str();
+    }
+    if (need_cache_) {
+        ctx.SetBatchCache(id_, res);
+    }
+    return res;
 }
-std::shared_ptr<DataHandler> GroupRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> GroupRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
     auto fail_ptr = std::shared_ptr<DataHandler>();
+    auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "input is empty";
         return fail_ptr;
     }
     return partition_gen_.Partition(input);
 }
-std::shared_ptr<DataHandler> SortRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> SortRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
     auto fail_ptr = std::shared_ptr<DataHandler>();
+    auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "input is empty";
         return fail_ptr;
@@ -736,13 +1105,21 @@ std::shared_ptr<DataHandler> SortRunner::Run(RunnerContext& ctx) {
     return sort_gen_.Sort(input);
 }
 
-std::shared_ptr<DataHandler> ConstProjectRunner::Run(RunnerContext& ctx) {
+std::shared_ptr<DataHandler> ConstProjectRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto output_table = std::shared_ptr<MemTableHandler>(new MemTableHandler());
     output_table->AddRow(project_gen_.Gen());
     return output_table;
 }
-std::shared_ptr<DataHandler> TableProjectRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> TableProjectRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
+    auto input = inputs[0];
     if (!input) {
         return std::shared_ptr<DataHandler>();
     }
@@ -768,15 +1145,26 @@ std::shared_ptr<DataHandler> TableProjectRunner::Run(RunnerContext& ctx) {
     return output_table;
 }
 
-std::shared_ptr<DataHandler> RowProjectRunner::Run(RunnerContext& ctx) {
-    auto row =
-        std::dynamic_pointer_cast<RowHandler>(producers_[0]->RunWithCache(ctx));
+std::shared_ptr<DataHandler> RowProjectRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
+    auto row = std::dynamic_pointer_cast<RowHandler>(inputs[0]);
     return std::shared_ptr<RowHandler>(
         new MemRowHandler(project_gen_.Gen(row->GetValue())));
 }
 
-std::shared_ptr<DataHandler> SimpleProjectRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> SimpleProjectRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
+    auto input = inputs[0];
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (!input) {
         LOG(WARNING) << "simple project fail: input is null";
@@ -807,8 +1195,14 @@ std::shared_ptr<DataHandler> SimpleProjectRunner::Run(RunnerContext& ctx) {
 
     return std::shared_ptr<DataHandler>();
 }
-std::shared_ptr<DataHandler> WindowAggRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> WindowAggRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
+    auto input = inputs[0];
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (!input) {
         LOG(WARNING) << "window aggregation fail: input is null";
@@ -955,10 +1349,15 @@ void WindowAggRunner::RunWindowAggOnKey(
 }
 
 std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
-    RunnerContext& ctx) {  // NOLINT
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {  // NOLINT
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    auto right = producers_[1]->RunWithCache(ctx);
-    auto left = producers_[0]->RunWithCache(ctx);
+    if (inputs.size() < 2u) {
+        LOG(WARNING) << "inputs size < 2";
+        return std::shared_ptr<DataHandler>();
+    }
+    auto right = inputs[1];
+    auto left = inputs[0];
     if (!left || !right) {
         return std::shared_ptr<DataHandler>();
     }
@@ -975,65 +1374,96 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
     }
 }
 
-std::shared_ptr<DataHandler> LastJoinRunner::Run(RunnerContext& ctx) {
+std::shared_ptr<DataHandler> LastJoinRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    auto right = producers_[1]->RunWithCache(ctx);
-    auto left = producers_[0]->RunWithCache(ctx);
+    if (inputs.size() < 2) {
+        LOG(WARNING) << "inputs size < 2";
+        return fail_ptr;
+    }
+    auto right = inputs[1];
+    auto left = inputs[0];
     if (!left || !right) {
         LOG(WARNING) << "fail to run last join: left|right input is empty";
         return fail_ptr;
-    }
-    if (join_gen_.right_group_gen_.Valid()) {
-        right = join_gen_.right_group_gen_.Partition(right);
     }
     if (!right) {
         LOG(WARNING) << "fail to run last join: right partition is empty";
         return fail_ptr;
     }
 
-    if (kTableHandler == left->GetHanlderType()) {
-        auto left_table = std::dynamic_pointer_cast<TableHandler>(left);
+    switch (left->GetHanlderType()) {
+        case kTableHandler: {
+            if (join_gen_.right_group_gen_.Valid()) {
+                right = join_gen_.right_group_gen_.Partition(right);
+            }
+            if (!right) {
+                LOG(WARNING)
+                    << "fail to run last join: right partition is empty";
+                return fail_ptr;
+            }
+            auto left_table = std::dynamic_pointer_cast<TableHandler>(left);
 
-        auto output_table =
-            std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
-        output_table->SetOrderType(left_table->GetOrderType());
-        if (kPartitionHandler == right->GetHanlderType()) {
-            if (!join_gen_.TableJoin(
-                    left_table,
-                    std::dynamic_pointer_cast<PartitionHandler>(right),
-                    output_table)) {
-                return fail_ptr;
+            auto output_table =
+                std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+            output_table->SetOrderType(left_table->GetOrderType());
+            if (kPartitionHandler == right->GetHanlderType()) {
+                if (!join_gen_.TableJoin(
+                        left_table,
+                        std::dynamic_pointer_cast<PartitionHandler>(right),
+                        output_table)) {
+                    return fail_ptr;
+                }
+            } else {
+                if (!join_gen_.TableJoin(
+                        left_table,
+                        std::dynamic_pointer_cast<TableHandler>(right),
+                        output_table)) {
+                    return fail_ptr;
+                }
             }
-        } else {
-            if (!join_gen_.TableJoin(
-                    left_table, std::dynamic_pointer_cast<TableHandler>(right),
-                    output_table)) {
-                return fail_ptr;
-            }
+            return output_table;
         }
-        return output_table;
-    } else {
-        auto output_partition =
-            std::shared_ptr<MemPartitionHandler>(new MemPartitionHandler());
-        auto left_partition = std::dynamic_pointer_cast<PartitionHandler>(left);
-        output_partition->SetOrderType(left_partition->GetOrderType());
-        if (kPartitionHandler == right->GetHanlderType()) {
-            if (!join_gen_.PartitionJoin(
-                    left_partition,
-                    std::dynamic_pointer_cast<PartitionHandler>(right),
-                    output_partition)) {
+        case kPartitionHandler: {
+            if (join_gen_.right_group_gen_.Valid()) {
+                right = join_gen_.right_group_gen_.Partition(right);
+            }
+            if (!right) {
+                LOG(WARNING)
+                    << "fail to run last join: right partition is empty";
                 return fail_ptr;
             }
+            auto output_partition =
+                std::shared_ptr<MemPartitionHandler>(new MemPartitionHandler());
+            auto left_partition =
+                std::dynamic_pointer_cast<PartitionHandler>(left);
+            output_partition->SetOrderType(left_partition->GetOrderType());
+            if (kPartitionHandler == right->GetHanlderType()) {
+                if (!join_gen_.PartitionJoin(
+                        left_partition,
+                        std::dynamic_pointer_cast<PartitionHandler>(right),
+                        output_partition)) {
+                    return fail_ptr;
+                }
 
-        } else {
-            if (!join_gen_.PartitionJoin(
-                    left_partition,
-                    std::dynamic_pointer_cast<TableHandler>(right),
-                    output_partition)) {
-                return fail_ptr;
+            } else {
+                if (!join_gen_.PartitionJoin(
+                        left_partition,
+                        std::dynamic_pointer_cast<TableHandler>(right),
+                        output_partition)) {
+                    return fail_ptr;
+                }
             }
+            return output_partition;
         }
-        return output_partition;
+        case kRowHandler: {
+            auto left_row = std::dynamic_pointer_cast<RowHandler>(left);
+            return std::make_shared<MemRowHandler>(
+                join_gen_.RowLastJoin(left_row->GetValue(), right));
+        }
+        default:
+            return fail_ptr;
     }
 }
 
@@ -1243,7 +1673,7 @@ Row JoinGenerator::RowLastJoinDropLeftSlices(
     const Row& left_row, std::shared_ptr<DataHandler> right) {
     Row joined = RowLastJoin(left_row, right);
     Row right_row(joined.GetSlice(left_slices_));
-    for (size_t offset = 0; offset < right_slices_; offset++) {
+    for (size_t offset = 1; offset < right_slices_; offset++) {
         right_row.Append(joined.GetSlice(left_slices_ + offset));
     }
     return right_row;
@@ -1480,7 +1910,7 @@ const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
     }
     auto right_iter = right_table->GetIterator();
     if (!right_iter) {
-        LOG(WARNING) << "Last Join right table is empty";
+        DLOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices, left_row, right_slices, Row());
     }
     right_iter->SeekToFirst();
@@ -1504,13 +1934,17 @@ const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
     }
     return Row(left_slices, left_row, right_slices, Row());
 }
-void Runner::PrintData(const vm::SchemasContext* schema_list,
+void Runner::PrintData(std::ostringstream& oss,
+                       const vm::SchemasContext* schema_list,
                        std::shared_ptr<DataHandler> data) {
-    std::ostringstream oss;
     std::vector<RowView> row_view_list;
     ::fesql::base::TextTable t('-', '|', '+');
     // Add Header
-    t.add("Order");
+    if (data) {
+        t.add(data->GetHandlerTypeName());
+    } else {
+        t.add("EmptyDataHandler");
+    }
     for (size_t i = 0; i < schema_list->GetSchemaSourceSize(); ++i) {
         auto source = schema_list->GetSchemaSource(i);
         for (int j = 0; j < source->GetSchema()->size(); j++) {
@@ -1535,8 +1969,7 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
     if (!data) {
         t.add("Empty set");
         t.endOfRow();
-        oss << t << std::endl;
-        LOG(INFO) << "\n" << oss.str();
+        oss << t;
         return;
     }
 
@@ -1595,7 +2028,7 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
                     t.add(std::to_string(iter->GetKey()));
                     for (size_t id = 0; id < row_view_list.size(); id++) {
                         RowView& row_view = row_view_list[id];
-                        row_view.Reset(row.buf(id));
+                        row_view.Reset(row.buf(id), row.size(id));
                         for (int idx = 0;
                              idx < schema_list->GetSchema(id)->size(); idx++) {
                             std::string str = row_view.GetAsString(idx);
@@ -1661,7 +2094,7 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
                         t.add(std::to_string(segment_iter->GetKey()));
                         for (size_t id = 0; id < row_view_list.size(); id++) {
                             RowView& row_view = row_view_list[id];
-                            row_view.Reset(row.buf(id));
+                            row_view.Reset(row.buf(id), row.size(id));
                             for (int idx = 0;
                                  idx < schema_list->GetSchema(id)->size();
                                  idx++) {
@@ -1691,30 +2124,155 @@ void Runner::PrintData(const vm::SchemasContext* schema_list,
             oss << "Invalid Set";
         }
     }
-    oss << t << std::endl;
-    LOG(INFO) << data->GetHandlerTypeName() << " RESULT:\n" << oss.str();
+    oss << t;
 }
 
-std::shared_ptr<DataHandler> ConcatRunner::Run(RunnerContext& ctx) {
+bool Runner::ExtractRows(std::shared_ptr<DataHandlerList> handlers,
+
+                         std::vector<Row>& out_rows) {
+    if (!handlers) {
+        LOG(WARNING) << "Extract batch rows error: data handler is null";
+        return false;
+    }
+    for (size_t i = 0; i < handlers->GetSize(); i++) {
+        auto handler = handlers->Get(i);
+        if (!handler) {
+            out_rows.push_back(Row());
+            continue;
+        }
+        switch (handler->GetHanlderType()) {
+            case kTableHandler: {
+                auto iter = std::dynamic_pointer_cast<TableHandler>(handler)
+                                ->GetIterator();
+                if (!iter) {
+                    LOG(WARNING) << "Extract batch rows error: iter is null";
+                    return false;
+                }
+                iter->SeekToFirst();
+                while (iter->Valid()) {
+                    out_rows.push_back(iter->GetValue());
+                    iter->Next();
+                }
+                break;
+            }
+            case kRowHandler: {
+                out_rows.push_back(
+                    std::dynamic_pointer_cast<RowHandler>(handler)->GetValue());
+                break;
+            }
+            default: {
+                LOG(WARNING) << "partition output is invalid";
+                return false;
+            }
+        }
+    }
+    return true;
+}
+bool Runner::ExtractRow(std::shared_ptr<DataHandler> handler, Row* out_row) {
+    switch (handler->GetHanlderType()) {
+        case kTableHandler: {
+            auto iter =
+                std::dynamic_pointer_cast<TableHandler>(handler)->GetIterator();
+            if (!iter) {
+                return false;
+            }
+            iter->SeekToFirst();
+            if (iter->Valid()) {
+                *out_row = iter->GetValue();
+                return true;
+            } else {
+                return false;
+            }
+        }
+        case kRowHandler: {
+            *out_row =
+                std::dynamic_pointer_cast<RowHandler>(handler)->GetValue();
+            return true;
+        }
+        case kPartitionHandler: {
+            LOG(WARNING) << "partition output is invalid";
+            return false;
+        }
+        default: {
+            return false;
+        }
+    }
+}
+bool Runner::ExtractRows(std::shared_ptr<DataHandler> handler,
+                         std::vector<Row>& out_rows) {  // NOLINT
+    if (!handler) {
+        LOG(WARNING) << "Extract batch rows error: data handler is null";
+        return false;
+    }
+    switch (handler->GetHanlderType()) {
+        case kTableHandler: {
+            auto iter =
+                std::dynamic_pointer_cast<TableHandler>(handler)->GetIterator();
+            if (!iter) {
+                LOG(WARNING) << "Extract batch rows error: iter is null";
+                return false;
+            }
+            iter->SeekToFirst();
+            while (iter->Valid()) {
+                out_rows.push_back(iter->GetValue());
+                iter->Next();
+            }
+            break;
+        }
+        case kRowHandler: {
+            out_rows.push_back(
+                std::dynamic_pointer_cast<RowHandler>(handler)->GetValue());
+            break;
+        }
+        default: {
+            LOG(WARNING) << "partition output is invalid";
+            return false;
+        }
+    }
+    return true;
+}
+std::shared_ptr<DataHandler> ConcatRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    auto right = producers_[1]->RunWithCache(ctx);
-    auto left = producers_[0]->RunWithCache(ctx);
+    if (inputs.size() < 2) {
+        LOG(WARNING) << "inputs size < 2";
+        return fail_ptr;
+    }
+    auto right = inputs[1];
+    auto left = inputs[0];
     size_t left_slices = producers_[0]->output_schemas()->GetSchemaSourceSize();
     size_t right_slices =
         producers_[1]->output_schemas()->GetSchemaSourceSize();
     if (!left || !right) {
         return std::shared_ptr<DataHandler>();
     }
-    if (kRowHandler != left->GetHanlderType()) {
-        return std::shared_ptr<DataHandler>();
+    switch (left->GetHanlderType()) {
+        case kRowHandler:
+            return std::shared_ptr<RowHandler>(new RowCombineWrapper(
+                std::dynamic_pointer_cast<RowHandler>(left), left_slices,
+                std::dynamic_pointer_cast<RowHandler>(right), right_slices));
+        case kTableHandler:
+            return std::shared_ptr<TableHandler>(new ConcatTableHandler(
+                std::dynamic_pointer_cast<TableHandler>(left), left_slices,
+                std::dynamic_pointer_cast<TableHandler>(right), right_slices));
+        default: {
+            LOG(WARNING)
+                << "fail to run conncat runner: handler type unsupported";
+            return fail_ptr;
+        }
     }
-    return std::shared_ptr<RowHandler>(new RowCombineWrapper(
-        std::dynamic_pointer_cast<RowHandler>(left), left_slices,
-        std::dynamic_pointer_cast<RowHandler>(right), right_slices));
 }
-std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+
+std::shared_ptr<DataHandler> LimitRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return fail_ptr;
+    }
+    auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "input is empty";
         return fail_ptr;
@@ -1748,9 +2306,15 @@ std::shared_ptr<DataHandler> LimitRunner::Run(RunnerContext& ctx) {
     }
     return fail_ptr;
 }
-std::shared_ptr<DataHandler> FilterRunner::Run(RunnerContext& ctx) {
+std::shared_ptr<DataHandler> FilterRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    auto input = producers_[0]->RunWithCache(ctx);
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return fail_ptr;
+    }
+    auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "fail to run filter: input is empty or null";
         return fail_ptr;
@@ -1772,8 +2336,14 @@ std::shared_ptr<DataHandler> FilterRunner::Run(RunnerContext& ctx) {
     }
 }
 
-std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> GroupAggRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
+    auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "group aggregation fail: input is null";
         return std::shared_ptr<DataHandler>();
@@ -1808,10 +2378,16 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(RunnerContext& ctx) {
     }
     return output_table;
 }
-std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
+std::shared_ptr<DataHandler> RequestUnionRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
-    auto left = producers_[0]->RunWithCache(ctx);
-    auto right = producers_[1]->RunWithCache(ctx);
+    if (inputs.size() < 2u) {
+        LOG(WARNING) << "inputs size < 2";
+        return std::shared_ptr<DataHandler>();
+    }
+    auto left = inputs[0];
+    auto right = inputs[1];
     if (!left || !right) {
         return std::shared_ptr<DataHandler>();
     }
@@ -1836,7 +2412,9 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
                   : (request_key + range_gen_.end_offset_);
         rows_start_preceding = range_gen_.start_row_;
     }
-    window_table->AddRow(request_key, request);
+    if (output_request_row_) {
+        window_table->AddRow(request_key, request);
+    }
     // Prepare Union Window
     auto union_inputs = windows_union_gen_.RunInputs(ctx);
     auto union_segments =
@@ -1895,8 +2473,47 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx) {
     return window_table;
 }
 
-std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
+std::shared_ptr<DataHandler> PostRequestUnionRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    auto fail_ptr = std::shared_ptr<DataHandler>();
+    if (inputs.size() < 2u) {
+        LOG(WARNING) << "inputs size < 2";
+        return std::shared_ptr<DataHandler>();
+    }
+    auto left = inputs[0];
+    auto right = inputs[1];
+    if (!left || !right) {
+        return nullptr;
+    }
+    if (kRowHandler != left->GetHanlderType()) {
+        return nullptr;
+    }
+
+    auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
+    int64_t request_key = request_ts_gen_.Gen(request);
+
+    auto result_table =
+        std::shared_ptr<MemTimeTableHandler>(new MemTimeTableHandler());
+    result_table->AddRow(request_key, request);
+
+    auto window_table = std::dynamic_pointer_cast<MemTimeTableHandler>(right);
+    auto window_iter = window_table->GetIterator();
+    while (window_iter->Valid()) {
+        result_table->AddRow(window_iter->GetKey(), window_iter->GetValue());
+        window_iter->Next();
+    }
+    return result_table;
+}
+
+std::shared_ptr<DataHandler> AggRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return std::shared_ptr<DataHandler>();
+    }
+    auto input = inputs[0];
     if (!input) {
         LOG(WARNING) << "input is empty";
         return std::shared_ptr<DataHandler>();
@@ -1908,21 +2525,198 @@ std::shared_ptr<DataHandler> AggRunner::Run(RunnerContext& ctx) {
         agg_gen_.Gen(std::dynamic_pointer_cast<TableHandler>(input))));
     return row_handler;
 }
-
-std::shared_ptr<DataHandler> ProxyRequestRunner::Run(RunnerContext& ctx) {
-    auto input = producers_[0]->RunWithCache(ctx);
-    if (!input) {
-        LOG(WARNING) << "input is empty";
-        return std::shared_ptr<DataHandler>();
+std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
+    RunnerContext& ctx) {
+    if (need_cache_) {
+        auto cached = ctx.GetBatchCache(id_);
+        if (cached != nullptr) {
+            DLOG(INFO) << "RUNNER ID " << id_ << " HIT CACHE!";
+            return cached;
+        }
+    }
+    std::shared_ptr<DataHandlerList> proxy_batch_input =
+        producers_[0]->BatchRequestRun(ctx);
+    if (!proxy_batch_input || 0 == proxy_batch_input->GetSize()) {
+        LOG(WARNING) << "proxy batch run input is empty";
+        return std::shared_ptr<DataHandlerList>();
+    }
+    // if need batch cache_, we only need to compute the first line
+    // and repeat the output
+    if (need_batch_cache_) {
+        std::vector<std::shared_ptr<DataHandler>> inputs(
+            {proxy_batch_input->Get(0)});
+        auto res = Run(ctx, inputs);
+        if (ctx.is_debug()) {
+            std::ostringstream oss;
+            oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+                << " HIT BATCH CACHE!"
+                << "\n";
+            Runner::PrintData(oss, output_schemas_, res);
+            LOG(INFO) << oss.str();
+        }
+        auto repeated_data = std::shared_ptr<DataHandlerList>(
+            new DataHandlerRepeater(res, proxy_batch_input->GetSize()));
+        if (need_cache_) {
+            ctx.SetBatchCache(id_, repeated_data);
+        }
+        return repeated_data;
     }
 
-    auto cluster_job = ctx.cluster_job();
+    // if not need batch cache
+    // compute each line
+    auto outputs = RunBatchInput(ctx, proxy_batch_input);
+    if (ctx.is_debug()) {
+        std::ostringstream oss;
+        oss << "RUNNER TYPE: " << RunnerTypeName(type_) << ", ID: " << id_
+            << "\n";
+        for (size_t idx = 0; idx < outputs->GetSize(); idx++) {
+            Runner::PrintData(oss, output_schemas_, outputs->Get(idx));
+        }
+        LOG(INFO) << oss.str();
+    }
+    if (need_cache_) {
+        ctx.SetBatchCache(id_, outputs);
+    }
+    return outputs;
+}
+
+// run each line of request
+std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
+    RunnerContext& ctx,
+    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
+    // proxy input, can be row or rows
+    if (inputs.size() < 1u) {
+        LOG(WARNING) << "inputs size < 1";
+        return fail_ptr;
+    }
+    auto input = inputs[0];
+    if (!input) {
+        LOG(WARNING) << "input is empty";
+        return fail_ptr;
+    }
+    switch (input->GetHanlderType()) {
+        case kRowHandler: {
+            auto row = std::dynamic_pointer_cast<RowHandler>(input)->GetValue();
+            return RunWithRowInput(ctx, row);
+        }
+        case kTableHandler: {
+            auto iter =
+                std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
+            if (!iter) {
+                LOG(WARNING)
+                    << "fail to run proxy runner with rows: table iter null"
+                    << task_id_;
+                return fail_ptr;
+            }
+            iter->SeekToFirst();
+            std::vector<Row> rows;
+            while (iter->Valid()) {
+                rows.push_back(iter->GetValue());
+                iter->Next();
+            }
+            return RunWithRowsInput(ctx, rows,
+                                    producers_[0]->need_batch_cache());
+        }
+        default: {
+            LOG(WARNING)
+                << "fail to run proxy runner: handler type unsupported";
+            return fail_ptr;
+        }
+    }
+    return fail_ptr;
+}
+// outs = Proxy(in_rows),  remote batch request
+// out_tables = Proxy(in_tables), remote batch request
+std::shared_ptr<DataHandlerList> ProxyRequestRunner::RunBatchInput(
+    RunnerContext& ctx,  // NOLINT
+    std::shared_ptr<DataHandlerList> batch_input) {
+    auto fail_ptr = std::shared_ptr<DataHandlerList>();
+    // proxy input, can be row or rows
+    if (!batch_input || 0 == batch_input->GetSize()) {
+        LOG(WARNING) << "input is empty";
+        return fail_ptr;
+    }
+    switch (batch_input->Get(0)->GetHanlderType()) {
+        case kRowHandler: {
+            bool input_batch_is_common = producers_[0]->need_batch_cache();
+            if (input_batch_is_common) {
+                Row row;
+                if (!ExtractRow(batch_input->Get(0), &row)) {
+                    LOG(WARNING) << "run proxy runner with rows fail, batch "
+                                    "rows is empty";
+                    return fail_ptr;
+                }
+                std::shared_ptr<TableHandler> table = RunWithRowsInput(
+                    ctx, std::vector<Row>({row}), input_batch_is_common);
+                if (!table) {
+                    LOG(WARNING) << "run proxy runner with rows fail, result "
+                                    "table is null";
+                    return fail_ptr;
+                }
+
+                std::shared_ptr<DataHandlerRepeater> outputs =
+                    std::make_shared<DataHandlerRepeater>(
+                        std::make_shared<AysncRowHandler>(0, table),
+                        batch_input->GetSize());
+                return outputs;
+            } else {
+                std::vector<Row> rows;
+                if (!ExtractRows(batch_input, rows)) {
+                    LOG(WARNING) << "run proxy runner with rows fail, batch "
+                                    "rows is empty";
+                    return fail_ptr;
+                }
+                std::shared_ptr<TableHandler> table =
+                    RunWithRowsInput(ctx, rows, input_batch_is_common);
+                if (!table) {
+                    LOG(WARNING) << "run proxy runner with rows fail, result "
+                                    "table is null";
+                    return fail_ptr;
+                }
+
+                std::shared_ptr<DataHandlerVector> outputs =
+                    std::make_shared<DataHandlerVector>();
+                for (size_t idx = 0; idx < rows.size(); idx++) {
+                    outputs->Add(std::make_shared<AysncRowHandler>(idx, table));
+                }
+                return outputs;
+            }
+        }
+        case kTableHandler: {
+            std::shared_ptr<DataHandlerVector> outputs =
+                std::make_shared<DataHandlerVector>();
+            for (size_t idx = 0; idx < batch_input->GetSize(); idx++) {
+                std::vector<Row> rows;
+                if (!ExtractRows(batch_input->Get(idx), rows)) {
+                    LOG(WARNING) << "run proxy runner with rows fail, batch "
+                                    "rows is empty";
+                    return fail_ptr;
+                }
+                outputs->Add(RunWithRowsInput(ctx, rows, false));
+            }
+            return outputs;
+        }
+        default: {
+            LOG(WARNING)
+                << "fail to run proxy runner: handler type unsupported";
+            return fail_ptr;
+        }
+    }
+    return fail_ptr;
+}
+
+// out = Proxy(in_row)
+// out_table = Proxy(in_table) , remote table left join
+std::shared_ptr<DataHandler> ProxyRequestRunner::RunWithRowInput(
+    RunnerContext& ctx,  // NOLINT
+    const Row& row) {
+    auto fail_ptr = std::shared_ptr<DataHandler>();
+    auto cluster_job = ctx.cluster_job();
     if (nullptr == cluster_job) {
         LOG(WARNING) << "fail to run proxy runner: invalid cluster job ptr";
         return fail_ptr;
     }
-
     auto task = cluster_job->GetTask(task_id_);
     if (!task.IsValid()) {
         LOG(WARNING) << "fail to run proxy runner: invalid task of taskid "
@@ -1930,50 +2724,99 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(RunnerContext& ctx) {
         return fail_ptr;
     }
     std::string pk = "";
-    switch (input->GetHanlderType()) {
-        case kRowHandler: {
-            auto row = std::dynamic_pointer_cast<RowHandler>(input)->GetValue();
-            if (!task.GetIndexKey().ValidKey()) {
-                // local mode
-                RunnerContext local_ctx(ctx.cluster_job(), row, ctx.is_debug());
-                return task.GetRoot()->RunWithCache(local_ctx);
-            }
-            KeyGenerator generator(task.GetIndexKey().fn_info());
-            pk = generator.Gen(row);
-            if (pk.empty()) {
-                // local mode
-                RunnerContext local_ctx(ctx.cluster_job(), row, ctx.is_debug());
-                return task.GetRoot()->RunWithCache(local_ctx);
-            } else {
-                DLOG(INFO) << "pick tablet with given index_name "
-                           << task.index() << " pk " << pk;
-                // TODO(denglong): route tablet client based on index
-                // and
-                auto table_handler = task.table_handler();
-                if (!table_handler) {
-                    LOG(WARNING) << "table handler is null";
-                    return std::shared_ptr<DataHandler>();
-                }
-                auto tablet = table_handler->GetTablet(task.index(), pk);
-                if (!tablet) {
-                    DLOG(INFO) << "tablet is null, run in local mode";
-                    RunnerContext local_ctx(ctx.cluster_job(), row,
-                                            ctx.is_debug());
-                    return task.GetRoot()->RunWithCache(local_ctx);
-                } else {
-                    return tablet->SubQuery(
-                        task_id_, table_handler->GetDatabase(),
-                        cluster_job->sql(), row, ctx.is_debug());
-                }
-            }
+    if (!task.GetIndexKey().ValidKey()) {
+        LOG(WARNING) << "can't pick tablet to subquery without index";
+        return std::shared_ptr<DataHandler>();
+    }
+    KeyGenerator generator(task.GetIndexKey().fn_info());
+    pk = generator.Gen(row);
+    if (pk.empty()) {
+        // local mode
+        LOG(WARNING) << "can't pick tablet to subquery with empty pk";
+        return std::shared_ptr<DataHandler>();
+    }
+    DLOG(INFO) << "pick tablet with given index_name " << task.index() << " pk "
+               << pk;
+    auto table_handler = task.table_handler();
+    if (!table_handler) {
+        LOG(WARNING) << "table handler is null";
+        return std::shared_ptr<DataHandler>();
+    }
+    auto tablet = table_handler->GetTablet(task.index(), pk);
+    if (!tablet) {
+        DLOG(INFO) << "tablet is null, run in local mode";
+        return std::shared_ptr<DataHandler>();
+    } else {
+        if (row.GetRowPtrCnt() > 1) {
+            LOG(WARNING) << "subquery with multi slice row is "
+                            "unsupported currently";
+            return std::shared_ptr<DataHandler>();
         }
-        default: {
-            LOG(WARNING) << "invalid key row, key generator input type is "
-                         << input->GetHandlerTypeName();
-            return fail_ptr;
+        if (ctx.sp_name().empty()) {
+            return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
+                                    cluster_job->sql(), row, false,
+                                    ctx.is_debug());
+        } else {
+            return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
+                                    ctx.sp_name(), row, true, ctx.is_debug());
         }
     }
 }
+// out_table = Proxy(in_table) , remote table left join
+std::shared_ptr<TableHandler> ProxyRequestRunner::RunWithRowsInput(
+    RunnerContext& ctx,  // NOLINT
+    const std::vector<Row>& rows, const bool request_is_common) {
+    // basic cluster task validate
+    auto fail_ptr = std::shared_ptr<TableHandler>();
+
+    auto cluster_job = ctx.cluster_job();
+    if (nullptr == cluster_job) {
+        LOG(WARNING) << "fail to run proxy runner: invalid cluster job ptr";
+        return fail_ptr;
+    }
+    auto task = cluster_job->GetTask(task_id_);
+    if (!task.IsValid()) {
+        LOG(WARNING)
+            << "fail to run proxy runner with rows: invalid task of taskid "
+            << task_id_;
+        return fail_ptr;
+    }
+    auto table_handler = task.table_handler();
+    if (!table_handler) {
+        LOG(WARNING) << "table handler is null";
+        return fail_ptr;
+    }
+    // collect pk list from rows
+    std::shared_ptr<Tablet> tablet = std::shared_ptr<Tablet>();
+    KeyGenerator generator(task.GetIndexKey().fn_info());
+    if (request_is_common) {
+        std::string pk = generator.Gen(rows[0]);
+        tablet = table_handler->GetTablet(task.index(), pk);
+    } else {
+        std::vector<std::string> pks;
+        for (auto& row : rows) {
+            pks.push_back(generator.Gen(row));
+        }
+        tablet = table_handler->GetTablet(task.index(), pks);
+    }
+    if (!tablet) {
+        LOG(WARNING) << "fail to run proxy runner with rows: tablet is null";
+        return fail_ptr;
+    }
+    if (ctx.sp_name().empty()) {
+        return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
+                                cluster_job->sql(),
+                                ctx.cluster_job()->common_column_indices(),
+                                rows, request_is_common, false, ctx.is_debug());
+    } else {
+        return tablet->SubQuery(task_id_, table_handler->GetDatabase(),
+                                ctx.sp_name(),
+                                ctx.cluster_job()->common_column_indices(),
+                                rows, request_is_common, true, ctx.is_debug());
+    }
+    return fail_ptr;
+}
+
 /**
  * TODO(chenjing): GenConst key during compile-time
  * @return
@@ -2251,6 +3094,43 @@ std::shared_ptr<TableHandler> FilterGenerator::Filter(
         return table;
     }
     return std::shared_ptr<TableHandler>(new TableFilterWrapper(table, this));
+}
+
+std::shared_ptr<DataHandlerList> RunnerContext::GetBatchCache(
+    int64_t id) const {
+    auto iter = batch_cache_.find(id);
+    if (iter == batch_cache_.end()) {
+        return std::shared_ptr<DataHandlerList>();
+    } else {
+        return iter->second;
+    }
+}
+
+void RunnerContext::SetBatchCache(int64_t id,
+                                  std::shared_ptr<DataHandlerList> data) {
+    batch_cache_[id] = data;
+}
+
+std::shared_ptr<DataHandler> RunnerContext::GetCache(int64_t id) const {
+    auto iter = cache_.find(id);
+    if (iter == cache_.end()) {
+        return std::shared_ptr<DataHandler>();
+    } else {
+        return iter->second;
+    }
+}
+
+void RunnerContext::SetCache(int64_t id,
+                             const std::shared_ptr<DataHandler> data) {
+    cache_[id] = data;
+}
+
+void RunnerContext::SetRequest(const fesql::codec::Row& request) {
+    request_ = request;
+}
+void RunnerContext::SetRequests(
+    const std::vector<fesql::codec::Row>& requests) {
+    requests_ = requests;
 }
 }  // namespace vm
 }  // namespace fesql

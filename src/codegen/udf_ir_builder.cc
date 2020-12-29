@@ -274,13 +274,15 @@ Status UDFIRBuilder::ExpandLLVMCallReturnArgs(
         ::llvm::Value* ret_alloca;
         auto opaque_ret_type = dynamic_cast<const node::OpaqueTypeNode*>(dtype);
         if (opaque_ret_type != nullptr) {
-            ret_alloca = builder->CreateAlloca(
-                ::llvm::Type::getInt8Ty(builder->getContext()),
+            ret_alloca = CreateAllocaAtHead(
+                builder, ::llvm::Type::getInt8Ty(builder->getContext()),
+                "udf_opaque_type_return_addr",
                 builder->getInt64(opaque_ret_type->bytes()));
         } else if (TypeIRBuilder::IsStructPtr(llvm_ty)) {
-            ret_alloca = builder->CreateAlloca(
-                reinterpret_cast<llvm::PointerType*>(llvm_ty)
-                    ->getElementType());
+            ret_alloca = CreateAllocaAtHead(
+                builder,
+                reinterpret_cast<llvm::PointerType*>(llvm_ty)->getElementType(),
+                "udf_struct_type_return_addr");
             // fill empty content for string
             if (dtype->base() == node::kVarchar) {
                 builder->CreateStore(builder->getInt32(0),
@@ -289,12 +291,14 @@ Status UDFIRBuilder::ExpandLLVMCallReturnArgs(
                                      builder->CreateStructGEP(ret_alloca, 1));
             }
         } else {
-            ret_alloca = builder->CreateAlloca(llvm_ty);
+            ret_alloca =
+                CreateAllocaAtHead(builder, llvm_ty, "udf_return_addr");
         }
         arg_vec->push_back(ret_alloca);
         if (nullable) {
             auto bool_ty = ::llvm::Type::getInt1Ty(builder->getContext());
-            arg_vec->push_back(builder->CreateAlloca(bool_ty));
+            arg_vec->push_back(CreateAllocaAtHead(builder, bool_ty,
+                                                  "udf_is_null_return_addr"));
         }
     }
     return Status::OK();
@@ -628,7 +632,8 @@ Status UDFIRBuilder::BuildUDAFCall(
             if (TypeIRBuilder::IsStructPtr(state_llvm_tys[i])) {
                 states_storage[i] = sub.GetValue(&builder);
             } else {
-                states_storage[i] = builder.CreateAlloca(state_llvm_tys[i]);
+                states_storage[i] = CreateAllocaAtHead(
+                    &builder, state_llvm_tys[i], "state_alloca");
                 builder.CreateStore(sub.GetValue(&builder), states_storage[i]);
             }
         }
@@ -636,7 +641,8 @@ Status UDFIRBuilder::BuildUDAFCall(
         if (TypeIRBuilder::IsStructPtr(state_llvm_tys[0])) {
             states_storage[0] = init_value.GetValue(&builder);
         } else {
-            states_storage[0] = builder.CreateAlloca(state_llvm_tys[0]);
+            states_storage[0] =
+                CreateAllocaAtHead(&builder, state_llvm_tys[0], "state_alloca");
             builder.CreateStore(init_value.GetValue(&builder),
                                 states_storage[0]);
         }

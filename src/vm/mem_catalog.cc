@@ -102,7 +102,7 @@ MemTimeTableHandler::MemTimeTableHandler(const std::string& table_name,
       order_type_(kNoneOrder) {}
 
 MemTimeTableHandler::~MemTimeTableHandler() {}
-std::unique_ptr<RowIterator> MemTimeTableHandler::GetIterator() const {
+std::unique_ptr<RowIterator> MemTimeTableHandler::GetIterator() {
     std::unique_ptr<MemTimeTableIterator> it(
         new MemTimeTableIterator(&table_, schema_));
     return std::move(it);
@@ -142,7 +142,7 @@ void MemTimeTableHandler::Reverse() {
                       ? kDescOrder
                       : kDescOrder == order_type_ ? kAscOrder : kNoneOrder;
 }
-RowIterator* MemTimeTableHandler::GetRawIterator() const {
+RowIterator* MemTimeTableHandler::GetRawIterator() {
     return new MemTimeTableIterator(&table_, schema_);
 }
 
@@ -226,12 +226,12 @@ std::unique_ptr<WindowIterator> MemTableHandler::GetWindowIterator(
     const std::string& idx_name) {
     return std::unique_ptr<WindowIterator>();
 }
-std::unique_ptr<RowIterator> MemTableHandler::GetIterator() const {
+std::unique_ptr<RowIterator> MemTableHandler::GetIterator() {
     std::unique_ptr<MemTableIterator> it(
         new MemTableIterator(&table_, schema_));
     return std::move(it);
 }
-RowIterator* MemTableHandler::GetRawIterator() const {
+RowIterator* MemTableHandler::GetRawIterator() {
     return new MemTableIterator(&table_, schema_);
 }
 
@@ -263,8 +263,14 @@ MemTableHandler::MemTableHandler(const std::string& table_name,
       index_hint_(),
       table_(),
       order_type_(kNoneOrder) {}
-void MemTableHandler::AddRow(const Row& row) {
-    table_.push_back(std::make_pair(table_.size(), row));
+void MemTableHandler::AddRow(const Row& row) { table_.push_back(row); }
+void MemTableHandler::Resize(const size_t size) { table_.resize(size); }
+bool MemTableHandler::SetRow(const size_t idx, const Row& row) {
+    if (idx >= table_.size()) {
+        return false;
+    }
+    table_[idx] = row;
+    return true;
 }
 void MemTableHandler::Reverse() {
     std::reverse(table_.begin(), table_.end());
@@ -291,16 +297,22 @@ MemTableIterator::MemTableIterator(const MemTable* table,
       iter_(start_iter_),
       key_(0) {}
 MemTableIterator::~MemTableIterator() {}
-void MemTableIterator::Seek(const uint64_t& ts) { iter_ = start_iter_ + ts; }
-void MemTableIterator::SeekToFirst() { iter_ = start_iter_; }
-const uint64_t& MemTableIterator::GetKey() const { return iter_->first; }
+void MemTableIterator::Seek(const uint64_t& ts) {
+    iter_ = start_iter_ + ts;
+    key_ = ts;
+}
+void MemTableIterator::SeekToFirst() {
+    iter_ = start_iter_;
+    key_ = 0;
+}
+const uint64_t& MemTableIterator::GetKey() const { return key_; }
 
 bool MemTableIterator::Valid() const { return end_iter_ > iter_; }
 void MemTableIterator::Next() {
     iter_++;
-    key_ = Valid() ? iter_ - start_iter_ : 0;
+    key_++;
 }
-const Row& MemTableIterator::GetValue() { return iter_->second; }
+const Row& MemTableIterator::GetValue() { return *iter_; }
 bool MemTableIterator::IsSeekable() const { return true; }
 
 // row iter interfaces for llvm

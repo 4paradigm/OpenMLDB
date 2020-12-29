@@ -54,10 +54,6 @@ public class Table implements Serializable{
         return getCreate(1);
     }
 
-    public String getProcedure(String sql) {
-        return buildCreateSpSQLFromColumnsIndexs(name, sql, getColumns());
-    }
-
     /**
      * 从输入构造Insert SQL：
      * 如果insert非空，直接返回insert，否则需要根据columns和rows来构造Insert SQL语句
@@ -378,24 +374,4 @@ public class Table implements Serializable{
         return sql;
     }
 
-
-    public static String buildCreateSpSQLFromColumnsIndexs(String name, String sql, List<String> columns) {
-        if (sql == null || sql.isEmpty()) {
-            return "";
-        }
-        StringBuilder builder = new StringBuilder("create procedure " + name + "(\n");
-        for (int i = 0; i < columns.size(); i++) {
-            builder.append(columns.get(i));
-            if (i != columns.size() - 1) {
-                builder.append(",");
-            }
-        }
-        builder.append(")\n");
-        builder.append("BEGIN\n");
-        builder.append(sql);
-        builder.append("\n");
-        builder.append("END;");
-        sql = builder.toString();
-        return sql;
-    }
 }

@@ -248,7 +248,7 @@ void LoadValue(T* result, bool* is_null,
     BasicBlock* entry_block = BasicBlock::Create(*ctx, "EntryBlock", fn);
     ScopeVar sv;
     codec::RowFormat buf_format(&table.columns());
-    BufNativeIRBuilder buf_builder(&buf_format, entry_block, &sv);
+    BufNativeIRBuilder buf_builder(0, &buf_format, entry_block, &sv);
     IRBuilder<> builder(entry_block);
     Function::arg_iterator it = fn->arg_begin();
     Argument* arg0 = &*it;

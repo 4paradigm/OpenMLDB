@@ -51,6 +51,9 @@
 				<includes>
 					<include>**/*</include>
 				</includes>
+				<excludes>
+					<!-- <exclude>libfesql_jsdk_complete*</exclude> -->
+				</excludes>
 			</resource>
 			<resource>
 				<directory>src/main/java</directory>

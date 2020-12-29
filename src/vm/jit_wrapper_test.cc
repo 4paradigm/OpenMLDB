@@ -39,8 +39,8 @@ std::shared_ptr<SimpleCatalog> GetTestCatalog() {
     return catalog;
 }
 
-std::string GetModuleString(const std::string &sql,
-                            std::shared_ptr<SimpleCatalog> catalog) {
+std::shared_ptr<CompileInfo> Compile(const std::string &sql,
+                                     std::shared_ptr<SimpleCatalog> catalog) {
     EngineOptions options;
     options.set_keep_ir(true);
     options.set_performance_sensitive(false);
@@ -50,17 +50,16 @@ std::string GetModuleString(const std::string &sql,
     Engine engine(catalog, options);
     if (!engine.Get(sql, "db", session, status)) {
         LOG(WARNING) << "Fail to compile sql";
-        return "";
+        return nullptr;
     }
-    auto compile_info = session.GetCompileInfo();
-    return compile_info->get_sql_context().ir;
+    return session.GetCompileInfo();
 }
 
 TEST_F(JITWrapperTest, test) {
     auto catalog = GetTestCatalog();
-    std::string ir_str =
-        GetModuleString("select col_1, col_2 from t1;", catalog);
-
+    auto compile_info = Compile("select col_1, col_2 from t1;", catalog);
+    auto &sql_context = compile_info->get_sql_context();
+    std::string ir_str = sql_context.ir;
     ASSERT_FALSE(ir_str.empty());
     FeSQLJITWrapper jit;
     ASSERT_TRUE(jit.Init());
@@ -68,7 +67,8 @@ TEST_F(JITWrapperTest, test) {
     base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
     ASSERT_TRUE(jit.AddModuleFromBuffer(ir_buf));
 
-    auto fn = jit.FindFunction("__internal_sql_codegen_0");
+    auto fn_name = sql_context.physical_plan->GetFnInfos()[0]->fn_name();
+    auto fn = jit.FindFunction(fn_name);
     ASSERT_TRUE(fn != nullptr);
 
     int8_t buf[1024];
@@ -93,7 +93,7 @@ TEST_F(JITWrapperTest, test) {
 
 TEST_F(JITWrapperTest, test_window) {
     auto catalog = GetTestCatalog();
-    std::string ir_str = GetModuleString(
+    auto compile_info = Compile(
         "select col_1, sum(col_2) over w, "
         "distinct_count(col_2) over w "
         "from t1 "
@@ -101,6 +101,8 @@ TEST_F(JITWrapperTest, test_window) {
         "PARTITION by col_2 ORDER BY col_2 "
         "ROWS BETWEEN 1 PRECEDING AND CURRENT ROW);",
         catalog);
+    auto &sql_context = compile_info->get_sql_context();
+    std::string ir_str = sql_context.ir;
 
     // clear this dict to ensure jit wrapper reinit all symbols
     // this should be removed by better symbol init utility
@@ -112,7 +114,8 @@ TEST_F(JITWrapperTest, test_window) {
     base::RawBuffer ir_buf(const_cast<char *>(ir_str.data()), ir_str.size());
     ASSERT_TRUE(jit.AddModuleFromBuffer(ir_buf));
 
-    auto fn = jit.FindFunction("__internal_sql_codegen_0");
+    auto fn_name = sql_context.physical_plan->GetFnInfos()[0]->fn_name();
+    auto fn = jit.FindFunction(fn_name);
     ASSERT_TRUE(fn != nullptr);
 }
 

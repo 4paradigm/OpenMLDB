@@ -201,7 +201,7 @@ public class DDLEngine {
                 }
                 continue;
             }
-            if (type.swigValue() == PhysicalOpType.kPhysicalOpRequestUnoin.swigValue()) {
+            if (type.swigValue() == PhysicalOpType.kPhysicalOpRequestUnion.swigValue()) {
                 parseWindowOp(node, rtidbTables);
                 continue;
             }
@@ -243,7 +243,7 @@ public class DDLEngine {
     public static void dagToList(PhysicalOpNode node, List<PhysicalOpNode> list) {
         PhysicalOpType type = node.GetOpType();
         // 需要针对union node做特殊处理
-        if (type.swigValue() == PhysicalOpType.kPhysicalOpRequestUnoin.swigValue()) {
+        if (type.swigValue() == PhysicalOpType.kPhysicalOpRequestUnion.swigValue()) {
             PhysicalRequestUnionNode castNode = PhysicalRequestUnionNode.CastFrom(node);
             for (int i = 0; i < castNode.window_unions().GetSize(); i++) {
                 dagToList(castNode.window_unions().GetKey(i), list);

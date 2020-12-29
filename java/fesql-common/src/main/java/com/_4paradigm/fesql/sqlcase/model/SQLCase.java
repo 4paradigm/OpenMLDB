@@ -2,6 +2,7 @@ package com._4paradigm.fesql.sqlcase.model;
 
 import lombok.Data;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 
 import java.io.Serializable;
 import java.util.List;
@@ -26,6 +27,7 @@ public class SQLCase implements Serializable{
     List<InputDesc> inputs;
     InputDesc batch_request;
     ExpectDesc expect;
+    String spName = genAutoName();
     private Map<Integer,ExpectDesc> expectProvider;
 
     public static String formatSql(String sql, int idx, String name) {
@@ -44,6 +46,34 @@ public class SQLCase implements Serializable{
         for (int idx = 0; idx < inputs.size(); idx++) {
             sql = formatSql(sql, idx, inputs.get(idx).getName());
         }
+        return sql;
+    }
+
+    public static String genAutoName() {
+        return "auto_" + RandomStringUtils.randomAlphabetic(8);
+    }
+
+    public String getProcedure(String sql) {
+        return buildCreateSpSQLFromColumnsIndexs(spName, sql, inputs.get(0).getColumns());
+    }
+
+    public static String buildCreateSpSQLFromColumnsIndexs(String name, String sql, List<String> columns) {
+        if (sql == null || sql.isEmpty()) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder("create procedure " + name + "(\n");
+        for (int i = 0; i < columns.size(); i++) {
+            builder.append(columns.get(i));
+            if (i != columns.size() - 1) {
+                builder.append(",");
+            }
+        }
+        builder.append(")\n");
+        builder.append("BEGIN\n");
+        builder.append(sql);
+        builder.append("\n");
+        builder.append("END;");
+        sql = builder.toString();
         return sql;
     }
 

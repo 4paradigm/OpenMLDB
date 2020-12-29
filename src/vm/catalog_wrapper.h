@@ -177,8 +177,7 @@ class PartitionProjectWrapper : public PartitionHandler {
     const std::string& GetDatabase() override {
         return partition_handler_->GetDatabase();
     }
-    std::unique_ptr<base::ConstIterator<uint64_t, Row>> GetIterator()
-        const override {
+    std::unique_ptr<base::ConstIterator<uint64_t, Row>> GetIterator() override {
         auto iter = partition_handler_->GetIterator();
         if (!iter) {
             return std::unique_ptr<RowIterator>();
@@ -187,7 +186,7 @@ class PartitionProjectWrapper : public PartitionHandler {
                 new IteratorProjectWrapper(std::move(iter), fun_));
         }
     }
-    base::ConstIterator<uint64_t, Row>* GetRawIterator() const override;
+    base::ConstIterator<uint64_t, Row>* GetRawIterator() override;
     Row At(uint64_t pos) override {
         value_ = fun_->operator()(partition_handler_->At(pos));
         return value_;
@@ -237,8 +236,7 @@ class PartitionFilterWrapper : public PartitionHandler {
     const std::string& GetDatabase() override {
         return partition_handler_->GetDatabase();
     }
-    std::unique_ptr<base::ConstIterator<uint64_t, Row>> GetIterator()
-        const override {
+    std::unique_ptr<base::ConstIterator<uint64_t, Row>> GetIterator() override {
         auto iter = partition_handler_->GetIterator();
         if (!iter) {
             return std::unique_ptr<base::ConstIterator<uint64_t, Row>>();
@@ -247,7 +245,7 @@ class PartitionFilterWrapper : public PartitionHandler {
                 new IteratorFilterWrapper(std::move(iter), fun_));
         }
     }
-    base::ConstIterator<uint64_t, Row>* GetRawIterator() const override;
+    base::ConstIterator<uint64_t, Row>* GetRawIterator() override;
     virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key);
     virtual const OrderType GetOrderType() const {
         return partition_handler_->GetOrderType();
@@ -265,7 +263,7 @@ class TableProjectWrapper : public TableHandler {
         : TableHandler(), table_hander_(table_handler), value_(), fun_(fun) {}
     virtual ~TableProjectWrapper() {}
 
-    std::unique_ptr<RowIterator> GetIterator() const {
+    std::unique_ptr<RowIterator> GetIterator() {
         auto iter = table_hander_->GetIterator();
         if (!iter) {
             return std::unique_ptr<RowIterator>();
@@ -291,7 +289,7 @@ class TableProjectWrapper : public TableHandler {
     const std::string& GetDatabase() override {
         return table_hander_->GetDatabase();
     }
-    base::ConstIterator<uint64_t, Row>* GetRawIterator() const override {
+    base::ConstIterator<uint64_t, Row>* GetRawIterator() override {
         auto iter = table_hander_->GetIterator();
         if (!iter) {
             return nullptr;
@@ -321,7 +319,7 @@ class TableFilterWrapper : public TableHandler {
         : TableHandler(), table_hander_(table_handler), fun_(fun) {}
     virtual ~TableFilterWrapper() {}
 
-    std::unique_ptr<RowIterator> GetIterator() const {
+    std::unique_ptr<RowIterator> GetIterator() {
         auto iter = table_hander_->GetIterator();
         if (!iter) {
             return std::unique_ptr<RowIterator>();
@@ -347,7 +345,7 @@ class TableFilterWrapper : public TableHandler {
     const std::string& GetDatabase() override {
         return table_hander_->GetDatabase();
     }
-    base::ConstIterator<uint64_t, Row>* GetRawIterator() const override {
+    base::ConstIterator<uint64_t, Row>* GetRawIterator() override {
         return new IteratorFilterWrapper(
             static_cast<std::unique_ptr<RowIterator>>(
                 table_hander_->GetRawIterator()),
@@ -408,6 +406,11 @@ class RowCombineWrapper : public RowHandler {
         }
         auto left_row =
             std::dynamic_pointer_cast<RowHandler>(left_)->GetValue();
+        if (!right_) {
+            value_ = Row(left_slices_, left_row, right_slices_, Row());
+            status_ = base::Status::OK();
+            return value_;
+        }
         if (kRowHandler == right_->GetHanlderType()) {
             auto right_row =
                 std::dynamic_pointer_cast<RowHandler>(right_)->GetValue();

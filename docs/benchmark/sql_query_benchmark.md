@@ -15,10 +15,10 @@ select col_str64, col_i64, col_i32, col_i16, col_f, col_d, col_str255
 
 | CLIENT         | Benchmark/GroupCnt/MaxWindowSize | Time    |      | CPU    |      | Iterations |
 | -------------- | -------------------------------- | ------- | ---- | ------ | ---- | ---------- |
-| FESQL-BatchRun | BM_SIMPLE_QUERY/10/1             | 248826  | ns   | 59943  | ns   | 12263      |
-| FESQL-BatchRun | BM_SIMPLE_QUERY/10/10            | 310241  | ns   | 66803  | ns   | 10848      |
-| FESQL-BatchRun | BM_SIMPLE_QUERY/10/100           | 618046  | ns   | 103188 | ns   | 5586       |
-| FESQL-BatchRun | BM_SIMPLE_QUERY/10/1000          | 3470984 | ns   | 588842 | ns   | 1209       |
+| FESQL-BatchRequestRun | BM_SIMPLE_QUERY/10/1             | 248826  | ns   | 59943  | ns   | 12263      |
+| FESQL-BatchRequestRun | BM_SIMPLE_QUERY/10/10            | 310241  | ns   | 66803  | ns   | 10848      |
+| FESQL-BatchRequestRun | BM_SIMPLE_QUERY/10/100           | 618046  | ns   | 103188 | ns   | 5586       |
+| FESQL-BatchRequestRun | BM_SIMPLE_QUERY/10/1000          | 3470984 | ns   | 588842 | ns   | 1209       |
 
 | CLIENT | Benchmark/GroupCnt/MaxWindowSize | Time    |      | CPU     |      | Iterations |
 | ------ | -------------------------------- | ------- | ---- | ------- | ---- | ---------- |
@@ -68,10 +68,10 @@ window w1 as (PARTITION BY col_str64
 
 | CLIENT         | Benchmark/GroupCnt/MaxWindowSize | Time     |      | CPU    |      | Iterations |
 | -------------- | -------------------------------- | -------- | ---- | ------ | ---- | ---------- |
-| FESQL-BatchRun | BM_WINDOW_CASE1_QUERY/10/1       | 264609   | ns   | 60641  | ns   | 11745      |
-| FESQL-BatchRun | BM_WINDOW_CASE1_QUERY/10/10      | 311786   | ns   | 70131  | ns   | 10341      |
-| FESQL-BatchRun | BM_WINDOW_CASE1_QUERY/10/100     | 1064633  | ns   | 119575 | ns   | 5688       |
-| FESQL-BatchRun | BM_WINDOW_CASE1_QUERY/10/1000    | 40367027 | ns   | 591808 | ns   | 100        |
+| FESQL-BatchRequestRun | BM_WINDOW_CASE1_QUERY/10/1       | 264609   | ns   | 60641  | ns   | 11745      |
+| FESQL-BatchRequestRun | BM_WINDOW_CASE1_QUERY/10/10      | 311786   | ns   | 70131  | ns   | 10341      |
+| FESQL-BatchRequestRun | BM_WINDOW_CASE1_QUERY/10/100     | 1064633  | ns   | 119575 | ns   | 5688       |
+| FESQL-BatchRequestRun | BM_WINDOW_CASE1_QUERY/10/1000    | 40367027 | ns   | 591808 | ns   | 100        |
 
 | CLIENT | Benchmark/GroupCnt/MaxWindowSize | Time     |      | CPU    |      | Iterations |
 | ------ | -------------------------------- | -------- | ---- | ------ | ---- | ---------- |
@@ -105,10 +105,10 @@ window w1 as (PARTITION BY col_str64
 
 | CLIENT         | Benchmark/GroupCnt/MaxWindowSize | Time     |      | CPU    |      | Iterations |
 | -------------- | -------------------------------- | -------- | ---- | ------ | ---- | ---------- |
-| FESQL-BatchRun | BM_WINDOW_CASE2_QUERY/10/10      | 277045   | ns   | 64237  | ns   | 11924      |
-| FESQL-BatchRun | BM_WINDOW_CASE2_QUERY/10/100     | 344821   | ns   | 70509  | ns   | 9459       |
-| FESQL-BatchRun | BM_WINDOW_CASE2_QUERY/10/1000    | 1452067  | ns   | 121331 | ns   | 5639       |
-| FESQL-BatchRun | BM_WINDOW_CASE2_QUERY/10/10000   | 81348037 | ns   | 586633 | ns   | 100        |
+| FESQL-BatchRequestRun | BM_WINDOW_CASE2_QUERY/10/10      | 277045   | ns   | 64237  | ns   | 11924      |
+| FESQL-BatchRequestRun | BM_WINDOW_CASE2_QUERY/10/100     | 344821   | ns   | 70509  | ns   | 9459       |
+| FESQL-BatchRequestRun | BM_WINDOW_CASE2_QUERY/10/1000    | 1452067  | ns   | 121331 | ns   | 5639       |
+| FESQL-BatchRequestRun | BM_WINDOW_CASE2_QUERY/10/10000   | 81348037 | ns   | 586633 | ns   | 100        |
 
 | CLIENT | Benchmark/GroupCnt/MaxWindowSize | Time     |      |         | Iterations |      |
 | ------ | -------------------------------- | -------- | ---- | ------- | ---------- | ---- |
@@ -120,9 +120,9 @@ window w1 as (PARTITION BY col_str64
 报告分析：
 
 - MemSQL在数据规模为10000时下，性能有优势。FESQL BatchRun在这个数据规模下，性能衰减很大。
-- FESQL-BatchRun/BM_WINDOW_CASE2_QUERY/10000 VS FESQL-BatchRun/BM_WINDOW_CASE1_QUERY/10000: 
+- FESQL-BatchRequestRun/BM_WINDOW_CASE2_QUERY/10000 VS FESQL-BatchRun/BM_WINDOW_CASE1_QUERY/10000: 
   - FESQL在10000数据规模下,统计列数增加一倍（从2列变成4列），Time消耗增加一倍。MemSQL却仅增加约30%，说明FESQL对统计列规模敏感。这可能是由于统计多列耗时导致性能衰减，也可能是多列编码解码以及rpc传输导致性能衰减。
-- BatchRun/BM_WINDOW_CASE2_QUERY/10000 VS BatchRun/BM_SIMPLE_QUERY/10000:
+- BatchRequestRun/BM_WINDOW_CASE2_QUERY/10000 VS BatchRun/BM_SIMPLE_QUERY/10000:
   - FESQL的单行列筛选性能表现比MEMSQL好，因此多列编解码和rpc传输不是瓶颈
 - 最终，猜测瓶颈可能还是多列统计导致
 
@@ -145,12 +145,12 @@ window w1 as (PARTITION BY col_str64
 
 | CLIENT         | Benchmark/GroupCnt/MaxWindowSize | Time      |      | CPU    |      | Iterations |
 | -------------- | -------------------------------- | --------- | ---- | ------ | ---- | ---------- |
-| FESQL-BatchRun | BM_WINDOW_CASE3_QUERY/1/100      | 319670    | ns   | 67864  | ns   | 11126      |
-| FESQL-BatchRun | BM_WINDOW_CASE3_QUERY/1/1000     | 2330115   | ns   | 109095 | ns   | 6377       |
-| FESQL-BatchRun | BM_WINDOW_CASE3_QUERY/1/10000    | 202753063 | ns   | 587089 | ns   | 100        |
-| FESQL-BatchRun | BM_WINDOW_CASE3_QUERY/10/10      | 412865    | ns   | 69426  | ns   | 9139       |
-| FESQL-BatchRun | BM_WINDOW_CASE3_QUERY/10/100     | 951299    | ns   | 110377 | ns   | 6404       |
-| FESQL-BatchRun | BM_WINDOW_CASE3_QUERY/10/1000    | 20108206  | ns   | 557059 | ns   | 1231       |
+| FESQL-BatchRequestRun | BM_WINDOW_CASE3_QUERY/1/100      | 319670    | ns   | 67864  | ns   | 11126      |
+| FESQL-BatchRequestRun | BM_WINDOW_CASE3_QUERY/1/1000     | 2330115   | ns   | 109095 | ns   | 6377       |
+| FESQL-BatchRequestRun | BM_WINDOW_CASE3_QUERY/1/10000    | 202753063 | ns   | 587089 | ns   | 100        |
+| FESQL-BatchRequestRun | BM_WINDOW_CASE3_QUERY/10/10      | 412865    | ns   | 69426  | ns   | 9139       |
+| FESQL-BatchRequestRun | BM_WINDOW_CASE3_QUERY/10/100     | 951299    | ns   | 110377 | ns   | 6404       |
+| FESQL-BatchRequestRun | BM_WINDOW_CASE3_QUERY/10/1000    | 20108206  | ns   | 557059 | ns   | 1231       |
 
 | CLIENT | Benchmark/GroupCnt/MaxWindowSize | Time     |      | CPU    |      | Iterations |
 | ------ | -------------------------------- | -------- | ---- | ------ | ---- | ---------- |

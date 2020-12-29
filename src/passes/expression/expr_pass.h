@@ -24,6 +24,9 @@ class ExprReplacer {
  public:
     void AddReplacement(const node::ExprIdNode* arg, node::ExprNode* repl);
     void AddReplacement(const node::ExprNode* expr, node::ExprNode* repl);
+    void AddReplacement(size_t column_id, node::ExprNode* repl);
+    void AddReplacement(const std::string& relation_name,
+                        const std::string& column_name, node::ExprNode* repl);
 
     fesql::base::Status Replace(node::ExprNode* root,
                                 node::ExprNode** output) const;
@@ -35,6 +38,8 @@ class ExprReplacer {
 
     std::unordered_map<size_t, node::ExprNode*> arg_id_map_;
     std::unordered_map<size_t, node::ExprNode*> node_id_map_;
+    std::unordered_map<size_t, node::ExprNode*> column_id_map_;
+    std::unordered_map<std::string, node::ExprNode*> column_name_map_;
 };
 
 }  // namespace passes

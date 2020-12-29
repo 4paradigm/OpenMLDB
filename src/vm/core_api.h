@@ -35,6 +35,10 @@ class WindowInterface {
 
     void BufferData(uint64_t key, const Row& row);
 
+    fesql::codec::Row Get(uint64_t idx) const { return window_impl_->At(idx); }
+
+    size_t size() const { return window_impl_->GetCount(); }
+
  private:
     friend CoreAPI;
 
@@ -75,6 +79,9 @@ class CoreAPI {
                                            const uint64_t key, const Row row,
                                            const bool is_instance,
                                            size_t append_slices,
+                                           WindowInterface* window);
+    static fesql::codec::Row WindowProject(const fesql::vm::RawPtrHandle fn,
+                                           const Row row,
                                            WindowInterface* window);
 
     static fesql::codec::Row GroupbyProject(

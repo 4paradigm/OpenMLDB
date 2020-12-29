@@ -136,6 +136,9 @@ class SchemasContext {
      */
     base::Status ResolveExprDependentColumns(
         const node::ExprNode* expr, std::set<size_t>* column_ids) const;
+    base::Status ResolveExprDependentColumns(
+        const node::ExprNode* expr,
+        std::vector<const node::ExprNode*>* columns) const;
 
     /**
      * Get the relation name for this schema context, default ""

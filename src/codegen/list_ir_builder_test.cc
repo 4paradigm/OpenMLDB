@@ -272,8 +272,8 @@ void RunInnerListIteratorCase(T expected, const type::TableDef& table,
                 ::llvm::Type* list_ref_ty =
                     reinterpret_cast<::llvm::PointerType*>(arg0->getType())
                         ->getElementType();
-                ::llvm::Value* inner_list_ref =
-                    builder.CreateAlloca(list_ref_ty);
+                ::llvm::Value* inner_list_ref = CreateAllocaAtHead(
+                    &builder, list_ref_ty, "list_ref_alloca");
                 ::llvm::Value* list_ref_gep_0 = builder.CreateStructGEP(
                     cast<PointerType>(arg0->getType()->getScalarType())
                         ->getElementType(),

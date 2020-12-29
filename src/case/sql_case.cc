@@ -628,14 +628,13 @@ bool SQLCase::ExtractInputTableDef(type::TableDef& table,
     return ExtractInputTableDef(inputs_[input_idx], table);
 }
 bool SQLCase::ExtractInputTableDef(const TableInfo& input,
-                          type::TableDef& table) const {
+                                   type::TableDef& table) const {
     if (!input.schema_.empty()) {
         if (!ExtractTableDef(input.schema_, input.index_, table)) {
             return false;
         }
     } else if (!input.columns_.empty()) {
-        if (!ExtractTableDef(input.columns_,
-                             input.indexs_, table)) {
+        if (!ExtractTableDef(input.columns_, input.indexs_, table)) {
             return false;
         }
     }
@@ -897,6 +896,17 @@ bool SQLCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
     } else {
         expect->success_ = true;
     }
+    if (schema_data["common_column_indices"]) {
+        auto data = schema_data["common_column_indices"];
+        std::vector<std::string> idxs;
+        if (!CreateStringListFromYamlNode(data, idxs)) {
+            return false;
+        }
+        for (auto str : idxs) {
+            expect->common_column_indices_.insert(
+                boost::lexical_cast<size_t>(str));
+        }
+    }
     return true;
 }
 bool SQLCase::CreateSQLCasesFromYaml(const std::string& cases_dir,
@@ -923,7 +933,6 @@ bool SQLCase::CreateTableInfoFromYaml(const std::string& cases_dir,
     } else {
         resouces_path = yaml_path;
     }
-    DLOG(INFO) << "Resource path: " << resouces_path;
     if (!boost::filesystem::is_regular_file(resouces_path)) {
         LOG(WARNING) << resouces_path << ": No such file";
         return false;
@@ -968,7 +977,9 @@ bool SQLCase::CreateSQLCasesFromYaml(
     } else {
         sql_case_path = yaml_path;
     }
-    DLOG(INFO) << "SQL Cases Path: " << sql_case_path;
+    if (IS_DEBUG()) {
+        DLOG(INFO) << "SQL Cases Path: " << sql_case_path;
+    }
     if (!boost::filesystem::is_regular_file(sql_case_path)) {
         LOG(WARNING) << sql_case_path << ": No such file";
         return false;
@@ -1187,23 +1198,22 @@ std::string FindFesqlDirPath() {
     }
 
     if (find_fesql_dir) {
-        DLOG(INFO) << "Fesql Dir Path is : " << fesql_path.string()
-                   << std::endl;
         return fesql_path.string();
     }
     return std::string();
 }
 
 bool SQLCase::BuildCreateSpSQLFromInput(int32_t input_idx,
-        const std::string& select_sql, const std::set<size_t>& common_idx,
-        std::string* create_sp_sql) {
+                                        const std::string& select_sql,
+                                        const std::set<size_t>& common_idx,
+                                        std::string* create_sp_sql) {
     type::TableDef table;
     if (!ExtractInputTableDef(table, input_idx)) {
         LOG(WARNING) << "Fail to extract table schema";
         return false;
     }
-    if (!BuildCreateSpSQLFromSchema(
-                table, select_sql, common_idx, create_sp_sql)) {
+    if (!BuildCreateSpSQLFromSchema(table, select_sql, common_idx,
+                                    create_sp_sql)) {
         LOG(WARNING) << "Fail to build create sql string";
         return false;
     }
@@ -1211,9 +1221,10 @@ bool SQLCase::BuildCreateSpSQLFromInput(int32_t input_idx,
 }
 
 bool SQLCase::BuildCreateSpSQLFromSchema(const type::TableDef& table,
-        const std::string& select_sql, const std::set<size_t>& common_idx,
-        std::string* create_sql) {
-    std::string sql = "CREATE Procedure " + table.name() + "(\n";
+                                         const std::string& select_sql,
+                                         const std::set<size_t>& common_idx,
+                                         std::string* create_sql) {
+    std::string sql = "CREATE Procedure " + sp_name_ + "(\n";
     for (int i = 0; i < table.columns_size(); i++) {
         auto column = table.columns(i);
         if (!common_idx.empty() && common_idx.count(i)) {

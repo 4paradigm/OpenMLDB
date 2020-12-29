@@ -22,10 +22,12 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include "base/fe_hash.h"
 #include "base/mem_pool.h"
 #include "glog/logging.h"
 namespace fesql {
 namespace codec {
+static const uint32_t SEED = 0xe17a1465;
 struct StringRef {
     StringRef() : size_(0), data_(nullptr) {}
     explicit StringRef(const char* str)
@@ -475,7 +477,7 @@ struct hash<fesql::codec::Date> {
 template <>
 struct hash<fesql::codec::StringRef> {
     std::size_t operator()(const fesql::codec::StringRef& t) const {
-        return std::hash<std::string>()(t.ToString());
+        return fesql::base::hash(t.data_, t.size_, fesql::codec::SEED);
     }
 };
 
