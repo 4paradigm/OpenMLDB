@@ -3,12 +3,6 @@
 ROOT_DIR=`pwd`
 ulimit -c unlimited
 
-#git submodule update
-
-echo "DDDDDDD"
-
-ls -al fesql/tools/autotest
-
 cd ${ROOT_DIR}
 
 sh steps/gen_code.sh
@@ -36,6 +30,7 @@ python3 -m pip install PyYaml -i https://pypi.tuna.tsinghua.edu.cn/simple
 python3 fesql/tools/autotest/gen_case_yaml_main.py  \
     --udf_path=udf_defs.yaml --yaml_count=1
 
+cd ${ROOT_DIR}
 ls -al fesql/cases/auto_gen_cases/
 echo "BBBBBBBBBB"
 
