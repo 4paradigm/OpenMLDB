@@ -5,7 +5,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 stages:
 #  - precheck
-  - build
+#  - build
 #  - daily
 #  - quick
   - manual
@@ -60,20 +60,20 @@ stages:
 #      - build/bin
 #  when: manual
 
-build:
-  stage: build
-  script:
-    - source /root/.bashrc && sh tools/install_fesql.sh
-    - ln -sf /depends/thirdparty thirdparty
-    - ln -sf /depends/thirdsrc thirdsrc
-    - source /root/.bashrc && bash steps/simple_compile.sh
-  artifacts:
-    expire_in: 4h
-    paths:
-      - build/bin/rtidb
-      - build/src/sdk/libsql_jsdk.so
-      - build/sql_pysdk/dist/*.whl
-      - build/python/dist/*.whl
+#build:
+#  stage: build
+#  script:
+#    - source /root/.bashrc && sh tools/install_fesql.sh
+#    - ln -sf /depends/thirdparty thirdparty
+#    - ln -sf /depends/thirdsrc thirdsrc
+#    - source /root/.bashrc && bash steps/simple_compile.sh
+#  artifacts:
+#    expire_in: 4h
+#    paths:
+#      - build/bin/rtidb
+#      - build/src/sdk/libsql_jsdk.so
+#      - build/sql_pysdk/dist/*.whl
+#      - build/python/dist/*.whl
 
 #mac_build:
 #  variables:
@@ -532,6 +532,6 @@ fesql_auto_gen_case:
   except:
     variables:
       - $ENV_BUILD == "daily"
-  dependencies:
-    - build
+#  dependencies:
+#    - build
   when: manual

@@ -7,7 +7,7 @@ ulimit -c unlimited
 
 echo "DDDDDDD"
 
-ls -al tools/autotest
+ls -al fesql/tools/autotest
 
 cd ${ROOT_DIR}
 
@@ -36,7 +36,7 @@ python3 -m pip install PyYaml -i https://pypi.tuna.tsinghua.edu.cn/simple
 python3 fesql/tools/autotest/gen_case_yaml_main.py  \
     --udf_path=udf_defs.yaml --yaml_count=1
 
-ls -al fesql/cases/auto_gen_cases
+ls -al fesql/cases/auto_gen_cases/
 echo "BBBBBBBBBB"
 
 cd ${ROOT_DIR}
