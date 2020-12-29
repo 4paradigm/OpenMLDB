@@ -471,6 +471,13 @@ void DoEngineCheckExpect(const SQLCase& sql_case,
 
     if (!sql_case.expect().schema_.empty() ||
         !sql_case.expect().columns_.empty()) {
+
+    }
+    if (sql_case.expect().schema_.empty() &&
+        sql_case.expect().columns_.empty()) {
+        LOG(INFO) << "Expect result empty, Real result:\n";
+        PrintRows(schema, sorted_output);
+    } else {
         // Check Output Schema
         type::TableDef case_output_table;
         ASSERT_TRUE(sql_case.ExtractOutputSchema(case_output_table));
@@ -494,9 +501,6 @@ void DoEngineCheckExpect(const SQLCase& sql_case,
 
         ASSERT_NO_FATAL_FAILURE(
             CheckRows(schema, sorted_output, case_output_data));
-    } else {
-        LOG(INFO) << "Real result:\n";
-        PrintRows(schema, sorted_output);
     }
 }
 
