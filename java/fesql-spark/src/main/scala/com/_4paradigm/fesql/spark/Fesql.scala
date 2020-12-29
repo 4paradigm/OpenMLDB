@@ -53,6 +53,10 @@ object Fesql {
       }
     }
 
+//    if (FesqlConfig.mode == FesqlConfig.stat) {
+//
+//    }
+
 //    val rquestEngine = new RequestEngine(sqlScript, FesqlUtil.getDatabase(FesqlConfig.configDBName, sess.registeredTables.toMap))
     val feconfig = sql2Feconfig(sqlScript, FesqlUtil.getDatabase(FesqlConfig.configDBName, sess.registeredTables.toMap))//parseOpSchema(rquestEngine.getPlan)
     val tableInfoRDD = sess.getSparkSession.sparkContext.parallelize(Seq(feconfig)).repartition(1)
@@ -61,17 +65,20 @@ object Fesql {
 
     val output = config.getOutputPath + "/data"
     val res = sess.fesql(sqlScript)
+
+    res.sparkDf.show(100)
+    logger.info("fesql compute is done")
 //    sess.
 
 
-    if (config.getInstanceFormat.equals("parquet")) {
-      res.sparkDf.write.mode("overwrite").parquet(output)
-    }
-    if (config.getInstanceFormat.equals("csv")) {
-      res.sparkDf.write.mode("overwrite").csv(output)
-    }
+//    if (config.getInstanceFormat.equals("parquet")) {
+//      res.sparkDf.write.mode("overwrite").parquet(output)
+//    }
+//    if (config.getInstanceFormat.equals("csv")) {
+//      res.sparkDf.write.mode("overwrite").csv(output)
+//    }
 
-    sess.stop()
+//    sess.stop()
   }
 
 }
