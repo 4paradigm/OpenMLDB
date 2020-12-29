@@ -174,6 +174,7 @@ void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_
         FAIL() << "sql case should contain batch request columns: ";
         return;
     }
+    const bool enable_request_batch_optimized = state.range(0) == 1;
     const bool is_procedure = fesql::sqlcase::SQLCase::IS_PROCEDURE();
     ::rtidb::sdk::SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc->GetZkCluster();
@@ -192,9 +193,6 @@ void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_
     rtidb::sdk::SQLSDKTest::CreateDB(sql_case, router);
     rtidb::sdk::SQLSDKTest::CreateTables(sql_case, router, 8);
     rtidb::sdk::SQLSDKTest::InsertTables(sql_case, router, rtidb::sdk::kInsertAllInputs);
-    if (is_procedure) {
-        rtidb::sdk::SQLSDKTest::CreateProcedure(sql_case, router);
-    }
     {
         // execute SQL
         std::string sql = sql_case.sql_str();
@@ -228,9 +226,15 @@ void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_
         }
 
         auto common_column_indices = std::make_shared<rtidb::sdk::ColumnIndicesSet>(request_row->GetSchema());
-        for (size_t idx : sql_case.batch_request_.common_column_indices_) {
-            common_column_indices->AddCommonColumnIdx(idx);
+        if (enable_request_batch_optimized) {
+            for (size_t idx : sql_case.batch_request_.common_column_indices_) {
+                common_column_indices->AddCommonColumnIdx(idx);
+            }
         }
+        if (is_procedure) {
+            rtidb::sdk::SQLSDKTest::CreateProcedure(sql_case, router);
+        }
+
         fesql::codec::RowView row_view(request_table.columns());
 
         auto row_batch =
@@ -241,6 +245,13 @@ void BM_BatchRequestQuery(benchmark::State& state, fesql::sqlcase::SQLCase& sql_
             row_view.Reset(request_rows[i].buf());
             rtidb::sdk::SQLSDKTest::CovertFesqlRowToRequestRow(&row_view, request_row);
             ASSERT_TRUE(row_batch->AddRow(request_row));
+            if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+                continue;
+            }
+            // don't repeat request in debug mode
+            for(size_t repeat_idx = 1; repeat_idx < sql_case.batch_request_.repeat_; repeat_idx++) {
+                ASSERT_TRUE(row_batch->AddRow(request_row));
+            }
         }
 
         if (!fesql::sqlcase::SQLCase::IS_DEBUG()) {

@@ -39,7 +39,6 @@ int main(int argc, char** argv) {
     ::fesql::vm::Engine::InitializeGlobalLLVM();
     FLAGS_enable_distsql = fesql::sqlcase::SQLCase::IS_CLUSTER();
     FLAGS_enable_localtablet = !fesql::sqlcase::SQLCase::IS_DISABLE_LOCALTABLET();
-    FLAGS_enable_batch_request_optimized = fesql::sqlcase::SQLCase::IS_BATCH_REQUEST_OPT();
     ::benchmark::Initialize(&argc, argv);
     if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
     ::rtidb::sdk::MiniCluster mini_cluster(6181);
