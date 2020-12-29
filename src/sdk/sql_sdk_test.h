@@ -206,6 +206,33 @@ void SQLSDKTest::CreateProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
         ASSERT_TRUE(router->RefreshCatalog());
     }
     DLOG(INFO) << "Create Procedure DONE";
+    if (!sql_case.expect().success_) {
+        return;
+    }
+    auto sp_info = router->ShowProcedure(sql_case.db(), sql_case.sp_name_, &status);
+    ASSERT_TRUE(sp_info && status.code == 0) << status.msg;
+    if (is_batch) {
+        std::set<size_t> input_common_indices;
+        for (size_t idx : sql_case.batch_request().common_column_indices_) {
+            input_common_indices.insert(idx);
+        }
+        for (size_t i = 0; i < sp_info->GetInputSchema().GetColumnCnt(); ++i) {
+            auto is_const = input_common_indices.find(i) != input_common_indices.end();
+            ASSERT_EQ(is_const, sp_info->GetInputSchema().IsConstant(i))
+                << "At input column " << i;
+        }
+        if (!sql_case.expect().common_column_indices_.empty()) {
+            std::set<size_t> output_common_indices;
+            for (size_t idx : sql_case.expect().common_column_indices_) {
+                output_common_indices.insert(idx);
+            }
+            for (size_t i = 0; i < sp_info->GetOutputSchema().GetColumnCnt(); ++i) {
+                auto is_const = output_common_indices.find(i) != output_common_indices.end();
+                ASSERT_EQ(is_const, sp_info->GetOutputSchema().IsConstant(i))
+                    << "At output column " << i;
+            }
+        }
+    }
 }
 
 void SQLSDKTest::DropProcedure(fesql::sqlcase::SQLCase& sql_case,  // NOLINT
