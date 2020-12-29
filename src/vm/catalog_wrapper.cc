@@ -20,8 +20,7 @@ std::shared_ptr<TableHandler> PartitionProjectWrapper::GetSegment(
             new TableProjectWrapper(segment, fun_));
     }
 }
-base::ConstIterator<uint64_t, Row>* PartitionProjectWrapper::GetRawIterator()
-    const {
+base::ConstIterator<uint64_t, Row>* PartitionProjectWrapper::GetRawIterator() {
     auto iter = partition_handler_->GetIterator();
     if (!iter) {
         return nullptr;
@@ -40,8 +39,7 @@ std::shared_ptr<TableHandler> PartitionFilterWrapper::GetSegment(
             new TableFilterWrapper(segment, fun_));
     }
 }
-base::ConstIterator<uint64_t, Row>* PartitionFilterWrapper::GetRawIterator()
-    const {
+base::ConstIterator<uint64_t, Row>* PartitionFilterWrapper::GetRawIterator() {
     auto iter = partition_handler_->GetIterator();
     if (!iter) {
         return nullptr;
