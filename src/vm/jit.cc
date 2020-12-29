@@ -151,7 +151,6 @@ bool FeSQLJIT::AddSymbol(::llvm::orc::JITDylib& jd,
         LOG(WARNING) << "fail to add symbol " << fn_name;
         return false;
     } else {
-        DLOG(INFO) << "add fn symbol " << fn_name << " done";
         return true;
     }
 }

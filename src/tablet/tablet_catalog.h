@@ -21,6 +21,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 #include "base/spin_lock.h"
 #include "storage/fe_table.h"
 #include "vm/catalog.h"
@@ -66,8 +67,8 @@ class TabletSegmentHandler : public TableHandler {
         return partition_hander_->GetOrderType();
     }
 
-    std::unique_ptr<vm::RowIterator> GetIterator() const;
-    RowIterator* GetRawIterator() const override;
+    std::unique_ptr<vm::RowIterator> GetIterator() override;
+    RowIterator* GetRawIterator() override;
     std::unique_ptr<vm::WindowIterator> GetWindowIterator(
         const std::string& idx_name);
     virtual const uint64_t GetCount();
@@ -153,9 +154,8 @@ class TabletTableHandler
     const Row Get(int32_t pos);
 
     inline std::shared_ptr<storage::Table> GetTable() { return table_; }
-
-    std::unique_ptr<RowIterator> GetIterator() const;
-    RowIterator* GetRawIterator() const override;
+    std::unique_ptr<RowIterator> GetIterator();
+    RowIterator* GetRawIterator() override;
     std::unique_ptr<WindowIterator> GetWindowIterator(
         const std::string& idx_name);
     virtual const uint64_t GetCount();
@@ -177,6 +177,10 @@ class TabletTableHandler
     }
     virtual std::shared_ptr<fesql::vm::Tablet> GetTablet(
         const std::string& index_name, const std::string& pk) {
+        return tablet_;
+    }
+    virtual std::shared_ptr<fesql::vm::Tablet> GetTablet(
+        const std::string& index_name, const std::vector<std::string>& pks) {
         return tablet_;
     }
 
