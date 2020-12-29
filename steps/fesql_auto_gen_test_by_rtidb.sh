@@ -31,7 +31,7 @@ python3 -m pip install numpy -i https://pypi.tuna.tsinghua.edu.cn/simple
 python3 -m pip install PyYaml -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 python3 fesql/tools/autotest/gen_case_yaml_main.py  \
-    --udf_path=udf_defs.yaml --yaml_count=1
+    --udf_path=fesql/tools/autotest/udf_defs.yaml --yaml_count=1
 
 cd ${ROOT_DIR}
 ls -al fesql/cases/auto_gen_cases/
