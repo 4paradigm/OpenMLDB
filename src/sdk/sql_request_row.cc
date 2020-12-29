@@ -278,15 +278,12 @@ bool SQLRequestRow::AppendDouble(double val) {
     cnt_++;
     return true;
 }
-bool SQLRequestRow::AppendStringByteBufferVarName(char* string_buffer_var_name, uint32_t length) {
-    return AppendString(string_buffer_var_name, length);
-}
 
 bool SQLRequestRow::AppendString(const std::string& val) {
     return AppendString(val.data(), val.size());
 }
 
-bool SQLRequestRow::AppendString(const char *val, uint32_t length) {
+bool SQLRequestRow::AppendString(const char *string_buffer_var_name, uint32_t length) {
     if (!Check(::fesql::sdk::kTypeString)) return false;
     if (str_offset_ + length > size_) return false;
     int8_t* ptr = buf_ + str_field_start_offset_ + str_addr_length_ * offset_vec_[cnt_];
@@ -302,10 +299,10 @@ bool SQLRequestRow::AppendString(const char *val, uint32_t length) {
         *(reinterpret_cast<uint32_t*>(ptr)) = str_offset_;
     }
     if (length != 0) {
-        memcpy(reinterpret_cast<char*>(buf_ + str_offset_), val, length);
+        memcpy(reinterpret_cast<char*>(buf_ + str_offset_), string_buffer_var_name, length);
     }
     if (record_cols_.find(cnt_) != record_cols_.end()) {
-        record_value_.emplace(schema_->GetColumnName(cnt_), val);
+        record_value_.emplace(schema_->GetColumnName(cnt_), string_buffer_var_name);
     }
     str_offset_ += length;
     cnt_++;

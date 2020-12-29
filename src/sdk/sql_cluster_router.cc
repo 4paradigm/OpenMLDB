@@ -1246,7 +1246,6 @@ bool SQLClusterRouter::HandleSQLCreateProcedure(const fesql::node::NodePointVect
                 return false;
             }
             sp_info.mutable_output_schema()->CopyFrom(rtidb_output_schema);
-            // TODO(wb) get main table
             sp_info.set_main_table(explain_output.request_name);
             // get dependent tables, and fill sp_info
             std::set<std::string> tables;

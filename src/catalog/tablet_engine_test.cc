@@ -154,7 +154,9 @@ void TabletEngineTest::BatchModeCheck(fesql::sqlcase::SQLCase &sql_case) {  // N
     fesql::base::Status get_status;
     fesql::vm::Engine engine(catalog);
     fesql::vm::BatchRunSession session;
-    //    session.EnableDebug();
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        session.EnableDebug();
+    }
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_EQ(sql_case.expect().success_, ok);
     if (!sql_case.expect().success_) {
@@ -238,7 +240,9 @@ void TabletEngineTest::RequestModeCheck(fesql::sqlcase::SQLCase &sql_case,  // N
     std::cout << sql_str << std::endl;
     fesql::base::Status get_status;
     fesql::vm::RequestRunSession session;
-    //    session.EnableDebug();
+    if (fesql::sqlcase::SQLCase::IS_DEBUG()) {
+        session.EnableDebug();
+    }
     bool ok = engine.Get(sql_str, sql_case.db(), session, get_status);
     ASSERT_EQ(sql_case.expect().success_, ok);
     if (!sql_case.expect().success_) {
@@ -346,9 +350,6 @@ INSTANTIATE_TEST_SUITE_P(EngineLastJoinQuery, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinWindowQuery, TabletEngineTest,
-                         testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_window_query.yaml")));
-
-INSTANTIATE_TEST_SUITE_P(EngineRequestLastJoinWindowQuery, TabletEngineTest,
                          testing::ValuesIn(TabletEngineTest::InitCases("/cases/query/last_join_window_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineWindowQuery, TabletEngineTest,
