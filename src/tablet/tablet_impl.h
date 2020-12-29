@@ -372,7 +372,10 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                               const rtidb::api::SQLBatchRequestQueryRequest* request,
                               rtidb::api::SQLBatchRequestQueryResponse* response,
                               Closure* done);
-
+    void SubBatchRequestQuery(RpcController* controller,
+                              const rtidb::api::SQLBatchRequestQueryRequest* request,
+                              rtidb::api::SQLBatchRequestQueryResponse* response,
+                              Closure* done);
     void CancelOP(RpcController* controller,
                   const rtidb::api::CancelOPRequest* request,
                   rtidb::api::GeneralResponse* response, Closure* done);
@@ -590,6 +593,10 @@ class TabletImpl : public ::rtidb::api::TabletServer {
                       const rtidb::api::QueryRequest* request,
                       ::rtidb::api::QueryResponse* response,
                       butil::IOBuf* buf);
+    void ProcessBatchRequestQuery(RpcController* controller,
+        const rtidb::api::SQLBatchRequestQueryRequest* request,
+                                  rtidb::api::SQLBatchRequestQueryResponse* response,
+                                  butil::IOBuf& buf);  // NOLINT
 
  private:
     void RunRequestQuery(RpcController* controller,

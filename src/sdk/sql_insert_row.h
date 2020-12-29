@@ -100,12 +100,11 @@ class SQLInsertRow {
         return std::move(result);
     }
 
-    bool AppendStringByteBufferVarName(char* string_buffer_var_name, uint32_t length);
+    bool AppendString(const char* string_buffer_var_name, uint32_t length);
 
  private:
     bool DateToString(uint32_t year, uint32_t month, uint32_t day,
                       std::string* date);
-    bool AppendString(const char* val, uint32_t length);
     bool MakeDefault();
     bool PackTs(uint64_t ts);
     void PackDimension(const std::string& val);

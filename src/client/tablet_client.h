@@ -362,6 +362,8 @@ class TabletClient {
     bool SubQuery(const ::rtidb::api::QueryRequest& request,
             rtidb::RpcCallback<rtidb::api::QueryResponse>* callback);
 
+    bool SubBatchRequestQuery(const ::rtidb::api::SQLBatchRequestQueryRequest& request,
+                              rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback);
     bool CallProcedure(const std::string& db, const std::string& sp_name,
             const std::string& row, int64_t timeout_ms, bool is_debug,
             rtidb::RpcCallback<rtidb::api::QueryResponse>* callback);

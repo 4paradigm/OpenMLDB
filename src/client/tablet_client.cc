@@ -225,7 +225,7 @@ bool TabletClient::SQLBatchRequestQuery(const std::string& db, const std::string
     bool ok = client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
                                   cntl, &request, response);
     if (!ok || response->code() != ::rtidb::base::kOk) {
-        LOG(WARNING) << "fail to query tablet";
+        LOG(WARNING) << "fail to query tablet" << response->msg();
         return false;
     }
     return true;
@@ -1746,6 +1746,15 @@ bool TabletClient::SubQuery(const ::rtidb::api::QueryRequest& request,
     return client_.SendRequest(&::rtidb::api::TabletServer_Stub::SubQuery,
             callback->GetController().get(), &request,
             callback->GetResponse().get(), callback);
+}
+bool TabletClient::SubBatchRequestQuery(const ::rtidb::api::SQLBatchRequestQueryRequest& request,
+                                        rtidb::RpcCallback<rtidb::api::SQLBatchRequestQueryResponse>* callback) {
+    if (callback == nullptr) {
+        return false;
+    }
+    return client_.SendRequest(&::rtidb::api::TabletServer_Stub::SQLBatchRequestQuery,
+                               callback->GetController().get(), &request,
+                               callback->GetResponse().get(), callback);
 }
 
 bool TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
