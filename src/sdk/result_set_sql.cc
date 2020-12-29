@@ -39,6 +39,7 @@ ResultSetSQL::~ResultSetSQL() { delete result_set_base_; }
 
 bool ResultSetSQL::Init() {
     std::unique_ptr<::fesql::sdk::RowIOBufView> row_view(new ::fesql::sdk::RowIOBufView(schema_));
+    DLOG(INFO) << "init result set sql with record cnt " << record_cnt_ << " buf size " << buf_size_;
     result_set_base_ = new ResultSetBase(cntl_, record_cnt_, buf_size_, std::move(row_view), schema_);
     return true;
 }
@@ -81,10 +82,10 @@ std::shared_ptr<::fesql::sdk::ResultSet> ResultSetSQL::MakeResultSet(
         if (!ok) {
             status->code = -1;
             status->msg = "fail to get sub schema";
-            return std::shared_ptr<ResultSet>();
         }
-        std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs =
-            std::make_shared<rtidb::sdk::ResultSetSQL>(schema, response->count(), response->buf_size(), cntl);
+
+        std::shared_ptr<::rtidb::sdk::ResultSetSQL> rs = std::make_shared<rtidb::sdk::ResultSetSQL>(
+            *(sdk_table_handler->GetSchema()), response->count(), response->buf_size(), cntl);
         ok = rs->Init();
         if (!ok) {
             status->code = -1;

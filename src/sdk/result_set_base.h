@@ -73,7 +73,7 @@ class ResultSetBase {
     std::unique_ptr<::fesql::sdk::RowIOBufView> row_view_;
     ::fesql::sdk::SchemaImpl schema_;
     uint32_t position_;
-    uint32_t index_;
+    int32_t index_;
 };
 
 }  // namespace sdk

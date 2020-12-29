@@ -36,6 +36,7 @@ class ResultSetSQL : public ::fesql::sdk::ResultSet {
  public:
     ResultSetSQL(const ::fesql::vm::Schema& schema, uint32_t record_cnt, uint32_t buf_size,
                  const std::shared_ptr<brpc::Controller>& cntl);
+
     ~ResultSetSQL();
 
     static std::shared_ptr<::fesql::sdk::ResultSet> MakeResultSet(

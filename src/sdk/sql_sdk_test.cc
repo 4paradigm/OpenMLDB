@@ -472,6 +472,38 @@ TEST_F(SQLSDKQueryTest, request_procedure_test) {
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table trans;", &status));
 }
 
+TEST_F(SQLSDKTest, table_reader_scan) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    std::string db = GenRand("db");
+    ::fesql::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    for (int i = 0; i < 2; i++) {
+        std::string name = "test" + std::to_string(i);
+        std::string ddl = "create table " + name +
+                          "("
+                          "col1 string, col2 bigint,"
+                          "index(key=col1, ts=col2));";
+        ok = router->ExecuteDDL(db, ddl, &status);
+        ASSERT_TRUE(ok);
+    }
+    ASSERT_TRUE(router->RefreshCatalog());
+    std::string insert = "insert into test0 values('key1', 1609212669000L);";
+    ASSERT_TRUE(router->ExecuteInsert(db, insert, &status));
+    auto table_reader = router->GetTableReader();
+    ScanOption so;
+    auto rs = table_reader->Scan(db, "test0", "key1", 1609212679000l, 0, so, &status);
+    ASSERT_TRUE(rs);
+    ASSERT_EQ(1, rs->Size());
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ(1609212669000l, rs->GetInt64Unsafe(1));
+    ASSERT_FALSE(rs->Next());
+}
+
 TEST_F(SQLSDKTest, create_table) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();

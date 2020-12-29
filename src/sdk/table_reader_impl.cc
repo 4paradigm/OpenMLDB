@@ -129,7 +129,7 @@ std::shared_ptr<rtidb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::st
         int32_t col_idx = sdk_table_handler->GetColumnIndex(col);
         if (col_idx < 0) {
             LOG(WARNING) << "fail to get col " << col << " from table " << table;
-            return std::shared_ptr<fesql::sdk::ResultSet>();
+            return std::shared_ptr<rtidb::sdk::ScanFuture>();
         }
         request.add_projection(static_cast<uint32_t>(col_idx));
     }

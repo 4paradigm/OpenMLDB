@@ -186,7 +186,7 @@ class TabletClient {
              ::rtidb::api::ScanResponse* response);
 
     bool AsyncScan(const ::rtidb::api::ScanRequest& request,
-            rtidb::RpcCallback<rtidb::api::QueryResponse>* callback);
+                   rtidb::RpcCallback<rtidb::api::ScanResponse>* callback);
 
     bool GetTableSchema(uint32_t tid, uint32_t pid,
                         ::rtidb::api::TableMeta& table_meta);  // NOLINT
