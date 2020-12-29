@@ -115,6 +115,7 @@ std::shared_ptr<rtidb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::st
     cntl->set_timeout_ms(timeout_ms);
     rtidb::RpcCallback<rtidb::api::ScanResponse>* callback =
         new rtidb::RpcCallback<rtidb::api::ScanResponse>(response, cntl);
+
     ::rtidb::api::ScanRequest request;
     request.set_pk(key);
     request.set_tid(sdk_table_handler->GetTid());
@@ -143,13 +144,9 @@ std::shared_ptr<rtidb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::st
     if (so.at_least > 0) {
         request.set_atleast(so.at_least);
     }
-    bool ok = client->AsyncScan(request, callback);
-    if (!ok) {
-        delete callback;
-        return std::shared_ptr<rtidb::sdk::ScanFuture>();
-    } else {
-        return std::make_shared<ScanFutureImpl>(callback, request.projection(), table_handler);
-    }
+    auto scan_future = std::make_shared<ScanFutureImpl>(callback, request.projection(), table_handler);
+    client->AsyncScan(request, callback);
+    return scan_future;
 }
 
 std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& db, const std::string& table,
