@@ -52,7 +52,7 @@ class ScanFutureImpl : public ScanFuture {
     }
 
     std::shared_ptr<fesql::sdk::ResultSet> GetResultSet(::fesql::sdk::Status* status) override {
-        if (status == nullptr){
+        if (status == nullptr) {
             return std::shared_ptr<fesql::sdk::ResultSet>();
         }
 
@@ -74,9 +74,8 @@ class ScanFutureImpl : public ScanFuture {
             return nullptr;
         }
 
-        auto rs = ResultSetSQL::MakeResultSet(callback_->GetResponse(), 
-                projection_, callback_->GetController(), table_handler_,
-                status);
+        auto rs = ResultSetSQL::MakeResultSet(callback_->GetResponse(), projection_, callback_->GetController(),
+                                              table_handler_, status);
         return rs;
     }
 
@@ -111,12 +110,11 @@ std::shared_ptr<rtidb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::st
         return std::shared_ptr<rtidb::sdk::ScanFuture>();
     }
     auto client = accessor->GetClient();
-    std::shared_ptr<rtidb::api::ScanResponse> response =
-        std::make_shared<rtidb::api::ScanResponse>();
+    std::shared_ptr<rtidb::api::ScanResponse> response = std::make_shared<rtidb::api::ScanResponse>();
     std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
     cntl->set_timeout_ms(timeout_ms);
     rtidb::RpcCallback<rtidb::api::ScanResponse>* callback =
-            new rtidb::RpcCallback<rtidb::api::ScanResponse>(response, cntl);
+        new rtidb::RpcCallback<rtidb::api::ScanResponse>(response, cntl);
     ::rtidb::api::ScanRequest request;
     request.set_pk(key);
     request.set_tid(sdk_table_handler->GetTid());
@@ -149,15 +147,14 @@ std::shared_ptr<rtidb::sdk::ScanFuture> TableReaderImpl::AsyncScan(const std::st
     if (!ok) {
         delete callback;
         return std::shared_ptr<rtidb::sdk::ScanFuture>();
-    }else {
+    } else {
         return std::make_shared<ScanFutureImpl>(callback, request.projection(), table_handler);
     }
 }
 
 std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& db, const std::string& table,
                                                              const std::string& key, int64_t st, int64_t et,
-                                                             const ScanOption& so,
-                                                             ::fesql::sdk::Status* status) {
+                                                             const ScanOption& so, ::fesql::sdk::Status* status) {
     auto table_handler = cluster_sdk_->GetCatalog()->GetTable(db, table);
     if (!table_handler) {
         LOG(WARNING) << "fail to get table " << table << "desc from catalog";
@@ -212,8 +209,7 @@ std::shared_ptr<fesql::sdk::ResultSet> TableReaderImpl::Scan(const std::string& 
         status->msg = response->msg();
         return std::shared_ptr<fesql::sdk::ResultSet>();
     }
-    auto rs = ResultSetSQL::MakeResultSet(response, request.projection(), cntl, table_handler,
-            status);
+    auto rs = ResultSetSQL::MakeResultSet(response, request.projection(), cntl, table_handler, status);
     return rs;
 }
 

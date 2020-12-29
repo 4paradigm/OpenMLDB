@@ -17,6 +17,8 @@
 
 #include "sdk/result_set_base.h"
 
+#include <utility>
+
 namespace rtidb {
 namespace sdk {
 
